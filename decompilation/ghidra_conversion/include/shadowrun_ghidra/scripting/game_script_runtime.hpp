@@ -199,6 +199,46 @@ enum class ScriptActorActionKind : std::uint8_t {
     spell,
 };
 
+enum class ScriptFieldEncounterOutcomeKind : std::uint8_t {
+    dialogue_event,
+    dynamic_world_effect_sequence,
+};
+
+struct ScriptFieldEncounterActor {
+    std::uint16_t source_order = 0;
+    std::uint32_t selection_cell_offset = 0;
+    std::uint32_t sequence_list_offset = 0;
+    std::string actor_name;
+    std::string profile_id;
+    std::uint16_t entity_kind = 0;
+    ScriptActorActionKind action_kind = ScriptActorActionKind::none;
+    std::uint8_t action_code = 0;
+    std::uint8_t palette_line = 0;
+    std::string sprite_stem;
+    std::uint32_t tagged_template = 0;
+    std::uint32_t template_offset = 0;
+    std::uint8_t source_interaction_flags = 0;
+    std::string ordered_overrides;
+};
+
+// The selector result is data, not an event-specific C++ switch. Dialogue
+// handler continuations remain source-owned until their respective branches
+// have been traced and ported; dynamic actor lists are fully typed here.
+struct ScriptFieldEncounterOutcome {
+    ScriptFieldEncounterOutcomeKind kind =
+        ScriptFieldEncounterOutcomeKind::dialogue_event;
+    std::uint16_t scene_id = 0;
+    std::uint8_t context_group = 0;
+    std::uint8_t random_sum = 0;
+    std::string event_name;
+    std::uint32_t handler_offset = 0;
+    std::string opening_text;
+    std::array<std::string, 3> choices{};
+    std::array<std::optional<std::uint8_t>, 3> choice_commands{};
+    std::array<std::optional<std::uint32_t>, 3> choice_dispatch_targets{};
+    std::vector<ScriptFieldEncounterActor> actors;
+};
+
 enum class ScriptActorHeartbeatPhase : std::uint8_t {
     behavior,
     render,
@@ -333,6 +373,23 @@ struct ScriptActorMovementStep {
     std::uint16_t direction_animation = 0;
 };
 
+struct ScriptActorTargetCandidate {
+    std::string id;
+    std::uint16_t world_x = 0;
+    std::uint16_t world_y = 0;
+    std::uint16_t heading = 0;
+    std::uint16_t distance = 0;
+    std::uint8_t service_flags = 0; // source entity +0x10
+    std::uint8_t interaction_flags = 0; // source entity +0x11
+    std::uint8_t behavior_flags = 0; // source entity +0xB0
+    std::uint8_t spawn_state_flags = 0; // source entity +0x9E
+    bool has_action = false; // source entity +0x0C != 0
+    bool world_activity_actor = false;
+};
+
+using ScriptActorRandomBound =
+    std::function<std::optional<std::uint16_t>(std::uint16_t)>;
+
 // Source-derived identity and spawn facts passed to an actor's Lua heartbeat.
 // Lua owns per-instance behavior state; the host retains world facts and
 // consumes the returned presentation/action snapshot.
@@ -378,6 +435,16 @@ struct ScriptActorBehaviorContext {
     ScriptMovementCollisionQuery movement_collision;
     ScriptMovementRouteLookup movement_route_lookup;
     ScriptMovementCollisionRecovery movement_collision_recovery;
+    // Dynamic field encounters carry their source entity coordinates and the
+    // measured target facts from the native geometry query. Lua chooses the
+    // behavior; the host does not infer a target from screen proximity.
+    bool dynamic_world_encounter_actor = false;
+    std::uint8_t source_record_flags = 0;
+    std::uint8_t source_interaction_flags = 0;
+    std::int16_t ai_movement_mode = 0;
+    std::vector<ScriptActorTargetCandidate> ai_target_candidates;
+    ScriptActorRandomBound ai_random_bound;
+    std::uint8_t entry_animation_frame_count = 2;
 };
 
 struct ScriptActorBehaviorDecision {
@@ -466,6 +533,9 @@ public:
         std::uint8_t floor_index);
     std::optional<FieldMapEventPolicyDecision> resolve_field_collision_event(
         const FieldMapCollisionEventInput& input);
+    std::optional<ScriptFieldEncounterOutcome> resolve_field_encounter(
+        std::uint16_t scene_id, std::uint8_t first_roll,
+        std::uint8_t second_roll);
     std::optional<std::vector<FieldMapEventRule>> map_event_rules();
     void set_story_state(const StoryFacts& facts);
     void set_story_fact_accessors(StoryFactReader read,

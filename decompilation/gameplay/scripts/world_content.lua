@@ -9,6 +9,9 @@ local function content()
         return {
             entities = {}, areas = {}, map_triggers = {}, map_events = {},
             actor_spawns = {}, encounter_regions = {},
+            world_activity_outcomes = {},
+            dynamic_world_activity_actors = {},
+            world_activity_actor_lists = {},
         }
     end
     return data

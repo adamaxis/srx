@@ -44,18 +44,55 @@ local EntityKind = {
     field_runner = 3,
     corp_guard = 5,
     pedestrian = 11,
+    hell_hound = 12,
+    gargoyle = 13,
+    wendigo = 14,
 }
 local ActionKind = {
     none = "none",
     item = "item",
     spell = "spell",
 }
+
+local ActorServiceFlag = {
+    active = 0x01,
+    targets_world_actors = 0x08,
+    action_candidate_reserved = 0x10,
+    effect_locked = 0x40,
+}
+local ActorSpawnFlag = {
+    transitioning = 0x20,
+    effect_route = 0x08,
+}
+local ActorBehaviorFlag = {
+    high_effect = 0x80,
+}
 local ItemAction = {
     max_power_heavy_pistol = 6,
 }
+-- ROM 0xB330 indexes the word table at 0xB05E by entity kind. These are
+-- source audio requests; some table-2 slots are confirmed silent/no-op.
+local EntryAudioEventByKind = {
+    [0] = 0x40,
+    [1] = 0x40,
+    [2] = 0x40,
+    [3] = 0x2e,
+    [4] = 0x2f,
+    [5] = 0x2e,
+    [6] = 0x58,
+    [7] = 0x2e,
+    [8] = 0x2e,
+    [9] = 0x2e,
+    [10] = 0x58,
+    [11] = 0x2f,
+    [12] = 0x56,
+    [13] = 0x5a,
+    [14] = 0x5a,
+    [15] = 0x5a,
+}
 local ActorEntryCue = {
-    corp_guard = 0x2e,
-    pedestrian = 0x2f,
+    corp_guard = EntryAudioEventByKind[EntityKind.corp_guard],
+    pedestrian = EntryAudioEventByKind[EntityKind.pedestrian],
 }
 
 local profiles = {
@@ -80,6 +117,30 @@ local profiles = {
         action_kind = ActionKind.none,
         action_code = 0,
         controls_movement = true,
+    },
+    ["hell_hound_k0c_none00"] = {
+        package_id = "creature.hell_hound.source_target_motion",
+        entity_kind = EntityKind.hell_hound,
+        action_kind = ActionKind.none,
+        action_code = 0,
+        controls_movement = true,
+        dynamic_encounter_only = true,
+    },
+    ["gargoyle_k0d_none00"] = {
+        package_id = "creature.gargoyle.source_target_motion",
+        entity_kind = EntityKind.gargoyle,
+        action_kind = ActionKind.none,
+        action_code = 0,
+        controls_movement = true,
+        dynamic_encounter_only = true,
+    },
+    ["wendigo_k0e_none00"] = {
+        package_id = "creature.wendigo.source_target_motion",
+        entity_kind = EntityKind.wendigo,
+        action_kind = ActionKind.none,
+        action_code = 0,
+        controls_movement = true,
+        dynamic_encounter_only = true,
     },
     ["weapon_projectile"] = {
         package_id = "combat.weapon_projectile",
@@ -119,9 +180,46 @@ local function approach_heading(current, target)
     return target
 end
 
+local function dynamic_encounter_profile(context)
+    if type(context.profile_id) ~= "string" then
+        return nil
+    end
+    local kind_hex, action_name, action_hex = string.match(
+        context.profile_id, "^.+_k([0-9a-f][0-9a-f])_([a-z]+)(%x%x)$")
+    local action_kind = ActionKind[action_name]
+    if kind_hex == nil or action_kind == nil then
+        return nil
+    end
+    local entity_kind = tonumber(kind_hex, 16)
+    local action_code = tonumber(action_hex, 16)
+    if entity_kind == nil or action_code == nil or
+       entity_kind < 4 or entity_kind > 14 or
+       entity_kind ~= context.entity_kind or
+       action_kind ~= context.action_kind or
+       action_code ~= context.action_code then
+        return nil
+    end
+    return {
+        package_id = "world_actor.kind_" .. tostring(entity_kind) ..
+                     ".source_target_motion",
+        entity_kind = entity_kind,
+        action_kind = action_kind,
+        action_code = action_code,
+        controls_movement = true,
+        dynamic_encounter_only = true,
+        entry_audio_event = EntryAudioEventByKind[entity_kind],
+    }
+end
+
 local function source_profile(context)
-    local profile = profiles[context.profile_id]
+    local profile = context.dynamic_world_encounter_actor == true
+        and dynamic_encounter_profile(context)
+        or profiles[context.profile_id]
     if profile == nil or
+       (profile.dynamic_encounter_only and
+        context.dynamic_world_encounter_actor ~= true) or
+       (profile.dynamic_encounter_only and
+        (context.source_record_flags & 0x01) == 0) or
        (not profile.projectile_animation and
         context.entity_kind ~= profile.entity_kind) or
        context.action_kind ~= profile.action_kind or
@@ -129,6 +227,61 @@ local function source_profile(context)
         return nil
     end
     return profile
+end
+
+local function target_is_eligible(candidate, world_actor_pool)
+    if type(candidate) ~= "table" or type(candidate.id) ~= "string" or
+       candidate.id == "" or candidate.has_action ~= true or
+       (candidate.service_flags & ActorServiceFlag.active) == 0 or
+       (candidate.service_flags & ActorServiceFlag.effect_locked) ~= 0 or
+       (candidate.service_flags & ActorServiceFlag.action_candidate_reserved) ~= 0 then
+        return false
+    end
+    if candidate.world_activity_actor ~= world_actor_pool then
+        return false
+    end
+    if world_actor_pool and
+       ((candidate.behavior_flags & ActorBehaviorFlag.high_effect) ~= 0 or
+        (candidate.spawn_state_flags & ActorSpawnFlag.transitioning) ~= 0 or
+        (candidate.spawn_state_flags & ActorSpawnFlag.effect_route) ~= 0) then
+        return false
+    end
+    return true
+end
+
+local function linked_target(context, state)
+    local source_candidates = context.ai_target_candidates
+    if type(source_candidates) ~= "table" then
+        state.linked_target_id = nil
+        return nil
+    end
+    local world_actor_pool =
+        (context.source_record_flags & ActorServiceFlag.targets_world_actors) ~= 0
+    local candidates = {}
+    local retained
+    for _, candidate in ipairs(source_candidates) do
+        if target_is_eligible(candidate, world_actor_pool) then
+            candidates[#candidates + 1] = candidate
+            if candidate.id == state.linked_target_id then
+                retained = candidate
+            end
+        end
+    end
+    if retained ~= nil then
+        return retained
+    end
+    state.linked_target_id = nil
+    if #candidates == 0 or type(context.ai_random_bound) ~= "function" then
+        return nil
+    end
+    local choice = context.ai_random_bound(#candidates)
+    if type(choice) ~= "number" or choice % 1 ~= 0 or
+       choice < 0 or choice >= #candidates then
+        return nil
+    end
+    retained = candidates[choice + 1]
+    state.linked_target_id = retained.id
+    return retained
 end
 
 local function initial_state(context, profile)
@@ -142,6 +295,8 @@ local function initial_state(context, profile)
         weapon_item_id = profile.weapon_item_id,
         direction = direction_from_heading(context.initial_heading),
         entry_delay = context.entry_delay,
+        entry_frame_count = context.entry_animation_frame_count,
+        source_interaction_flags = context.source_interaction_flags or 0,
         behavior_timer = 0,
         animation_id = "idle",
         animation_frame = 0,
@@ -455,13 +610,17 @@ local function advance_entry_animation(state)
        state.transition_frame_list_finished then
         return
     end
+    local frame_count = state.entry_frame_count
+    if type(frame_count) ~= "number" or frame_count < 1 or
+       frame_count > 8 then
+        return
+    end
     local accumulated = state.animation_accumulator + 0x0200
     if accumulated >= 0x1000 then
         state.animation_accumulator = accumulated - 0x1000
-        if state.animation_frame == 0 then
-            state.animation_frame = 1
+        if state.animation_frame + 1 < frame_count then
+            state.animation_frame = state.animation_frame + 1
         else
-            state.animation_frame = 1
             state.transition_frame_list_finished = true
         end
     else
@@ -507,7 +666,39 @@ local function advance_player_animation(state, context)
     end
 end
 
-local function requested_movement_heading(context, profile)
+local function requested_movement_heading(context, profile, state)
+    if profile.dynamic_encounter_only then
+        local target = linked_target(context, state)
+        local heading = target and target.heading or nil
+        local distance = target and target.distance or nil
+        if context.movement_allowed and type(heading) == "number" and
+           type(distance) == "number" then
+            -- ROM 0x14C7C: kind 0xC turns/approaches inside 0x600 units;
+            -- its current heading is only replaced in the 0x300..0x5FF
+            -- interval (or by the separate close-effect path). Kinds 0xD/0xE
+            -- require the linked-target <0x200 check made by 0x15C84, and
+            -- movement mode 2 retains its current heading. The host supplies
+            -- measured geometry and collision queries; Lua owns this policy.
+            if context.entity_kind == EntityKind.hell_hound and
+               distance >= 0x300 and distance < 0x600 then
+                return heading
+            end
+            if (context.entity_kind == EntityKind.gargoyle or
+                context.entity_kind == EntityKind.wendigo) and
+               distance < 0x200 and context.ai_movement_mode ~= 2 then
+                return heading
+            end
+            if context.entity_kind ~= EntityKind.hell_hound and
+               context.entity_kind ~= EntityKind.gargoyle and
+               context.entity_kind ~= EntityKind.wendigo and
+               distance < 0x200 then
+                -- The other source kinds share 0x15C58's active/unlocked
+                -- linked-target range gate before 0x13D0C consumes +0x34.
+                return heading
+            end
+        end
+        return nil
+    end
     if not profile.controls_movement or not context.movement_allowed then
         return nil
     end
@@ -747,7 +938,13 @@ function ActorAI.heartbeat(context)
     if profile == nil or type(context.actor_id) ~= "string" or
        context.actor_id == "" or type(context.initial_heading) ~= "number" or
        type(context.entry_delay) ~= "number" or context.entry_delay < 0 or
-       context.entry_delay > 15 or
+       context.entry_delay >
+           (context.dynamic_world_encounter_actor and 0x28 or 15) or
+       (context.dynamic_world_encounter_actor and
+        (type(context.entry_animation_frame_count) ~= "number" or
+         context.entry_animation_frame_count % 1 ~= 0 or
+         context.entry_animation_frame_count < 1 or
+         context.entry_animation_frame_count > 8)) or
        (context.phase ~= "behavior" and context.phase ~= "render") then
         return nil
     end
@@ -762,7 +959,7 @@ function ActorAI.heartbeat(context)
         if profile.projectile_animation then
             return projectile_heartbeat(state, context)
         end
-        if profile.controls_movement then
+        if profile.controls_movement and not profile.dynamic_encounter_only then
             state.combat_action_requested =
                 context.phase == "behavior" and
                 context.combat_action_available == true and
@@ -772,7 +969,7 @@ function ActorAI.heartbeat(context)
             state.movement_step = nil
             if context.phase == "behavior" then
                 state.movement_heading =
-                    requested_movement_heading(context, profile)
+                    requested_movement_heading(context, profile, state)
                 if state.movement_heading ~= nil then
                     state.movement_current_heading = approach_heading(
                         state.movement_current_heading,
@@ -808,19 +1005,87 @@ function ActorAI.heartbeat(context)
         if context.phase == "render" then
             state.movement_step = nil
             state.movement_heading = nil
-            advance_player_animation(state, context)
+            if profile.dynamic_encounter_only then
+                if state.transition_started and
+                   not state.transition_complete then
+                    advance_entry_animation(state)
+                else
+                    state.direction = direction_from_heading(
+                        state.movement_current_heading or
+                        context.initial_heading)
+                    state.animation_id = "idle"
+                    state.animation_frame = 0
+                end
+            else
+                advance_player_animation(state, context)
+            end
         else
             state.movement_step = nil
-            state.movement_heading =
-                requested_movement_heading(context, profile)
-            if state.movement_heading ~= nil then
-                state.movement_current_heading = approach_heading(
-                    state.movement_current_heading, state.movement_heading)
-                state.movement_step = finish_player_movement(
-                    context, advance_player_movement(context, state))
+            if profile.dynamic_encounter_only then
+                if not state.transition_started then
+                    -- ROM 0x13904 services +0xB6 before it enters 0xB330.
+                    if state.entry_delay == 0 then
+                        state.transition_started = true
+                        state.animation_id = "entry"
+                        state.animation_frame = 0
+                        state.animation_accumulator = -16
+                        state.behavior_timer = 20
+                        action = "play_entry"
+                        audio_event = profile.entry_audio_event
+                    else
+                        state.entry_delay = state.entry_delay - 1
+                    end
+                elseif not state.transition_complete then
+                    if state.behavior_timer == 0 then
+                        state.behavior_timer = 20
+                        if state.transition_frame_list_finished then
+                            state.transition_complete = true
+                        end
+                    else
+                        state.behavior_timer = state.behavior_timer - 1
+                    end
+                elseif state.behavior_timer > 0 then
+                    state.behavior_timer = state.behavior_timer - 1
+                else
+                    -- ROM 0x13904 decrements +0xB6 on every actor-service
+                    -- pass, then reloads 0x14 when the gated branch runs.
+                    state.behavior_timer = 0x14
+                    state.movement_heading =
+                        requested_movement_heading(context, profile, state)
+                    if state.movement_heading ~= nil then
+                        -- 0x14C7C writes the selected creature heading
+                        -- directly; it does not use the player's 0xB530
+                        -- 0x0800-step turn policy.
+                        state.movement_current_heading =
+                            state.movement_heading
+                        state.movement_step = finish_player_movement(
+                            context,
+                            advance_player_movement(context, state))
+                        if state.movement_step ~= nil and
+                           state.movement_step.state ~= nil then
+                            state.direction = direction_from_heading(
+                                state.movement_step.state.animation_heading)
+                        end
+                    end
+                end
+            else
+                state.movement_heading =
+                    requested_movement_heading(context, profile, state)
+                if state.movement_heading ~= nil then
+                    state.movement_current_heading = approach_heading(
+                        state.movement_current_heading,
+                        state.movement_heading)
+                    state.movement_step = finish_player_movement(
+                        context, advance_player_movement(context, state))
+                    if state.movement_step ~= nil and
+                       state.movement_step.state ~= nil then
+                        state.direction = direction_from_heading(
+                            state.movement_step.state.animation_heading)
+                    end
+                end
             end
         end
-        return snapshot(state, action, nil)
+        return snapshot(state, action, audio_event)
     end
 
     if context.phase == "render" then

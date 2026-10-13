@@ -14,6 +14,7 @@
 #include "shadowrun_ghidra/field/field_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_animation_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_service_target_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_transition_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_projection_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_probe_conversion.hpp"
@@ -41,6 +42,8 @@
 #include "shadowrun_ghidra/entities/entity_table_conversion.hpp"
 #include "shadowrun_ghidra/world/world_entity_conversion.hpp"
 #include "shadowrun_ghidra/world/world_effect_batch_conversion.hpp"
+#include "shadowrun_ghidra/world/world_effect_edge_conversion.hpp"
+#include "shadowrun_ghidra/world/world_effect_trigger_conversion.hpp"
 #include "shadowrun_ghidra/world/world_frame_logic_conversion.hpp"
 #include "shadowrun_ghidra/world/world_scene_entity_conversion.hpp"
 #include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
@@ -962,7 +965,8 @@ private:
         EntityCollisionRecord& entity_collision_record,
         std::array<std::uint8_t, 4>& sample_state,
         std::uint8_t entity_behavior_flags,
-        bool publish_movement_state);
+        bool publish_movement_state,
+        std::uint16_t* terrain_collision_code_output = nullptr);
     void source_boundary(std::string_view boundary) const;
     bool load_image(const ConversionAssetCatalog& catalog,
                     std::string_view alias,
@@ -971,8 +975,16 @@ private:
         const ConversionAssetCatalog& catalog);
     bool load_field_default_actor_assets(
         const ConversionAssetCatalog& catalog);
+    bool load_dynamic_world_actor_artwork(
+        const ConversionAssetCatalog& catalog);
     void initialize_default_field_actors(std::uint16_t scene_reference);
     void advance_default_field_actors();
+    void advance_field_entity_target_selection();
+    void trigger_field_world_effect_sequence();
+    std::int16_t select_field_world_effect_sequence();
+    void spawn_field_world_effect_sequence();
+    void reset_field_entity_service_records();
+    void refresh_world_entity_service_targets();
     DefaultActorSpriteView default_actor_sprite_view(
         const DefaultFieldActorPresentation& actor) const;
     const QImage* runner_preview_panel_for_record(
@@ -1101,11 +1113,29 @@ private:
         SceneRunnerPosition world_position{};
         std::uint16_t initial_heading = 0;
         std::uint8_t palette_line = 0;
+        std::string sprite_stem;
         std::uint32_t template_offset = 0;
         std::uint32_t position_offset = 0;
         std::uint32_t list_offset = 0;
+        std::uint32_t selection_cell_offset = 0;
+        std::uint8_t source_record_flags = 0;
+        std::uint8_t source_interaction_flags = 0;
+        std::uint8_t source_behavior_flags = 0;
+        std::uint8_t source_spawn_state_flags = 0;
+        std::optional<std::uint8_t> effect_slot;
+        bool temporary_world_encounter = false;
+        bool target_selected = false;
+        bool ai_target_valid = false;
+        std::uint16_t ai_target_heading = 0;
+        std::uint16_t ai_target_distance = 0;
+        EntityMovementStepState movement_state{};
+        EntityCollisionRecord movement_collision_record{};
+        std::array<std::uint8_t, 4> movement_sample_state{};
+        std::uint16_t movement_terrain_collision_code = 0U;
+        bool movement_state_initialized = false;
         std::string ordered_overrides;
         std::uint8_t initial_behavior_delay = 0;
+        std::uint8_t entry_animation_frame_count = 2;
         std::uint8_t animation_direction = 0;
         std::string animation_id = "idle";
         std::uint8_t animation_frame = 0;
@@ -1119,9 +1149,10 @@ private:
         std::array<QImage, 8> idle_images{};
         std::array<int, 8> idle_origin_x{};
         std::array<int, 8> idle_origin_y{};
-        std::array<std::array<QImage, 2>, 8> entry_images{};
-        std::array<std::array<int, 2>, 8> entry_origin_x{};
-        std::array<std::array<int, 2>, 8> entry_origin_y{};
+        std::array<std::array<QImage, 8>, 8> entry_images{};
+        std::array<std::array<int, 8>, 8> entry_origin_x{};
+        std::array<std::array<int, 8>, 8> entry_origin_y{};
+        std::uint8_t entry_frame_count = 2;
     };
 
     // Resource-activity scenes are temporary field excursions. Preserve the
@@ -1139,6 +1170,9 @@ private:
         std::array<RenderEntityState, 16> render_entities{};
         WorldActivityState activity_state{};
         WorldActivityTimeoutState activity_timeout{};
+        std::array<bool, 18> world_effect_slots_occupied{};
+        EntityServiceTargetOwner entity_target_owner{};
+        std::vector<EntityServiceTargetRecord> entity_target_records;
         EntityAnimationState player_animation{};
         std::uint16_t player_animation_selector = 0U;
         std::string player_animation_id = "idle";
@@ -1260,6 +1294,8 @@ private:
     CommandOverviewAutomaticUseState command_overview_automatic_use_state_ =
         CommandOverviewAutomaticUseState::inactive;
     std::uint16_t field_random_seed_ = 0U;
+    std::uint16_t field_world_frame_counter_ = 0U;
+    std::uint32_t field_world_encounter_sequence_ = 0U;
     std::optional<SelectedInventoryItem>
         command_overview_selected_inventory_item_;
     MenuConfirmationState command_overview_discard_confirmation_{};
@@ -1336,7 +1372,14 @@ private:
     std::array<int, 8> field_entity_attack_origin_x_{};
     std::array<int, 8> field_entity_attack_origin_y_{};
     std::array<DefaultActorArtwork, 2> field_default_actor_artwork_{};
+    std::unordered_map<std::string, DefaultActorArtwork>
+        field_dynamic_actor_artwork_;
     std::vector<DefaultFieldActorPresentation> field_default_actors_;
+    std::array<bool, 18> field_world_effect_slots_occupied_{};
+    EntityServiceTargetOwner field_entity_target_owner_{};
+    std::vector<EntityServiceTargetRecord> field_entity_target_records_{16U};
+    std::optional<scripting::ScriptFieldEncounterOutcome>
+        pending_field_encounter_outcome_;
     std::array<std::vector<QImage>, 16> field_weapon_projectile_images_{};
     std::array<std::vector<int>, 16> field_weapon_projectile_origin_x_{};
     std::array<std::vector<int>, 16> field_weapon_projectile_origin_y_{};

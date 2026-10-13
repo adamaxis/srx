@@ -111,8 +111,8 @@ EntityServiceTargetAction select_world_entity_service_target(
         const bool available = special_path
                                    ? record.active
                                    : record.active && !record.effect_locked &&
-                                         !record.selected && !record.high_effect &&
-                                         record.has_action;
+                                         !record.service_reserved &&
+                                         !record.high_effect && record.has_action;
         if (!available) {
             continue;
         }

@@ -11,7 +11,8 @@ namespace shadowrun::ghidra_conversion {
 struct EntityServiceTargetRecord {
     bool active = false;              // +0x10 bit 0
     bool effect_locked = false;       // +0x10 bit 6
-    bool selected = false;            // +0x10 bit 4
+    bool service_reserved = false;    // +0x10 bit 4
+    bool selected = false;            // +0x11 bit 4
     bool high_effect = false;         // +0xB0 bit 7
     bool has_action = false;          // +0x0C != 0
     std::uint8_t descriptor_class = 0; // +0x3E

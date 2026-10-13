@@ -51,9 +51,13 @@ from the source PRNG low nibble (`0..15`; world activity mode `0x37` instead
 uses `0x28`). Thus `+0x10` is a service/active flag byte, not the actor kind.
 The initializer later applies ordered template overrides, so behavior should
 read the resulting record facts rather than derive flags from a package name.
-The NPC Lua profile slice receives kind/action identity, initial delay, and
-heading; it does not yet receive the remaining `+0x10`, `+0x11`, `+0x4C`,
-`+0x9E`, or route fields needed for the general branch tree. The player
+The default-map NPC profile still does not receive the general branch tree's
+complete `+0x10`, `+0x11`, `+0x4C`, `+0x9E`, and route state. The temporary
+random-world actor path now carries typed `+0x10` service flags and the
+resolved `+0x11` render/selection flags into Lua, plus the ROM entry delay and
+the creature's directional C0B2 frame count. Remaining ordered template
+overrides are retained as source data but are not yet all interpreted by the
+runtime. The player
 heartbeat receives the normalized controller nibble and source heading table.
 Lua chooses its target heading, advances the current heading with the `0xB530`
 `0x0800`-step rule, and now runs the `0xB77E`/`0xB732`/`0xBADE`/`0xBB86`
@@ -129,15 +133,21 @@ map profile is not enough to authorize an NPC attack.
 The converted-source cross-check is split across
 `entities/entity_animation_link_conversion.cpp` and
 `entities/entity_action_candidate_conversion.cpp`; their named tests cover
-filters, target retention, replacement, and empty pools. Those conversion
-helpers are not connected to the live Qt actor records. `FieldSceneRuntime`
-currently stores profile, source order, initial position/heading, loadout, and
-presentation state for those actors; it does not yet have source-compatible
-state for the seven primary and three alternate candidate records. The next
-runtime slice must supply typed candidate facts from actual world entities, let
-Lua retain/select the target using the source PRNG service,
-and leave movement/collision resolution to the native field engine. Until that
-state exists, general NPC targeting and weapon use remain unimplemented.
+filters, target retention, replacement, and empty pools. The live Qt field path
+now gathers typed facts for active party runners and world actors, applies the
+ROM `+0x0C` projected-Y gate without adding a viewport-clipping rule, and lets
+Lua retain/select a target with the source bounded-random service. This is
+connected for the temporary random-world actor path; default-profile NPC target
+links and the full sixteen-record service loop remain partial. Movement and
+collision use the existing typed host queries, while Lua chooses the creature
+target heading. Item/spell action selection, attack effects, damage/death, and
+retirement after combat are not connected.
+
+The B rising-edge path at `0x1DC4C` now selects a live field actor through the
+same typed record service. The service keeps the two source selection fields
+distinct: candidate reservation is `+0x10.4`, while B's selected-target latch
+is `+0x11.4`. It must not be inferred from the action-link candidate flag.
+Target-marker rendering and the special runner-pool mode remain incomplete.
 
 Movement is collision-coupled. `0xB77E` builds a directional probe and calls
 `0xB48C`; `0xB48C` calls terrain collision `0xE7C8` and stores the collision
@@ -246,13 +256,32 @@ finite-list retirement. C++ supplies terrain/entity scan results, applies the
 typed record snapshot, and plays requested audio. The scene has no live actor
 candidates, so target hit, linked status/damage, and `0x14F86` follow-up stay
 explicit boundaries. The runtime still does not enumerate the complete
-16-record population. General NPC movement, targeting, combat, and source
-actor-slot dispatch remain open; this slice does not establish that every
-on-screen actor is connected.
+16-record population. Temporary random-world creatures now spawn from the
+ROM's selected template sequences, use extracted directional entry frames,
+wait their initial source delay, and receive Lua behavior/render heartbeats.
+Their target acquisition and B selection are connected to typed source flags;
+attacks, item/spell actions, hit resolution, damage/death, and actor removal
+remain open. Default-profile NPC movement/targeting and complete source
+actor-slot dispatch also remain open. This partial slice has a Release build,
+but no new CTest or scene dump, so it is not defended and has no visual-fidelity
+claim.
 
-The entry sounds selected by `0xB330` are kind-table events `0x2E` and `0x2F`.
-The extracted audio table maps both to silent slots, so the Lua request has no
-sample or playback duration to reproduce.
+The word table at ROM `0xB05E` was read directly for all sixteen kinds. The
+random-encounter kinds use these entry events: kind 4=`0x2F`, 5=`0x2E`,
+6=`0x58`, 7-9=`0x2E`, 10=`0x58`, 11=`0x2F`, 12=`0x56`, and 13-14=`0x5A`.
+Lua now returns the matching cue on the same behavior heartbeat that starts
+the directional entry transition. Their table-2 slots are 46, 47, 88, 86,
+and 90; the imported audio manifest has no files for those slots, and its
+extraction policy omits verified silent/no-op entries. The native audio host
+therefore receives the source request but plays no sample; these cues have no
+audible duration to reproduce. The source cue request and audible sound are
+separate facts.
+
+On the first Lua behavior heartbeat after a dynamic actor record is created,
+the script now enters the same `+0xB6` delay/entry branch instead of returning
+from a script-only initialization pass. This keeps the source delay count
+aligned to actor-service passes and prevents a creature from taking a movement
+step before its initial entry transition.
 
 ## Implementation review checklist
 

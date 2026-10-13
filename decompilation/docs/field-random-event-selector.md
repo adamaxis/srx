@@ -947,3 +947,27 @@ Regenerate or compare the source table with:
 python decompilation/tools/extract_world_activity_outcomes.py
 python decompilation/tools/extract_world_activity_outcomes.py --check
 ```
+
+## Native runtime status (partial)
+
+The Qt field loop now connects the ROM cadence/eligibility gate and two
+bounded-random draws to the Lua `field_encounters` selector. Zero-cell results
+spawn the listed actors through the source edge-placement and entity/effect
+slot rules, then call Lua for behavior and render heartbeats. Dynamic actor
+entry art is extracted by entity kind and direction; entry delay and finite
+C0B2 frame count are passed as typed values. Lua links targets using the ROM
+candidate pools and source PRNG. The B-button target selector is connected to
+live actor records; its `+0x11.4` selected latch remains separate from the
+`+0x10.4` action-candidate reservation.
+
+The creature entry branch also returns the `0xB05E` cue selected by entity
+kind. For the encounter kinds, those requests select table-2 slots 46, 47, 86,
+88, and 90. The audio manifest omits these verified silent/no-op slots, so the
+source request is preserved without inventing an audible effect or duration.
+
+This does not complete random-event gameplay. Enabled dialogue handlers,
+creature item/spell actions, attack effects, hit/damage/death, removal and
+queued activity continuations remain open. Ordered template overrides are
+retained; only the `+0x11` render/selection byte is currently projected into
+typed runtime state. The Release Qt executable builds, but this slice has no
+new scene dump or QA run and remains partial.

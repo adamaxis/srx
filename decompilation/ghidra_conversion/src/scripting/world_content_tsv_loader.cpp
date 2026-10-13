@@ -1,6 +1,7 @@
 #include "world_content_tsv_loader.hpp"
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cstdint>
 #include <fstream>
@@ -805,7 +806,7 @@ bool push_world_areas(lua_State* state,
 }
 
 void push_empty_data(lua_State* state, const int modules_reference) {
-    lua_createtable(state, 0, 6);
+    lua_createtable(state, 0, 9);
     const auto root_table = lua_absindex(state, -1);
     lua_createtable(state, 0, 0);
     lua_setfield(state, root_table, "entities");
@@ -819,6 +820,12 @@ void push_empty_data(lua_State* state, const int modules_reference) {
     lua_setfield(state, root_table, "encounter_regions");
     lua_createtable(state, 0, 0);
     lua_setfield(state, root_table, "map_events");
+    lua_createtable(state, 0, 0);
+    lua_setfield(state, root_table, "world_activity_outcomes");
+    lua_createtable(state, 0, 0);
+    lua_setfield(state, root_table, "dynamic_world_activity_actors");
+    lua_createtable(state, 0, 0);
+    lua_setfield(state, root_table, "world_activity_actor_lists");
     lua_rawgeti(state, LUA_REGISTRYINDEX, modules_reference);
     lua_pushvalue(state, root_table);
     lua_setfield(state, -2, "world_content_data");
@@ -829,7 +836,8 @@ void push_empty_data(lua_State* state, const int modules_reference) {
 
 bool load_world_content_tsv(lua_State* state, const int modules_reference,
                             const std::filesystem::path& world_directory,
-                            std::string& failure) {
+                            std::string& failure,
+                            const std::filesystem::path& field_asset_directory) {
     if (state == nullptr || modules_reference == LUA_NOREF) {
         failure = "Lua runtime is unavailable for world-content TSV files";
         return false;
@@ -861,6 +869,47 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
     if (!push_world_areas(state, world_directory, root_table, failure)) {
         lua_settop(state, stack_base);
         return false;
+    }
+    if (!field_asset_directory.empty()) {
+        struct SourceTable {
+            const char* relative_path;
+            const char* field;
+            std::vector<std::string_view> numeric_columns;
+        };
+        const std::array<SourceTable, 3> source_tables{{
+            {"world-activity-outcomes.tsv", "world_activity_outcomes",
+             {"scene", "context_group", "random_sum", "handler_offset"}},
+            {"entities/dynamic-world-activity-actors.tsv",
+             "dynamic_world_activity_actors",
+             {"scene", "context_group", "random_sum", "source_order",
+              "selection_cell_offset", "sequence_list_offset",
+               "action_code", "source_interaction_flags", "entity_kind",
+               "palette_line",
+              "tagged_template", "template_offset"}},
+            {"entities/world-activity-actors.tsv",
+             "world_activity_actor_lists",
+             {"scene", "source_order", "entity_kind", "action_code",
+              "palette_line",
+              "template_offset"}},
+        }};
+        for (const auto& source_table : source_tables) {
+            TsvDocument document;
+            const auto path = field_asset_directory / source_table.relative_path;
+            if (!read_tsv(path, false, document, failure) ||
+                !push_rows(state, document, source_table.numeric_columns,
+                           path, failure)) {
+                lua_settop(state, stack_base);
+                return false;
+            }
+            lua_setfield(state, root_table, source_table.field);
+        }
+    } else {
+        lua_createtable(state, 0, 0);
+        lua_setfield(state, root_table, "world_activity_outcomes");
+        lua_createtable(state, 0, 0);
+        lua_setfield(state, root_table, "dynamic_world_activity_actors");
+        lua_createtable(state, 0, 0);
+        lua_setfield(state, root_table, "world_activity_actor_lists");
     }
     lua_rawgeti(state, LUA_REGISTRYINDEX, modules_reference);
     lua_pushvalue(state, root_table);

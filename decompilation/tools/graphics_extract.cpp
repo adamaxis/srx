@@ -3747,6 +3747,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint16_t entity_kind;
         std::uint8_t palette_line;
         std::string actor_name;
+        std::string profile_id;
+        std::uint8_t action_code;
+        std::string action_kind;
+        std::uint8_t source_interaction_flags;
         std::string sprite_stem;
         std::string ordered_overrides;
     };
@@ -3805,6 +3809,18 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 const auto palette_line = static_cast<std::uint8_t>(
                     (read_big_endian_word(rom, template_offset + 2U) >> 13U) &
                     0x03U);
+                const auto action_selector = rom[template_offset + 8U];
+                const auto action_code = rom[template_offset + 9U];
+                const auto action_kind = action_code == 0U
+                    ? std::string("none")
+                    : ((action_selector & 0x80U) != 0U
+                           ? std::string("spell")
+                           : std::string("item"));
+                const auto profile_id = make_actor_profile_id(
+                    rom, template_offset, entity_kind, action_kind,
+                    action_code);
+                auto source_interaction_flags = rom[
+                    shadowrun::rom::kPostObjectEntityTemplate + 0x11U];
                 const auto actor_name = read_actor_name(template_offset);
                 if (entity_kind > 15U || actor_name.empty()) {
                     throw std::runtime_error(
@@ -3822,6 +3838,13 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                         if (pair == 0U) {
                             pair_offset += 2U;
                             break;
+                        }
+                        const auto override_offset =
+                            static_cast<std::uint8_t>(pair >> 8U);
+                        const auto override_value =
+                            static_cast<std::uint8_t>(pair & 0x00FFU);
+                        if (override_offset == 0x11U) {
+                            source_interaction_flags = override_value;
                         }
                         if (!first_override) {
                             overrides << ',';
@@ -3843,7 +3866,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     static_cast<std::uint32_t>(pointer_cell_offset),
                     sequence_list_offset, tagged_template,
                     static_cast<std::uint32_t>(template_offset), entity_kind,
-                    palette_line, actor_name, sprite_stem,
+                    palette_line, actor_name, profile_id, action_code,
+                    action_kind, source_interaction_flags, sprite_stem,
                     first_override ? "-" : overrides.str(),
                 });
                 const auto key = std::make_pair(entity_kind, palette_line);
@@ -3878,6 +3902,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         }
         table << "scene\tcontext_group\trandom_sum\tselection_cell_offset"
                  "\tsequence_list_offset\tsource_order\tactor_name"
+                 "\tprofile_id\taction_kind\taction_code"
+                 "\tsource_interaction_flags"
                  "\tentity_kind\tpalette_line\tsprite_stem"
                  "\ttagged_template\ttemplate_offset\tordered_overrides"
                  "\tplacement_rule\n";
@@ -3894,6 +3920,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                   << format_offset(actor.pointer_cell_offset) << '\t'
                   << format_offset(actor.sequence_list_offset) << '\t'
                   << actor.source_order << '\t' << actor.actor_name << '\t'
+                  << actor.profile_id << '\t' << actor.action_kind << '\t'
+                  << static_cast<unsigned>(actor.action_code) << '\t'
+                  << static_cast<unsigned>(actor.source_interaction_flags)
+                  << '\t'
                   << actor.entity_kind << '\t'
                   << static_cast<unsigned>(actor.palette_line) << '\t'
                   << visual->second.sprite_stem << '\t'
@@ -4045,10 +4075,6 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 true, manifest, written, missing, blank,
                 idle_frame.origin_x, idle_frame.origin_y);
 
-            if (kind_source.entity_kind != 5U &&
-                kind_source.entity_kind != 11U) {
-                continue;
-            }
             const auto entry_selector = read_big_endian_word(
                 rom, kEntrySelectorTableOffset + direction * 2U);
             const auto kind_state_pointer = static_cast<std::size_t>(
@@ -4058,12 +4084,18 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                                  4U));
             const auto entry_list = static_cast<std::size_t>(
                 read_big_endian_long(rom, kind_state_pointer + entry_selector));
-            if (read_big_endian_word(rom, entry_list) != 0x8002U) {
+            const auto entry_marker = read_big_endian_word(rom, entry_list);
+            const auto entry_frame_count =
+                static_cast<std::uint16_t>(entry_marker & 0x7FFFU);
+            if ((entry_marker & 0x8000U) == 0U ||
+                entry_frame_count == 0U || entry_frame_count > 8U ||
+                read_big_endian_word(rom, entry_list + 2U) != 0x0200U) {
                 throw std::runtime_error(
-                    "profile-selected default actor entry animation is not "
-                    "the traced two-frame list");
+                    "profile-selected actor entry animation has an "
+                    "unsupported source frame list");
             }
-            for (std::uint16_t frame_index = 0U; frame_index < 2U;
+            for (std::uint16_t frame_index = 0U;
+                 frame_index < entry_frame_count;
                  ++frame_index) {
                 const auto frame =
                     shadowrun::graphics::decode_genesis_field_entity_state_frame(

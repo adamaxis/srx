@@ -99,6 +99,25 @@ bool read_field_string(lua_State* state, const int table_index,
     return valid;
 }
 
+bool read_field_text(lua_State* state, const int table_index,
+                     const char* field, std::string& value,
+                     const std::size_t maximum_length =
+                         kMaximumDialogueTextBytes) {
+    lua_getfield(state, table_index, field);
+    if (lua_type(state, -1) != LUA_TSTRING) {
+        lua_pop(state, 1);
+        return false;
+    }
+    std::size_t length = 0U;
+    const auto* text = lua_tolstring(state, -1, &length);
+    const bool valid = text != nullptr && length <= maximum_length;
+    if (valid) {
+        value.assign(text, length);
+    }
+    lua_pop(state, 1);
+    return valid;
+}
+
 bool read_optional_field_string(lua_State* state, const int table_index,
                                 const char* field, std::string& value) {
     lua_getfield(state, table_index, field);
@@ -117,6 +136,24 @@ bool read_field_integer(lua_State* state, const int table_index,
     lua_getfield(state, table_index, field);
     const bool valid = read_integer(state, -1, maximum, value);
     lua_pop(state, 1);
+    return valid;
+}
+
+bool read_optional_field_u32(lua_State* state, const int table_index,
+                             const char* field, const std::uint32_t maximum,
+                             std::optional<std::uint32_t>& value) {
+    lua_getfield(state, table_index, field);
+    if (lua_isnil(state, -1)) {
+        lua_pop(state, 1);
+        value.reset();
+        return true;
+    }
+    std::uint32_t parsed = 0U;
+    const bool valid = read_integer(state, -1, maximum, parsed);
+    lua_pop(state, 1);
+    if (valid) {
+        value = parsed;
+    }
     return valid;
 }
 
@@ -645,6 +682,32 @@ struct GameScriptRuntime::Impl {
         } catch (...) {
             return luaL_error(lua,
                               "native movement collision query failed");
+        }
+    }
+
+    static int actor_random_bound(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        std::uint32_t bound = 0U;
+        if (self == nullptr || self->active_actor_context == nullptr ||
+            !self->active_actor_context->ai_random_bound ||
+            !read_integer(lua, 1, 0xFFFFU, bound) || bound == 0U) {
+            return luaL_error(
+                lua,
+                "actor target selection needs a nonzero source random bound");
+        }
+        try {
+            const auto result =
+                self->active_actor_context->ai_random_bound(
+                    static_cast<std::uint16_t>(bound));
+            if (!result.has_value() || *result >= bound) {
+                return luaL_error(
+                    lua,
+                    "source random service returned an invalid target index");
+            }
+            lua_pushinteger(lua, *result);
+            return 1;
+        } catch (...) {
+            return luaL_error(lua, "source actor random service failed");
         }
     }
 
@@ -1278,9 +1341,11 @@ bool GameScriptRuntime::load_package(
     }
 
     const auto world_directory = script_directory.parent_path() / "world";
+    const auto field_asset_directory =
+        script_directory.parent_path().parent_path() / "assets" / "field";
     if (!detail::load_world_content_tsv(
             impl_->state, impl_->modules_reference, world_directory,
-            impl_->failure)) {
+            impl_->failure, field_asset_directory)) {
         return false;
     }
 
@@ -1946,6 +2011,213 @@ GameScriptRuntime::resolve_field_collision_event(
     return decision;
 }
 
+std::optional<ScriptFieldEncounterOutcome>
+GameScriptRuntime::resolve_field_encounter(
+    const std::uint16_t scene_id, const std::uint8_t first_roll,
+    const std::uint8_t second_roll) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for field encounters";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptFieldEncounterOutcome> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (scene_id > 55U || first_roll > 4U || second_roll > 4U) {
+        return fail("field encounter request is outside the ROM table bounds");
+    }
+    if (!impl_->push_module("field_encounters")) {
+        return fail("field_encounters.lua module is missing");
+    }
+    lua_getfield(state, -1, "resolve");
+    if (!lua_isfunction(state, -1)) {
+        return fail("field_encounters.resolve is missing");
+    }
+    lua_remove(state, -2);
+    lua_pushinteger(state, scene_id);
+    lua_pushinteger(state, first_roll);
+    lua_pushinteger(state, second_roll);
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 3, 1, 0) != LUA_OK) {
+        return fail("field_encounters.resolve failed");
+    }
+    if (lua_isnil(state, -1)) {
+        lua_settop(state, stack_base);
+        impl_->failure.clear();
+        return std::nullopt;
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("field_encounters.resolve returned a non-record result");
+    }
+
+    const auto result_index = lua_absindex(state, -1);
+    ScriptFieldEncounterOutcome outcome{};
+    std::string kind_name;
+    std::uint32_t parsed_scene = 0U;
+    std::uint32_t context_group = 0U;
+    std::uint32_t random_sum = 0U;
+    if (!read_field_string(state, result_index, "kind", kind_name) ||
+        !read_field_integer(state, result_index, "scene", 55U,
+                            parsed_scene) ||
+        !read_field_integer(state, result_index, "context_group", 15U,
+                            context_group) ||
+        !read_field_integer(state, result_index, "random_sum", 8U,
+                            random_sum) ||
+        parsed_scene != scene_id ||
+        random_sum != static_cast<std::uint32_t>(first_roll + second_roll)) {
+        return fail("field_encounters.resolve returned invalid selector facts");
+    }
+    if (kind_name == "dialogue_event") {
+        outcome.kind = ScriptFieldEncounterOutcomeKind::dialogue_event;
+    } else if (kind_name == "dynamic_world_effect_sequence") {
+        outcome.kind =
+            ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence;
+    } else {
+        return fail("field_encounters.resolve returned an unknown outcome kind");
+    }
+    outcome.scene_id = static_cast<std::uint16_t>(parsed_scene);
+    outcome.context_group = static_cast<std::uint8_t>(context_group);
+    outcome.random_sum = static_cast<std::uint8_t>(random_sum);
+
+    std::optional<std::uint32_t> handler_offset;
+    if (!read_field_text(state, result_index, "event_name",
+                         outcome.event_name, 128U) ||
+        !read_optional_field_u32(state, result_index, "handler_offset",
+                                 0x1FFFFFU, handler_offset) ||
+        !read_field_text(state, result_index, "opening_text",
+                         outcome.opening_text)) {
+        return fail("field_encounters.resolve returned invalid event text");
+    }
+    outcome.handler_offset = handler_offset.value_or(0U);
+    constexpr std::array<const char*, 3> choice_fields{
+        "choice_1", "choice_2", "choice_3"};
+    constexpr std::array<const char*, 3> command_fields{
+        "choice_1_command", "choice_2_command", "choice_3_command"};
+    constexpr std::array<const char*, 3> target_fields{
+        "choice_1_dispatch_target", "choice_2_dispatch_target",
+        "choice_3_dispatch_target"};
+    for (std::size_t index = 0U; index < outcome.choices.size(); ++index) {
+        std::optional<std::uint32_t> command;
+        if (!read_field_text(state, result_index, choice_fields[index],
+                             outcome.choices[index], 512U) ||
+            !read_optional_field_u32(state, result_index,
+                                     command_fields[index], 255U, command) ||
+            !read_optional_field_u32(state, result_index,
+                                     target_fields[index], 0x1FFFFFU,
+                                     outcome.choice_dispatch_targets[index])) {
+            return fail("field_encounters.resolve returned invalid choices");
+        }
+        if (command.has_value()) {
+            outcome.choice_commands[index] =
+                static_cast<std::uint8_t>(*command);
+        }
+    }
+
+    if (outcome.kind ==
+        ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence) {
+        lua_getfield(state, result_index, "actors");
+        if (!lua_istable(state, -1)) {
+            return fail("dynamic world encounter has no actor list");
+        }
+        const auto actors_index = lua_absindex(state, -1);
+        const auto actor_count = lua_rawlen(state, actors_index);
+        if (actor_count == 0U || actor_count > 16U) {
+            return fail("dynamic world encounter actor count is invalid");
+        }
+        outcome.actors.reserve(actor_count);
+        for (std::size_t index = 0U; index < actor_count; ++index) {
+            lua_rawgeti(state, actors_index,
+                        static_cast<lua_Integer>(index + 1U));
+            if (!lua_istable(state, -1)) {
+                return fail("dynamic world encounter contains a bad actor row");
+            }
+            const auto actor_index = lua_absindex(state, -1);
+            ScriptFieldEncounterActor actor{};
+            std::uint32_t source_order = 0U;
+            std::uint32_t selection_cell_offset = 0U;
+            std::uint32_t sequence_list_offset = 0U;
+            std::uint32_t entity_kind = 0U;
+            std::uint32_t action_code = 0U;
+            std::uint32_t source_interaction_flags = 0U;
+            std::uint32_t palette_line = 0U;
+            std::uint32_t tagged_template = 0U;
+            std::uint32_t template_offset = 0U;
+            std::string action_kind;
+            const bool valid_actor =
+                read_field_integer(state, actor_index, "source_order", 31U,
+                                   source_order) &&
+                read_field_integer(state, actor_index,
+                                   "selection_cell_offset", 0x1FFFFFU,
+                                   selection_cell_offset) &&
+                read_field_integer(state, actor_index,
+                                   "sequence_list_offset", 0x1FFFFFU,
+                                   sequence_list_offset) &&
+                read_field_text(state, actor_index, "actor_name",
+                                actor.actor_name, 128U) &&
+                read_field_string(state, actor_index, "profile_id",
+                                  actor.profile_id) &&
+                valid_identifier(actor.profile_id) &&
+                read_field_integer(state, actor_index, "entity_kind", 15U,
+                                   entity_kind) &&
+                read_field_string(state, actor_index, "action_kind",
+                                  action_kind) &&
+                read_field_integer(state, actor_index, "action_code", 255U,
+                                   action_code) &&
+                read_field_integer(state, actor_index,
+                                   "source_interaction_flags", 255U,
+                                   source_interaction_flags) &&
+                read_field_integer(state, actor_index, "palette_line", 3U,
+                                   palette_line) &&
+                read_field_string(state, actor_index, "sprite_stem",
+                                  actor.sprite_stem) &&
+                valid_identifier(actor.sprite_stem) &&
+                read_field_integer(state, actor_index, "tagged_template",
+                                   0x1FFFFFU, tagged_template) &&
+                read_field_integer(state, actor_index, "template_offset",
+                                   0x1FFFFFU, template_offset) &&
+                read_field_text(state, actor_index, "ordered_overrides",
+                                actor.ordered_overrides, 512U);
+            if (!valid_actor || source_order != index) {
+                return fail("dynamic world encounter actor row is incomplete or unordered");
+            }
+            if (action_kind == "none") {
+                actor.action_kind = ScriptActorActionKind::none;
+            } else if (action_kind == "item") {
+                actor.action_kind = ScriptActorActionKind::item;
+            } else if (action_kind == "spell") {
+                actor.action_kind = ScriptActorActionKind::spell;
+            } else {
+                return fail("dynamic world encounter has an unknown action kind");
+            }
+            actor.source_order = static_cast<std::uint16_t>(source_order);
+            actor.selection_cell_offset = selection_cell_offset;
+            actor.sequence_list_offset = sequence_list_offset;
+            actor.entity_kind = static_cast<std::uint16_t>(entity_kind);
+            actor.action_code = static_cast<std::uint8_t>(action_code);
+            actor.source_interaction_flags =
+                static_cast<std::uint8_t>(source_interaction_flags);
+            actor.palette_line = static_cast<std::uint8_t>(palette_line);
+            actor.tagged_template = tagged_template;
+            actor.template_offset = template_offset;
+            if ((actor.action_kind == ScriptActorActionKind::none) !=
+                (actor.action_code == 0U)) {
+                return fail("dynamic world encounter action facts disagree");
+            }
+            outcome.actors.push_back(std::move(actor));
+            lua_pop(state, 1);
+        }
+        lua_pop(state, 1);
+    }
+
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return outcome;
+}
+
 std::optional<std::vector<FieldMapEventRule>>
 GameScriptRuntime::map_event_rules() {
     auto* state = impl_->state;
@@ -2552,7 +2824,7 @@ GameScriptRuntime::actor_heartbeat(
     default:
         return fail("gameplay Lua actor animation mode is invalid");
     }
-    lua_createtable(state, 0, 40);
+    lua_createtable(state, 0, 43);
     lua_pushlstring(state, actor_id.data(), actor_id.size());
     lua_setfield(state, -2, "actor_id");
     lua_pushlstring(state, context.profile_id.data(),
@@ -2566,6 +2838,8 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "action_code");
     lua_pushinteger(state, context.entry_delay);
     lua_setfield(state, -2, "entry_delay");
+    lua_pushinteger(state, context.entry_animation_frame_count);
+    lua_setfield(state, -2, "entry_animation_frame_count");
     lua_pushboolean(state, context.entry_started);
     lua_setfield(state, -2, "entry_started");
     lua_pushboolean(state, context.entry_complete);
@@ -2599,6 +2873,48 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "movement_heading_override");
+    lua_pushboolean(state, context.dynamic_world_encounter_actor);
+    lua_setfield(state, -2, "dynamic_world_encounter_actor");
+    lua_pushinteger(state, context.source_record_flags);
+    lua_setfield(state, -2, "source_record_flags");
+    lua_pushinteger(state, context.source_interaction_flags);
+    lua_setfield(state, -2, "source_interaction_flags");
+    lua_pushinteger(state, context.ai_movement_mode);
+    lua_setfield(state, -2, "ai_movement_mode");
+    lua_createtable(state,
+                    static_cast<int>(context.ai_target_candidates.size()), 0);
+    for (std::size_t index = 0;
+         index < context.ai_target_candidates.size(); ++index) {
+        const auto& candidate = context.ai_target_candidates[index];
+        lua_createtable(state, 0, 11);
+        lua_pushlstring(state, candidate.id.data(), candidate.id.size());
+        lua_setfield(state, -2, "id");
+        lua_pushinteger(state, candidate.world_x);
+        lua_setfield(state, -2, "world_x");
+        lua_pushinteger(state, candidate.world_y);
+        lua_setfield(state, -2, "world_y");
+        lua_pushinteger(state, candidate.heading);
+        lua_setfield(state, -2, "heading");
+        lua_pushinteger(state, candidate.distance);
+        lua_setfield(state, -2, "distance");
+        lua_pushinteger(state, candidate.service_flags);
+        lua_setfield(state, -2, "service_flags");
+        lua_pushinteger(state, candidate.interaction_flags);
+        lua_setfield(state, -2, "interaction_flags");
+        lua_pushinteger(state, candidate.behavior_flags);
+        lua_setfield(state, -2, "behavior_flags");
+        lua_pushinteger(state, candidate.spawn_state_flags);
+        lua_setfield(state, -2, "spawn_state_flags");
+        lua_pushboolean(state, candidate.has_action);
+        lua_setfield(state, -2, "has_action");
+        lua_pushboolean(state, candidate.world_activity_actor);
+        lua_setfield(state, -2, "world_activity_actor");
+        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+    }
+    lua_setfield(state, -2, "ai_target_candidates");
+    lua_pushlightuserdata(state, impl_.get());
+    lua_pushcclosure(state, Impl::actor_random_bound, 1);
+    lua_setfield(state, -2, "ai_random_bound");
     lua_pushlstring(state, heartbeat_phase.data(), heartbeat_phase.size());
     lua_setfield(state, -2, "phase");
     lua_pushlstring(state, animation_mode.data(), animation_mode.size());
@@ -2916,7 +3232,8 @@ GameScriptRuntime::actor_heartbeat(
     lua_getfield(state, decision_table, "movement_step");
     if (lua_type(state, -1) != LUA_TNIL) {
         if (!lua_istable(state, -1) ||
-            context.profile_id != "field_runner_k03_none00" ||
+            (context.profile_id != "field_runner_k03_none00" &&
+             !context.dynamic_world_encounter_actor) ||
             context.phase != ScriptActorHeartbeatPhase::behavior ||
             !context.movement_allowed ||
             !context.movement_services_available) {
