@@ -7164,6 +7164,7 @@ int run_field_world_activity_qa(
 
 int run_field_random_encounter_spawn_qa(
     FieldSceneRuntime& field_scene,
+    const StartupIntegrationState& startup_state,
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
@@ -7663,6 +7664,202 @@ int run_field_random_encounter_spawn_qa(
         std::cerr << '\n';
         return 3;
     }
+
+    // Re-run the source actor list in a fresh Scene 2 state so a live A-shot
+    // can collide with a ROM encounter record. Place the target on the
+    // projectile's next source probe only after firing; its movement, Lua hit
+    // handoff, C072 selector, countdown, and full-screen rendering stay live.
+    auto hit_startup_state = startup_state;
+    hit_startup_state.restored_field_state.reset();
+    if (!field_scene.bootstrap_for_scene_dump(hit_startup_state, 2U) ||
+        field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "field random-encounter QA: hit-response Scene 2 reset failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.set_source_random_seed_for_dump(0U);
+    const auto hit_actor_spawned =
+        field_scene.resolve_and_spawn_field_encounter_for_dump(
+            1U, 2U, 0x1234U);
+    if (hit_actor_spawned != 2U) {
+        std::cerr << "field random-encounter QA: could not recreate the ROM Weenr encounter for projectile-hit review; spawned="
+                  << hit_actor_spawned << '\n';
+        return 3;
+    }
+    const auto hit_actors_before =
+        field_scene.default_actor_count_for_dump() - hit_actor_spawned;
+    bool hit_encounter_entry_complete = false;
+    for (std::uint16_t frame = 0U;
+         frame < 160U && !hit_encounter_entry_complete; ++frame) {
+        const auto actor_zero_complete =
+            field_scene.default_actor_transition_complete_for_dump(0U);
+        const auto actor_one_complete =
+            field_scene.default_actor_transition_complete_for_dump(1U);
+        hit_encounter_entry_complete =
+            actor_zero_complete == std::optional<bool>{true} &&
+            actor_one_complete == std::optional<bool>{true};
+        if (hit_encounter_entry_complete) {
+            break;
+        }
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    if (!hit_encounter_entry_complete) {
+        std::cerr << "field random-encounter QA: source C0B2 entry did not finish before the weapon-hit fixture\n";
+        return 3;
+    }
+
+    auto& hit_runner = field_scene.active_runner_record();
+    hit_runner.flags = static_cast<std::uint16_t>(
+        hit_runner.flags | 0x0300U);
+    hit_runner.inventory_item_codes[0] = 5U;
+    hit_runner.equipped_inventory_slot = 0;
+    hit_runner.equipped_item_code = 5U;
+    // Use the catalog's Warhawk (+3 source effect) and a high but valid
+    // firearm skill so the deterministic target roll produces real damage.
+    hit_runner.skills[1U] = 10U;
+    hit_runner.skills[2U] = 10U;
+    hit_runner.ammo_rounds = 6U;
+    hit_runner.ammo_clips = 2U;
+    field_scene.refresh_field_hud_for_dump();
+    const auto hit_before = render();
+    const auto hit_output = output / "hit-response";
+    std::filesystem::create_directories(hit_output, error);
+    if (error) {
+        std::cerr << "field random-encounter QA: cannot create hit-response output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    const auto save_hit_frame = [&hit_output](
+                                    const std::string_view filename,
+                                    const QImage& image) {
+        return image.save(QString::fromStdWString(
+            (hit_output / std::string(filename)).wstring()));
+    };
+    if (!save_hit_frame("before-live-hit.bmp", hit_before)) {
+        std::cerr << "field random-encounter QA: could not save the full-screen pre-hit baseline\n";
+        return 3;
+    }
+    const auto hit_audio_start = field_audio_events.size();
+    const auto hit_boundary_start = source_boundaries.size();
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    const auto live_projectile_position =
+        field_scene.field_weapon_primary_position_for_dump();
+    if (hit_runner.ammo_rounds != 5U ||
+        field_scene.field_weapon_primary_count_for_dump() != 1U ||
+        !live_projectile_position.has_value()) {
+        std::cerr << "field random-encounter QA: A did not fire the configured live Warhawk before the creature collision probe"
+                  << " ammo=" << static_cast<unsigned>(hit_runner.ammo_rounds)
+                  << " projectiles="
+                  << field_scene.field_weapon_primary_count_for_dump() << '\n';
+        return 3;
+    }
+    if (!field_scene.set_default_actor_world_position_for_dump(
+            hit_actors_before, live_projectile_position->x,
+            live_projectile_position->y)) {
+        std::cerr << "field random-encounter QA: could not place the source encounter actor on the live projectile route\n";
+        return 3;
+    }
+    bool live_creature_hit_resolved = false;
+    bool live_creature_meter_changed = false;
+    std::string live_creature_hit_boundary;
+    for (std::uint8_t frame = 0U; frame < 4U; ++frame) {
+        const auto projectile_position =
+            field_scene.field_weapon_primary_position_for_dump();
+        if (!projectile_position.has_value() ||
+            !field_scene.set_default_actor_world_position_for_dump(
+                hit_actors_before, projectile_position->x,
+                projectile_position->y)) {
+            break;
+        }
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        const auto hit = std::find_if(
+            source_boundaries.begin() + static_cast<std::ptrdiff_t>(
+                hit_boundary_start),
+            source_boundaries.end(), [](const auto& boundary) {
+                return boundary.rfind(
+                           "field.combat.weapon_hit_resolved:", 0U) == 0U;
+            });
+        if (hit != source_boundaries.end()) {
+            live_creature_hit_boundary = *hit;
+            live_creature_hit_resolved =
+                live_creature_hit_boundary.find("field_scene_2_encounter_") !=
+                std::string::npos;
+            live_creature_meter_changed = std::any_of(
+                source_boundaries.begin() + static_cast<std::ptrdiff_t>(
+                    hit_boundary_start),
+                source_boundaries.end(), [](const auto& boundary) {
+                    return boundary ==
+                        "field.combat.weapon_hit.world_physical_meter_changed";
+                });
+            if (live_creature_hit_resolved && live_creature_meter_changed) {
+                break;
+            }
+        }
+    }
+    const auto hit_animation =
+        field_scene.default_actor_animation_id_for_dump(0U);
+    const auto hit_frame_zero = render();
+    const bool hit_frame_zero_saved =
+        save_hit_frame("hit-response-frame-0.bmp", hit_frame_zero);
+    if (!live_creature_hit_resolved || !live_creature_meter_changed ||
+        !hit_animation.has_value() || *hit_animation != "hurt" ||
+        !hit_frame_zero_saved ||
+        !field_hud_chrome_survives(hit_frame_zero, asset_root) ||
+        field_scene.field_interaction_open() ||
+        field_scene.dialogue_open() || field_scene.hotel_menu_open() ||
+        field_scene.command_overview_open()) {
+        std::cerr << "field random-encounter QA: live projectile did not produce a clean full-screen C072 hurt frame"
+                  << " hit=" << live_creature_hit_resolved
+                  << " meter_changed=" << live_creature_meter_changed
+                  << " boundary=" << live_creature_hit_boundary
+                  << " animation=" << hit_animation.value_or("<none>")
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    for (std::uint8_t frame = 0U; frame < 5U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const auto hit_frame_one_animation =
+        field_scene.default_actor_animation_id_for_dump(0U);
+    const auto hit_frame_one = render();
+    const bool hit_frame_one_saved =
+        save_hit_frame("hit-response-frame-1.bmp", hit_frame_one);
+    for (std::uint8_t frame = 0U; frame < 3U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const auto hit_audio = std::find(
+        field_audio_events.begin() + static_cast<std::ptrdiff_t>(
+            hit_audio_start),
+        field_audio_events.end(), 0x0041U);
+    const auto hit_frame_after_countdown = render();
+    const bool hit_frame_after_countdown_saved = save_hit_frame(
+        "hit-response-after-eight-services.bmp", hit_frame_after_countdown);
+    const auto hit_audio_count = static_cast<std::size_t>(std::count(
+        field_audio_events.begin() + static_cast<std::ptrdiff_t>(
+            hit_audio_start),
+        field_audio_events.end(), 0x0041U));
+    if (hit_frame_one_animation != std::optional<std::string>{"hurt"} ||
+        !hit_frame_one_saved || !hit_frame_after_countdown_saved ||
+        hit_audio == field_audio_events.end() || hit_audio_count != 1U ||
+        !field_hud_chrome_survives(hit_frame_one, asset_root) ||
+        !field_hud_chrome_survives(hit_frame_after_countdown, asset_root)) {
+        std::cerr << "field random-encounter QA: full-screen directional C072 frames or its one-shot B03E cue did not match the source cadence"
+                  << " animation="
+                  << hit_frame_one_animation.value_or("<none>")
+                  << " sound_0x41_count=" << hit_audio_count
+                  << " saved=" << hit_frame_zero_saved << ','
+                  << hit_frame_one_saved << ','
+                  << hit_frame_after_countdown_saved << '\n';
+        return 3;
+    }
+
     std::cout << "field_random_encounter_spawn_qa=passed scene=2 selector=1+2 actors=2 active="
               << actors_after << " long_trace_active=" << actors_after_1200
               << " visible=" << visible_before << ','
@@ -7718,6 +7915,9 @@ int run_field_random_encounter_spawn_qa(
               << marker_corner_pixel_matches[1] << ','
               << marker_corner_pixel_matches[2] << ','
               << marker_corner_pixel_matches[3]
+              << " hit_response={" << live_creature_hit_boundary
+              << ",animation:" << *hit_frame_one_animation
+              << ",B03E_0x41_count:" << hit_audio_count << "} "
               << " artifacts=" << output.string() << '\n';
     return 0;
 }
@@ -18272,7 +18472,7 @@ int main(int argc, char** argv) {
             }
             if (field_random_encounter_spawn_qa_path.has_value()) {
                 return run_field_random_encounter_spawn_qa(
-                    field_scene, asset_root,
+                    field_scene, smoke_state, asset_root,
                     *field_random_encounter_spawn_qa_path,
                     field_audio_events, field_source_boundaries);
             }
