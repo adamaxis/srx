@@ -105,6 +105,44 @@ tables in `0x14D6A`; `+0x57` identifies the selected action row. Target
 candidates are collected at `0x1438C` and `0x14446`; actor links are not
 simply the nearest-screen-sprite rule.
 
+### Creature continuation movement vectors
+
+The target decision and movement step have different cadences and inputs.
+`0x13904` refreshes the target policy every 21 actor-service passes, while
+`0xA8EA` calls the actor's `+0x3A` continuation on every pass. For kinds other
+than `0xD`, `0xB574` approaches the accepted heading and chooses one of the
+source displacement tables from actor flags and `+0xC8`, the destination
+distance written by `0x145F2`. Direct reads from the ROM give these eight-way
+step sizes:
+
+| `+0xC8` / actor condition | ROM table | Per-axis step |
+| --- | --- | ---: |
+| `< 0x100` | `0xBDD2` | 8 |
+| `< 0x200` | `0xBDB2` | 10 |
+| `< 0x360` | `0xBD92` | 15 |
+| `< 0x460` | `0xBD72` | 20 |
+| Far, ordinary record (`+0x10=0x25`, `+0xB0=0`, `+0x9E=0x40`) | `0xBEA2` | 18 |
+| Far, high-effect route (`+0xB0.7`) | `0xBEC2` | 30 |
+| Far, world-actor target pool (`+0x10.3`) | `0xBFE2` | 31 |
+| Far, transition bit (`+0x9E.5`) | `0xBE82` / `0xBE62` | 22 / 10, selected by `FFDF84` |
+
+Kind `0xD` uses a separate frame gate: frame `+0x1E == 2` sets `+0x08=-20`
+and moves with `0xBE42` (36-unit vectors); other frames set `+0x08=0` and use
+the zero-vector table `0xBE22`. The common record bytes at ROM `0x7361A`
+initialize `+0x08` to zero. The connected Lua actor heartbeat now keeps the
+21-pass target refresh separate from per-pass continuation movement, selects
+these vectors from the typed actor flags and target distance, and preserves
+that common `+0x08` value. B selection's `+0x11.4` latch is also kept out of
+the `+0x10` service byte, which previously corrupted the actor's active flags.
+
+This is a partial movement port. The random-encounter records currently have
+the ordinary common flags, so their far-range vector and four near-range
+bands are resolved. The global `FFE168` special table branch, complete
+template overrides, kind-`0xD` animation frame cadence, close-range effect
+allocation, item/spell attacks, hit resolution, and damage/death are not yet
+connected. The host movement query still shares the existing collision/route
+service; it does not choose a creature target or movement vector.
+
 ### Target candidate contract
 
 `0x13874` clears the shared candidate gate. When `FFDFE8` is nonzero, it builds

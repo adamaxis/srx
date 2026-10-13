@@ -2879,14 +2879,20 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "source_record_flags");
     lua_pushinteger(state, context.source_interaction_flags);
     lua_setfield(state, -2, "source_interaction_flags");
-    lua_pushinteger(state, context.ai_movement_mode);
-    lua_setfield(state, -2, "ai_movement_mode");
+    lua_pushinteger(state, context.source_behavior_flags);
+    lua_setfield(state, -2, "source_behavior_flags");
+    lua_pushinteger(state, context.source_spawn_state_flags);
+    lua_setfield(state, -2, "source_spawn_state_flags");
+    lua_pushboolean(state, context.world_activity_active);
+    lua_setfield(state, -2, "world_activity_active");
+    lua_pushinteger(state, context.ai_animation_frame);
+    lua_setfield(state, -2, "ai_animation_frame");
     lua_createtable(state,
                     static_cast<int>(context.ai_target_candidates.size()), 0);
     for (std::size_t index = 0;
          index < context.ai_target_candidates.size(); ++index) {
         const auto& candidate = context.ai_target_candidates[index];
-        lua_createtable(state, 0, 11);
+        lua_createtable(state, 0, 13);
         lua_pushlstring(state, candidate.id.data(), candidate.id.size());
         lua_setfield(state, -2, "id");
         lua_pushinteger(state, candidate.world_x);
@@ -2909,6 +2915,10 @@ GameScriptRuntime::actor_heartbeat(
         lua_setfield(state, -2, "has_action");
         lua_pushboolean(state, candidate.world_activity_actor);
         lua_setfield(state, -2, "world_activity_actor");
+        lua_pushinteger(state, candidate.projected_heading);
+        lua_setfield(state, -2, "projected_heading");
+        lua_pushinteger(state, candidate.projected_distance);
+        lua_setfield(state, -2, "projected_distance");
         lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
     }
     lua_setfield(state, -2, "ai_target_candidates");

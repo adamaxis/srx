@@ -4,6 +4,7 @@
 
 #include "shadowrun_ghidra/audio/audio_command_batch_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_route_primitives_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_scene_runtime_preparation_conversion.hpp"
 #include "shadowrun_ghidra/field/field_exit_orchestrator_conversion.hpp"
 #include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
@@ -1848,7 +1849,6 @@ void FieldSceneRuntime::initialize_default_field_actors(
         actor.source_record_flags = static_cast<std::uint8_t>(
             actor_flag_mask(ActorServiceFlag::active) |
             actor_flag_mask(ActorServiceFlag::unresolved_service_bit_2));
-        actor.source_interaction_flags = 0U;
         actor.source_behavior_flags = 0U;
         actor.initial_behavior_delay = static_cast<std::uint8_t>(
             advance_source_random_seed(field_random_seed_) & 0x000FU);
@@ -1906,10 +1906,15 @@ void FieldSceneRuntime::advance_default_field_actors() {
             context.source_record_flags = actor.source_record_flags;
             context.source_interaction_flags =
                 actor.source_interaction_flags;
+            context.source_behavior_flags = actor.source_behavior_flags;
+            context.source_spawn_state_flags =
+                actor.source_spawn_state_flags;
+            context.world_activity_active =
+                world_frame_logic_state_.world_active != 0U;
             context.movement_scene_id = current_scene;
             context.entry_animation_frame_count =
                 actor.entry_animation_frame_count;
-            context.ai_movement_mode = 0;
+            context.ai_animation_frame = actor.animation_frame;
             context.ai_target_candidates.clear();
             const auto append_target_candidate =
                 [this, &actor, &context](
@@ -1933,6 +1938,14 @@ void FieldSceneRuntime::advance_default_field_actors() {
                         measure_entity_target_heading_and_distance(
                             actor.world_position.x, actor.world_position.y,
                             position.x, position.y);
+                    const auto projected = project_heading_position(
+                        actor.world_position.x, actor.world_position.y,
+                        actor.movement_state.heading);
+                    const auto projected_relative =
+                        measure_entity_target_heading_and_distance(
+                            static_cast<std::uint16_t>(projected.world_x),
+                            static_cast<std::uint16_t>(projected.world_y),
+                            position.x, position.y);
                     context.ai_target_candidates.push_back(
                         scripting::ScriptActorTargetCandidate{
                             std::move(id),
@@ -1947,7 +1960,10 @@ void FieldSceneRuntime::advance_default_field_actors() {
                             behavior_flags,
                             spawn_state_flags,
                             projection.screen_y != 0U,
-                            world_activity_actor});
+                            world_activity_actor,
+                            projected_relative.heading,
+                            static_cast<std::uint16_t>(std::min<std::uint32_t>(
+                                projected_relative.distance, 0xFFFFU))});
                 };
 
             // ROM 0x14492 chooses the three runner records unless the acting
@@ -2488,7 +2504,9 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         actor.movement_state.position_y = actor.world_position.y;
         actor.movement_state.heading = actor.initial_heading;
         actor.movement_state.animation_heading = actor.initial_heading;
-        actor.movement_state.collision_extent = -12;
+        // The common actor record at 0x7361A starts +0x08 at zero. Creature
+        // continuations override it only for kind 0xD's frame-2 movement.
+        actor.movement_state.collision_extent = 0;
         actor.movement_state_initialized = true;
 
         scripting::ScriptActorBehaviorContext context{
@@ -2506,9 +2524,13 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         context.dynamic_world_encounter_actor = true;
         context.source_record_flags = actor.source_record_flags;
         context.source_interaction_flags = actor.source_interaction_flags;
+        context.source_behavior_flags = actor.source_behavior_flags;
+        context.source_spawn_state_flags = actor.source_spawn_state_flags;
+        context.world_activity_active =
+            world_frame_logic_state_.world_active != 0U;
         context.entry_animation_frame_count =
             actor.entry_animation_frame_count;
-        context.ai_movement_mode = 0;
+        context.ai_animation_frame = actor.animation_frame;
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value()) {
             failure_ = game_scripts_.failure();
@@ -3902,7 +3924,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 field_entity_target_owner_.selected_target ==
                     std::optional<std::size_t>{slot};
             if (actor.target_selected) {
-                actor.source_record_flags = static_cast<std::uint8_t>(
+                actor.source_interaction_flags = static_cast<std::uint8_t>(
                     actor.source_interaction_flags |
                     actor_flag_mask(ActorInteractionFlag::service_selection_latch));
             } else {
@@ -7268,9 +7290,14 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
             context.source_record_flags = actor.source_record_flags;
             context.source_interaction_flags =
                 actor.source_interaction_flags;
+            context.source_behavior_flags = actor.source_behavior_flags;
+            context.source_spawn_state_flags =
+                actor.source_spawn_state_flags;
+            context.world_activity_active =
+                world_frame_logic_state_.world_active != 0U;
             context.entry_animation_frame_count =
                 actor.entry_animation_frame_count;
-            context.ai_movement_mode = 0;
+            context.ai_animation_frame = actor.animation_frame;
         }
         context.phase = scripting::ScriptActorHeartbeatPhase::render;
         const auto decision = game_scripts_.actor_heartbeat(context);

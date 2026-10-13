@@ -385,6 +385,10 @@ struct ScriptActorTargetCandidate {
     std::uint8_t spawn_state_flags = 0; // source entity +0x9E
     bool has_action = false; // source entity +0x0C != 0
     bool world_activity_actor = false;
+    // 0x14C56 projects the acting record one heading-vector step before
+    // 0x15C84 checks the close-range target gate for kinds 0xD/0xE.
+    std::uint16_t projected_heading = 0;
+    std::uint16_t projected_distance = 0;
 };
 
 using ScriptActorRandomBound =
@@ -441,7 +445,11 @@ struct ScriptActorBehaviorContext {
     bool dynamic_world_encounter_actor = false;
     std::uint8_t source_record_flags = 0;
     std::uint8_t source_interaction_flags = 0;
-    std::int16_t ai_movement_mode = 0;
+    std::uint8_t source_behavior_flags = 0;
+    std::uint8_t source_spawn_state_flags = 0;
+    bool world_activity_active = false;
+    // ROM 0x14C7C's kind-0xD branch checks animation frame +0x1E here.
+    std::int16_t ai_animation_frame = 0;
     std::vector<ScriptActorTargetCandidate> ai_target_candidates;
     ScriptActorRandomBound ai_random_bound;
     std::uint8_t entry_animation_frame_count = 2;

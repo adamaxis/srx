@@ -4,12 +4,6 @@
 local ActorAI = {}
 local states = game.actors
 
--- Source C002 movement context words. The table is static game data; collision
--- sampling itself remains a narrow native service.
-local movement_context_words = {
-    0, -40, 40, -40, 40, 0, 40, 40,
-    0, 40, -40, 40, -40, 0, -40, -40,
-}
 -- The directional weapon-effect records at ROM 0x630C use this descriptor
 -- cadence in their finite 0x8003/0x800B lists.
 local weapon_projectile_descriptor_increment = 0x270f
@@ -304,6 +298,7 @@ local function initial_state(context, profile)
         animation_increment = 0,
         movement_current_heading = profile.controls_movement
             and context.initial_heading or nil,
+        movement_active = false,
         transition_started = false,
         transition_frame_list_finished = false,
         transition_complete = false,
@@ -671,22 +666,46 @@ local function requested_movement_heading(context, profile, state)
         local target = linked_target(context, state)
         local heading = target and target.heading or nil
         local distance = target and target.distance or nil
+        if type(distance) == "number" then
+            -- 0x145F2 stores the linked destination distance at +0xC8. The
+            -- current target geometry is the native fact used to refresh it.
+            state.ai_target_distance = distance
+        end
         if context.movement_allowed and type(heading) == "number" and
            type(distance) == "number" then
             -- ROM 0x14C7C: kind 0xC turns/approaches inside 0x600 units;
             -- its current heading is only replaced in the 0x300..0x5FF
             -- interval (or by the separate close-effect path). Kinds 0xD/0xE
-            -- require the linked-target <0x200 check made by 0x15C84, and
-            -- movement mode 2 retains its current heading. The host supplies
-            -- measured geometry and collision queries; Lua owns this policy.
+            -- project their position through 0x14C56 before the linked-target
+            -- <0x200 check at 0x15C84. The host supplies measured geometry
+            -- and collision queries; Lua owns this policy.
             if context.entity_kind == EntityKind.hell_hound and
                distance >= 0x300 and distance < 0x600 then
                 return heading
             end
             if (context.entity_kind == EntityKind.gargoyle or
-                context.entity_kind == EntityKind.wendigo) and
-               distance < 0x200 and context.ai_movement_mode ~= 2 then
-                return heading
+                context.entity_kind == EntityKind.wendigo) then
+                local projected_heading = target.projected_heading
+                local projected_distance = target.projected_distance
+                if type(projected_heading) ~= "number" then
+                    projected_heading = heading
+                end
+                if type(projected_distance) ~= "number" then
+                    projected_distance = distance
+                end
+                -- ROM 0x14C7C temporarily projects +0x2E through 0x14C56,
+                -- then 0x15C84 accepts only a linked target less than 0x200
+                -- from that projected point. Kind 0xD at frame +0x1E == 2
+                -- stores the 0x1000 animation accumulator and holds heading.
+                if projected_distance < 0x200 then
+                    if context.entity_kind == EntityKind.gargoyle and
+                       context.ai_animation_frame == 2 then
+                        state.animation_accumulator = 0x1000
+                        return nil
+                    end
+                    return projected_heading
+                end
+                return nil
             end
             if context.entity_kind ~= EntityKind.hell_hound and
                context.entity_kind ~= EntityKind.gargoyle and
@@ -732,9 +751,67 @@ local function movement_collision_code(code, context)
     return code
 end
 
-local function probe_movement(context, movement_state, direction_slot)
+local function creature_movement_offsets(context, state)
+    if context.dynamic_world_encounter_actor ~= true then
+        return context.movement_offsets
+    end
+
+    local step
+    if context.entity_kind == EntityKind.gargoyle then
+        -- ROM 0xB574 selects the zero-vector list until frame +0x1E reaches 2;
+        -- that frame selects the 36-unit creature step list.
+        step = context.ai_animation_frame == 2 and 36 or 0
+    else
+        local distance = state.ai_target_distance
+        if type(distance) ~= "number" then
+            return context.movement_offsets
+        end
+        if distance < 0x100 then
+            step = 8
+        elseif distance < 0x200 then
+            step = 10
+        elseif distance < 0x360 then
+            step = 15
+        elseif distance < 0x460 then
+            step = 20
+        elseif (context.source_record_flags &
+                ActorServiceFlag.targets_world_actors) ~= 0 then
+            step = 31
+        elseif (context.source_spawn_state_flags &
+                ActorSpawnFlag.transitioning) ~= 0 then
+            -- ROM 0xB610 selects 22 or 10 from the shared FFE84 world-activity
+            -- gate. Here the typed world-activity state supplies that fact.
+            step = context.world_activity_active and 22 or 10
+        elseif (context.source_behavior_flags &
+                ActorBehaviorFlag.high_effect) ~= 0 then
+            step = 30
+        else
+            step = 18
+        end
+    end
+
+    -- The ROM tables at 0xBD72..0xBFE2 contain these eight signed X/Y
+    -- displacements. Expand their selected speed into ordinary Lua vectors;
+    -- the host still owns only the collision query.
+    return {
+        {0, -step}, {step, -step}, {step, 0}, {step, step},
+        {0, step}, {-step, step}, {-step, 0}, {-step, -step},
+    }
+end
+
+local function movement_context_word(offsets, direction)
+    -- ROM 0xBADE reads the selected table's word at byte offset 4 + D0,
+    -- where D0 is the doubled direction ordinal.
+    local word_index = 2 + direction
+    local pair = math.floor(word_index / 2) + 1
+    local component = (word_index % 2) + 1
+    return offsets[pair][component] & 0xffff
+end
+
+local function probe_movement(context, movement_state, direction_slot,
+                              movement_offsets)
     local direction = (direction_slot >> 1) & 0x7
-    local offset = context.movement_offsets[direction + 1]
+    local offset = movement_offsets[direction + 1]
     local candidate_x = (movement_state.position_x + offset[1]) & 0xffff
     local candidate_y = (movement_state.position_y + offset[2]) & 0xffff
     local collision_code, terrain_collision_code = game.movement.collision(
@@ -790,10 +867,15 @@ local function reset_blocked_movement(context, state, movement_state)
     }
 end
 
-local function advance_player_movement(context, state)
+local function advance_entity_movement(context, state)
     if not context.movement_services_available or
        state.movement_heading == nil or
        state.movement_current_heading == nil then
+        return nil
+    end
+
+    local movement_offsets = creature_movement_offsets(context, state)
+    if type(movement_offsets) ~= "table" or #movement_offsets ~= 8 then
         return nil
     end
 
@@ -803,13 +885,20 @@ local function advance_player_movement(context, state)
     end
     movement_state.heading = state.movement_current_heading
     movement_state.animation_heading = movement_state.heading
-    movement_state.collision_extent = -12
+    if context.dynamic_world_encounter_actor == true then
+        movement_state.collision_extent =
+            context.entity_kind == EntityKind.gargoyle and
+            context.ai_animation_frame == 2 and -20 or 0
+    else
+        movement_state.collision_extent = -12
+    end
 
     local initial_direction = direction_from_heading(movement_state.heading)
     local initial_slot = initial_direction * 2
-    movement_state.collision_context =
-        movement_context_words[3 + initial_direction] & 0xffff
-    local initial = probe_movement(context, movement_state, initial_slot)
+    movement_state.collision_context = movement_context_word(
+        movement_offsets, initial_direction)
+    local initial = probe_movement(
+        context, movement_state, initial_slot, movement_offsets)
 
     if initial.collision_code == 0 then
         movement_state.movement_substate = 0x1000
@@ -863,7 +952,8 @@ local function advance_player_movement(context, state)
             local fallback_slot = route.primary_marker <= 0
                 and route.primary_fallback_slot
                 or route.secondary_fallback_slot
-            fallback = probe_movement(context, movement_state, fallback_slot)
+            fallback = probe_movement(
+                context, movement_state, fallback_slot, movement_offsets)
             carry_set = movement_probe_is_blocked(fallback, context)
         else
             carry_set = true
@@ -889,12 +979,14 @@ local function advance_player_movement(context, state)
     local movement_direction = (movement_state.heading >> 13) & 0x06
     movement_state.movement_substate = movement_direction
     local selected = probe_movement(
-        context, movement_state, movement_direction << 1)
+        context, movement_state, movement_direction << 1,
+        movement_offsets)
     if movement_probe_is_blocked(selected, context) then
         movement_state.route_status = movement_direction
         local alternate_direction = (movement_direction + 2) & 0x07
         selected = probe_movement(
-            context, movement_state, alternate_direction << 1)
+            context, movement_state, alternate_direction << 1,
+            movement_offsets)
         if movement_probe_is_blocked(selected, context) then
             local reset = reset_blocked_movement(
                 context, state, movement_state)
@@ -918,7 +1010,7 @@ local function advance_player_movement(context, state)
     }
 end
 
-local function finish_player_movement(context, movement_step)
+local function finish_entity_movement(context, movement_step)
     if movement_step ~= nil and
        (context.movement_entity_flags & 0x08) ~= 0 and
        movement_step.state.terrain_collision_code == 0 then
@@ -974,8 +1066,8 @@ function ActorAI.heartbeat(context)
                     state.movement_current_heading = approach_heading(
                         state.movement_current_heading,
                         state.movement_heading)
-                    state.movement_step = finish_player_movement(
-                        context, advance_player_movement(context, state))
+                    state.movement_step = finish_entity_movement(
+                        context, advance_entity_movement(context, state))
                 end
             else
                 advance_player_animation(state, context)
@@ -1004,7 +1096,9 @@ function ActorAI.heartbeat(context)
             context.combat_input_blocked ~= true
         if context.phase == "render" then
             state.movement_step = nil
-            state.movement_heading = nil
+            if not profile.dynamic_encounter_only then
+                state.movement_heading = nil
+            end
             if profile.dynamic_encounter_only then
                 if state.transition_started and
                    not state.transition_complete then
@@ -1044,23 +1138,32 @@ function ActorAI.heartbeat(context)
                     else
                         state.behavior_timer = state.behavior_timer - 1
                     end
-                elseif state.behavior_timer > 0 then
-                    state.behavior_timer = state.behavior_timer - 1
                 else
-                    -- ROM 0x13904 decrements +0xB6 on every actor-service
-                    -- pass, then reloads 0x14 when the gated branch runs.
-                    state.behavior_timer = 0x14
-                    state.movement_heading =
-                        requested_movement_heading(context, profile, state)
-                    if state.movement_heading ~= nil then
-                        -- 0x14C7C writes the selected creature heading
-                        -- directly; it does not use the player's 0xB530
-                        -- 0x0800-step turn policy.
-                        state.movement_current_heading =
-                            state.movement_heading
-                        state.movement_step = finish_player_movement(
+                    if state.behavior_timer > 0 then
+                        state.behavior_timer = state.behavior_timer - 1
+                    else
+                        -- ROM 0x13904 decrements +0xB6 on each actor-service
+                        -- pass and refreshes its target policy every 21 passes.
+                        state.behavior_timer = 0x14
+                        local heading = requested_movement_heading(
+                            context, profile, state)
+                        if heading ~= nil then
+                            state.movement_heading = heading
+                            -- The creature branches in 0x14C7C publish their
+                            -- chosen +0x2E heading directly when accepted.
+                            state.movement_current_heading = heading
+                            state.movement_active = true
+                        end
+                    end
+
+                    -- 0xA8EA invokes the actor's +0x3A continuation every
+                    -- service pass. Once 0x13904 has selected a route,
+                    -- 0xB574 advances movement on each pass; it is not gated
+                    -- by the 21-pass AI target refresh above.
+                    if state.transition_complete and state.movement_active then
+                        state.movement_step = finish_entity_movement(
                             context,
-                            advance_player_movement(context, state))
+                            advance_entity_movement(context, state))
                         if state.movement_step ~= nil and
                            state.movement_step.state ~= nil then
                             state.direction = direction_from_heading(
@@ -1075,8 +1178,8 @@ function ActorAI.heartbeat(context)
                     state.movement_current_heading = approach_heading(
                         state.movement_current_heading,
                         state.movement_heading)
-                    state.movement_step = finish_player_movement(
-                        context, advance_player_movement(context, state))
+                    state.movement_step = finish_entity_movement(
+                        context, advance_entity_movement(context, state))
                     if state.movement_step ~= nil and
                        state.movement_step.state ~= nil then
                         state.direction = direction_from_heading(
