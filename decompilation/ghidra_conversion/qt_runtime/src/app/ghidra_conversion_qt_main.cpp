@@ -194,6 +194,7 @@ std::filesystem::path find_asset_root(
                    " [--field-movement-qa <output-dir>]"
                    " [--field-transition-qa <output-dir>]"
                    " [--field-world-activity-qa <output-dir>]"
+                   " [--field-random-encounter-spawn-qa <output-dir>]"
                    " [--field-redmond-vigore-search-qa <output-dir>]"
                    " [--field-jump-house-entry-qa <output-dir>]"
                    " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
@@ -279,6 +280,11 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--field-world-activity-qa" && index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-random-encounter-spawn-qa" &&
+            index + 1 < argc) {
             ++index;
             continue;
         }
@@ -710,6 +716,60 @@ bool field_hud_chrome_survives(const QImage& scene,
         {QPoint(272, 0), QPoint(300, 0), QPoint(319, 0),
          QPoint(319, 32), QPoint(319, 80), QPoint(319, 160),
          QPoint(272, 223), QPoint(300, 223), QPoint(319, 223)});
+}
+
+std::array<int, 4> target_marker_corner_pixel_matches(
+    const QImage& scene, const QImage& tile,
+    const FieldTargetMarkerDebugState& marker) {
+    struct Corner {
+        int x;
+        int y;
+        bool flip_x;
+        bool flip_y;
+    };
+    constexpr std::array<Corner, 4> kCorners{{
+        {-14, -16, false, true}, {8, -16, true, true},
+        {-14, 12, false, false}, {8, 12, true, false},
+    }};
+    constexpr int kGenesisSpriteOrigin = 0x80;
+    std::array<int, 4> matches{};
+    if (tile.size() != QSize(8, 8) || !tile.hasAlphaChannel()) {
+        return matches;
+    }
+    const int anchor_x =
+        static_cast<int>(marker.projected_x) - kGenesisSpriteOrigin;
+    const int anchor_y =
+        static_cast<int>(marker.projected_y) - kGenesisSpriteOrigin -
+                         (marker.entity_kind == 0x0FU ? 0x20 : 0x0C);
+    for (std::size_t corner_index = 0U;
+         corner_index < kCorners.size(); ++corner_index) {
+        const auto& corner = kCorners[corner_index];
+        for (int y = 0; y < 8; ++y) {
+            for (int x = 0; x < 8; ++x) {
+                const auto source = tile.pixelColor(
+                    corner.flip_x ? 7 - x : x,
+                    corner.flip_y ? 7 - y : y);
+                if (source.alpha() == 0) {
+                    continue;
+                }
+                const int destination_x = anchor_x + corner.x + x;
+                const int destination_y = anchor_y + corner.y + y;
+                if (destination_x < 0 || destination_y < 0 ||
+                    destination_x >= scene.width() ||
+                    destination_y >= scene.height()) {
+                    continue;
+                }
+                const auto actual =
+                    scene.pixelColor(destination_x, destination_y);
+                if (actual.red() == source.red() &&
+                    actual.green() == source.green() &&
+                    actual.blue() == source.blue()) {
+                    ++matches[corner_index];
+                }
+            }
+        }
+    }
+    return matches;
 }
 
 bool dialogue_more_delimiters_are_mirrored(const QImage& scene) {
@@ -6982,7 +7042,10 @@ int run_field_world_activity_qa(
         activity.mode != WorldActivityMode::resource_activity ||
         activity.resource_random_index_bound != 3U ||
         activity.selected_resource_random_index != 2U ||
-        activity.resource_marker_ordinal != 2U ||
+        // Scene 26's default list has one corporate guard. Its source actor
+        // initialization consumes one PRNG advance before 0x167AE rolls the
+        // resource index and then the marker ordinal.
+        activity.resource_marker_ordinal != 3U ||
         activity.resource_cursor.cursor != 0x18 ||
         activity.resource_cursor.resource_index != 0U ||
         floor != std::optional<std::uint8_t>{2U} ||
@@ -6992,7 +7055,28 @@ int run_field_world_activity_qa(
         !field_hud_chrome_survives(resource_scene, asset_root) ||
         !save("resource-scene.bmp", resource_scene) ||
         !save("resource-scene-held.bmp", resource_scene_held)) {
-        std::cerr << "field world-activity QA: selected scene, cursor, floor, or replacement frame diverged\n";
+        std::cerr << "field world-activity QA: selected scene, cursor, floor, or replacement frame diverged"
+                  << " scene=" << activity.scene_id
+                  << " mode=" << static_cast<unsigned>(activity.mode)
+                  << " bound=" << activity.resource_random_index_bound
+                  << " selected=" << activity.selected_resource_random_index
+                  << " marker=" << static_cast<unsigned>(activity.resource_marker_ordinal)
+                  << " cursor=" << static_cast<int>(activity.resource_cursor.cursor)
+                  << " resource_index=" << activity.resource_cursor.resource_index
+                  << " floor=";
+        if (floor.has_value()) {
+            std::cerr << static_cast<unsigned>(*floor);
+        } else {
+            std::cerr << "none";
+        }
+        std::cerr << " field_scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " replacement="
+                  << (initial.copy(0, 0, 272, 224) !=
+                      resource_scene.copy(0, 0, 272, 224))
+                  << " hud="
+                  << field_hud_chrome_survives(resource_scene, asset_root)
+                  << "\n";
         return 3;
     }
 
@@ -7036,11 +7120,20 @@ int run_field_world_activity_qa(
         }
     }
     const auto floor_result = render_field();
+    const bool floor_result_saved = save("floor-result.bmp", floor_result) &&
+                                    save("actual.bmp", floor_result);
+    const std::vector<std::uint16_t> expected_audio_events{0x2EU, 0x30U};
     if (!third_floor_visible || !result_panel.source_complete ||
-        field_audio_events != std::vector<std::uint16_t>{0x30U} ||
-        !save("floor-result.bmp", floor_result) ||
-        !save("actual.bmp", floor_result)) {
-        std::cerr << "field world-activity QA: selected floor text, source result, or audio event diverged\n";
+        field_audio_events != expected_audio_events ||
+        !floor_result_saved) {
+        std::cerr << "field world-activity QA: selected floor text, source result, or audio event diverged"
+                  << " third_floor=" << third_floor_visible
+                  << " source_complete=" << result_panel.source_complete
+                  << " audio_events=";
+        for (const auto audio_event : field_audio_events) {
+            std::cerr << " 0x" << std::hex << audio_event << std::dec;
+        }
+        std::cerr << " saved=" << floor_result_saved << "\n";
         return 3;
     }
 
@@ -7066,6 +7159,428 @@ int run_field_world_activity_qa(
     }
     std::cout << "field_world_activity_qa=passed scene=0x1A bound=3 floor=2 cursor=0x18 terminal_floor_text=third-floor artifacts="
               << output.string() << '\n';
+    return 0;
+}
+
+int run_field_random_encounter_spawn_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "field random-encounter QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    for (std::filesystem::directory_iterator item(output, error), end;
+         !error && item != end; item.increment(error)) {
+        if (item->is_regular_file(error) &&
+            item->path().extension() == ".bmp") {
+            std::filesystem::remove(item->path(), error);
+        }
+    }
+    if (error) {
+        std::cerr << "field random-encounter QA: cannot clear old captures: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    if (field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "field random-encounter QA: expected the New Game Scene 2 map, got "
+                  << field_scene.field_scene_reference_for_dump() << '\n';
+        return 3;
+    }
+
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto save = [&output](const std::filesystem::path& path,
+                                const QImage& image) {
+        return image.save(QString::fromStdWString((output / path).wstring()));
+    };
+    const auto initial = render();
+    const bool initial_saved = save("initial.bmp", initial);
+    const auto actors_before = field_scene.default_actor_count_for_dump();
+    const auto visible_before =
+        field_scene.visible_default_actor_count_for_dump();
+    const auto audio_start = field_audio_events.size();
+
+    // Scene 2's source sum-3 row is the ordered two-Weenr sequence. Inject
+    // its already-bounded 1+2 selector result while leaving ROM content,
+    // edge placement, source actor initialization, Lua AI, and rendering live.
+    const auto spawned =
+        field_scene.resolve_and_spawn_field_encounter_for_dump(
+            1U, 2U, 0x1234U);
+    const auto encounter_entry = render();
+    const auto actors_after = field_scene.default_actor_count_for_dump();
+    const bool hud_unchanged =
+        initial.copy(272, 0, 48, 224) ==
+        encounter_entry.copy(272, 0, 48, 224);
+    const bool entry_saved = save("encounter-entry.bmp", encounter_entry);
+    if (!initial_saved || spawned != 2U ||
+        actors_after != actors_before + 2U ||
+        !hud_unchanged ||
+        !entry_saved ||
+        !field_hud_chrome_survives(encounter_entry, asset_root)) {
+        std::cerr << "field random-encounter QA: ROM sequence did not publish two actor records"
+                  << " spawned=" << spawned
+                  << " actors=" << actors_before << "->" << actors_after
+                  << " hud_unchanged=" << hud_unchanged;
+        std::cerr << " boundaries=";
+        const auto first_boundary = source_boundaries.size() > 12U
+            ? source_boundaries.size() - 12U
+            : 0U;
+        for (std::size_t index = first_boundary;
+             index < source_boundaries.size(); ++index) {
+            std::cerr << ' ' << source_boundaries[index];
+        }
+        if (!field_scene.failure().empty()) {
+            std::cerr << " failure=" << field_scene.failure();
+        }
+        std::cerr << "\n";
+        return 3;
+    }
+
+    const auto advance_and_capture = [&field_scene, &render, &save](
+                                        const std::uint16_t frames,
+                                        const std::string& name) {
+        for (std::uint16_t frame = 0U; frame < frames; ++frame) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+        return save(name + ".bmp", render());
+    };
+    const bool after_30_saved =
+        advance_and_capture(30U, "encounter-after-30");
+    const auto visible_after_30 =
+        field_scene.visible_default_actor_count_for_dump();
+    const bool after_180_saved =
+        advance_and_capture(150U, "encounter-after-180");
+    const auto visible_after_180 =
+        field_scene.visible_default_actor_count_for_dump();
+    const bool after_480_saved =
+        advance_and_capture(300U, "encounter-after-480");
+    const auto after_source_service = render();
+    const auto visible_after_480 =
+        field_scene.visible_default_actor_count_for_dump();
+    const auto actor_positions =
+        field_scene.active_default_actor_positions_for_dump();
+    const bool actual_saved = save("actual.bmp", after_source_service);
+    const std::vector<std::uint16_t> expected_entry_audio{0x2EU, 0x2EU};
+    if (!after_30_saved || !after_180_saved || !after_480_saved ||
+        !actual_saved ||
+        field_scene.default_actor_count_for_dump() != actors_after ||
+        actor_positions.size() != 2U ||
+        field_audio_events.size() < audio_start +
+                                        expected_entry_audio.size() ||
+        !std::equal(expected_entry_audio.begin(), expected_entry_audio.end(),
+                    field_audio_events.begin() +
+                        static_cast<std::ptrdiff_t>(audio_start)) ||
+        !field_hud_chrome_survives(after_source_service, asset_root)) {
+        std::cerr << "field random-encounter QA: actor service or entry cues diverged"
+                  << " actors=" << field_scene.default_actor_count_for_dump()
+                  << " audio=";
+        for (std::size_t index = audio_start;
+             index < field_audio_events.size(); ++index) {
+            std::cerr << " 0x" << std::hex << field_audio_events[index]
+                      << std::dec;
+        }
+        std::cerr << " visible=" << visible_before << ","
+                  << visible_after_30 << "," << visible_after_180 << ","
+                  << visible_after_480;
+        if (!field_scene.failure().empty()) {
+            std::cerr << " failure=" << field_scene.failure();
+        }
+        std::cerr << '\n';
+        return 3;
+    }
+
+    // Keep the production edge spawn in the captures above. For a separate
+    // renderer/AI check, place the runner within the ROM's kind-8 linked-target
+    // range of the first spawned actor; this is an explicit QA fixture, not a
+    // simulated gameplay approach path.
+    const auto& visible_target = actor_positions.front();
+    field_scene.set_field_entity_world_position_for_dump(
+        static_cast<std::uint16_t>(visible_target.x + 0x0100U),
+        visible_target.y);
+    for (std::uint8_t frame = 0U; frame < 60U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const auto actors_after_close_target =
+        field_scene.active_default_actor_positions_for_dump();
+    const bool close_target_ai_moved =
+        actors_after_close_target.size() == actor_positions.size() &&
+        actors_after_close_target.front().x != actor_positions.front().x;
+    const auto visible_fixture = render();
+    const auto visible_fixture_count =
+        field_scene.visible_default_actor_count_for_dump();
+    const bool visible_fixture_saved =
+        save("encounter-visible-qa-fixture.bmp", visible_fixture);
+    if (!visible_fixture_saved || visible_fixture_count == 0U ||
+        !close_target_ai_moved ||
+        !field_hud_chrome_survives(visible_fixture, asset_root)) {
+        std::cerr << "field random-encounter QA: close-target Lua movement/visibility fixture diverged"
+                  << " visible=" << visible_fixture_count
+                  << " moved=" << close_target_ai_moved
+                  << " completed="
+                  << field_scene.default_actor_transition_complete_count_for_dump()
+                  << " active_positions=" << actors_after_close_target.size();
+        const auto ai_target_id =
+            field_scene.default_actor_ai_target_id_for_dump(0U);
+        const auto ai_target_distance =
+            field_scene.default_actor_ai_target_distance_for_dump(0U);
+        const auto transition_complete =
+            field_scene.default_actor_transition_complete_for_dump(0U);
+        const auto target_pool_available =
+            field_scene.default_actor_has_ai_target_pool_for_dump(0U);
+        std::cerr << " target=" << ai_target_id.value_or("<none>")
+                  << " distance=";
+        if (ai_target_distance.has_value()) {
+            std::cerr << *ai_target_distance;
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr << " transition=";
+        if (transition_complete.has_value()) {
+            std::cerr << *transition_complete;
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr << " pool=";
+        if (target_pool_available.has_value()) {
+            std::cerr << *target_pool_available;
+        } else {
+            std::cerr << "<none>";
+        }
+        for (const std::uint16_t source_order : {0U, 1U}) {
+            const auto order_target =
+                field_scene.default_actor_ai_target_id_for_dump(source_order);
+            const auto order_complete =
+                field_scene.default_actor_transition_complete_for_dump(
+                    source_order);
+            const auto order_pool =
+                field_scene.default_actor_has_ai_target_pool_for_dump(
+                    source_order);
+            std::cerr << " order" << source_order << "={target:"
+                      << order_target.value_or("<none>") << ",complete:";
+            if (order_complete.has_value()) {
+                std::cerr << *order_complete;
+            } else {
+                std::cerr << "<none>";
+            }
+            std::cerr << ",pool:";
+            if (order_pool.has_value()) {
+                std::cerr << *order_pool;
+            } else {
+                std::cerr << "<none>";
+            }
+            std::cerr << '}';
+        }
+        if (!field_scene.failure().empty()) {
+            std::cerr << " failure=" << field_scene.failure();
+        }
+        if (actors_after_close_target.size() == actor_positions.size() &&
+            !actors_after_close_target.empty()) {
+            std::cerr << " x=" << actor_positions.front().x << "->"
+                      << actors_after_close_target.front().x << " y="
+                      << actor_positions.front().y << "->"
+                      << actors_after_close_target.front().y;
+        }
+        std::cerr << '\n';
+        return 3;
+    }
+
+    std::array<bool, 16> creature_walk_frames_seen{};
+    std::uint8_t creature_walk_frame_count = 0U;
+    bool creature_walk_captures_saved = true;
+    for (std::uint8_t sample = 0U;
+         sample < 48U && creature_walk_frame_count < 2U; ++sample) {
+        const auto animation_id =
+            field_scene.default_actor_animation_id_for_dump(0U);
+        const auto animation_frame =
+            field_scene.default_actor_animation_frame_for_dump(0U);
+        if (animation_id == std::optional<std::string>{"walk"} &&
+            animation_frame.has_value() &&
+            *animation_frame < creature_walk_frames_seen.size() &&
+            !creature_walk_frames_seen[*animation_frame]) {
+            creature_walk_frames_seen[*animation_frame] = true;
+            ++creature_walk_frame_count;
+            const auto walk_frame_image = render();
+            creature_walk_captures_saved = save(
+                "creature-walk-frame-" +
+                    std::to_string(*animation_frame) + ".bmp",
+                walk_frame_image) &&
+                creature_walk_captures_saved &&
+                field_hud_chrome_survives(walk_frame_image, asset_root) &&
+                initial.copy(272, 0, 48, 224) ==
+                    walk_frame_image.copy(272, 0, 48, 224);
+        }
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    if (creature_walk_frame_count < 2U || !creature_walk_captures_saved) {
+        std::cerr << "field random-encounter QA: creature C062 walk frames did not animate through named art"
+                  << " unique_frames="
+                  << static_cast<unsigned>(creature_walk_frame_count)
+                  << " animation="
+                  << field_scene.default_actor_animation_id_for_dump(0U)
+                         .value_or("<none>")
+                  << " frame="
+                  << static_cast<unsigned>(
+                         field_scene.default_actor_animation_frame_for_dump(
+                             0U)
+                             .value_or(0xFFU))
+                  << " hud_capture_ok=" << creature_walk_captures_saved;
+        if (!field_scene.failure().empty()) {
+            std::cerr << " failure=" << field_scene.failure();
+        }
+        std::cerr << '\n';
+        return 3;
+    }
+
+    const auto audio_before_target_selection = field_audio_events.size();
+    field_scene.set_controller_port_byte(0x10U); // ordinary B: cycle target
+    field_scene.advance_frame();
+    const auto target_selection_event =
+        field_scene.controller_event_word_for_dump();
+    const auto selected_actor_on_press =
+        field_scene.selected_default_actor_id_for_dump();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    const auto selected_actor_after_release =
+        field_scene.selected_default_actor_id_for_dump();
+    // The source edge spawn lies below this scene's captured viewport. Keep
+    // that real spawn untouched in the production frames above, then move
+    // the selected source actor record into a known visible patch for the
+    // selector-pixel capture. This is only a renderer fixture; it is not a
+    // claim about the natural approach path.
+    const auto target_marker_fixture_x = static_cast<std::uint16_t>(
+        field_scene.field_entity_world_position().x - 0x0100U);
+    const auto target_marker_fixture_y =
+        field_scene.field_entity_world_position().y;
+    if (!field_scene.set_default_actor_world_position_for_dump(
+            0U, target_marker_fixture_x, target_marker_fixture_y)) {
+        std::cerr << "field random-encounter QA: cannot position selected target for pixel capture\n";
+        return 3;
+    }
+    const auto marker_during_shrink =
+        field_scene.selected_default_actor_target_marker_for_dump();
+    const auto target_selection_image = render();
+    const bool target_selection_saved =
+        save("target-selection-b.bmp", target_selection_image);
+    for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        field_scene.set_default_actor_world_position_for_dump(
+            0U, target_marker_fixture_x, target_marker_fixture_y);
+    }
+    const auto marker_steady =
+        field_scene.selected_default_actor_target_marker_for_dump();
+    const auto target_selection_static_image = render();
+    const bool target_selection_static_saved =
+        save("target-selection-b-static.bmp", target_selection_static_image);
+    const QImage target_marker_tile(QString::fromStdWString(
+        (asset_root / "field" / "entities" / "target-marker" /
+         "scene-2-action-0-2.png")
+            .wstring()));
+    const auto marker_corner_pixel_matches =
+        marker_steady.has_value()
+            ? target_marker_corner_pixel_matches(
+                  target_selection_static_image, target_marker_tile,
+                  *marker_steady)
+            : std::array<int, 4>{};
+    const bool target_marker_pixels_visible =
+        std::all_of(marker_corner_pixel_matches.begin(),
+                    marker_corner_pixel_matches.end(),
+                    [](const int matches) { return matches >= 7; });
+    if ((target_selection_event & 0x1000U) == 0U ||
+        !selected_actor_on_press.has_value() ||
+        selected_actor_after_release != selected_actor_on_press ||
+        !marker_during_shrink.has_value() ||
+        !marker_during_shrink->visible ||
+        !marker_during_shrink->animating ||
+        marker_during_shrink->style != 0U ||
+        marker_during_shrink->radius > 64U ||
+        marker_during_shrink->radius % 8U != 0U ||
+        !marker_steady.has_value() || !marker_steady->visible ||
+        marker_steady->animating || marker_steady->radius != 0U ||
+        field_audio_events.size() != audio_before_target_selection ||
+        !target_selection_saved ||
+        !target_selection_static_saved ||
+        !target_marker_pixels_visible ||
+        !field_hud_chrome_survives(target_selection_image, asset_root) ||
+        !field_hud_chrome_survives(target_selection_static_image, asset_root) ||
+        initial.copy(272, 0, 48, 224) !=
+            target_selection_static_image.copy(272, 0, 48, 224)) {
+        std::cerr << "field random-encounter QA: B did not retain the selected live actor"
+                  << " event=0x" << std::hex << target_selection_event
+                  << std::dec << " selected="
+                  << selected_actor_on_press.value_or("<none>")
+                  << " retained="
+                  << selected_actor_after_release.value_or("<none>")
+                  << " audio=" << audio_before_target_selection << "->"
+                  << field_audio_events.size() << '\n';
+        if (marker_during_shrink.has_value()) {
+            std::cerr << " target_marker={visible:" << marker_during_shrink->visible
+                      << ",animating:" << marker_during_shrink->animating
+                      << ",style:" << static_cast<unsigned>(marker_during_shrink->style)
+                      << ",radius:" << static_cast<unsigned>(marker_during_shrink->radius)
+                      << '}';
+        } else {
+            std::cerr << " target_marker=<missing>";
+        }
+        if (marker_steady.has_value()) {
+            std::cerr << " steady_marker={visible:" << marker_steady->visible
+                      << ",animating:" << marker_steady->animating
+                      << ",radius:" << static_cast<unsigned>(marker_steady->radius)
+                      << ",projected:" << marker_steady->projected_x << ','
+                      << marker_steady->projected_y
+                      << '}';
+        }
+        std::cerr << " marker_pixels=" << marker_corner_pixel_matches[0] << ','
+                  << marker_corner_pixel_matches[1] << ','
+                  << marker_corner_pixel_matches[2] << ','
+                  << marker_corner_pixel_matches[3];
+        std::cerr << '\n';
+        return 3;
+    }
+    std::cout << "field_random_encounter_spawn_qa=passed scene=2 selector=1+2 actors=2 active="
+              << actors_after << " visible=" << visible_before << ','
+              << visible_after_30 << ',' << visible_after_180 << ','
+              << visible_after_480 << " actor_world_positions=";
+    for (std::size_t index = 0U; index < actor_positions.size(); ++index) {
+        if (index != 0U) {
+            std::cout << ';';
+        }
+        std::cout << actor_positions[index].x << ','
+                  << actor_positions[index].y;
+    }
+    std::cout << " viewport_world_origin="
+              << field_scene.state().field_scene_buffers.camera_x << ','
+              << field_scene.state().field_scene_buffers.camera_y
+              << " target_selected=" << *selected_actor_after_release
+              << " visible_fixture_actor_count=" << visible_fixture_count
+              << " creature_walk_frames="
+              << static_cast<unsigned>(creature_walk_frame_count)
+              << " target_marker_style="
+              << static_cast<unsigned>(marker_during_shrink->style)
+              << " target_marker_shrink_radius="
+              << static_cast<unsigned>(marker_during_shrink->radius)
+              << " target_marker_static=" << marker_steady->visible
+              << " target_marker_corner_pixels="
+              << marker_corner_pixel_matches[0] << ','
+              << marker_corner_pixel_matches[1] << ','
+              << marker_corner_pixel_matches[2] << ','
+              << marker_corner_pixel_matches[3]
+              << " artifacts=" << output.string() << '\n';
     return 0;
 }
 
@@ -16418,6 +16933,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_transition_qa_path;
         std::optional<std::filesystem::path> field_world_activity_qa_path;
         std::optional<std::filesystem::path>
+            field_random_encounter_spawn_qa_path;
+        std::optional<std::filesystem::path>
             field_redmond_vigore_search_qa_path;
         std::optional<std::filesystem::path>
             field_jump_house_entry_qa_path;
@@ -16516,6 +17033,7 @@ int main(int argc, char** argv) {
                        " [--field-movement-qa <output-dir>]"
                        " [--field-transition-qa <output-dir>]"
                        " [--field-world-activity-qa <output-dir>]"
+                       " [--field-random-encounter-spawn-qa <output-dir>]"
                        " [--field-redmond-vigore-search-qa <output-dir>]"
                        " [--field-jump-house-entry-qa <output-dir>]"
                        " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
@@ -16598,6 +17116,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_world_activity_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-random-encounter-spawn-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_random_encounter_spawn_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -17329,6 +17854,12 @@ int main(int argc, char** argv) {
                 return run_field_world_activity_qa(
                     field_scene, asset_root,
                     *field_world_activity_qa_path, field_audio_events);
+            }
+            if (field_random_encounter_spawn_qa_path.has_value()) {
+                return run_field_random_encounter_spawn_qa(
+                    field_scene, asset_root,
+                    *field_random_encounter_spawn_qa_path,
+                    field_audio_events, field_source_boundaries);
             }
             if (field_redmond_vigore_search_qa_path.has_value()) {
                 return run_field_redmond_vigore_search_qa(

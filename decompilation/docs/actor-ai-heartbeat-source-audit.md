@@ -185,7 +185,10 @@ The B rising-edge path at `0x1DC4C` now selects a live field actor through the
 same typed record service. The service keeps the two source selection fields
 distinct: candidate reservation is `+0x10.4`, while B's selected-target latch
 is `+0x11.4`. It must not be inferred from the action-link candidate flag.
-Target-marker rendering and the special runner-pool mode remain incomplete.
+Lua now advances the `+0xA6` marker countdown on the render heartbeat, selects
+the four ROM tile/palette groups, and feeds the transparent PNG corner assets
+to the field renderer. The alternate `+0x9C` marker action-byte route and the
+special runner-pool mode remain incomplete.
 
 Movement is collision-coupled. `0xB77E` builds a directional probe and calls
 `0xB48C`; `0xB48C` calls terrain collision `0xE7C8` and stores the collision
@@ -301,8 +304,30 @@ Their target acquisition and B selection are connected to typed source flags;
 attacks, item/spell actions, hit resolution, damage/death, and actor removal
 remain open. Default-profile NPC movement/targeting and complete source
 actor-slot dispatch also remain open. This partial slice has a Release build,
-but no new CTest or scene dump, so it is not defended and has no visual-fidelity
-claim.
+and a focused Release CTest with full-frame captures. The QA selects Scene 2's
+sum-3 two-Weenr row using injected bounded selector rolls, so it verifies list
+resolution, actor allocation, entry transition, target acquisition, movement,
+and the B edge without claiming the ordinary `0x1E166` random gate ran. It
+also corrects the spawn caller to use live camera `FFDDC6/FFDDC8` and map
+bounds `FFDDCE/FFDDD0`; the sampler normalizes candidates to the same `>>4`
+coordinate space as `0x1E41E`. The target-state QA retains the selected actor
+after B release and verifies the source path makes no sound request.
+
+The captures show two distinct visual limits. The ROM edge-spawn coordinates
+are beyond the active viewport, so `encounter-entry.bmp` and the later
+production frames contain no creature pixels. A separate QA-only close-range
+fixture moves the runner next to an encounter actor and captures two distinct
+C062 walk poses while preserving the HUD. For the selector pixel capture, the
+test repositions the already-selected source record beside the runner after
+leaving the production spawn frames untouched. It captures both the shrinking
+and settled `0x5C7E` marker, uses alpha-preserving PNG tiles, and verifies
+pixels from all four source corner descriptors in the complete frame. The
+right-side HUD remains unchanged. Independent section-06 footage at frames
+002190/002220 and 002430/002460 shows yellow and red corner brackets around
+combatants, corroborating the shape but not the exact actor/action-to-palette
+mapping. Keep this hill partial: the ordinary chance gate, alternate `+0x9C`
+selector data route, complete actor pool, natural approach, and combat
+resolution remain open.
 
 The word table at ROM `0xB05E` was read directly for all sixteen kinds. The
 random-encounter kinds use these entry events: kind 4=`0x2F`, 5=`0x2E`,
@@ -333,3 +358,22 @@ For every new actor behavior branch:
 5. Check multiple gameplay frames and neighboring screen composition. Compare
    with independent Genesis footage when that same route is visible; native
    captures alone prove only the conversion path.
+
+## Current Release QA snapshot
+
+`shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa` writes
+`initial.bmp`, `encounter-entry.bmp`, `encounter-after-30.bmp`,
+`encounter-after-180.bmp`, `encounter-after-480.bmp`,
+`encounter-visible-qa-fixture.bmp`, `creature-walk-frame-0.bmp`,
+`creature-walk-frame-3.bmp`, `target-selection-b.bmp`,
+`target-selection-b-static.bmp`, and `actual.bmp` under
+`build/conversion/qt/release/qt_runtime/field-random-encounter-spawn-qa/`.
+All 11 full 320x224 frames were reopened. The production edge-spawn set stays
+on the same map/HUD composition and outside the viewport; the controlled
+fixture shows the two creatures and distinct walk poses. The marker fixture
+checks the four source tile corners at their projected positions and leaves
+the right-side HUD unchanged. B retains the typed target, and the source path
+makes no sound request. Entry cues are checked as requests (`0x2E` for this
+sequence), not as audible samples or durations. Section-06 longplay frames
+2190/2220 and 2430/2460 independently show the target-bracket visual form; they
+do not expose the source actor/action bytes for this exact scene.

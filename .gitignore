@@ -71,6 +71,7 @@
 !/decompilation/assets/intro/**/*.bmp
 !/decompilation/assets/field/
 !/decompilation/assets/field/**/*.bmp
+!/decompilation/assets/field/entities/target-marker/*.png
 !/decompilation/assets/manifest.tsv
 
 # Local screenshot and raw listing diagnostics are disposable analysis output,

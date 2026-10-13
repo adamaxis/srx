@@ -744,6 +744,13 @@ decode_genesis_field_entity_animation_sequences(
 std::array<GenesisFieldSpawnAnimation, 16>
 decode_genesis_field_spawn_animations(const std::vector<std::uint8_t>& rom);
 
+// Offline extraction for the four source action-code variants selected by
+// field entity targeting at 0x5C7E. The images are the individual 0x5E5,
+// 0x5E6, and 0x5E7 object-pattern tiles with the source field palette lines;
+// descriptor flips and placement remain separate runtime presentation facts.
+std::array<RgbaImage, 4> decode_genesis_field_target_marker_images(
+    const std::vector<std::uint8_t>& rom, std::uint16_t scene_id = 0U);
+
 // Reconstruct the startup scene assembled by ROM 0x1D00/0x1D58. The source
 // offsets and dimensions are the operands of that path, not guessed graphic
 // locations: 0x1F310E is the compressed pattern stream, 0x67DF6 is its

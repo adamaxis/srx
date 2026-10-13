@@ -76,6 +76,7 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
                 action_kind = row.action_kind,
                 action_code = row.action_code,
                 source_interaction_flags = row.source_interaction_flags,
+                physical_meter = row.physical_meter,
                 palette_line = row.palette_line,
                 sprite_stem = row.sprite_stem,
                 tagged_template = row.tagged_template,
@@ -95,6 +96,11 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
         scene = scene_id,
         context_group = selected.context_group,
         random_sum = sum,
+        event_name = selected.event_name,
+        opening_text = "",
+        choice_1 = "",
+        choice_2 = "",
+        choice_3 = "",
         actors = actors,
     }
 end

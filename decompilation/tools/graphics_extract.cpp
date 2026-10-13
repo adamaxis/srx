@@ -2446,6 +2446,9 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_resource_row(
         "field.entities.world.activity.actors",
         "field/entities/world-activity-actors.tsv", "state");
+    emit_generated_resource_row(
+        "field.entities.world.activity.encounter.actors",
+        "field/entities/dynamic-world-activity-actors.tsv", "state");
     std::string line;
     std::getline(catalog, line);
     while (std::getline(catalog, line)) {
@@ -3193,6 +3196,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint16_t world_y;
         std::uint16_t initial_heading;
         std::uint8_t palette_line;
+        std::uint8_t physical_meter;
         std::uint32_t template_offset;
         std::uint32_t position_offset;
         std::size_t list_offset;
@@ -3308,7 +3312,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             const auto position_offset =
                 read_big_endian_long(rom, cursor + 4U);
             if (template_offset > rom.size() ||
-                rom.size() - template_offset < 0x4AU) {
+                rom.size() - template_offset < 0x4DU) {
                 throw std::runtime_error(
                     "default field actor template pointer exceeds ROM");
             }
@@ -3348,6 +3352,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 read_big_endian_word(rom, position_offset + 2U),
                 read_big_endian_word(rom, 0x7361AU + 0x2EU),
                 palette_line,
+                rom[template_offset + 0x4CU],
                 template_offset,
                 position_offset,
                 source_list.list_offset,
@@ -3424,7 +3429,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                        "\taction_kind\tinitial_action_code"
                        "\tworld_x\tworld_y"
                        "\tinitial_heading\tpalette_line\ttemplate_offset\tposition_offset"
-                       "\tlist_offset\tordered_overrides\n";
+                       "\tlist_offset\tordered_overrides\tphysical_meter\n";
         for (const auto& actor : default_actor_records) {
             actor_table << actor.scene_id << '\t' << actor.source_order << '\t'
                         << actor.entity_kind << '\t' << actor.profile_id
@@ -3439,7 +3444,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                         << format_offset(actor.position_offset) << '\t'
                         << format_offset(static_cast<std::uint32_t>(
                                actor.list_offset))
-                        << '\t' << actor.overrides << '\n';
+                        << '\t' << actor.overrides << '\t'
+                        << static_cast<unsigned>(actor.physical_meter) << '\n';
         }
         if (!actor_table) {
             throw std::runtime_error(
@@ -3751,6 +3757,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint8_t action_code;
         std::string action_kind;
         std::uint8_t source_interaction_flags;
+        std::uint8_t physical_meter;
         std::string sprite_stem;
         std::string ordered_overrides;
     };
@@ -3800,7 +3807,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 }
                 const auto template_offset = tagged_template & 0x7FFFFFFFU;
                 if (template_offset > rom.size() ||
-                    rom.size() - template_offset < 0x4AU) {
+                    rom.size() - template_offset < 0x4DU) {
                     throw std::runtime_error(
                         "dynamic world actor template points outside the ROM");
                 }
@@ -3867,7 +3874,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     sequence_list_offset, tagged_template,
                     static_cast<std::uint32_t>(template_offset), entity_kind,
                     palette_line, actor_name, profile_id, action_code,
-                    action_kind, source_interaction_flags, sprite_stem,
+                    action_kind, source_interaction_flags,
+                    rom[template_offset + 0x4CU], sprite_stem,
                     first_override ? "-" : overrides.str(),
                 });
                 const auto key = std::make_pair(entity_kind, palette_line);
@@ -3906,7 +3914,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                  "\tsource_interaction_flags"
                  "\tentity_kind\tpalette_line\tsprite_stem"
                  "\ttagged_template\ttemplate_offset\tordered_overrides"
-                 "\tplacement_rule\n";
+                 "\tplacement_rule\tphysical_meter\n";
         for (const auto& actor : dynamic_world_actor_records) {
             const auto key = std::make_pair(actor.entity_kind, actor.palette_line);
             const auto visual = actor_visual_sources.find(key);
@@ -3930,7 +3938,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                   << format_offset(actor.tagged_template) << '\t'
                   << format_offset(actor.template_offset) << '\t'
                   << actor.ordered_overrides << '\t'
-                  << "open screen-edge candidates based on the current viewport and terrain\n";
+                  << "open screen-edge candidates based on the current viewport and terrain\t"
+                  << static_cast<unsigned>(actor.physical_meter) << '\n';
         }
         if (!table) {
             throw std::runtime_error(
@@ -4121,6 +4130,50 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     true, manifest, written, missing, blank, frame.origin_x,
                     frame.origin_y);
             }
+
+            // Ordinary accepted actor movement selects the positive-marker
+            // C062 list, separate from the finite C0B2 entry transition.
+            // Extract its source frames as named RGBA host assets; runtime
+            // Lua applies the C062 frame cadence from the extracted +0xCA
+            // timing fact and the native renderer only presents the result.
+            const auto walk_selector = read_big_endian_word(
+                rom, 0xC062U + direction * 2U);
+            const auto walk_list = static_cast<std::size_t>(
+                read_big_endian_long(
+                    rom, kind_state_pointer + walk_selector));
+            const auto walk_marker = read_big_endian_word(rom, walk_list);
+            const auto walk_frame_count = static_cast<std::uint16_t>(
+                walk_marker & 0x7FFFU);
+            if ((walk_marker & 0x8000U) != 0U || walk_frame_count == 0U ||
+                walk_frame_count > 8U) {
+                throw std::runtime_error(
+                    "dynamic actor C062 list has an unsupported source layout");
+            }
+            for (std::uint16_t frame_index = 0U;
+                 frame_index < walk_frame_count; ++frame_index) {
+                const auto frame =
+                    shadowrun::graphics::decode_genesis_field_entity_state_frame(
+                        rom, kind_source.entity_kind,
+                        kind_source.palette_line, walk_selector, frame_index);
+                write_catalog_asset(
+                    root, asset_stem + "-walk-dir-" +
+                              std::to_string(direction) + "-frame-" +
+                              std::to_string(frame_index) + ".bmp",
+                    frame.image, "sprite",
+                    "0xB6DE/0xC062/0x600E kind=" +
+                        std::to_string(kind_source.entity_kind) +
+                        " template=" +
+                        format_offset(kind_source.template_offset) +
+                        " descriptor=" +
+                        format_offset(static_cast<std::uint32_t>(
+                            frame.descriptor_offset)) +
+                        " selector=" + format_offset(walk_selector) +
+                        " frame=" + std::to_string(frame_index) +
+                        " palette-line=" +
+                        std::to_string(kind_source.palette_line),
+                    true, manifest, written, missing, blank,
+                    frame.origin_x, frame.origin_y);
+            }
         }
     }
 
@@ -4190,6 +4243,38 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 "0x1514E/0x62EC/0x62FC/0x630C/0x600E/0x622C", true,
                 manifest, written, missing, blank, source.origin_x,
                 source.origin_y);
+        }
+    }
+
+    // ROM 0x5C7E selects one of four target-marker tile/palette variants,
+    // while 0x1406 loads the current scene's palette for the shared object
+    // atlas. Bake a scene-specific 8x8 tile for each source action-code group;
+    // Qt consumes these named assets without a runtime VRAM atlas.
+    constexpr std::array<std::string_view, 4> kTargetMarkerGroups{{
+        "action-0-2", "action-3-5", "action-6-8", "action-9-plus",
+    }};
+    for (std::uint16_t scene_id = 0U;
+         scene_id < shadowrun::rom::kFieldModeCount; ++scene_id) {
+        const auto marker_images =
+            shadowrun::graphics::decode_genesis_field_target_marker_images(
+                rom, scene_id);
+        for (std::size_t variant = 0U;
+             variant < marker_images.size(); ++variant) {
+            const auto relative_name =
+                "field/entities/target-marker/scene-" +
+                std::to_string(scene_id) + "-" +
+                std::string(kTargetMarkerGroups[variant]) + ".png";
+            const auto source =
+                "0x5C7E/0x5D92..0x5DD4; shared object tile " +
+                (variant == 1U ? std::string{"0x5E5"}
+                 : variant == 2U ? std::string{"0x5E6"}
+                                 : std::string{"0x5E7"}) +
+                "; scene " + std::to_string(scene_id) +
+                " palette line " +
+                (variant == 3U ? std::string{"3"} : std::string{"1"});
+            write_catalog_asset(
+                root, relative_name, marker_images[variant], "sprite", source,
+                false, manifest, written, missing, blank);
         }
     }
 

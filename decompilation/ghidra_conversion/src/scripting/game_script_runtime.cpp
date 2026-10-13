@@ -826,7 +826,13 @@ struct GameScriptRuntime::Impl {
             lua_pushboolean(lua, result.source_position_updated);
             lua_pushinteger(lua, result.source_x);
             lua_pushinteger(lua, result.source_y);
-            return 4;
+            if (result.hit_target_id.has_value()) {
+                lua_pushlstring(lua, result.hit_target_id->data(),
+                                result.hit_target_id->size());
+            } else {
+                lua_pushnil(lua);
+            }
+            return 5;
         } catch (...) {
             return luaL_error(
                 lua, "native projectile collision search failed");
@@ -2143,6 +2149,7 @@ GameScriptRuntime::resolve_field_encounter(
             std::uint32_t entity_kind = 0U;
             std::uint32_t action_code = 0U;
             std::uint32_t source_interaction_flags = 0U;
+            std::uint32_t physical_meter = 0U;
             std::uint32_t palette_line = 0U;
             std::uint32_t tagged_template = 0U;
             std::uint32_t template_offset = 0U;
@@ -2170,6 +2177,8 @@ GameScriptRuntime::resolve_field_encounter(
                 read_field_integer(state, actor_index,
                                    "source_interaction_flags", 255U,
                                    source_interaction_flags) &&
+                read_field_integer(state, actor_index, "physical_meter",
+                                   255U, physical_meter) &&
                 read_field_integer(state, actor_index, "palette_line", 3U,
                                    palette_line) &&
                 read_field_string(state, actor_index, "sprite_stem",
@@ -2200,6 +2209,8 @@ GameScriptRuntime::resolve_field_encounter(
             actor.action_code = static_cast<std::uint8_t>(action_code);
             actor.source_interaction_flags =
                 static_cast<std::uint8_t>(source_interaction_flags);
+            actor.physical_meter =
+                static_cast<std::uint8_t>(physical_meter);
             actor.palette_line = static_cast<std::uint8_t>(palette_line);
             actor.tagged_template = tagged_template;
             actor.template_offset = template_offset;
@@ -2887,6 +2898,10 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "world_activity_active");
     lua_pushinteger(state, context.ai_animation_frame);
     lua_setfield(state, -2, "ai_animation_frame");
+    lua_pushinteger(state, context.walk_animation_frame_count);
+    lua_setfield(state, -2, "walk_animation_frame_count");
+    lua_pushboolean(state, context.target_selection_latched);
+    lua_setfield(state, -2, "target_selection_latched");
     lua_createtable(state,
                     static_cast<int>(context.ai_target_candidates.size()), 0);
     for (std::size_t index = 0;
@@ -2990,6 +3005,13 @@ GameScriptRuntime::actor_heartbeat(
         lua_setfield(state, -2, "linked_action_timer");
         lua_pushinteger(state, movement.animation_selector);
         lua_setfield(state, -2, "animation_selector");
+        if (movement.hit_target_id.empty()) {
+            lua_pushnil(state);
+        } else {
+            lua_pushlstring(state, movement.hit_target_id.data(),
+                            movement.hit_target_id.size());
+        }
+        lua_setfield(state, -2, "hit_target_id");
     } else {
         lua_pushnil(state);
     }
@@ -3106,6 +3128,41 @@ GameScriptRuntime::actor_heartbeat(
         return fail("actor_ai.heartbeat returned an invalid animation frame");
     }
     decision.animation_frame = static_cast<std::uint8_t>(returned_action_code);
+    lua_getfield(state, decision_table, "target_marker_visible");
+    if (!lua_isboolean(state, -1)) {
+        return fail("actor_ai.heartbeat returned an invalid target-marker visibility");
+    }
+    decision.target_marker_visible = lua_toboolean(state, -1) != 0;
+    lua_pop(state, 1);
+    lua_getfield(state, decision_table, "target_marker_animating");
+    if (!lua_isboolean(state, -1)) {
+        return fail("actor_ai.heartbeat returned an invalid target-marker animation state");
+    }
+    decision.target_marker_animating = lua_toboolean(state, -1) != 0;
+    lua_pop(state, 1);
+    std::uint32_t target_marker_value = 0U;
+    if (!read_field_integer(state, decision_table, "target_marker_style",
+                            3U, target_marker_value)) {
+        return fail("actor_ai.heartbeat returned an invalid target-marker style");
+    }
+    decision.target_marker_style =
+        static_cast<std::uint8_t>(target_marker_value);
+    if (!read_field_integer(state, decision_table, "target_marker_radius",
+                            64U, target_marker_value)) {
+        return fail("actor_ai.heartbeat returned an invalid target-marker radius");
+    }
+    decision.target_marker_radius =
+        static_cast<std::uint8_t>(target_marker_value);
+    if ((!decision.target_marker_visible &&
+         (decision.target_marker_animating ||
+          decision.target_marker_style != 0U ||
+          decision.target_marker_radius != 0U)) ||
+        (!decision.target_marker_animating &&
+         decision.target_marker_radius != 0U) ||
+        (decision.target_marker_animating &&
+         decision.target_marker_radius % 8U != 0U)) {
+        return fail("actor_ai.heartbeat returned inconsistent target-marker state");
+    }
     lua_getfield(state, decision_table, "animation_accumulator");
     if (!lua_isinteger(state, -1)) {
         return fail(
@@ -3188,10 +3245,14 @@ GameScriptRuntime::actor_heartbeat(
     // Every phase returns the actor's full state snapshot. A behavior
     // heartbeat may therefore report the walk/attack pose last selected by
     // the render heartbeat without advancing that animation itself.
+    const bool dynamic_creature_walk =
+        context.dynamic_world_encounter_actor &&
+        decision.animation_id == "walk";
     if ((decision.animation_id == "walk" ||
          decision.animation_id == "attack") &&
-        context.profile_id != "field_runner_k03_none00") {
-        return fail("actor_ai.heartbeat returned an invalid player animation");
+        context.profile_id != "field_runner_k03_none00" &&
+        !dynamic_creature_walk) {
+        return fail("actor_ai.heartbeat returned an unsupported actor animation");
     }
 
     lua_getfield(state, decision_table, "audio_event");
@@ -3217,8 +3278,11 @@ GameScriptRuntime::actor_heartbeat(
     lua_getfield(state, decision_table, "movement_current_heading");
     if (lua_type(state, -1) != LUA_TNIL) {
         std::uint32_t heading = 0U;
+        const bool movement_actor =
+            context.profile_id == "field_runner_k03_none00" ||
+            context.dynamic_world_encounter_actor;
         if (!read_integer(state, -1, 0xFFFFU, heading) ||
-            context.profile_id != "field_runner_k03_none00") {
+            !movement_actor) {
             return fail(
                 "actor_ai.heartbeat returned an invalid current heading");
         }
@@ -3226,13 +3290,49 @@ GameScriptRuntime::actor_heartbeat(
             static_cast<std::uint16_t>(heading);
     }
     lua_pop(state, 1);
+    std::string ai_target_id;
+    if (!read_optional_field_string(state, decision_table, "ai_target_id",
+                                    ai_target_id)) {
+        return fail("actor_ai.heartbeat returned an invalid AI target id");
+    }
+    if (!ai_target_id.empty()) {
+        decision.ai_target_id = std::move(ai_target_id);
+    }
+    std::optional<std::uint32_t> ai_target_heading;
+    std::optional<std::uint32_t> ai_target_distance;
+    if (!read_optional_field_u32(state, decision_table, "ai_target_heading",
+                                 0xFFFFU, ai_target_heading) ||
+        !read_optional_field_u32(state, decision_table, "ai_target_distance",
+                                 0xFFFFU, ai_target_distance)) {
+        return fail("actor_ai.heartbeat returned invalid AI target geometry");
+    }
+    if (ai_target_heading.has_value()) {
+        decision.ai_target_heading = static_cast<std::uint16_t>(
+            *ai_target_heading);
+    }
+    if (ai_target_distance.has_value()) {
+        decision.ai_target_distance = static_cast<std::uint16_t>(
+            *ai_target_distance);
+    }
+    if (decision.ai_target_id.has_value() !=
+            decision.ai_target_heading.has_value() ||
+        decision.ai_target_id.has_value() !=
+            decision.ai_target_distance.has_value()) {
+        return fail("actor_ai.heartbeat returned incomplete AI target state");
+    }
     lua_getfield(state, decision_table, "movement_heading");
     if (lua_type(state, -1) != LUA_TNIL) {
         std::uint32_t heading = 0U;
-        if (!read_integer(state, -1, 0xFFFEU, heading) ||
-            context.profile_id != "field_runner_k03_none00" ||
-            context.phase != ScriptActorHeartbeatPhase::behavior ||
-            !context.movement_allowed) {
+        const bool movement_actor =
+            context.profile_id == "field_runner_k03_none00" ||
+            context.dynamic_world_encounter_actor;
+        // Lua snapshots retain the last selected route heading during the
+        // separate render heartbeat. It is applied only on behavior passes;
+        // render passes must still be able to return the same typed actor
+        // state without being rejected as a fresh movement request.
+        if (!read_integer(state, -1, 0xFFFFU, heading) || !movement_actor ||
+            (context.phase == ScriptActorHeartbeatPhase::behavior &&
+             !context.movement_allowed)) {
             return fail(
                 "actor_ai.heartbeat returned an invalid movement intent");
         }
@@ -3440,6 +3540,24 @@ GameScriptRuntime::actor_heartbeat(
         }
         movement_decision.state.animation_selector =
             static_cast<std::uint16_t>(unsigned_value);
+        lua_getfield(state, movement_table, "hit_target_id");
+        if (lua_type(state, -1) == LUA_TSTRING) {
+            std::size_t target_id_size = 0U;
+            const auto* target_id = lua_tolstring(state, -1, &target_id_size);
+            if (target_id == nullptr || target_id_size == 0U ||
+                target_id_size > 96U) {
+                lua_pop(state, 1);
+                return fail(
+                    "actor_ai.heartbeat returned an invalid projectile hit target");
+            }
+            movement_decision.state.hit_target_id.assign(
+                target_id, target_id_size);
+        } else if (lua_type(state, -1) != LUA_TNIL) {
+            lua_pop(state, 1);
+            return fail(
+                "actor_ai.heartbeat returned an invalid projectile hit target");
+        }
+        lua_pop(state, 1);
         std::string outcome;
         if (!read_field_string(state, movement_table, "outcome", outcome)) {
             return fail(
@@ -3491,8 +3609,8 @@ GameScriptRuntime::actor_heartbeat(
           decision.projectile_movement->outcome ==
               ScriptActorProjectileOutcome::hit_resolution_pending)) ||
         (decision.transition_complete && !decision.transition_started) ||
-        ((decision.animation_id == "entry") !=
-         decision.transition_started) ||
+        (decision.animation_id == "entry" &&
+         !decision.transition_started) ||
         (decision.animation_id == "idle" &&
          decision.animation_frame != 0U) ||
         (begins_entry && !decision.transition_started)) {

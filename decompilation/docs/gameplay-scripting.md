@@ -383,8 +383,10 @@ synchronized.
   terrain and entity-scan callbacks, then applies the typed record snapshot.
   The active target list remains empty; linked actor/status/damage resolution
   and the positive `0x14F86` follow-up remain explicit boundaries.
-  The script does not yet own general NPC movement, target selection, combat
-  choices, weapon fire, hits, or damage. The ROM call order,
+  Temporary random-world encounter actors now receive Lua target selection,
+  movement policy, entry/walk animation state, and B-selection marker state.
+  The script does not yet own default NPC movement/target selection, general
+  combat choices, weapon fire, hits, or damage. The ROM call order,
   actor timers, target/movement hand-off, and current gaps are documented in
   [the actor heartbeat source audit](actor-ai-heartbeat-source-audit.md).
 - `assets/dialogue/script-text.lua` is the ROM-derived shared text table for

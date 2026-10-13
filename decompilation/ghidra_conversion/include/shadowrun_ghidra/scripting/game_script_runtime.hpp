@@ -218,6 +218,7 @@ struct ScriptFieldEncounterActor {
     std::uint32_t tagged_template = 0;
     std::uint32_t template_offset = 0;
     std::uint8_t source_interaction_flags = 0;
+    std::uint8_t physical_meter = 0;
     std::string ordered_overrides;
 };
 
@@ -334,6 +335,7 @@ struct ScriptActorProjectileMovement {
     std::uint8_t retry_counter = 0;
     std::int8_t linked_action_timer = 0;
     std::uint16_t animation_selector = 0;
+    std::string hit_target_id;
 };
 
 struct ScriptProjectileTerrainSample {
@@ -347,6 +349,7 @@ struct ScriptProjectileCollisionSearchResult {
     bool source_position_updated = false;
     std::uint16_t source_x = 0;
     std::uint16_t source_y = 0;
+    std::optional<std::string> hit_target_id;
 };
 
 struct ScriptActorProjectileMovementDecision {
@@ -450,6 +453,11 @@ struct ScriptActorBehaviorContext {
     bool world_activity_active = false;
     // ROM 0x14C7C's kind-0xD branch checks animation frame +0x1E here.
     std::int16_t ai_animation_frame = 0;
+    // Positive C062 loop length supplied from extracted source art.
+    std::uint8_t walk_animation_frame_count = 0;
+    // ROM +0x11.4 target-selection latch, forwarded as a fact; Lua owns the
+    // visible 0x5C7E marker cadence and returns its presentation state.
+    bool target_selection_latched = false;
     std::vector<ScriptActorTargetCandidate> ai_target_candidates;
     ScriptActorRandomBound ai_random_bound;
     std::uint8_t entry_animation_frame_count = 2;
@@ -474,6 +482,13 @@ struct ScriptActorBehaviorDecision {
     std::optional<std::uint8_t> weapon_item_id;
     std::optional<std::uint16_t> movement_heading;
     std::optional<std::uint16_t> movement_current_heading;
+    std::optional<std::string> ai_target_id;
+    std::optional<std::uint16_t> ai_target_heading;
+    std::optional<std::uint16_t> ai_target_distance;
+    bool target_marker_visible = false;
+    bool target_marker_animating = false;
+    std::uint8_t target_marker_style = 0;
+    std::uint8_t target_marker_radius = 0;
     std::optional<ScriptActorMovementStep> movement_step;
     std::optional<ScriptActorProjectileMovementDecision>
         projectile_movement;

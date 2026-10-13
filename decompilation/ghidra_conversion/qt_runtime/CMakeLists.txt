@@ -328,6 +328,19 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_world_activity_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Resolve Scene 2's ROM sum-3 actor sequence through Lua and pass its ordered
+# templates through source edge placement, Lua actor initialization, and the
+# live field renderer. The selector rolls are injected so this QA isolates the
+# spawn path; it does not claim to cover the random chance/frame gate.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-random-encounter-spawn-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-random-encounter-spawn-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Start one cell south of the ROM's Jump House trigger, walk into record 85
 # using normal movement, dismiss its Lua-owned entry narration with A, and
 # verify the retained scene-13 route completes with a clean 320x224 redraw.

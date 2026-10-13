@@ -5878,6 +5878,91 @@ decode_genesis_field_spawn_animations(
     return animations;
 }
 
+std::array<RgbaImage, 4> decode_genesis_field_target_marker_images(
+    const std::vector<std::uint8_t>& rom, const std::uint16_t scene_id) {
+    struct SourceVariant {
+        std::uint16_t tile_index;
+        std::uint8_t palette_line;
+    };
+    // ROM 0x5C7E selects 0x5E7 for action codes 0..2 and 9+, 0x5E5
+    // for 3..5, and 0x5E6 for 6..8. The final group ORs 0x6000 instead of
+    // 0x2000 into the sprite attributes, selecting palette line 3.
+    constexpr std::array<SourceVariant, 4> kVariants{{
+        {0x05E7U, 1U}, {0x05E5U, 1U}, {0x05E6U, 1U}, {0x05E7U, 3U},
+    }};
+    constexpr std::size_t kVramPatternBase = 0xB000U;
+    constexpr std::uint16_t kFirstObjectTile = 0x0580U;
+    constexpr std::size_t kTileBytes = 32U;
+
+    const auto base_resources = read_genesis_field_mode_resources(rom, scene_id);
+    if (base_resources.object_pattern_vram_offset != kVramPatternBase ||
+        base_resources.object_pattern_byte_count == 0U ||
+        base_resources.object_pattern_byte_count % kTileBytes != 0U) {
+        throw std::runtime_error(
+            "Genesis target marker object-pattern upload has invalid bounds");
+    }
+    // 0x1406 installs this shared block for every field scene. Verify the
+    // source invariant before resolving global SAT pattern indices to its
+    // final three tiles.
+    for (std::uint16_t scene = 1U; scene < rom::kFieldModeCount; ++scene) {
+        const auto resources = read_genesis_field_mode_resources(rom, scene);
+        if (resources.object_pattern_data_offset !=
+                base_resources.object_pattern_data_offset ||
+            resources.object_pattern_vram_offset !=
+                base_resources.object_pattern_vram_offset ||
+            resources.object_pattern_byte_count !=
+                base_resources.object_pattern_byte_count) {
+            throw std::runtime_error(
+                "Genesis field target-marker object-pattern block is not shared");
+        }
+    }
+
+    const auto palette = read_genesis_field_palette_set(
+        rom, base_resources.palette_offset);
+    std::array<RgbaImage, kVariants.size()> images{};
+    for (std::size_t variant = 0U; variant < kVariants.size(); ++variant) {
+        const auto tile_index = kVariants[variant].tile_index;
+        if (tile_index < kFirstObjectTile) {
+            throw std::runtime_error(
+                "Genesis target marker points before the shared object atlas");
+        }
+        const auto tile_byte_offset =
+            static_cast<std::size_t>(tile_index - kFirstObjectTile) *
+            kTileBytes;
+        if (tile_byte_offset > base_resources.object_pattern_byte_count ||
+            base_resources.object_pattern_byte_count - tile_byte_offset <
+                kTileBytes ||
+            base_resources.object_pattern_data_offset > rom.size() ||
+            base_resources.object_pattern_byte_count >
+                rom.size() - base_resources.object_pattern_data_offset) {
+            throw std::out_of_range(
+                "Genesis target-marker tile lies outside the object atlas");
+        }
+
+        const auto tile = decode_genesis_tile(
+            rom.data() + base_resources.object_pattern_data_offset +
+                tile_byte_offset,
+            kTileBytes);
+        auto& image = images[variant];
+        image.width = 8U;
+        image.height = 8U;
+        image.pixels.resize(64U);
+        const auto palette_base =
+            static_cast<std::size_t>(kVariants[variant].palette_line) * 16U;
+        for (std::size_t y = 0U; y < 8U; ++y) {
+            for (std::size_t x = 0U; x < 8U; ++x) {
+                const auto color_index = tile.pixels[y * 8U + x];
+                auto color = palette[palette_base + color_index];
+                if (color_index == 0U) {
+                    color.alpha = 0U;
+                }
+                image.pixels[y * 8U + x] = color;
+            }
+        }
+    }
+    return images;
+}
+
 namespace {
 
 struct GenesisStartupPatternData {

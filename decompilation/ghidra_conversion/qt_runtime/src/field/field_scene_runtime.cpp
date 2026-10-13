@@ -1314,7 +1314,6 @@ bool FieldSceneRuntime::transition_to_elevator_destination(
     world_activity_return_snapshot_.reset();
     field_weapon_projectiles_.clear();
     field_weapon_slots_occupied_.fill(false);
-    field_weapon_collision_targets_pending_reported_ = false;
     last_field_weapon_spawn_result_ = EntitySpawnCycleResult{};
     field_camera_alignment_ready_ = false;
     field_palette_fade_steps_ = 0U;
@@ -1476,7 +1475,7 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
         "\tsprite_stem\taction_kind\tinitial_action_code"
         "\tworld_x\tworld_y\tinitial_heading\tpalette_line"
         "\ttemplate_offset\tposition_offset\tlist_offset"
-        "\tordered_overrides";
+        "\tordered_overrides\tphysical_meter";
     const auto* table = catalog.find(kActorTableAlias);
     if (table == nullptr || table->kind != "state") {
         failure_ = "missing extracted default field actor table";
@@ -1527,7 +1526,7 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             while (std::getline(row, field, '\t')) {
                 fields.push_back(std::move(field));
             }
-            if (fields.size() != 16U) {
+            if (fields.size() != 17U) {
                 failure_ = "default field actor table row is malformed";
                 return false;
             }
@@ -1590,6 +1589,13 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             actor.position_offset = parse_number(fields[13], 0);
             actor.list_offset = parse_number(fields[14], 0);
             actor.ordered_overrides = fields[15];
+            const auto physical_meter = parse_number(fields[16], 10);
+            if (physical_meter > 0xFFU) {
+                failure_ = "default actor physical meter exceeds one byte";
+                return false;
+            }
+            actor.physical_meter =
+                static_cast<std::uint8_t>(physical_meter);
             if ((actor.entity_kind == 5U && actor.palette_line != 2U) ||
                 (actor.entity_kind == 11U && actor.palette_line != 3U) ||
                 (actor.entity_kind != 5U && actor.entity_kind != 11U)) {
@@ -1688,7 +1694,32 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
 bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
     const ConversionAssetCatalog& catalog) {
     constexpr std::string_view kActorTableAlias =
-        "field.entities.world.activity.actors";
+        "field.entities.world.activity.encounter.actors";
+    constexpr std::array<std::string_view, 4> kTargetMarkerGroups{{
+        "action.0.2", "action.3.5", "action.6.8", "action.9.plus",
+    }};
+    field_target_marker_images_by_scene_.clear();
+    field_target_marker_images_by_scene_.resize(56U);
+    for (std::size_t scene = 0U;
+         scene < field_target_marker_images_by_scene_.size(); ++scene) {
+        for (std::size_t style = 0U;
+             style < kTargetMarkerGroups.size(); ++style) {
+            const auto alias =
+                "field.entities.target.marker.scene." +
+                std::to_string(scene) + "." +
+                std::string(kTargetMarkerGroups[style]);
+            auto& image = field_target_marker_images_by_scene_[scene][style];
+            if (!load_image(catalog, alias, image) || image.width() != 8 ||
+                image.height() != 8) {
+                if (failure_.empty()) {
+                    failure_ = "extracted field target-marker tile is not 8x8: " +
+                               alias;
+                }
+                return false;
+            }
+        }
+    }
+
     const auto* table = catalog.find(std::string(kActorTableAlias));
     if (table == nullptr || table->kind != "state") {
         failure_ = "missing extracted dynamic world-activity actor table";
@@ -1709,7 +1740,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 "\taction_kind\taction_code\tsource_interaction_flags"
                 "\tentity_kind\tpalette_line"
                 "\tsprite_stem\ttagged_template\ttemplate_offset"
-                "\tordered_overrides\tplacement_rule") {
+                "\tordered_overrides\tplacement_rule\tphysical_meter") {
         failure_ = "dynamic world-activity actor table header is invalid";
         return false;
     }
@@ -1729,17 +1760,19 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             while (std::getline(row, field, '\t')) {
                 fields.push_back(std::move(field));
             }
-            if (fields.size() != 17U) {
+            if (fields.size() != 19U) {
                 failure_ = "dynamic world-activity actor row is malformed";
                 return false;
             }
-            const auto kind = static_cast<std::uint16_t>(std::stoul(fields[10]));
-            if (kind < 4U || kind > 14U || fields[12].empty()) {
+            const auto kind = static_cast<std::uint16_t>(std::stoul(fields[11]));
+            const auto physical_meter = std::stoul(fields[18]);
+            if (kind < 4U || kind > 14U || fields[13].empty() ||
+                physical_meter > 0xFFU) {
                 failure_ = "dynamic world-activity actor identity is invalid";
                 return false;
             }
             const auto [position, inserted] =
-                actor_kinds.emplace(fields[12], kind);
+                actor_kinds.emplace(fields[13], kind);
             if (!inserted && position->second != kind) {
                 failure_ = "dynamic actor sprite stem maps to multiple kinds";
                 return false;
@@ -1801,6 +1834,45 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                     "dynamic actor entry animation frame counts disagree";
                 return false;
             }
+
+            std::uint8_t walk_frames = 0U;
+            for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
+                const auto walk_alias =
+                    alias_prefix + ".walk.dir." +
+                    std::to_string(direction) + ".frame." +
+                    std::to_string(frame);
+                if (catalog.find(walk_alias) == nullptr) {
+                    break;
+                }
+                artwork.walk_images[direction].emplace_back();
+                artwork.walk_origin_x[direction].push_back(0);
+                artwork.walk_origin_y[direction].push_back(0);
+                const auto image_index =
+                    artwork.walk_images[direction].size() - 1U;
+                if (!load_sprite_image(
+                        catalog, walk_alias,
+                        artwork.walk_images[direction][image_index],
+                        artwork.walk_origin_x[direction][image_index],
+                        artwork.walk_origin_y[direction][image_index])) {
+                    return false;
+                }
+                ++walk_frames;
+            }
+            if (walk_frames == 0U) {
+                failure_ = "dynamic actor C062 walk art is missing a direction";
+                return false;
+            }
+            if (direction == 0U) {
+                artwork.walk_frame_count = walk_frames;
+            } else if (walk_frames != artwork.walk_frame_count) {
+                failure_ =
+                    "dynamic actor C062 walk-list lengths disagree by direction";
+                return false;
+            }
+        }
+        if (entity_kind < 4U || entity_kind > 14U) {
+            failure_ = "dynamic actor source kind is outside the supported range";
+            return false;
         }
         field_dynamic_actor_artwork_.emplace(sprite_stem,
                                               std::move(artwork));
@@ -1826,6 +1898,11 @@ void FieldSceneRuntime::initialize_default_field_actors(
         actor.active = false;
         actor.source_record_slot.reset();
         actor.target_selected = false;
+        actor.source_interaction_flags = 0U;
+        actor.ai_target_valid = false;
+        actor.ai_target_id.clear();
+        actor.ai_target_heading = 0U;
+        actor.ai_target_distance = 0U;
         actor.ai_package_id.clear();
         actor.ai_weapon_item_id.reset();
     }
@@ -1873,6 +1950,9 @@ void FieldSceneRuntime::initialize_default_field_actors(
         }
         actor.ai_package_id = decision->package_id;
         actor.ai_weapon_item_id = decision->weapon_item_id;
+        actor.ai_target_id = decision->ai_target_id.value_or("");
+        actor.ai_target_heading = decision->ai_target_heading.value_or(0U);
+        actor.ai_target_distance = decision->ai_target_distance.value_or(0U);
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
@@ -1901,6 +1981,7 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 : actor.initial_heading,
             false,
         };
+        context.target_selection_latched = actor.target_selected;
         if (actor.temporary_world_encounter) {
             context.dynamic_world_encounter_actor = true;
             context.source_record_flags = actor.source_record_flags;
@@ -1915,6 +1996,8 @@ void FieldSceneRuntime::advance_default_field_actors() {
             context.entry_animation_frame_count =
                 actor.entry_animation_frame_count;
             context.ai_animation_frame = actor.animation_frame;
+            context.walk_animation_frame_count =
+                actor.walk_animation_frame_count;
             context.ai_target_candidates.clear();
             const auto append_target_candidate =
                 [this, &actor, &context](
@@ -2130,6 +2213,9 @@ void FieldSceneRuntime::advance_default_field_actors() {
         }
         actor.ai_package_id = decision->package_id;
         actor.ai_weapon_item_id = decision->weapon_item_id;
+        actor.ai_target_id = decision->ai_target_id.value_or("");
+        actor.ai_target_heading = decision->ai_target_heading.value_or(0U);
+        actor.ai_target_distance = decision->ai_target_distance.value_or(0U);
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
@@ -2214,6 +2300,18 @@ FieldSceneRuntime::default_actor_sprite_view(
             &artwork->idle_images[direction],
             artwork->idle_origin_x[direction],
             artwork->idle_origin_y[direction]};
+    }
+    if (actor.animation_id == "walk") {
+        const auto& frames = artwork->walk_images[direction];
+        if (frames.empty()) {
+            return {};
+        }
+        const auto frame = static_cast<std::size_t>(actor.animation_frame) %
+                           frames.size();
+        return DefaultActorSpriteView{
+            &frames[frame],
+            artwork->walk_origin_x[direction][frame],
+            artwork->walk_origin_y[direction][frame]};
     }
     if (artwork->entry_frame_count == 0U) {
         return {};
@@ -2373,16 +2471,28 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
     const auto& outcome = *pending_field_encounter_outcome_;
     const auto& profile = state_.field_scene_buffers.profile;
     WorldEffectEdgeCandidateState edge_state{};
-    edge_state.map_width = profile[0];
-    edge_state.origin_x = profile[1];
-    edge_state.origin_y = profile[4];
+    // ROM 0x1E302 reads FFDDC6/FFDDC8 as the live camera origin and
+    // FFDDCE/FFDDD0 as the far map bounds. FieldSceneBuffers::profile begins
+    // at FFDDC6, so only the bounds come from its typed profile words (+8/+10);
+    // the origin must follow the moving camera state.
+    edge_state.map_width = profile[4];
+    edge_state.origin_x = static_cast<std::uint16_t>(
+        state_.field_scene_buffers.camera_x);
+    edge_state.origin_y = static_cast<std::uint16_t>(
+        state_.field_scene_buffers.camera_y);
     edge_state.map_height = profile[5];
     build_world_effect_edge_candidates(
         edge_state,
         {[this](const std::uint16_t x, const std::uint16_t y)
              -> std::optional<std::uint8_t> {
+             // ROM 0x1E41E indexes FF1700 with world words shifted by nine.
+             // The shared terrain sampler accepts the source's normalized
+             // pixel coordinates (world >> 4), so normalize before reusing
+             // it here. Passing raw words sampled a different map region and
+             // incorrectly rejected all ten spawn candidates.
              const auto sample = sample_terrain_collision_tiles(
-                 x, y, false,
+                 static_cast<std::uint16_t>(x >> 4U),
+                 static_cast<std::uint16_t>(y >> 4U), false,
                  [this](const std::uint16_t tile_index) {
                      const auto& map = state_.field_scene_buffers
                                            .source_metadata
@@ -2473,12 +2583,16 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         // ordered template record contributes the actor kind/action and art.
         actor.initial_heading = 0U;
         actor.palette_line = source_actor.palette_line;
+        actor.physical_meter = source_actor.physical_meter;
         actor.sprite_stem = source_actor.sprite_stem;
         actor.source_interaction_flags =
             source_actor.source_interaction_flags;
         actor.entry_animation_frame_count =
             field_dynamic_actor_artwork_.at(source_actor.sprite_stem)
                 .entry_frame_count;
+        actor.walk_animation_frame_count =
+            field_dynamic_actor_artwork_.at(source_actor.sprite_stem)
+                .walk_frame_count;
         actor.template_offset = source_actor.template_offset;
         actor.list_offset = source_actor.sequence_list_offset;
         actor.selection_cell_offset = source_actor.selection_cell_offset;
@@ -2486,7 +2600,6 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             actor_flag_mask(ActorServiceFlag::active) |
             actor_flag_mask(ActorServiceFlag::unresolved_service_bit_2) |
             actor_flag_mask(ActorServiceFlag::activity_probe_enabled));
-        actor.source_interaction_flags = 0U;
         actor.source_behavior_flags = 0U;
         actor.source_spawn_state_flags = actor_flag_mask(
             ActorSpawnStateFlag::world_activity_member);
@@ -2531,6 +2644,8 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         context.entry_animation_frame_count =
             actor.entry_animation_frame_count;
         context.ai_animation_frame = actor.animation_frame;
+        context.walk_animation_frame_count =
+            actor.walk_animation_frame_count;
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value()) {
             failure_ = game_scripts_.failure();
@@ -2539,6 +2654,9 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         }
         actor.ai_package_id = decision->package_id;
         actor.ai_weapon_item_id = decision->weapon_item_id;
+        actor.ai_target_id = decision->ai_target_id.value_or("");
+        actor.ai_target_heading = decision->ai_target_heading.value_or(0U);
+        actor.ai_target_distance = decision->ai_target_distance.value_or(0U);
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
@@ -5443,7 +5561,6 @@ bool FieldSceneRuntime::bootstrap(
     world_activity_return_snapshot_.reset();
     field_weapon_projectiles_.clear();
     field_weapon_slots_occupied_.fill(false);
-    field_weapon_collision_targets_pending_reported_ = false;
     last_field_weapon_spawn_result_ = EntitySpawnCycleResult{};
     field_security_floor_index_.reset();
     field_activity_continuation_ = MovementModeTransitionContinuation::none;
@@ -7044,7 +7161,50 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         }
         slot.reset();
     };
-    const std::vector<CollisionCandidate> live_collision_targets;
+    std::vector<CollisionCandidate> live_collision_targets(10U);
+    std::vector<std::string> live_collision_target_ids(10U);
+    const auto current_scene = state_.field_scene_buffers.scene_reference;
+    const auto& runner_positions =
+        state_.field_scene_buffers.source_metadata.initial_field_records;
+    for (std::size_t slot = 0U;
+         slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
+        if (!field_party_roster_.slot_active(slot)) {
+            continue;
+        }
+        auto position = runner_positions[slot];
+        if (slot == field_party_roster_.active_slot() && field_entity_.active) {
+            position = field_entity_.world_position;
+        }
+        const auto& runner = field_party_roster_.records()[slot];
+        auto& candidate = live_collision_targets[slot];
+        candidate.world_x = position.x;
+        candidate.world_y = position.y;
+        candidate.flags = static_cast<std::uint8_t>(runner.flags >> 8U);
+        candidate.interaction_flags =
+            static_cast<std::uint8_t>(runner.flags & 0x00FFU);
+        candidate.collision_enabled = runner.delay_meter != 0U;
+        live_collision_target_ids[slot] =
+            "party.runner." + std::to_string(slot);
+    }
+    for (const auto& actor : field_default_actors_) {
+        if (!actor.active || actor.scene_reference != current_scene ||
+            !actor.source_record_slot.has_value()) {
+            continue;
+        }
+        const auto slot = static_cast<std::size_t>(
+            *actor.source_record_slot);
+        if (slot >= live_collision_targets.size()) {
+            continue;
+        }
+        auto& candidate = live_collision_targets[slot];
+        candidate.world_x = actor.world_position.x;
+        candidate.world_y = actor.world_position.y;
+        candidate.flags = actor.source_record_flags;
+        candidate.interaction_flags = actor.source_interaction_flags;
+        candidate.behavior_flags = actor.source_behavior_flags;
+        candidate.collision_enabled = actor.physical_meter != 0U;
+        live_collision_target_ids[slot] = actor.actor_instance_id;
+    }
     const auto word_from_fixed = [](const std::int32_t value) {
         return static_cast<std::uint16_t>(
             static_cast<std::uint32_t>(value) >> 16U);
@@ -7058,6 +7218,7 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
     };
 
     const auto advance_record = [this, &release_slot, &live_collision_targets,
+                                 &live_collision_target_ids,
                                  &word_from_fixed, &signed_fixed_from_word](
                                     FieldWeaponProjectilePresentation& spawn,
                                     const bool primary_record) {
@@ -7086,13 +7247,6 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
             disable_record();
             return;
         }
-        if (primary_record &&
-            !field_weapon_collision_targets_pending_reported_) {
-            source_boundary(
-                "field.combat.weapon_live_actor_population_pending");
-            field_weapon_collision_targets_pending_reported_ = true;
-        }
-
         const auto selector = static_cast<std::uint16_t>(
             record.animation_resource & 0x7FFFU);
         const auto animation_index =
@@ -7164,7 +7318,7 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                     field_terrain_outside_bounds_marker_};
             };
         context.projectile_collision_search =
-            [this, &live_collision_targets](
+            [this, &live_collision_targets, &live_collision_target_ids](
                 const std::uint16_t x, const std::uint16_t y,
                 const std::uint8_t source_flags) {
                 EntityCollisionSearchContext collision_context{};
@@ -7173,11 +7327,20 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                 collision_context.source_flags = source_flags;
                 const auto result = find_colliding_entity(
                     collision_context, live_collision_targets);
+                std::optional<std::string> hit_target_id;
+                if (result.source_position_updated &&
+                    result.candidate_index.has_value() &&
+                    *result.candidate_index < live_collision_target_ids.size() &&
+                    !live_collision_target_ids[*result.candidate_index].empty()) {
+                    hit_target_id =
+                        live_collision_target_ids[*result.candidate_index];
+                }
                 return scripting::ScriptProjectileCollisionSearchResult{
                     result.source_carry,
                     result.source_position_updated,
                     result.source_x,
-                    result.source_y};
+                    result.source_y,
+                    std::move(hit_target_id)};
             };
 
         const auto decision = game_scripts_.actor_heartbeat(context);
@@ -7210,8 +7373,12 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         }
         if (decision->projectile_movement->outcome ==
             scripting::ScriptActorProjectileOutcome::hit_resolution_pending) {
-            source_boundary(
-                "field.combat.weapon_hit_resolution_pending");
+            const auto& target_id =
+                decision->projectile_movement->state.hit_target_id;
+            source_boundary(target_id.empty()
+                ? "field.combat.weapon_hit_target_id_missing"
+                : "field.combat.weapon_damage_resolution_pending:" +
+                      target_id);
         }
         if (decision->projectile_movement->outcome ==
             scripting::ScriptActorProjectileOutcome::linked_followup_pending) {
@@ -7298,8 +7465,11 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
             context.entry_animation_frame_count =
                 actor.entry_animation_frame_count;
             context.ai_animation_frame = actor.animation_frame;
+            context.walk_animation_frame_count =
+                actor.walk_animation_frame_count;
         }
         context.phase = scripting::ScriptActorHeartbeatPhase::render;
+        context.target_selection_latched = actor.target_selected;
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value()) {
             failure_ = game_scripts_.failure();
@@ -7310,6 +7480,10 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
+        actor.target_marker_visible = decision->target_marker_visible;
+        actor.target_marker_animating = decision->target_marker_animating;
+        actor.target_marker_style = decision->target_marker_style;
+        actor.target_marker_radius = decision->target_marker_radius;
         actor.transition_started = decision->transition_started;
         actor.transition_complete = decision->transition_complete;
     }
@@ -7564,7 +7738,6 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
         initialize_default_field_actors(scene_reference);
         field_weapon_projectiles_.clear();
         field_weapon_slots_occupied_.fill(false);
-        field_weapon_collision_targets_pending_reported_ = false;
         field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     }
     if (!same_scene && field_palette_fade_steps_ != 0U) {
@@ -7635,7 +7808,6 @@ void FieldSceneRuntime::snapshot_world_activity_source_scene() {
     // those typed host slots in this field presenter.
     field_weapon_projectiles_.clear();
     field_weapon_slots_occupied_.fill(false);
-    field_weapon_collision_targets_pending_reported_ = false;
     source_boundary("field.world_activity.source_scene_snapshotted");
 }
 
@@ -9520,6 +9692,7 @@ void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
         int x = 0;
         int y = 0;
         const QImage* image = nullptr;
+        QImage mirrored_image{};
     };
     std::vector<SceneSprite> sprites;
     const auto camera_x = static_cast<std::uint16_t>(
@@ -9591,6 +9764,11 @@ void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
                  .visible) {
             continue;
         }
+        // ROM 0x5C7E appends the marker descriptors before 0x622C appends
+        // the actor body. The Genesis SAT gives earlier linked sprites
+        // overlap priority; this painter composites later sprites on top, so
+        // add the body first and marker corners after it to preserve that
+        // source priority without letting the actor cover its own selector.
         sprites.push_back(SceneSprite{
             static_cast<std::int16_t>(actor.world_position.y),
             static_cast<std::uint16_t>(actor.source_order + 1U),
@@ -9599,6 +9777,59 @@ void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
             static_cast<int>(projection.screen_y) - kGenesisSpriteOrigin +
                 sprite.origin_y,
             sprite.image});
+
+        if (actor.target_marker_visible &&
+            current_scene < field_target_marker_images_by_scene_.size() &&
+            actor.target_marker_style < 4U) {
+            struct TargetMarkerCorner {
+                int x;
+                int y;
+                int horizontal_spread;
+                int vertical_spread;
+                bool flip_x;
+                bool flip_y;
+            };
+            // The four 0x5C7E descriptor lists share these positions and
+            // flips; only their tile/palette line changes with action code.
+            constexpr std::array<TargetMarkerCorner, 4> kCorners{{
+                {-14, -16, -1, -1, false, true},
+                {8, -16, 1, -1, true, true},
+                {-14, 12, -1, 1, false, false},
+                {8, 12, 1, 1, true, false},
+            }};
+            const auto& marker_image =
+                field_target_marker_images_by_scene_[current_scene]
+                                                    [actor.target_marker_style];
+            const auto marker_anchor_x =
+                static_cast<int>(projection.screen_x) - kGenesisSpriteOrigin;
+            const auto marker_anchor_y =
+                static_cast<int>(projection.screen_y) - kGenesisSpriteOrigin -
+                (actor.entity_kind == 0x0FU ? 0x20 : 0x0C);
+            const auto radius = actor.target_marker_animating
+                                    ? static_cast<int>(actor.target_marker_radius)
+                                    : 0;
+            for (const auto& corner : kCorners) {
+                SceneSprite marker{};
+                marker.depth = static_cast<std::int16_t>(
+                    actor.world_position.y);
+                marker.source_order = static_cast<std::uint16_t>(
+                    actor.source_order + 1U);
+                marker.x = marker_anchor_x + corner.x +
+                           corner.horizontal_spread * radius;
+                marker.y = marker_anchor_y + corner.y +
+                           corner.vertical_spread * radius;
+                marker.image = &marker_image;
+                auto flips = Qt::Orientations{};
+                if (corner.flip_x) {
+                    flips |= Qt::Horizontal;
+                }
+                if (corner.flip_y) {
+                    flips |= Qt::Vertical;
+                }
+                marker.mirrored_image = marker_image.flipped(flips);
+                sprites.push_back(std::move(marker));
+            }
+        }
     }
 
     const auto append_spawn_record =
@@ -9673,7 +9904,10 @@ void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
                      });
     for (const auto& sprite : sprites) {
         if (sprite.image != nullptr) {
-            painter.drawImage(sprite.x, sprite.y, *sprite.image);
+            painter.drawImage(
+                sprite.x, sprite.y,
+                sprite.mirrored_image.isNull() ? *sprite.image
+                                               : sprite.mirrored_image);
         }
     }
 }
@@ -12010,6 +12244,133 @@ std::size_t FieldSceneRuntime::default_actor_count_for_dump() const noexcept {
         }));
 }
 
+std::vector<SceneRunnerPosition>
+FieldSceneRuntime::active_default_actor_positions_for_dump() const {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    std::vector<SceneRunnerPosition> positions;
+    for (const auto& actor : field_default_actors_) {
+        if (actor.active && actor.scene_reference == scene_reference) {
+            positions.push_back(actor.world_position);
+        }
+    }
+    return positions;
+}
+
+std::optional<std::string>
+FieldSceneRuntime::selected_default_actor_id_for_dump() const {
+    if (!field_entity_target_owner_.selected_target.has_value()) {
+        return std::nullopt;
+    }
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto selected_slot = *field_entity_target_owner_.selected_target;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, selected_slot](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.active &&
+                   candidate.scene_reference == scene_reference &&
+                   candidate.source_record_slot.has_value() &&
+                   static_cast<std::size_t>(
+                       *candidate.source_record_slot) == selected_slot;
+        });
+    if (actor == field_default_actors_.end()) {
+        return std::nullopt;
+    }
+    return actor->actor_instance_id;
+}
+
+std::optional<FieldTargetMarkerDebugState>
+FieldSceneRuntime::selected_default_actor_target_marker_for_dump() const noexcept {
+    if (!field_entity_target_owner_.selected_target.has_value()) {
+        return std::nullopt;
+    }
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto selected_slot = *field_entity_target_owner_.selected_target;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, selected_slot](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.active &&
+                   candidate.scene_reference == scene_reference &&
+                   candidate.source_record_slot.has_value() &&
+                   static_cast<std::size_t>(
+                       *candidate.source_record_slot) == selected_slot;
+        });
+    if (actor == field_default_actors_.end()) {
+        return std::nullopt;
+    }
+    EntityProjectionState projection{};
+    projection.world_x = actor->world_position.x;
+    projection.world_y = actor->world_position.y;
+    project_entity_screen_position_standard(
+        projection,
+        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
+        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y));
+    return FieldTargetMarkerDebugState{
+        actor->target_marker_visible,
+        actor->target_marker_animating,
+        actor->target_marker_style,
+        actor->target_marker_radius,
+        actor->entity_kind,
+        projection.screen_x,
+        projection.screen_y};
+}
+
+bool FieldSceneRuntime::set_default_actor_world_position_for_dump(
+    const std::size_t active_actor_index, const std::uint16_t x,
+    const std::uint16_t y) noexcept {
+    const auto current_scene = state_.field_scene_buffers.scene_reference;
+    std::size_t active_index = 0U;
+    for (auto& actor : field_default_actors_) {
+        if (!actor.active || actor.scene_reference != current_scene) {
+            continue;
+        }
+        if (active_index == active_actor_index) {
+            actor.world_position = SceneRunnerPosition{x, y};
+            actor.movement_state.position_x = x;
+            actor.movement_state.position_y = y;
+            actor.movement_state_initialized = true;
+            return true;
+        }
+        ++active_index;
+    }
+    return false;
+}
+
+std::size_t FieldSceneRuntime::resolve_and_spawn_field_encounter_for_dump(
+    const std::uint8_t first_roll, const std::uint8_t second_roll,
+    const std::uint16_t random_seed) {
+    if (!ready_) {
+        failure_ = "field encounter QA requested before field bootstrap";
+        return 0U;
+    }
+    const auto scene_reference =
+        state_.field_scene_buffers.scene_reference;
+    field_random_seed_ = random_seed;
+    auto outcome = game_scripts_.resolve_field_encounter(
+        scene_reference, first_roll, second_roll);
+    if (!outcome.has_value()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.random_encounter.qa_selector_unresolved");
+        return 0U;
+    }
+    if (outcome->kind != scripting::ScriptFieldEncounterOutcomeKind::
+                             dynamic_world_effect_sequence) {
+        failure_ = "field encounter QA selector did not resolve an actor sequence";
+        source_boundary("field.random_encounter.qa_outcome_not_actor_sequence");
+        return 0U;
+    }
+
+    const auto count_before = default_actor_count_for_dump();
+    pending_field_encounter_outcome_ = std::move(*outcome);
+    // This diagnostic entry point injects the already-resolved Lua selector
+    // rolls. The 0x1E166 chance gate and 0x59986 frame eligibility remain
+    // exercised by the live field loop, not by this focused spawn QA.
+    spawn_field_world_effect_sequence();
+    const auto count_after = default_actor_count_for_dump();
+    return count_after >= count_before ? count_after - count_before : 0U;
+}
+
 std::size_t
 FieldSceneRuntime::default_actor_transition_started_count_for_dump() const
     noexcept {
@@ -12071,6 +12432,23 @@ FieldSceneRuntime::default_actor_animation_frame_for_dump(
                      actor->animation_frame};
 }
 
+std::optional<std::string>
+FieldSceneRuntime::default_actor_animation_id_for_dump(
+    const std::uint16_t source_order) const {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+               ? std::nullopt
+               : std::optional<std::string>{actor->animation_id};
+}
+
 std::optional<FieldWorldActorSlot>
 FieldSceneRuntime::default_actor_record_slot_for_dump(
     const std::uint16_t source_order) const noexcept {
@@ -12122,6 +12500,74 @@ FieldSceneRuntime::default_actor_ai_package_for_dump(
                    actor->ai_package_id.empty()
                ? std::nullopt
                : std::optional<std::string>{actor->ai_package_id};
+}
+
+std::optional<std::string>
+FieldSceneRuntime::default_actor_ai_target_id_for_dump(
+    const std::uint16_t source_order) const {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end() || actor->ai_target_id.empty()
+               ? std::nullopt
+               : std::optional<std::string>{actor->ai_target_id};
+}
+
+std::optional<bool>
+FieldSceneRuntime::default_actor_transition_complete_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+               ? std::nullopt
+               : std::optional<bool>{actor->transition_complete};
+}
+
+std::optional<bool>
+FieldSceneRuntime::default_actor_has_ai_target_pool_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+               ? std::nullopt
+               : std::optional<bool>{actor->ai_target_valid};
+}
+
+std::optional<std::uint16_t>
+FieldSceneRuntime::default_actor_ai_target_distance_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end() || actor->ai_target_id.empty()
+               ? std::nullopt
+               : std::optional<std::uint16_t>{actor->ai_target_distance};
 }
 
 std::optional<std::uint8_t>

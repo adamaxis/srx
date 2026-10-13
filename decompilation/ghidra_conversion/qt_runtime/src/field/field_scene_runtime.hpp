@@ -111,6 +111,16 @@ enum class GroupItemFlag : std::uint8_t {
     landmark_map = 7,
 };
 
+struct FieldTargetMarkerDebugState {
+    bool visible = false;
+    bool animating = false;
+    std::uint8_t style = 0;
+    std::uint8_t radius = 0;
+    std::uint16_t entity_kind = 0;
+    std::uint16_t projected_x = 0;
+    std::uint16_t projected_y = 0;
+};
+
 constexpr std::uint32_t field_flag_mask(
     const FieldWorldFactFlag flag) noexcept {
     return std::uint32_t{1U} << static_cast<std::uint8_t>(flag);
@@ -216,18 +226,40 @@ public:
     void paint_field_scene_for_dump(QPainter& painter) const;
     std::size_t default_actor_count_for_dump() const noexcept;
     std::size_t visible_default_actor_count_for_dump() const;
+    std::vector<SceneRunnerPosition>
+    active_default_actor_positions_for_dump() const;
+    std::optional<std::string>
+    selected_default_actor_id_for_dump() const;
+    std::optional<FieldTargetMarkerDebugState>
+    selected_default_actor_target_marker_for_dump() const noexcept;
+    // Resolves injected selector rolls through Lua, then exercises the same
+    // ROM-list validation, placement, Lua initialization, and renderer state
+    // used by an eligible live random-encounter pass.
+    std::size_t resolve_and_spawn_field_encounter_for_dump(
+        std::uint8_t first_roll, std::uint8_t second_roll,
+        std::uint16_t random_seed);
     std::size_t default_actor_transition_started_count_for_dump() const noexcept;
     std::size_t default_actor_transition_complete_count_for_dump() const noexcept;
     std::optional<std::uint8_t> default_actor_direction_for_dump(
         std::uint16_t source_order) const noexcept;
     std::optional<std::uint8_t> default_actor_animation_frame_for_dump(
         std::uint16_t source_order) const noexcept;
+    std::optional<std::string> default_actor_animation_id_for_dump(
+        std::uint16_t source_order) const;
     std::optional<FieldWorldActorSlot> default_actor_record_slot_for_dump(
         std::uint16_t source_order) const noexcept;
     std::optional<std::string> default_actor_script_profile_for_dump(
         std::uint16_t source_order) const;
     std::optional<std::string> default_actor_ai_package_for_dump(
         std::uint16_t source_order) const;
+    std::optional<std::string> default_actor_ai_target_id_for_dump(
+        std::uint16_t source_order) const;
+    std::optional<bool> default_actor_transition_complete_for_dump(
+        std::uint16_t source_order) const noexcept;
+    std::optional<bool> default_actor_has_ai_target_pool_for_dump(
+        std::uint16_t source_order) const noexcept;
+    std::optional<std::uint16_t> default_actor_ai_target_distance_for_dump(
+        std::uint16_t source_order) const noexcept;
     std::optional<std::uint8_t> default_actor_weapon_item_for_dump(
         std::uint16_t source_order) const noexcept;
     bool open_command_overview_for_dump();
@@ -839,6 +871,9 @@ public:
         field_entity_.projection.world_y = y;
         field_entity_.visible = true;
     }
+    bool set_default_actor_world_position_for_dump(
+        std::size_t active_actor_index, std::uint16_t x,
+        std::uint16_t y) noexcept;
     bool field_entity_visible_for_dump() const noexcept {
         return field_entity_.visible;
     }
@@ -1113,6 +1148,7 @@ private:
         SceneRunnerPosition world_position{};
         std::uint16_t initial_heading = 0;
         std::uint8_t palette_line = 0;
+        std::uint8_t physical_meter = 0;
         std::string sprite_stem;
         std::uint32_t template_offset = 0;
         std::uint32_t position_offset = 0;
@@ -1125,9 +1161,14 @@ private:
         std::optional<std::uint8_t> effect_slot;
         bool temporary_world_encounter = false;
         bool target_selected = false;
+        bool target_marker_visible = false;
+        bool target_marker_animating = false;
+        std::uint8_t target_marker_style = 0;
+        std::uint8_t target_marker_radius = 0;
         bool ai_target_valid = false;
         std::uint16_t ai_target_heading = 0;
         std::uint16_t ai_target_distance = 0;
+        std::string ai_target_id;
         EntityMovementStepState movement_state{};
         EntityCollisionRecord movement_collision_record{};
         std::array<std::uint8_t, 4> movement_sample_state{};
@@ -1136,6 +1177,7 @@ private:
         std::string ordered_overrides;
         std::uint8_t initial_behavior_delay = 0;
         std::uint8_t entry_animation_frame_count = 2;
+        std::uint8_t walk_animation_frame_count = 0;
         std::uint8_t animation_direction = 0;
         std::string animation_id = "idle";
         std::uint8_t animation_frame = 0;
@@ -1152,6 +1194,10 @@ private:
         std::array<std::array<QImage, 8>, 8> entry_images{};
         std::array<std::array<int, 8>, 8> entry_origin_x{};
         std::array<std::array<int, 8>, 8> entry_origin_y{};
+        std::array<std::vector<QImage>, 8> walk_images{};
+        std::array<std::vector<int>, 8> walk_origin_x{};
+        std::array<std::vector<int>, 8> walk_origin_y{};
+        std::uint8_t walk_frame_count = 0;
         std::uint8_t entry_frame_count = 2;
     };
 
@@ -1374,6 +1420,8 @@ private:
     std::array<DefaultActorArtwork, 2> field_default_actor_artwork_{};
     std::unordered_map<std::string, DefaultActorArtwork>
         field_dynamic_actor_artwork_;
+    std::vector<std::array<QImage, 4>>
+        field_target_marker_images_by_scene_;
     std::vector<DefaultFieldActorPresentation> field_default_actors_;
     std::array<bool, 18> field_world_effect_slots_occupied_{};
     EntityServiceTargetOwner field_entity_target_owner_{};
@@ -1388,7 +1436,6 @@ private:
     // ROM 0x15A8C scans the six combat slots 9..14. These slots are separate
     // from the ten auxiliary world-map entries in field_entity_table_.
     std::array<bool, 6> field_weapon_slots_occupied_{};
-    bool field_weapon_collision_targets_pending_reported_ = false;
     EntitySpawnCycleResult last_field_weapon_spawn_result_{};
     // Ordinary accepted movement uses four looping poses from 0xC062. C0B2's
     // eight-entry high-bit list is a separate finite behavior transition.

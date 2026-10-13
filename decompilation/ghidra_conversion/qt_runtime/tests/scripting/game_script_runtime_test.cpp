@@ -254,6 +254,44 @@ int main() {
         return 1;
     }
 
+    const auto redmond_creature_sequence =
+        scripts.resolve_field_encounter(0U, 0U, 0U);
+    const auto barrens_creature_sequence =
+        scripts.resolve_field_encounter(2U, 1U, 1U);
+    const auto lone_star_sequence =
+        scripts.resolve_field_encounter(1U, 1U, 1U);
+    if (!expect(
+            redmond_creature_sequence.has_value() &&
+                redmond_creature_sequence->kind ==
+                    ScriptFieldEncounterOutcomeKind::
+                        dynamic_world_effect_sequence &&
+                redmond_creature_sequence->scene_id == 0U &&
+                redmond_creature_sequence->random_sum == 0U &&
+                redmond_creature_sequence->actors.size() == 2U &&
+                redmond_creature_sequence->actors[0].actor_name ==
+                    "Hell Hound" &&
+                redmond_creature_sequence->actors[0].entity_kind == 12U &&
+                redmond_creature_sequence->actors[0].physical_meter == 32U &&
+                redmond_creature_sequence->actors[1].actor_name == "vampire" &&
+                redmond_creature_sequence->actors[1].entity_kind == 9U &&
+                redmond_creature_sequence->actors[1].physical_meter == 96U &&
+                barrens_creature_sequence.has_value() &&
+                barrens_creature_sequence->actors.size() == 1U &&
+                barrens_creature_sequence->actors[0].actor_name == "weenr1" &&
+                barrens_creature_sequence->actors[0].physical_meter == 32U &&
+                lone_star_sequence.has_value() &&
+                lone_star_sequence->actors.size() == 2U &&
+                lone_star_sequence->actors[0].actor_name == "lone11" &&
+                lone_star_sequence->actors[0].physical_meter == 32U &&
+                lone_star_sequence->actors[1].actor_name == "lonemage" &&
+                lone_star_sequence->actors[1].action_kind ==
+                    ScriptActorActionKind::spell &&
+                lone_star_sequence->actors[1].physical_meter == 64U,
+            "ROM field encounter catalog did not resolve creature and Lone Star sequences")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+
     const auto run_ids =
         scripts.string_list("run_registry", "available_run_ids");
     const std::vector<std::string> expected_run_ids{
@@ -981,6 +1019,73 @@ int main() {
     const auto unsupported_profile = scripts.actor_heartbeat(actor_context(
         "corp_guard_k05_item06", "unsupported_profile", 11U,
         ScriptActorActionKind::item, 6U, 0U, true));
+
+    const auto target_marker_style_for_action =
+        [&scripts, &actor_context](const std::string_view actor_id,
+                   const std::string_view profile_id,
+                   const std::uint16_t entity_kind,
+                   const ScriptActorActionKind action_kind,
+                   const std::uint8_t action_code)
+            -> std::optional<ScriptActorBehaviorDecision> {
+        auto context = actor_context(profile_id, actor_id, entity_kind, action_kind,
+                                     action_code, 0U, true);
+        context.dynamic_world_encounter_actor = true;
+        context.source_record_flags = 0x01U;
+        context.entry_animation_frame_count = 4U;
+        context.walk_animation_frame_count = 4U;
+        if (!scripts.actor_heartbeat(context).has_value()) {
+            std::cerr << "target marker actor spawn failed for " << profile_id
+                      << ": " << scripts.failure() << '\n';
+            return std::nullopt;
+        }
+        context.spawn = false;
+        context.phase = ScriptActorHeartbeatPhase::render;
+        context.target_selection_latched = true;
+        auto decision = scripts.actor_heartbeat(context);
+        if (!decision.has_value()) {
+            std::cerr << "target marker render failed for " << profile_id
+                      << ": " << scripts.failure() << '\n';
+        }
+        return decision;
+    };
+    const auto target_marker_action_0 = target_marker_style_for_action(
+        "target_marker_action_0", "hell_hound_k0c_none00", 12U,
+        ScriptActorActionKind::none, 0U);
+    const auto target_marker_action_3 = target_marker_style_for_action(
+        "target_marker_action_3", "eye5r_2_k07_item04", 7U,
+        ScriptActorActionKind::item, 4U);
+    const auto target_marker_action_6 = target_marker_style_for_action(
+        "target_marker_action_6", "rat_shaman_k0b_spell06", 11U,
+        ScriptActorActionKind::spell, 6U);
+    const auto target_marker_action_9 = target_marker_style_for_action(
+        "target_marker_action_9", "elven_mage_k06_spell09", 6U,
+        ScriptActorActionKind::spell, 9U);
+
+    auto target_marker_animation_context = actor_context(
+        "marker_animation_k06_none00", "target_marker_animation", 6U,
+        ScriptActorActionKind::none, 0U, 0U, true);
+    target_marker_animation_context.dynamic_world_encounter_actor = true;
+    target_marker_animation_context.source_record_flags = 0x01U;
+    target_marker_animation_context.entry_animation_frame_count = 4U;
+    target_marker_animation_context.walk_animation_frame_count = 4U;
+    const auto target_marker_spawn =
+        scripts.actor_heartbeat(target_marker_animation_context);
+    target_marker_animation_context.spawn = false;
+    target_marker_animation_context.phase =
+        ScriptActorHeartbeatPhase::render;
+    target_marker_animation_context.target_selection_latched = true;
+    const auto target_marker_first =
+        scripts.actor_heartbeat(target_marker_animation_context);
+    std::optional<ScriptActorBehaviorDecision> target_marker_last_animated;
+    for (std::size_t frame = 1U; frame < 9U; ++frame) {
+        target_marker_last_animated =
+            scripts.actor_heartbeat(target_marker_animation_context);
+    }
+    const auto target_marker_static =
+        scripts.actor_heartbeat(target_marker_animation_context);
+    target_marker_animation_context.target_selection_latched = false;
+    const auto target_marker_cleared =
+        scripts.actor_heartbeat(target_marker_animation_context);
     if (!expect(
             guard_wait.has_value() &&
                 guard_wait->package_id ==
@@ -1016,6 +1121,29 @@ int main() {
                     "pedestrian.no_active_action" &&
                 pedestrian_entry->audio_event == 0x002FU &&
                 !pedestrian_entry->weapon_item_id.has_value() &&
+                target_marker_action_0.has_value() &&
+                target_marker_action_0->target_marker_visible &&
+                target_marker_action_0->target_marker_style == 0U &&
+                target_marker_action_0->target_marker_radius == 64U &&
+                target_marker_action_3.has_value() &&
+                target_marker_action_3->target_marker_style == 1U &&
+                target_marker_action_6.has_value() &&
+                target_marker_action_6->target_marker_style == 2U &&
+                target_marker_action_9.has_value() &&
+                target_marker_action_9->target_marker_style == 3U &&
+                target_marker_spawn.has_value() &&
+                target_marker_first.has_value() &&
+                target_marker_first->target_marker_visible &&
+                target_marker_first->target_marker_animating &&
+                target_marker_first->target_marker_radius == 64U &&
+                target_marker_last_animated.has_value() &&
+                target_marker_last_animated->target_marker_animating &&
+                target_marker_last_animated->target_marker_radius == 0U &&
+                target_marker_static.has_value() &&
+                target_marker_static->target_marker_visible &&
+                !target_marker_static->target_marker_animating &&
+                target_marker_cleared.has_value() &&
+                !target_marker_cleared->target_marker_visible &&
                 guard_hold.has_value() &&
                 guard_hold->action ==
                     ScriptActorBehaviorDecision::Action::hold &&
@@ -1390,7 +1518,8 @@ int main() {
         [](const std::uint16_t, const std::uint16_t,
            const std::uint8_t) {
             return ScriptProjectileCollisionSearchResult{
-                true, true, 45U, 77U};
+                true, true, 45U, 77U,
+                std::string{"field_scene_2_encounter_1_actor_0"}};
         };
     const auto hit_projectile_step =
         scripts.actor_heartbeat(hit_projectile_context);
@@ -1399,6 +1528,8 @@ int main() {
                 hit_projectile_step->projectile_movement.has_value() &&
                 hit_projectile_step->projectile_movement->outcome ==
                     ScriptActorProjectileOutcome::hit_resolution_pending &&
+                hit_projectile_step->projectile_movement->state.hit_target_id ==
+                    "field_scene_2_encounter_1_actor_0" &&
                 hit_projectile_step->projectile_movement->state.world_x ==
                     45 * 0x10000 + 123 &&
                 hit_projectile_step->audio_event == 0x003CU,

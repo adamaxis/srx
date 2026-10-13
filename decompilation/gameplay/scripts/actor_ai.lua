@@ -199,6 +199,8 @@ local function dynamic_encounter_profile(context)
         entity_kind = entity_kind,
         action_kind = action_kind,
         action_code = action_code,
+        weapon_item_id = action_kind == ActionKind.item
+            and action_code or nil,
         controls_movement = true,
         dynamic_encounter_only = true,
         entry_audio_event = EntryAudioEventByKind[entity_kind],
@@ -296,6 +298,8 @@ local function initial_state(context, profile)
         animation_frame = 0,
         animation_accumulator = 0,
         animation_increment = 0,
+        animation_timing_word = 0,
+        walk_animation_frame_count = context.walk_animation_frame_count or 0,
         movement_current_heading = profile.controls_movement
             and context.initial_heading or nil,
         movement_active = false,
@@ -303,6 +307,15 @@ local function initial_state(context, profile)
         transition_frame_list_finished = false,
         transition_complete = false,
         combat_action_requested = false,
+        ai_target_id = nil,
+        ai_target_heading = nil,
+        ai_target_distance = nil,
+        target_selection_latched = false,
+        target_marker_visible = false,
+        target_marker_animating = false,
+        target_marker_style = 0,
+        target_marker_radius = 0,
+        target_marker_countdown = 0,
     }
     if profile.projectile_animation then
         local animation = context.projectile_animation
@@ -350,9 +363,73 @@ local function snapshot(state, action, audio_event, projectile_movement)
         animation_increment = state.animation_increment,
         movement_heading = state.movement_heading,
         movement_current_heading = state.movement_current_heading,
+        ai_target_id = state.ai_target_id,
+        ai_target_heading = state.ai_target_heading,
+        ai_target_distance = state.ai_target_distance,
+        target_marker_visible = state.target_marker_visible,
+        target_marker_animating = state.target_marker_animating,
+        target_marker_style = state.target_marker_style,
+        target_marker_radius = state.target_marker_radius,
         movement_step = state.movement_step,
         projectile_movement = projectile_movement,
     }
+end
+
+local function advance_target_marker(state, context)
+    if context.phase ~= "render" then
+        return
+    end
+    if context.target_selection_latched ~= true then
+        state.target_selection_latched = false
+        state.target_marker_visible = false
+        state.target_marker_animating = false
+        state.target_marker_style = 0
+        state.target_marker_radius = 0
+        state.target_marker_countdown = 0
+        return
+    end
+
+    -- ROM 0x5C7E chooses a tile/palette group from the actor's +0x4C action
+    -- byte. The alternate +0x9C path depends on mode/runner flags which are
+    -- not present on these world-encounter records yet.
+    local action_code = context.action_code or 0
+    if action_code >= 9 then
+        state.target_marker_style = 3
+    elseif action_code >= 6 then
+        state.target_marker_style = 2
+    elseif action_code >= 3 then
+        state.target_marker_style = 1
+    else
+        state.target_marker_style = 0
+    end
+
+    if not state.target_selection_latched then
+        -- ROM 0x1DC4C seeds +0xA6 with -0x7FF7. The render pass then calls
+        -- 0x5C7E, which decrements that signed word before placing its four
+        -- corner sprites at an 8-pixel-per-step shrinking radius.
+        state.target_marker_countdown = -0x7ff7
+    end
+    state.target_selection_latched = true
+    state.target_marker_visible = true
+
+    local countdown = state.target_marker_countdown or 0
+    if countdown < 0 then
+        local next_word = (countdown - 1) & 0xffff
+        local next_countdown = next_word >= 0x8000
+            and next_word - 0x10000 or next_word
+        if next_countdown < 0 then
+            state.target_marker_countdown = next_countdown
+            state.target_marker_animating = true
+            state.target_marker_radius = (next_word & 0x7f) * 8
+        else
+            state.target_marker_countdown = 0
+            state.target_marker_animating = false
+            state.target_marker_radius = 0
+        end
+    else
+        state.target_marker_animating = false
+        state.target_marker_radius = 0
+    end
 end
 
 local function advance_projectile_animation(state, context)
@@ -540,13 +617,18 @@ local function projectile_movement_snapshot(context)
 
         result.world_x = probe_x
         result.world_y = probe_y
-        local source_carry, source_position_updated, source_x, source_y =
+        local source_carry, source_position_updated, source_x, source_y,
+              hit_target_id =
             game.movement.projectile_collision(
                 integer_world_word(probe_x), integer_world_word(probe_y),
                 result.flags)
         if type(source_carry) ~= "boolean" or
            type(source_position_updated) ~= "boolean" or
            type(source_x) ~= "number" or type(source_y) ~= "number" then
+            return nil
+        end
+        if hit_target_id ~= nil and
+           (type(hit_target_id) ~= "string" or hit_target_id == "") then
             return nil
         end
         if source_carry then
@@ -571,6 +653,7 @@ local function projectile_movement_snapshot(context)
                     (probe_y & 0xffff))
                 result.outcome =
                     projectile.outcome.hit_resolution_pending
+                result.hit_target_id = hit_target_id
                 audio_event = projectile.impact_sound_event
             else
                 result.outcome =
@@ -623,6 +706,58 @@ local function advance_entry_animation(state)
     end
 end
 
+local function advance_dynamic_actor_walk_animation(state, context)
+    local frame_count = context.walk_animation_frame_count
+    if type(frame_count) ~= "number" or frame_count == 0 then
+        frame_count = state.walk_animation_frame_count
+    end
+    if type(frame_count) ~= "number" or frame_count < 1 or frame_count > 16 then
+        return false
+    end
+
+    -- ROM 0x600E uses a special kind-0xD cadence. Other kinds derive +0x18
+    -- from the selected movement vector's +0xCA timing word; 0x5FDC then advances +0x1E on
+    -- the signed 0x1000-period comparison. The positive C062 list wraps at
+    -- its source marker after the render heartbeat.
+    local increment
+    if state.entity_kind == EntityKind.gargoyle then
+        increment = state.animation_frame == 2 and 0x0090 or 0x0180
+    else
+        local timing_word = state.animation_timing_word
+        if type(timing_word) ~= "number" or timing_word < 0 or
+           timing_word > 0xffff then
+            return false
+        end
+        increment = timing_word < 0x16 and timing_word * 0x1c
+            or timing_word * 0x10
+    end
+    increment = increment & 0xffff
+    state.animation_increment = increment
+    state.animation_period = 0x1000
+    state.animation_selector = 0x20 + state.direction * 4
+
+    local accumulated_word =
+        (state.animation_accumulator + increment) & 0xffff
+    local accumulated_signed = accumulated_word
+    if accumulated_word >= 0x8000 then
+        accumulated_signed = accumulated_word - 0x10000
+    end
+    if state.animation_period <= accumulated_signed then
+        state.animation_frame = (state.animation_frame + 1) & 0xffff
+        state.animation_accumulator =
+            (accumulated_word - state.animation_period) & 0xffff
+        if state.animation_accumulator >= 0x8000 then
+            state.animation_accumulator = state.animation_accumulator - 0x10000
+        end
+    else
+        state.animation_accumulator = accumulated_signed
+    end
+    if frame_count <= state.animation_frame then
+        state.animation_frame = 0
+    end
+    return true
+end
+
 local function advance_player_animation(state, context)
     if type(context.animation_accumulator_override) == "number" then
         state.animation_accumulator =
@@ -666,11 +801,12 @@ local function requested_movement_heading(context, profile, state)
         local target = linked_target(context, state)
         local heading = target and target.heading or nil
         local distance = target and target.distance or nil
-        if type(distance) == "number" then
-            -- 0x145F2 stores the linked destination distance at +0xC8. The
-            -- current target geometry is the native fact used to refresh it.
-            state.ai_target_distance = distance
-        end
+        -- Keep the selected source actor relation explicit in Lua state.
+        -- The host may render and inspect this snapshot but does not choose
+        -- the target or apply the creature's movement policy.
+        state.ai_target_id = target and target.id or nil
+        state.ai_target_heading = heading
+        state.ai_target_distance = distance
         if context.movement_allowed and type(heading) == "number" and
            type(distance) == "number" then
             -- ROM 0x14C7C: kind 0xC turns/approaches inside 0x600 units;
@@ -789,6 +925,9 @@ local function creature_movement_offsets(context, state)
             step = 18
         end
     end
+
+    -- ROM 0xBADE copies the selected vector table's +4 word to actor +0xCA.
+    state.animation_timing_word = step
 
     -- The ROM tables at 0xBD72..0xBFE2 contain these eight signed X/Y
     -- displacements. Expand their selected speed into ordinary Lua vectors;
@@ -1073,6 +1212,7 @@ function ActorAI.heartbeat(context)
                 advance_player_animation(state, context)
             end
         end
+        advance_target_marker(state, context)
         return snapshot(state, "hold", nil)
     end
     if not same_actor(state, context) then
@@ -1081,6 +1221,7 @@ function ActorAI.heartbeat(context)
     if profile.projectile_animation then
         return projectile_heartbeat(state, context)
     end
+    advance_target_marker(state, context)
 
     local action = "hold"
     local audio_event
@@ -1103,6 +1244,10 @@ function ActorAI.heartbeat(context)
                 if state.transition_started and
                    not state.transition_complete then
                     advance_entry_animation(state)
+                elseif state.animation_id == "walk" then
+                    if not advance_dynamic_actor_walk_animation(state, context) then
+                        return nil
+                    end
                 else
                     state.direction = direction_from_heading(
                         state.movement_current_heading or
