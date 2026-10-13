@@ -111,11 +111,15 @@ re-target delay is nonzero. The four finite bounds at `0x13E7C` are
 `0x0500..0x0640`, `0x05A0..0x0780`, `0x0640..0x08C0`, and
 `0x08C0..0x0C80`. A distance in a selected band clears the delay and builds a
 lateral destination at heading `+0x4000` and twice the target distance; a
-range at or beyond the upper bound uses the linked position. The Lua snapshot
-consumes the six-pass delay loaded when the runner-pool link changes, with the
-first decrement on that service pass. C++ measures direct and lateral route
-step costs from typed world positions; Lua applies the source `0x01E0`
-close-route gate. The 50 item templates now expose their source byte, including
+range at or beyond the upper bound uses the linked position. The `+0xB5`
+delay is six route updates, not six actor-service passes: `0x13904` reaches
+`0x13D0C` every 21 passes, and the first delay decrement occurs in the update
+that links the runner. C++ measures direct and lateral route step costs and
+destination distances from typed world positions. Lua applies the source
+`0x01E0` close-route gate, and carries the chosen destination distance into
+`+0xC8` so `0xB574` selects the matching displacement table. Each `+0x3A`
+continuation pass slews the current heading toward the stored route heading in
+`0x0800` steps. The 50 item templates now expose their source byte, including
 Bear Totem item 43's profile 2. Spell entries whose selector is `0xFF` remain
 outside the four finite profiles.
 
@@ -127,16 +131,18 @@ the opposite. That made a positive-X target resolve to heading `0x8000` instead
 of the ROM's `0x4000`, sending the actor along a different cardinal vector.
 The condition now follows the ROM, and the registered movement-metric CTest
 checks all eight compass headings against the extracted direction basis. The
-Scene 2 trace now turns through the runner's area rather than continuing away;
-both natural-spawn actors are still outside the viewport at 480 service frames,
-so this does not yet defend their full approach or arrival behavior.
+Scene 2 trace now follows the slower source route cadence and turns its
+heading over multiple service passes. At 1,200 passes both natural-spawn actors
+remain outside the viewport; their long path is not yet corroborated by an
+independent Genesis capture, so approach and arrival behavior remain open.
 
 This is still partial: action kind/code are currently the actor's selected
 Lua profile values, the `+0x10.3` entity-distance table path using record
 `+0x4D` is not connected to runtime records, and attacks/hit outcomes are not
 implemented. Debug and Release script-runtime, encounter, and Hound-effect
-QA pass; the 11 Scene 2 and 8 Hound full-frame captures match byte for byte
-across those builds. The Hound comparison checks the HUD but does not treat
+QA pass; the 12 Scene 2 and 8 Hound full-frame captures match byte for byte
+across those builds. The Scene 2 review includes the 1,200-pass frame, where
+the creatures remain outside the viewport. The Hound comparison checks the HUD but does not treat
 the animating full frame as a static golden or claim a specific map-object
 depth order for this effect. These are internal port checks, not independent
 Genesis visual proof.
@@ -405,12 +411,15 @@ For every new actor behavior branch:
 `shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa` writes
 `initial.bmp`, `encounter-entry.bmp`, `encounter-after-30.bmp`,
 `encounter-after-180.bmp`, `encounter-after-480.bmp`,
+`encounter-after-1200.bmp`,
 `encounter-visible-qa-fixture.bmp`, `creature-walk-frame-0.bmp`,
 `creature-walk-frame-3.bmp`, `target-selection-b.bmp`,
 `target-selection-b-static.bmp`, and `actual.bmp` under
 `build/conversion/qt/release/qt_runtime/field-random-encounter-spawn-qa/`.
-All 11 full 320x224 frames were reopened. The production edge-spawn set stays
-on the same map/HUD composition and outside the viewport; the controlled
+All 12 full 320x224 frames were reopened. Production edge-spawn frames at
+30, 180, 480, and 1,200 service passes keep the same map/HUD composition;
+both creatures remain outside the viewport, and their long path still needs
+independent ROM footage to confirm approach behavior. The controlled
 fixture shows the two creatures and distinct walk poses. The marker fixture
 checks the four source tile corners at their projected positions and leaves
 the right-side HUD unchanged. B retains the typed target, and the source path

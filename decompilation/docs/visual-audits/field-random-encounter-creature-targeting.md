@@ -96,19 +96,24 @@ prove a frame-for-frame match with this Scene 2 fixture.
    backgrounds. The independent frames corroborate shape, but not the exact
    Scene 2 palette/action pairing.
 4. **What animates, and when?** Creature movement uses named C062 directional
-   frames on the render heartbeat. The marker shrinks 64, 56, ... 0 on render
+   frames on the render heartbeat. Its route is selected every 21 actor-service
+   passes; the current heading turns toward that route by `0x0800` on each
+   `+0x3A` continuation pass. The marker shrinks 64, 56, ... 0 on render
    passes and stays static while the target latch remains set; clearing the
    latch removes it.
 5. **What sound accompanies it?** B selection makes no ROM sound request. The
    tested entry sequence requests `0x2E`, which resolves to a verified silent
    or no-op resource; no audible duration is claimed.
-6. **Were neighboring areas checked?** All 11 full 320x224 QA frames were
-   opened individually, including production edge-spawn frames, the close
-   fixture, two walk poses, and both selector stages. The full HUD remains
+6. **Were neighboring areas checked?** All 12 full 320x224 QA frames were
+   opened individually, including production edge-spawn frames through 1,200
+   actor-service passes, the close fixture, two walk poses, and both selector
+   stages. The full HUD remains
    unchanged. Debug counterparts match the reviewed Release frames by SHA-256.
+   Both natural-spawn creatures remain outside the viewport in the long trace,
+   so this capture does not verify their approach or attack behavior.
    The shrinking frame intentionally has widely separated corners; the settled
    frame has the compact selector around the target.
-7. **Are there multiple frames?** Yes: 0, 30, 180, and 480 service frames,
+7. **Are there multiple frames?** Yes: 0, 30, 180, 480, and 1,200 service frames,
    two walk poses, selector shrink and settled frames, plus independent
    section-06 longplay frames 2190, 2220, 2430, and 2460.
 8. **Are new UI elements covering stale ones?** The selector adds only the

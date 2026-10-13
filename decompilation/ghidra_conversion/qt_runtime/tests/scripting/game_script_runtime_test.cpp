@@ -1338,7 +1338,8 @@ int main() {
                     "party.runner.0", 0x1800U, 0x1800U, 0x2000U,
                     target_distance, 0x01U, 0U, 0U, 0U, true, false,
                     0x2000U, target_distance, direct_step_cost,
-                    perpendicular_step_cost});
+                    perpendicular_step_cost, target_distance,
+                    static_cast<std::uint16_t>(target_distance * 2U)});
             context.ai_random_bound =
                 [](const std::uint16_t bound)
                     -> std::optional<std::uint16_t> {
@@ -1360,7 +1361,7 @@ int main() {
                 }
             }
             context.phase = ScriptActorHeartbeatPhase::behavior;
-            for (std::uint16_t pass = 0U; pass < 100U; ++pass) {
+            for (std::uint16_t pass = 0U; pass < 220U; ++pass) {
                 const auto decision = scripts.actor_heartbeat(context);
                 if (!decision.has_value()) {
                     trace.clear();
@@ -1427,6 +1428,20 @@ int main() {
                    decision.ai_target_id.has_value() &&
                    !decision.movement_heading.has_value();
         });
+    bool item_one_heading_slews_between_route_updates = false;
+    for (std::size_t index = 0U; index + 1U < item_one_motion.size(); ++index) {
+        const auto& first = item_one_motion[index];
+        const auto& second = item_one_motion[index + 1U];
+        if (first.movement_heading == 0x2000U &&
+            first.movement_current_heading == 0x0800U &&
+            first.movement_route_distance == 0x0700U &&
+            second.movement_heading == 0x2000U &&
+            second.movement_current_heading == 0x1000U &&
+            second.target_motion_delay == first.target_motion_delay) {
+            item_one_heading_slews_between_route_updates = true;
+            break;
+        }
+    }
     constexpr char kHexDigits[] = "0123456789abcdef";
     bool spell_motion_catalog_matches = true;
     const auto& source_spell_catalog = us_magic_spell_catalog();
@@ -1469,13 +1484,15 @@ int main() {
                 item_one_initial->target_motion_delay == 5U &&
                 item_one_expired != nullptr &&
                 item_one_expired->movement_heading == 0x6000U &&
+                item_one_expired->movement_route_distance == 0x0E00U &&
+                item_one_heading_slews_between_route_updates &&
                 bear_totem_initial != nullptr &&
                 bear_totem_initial->movement_heading == 0x6000U &&
                 mage_spell_unresolved != mage_spell_motion.end() &&
                 mage_spell_after_delay != nullptr &&
                 mage_spell_after_delay->movement_heading == 0x6000U &&
                 close_route_stopped && spell_motion_catalog_matches,
-            "Lua actor motion did not honor item/spell profiles, all D4EA0 +0x27 rows, unresolved spell rows, six source passes, or the 0x1E0 route metric")) {
+            "Lua actor motion did not honor item/spell profiles, all D4EA0 +0x27 rows, unresolved spell rows, six 21-pass route updates, B574 heading slew/destination distance, or the 0x1E0 route metric")) {
         const auto print_motion_trace = [](const char* label,
                                            const auto& trace) {
             std::cerr << label << " samples=" << trace.size();

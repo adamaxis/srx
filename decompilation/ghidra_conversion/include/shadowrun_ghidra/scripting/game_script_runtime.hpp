@@ -426,6 +426,10 @@ struct ScriptActorTargetCandidate {
     // endpoint and applies the 0x1E0 close-range rule.
     std::uint16_t direct_route_step_cost = 0;
     std::uint16_t perpendicular_route_step_cost = 0;
+    // ROM 0x145A2 stores the chosen destination's measured distance at +0xC8;
+    // 0xB574 uses it to select the actor's per-pass displacement table.
+    std::uint16_t direct_route_distance = 0;
+    std::uint16_t perpendicular_route_distance = 0;
     std::optional<std::uint8_t> source_record_slot;
     std::uint8_t descriptor_class = 0;
 };
@@ -533,6 +537,7 @@ struct ScriptActorBehaviorDecision {
     std::optional<std::uint8_t> weapon_item_id;
     std::optional<std::uint16_t> movement_heading;
     std::optional<std::uint16_t> movement_current_heading;
+    std::optional<std::uint16_t> movement_route_distance;
     std::optional<std::string> ai_target_id;
     std::optional<std::uint16_t> ai_target_heading;
     std::optional<std::uint16_t> ai_target_distance;

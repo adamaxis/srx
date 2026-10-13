@@ -3058,7 +3058,7 @@ GameScriptRuntime::actor_heartbeat(
         lua_createtable(state, static_cast<int>(candidates.size()), 0);
         for (std::size_t index = 0; index < candidates.size(); ++index) {
             const auto& candidate = candidates[index];
-            lua_createtable(state, 0, 17);
+            lua_createtable(state, 0, 19);
             lua_pushlstring(state, candidate.id.data(), candidate.id.size());
             lua_setfield(state, -2, "id");
             lua_pushinteger(state, candidate.world_x);
@@ -3090,6 +3090,10 @@ GameScriptRuntime::actor_heartbeat(
             lua_pushinteger(state,
                             candidate.perpendicular_route_step_cost);
             lua_setfield(state, -2, "perpendicular_route_step_cost");
+            lua_pushinteger(state, candidate.direct_route_distance);
+            lua_setfield(state, -2, "direct_route_distance");
+            lua_pushinteger(state, candidate.perpendicular_route_distance);
+            lua_setfield(state, -2, "perpendicular_route_distance");
             if (candidate.source_record_slot.has_value()) {
                 lua_pushinteger(state, *candidate.source_record_slot);
             } else {
@@ -3616,6 +3620,22 @@ GameScriptRuntime::actor_heartbeat(
         decision.movement_heading = static_cast<std::uint16_t>(heading);
     }
     lua_pop(state, 1);
+    std::optional<std::uint32_t> movement_route_distance;
+    if (!read_optional_field_u32(state, decision_table,
+                                 "movement_route_distance", 0xFFFFU,
+                                 movement_route_distance)) {
+        return fail(
+            "actor_ai.heartbeat returned an invalid movement route distance");
+    }
+    if (movement_route_distance.has_value()) {
+        if (!context.dynamic_world_encounter_actor ||
+            !decision.movement_heading.has_value()) {
+            return fail(
+                "actor_ai.heartbeat returned route distance without a dynamic route");
+        }
+        decision.movement_route_distance = static_cast<std::uint16_t>(
+            *movement_route_distance);
+    }
     lua_getfield(state, decision_table, "movement_step");
     if (lua_type(state, -1) != LUA_TNIL) {
         if (!lua_istable(state, -1) ||

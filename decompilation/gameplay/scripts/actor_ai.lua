@@ -80,7 +80,7 @@ local EntityMotionDistanceBounds = {
     { lower = 0x01e0, upper = 0x03c0 },
     { lower = 0x01e0, upper = 0x03c0 },
 }
-local target_motion_reacquire_passes = 6
+local target_motion_reacquire_updates = 6
 local source_close_range_threshold = 0x01e0
 local ItemAction = {
     max_power_heavy_pistol = 6,
@@ -302,8 +302,8 @@ local function linked_target(context, state)
     if not world_actor_pool and retained.id ~= previous_target_id then
         -- ROM 0x144E0 sets +0xB5 to six only when a new target is linked
         -- from the three-runner pool. 0x13D0C consumes one on this same
-        -- actor-service pass, then one on each later actor-service pass.
-        state.target_motion_delay = target_motion_reacquire_passes
+        -- 21-pass AI refresh, then one on each later route update.
+        state.target_motion_delay = target_motion_reacquire_updates
     end
     return retained
 end
@@ -351,7 +351,7 @@ local function source_motion_bounds(context, state)
     if type(profile) ~= "number" or profile % 1 ~= 0 or
        profile < 0 or profile >= #ActionMotionDistanceBounds then
         -- The source indexes the selected row while +0xB5 is active. An
-        -- unknown or 0xFF row remains unresolved for this service pass.
+        -- unknown or 0xFF row remains unresolved for this route update.
         return nil, false
     end
     return ActionMotionDistanceBounds[profile + 1], true
@@ -361,6 +361,8 @@ local function source_motion_destination_heading(context, state, target)
     if type(target) ~= "table" or not context.movement_allowed or
        type(target.heading) ~= "number" or
        type(target.distance) ~= "number" or
+       type(target.direct_route_distance) ~= "number" or
+       type(target.perpendicular_route_distance) ~= "number" or
        type(target.direct_route_step_cost) ~= "number" or
        type(target.perpendicular_route_step_cost) ~= "number" then
         return nil
@@ -374,6 +376,7 @@ local function source_motion_destination_heading(context, state, target)
     local distance = target.distance & 0xffff
     local destination_heading = (heading + 0x4000) & 0xffff
     local destination_step_cost = target.perpendicular_route_step_cost
+    local destination_distance = target.perpendicular_route_distance & 0xffff
 
     if bounds ~= nil then
         if distance >= bounds.lower and distance < bounds.upper then
@@ -384,6 +387,7 @@ local function source_motion_destination_heading(context, state, target)
             -- position and routes directly toward it.
             destination_heading = heading
             destination_step_cost = target.direct_route_step_cost
+            destination_distance = target.direct_route_distance & 0xffff
         end
     end
 
@@ -391,8 +395,10 @@ local function source_motion_destination_heading(context, state, target)
     -- from the acting record to the chosen destination is below 0x1E0.
     if destination_step_cost < source_close_range_threshold then
         state.movement_active = false
+        state.movement_route_distance = nil
         return nil
     end
+    state.movement_route_distance = destination_distance
     return destination_heading
 end
 
@@ -435,6 +441,7 @@ local function initial_state(context, profile)
         walk_animation_frame_count = context.walk_animation_frame_count or 0,
         movement_current_heading = profile.controls_movement
             and context.initial_heading or nil,
+        movement_route_distance = nil,
         movement_active = false,
         transition_started = false,
         transition_frame_list_finished = false,
@@ -511,6 +518,7 @@ local function snapshot(state, action, audio_event, projectile_movement)
         animation_increment = state.animation_increment,
         movement_heading = state.movement_heading,
         movement_current_heading = state.movement_current_heading,
+        movement_route_distance = state.movement_route_distance,
         ai_target_id = state.ai_target_id,
         ai_target_heading = state.ai_target_heading,
         ai_target_distance = state.ai_target_distance,
@@ -1181,9 +1189,8 @@ local function requested_movement_heading(context, profile, state)
                 end
             end
         end
-        -- ROM 0x13D0C services that destination every actor pass. Its route
-        -- result is applied separately below; the periodic heading/AI refresh
-        -- above must not replace that per-pass motion service.
+        -- ROM 0x13D0C selects a destination on the +0xB6 timer. Its route is
+        -- then followed by the actor's +0x3A continuation each service pass.
         return nil
     end
     if not profile.controls_movement or not context.movement_allowed then
@@ -1230,7 +1237,7 @@ local function creature_movement_offsets(context, state)
         -- that frame selects the 36-unit creature step list.
         step = context.ai_animation_frame == 2 and 36 or 0
     else
-        local distance = state.ai_target_distance
+        local distance = state.movement_route_distance
         if type(distance) ~= "number" then
             return context.movement_offsets
         end
@@ -1623,41 +1630,30 @@ function ActorAI.heartbeat(context)
                     if state.behavior_timer > 0 then
                         state.behavior_timer = state.behavior_timer - 1
                     else
-                        -- ROM 0x13904 decrements +0xB6 on each actor-service
-                        -- pass and refreshes its target policy every 21 passes.
+                        -- ROM 0x13904 decrements +0xB6 on every actor-service
+                        -- pass, then refreshes target and route policy every
+                        -- 21 passes. The +0x3A continuation moves each pass.
                         state.behavior_timer = 0x14
-                        local heading = requested_movement_heading(
-                            context, profile, state)
-                        if heading ~= nil then
-                            state.movement_heading = heading
-                            -- The creature branches in 0x14C7C publish their
-                            -- chosen +0x2E heading directly when accepted.
-                            state.movement_current_heading = heading
-                            state.movement_active = true
+                        requested_movement_heading(context, profile, state)
+                        local target = retained_linked_target(context, state)
+                        local route_heading =
+                            source_motion_destination_heading(
+                                context, state, target)
+                        state.movement_heading = route_heading
+                        state.movement_active = route_heading ~= nil
+                        if not state.movement_active then
+                            state.movement_route_distance = nil
                         end
                     end
 
-                    -- ROM 0x13D0C runs on every actor-service pass, while the
-                    -- linked target and creature-specific policy refresh at
-                    -- their slower source cadence. +0xB5 is consumed here on
-                    -- each pass and the finite action profile selects direct
-                    -- versus perpendicular destination geometry.
-                    local target = retained_linked_target(context, state)
-                    local route_heading = source_motion_destination_heading(
-                        context, state, target)
-                    state.movement_heading = route_heading
-                    if route_heading ~= nil then
-                        state.movement_current_heading = route_heading
-                        state.movement_active = true
-                    else
-                        state.movement_active = false
-                    end
-
                     -- 0xA8EA invokes the actor's +0x3A continuation every
-                    -- service pass. Once 0x13904 has selected a route,
-                    -- 0xB574 advances movement on each pass; it is not gated
-                    -- by the 21-pass AI target refresh above.
+                    -- service pass. 0xB574 slews +0x2E toward the stored
+                    -- +0x34 heading by 0x0800 and advances using +0xC8, which
+                    -- 0x145A2 measured to the selected route destination.
                     if state.transition_complete and state.movement_active then
+                        state.movement_current_heading = approach_heading(
+                            state.movement_current_heading,
+                            state.movement_heading)
                         state.movement_step = finish_entity_movement(
                             context,
                             advance_entity_movement(context, state))

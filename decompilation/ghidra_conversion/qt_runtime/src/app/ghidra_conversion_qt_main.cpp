@@ -7276,7 +7276,18 @@ int run_field_random_encounter_spawn_qa(
     const auto after_source_service = render();
     const auto visible_after_480 =
         field_scene.visible_default_actor_count_for_dump();
+    const auto actor_count_after_480 =
+        field_scene.default_actor_count_for_dump();
     const auto actor_positions =
+        field_scene.active_default_actor_positions_for_dump();
+    const bool after_1200_saved =
+        advance_and_capture(720U, "encounter-after-1200");
+    const auto after_long_source_service = render();
+    const auto visible_after_1200 =
+        field_scene.visible_default_actor_count_for_dump();
+    const auto actors_after_1200 =
+        field_scene.default_actor_count_for_dump();
+    const auto actor_positions_after_1200 =
         field_scene.active_default_actor_positions_for_dump();
     std::array<std::optional<std::string>, 2> edge_target_ids{};
     std::array<std::optional<std::uint16_t>, 2> edge_target_distances{};
@@ -7309,8 +7320,8 @@ int run_field_random_encounter_spawn_qa(
         positions_changed(edge_positions_after_180, actor_positions);
     const std::vector<std::uint16_t> expected_entry_audio{0x2EU, 0x2EU};
     if (!after_30_saved || !after_180_saved || !after_480_saved ||
-        !actual_saved ||
-        field_scene.default_actor_count_for_dump() != actors_after ||
+        !after_1200_saved || !actual_saved ||
+        actor_count_after_480 != actors_after ||
         actor_positions.size() != 2U ||
         !natural_edge_ai_moved ||
         field_audio_events.size() < audio_start +
@@ -7318,7 +7329,8 @@ int run_field_random_encounter_spawn_qa(
         !std::equal(expected_entry_audio.begin(), expected_entry_audio.end(),
                     field_audio_events.begin() +
                         static_cast<std::ptrdiff_t>(audio_start)) ||
-        !field_hud_chrome_survives(after_source_service, asset_root)) {
+        !field_hud_chrome_survives(after_source_service, asset_root) ||
+        !field_hud_chrome_survives(after_long_source_service, asset_root)) {
         std::cerr << "field random-encounter QA: actor service or entry cues diverged"
                   << " actors=" << field_scene.default_actor_count_for_dump()
                   << " audio=";
@@ -7329,16 +7341,23 @@ int run_field_random_encounter_spawn_qa(
         }
         std::cerr << " visible=" << visible_before << ","
                   << visible_after_30 << "," << visible_after_180 << ","
-                  << visible_after_480
+                  << visible_after_480 << "," << visible_after_1200
                   << " edge_ai_moved=" << natural_edge_ai_moved;
         if (edge_positions_at_entry.size() == 2U &&
-            actor_positions.size() == 2U) {
+            actor_positions.size() == 2U &&
+            actor_positions_after_1200.size() <= 2U) {
             for (std::size_t index = 0U; index < 2U; ++index) {
                 std::cerr << " actor" << index << "={"
                           << edge_positions_at_entry[index].x << ','
                           << edge_positions_at_entry[index].y << "->"
                           << actor_positions[index].x << ','
-                          << actor_positions[index].y << '}';
+                          << actor_positions[index].y;
+                if (index < actor_positions_after_1200.size()) {
+                    std::cerr << "->"
+                              << actor_positions_after_1200[index].x << ','
+                              << actor_positions_after_1200[index].y;
+                }
+                std::cerr << '}';
             }
         }
         if (!field_scene.failure().empty()) {
@@ -7611,9 +7630,11 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
     std::cout << "field_random_encounter_spawn_qa=passed scene=2 selector=1+2 actors=2 active="
-              << actors_after << " visible=" << visible_before << ','
+              << actors_after << " long_trace_active=" << actors_after_1200
+              << " visible=" << visible_before << ','
               << visible_after_30 << ',' << visible_after_180 << ','
-              << visible_after_480 << " edge_spawn_path={";
+              << visible_after_480 << ',' << visible_after_1200
+              << " edge_spawn_path={";
     const auto print_positions = [](const char* label,
                                     const auto& positions) {
         std::cout << label << ':';
@@ -7631,6 +7652,8 @@ int run_field_random_encounter_spawn_qa(
     print_positions("180", edge_positions_after_180);
     std::cout << '|';
     print_positions("480", actor_positions);
+    std::cout << '|';
+    print_positions("1200", actor_positions_after_1200);
     for (std::size_t source_order = 0U;
          source_order < edge_target_ids.size(); ++source_order) {
         std::cout << " actor" << source_order << "_target="

@@ -2112,6 +2112,10 @@ void FieldSceneRuntime::advance_default_field_actors() {
                         actor.world_position.x + side_vector.horizontal);
                     const auto side_y = static_cast<std::uint16_t>(
                         actor.world_position.y + side_vector.vertical);
+                    const auto perpendicular_route =
+                        measure_entity_target_heading_and_distance(
+                            actor.world_position.x, actor.world_position.y,
+                            side_x, side_y);
                     const auto direct_route_step_cost = static_cast<std::uint16_t>(
                         compute_record_diagonal_step_cost(
                             actor.world_position.x,
@@ -2142,7 +2146,14 @@ void FieldSceneRuntime::advance_default_field_actors() {
                             static_cast<std::uint16_t>(std::min<std::uint32_t>(
                                 projected_relative.distance, 0xFFFFU)),
                             direct_route_step_cost,
-                            perpendicular_route_step_cost});
+                            perpendicular_route_step_cost,
+                            static_cast<std::uint16_t>(
+                                std::min<std::uint32_t>(relative.distance,
+                                                        0xFFFFU)),
+                            static_cast<std::uint16_t>(
+                                std::min<std::uint32_t>(
+                                    perpendicular_route.distance,
+                                    0xFFFFU))});
                 };
 
             // ROM 0x14492 chooses the three runner records unless the acting
