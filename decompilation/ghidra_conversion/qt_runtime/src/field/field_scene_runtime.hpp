@@ -1211,6 +1211,11 @@ private:
         std::uint16_t action_animation_increment = 0;
         std::uint16_t action_animation_threshold = 0;
         std::uint16_t action_animation_audio_event = 0;
+        std::uint8_t hurt_animation_frame_count = 0;
+        std::uint16_t hurt_animation_increment = 0;
+        std::uint16_t hurt_animation_threshold = 0;
+        std::uint16_t hurt_audio_event = 0;
+        std::uint16_t down_audio_event = 0;
         std::uint8_t animation_direction = 0;
         std::string animation_id = "idle";
         std::uint8_t animation_frame = 0;
@@ -1233,12 +1238,20 @@ private:
         std::array<std::vector<QImage>, 8> action_images{};
         std::array<std::vector<int>, 8> action_origin_x{};
         std::array<std::vector<int>, 8> action_origin_y{};
+        std::array<std::vector<QImage>, 8> hurt_images{};
+        std::array<std::vector<int>, 8> hurt_origin_x{};
+        std::array<std::vector<int>, 8> hurt_origin_y{};
         std::uint8_t walk_frame_count = 0;
         std::uint8_t entry_frame_count = 2;
         std::uint8_t action_frame_count = 0;
         std::uint16_t action_frame_increment = 0;
         std::uint16_t action_frame_threshold = 0;
         std::uint16_t action_audio_event = 0;
+        std::uint8_t hurt_frame_count = 0;
+        std::uint16_t hurt_frame_increment = 0;
+        std::uint16_t hurt_frame_threshold = 0;
+        std::uint16_t hurt_audio_event = 0;
+        std::uint16_t down_audio_event = 0;
     };
 
     struct CreatureEffectArtwork {

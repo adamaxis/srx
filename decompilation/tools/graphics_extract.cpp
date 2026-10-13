@@ -2452,6 +2452,9 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_resource_row(
         "field.entities.actor.action.profiles",
         "field/entities/actor-action-profiles.tsv", "state");
+    emit_generated_resource_row(
+        "field.entities.actor.reaction.profiles",
+        "field/entities/actor-reaction-profiles.tsv", "state");
     std::string line;
     std::getline(catalog, line);
     while (std::getline(catalog, line)) {
@@ -4128,8 +4131,12 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         }
     }
     constexpr std::size_t kIdleSelectorTableOffset = 0xC052U;
+    constexpr std::size_t kHurtSelectorTableOffset = 0xC072U;
     constexpr std::size_t kEntrySelectorTableOffset = 0xC0B2U;
     constexpr std::size_t kActionSelectorTableOffset = 0xC0A2U;
+    constexpr std::size_t kActorHurtAudioTableOffset = 0xB03EU;
+    constexpr std::size_t kActorDownAudioTableOffset = 0xB05EU;
+    constexpr std::uint16_t kActorAnimationPeriod = 0x1000U;
     constexpr std::size_t kThonPatternStreamOffset = 0x1EBDEEU;
     constexpr std::size_t kThonPatternVramOffset = 0x5920U;
     constexpr std::size_t kActorStatePointerTableOffset = 0x62ACU;
@@ -4159,6 +4166,17 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         << "sprite_stem\tentity_kind\tframe_count\tframe_increment"
            "\tframe_threshold\taudio_event\n";
     std::map<std::string, std::array<std::uint16_t, 3>> action_profile_facts;
+    std::ofstream reaction_profile_table(
+        root / "field/entities/actor-reaction-profiles.tsv",
+        std::ios::binary);
+    if (!reaction_profile_table) {
+        throw std::runtime_error(
+            "cannot create field actor reaction profile table");
+    }
+    reaction_profile_table
+        << "sprite_stem\tentity_kind\thurt_frame_count\thurt_increment"
+           "\tframe_threshold\thurt_audio_event\tdown_audio_event\n";
+    std::map<std::string, std::array<std::uint16_t, 6>> reaction_profile_facts;
     for (const auto& [kind_palette, kind_source] : actor_visual_sources) {
         (void)kind_palette;
         const auto asset_stem =
@@ -4276,14 +4294,88 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     std::to_string(kind_source.palette_line),
                 true, manifest, written, missing, blank,
                 idle_frame.origin_x, idle_frame.origin_y);
-
-            const auto entry_selector = read_big_endian_word(
-                rom, kEntrySelectorTableOffset + direction * 2U);
             const auto kind_state_pointer = static_cast<std::size_t>(
                 read_big_endian_long(
                     rom, 0x62ACU +
                              static_cast<std::size_t>(kind_source.entity_kind) *
                                  4U));
+
+            // ROM 0xAFF2 selects the directional C072 list when a target's
+            // physical meter remains nonzero. 0x600E uses the list's marker
+            // and increment; the entity record's +0x1C period is initialized
+            // to 0x1000 by 0x15132. Preserve the kind-indexed B03E/B05E
+            // sounds beside the extracted frames so Lua can run the full
+            // source reaction after a live hit.
+            const auto hurt_selector = read_big_endian_word(
+                rom, kHurtSelectorTableOffset + direction * 2U);
+            const auto hurt_list = static_cast<std::size_t>(
+                read_big_endian_long(
+                    rom, kind_state_pointer + hurt_selector));
+            const auto hurt_marker = read_big_endian_word(rom, hurt_list);
+            const auto hurt_frame_count = static_cast<std::uint16_t>(
+                hurt_marker & 0x7FFFU);
+            const auto hurt_increment =
+                read_big_endian_word(rom, hurt_list + 2U);
+            if ((hurt_marker & 0x8000U) == 0U ||
+                hurt_frame_count == 0U || hurt_frame_count > 8U ||
+                hurt_increment == 0U) {
+                throw std::runtime_error(
+                    "dynamic actor C072 hurt list has an unsupported source layout");
+            }
+            const auto hurt_audio_event = read_big_endian_word(
+                rom, kActorHurtAudioTableOffset +
+                         static_cast<std::size_t>(kind_source.entity_kind) * 2U);
+            const auto down_audio_event = read_big_endian_word(
+                rom, kActorDownAudioTableOffset +
+                         static_cast<std::size_t>(kind_source.entity_kind) * 2U);
+            const std::array<std::uint16_t, 6> reaction_facts{
+                kind_source.entity_kind, hurt_frame_count, hurt_increment,
+                kActorAnimationPeriod, hurt_audio_event, down_audio_event};
+            const auto [reaction_profile, reaction_inserted] =
+                reaction_profile_facts.emplace(kind_source.sprite_stem,
+                                                reaction_facts);
+            if (!reaction_inserted &&
+                reaction_profile->second != reaction_facts) {
+                throw std::runtime_error(
+                    "dynamic actor C072 lists disagree by direction");
+            }
+            if (direction == 0U && reaction_inserted) {
+                reaction_profile_table
+                    << kind_source.sprite_stem << '\t'
+                    << kind_source.entity_kind << '\t'
+                    << hurt_frame_count << '\t' << hurt_increment << '\t'
+                    << kActorAnimationPeriod << '\t' << hurt_audio_event
+                    << '\t' << down_audio_event << '\n';
+            }
+            for (std::uint16_t frame_index = 0U;
+                 frame_index < hurt_frame_count; ++frame_index) {
+                const auto frame =
+                    shadowrun::graphics::decode_genesis_field_entity_state_frame(
+                        rom, kind_source.entity_kind,
+                        kind_source.palette_line, hurt_selector, frame_index);
+                write_catalog_asset(
+                    root, asset_stem + "-hurt-dir-" +
+                              std::to_string(direction) + "-frame-" +
+                              std::to_string(frame_index) + ".bmp",
+                    frame.image, "sprite",
+                    "0xAFF2/0xC072/0x5FDC/0x600E kind=" +
+                        std::to_string(kind_source.entity_kind) +
+                        " template=" +
+                        format_offset(kind_source.template_offset) +
+                        " descriptor=" +
+                        format_offset(static_cast<std::uint32_t>(
+                            frame.descriptor_offset)) +
+                        " selector=" + format_offset(hurt_selector) +
+                        " frame=" + std::to_string(frame_index) +
+                        " increment=" + std::to_string(hurt_increment) +
+                        " palette-line=" +
+                        std::to_string(kind_source.palette_line),
+                    true, manifest, written, missing, blank,
+                    frame.origin_x, frame.origin_y);
+            }
+
+            const auto entry_selector = read_big_endian_word(
+                rom, kEntrySelectorTableOffset + direction * 2U);
             const auto entry_list = static_cast<std::size_t>(
                 read_big_endian_long(rom, kind_state_pointer + entry_selector));
             const auto entry_marker = read_big_endian_word(rom, entry_list);
@@ -4440,6 +4532,11 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     if (!action_profile_table) {
         throw std::runtime_error(
             "cannot write field actor action profile table");
+    }
+    reaction_profile_table.close();
+    if (!reaction_profile_table) {
+        throw std::runtime_error(
+            "cannot write field actor reaction profile table");
     }
 
     for (std::size_t index = 0; index < assets.entity_frames.size(); ++index) {

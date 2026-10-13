@@ -2336,6 +2336,124 @@ int main() {
     victim_facts.command_attribute_78 = 4U;
     victim_facts.command_attribute_7b = 4U;
     victim_facts.command_attribute_7c = 4U;
+    const auto make_encounter_reaction_context =
+        [&actor_context](const std::string_view actor_id) {
+        auto context = actor_context(
+            "hell_hound_k0c_none00", actor_id, 12U,
+            ScriptActorActionKind::none, 0U, 0U, true);
+        context.dynamic_world_encounter_actor = true;
+        context.source_record_flags = 0x25U;
+        context.entry_animation_frame_count = 2U;
+        context.walk_animation_frame_count = 4U;
+        context.hurt_animation_frame_count = 2U;
+        context.hurt_animation_increment = 0x0300U;
+        context.hurt_animation_threshold = 0x1000U;
+        context.hurt_audio_event = 0x0057U;
+        context.down_audio_event = 0x0056U;
+        return context;
+    };
+    const auto configure_encounter_movement = [](
+        ScriptActorBehaviorContext& context) {
+        context.movement_allowed = true;
+        context.movement_services_available = true;
+        context.movement_state.position_x = 0x1800U;
+        context.movement_state.position_y = 0x1800U;
+        context.movement_state.heading = 0U;
+        context.movement_state.animation_heading = 0U;
+        context.movement_state.route_status = -1;
+        context.movement_state.route_flags = 0x03U;
+        context.movement_offsets = {{
+            {0, -18}, {18, -18}, {18, 0}, {18, 18},
+            {0, 18}, {-18, 18}, {-18, 0}, {-18, -18},
+        }};
+        context.movement_idle_selectors = {{
+            0x20U, 0x21U, 0x22U, 0x23U,
+            0x24U, 0x25U, 0x26U, 0x27U,
+        }};
+        context.movement_collision =
+            [](const std::uint16_t, const std::uint16_t) {
+                return ScriptMovementCollisionResult{0, 0U};
+            };
+        context.movement_route_lookup =
+            [](const std::uint16_t) { return ScriptMovementRouteFacts{}; };
+        context.movement_collision_recovery =
+            [](const std::uint16_t, const std::uint16_t,
+               const std::int16_t, const std::uint8_t) {
+                return ScriptMovementCollisionRecoveryResult{false, 0U};
+            };
+        context.ai_random_bound =
+            [](const std::uint16_t bound)
+                -> std::optional<std::uint16_t> {
+            return bound == 0U ? std::nullopt
+                               : std::optional<std::uint16_t>{0U};
+        };
+        context.ai_target_candidates.push_back(
+            ScriptActorTargetCandidate{
+                "party.runner.0", 0x1800U, 0x1800U, 0x2000U,
+                0x0700U, 0x01U, 0U, 0U, 0U, true, false,
+                0x0700U, 0x0E00U, 0x0700U, 0x0E00U});
+    };
+    const auto finish_encounter_entry = [&scripts](
+                                            ScriptActorBehaviorContext& context) {
+        context.spawn = false;
+        context.phase = ScriptActorHeartbeatPhase::behavior;
+        auto decision = scripts.actor_heartbeat(context);
+        if (!decision.has_value()) {
+            return false;
+        }
+        context.source_record_flags = decision->source_record_flags;
+        for (std::uint16_t pass = 0U;
+             pass < 128U && !decision->transition_complete; ++pass) {
+            context.phase = ScriptActorHeartbeatPhase::render;
+            const auto render_decision = scripts.actor_heartbeat(context);
+            if (!render_decision.has_value()) {
+                return false;
+            }
+            context.source_record_flags =
+                render_decision->source_record_flags;
+            context.phase = ScriptActorHeartbeatPhase::behavior;
+            decision = scripts.actor_heartbeat(context);
+            if (!decision.has_value()) {
+                return false;
+            }
+            context.source_record_flags = decision->source_record_flags;
+        }
+        context.phase = ScriptActorHeartbeatPhase::behavior;
+        return decision->transition_complete;
+    };
+    const auto prime_encounter_movement = [&scripts](
+                                               ScriptActorBehaviorContext& context) {
+        context.spawn = false;
+        for (std::uint16_t pass = 0U; pass < 256U; ++pass) {
+            context.phase = ScriptActorHeartbeatPhase::behavior;
+            const auto behavior = scripts.actor_heartbeat(context);
+            if (!behavior.has_value()) {
+                return false;
+            }
+            context.source_record_flags = behavior->source_record_flags;
+            if (behavior->movement_step.has_value()) {
+                context.movement_state = behavior->movement_step->state;
+                return true;
+            }
+            context.phase = ScriptActorHeartbeatPhase::render;
+            const auto render = scripts.actor_heartbeat(context);
+            if (!render.has_value()) {
+                return false;
+            }
+            context.source_record_flags = render->source_record_flags;
+        }
+        return false;
+    };
+    auto injured_actor_context = make_encounter_reaction_context(
+        "field_scene_2_encounter_1_actor_0");
+    const auto injured_actor_spawn =
+        scripts.actor_heartbeat(injured_actor_context);
+    if (!expect(injured_actor_spawn.has_value() &&
+                    finish_encounter_entry(injured_actor_context),
+                "Hell Hound did not finish its source C0B2 encounter-entry transition before combat")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
     source_weapon_hit_context.projectile_combat_targets.push_back(
         ScriptProjectileCombatTarget{
             "field_scene_2_encounter_1_actor_0", 3U, victim_facts});
@@ -2377,6 +2495,213 @@ int main() {
                 source_weapon_hit_step->combat_meter_update->mental_meter ==
                     8U,
             "Lua firearm path did not seed the projectile and apply the source Warhawk hit to its live target")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+
+    injured_actor_context.spawn = false;
+    injured_actor_context.phase = ScriptActorHeartbeatPhase::behavior;
+    const auto injured_actor_reaction =
+        scripts.actor_heartbeat(injured_actor_context);
+    if (!expect(
+            injured_actor_spawn.has_value() &&
+                injured_actor_reaction.has_value() &&
+                injured_actor_reaction->animation_id == "hurt" &&
+                injured_actor_reaction->animation_frame == 0U &&
+                injured_actor_reaction->source_record_flags == 0x25U &&
+                !injured_actor_reaction->audio_event.has_value(),
+            "stationary nonlethal firearm damage did not select directional C072")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+    std::optional<ScriptActorBehaviorDecision> injured_hurt_sound;
+    for (std::uint8_t pass = 0U; pass < 8U; ++pass) {
+        injured_hurt_sound = scripts.actor_heartbeat(injured_actor_context);
+    }
+    if (!expect(injured_hurt_sound.has_value() &&
+                    injured_hurt_sound->animation_id == "hurt" &&
+                    injured_hurt_sound->audio_event == 0x0057U,
+                "C072 hit sound did not fire after the ROM eight-service countdown")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+    injured_hurt_sound = scripts.actor_heartbeat(injured_actor_context);
+    if (!expect(injured_hurt_sound.has_value() &&
+                    injured_hurt_sound->animation_id == "hurt" &&
+                    !injured_hurt_sound->audio_event.has_value(),
+                "C072 hit sound repeated after its one-shot source countdown")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+    injured_actor_context.phase = ScriptActorHeartbeatPhase::render;
+    std::optional<ScriptActorBehaviorDecision> injured_hurt_frame;
+    for (std::uint8_t frame = 0U; frame < 5U; ++frame) {
+        injured_hurt_frame = scripts.actor_heartbeat(injured_actor_context);
+    }
+    if (!expect(injured_hurt_frame.has_value() &&
+                    injured_hurt_frame->animation_id == "hurt" &&
+                    injured_hurt_frame->animation_frame == 0U,
+                "C072 animation advanced before its 0x300/0x1000 cadence elapsed")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+    injured_hurt_frame = scripts.actor_heartbeat(injured_actor_context);
+    if (!expect(injured_hurt_frame.has_value() &&
+                    injured_hurt_frame->animation_id == "hurt" &&
+                    injured_hurt_frame->animation_frame == 1U,
+                "C072 animation did not advance on its sixth render heartbeat")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+
+    auto moving_actor_context = make_encounter_reaction_context(
+        "field_scene_2_encounter_1_actor_2");
+    configure_encounter_movement(moving_actor_context);
+    const auto moving_actor_spawn =
+        scripts.actor_heartbeat(moving_actor_context);
+    if (!expect(moving_actor_spawn.has_value() &&
+                    finish_encounter_entry(moving_actor_context) &&
+                    prime_encounter_movement(moving_actor_context),
+                "moving Hell Hound did not enter and acquire its source-directed route before combat")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+    auto moving_weapon_hit_context = source_weapon_hit_context;
+    moving_weapon_hit_context.instance_id =
+        "field_weapon_slot_combat_hit_moving_actor";
+    moving_weapon_hit_context.projectile_combat_targets = {
+        ScriptProjectileCombatTarget{
+            "field_scene_2_encounter_1_actor_2", 3U, victim_facts}};
+    moving_weapon_hit_context.projectile_collision_search =
+        [](const std::uint16_t, const std::uint16_t,
+           const std::uint8_t) {
+            return ScriptProjectileCollisionSearchResult{
+                true, true, 45U, 77U,
+                std::string{"field_scene_2_encounter_1_actor_2"}};
+        };
+    const auto moving_weapon_hit =
+        scripts.actor_heartbeat(moving_weapon_hit_context);
+    moving_actor_context.phase = ScriptActorHeartbeatPhase::behavior;
+    auto moving_actor_reaction =
+        scripts.actor_heartbeat(moving_actor_context);
+    if (moving_actor_reaction.has_value() &&
+        moving_actor_reaction->movement_step.has_value()) {
+        moving_actor_context.movement_state =
+            moving_actor_reaction->movement_step->state;
+    }
+    if (!expect(moving_actor_spawn.has_value() &&
+                    moving_weapon_hit.has_value() &&
+                    moving_weapon_hit->combat_meter_update.has_value() &&
+                    moving_weapon_hit->combat_meter_update->target_id ==
+                        "field_scene_2_encounter_1_actor_2" &&
+                    moving_actor_reaction.has_value() &&
+                    moving_actor_reaction->animation_id == "walk" &&
+                    moving_actor_reaction->movement_step.has_value() &&
+                    !moving_actor_reaction->audio_event.has_value(),
+                "moving Hell Hound did not continue its Lua route and select source C062 walk art after receiving C072 damage")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+    std::optional<ScriptActorBehaviorDecision> moving_hurt_sound;
+    for (std::uint8_t pass = 0U; pass < 8U; ++pass) {
+        moving_hurt_sound = scripts.actor_heartbeat(moving_actor_context);
+        if (moving_hurt_sound.has_value() &&
+            moving_hurt_sound->movement_step.has_value()) {
+            moving_actor_context.movement_state =
+                moving_hurt_sound->movement_step->state;
+        }
+    }
+    if (!expect(moving_hurt_sound.has_value() &&
+                    moving_hurt_sound->animation_id == "walk" &&
+                    moving_hurt_sound->movement_step.has_value() &&
+                    moving_hurt_sound->audio_event == 0x0057U,
+                "C072 callback countdown did not continue while the moving actor used its C062 walk pose")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+
+    auto exhausted_actor_context = make_encounter_reaction_context(
+        "field_scene_2_encounter_1_actor_1");
+    const auto exhausted_actor_spawn =
+        scripts.actor_heartbeat(exhausted_actor_context);
+    if (!expect(exhausted_actor_spawn.has_value() &&
+                    finish_encounter_entry(exhausted_actor_context),
+                "lethal-hit Hell Hound did not finish its source C0B2 entry transition")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+    auto lethal_hit_context = source_weapon_hit_context;
+    lethal_hit_context.instance_id = "field_weapon_slot_lethal_hit";
+    auto exhausted_victim_facts = victim_facts;
+    exhausted_victim_facts.record_type = 4U;
+    exhausted_victim_facts.physical_meter = 1U;
+    lethal_hit_context.projectile_combat_targets = {
+        ScriptProjectileCombatTarget{
+            "field_scene_2_encounter_1_actor_1", 4U,
+            exhausted_victim_facts}};
+    lethal_hit_context.projectile_collision_search =
+        [](const std::uint16_t, const std::uint16_t,
+           const std::uint8_t) {
+            return ScriptProjectileCollisionSearchResult{
+                true, true, 45U, 77U,
+                std::string{"field_scene_2_encounter_1_actor_1"}};
+        };
+    const auto lethal_hit_step = scripts.actor_heartbeat(lethal_hit_context);
+    if (!expect(
+            exhausted_actor_spawn.has_value() && lethal_hit_step.has_value() &&
+                lethal_hit_step->combat_meter_update.has_value() &&
+                lethal_hit_step->combat_meter_update->changed &&
+                lethal_hit_step->combat_meter_update->physical_meter == 0U,
+            "lethal firearm hit did not reduce the live encounter actor to zero physical meter")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+    exhausted_actor_context.spawn = false;
+    exhausted_actor_context.phase = ScriptActorHeartbeatPhase::behavior;
+    const auto exhausted_actor_reaction =
+        scripts.actor_heartbeat(exhausted_actor_context);
+    if (!expect(
+            exhausted_actor_reaction.has_value() &&
+                exhausted_actor_reaction->animation_id == "down" &&
+                exhausted_actor_reaction->animation_frame == 0U &&
+                exhausted_actor_reaction->source_record_flags == 0x35U &&
+                exhausted_actor_reaction->audio_event == 0x0056U,
+            "zero physical meter did not enter the C0B2 exhausted transition and B05E cue")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+    exhausted_actor_context.source_record_flags =
+        exhausted_actor_reaction->source_record_flags;
+    exhausted_actor_context.phase = ScriptActorHeartbeatPhase::render;
+    std::optional<ScriptActorBehaviorDecision> exhausted_actor_frame;
+    for (std::uint8_t frame = 0U; frame < 7U; ++frame) {
+        exhausted_actor_frame =
+            scripts.actor_heartbeat(exhausted_actor_context);
+    }
+    if (!expect(exhausted_actor_frame.has_value() &&
+                    exhausted_actor_frame->animation_id == "down" &&
+                    exhausted_actor_frame->animation_frame == 0U,
+                "C0B2 exhausted transition advanced before its eight-render cadence")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+    exhausted_actor_frame = scripts.actor_heartbeat(exhausted_actor_context);
+    if (!expect(exhausted_actor_frame.has_value() &&
+                    exhausted_actor_frame->animation_id == "down" &&
+                    exhausted_actor_frame->animation_frame == 1U,
+                "C0B2 exhausted transition did not advance on the eighth render heartbeat")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+    for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
+        exhausted_actor_frame =
+            scripts.actor_heartbeat(exhausted_actor_context);
+    }
+    if (!expect(exhausted_actor_frame.has_value() &&
+                    exhausted_actor_frame->animation_id == "down" &&
+                    exhausted_actor_frame->animation_frame == 1U &&
+                    exhausted_actor_frame->source_record_flags == 0x35U,
+                "C0B2 exhausted transition did not retain its final frame and reserved actor flag")) {
         std::cerr << scripts.failure() << '\n';
         return 24;
     }

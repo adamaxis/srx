@@ -426,6 +426,7 @@ local function initial_state(context, profile)
         entity_kind = context.entity_kind,
         action_kind = context.action_kind,
         action_code = context.action_code,
+        source_record_flags = context.source_record_flags or 0,
         package_id = profile.package_id,
         weapon_item_id = profile.weapon_item_id,
         direction = direction_from_heading(context.initial_heading),
@@ -448,6 +449,11 @@ local function initial_state(context, profile)
         action_animation_audio_event =
             context.action_animation_audio_event,
         action_animation_complete = false,
+        damage_reaction_active = false,
+        damage_reaction_animation_complete = false,
+        hurt_behavior_timer = 0,
+        hurt_audio_event = nil,
+        hurt_audio_emitted = false,
         movement_current_heading = profile.controls_movement
             and context.initial_heading or nil,
         movement_route_distance = nil,
@@ -525,6 +531,7 @@ local function snapshot(state, action, audio_event, projectile_movement,
         action_code = state.action_code,
         action = action,
         animation = state.animation_id,
+        source_record_flags = state.source_record_flags,
         animation_selector = state.animation_selector,
         direction = state.direction,
         frame = state.animation_frame,
@@ -1105,6 +1112,111 @@ local function advance_entry_animation(state)
     else
         state.animation_accumulator = accumulated
     end
+end
+
+local function advance_finite_actor_animation(state, frame_count,
+                                              increment, threshold)
+    if state.damage_reaction_animation_complete then
+        return true
+    end
+    if type(frame_count) ~= "number" or frame_count < 1 or frame_count > 8 or
+       type(increment) ~= "number" or increment < 1 or increment > 0xffff or
+       type(threshold) ~= "number" or threshold < 1 or threshold > 0xffff then
+        return false
+    end
+    local accumulated_word =
+        (state.animation_accumulator + increment) & 0xffff
+    local accumulated_signed = accumulated_word
+    if accumulated_word >= 0x8000 then
+        accumulated_signed = accumulated_word - 0x10000
+    end
+    if threshold <= accumulated_signed then
+        state.animation_frame = state.animation_frame + 1
+        state.animation_accumulator = accumulated_word - threshold
+        if state.animation_accumulator >= 0x8000 then
+            state.animation_accumulator = state.animation_accumulator - 0x10000
+        end
+        if state.animation_frame >= frame_count then
+            -- 0x600E sets the list-finished selector and holds its last frame.
+            state.animation_frame = frame_count - 1
+            state.damage_reaction_animation_complete = true
+        end
+    else
+        state.animation_accumulator = accumulated_signed
+    end
+    return true
+end
+
+local function begin_received_hit_reaction(state, context)
+    local hit = state.incoming_hit
+    if type(hit) ~= "table" or
+       type(hit.physical_meter) ~= "number" or
+       type(hit.mental_meter) ~= "number" then
+        return nil
+    end
+    state.incoming_hit = nil
+    if (state.source_record_flags & ActorServiceFlag.action_candidate_reserved) ~= 0 then
+        return nil
+    end
+    if hit.physical_meter == 0 then
+        if type(context.entry_animation_frame_count) ~= "number" or
+           context.entry_animation_frame_count < 1 or
+           context.entry_animation_frame_count > 8 or
+           type(context.down_audio_event) ~= "number" then
+            return nil
+        end
+        -- 0xAFF2 enters 0xB330 at zero physical meter, requests B05E[kind],
+        -- reserves +0x10.4, and selects the directional C0B2 transition.
+        state.damage_reaction_active = true
+        state.damage_reaction_animation_complete = false
+        state.animation_frame = 0
+        state.animation_accumulator = 0
+        state.animation_id = "down"
+        state.animation_selector = 0xe8 + state.direction * 4
+        state.source_record_flags =
+            state.source_record_flags |
+            ActorServiceFlag.action_candidate_reserved
+        state.hurt_behavior_timer = 0
+        return context.down_audio_event
+    end
+    local frame_count = context.hurt_animation_frame_count
+    local increment = context.hurt_animation_increment
+    local threshold = context.hurt_animation_threshold
+    if type(frame_count) ~= "number" or frame_count < 1 or frame_count > 8 or
+       type(increment) ~= "number" or increment < 1 or increment > 0xffff or
+       type(threshold) ~= "number" or threshold < 1 or threshold > 0xffff or
+       type(context.hurt_audio_event) ~= "number" then
+        return nil
+    end
+    state.damage_reaction_active = true
+    state.damage_reaction_animation_complete = false
+    state.animation_frame = 0
+    state.animation_accumulator = 0
+    -- 0xAFF2 selects C072 and starts B07E's eight-service countdown.
+    state.animation_id = "hurt"
+    state.animation_selector = 0x60 + state.direction * 4
+    state.animation_increment = increment
+    state.animation_period = threshold
+    state.hurt_frame_count = frame_count
+    state.hurt_behavior_timer = 8
+    state.hurt_audio_event = context.hurt_audio_event
+    state.hurt_audio_emitted = false
+    return nil
+end
+
+local function advance_received_hit_reaction(state, context)
+    local audio_event
+    if context.phase == "behavior" then
+        if state.hurt_behavior_timer > 0 then
+            state.hurt_behavior_timer = state.hurt_behavior_timer - 1
+            if state.hurt_behavior_timer == 0 and
+               not state.hurt_audio_emitted then
+                state.hurt_audio_emitted = true
+                audio_event = state.hurt_audio_event
+            end
+        end
+    end
+    return audio_event
 end
 
 local function advance_dynamic_actor_walk_animation(state, context)
@@ -1711,6 +1823,8 @@ function ActorAI.heartbeat(context)
     if not same_actor(state, context) then
         return nil
     end
+    state.source_record_flags = context.source_record_flags or
+                                state.source_record_flags
     advance_source_action_delay(state, context)
     advance_world_target_selection(state, context)
     if profile.projectile_animation then
@@ -1719,8 +1833,50 @@ function ActorAI.heartbeat(context)
     advance_target_marker(state, context)
     advance_target_motion_effect(state, context)
 
+    local reaction_audio_event
+    if context.dynamic_world_encounter_actor then
+        local reaction_started = false
+        if context.phase == "behavior" and state.incoming_hit ~= nil then
+            reaction_audio_event =
+                begin_received_hit_reaction(state, context)
+            reaction_started = state.damage_reaction_active
+        end
+        if state.damage_reaction_active and
+           state.animation_id == "down" then
+            if context.phase == "render" then
+                state.movement_step = nil
+                if not advance_finite_actor_animation(
+                        state, context.entry_animation_frame_count,
+                        0x0200, 0x1000) then
+                    return nil
+                end
+            end
+            return snapshot(state, "hold", reaction_audio_event)
+        end
+        if state.damage_reaction_active then
+            if context.phase == "render" and
+               state.animation_id == "hurt" then
+                state.movement_step = nil
+                if not advance_finite_actor_animation(
+                        state, context.hurt_animation_frame_count,
+                        context.hurt_animation_increment,
+                        context.hurt_animation_threshold) then
+                    return nil
+                end
+                return snapshot(state, "hold", nil)
+            elseif context.phase == "behavior" and not reaction_started then
+                -- B07E remains the actor continuation while the ordinary AI
+                -- coordinator can replace C072 with C062 after a movement
+                -- step. Its eight-service cue countdown survives that pose
+                -- change and movement remains live on every service pass.
+                reaction_audio_event =
+                    advance_received_hit_reaction(state, context)
+            end
+        end
+    end
+
     local action = "hold"
-    local audio_event
+    local audio_event = reaction_audio_event
     local target_heading_audio_event
     if profile.controls_movement then
         -- ROM 0xACAE observes the held A bit and only dispatches a player

@@ -1981,6 +1981,92 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
         return false;
     }
 
+    struct ActorReactionProfile {
+        std::uint16_t entity_kind = 0U;
+        std::uint8_t hurt_frame_count = 0U;
+        std::uint16_t hurt_increment = 0U;
+        std::uint16_t frame_threshold = 0U;
+        std::uint16_t hurt_audio_event = 0U;
+        std::uint16_t down_audio_event = 0U;
+    };
+    std::unordered_map<std::string, ActorReactionProfile> reaction_profiles;
+    const auto* reaction_profile_table =
+        catalog.find("field.entities.actor.reaction.profiles");
+    if (reaction_profile_table == nullptr ||
+        reaction_profile_table->kind != "state") {
+        failure_ = "missing extracted actor C072 reaction profile table";
+        return false;
+    }
+    std::ifstream reaction_profile_input(
+        reaction_profile_table->absolute_path, std::ios::binary);
+    if (!reaction_profile_input) {
+        failure_ = "cannot read extracted actor reaction profile table";
+        return false;
+    }
+    if (!std::getline(reaction_profile_input, line) ||
+        line != "sprite_stem\tentity_kind\thurt_frame_count\thurt_increment"
+                "\tframe_threshold\thurt_audio_event\tdown_audio_event") {
+        failure_ = "actor reaction profile table header is invalid";
+        return false;
+    }
+    try {
+        while (std::getline(reaction_profile_input, line)) {
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+            if (line.empty()) {
+                continue;
+            }
+            std::vector<std::string> fields;
+            std::istringstream row(line);
+            std::string field;
+            while (std::getline(row, field, '\t')) {
+                fields.push_back(std::move(field));
+            }
+            if (fields.size() != 7U || fields[0].empty()) {
+                failure_ = "actor reaction profile row is malformed";
+                return false;
+            }
+            const auto kind = parse_action_profile_number(fields[1]);
+            const auto frame_count = parse_action_profile_number(fields[2]);
+            const auto frame_increment =
+                parse_action_profile_number(fields[3]);
+            const auto frame_threshold =
+                parse_action_profile_number(fields[4]);
+            const auto hurt_audio_event =
+                parse_action_profile_number(fields[5]);
+            const auto down_audio_event =
+                parse_action_profile_number(fields[6]);
+            if (kind < 4U || kind > 14U || frame_count == 0U ||
+                frame_count > 8U || frame_increment == 0U ||
+                frame_increment > 0xFFFFU || frame_threshold != 0x1000U ||
+                hurt_audio_event > 0xFFFFU || down_audio_event > 0xFFFFU) {
+                failure_ = "actor reaction profile values are invalid";
+                return false;
+            }
+            ActorReactionProfile profile;
+            profile.entity_kind = static_cast<std::uint16_t>(kind);
+            profile.hurt_frame_count =
+                static_cast<std::uint8_t>(frame_count);
+            profile.hurt_increment =
+                static_cast<std::uint16_t>(frame_increment);
+            profile.frame_threshold =
+                static_cast<std::uint16_t>(frame_threshold);
+            profile.hurt_audio_event =
+                static_cast<std::uint16_t>(hurt_audio_event);
+            profile.down_audio_event =
+                static_cast<std::uint16_t>(down_audio_event);
+            if (!reaction_profiles.emplace(fields[0], profile).second) {
+                failure_ = "actor reaction profiles duplicate a sprite stem";
+                return false;
+            }
+        }
+    } catch (const std::exception& error) {
+        failure_ = std::string("cannot parse actor reaction profiles: ") +
+                   error.what();
+        return false;
+    }
+
     for (const auto& [sprite_stem, entity_kind] : actor_kinds) {
         std::string alias_prefix = "field.entities.actors.";
         alias_prefix.reserve(alias_prefix.size() + sprite_stem.size());
@@ -2001,6 +2087,22 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
         artwork.action_frame_threshold =
             action_profile->second.frame_threshold;
         artwork.action_audio_event = action_profile->second.audio_event;
+        const auto reaction_profile = reaction_profiles.find(sprite_stem);
+        if (reaction_profile == reaction_profiles.end() ||
+            reaction_profile->second.entity_kind != entity_kind) {
+            failure_ = "dynamic actor has no matching C072 reaction profile";
+            return false;
+        }
+        artwork.hurt_frame_count =
+            reaction_profile->second.hurt_frame_count;
+        artwork.hurt_frame_increment =
+            reaction_profile->second.hurt_increment;
+        artwork.hurt_frame_threshold =
+            reaction_profile->second.frame_threshold;
+        artwork.hurt_audio_event =
+            reaction_profile->second.hurt_audio_event;
+        artwork.down_audio_event =
+            reaction_profile->second.down_audio_event;
         for (std::uint8_t direction = 0U; direction < 8U; ++direction) {
             const auto suffix = direction == 0U
                 ? std::string{}
@@ -2095,6 +2197,26 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                         artwork.action_images[direction][image_index],
                         artwork.action_origin_x[direction][image_index],
                         artwork.action_origin_y[direction][image_index])) {
+                    return false;
+                }
+            }
+
+            for (std::uint8_t frame = 0U;
+                 frame < artwork.hurt_frame_count; ++frame) {
+                const auto hurt_alias =
+                    alias_prefix + ".hurt.dir." +
+                    std::to_string(direction) + ".frame." +
+                    std::to_string(frame);
+                artwork.hurt_images[direction].emplace_back();
+                artwork.hurt_origin_x[direction].push_back(0);
+                artwork.hurt_origin_y[direction].push_back(0);
+                const auto image_index =
+                    artwork.hurt_images[direction].size() - 1U;
+                if (!load_sprite_image(
+                        catalog, hurt_alias,
+                        artwork.hurt_images[direction][image_index],
+                        artwork.hurt_origin_x[direction][image_index],
+                        artwork.hurt_origin_y[direction][image_index])) {
                     return false;
                 }
             }
@@ -2276,6 +2398,14 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 actor.action_animation_threshold;
             context.action_animation_audio_event =
                 actor.action_animation_audio_event;
+            context.hurt_animation_frame_count =
+                actor.hurt_animation_frame_count;
+            context.hurt_animation_increment =
+                actor.hurt_animation_increment;
+            context.hurt_animation_threshold =
+                actor.hurt_animation_threshold;
+            context.hurt_audio_event = actor.hurt_audio_event;
+            context.down_audio_event = actor.down_audio_event;
             context.target_heading_audio_alternate =
                 (field_random_seed_ & 0x8000U) != 0U;
             context.initial_action_delay = actor.action_delay;
@@ -2538,6 +2668,9 @@ void FieldSceneRuntime::advance_default_field_actors() {
         actor.ai_target_heading = decision->ai_target_heading.value_or(0U);
         actor.ai_target_distance = decision->ai_target_distance.value_or(0U);
         actor.action_delay = decision->action_delay;
+        if (actor.temporary_world_encounter) {
+            actor.source_record_flags = decision->source_record_flags;
+        }
         if (decision->target_motion_effect_slot_request.has_value()) {
             const auto slot = *decision->target_motion_effect_slot_request;
             if (slot >= field_world_effect_slots_occupied_.size() ||
@@ -2685,7 +2818,8 @@ FieldSceneRuntime::default_actor_sprite_view(
     const auto direction = static_cast<std::size_t>(
         actor.animation_direction & 0x07U);
     const DefaultActorArtwork* artwork = nullptr;
-    if (actor.entity_kind == 5U || actor.entity_kind == 11U) {
+    if (!actor.temporary_world_encounter &&
+        (actor.entity_kind == 5U || actor.entity_kind == 11U)) {
         const auto kind_index = actor.entity_kind == 5U ? 0U : 1U;
         artwork = &field_default_actor_artwork_[kind_index];
     } else {
@@ -2725,6 +2859,21 @@ FieldSceneRuntime::default_actor_sprite_view(
             &frames[frame],
             artwork->action_origin_x[direction][frame],
             artwork->action_origin_y[direction][frame]};
+    }
+    if (actor.animation_id == "hurt") {
+        const auto& frames = artwork->hurt_images[direction];
+        if (frames.empty()) {
+            return {};
+        }
+        const auto frame = std::min<std::size_t>(
+            actor.animation_frame, frames.size() - 1U);
+        return DefaultActorSpriteView{
+            &frames[frame],
+            artwork->hurt_origin_x[direction][frame],
+            artwork->hurt_origin_y[direction][frame]};
+    }
+    if (actor.animation_id != "entry" && actor.animation_id != "down") {
+        return {};
     }
     if (artwork->entry_frame_count == 0U) {
         return {};
@@ -3040,6 +3189,14 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             actor_artwork.action_frame_threshold;
         actor.action_animation_audio_event =
             actor_artwork.action_audio_event;
+        actor.hurt_animation_frame_count =
+            actor_artwork.hurt_frame_count;
+        actor.hurt_animation_increment =
+            actor_artwork.hurt_frame_increment;
+        actor.hurt_animation_threshold =
+            actor_artwork.hurt_frame_threshold;
+        actor.hurt_audio_event = actor_artwork.hurt_audio_event;
+        actor.down_audio_event = actor_artwork.down_audio_event;
         actor.template_offset = source_actor.template_offset;
         actor.list_offset = source_actor.sequence_list_offset;
         actor.selection_cell_offset = source_actor.selection_cell_offset;
@@ -8213,6 +8370,14 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 actor.action_animation_threshold;
             context.action_animation_audio_event =
                 actor.action_animation_audio_event;
+            context.hurt_animation_frame_count =
+                actor.hurt_animation_frame_count;
+            context.hurt_animation_increment =
+                actor.hurt_animation_increment;
+            context.hurt_animation_threshold =
+                actor.hurt_animation_threshold;
+            context.hurt_audio_event = actor.hurt_audio_event;
+            context.down_audio_event = actor.down_audio_event;
             context.initial_action_delay = actor.action_delay;
             context.delay_primary_attribute =
                 actor.delay_primary_attribute;
@@ -8238,6 +8403,9 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
+        if (actor.temporary_world_encounter) {
+            actor.source_record_flags = decision->source_record_flags;
+        }
         actor.target_marker_visible = decision->target_marker_visible;
         actor.target_marker_animating = decision->target_marker_animating;
         actor.target_marker_style = decision->target_marker_style;

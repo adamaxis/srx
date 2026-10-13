@@ -1,0 +1,15 @@
+sprite_stem	entity_kind	hurt_frame_count	hurt_increment	frame_threshold	hurt_audio_event	down_audio_event
+actor-kind-4-palette-3	4	2	768	4096	66	47
+actor-kind-5-palette-1	5	2	768	4096	70	46
+corp-guard	5	2	768	4096	70	46
+actor-kind-6-palette-3	6	2	768	4096	79	88
+actor-kind-7-palette-0	7	2	768	4096	65	46
+actor-kind-7-palette-2	7	2	768	4096	65	46
+yakuza-weenr	8	2	768	4096	65	46
+actor-kind-9-palette-3	9	2	768	4096	69	46
+actor-kind-10-palette-2	10	2	768	4096	79	88
+actor-kind-11-palette-2	11	2	768	4096	71	47
+pedestrian	11	2	768	4096	71	47
+actor-kind-12-palette-1	12	2	768	4096	87	86
+actor-kind-13-palette-1	13	2	768	4096	89	90
+actor-kind-14-palette-1	14	1	768	4096	89	90

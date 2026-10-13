@@ -279,6 +279,94 @@ child action after `0x55C76` remain open.
 The QA-only placement makes the otherwise offscreen ROM encounter visible. It
 does not establish a natural movement or attack route.
 
+## C072 hurt and C0B2 exhausted response review
+
+The ROM path at `0xAFF2` checks the damaged actor's physical meter at `+0x4C`.
+When it is nonzero, it selects the direction-specific `C072` finite list,
+resets the actor animation, sets the `+0xCE` countdown to eight, and installs
+the `0xB07E` continuation. That continuation decrements once per actor-service
+pass and requests the kind-indexed `B03E` cue only when the countdown reaches
+zero. When physical meter is zero, the path enters `0xB330`, requests the
+kind-indexed `B05E` cue, reserves source record flag `+0x10.4`, and selects
+the direction-specific `C0B2` finite list. `0x600E` advances both finite lists
+using the actor's `+0x1C` period. The ROM initializes that period to `0x1000`
+at `0x15132`. A moving actor continues through the ordinary AI coordinator;
+`0xB574` selects its directional `C062` walk list after an accepted movement
+step while `0xB07E` continues its eight-service countdown. C072 therefore stays
+visible while stationary, but does not mask the ROM's walk pose once movement
+resumes.
+
+The offline graphics import now extracts every available directional `C072`
+frame for dynamic kinds 4 through 14 and writes their frame counts,
+increments, threshold, and `B03E`/`B05E` cue IDs to
+`assets/field/entities/actor-reaction-profiles.tsv`. The source lists use an
+increment of `0x0300`; kind 14 has one frame and the other imported profiles
+have two. The C0B2 lists used by these encounter kinds use increment `0x0200`
+and period `0x1000`; kinds 13 and 14 have five and eight frames respectively,
+while the other kinds have two. Lua receives the typed hurt facts, owns the
+eight-service countdown and both finite animation states, and emits one
+profile-matched cue. The existing field actor renderer loads named transparent
+hurt frames and uses the returned Lua animation ID and frame. The zero-meter
+branch currently reuses the extracted C0B2 transition images. The ROM cue
+request is verified; audible playback and duration for all of these
+kind-indexed IDs have not been independently verified.
+
+Debug and Release `shadowrun_gameplay_script_runtime_qa` now drive a Warhawk
+projectile through Lua's typed hit-resolution path into a live Hell Hound actor
+state. It checks a stationary nonlethal C072 state, no cue on entry, one cue
+after exactly eight further behavior services, the `0x0300/0x1000` render
+cadence, and a separate moving Hell Hound that switches to C062 walk art while
+the same C072 cue countdown continues. It also checks the zero-meter C0B2
+branch, its `+0x10.4` flag, and its `0x0200/0x1000` finite cadence with a held
+final frame. The field random-encounter and Hound QA routes
+also passed, and I reviewed all 14 full-screen encounter captures and all 8
+Hound captures at 320x224: the visible actor/effect frames preserve the map and
+HUD, while no stale panel or opaque rectangular sprite background appears.
+Those field captures do not include an incoming-hit pose. I also inspected
+new directional source frames from the Weenr and Hell Hound profiles; these
+show the expected separate frame art and per-frame source origins.
+
+Eight-question assessment for the new response:
+
+1. **Does it look correct?** The imported C072 frames are direct ROM-derived
+   actor sprites with separate frame origins. The in-world hurt/down pose has
+   not yet been captured in a full field frame, so its final placement is not
+   called visually resolved.
+2. **Does the look reflect the behavioral state?** Yes in the Lua/runtime
+   test: nonzero physical meter selects `hurt`; zero selects `down`, sets the
+   reserved record bit, and changes the returned frame state. A hit event is
+   queued by the Lua combat meter commit for the target actor's next behavior
+   heartbeat. The moving-actor case also confirms movement can replace C072
+   with the ROM's C062 walk selector without discarding the pending B07E cue.
+3. **Are the visuals correct?** Directional frame selectors, finite counts,
+   increments, and origins come from ROM extraction. The C++ renderer consumes
+   the named frames. A whole-screen capture of the changed hurt/down state is
+   still required to verify its exact blend with nearby map objects.
+4. **What animates, and when?** While stationary, C072 advances by `0x0300`
+   against the actor's `0x1000` period on render services. When a route movement
+   is accepted, B574 selects the matching C062 walk list. B07E's sound delay
+   keeps advancing on actor-service passes and fires once after eight. C0B2
+   advances by `0x0200` against the same period and holds its final finite
+   frame.
+5. **What sound accompanies it?** The ROM selects the kind-indexed B03E cue
+   after the C072 delay, or the B05E cue immediately on the zero-meter branch.
+   The test validates the requested cue ID and count. Decoded audible duration
+   remains unresolved for these exact IDs.
+6. **Were neighboring areas checked?** The full encounter and Hound screens
+   were reopened, including map, runner, actor/effect, and right HUD. The
+   HUD remains present and no stale menu layer appears. Since the hurt/down
+   state is not yet included in those field captures, adjacent-pixel overlap
+   for that pose remains open.
+7. **Are there multiple frames?** The test advances both reactions through
+   multiple behavior/render heartbeats and verifies their final-frame holds.
+   The source lists and extracted directional art provide multiple examples;
+   the supplied longplay has not been matched to this same creature-hit event.
+8. **Are new graphics drawn over stale graphics?** Hurt art is a transparent
+   actor sprite selected by the existing entity presentation path; it does
+   not add a panel or reuse menu controls. Current full-screen captures show
+   clean map/HUD composition, but an integrated hurt/down screenshot is still
+   needed to close the visual-overlay check.
+
 ## Status
 
 ROM-selected spawn, entry state, Lua target acquisition, close-range movement,
@@ -289,7 +377,10 @@ ordinary gate's blocker/cadence/chance branches are covered by script-runtime
 QA; the field spawn QA still injects the already-bounded selector rolls, so
 production RNG consumption and event dispatch are not covered end to end. This
 hill remains partial: the alternate target action-byte route through `+0x9C`,
-the full actor pool, creature item/spell actions, hit resolution, damage/death,
-and natural approach from the edge are unresolved. The independent longplay
+the full actor pool, creature item/spell actions, production field-projectile
+collision into a visible hit response, meter-exhaustion removal, and natural
+approach from the edge are unresolved. Lua now carries the hit result into the
+target actor's C072/C0B2 response state, but that pose still needs an integrated
+whole-screen capture. The independent longplay
 corroborates the marker shape, but does not provide the actor bytes needed to
 verify every palette variant or the Hound close-effect sequence.

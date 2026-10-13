@@ -3158,6 +3158,24 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "action_animation_audio_event");
+    lua_pushinteger(state, context.hurt_animation_frame_count);
+    lua_setfield(state, -2, "hurt_animation_frame_count");
+    lua_pushinteger(state, context.hurt_animation_increment);
+    lua_setfield(state, -2, "hurt_animation_increment");
+    lua_pushinteger(state, context.hurt_animation_threshold);
+    lua_setfield(state, -2, "hurt_animation_threshold");
+    if (context.hurt_audio_event.has_value()) {
+        lua_pushinteger(state, *context.hurt_audio_event);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "hurt_audio_event");
+    if (context.down_audio_event.has_value()) {
+        lua_pushinteger(state, *context.down_audio_event);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "down_audio_event");
     lua_pushboolean(state, context.target_heading_audio_alternate);
     lua_setfield(state, -2, "target_heading_audio_alternate");
     lua_pushinteger(state, context.initial_action_delay);
@@ -3576,6 +3594,12 @@ GameScriptRuntime::actor_heartbeat(
         return fail("actor_ai.heartbeat returned an incomplete snapshot");
     }
     decision.direction = static_cast<std::uint8_t>(returned_action_code);
+    if (!read_field_integer(state, decision_table, "source_record_flags",
+                            0xFFU, returned_action_code)) {
+        return fail("actor_ai.heartbeat returned invalid source actor flags");
+    }
+    decision.source_record_flags =
+        static_cast<std::uint8_t>(returned_action_code);
     if (!read_field_integer(state, decision_table, "frame", 15U,
                             returned_action_code)) {
         return fail("actor_ai.heartbeat returned an invalid animation frame");
@@ -3888,7 +3912,9 @@ GameScriptRuntime::actor_heartbeat(
          decision.animation_id == "walk" ||
          decision.animation_id == "action" ||
          decision.animation_id == "attack" ||
-         decision.animation_id == "projectile")) {
+         decision.animation_id == "projectile" ||
+         decision.animation_id == "hurt" ||
+         decision.animation_id == "down")) {
         decision.action = ScriptActorBehaviorDecision::Action::hold;
     } else if (action == "play_entry" &&
                decision.animation_id == "entry") {
@@ -3906,6 +3932,12 @@ GameScriptRuntime::actor_heartbeat(
     const bool dynamic_creature_action =
         context.dynamic_world_encounter_actor &&
         decision.animation_id == "action";
+    const bool dynamic_creature_hurt =
+        context.dynamic_world_encounter_actor &&
+        decision.animation_id == "hurt";
+    const bool dynamic_creature_down =
+        context.dynamic_world_encounter_actor &&
+        decision.animation_id == "down";
     if ((decision.animation_id == "walk" ||
          decision.animation_id == "attack") &&
         context.profile_id != "field_runner_k03_none00" &&
@@ -3918,6 +3950,20 @@ GameScriptRuntime::actor_heartbeat(
          context.action_animation_increment == 0U ||
          context.action_animation_threshold == 0U)) {
         return fail("actor_ai.heartbeat returned an unsupported target action pose");
+    }
+    if (decision.animation_id == "hurt" &&
+        (!dynamic_creature_hurt ||
+         context.hurt_animation_frame_count == 0U ||
+         context.hurt_animation_increment == 0U ||
+         context.hurt_animation_threshold == 0U ||
+         decision.animation_frame >= context.hurt_animation_frame_count)) {
+        return fail("actor_ai.heartbeat returned an unsupported hit reaction pose");
+    }
+    if (decision.animation_id == "down" &&
+        (!dynamic_creature_down || context.entry_animation_frame_count == 0U ||
+         decision.animation_frame >= context.entry_animation_frame_count ||
+         (decision.source_record_flags & 0x10U) == 0U)) {
+        return fail("actor_ai.heartbeat returned an unsupported exhausted pose");
     }
 
     lua_getfield(state, decision_table, "audio_event");
@@ -4316,8 +4362,17 @@ GameScriptRuntime::actor_heartbeat(
         context.dynamic_world_encounter_actor &&
         context.action_animation_audio_event.has_value() &&
         *decision.audio_event == *context.action_animation_audio_event;
+    const bool dynamic_hit_reaction_audio =
+        decision.audio_event.has_value() &&
+        context.phase == ScriptActorHeartbeatPhase::behavior &&
+        context.dynamic_world_encounter_actor &&
+        ((context.hurt_audio_event.has_value() &&
+          *decision.audio_event == *context.hurt_audio_event) ||
+         (context.down_audio_event.has_value() &&
+          *decision.audio_event == *context.down_audio_event));
     if (((begins_entry != decision.audio_event.has_value()) &&
-         !projectile_behavior && !begins_dynamic_target_action) ||
+         !projectile_behavior && !begins_dynamic_target_action &&
+         !dynamic_hit_reaction_audio) ||
         (begins_dynamic_target_action !=
          decision.target_heading_audio_event.has_value()) ||
         (decision.animation_id == "action" &&

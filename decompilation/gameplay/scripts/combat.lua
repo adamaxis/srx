@@ -286,6 +286,33 @@ local function copy_combatant(record)
     return copy
 end
 
+local function commit_combatant_meters(target, defender, physical_meter,
+                                      mental_meter)
+    local changed = physical_meter ~= defender.physical_meter or
+                    mental_meter ~= defender.mental_meter
+    if not changed then
+        return false
+    end
+    local state = game.actors[target.id]
+    if type(state) ~= "table" then
+        state = { actor_id = target.id }
+        game.actors[target.id] = state
+    end
+    state.combatant = copy_combatant(defender)
+    state.combatant.physical_meter = physical_meter
+    state.combatant.mental_meter = mental_meter
+    if defender.record_type >= 3 then
+        -- ROM 0xAFF2 runs on the damaged actor after either 0x55C76 or
+        -- weapon hit resolution changes a live world actor's meters.
+        -- Preserve the event in that actor's Lua state for its next heartbeat.
+        state.incoming_hit = {
+            physical_meter = physical_meter,
+            mental_meter = mental_meter,
+        }
+    end
+    return true
+end
+
 function Combat.resolve_reaction(context, target)
     if type(context) ~= "table" or type(target) ~= "table" or
        type(context.combatant) ~= "table" or
@@ -382,18 +409,8 @@ function Combat.resolve_reaction(context, target)
     local damage = signed_byte(remaining)
     local physical_meter, mental_meter = adjusted_meters(
         defender, physical, damage, context)
-    local changed = physical_meter ~= defender.physical_meter or
-                    mental_meter ~= defender.mental_meter
-    if changed then
-        local state = game.actors[target.id]
-        if type(state) ~= "table" then
-            state = { actor_id = target.id }
-            game.actors[target.id] = state
-        end
-        state.combatant = copy_combatant(defender)
-        state.combatant.physical_meter = physical_meter
-        state.combatant.mental_meter = mental_meter
-    end
+    local changed = commit_combatant_meters(
+        target, defender, physical_meter, mental_meter)
     return {
         target_id = target.id,
         source_record_slot = target.source_record_slot,
@@ -625,18 +642,8 @@ function Combat.resolve_weapon_hit(context, projectile, target)
         physical_meter, mental_meter = adjusted_meters(
             defender, true, damage, context)
     end
-    local changed = physical_meter ~= defender.physical_meter or
-                    mental_meter ~= defender.mental_meter
-    if changed then
-        local state = game.actors[target.id]
-        if type(state) ~= "table" then
-            state = { actor_id = target.id }
-            game.actors[target.id] = state
-        end
-        state.combatant = copy_combatant(defender)
-        state.combatant.physical_meter = physical_meter
-        state.combatant.mental_meter = mental_meter
-    end
+    local changed = commit_combatant_meters(
+        target, defender, physical_meter, mental_meter)
     return {
         target_id = target.id,
         source_record_slot = target.source_record_slot,

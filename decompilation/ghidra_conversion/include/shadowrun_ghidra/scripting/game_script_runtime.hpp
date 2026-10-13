@@ -568,6 +568,13 @@ struct ScriptActorBehaviorContext {
     std::uint16_t action_animation_increment = 0;
     std::uint16_t action_animation_threshold = 0;
     std::optional<std::uint16_t> action_animation_audio_event;
+    // Directional C072/C0B2 hit-reaction facts extracted from each actor
+    // template. Lua owns the reaction timer and finite animation state.
+    std::uint8_t hurt_animation_frame_count = 0;
+    std::uint16_t hurt_animation_increment = 0;
+    std::uint16_t hurt_animation_threshold = 0;
+    std::optional<std::uint16_t> hurt_audio_event;
+    std::optional<std::uint16_t> down_audio_event;
     // ROM FFF9F8 bit 7 selects 0x4D vs 0x4E after the target heading is
     // accepted. The source condition is a fact; Lua chooses the cue.
     bool target_heading_audio_alternate = false;
@@ -615,6 +622,7 @@ struct ScriptActorBehaviorDecision {
     std::string animation_id = "idle";
     std::uint8_t direction = 0;
     std::uint8_t animation_frame = 0;
+    std::uint8_t source_record_flags = 0;
     std::optional<std::uint16_t> animation_selector;
     bool combat_action_requested = false;
     bool transition_started = false;
