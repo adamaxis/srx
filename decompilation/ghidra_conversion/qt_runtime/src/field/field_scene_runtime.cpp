@@ -2190,6 +2190,8 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 actor.action_animation_threshold;
             context.action_animation_audio_event =
                 actor.action_animation_audio_event;
+            context.target_heading_audio_alternate =
+                (field_random_seed_ & 0x8000U) != 0U;
             context.initial_action_delay = actor.action_delay;
             context.delay_primary_attribute =
                 actor.delay_primary_attribute;
@@ -2515,6 +2517,11 @@ void FieldSceneRuntime::advance_default_field_actors() {
         if (decision->audio_event.has_value() &&
             source_audio_event_callback_) {
             source_audio_event_callback_(*decision->audio_event);
+        }
+        if (decision->target_heading_audio_event.has_value() &&
+            source_audio_event_callback_) {
+            source_audio_event_callback_(
+                *decision->target_heading_audio_event);
         }
     }
 }

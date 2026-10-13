@@ -497,6 +497,9 @@ struct ScriptActorBehaviorContext {
     std::uint16_t action_animation_increment = 0;
     std::uint16_t action_animation_threshold = 0;
     std::optional<std::uint16_t> action_animation_audio_event;
+    // ROM FFF9F8 bit 7 selects 0x4D vs 0x4E after the target heading is
+    // accepted. The source condition is a fact; Lua chooses the cue.
+    bool target_heading_audio_alternate = false;
     // 0x44BC fills +0x78/+0x7B/+0x90 from the selected ROM template. Lua
     // uses these typed facts when 0xB11C resets the signed +0xDC delay.
     std::int16_t initial_action_delay = 0;
@@ -536,6 +539,7 @@ struct ScriptActorBehaviorDecision {
     bool transition_started = false;
     bool transition_complete = false;
     std::optional<std::uint16_t> audio_event;
+    std::optional<std::uint16_t> target_heading_audio_event;
     std::optional<std::uint8_t> weapon_item_id;
     std::optional<std::uint16_t> movement_heading;
     std::optional<std::uint16_t> movement_current_heading;

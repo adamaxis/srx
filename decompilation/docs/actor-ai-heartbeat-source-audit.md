@@ -293,12 +293,16 @@ have 2 frames at `0x0200` for kinds 4-11 and 14, 1 frame at `0x01F4` for kind
 12, and 3 frames at `0x0200` for kind 13.
 
 The ordinary encounter QA observes the connected transition, both finite-list
-frames, mode-1 delay, and one `0x4C` request. The full 320x224 snapshots retain
+frames, mode-1 delay, and the `0x4C` then `0x4D`/`0x4E` cue sequence. The Lua
+runtime QA exercises both FFF9F8 variants. The full 320x224 snapshots retain
 the HUD and map with no black sprite rectangle or stale control. Audio event
 `0x4C` now plays extracted table-2 resource 76; the audio QA checks playback
 and its 98,511-sample, 44.1 kHz duration (2.234 seconds). Hound cue `0x55`
 uses slot 85, absent from the extracted non-silent resource set, so it remains
-unmapped. The Hound close-effect diversion is separate and source-silent. An
+unmapped. After linked-heading acceptance, `0xB1DC` selects `0x4D` or `0x4E`
+from FFF9F8 bit 7. These now play resources 77/78; each contains 93,360 samples
+at 44.1 kHz (2.116 seconds), and the audio QA checks both. The Hound
+close-effect diversion is separate and source-silent. An
 independent same-action Genesis capture is not identified. `0x55C76` still
 owns the unresolved combat reaction/hit path; this visual transition does not
 claim that damage or actor death is connected.

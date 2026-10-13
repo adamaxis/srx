@@ -1527,6 +1527,9 @@ int main() {
             ? std::nullopt
             : std::optional<std::uint16_t>{0U};
     };
+    auto c0a2_alternate_context = c0a2_action_context;
+    c0a2_alternate_context.instance_id = "eye5r_1_k07_item02";
+    c0a2_alternate_context.target_heading_audio_alternate = true;
     const auto c0a2_action_spawn =
         scripts.actor_heartbeat(c0a2_action_context);
     c0a2_action_context.spawn = false;
@@ -1545,6 +1548,27 @@ int main() {
         }
         if (decision->animation_id == "action") {
             c0a2_action_start = decision;
+            break;
+        }
+    }
+    const auto c0a2_alternate_spawn =
+        scripts.actor_heartbeat(c0a2_alternate_context);
+    c0a2_alternate_context.spawn = false;
+    (void)scripts.actor_heartbeat(c0a2_alternate_context);
+    c0a2_alternate_context.phase = ScriptActorHeartbeatPhase::render;
+    for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
+        (void)scripts.actor_heartbeat(c0a2_alternate_context);
+    }
+    c0a2_alternate_context.phase = ScriptActorHeartbeatPhase::behavior;
+    std::optional<ScriptActorBehaviorDecision> c0a2_alternate_action_start;
+    for (std::uint8_t pass = 0U; pass < 100U; ++pass) {
+        const auto decision =
+            scripts.actor_heartbeat(c0a2_alternate_context);
+        if (!decision.has_value()) {
+            break;
+        }
+        if (decision->animation_id == "action") {
+            c0a2_alternate_action_start = decision;
             break;
         }
     }
@@ -1570,8 +1594,13 @@ int main() {
         c0a2_action_start.has_value() &&
         c0a2_action_start->ai_target_engaged &&
         c0a2_action_start->audio_event == 0x004CU &&
+        c0a2_action_start->target_heading_audio_event == 0x004DU &&
         c0a2_action_start->action_delay == 45 &&
         c0a2_action_start->animation_frame == 0U &&
+        c0a2_alternate_spawn.has_value() &&
+        c0a2_alternate_action_start.has_value() &&
+        c0a2_alternate_action_start->audio_event == 0x004CU &&
+        c0a2_alternate_action_start->target_heading_audio_event == 0x004EU &&
         c0a2_action_frame_zero.has_value() &&
         c0a2_action_frame_zero->animation_id == "action" &&
         c0a2_action_frame_zero->animation_frame == 1U &&

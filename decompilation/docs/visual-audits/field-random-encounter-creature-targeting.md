@@ -189,6 +189,11 @@ observes that the B press/release is silent before the ordinary actor requests
 `0x4C`. Audio playback now maps `0x4C` to extracted table-2 resource 76; its
 FLAC contains 98,511 samples at 44.1 kHz (2.234 seconds), and the audio QA
 checks that it loads, starts, and reports a duration in the expected range.
+After a linked heading is accepted, the same source transition requests
+`0x4D` or `0x4E` from FFF9F8 bit 7. These play resources 77 and 78, each
+93,360 samples at 44.1 kHz (2.116 seconds); the audio QA checks both paths.
+Lua selects the cue from a typed source-state fact. Script QA covers both
+variants, and field QA requires `0x4C` followed by the selected heading cue.
 The `0x55` request uses table-2 slot 85, which is absent from the extracted
 non-silent resources, so the host leaves it unmapped. The Hound's close-effect
 diversion remains separate. No independent matching Genesis action sequence

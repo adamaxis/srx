@@ -3022,6 +3022,8 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "action_animation_audio_event");
+    lua_pushboolean(state, context.target_heading_audio_alternate);
+    lua_setfield(state, -2, "target_heading_audio_alternate");
     lua_pushinteger(state, context.initial_action_delay);
     lua_setfield(state, -2, "initial_action_delay");
     lua_pushinteger(state, context.delay_primary_attribute);
@@ -3557,6 +3559,20 @@ GameScriptRuntime::actor_heartbeat(
         decision.audio_event = static_cast<std::uint16_t>(event);
     }
     lua_pop(state, 1);
+    lua_getfield(state, decision_table, "target_heading_audio_event");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        std::uint32_t event = 0U;
+        if (!read_integer(state, -1, 0xFFFFU, event) ||
+            (event != 0x004DU && event != 0x004EU) ||
+            !context.dynamic_world_encounter_actor ||
+            decision.animation_id != "action") {
+            return fail(
+                "actor_ai.heartbeat returned an invalid target-heading audio event");
+        }
+        decision.target_heading_audio_event =
+            static_cast<std::uint16_t>(event);
+    }
+    lua_pop(state, 1);
     lua_getfield(state, decision_table, "weapon_item_id");
     if (lua_type(state, -1) != LUA_TNIL) {
         std::uint32_t item_id = 0U;
@@ -3926,6 +3942,8 @@ GameScriptRuntime::actor_heartbeat(
         *decision.audio_event == *context.action_animation_audio_event;
     if (((begins_entry != decision.audio_event.has_value()) &&
          !projectile_behavior && !begins_dynamic_target_action) ||
+        (begins_dynamic_target_action !=
+         decision.target_heading_audio_event.has_value()) ||
         (decision.animation_id == "action" &&
          decision.audio_event.has_value() &&
          !begins_dynamic_target_action) ||

@@ -7617,8 +7617,11 @@ int run_field_random_encounter_spawn_qa(
         marker_steady->animating || marker_steady->radius != 0U ||
         audio_after_target_press != audio_before_target_selection ||
         audio_after_target_release != audio_before_target_selection ||
-        audio_after_target_action != audio_before_target_selection + 1U ||
-        field_audio_events.back() != 0x004CU ||
+        audio_after_target_action != audio_before_target_selection + 2U ||
+        field_audio_events.size() < audio_before_target_selection + 2U ||
+        field_audio_events[audio_before_target_selection] != 0x004CU ||
+        (field_audio_events[audio_before_target_selection + 1U] != 0x004DU &&
+         field_audio_events[audio_before_target_selection + 1U] != 0x004EU) ||
         creature_action_frame_count < 2U ||
         !creature_action_frames_saved ||
         !target_selection_saved ||

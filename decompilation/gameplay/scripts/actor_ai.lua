@@ -504,7 +504,8 @@ local function same_actor(state, context)
            state.action_code == context.action_code
 end
 
-local function snapshot(state, action, audio_event, projectile_movement)
+local function snapshot(state, action, audio_event, projectile_movement,
+                        target_heading_audio_event)
     if state.animation_id == "idle" then
         state.animation_frame = 0
     end
@@ -524,6 +525,7 @@ local function snapshot(state, action, audio_event, projectile_movement)
         transition_complete = state.transition_complete,
         combat_action_requested = state.combat_action_requested,
         audio_event = audio_event,
+        target_heading_audio_event = target_heading_audio_event,
         weapon_item_id = state.weapon_item_id,
         animation_increment = state.animation_increment,
         movement_heading = state.movement_heading,
@@ -1184,7 +1186,9 @@ local function begin_dynamic_target_action(state, context)
     state.animation_period = context.action_animation_threshold
     state.action_animation_complete = false
     state.action_delay = source_action_delay(context, state, 1)
-    return context.action_animation_audio_event
+    local heading_event = context.target_heading_audio_alternate
+        and 0x4E or 0x4D
+    return context.action_animation_audio_event, heading_event
 end
 
 local function advance_player_animation(state, context)
@@ -1678,6 +1682,7 @@ function ActorAI.heartbeat(context)
 
     local action = "hold"
     local audio_event
+    local target_heading_audio_event
     if profile.controls_movement then
         -- ROM 0xACAE observes the held A bit and only dispatches a player
         -- action after the source +0xDC delay gate expires. The host supplies
@@ -1763,8 +1768,8 @@ function ActorAI.heartbeat(context)
                                 state.movement_route_distance = nil
                             end
                         else
-                            audio_event = begin_dynamic_target_action(
-                                state, context)
+                            audio_event, target_heading_audio_event =
+                                begin_dynamic_target_action(state, context)
                         end
                     end
 
@@ -1803,7 +1808,8 @@ function ActorAI.heartbeat(context)
                 end
             end
         end
-        return snapshot(state, action, audio_event)
+        return snapshot(state, action, audio_event, nil,
+                        target_heading_audio_event)
     end
 
     if context.phase == "render" then
