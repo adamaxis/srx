@@ -3311,8 +3311,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             const auto template_offset = tagged_template & 0x7FFFFFFFU;
             const auto position_offset =
                 read_big_endian_long(rom, cursor + 4U);
+            // 0x44BC copies through template byte +0x49. Byte +0x4C is not
+            // part of this template; the next compact template starts nearby.
             if (template_offset > rom.size() ||
-                rom.size() - template_offset < 0x4DU) {
+                rom.size() - template_offset < 0x4AU) {
                 throw std::runtime_error(
                     "default field actor template pointer exceeds ROM");
             }
@@ -3352,7 +3354,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 read_big_endian_word(rom, position_offset + 2U),
                 read_big_endian_word(rom, 0x7361AU + 0x2EU),
                 palette_line,
-                rom[template_offset + 0x4CU],
+                // ROM 0x44BC maps template +0x04 to live entity +0x4C.
+                rom[template_offset + 0x04U],
                 template_offset,
                 position_offset,
                 source_list.list_offset,
@@ -3387,6 +3390,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     } else if (byte_offset == 0x2FU) {
                         record.initial_heading = static_cast<std::uint16_t>(
                             (record.initial_heading & 0xFF00U) | byte_value);
+                    } else if (byte_offset == 0x4CU) {
+                        record.physical_meter = byte_value;
                     }
                     first_override = false;
                     pair_offset += 2U;
@@ -3809,8 +3814,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     break;
                 }
                 const auto template_offset = tagged_template & 0x7FFFFFFFU;
+                // 0x44BC consumes template bytes through +0x49. The old
+                // +0x4C read crossed into the next compact actor template.
                 if (template_offset > rom.size() ||
-                    rom.size() - template_offset < 0x4DU) {
+                    rom.size() - template_offset < 0x4AU) {
                     throw std::runtime_error(
                         "dynamic world actor template points outside the ROM");
                 }
@@ -3833,6 +3840,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 auto delay_secondary_attribute = rom[template_offset + 0x2DU];
                 auto delay_capability_flags = read_big_endian_word(
                     rom, template_offset + 0x44U);
+                auto physical_meter = rom[template_offset + 0x04U];
                 auto source_interaction_flags = rom[
                     shadowrun::rom::kPostObjectEntityTemplate + 0x11U];
                 const auto actor_name = read_actor_name(template_offset);
@@ -3859,6 +3867,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                             static_cast<std::uint8_t>(pair & 0x00FFU);
                         if (override_offset == 0x11U) {
                             source_interaction_flags = override_value;
+                        } else if (override_offset == 0x4CU) {
+                            physical_meter = override_value;
                         }
                         // ROM 0x44BC copies these template bytes into the
                         // live +0x78, +0x7B, and +0x90 delay inputs. Ordered
@@ -3899,7 +3909,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     static_cast<std::uint32_t>(template_offset), entity_kind,
                     palette_line, actor_name, profile_id, action_code,
                     action_kind, source_interaction_flags,
-                    rom[template_offset + 0x4CU], delay_primary_attribute,
+                    physical_meter, delay_primary_attribute,
                     delay_secondary_attribute, delay_capability_flags,
                     sprite_stem,
                     first_override ? "-" : overrides.str(),

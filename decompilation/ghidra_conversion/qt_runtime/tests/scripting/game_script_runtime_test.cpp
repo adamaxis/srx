@@ -273,22 +273,22 @@ int main() {
                 redmond_creature_sequence->actors[0].actor_name ==
                     "Hell Hound" &&
                 redmond_creature_sequence->actors[0].entity_kind == 12U &&
-                redmond_creature_sequence->actors[0].physical_meter == 32U &&
+                redmond_creature_sequence->actors[0].physical_meter == 10U &&
                 redmond_creature_sequence->actors[1].actor_name == "vampire" &&
                 redmond_creature_sequence->actors[1].entity_kind == 9U &&
-                redmond_creature_sequence->actors[1].physical_meter == 96U &&
+                redmond_creature_sequence->actors[1].physical_meter == 10U &&
                 barrens_creature_sequence.has_value() &&
                 barrens_creature_sequence->actors.size() == 1U &&
                 barrens_creature_sequence->actors[0].actor_name == "weenr1" &&
-                barrens_creature_sequence->actors[0].physical_meter == 32U &&
+                barrens_creature_sequence->actors[0].physical_meter == 10U &&
                 lone_star_sequence.has_value() &&
                 lone_star_sequence->actors.size() == 2U &&
                 lone_star_sequence->actors[0].actor_name == "lone11" &&
-                lone_star_sequence->actors[0].physical_meter == 32U &&
+                lone_star_sequence->actors[0].physical_meter == 10U &&
                 lone_star_sequence->actors[1].actor_name == "lonemage" &&
                 lone_star_sequence->actors[1].action_kind ==
                     ScriptActorActionKind::spell &&
-                lone_star_sequence->actors[1].physical_meter == 64U,
+                lone_star_sequence->actors[1].physical_meter == 10U,
             "ROM field encounter catalog did not resolve creature and Lone Star sequences")) {
         std::cerr << scripts.failure() << '\n';
         return 1;

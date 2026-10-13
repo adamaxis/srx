@@ -48,9 +48,18 @@ The record initializer at `0x44BC` is essential context for those gates. Its
 ROM instructions copy the common record template, write `0x05` to record
 `+0x10`, copy the entity kind separately to `+0x0E`, and initialize `+0xB6`
 from the source PRNG low nibble (`0..15`; world activity mode `0x37` instead
-uses `0x28`). Thus `+0x10` is a service/active flag byte, not the actor kind.
-The initializer later applies ordered template overrides, so behavior should
-read the resulting record facts rather than derive flags from a package name.
+uses `0x28`). It also copies source template byte `+0x04` to live record
+`+0x4C` and consumes template bytes through `+0x49`; ordered list overrides
+apply to those live-record offsets after the copy. Thus `+0x10` is a
+service/active flag byte, not the actor kind. The offline default and dynamic
+actor catalogs had read `+0x4C` from the ROM template instead. That byte is
+outside the `0x4A`-byte template payload and can be the next template's flags:
+for example, the Hell Hound template at `0x1D6816` has `+0x04 = 0x0A`, while
+`+0x4C = 0x20` is the Gargoyle template's palette flag. The catalogs now use
+the initializer's actual source byte and honor a live `+0x4C` override. This
+corrects the actor meter used by encounter state and collision eligibility.
+Behavior should read the resulting record facts rather than derive flags from
+a package name.
 The default-map NPC profile still does not receive the general branch tree's
 complete `+0x10`, `+0x11`, `+0x4C`, `+0x9E`, and route state. The temporary
 random-world actor path now carries typed `+0x10` service flags and the
