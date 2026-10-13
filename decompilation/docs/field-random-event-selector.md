@@ -601,9 +601,14 @@ template entries are `lone11`, `lone12`, and `lonemage`. The raw list then conta
 in `0x1E1FC` treats each nonzero longword as a candidate template address and
 stops on a null entry or actor-allocation failure; it does not parse this tail
 as metadata. The tail's intended meaning and resulting actor state remain
-unresolved. If dispatch rejects the ID, page `0x121270` offers a `Talk your
-way out` option (label at `0x104EF8`) and Attack (`0xD2` -> `0x24402`);
-the Talk result is still unresolved.
+unresolved. If dispatch rejects the ID, record `0x121270` is a text-only
+negative-dispatch page: its second text pointer is `0xFFFFFFFF`, which makes
+the common prompt loop wait for input and return without presenting choices
+(`0x1F3C4` -> `0x1F412` -> `0x1F592`). The nearby `0x104EF8` string and Attack
+label are in the overlapping record at `0x121278`; that is the separate
+no-badge corporate-guard prompt returned by `0x242FA`, not the dispatch-reject
+page. Its Talk command `0xD0` reaches `0x24432` and is traced in the security-
+guard section above. The `0x1D6FEC` actor-list tail remains unresolved.
 
 Comply (`0xDA` -> `0x24662`) sets response record `0x12140C` and branches to
 the shared arrest settlement at `0x235AA`. That routine visits all three
