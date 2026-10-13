@@ -2775,6 +2775,9 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
             std::uint32_t magazine_capacity = 0U;
             std::uint32_t damage_bar_index = 0U;
             std::uint32_t rounds_per_action = 0U;
+            std::uint32_t source_effect_index = 0U;
+            std::uint32_t source_effect_value = 0U;
+            std::uint32_t source_difficulty = 0U;
             ScriptWeaponTemplate weapon;
             weapon.id = item.id;
             weapon.item_code = item.code;
@@ -2822,6 +2825,38 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
                 static_cast<std::uint8_t>(damage_bar_index);
             weapon.rounds_per_action =
                 static_cast<std::uint8_t>(rounds_per_action);
+            lua_getfield(state, weapon_index, "source_action");
+            if (!lua_istable(state, -1)) {
+                lua_pop(state, 1);
+                return fail("item weapon source action is missing");
+            }
+            const auto source_action_index = lua_absindex(state, -1);
+            const bool source_action_valid =
+                read_field_integer(state, source_action_index,
+                                   "effect_table_index", 2U,
+                                   source_effect_index) &&
+                read_field_integer(state, source_action_index,
+                                   "effect_value", 10U,
+                                   source_effect_value) &&
+                source_effect_value != 0U &&
+                read_field_integer(state, source_action_index,
+                                   "difficulty", 255U,
+                                   source_difficulty) &&
+                source_difficulty != 0U;
+            lua_pop(state, 1);
+            const auto expected_effect_index = item.code <= 4U
+                ? 0U : item.code <= 10U ? 1U : 2U;
+            const auto expected_effect_value = expected_effect_index == 0U
+                ? 1U : expected_effect_index == 1U ? 3U : 6U;
+            if (!source_action_valid ||
+                source_effect_index != expected_effect_index ||
+                source_effect_value != expected_effect_value) {
+                return fail("item weapon source action disagrees with D4540/166AD4");
+            }
+            weapon.source_action = ScriptWeaponTemplate::SourceAction{
+                static_cast<std::uint8_t>(source_effect_index),
+                static_cast<std::uint8_t>(source_effect_value),
+                static_cast<std::uint8_t>(source_difficulty)};
             item.weapon = std::move(weapon);
         }
         lua_pop(state, 1);
@@ -3056,6 +3091,8 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "action_kind");
     lua_pushinteger(state, context.action_code);
     lua_setfield(state, -2, "action_code");
+    lua_pushinteger(state, context.projectile_action_code);
+    lua_setfield(state, -2, "projectile_action_code");
     lua_pushinteger(state, context.entry_delay);
     lua_setfield(state, -2, "entry_delay");
     lua_pushinteger(state, context.entry_animation_frame_count);
@@ -3141,7 +3178,7 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "world_effect_slot_occupancy");
     const auto push_combatant = [state](
         const ScriptCombatantFacts& combatant) {
-        lua_createtable(state, 0, 22);
+        lua_createtable(state, 0, 26);
         const auto table_index = lua_absindex(state, -1);
         const auto set_integer = [state, table_index](
                                      const char* field,
@@ -3179,6 +3216,14 @@ GameScriptRuntime::actor_heartbeat(
         set_integer("linked_action_profile_index",
                     combatant.linked_action_profile_index);
         lua_createtable(state,
+                        static_cast<int>(combatant.action_skills.size()), 0);
+        for (std::size_t index = 0U;
+             index < combatant.action_skills.size(); ++index) {
+            lua_pushinteger(state, combatant.action_skills[index]);
+            lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+        }
+        lua_setfield(state, table_index, "action_skills");
+        lua_createtable(state,
                         static_cast<int>(combatant.item_codes.size()), 0);
         for (std::size_t index = 0U; index < combatant.item_codes.size();
              ++index) {
@@ -3194,6 +3239,16 @@ GameScriptRuntime::actor_heartbeat(
             lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
         }
         lua_setfield(state, table_index, "item_phases");
+        lua_createtable(
+            state,
+            static_cast<int>(combatant.action_phase_extension.size()), 0);
+        for (std::size_t index = 0U;
+             index < combatant.action_phase_extension.size(); ++index) {
+            lua_pushinteger(state,
+                            combatant.action_phase_extension[index]);
+            lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+        }
+        lua_setfield(state, table_index, "action_phase_extension");
     };
     if (context.combatant.has_value()) {
         push_combatant(*context.combatant);
@@ -3316,6 +3371,21 @@ GameScriptRuntime::actor_heartbeat(
                           context.ai_target_candidates);
     push_actor_candidates("world_target_selection_candidates",
                           context.world_target_selection_candidates);
+    lua_createtable(
+        state, static_cast<int>(context.projectile_combat_targets.size()), 0);
+    for (std::size_t index = 0U;
+         index < context.projectile_combat_targets.size(); ++index) {
+        const auto& target = context.projectile_combat_targets[index];
+        lua_createtable(state, 0, 3);
+        lua_pushlstring(state, target.id.data(), target.id.size());
+        lua_setfield(state, -2, "id");
+        lua_pushinteger(state, target.source_record_slot);
+        lua_setfield(state, -2, "source_record_slot");
+        push_combatant(target.combatant);
+        lua_setfield(state, -2, "combatant");
+        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+    }
+    lua_setfield(state, -2, "projectile_combat_targets");
     lua_pushlightuserdata(state, impl_.get());
     lua_pushcclosure(state, Impl::actor_random_bound, 1);
     lua_setfield(state, -2, "ai_random_bound");
@@ -3358,7 +3428,7 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "projectile_animation");
     if (context.projectile_movement.has_value()) {
         const auto& movement = *context.projectile_movement;
-        lua_createtable(state, 0, 12);
+        lua_createtable(state, 0, 13);
         const auto role = movement.role == ScriptActorProjectileRole::primary
                               ? "primary"
                               : "secondary";
@@ -3382,6 +3452,8 @@ GameScriptRuntime::actor_heartbeat(
         lua_setfield(state, -2, "retry_counter");
         lua_pushinteger(state, movement.linked_action_timer);
         lua_setfield(state, -2, "linked_action_timer");
+        lua_pushinteger(state, movement.action_result);
+        lua_setfield(state, -2, "action_result");
         lua_pushinteger(state, movement.animation_selector);
         lua_setfield(state, -2, "animation_selector");
         if (movement.hit_target_id.empty()) {
@@ -3395,6 +3467,8 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "projectile_movement");
+    lua_pushboolean(state, context.projectile_attack_seed_pending);
+    lua_setfield(state, -2, "projectile_attack_seed_pending");
     lua_pushboolean(
         state,
         context.movement_services_available &&
@@ -3653,7 +3727,12 @@ GameScriptRuntime::actor_heartbeat(
         std::uint32_t combat_value = 0U;
         if (!read_field_string(state, update_table, "target_id",
                                update.target_id) ||
-            !read_field_integer(state, update_table, "record_type",
+            !read_field_integer(state, update_table, "source_record_slot",
+                                0xFFU, combat_value)) {
+            return fail("actor_ai.heartbeat returned incomplete combat target facts");
+        }
+        update.source_record_slot = static_cast<std::uint8_t>(combat_value);
+        if (!read_field_integer(state, update_table, "record_type",
                                 0xFFFFU, combat_value)) {
             return fail("actor_ai.heartbeat returned incomplete combat target facts");
         }
@@ -3674,28 +3753,64 @@ GameScriptRuntime::actor_heartbeat(
                                 update.changed)) {
             return fail("actor_ai.heartbeat returned invalid combat meter flags");
         }
-        const auto target = std::find_if(
-            context.ai_target_candidates.begin(),
-            context.ai_target_candidates.end(),
-            [&update](const auto& candidate) {
-                return candidate.id == update.target_id &&
-                       candidate.source_record_slot.has_value() &&
-                       candidate.combatant.has_value() &&
-                       candidate.combatant->record_type == update.record_type;
-            });
-        if (!context.dynamic_world_encounter_actor ||
-            context.phase != ScriptActorHeartbeatPhase::behavior ||
-            target == context.ai_target_candidates.end() ||
-            (update.record_type < 3U) == target->world_activity_actor ||
-            (update.record_type < 3U &&
-             *target->source_record_slot >= 3U) ||
-            (update.record_type >= 3U &&
-             *target->source_record_slot < 3U)) {
-            return fail("actor_ai.heartbeat returned an unlinked combat target");
+        const ScriptCombatantFacts* target_combatant = nullptr;
+        bool target_is_world_actor = false;
+        bool target_linked = false;
+        if (context.projectile_movement.has_value()) {
+            const auto target = std::find_if(
+                context.projectile_combat_targets.begin(),
+                context.projectile_combat_targets.end(),
+                [&update](const auto& candidate) {
+                    return candidate.id == update.target_id &&
+                           candidate.combatant.record_type ==
+                               update.record_type &&
+                           candidate.source_record_slot ==
+                               update.source_record_slot;
+                });
+            if (target != context.projectile_combat_targets.end()) {
+                target_combatant = &target->combatant;
+                target_linked =
+                    update.record_type < 3U
+                        ? update.source_record_slot < 3U
+                        : update.source_record_slot >= 3U;
+            }
+            if (context.profile_id != "weapon_projectile" ||
+                context.phase != ScriptActorHeartbeatPhase::behavior ||
+                target_combatant == nullptr || !target_linked) {
+                return fail("weapon projectile returned an unlinked combat target");
+            }
+        } else {
+            const auto target = std::find_if(
+                context.ai_target_candidates.begin(),
+                context.ai_target_candidates.end(),
+                [&update](const auto& candidate) {
+                    return candidate.id == update.target_id &&
+                           candidate.source_record_slot.has_value() &&
+                           *candidate.source_record_slot ==
+                               update.source_record_slot &&
+                           candidate.combatant.has_value() &&
+                           candidate.combatant->record_type ==
+                               update.record_type;
+                });
+            if (target != context.ai_target_candidates.end()) {
+                target_combatant = &*target->combatant;
+                target_is_world_actor = target->world_activity_actor;
+                target_linked =
+                    context.dynamic_world_encounter_actor &&
+                    context.phase == ScriptActorHeartbeatPhase::behavior &&
+                    (update.record_type < 3U) != target_is_world_actor &&
+                    ((update.record_type < 3U &&
+                      update.source_record_slot < 3U) ||
+                     (update.record_type >= 3U &&
+                      update.source_record_slot >= 3U));
+            }
+            if (!target_linked) {
+                return fail("actor_ai.heartbeat returned an unlinked combat target");
+            }
         }
         const bool meters_changed =
-            update.physical_meter != target->combatant->physical_meter ||
-            update.mental_meter != target->combatant->mental_meter;
+            update.physical_meter != target_combatant->physical_meter ||
+            update.mental_meter != target_combatant->mental_meter;
         if (meters_changed != update.changed) {
             return fail("actor_ai.heartbeat returned an inconsistent combat meter update");
         }
@@ -4124,6 +4239,12 @@ GameScriptRuntime::actor_heartbeat(
                 "actor_ai.heartbeat returned invalid projectile action timer");
         }
         movement_decision.state.linked_action_timer =
+            static_cast<std::int8_t>(signed_value);
+        if (!read_signed("action_result", -128, 127, signed_value)) {
+            return fail(
+                "actor_ai.heartbeat returned invalid projectile action result");
+        }
+        movement_decision.state.action_result =
             static_cast<std::int8_t>(signed_value);
         if (!read_field_integer(state, movement_table, "animation_selector",
                                 0xFFFFU, unsigned_value)) {

@@ -19117,6 +19117,10 @@ int main(int argc, char** argv) {
             if (field_player_action_dump_path.has_value()) {
                 std::filesystem::create_directories(
                     *field_player_action_dump_path);
+                // The action-delay check advances more than 100 idle field
+                // passes. Hold the source PRNG fixed so an unrelated random
+                // encounter cannot mutate the screen/audio being asserted.
+                field_scene.set_source_random_seed_for_dump(0U);
                 auto& runner = field_scene.active_runner_record();
                 runner.flags = static_cast<std::uint16_t>(
                     runner.flags | 0x0100U);

@@ -977,6 +977,8 @@ private:
     void advance_default_field_actor_animations();
     void advance_field_weapon_projectile_animations();
     void advance_field_weapon_projectiles();
+    bool apply_script_combat_meter_update(
+        const scripting::ScriptCombatMeterUpdate& update);
     void service_player_weapon_action(bool requested_by_lua);
     void initialize_field_entity_selection_state();
     void refresh_field_runner_state_and_assets();
@@ -1135,6 +1137,8 @@ private:
     };
 
     struct FieldWeaponProjectilePresentation {
+        scripting::ScriptCombatantFacts shooter_facts{};
+        std::size_t shooter_party_slot = 0U;
         SpawnEntityRecordState primary_record{};
         EntityCollisionRecord primary_collision_record{};
         EntityFixedPointPosition primary_fixed_position{};

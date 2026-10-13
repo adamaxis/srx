@@ -93,6 +93,12 @@ struct ScriptShopDefinition {
 };
 
 struct ScriptWeaponTemplate {
+    struct SourceAction {
+        std::uint8_t effect_table_index = 0;
+        std::uint8_t effect_value = 0;
+        std::uint8_t difficulty = 0;
+    };
+
     std::string id;
     std::uint8_t item_code = 0;
     std::uint8_t magazine_capacity = 0;
@@ -105,6 +111,9 @@ struct ScriptWeaponTemplate {
     std::string attack_cadence;
     std::string attack_delay_scale;
     std::string reload_delay_scale;
+    // D4540 +0x25 indexes 166AD4 (NEG.B), +0x26 is the initial
+    // 0x55948 hit-resolution difficulty.
+    SourceAction source_action{};
 };
 
 struct ScriptArmorTemplate {
@@ -247,14 +256,18 @@ struct ScriptCombatantFacts {
     std::uint8_t command_attribute_7c = 0;
     std::uint8_t command_attribute_85 = 0;
     std::uint8_t item18_base = 0;
+    std::array<std::uint8_t, 4> action_skills{}; // live +0x81..+0x84
     std::uint8_t armor_index = 0;
     std::int8_t race_or_state = 0;
     std::uint8_t class_code = 0;
     std::uint8_t equipped_action_code = 0;
     std::uint8_t action_profile_modifier_flags = 0; // live +0xDF
-    std::uint16_t linked_action_profile_index = 0; // live +0xA0
+    // 0xFFFF means the source +0xD8 linked-record relationship has not been
+    // supplied; never substitute an unrelated runner menu-table index.
+    std::uint16_t linked_action_profile_index = 0xFFFFU;
     std::array<std::uint8_t, 8> item_codes{};
     std::array<std::uint8_t, 8> item_phases{};
+    std::array<std::uint8_t, 10> action_phase_extension{}; // live +0x76..+0x7F
 };
 
 struct ScriptActionProfileModifierPair {
@@ -266,11 +279,18 @@ struct ScriptActionProfileModifierPair {
 
 struct ScriptCombatMeterUpdate {
     std::string target_id;
+    std::uint8_t source_record_slot = 0;
     std::uint16_t record_type = 0;
     std::uint8_t physical_meter = 0;
     std::uint8_t mental_meter = 0;
     bool physical = false;
     bool changed = false;
+};
+
+struct ScriptProjectileCombatTarget {
+    std::string id;
+    std::uint8_t source_record_slot = 0;
+    ScriptCombatantFacts combatant;
 };
 
 struct ScriptFieldEncounterActor {
@@ -407,6 +427,7 @@ struct ScriptActorProjectileMovement {
     std::int16_t tile_offset_y = 0;
     std::uint8_t retry_counter = 0;
     std::int8_t linked_action_timer = 0;
+    std::int8_t action_result = 0; // live +0x9F, shared by the projectile pair
     std::uint16_t animation_selector = 0;
     std::string hit_target_id;
 };
@@ -511,6 +532,10 @@ struct ScriptActorBehaviorContext {
     std::optional<std::int16_t> animation_accumulator_override;
     std::optional<ScriptActorProjectileAnimation> projectile_animation;
     std::optional<ScriptActorProjectileMovement> projectile_movement;
+    // The first primary-record behavior pass resolves ROM 0x55640 once;
+    // subsequent movement and the cloned secondary record retain its result.
+    bool projectile_attack_seed_pending = false;
+    std::vector<ScriptProjectileCombatTarget> projectile_combat_targets;
     ScriptProjectileTerrainProbe projectile_terrain_probe;
     ScriptProjectileCollisionSearch projectile_collision_search;
     bool movement_services_available = false;
@@ -574,6 +599,9 @@ struct ScriptActorBehaviorContext {
     // corresponding +0xDF dynamic-profile branch.
     std::array<std::int8_t, 2> action_attribute_selectors{};
     bool combat_meter_service_blocked = false;
+    // The source weapon row copied into projectile +0x57; this is separate
+    // from the actor profile's item/spell action classification above.
+    std::uint8_t projectile_action_code = 0;
 };
 
 struct ScriptActorBehaviorDecision {

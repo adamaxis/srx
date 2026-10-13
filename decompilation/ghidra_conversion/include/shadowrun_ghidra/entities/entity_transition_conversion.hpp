@@ -82,6 +82,7 @@ struct SpawnEntityRecordState {
     std::uint16_t animation_resource = 0;
     std::uint8_t record_flags = 0;
     bool has_parent_link = false;
+    std::int8_t action_result = 0; // live +0x9F, from ROM 0x55640
 };
 
 using SpawnPreparationBoundary = std::function<void()>;

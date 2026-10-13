@@ -90,6 +90,20 @@ local function condition_modifier(difficulty, attacker, target)
     return difficulty + 4
 end
 
+local function add_wound_difficulty_penalty(difficulty, physical_meter,
+                                            mental_meter)
+    -- ROM 0xD5A adds two below five, one from five through seven, and zero
+    -- from eight upward for each meter before 0x0DBA rolls.
+    local function add_meter_penalty(meter)
+        if meter < 8 then
+            difficulty = difficulty + (meter < 5 and 2 or 1)
+        end
+    end
+    add_meter_penalty(physical_meter)
+    add_meter_penalty(mental_meter)
+    return difficulty
+end
+
 local function ready_party_bonus(context)
     local bonus = 0
     for _, candidate in ipairs(context.ai_target_candidates or {}) do
@@ -122,8 +136,17 @@ local function dynamic_status_modifier(difficulty, attacker, linked, context)
     end
 
     local profiles = context.action_profile_modifiers
-    local profile_index = linked.linked_action_profile_index + 1
-    local profile = type(profiles) == "table" and profiles[profile_index] or nil
+    local profile_index = context.linked_action_profile_index
+    if type(profile_index) ~= "number" and type(linked) == "table" then
+        profile_index = linked.linked_action_profile_index
+    end
+    if type(profile_index) ~= "number" or profile_index % 1 ~= 0 or
+       profile_index < 0 or type(profiles) ~= "table" or
+       profile_index >= #profiles then
+        return nil
+    end
+    profile_index = profile_index + 1
+    local profile = profiles[profile_index]
     if type(profile) ~= "table" then
         return nil
     end
@@ -373,6 +396,7 @@ function Combat.resolve_reaction(context, target)
     end
     return {
         target_id = target.id,
+        source_record_slot = target.source_record_slot,
         record_type = defender.record_type,
         physical_meter = physical_meter,
         mental_meter = mental_meter,
@@ -381,6 +405,246 @@ function Combat.resolve_reaction(context, target)
         exhausted = changed and defender.record_type >= 3 and
             ((physical and physical_meter == 0) or
              (not physical and mental_meter == 0)),
+    }
+end
+
+local function source_byte_at_least(left, right)
+    return (((left - right) & 0xff) & 0x80) == 0
+end
+
+local function weapon_action_skill_value(attacker, action_code,
+                                         posture_component)
+    local skills = attacker.action_skills
+    if type(skills) ~= "table" or #skills ~= 4 then
+        return nil
+    end
+    local selected = skills[1]
+    local candidate = action_code < 8 and skills[2]
+        or action_code < 11 and skills[3]
+        or skills[4]
+    if not source_byte_at_least(selected, candidate) then
+        selected = candidate
+    end
+    local signed_difference = (selected - posture_component) & 0xffff
+    local lower = signed_difference >= 0x8000
+        and selected or posture_component
+    local result = (lower + selected) & 0xffff
+    return result == 0 and 1 or result
+end
+
+local function weapon_action_eligibility(difficulty, attacker,
+                                         action_code)
+    local phase
+    if action_code <= #attacker.item_phases then
+        phase = attacker.item_phases[action_code]
+    else
+        local extension_index = action_code - #attacker.item_phases
+        phase = attacker.action_phase_extension[extension_index]
+    end
+    if type(phase) ~= "number" then
+        return nil
+    end
+    if action_code >= 8 and action_code <= 10 then
+        difficulty = difficulty + 3
+        if (phase & 0x10) ~= 0 then
+            difficulty = difficulty - 2
+        elseif (phase & 0x20) ~= 0 then
+            difficulty = difficulty - 3
+        end
+    end
+    if (phase & 0x08) ~= 0 then
+        difficulty = difficulty - 1
+    end
+    if (phase & 0x01) == 0 then
+        return difficulty
+    end
+    if (attacker.cyberware_flags & 0x0010) ~= 0 then
+        return difficulty - 2
+    end
+    for slot = #attacker.item_codes, 1, -1 do
+        if attacker.item_codes[slot] == 0x16 then
+            return difficulty - 1
+        end
+    end
+    return difficulty
+end
+
+local function source_weapon_action(item_code)
+    for _, item in ipairs(game.modules.items.catalog or {}) do
+        if item.code == item_code and item.kind == "firearm" and
+           type(item.weapon) == "table" and
+           type(item.weapon.source_action) == "table" then
+            return item.weapon.source_action
+        end
+    end
+    return nil
+end
+
+function Combat.resolve_weapon_attack_seed(context)
+    if type(context) ~= "table" or type(context.combatant) ~= "table" or
+       type(context.ai_random_bound) ~= "function" or
+       type(context.projectile_action_code) ~= "number" or
+       context.projectile_action_code < 1 or
+       context.projectile_action_code > 12 then
+        return nil
+    end
+    local attacker = copy_combatant(context.combatant)
+    local action_code = context.projectile_action_code
+    local empty_child = {
+        class_code = 0,
+        interaction_flags = 0,
+        cyberware_flags = 0,
+        race_or_state = 0,
+    }
+    local average = command_average(attacker)
+    local reduced = posture_reduction(average, attacker.posture)
+    local trial_count = weapon_action_skill_value(
+        attacker, action_code, reduced)
+    if trial_count == nil then
+        return nil
+    end
+    local difficulty = condition_modifier(4, attacker, empty_child)
+    difficulty = dynamic_status_modifier(
+        difficulty, attacker, nil, context)
+    if difficulty == nil then
+        return nil
+    end
+    difficulty = weapon_action_eligibility(
+        difficulty, attacker, action_code)
+    if difficulty == nil then
+        return nil
+    end
+    difficulty = add_wound_difficulty_penalty(
+        difficulty, attacker.physical_meter, attacker.mental_meter)
+    difficulty = math.max(difficulty, 2)
+    local successes = thresholded_rolls(
+        trial_count, difficulty, context.ai_random_bound)
+    if successes == nil then
+        return nil
+    end
+    -- 0x55640 publishes the same byte to the runner and new primary record.
+    return signed_byte(successes)
+end
+
+local function primary_armor_modifier(target)
+    for _, item in ipairs(game.modules.items.catalog or {}) do
+        local armor = item.armor
+        if type(armor) == "table" and
+           armor.armor_index == target.armor_index then
+            return armor.primary_modifier
+        end
+    end
+    return target.armor_index == 0 and 0 or nil
+end
+
+local function first_target_cyberware_modifier(flags)
+    for offset = 0, 2 do
+        if (flags & (1 << (9 + offset))) ~= 0 then
+            return offset + 1
+        end
+    end
+    return 0
+end
+
+local function resolve_weapon_action_value(context, projectile,
+                                           target, source_action)
+    local average = command_average(target)
+    local reduction = posture_reduction(average, target.posture)
+    local trial_count = add_source_byte_to_word(
+        average - reduction, target.command_attribute_77)
+    trial_count = trial_count +
+        first_target_cyberware_modifier(target.cyberware_flags)
+    local difficulty = dynamic_status_modifier(
+        source_action.difficulty, target, nil, context)
+    if difficulty == nil then
+        return nil
+    end
+    local successes = thresholded_rolls(
+        trial_count, math.max(difficulty, 2), context.ai_random_bound)
+    if successes == nil then
+        return nil
+    end
+
+    -- ROM 0x559BC subtracts the target roll from the projectile's +0x9F seed
+    -- using a signed byte, then adds that delta to 0x55948's effect value.
+    local delta = signed_byte(projectile.action_result - successes)
+    local action_value = source_action.effect_value
+    if delta < 0 then
+        action_value = signed_byte(add_source_byte(action_value, delta))
+        if action_value <= 0 then
+            return 0
+        end
+    else
+        action_value = action_value + (delta & 0xff)
+        if action_value >= 0x0b then
+            action_value = 0x0a
+        end
+    end
+
+    local armor_modifier = primary_armor_modifier(target)
+    if armor_modifier == nil then
+        return nil
+    end
+    action_value = signed_byte(subtract_source_byte(
+        action_value, armor_modifier))
+    if action_value <= 0 then
+        return 0
+    end
+    -- The 0x14FF8 record is freshly zeroed before the source copies +0x56/+0x57.
+    local blank_projectile = {
+        interaction_flags = 0,
+        item_codes = {},
+        item_phases = {},
+    }
+    action_value = defense_modifier(action_value, blank_projectile)
+    return math.max(action_value, 0)
+end
+
+function Combat.resolve_weapon_hit(context, projectile, target)
+    if type(context) ~= "table" or type(projectile) ~= "table" or
+       type(target) ~= "table" or type(target.combatant) ~= "table" or
+       type(context.ai_random_bound) ~= "function" or
+       type(target.id) ~= "string" or
+       type(target.source_record_slot) ~= "number" then
+        return nil
+    end
+    local source_action = source_weapon_action(
+        context.projectile_action_code)
+    if source_action == nil then
+        return nil
+    end
+    local defender = copy_combatant(target.combatant)
+    local damage = resolve_weapon_action_value(
+        context, projectile, defender, source_action)
+    if damage == nil then
+        return nil
+    end
+    local physical_meter = defender.physical_meter
+    local mental_meter = defender.mental_meter
+    if damage > 0 then
+        physical_meter, mental_meter = adjusted_meters(
+            defender, true, damage, context)
+    end
+    local changed = physical_meter ~= defender.physical_meter or
+                    mental_meter ~= defender.mental_meter
+    if changed then
+        local state = game.actors[target.id]
+        if type(state) ~= "table" then
+            state = { actor_id = target.id }
+            game.actors[target.id] = state
+        end
+        state.combatant = copy_combatant(defender)
+        state.combatant.physical_meter = physical_meter
+        state.combatant.mental_meter = mental_meter
+    end
+    return {
+        target_id = target.id,
+        source_record_slot = target.source_record_slot,
+        record_type = defender.record_type,
+        physical_meter = physical_meter,
+        mental_meter = mental_meter,
+        physical = true,
+        changed = changed,
     }
 end
 

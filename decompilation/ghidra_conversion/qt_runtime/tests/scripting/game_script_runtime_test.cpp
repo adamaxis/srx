@@ -2311,6 +2311,113 @@ int main() {
         return 24;
     }
 
+    auto source_weapon_hit = moving_projectile;
+    source_weapon_hit.action_result = 0;
+    auto source_weapon_hit_context = projectile_behavior_context(
+        "field_weapon_slot_combat_hit", source_weapon_hit);
+    source_weapon_hit_context.projectile_action_code = 5U;
+    source_weapon_hit_context.projectile_attack_seed_pending = true;
+    ScriptCombatantFacts shooter_facts{};
+    shooter_facts.record_type = 0U;
+    shooter_facts.source_flags = 0x01U;
+    shooter_facts.physical_meter = 8U;
+    shooter_facts.mental_meter = 8U;
+    shooter_facts.command_attribute_77 = 4U;
+    shooter_facts.command_attribute_78 = 4U;
+    shooter_facts.command_attribute_7b = 4U;
+    shooter_facts.command_attribute_7c = 4U;
+    shooter_facts.action_skills = {10U, 10U, 10U, 10U};
+    source_weapon_hit_context.combatant = shooter_facts;
+    ScriptCombatantFacts victim_facts{};
+    victim_facts.record_type = 3U;
+    victim_facts.physical_meter = 8U;
+    victim_facts.mental_meter = 8U;
+    victim_facts.command_attribute_77 = 4U;
+    victim_facts.command_attribute_78 = 4U;
+    victim_facts.command_attribute_7b = 4U;
+    victim_facts.command_attribute_7c = 4U;
+    source_weapon_hit_context.projectile_combat_targets.push_back(
+        ScriptProjectileCombatTarget{
+            "field_scene_2_encounter_1_actor_0", 3U, victim_facts});
+    source_weapon_hit_context.ai_random_bound =
+        [](const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+        return bound == 0U ? std::nullopt
+                           : std::optional<std::uint16_t>{0U};
+    };
+    source_weapon_hit_context.projectile_terrain_probe =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptProjectileTerrainSample{0U, true, false};
+        };
+    source_weapon_hit_context.projectile_collision_search =
+        [](const std::uint16_t, const std::uint16_t,
+           const std::uint8_t) {
+            return ScriptProjectileCollisionSearchResult{
+                true, true, 45U, 77U,
+                std::string{"field_scene_2_encounter_1_actor_0"}};
+        };
+    const auto source_weapon_hit_step =
+        scripts.actor_heartbeat(source_weapon_hit_context);
+    if (!expect(
+            source_weapon_hit_step.has_value() &&
+                source_weapon_hit_step->projectile_movement.has_value() &&
+                source_weapon_hit_step->projectile_movement->state.action_result ==
+                    0 &&
+                source_weapon_hit_step->combat_meter_update.has_value() &&
+                source_weapon_hit_step->combat_meter_update->target_id ==
+                    "field_scene_2_encounter_1_actor_0" &&
+                source_weapon_hit_step->combat_meter_update->source_record_slot ==
+                    3U &&
+                source_weapon_hit_step->combat_meter_update->record_type ==
+                    3U &&
+                source_weapon_hit_step->combat_meter_update->physical &&
+                source_weapon_hit_step->combat_meter_update->changed &&
+                source_weapon_hit_step->combat_meter_update->physical_meter ==
+                    5U &&
+                source_weapon_hit_step->combat_meter_update->mental_meter ==
+                    8U,
+            "Lua firearm path did not seed the projectile and apply the source Warhawk hit to its live target")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+
+    auto unresolved_weapon_seed = moving_projectile;
+    auto unresolved_weapon_context = projectile_behavior_context(
+        "field_weapon_slot_unresolved_seed", unresolved_weapon_seed);
+    unresolved_weapon_context.projectile_action_code = 5U;
+    unresolved_weapon_context.projectile_attack_seed_pending = true;
+    shooter_facts.action_profile_modifier_flags = 0x01U;
+    unresolved_weapon_context.combatant = shooter_facts;
+    unresolved_weapon_context.ai_random_bound =
+        [](const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+        return bound == 0U ? std::nullopt
+                           : std::optional<std::uint16_t>{0U};
+    };
+    unresolved_weapon_context.projectile_terrain_probe =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptProjectileTerrainSample{0U, true, false};
+        };
+    unresolved_weapon_context.projectile_collision_search =
+        [](const std::uint16_t x, const std::uint16_t y,
+           const std::uint8_t) {
+            return ScriptProjectileCollisionSearchResult{
+                false, false, x, y, std::nullopt};
+        };
+    const auto unresolved_weapon_step =
+        scripts.actor_heartbeat(unresolved_weapon_context);
+    if (!expect(
+            unresolved_weapon_step.has_value() &&
+                unresolved_weapon_step->projectile_movement.has_value() &&
+                unresolved_weapon_step->projectile_movement->state.active &&
+                unresolved_weapon_step->projectile_movement->outcome ==
+                    ScriptActorProjectileOutcome::none &&
+                !unresolved_weapon_step->combat_meter_update.has_value(),
+            "unresolved linked weapon profile retired the projectile or invented a hit result")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+
     auto secondary_projectile = moving_projectile;
     secondary_projectile.role = ScriptActorProjectileRole::secondary;
     secondary_projectile.animation_selector = 0x8000U;
@@ -3862,6 +3969,8 @@ int main() {
         "single_round", "single_round"}};
     constexpr std::array<std::uint8_t, 12U> kRoundsPerAction{{
         1U, 1U, 1U, 1U, 1U, 1U, 1U, 3U, 3U, 3U, 1U, 1U}};
+    constexpr std::array<std::uint8_t, 12U> kWeaponEffectIndices{{
+        0U, 0U, 0U, 0U, 1U, 1U, 1U, 1U, 1U, 1U, 2U, 2U}};
     constexpr std::array<std::string_view, 12U> kReloadDelayScales{{
         "normal", "normal", "normal", "normal", "double", "normal",
         "normal", "normal", "normal", "normal", "double", "double"}};
@@ -3909,6 +4018,8 @@ int main() {
 
             if (index < kWeaponCapacities.size()) {
                 const auto& weapon = item.weapon;
+                const auto source_effect = find_us_action_effect(
+                    kWeaponEffectIndices[index]);
                 const auto power_index = static_cast<std::size_t>(
                     rom_item.detail_selector - 1U);
                 full_catalog_matches =
@@ -3917,6 +4028,16 @@ int main() {
                     weapon->magazine_capacity == kWeaponCapacities[index] &&
                     weapon->magazine_capacity ==
                         rom_item.source_combat_factor &&
+                    source_effect != nullptr &&
+                    weapon->source_action.effect_table_index ==
+                        kWeaponEffectIndices[index] &&
+                    weapon->source_action.effect_table_index ==
+                        static_cast<std::uint8_t>(
+                            rom_item.signed_detail_asset_index) &&
+                    weapon->source_action.effect_value ==
+                        source_effect->negated_source_byte &&
+                    weapon->source_action.difficulty ==
+                        rom_item.source_action_difficulty() &&
                     weapon->damage_bar_index == static_cast<std::uint8_t>(
                         rom_item.signed_detail_asset_index) &&
                     power_index < kPowerProfiles.size() &&

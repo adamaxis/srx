@@ -146,15 +146,26 @@ scripting::ScriptCombatantFacts script_combatant_facts(
     facts.command_attribute_7c = record.attributes[5];
     facts.command_attribute_85 = record.skills[5];
     facts.item18_base = record.skills[0];
+    facts.action_skills = {record.skills[1], record.skills[2],
+                           record.skills[3], record.skills[4]};
     facts.armor_index = record.equipped_armor_index;
     facts.race_or_state = static_cast<std::int8_t>(record.species_index);
     facts.class_code = record.archetype_index;
     facts.equipped_action_code = record.equipped_item_code;
     facts.action_profile_modifier_flags =
         record.action_profile_modifier_flags;
-    facts.linked_action_profile_index = record.magic_table_index;
+    // 0x55786 follows the actor's +0xD8 record link, then reads that linked
+    // record's +0xA0 profile selector. The runner's magic menu table index is
+    // unrelated, so leave this explicitly unresolved until the live link is
+    // available from the typed actor record.
+    facts.linked_action_profile_index = 0xFFFFU;
     facts.item_codes = record.inventory_item_codes;
     facts.item_phases = record.inventory_phase_bytes;
+    facts.action_phase_extension = {
+        record.equipped_armor_index,
+        record.attributes[0], record.attributes[1], record.attributes[2],
+        record.attributes[3], record.attributes[4], record.attributes[5],
+        record.attributes[6], record.attributes[7], record.auxiliary[0]};
     return facts;
 }
 
@@ -7550,11 +7561,10 @@ void FieldSceneRuntime::service_player_weapon_action(
             return std::nullopt;
         },
         [this] {
-            // 0x55640 resolves the attacker's action outcome for the primary
-            // record. Its damage/target path is not connected yet, but the
-            // boundary stays visible in the live route rather than being
-            // silently replaced with a guessed hit result.
-            source_boundary("field.combat.weapon_hit_resolution_pending");
+            // Lua computes the source 0x55640 attack seed on the primary
+            // projectile's first actor heartbeat, after this spawn cycle has
+            // published its typed child record.
+            source_boundary("field.combat.weapon_attack_seed_scheduled");
         },
         [this] {
             (void)schedule_world_activity_timeout(
@@ -7629,6 +7639,8 @@ void FieldSceneRuntime::service_player_weapon_action(
     if (spawn_cycle.primary.has_value() ||
         spawn_cycle.secondary.has_value()) {
         FieldWeaponProjectilePresentation spawn{};
+        spawn.shooter_facts = script_combatant_facts(runner);
+        spawn.shooter_party_slot = field_party_roster_.active_slot();
         if (spawn_cycle.primary.has_value()) {
             spawn.primary_record = *spawn_cycle.primary;
             spawn.primary_spawn_position = SceneRunnerPosition{
@@ -7782,6 +7794,44 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         candidate.collision_enabled = actor.physical_meter != 0U;
         live_collision_target_ids[slot] = actor.actor_instance_id;
     }
+    std::vector<scripting::ScriptProjectileCombatTarget>
+        live_projectile_combat_targets;
+    std::vector<scripting::ScriptActorTargetCandidate>
+        live_party_combat_candidates;
+    for (std::size_t slot = 0U;
+         slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
+        if (!field_party_roster_.slot_active(slot)) {
+            continue;
+        }
+        const auto id = "party.runner." + std::to_string(slot);
+        const auto facts = script_combatant_facts(
+            field_party_roster_.records()[slot]);
+        live_projectile_combat_targets.push_back(
+            scripting::ScriptProjectileCombatTarget{
+                id, static_cast<std::uint8_t>(slot), facts});
+        scripting::ScriptActorTargetCandidate party_candidate{};
+        party_candidate.id = id;
+        party_candidate.source_record_slot =
+            static_cast<std::uint8_t>(slot);
+        party_candidate.combatant = facts;
+        live_party_combat_candidates.push_back(
+            std::move(party_candidate));
+    }
+    for (const auto& actor : field_default_actors_) {
+        if (!actor.active || actor.scene_reference != current_scene ||
+            !actor.source_record_slot.has_value()) {
+            continue;
+        }
+        const auto slot = static_cast<std::size_t>(
+            *actor.source_record_slot);
+        if (slot >= live_collision_target_ids.size()) {
+            continue;
+        }
+        live_projectile_combat_targets.push_back(
+            scripting::ScriptProjectileCombatTarget{
+                actor.actor_instance_id,
+                static_cast<std::uint8_t>(slot), actor.combatant});
+    }
     const auto word_from_fixed = [](const std::int32_t value) {
         return static_cast<std::uint16_t>(
             static_cast<std::uint32_t>(value) >> 16U);
@@ -7796,6 +7846,8 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
 
     const auto advance_record = [this, &release_slot, &live_collision_targets,
                                  &live_collision_target_ids,
+                                 &live_projectile_combat_targets,
+                                 &live_party_combat_candidates,
                                  &word_from_fixed, &signed_fixed_from_word](
                                     FieldWeaponProjectilePresentation& spawn,
                                     const bool primary_record) {
@@ -7849,7 +7901,7 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         context.profile_id = "weapon_projectile";
         context.entity_kind = record.behavior_defaults.animation_state;
         context.action_kind = scripting::ScriptActorActionKind::none;
-        context.action_code = 0U;
+        context.projectile_action_code = record.field_0x57;
         context.instance_id = instance_id;
         context.initial_heading = record.heading;
         context.spawn = !script_initialized;
@@ -7879,7 +7931,34 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                 primary_record ? record.heading_offset_y : std::int16_t{0},
                 record.field_0x89,
                 record.field_0x41,
+                record.action_result,
                 record.animation_resource};
+        context.projectile_movement->action_result = record.action_result;
+        context.projectile_attack_seed_pending =
+            primary_record && !script_initialized;
+        if (primary_record) {
+            context.combatant = spawn.shooter_facts;
+        }
+        context.projectile_combat_targets = live_projectile_combat_targets;
+        context.ai_target_candidates = live_party_combat_candidates;
+        context.action_profile_modifiers =
+            script_action_profile_modifiers(state_.action_selection_profiles);
+        context.action_attribute_selectors =
+            script_action_attribute_selectors();
+        context.combat_meter_service_blocked =
+            field_movement_transition_state_.world_mode == 3U;
+        context.ai_random_bound = [this](const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+            if (bound == 0U) {
+                return std::nullopt;
+            }
+            const auto choice =
+                sample_source_random_bound(field_random_seed_, bound);
+            if (choice < 0 || choice >= bound) {
+                return std::nullopt;
+            }
+            return static_cast<std::uint16_t>(choice);
+        };
         context.projectile_terrain_probe =
             [this, &spawn, &record, primary_record](
                 const std::uint16_t x, const std::uint16_t y) {
@@ -7936,6 +8015,16 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         record.animation_resource = movement.animation_selector;
         record.field_0x89 = movement.retry_counter;
         record.field_0x41 = movement.linked_action_timer;
+        record.action_result = movement.action_result;
+        if (primary_record && context.projectile_attack_seed_pending) {
+            spawn.source_record.action_result = movement.action_result;
+            if (spawn.shooter_party_slot <
+                    FieldPartyRosterRuntime::kSlotCount &&
+                field_party_roster_.slot_active(spawn.shooter_party_slot)) {
+                field_party_roster_.records()[spawn.shooter_party_slot]
+                    .action_result = movement.action_result;
+            }
+        }
         if (primary_record) {
             record.heading_offset_x = movement.tile_offset_x;
             record.heading_offset_y = movement.tile_offset_y;
@@ -7952,10 +8041,18 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
             scripting::ScriptActorProjectileOutcome::hit_resolution_pending) {
             const auto& target_id =
                 decision->projectile_movement->state.hit_target_id;
-            source_boundary(target_id.empty()
-                ? "field.combat.weapon_hit_target_id_missing"
-                : "field.combat.weapon_damage_resolution_pending:" +
-                      target_id);
+            if (target_id.empty()) {
+                source_boundary("field.combat.weapon_hit_target_id_missing");
+            } else if (decision->combat_meter_update.has_value()) {
+                if (apply_script_combat_meter_update(
+                        *decision->combat_meter_update)) {
+                    source_boundary("field.combat.weapon_hit_resolved:" +
+                                    target_id);
+                }
+            } else {
+                source_boundary("field.combat.weapon_damage_resolution_pending:" +
+                                target_id);
+            }
         }
         if (decision->projectile_movement->outcome ==
             scripting::ScriptActorProjectileOutcome::linked_followup_pending) {
@@ -7978,6 +8075,70 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
             ++spawn;
         }
     }
+}
+
+bool FieldSceneRuntime::apply_script_combat_meter_update(
+    const scripting::ScriptCombatMeterUpdate& update) {
+    if (!update.changed) {
+        return true;
+    }
+    if (update.record_type < FieldPartyRosterRuntime::kSlotCount) {
+        const auto slot = static_cast<std::size_t>(
+            update.source_record_slot);
+        if (slot >= FieldPartyRosterRuntime::kSlotCount ||
+            !field_party_roster_.slot_active(slot)) {
+            source_boundary("field.combat.weapon_hit.party_target_invalid");
+            return false;
+        }
+        auto& target = field_party_roster_.records()[slot];
+        if (target.record_type != update.record_type) {
+            source_boundary("field.combat.weapon_hit.party_target_type_mismatch");
+            return false;
+        }
+        target.delay_meter = update.physical_meter;
+        target.behavior_meter = update.mental_meter;
+        if (slot == field_party_roster_.active_slot()) {
+            refresh_field_hud_runner_slot();
+        }
+        source_boundary(update.physical
+            ? "field.combat.weapon_hit.party_physical_meter_changed"
+            : "field.combat.weapon_hit.party_mental_meter_changed");
+        return true;
+    }
+
+    if (update.source_record_slot <
+            static_cast<std::uint8_t>(FieldWorldActorSlot::slot_3) ||
+        update.source_record_slot >
+            static_cast<std::uint8_t>(FieldWorldActorSlot::slot_9)) {
+        source_boundary("field.combat.weapon_hit.world_target_slot_invalid");
+        return false;
+    }
+    const auto target = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [this, &update](const auto& actor) {
+            return actor.active && actor.scene_reference ==
+                       state_.field_scene_buffers.scene_reference &&
+                   actor.source_record_slot.has_value() &&
+                   static_cast<std::uint8_t>(*actor.source_record_slot) ==
+                       update.source_record_slot &&
+                   actor.actor_instance_id == update.target_id &&
+                   actor.combatant.record_type == update.record_type;
+        });
+    if (target == field_default_actors_.end()) {
+        source_boundary("field.combat.weapon_hit.world_target_missing");
+        return false;
+    }
+
+    target->combatant.physical_meter = update.physical_meter;
+    target->combatant.mental_meter = update.mental_meter;
+    // This meter gates the live actor collision record. Keep the update on
+    // that record as well as in the Lua-owned combat facts so later movement,
+    // collision, and drawing passes see one current actor state.
+    target->physical_meter = update.physical_meter;
+    source_boundary(update.physical
+        ? "field.combat.weapon_hit.world_physical_meter_changed"
+        : "field.combat.weapon_hit.world_mental_meter_changed");
+    return true;
 }
 
 void FieldSceneRuntime::advance_field_actor_animation() {

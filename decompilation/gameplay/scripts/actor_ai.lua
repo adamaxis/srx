@@ -493,6 +493,12 @@ local function initial_state(context, profile)
         state.animation_accumulator = animation.accumulator
         state.animation_increment = animation.increment
         state.animation_period = animation.period
+        local projectile = context.projectile_movement
+        state.action_result = type(projectile) == "table"
+            and projectile.action_result or 0
+        state.attack_seed_resolved =
+            not context.projectile_attack_seed_pending
+        state.combat_meter_update = nil
     end
     return state
 end
@@ -870,7 +876,7 @@ local function integer_world_word(value)
     return ((value & fixed_long_mask) >> fixed_integer_shift) & 0xffff
 end
 
-local function projectile_movement_snapshot(context)
+local function projectile_movement_snapshot(context, state)
     local source = context.projectile_movement
     if type(source) ~= "table" or
        (source.role ~= projectile.role.primary and
@@ -904,6 +910,7 @@ local function projectile_movement_snapshot(context)
         tile_offset_y = source.tile_offset_y,
         retry_counter = source.retry_counter,
         linked_action_timer = source.linked_action_timer,
+        action_result = state.action_result or source.action_result,
         animation_selector = source.animation_selector,
         outcome = projectile.outcome.none,
     }
@@ -1045,9 +1052,33 @@ local function projectile_heartbeat(state, context)
     if context.phase ~= "behavior" then
         return nil
     end
-    local movement, audio_event = projectile_movement_snapshot(context)
+    if context.projectile_attack_seed_pending then
+        if type(context.projectile_movement) ~= "table" or
+           context.projectile_movement.role ~= projectile.role.primary then
+            return nil
+        end
+        local result = game.modules.combat.resolve_weapon_attack_seed(context)
+        state.attack_seed_resolved = type(result) == "number"
+        if state.attack_seed_resolved then
+            state.action_result = result
+        end
+    end
+    local movement, audio_event = projectile_movement_snapshot(context, state)
     if movement == nil then
         return nil
+    end
+    if movement.outcome == projectile.outcome.hit_resolution_pending then
+        local hit_target
+        for _, candidate in ipairs(context.projectile_combat_targets or {}) do
+            if candidate.id == movement.hit_target_id then
+                hit_target = candidate
+                break
+            end
+        end
+        if hit_target ~= nil and state.attack_seed_resolved then
+            state.combat_meter_update = game.modules.combat.resolve_weapon_hit(
+                context, { action_result = state.action_result }, hit_target)
+        end
     end
     state.animation_selector = movement.animation_selector
     return snapshot(state, "hold", audio_event, movement)
