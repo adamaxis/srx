@@ -609,7 +609,7 @@ choices, dispatches, traced branch outcomes, and trace status. Handlers with no
 terminal rows stay pending; handlers with a `partial` row are called out as
 partial rather than appearing complete.
 
-### Lone Star coverage by named urban field map (dialogue selector only)
+### Lone Star coverage by field context
 
 | Scene | Named map | ROM selector paths linked to Lone Star | What is confirmed |
 |---:|---|---|---|
@@ -620,56 +620,82 @@ partial rather than appearing complete.
 | 4 | Council Island | None named in the enabled dialogue-event cells | This only says the selector table has no Lone Star-named path here; it does not rule out a separate pursuit system. |
 | 5 | Renraku Arcology | `0x20F5A`, `0x20FA2`, `0x2112C` | Company Man, doctor, and alley-seller choices can reach Lone Star. |
 
-This confirms Lone Star-linked random-event paths in five of the six named
-urban field maps (scenes 0-5, excluding Council Island). Most are conditional
-branches inside other encounters, not an unconditional patrol spawn. Across
-all 56 field contexts, the extracted zero-cell dynamic actor table separately
-contains `lone11` and `lonemage` at scene 1/sum 2, and `lonemage` plus `lone13`
-at scenes 41-43/sum 8. Its other dynamic actor lists do not contain a
-`lone*` template. That accounts for the selector and zero-cell dynamic
-sequence data only; it does not establish the limits of any wanted-state
-pursuit system or other map event. The general map-wide pursuit route and its
-wanted-state conditions remain untraced, so “only these maps” would be an
-unsupported conclusion.
+The six named city contexts alone do not describe the full footprint. The
+separate plate/laser chain at `0x21036` and `0x21050` reaches the Lone Star
+patrol prompt at `0x24622` from selector cells across scenes `20-43`: the plate
+event is enabled on `20-34` and `41-43`, and the laser event is enabled on
+`35-40` (it is also a continuation of the plate event). The direct patrol cell
+`0x2106A` is enabled on `41-43`. These are conditional event chains with a
+badge/dispatch/arrest decision, not a patrol actor automatically spawned on
+map entry.
 
-For the six named urban maps, “almost any map” is supported by the ROM's
-random-event table: five have at least one conditional route that can reach a
-Lone Star encounter. That statement is about those six map contexts and their
-event choices; it does not mean that an officer is spawned unconditionally or
-that the same patrol handler is enabled in every one of the 56 field scenes.
+The known route crosswalk anchors those scene ranges to real locations. These
+names come from ROM-backed area routes in
+`decompilation/gameplay/world/areas/scene-02-site-routes.tsv`,
+`scene-03-site-routes.tsv`, and `scene-05-site-routes.tsv`; map names remain
+unassigned where those records only provide a numeric activity destination.
+Scene 20 is Hollywood Correctional Facility; scene 21 is the Fuchi Industrial
+Electronics route; scene 26 is a Redmond resource-activity destination; scene
+30 is the Mitsuhama Computer Technologies route; scene 35 is the Renraku
+resource-activity destination; and scene 41 is the Lone Star Security route.
+Scene 26 is shared by the Redmond routes for Boris' Greenhouse, Little Chiba's
+Chop Shop, Shiawase Atomics, and the conditional Rat's Nest story path; the
+ROM route profile does not assign that numeric destination to one named
+interior.
+The current area-route evidence does not yet name every intermediate scene or
+every destination interior, so the group ranges should remain numeric until
+those links are traced. The source therefore supports Lone Star event paths
+across many field contexts and several corporate/security locations; it does
+not support limiting the investigation to the six outdoor city maps.
 
-### Selector boundary for wanted-state pursuit
+Across all 56 field contexts, the extracted zero-cell dynamic actor table
+separately contains `lone11` and `lonemage` at scene 1/sum 2, and `lonemage`
+plus `lone13` at scenes 41-43/sum 8. Its other dynamic actor lists do not
+contain a `lone*` template. This describes only the zero-cell actor lists;
+choice-driven encounter lists and the plate/laser continuation above are
+separate routes and must not be omitted from a map event summary.
+
+### Selector boundary for global wanted-state pursuit
 
 The ROM field tick at `0x1E166` applies its actor/effect guards, checks the
 `FFDF88 & 0x3FF == 10` cadence and source random threshold, then calls
 `0x59986`. That selector draws twice with bound 5, adds the results, maps the
 current scene byte `FFFBF8` through `0x3312`, and indexes the enable/pointer
 tables at `0x1D70E4` and `0x1D7174`. The selector itself does not read the
-`FFFBFA` counter or the `FFFC22` state word. Thus the confirmed city-map
-police branches above are table and dialogue outcomes, not a global wanted
-flag that makes the same patrol event eligible in every scene. A separate
-map-trigger or timed actor path could still provide broader pursuit; its
-entry, state gate, and scene coverage have not been established yet.
+`FFFBFA` counter or the `FFFC22` state word. Its scene tables do enable the
+conditional patrol paths described above, including the broad `20-43`
+plate/laser range. The distinction is that the event cells make those
+encounters possible; they do not implement a single global wanted flag that
+automatically inserts the same patrol into every map.
 
 The separate heat byte `FFFBFA` is encounter state, not the selector's
-map-wide spawn gate. ROM cross-references show it is raised by the shared
-police Attack/Run branches and by an actor action path, read by encounter and
-legal-service handlers, reduced on qualifying compliance/payment, and cleared
-by the shared arrest settlement. The settlement at `0x235AA` removes the
+map-wide spawn gate. The generated direct-reference index at
+`decompilation/analysis/direct_references.tsv` contains 29 references to that
+byte. The source writes it in the shared patrol Attack
+handler `0x23412` (+2, capped at 8, only when the patrol list starts), the Run
+handler `0x23782` (+1, capped at 8), the scene-41-to-43 Attack handler
+`0x23A3A` (+2, capped at 8 when its list starts), and combat action code near
+`0x55AFA` for actor records whose `+0x9B` byte is `0x13`. Compliance and
+follow-up handlers can decrement it, several payment/service handlers clear
+it, and arrest settlement at `0x235AA` clears it. That settlement removes the
 source-listed weapon item IDs from the three runner records, computes a first
 fine of 1,000 nuyen times `(heat + 2)`, repeatedly halves that amount until it
-fits the available funds, deducts it, and clears `FFFBFA`. This is the
-consequence of an arrest path after an encounter; the selector at `0x59986`
-and its field tick at `0x1E166` do not read the heat byte.
+fits the available funds, and deducts it. These are encounter and legal
+resolution effects. The selector at `0x59986` and field tick at `0x1E166` do
+not directly read the heat byte.
 
 The scene-41-to-43 patrol handler separately reads `FFFC22` bit 10 before its
 ID-check choices. Its failure text says the officer did not recognize the
-player's ID badge. The inspected selector and handler do not show that bit as
-a general wanted-state flag. The bit's save/story writers and any additional
-map-wide pursuit path remain open; the current trace does not use the Notebook
-wanted notices as proof of either.
+player's ID badge. ROM references also show bit 11 being set by a separate
+permit/service path. These credential checks change the patrol encounter's
+outcome; neither the field selector nor these handlers use them as a global
+map-wide patrol-spawn gate. The Notebook wanted notices and the separate
+Lone-Star-record service text still need their writers and consumers traced
+before they can be equated with a global pursuit variable. This leaves the
+global wanted-state pursuit mechanism unresolved; it does not erase the
+conditional map-event patrol routes established above.
 
-There is also a separate player legal-state path to resolve. The third 32-entry Tips pointer table at `0xC2816` maps global entries 65-96; entries 70-73 point to text starts `0xC4390`, `0xC4465`, `0xC451E`, and `0xC45E1`. Entry 70 contains the wanted-for-questioning notice (including `0xC442C`); entry 71 is addressed to detectives and describes the suspect as armed and dangerous; entry 72 is addressed to hunting parties and calls the player a fugitive; entry 73 is a Lone Star Records prisoner-transfer notice about Vigore. Since the selector tests each table's local zero-based entry index, these four entries correspond to `FFFC38` bits 5-8; the wanted/fugitive notices are bits 5-7. These are Notebook display-eligibility bits; the source trace has not shown them to be the wanted-state values consumed by field pursuit. ROM contact text at `0xC63CF` and `0xC651C` offers to delete the Lone Star record, while `0x10E3C1` and `0x10F009` describe a Weapon Permit and patrols flagging the player down. Those strings establish that the record/permit mechanics exist, but they do not establish the writer/checker for the first three tip bits or a global heat-based patrol spawn. The ROM does contain additional conditional patrol encounters through the scene-20-to-43 plate/laser and direct-patrol entries described above; their numeric scenes still need a complete map-name crosswalk. The separate wanted-state pursuit system remains untraced.
+There is also a separate player legal-state path to resolve. The third 32-entry Tips pointer table at `0xC2816` maps global entries 65-96; entries 70-73 point to text starts `0xC4390`, `0xC4465`, `0xC451E`, and `0xC45E1`. Entry 70 contains the wanted-for-questioning notice (including `0xC442C`); entry 71 is addressed to detectives and describes the suspect as armed and dangerous; entry 72 is addressed to hunting parties and calls the player a fugitive; entry 73 is a Lone Star Records prisoner-transfer notice about Vigore. Since the selector tests each table's local zero-based entry index, these four entries correspond to `FFFC38` bits 5-8; the wanted/fugitive notices are bits 5-7. These are Notebook display-eligibility bits; the source trace has not shown them to be the wanted-state values consumed by field pursuit. ROM contact text at `0xC63CF` and `0xC651C` offers to delete the Lone Star record, while `0x10E3C1` and `0x10F009` describe a Weapon Permit and patrols flagging the player down. Those strings establish that the record/permit mechanics exist, but they do not establish the writer/checker for the first three tip bits or a global heat-based patrol spawn. The ROM does contain additional conditional patrol encounters through the scene-20-to-43 plate/laser and direct-patrol entries described above; their known location anchors are listed above; the remaining numeric scene names still need a complete map-name crosswalk. The separate wanted-state pursuit system remains untraced.
 
 A separate nearby-effect path runs through `0xAB02 -> 0x16B98`. It can place
 one of ten `FF164C` records near the transitioning actor with a weighted
@@ -678,7 +704,7 @@ that code to the reward handler `0x133A6`. The `0x5A` and `0x5B` weighted
 sentinels select an equipped-item result or clear the record. This is a
 proximity-effect/reward route, not evidence of a general Lone Star patrol
 spawn. The ordinary weighted interaction codes still need their player-facing
-effects mapped, and the wanted-state map-wide patrol route remains unresolved.
+effects mapped, and the separate global wanted-state patrol route remains unresolved.
 Keep this path separate from the random dialogue and dynamic actor tables
 below.
 
@@ -690,7 +716,7 @@ The zero-cell dynamic sequence table shows creatures across many field contexts.
 
 The disturbance handlers at `0x20EFA`, `0x20F42`, and `0x2115C` make the same FFFBFB progression counter available across scenes 0-3, 5-9, and 44-50 (16 scene IDs). Within the ROM field-area/exploration set 0-9 and 44-50 (17 scene IDs), this route is enabled on 16; Council Island (scene 4) is the exception. Scenes 44-50 are selectable field-map contexts, not merely scripted activities. Scene 47 is cross-referenced as Cave 4 because its separate mode-`0x13` lists contain Renraku Strike Teams; scenes 44-46 and 48-50 still need their own map-name crosswalks. With FFFC22 bit 8 clear, stages 2-3 select two Strike Team actors, stages 4-6 select four, and stages 7-8 select five. This later-stage branch is broader than the explicit Renraku-building prompts in scenes 35-40.
 
-The story choice at `0x21BE4` advances this shared counter and queues two Strike Team actors. The low-stage disturbance routes differ: the urban continuation returns explicit Renraku attack text, while the wilderness continuation can choose the creature packs listed above. The wanted-state patrol logic remains a separate, untraced path.
+The story choice at `0x21BE4` advances this shared counter and queues two Strike Team actors. The low-stage disturbance routes differ: the urban continuation returns explicit Renraku attack text, while the wilderness continuation can choose the creature packs listed above. The conditional event patrols above are independent of the still-untraced global wanted-state patrol logic.
 
 ### Complete enabled dialogue-event selector coverage
 
