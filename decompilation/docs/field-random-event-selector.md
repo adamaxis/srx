@@ -626,6 +626,22 @@ MORE command (`0xDC` -> `0x246AA`) continues into the separately profiled
 secretary/badge-check event (`0x21082`). The handoff is confirmed; the
 secretary event's later floor/state continuation remains partial.
 
+After the inventory, heat, and fine changes, settlement `0x235AA` has a second
+conditional state handoff. If `FFFC1E` bit 0 is set, it enters the scene-mode
+initializer through `0x2AFA` with scene value `3` and position-record pointer
+`FFE114=0x2B14`. The field-entry loader consumes that record: camera origin
+`(0x6D80, 0x0000)` and three runner positions `(0x7600, 0x0800)`,
+`(0x7700, 0x0780)`, and `(0x7500, 0x0780)`. This trace establishes a transfer
+to field scene `3`, but not its guide-map name. It then checks the active
+`FFFBED` selector and `FFFC1C` bit 0. Selector
+`1` clears the high effect slots through `0x1DED8`; selectors `2` and `4` clear
+`FFFC22` bit 9. Each matching selector branch resets `FFFBEC` and `FFFC1C`
+through `0x1E68C`, prepares context-dependent text using `0xF359E` (selector
+`1`) or `0xF2518` (selectors `2`/`4`), and returns shared node `0x11CD92`.
+If the matching bit is clear, or the selector is another value, that extra
+cleanup/text branch is skipped. The selected scene's map identity and the
+downstream shared text consumer still need their own source trace.
+
 The per-scene viewer now shows each indexed handler, roll sums, visible opening
 choices, dispatches, traced branch outcomes, and trace status. Handlers with no
 terminal rows stay pending; handlers with a `partial` row are called out as
