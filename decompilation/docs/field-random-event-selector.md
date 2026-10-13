@@ -79,7 +79,7 @@ Scene IDs below are ROM field-scene IDs. The tables cover the field random-event
 | Flustered-woman event, handler `0x20F8A` | Scenes `0-1`; sums `3-4` | The MORE continuation divides into suspected-harm and apparent-law-official versions. The law-official version can reveal an undercover Lone Star agent; its Attack/Comply/Run choices can end in a gun battle, questioning/release, fine, arrest/confiscation, escape, or being overtaken and shot. See the terminal branch table below. |
 | Haggard-man event, handler `0x20FA2` | Scenes `2` and `5`; sums `1-2` | The doctor offers 50 nuyen to recapture his escaped patient. Help and Threaten resolve without combat; Attack or Threaten can call a patrol, and one alternate Attack branch starts a fight with the doctor's Gator Shaman/bodyguards. See the terminal branch table below. |
 | Security-guard stop, handler `0x20FEC` | Scenes `20`, `26-34`, and `41-43`; sums `4-5` and `7` | Without the badge flag, Attack starts a corporate-guard encounter and Talk branches on `FF017A`; the talk result can trigger a dispatch check or continue to a security-mage prompt. |
-| Lone Star patrol, handler `0x2106A` | Scenes `41-43`; sum `5` | The follow-up arrest prompt's Attack choice reaches `0x2466C`. The first three named entries at `0x1D6FEC` are `lone11`, `lone12`, and `lonemage`; the trailing control word is still unresolved. |
+| Lone Star patrol, handler `0x2106A` | Scenes `41-43`; sum `5` | `0x24622` checks badge bit 10 and can waive the player through, verify ID, or open arrest. Attack rolls at `0x2466C`; a zero result shows the fatal-warning prompt, while nonzero passes list `0x1D6FEC` to the spawner and returns combat dialogue. Comply reaches settlement `0x235AA`. |
 | Concealed plate / laser to Lone Star | Plate handler `0x21036`: scenes `20-34`, `41-43`; sums `2`, `5-6`. Laser handler `0x21050`: scenes `35-40`; sum `8`. Direct patrol handler `0x2106A`: scenes `41-43`; sum `5`. | The plate response can continue to the laser check. Both laser outcomes contain patrol command `0xD9` -> `0x24622`, the same badge/dispatch/arrest decision used by the direct patrol event. See the source trace below. |
 | Lone Star dynamic templates | Scene `1` (sum `2`) and scenes `41-43` (sum `8`) | The zero-cell dynamic sequences include `lone11`, `lone13`, and `lonemage`. |
 | Disturbance Strike Team escalation | Scenes `0-3`, `5-9`, and `44-50` | The MORE continuations check `FFFBFB` and bit 8 of `FFFC22`. With the bit clear, stages `2-3` select two Strike Team templates (`0x1D6FD0`), `4-6` select four (`0x1D6FC8`), and `7-8` select five (`0x1D6FC4`). Successful starts return the explicit Renraku attack text; a failed start falls back to the holocam/photo text. Stages `0-1` or a set bit take each handler's separate low-stage route. |
@@ -595,14 +595,31 @@ away leaves the seller without starting combat or buying the item.
 with the bit set, opens an arrest prompt. With the bit set, rolls `15-49`
 wave the player past and rolls `50-99` call dispatch to verify the ID. The
 arrest prompt has Attack and Comply, not Run. Its Attack outcome can end in a
-fatal warning or queue the first three named templates (`lone11`, `lone12`,
-`lonemage`) from `0x1D6FEC`. The raw list then contains nonzero longwords
+fatal warning or pass list `0x1D6FEC` to the effect spawner; the first three
+template entries are `lone11`, `lone12`, and `lonemage`. The raw list then contains nonzero longwords
 `0x00000002` and `0x9D020000`, followed by the null at `0x1D7000`. The iterator
 in `0x1E1FC` treats each nonzero longword as a candidate template address and
 stops on a null entry or actor-allocation failure; it does not parse this tail
 as metadata. The tail's intended meaning and resulting actor state remain
-unresolved. The rejected-ID Talk choice and the post-arrest continuation at
-`0x12140C` also remain partial.
+unresolved. If dispatch rejects the ID, page `0x121270` offers a `Talk your
+way out` option (label at `0x104EF8`) and Attack (`0xD2` -> `0x24402`);
+the Talk result is still unresolved.
+
+Comply (`0xDA` -> `0x24662`) sets response record `0x12140C` and branches to
+the shared arrest settlement at `0x235AA`. That routine visits all three
+runner records, clears item codes `8`, `9`, `10`, `12`, `13`, `20`, `49`, and
+`50` from each record's eight item slots, clears heat `FFFBFA`, and computes a
+base fine of `1000 * (former heat + 2)`.
+The current Lua catalog in `gameplay/scripts/items.lua` maps those codes to
+`ak_97`, `hk227_s`, `mach_22`, `roomsweeper`, `frag`, `maglock_passkey`,
+`light_combat_armor`, and `heavy_combat_armor`; this set includes gear beyond
+firearms.
+If the runner cannot afford it, the ROM repeatedly halves the fine until it
+fits the available nuyen, then deducts it. The returned record starts with the
+text at `0x11D79E` (`You are escorted to Lone Star's main office...`) and its
+MORE command (`0xDC` -> `0x246AA`) continues into the separately profiled
+secretary/badge-check event (`0x21082`). The handoff is confirmed; the
+secretary event's later floor/state continuation remains partial.
 
 The per-scene viewer now shows each indexed handler, roll sums, visible opening
 choices, dispatches, traced branch outcomes, and trace status. Handlers with no
@@ -730,8 +747,9 @@ The other source writes include the shared patrol Attack handler `0x23412`
 8 when its list starts), and combat action code near `0x55AFA` for actor
 records whose `+0x9B` byte is `0x13`. Compliance and follow-up handlers can
 decrement heat; payment/service handlers can clear it. Arrest settlement at
-`0x235AA` copies then clears the heat byte, removes the source-listed weapon
-item IDs from the three runner records, computes a first fine of 1,000 nuyen
+`0x235AA` copies then clears the heat byte, removes source item codes
+`8`, `9`, `10`, `12`, `13`, `20`, `49`, and `50` from the three runner
+records, computes a first fine of 1,000 nuyen
 times `(heat + 2)`, repeatedly halves that amount until it fits the available
 funds, and deducts it. The selector at `0x59986` and field tick at `0x1E166`
 do not directly read the heat byte.
