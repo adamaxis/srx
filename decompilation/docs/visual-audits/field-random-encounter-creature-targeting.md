@@ -153,6 +153,79 @@ These captures verify the port's connected state and whole-screen composition;
 they are not independent Genesis proof for target acceptance or creature
 attacks.
 
+## C0A2 target-action pose and cue review
+
+ROM `0xB1DC` starts a linked-target action after the target and delay gates
+accept it. It sets delay mode 1 through `0xABFC` (the source halves the
+computed delay), requests cue `0x4C` for ordinary kinds or `0x55` for Hell
+Hounds, selects the directional finite list through `0xC0A2`, and resets the
+actor animation accumulator/frame at `0xAF6C`. The actor's `0x1514E`
+initialization supplies threshold `0x1000`; `0x5FDC` adds the finite-list
+increment on render heartbeats and `0x600E` holds the last finite-list frame.
+The action resolver at `0x55C76` is called after this transition and is still
+not connected to live encounter actors.
+
+The offline importer now exports all directional action frames as individually
+named actor assets and writes `actor-action-profiles.tsv` with the source kind,
+frame count, increment, threshold, and cue. The extracted lists contain two
+frames at `0x0200` for kinds 4-11 and 14, one frame at `0x01F4` for kind 12,
+and three frames at `0x0200` for kind 13. Lua owns the finite-list accumulator,
+completion state, transition condition, and cue request; C++ supplies that
+named profile and renders the frame returned by Lua.
+
+The Scene 2 field QA repositions the already-selected live actor only after
+the natural offscreen-spawn and B-edge captures, then records both action
+frames. All 14 random-encounter and 8 Hound BMPs are 320x224 and match between
+Debug and Release by SHA-256. I reopened each full frame: the action frames
+retain the full map and HUD, the visible actor does not cover an old control,
+and no rectangular black background appears around its sprite. The B-edge
+image is captured before the diagnostic reposition, so it correctly contains
+no visible creature at the source edge-spawn position; the later settled
+selector frame shows the repositioned actor. This is internal rendering and
+state evidence, not an independent Genesis action-animation comparison.
+
+The source makes the `0x4C`/`0x55` cue request at the transition, and the
+ordinary-kind QA observes one `0x4C` request after the silent B press/release.
+The Hound's close-effect diversion remains separate. The cue's resolved audio
+resource, audible playback duration, and an independent matching Genesis
+action sequence remain unverified. The damage/status result, actor retirement,
+and optional child action after `0x55C76` remain open.
+
+## Eight-question target-action review
+
+1. **Does it look correct?** Both extracted ordinary action frames appear as
+   the actor's directional sprite on the existing field scene. Full screenshots
+   show no black tile rectangle or HUD damage. There is no same-actor Genesis
+   sequence to confirm the exact pose timing.
+2. **Does the look reflect the behavior?** Lua enters `action` only when a
+   dynamic encounter actor has an accepted target, a negative action delay, a
+   valid `C0A2` profile, and no active target-motion effect. The QA sees both
+   frames and the one ordinary action-cue request.
+3. **Are the visuals source-backed?** The importer reads the directional
+   `C0A2` list and its finite frame count/increment from the ROM, exports the
+   named frames with source palette and origin, and passes them to the renderer.
+   The exact output is not called Genesis-verified.
+4. **What animates, and when?** The initial frame is selected on `0xB1DC`;
+   `0x5FDC` advances after the `0x1000` accumulator threshold, and `0x600E`
+   holds the last finite frame until another behavior changes the list. The
+   heartbeat follows the render pass, not a separate timer.
+5. **What sound accompanies it?** The ROM requests `0x4C`, or `0x55` for kind
+   12. The QA verifies the ordinary event request. Resource mapping and actual
+   playback length are not established here.
+6. **Were neighboring regions checked?** Every full-screen encounter and Hound
+   frame was reviewed. The right HUD is unchanged, the map remains intact, and
+   no prior UI is drawn over by the creature sprite. The natural encounter
+   actor remains offscreen in production-position screenshots.
+7. **Are there multiple frames/examples?** Yes: both C0A2 ordinary action
+   frames, two walk poses, selector transition/settled frames, production
+   encounter checkpoints through 1,200 service passes, and all Hound effect
+   checkpoints were reviewed. Longplay evidence corroborates selector brackets
+   but not this exact action animation.
+8. **Are new graphics covering stale ones?** The actor frame is a transparent
+   named sprite composited by the field renderer. The HUD crop stays byte-for-
+   byte identical to the baseline. No extra button, menu, or stale action
+   graphic appears in the reviewed frames.
+
 ## Hell Hound close-effect review
 
 1. **Does it look correct?** The source descriptor and scene palette produce

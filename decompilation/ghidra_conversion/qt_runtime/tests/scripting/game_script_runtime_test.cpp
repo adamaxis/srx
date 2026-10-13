@@ -1500,6 +1500,85 @@ int main() {
         const auto found = find_engaged_decision(generic_close_motion);
         return found == generic_close_motion.end() ? nullptr : &*found;
     }();
+    auto c0a2_action_context = actor_context(
+        "eye5r_1_k07_item01", "c0a2_action", 7U,
+        ScriptActorActionKind::item, 1U, 0U, true);
+    c0a2_action_context.dynamic_world_encounter_actor = true;
+    c0a2_action_context.source_record_flags = 0x25U;
+    c0a2_action_context.entry_animation_frame_count = 1U;
+    c0a2_action_context.walk_animation_frame_count = 4U;
+    c0a2_action_context.action_animation_frame_count = 2U;
+    c0a2_action_context.action_animation_increment = 0x0200U;
+    c0a2_action_context.action_animation_threshold = 0x1000U;
+    c0a2_action_context.action_animation_audio_event = 0x004CU;
+    c0a2_action_context.initial_action_delay = 0;
+    c0a2_action_context.delay_primary_attribute = 4U;
+    c0a2_action_context.delay_secondary_attribute = 6U;
+    c0a2_action_context.movement_allowed = true;
+    c0a2_action_context.ai_target_candidates.push_back(
+        ScriptActorTargetCandidate{
+            "party.runner.0", 0x1800U, 0x1800U, 0x2000U,
+            0x0100U, 0x01U, 0U, 0U, 0U, true, false,
+            0x0100U, 0x0200U, 0x0100U, 0x0200U});
+    c0a2_action_context.ai_random_bound =
+        [](const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+        return bound == 0U
+            ? std::nullopt
+            : std::optional<std::uint16_t>{0U};
+    };
+    const auto c0a2_action_spawn =
+        scripts.actor_heartbeat(c0a2_action_context);
+    c0a2_action_context.spawn = false;
+    const auto c0a2_entry_start =
+        scripts.actor_heartbeat(c0a2_action_context);
+    c0a2_action_context.phase = ScriptActorHeartbeatPhase::render;
+    for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
+        (void)scripts.actor_heartbeat(c0a2_action_context);
+    }
+    c0a2_action_context.phase = ScriptActorHeartbeatPhase::behavior;
+    std::optional<ScriptActorBehaviorDecision> c0a2_action_start;
+    for (std::uint8_t pass = 0U; pass < 100U; ++pass) {
+        const auto decision = scripts.actor_heartbeat(c0a2_action_context);
+        if (!decision.has_value()) {
+            break;
+        }
+        if (decision->animation_id == "action") {
+            c0a2_action_start = decision;
+            break;
+        }
+    }
+    c0a2_action_context.phase = ScriptActorHeartbeatPhase::render;
+    std::optional<ScriptActorBehaviorDecision> c0a2_action_frame_zero;
+    std::optional<ScriptActorBehaviorDecision> c0a2_action_frame_one;
+    std::optional<ScriptActorBehaviorDecision> c0a2_action_complete;
+    for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
+        c0a2_action_frame_zero =
+            scripts.actor_heartbeat(c0a2_action_context);
+    }
+    for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
+        c0a2_action_frame_one =
+            scripts.actor_heartbeat(c0a2_action_context);
+    }
+    for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
+        c0a2_action_complete =
+            scripts.actor_heartbeat(c0a2_action_context);
+    }
+    const bool c0a2_action_contract =
+        c0a2_action_spawn.has_value() &&
+        c0a2_entry_start.has_value() &&
+        c0a2_action_start.has_value() &&
+        c0a2_action_start->ai_target_engaged &&
+        c0a2_action_start->audio_event == 0x004CU &&
+        c0a2_action_start->action_delay == 45 &&
+        c0a2_action_start->animation_frame == 0U &&
+        c0a2_action_frame_zero.has_value() &&
+        c0a2_action_frame_zero->animation_id == "action" &&
+        c0a2_action_frame_zero->animation_frame == 1U &&
+        c0a2_action_frame_one.has_value() &&
+        c0a2_action_frame_one->animation_frame == 1U &&
+        c0a2_action_complete.has_value() &&
+        c0a2_action_complete->animation_frame == 1U;
     const bool generic_boundary_rejected = std::none_of(
         generic_boundary_motion.begin(), generic_boundary_motion.end(),
         [](const auto& decision) {
@@ -1602,9 +1681,10 @@ int main() {
                 wendigo_engagement->movement_current_heading == 0x2000U &&
                 generic_engagement != nullptr &&
                 generic_engagement->ai_target_heading == 0x2000U &&
+                c0a2_action_contract &&
                 generic_boundary_rejected &&
                 gargoyle_frame_two_hold != gargoyle_frame_two_motion.end(),
-            "Lua actor motion failed item/spell routes, six 21-pass route updates, B574 cadence, close target ranges, kind-C bands, or the kind-D frame-two hold")) {
+            "Lua actor motion failed item/spell routes, six 21-pass route updates, B574 cadence, close target ranges, C0A2 action cadence, kind-C bands, or the kind-D frame-two hold")) {
         const auto print_motion_trace = [](const char* label,
                                            const auto& trace) {
             std::cerr << label << " samples=" << trace.size();

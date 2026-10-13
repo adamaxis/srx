@@ -439,6 +439,15 @@ local function initial_state(context, profile)
         animation_increment = 0,
         animation_timing_word = 0,
         walk_animation_frame_count = context.walk_animation_frame_count or 0,
+        action_animation_frame_count =
+            context.action_animation_frame_count or 0,
+        action_animation_increment =
+            context.action_animation_increment or 0,
+        action_animation_threshold =
+            context.action_animation_threshold or 0,
+        action_animation_audio_event =
+            context.action_animation_audio_event,
+        action_animation_complete = false,
         movement_current_heading = profile.controls_movement
             and context.initial_heading or nil,
         movement_route_distance = nil,
@@ -547,7 +556,7 @@ local function snapshot(state, action, audio_event, projectile_movement)
     }
 end
 
-local function source_action_delay(context, state)
+local function source_action_delay(context, state, mode)
     -- ROM 0xB11C clears D0 before 0xABFC. 0xD7EA adds the first enabled
     -- +0x90 capability modifier to the wrapped average of +0x78/+0x7B.
     local capability_flags = context.delay_capability_flags or
@@ -569,6 +578,13 @@ local function source_action_delay(context, state)
         factor = 0
     end
     local delay = 0x6a - factor * 4
+    -- ROM 0xABFC halves D2 with ASR when D0 is 1 (the B1DC target-action
+    -- transition). Keep the ordinary full reset used by B11C as mode 0.
+    if mode == 1 then
+        delay = math.floor(delay / 2)
+    elseif mode == 2 then
+        delay = delay * 2
+    end
     if delay < 0x0f then
         delay = 0x0f
     end
@@ -1107,6 +1123,70 @@ local function advance_dynamic_actor_walk_animation(state, context)
     return true
 end
 
+local function advance_dynamic_actor_action_animation(state)
+    if state.animation_id ~= "action" or state.action_animation_complete then
+        return true
+    end
+    local frame_count = state.action_animation_frame_count
+    local increment = state.action_animation_increment
+    local threshold = state.action_animation_threshold
+    if type(frame_count) ~= "number" or frame_count < 1 or frame_count > 8 or
+       type(increment) ~= "number" or increment < 1 or increment > 0xffff or
+       type(threshold) ~= "number" or threshold < 1 or threshold > 0xffff then
+        return false
+    end
+
+    -- ROM 0x5FDC adds the C0A2 list's +2 increment to +0x1A and advances
+    -- +0x1E when the signed accumulator reaches the actor's +0x1C threshold.
+    local accumulated_word =
+        (state.animation_accumulator + increment) & 0xffff
+    local accumulated_signed = accumulated_word
+    if accumulated_word >= 0x8000 then
+        accumulated_signed = accumulated_word - 0x10000
+    end
+    if threshold <= accumulated_signed then
+        state.animation_frame = state.animation_frame + 1
+        state.animation_accumulator = accumulated_word - threshold
+        if state.animation_accumulator >= 0x8000 then
+            state.animation_accumulator = state.animation_accumulator - 0x10000
+        end
+        if state.animation_frame >= frame_count then
+            -- 0x600E sets the finite-list completion marker and holds the
+            -- last C0A2 frame until another behavior selects a new list.
+            state.animation_frame = frame_count - 1
+            state.action_animation_complete = true
+        end
+    else
+        state.animation_accumulator = accumulated_signed
+    end
+    return true
+end
+
+local function begin_dynamic_target_action(state, context)
+    if not context.dynamic_world_encounter_actor or
+       state.action_delay >= 0 or state.target_motion_effect_active or
+       type(context.action_animation_frame_count) ~= "number" or
+       context.action_animation_frame_count < 1 or
+       type(context.action_animation_increment) ~= "number" or
+       context.action_animation_increment < 1 or
+       type(context.action_animation_threshold) ~= "number" or
+       context.action_animation_threshold < 1 or
+       type(context.action_animation_audio_event) ~= "number" then
+        return nil
+    end
+
+    -- ROM 0xB1DC selects C0A2 for the accepted target heading, requests the
+    -- kind-specific action cue, resets +0x1A/+0x1E, and applies delay mode 1.
+    state.animation_id = "action"
+    state.animation_frame = 0
+    state.animation_accumulator = 0
+    state.animation_increment = context.action_animation_increment
+    state.animation_period = context.action_animation_threshold
+    state.action_animation_complete = false
+    state.action_delay = source_action_delay(context, state, 1)
+    return context.action_animation_audio_event
+end
+
 local function advance_player_animation(state, context)
     if type(context.animation_accumulator_override) == "number" then
         state.animation_accumulator =
@@ -1617,6 +1697,10 @@ function ActorAI.heartbeat(context)
                 if state.transition_started and
                    not state.transition_complete then
                     advance_entry_animation(state)
+                elseif state.animation_id == "action" then
+                    if not advance_dynamic_actor_action_animation(state) then
+                        return nil
+                    end
                 elseif state.animation_id == "walk" then
                     if not advance_dynamic_actor_walk_animation(state, context) then
                         return nil
@@ -1678,6 +1762,9 @@ function ActorAI.heartbeat(context)
                             if not state.movement_active then
                                 state.movement_route_distance = nil
                             end
+                        else
+                            audio_event = begin_dynamic_target_action(
+                                state, context)
                         end
                     end
 

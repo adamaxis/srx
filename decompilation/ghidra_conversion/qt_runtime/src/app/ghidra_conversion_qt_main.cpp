@@ -7530,10 +7530,12 @@ int run_field_random_encounter_spawn_qa(
         field_scene.controller_event_word_for_dump();
     const auto selected_actor_on_press =
         field_scene.selected_default_actor_id_for_dump();
+    const auto audio_after_target_press = field_audio_events.size();
     field_scene.set_controller_port_byte(0U);
     field_scene.advance_frame();
     const auto selected_actor_after_release =
         field_scene.selected_default_actor_id_for_dump();
+    const auto audio_after_target_release = field_audio_events.size();
     // The source edge spawn lies below this scene's captured viewport. Keep
     // that real spawn untouched in the production frames above, then move
     // the selected source actor record into a known visible patch for the
@@ -7553,12 +7555,36 @@ int run_field_random_encounter_spawn_qa(
     const auto target_selection_image = render();
     const bool target_selection_saved =
         save("target-selection-b.bmp", target_selection_image);
-    for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
+    std::array<bool, 8> creature_action_frames_seen{};
+    std::uint8_t creature_action_frame_count = 0U;
+    bool creature_action_frames_saved = true;
+    for (std::uint8_t frame = 0U; frame < 16U; ++frame) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
-        field_scene.set_selected_default_actor_world_position_for_dump(
+        (void)field_scene.set_selected_default_actor_world_position_for_dump(
             target_marker_fixture_x, target_marker_fixture_y);
+        const auto animation_id =
+            field_scene.default_actor_animation_id_for_dump(0U);
+        const auto animation_frame =
+            field_scene.default_actor_animation_frame_for_dump(0U);
+        if (animation_id == std::optional<std::string>{"action"} &&
+            animation_frame.has_value() &&
+            *animation_frame < creature_action_frames_seen.size() &&
+            !creature_action_frames_seen[*animation_frame]) {
+            creature_action_frames_seen[*animation_frame] = true;
+            ++creature_action_frame_count;
+            const auto action_frame_image = render();
+            creature_action_frames_saved = save(
+                "creature-target-action-frame-" +
+                    std::to_string(*animation_frame) + ".bmp",
+                action_frame_image) &&
+                creature_action_frames_saved &&
+                field_hud_chrome_survives(action_frame_image, asset_root) &&
+                initial.copy(272, 0, 48, 224) ==
+                    action_frame_image.copy(272, 0, 48, 224);
+        }
     }
+    const auto audio_after_target_action = field_audio_events.size();
     const auto marker_steady =
         field_scene.selected_default_actor_target_marker_for_dump();
     const auto target_selection_static_image = render();
@@ -7589,7 +7615,12 @@ int run_field_random_encounter_spawn_qa(
         marker_during_shrink->radius % 8U != 0U ||
         !marker_steady.has_value() || !marker_steady->visible ||
         marker_steady->animating || marker_steady->radius != 0U ||
-        field_audio_events.size() != audio_before_target_selection ||
+        audio_after_target_press != audio_before_target_selection ||
+        audio_after_target_release != audio_before_target_selection ||
+        audio_after_target_action != audio_before_target_selection + 1U ||
+        field_audio_events.back() != 0x004CU ||
+        creature_action_frame_count < 2U ||
+        !creature_action_frames_saved ||
         !target_selection_saved ||
         !target_selection_static_saved ||
         !target_marker_pixels_visible ||

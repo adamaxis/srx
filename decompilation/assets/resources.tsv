@@ -351,6 +351,7 @@ field.entities.default.actors	field/entities/default-actors.tsv	state	0	0
 field.entities.default.actor.waypoints	field/entities/default-actor-waypoints.tsv	state	0	0
 field.entities.world.activity.actors	field/entities/world-activity-actors.tsv	state	0	0
 field.entities.world.activity.encounter.actors	field/entities/dynamic-world-activity-actors.tsv	state	0	0
+field.entities.actor.action.profiles	field/entities/actor-action-profiles.tsv	state	0	0
 menu.field.service.routes	menu/field/service-routes.tsv	text	0	0
 title.background	title/background.bmp	image	0	0
 title.circuit.background.0	title/circuit-background-0.bmp	image	0	0
@@ -1888,6 +1889,8 @@ field.entities.actors.actor.kind.4.palette.3.walk.dir.0.frame.0	field/entities/a
 field.entities.actors.actor.kind.4.palette.3.walk.dir.0.frame.1	field/entities/actors/actor-kind-4-palette-3-walk-dir-0-frame-1.bmp	image	-14	-24
 field.entities.actors.actor.kind.4.palette.3.walk.dir.0.frame.2	field/entities/actors/actor-kind-4-palette-3-walk-dir-0-frame-2.bmp	image	-14	-25
 field.entities.actors.actor.kind.4.palette.3.walk.dir.0.frame.3	field/entities/actors/actor-kind-4-palette-3-walk-dir-0-frame-3.bmp	image	-14	-24
+field.entities.actors.actor.kind.4.palette.3.action.dir.0.frame.0	field/entities/actors/actor-kind-4-palette-3-action-dir-0-frame-0.bmp	image	-14	-24
+field.entities.actors.actor.kind.4.palette.3.action.dir.0.frame.1	field/entities/actors/actor-kind-4-palette-3-action-dir-0-frame-1.bmp	image	-15	-29
 field.entities.actors.actor.kind.4.palette.3.idle.dir.1	field/entities/actors/actor-kind-4-palette-3-idle-dir-1.bmp	image	-9	-24
 field.entities.actors.actor.kind.4.palette.3.entry.dir.1.frame.0	field/entities/actors/actor-kind-4-palette-3-entry-dir-1-frame-0.bmp	image	-17	-17
 field.entities.actors.actor.kind.4.palette.3.entry.dir.1.frame.1	field/entities/actors/actor-kind-4-palette-3-entry-dir-1-frame-1.bmp	image	-14	-18
@@ -1895,6 +1898,8 @@ field.entities.actors.actor.kind.4.palette.3.walk.dir.1.frame.0	field/entities/a
 field.entities.actors.actor.kind.4.palette.3.walk.dir.1.frame.1	field/entities/actors/actor-kind-4-palette-3-walk-dir-1-frame-1.bmp	image	-10	-25
 field.entities.actors.actor.kind.4.palette.3.walk.dir.1.frame.2	field/entities/actors/actor-kind-4-palette-3-walk-dir-1-frame-2.bmp	image	-9	-24
 field.entities.actors.actor.kind.4.palette.3.walk.dir.1.frame.3	field/entities/actors/actor-kind-4-palette-3-walk-dir-1-frame-3.bmp	image	-9	-24
+field.entities.actors.actor.kind.4.palette.3.action.dir.1.frame.0	field/entities/actors/actor-kind-4-palette-3-action-dir-1-frame-0.bmp	image	-7	-27
+field.entities.actors.actor.kind.4.palette.3.action.dir.1.frame.1	field/entities/actors/actor-kind-4-palette-3-action-dir-1-frame-1.bmp	image	-14	-29
 field.entities.actors.actor.kind.4.palette.3.idle.dir.2	field/entities/actors/actor-kind-4-palette-3-idle-dir-2.bmp	image	-8	-24
 field.entities.actors.actor.kind.4.palette.3.entry.dir.2.frame.0	field/entities/actors/actor-kind-4-palette-3-entry-dir-2-frame-0.bmp	image	-18	-20
 field.entities.actors.actor.kind.4.palette.3.entry.dir.2.frame.1	field/entities/actors/actor-kind-4-palette-3-entry-dir-2-frame-1.bmp	image	-13	-14
@@ -1902,6 +1907,8 @@ field.entities.actors.actor.kind.4.palette.3.walk.dir.2.frame.0	field/entities/a
 field.entities.actors.actor.kind.4.palette.3.walk.dir.2.frame.1	field/entities/actors/actor-kind-4-palette-3-walk-dir-2-frame-1.bmp	image	-8	-23
 field.entities.actors.actor.kind.4.palette.3.walk.dir.2.frame.2	field/entities/actors/actor-kind-4-palette-3-walk-dir-2-frame-2.bmp	image	-9	-22
 field.entities.actors.actor.kind.4.palette.3.walk.dir.2.frame.3	field/entities/actors/actor-kind-4-palette-3-walk-dir-2-frame-3.bmp	image	-8	-24
+field.entities.actors.actor.kind.4.palette.3.action.dir.2.frame.0	field/entities/actors/actor-kind-4-palette-3-action-dir-2-frame-0.bmp	image	-8	-23
+field.entities.actors.actor.kind.4.palette.3.action.dir.2.frame.1	field/entities/actors/actor-kind-4-palette-3-action-dir-2-frame-1.bmp	image	-9	-26
 field.entities.actors.actor.kind.4.palette.3.idle.dir.3	field/entities/actors/actor-kind-4-palette-3-idle-dir-3.bmp	image	-11	-25
 field.entities.actors.actor.kind.4.palette.3.entry.dir.3.frame.0	field/entities/actors/actor-kind-4-palette-3-entry-dir-3-frame-0.bmp	image	-18	-20
 field.entities.actors.actor.kind.4.palette.3.entry.dir.3.frame.1	field/entities/actors/actor-kind-4-palette-3-entry-dir-3-frame-1.bmp	image	-13	-14
@@ -1909,6 +1916,8 @@ field.entities.actors.actor.kind.4.palette.3.walk.dir.3.frame.0	field/entities/a
 field.entities.actors.actor.kind.4.palette.3.walk.dir.3.frame.1	field/entities/actors/actor-kind-4-palette-3-walk-dir-3-frame-1.bmp	image	-10	-24
 field.entities.actors.actor.kind.4.palette.3.walk.dir.3.frame.2	field/entities/actors/actor-kind-4-palette-3-walk-dir-3-frame-2.bmp	image	-13	-24
 field.entities.actors.actor.kind.4.palette.3.walk.dir.3.frame.3	field/entities/actors/actor-kind-4-palette-3-walk-dir-3-frame-3.bmp	image	-11	-25
+field.entities.actors.actor.kind.4.palette.3.action.dir.3.frame.0	field/entities/actors/actor-kind-4-palette-3-action-dir-3-frame-0.bmp	image	-14	-25
+field.entities.actors.actor.kind.4.palette.3.action.dir.3.frame.1	field/entities/actors/actor-kind-4-palette-3-action-dir-3-frame-1.bmp	image	-10	-19
 field.entities.actors.actor.kind.4.palette.3.idle.dir.4	field/entities/actors/actor-kind-4-palette-3-idle-dir-4.bmp	image	-14	-25
 field.entities.actors.actor.kind.4.palette.3.entry.dir.4.frame.0	field/entities/actors/actor-kind-4-palette-3-entry-dir-4-frame-0.bmp	image	-14	-20
 field.entities.actors.actor.kind.4.palette.3.entry.dir.4.frame.1	field/entities/actors/actor-kind-4-palette-3-entry-dir-4-frame-1.bmp	image	-19	-14
@@ -1916,6 +1925,8 @@ field.entities.actors.actor.kind.4.palette.3.walk.dir.4.frame.0	field/entities/a
 field.entities.actors.actor.kind.4.palette.3.walk.dir.4.frame.1	field/entities/actors/actor-kind-4-palette-3-walk-dir-4-frame-1.bmp	image	-14	-24
 field.entities.actors.actor.kind.4.palette.3.walk.dir.4.frame.2	field/entities/actors/actor-kind-4-palette-3-walk-dir-4-frame-2.bmp	image	-13	-24
 field.entities.actors.actor.kind.4.palette.3.walk.dir.4.frame.3	field/entities/actors/actor-kind-4-palette-3-walk-dir-4-frame-3.bmp	image	-14	-25
+field.entities.actors.actor.kind.4.palette.3.action.dir.4.frame.0	field/entities/actors/actor-kind-4-palette-3-action-dir-4-frame-0.bmp	image	-13	-25
+field.entities.actors.actor.kind.4.palette.3.action.dir.4.frame.1	field/entities/actors/actor-kind-4-palette-3-action-dir-4-frame-1.bmp	image	-14	-20
 field.entities.actors.actor.kind.4.palette.3.idle.dir.5	field/entities/actors/actor-kind-4-palette-3-idle-dir-5.bmp	image	-13	-25
 field.entities.actors.actor.kind.4.palette.3.entry.dir.5.frame.0	field/entities/actors/actor-kind-4-palette-3-entry-dir-5-frame-0.bmp	image	-14	-20
 field.entities.actors.actor.kind.4.palette.3.entry.dir.5.frame.1	field/entities/actors/actor-kind-4-palette-3-entry-dir-5-frame-1.bmp	image	-19	-14
@@ -1923,6 +1934,8 @@ field.entities.actors.actor.kind.4.palette.3.walk.dir.5.frame.0	field/entities/a
 field.entities.actors.actor.kind.4.palette.3.walk.dir.5.frame.1	field/entities/actors/actor-kind-4-palette-3-walk-dir-5-frame-1.bmp	image	-14	-24
 field.entities.actors.actor.kind.4.palette.3.walk.dir.5.frame.2	field/entities/actors/actor-kind-4-palette-3-walk-dir-5-frame-2.bmp	image	-11	-24
 field.entities.actors.actor.kind.4.palette.3.walk.dir.5.frame.3	field/entities/actors/actor-kind-4-palette-3-walk-dir-5-frame-3.bmp	image	-13	-25
+field.entities.actors.actor.kind.4.palette.3.action.dir.5.frame.0	field/entities/actors/actor-kind-4-palette-3-action-dir-5-frame-0.bmp	image	-18	-25
+field.entities.actors.actor.kind.4.palette.3.action.dir.5.frame.1	field/entities/actors/actor-kind-4-palette-3-action-dir-5-frame-1.bmp	image	-22	-19
 field.entities.actors.actor.kind.4.palette.3.idle.dir.6	field/entities/actors/actor-kind-4-palette-3-idle-dir-6.bmp	image	-8	-24
 field.entities.actors.actor.kind.4.palette.3.entry.dir.6.frame.0	field/entities/actors/actor-kind-4-palette-3-entry-dir-6-frame-0.bmp	image	-15	-17
 field.entities.actors.actor.kind.4.palette.3.entry.dir.6.frame.1	field/entities/actors/actor-kind-4-palette-3-entry-dir-6-frame-1.bmp	image	-18	-18
@@ -1930,6 +1943,8 @@ field.entities.actors.actor.kind.4.palette.3.walk.dir.6.frame.0	field/entities/a
 field.entities.actors.actor.kind.4.palette.3.walk.dir.6.frame.1	field/entities/actors/actor-kind-4-palette-3-walk-dir-6-frame-1.bmp	image	-8	-23
 field.entities.actors.actor.kind.4.palette.3.walk.dir.6.frame.2	field/entities/actors/actor-kind-4-palette-3-walk-dir-6-frame-2.bmp	image	-15	-22
 field.entities.actors.actor.kind.4.palette.3.walk.dir.6.frame.3	field/entities/actors/actor-kind-4-palette-3-walk-dir-6-frame-3.bmp	image	-8	-24
+field.entities.actors.actor.kind.4.palette.3.action.dir.6.frame.0	field/entities/actors/actor-kind-4-palette-3-action-dir-6-frame-0.bmp	image	-16	-23
+field.entities.actors.actor.kind.4.palette.3.action.dir.6.frame.1	field/entities/actors/actor-kind-4-palette-3-action-dir-6-frame-1.bmp	image	-23	-26
 field.entities.actors.actor.kind.4.palette.3.idle.dir.7	field/entities/actors/actor-kind-4-palette-3-idle-dir-7.bmp	image	-15	-24
 field.entities.actors.actor.kind.4.palette.3.entry.dir.7.frame.0	field/entities/actors/actor-kind-4-palette-3-entry-dir-7-frame-0.bmp	image	-15	-17
 field.entities.actors.actor.kind.4.palette.3.entry.dir.7.frame.1	field/entities/actors/actor-kind-4-palette-3-entry-dir-7-frame-1.bmp	image	-18	-18
@@ -1937,6 +1952,8 @@ field.entities.actors.actor.kind.4.palette.3.walk.dir.7.frame.0	field/entities/a
 field.entities.actors.actor.kind.4.palette.3.walk.dir.7.frame.1	field/entities/actors/actor-kind-4-palette-3-walk-dir-7-frame-1.bmp	image	-14	-25
 field.entities.actors.actor.kind.4.palette.3.walk.dir.7.frame.2	field/entities/actors/actor-kind-4-palette-3-walk-dir-7-frame-2.bmp	image	-15	-24
 field.entities.actors.actor.kind.4.palette.3.walk.dir.7.frame.3	field/entities/actors/actor-kind-4-palette-3-walk-dir-7-frame-3.bmp	image	-15	-24
+field.entities.actors.actor.kind.4.palette.3.action.dir.7.frame.0	field/entities/actors/actor-kind-4-palette-3-action-dir-7-frame-0.bmp	image	-17	-27
+field.entities.actors.actor.kind.4.palette.3.action.dir.7.frame.1	field/entities/actors/actor-kind-4-palette-3-action-dir-7-frame-1.bmp	image	-18	-29
 field.entities.actors.actor.kind.5.palette.1.idle	field/entities/actors/actor-kind-5-palette-1-idle.bmp	image	-13	-26
 field.entities.actors.actor.kind.5.palette.1.entry.dir.0.frame.0	field/entities/actors/actor-kind-5-palette-1-entry-dir-0-frame-0.bmp	image	-21	-23
 field.entities.actors.actor.kind.5.palette.1.entry.dir.0.frame.1	field/entities/actors/actor-kind-5-palette-1-entry-dir-0-frame-1.bmp	image	-21	-23
@@ -1944,6 +1961,8 @@ field.entities.actors.actor.kind.5.palette.1.walk.dir.0.frame.0	field/entities/a
 field.entities.actors.actor.kind.5.palette.1.walk.dir.0.frame.1	field/entities/actors/actor-kind-5-palette-1-walk-dir-0-frame-1.bmp	image	-13	-27
 field.entities.actors.actor.kind.5.palette.1.walk.dir.0.frame.2	field/entities/actors/actor-kind-5-palette-1-walk-dir-0-frame-2.bmp	image	-13	-26
 field.entities.actors.actor.kind.5.palette.1.walk.dir.0.frame.3	field/entities/actors/actor-kind-5-palette-1-walk-dir-0-frame-3.bmp	image	-13	-27
+field.entities.actors.actor.kind.5.palette.1.action.dir.0.frame.0	field/entities/actors/actor-kind-5-palette-1-action-dir-0-frame-0.bmp	image	-11	-24
+field.entities.actors.actor.kind.5.palette.1.action.dir.0.frame.1	field/entities/actors/actor-kind-5-palette-1-action-dir-0-frame-1.bmp	image	-14	-27
 field.entities.actors.actor.kind.5.palette.1.idle.dir.1	field/entities/actors/actor-kind-5-palette-1-idle-dir-1.bmp	image	-9	-25
 field.entities.actors.actor.kind.5.palette.1.entry.dir.1.frame.0	field/entities/actors/actor-kind-5-palette-1-entry-dir-1-frame-0.bmp	image	-21	-23
 field.entities.actors.actor.kind.5.palette.1.entry.dir.1.frame.1	field/entities/actors/actor-kind-5-palette-1-entry-dir-1-frame-1.bmp	image	-21	-23
@@ -1951,6 +1970,8 @@ field.entities.actors.actor.kind.5.palette.1.walk.dir.1.frame.0	field/entities/a
 field.entities.actors.actor.kind.5.palette.1.walk.dir.1.frame.1	field/entities/actors/actor-kind-5-palette-1-walk-dir-1-frame-1.bmp	image	-12	-25
 field.entities.actors.actor.kind.5.palette.1.walk.dir.1.frame.2	field/entities/actors/actor-kind-5-palette-1-walk-dir-1-frame-2.bmp	image	-9	-25
 field.entities.actors.actor.kind.5.palette.1.walk.dir.1.frame.3	field/entities/actors/actor-kind-5-palette-1-walk-dir-1-frame-3.bmp	image	-11	-25
+field.entities.actors.actor.kind.5.palette.1.action.dir.1.frame.0	field/entities/actors/actor-kind-5-palette-1-action-dir-1-frame-0.bmp	image	-9	-24
+field.entities.actors.actor.kind.5.palette.1.action.dir.1.frame.1	field/entities/actors/actor-kind-5-palette-1-action-dir-1-frame-1.bmp	image	-11	-26
 field.entities.actors.actor.kind.5.palette.1.idle.dir.2	field/entities/actors/actor-kind-5-palette-1-idle-dir-2.bmp	image	-8	-22
 field.entities.actors.actor.kind.5.palette.1.entry.dir.2.frame.0	field/entities/actors/actor-kind-5-palette-1-entry-dir-2-frame-0.bmp	image	-21	-23
 field.entities.actors.actor.kind.5.palette.1.entry.dir.2.frame.1	field/entities/actors/actor-kind-5-palette-1-entry-dir-2-frame-1.bmp	image	-21	-23
@@ -1958,6 +1979,8 @@ field.entities.actors.actor.kind.5.palette.1.walk.dir.2.frame.0	field/entities/a
 field.entities.actors.actor.kind.5.palette.1.walk.dir.2.frame.1	field/entities/actors/actor-kind-5-palette-1-walk-dir-2-frame-1.bmp	image	-11	-22
 field.entities.actors.actor.kind.5.palette.1.walk.dir.2.frame.2	field/entities/actors/actor-kind-5-palette-1-walk-dir-2-frame-2.bmp	image	-7	-22
 field.entities.actors.actor.kind.5.palette.1.walk.dir.2.frame.3	field/entities/actors/actor-kind-5-palette-1-walk-dir-2-frame-3.bmp	image	-8	-22
+field.entities.actors.actor.kind.5.palette.1.action.dir.2.frame.0	field/entities/actors/actor-kind-5-palette-1-action-dir-2-frame-0.bmp	image	-12	-23
+field.entities.actors.actor.kind.5.palette.1.action.dir.2.frame.1	field/entities/actors/actor-kind-5-palette-1-action-dir-2-frame-1.bmp	image	-8	-23
 field.entities.actors.actor.kind.5.palette.1.idle.dir.3	field/entities/actors/actor-kind-5-palette-1-idle-dir-3.bmp	image	-10	-24
 field.entities.actors.actor.kind.5.palette.1.entry.dir.3.frame.0	field/entities/actors/actor-kind-5-palette-1-entry-dir-3-frame-0.bmp	image	-5	-18
 field.entities.actors.actor.kind.5.palette.1.entry.dir.3.frame.1	field/entities/actors/actor-kind-5-palette-1-entry-dir-3-frame-1.bmp	image	-5	-15
@@ -1965,6 +1988,8 @@ field.entities.actors.actor.kind.5.palette.1.walk.dir.3.frame.0	field/entities/a
 field.entities.actors.actor.kind.5.palette.1.walk.dir.3.frame.1	field/entities/actors/actor-kind-5-palette-1-walk-dir-3-frame-1.bmp	image	-9	-24
 field.entities.actors.actor.kind.5.palette.1.walk.dir.3.frame.2	field/entities/actors/actor-kind-5-palette-1-walk-dir-3-frame-2.bmp	image	-10	-24
 field.entities.actors.actor.kind.5.palette.1.walk.dir.3.frame.3	field/entities/actors/actor-kind-5-palette-1-walk-dir-3-frame-3.bmp	image	-11	-24
+field.entities.actors.actor.kind.5.palette.1.action.dir.3.frame.0	field/entities/actors/actor-kind-5-palette-1-action-dir-3-frame-0.bmp	image	-15	-24
+field.entities.actors.actor.kind.5.palette.1.action.dir.3.frame.1	field/entities/actors/actor-kind-5-palette-1-action-dir-3-frame-1.bmp	image	-12	-20
 field.entities.actors.actor.kind.5.palette.1.idle.dir.4	field/entities/actors/actor-kind-5-palette-1-idle-dir-4.bmp	image	-11	-26
 field.entities.actors.actor.kind.5.palette.1.entry.dir.4.frame.0	field/entities/actors/actor-kind-5-palette-1-entry-dir-4-frame-0.bmp	image	-5	-18
 field.entities.actors.actor.kind.5.palette.1.entry.dir.4.frame.1	field/entities/actors/actor-kind-5-palette-1-entry-dir-4-frame-1.bmp	image	-5	-15
@@ -1972,6 +1997,8 @@ field.entities.actors.actor.kind.5.palette.1.walk.dir.4.frame.0	field/entities/a
 field.entities.actors.actor.kind.5.palette.1.walk.dir.4.frame.1	field/entities/actors/actor-kind-5-palette-1-walk-dir-4-frame-1.bmp	image	-13	-25
 field.entities.actors.actor.kind.5.palette.1.walk.dir.4.frame.2	field/entities/actors/actor-kind-5-palette-1-walk-dir-4-frame-2.bmp	image	-11	-26
 field.entities.actors.actor.kind.5.palette.1.walk.dir.4.frame.3	field/entities/actors/actor-kind-5-palette-1-walk-dir-4-frame-3.bmp	image	-11	-25
+field.entities.actors.actor.kind.5.palette.1.action.dir.4.frame.0	field/entities/actors/actor-kind-5-palette-1-action-dir-4-frame-0.bmp	image	-14	-25
+field.entities.actors.actor.kind.5.palette.1.action.dir.4.frame.1	field/entities/actors/actor-kind-5-palette-1-action-dir-4-frame-1.bmp	image	-13	-19
 field.entities.actors.actor.kind.5.palette.1.idle.dir.5	field/entities/actors/actor-kind-5-palette-1-idle-dir-5.bmp	image	-12	-24
 field.entities.actors.actor.kind.5.palette.1.entry.dir.5.frame.0	field/entities/actors/actor-kind-5-palette-1-entry-dir-5-frame-0.bmp	image	-27	-18
 field.entities.actors.actor.kind.5.palette.1.entry.dir.5.frame.1	field/entities/actors/actor-kind-5-palette-1-entry-dir-5-frame-1.bmp	image	-27	-15
@@ -1979,6 +2006,8 @@ field.entities.actors.actor.kind.5.palette.1.walk.dir.5.frame.0	field/entities/a
 field.entities.actors.actor.kind.5.palette.1.walk.dir.5.frame.1	field/entities/actors/actor-kind-5-palette-1-walk-dir-5-frame-1.bmp	image	-11	-24
 field.entities.actors.actor.kind.5.palette.1.walk.dir.5.frame.2	field/entities/actors/actor-kind-5-palette-1-walk-dir-5-frame-2.bmp	image	-12	-24
 field.entities.actors.actor.kind.5.palette.1.walk.dir.5.frame.3	field/entities/actors/actor-kind-5-palette-1-walk-dir-5-frame-3.bmp	image	-13	-24
+field.entities.actors.actor.kind.5.palette.1.action.dir.5.frame.0	field/entities/actors/actor-kind-5-palette-1-action-dir-5-frame-0.bmp	image	-9	-24
+field.entities.actors.actor.kind.5.palette.1.action.dir.5.frame.1	field/entities/actors/actor-kind-5-palette-1-action-dir-5-frame-1.bmp	image	-20	-20
 field.entities.actors.actor.kind.5.palette.1.idle.dir.6	field/entities/actors/actor-kind-5-palette-1-idle-dir-6.bmp	image	-4	-22
 field.entities.actors.actor.kind.5.palette.1.entry.dir.6.frame.0	field/entities/actors/actor-kind-5-palette-1-entry-dir-6-frame-0.bmp	image	-5	-23
 field.entities.actors.actor.kind.5.palette.1.entry.dir.6.frame.1	field/entities/actors/actor-kind-5-palette-1-entry-dir-6-frame-1.bmp	image	-11	-23
@@ -1986,6 +2015,8 @@ field.entities.actors.actor.kind.5.palette.1.walk.dir.6.frame.0	field/entities/a
 field.entities.actors.actor.kind.5.palette.1.walk.dir.6.frame.1	field/entities/actors/actor-kind-5-palette-1-walk-dir-6-frame-1.bmp	image	-7	-22
 field.entities.actors.actor.kind.5.palette.1.walk.dir.6.frame.2	field/entities/actors/actor-kind-5-palette-1-walk-dir-6-frame-2.bmp	image	-9	-22
 field.entities.actors.actor.kind.5.palette.1.walk.dir.6.frame.3	field/entities/actors/actor-kind-5-palette-1-walk-dir-6-frame-3.bmp	image	-4	-22
+field.entities.actors.actor.kind.5.palette.1.action.dir.6.frame.0	field/entities/actors/actor-kind-5-palette-1-action-dir-6-frame-0.bmp	image	-12	-23
+field.entities.actors.actor.kind.5.palette.1.action.dir.6.frame.1	field/entities/actors/actor-kind-5-palette-1-action-dir-6-frame-1.bmp	image	-24	-23
 field.entities.actors.actor.kind.5.palette.1.idle.dir.7	field/entities/actors/actor-kind-5-palette-1-idle-dir-7.bmp	image	-15	-25
 field.entities.actors.actor.kind.5.palette.1.entry.dir.7.frame.0	field/entities/actors/actor-kind-5-palette-1-entry-dir-7-frame-0.bmp	image	-5	-23
 field.entities.actors.actor.kind.5.palette.1.entry.dir.7.frame.1	field/entities/actors/actor-kind-5-palette-1-entry-dir-7-frame-1.bmp	image	-11	-23
@@ -1993,6 +2024,8 @@ field.entities.actors.actor.kind.5.palette.1.walk.dir.7.frame.0	field/entities/a
 field.entities.actors.actor.kind.5.palette.1.walk.dir.7.frame.1	field/entities/actors/actor-kind-5-palette-1-walk-dir-7-frame-1.bmp	image	-20	-25
 field.entities.actors.actor.kind.5.palette.1.walk.dir.7.frame.2	field/entities/actors/actor-kind-5-palette-1-walk-dir-7-frame-2.bmp	image	-15	-25
 field.entities.actors.actor.kind.5.palette.1.walk.dir.7.frame.3	field/entities/actors/actor-kind-5-palette-1-walk-dir-7-frame-3.bmp	image	-13	-25
+field.entities.actors.actor.kind.5.palette.1.action.dir.7.frame.0	field/entities/actors/actor-kind-5-palette-1-action-dir-7-frame-0.bmp	image	-7	-24
+field.entities.actors.actor.kind.5.palette.1.action.dir.7.frame.1	field/entities/actors/actor-kind-5-palette-1-action-dir-7-frame-1.bmp	image	-17	-26
 field.entities.actors.corp.guard.idle	field/entities/actors/corp-guard-idle.bmp	image	-13	-26
 field.entities.actors.corp.guard.entry.dir.0.frame.0	field/entities/actors/corp-guard-entry-dir-0-frame-0.bmp	image	-21	-23
 field.entities.actors.corp.guard.entry.dir.0.frame.1	field/entities/actors/corp-guard-entry-dir-0-frame-1.bmp	image	-21	-23
@@ -2000,6 +2033,8 @@ field.entities.actors.corp.guard.walk.dir.0.frame.0	field/entities/actors/corp-g
 field.entities.actors.corp.guard.walk.dir.0.frame.1	field/entities/actors/corp-guard-walk-dir-0-frame-1.bmp	image	-13	-27
 field.entities.actors.corp.guard.walk.dir.0.frame.2	field/entities/actors/corp-guard-walk-dir-0-frame-2.bmp	image	-13	-26
 field.entities.actors.corp.guard.walk.dir.0.frame.3	field/entities/actors/corp-guard-walk-dir-0-frame-3.bmp	image	-13	-27
+field.entities.actors.corp.guard.action.dir.0.frame.0	field/entities/actors/corp-guard-action-dir-0-frame-0.bmp	image	-11	-24
+field.entities.actors.corp.guard.action.dir.0.frame.1	field/entities/actors/corp-guard-action-dir-0-frame-1.bmp	image	-14	-27
 field.entities.actors.corp.guard.idle.dir.1	field/entities/actors/corp-guard-idle-dir-1.bmp	image	-9	-25
 field.entities.actors.corp.guard.entry.dir.1.frame.0	field/entities/actors/corp-guard-entry-dir-1-frame-0.bmp	image	-21	-23
 field.entities.actors.corp.guard.entry.dir.1.frame.1	field/entities/actors/corp-guard-entry-dir-1-frame-1.bmp	image	-21	-23
@@ -2007,6 +2042,8 @@ field.entities.actors.corp.guard.walk.dir.1.frame.0	field/entities/actors/corp-g
 field.entities.actors.corp.guard.walk.dir.1.frame.1	field/entities/actors/corp-guard-walk-dir-1-frame-1.bmp	image	-12	-25
 field.entities.actors.corp.guard.walk.dir.1.frame.2	field/entities/actors/corp-guard-walk-dir-1-frame-2.bmp	image	-9	-25
 field.entities.actors.corp.guard.walk.dir.1.frame.3	field/entities/actors/corp-guard-walk-dir-1-frame-3.bmp	image	-11	-25
+field.entities.actors.corp.guard.action.dir.1.frame.0	field/entities/actors/corp-guard-action-dir-1-frame-0.bmp	image	-9	-24
+field.entities.actors.corp.guard.action.dir.1.frame.1	field/entities/actors/corp-guard-action-dir-1-frame-1.bmp	image	-11	-26
 field.entities.actors.corp.guard.idle.dir.2	field/entities/actors/corp-guard-idle-dir-2.bmp	image	-8	-22
 field.entities.actors.corp.guard.entry.dir.2.frame.0	field/entities/actors/corp-guard-entry-dir-2-frame-0.bmp	image	-21	-23
 field.entities.actors.corp.guard.entry.dir.2.frame.1	field/entities/actors/corp-guard-entry-dir-2-frame-1.bmp	image	-21	-23
@@ -2014,6 +2051,8 @@ field.entities.actors.corp.guard.walk.dir.2.frame.0	field/entities/actors/corp-g
 field.entities.actors.corp.guard.walk.dir.2.frame.1	field/entities/actors/corp-guard-walk-dir-2-frame-1.bmp	image	-11	-22
 field.entities.actors.corp.guard.walk.dir.2.frame.2	field/entities/actors/corp-guard-walk-dir-2-frame-2.bmp	image	-7	-22
 field.entities.actors.corp.guard.walk.dir.2.frame.3	field/entities/actors/corp-guard-walk-dir-2-frame-3.bmp	image	-8	-22
+field.entities.actors.corp.guard.action.dir.2.frame.0	field/entities/actors/corp-guard-action-dir-2-frame-0.bmp	image	-12	-23
+field.entities.actors.corp.guard.action.dir.2.frame.1	field/entities/actors/corp-guard-action-dir-2-frame-1.bmp	image	-8	-23
 field.entities.actors.corp.guard.idle.dir.3	field/entities/actors/corp-guard-idle-dir-3.bmp	image	-10	-24
 field.entities.actors.corp.guard.entry.dir.3.frame.0	field/entities/actors/corp-guard-entry-dir-3-frame-0.bmp	image	-5	-18
 field.entities.actors.corp.guard.entry.dir.3.frame.1	field/entities/actors/corp-guard-entry-dir-3-frame-1.bmp	image	-5	-15
@@ -2021,6 +2060,8 @@ field.entities.actors.corp.guard.walk.dir.3.frame.0	field/entities/actors/corp-g
 field.entities.actors.corp.guard.walk.dir.3.frame.1	field/entities/actors/corp-guard-walk-dir-3-frame-1.bmp	image	-9	-24
 field.entities.actors.corp.guard.walk.dir.3.frame.2	field/entities/actors/corp-guard-walk-dir-3-frame-2.bmp	image	-10	-24
 field.entities.actors.corp.guard.walk.dir.3.frame.3	field/entities/actors/corp-guard-walk-dir-3-frame-3.bmp	image	-11	-24
+field.entities.actors.corp.guard.action.dir.3.frame.0	field/entities/actors/corp-guard-action-dir-3-frame-0.bmp	image	-15	-24
+field.entities.actors.corp.guard.action.dir.3.frame.1	field/entities/actors/corp-guard-action-dir-3-frame-1.bmp	image	-12	-20
 field.entities.actors.corp.guard.idle.dir.4	field/entities/actors/corp-guard-idle-dir-4.bmp	image	-11	-26
 field.entities.actors.corp.guard.entry.dir.4.frame.0	field/entities/actors/corp-guard-entry-dir-4-frame-0.bmp	image	-5	-18
 field.entities.actors.corp.guard.entry.dir.4.frame.1	field/entities/actors/corp-guard-entry-dir-4-frame-1.bmp	image	-5	-15
@@ -2028,6 +2069,8 @@ field.entities.actors.corp.guard.walk.dir.4.frame.0	field/entities/actors/corp-g
 field.entities.actors.corp.guard.walk.dir.4.frame.1	field/entities/actors/corp-guard-walk-dir-4-frame-1.bmp	image	-13	-25
 field.entities.actors.corp.guard.walk.dir.4.frame.2	field/entities/actors/corp-guard-walk-dir-4-frame-2.bmp	image	-11	-26
 field.entities.actors.corp.guard.walk.dir.4.frame.3	field/entities/actors/corp-guard-walk-dir-4-frame-3.bmp	image	-11	-25
+field.entities.actors.corp.guard.action.dir.4.frame.0	field/entities/actors/corp-guard-action-dir-4-frame-0.bmp	image	-14	-25
+field.entities.actors.corp.guard.action.dir.4.frame.1	field/entities/actors/corp-guard-action-dir-4-frame-1.bmp	image	-13	-19
 field.entities.actors.corp.guard.idle.dir.5	field/entities/actors/corp-guard-idle-dir-5.bmp	image	-12	-24
 field.entities.actors.corp.guard.entry.dir.5.frame.0	field/entities/actors/corp-guard-entry-dir-5-frame-0.bmp	image	-27	-18
 field.entities.actors.corp.guard.entry.dir.5.frame.1	field/entities/actors/corp-guard-entry-dir-5-frame-1.bmp	image	-27	-15
@@ -2035,6 +2078,8 @@ field.entities.actors.corp.guard.walk.dir.5.frame.0	field/entities/actors/corp-g
 field.entities.actors.corp.guard.walk.dir.5.frame.1	field/entities/actors/corp-guard-walk-dir-5-frame-1.bmp	image	-11	-24
 field.entities.actors.corp.guard.walk.dir.5.frame.2	field/entities/actors/corp-guard-walk-dir-5-frame-2.bmp	image	-12	-24
 field.entities.actors.corp.guard.walk.dir.5.frame.3	field/entities/actors/corp-guard-walk-dir-5-frame-3.bmp	image	-13	-24
+field.entities.actors.corp.guard.action.dir.5.frame.0	field/entities/actors/corp-guard-action-dir-5-frame-0.bmp	image	-9	-24
+field.entities.actors.corp.guard.action.dir.5.frame.1	field/entities/actors/corp-guard-action-dir-5-frame-1.bmp	image	-20	-20
 field.entities.actors.corp.guard.idle.dir.6	field/entities/actors/corp-guard-idle-dir-6.bmp	image	-4	-22
 field.entities.actors.corp.guard.entry.dir.6.frame.0	field/entities/actors/corp-guard-entry-dir-6-frame-0.bmp	image	-5	-23
 field.entities.actors.corp.guard.entry.dir.6.frame.1	field/entities/actors/corp-guard-entry-dir-6-frame-1.bmp	image	-11	-23
@@ -2042,6 +2087,8 @@ field.entities.actors.corp.guard.walk.dir.6.frame.0	field/entities/actors/corp-g
 field.entities.actors.corp.guard.walk.dir.6.frame.1	field/entities/actors/corp-guard-walk-dir-6-frame-1.bmp	image	-7	-22
 field.entities.actors.corp.guard.walk.dir.6.frame.2	field/entities/actors/corp-guard-walk-dir-6-frame-2.bmp	image	-9	-22
 field.entities.actors.corp.guard.walk.dir.6.frame.3	field/entities/actors/corp-guard-walk-dir-6-frame-3.bmp	image	-4	-22
+field.entities.actors.corp.guard.action.dir.6.frame.0	field/entities/actors/corp-guard-action-dir-6-frame-0.bmp	image	-12	-23
+field.entities.actors.corp.guard.action.dir.6.frame.1	field/entities/actors/corp-guard-action-dir-6-frame-1.bmp	image	-24	-23
 field.entities.actors.corp.guard.idle.dir.7	field/entities/actors/corp-guard-idle-dir-7.bmp	image	-15	-25
 field.entities.actors.corp.guard.entry.dir.7.frame.0	field/entities/actors/corp-guard-entry-dir-7-frame-0.bmp	image	-5	-23
 field.entities.actors.corp.guard.entry.dir.7.frame.1	field/entities/actors/corp-guard-entry-dir-7-frame-1.bmp	image	-11	-23
@@ -2049,6 +2096,8 @@ field.entities.actors.corp.guard.walk.dir.7.frame.0	field/entities/actors/corp-g
 field.entities.actors.corp.guard.walk.dir.7.frame.1	field/entities/actors/corp-guard-walk-dir-7-frame-1.bmp	image	-20	-25
 field.entities.actors.corp.guard.walk.dir.7.frame.2	field/entities/actors/corp-guard-walk-dir-7-frame-2.bmp	image	-15	-25
 field.entities.actors.corp.guard.walk.dir.7.frame.3	field/entities/actors/corp-guard-walk-dir-7-frame-3.bmp	image	-13	-25
+field.entities.actors.corp.guard.action.dir.7.frame.0	field/entities/actors/corp-guard-action-dir-7-frame-0.bmp	image	-7	-24
+field.entities.actors.corp.guard.action.dir.7.frame.1	field/entities/actors/corp-guard-action-dir-7-frame-1.bmp	image	-17	-26
 field.entities.actors.actor.kind.6.palette.3.idle	field/entities/actors/actor-kind-6-palette-3-idle.bmp	image	-9	-26
 field.entities.actors.actor.kind.6.palette.3.entry.dir.0.frame.0	field/entities/actors/actor-kind-6-palette-3-entry-dir-0-frame-0.bmp	image	-17	-17
 field.entities.actors.actor.kind.6.palette.3.entry.dir.0.frame.1	field/entities/actors/actor-kind-6-palette-3-entry-dir-0-frame-1.bmp	image	-16	-25
@@ -2056,6 +2105,8 @@ field.entities.actors.actor.kind.6.palette.3.walk.dir.0.frame.0	field/entities/a
 field.entities.actors.actor.kind.6.palette.3.walk.dir.0.frame.1	field/entities/actors/actor-kind-6-palette-3-walk-dir-0-frame-1.bmp	image	-9	-26
 field.entities.actors.actor.kind.6.palette.3.walk.dir.0.frame.2	field/entities/actors/actor-kind-6-palette-3-walk-dir-0-frame-2.bmp	image	-9	-27
 field.entities.actors.actor.kind.6.palette.3.walk.dir.0.frame.3	field/entities/actors/actor-kind-6-palette-3-walk-dir-0-frame-3.bmp	image	-9	-26
+field.entities.actors.actor.kind.6.palette.3.action.dir.0.frame.0	field/entities/actors/actor-kind-6-palette-3-action-dir-0-frame-0.bmp	image	-15	-27
+field.entities.actors.actor.kind.6.palette.3.action.dir.0.frame.1	field/entities/actors/actor-kind-6-palette-3-action-dir-0-frame-1.bmp	image	-13	-27
 field.entities.actors.actor.kind.6.palette.3.idle.dir.1	field/entities/actors/actor-kind-6-palette-3-idle-dir-1.bmp	image	-8	-27
 field.entities.actors.actor.kind.6.palette.3.entry.dir.1.frame.0	field/entities/actors/actor-kind-6-palette-3-entry-dir-1-frame-0.bmp	image	-17	-17
 field.entities.actors.actor.kind.6.palette.3.entry.dir.1.frame.1	field/entities/actors/actor-kind-6-palette-3-entry-dir-1-frame-1.bmp	image	-16	-25
@@ -2063,6 +2114,8 @@ field.entities.actors.actor.kind.6.palette.3.walk.dir.1.frame.0	field/entities/a
 field.entities.actors.actor.kind.6.palette.3.walk.dir.1.frame.1	field/entities/actors/actor-kind-6-palette-3-walk-dir-1-frame-1.bmp	image	-8	-26
 field.entities.actors.actor.kind.6.palette.3.walk.dir.1.frame.2	field/entities/actors/actor-kind-6-palette-3-walk-dir-1-frame-2.bmp	image	-8	-27
 field.entities.actors.actor.kind.6.palette.3.walk.dir.1.frame.3	field/entities/actors/actor-kind-6-palette-3-walk-dir-1-frame-3.bmp	image	-10	-26
+field.entities.actors.actor.kind.6.palette.3.action.dir.1.frame.0	field/entities/actors/actor-kind-6-palette-3-action-dir-1-frame-0.bmp	image	-11	-26
+field.entities.actors.actor.kind.6.palette.3.action.dir.1.frame.1	field/entities/actors/actor-kind-6-palette-3-action-dir-1-frame-1.bmp	image	-14	-27
 field.entities.actors.actor.kind.6.palette.3.idle.dir.2	field/entities/actors/actor-kind-6-palette-3-idle-dir-2.bmp	image	-9	-27
 field.entities.actors.actor.kind.6.palette.3.entry.dir.2.frame.0	field/entities/actors/actor-kind-6-palette-3-entry-dir-2-frame-0.bmp	image	-17	-17
 field.entities.actors.actor.kind.6.palette.3.entry.dir.2.frame.1	field/entities/actors/actor-kind-6-palette-3-entry-dir-2-frame-1.bmp	image	-16	-25
@@ -2070,6 +2123,8 @@ field.entities.actors.actor.kind.6.palette.3.walk.dir.2.frame.0	field/entities/a
 field.entities.actors.actor.kind.6.palette.3.walk.dir.2.frame.1	field/entities/actors/actor-kind-6-palette-3-walk-dir-2-frame-1.bmp	image	-9	-26
 field.entities.actors.actor.kind.6.palette.3.walk.dir.2.frame.2	field/entities/actors/actor-kind-6-palette-3-walk-dir-2-frame-2.bmp	image	-9	-27
 field.entities.actors.actor.kind.6.palette.3.walk.dir.2.frame.3	field/entities/actors/actor-kind-6-palette-3-walk-dir-2-frame-3.bmp	image	-9	-26
+field.entities.actors.actor.kind.6.palette.3.action.dir.2.frame.0	field/entities/actors/actor-kind-6-palette-3-action-dir-2-frame-0.bmp	image	-15	-27
+field.entities.actors.actor.kind.6.palette.3.action.dir.2.frame.1	field/entities/actors/actor-kind-6-palette-3-action-dir-2-frame-1.bmp	image	-13	-26
 field.entities.actors.actor.kind.6.palette.3.idle.dir.3	field/entities/actors/actor-kind-6-palette-3-idle-dir-3.bmp	image	-8	-27
 field.entities.actors.actor.kind.6.palette.3.entry.dir.3.frame.0	field/entities/actors/actor-kind-6-palette-3-entry-dir-3-frame-0.bmp	image	-9	-10
 field.entities.actors.actor.kind.6.palette.3.entry.dir.3.frame.1	field/entities/actors/actor-kind-6-palette-3-entry-dir-3-frame-1.bmp	image	-9	-11
@@ -2077,6 +2132,8 @@ field.entities.actors.actor.kind.6.palette.3.walk.dir.3.frame.0	field/entities/a
 field.entities.actors.actor.kind.6.palette.3.walk.dir.3.frame.1	field/entities/actors/actor-kind-6-palette-3-walk-dir-3-frame-1.bmp	image	-9	-26
 field.entities.actors.actor.kind.6.palette.3.walk.dir.3.frame.2	field/entities/actors/actor-kind-6-palette-3-walk-dir-3-frame-2.bmp	image	-8	-27
 field.entities.actors.actor.kind.6.palette.3.walk.dir.3.frame.3	field/entities/actors/actor-kind-6-palette-3-walk-dir-3-frame-3.bmp	image	-9	-26
+field.entities.actors.actor.kind.6.palette.3.action.dir.3.frame.0	field/entities/actors/actor-kind-6-palette-3-action-dir-3-frame-0.bmp	image	-14	-27
+field.entities.actors.actor.kind.6.palette.3.action.dir.3.frame.1	field/entities/actors/actor-kind-6-palette-3-action-dir-3-frame-1.bmp	image	-9	-22
 field.entities.actors.actor.kind.6.palette.3.idle.dir.4	field/entities/actors/actor-kind-6-palette-3-idle-dir-4.bmp	image	-9	-27
 field.entities.actors.actor.kind.6.palette.3.entry.dir.4.frame.0	field/entities/actors/actor-kind-6-palette-3-entry-dir-4-frame-0.bmp	image	-9	-10
 field.entities.actors.actor.kind.6.palette.3.entry.dir.4.frame.1	field/entities/actors/actor-kind-6-palette-3-entry-dir-4-frame-1.bmp	image	-9	-11
@@ -2084,6 +2141,8 @@ field.entities.actors.actor.kind.6.palette.3.walk.dir.4.frame.0	field/entities/a
 field.entities.actors.actor.kind.6.palette.3.walk.dir.4.frame.1	field/entities/actors/actor-kind-6-palette-3-walk-dir-4-frame-1.bmp	image	-9	-26
 field.entities.actors.actor.kind.6.palette.3.walk.dir.4.frame.2	field/entities/actors/actor-kind-6-palette-3-walk-dir-4-frame-2.bmp	image	-9	-27
 field.entities.actors.actor.kind.6.palette.3.walk.dir.4.frame.3	field/entities/actors/actor-kind-6-palette-3-walk-dir-4-frame-3.bmp	image	-10	-26
+field.entities.actors.actor.kind.6.palette.3.action.dir.4.frame.0	field/entities/actors/actor-kind-6-palette-3-action-dir-4-frame-0.bmp	image	-13	-27
+field.entities.actors.actor.kind.6.palette.3.action.dir.4.frame.1	field/entities/actors/actor-kind-6-palette-3-action-dir-4-frame-1.bmp	image	-16	-26
 field.entities.actors.actor.kind.6.palette.3.idle.dir.5	field/entities/actors/actor-kind-6-palette-3-idle-dir-5.bmp	image	-8	-27
 field.entities.actors.actor.kind.6.palette.3.entry.dir.5.frame.0	field/entities/actors/actor-kind-6-palette-3-entry-dir-5-frame-0.bmp	image	-23	-10
 field.entities.actors.actor.kind.6.palette.3.entry.dir.5.frame.1	field/entities/actors/actor-kind-6-palette-3-entry-dir-5-frame-1.bmp	image	-23	-11
@@ -2091,6 +2150,8 @@ field.entities.actors.actor.kind.6.palette.3.walk.dir.5.frame.0	field/entities/a
 field.entities.actors.actor.kind.6.palette.3.walk.dir.5.frame.1	field/entities/actors/actor-kind-6-palette-3-walk-dir-5-frame-1.bmp	image	-15	-26
 field.entities.actors.actor.kind.6.palette.3.walk.dir.5.frame.2	field/entities/actors/actor-kind-6-palette-3-walk-dir-5-frame-2.bmp	image	-8	-27
 field.entities.actors.actor.kind.6.palette.3.walk.dir.5.frame.3	field/entities/actors/actor-kind-6-palette-3-walk-dir-5-frame-3.bmp	image	-15	-26
+field.entities.actors.actor.kind.6.palette.3.action.dir.5.frame.0	field/entities/actors/actor-kind-6-palette-3-action-dir-5-frame-0.bmp	image	-10	-27
+field.entities.actors.actor.kind.6.palette.3.action.dir.5.frame.1	field/entities/actors/actor-kind-6-palette-3-action-dir-5-frame-1.bmp	image	-15	-22
 field.entities.actors.actor.kind.6.palette.3.idle.dir.6	field/entities/actors/actor-kind-6-palette-3-idle-dir-6.bmp	image	-7	-27
 field.entities.actors.actor.kind.6.palette.3.entry.dir.6.frame.0	field/entities/actors/actor-kind-6-palette-3-entry-dir-6-frame-0.bmp	image	-7	-17
 field.entities.actors.actor.kind.6.palette.3.entry.dir.6.frame.1	field/entities/actors/actor-kind-6-palette-3-entry-dir-6-frame-1.bmp	image	-16	-25
@@ -2098,6 +2159,8 @@ field.entities.actors.actor.kind.6.palette.3.walk.dir.6.frame.0	field/entities/a
 field.entities.actors.actor.kind.6.palette.3.walk.dir.6.frame.1	field/entities/actors/actor-kind-6-palette-3-walk-dir-6-frame-1.bmp	image	-15	-26
 field.entities.actors.actor.kind.6.palette.3.walk.dir.6.frame.2	field/entities/actors/actor-kind-6-palette-3-walk-dir-6-frame-2.bmp	image	-7	-27
 field.entities.actors.actor.kind.6.palette.3.walk.dir.6.frame.3	field/entities/actors/actor-kind-6-palette-3-walk-dir-6-frame-3.bmp	image	-15	-26
+field.entities.actors.actor.kind.6.palette.3.action.dir.6.frame.0	field/entities/actors/actor-kind-6-palette-3-action-dir-6-frame-0.bmp	image	1	-27
+field.entities.actors.actor.kind.6.palette.3.action.dir.6.frame.1	field/entities/actors/actor-kind-6-palette-3-action-dir-6-frame-1.bmp	image	-13	-26
 field.entities.actors.actor.kind.6.palette.3.idle.dir.7	field/entities/actors/actor-kind-6-palette-3-idle-dir-7.bmp	image	-16	-27
 field.entities.actors.actor.kind.6.palette.3.entry.dir.7.frame.0	field/entities/actors/actor-kind-6-palette-3-entry-dir-7-frame-0.bmp	image	-7	-17
 field.entities.actors.actor.kind.6.palette.3.entry.dir.7.frame.1	field/entities/actors/actor-kind-6-palette-3-entry-dir-7-frame-1.bmp	image	-16	-25
@@ -2105,6 +2168,8 @@ field.entities.actors.actor.kind.6.palette.3.walk.dir.7.frame.0	field/entities/a
 field.entities.actors.actor.kind.6.palette.3.walk.dir.7.frame.1	field/entities/actors/actor-kind-6-palette-3-walk-dir-7-frame-1.bmp	image	-16	-26
 field.entities.actors.actor.kind.6.palette.3.walk.dir.7.frame.2	field/entities/actors/actor-kind-6-palette-3-walk-dir-7-frame-2.bmp	image	-16	-27
 field.entities.actors.actor.kind.6.palette.3.walk.dir.7.frame.3	field/entities/actors/actor-kind-6-palette-3-walk-dir-7-frame-3.bmp	image	-14	-26
+field.entities.actors.actor.kind.6.palette.3.action.dir.7.frame.0	field/entities/actors/actor-kind-6-palette-3-action-dir-7-frame-0.bmp	image	-13	-26
+field.entities.actors.actor.kind.6.palette.3.action.dir.7.frame.1	field/entities/actors/actor-kind-6-palette-3-action-dir-7-frame-1.bmp	image	-14	-27
 field.entities.actors.actor.kind.7.palette.0.idle	field/entities/actors/actor-kind-7-palette-0-idle.bmp	image	-11	-25
 field.entities.actors.actor.kind.7.palette.0.entry.dir.0.frame.0	field/entities/actors/actor-kind-7-palette-0-entry-dir-0-frame-0.bmp	image	-16	-26
 field.entities.actors.actor.kind.7.palette.0.entry.dir.0.frame.1	field/entities/actors/actor-kind-7-palette-0-entry-dir-0-frame-1.bmp	image	-16	-27
@@ -2112,6 +2177,8 @@ field.entities.actors.actor.kind.7.palette.0.walk.dir.0.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.0.walk.dir.0.frame.1	field/entities/actors/actor-kind-7-palette-0-walk-dir-0-frame-1.bmp	image	-11	-25
 field.entities.actors.actor.kind.7.palette.0.walk.dir.0.frame.2	field/entities/actors/actor-kind-7-palette-0-walk-dir-0-frame-2.bmp	image	-10	-25
 field.entities.actors.actor.kind.7.palette.0.walk.dir.0.frame.3	field/entities/actors/actor-kind-7-palette-0-walk-dir-0-frame-3.bmp	image	-12	-25
+field.entities.actors.actor.kind.7.palette.0.action.dir.0.frame.0	field/entities/actors/actor-kind-7-palette-0-action-dir-0-frame-0.bmp	image	-11	-24
+field.entities.actors.actor.kind.7.palette.0.action.dir.0.frame.1	field/entities/actors/actor-kind-7-palette-0-action-dir-0-frame-1.bmp	image	-11	-26
 field.entities.actors.actor.kind.7.palette.0.idle.dir.1	field/entities/actors/actor-kind-7-palette-0-idle-dir-1.bmp	image	-11	-26
 field.entities.actors.actor.kind.7.palette.0.entry.dir.1.frame.0	field/entities/actors/actor-kind-7-palette-0-entry-dir-1-frame-0.bmp	image	-16	-26
 field.entities.actors.actor.kind.7.palette.0.entry.dir.1.frame.1	field/entities/actors/actor-kind-7-palette-0-entry-dir-1-frame-1.bmp	image	-16	-27
@@ -2119,6 +2186,8 @@ field.entities.actors.actor.kind.7.palette.0.walk.dir.1.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.0.walk.dir.1.frame.1	field/entities/actors/actor-kind-7-palette-0-walk-dir-1-frame-1.bmp	image	-9	-26
 field.entities.actors.actor.kind.7.palette.0.walk.dir.1.frame.2	field/entities/actors/actor-kind-7-palette-0-walk-dir-1-frame-2.bmp	image	-7	-26
 field.entities.actors.actor.kind.7.palette.0.walk.dir.1.frame.3	field/entities/actors/actor-kind-7-palette-0-walk-dir-1-frame-3.bmp	image	-11	-26
+field.entities.actors.actor.kind.7.palette.0.action.dir.1.frame.0	field/entities/actors/actor-kind-7-palette-0-action-dir-1-frame-0.bmp	image	-12	-27
+field.entities.actors.actor.kind.7.palette.0.action.dir.1.frame.1	field/entities/actors/actor-kind-7-palette-0-action-dir-1-frame-1.bmp	image	-14	-27
 field.entities.actors.actor.kind.7.palette.0.idle.dir.2	field/entities/actors/actor-kind-7-palette-0-idle-dir-2.bmp	image	-12	-25
 field.entities.actors.actor.kind.7.palette.0.entry.dir.2.frame.0	field/entities/actors/actor-kind-7-palette-0-entry-dir-2-frame-0.bmp	image	-16	-26
 field.entities.actors.actor.kind.7.palette.0.entry.dir.2.frame.1	field/entities/actors/actor-kind-7-palette-0-entry-dir-2-frame-1.bmp	image	-16	-27
@@ -2126,6 +2195,8 @@ field.entities.actors.actor.kind.7.palette.0.walk.dir.2.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.0.walk.dir.2.frame.1	field/entities/actors/actor-kind-7-palette-0-walk-dir-2-frame-1.bmp	image	-12	-25
 field.entities.actors.actor.kind.7.palette.0.walk.dir.2.frame.2	field/entities/actors/actor-kind-7-palette-0-walk-dir-2-frame-2.bmp	image	-14	-25
 field.entities.actors.actor.kind.7.palette.0.walk.dir.2.frame.3	field/entities/actors/actor-kind-7-palette-0-walk-dir-2-frame-3.bmp	image	-13	-25
+field.entities.actors.actor.kind.7.palette.0.action.dir.2.frame.0	field/entities/actors/actor-kind-7-palette-0-action-dir-2-frame-0.bmp	image	-13	-25
+field.entities.actors.actor.kind.7.palette.0.action.dir.2.frame.1	field/entities/actors/actor-kind-7-palette-0-action-dir-2-frame-1.bmp	image	-12	-23
 field.entities.actors.actor.kind.7.palette.0.idle.dir.3	field/entities/actors/actor-kind-7-palette-0-idle-dir-3.bmp	image	-10	-26
 field.entities.actors.actor.kind.7.palette.0.entry.dir.3.frame.0	field/entities/actors/actor-kind-7-palette-0-entry-dir-3-frame-0.bmp	image	-16	-23
 field.entities.actors.actor.kind.7.palette.0.entry.dir.3.frame.1	field/entities/actors/actor-kind-7-palette-0-entry-dir-3-frame-1.bmp	image	-16	-22
@@ -2133,6 +2204,8 @@ field.entities.actors.actor.kind.7.palette.0.walk.dir.3.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.0.walk.dir.3.frame.1	field/entities/actors/actor-kind-7-palette-0-walk-dir-3-frame-1.bmp	image	-10	-26
 field.entities.actors.actor.kind.7.palette.0.walk.dir.3.frame.2	field/entities/actors/actor-kind-7-palette-0-walk-dir-3-frame-2.bmp	image	-12	-26
 field.entities.actors.actor.kind.7.palette.0.walk.dir.3.frame.3	field/entities/actors/actor-kind-7-palette-0-walk-dir-3-frame-3.bmp	image	-12	-26
+field.entities.actors.actor.kind.7.palette.0.action.dir.3.frame.0	field/entities/actors/actor-kind-7-palette-0-action-dir-3-frame-0.bmp	image	-13	-24
+field.entities.actors.actor.kind.7.palette.0.action.dir.3.frame.1	field/entities/actors/actor-kind-7-palette-0-action-dir-3-frame-1.bmp	image	-11	-20
 field.entities.actors.actor.kind.7.palette.0.idle.dir.4	field/entities/actors/actor-kind-7-palette-0-idle-dir-4.bmp	image	-13	-25
 field.entities.actors.actor.kind.7.palette.0.entry.dir.4.frame.0	field/entities/actors/actor-kind-7-palette-0-entry-dir-4-frame-0.bmp	image	-16	-23
 field.entities.actors.actor.kind.7.palette.0.entry.dir.4.frame.1	field/entities/actors/actor-kind-7-palette-0-entry-dir-4-frame-1.bmp	image	-16	-22
@@ -2140,6 +2213,8 @@ field.entities.actors.actor.kind.7.palette.0.walk.dir.4.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.0.walk.dir.4.frame.1	field/entities/actors/actor-kind-7-palette-0-walk-dir-4-frame-1.bmp	image	-12	-25
 field.entities.actors.actor.kind.7.palette.0.walk.dir.4.frame.2	field/entities/actors/actor-kind-7-palette-0-walk-dir-4-frame-2.bmp	image	-13	-25
 field.entities.actors.actor.kind.7.palette.0.walk.dir.4.frame.3	field/entities/actors/actor-kind-7-palette-0-walk-dir-4-frame-3.bmp	image	-11	-25
+field.entities.actors.actor.kind.7.palette.0.action.dir.4.frame.0	field/entities/actors/actor-kind-7-palette-0-action-dir-4-frame-0.bmp	image	-10	-25
+field.entities.actors.actor.kind.7.palette.0.action.dir.4.frame.1	field/entities/actors/actor-kind-7-palette-0-action-dir-4-frame-1.bmp	image	-14	-15
 field.entities.actors.actor.kind.7.palette.0.idle.dir.5	field/entities/actors/actor-kind-7-palette-0-idle-dir-5.bmp	image	-14	-26
 field.entities.actors.actor.kind.7.palette.0.entry.dir.5.frame.0	field/entities/actors/actor-kind-7-palette-0-entry-dir-5-frame-0.bmp	image	-16	-23
 field.entities.actors.actor.kind.7.palette.0.entry.dir.5.frame.1	field/entities/actors/actor-kind-7-palette-0-entry-dir-5-frame-1.bmp	image	-16	-22
@@ -2147,6 +2222,8 @@ field.entities.actors.actor.kind.7.palette.0.walk.dir.5.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.0.walk.dir.5.frame.1	field/entities/actors/actor-kind-7-palette-0-walk-dir-5-frame-1.bmp	image	-14	-26
 field.entities.actors.actor.kind.7.palette.0.walk.dir.5.frame.2	field/entities/actors/actor-kind-7-palette-0-walk-dir-5-frame-2.bmp	image	-12	-26
 field.entities.actors.actor.kind.7.palette.0.walk.dir.5.frame.3	field/entities/actors/actor-kind-7-palette-0-walk-dir-5-frame-3.bmp	image	-12	-26
+field.entities.actors.actor.kind.7.palette.0.action.dir.5.frame.0	field/entities/actors/actor-kind-7-palette-0-action-dir-5-frame-0.bmp	image	-11	-24
+field.entities.actors.actor.kind.7.palette.0.action.dir.5.frame.1	field/entities/actors/actor-kind-7-palette-0-action-dir-5-frame-1.bmp	image	-21	-20
 field.entities.actors.actor.kind.7.palette.0.idle.dir.6	field/entities/actors/actor-kind-7-palette-0-idle-dir-6.bmp	image	-11	-25
 field.entities.actors.actor.kind.7.palette.0.entry.dir.6.frame.0	field/entities/actors/actor-kind-7-palette-0-entry-dir-6-frame-0.bmp	image	-16	-26
 field.entities.actors.actor.kind.7.palette.0.entry.dir.6.frame.1	field/entities/actors/actor-kind-7-palette-0-entry-dir-6-frame-1.bmp	image	-16	-27
@@ -2154,6 +2231,8 @@ field.entities.actors.actor.kind.7.palette.0.walk.dir.6.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.0.walk.dir.6.frame.1	field/entities/actors/actor-kind-7-palette-0-walk-dir-6-frame-1.bmp	image	-12	-25
 field.entities.actors.actor.kind.7.palette.0.walk.dir.6.frame.2	field/entities/actors/actor-kind-7-palette-0-walk-dir-6-frame-2.bmp	image	-18	-25
 field.entities.actors.actor.kind.7.palette.0.walk.dir.6.frame.3	field/entities/actors/actor-kind-7-palette-0-walk-dir-6-frame-3.bmp	image	-11	-25
+field.entities.actors.actor.kind.7.palette.0.action.dir.6.frame.0	field/entities/actors/actor-kind-7-palette-0-action-dir-6-frame-0.bmp	image	-11	-25
+field.entities.actors.actor.kind.7.palette.0.action.dir.6.frame.1	field/entities/actors/actor-kind-7-palette-0-action-dir-6-frame-1.bmp	image	-20	-23
 field.entities.actors.actor.kind.7.palette.0.idle.dir.7	field/entities/actors/actor-kind-7-palette-0-idle-dir-7.bmp	image	-15	-26
 field.entities.actors.actor.kind.7.palette.0.entry.dir.7.frame.0	field/entities/actors/actor-kind-7-palette-0-entry-dir-7-frame-0.bmp	image	-16	-26
 field.entities.actors.actor.kind.7.palette.0.entry.dir.7.frame.1	field/entities/actors/actor-kind-7-palette-0-entry-dir-7-frame-1.bmp	image	-16	-27
@@ -2161,6 +2240,8 @@ field.entities.actors.actor.kind.7.palette.0.walk.dir.7.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.0.walk.dir.7.frame.1	field/entities/actors/actor-kind-7-palette-0-walk-dir-7-frame-1.bmp	image	-15	-26
 field.entities.actors.actor.kind.7.palette.0.walk.dir.7.frame.2	field/entities/actors/actor-kind-7-palette-0-walk-dir-7-frame-2.bmp	image	-17	-26
 field.entities.actors.actor.kind.7.palette.0.walk.dir.7.frame.3	field/entities/actors/actor-kind-7-palette-0-walk-dir-7-frame-3.bmp	image	-13	-26
+field.entities.actors.actor.kind.7.palette.0.action.dir.7.frame.0	field/entities/actors/actor-kind-7-palette-0-action-dir-7-frame-0.bmp	image	-12	-27
+field.entities.actors.actor.kind.7.palette.0.action.dir.7.frame.1	field/entities/actors/actor-kind-7-palette-0-action-dir-7-frame-1.bmp	image	-18	-27
 field.entities.actors.actor.kind.7.palette.2.idle	field/entities/actors/actor-kind-7-palette-2-idle.bmp	image	-11	-25
 field.entities.actors.actor.kind.7.palette.2.entry.dir.0.frame.0	field/entities/actors/actor-kind-7-palette-2-entry-dir-0-frame-0.bmp	image	-16	-26
 field.entities.actors.actor.kind.7.palette.2.entry.dir.0.frame.1	field/entities/actors/actor-kind-7-palette-2-entry-dir-0-frame-1.bmp	image	-16	-27
@@ -2168,6 +2249,8 @@ field.entities.actors.actor.kind.7.palette.2.walk.dir.0.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.2.walk.dir.0.frame.1	field/entities/actors/actor-kind-7-palette-2-walk-dir-0-frame-1.bmp	image	-11	-25
 field.entities.actors.actor.kind.7.palette.2.walk.dir.0.frame.2	field/entities/actors/actor-kind-7-palette-2-walk-dir-0-frame-2.bmp	image	-10	-25
 field.entities.actors.actor.kind.7.palette.2.walk.dir.0.frame.3	field/entities/actors/actor-kind-7-palette-2-walk-dir-0-frame-3.bmp	image	-12	-25
+field.entities.actors.actor.kind.7.palette.2.action.dir.0.frame.0	field/entities/actors/actor-kind-7-palette-2-action-dir-0-frame-0.bmp	image	-11	-24
+field.entities.actors.actor.kind.7.palette.2.action.dir.0.frame.1	field/entities/actors/actor-kind-7-palette-2-action-dir-0-frame-1.bmp	image	-11	-26
 field.entities.actors.actor.kind.7.palette.2.idle.dir.1	field/entities/actors/actor-kind-7-palette-2-idle-dir-1.bmp	image	-11	-26
 field.entities.actors.actor.kind.7.palette.2.entry.dir.1.frame.0	field/entities/actors/actor-kind-7-palette-2-entry-dir-1-frame-0.bmp	image	-16	-26
 field.entities.actors.actor.kind.7.palette.2.entry.dir.1.frame.1	field/entities/actors/actor-kind-7-palette-2-entry-dir-1-frame-1.bmp	image	-16	-27
@@ -2175,6 +2258,8 @@ field.entities.actors.actor.kind.7.palette.2.walk.dir.1.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.2.walk.dir.1.frame.1	field/entities/actors/actor-kind-7-palette-2-walk-dir-1-frame-1.bmp	image	-9	-26
 field.entities.actors.actor.kind.7.palette.2.walk.dir.1.frame.2	field/entities/actors/actor-kind-7-palette-2-walk-dir-1-frame-2.bmp	image	-7	-26
 field.entities.actors.actor.kind.7.palette.2.walk.dir.1.frame.3	field/entities/actors/actor-kind-7-palette-2-walk-dir-1-frame-3.bmp	image	-11	-26
+field.entities.actors.actor.kind.7.palette.2.action.dir.1.frame.0	field/entities/actors/actor-kind-7-palette-2-action-dir-1-frame-0.bmp	image	-12	-27
+field.entities.actors.actor.kind.7.palette.2.action.dir.1.frame.1	field/entities/actors/actor-kind-7-palette-2-action-dir-1-frame-1.bmp	image	-14	-27
 field.entities.actors.actor.kind.7.palette.2.idle.dir.2	field/entities/actors/actor-kind-7-palette-2-idle-dir-2.bmp	image	-12	-25
 field.entities.actors.actor.kind.7.palette.2.entry.dir.2.frame.0	field/entities/actors/actor-kind-7-palette-2-entry-dir-2-frame-0.bmp	image	-16	-26
 field.entities.actors.actor.kind.7.palette.2.entry.dir.2.frame.1	field/entities/actors/actor-kind-7-palette-2-entry-dir-2-frame-1.bmp	image	-16	-27
@@ -2182,6 +2267,8 @@ field.entities.actors.actor.kind.7.palette.2.walk.dir.2.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.2.walk.dir.2.frame.1	field/entities/actors/actor-kind-7-palette-2-walk-dir-2-frame-1.bmp	image	-12	-25
 field.entities.actors.actor.kind.7.palette.2.walk.dir.2.frame.2	field/entities/actors/actor-kind-7-palette-2-walk-dir-2-frame-2.bmp	image	-14	-25
 field.entities.actors.actor.kind.7.palette.2.walk.dir.2.frame.3	field/entities/actors/actor-kind-7-palette-2-walk-dir-2-frame-3.bmp	image	-13	-25
+field.entities.actors.actor.kind.7.palette.2.action.dir.2.frame.0	field/entities/actors/actor-kind-7-palette-2-action-dir-2-frame-0.bmp	image	-13	-25
+field.entities.actors.actor.kind.7.palette.2.action.dir.2.frame.1	field/entities/actors/actor-kind-7-palette-2-action-dir-2-frame-1.bmp	image	-12	-23
 field.entities.actors.actor.kind.7.palette.2.idle.dir.3	field/entities/actors/actor-kind-7-palette-2-idle-dir-3.bmp	image	-10	-26
 field.entities.actors.actor.kind.7.palette.2.entry.dir.3.frame.0	field/entities/actors/actor-kind-7-palette-2-entry-dir-3-frame-0.bmp	image	-16	-23
 field.entities.actors.actor.kind.7.palette.2.entry.dir.3.frame.1	field/entities/actors/actor-kind-7-palette-2-entry-dir-3-frame-1.bmp	image	-16	-22
@@ -2189,6 +2276,8 @@ field.entities.actors.actor.kind.7.palette.2.walk.dir.3.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.2.walk.dir.3.frame.1	field/entities/actors/actor-kind-7-palette-2-walk-dir-3-frame-1.bmp	image	-10	-26
 field.entities.actors.actor.kind.7.palette.2.walk.dir.3.frame.2	field/entities/actors/actor-kind-7-palette-2-walk-dir-3-frame-2.bmp	image	-12	-26
 field.entities.actors.actor.kind.7.palette.2.walk.dir.3.frame.3	field/entities/actors/actor-kind-7-palette-2-walk-dir-3-frame-3.bmp	image	-12	-26
+field.entities.actors.actor.kind.7.palette.2.action.dir.3.frame.0	field/entities/actors/actor-kind-7-palette-2-action-dir-3-frame-0.bmp	image	-13	-24
+field.entities.actors.actor.kind.7.palette.2.action.dir.3.frame.1	field/entities/actors/actor-kind-7-palette-2-action-dir-3-frame-1.bmp	image	-11	-20
 field.entities.actors.actor.kind.7.palette.2.idle.dir.4	field/entities/actors/actor-kind-7-palette-2-idle-dir-4.bmp	image	-13	-25
 field.entities.actors.actor.kind.7.palette.2.entry.dir.4.frame.0	field/entities/actors/actor-kind-7-palette-2-entry-dir-4-frame-0.bmp	image	-16	-23
 field.entities.actors.actor.kind.7.palette.2.entry.dir.4.frame.1	field/entities/actors/actor-kind-7-palette-2-entry-dir-4-frame-1.bmp	image	-16	-22
@@ -2196,6 +2285,8 @@ field.entities.actors.actor.kind.7.palette.2.walk.dir.4.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.2.walk.dir.4.frame.1	field/entities/actors/actor-kind-7-palette-2-walk-dir-4-frame-1.bmp	image	-12	-25
 field.entities.actors.actor.kind.7.palette.2.walk.dir.4.frame.2	field/entities/actors/actor-kind-7-palette-2-walk-dir-4-frame-2.bmp	image	-13	-25
 field.entities.actors.actor.kind.7.palette.2.walk.dir.4.frame.3	field/entities/actors/actor-kind-7-palette-2-walk-dir-4-frame-3.bmp	image	-11	-25
+field.entities.actors.actor.kind.7.palette.2.action.dir.4.frame.0	field/entities/actors/actor-kind-7-palette-2-action-dir-4-frame-0.bmp	image	-10	-25
+field.entities.actors.actor.kind.7.palette.2.action.dir.4.frame.1	field/entities/actors/actor-kind-7-palette-2-action-dir-4-frame-1.bmp	image	-14	-15
 field.entities.actors.actor.kind.7.palette.2.idle.dir.5	field/entities/actors/actor-kind-7-palette-2-idle-dir-5.bmp	image	-14	-26
 field.entities.actors.actor.kind.7.palette.2.entry.dir.5.frame.0	field/entities/actors/actor-kind-7-palette-2-entry-dir-5-frame-0.bmp	image	-16	-23
 field.entities.actors.actor.kind.7.palette.2.entry.dir.5.frame.1	field/entities/actors/actor-kind-7-palette-2-entry-dir-5-frame-1.bmp	image	-16	-22
@@ -2203,6 +2294,8 @@ field.entities.actors.actor.kind.7.palette.2.walk.dir.5.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.2.walk.dir.5.frame.1	field/entities/actors/actor-kind-7-palette-2-walk-dir-5-frame-1.bmp	image	-14	-26
 field.entities.actors.actor.kind.7.palette.2.walk.dir.5.frame.2	field/entities/actors/actor-kind-7-palette-2-walk-dir-5-frame-2.bmp	image	-12	-26
 field.entities.actors.actor.kind.7.palette.2.walk.dir.5.frame.3	field/entities/actors/actor-kind-7-palette-2-walk-dir-5-frame-3.bmp	image	-12	-26
+field.entities.actors.actor.kind.7.palette.2.action.dir.5.frame.0	field/entities/actors/actor-kind-7-palette-2-action-dir-5-frame-0.bmp	image	-11	-24
+field.entities.actors.actor.kind.7.palette.2.action.dir.5.frame.1	field/entities/actors/actor-kind-7-palette-2-action-dir-5-frame-1.bmp	image	-21	-20
 field.entities.actors.actor.kind.7.palette.2.idle.dir.6	field/entities/actors/actor-kind-7-palette-2-idle-dir-6.bmp	image	-11	-25
 field.entities.actors.actor.kind.7.palette.2.entry.dir.6.frame.0	field/entities/actors/actor-kind-7-palette-2-entry-dir-6-frame-0.bmp	image	-16	-26
 field.entities.actors.actor.kind.7.palette.2.entry.dir.6.frame.1	field/entities/actors/actor-kind-7-palette-2-entry-dir-6-frame-1.bmp	image	-16	-27
@@ -2210,6 +2303,8 @@ field.entities.actors.actor.kind.7.palette.2.walk.dir.6.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.2.walk.dir.6.frame.1	field/entities/actors/actor-kind-7-palette-2-walk-dir-6-frame-1.bmp	image	-12	-25
 field.entities.actors.actor.kind.7.palette.2.walk.dir.6.frame.2	field/entities/actors/actor-kind-7-palette-2-walk-dir-6-frame-2.bmp	image	-18	-25
 field.entities.actors.actor.kind.7.palette.2.walk.dir.6.frame.3	field/entities/actors/actor-kind-7-palette-2-walk-dir-6-frame-3.bmp	image	-11	-25
+field.entities.actors.actor.kind.7.palette.2.action.dir.6.frame.0	field/entities/actors/actor-kind-7-palette-2-action-dir-6-frame-0.bmp	image	-11	-25
+field.entities.actors.actor.kind.7.palette.2.action.dir.6.frame.1	field/entities/actors/actor-kind-7-palette-2-action-dir-6-frame-1.bmp	image	-20	-23
 field.entities.actors.actor.kind.7.palette.2.idle.dir.7	field/entities/actors/actor-kind-7-palette-2-idle-dir-7.bmp	image	-15	-26
 field.entities.actors.actor.kind.7.palette.2.entry.dir.7.frame.0	field/entities/actors/actor-kind-7-palette-2-entry-dir-7-frame-0.bmp	image	-16	-26
 field.entities.actors.actor.kind.7.palette.2.entry.dir.7.frame.1	field/entities/actors/actor-kind-7-palette-2-entry-dir-7-frame-1.bmp	image	-16	-27
@@ -2217,6 +2312,8 @@ field.entities.actors.actor.kind.7.palette.2.walk.dir.7.frame.0	field/entities/a
 field.entities.actors.actor.kind.7.palette.2.walk.dir.7.frame.1	field/entities/actors/actor-kind-7-palette-2-walk-dir-7-frame-1.bmp	image	-15	-26
 field.entities.actors.actor.kind.7.palette.2.walk.dir.7.frame.2	field/entities/actors/actor-kind-7-palette-2-walk-dir-7-frame-2.bmp	image	-17	-26
 field.entities.actors.actor.kind.7.palette.2.walk.dir.7.frame.3	field/entities/actors/actor-kind-7-palette-2-walk-dir-7-frame-3.bmp	image	-13	-26
+field.entities.actors.actor.kind.7.palette.2.action.dir.7.frame.0	field/entities/actors/actor-kind-7-palette-2-action-dir-7-frame-0.bmp	image	-12	-27
+field.entities.actors.actor.kind.7.palette.2.action.dir.7.frame.1	field/entities/actors/actor-kind-7-palette-2-action-dir-7-frame-1.bmp	image	-18	-27
 field.entities.actors.yakuza.weenr.idle	field/entities/actors/yakuza-weenr-idle.bmp	image	-13	-24
 field.entities.actors.yakuza.weenr.entry.dir.0.frame.0	field/entities/actors/yakuza-weenr-entry-dir-0-frame-0.bmp	image	-14	-21
 field.entities.actors.yakuza.weenr.entry.dir.0.frame.1	field/entities/actors/yakuza-weenr-entry-dir-0-frame-1.bmp	image	-15	-21
@@ -2224,6 +2321,8 @@ field.entities.actors.yakuza.weenr.walk.dir.0.frame.0	field/entities/actors/yaku
 field.entities.actors.yakuza.weenr.walk.dir.0.frame.1	field/entities/actors/yakuza-weenr-walk-dir-0-frame-1.bmp	image	-13	-23
 field.entities.actors.yakuza.weenr.walk.dir.0.frame.2	field/entities/actors/yakuza-weenr-walk-dir-0-frame-2.bmp	image	-13	-24
 field.entities.actors.yakuza.weenr.walk.dir.0.frame.3	field/entities/actors/yakuza-weenr-walk-dir-0-frame-3.bmp	image	-13	-23
+field.entities.actors.yakuza.weenr.action.dir.0.frame.0	field/entities/actors/yakuza-weenr-action-dir-0-frame-0.bmp	image	-12	-24
+field.entities.actors.yakuza.weenr.action.dir.0.frame.1	field/entities/actors/yakuza-weenr-action-dir-0-frame-1.bmp	image	-14	-26
 field.entities.actors.yakuza.weenr.idle.dir.1	field/entities/actors/yakuza-weenr-idle-dir-1.bmp	image	-10	-24
 field.entities.actors.yakuza.weenr.entry.dir.1.frame.0	field/entities/actors/yakuza-weenr-entry-dir-1-frame-0.bmp	image	-14	-21
 field.entities.actors.yakuza.weenr.entry.dir.1.frame.1	field/entities/actors/yakuza-weenr-entry-dir-1-frame-1.bmp	image	-15	-21
@@ -2231,6 +2330,8 @@ field.entities.actors.yakuza.weenr.walk.dir.1.frame.0	field/entities/actors/yaku
 field.entities.actors.yakuza.weenr.walk.dir.1.frame.1	field/entities/actors/yakuza-weenr-walk-dir-1-frame-1.bmp	image	-13	-23
 field.entities.actors.yakuza.weenr.walk.dir.1.frame.2	field/entities/actors/yakuza-weenr-walk-dir-1-frame-2.bmp	image	-10	-24
 field.entities.actors.yakuza.weenr.walk.dir.1.frame.3	field/entities/actors/yakuza-weenr-walk-dir-1-frame-3.bmp	image	-12	-23
+field.entities.actors.yakuza.weenr.action.dir.1.frame.0	field/entities/actors/yakuza-weenr-action-dir-1-frame-0.bmp	image	-12	-26
+field.entities.actors.yakuza.weenr.action.dir.1.frame.1	field/entities/actors/yakuza-weenr-action-dir-1-frame-1.bmp	image	-14	-25
 field.entities.actors.yakuza.weenr.idle.dir.2	field/entities/actors/yakuza-weenr-idle-dir-2.bmp	image	-8	-21
 field.entities.actors.yakuza.weenr.entry.dir.2.frame.0	field/entities/actors/yakuza-weenr-entry-dir-2-frame-0.bmp	image	-14	-21
 field.entities.actors.yakuza.weenr.entry.dir.2.frame.1	field/entities/actors/yakuza-weenr-entry-dir-2-frame-1.bmp	image	-15	-21
@@ -2238,6 +2339,8 @@ field.entities.actors.yakuza.weenr.walk.dir.2.frame.0	field/entities/actors/yaku
 field.entities.actors.yakuza.weenr.walk.dir.2.frame.1	field/entities/actors/yakuza-weenr-walk-dir-2-frame-1.bmp	image	-13	-23
 field.entities.actors.yakuza.weenr.walk.dir.2.frame.2	field/entities/actors/yakuza-weenr-walk-dir-2-frame-2.bmp	image	-8	-21
 field.entities.actors.yakuza.weenr.walk.dir.2.frame.3	field/entities/actors/yakuza-weenr-walk-dir-2-frame-3.bmp	image	-10	-22
+field.entities.actors.yakuza.weenr.action.dir.2.frame.0	field/entities/actors/yakuza-weenr-action-dir-2-frame-0.bmp	image	-9	-23
+field.entities.actors.yakuza.weenr.action.dir.2.frame.1	field/entities/actors/yakuza-weenr-action-dir-2-frame-1.bmp	image	-10	-21
 field.entities.actors.yakuza.weenr.idle.dir.3	field/entities/actors/yakuza-weenr-idle-dir-3.bmp	image	-12	-21
 field.entities.actors.yakuza.weenr.entry.dir.3.frame.0	field/entities/actors/yakuza-weenr-entry-dir-3-frame-0.bmp	image	-12	-15
 field.entities.actors.yakuza.weenr.entry.dir.3.frame.1	field/entities/actors/yakuza-weenr-entry-dir-3-frame-1.bmp	image	-12	-12
@@ -2245,6 +2348,8 @@ field.entities.actors.yakuza.weenr.walk.dir.3.frame.0	field/entities/actors/yaku
 field.entities.actors.yakuza.weenr.walk.dir.3.frame.1	field/entities/actors/yakuza-weenr-walk-dir-3-frame-1.bmp	image	-11	-22
 field.entities.actors.yakuza.weenr.walk.dir.3.frame.2	field/entities/actors/yakuza-weenr-walk-dir-3-frame-2.bmp	image	-12	-21
 field.entities.actors.yakuza.weenr.walk.dir.3.frame.3	field/entities/actors/yakuza-weenr-walk-dir-3-frame-3.bmp	image	-13	-22
+field.entities.actors.yakuza.weenr.action.dir.3.frame.0	field/entities/actors/yakuza-weenr-action-dir-3-frame-0.bmp	image	-15	-24
+field.entities.actors.yakuza.weenr.action.dir.3.frame.1	field/entities/actors/yakuza-weenr-action-dir-3-frame-1.bmp	image	-13	-18
 field.entities.actors.yakuza.weenr.idle.dir.4	field/entities/actors/yakuza-weenr-idle-dir-4.bmp	image	-15	-24
 field.entities.actors.yakuza.weenr.entry.dir.4.frame.0	field/entities/actors/yakuza-weenr-entry-dir-4-frame-0.bmp	image	-12	-15
 field.entities.actors.yakuza.weenr.entry.dir.4.frame.1	field/entities/actors/yakuza-weenr-entry-dir-4-frame-1.bmp	image	-12	-12
@@ -2252,6 +2357,8 @@ field.entities.actors.yakuza.weenr.walk.dir.4.frame.0	field/entities/actors/yaku
 field.entities.actors.yakuza.weenr.walk.dir.4.frame.1	field/entities/actors/yakuza-weenr-walk-dir-4-frame-1.bmp	image	-15	-23
 field.entities.actors.yakuza.weenr.walk.dir.4.frame.2	field/entities/actors/yakuza-weenr-walk-dir-4-frame-2.bmp	image	-15	-24
 field.entities.actors.yakuza.weenr.walk.dir.4.frame.3	field/entities/actors/yakuza-weenr-walk-dir-4-frame-3.bmp	image	-15	-23
+field.entities.actors.yakuza.weenr.action.dir.4.frame.0	field/entities/actors/yakuza-weenr-action-dir-4-frame-0.bmp	image	-13	-24
+field.entities.actors.yakuza.weenr.action.dir.4.frame.1	field/entities/actors/yakuza-weenr-action-dir-4-frame-1.bmp	image	-14	-15
 field.entities.actors.yakuza.weenr.idle.dir.5	field/entities/actors/yakuza-weenr-idle-dir-5.bmp	image	-12	-21
 field.entities.actors.yakuza.weenr.entry.dir.5.frame.0	field/entities/actors/yakuza-weenr-entry-dir-5-frame-0.bmp	image	-20	-15
 field.entities.actors.yakuza.weenr.entry.dir.5.frame.1	field/entities/actors/yakuza-weenr-entry-dir-5-frame-1.bmp	image	-20	-12
@@ -2259,6 +2366,8 @@ field.entities.actors.yakuza.weenr.walk.dir.5.frame.0	field/entities/actors/yaku
 field.entities.actors.yakuza.weenr.walk.dir.5.frame.1	field/entities/actors/yakuza-weenr-walk-dir-5-frame-1.bmp	image	-13	-22
 field.entities.actors.yakuza.weenr.walk.dir.5.frame.2	field/entities/actors/yakuza-weenr-walk-dir-5-frame-2.bmp	image	-12	-21
 field.entities.actors.yakuza.weenr.walk.dir.5.frame.3	field/entities/actors/yakuza-weenr-walk-dir-5-frame-3.bmp	image	-19	-22
+field.entities.actors.yakuza.weenr.action.dir.5.frame.0	field/entities/actors/yakuza-weenr-action-dir-5-frame-0.bmp	image	-17	-24
+field.entities.actors.yakuza.weenr.action.dir.5.frame.1	field/entities/actors/yakuza-weenr-action-dir-5-frame-1.bmp	image	-19	-18
 field.entities.actors.yakuza.weenr.idle.dir.6	field/entities/actors/yakuza-weenr-idle-dir-6.bmp	image	-8	-21
 field.entities.actors.yakuza.weenr.entry.dir.6.frame.0	field/entities/actors/yakuza-weenr-entry-dir-6-frame-0.bmp	image	-18	-21
 field.entities.actors.yakuza.weenr.entry.dir.6.frame.1	field/entities/actors/yakuza-weenr-entry-dir-6-frame-1.bmp	image	-17	-21
@@ -2266,6 +2375,8 @@ field.entities.actors.yakuza.weenr.walk.dir.6.frame.0	field/entities/actors/yaku
 field.entities.actors.yakuza.weenr.walk.dir.6.frame.1	field/entities/actors/yakuza-weenr-walk-dir-6-frame-1.bmp	image	-11	-23
 field.entities.actors.yakuza.weenr.walk.dir.6.frame.2	field/entities/actors/yakuza-weenr-walk-dir-6-frame-2.bmp	image	-8	-21
 field.entities.actors.yakuza.weenr.walk.dir.6.frame.3	field/entities/actors/yakuza-weenr-walk-dir-6-frame-3.bmp	image	-14	-22
+field.entities.actors.yakuza.weenr.action.dir.6.frame.0	field/entities/actors/yakuza-weenr-action-dir-6-frame-0.bmp	image	-15	-23
+field.entities.actors.yakuza.weenr.action.dir.6.frame.1	field/entities/actors/yakuza-weenr-action-dir-6-frame-1.bmp	image	-22	-21
 field.entities.actors.yakuza.weenr.idle.dir.7	field/entities/actors/yakuza-weenr-idle-dir-7.bmp	image	-14	-24
 field.entities.actors.yakuza.weenr.entry.dir.7.frame.0	field/entities/actors/yakuza-weenr-entry-dir-7-frame-0.bmp	image	-18	-21
 field.entities.actors.yakuza.weenr.entry.dir.7.frame.1	field/entities/actors/yakuza-weenr-entry-dir-7-frame-1.bmp	image	-17	-21
@@ -2273,6 +2384,8 @@ field.entities.actors.yakuza.weenr.walk.dir.7.frame.0	field/entities/actors/yaku
 field.entities.actors.yakuza.weenr.walk.dir.7.frame.1	field/entities/actors/yakuza-weenr-walk-dir-7-frame-1.bmp	image	-19	-23
 field.entities.actors.yakuza.weenr.walk.dir.7.frame.2	field/entities/actors/yakuza-weenr-walk-dir-7-frame-2.bmp	image	-14	-24
 field.entities.actors.yakuza.weenr.walk.dir.7.frame.3	field/entities/actors/yakuza-weenr-walk-dir-7-frame-3.bmp	image	-12	-23
+field.entities.actors.yakuza.weenr.action.dir.7.frame.0	field/entities/actors/yakuza-weenr-action-dir-7-frame-0.bmp	image	-12	-26
+field.entities.actors.yakuza.weenr.action.dir.7.frame.1	field/entities/actors/yakuza-weenr-action-dir-7-frame-1.bmp	image	-18	-25
 field.entities.actors.actor.kind.9.palette.3.idle	field/entities/actors/actor-kind-9-palette-3-idle.bmp	image	-11	-25
 field.entities.actors.actor.kind.9.palette.3.entry.dir.0.frame.0	field/entities/actors/actor-kind-9-palette-3-entry-dir-0-frame-0.bmp	image	-11	-22
 field.entities.actors.actor.kind.9.palette.3.entry.dir.0.frame.1	field/entities/actors/actor-kind-9-palette-3-entry-dir-0-frame-1.bmp	image	-10	-22
@@ -2280,6 +2393,8 @@ field.entities.actors.actor.kind.9.palette.3.walk.dir.0.frame.0	field/entities/a
 field.entities.actors.actor.kind.9.palette.3.walk.dir.0.frame.1	field/entities/actors/actor-kind-9-palette-3-walk-dir-0-frame-1.bmp	image	-11	-25
 field.entities.actors.actor.kind.9.palette.3.walk.dir.0.frame.2	field/entities/actors/actor-kind-9-palette-3-walk-dir-0-frame-2.bmp	image	-11	-25
 field.entities.actors.actor.kind.9.palette.3.walk.dir.0.frame.3	field/entities/actors/actor-kind-9-palette-3-walk-dir-0-frame-3.bmp	image	-11	-25
+field.entities.actors.actor.kind.9.palette.3.action.dir.0.frame.0	field/entities/actors/actor-kind-9-palette-3-action-dir-0-frame-0.bmp	image	-11	-25
+field.entities.actors.actor.kind.9.palette.3.action.dir.0.frame.1	field/entities/actors/actor-kind-9-palette-3-action-dir-0-frame-1.bmp	image	-12	-29
 field.entities.actors.actor.kind.9.palette.3.idle.dir.1	field/entities/actors/actor-kind-9-palette-3-idle-dir-1.bmp	image	-14	-24
 field.entities.actors.actor.kind.9.palette.3.entry.dir.1.frame.0	field/entities/actors/actor-kind-9-palette-3-entry-dir-1-frame-0.bmp	image	-11	-22
 field.entities.actors.actor.kind.9.palette.3.entry.dir.1.frame.1	field/entities/actors/actor-kind-9-palette-3-entry-dir-1-frame-1.bmp	image	-10	-22
@@ -2287,6 +2402,8 @@ field.entities.actors.actor.kind.9.palette.3.walk.dir.1.frame.0	field/entities/a
 field.entities.actors.actor.kind.9.palette.3.walk.dir.1.frame.1	field/entities/actors/actor-kind-9-palette-3-walk-dir-1-frame-1.bmp	image	-13	-24
 field.entities.actors.actor.kind.9.palette.3.walk.dir.1.frame.2	field/entities/actors/actor-kind-9-palette-3-walk-dir-1-frame-2.bmp	image	-14	-24
 field.entities.actors.actor.kind.9.palette.3.walk.dir.1.frame.3	field/entities/actors/actor-kind-9-palette-3-walk-dir-1-frame-3.bmp	image	-12	-24
+field.entities.actors.actor.kind.9.palette.3.action.dir.1.frame.0	field/entities/actors/actor-kind-9-palette-3-action-dir-1-frame-0.bmp	image	-10	-25
+field.entities.actors.actor.kind.9.palette.3.action.dir.1.frame.1	field/entities/actors/actor-kind-9-palette-3-action-dir-1-frame-1.bmp	image	-10	-26
 field.entities.actors.actor.kind.9.palette.3.idle.dir.2	field/entities/actors/actor-kind-9-palette-3-idle-dir-2.bmp	image	-10	-24
 field.entities.actors.actor.kind.9.palette.3.entry.dir.2.frame.0	field/entities/actors/actor-kind-9-palette-3-entry-dir-2-frame-0.bmp	image	-11	-22
 field.entities.actors.actor.kind.9.palette.3.entry.dir.2.frame.1	field/entities/actors/actor-kind-9-palette-3-entry-dir-2-frame-1.bmp	image	-10	-22
@@ -2294,6 +2411,8 @@ field.entities.actors.actor.kind.9.palette.3.walk.dir.2.frame.0	field/entities/a
 field.entities.actors.actor.kind.9.palette.3.walk.dir.2.frame.1	field/entities/actors/actor-kind-9-palette-3-walk-dir-2-frame-1.bmp	image	-16	-24
 field.entities.actors.actor.kind.9.palette.3.walk.dir.2.frame.2	field/entities/actors/actor-kind-9-palette-3-walk-dir-2-frame-2.bmp	image	-10	-24
 field.entities.actors.actor.kind.9.palette.3.walk.dir.2.frame.3	field/entities/actors/actor-kind-9-palette-3-walk-dir-2-frame-3.bmp	image	-10	-24
+field.entities.actors.actor.kind.9.palette.3.action.dir.2.frame.0	field/entities/actors/actor-kind-9-palette-3-action-dir-2-frame-0.bmp	image	-10	-26
+field.entities.actors.actor.kind.9.palette.3.action.dir.2.frame.1	field/entities/actors/actor-kind-9-palette-3-action-dir-2-frame-1.bmp	image	-10	-26
 field.entities.actors.actor.kind.9.palette.3.idle.dir.3	field/entities/actors/actor-kind-9-palette-3-idle-dir-3.bmp	image	-16	-25
 field.entities.actors.actor.kind.9.palette.3.entry.dir.3.frame.0	field/entities/actors/actor-kind-9-palette-3-entry-dir-3-frame-0.bmp	image	-17	-16
 field.entities.actors.actor.kind.9.palette.3.entry.dir.3.frame.1	field/entities/actors/actor-kind-9-palette-3-entry-dir-3-frame-1.bmp	image	-14	-10
@@ -2301,6 +2420,8 @@ field.entities.actors.actor.kind.9.palette.3.walk.dir.3.frame.0	field/entities/a
 field.entities.actors.actor.kind.9.palette.3.walk.dir.3.frame.1	field/entities/actors/actor-kind-9-palette-3-walk-dir-3-frame-1.bmp	image	-15	-25
 field.entities.actors.actor.kind.9.palette.3.walk.dir.3.frame.2	field/entities/actors/actor-kind-9-palette-3-walk-dir-3-frame-2.bmp	image	-16	-25
 field.entities.actors.actor.kind.9.palette.3.walk.dir.3.frame.3	field/entities/actors/actor-kind-9-palette-3-walk-dir-3-frame-3.bmp	image	-13	-25
+field.entities.actors.actor.kind.9.palette.3.action.dir.3.frame.0	field/entities/actors/actor-kind-9-palette-3-action-dir-3-frame-0.bmp	image	-10	-24
+field.entities.actors.actor.kind.9.palette.3.action.dir.3.frame.1	field/entities/actors/actor-kind-9-palette-3-action-dir-3-frame-1.bmp	image	-10	-24
 field.entities.actors.actor.kind.9.palette.3.idle.dir.4	field/entities/actors/actor-kind-9-palette-3-idle-dir-4.bmp	image	-11	-23
 field.entities.actors.actor.kind.9.palette.3.entry.dir.4.frame.0	field/entities/actors/actor-kind-9-palette-3-entry-dir-4-frame-0.bmp	image	-17	-16
 field.entities.actors.actor.kind.9.palette.3.entry.dir.4.frame.1	field/entities/actors/actor-kind-9-palette-3-entry-dir-4-frame-1.bmp	image	-14	-10
@@ -2308,6 +2429,8 @@ field.entities.actors.actor.kind.9.palette.3.walk.dir.4.frame.0	field/entities/a
 field.entities.actors.actor.kind.9.palette.3.walk.dir.4.frame.1	field/entities/actors/actor-kind-9-palette-3-walk-dir-4-frame-1.bmp	image	-11	-23
 field.entities.actors.actor.kind.9.palette.3.walk.dir.4.frame.2	field/entities/actors/actor-kind-9-palette-3-walk-dir-4-frame-2.bmp	image	-11	-23
 field.entities.actors.actor.kind.9.palette.3.walk.dir.4.frame.3	field/entities/actors/actor-kind-9-palette-3-walk-dir-4-frame-3.bmp	image	-11	-23
+field.entities.actors.actor.kind.9.palette.3.action.dir.4.frame.0	field/entities/actors/actor-kind-9-palette-3-action-dir-4-frame-0.bmp	image	-13	-23
+field.entities.actors.actor.kind.9.palette.3.action.dir.4.frame.1	field/entities/actors/actor-kind-9-palette-3-action-dir-4-frame-1.bmp	image	-14	-23
 field.entities.actors.actor.kind.9.palette.3.idle.dir.5	field/entities/actors/actor-kind-9-palette-3-idle-dir-5.bmp	image	-16	-25
 field.entities.actors.actor.kind.9.palette.3.entry.dir.5.frame.0	field/entities/actors/actor-kind-9-palette-3-entry-dir-5-frame-0.bmp	image	-15	-16
 field.entities.actors.actor.kind.9.palette.3.entry.dir.5.frame.1	field/entities/actors/actor-kind-9-palette-3-entry-dir-5-frame-1.bmp	image	-18	-10
@@ -2315,6 +2438,8 @@ field.entities.actors.actor.kind.9.palette.3.walk.dir.5.frame.0	field/entities/a
 field.entities.actors.actor.kind.9.palette.3.walk.dir.5.frame.1	field/entities/actors/actor-kind-9-palette-3-walk-dir-5-frame-1.bmp	image	-17	-25
 field.entities.actors.actor.kind.9.palette.3.walk.dir.5.frame.2	field/entities/actors/actor-kind-9-palette-3-walk-dir-5-frame-2.bmp	image	-16	-25
 field.entities.actors.actor.kind.9.palette.3.walk.dir.5.frame.3	field/entities/actors/actor-kind-9-palette-3-walk-dir-5-frame-3.bmp	image	-19	-25
+field.entities.actors.actor.kind.9.palette.3.action.dir.5.frame.0	field/entities/actors/actor-kind-9-palette-3-action-dir-5-frame-0.bmp	image	-14	-24
+field.entities.actors.actor.kind.9.palette.3.action.dir.5.frame.1	field/entities/actors/actor-kind-9-palette-3-action-dir-5-frame-1.bmp	image	-14	-24
 field.entities.actors.actor.kind.9.palette.3.idle.dir.6	field/entities/actors/actor-kind-9-palette-3-idle-dir-6.bmp	image	-14	-24
 field.entities.actors.actor.kind.9.palette.3.entry.dir.6.frame.0	field/entities/actors/actor-kind-9-palette-3-entry-dir-6-frame-0.bmp	image	-21	-22
 field.entities.actors.actor.kind.9.palette.3.entry.dir.6.frame.1	field/entities/actors/actor-kind-9-palette-3-entry-dir-6-frame-1.bmp	image	-22	-22
@@ -2322,6 +2447,8 @@ field.entities.actors.actor.kind.9.palette.3.walk.dir.6.frame.0	field/entities/a
 field.entities.actors.actor.kind.9.palette.3.walk.dir.6.frame.1	field/entities/actors/actor-kind-9-palette-3-walk-dir-6-frame-1.bmp	image	-16	-24
 field.entities.actors.actor.kind.9.palette.3.walk.dir.6.frame.2	field/entities/actors/actor-kind-9-palette-3-walk-dir-6-frame-2.bmp	image	-14	-24
 field.entities.actors.actor.kind.9.palette.3.walk.dir.6.frame.3	field/entities/actors/actor-kind-9-palette-3-walk-dir-6-frame-3.bmp	image	-14	-24
+field.entities.actors.actor.kind.9.palette.3.action.dir.6.frame.0	field/entities/actors/actor-kind-9-palette-3-action-dir-6-frame-0.bmp	image	-14	-26
+field.entities.actors.actor.kind.9.palette.3.action.dir.6.frame.1	field/entities/actors/actor-kind-9-palette-3-action-dir-6-frame-1.bmp	image	-22	-26
 field.entities.actors.actor.kind.9.palette.3.idle.dir.7	field/entities/actors/actor-kind-9-palette-3-idle-dir-7.bmp	image	-10	-24
 field.entities.actors.actor.kind.9.palette.3.entry.dir.7.frame.0	field/entities/actors/actor-kind-9-palette-3-entry-dir-7-frame-0.bmp	image	-21	-22
 field.entities.actors.actor.kind.9.palette.3.entry.dir.7.frame.1	field/entities/actors/actor-kind-9-palette-3-entry-dir-7-frame-1.bmp	image	-22	-22
@@ -2329,6 +2456,8 @@ field.entities.actors.actor.kind.9.palette.3.walk.dir.7.frame.0	field/entities/a
 field.entities.actors.actor.kind.9.palette.3.walk.dir.7.frame.1	field/entities/actors/actor-kind-9-palette-3-walk-dir-7-frame-1.bmp	image	-11	-24
 field.entities.actors.actor.kind.9.palette.3.walk.dir.7.frame.2	field/entities/actors/actor-kind-9-palette-3-walk-dir-7-frame-2.bmp	image	-10	-24
 field.entities.actors.actor.kind.9.palette.3.walk.dir.7.frame.3	field/entities/actors/actor-kind-9-palette-3-walk-dir-7-frame-3.bmp	image	-12	-24
+field.entities.actors.actor.kind.9.palette.3.action.dir.7.frame.0	field/entities/actors/actor-kind-9-palette-3-action-dir-7-frame-0.bmp	image	-14	-25
+field.entities.actors.actor.kind.9.palette.3.action.dir.7.frame.1	field/entities/actors/actor-kind-9-palette-3-action-dir-7-frame-1.bmp	image	-22	-26
 field.entities.actors.actor.kind.10.palette.2.idle	field/entities/actors/actor-kind-10-palette-2-idle.bmp	image	-12	-28
 field.entities.actors.actor.kind.10.palette.2.entry.dir.0.frame.0	field/entities/actors/actor-kind-10-palette-2-entry-dir-0-frame-0.bmp	image	-18	-24
 field.entities.actors.actor.kind.10.palette.2.entry.dir.0.frame.1	field/entities/actors/actor-kind-10-palette-2-entry-dir-0-frame-1.bmp	image	-16	-26
@@ -2336,6 +2465,8 @@ field.entities.actors.actor.kind.10.palette.2.walk.dir.0.frame.0	field/entities/
 field.entities.actors.actor.kind.10.palette.2.walk.dir.0.frame.1	field/entities/actors/actor-kind-10-palette-2-walk-dir-0-frame-1.bmp	image	-12	-27
 field.entities.actors.actor.kind.10.palette.2.walk.dir.0.frame.2	field/entities/actors/actor-kind-10-palette-2-walk-dir-0-frame-2.bmp	image	-12	-28
 field.entities.actors.actor.kind.10.palette.2.walk.dir.0.frame.3	field/entities/actors/actor-kind-10-palette-2-walk-dir-0-frame-3.bmp	image	-12	-27
+field.entities.actors.actor.kind.10.palette.2.action.dir.0.frame.0	field/entities/actors/actor-kind-10-palette-2-action-dir-0-frame-0.bmp	image	-11	-27
+field.entities.actors.actor.kind.10.palette.2.action.dir.0.frame.1	field/entities/actors/actor-kind-10-palette-2-action-dir-0-frame-1.bmp	image	-12	-28
 field.entities.actors.actor.kind.10.palette.2.idle.dir.1	field/entities/actors/actor-kind-10-palette-2-idle-dir-1.bmp	image	-9	-28
 field.entities.actors.actor.kind.10.palette.2.entry.dir.1.frame.0	field/entities/actors/actor-kind-10-palette-2-entry-dir-1-frame-0.bmp	image	-18	-24
 field.entities.actors.actor.kind.10.palette.2.entry.dir.1.frame.1	field/entities/actors/actor-kind-10-palette-2-entry-dir-1-frame-1.bmp	image	-16	-26
@@ -2343,6 +2474,8 @@ field.entities.actors.actor.kind.10.palette.2.walk.dir.1.frame.0	field/entities/
 field.entities.actors.actor.kind.10.palette.2.walk.dir.1.frame.1	field/entities/actors/actor-kind-10-palette-2-walk-dir-1-frame-1.bmp	image	-8	-27
 field.entities.actors.actor.kind.10.palette.2.walk.dir.1.frame.2	field/entities/actors/actor-kind-10-palette-2-walk-dir-1-frame-2.bmp	image	-9	-28
 field.entities.actors.actor.kind.10.palette.2.walk.dir.1.frame.3	field/entities/actors/actor-kind-10-palette-2-walk-dir-1-frame-3.bmp	image	-11	-27
+field.entities.actors.actor.kind.10.palette.2.action.dir.1.frame.0	field/entities/actors/actor-kind-10-palette-2-action-dir-1-frame-0.bmp	image	-9	-28
+field.entities.actors.actor.kind.10.palette.2.action.dir.1.frame.1	field/entities/actors/actor-kind-10-palette-2-action-dir-1-frame-1.bmp	image	-11	-28
 field.entities.actors.actor.kind.10.palette.2.idle.dir.2	field/entities/actors/actor-kind-10-palette-2-idle-dir-2.bmp	image	-9	-27
 field.entities.actors.actor.kind.10.palette.2.entry.dir.2.frame.0	field/entities/actors/actor-kind-10-palette-2-entry-dir-2-frame-0.bmp	image	-18	-24
 field.entities.actors.actor.kind.10.palette.2.entry.dir.2.frame.1	field/entities/actors/actor-kind-10-palette-2-entry-dir-2-frame-1.bmp	image	-16	-26
@@ -2350,6 +2483,8 @@ field.entities.actors.actor.kind.10.palette.2.walk.dir.2.frame.0	field/entities/
 field.entities.actors.actor.kind.10.palette.2.walk.dir.2.frame.1	field/entities/actors/actor-kind-10-palette-2-walk-dir-2-frame-1.bmp	image	-9	-27
 field.entities.actors.actor.kind.10.palette.2.walk.dir.2.frame.2	field/entities/actors/actor-kind-10-palette-2-walk-dir-2-frame-2.bmp	image	-8	-28
 field.entities.actors.actor.kind.10.palette.2.walk.dir.2.frame.3	field/entities/actors/actor-kind-10-palette-2-walk-dir-2-frame-3.bmp	image	-9	-27
+field.entities.actors.actor.kind.10.palette.2.action.dir.2.frame.0	field/entities/actors/actor-kind-10-palette-2-action-dir-2-frame-0.bmp	image	-8	-28
+field.entities.actors.actor.kind.10.palette.2.action.dir.2.frame.1	field/entities/actors/actor-kind-10-palette-2-action-dir-2-frame-1.bmp	image	-14	-26
 field.entities.actors.actor.kind.10.palette.2.idle.dir.3	field/entities/actors/actor-kind-10-palette-2-idle-dir-3.bmp	image	-12	-28
 field.entities.actors.actor.kind.10.palette.2.entry.dir.3.frame.0	field/entities/actors/actor-kind-10-palette-2-entry-dir-3-frame-0.bmp	image	-10	-9
 field.entities.actors.actor.kind.10.palette.2.entry.dir.3.frame.1	field/entities/actors/actor-kind-10-palette-2-entry-dir-3-frame-1.bmp	image	-9	-11
@@ -2357,6 +2492,8 @@ field.entities.actors.actor.kind.10.palette.2.walk.dir.3.frame.0	field/entities/
 field.entities.actors.actor.kind.10.palette.2.walk.dir.3.frame.1	field/entities/actors/actor-kind-10-palette-2-walk-dir-3-frame-1.bmp	image	-13	-27
 field.entities.actors.actor.kind.10.palette.2.walk.dir.3.frame.2	field/entities/actors/actor-kind-10-palette-2-walk-dir-3-frame-2.bmp	image	-12	-28
 field.entities.actors.actor.kind.10.palette.2.walk.dir.3.frame.3	field/entities/actors/actor-kind-10-palette-2-walk-dir-3-frame-3.bmp	image	-11	-27
+field.entities.actors.actor.kind.10.palette.2.action.dir.3.frame.0	field/entities/actors/actor-kind-10-palette-2-action-dir-3-frame-0.bmp	image	-13	-28
+field.entities.actors.actor.kind.10.palette.2.action.dir.3.frame.1	field/entities/actors/actor-kind-10-palette-2-action-dir-3-frame-1.bmp	image	-15	-26
 field.entities.actors.actor.kind.10.palette.2.idle.dir.4	field/entities/actors/actor-kind-10-palette-2-idle-dir-4.bmp	image	-13	-28
 field.entities.actors.actor.kind.10.palette.2.entry.dir.4.frame.0	field/entities/actors/actor-kind-10-palette-2-entry-dir-4-frame-0.bmp	image	-10	-9
 field.entities.actors.actor.kind.10.palette.2.entry.dir.4.frame.1	field/entities/actors/actor-kind-10-palette-2-entry-dir-4-frame-1.bmp	image	-9	-11
@@ -2364,6 +2501,8 @@ field.entities.actors.actor.kind.10.palette.2.walk.dir.4.frame.0	field/entities/
 field.entities.actors.actor.kind.10.palette.2.walk.dir.4.frame.1	field/entities/actors/actor-kind-10-palette-2-walk-dir-4-frame-1.bmp	image	-13	-27
 field.entities.actors.actor.kind.10.palette.2.walk.dir.4.frame.2	field/entities/actors/actor-kind-10-palette-2-walk-dir-4-frame-2.bmp	image	-13	-28
 field.entities.actors.actor.kind.10.palette.2.walk.dir.4.frame.3	field/entities/actors/actor-kind-10-palette-2-walk-dir-4-frame-3.bmp	image	-13	-27
+field.entities.actors.actor.kind.10.palette.2.action.dir.4.frame.0	field/entities/actors/actor-kind-10-palette-2-action-dir-4-frame-0.bmp	image	-13	-28
+field.entities.actors.actor.kind.10.palette.2.action.dir.4.frame.1	field/entities/actors/actor-kind-10-palette-2-action-dir-4-frame-1.bmp	image	-14	-26
 field.entities.actors.actor.kind.10.palette.2.idle.dir.5	field/entities/actors/actor-kind-10-palette-2-idle-dir-5.bmp	image	-12	-28
 field.entities.actors.actor.kind.10.palette.2.entry.dir.5.frame.0	field/entities/actors/actor-kind-10-palette-2-entry-dir-5-frame-0.bmp	image	-22	-9
 field.entities.actors.actor.kind.10.palette.2.entry.dir.5.frame.1	field/entities/actors/actor-kind-10-palette-2-entry-dir-5-frame-1.bmp	image	-23	-11
@@ -2371,6 +2510,8 @@ field.entities.actors.actor.kind.10.palette.2.walk.dir.5.frame.0	field/entities/
 field.entities.actors.actor.kind.10.palette.2.walk.dir.5.frame.1	field/entities/actors/actor-kind-10-palette-2-walk-dir-5-frame-1.bmp	image	-19	-27
 field.entities.actors.actor.kind.10.palette.2.walk.dir.5.frame.2	field/entities/actors/actor-kind-10-palette-2-walk-dir-5-frame-2.bmp	image	-12	-28
 field.entities.actors.actor.kind.10.palette.2.walk.dir.5.frame.3	field/entities/actors/actor-kind-10-palette-2-walk-dir-5-frame-3.bmp	image	-13	-27
+field.entities.actors.actor.kind.10.palette.2.action.dir.5.frame.0	field/entities/actors/actor-kind-10-palette-2-action-dir-5-frame-0.bmp	image	-19	-28
+field.entities.actors.actor.kind.10.palette.2.action.dir.5.frame.1	field/entities/actors/actor-kind-10-palette-2-action-dir-5-frame-1.bmp	image	-17	-26
 field.entities.actors.actor.kind.10.palette.2.idle.dir.6	field/entities/actors/actor-kind-10-palette-2-idle-dir-6.bmp	image	-15	-27
 field.entities.actors.actor.kind.10.palette.2.entry.dir.6.frame.0	field/entities/actors/actor-kind-10-palette-2-entry-dir-6-frame-0.bmp	image	-14	-24
 field.entities.actors.actor.kind.10.palette.2.entry.dir.6.frame.1	field/entities/actors/actor-kind-10-palette-2-entry-dir-6-frame-1.bmp	image	-16	-26
@@ -2378,6 +2519,8 @@ field.entities.actors.actor.kind.10.palette.2.walk.dir.6.frame.0	field/entities/
 field.entities.actors.actor.kind.10.palette.2.walk.dir.6.frame.1	field/entities/actors/actor-kind-10-palette-2-walk-dir-6-frame-1.bmp	image	-15	-27
 field.entities.actors.actor.kind.10.palette.2.walk.dir.6.frame.2	field/entities/actors/actor-kind-10-palette-2-walk-dir-6-frame-2.bmp	image	-8	-28
 field.entities.actors.actor.kind.10.palette.2.walk.dir.6.frame.3	field/entities/actors/actor-kind-10-palette-2-walk-dir-6-frame-3.bmp	image	-15	-27
+field.entities.actors.actor.kind.10.palette.2.action.dir.6.frame.0	field/entities/actors/actor-kind-10-palette-2-action-dir-6-frame-0.bmp	image	-16	-28
+field.entities.actors.actor.kind.10.palette.2.action.dir.6.frame.1	field/entities/actors/actor-kind-10-palette-2-action-dir-6-frame-1.bmp	image	-18	-26
 field.entities.actors.actor.kind.10.palette.2.idle.dir.7	field/entities/actors/actor-kind-10-palette-2-idle-dir-7.bmp	image	-15	-28
 field.entities.actors.actor.kind.10.palette.2.entry.dir.7.frame.0	field/entities/actors/actor-kind-10-palette-2-entry-dir-7-frame-0.bmp	image	-14	-24
 field.entities.actors.actor.kind.10.palette.2.entry.dir.7.frame.1	field/entities/actors/actor-kind-10-palette-2-entry-dir-7-frame-1.bmp	image	-16	-26
@@ -2385,6 +2528,8 @@ field.entities.actors.actor.kind.10.palette.2.walk.dir.7.frame.0	field/entities/
 field.entities.actors.actor.kind.10.palette.2.walk.dir.7.frame.1	field/entities/actors/actor-kind-10-palette-2-walk-dir-7-frame-1.bmp	image	-16	-27
 field.entities.actors.actor.kind.10.palette.2.walk.dir.7.frame.2	field/entities/actors/actor-kind-10-palette-2-walk-dir-7-frame-2.bmp	image	-15	-28
 field.entities.actors.actor.kind.10.palette.2.walk.dir.7.frame.3	field/entities/actors/actor-kind-10-palette-2-walk-dir-7-frame-3.bmp	image	-13	-27
+field.entities.actors.actor.kind.10.palette.2.action.dir.7.frame.0	field/entities/actors/actor-kind-10-palette-2-action-dir-7-frame-0.bmp	image	-15	-28
+field.entities.actors.actor.kind.10.palette.2.action.dir.7.frame.1	field/entities/actors/actor-kind-10-palette-2-action-dir-7-frame-1.bmp	image	-21	-28
 field.entities.actors.actor.kind.11.palette.2.idle	field/entities/actors/actor-kind-11-palette-2-idle.bmp	image	-14	-24
 field.entities.actors.actor.kind.11.palette.2.entry.dir.0.frame.0	field/entities/actors/actor-kind-11-palette-2-entry-dir-0-frame-0.bmp	image	-20	-22
 field.entities.actors.actor.kind.11.palette.2.entry.dir.0.frame.1	field/entities/actors/actor-kind-11-palette-2-entry-dir-0-frame-1.bmp	image	-13	-24
@@ -2392,6 +2537,8 @@ field.entities.actors.actor.kind.11.palette.2.walk.dir.0.frame.0	field/entities/
 field.entities.actors.actor.kind.11.palette.2.walk.dir.0.frame.1	field/entities/actors/actor-kind-11-palette-2-walk-dir-0-frame-1.bmp	image	-14	-24
 field.entities.actors.actor.kind.11.palette.2.walk.dir.0.frame.2	field/entities/actors/actor-kind-11-palette-2-walk-dir-0-frame-2.bmp	image	-14	-25
 field.entities.actors.actor.kind.11.palette.2.walk.dir.0.frame.3	field/entities/actors/actor-kind-11-palette-2-walk-dir-0-frame-3.bmp	image	-14	-24
+field.entities.actors.actor.kind.11.palette.2.action.dir.0.frame.0	field/entities/actors/actor-kind-11-palette-2-action-dir-0-frame-0.bmp	image	-13	-24
+field.entities.actors.actor.kind.11.palette.2.action.dir.0.frame.1	field/entities/actors/actor-kind-11-palette-2-action-dir-0-frame-1.bmp	image	-12	-27
 field.entities.actors.actor.kind.11.palette.2.idle.dir.1	field/entities/actors/actor-kind-11-palette-2-idle-dir-1.bmp	image	-10	-26
 field.entities.actors.actor.kind.11.palette.2.entry.dir.1.frame.0	field/entities/actors/actor-kind-11-palette-2-entry-dir-1-frame-0.bmp	image	-20	-22
 field.entities.actors.actor.kind.11.palette.2.entry.dir.1.frame.1	field/entities/actors/actor-kind-11-palette-2-entry-dir-1-frame-1.bmp	image	-13	-24
@@ -2399,6 +2546,8 @@ field.entities.actors.actor.kind.11.palette.2.walk.dir.1.frame.0	field/entities/
 field.entities.actors.actor.kind.11.palette.2.walk.dir.1.frame.1	field/entities/actors/actor-kind-11-palette-2-walk-dir-1-frame-1.bmp	image	-10	-26
 field.entities.actors.actor.kind.11.palette.2.walk.dir.1.frame.2	field/entities/actors/actor-kind-11-palette-2-walk-dir-1-frame-2.bmp	image	-10	-26
 field.entities.actors.actor.kind.11.palette.2.walk.dir.1.frame.3	field/entities/actors/actor-kind-11-palette-2-walk-dir-1-frame-3.bmp	image	-13	-26
+field.entities.actors.actor.kind.11.palette.2.action.dir.1.frame.0	field/entities/actors/actor-kind-11-palette-2-action-dir-1-frame-0.bmp	image	-12	-24
+field.entities.actors.actor.kind.11.palette.2.action.dir.1.frame.1	field/entities/actors/actor-kind-11-palette-2-action-dir-1-frame-1.bmp	image	-13	-25
 field.entities.actors.actor.kind.11.palette.2.idle.dir.2	field/entities/actors/actor-kind-11-palette-2-idle-dir-2.bmp	image	-9	-25
 field.entities.actors.actor.kind.11.palette.2.entry.dir.2.frame.0	field/entities/actors/actor-kind-11-palette-2-entry-dir-2-frame-0.bmp	image	-20	-22
 field.entities.actors.actor.kind.11.palette.2.entry.dir.2.frame.1	field/entities/actors/actor-kind-11-palette-2-entry-dir-2-frame-1.bmp	image	-13	-24
@@ -2406,6 +2555,8 @@ field.entities.actors.actor.kind.11.palette.2.walk.dir.2.frame.0	field/entities/
 field.entities.actors.actor.kind.11.palette.2.walk.dir.2.frame.1	field/entities/actors/actor-kind-11-palette-2-walk-dir-2-frame-1.bmp	image	-10	-25
 field.entities.actors.actor.kind.11.palette.2.walk.dir.2.frame.2	field/entities/actors/actor-kind-11-palette-2-walk-dir-2-frame-2.bmp	image	-9	-25
 field.entities.actors.actor.kind.11.palette.2.walk.dir.2.frame.3	field/entities/actors/actor-kind-11-palette-2-walk-dir-2-frame-3.bmp	image	-9	-25
+field.entities.actors.actor.kind.11.palette.2.action.dir.2.frame.0	field/entities/actors/actor-kind-11-palette-2-action-dir-2-frame-0.bmp	image	-10	-22
+field.entities.actors.actor.kind.11.palette.2.action.dir.2.frame.1	field/entities/actors/actor-kind-11-palette-2-action-dir-2-frame-1.bmp	image	-11	-22
 field.entities.actors.actor.kind.11.palette.2.idle.dir.3	field/entities/actors/actor-kind-11-palette-2-idle-dir-3.bmp	image	-11	-24
 field.entities.actors.actor.kind.11.palette.2.entry.dir.3.frame.0	field/entities/actors/actor-kind-11-palette-2-entry-dir-3-frame-0.bmp	image	-14	-20
 field.entities.actors.actor.kind.11.palette.2.entry.dir.3.frame.1	field/entities/actors/actor-kind-11-palette-2-entry-dir-3-frame-1.bmp	image	-11	-12
@@ -2413,6 +2564,8 @@ field.entities.actors.actor.kind.11.palette.2.walk.dir.3.frame.0	field/entities/
 field.entities.actors.actor.kind.11.palette.2.walk.dir.3.frame.1	field/entities/actors/actor-kind-11-palette-2-walk-dir-3-frame-1.bmp	image	-11	-24
 field.entities.actors.actor.kind.11.palette.2.walk.dir.3.frame.2	field/entities/actors/actor-kind-11-palette-2-walk-dir-3-frame-2.bmp	image	-13	-23
 field.entities.actors.actor.kind.11.palette.2.walk.dir.3.frame.3	field/entities/actors/actor-kind-11-palette-2-walk-dir-3-frame-3.bmp	image	-11	-24
+field.entities.actors.actor.kind.11.palette.2.action.dir.3.frame.0	field/entities/actors/actor-kind-11-palette-2-action-dir-3-frame-0.bmp	image	-13	-23
+field.entities.actors.actor.kind.11.palette.2.action.dir.3.frame.1	field/entities/actors/actor-kind-11-palette-2-action-dir-3-frame-1.bmp	image	-12	-23
 field.entities.actors.actor.kind.11.palette.2.idle.dir.4	field/entities/actors/actor-kind-11-palette-2-idle-dir-4.bmp	image	-13	-23
 field.entities.actors.actor.kind.11.palette.2.entry.dir.4.frame.0	field/entities/actors/actor-kind-11-palette-2-entry-dir-4-frame-0.bmp	image	-14	-20
 field.entities.actors.actor.kind.11.palette.2.entry.dir.4.frame.1	field/entities/actors/actor-kind-11-palette-2-entry-dir-4-frame-1.bmp	image	-11	-12
@@ -2420,6 +2573,8 @@ field.entities.actors.actor.kind.11.palette.2.walk.dir.4.frame.0	field/entities/
 field.entities.actors.actor.kind.11.palette.2.walk.dir.4.frame.1	field/entities/actors/actor-kind-11-palette-2-walk-dir-4-frame-1.bmp	image	-13	-24
 field.entities.actors.actor.kind.11.palette.2.walk.dir.4.frame.2	field/entities/actors/actor-kind-11-palette-2-walk-dir-4-frame-2.bmp	image	-12	-24
 field.entities.actors.actor.kind.11.palette.2.walk.dir.4.frame.3	field/entities/actors/actor-kind-11-palette-2-walk-dir-4-frame-3.bmp	image	-13	-23
+field.entities.actors.actor.kind.11.palette.2.action.dir.4.frame.0	field/entities/actors/actor-kind-11-palette-2-action-dir-4-frame-0.bmp	image	-17	-23
+field.entities.actors.actor.kind.11.palette.2.action.dir.4.frame.1	field/entities/actors/actor-kind-11-palette-2-action-dir-4-frame-1.bmp	image	-14	-23
 field.entities.actors.actor.kind.11.palette.2.idle.dir.5	field/entities/actors/actor-kind-11-palette-2-idle-dir-5.bmp	image	-13	-24
 field.entities.actors.actor.kind.11.palette.2.entry.dir.5.frame.0	field/entities/actors/actor-kind-11-palette-2-entry-dir-5-frame-0.bmp	image	-18	-20
 field.entities.actors.actor.kind.11.palette.2.entry.dir.5.frame.1	field/entities/actors/actor-kind-11-palette-2-entry-dir-5-frame-1.bmp	image	-21	-12
@@ -2427,6 +2582,8 @@ field.entities.actors.actor.kind.11.palette.2.walk.dir.5.frame.0	field/entities/
 field.entities.actors.actor.kind.11.palette.2.walk.dir.5.frame.1	field/entities/actors/actor-kind-11-palette-2-walk-dir-5-frame-1.bmp	image	-13	-24
 field.entities.actors.actor.kind.11.palette.2.walk.dir.5.frame.2	field/entities/actors/actor-kind-11-palette-2-walk-dir-5-frame-2.bmp	image	-19	-23
 field.entities.actors.actor.kind.11.palette.2.walk.dir.5.frame.3	field/entities/actors/actor-kind-11-palette-2-walk-dir-5-frame-3.bmp	image	-13	-24
+field.entities.actors.actor.kind.11.palette.2.action.dir.5.frame.0	field/entities/actors/actor-kind-11-palette-2-action-dir-5-frame-0.bmp	image	-19	-23
+field.entities.actors.actor.kind.11.palette.2.action.dir.5.frame.1	field/entities/actors/actor-kind-11-palette-2-action-dir-5-frame-1.bmp	image	-20	-23
 field.entities.actors.actor.kind.11.palette.2.idle.dir.6	field/entities/actors/actor-kind-11-palette-2-idle-dir-6.bmp	image	-15	-25
 field.entities.actors.actor.kind.11.palette.2.entry.dir.6.frame.0	field/entities/actors/actor-kind-11-palette-2-entry-dir-6-frame-0.bmp	image	-12	-22
 field.entities.actors.actor.kind.11.palette.2.entry.dir.6.frame.1	field/entities/actors/actor-kind-11-palette-2-entry-dir-6-frame-1.bmp	image	-19	-24
@@ -2434,6 +2591,8 @@ field.entities.actors.actor.kind.11.palette.2.walk.dir.6.frame.0	field/entities/
 field.entities.actors.actor.kind.11.palette.2.walk.dir.6.frame.1	field/entities/actors/actor-kind-11-palette-2-walk-dir-6-frame-1.bmp	image	-14	-25
 field.entities.actors.actor.kind.11.palette.2.walk.dir.6.frame.2	field/entities/actors/actor-kind-11-palette-2-walk-dir-6-frame-2.bmp	image	-15	-25
 field.entities.actors.actor.kind.11.palette.2.walk.dir.6.frame.3	field/entities/actors/actor-kind-11-palette-2-walk-dir-6-frame-3.bmp	image	-15	-25
+field.entities.actors.actor.kind.11.palette.2.action.dir.6.frame.0	field/entities/actors/actor-kind-11-palette-2-action-dir-6-frame-0.bmp	image	-14	-22
+field.entities.actors.actor.kind.11.palette.2.action.dir.6.frame.1	field/entities/actors/actor-kind-11-palette-2-action-dir-6-frame-1.bmp	image	-21	-22
 field.entities.actors.actor.kind.11.palette.2.idle.dir.7	field/entities/actors/actor-kind-11-palette-2-idle-dir-7.bmp	image	-14	-26
 field.entities.actors.actor.kind.11.palette.2.entry.dir.7.frame.0	field/entities/actors/actor-kind-11-palette-2-entry-dir-7-frame-0.bmp	image	-12	-22
 field.entities.actors.actor.kind.11.palette.2.entry.dir.7.frame.1	field/entities/actors/actor-kind-11-palette-2-entry-dir-7-frame-1.bmp	image	-19	-24
@@ -2441,6 +2600,8 @@ field.entities.actors.actor.kind.11.palette.2.walk.dir.7.frame.0	field/entities/
 field.entities.actors.actor.kind.11.palette.2.walk.dir.7.frame.1	field/entities/actors/actor-kind-11-palette-2-walk-dir-7-frame-1.bmp	image	-14	-26
 field.entities.actors.actor.kind.11.palette.2.walk.dir.7.frame.2	field/entities/actors/actor-kind-11-palette-2-walk-dir-7-frame-2.bmp	image	-14	-26
 field.entities.actors.actor.kind.11.palette.2.walk.dir.7.frame.3	field/entities/actors/actor-kind-11-palette-2-walk-dir-7-frame-3.bmp	image	-19	-26
+field.entities.actors.actor.kind.11.palette.2.action.dir.7.frame.0	field/entities/actors/actor-kind-11-palette-2-action-dir-7-frame-0.bmp	image	-20	-24
+field.entities.actors.actor.kind.11.palette.2.action.dir.7.frame.1	field/entities/actors/actor-kind-11-palette-2-action-dir-7-frame-1.bmp	image	-19	-25
 field.entities.actors.pedestrian.idle	field/entities/actors/pedestrian-idle.bmp	image	-14	-24
 field.entities.actors.pedestrian.entry.dir.0.frame.0	field/entities/actors/pedestrian-entry-dir-0-frame-0.bmp	image	-20	-22
 field.entities.actors.pedestrian.entry.dir.0.frame.1	field/entities/actors/pedestrian-entry-dir-0-frame-1.bmp	image	-13	-24
@@ -2448,6 +2609,8 @@ field.entities.actors.pedestrian.walk.dir.0.frame.0	field/entities/actors/pedest
 field.entities.actors.pedestrian.walk.dir.0.frame.1	field/entities/actors/pedestrian-walk-dir-0-frame-1.bmp	image	-14	-24
 field.entities.actors.pedestrian.walk.dir.0.frame.2	field/entities/actors/pedestrian-walk-dir-0-frame-2.bmp	image	-14	-25
 field.entities.actors.pedestrian.walk.dir.0.frame.3	field/entities/actors/pedestrian-walk-dir-0-frame-3.bmp	image	-14	-24
+field.entities.actors.pedestrian.action.dir.0.frame.0	field/entities/actors/pedestrian-action-dir-0-frame-0.bmp	image	-13	-24
+field.entities.actors.pedestrian.action.dir.0.frame.1	field/entities/actors/pedestrian-action-dir-0-frame-1.bmp	image	-12	-27
 field.entities.actors.pedestrian.idle.dir.1	field/entities/actors/pedestrian-idle-dir-1.bmp	image	-10	-26
 field.entities.actors.pedestrian.entry.dir.1.frame.0	field/entities/actors/pedestrian-entry-dir-1-frame-0.bmp	image	-20	-22
 field.entities.actors.pedestrian.entry.dir.1.frame.1	field/entities/actors/pedestrian-entry-dir-1-frame-1.bmp	image	-13	-24
@@ -2455,6 +2618,8 @@ field.entities.actors.pedestrian.walk.dir.1.frame.0	field/entities/actors/pedest
 field.entities.actors.pedestrian.walk.dir.1.frame.1	field/entities/actors/pedestrian-walk-dir-1-frame-1.bmp	image	-10	-26
 field.entities.actors.pedestrian.walk.dir.1.frame.2	field/entities/actors/pedestrian-walk-dir-1-frame-2.bmp	image	-10	-26
 field.entities.actors.pedestrian.walk.dir.1.frame.3	field/entities/actors/pedestrian-walk-dir-1-frame-3.bmp	image	-13	-26
+field.entities.actors.pedestrian.action.dir.1.frame.0	field/entities/actors/pedestrian-action-dir-1-frame-0.bmp	image	-12	-24
+field.entities.actors.pedestrian.action.dir.1.frame.1	field/entities/actors/pedestrian-action-dir-1-frame-1.bmp	image	-13	-25
 field.entities.actors.pedestrian.idle.dir.2	field/entities/actors/pedestrian-idle-dir-2.bmp	image	-9	-25
 field.entities.actors.pedestrian.entry.dir.2.frame.0	field/entities/actors/pedestrian-entry-dir-2-frame-0.bmp	image	-20	-22
 field.entities.actors.pedestrian.entry.dir.2.frame.1	field/entities/actors/pedestrian-entry-dir-2-frame-1.bmp	image	-13	-24
@@ -2462,6 +2627,8 @@ field.entities.actors.pedestrian.walk.dir.2.frame.0	field/entities/actors/pedest
 field.entities.actors.pedestrian.walk.dir.2.frame.1	field/entities/actors/pedestrian-walk-dir-2-frame-1.bmp	image	-10	-25
 field.entities.actors.pedestrian.walk.dir.2.frame.2	field/entities/actors/pedestrian-walk-dir-2-frame-2.bmp	image	-9	-25
 field.entities.actors.pedestrian.walk.dir.2.frame.3	field/entities/actors/pedestrian-walk-dir-2-frame-3.bmp	image	-9	-25
+field.entities.actors.pedestrian.action.dir.2.frame.0	field/entities/actors/pedestrian-action-dir-2-frame-0.bmp	image	-10	-22
+field.entities.actors.pedestrian.action.dir.2.frame.1	field/entities/actors/pedestrian-action-dir-2-frame-1.bmp	image	-11	-22
 field.entities.actors.pedestrian.idle.dir.3	field/entities/actors/pedestrian-idle-dir-3.bmp	image	-11	-24
 field.entities.actors.pedestrian.entry.dir.3.frame.0	field/entities/actors/pedestrian-entry-dir-3-frame-0.bmp	image	-14	-20
 field.entities.actors.pedestrian.entry.dir.3.frame.1	field/entities/actors/pedestrian-entry-dir-3-frame-1.bmp	image	-11	-12
@@ -2469,6 +2636,8 @@ field.entities.actors.pedestrian.walk.dir.3.frame.0	field/entities/actors/pedest
 field.entities.actors.pedestrian.walk.dir.3.frame.1	field/entities/actors/pedestrian-walk-dir-3-frame-1.bmp	image	-11	-24
 field.entities.actors.pedestrian.walk.dir.3.frame.2	field/entities/actors/pedestrian-walk-dir-3-frame-2.bmp	image	-13	-23
 field.entities.actors.pedestrian.walk.dir.3.frame.3	field/entities/actors/pedestrian-walk-dir-3-frame-3.bmp	image	-11	-24
+field.entities.actors.pedestrian.action.dir.3.frame.0	field/entities/actors/pedestrian-action-dir-3-frame-0.bmp	image	-13	-23
+field.entities.actors.pedestrian.action.dir.3.frame.1	field/entities/actors/pedestrian-action-dir-3-frame-1.bmp	image	-12	-23
 field.entities.actors.pedestrian.idle.dir.4	field/entities/actors/pedestrian-idle-dir-4.bmp	image	-13	-23
 field.entities.actors.pedestrian.entry.dir.4.frame.0	field/entities/actors/pedestrian-entry-dir-4-frame-0.bmp	image	-14	-20
 field.entities.actors.pedestrian.entry.dir.4.frame.1	field/entities/actors/pedestrian-entry-dir-4-frame-1.bmp	image	-11	-12
@@ -2476,6 +2645,8 @@ field.entities.actors.pedestrian.walk.dir.4.frame.0	field/entities/actors/pedest
 field.entities.actors.pedestrian.walk.dir.4.frame.1	field/entities/actors/pedestrian-walk-dir-4-frame-1.bmp	image	-13	-24
 field.entities.actors.pedestrian.walk.dir.4.frame.2	field/entities/actors/pedestrian-walk-dir-4-frame-2.bmp	image	-12	-24
 field.entities.actors.pedestrian.walk.dir.4.frame.3	field/entities/actors/pedestrian-walk-dir-4-frame-3.bmp	image	-13	-23
+field.entities.actors.pedestrian.action.dir.4.frame.0	field/entities/actors/pedestrian-action-dir-4-frame-0.bmp	image	-17	-23
+field.entities.actors.pedestrian.action.dir.4.frame.1	field/entities/actors/pedestrian-action-dir-4-frame-1.bmp	image	-14	-23
 field.entities.actors.pedestrian.idle.dir.5	field/entities/actors/pedestrian-idle-dir-5.bmp	image	-13	-24
 field.entities.actors.pedestrian.entry.dir.5.frame.0	field/entities/actors/pedestrian-entry-dir-5-frame-0.bmp	image	-18	-20
 field.entities.actors.pedestrian.entry.dir.5.frame.1	field/entities/actors/pedestrian-entry-dir-5-frame-1.bmp	image	-21	-12
@@ -2483,6 +2654,8 @@ field.entities.actors.pedestrian.walk.dir.5.frame.0	field/entities/actors/pedest
 field.entities.actors.pedestrian.walk.dir.5.frame.1	field/entities/actors/pedestrian-walk-dir-5-frame-1.bmp	image	-13	-24
 field.entities.actors.pedestrian.walk.dir.5.frame.2	field/entities/actors/pedestrian-walk-dir-5-frame-2.bmp	image	-19	-23
 field.entities.actors.pedestrian.walk.dir.5.frame.3	field/entities/actors/pedestrian-walk-dir-5-frame-3.bmp	image	-13	-24
+field.entities.actors.pedestrian.action.dir.5.frame.0	field/entities/actors/pedestrian-action-dir-5-frame-0.bmp	image	-19	-23
+field.entities.actors.pedestrian.action.dir.5.frame.1	field/entities/actors/pedestrian-action-dir-5-frame-1.bmp	image	-20	-23
 field.entities.actors.pedestrian.idle.dir.6	field/entities/actors/pedestrian-idle-dir-6.bmp	image	-15	-25
 field.entities.actors.pedestrian.entry.dir.6.frame.0	field/entities/actors/pedestrian-entry-dir-6-frame-0.bmp	image	-12	-22
 field.entities.actors.pedestrian.entry.dir.6.frame.1	field/entities/actors/pedestrian-entry-dir-6-frame-1.bmp	image	-19	-24
@@ -2490,6 +2663,8 @@ field.entities.actors.pedestrian.walk.dir.6.frame.0	field/entities/actors/pedest
 field.entities.actors.pedestrian.walk.dir.6.frame.1	field/entities/actors/pedestrian-walk-dir-6-frame-1.bmp	image	-14	-25
 field.entities.actors.pedestrian.walk.dir.6.frame.2	field/entities/actors/pedestrian-walk-dir-6-frame-2.bmp	image	-15	-25
 field.entities.actors.pedestrian.walk.dir.6.frame.3	field/entities/actors/pedestrian-walk-dir-6-frame-3.bmp	image	-15	-25
+field.entities.actors.pedestrian.action.dir.6.frame.0	field/entities/actors/pedestrian-action-dir-6-frame-0.bmp	image	-14	-22
+field.entities.actors.pedestrian.action.dir.6.frame.1	field/entities/actors/pedestrian-action-dir-6-frame-1.bmp	image	-21	-22
 field.entities.actors.pedestrian.idle.dir.7	field/entities/actors/pedestrian-idle-dir-7.bmp	image	-14	-26
 field.entities.actors.pedestrian.entry.dir.7.frame.0	field/entities/actors/pedestrian-entry-dir-7-frame-0.bmp	image	-12	-22
 field.entities.actors.pedestrian.entry.dir.7.frame.1	field/entities/actors/pedestrian-entry-dir-7-frame-1.bmp	image	-19	-24
@@ -2497,6 +2672,8 @@ field.entities.actors.pedestrian.walk.dir.7.frame.0	field/entities/actors/pedest
 field.entities.actors.pedestrian.walk.dir.7.frame.1	field/entities/actors/pedestrian-walk-dir-7-frame-1.bmp	image	-14	-26
 field.entities.actors.pedestrian.walk.dir.7.frame.2	field/entities/actors/pedestrian-walk-dir-7-frame-2.bmp	image	-14	-26
 field.entities.actors.pedestrian.walk.dir.7.frame.3	field/entities/actors/pedestrian-walk-dir-7-frame-3.bmp	image	-19	-26
+field.entities.actors.pedestrian.action.dir.7.frame.0	field/entities/actors/pedestrian-action-dir-7-frame-0.bmp	image	-20	-24
+field.entities.actors.pedestrian.action.dir.7.frame.1	field/entities/actors/pedestrian-action-dir-7-frame-1.bmp	image	-19	-25
 field.entities.actors.actor.kind.12.palette.1.idle	field/entities/actors/actor-kind-12-palette-1-idle.bmp	image	-9	-13
 field.entities.actors.actor.kind.12.palette.1.entry.dir.0.frame.0	field/entities/actors/actor-kind-12-palette-1-entry-dir-0-frame-0.bmp	image	-26	-31
 field.entities.actors.actor.kind.12.palette.1.entry.dir.0.frame.1	field/entities/actors/actor-kind-12-palette-1-entry-dir-0-frame-1.bmp	image	-24	-17
@@ -2504,6 +2681,7 @@ field.entities.actors.actor.kind.12.palette.1.walk.dir.0.frame.0	field/entities/
 field.entities.actors.actor.kind.12.palette.1.walk.dir.0.frame.1	field/entities/actors/actor-kind-12-palette-1-walk-dir-0-frame-1.bmp	image	-11	-15
 field.entities.actors.actor.kind.12.palette.1.walk.dir.0.frame.2	field/entities/actors/actor-kind-12-palette-1-walk-dir-0-frame-2.bmp	image	-10	-12
 field.entities.actors.actor.kind.12.palette.1.walk.dir.0.frame.3	field/entities/actors/actor-kind-12-palette-1-walk-dir-0-frame-3.bmp	image	-10	-14
+field.entities.actors.actor.kind.12.palette.1.action.dir.0.frame.0	field/entities/actors/actor-kind-12-palette-1-action-dir-0-frame-0.bmp	image	-10	-14
 field.entities.actors.actor.kind.12.palette.1.idle.dir.1	field/entities/actors/actor-kind-12-palette-1-idle-dir-1.bmp	image	6	-25
 field.entities.actors.actor.kind.12.palette.1.entry.dir.1.frame.0	field/entities/actors/actor-kind-12-palette-1-entry-dir-1-frame-0.bmp	image	-26	-31
 field.entities.actors.actor.kind.12.palette.1.entry.dir.1.frame.1	field/entities/actors/actor-kind-12-palette-1-entry-dir-1-frame-1.bmp	image	-24	-17
@@ -2511,6 +2689,7 @@ field.entities.actors.actor.kind.12.palette.1.walk.dir.1.frame.0	field/entities/
 field.entities.actors.actor.kind.12.palette.1.walk.dir.1.frame.1	field/entities/actors/actor-kind-12-palette-1-walk-dir-1-frame-1.bmp	image	-20	-19
 field.entities.actors.actor.kind.12.palette.1.walk.dir.1.frame.2	field/entities/actors/actor-kind-12-palette-1-walk-dir-1-frame-2.bmp	image	-23	-16
 field.entities.actors.actor.kind.12.palette.1.walk.dir.1.frame.3	field/entities/actors/actor-kind-12-palette-1-walk-dir-1-frame-3.bmp	image	-21	-18
+field.entities.actors.actor.kind.12.palette.1.action.dir.1.frame.0	field/entities/actors/actor-kind-12-palette-1-action-dir-1-frame-0.bmp	image	-27	-3
 field.entities.actors.actor.kind.12.palette.1.idle.dir.2	field/entities/actors/actor-kind-12-palette-1-idle-dir-2.bmp	image	-28	-11
 field.entities.actors.actor.kind.12.palette.1.entry.dir.2.frame.0	field/entities/actors/actor-kind-12-palette-1-entry-dir-2-frame-0.bmp	image	-26	-31
 field.entities.actors.actor.kind.12.palette.1.entry.dir.2.frame.1	field/entities/actors/actor-kind-12-palette-1-entry-dir-2-frame-1.bmp	image	-24	-17
@@ -2518,6 +2697,7 @@ field.entities.actors.actor.kind.12.palette.1.walk.dir.2.frame.0	field/entities/
 field.entities.actors.actor.kind.12.palette.1.walk.dir.2.frame.1	field/entities/actors/actor-kind-12-palette-1-walk-dir-2-frame-1.bmp	image	-21	-11
 field.entities.actors.actor.kind.12.palette.1.walk.dir.2.frame.2	field/entities/actors/actor-kind-12-palette-1-walk-dir-2-frame-2.bmp	image	-21	-11
 field.entities.actors.actor.kind.12.palette.1.walk.dir.2.frame.3	field/entities/actors/actor-kind-12-palette-1-walk-dir-2-frame-3.bmp	image	-19	-11
+field.entities.actors.actor.kind.12.palette.1.action.dir.2.frame.0	field/entities/actors/actor-kind-12-palette-1-action-dir-2-frame-0.bmp	image	-33	-13
 field.entities.actors.actor.kind.12.palette.1.idle.dir.3	field/entities/actors/actor-kind-12-palette-1-idle-dir-3.bmp	image	-18	-26
 field.entities.actors.actor.kind.12.palette.1.entry.dir.3.frame.0	field/entities/actors/actor-kind-12-palette-1-entry-dir-3-frame-0.bmp	image	-26	-31
 field.entities.actors.actor.kind.12.palette.1.entry.dir.3.frame.1	field/entities/actors/actor-kind-12-palette-1-entry-dir-3-frame-1.bmp	image	-24	-17
@@ -2525,6 +2705,7 @@ field.entities.actors.actor.kind.12.palette.1.walk.dir.3.frame.0	field/entities/
 field.entities.actors.actor.kind.12.palette.1.walk.dir.3.frame.1	field/entities/actors/actor-kind-12-palette-1-walk-dir-3-frame-1.bmp	image	-19	-27
 field.entities.actors.actor.kind.12.palette.1.walk.dir.3.frame.2	field/entities/actors/actor-kind-12-palette-1-walk-dir-3-frame-2.bmp	image	-19	-26
 field.entities.actors.actor.kind.12.palette.1.walk.dir.3.frame.3	field/entities/actors/actor-kind-12-palette-1-walk-dir-3-frame-3.bmp	image	-19	-28
+field.entities.actors.actor.kind.12.palette.1.action.dir.3.frame.0	field/entities/actors/actor-kind-12-palette-1-action-dir-3-frame-0.bmp	image	-21	-30
 field.entities.actors.actor.kind.12.palette.1.idle.dir.4	field/entities/actors/actor-kind-12-palette-1-idle-dir-4.bmp	image	-9	-14
 field.entities.actors.actor.kind.12.palette.1.entry.dir.4.frame.0	field/entities/actors/actor-kind-12-palette-1-entry-dir-4-frame-0.bmp	image	-26	-31
 field.entities.actors.actor.kind.12.palette.1.entry.dir.4.frame.1	field/entities/actors/actor-kind-12-palette-1-entry-dir-4-frame-1.bmp	image	-24	-17
@@ -2532,6 +2713,7 @@ field.entities.actors.actor.kind.12.palette.1.walk.dir.4.frame.0	field/entities/
 field.entities.actors.actor.kind.12.palette.1.walk.dir.4.frame.1	field/entities/actors/actor-kind-12-palette-1-walk-dir-4-frame-1.bmp	image	-10	-17
 field.entities.actors.actor.kind.12.palette.1.walk.dir.4.frame.2	field/entities/actors/actor-kind-12-palette-1-walk-dir-4-frame-2.bmp	image	-10	-16
 field.entities.actors.actor.kind.12.palette.1.walk.dir.4.frame.3	field/entities/actors/actor-kind-12-palette-1-walk-dir-4-frame-3.bmp	image	-10	-18
+field.entities.actors.actor.kind.12.palette.1.action.dir.4.frame.0	field/entities/actors/actor-kind-12-palette-1-action-dir-4-frame-0.bmp	image	-9	-13
 field.entities.actors.actor.kind.12.palette.1.idle.dir.5	field/entities/actors/actor-kind-12-palette-1-idle-dir-5.bmp	image	10	-26
 field.entities.actors.actor.kind.12.palette.1.entry.dir.5.frame.0	field/entities/actors/actor-kind-12-palette-1-entry-dir-5-frame-0.bmp	image	-26	-31
 field.entities.actors.actor.kind.12.palette.1.entry.dir.5.frame.1	field/entities/actors/actor-kind-12-palette-1-entry-dir-5-frame-1.bmp	image	-24	-17
@@ -2539,6 +2721,7 @@ field.entities.actors.actor.kind.12.palette.1.walk.dir.5.frame.0	field/entities/
 field.entities.actors.actor.kind.12.palette.1.walk.dir.5.frame.1	field/entities/actors/actor-kind-12-palette-1-walk-dir-5-frame-1.bmp	image	-5	-27
 field.entities.actors.actor.kind.12.palette.1.walk.dir.5.frame.2	field/entities/actors/actor-kind-12-palette-1-walk-dir-5-frame-2.bmp	image	-5	-26
 field.entities.actors.actor.kind.12.palette.1.walk.dir.5.frame.3	field/entities/actors/actor-kind-12-palette-1-walk-dir-5-frame-3.bmp	image	11	-28
+field.entities.actors.actor.kind.12.palette.1.action.dir.5.frame.0	field/entities/actors/actor-kind-12-palette-1-action-dir-5-frame-0.bmp	image	5	-30
 field.entities.actors.actor.kind.12.palette.1.idle.dir.6	field/entities/actors/actor-kind-12-palette-1-idle-dir-6.bmp	image	-4	-11
 field.entities.actors.actor.kind.12.palette.1.entry.dir.6.frame.0	field/entities/actors/actor-kind-12-palette-1-entry-dir-6-frame-0.bmp	image	-26	-31
 field.entities.actors.actor.kind.12.palette.1.entry.dir.6.frame.1	field/entities/actors/actor-kind-12-palette-1-entry-dir-6-frame-1.bmp	image	-24	-17
@@ -2546,6 +2729,7 @@ field.entities.actors.actor.kind.12.palette.1.walk.dir.6.frame.0	field/entities/
 field.entities.actors.actor.kind.12.palette.1.walk.dir.6.frame.1	field/entities/actors/actor-kind-12-palette-1-walk-dir-6-frame-1.bmp	image	-11	-11
 field.entities.actors.actor.kind.12.palette.1.walk.dir.6.frame.2	field/entities/actors/actor-kind-12-palette-1-walk-dir-6-frame-2.bmp	image	-11	-11
 field.entities.actors.actor.kind.12.palette.1.walk.dir.6.frame.3	field/entities/actors/actor-kind-12-palette-1-walk-dir-6-frame-3.bmp	image	-13	-11
+field.entities.actors.actor.kind.12.palette.1.action.dir.6.frame.0	field/entities/actors/actor-kind-12-palette-1-action-dir-6-frame-0.bmp	image	1	-13
 field.entities.actors.actor.kind.12.palette.1.idle.dir.7	field/entities/actors/actor-kind-12-palette-1-idle-dir-7.bmp	image	-22	-25
 field.entities.actors.actor.kind.12.palette.1.entry.dir.7.frame.0	field/entities/actors/actor-kind-12-palette-1-entry-dir-7-frame-0.bmp	image	-26	-31
 field.entities.actors.actor.kind.12.palette.1.entry.dir.7.frame.1	field/entities/actors/actor-kind-12-palette-1-entry-dir-7-frame-1.bmp	image	-24	-17
@@ -2553,6 +2737,7 @@ field.entities.actors.actor.kind.12.palette.1.walk.dir.7.frame.0	field/entities/
 field.entities.actors.actor.kind.12.palette.1.walk.dir.7.frame.1	field/entities/actors/actor-kind-12-palette-1-walk-dir-7-frame-1.bmp	image	-12	-19
 field.entities.actors.actor.kind.12.palette.1.walk.dir.7.frame.2	field/entities/actors/actor-kind-12-palette-1-walk-dir-7-frame-2.bmp	image	-9	-16
 field.entities.actors.actor.kind.12.palette.1.walk.dir.7.frame.3	field/entities/actors/actor-kind-12-palette-1-walk-dir-7-frame-3.bmp	image	-11	-18
+field.entities.actors.actor.kind.12.palette.1.action.dir.7.frame.0	field/entities/actors/actor-kind-12-palette-1-action-dir-7-frame-0.bmp	image	-5	-3
 field.entities.actors.actor.kind.13.palette.1.idle	field/entities/actors/actor-kind-13-palette-1-idle.bmp	image	-13	-30
 field.entities.actors.actor.kind.13.palette.1.entry.dir.0.frame.0	field/entities/actors/actor-kind-13-palette-1-entry-dir-0-frame-0.bmp	image	-4	-25
 field.entities.actors.actor.kind.13.palette.1.entry.dir.0.frame.1	field/entities/actors/actor-kind-13-palette-1-entry-dir-0-frame-1.bmp	image	-5	-37
@@ -2564,6 +2749,9 @@ field.entities.actors.actor.kind.13.palette.1.walk.dir.0.frame.1	field/entities/
 field.entities.actors.actor.kind.13.palette.1.walk.dir.0.frame.2	field/entities/actors/actor-kind-13-palette-1-walk-dir-0-frame-2.bmp	image	-6	-21
 field.entities.actors.actor.kind.13.palette.1.walk.dir.0.frame.3	field/entities/actors/actor-kind-13-palette-1-walk-dir-0-frame-3.bmp	image	-15	-29
 field.entities.actors.actor.kind.13.palette.1.walk.dir.0.frame.4	field/entities/actors/actor-kind-13-palette-1-walk-dir-0-frame-4.bmp	image	-13	-30
+field.entities.actors.actor.kind.13.palette.1.action.dir.0.frame.0	field/entities/actors/actor-kind-13-palette-1-action-dir-0-frame-0.bmp	image	-8	-36
+field.entities.actors.actor.kind.13.palette.1.action.dir.0.frame.1	field/entities/actors/actor-kind-13-palette-1-action-dir-0-frame-1.bmp	image	-13	-25
+field.entities.actors.actor.kind.13.palette.1.action.dir.0.frame.2	field/entities/actors/actor-kind-13-palette-1-action-dir-0-frame-2.bmp	image	-24	-36
 field.entities.actors.actor.kind.13.palette.1.idle.dir.1	field/entities/actors/actor-kind-13-palette-1-idle-dir-1.bmp	image	-17	-30
 field.entities.actors.actor.kind.13.palette.1.entry.dir.1.frame.0	field/entities/actors/actor-kind-13-palette-1-entry-dir-1-frame-0.bmp	image	-4	-25
 field.entities.actors.actor.kind.13.palette.1.entry.dir.1.frame.1	field/entities/actors/actor-kind-13-palette-1-entry-dir-1-frame-1.bmp	image	-5	-37
@@ -2575,6 +2763,9 @@ field.entities.actors.actor.kind.13.palette.1.walk.dir.1.frame.1	field/entities/
 field.entities.actors.actor.kind.13.palette.1.walk.dir.1.frame.2	field/entities/actors/actor-kind-13-palette-1-walk-dir-1-frame-2.bmp	image	-6	-21
 field.entities.actors.actor.kind.13.palette.1.walk.dir.1.frame.3	field/entities/actors/actor-kind-13-palette-1-walk-dir-1-frame-3.bmp	image	-15	-29
 field.entities.actors.actor.kind.13.palette.1.walk.dir.1.frame.4	field/entities/actors/actor-kind-13-palette-1-walk-dir-1-frame-4.bmp	image	-17	-30
+field.entities.actors.actor.kind.13.palette.1.action.dir.1.frame.0	field/entities/actors/actor-kind-13-palette-1-action-dir-1-frame-0.bmp	image	-23	-23
+field.entities.actors.actor.kind.13.palette.1.action.dir.1.frame.1	field/entities/actors/actor-kind-13-palette-1-action-dir-1-frame-1.bmp	image	-27	-23
+field.entities.actors.actor.kind.13.palette.1.action.dir.1.frame.2	field/entities/actors/actor-kind-13-palette-1-action-dir-1-frame-2.bmp	image	-25	-25
 field.entities.actors.actor.kind.13.palette.1.idle.dir.2	field/entities/actors/actor-kind-13-palette-1-idle-dir-2.bmp	image	-10	-28
 field.entities.actors.actor.kind.13.palette.1.entry.dir.2.frame.0	field/entities/actors/actor-kind-13-palette-1-entry-dir-2-frame-0.bmp	image	-4	-25
 field.entities.actors.actor.kind.13.palette.1.entry.dir.2.frame.1	field/entities/actors/actor-kind-13-palette-1-entry-dir-2-frame-1.bmp	image	-5	-37
@@ -2586,6 +2777,9 @@ field.entities.actors.actor.kind.13.palette.1.walk.dir.2.frame.1	field/entities/
 field.entities.actors.actor.kind.13.palette.1.walk.dir.2.frame.2	field/entities/actors/actor-kind-13-palette-1-walk-dir-2-frame-2.bmp	image	-6	-21
 field.entities.actors.actor.kind.13.palette.1.walk.dir.2.frame.3	field/entities/actors/actor-kind-13-palette-1-walk-dir-2-frame-3.bmp	image	-15	-29
 field.entities.actors.actor.kind.13.palette.1.walk.dir.2.frame.4	field/entities/actors/actor-kind-13-palette-1-walk-dir-2-frame-4.bmp	image	-10	-28
+field.entities.actors.actor.kind.13.palette.1.action.dir.2.frame.0	field/entities/actors/actor-kind-13-palette-1-action-dir-2-frame-0.bmp	image	-8	-16
+field.entities.actors.actor.kind.13.palette.1.action.dir.2.frame.1	field/entities/actors/actor-kind-13-palette-1-action-dir-2-frame-1.bmp	image	-14	-28
+field.entities.actors.actor.kind.13.palette.1.action.dir.2.frame.2	field/entities/actors/actor-kind-13-palette-1-action-dir-2-frame-2.bmp	image	-2	-22
 field.entities.actors.actor.kind.13.palette.1.idle.dir.3	field/entities/actors/actor-kind-13-palette-1-idle-dir-3.bmp	image	-12	-32
 field.entities.actors.actor.kind.13.palette.1.entry.dir.3.frame.0	field/entities/actors/actor-kind-13-palette-1-entry-dir-3-frame-0.bmp	image	-4	-25
 field.entities.actors.actor.kind.13.palette.1.entry.dir.3.frame.1	field/entities/actors/actor-kind-13-palette-1-entry-dir-3-frame-1.bmp	image	-5	-37
@@ -2597,6 +2791,9 @@ field.entities.actors.actor.kind.13.palette.1.walk.dir.3.frame.1	field/entities/
 field.entities.actors.actor.kind.13.palette.1.walk.dir.3.frame.2	field/entities/actors/actor-kind-13-palette-1-walk-dir-3-frame-2.bmp	image	22	-25
 field.entities.actors.actor.kind.13.palette.1.walk.dir.3.frame.3	field/entities/actors/actor-kind-13-palette-1-walk-dir-3-frame-3.bmp	image	-14	-31
 field.entities.actors.actor.kind.13.palette.1.walk.dir.3.frame.4	field/entities/actors/actor-kind-13-palette-1-walk-dir-3-frame-4.bmp	image	-12	-32
+field.entities.actors.actor.kind.13.palette.1.action.dir.3.frame.0	field/entities/actors/actor-kind-13-palette-1-action-dir-3-frame-0.bmp	image	-12	-31
+field.entities.actors.actor.kind.13.palette.1.action.dir.3.frame.1	field/entities/actors/actor-kind-13-palette-1-action-dir-3-frame-1.bmp	image	-14	-34
+field.entities.actors.actor.kind.13.palette.1.action.dir.3.frame.2	field/entities/actors/actor-kind-13-palette-1-action-dir-3-frame-2.bmp	image	-16	-26
 field.entities.actors.actor.kind.13.palette.1.idle.dir.4	field/entities/actors/actor-kind-13-palette-1-idle-dir-4.bmp	image	-10	-28
 field.entities.actors.actor.kind.13.palette.1.entry.dir.4.frame.0	field/entities/actors/actor-kind-13-palette-1-entry-dir-4-frame-0.bmp	image	-28	-25
 field.entities.actors.actor.kind.13.palette.1.entry.dir.4.frame.1	field/entities/actors/actor-kind-13-palette-1-entry-dir-4-frame-1.bmp	image	-27	-37
@@ -2608,6 +2805,9 @@ field.entities.actors.actor.kind.13.palette.1.walk.dir.4.frame.1	field/entities/
 field.entities.actors.actor.kind.13.palette.1.walk.dir.4.frame.2	field/entities/actors/actor-kind-13-palette-1-walk-dir-4-frame-2.bmp	image	22	-25
 field.entities.actors.actor.kind.13.palette.1.walk.dir.4.frame.3	field/entities/actors/actor-kind-13-palette-1-walk-dir-4-frame-3.bmp	image	-14	-31
 field.entities.actors.actor.kind.13.palette.1.walk.dir.4.frame.4	field/entities/actors/actor-kind-13-palette-1-walk-dir-4-frame-4.bmp	image	-10	-28
+field.entities.actors.actor.kind.13.palette.1.action.dir.4.frame.0	field/entities/actors/actor-kind-13-palette-1-action-dir-4-frame-0.bmp	image	-12	-23
+field.entities.actors.actor.kind.13.palette.1.action.dir.4.frame.1	field/entities/actors/actor-kind-13-palette-1-action-dir-4-frame-1.bmp	image	-12	-24
+field.entities.actors.actor.kind.13.palette.1.action.dir.4.frame.2	field/entities/actors/actor-kind-13-palette-1-action-dir-4-frame-2.bmp	image	-20	-23
 field.entities.actors.actor.kind.13.palette.1.idle.dir.5	field/entities/actors/actor-kind-13-palette-1-idle-dir-5.bmp	image	-20	-32
 field.entities.actors.actor.kind.13.palette.1.entry.dir.5.frame.0	field/entities/actors/actor-kind-13-palette-1-entry-dir-5-frame-0.bmp	image	-28	-25
 field.entities.actors.actor.kind.13.palette.1.entry.dir.5.frame.1	field/entities/actors/actor-kind-13-palette-1-entry-dir-5-frame-1.bmp	image	-27	-37
@@ -2619,6 +2819,9 @@ field.entities.actors.actor.kind.13.palette.1.walk.dir.5.frame.1	field/entities/
 field.entities.actors.actor.kind.13.palette.1.walk.dir.5.frame.2	field/entities/actors/actor-kind-13-palette-1-walk-dir-5-frame-2.bmp	image	-38	-25
 field.entities.actors.actor.kind.13.palette.1.walk.dir.5.frame.3	field/entities/actors/actor-kind-13-palette-1-walk-dir-5-frame-3.bmp	image	-18	-31
 field.entities.actors.actor.kind.13.palette.1.walk.dir.5.frame.4	field/entities/actors/actor-kind-13-palette-1-walk-dir-5-frame-4.bmp	image	-20	-32
+field.entities.actors.actor.kind.13.palette.1.action.dir.5.frame.0	field/entities/actors/actor-kind-13-palette-1-action-dir-5-frame-0.bmp	image	-20	-31
+field.entities.actors.actor.kind.13.palette.1.action.dir.5.frame.1	field/entities/actors/actor-kind-13-palette-1-action-dir-5-frame-1.bmp	image	-18	-34
+field.entities.actors.actor.kind.13.palette.1.action.dir.5.frame.2	field/entities/actors/actor-kind-13-palette-1-action-dir-5-frame-2.bmp	image	-16	-26
 field.entities.actors.actor.kind.13.palette.1.idle.dir.6	field/entities/actors/actor-kind-13-palette-1-idle-dir-6.bmp	image	-22	-28
 field.entities.actors.actor.kind.13.palette.1.entry.dir.6.frame.0	field/entities/actors/actor-kind-13-palette-1-entry-dir-6-frame-0.bmp	image	-28	-25
 field.entities.actors.actor.kind.13.palette.1.entry.dir.6.frame.1	field/entities/actors/actor-kind-13-palette-1-entry-dir-6-frame-1.bmp	image	-27	-37
@@ -2630,6 +2833,9 @@ field.entities.actors.actor.kind.13.palette.1.walk.dir.6.frame.1	field/entities/
 field.entities.actors.actor.kind.13.palette.1.walk.dir.6.frame.2	field/entities/actors/actor-kind-13-palette-1-walk-dir-6-frame-2.bmp	image	-38	-25
 field.entities.actors.actor.kind.13.palette.1.walk.dir.6.frame.3	field/entities/actors/actor-kind-13-palette-1-walk-dir-6-frame-3.bmp	image	-18	-31
 field.entities.actors.actor.kind.13.palette.1.walk.dir.6.frame.4	field/entities/actors/actor-kind-13-palette-1-walk-dir-6-frame-4.bmp	image	-22	-28
+field.entities.actors.actor.kind.13.palette.1.action.dir.6.frame.0	field/entities/actors/actor-kind-13-palette-1-action-dir-6-frame-0.bmp	image	-24	-16
+field.entities.actors.actor.kind.13.palette.1.action.dir.6.frame.1	field/entities/actors/actor-kind-13-palette-1-action-dir-6-frame-1.bmp	image	-18	-28
+field.entities.actors.actor.kind.13.palette.1.action.dir.6.frame.2	field/entities/actors/actor-kind-13-palette-1-action-dir-6-frame-2.bmp	image	-30	-22
 field.entities.actors.actor.kind.13.palette.1.idle.dir.7	field/entities/actors/actor-kind-13-palette-1-idle-dir-7.bmp	image	-15	-30
 field.entities.actors.actor.kind.13.palette.1.entry.dir.7.frame.0	field/entities/actors/actor-kind-13-palette-1-entry-dir-7-frame-0.bmp	image	-28	-25
 field.entities.actors.actor.kind.13.palette.1.entry.dir.7.frame.1	field/entities/actors/actor-kind-13-palette-1-entry-dir-7-frame-1.bmp	image	-27	-37
@@ -2641,6 +2847,9 @@ field.entities.actors.actor.kind.13.palette.1.walk.dir.7.frame.1	field/entities/
 field.entities.actors.actor.kind.13.palette.1.walk.dir.7.frame.2	field/entities/actors/actor-kind-13-palette-1-walk-dir-7-frame-2.bmp	image	-16	-21
 field.entities.actors.actor.kind.13.palette.1.walk.dir.7.frame.3	field/entities/actors/actor-kind-13-palette-1-walk-dir-7-frame-3.bmp	image	-17	-29
 field.entities.actors.actor.kind.13.palette.1.walk.dir.7.frame.4	field/entities/actors/actor-kind-13-palette-1-walk-dir-7-frame-4.bmp	image	-15	-30
+field.entities.actors.actor.kind.13.palette.1.action.dir.7.frame.0	field/entities/actors/actor-kind-13-palette-1-action-dir-7-frame-0.bmp	image	-9	-23
+field.entities.actors.actor.kind.13.palette.1.action.dir.7.frame.1	field/entities/actors/actor-kind-13-palette-1-action-dir-7-frame-1.bmp	image	-5	-23
+field.entities.actors.actor.kind.13.palette.1.action.dir.7.frame.2	field/entities/actors/actor-kind-13-palette-1-action-dir-7-frame-2.bmp	image	-7	-25
 field.entities.actors.actor.kind.14.palette.1.idle	field/entities/actors/actor-kind-14-palette-1-idle.bmp	image	-15	-28
 field.entities.actors.actor.kind.14.palette.1.entry.dir.0.frame.0	field/entities/actors/actor-kind-14-palette-1-entry-dir-0-frame-0.bmp	image	-13	-45
 field.entities.actors.actor.kind.14.palette.1.entry.dir.0.frame.1	field/entities/actors/actor-kind-14-palette-1-entry-dir-0-frame-1.bmp	image	-13	-47
@@ -2654,6 +2863,8 @@ field.entities.actors.actor.kind.14.palette.1.walk.dir.0.frame.0	field/entities/
 field.entities.actors.actor.kind.14.palette.1.walk.dir.0.frame.1	field/entities/actors/actor-kind-14-palette-1-walk-dir-0-frame-1.bmp	image	-14	-25
 field.entities.actors.actor.kind.14.palette.1.walk.dir.0.frame.2	field/entities/actors/actor-kind-14-palette-1-walk-dir-0-frame-2.bmp	image	-15	-29
 field.entities.actors.actor.kind.14.palette.1.walk.dir.0.frame.3	field/entities/actors/actor-kind-14-palette-1-walk-dir-0-frame-3.bmp	image	-17	-36
+field.entities.actors.actor.kind.14.palette.1.action.dir.0.frame.0	field/entities/actors/actor-kind-14-palette-1-action-dir-0-frame-0.bmp	image	-13	-45
+field.entities.actors.actor.kind.14.palette.1.action.dir.0.frame.1	field/entities/actors/actor-kind-14-palette-1-action-dir-0-frame-1.bmp	image	-12	-27
 field.entities.actors.actor.kind.14.palette.1.idle.dir.1	field/entities/actors/actor-kind-14-palette-1-idle-dir-1.bmp	image	-15	-23
 field.entities.actors.actor.kind.14.palette.1.entry.dir.1.frame.0	field/entities/actors/actor-kind-14-palette-1-entry-dir-1-frame-0.bmp	image	-13	-45
 field.entities.actors.actor.kind.14.palette.1.entry.dir.1.frame.1	field/entities/actors/actor-kind-14-palette-1-entry-dir-1-frame-1.bmp	image	-13	-47
@@ -2667,6 +2878,8 @@ field.entities.actors.actor.kind.14.palette.1.walk.dir.1.frame.0	field/entities/
 field.entities.actors.actor.kind.14.palette.1.walk.dir.1.frame.1	field/entities/actors/actor-kind-14-palette-1-walk-dir-1-frame-1.bmp	image	-17	-36
 field.entities.actors.actor.kind.14.palette.1.walk.dir.1.frame.2	field/entities/actors/actor-kind-14-palette-1-walk-dir-1-frame-2.bmp	image	-15	-35
 field.entities.actors.actor.kind.14.palette.1.walk.dir.1.frame.3	field/entities/actors/actor-kind-14-palette-1-walk-dir-1-frame-3.bmp	image	-12	-23
+field.entities.actors.actor.kind.14.palette.1.action.dir.1.frame.0	field/entities/actors/actor-kind-14-palette-1-action-dir-1-frame-0.bmp	image	-12	-32
+field.entities.actors.actor.kind.14.palette.1.action.dir.1.frame.1	field/entities/actors/actor-kind-14-palette-1-action-dir-1-frame-1.bmp	image	-11	-25
 field.entities.actors.actor.kind.14.palette.1.idle.dir.2	field/entities/actors/actor-kind-14-palette-1-idle-dir-2.bmp	image	-12	-26
 field.entities.actors.actor.kind.14.palette.1.entry.dir.2.frame.0	field/entities/actors/actor-kind-14-palette-1-entry-dir-2-frame-0.bmp	image	-13	-45
 field.entities.actors.actor.kind.14.palette.1.entry.dir.2.frame.1	field/entities/actors/actor-kind-14-palette-1-entry-dir-2-frame-1.bmp	image	-13	-47
@@ -2680,6 +2893,8 @@ field.entities.actors.actor.kind.14.palette.1.walk.dir.2.frame.0	field/entities/
 field.entities.actors.actor.kind.14.palette.1.walk.dir.2.frame.1	field/entities/actors/actor-kind-14-palette-1-walk-dir-2-frame-1.bmp	image	-12	-25
 field.entities.actors.actor.kind.14.palette.1.walk.dir.2.frame.2	field/entities/actors/actor-kind-14-palette-1-walk-dir-2-frame-2.bmp	image	-12	-26
 field.entities.actors.actor.kind.14.palette.1.walk.dir.2.frame.3	field/entities/actors/actor-kind-14-palette-1-walk-dir-2-frame-3.bmp	image	-12	-26
+field.entities.actors.actor.kind.14.palette.1.action.dir.2.frame.0	field/entities/actors/actor-kind-14-palette-1-action-dir-2-frame-0.bmp	image	-10	-27
+field.entities.actors.actor.kind.14.palette.1.action.dir.2.frame.1	field/entities/actors/actor-kind-14-palette-1-action-dir-2-frame-1.bmp	image	-12	-25
 field.entities.actors.actor.kind.14.palette.1.idle.dir.3	field/entities/actors/actor-kind-14-palette-1-idle-dir-3.bmp	image	-14	-24
 field.entities.actors.actor.kind.14.palette.1.entry.dir.3.frame.0	field/entities/actors/actor-kind-14-palette-1-entry-dir-3-frame-0.bmp	image	-13	-45
 field.entities.actors.actor.kind.14.palette.1.entry.dir.3.frame.1	field/entities/actors/actor-kind-14-palette-1-entry-dir-3-frame-1.bmp	image	-13	-47
@@ -2693,6 +2908,8 @@ field.entities.actors.actor.kind.14.palette.1.walk.dir.3.frame.0	field/entities/
 field.entities.actors.actor.kind.14.palette.1.walk.dir.3.frame.1	field/entities/actors/actor-kind-14-palette-1-walk-dir-3-frame-1.bmp	image	-14	-24
 field.entities.actors.actor.kind.14.palette.1.walk.dir.3.frame.2	field/entities/actors/actor-kind-14-palette-1-walk-dir-3-frame-2.bmp	image	-14	-24
 field.entities.actors.actor.kind.14.palette.1.walk.dir.3.frame.3	field/entities/actors/actor-kind-14-palette-1-walk-dir-3-frame-3.bmp	image	-18	-29
+field.entities.actors.actor.kind.14.palette.1.action.dir.3.frame.0	field/entities/actors/actor-kind-14-palette-1-action-dir-3-frame-0.bmp	image	-15	-24
+field.entities.actors.actor.kind.14.palette.1.action.dir.3.frame.1	field/entities/actors/actor-kind-14-palette-1-action-dir-3-frame-1.bmp	image	-15	-22
 field.entities.actors.actor.kind.14.palette.1.idle.dir.4	field/entities/actors/actor-kind-14-palette-1-idle-dir-4.bmp	image	-4	-35
 field.entities.actors.actor.kind.14.palette.1.entry.dir.4.frame.0	field/entities/actors/actor-kind-14-palette-1-entry-dir-4-frame-0.bmp	image	-13	-45
 field.entities.actors.actor.kind.14.palette.1.entry.dir.4.frame.1	field/entities/actors/actor-kind-14-palette-1-entry-dir-4-frame-1.bmp	image	-13	-47
@@ -2706,6 +2923,8 @@ field.entities.actors.actor.kind.14.palette.1.walk.dir.4.frame.0	field/entities/
 field.entities.actors.actor.kind.14.palette.1.walk.dir.4.frame.1	field/entities/actors/actor-kind-14-palette-1-walk-dir-4-frame-1.bmp	image	-15	-35
 field.entities.actors.actor.kind.14.palette.1.walk.dir.4.frame.2	field/entities/actors/actor-kind-14-palette-1-walk-dir-4-frame-2.bmp	image	-18	-29
 field.entities.actors.actor.kind.14.palette.1.walk.dir.4.frame.3	field/entities/actors/actor-kind-14-palette-1-walk-dir-4-frame-3.bmp	image	-17	-35
+field.entities.actors.actor.kind.14.palette.1.action.dir.4.frame.0	field/entities/actors/actor-kind-14-palette-1-action-dir-4-frame-0.bmp	image	-15	-42
+field.entities.actors.actor.kind.14.palette.1.action.dir.4.frame.1	field/entities/actors/actor-kind-14-palette-1-action-dir-4-frame-1.bmp	image	-15	-19
 field.entities.actors.actor.kind.14.palette.1.idle.dir.5	field/entities/actors/actor-kind-14-palette-1-idle-dir-5.bmp	image	-18	-24
 field.entities.actors.actor.kind.14.palette.1.entry.dir.5.frame.0	field/entities/actors/actor-kind-14-palette-1-entry-dir-5-frame-0.bmp	image	-13	-45
 field.entities.actors.actor.kind.14.palette.1.entry.dir.5.frame.1	field/entities/actors/actor-kind-14-palette-1-entry-dir-5-frame-1.bmp	image	-13	-47
@@ -2719,6 +2938,8 @@ field.entities.actors.actor.kind.14.palette.1.walk.dir.5.frame.0	field/entities/
 field.entities.actors.actor.kind.14.palette.1.walk.dir.5.frame.1	field/entities/actors/actor-kind-14-palette-1-walk-dir-5-frame-1.bmp	image	-18	-24
 field.entities.actors.actor.kind.14.palette.1.walk.dir.5.frame.2	field/entities/actors/actor-kind-14-palette-1-walk-dir-5-frame-2.bmp	image	-18	-24
 field.entities.actors.actor.kind.14.palette.1.walk.dir.5.frame.3	field/entities/actors/actor-kind-14-palette-1-walk-dir-5-frame-3.bmp	image	-14	-29
+field.entities.actors.actor.kind.14.palette.1.action.dir.5.frame.0	field/entities/actors/actor-kind-14-palette-1-action-dir-5-frame-0.bmp	image	-9	-24
+field.entities.actors.actor.kind.14.palette.1.action.dir.5.frame.1	field/entities/actors/actor-kind-14-palette-1-action-dir-5-frame-1.bmp	image	-17	-22
 field.entities.actors.actor.kind.14.palette.1.idle.dir.6	field/entities/actors/actor-kind-14-palette-1-idle-dir-6.bmp	image	-20	-26
 field.entities.actors.actor.kind.14.palette.1.entry.dir.6.frame.0	field/entities/actors/actor-kind-14-palette-1-entry-dir-6-frame-0.bmp	image	-13	-45
 field.entities.actors.actor.kind.14.palette.1.entry.dir.6.frame.1	field/entities/actors/actor-kind-14-palette-1-entry-dir-6-frame-1.bmp	image	-13	-47
@@ -2732,6 +2953,8 @@ field.entities.actors.actor.kind.14.palette.1.walk.dir.6.frame.0	field/entities/
 field.entities.actors.actor.kind.14.palette.1.walk.dir.6.frame.1	field/entities/actors/actor-kind-14-palette-1-walk-dir-6-frame-1.bmp	image	-20	-25
 field.entities.actors.actor.kind.14.palette.1.walk.dir.6.frame.2	field/entities/actors/actor-kind-14-palette-1-walk-dir-6-frame-2.bmp	image	-20	-26
 field.entities.actors.actor.kind.14.palette.1.walk.dir.6.frame.3	field/entities/actors/actor-kind-14-palette-1-walk-dir-6-frame-3.bmp	image	-20	-26
+field.entities.actors.actor.kind.14.palette.1.action.dir.6.frame.0	field/entities/actors/actor-kind-14-palette-1-action-dir-6-frame-0.bmp	image	-14	-27
+field.entities.actors.actor.kind.14.palette.1.action.dir.6.frame.1	field/entities/actors/actor-kind-14-palette-1-action-dir-6-frame-1.bmp	image	-20	-25
 field.entities.actors.actor.kind.14.palette.1.idle.dir.7	field/entities/actors/actor-kind-14-palette-1-idle-dir-7.bmp	image	-17	-23
 field.entities.actors.actor.kind.14.palette.1.entry.dir.7.frame.0	field/entities/actors/actor-kind-14-palette-1-entry-dir-7-frame-0.bmp	image	-13	-45
 field.entities.actors.actor.kind.14.palette.1.entry.dir.7.frame.1	field/entities/actors/actor-kind-14-palette-1-entry-dir-7-frame-1.bmp	image	-13	-47
@@ -2745,6 +2968,8 @@ field.entities.actors.actor.kind.14.palette.1.walk.dir.7.frame.0	field/entities/
 field.entities.actors.actor.kind.14.palette.1.walk.dir.7.frame.1	field/entities/actors/actor-kind-14-palette-1-walk-dir-7-frame-1.bmp	image	-15	-36
 field.entities.actors.actor.kind.14.palette.1.walk.dir.7.frame.2	field/entities/actors/actor-kind-14-palette-1-walk-dir-7-frame-2.bmp	image	-17	-35
 field.entities.actors.actor.kind.14.palette.1.walk.dir.7.frame.3	field/entities/actors/actor-kind-14-palette-1-walk-dir-7-frame-3.bmp	image	-20	-23
+field.entities.actors.actor.kind.14.palette.1.action.dir.7.frame.0	field/entities/actors/actor-kind-14-palette-1-action-dir-7-frame-0.bmp	image	0	-32
+field.entities.actors.actor.kind.14.palette.1.action.dir.7.frame.1	field/entities/actors/actor-kind-14-palette-1-action-dir-7-frame-1.bmp	image	-21	-25
 field.entities.actors.thon.idle	field/entities/actors/thon-idle.bmp	image	-24	-55
 field.entities.idle.0	field/entities/idle-0.bmp	image	0	0
 field.entities.idle.1	field/entities/idle-1.bmp	image	0	0

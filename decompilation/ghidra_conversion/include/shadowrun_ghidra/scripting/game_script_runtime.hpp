@@ -491,6 +491,12 @@ struct ScriptActorBehaviorContext {
     std::int16_t ai_animation_frame = 0;
     // Positive C062 loop length supplied from extracted source art.
     std::uint8_t walk_animation_frame_count = 0;
+    // Directional C0A2 target-action facts extracted to a named actor profile.
+    // Lua owns the per-instance frame accumulator and finite-list completion.
+    std::uint8_t action_animation_frame_count = 0;
+    std::uint16_t action_animation_increment = 0;
+    std::uint16_t action_animation_threshold = 0;
+    std::optional<std::uint16_t> action_animation_audio_event;
     // 0x44BC fills +0x78/+0x7B/+0x90 from the selected ROM template. Lua
     // uses these typed facts when 0xB11C resets the signed +0xDC delay.
     std::int16_t initial_action_delay = 0;

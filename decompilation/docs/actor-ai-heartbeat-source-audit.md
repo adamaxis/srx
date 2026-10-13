@@ -280,6 +280,26 @@ sequence; the connected field route has only captured the regular family so
 far. This is source pass ordering, not a single callback that advances and
 retires together.
 
+### C0A2 target-action pose and cue
+
+After target acceptance, `0xB1DC` sets delay mode 1, selects ordinary cue
+`0x4C` or Hell Hound cue `0x55`, derives a directional selector from the
+linked-target heading, installs the `0xC0A2` finite list, and resets the
+animation accumulator/frame. Actor initialization at `0x1514E` supplies the
+`0x1000` period. The importer exports the directional frames and a named
+profile; Lua owns the action state, source increment/period cadence, and final
+frame hold on the separate `0x4618` render heartbeat. The extracted profiles
+have 2 frames at `0x0200` for kinds 4-11 and 14, 1 frame at `0x01F4` for kind
+12, and 3 frames at `0x0200` for kind 13.
+
+The ordinary encounter QA observes the connected transition, both finite-list
+frames, mode-1 delay, and one `0x4C` request. The full 320x224 snapshots retain
+the HUD and map with no black sprite rectangle or stale control. The Hound
+close-effect diversion is separate and remains source-silent. Cue resource
+mapping/playback duration and an independent same-action Genesis capture are
+not established. `0x55C76` still owns the unresolved combat reaction/hit path;
+this visual transition does not claim that damage or actor death is connected.
+
 ## Projectile behavior is a separate Lua heartbeat
 
 The ROM behavior pass at `0x14E0A` checks the stopped bit at `+0x11.3`. A
@@ -446,9 +466,10 @@ mode 1 or 3 from signed `+0xDC`; this exits pursuit and hands the record to
 its action continuation. Lua now reports that outcome as
 `ai_target_engaged`, preserves the selected `+0x34` heading, and returns no
 movement step for that pass. The Qt runtime accepts this typed engaged state
-without fabricating a collision-resolved move. The attack/action continuations
-remain unported, so engagement here means target acceptance and route stop,
-not a completed attack or hit.
+without fabricating a collision-resolved move. Lua now plays the source-backed
+C0A2 pose and requests the target-action cue on the `0xB1DC` transition, but
+the following `0x55C76` combat reaction remains unconnected. Engagement and
+the visible action pose therefore do not mean a completed attack or hit.
 
 The accepted ranges are sourced from `0x14C7C`, `0x14D58`, `0x15C58`, and
 `0x15C84`. Ordinary kinds accept an active, unlocked linked actor only below

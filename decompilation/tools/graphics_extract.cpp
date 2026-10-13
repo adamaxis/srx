@@ -2449,6 +2449,9 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_resource_row(
         "field.entities.world.activity.encounter.actors",
         "field/entities/dynamic-world-activity-actors.tsv", "state");
+    emit_generated_resource_row(
+        "field.entities.actor.action.profiles",
+        "field/entities/actor-action-profiles.tsv", "state");
     std::string line;
     std::getline(catalog, line);
     while (std::getline(catalog, line)) {
@@ -3990,6 +3993,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     }
     constexpr std::size_t kIdleSelectorTableOffset = 0xC052U;
     constexpr std::size_t kEntrySelectorTableOffset = 0xC0B2U;
+    constexpr std::size_t kActionSelectorTableOffset = 0xC0A2U;
     constexpr std::size_t kThonPatternStreamOffset = 0x1EBDEEU;
     constexpr std::size_t kThonPatternVramOffset = 0x5920U;
     constexpr std::size_t kActorStatePointerTableOffset = 0x62ACU;
@@ -4008,6 +4012,17 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         }
         used_actor_directions[rotated & 0x0007U] = true;
     }
+    std::ofstream action_profile_table(
+        root / "field/entities/actor-action-profiles.tsv",
+        std::ios::binary);
+    if (!action_profile_table) {
+        throw std::runtime_error(
+            "cannot create field actor action profile table");
+    }
+    action_profile_table
+        << "sprite_stem\tentity_kind\tframe_count\tframe_increment"
+           "\tframe_threshold\taudio_event\n";
+    std::map<std::string, std::array<std::uint16_t, 3>> action_profile_facts;
     for (const auto& [kind_palette, kind_source] : actor_visual_sources) {
         (void)kind_palette;
         const auto asset_stem =
@@ -4216,7 +4231,79 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     true, manifest, written, missing, blank,
                     frame.origin_x, frame.origin_y);
             }
+
+            // B1DC installs the directional C0A2 finite list for a target
+            // action. The list's +2 word becomes the live animation
+            // increment; actor initialization at 1514E supplies the
+            // 0x1000 threshold. Keep these as named source facts so Lua can
+            // advance the action heartbeat without a runtime ROM lookup.
+            const auto action_selector = read_big_endian_word(
+                rom, kActionSelectorTableOffset + direction * 2U);
+            const auto action_list = static_cast<std::size_t>(
+                read_big_endian_long(
+                    rom, kind_state_pointer + action_selector));
+            const auto action_marker = read_big_endian_word(rom, action_list);
+            const auto action_frame_count = static_cast<std::uint16_t>(
+                action_marker & 0x7FFFU);
+            const auto action_frame_increment =
+                read_big_endian_word(rom, action_list + 2U);
+            if ((action_marker & 0x8000U) == 0U ||
+                action_frame_count == 0U || action_frame_count > 8U ||
+                action_frame_increment == 0U) {
+                throw std::runtime_error(
+                    "dynamic actor C0A2 list has an unsupported source layout");
+            }
+            const std::array<std::uint16_t, 3> profile_facts{
+                kind_source.entity_kind, action_frame_count,
+                action_frame_increment};
+            const auto [profile, inserted] = action_profile_facts.emplace(
+                kind_source.sprite_stem, profile_facts);
+            if (!inserted && profile->second != profile_facts) {
+                throw std::runtime_error(
+                    "dynamic actor C0A2 lists disagree by direction");
+            }
+            if (direction == 0U && inserted) {
+                action_profile_table
+                    << kind_source.sprite_stem << '\t'
+                    << kind_source.entity_kind << '\t'
+                    << action_frame_count << '\t'
+                    << action_frame_increment << '\t' << 0x1000U << '\t'
+                    << (kind_source.entity_kind == 12U ? 0x55U : 0x4CU)
+                    << '\n';
+            }
+            for (std::uint16_t frame_index = 0U;
+                 frame_index < action_frame_count; ++frame_index) {
+                const auto frame =
+                    shadowrun::graphics::decode_genesis_field_entity_state_frame(
+                        rom, kind_source.entity_kind,
+                        kind_source.palette_line, action_selector, frame_index);
+                write_catalog_asset(
+                    root, asset_stem + "-action-dir-" +
+                              std::to_string(direction) + "-frame-" +
+                              std::to_string(frame_index) + ".bmp",
+                    frame.image, "sprite",
+                    "0xB1DC/0xC0A2/0x5FDC/0x600E kind=" +
+                        std::to_string(kind_source.entity_kind) +
+                        " template=" +
+                        format_offset(kind_source.template_offset) +
+                        " descriptor=" +
+                        format_offset(static_cast<std::uint32_t>(
+                            frame.descriptor_offset)) +
+                        " selector=" + format_offset(action_selector) +
+                        " frame=" + std::to_string(frame_index) +
+                        " increment=" +
+                        std::to_string(action_frame_increment) +
+                        " palette-line=" +
+                        std::to_string(kind_source.palette_line),
+                    true, manifest, written, missing, blank,
+                    frame.origin_x, frame.origin_y);
+            }
         }
+    }
+    action_profile_table.close();
+    if (!action_profile_table) {
+        throw std::runtime_error(
+            "cannot write field actor action profile table");
     }
 
     for (std::size_t index = 0; index < assets.entity_frames.size(); ++index) {
