@@ -707,33 +707,67 @@ encounters possible; they do not implement a single global wanted flag that
 automatically inserts the same patrol into every map.
 
 The separate heat byte `FFFBFA` is encounter state, not the selector's
-map-wide spawn gate. The generated direct-reference index at
-`decompilation/analysis/direct_references.tsv` contains 29 references to that
-byte. The source writes it in the shared patrol Attack
-handler `0x23412` (+2, capped at 8, only when the patrol list starts), the Run
-handler `0x23782` (+1, capped at 8), the scene-41-to-43 Attack handler
-`0x23A3A` (+2, capped at 8 when its list starts), and combat action code near
-`0x55AFA` for actor records whose `+0x9B` byte is `0x13`. Compliance and
-follow-up handlers can decrement it, several payment/service handlers clear
-it, and arrest settlement at `0x235AA` clears it. That settlement removes the
-source-listed weapon item IDs from the three runner records, computes a first
-fine of 1,000 nuyen times `(heat + 2)`, repeatedly halves that amount until it
-fits the available funds, and deducts it. These are encounter and legal
-resolution effects. The selector at `0x59986` and field tick at `0x1E166` do
-not directly read the heat byte.
+map-wide spawn gate. The indexed report at
+`decompilation/analysis/direct_references.tsv` lists 29 references, but a raw
+US ROM operand sweep found 38 executable direct-address sites. The nine missed
+sites lie in two timeout callbacks and a status/file-state branch that were
+not reached by the analyzer's seeded control-flow walk:
+
+| ROM instructions | Recovered path | Heat effect | What this does and does not establish |
+|---|---|---|---|
+| `0x53FFC`, `0x54002`, `0x5400E` | Timeout callback installed by `process_pending_entity_template_lists` at `0x43B6` when `FFE120 == 0x1E628`; scheduled through `0x1DBAA` | Add 2, clamp to 8 | A delayed world-activity outcome changes heat and story flags; this callback does not insert a field patrol. |
+| `0x54286`, `0x5428C`, `0x54298` | The same dispatcher when `FFE120 == 0x1E5C4`; scheduled through `0x1DBAA` | Add 2, clamp to 8 | A second delayed world-activity outcome changes heat and progress state; this callback does not insert a field patrol. |
+| `0x55238`, `0x55242`, `0x5524E` | Status/file-state branch for `FFFBBC == 0x17` and `D0 == 0x0D` | Read heat tiers | With nonzero heat, set exactly one of `FFFC38` bits 6, 7, or 8 for heat `1-2`, `3-7`, or `8`; clear the other two and continue to the notebook-file result path. This updates available Notebook notices, not map actors. |
+
+The other source writes include the shared patrol Attack handler `0x23412`
+(+2, capped at 8, only when the patrol list starts), the Run handler `0x23782`
+(+1, capped at 8), the scene-41-to-43 Attack handler `0x23A3A` (+2, capped at
+8 when its list starts), and combat action code near `0x55AFA` for actor
+records whose `+0x9B` byte is `0x13`. Compliance and follow-up handlers can
+decrement heat; payment/service handlers can clear it. Arrest settlement at
+`0x235AA` copies then clears the heat byte, removes the source-listed weapon
+item IDs from the three runner records, computes a first fine of 1,000 nuyen
+times `(heat + 2)`, repeatedly halves that amount until it fits the available
+funds, and deducts it. The selector at `0x59986` and field tick at `0x1E166`
+do not directly read the heat byte.
 
 The scene-41-to-43 patrol handler separately reads `FFFC22` bit 10 before its
 ID-check choices. Its failure text says the officer did not recognize the
 player's ID badge. ROM references also show bit 11 being set by a separate
 permit/service path. These credential checks change the patrol encounter's
 outcome; neither the field selector nor these handlers use them as a global
-map-wide patrol-spawn gate. The Notebook wanted notices and the separate
-Lone-Star-record service text still need their writers and consumers traced
-before they can be equated with a global pursuit variable. This leaves the
-global wanted-state pursuit mechanism unresolved; it does not erase the
-conditional map-event patrol routes established above.
+map-wide patrol-spawn gate. The heat-dependent status/file-state branch above
+does write Notebook notice eligibility bits, which the Notebook renderer
+reads; that connection is now traced and remains separate from field actor
+selection. It does not establish that a global wanted value causes roaming
+patrols. The ROM still contains the conditional map-event patrol routes
+established above, while any separate map-wide pursuit path remains
+unresolved.
 
-There is also a separate player legal-state path to resolve. The third 32-entry Tips pointer table at `0xC2816` maps global entries 65-96; entries 70-73 point to text starts `0xC4390`, `0xC4465`, `0xC451E`, and `0xC45E1`. Entry 70 contains the wanted-for-questioning notice (including `0xC442C`); entry 71 is addressed to detectives and describes the suspect as armed and dangerous; entry 72 is addressed to hunting parties and calls the player a fugitive; entry 73 is a Lone Star Records prisoner-transfer notice about Vigore. Since the selector tests each table's local zero-based entry index, these four entries correspond to `FFFC38` bits 5-8; the wanted/fugitive notices are bits 5-7. These are Notebook display-eligibility bits; the source trace has not shown them to be the wanted-state values consumed by field pursuit. ROM contact text at `0xC63CF` and `0xC651C` offers to delete the Lone Star record, while `0x10E3C1` and `0x10F009` describe a Weapon Permit and patrols flagging the player down. Those strings establish that the record/permit mechanics exist, but they do not establish the writer/checker for the first three tip bits or a global heat-based patrol spawn. The ROM does contain additional conditional patrol encounters through the scene-20-to-43 plate/laser and direct-patrol entries described above; their known location anchors are listed above; the remaining numeric scene names still need a complete map-name crosswalk. The separate wanted-state pursuit system remains untraced.
+The third 32-entry Tips pointer table at `0xC2816` maps global entries 65-96;
+entries 70-73 point to `0xC4390`, `0xC4465`, `0xC451E`, and `0xC45E1`.
+Entry 70 is the wanted-for-questioning notice (including `0xC442C`); entry 71
+is addressed to detectives and says the suspect is armed and dangerous; entry
+72 is addressed to hunting parties and calls the player a fugitive; entry 73
+is a Lone Star Records prisoner-transfer notice about Vigore. The Notebook
+renderer at `0xFA40` tests each table-local entry bit in `FFFC38` and includes
+only marked rows. A raw ROM sweep found 26 absolute `FFFC38` operands, while
+the direct-reference index lists only eight; the additional instructions
+include this Notebook file-state path. The branch beginning at `0x551C0` sets
+bit 5 at `0x551FC` for the `FFFBBC == 0x14`, `D0 == 0x0A` path when `FFFC1E`
+bit 3 is clear. The
+`FFFBBC == 0x17`, `D0 == 0x0D` path marks bit 6 for heat 1-2, bit 7 for heat
+3-7, and bit 8 for heat 8. These bits control which notices are available in
+the Notebook. The route writes the updated bitfield back at `0x55578` and
+uses text at `0x166968` (“an interesting file that you download to your
+notebook”). The field selector does not consume these bits as patrol-spawn
+state.
+ROM contact text at `0xC63CF` and `0xC651C` offers to delete the Lone Star
+record, while `0x10E3C1` and `0x10F009` describe a Weapon Permit and patrols
+flagging the player down. Those strings establish the service mechanics, not
+a global map-wide patrol spawn. The remaining numeric scene names in the
+conditional plate/laser and direct-patrol routes still need a complete
+map-name crosswalk.
 
 A separate nearby-effect path runs through `0xAB02 -> 0x16B98`. It can place
 one of ten `FF164C` records near the transitioning actor with a weighted
