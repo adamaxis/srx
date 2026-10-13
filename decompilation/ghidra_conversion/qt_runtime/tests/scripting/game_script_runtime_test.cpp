@@ -1743,6 +1743,113 @@ int main() {
         return 29;
     }
 
+    auto combat_probe_context = actor_context(
+        "eye5r_1_k07_item01", "combat_reaction_probe", 7U,
+        ScriptActorActionKind::item, 1U, 0U, true);
+    combat_probe_context.dynamic_world_encounter_actor = true;
+    combat_probe_context.source_record_flags = 0x25U;
+    combat_probe_context.entry_animation_frame_count = 1U;
+    combat_probe_context.walk_animation_frame_count = 4U;
+    combat_probe_context.action_animation_frame_count = 2U;
+    combat_probe_context.action_animation_increment = 0x0200U;
+    combat_probe_context.action_animation_threshold = 0x1000U;
+    combat_probe_context.action_animation_audio_event = 0x004CU;
+    combat_probe_context.initial_action_delay = 0;
+    combat_probe_context.delay_primary_attribute = 4U;
+    combat_probe_context.delay_secondary_attribute = 6U;
+    combat_probe_context.movement_allowed = true;
+    const auto& combat_spell_rows = us_magic_spell_catalog();
+    combat_probe_context.action_attribute_selectors = {
+        combat_spell_rows[5U].attribute_selector,
+        combat_spell_rows[12U].attribute_selector};
+    ScriptCombatantFacts attacker_facts{};
+    attacker_facts.record_type = 7U;
+    attacker_facts.source_flags = 0x25U;
+    attacker_facts.cyberware_flags = 0x0008U;
+    attacker_facts.command_attribute_77 = 2U;
+    attacker_facts.command_attribute_78 = 4U;
+    attacker_facts.command_attribute_79 = 1U;
+    attacker_facts.command_attribute_7b = 4U;
+    attacker_facts.command_attribute_7c = 4U;
+    attacker_facts.command_attribute_85 = 3U;
+    attacker_facts.race_or_state = 4;
+    attacker_facts.class_code = 7U;
+    attacker_facts.equipped_action_code = 1U;
+    combat_probe_context.combatant = attacker_facts;
+    ScriptCombatantFacts target_facts{};
+    target_facts.record_type = 0U;
+    target_facts.source_flags = 0x01U;
+    target_facts.interaction_flags = 0x80U;
+    target_facts.physical_meter = 10U;
+    target_facts.mental_meter = 10U;
+    target_facts.command_attribute_77 = 1U;
+    target_facts.command_attribute_78 = 4U;
+    target_facts.command_attribute_79 = 1U;
+    target_facts.command_attribute_7b = 4U;
+    target_facts.command_attribute_7c = 4U;
+    target_facts.armor_index = 0U;
+    target_facts.class_code = 0U;
+    target_facts.equipped_action_code = 0U;
+    ScriptActorTargetCandidate combat_target{
+        "party.runner.0", 0x1800U, 0x1800U, 0x2000U,
+        0x0100U, 0x01U, 0x80U, 0U, 0U, true, false,
+        0x0100U, 0x0200U, 0x0100U, 0x0200U};
+    combat_target.source_record_slot = 0U;
+    combat_target.combatant = target_facts;
+    combat_probe_context.ai_target_candidates.push_back(combat_target);
+    std::size_t combat_roll_index = 0U;
+    combat_probe_context.ai_random_bound =
+        [&combat_roll_index](const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+        if (bound == 0U) {
+            return std::nullopt;
+        }
+        if (bound == 1U) {
+            return 0U;
+        }
+        if (bound == 6U) {
+            const auto value = (combat_roll_index++ & 1U) == 0U ? 5U : 0U;
+            return static_cast<std::uint16_t>(value);
+        }
+        return 0U;
+    };
+    const auto combat_probe_spawn =
+        scripts.actor_heartbeat(combat_probe_context);
+    combat_probe_context.spawn = false;
+    (void)scripts.actor_heartbeat(combat_probe_context);
+    combat_probe_context.phase = ScriptActorHeartbeatPhase::render;
+    for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
+        (void)scripts.actor_heartbeat(combat_probe_context);
+    }
+    combat_probe_context.phase = ScriptActorHeartbeatPhase::behavior;
+    std::optional<ScriptActorBehaviorDecision> combat_probe_action;
+    for (std::uint8_t pass = 0U; pass < 100U; ++pass) {
+        const auto decision = scripts.actor_heartbeat(combat_probe_context);
+        if (!decision.has_value()) {
+            break;
+        }
+        if (decision->animation_id == "action") {
+            combat_probe_action = decision;
+            break;
+        }
+    }
+    if (!expect(
+            combat_probe_spawn.has_value() &&
+                combat_probe_action.has_value() &&
+                combat_probe_action->ai_target_engaged &&
+                combat_probe_action->combat_meter_update.has_value() &&
+                combat_probe_action->combat_meter_update->target_id ==
+                    "party.runner.0" &&
+                combat_probe_action->combat_meter_update->record_type == 0U &&
+                combat_probe_action->combat_meter_update->physical &&
+                combat_probe_action->combat_meter_update->changed &&
+                combat_probe_action->combat_meter_update->physical_meter == 7U &&
+                combat_probe_action->combat_meter_update->mental_meter == 10U,
+            "Lua did not resolve the ROM close-target reaction into the typed party meter update")) {
+        std::cerr << scripts.failure() << '\n';
+        return 67;
+    }
+
     if (!expect(
             guard_wait.has_value() &&
                 guard_wait->package_id ==

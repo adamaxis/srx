@@ -2157,7 +2157,7 @@ GameScriptRuntime::resolve_field_encounter(
             std::uint32_t delay_secondary_attribute = 0U;
             std::uint32_t delay_capability_flags = 0U;
             std::string action_kind;
-            const bool valid_actor =
+            bool valid_actor =
                 read_field_integer(state, actor_index, "source_order", 31U,
                                    source_order) &&
                 read_field_integer(state, actor_index,
@@ -2202,6 +2202,105 @@ GameScriptRuntime::resolve_field_encounter(
                                    delay_capability_flags) &&
                 read_field_text(state, actor_index, "ordered_overrides",
                                 actor.ordered_overrides, 512U);
+            lua_getfield(state, actor_index, "combatant");
+            if (!lua_istable(state, -1)) {
+                valid_actor = false;
+            } else {
+                const auto combat_index = lua_absindex(state, -1);
+                std::uint32_t combat_value = 0U;
+                int signed_combat_value = 0;
+                const auto read_combat_byte = [&](const char* field,
+                                                  std::uint8_t& value) {
+                    if (!read_field_integer(state, combat_index, field,
+                                            0xFFU, combat_value)) {
+                        return false;
+                    }
+                    value = static_cast<std::uint8_t>(combat_value);
+                    return true;
+                };
+                std::uint32_t cyberware_flags = 0U;
+                std::uint32_t profile_index = 0U;
+                valid_actor =
+                    read_combat_byte("interaction_flags",
+                                     actor.combatant.interaction_flags) &&
+                    read_combat_byte("physical_meter",
+                                     actor.combatant.physical_meter) &&
+                    read_combat_byte("mental_meter",
+                                     actor.combatant.mental_meter) &&
+                    read_combat_byte("posture", actor.combatant.posture) &&
+                    read_combat_byte("command_attribute_77",
+                                     actor.combatant.command_attribute_77) &&
+                    read_combat_byte("command_attribute_78",
+                                     actor.combatant.command_attribute_78) &&
+                    read_combat_byte("command_attribute_79",
+                                     actor.combatant.command_attribute_79) &&
+                    read_combat_byte("command_attribute_7b",
+                                     actor.combatant.command_attribute_7b) &&
+                    read_combat_byte("command_attribute_7c",
+                                     actor.combatant.command_attribute_7c) &&
+                    read_combat_byte("command_attribute_85",
+                                     actor.combatant.command_attribute_85) &&
+                    read_combat_byte("item18_base",
+                                     actor.combatant.item18_base) &&
+                    read_combat_byte("armor_index",
+                                     actor.combatant.armor_index) &&
+                    read_combat_byte("class_code",
+                                     actor.combatant.class_code) &&
+                    read_combat_byte("equipped_action_code",
+                                     actor.combatant.equipped_action_code) &&
+                    read_combat_byte("action_profile_modifier_flags",
+                                     actor.combatant.action_profile_modifier_flags) &&
+                    read_field_signed_integer(
+                        state, combat_index, "race_or_state", -128, 127,
+                        signed_combat_value) &&
+                    read_field_integer(state, combat_index,
+                                       "cyberware_flags", 0xFFFFU,
+                                       cyberware_flags) &&
+                    read_field_integer(state, combat_index,
+                                       "linked_action_profile_index",
+                                       0xFFFFU, profile_index);
+                if (valid_actor) {
+                    actor.combatant.race_or_state =
+                        static_cast<std::int8_t>(signed_combat_value);
+                    actor.combatant.cyberware_flags =
+                        static_cast<std::uint16_t>(cyberware_flags);
+                    actor.combatant.linked_action_profile_index =
+                        static_cast<std::uint16_t>(profile_index);
+                    const auto read_combat_array = [&](const char* field,
+                                                       auto& values) {
+                        lua_getfield(state, combat_index, field);
+                        if (!lua_istable(state, -1) ||
+                            lua_rawlen(state, -1) != values.size()) {
+                            lua_pop(state, 1);
+                            return false;
+                        }
+                        const auto array_index = lua_absindex(state, -1);
+                        for (std::size_t item = 0U; item < values.size();
+                             ++item) {
+                            lua_rawgeti(state, array_index,
+                                        static_cast<lua_Integer>(item + 1U));
+                            int is_number = 0;
+                            const auto value = lua_tointegerx(
+                                state, -1, &is_number);
+                            lua_pop(state, 1);
+                            if (is_number == 0 || value < 0 ||
+                                value > 0xFF) {
+                                lua_pop(state, 1);
+                                return false;
+                            }
+                            values[item] = static_cast<std::uint8_t>(value);
+                        }
+                        lua_pop(state, 1);
+                        return true;
+                    };
+                    valid_actor =
+                        read_combat_array("item_codes",
+                                          actor.combatant.item_codes) &&
+                        read_combat_array("item_phases",
+                                          actor.combatant.item_phases);
+                }
+            }
+            lua_pop(state, 1);
             if (!valid_actor || source_order != index) {
                 return fail("dynamic world encounter actor row is incomplete or unordered");
             }
@@ -3040,6 +3139,97 @@ GameScriptRuntime::actor_heartbeat(
         lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
     }
     lua_setfield(state, -2, "world_effect_slot_occupancy");
+    const auto push_combatant = [state](
+        const ScriptCombatantFacts& combatant) {
+        lua_createtable(state, 0, 22);
+        const auto table_index = lua_absindex(state, -1);
+        const auto set_integer = [state, table_index](
+                                     const char* field,
+                                     const lua_Integer value) {
+            lua_pushinteger(state, value);
+            lua_setfield(state, table_index, field);
+        };
+        set_integer("record_type", combatant.record_type);
+        set_integer("source_flags", combatant.source_flags);
+        set_integer("interaction_flags", combatant.interaction_flags);
+        set_integer("cyberware_flags", combatant.cyberware_flags);
+        set_integer("physical_meter", combatant.physical_meter);
+        set_integer("mental_meter", combatant.mental_meter);
+        set_integer("posture", combatant.posture);
+        set_integer("command_attribute_77",
+                    combatant.command_attribute_77);
+        set_integer("command_attribute_78",
+                    combatant.command_attribute_78);
+        set_integer("command_attribute_79",
+                    combatant.command_attribute_79);
+        set_integer("command_attribute_7b",
+                    combatant.command_attribute_7b);
+        set_integer("command_attribute_7c",
+                    combatant.command_attribute_7c);
+        set_integer("command_attribute_85",
+                    combatant.command_attribute_85);
+        set_integer("item18_base", combatant.item18_base);
+        set_integer("armor_index", combatant.armor_index);
+        set_integer("race_or_state", combatant.race_or_state);
+        set_integer("class_code", combatant.class_code);
+        set_integer("equipped_action_code",
+                    combatant.equipped_action_code);
+        set_integer("action_profile_modifier_flags",
+                    combatant.action_profile_modifier_flags);
+        set_integer("linked_action_profile_index",
+                    combatant.linked_action_profile_index);
+        lua_createtable(state,
+                        static_cast<int>(combatant.item_codes.size()), 0);
+        for (std::size_t index = 0U; index < combatant.item_codes.size();
+             ++index) {
+            lua_pushinteger(state, combatant.item_codes[index]);
+            lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+        }
+        lua_setfield(state, table_index, "item_codes");
+        lua_createtable(state,
+                        static_cast<int>(combatant.item_phases.size()), 0);
+        for (std::size_t index = 0U; index < combatant.item_phases.size();
+             ++index) {
+            lua_pushinteger(state, combatant.item_phases[index]);
+            lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+        }
+        lua_setfield(state, table_index, "item_phases");
+    };
+    if (context.combatant.has_value()) {
+        push_combatant(*context.combatant);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "combatant");
+    lua_createtable(state,
+                    static_cast<int>(context.action_profile_modifiers.size()),
+                    0);
+    for (std::size_t index = 0U;
+         index < context.action_profile_modifiers.size(); ++index) {
+        const auto& profile = context.action_profile_modifiers[index];
+        lua_createtable(state, 0, 4);
+        lua_pushinteger(state, profile.primary_roll_count);
+        lua_setfield(state, -2, "primary_roll_count");
+        lua_pushinteger(state, profile.primary_difficulty);
+        lua_setfield(state, -2, "primary_difficulty");
+        lua_pushinteger(state, profile.secondary_roll_count);
+        lua_setfield(state, -2, "secondary_roll_count");
+        lua_pushinteger(state, profile.secondary_difficulty);
+        lua_setfield(state, -2, "secondary_difficulty");
+        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+    }
+    lua_setfield(state, -2, "action_profile_modifiers");
+    lua_createtable(state,
+                    static_cast<int>(context.action_attribute_selectors.size()),
+                    0);
+    for (std::size_t index = 0U;
+         index < context.action_attribute_selectors.size(); ++index) {
+        lua_pushinteger(state, context.action_attribute_selectors[index]);
+        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+    }
+    lua_setfield(state, -2, "action_attribute_selectors");
+    lua_pushboolean(state, context.combat_meter_service_blocked);
+    lua_setfield(state, -2, "combat_meter_service_blocked");
     lua_pushboolean(state, context.target_selection_latched);
     lua_setfield(state, -2, "target_selection_latched");
     lua_pushboolean(state, context.target_selection_requested);
@@ -3066,13 +3256,13 @@ GameScriptRuntime::actor_heartbeat(
                               context.target_selection_linked_slot);
     push_optional_target_slot("target_selection_owner_slot",
                               context.target_selection_owner_slot);
-    const auto push_actor_candidates = [state](
+    const auto push_actor_candidates = [state, &push_combatant](
         const char* field,
         const std::vector<ScriptActorTargetCandidate>& candidates) {
         lua_createtable(state, static_cast<int>(candidates.size()), 0);
         for (std::size_t index = 0; index < candidates.size(); ++index) {
             const auto& candidate = candidates[index];
-            lua_createtable(state, 0, 19);
+            lua_createtable(state, 0, 20);
             lua_pushlstring(state, candidate.id.data(), candidate.id.size());
             lua_setfield(state, -2, "id");
             lua_pushinteger(state, candidate.world_x);
@@ -3112,6 +3302,12 @@ GameScriptRuntime::actor_heartbeat(
             lua_setfield(state, -2, "source_record_slot");
             lua_pushinteger(state, candidate.descriptor_class);
             lua_setfield(state, -2, "descriptor_class");
+            if (candidate.combatant.has_value()) {
+                push_combatant(*candidate.combatant);
+            } else {
+                lua_pushnil(state);
+            }
+            lua_setfield(state, -2, "combatant");
             lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
         }
         lua_setfield(state, -2, field);
@@ -3447,6 +3643,65 @@ GameScriptRuntime::actor_heartbeat(
         decision.selected_world_actor_id.has_value()) {
         return fail("actor_ai.heartbeat retained a stale selected actor");
     }
+    lua_getfield(state, decision_table, "combat_meter_update");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        if (!lua_istable(state, -1)) {
+            return fail("actor_ai.heartbeat returned an invalid combat meter update");
+        }
+        const auto update_table = lua_absindex(state, -1);
+        ScriptCombatMeterUpdate update{};
+        std::uint32_t combat_value = 0U;
+        if (!read_field_string(state, update_table, "target_id",
+                               update.target_id) ||
+            !read_field_integer(state, update_table, "record_type",
+                                0xFFFFU, combat_value)) {
+            return fail("actor_ai.heartbeat returned incomplete combat target facts");
+        }
+        update.record_type = static_cast<std::uint16_t>(combat_value);
+        if (!read_field_integer(state, update_table, "physical_meter",
+                                0xFFU, combat_value)) {
+            return fail("actor_ai.heartbeat returned an invalid physical meter");
+        }
+        update.physical_meter = static_cast<std::uint8_t>(combat_value);
+        if (!read_field_integer(state, update_table, "mental_meter",
+                                0xFFU, combat_value)) {
+            return fail("actor_ai.heartbeat returned an invalid mental meter");
+        }
+        update.mental_meter = static_cast<std::uint8_t>(combat_value);
+        if (!read_field_boolean(state, update_table, "physical",
+                                update.physical) ||
+            !read_field_boolean(state, update_table, "changed",
+                                update.changed)) {
+            return fail("actor_ai.heartbeat returned invalid combat meter flags");
+        }
+        const auto target = std::find_if(
+            context.ai_target_candidates.begin(),
+            context.ai_target_candidates.end(),
+            [&update](const auto& candidate) {
+                return candidate.id == update.target_id &&
+                       candidate.source_record_slot.has_value() &&
+                       candidate.combatant.has_value() &&
+                       candidate.combatant->record_type == update.record_type;
+            });
+        if (!context.dynamic_world_encounter_actor ||
+            context.phase != ScriptActorHeartbeatPhase::behavior ||
+            target == context.ai_target_candidates.end() ||
+            (update.record_type < 3U) == target->world_activity_actor ||
+            (update.record_type < 3U &&
+             *target->source_record_slot >= 3U) ||
+            (update.record_type >= 3U &&
+             *target->source_record_slot < 3U)) {
+            return fail("actor_ai.heartbeat returned an unlinked combat target");
+        }
+        const bool meters_changed =
+            update.physical_meter != target->combatant->physical_meter ||
+            update.mental_meter != target->combatant->mental_meter;
+        if (meters_changed != update.changed) {
+            return fail("actor_ai.heartbeat returned an inconsistent combat meter update");
+        }
+        decision.combat_meter_update = std::move(update);
+    }
+    lua_pop(state, 1);
     lua_getfield(state, decision_table, "animation_accumulator");
     if (!lua_isinteger(state, -1)) {
         return fail(

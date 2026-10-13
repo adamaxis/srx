@@ -68,6 +68,7 @@ RunnerRecordFields read_runner_record_fields(const LiveRunnerRecord& record) {
     fields.ammo_clips = record.bytes[0x4FU];
     fields.equipped_armor_index = record.bytes[0x76U];
     fields.cyberware_flags = read_be16(record, 0x90U);
+    fields.action_profile_modifier_flags = record.bytes[0xDFU];
     fields.magic_table_index = read_be16(record, 0xA0U);
 
     for (std::size_t index = 0; index < kRunnerRecordInventorySlots;
@@ -125,6 +126,7 @@ void write_runner_record_fields(const RunnerRecordFields& fields,
     destination.bytes[0x4FU] = fields.ammo_clips;
     destination.bytes[0x76U] = fields.equipped_armor_index;
     write_be16(destination, 0x90U, fields.cyberware_flags);
+    destination.bytes[0xDFU] = fields.action_profile_modifier_flags;
     write_be16(destination, 0xA0U, fields.magic_table_index);
 
     for (std::size_t index = 0; index < kRunnerRecordInventorySlots;

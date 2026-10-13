@@ -92,6 +92,9 @@ struct RunnerRecordFields {
     std::uint8_t ammo_clips = 0;
     std::uint8_t equipped_armor_index = 0;
     std::uint16_t cyberware_flags = 0;
+    // ROM 0x55786 checks live +0xDF bits 0 and 1 for the source's dynamic
+    // action-profile modifier branch.
+    std::uint8_t action_profile_modifier_flags = 0;
     // ROM 0xFBA6 indexes the magic/spell table with the big-endian word at
     // record +0xA0.
     std::uint16_t magic_table_index = 0;

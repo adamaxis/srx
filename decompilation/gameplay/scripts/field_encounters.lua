@@ -127,6 +127,48 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
                 delay_primary_attribute = row.delay_primary_attribute,
                 delay_secondary_attribute = row.delay_secondary_attribute,
                 delay_capability_flags = row.delay_capability_flags,
+                combatant = {
+                    interaction_flags = row.source_interaction_flags,
+                    cyberware_flags = row.combat_cyberware_flags,
+                    physical_meter = row.physical_meter,
+                    mental_meter = row.combat_mental_meter,
+                    posture = row.combat_posture,
+                    command_attribute_77 = row.combat_attribute_77,
+                    command_attribute_78 = row.combat_attribute_78,
+                    command_attribute_79 = row.combat_attribute_79,
+                    command_attribute_7b = row.combat_attribute_7b,
+                    command_attribute_7c = row.combat_attribute_7c,
+                    command_attribute_85 = row.combat_attribute_85,
+                    item18_base = row.combat_item18_base,
+                    armor_index = row.combat_armor_index,
+                    race_or_state = row.combat_race_or_state,
+                    class_code = row.combat_class_code,
+                    equipped_action_code = row.action_code,
+                    action_profile_modifier_flags =
+                        row.combat_modifier_flags_df,
+                    linked_action_profile_index =
+                        row.combat_profile_index_a0,
+                    item_codes = {
+                        row.combat_item_code_0,
+                        row.combat_item_code_1,
+                        row.combat_item_code_2,
+                        row.combat_item_code_3,
+                        row.combat_item_code_4,
+                        row.combat_item_code_5,
+                        row.combat_item_code_6,
+                        row.combat_item_code_7,
+                    },
+                    item_phases = {
+                        row.combat_item_phase_0,
+                        row.combat_item_phase_1,
+                        row.combat_item_phase_2,
+                        row.combat_item_phase_3,
+                        row.combat_item_phase_4,
+                        row.combat_item_phase_5,
+                        row.combat_item_phase_6,
+                        row.combat_item_phase_7,
+                    },
+                },
             }
         end
     end

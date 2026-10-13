@@ -229,6 +229,50 @@ struct ScriptFieldEncounterTriggerInput {
     std::uint16_t probability_threshold = 0;
 };
 
+// Source-derived fields consumed by the ROM close-target reaction path
+// (0x55C76). Scripts receive named combat facts, never a byte-addressed
+// Genesis record.
+struct ScriptCombatantFacts {
+    std::uint16_t record_type = 0;
+    std::uint8_t source_flags = 0; // live +0x10
+    std::uint8_t interaction_flags = 0; // live +0x11
+    std::uint16_t cyberware_flags = 0;
+    std::uint8_t physical_meter = 0;
+    std::uint8_t mental_meter = 0;
+    std::uint8_t posture = 0;
+    std::uint8_t command_attribute_77 = 0;
+    std::uint8_t command_attribute_78 = 0;
+    std::uint8_t command_attribute_79 = 0;
+    std::uint8_t command_attribute_7b = 0;
+    std::uint8_t command_attribute_7c = 0;
+    std::uint8_t command_attribute_85 = 0;
+    std::uint8_t item18_base = 0;
+    std::uint8_t armor_index = 0;
+    std::int8_t race_or_state = 0;
+    std::uint8_t class_code = 0;
+    std::uint8_t equipped_action_code = 0;
+    std::uint8_t action_profile_modifier_flags = 0; // live +0xDF
+    std::uint16_t linked_action_profile_index = 0; // live +0xA0
+    std::array<std::uint8_t, 8> item_codes{};
+    std::array<std::uint8_t, 8> item_phases{};
+};
+
+struct ScriptActionProfileModifierPair {
+    std::uint8_t primary_roll_count = 0;
+    std::uint8_t primary_difficulty = 0;
+    std::uint8_t secondary_roll_count = 0;
+    std::uint8_t secondary_difficulty = 0;
+};
+
+struct ScriptCombatMeterUpdate {
+    std::string target_id;
+    std::uint16_t record_type = 0;
+    std::uint8_t physical_meter = 0;
+    std::uint8_t mental_meter = 0;
+    bool physical = false;
+    bool changed = false;
+};
+
 struct ScriptFieldEncounterActor {
     std::uint16_t source_order = 0;
     std::uint32_t selection_cell_offset = 0;
@@ -248,6 +292,7 @@ struct ScriptFieldEncounterActor {
     std::uint8_t delay_secondary_attribute = 0;
     std::uint16_t delay_capability_flags = 0;
     std::string ordered_overrides;
+    ScriptCombatantFacts combatant;
 };
 
 // The selector result is data, not an event-specific C++ switch. Dialogue
@@ -428,6 +473,7 @@ struct ScriptActorTargetCandidate {
     std::uint16_t perpendicular_route_distance = 0;
     std::optional<std::uint8_t> source_record_slot;
     std::uint8_t descriptor_class = 0;
+    std::optional<ScriptCombatantFacts> combatant;
 };
 
 using ScriptActorRandomBound =
@@ -521,6 +567,13 @@ struct ScriptActorBehaviorContext {
     std::vector<ScriptActorTargetCandidate> world_target_selection_candidates;
     ScriptActorRandomBound ai_random_bound;
     std::uint8_t entry_animation_frame_count = 2;
+    std::optional<ScriptCombatantFacts> combatant;
+    std::array<ScriptActionProfileModifierPair, 5>
+        action_profile_modifiers{};
+    // D4EA0 action rows 5 and 12 select +0x77 or +0x7C for the
+    // corresponding +0xDF dynamic-profile branch.
+    std::array<std::int8_t, 2> action_attribute_selectors{};
+    bool combat_meter_service_blocked = false;
 };
 
 struct ScriptActorBehaviorDecision {
@@ -566,6 +619,7 @@ struct ScriptActorBehaviorDecision {
         projectile_movement;
     std::optional<std::int16_t> animation_increment;
     std::int16_t animation_accumulator = 0;
+    std::optional<ScriptCombatMeterUpdate> combat_meter_update;
 };
 
 struct ScriptNativeOperation {

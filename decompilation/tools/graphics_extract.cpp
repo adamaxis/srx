@@ -3769,6 +3769,23 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint8_t delay_primary_attribute;
         std::uint8_t delay_secondary_attribute;
         std::uint16_t delay_capability_flags;
+        std::uint8_t mental_meter;
+        std::uint16_t cyberware_flags;
+        std::uint8_t posture;
+        std::uint8_t attribute_77;
+        std::uint8_t attribute_78;
+        std::uint8_t attribute_79;
+        std::uint8_t attribute_7b;
+        std::uint8_t attribute_7c;
+        std::uint8_t attribute_85;
+        std::uint8_t item18_base;
+        std::uint8_t armor_index;
+        std::int8_t race_or_state;
+        std::uint8_t class_code;
+        std::uint8_t modifier_flags_df;
+        std::uint16_t profile_index_a0;
+        std::array<std::uint8_t, 8> item_codes;
+        std::array<std::uint8_t, 8> item_phases;
         std::string sprite_stem;
         std::string ordered_overrides;
     };
@@ -3846,6 +3863,31 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 auto physical_meter = rom[template_offset + 0x04U];
                 auto source_interaction_flags = rom[
                     shadowrun::rom::kPostObjectEntityTemplate + 0x11U];
+                auto mental_meter = rom[template_offset + 0x43U];
+                auto cyberware_flags = read_big_endian_word(
+                    rom, template_offset + 0x44U);
+                auto posture = rom[template_offset + 0x05U];
+                auto attribute_77 = rom[template_offset + 0x2FU];
+                auto attribute_78 = rom[template_offset + 0x30U];
+                auto attribute_79 = rom[template_offset + 0x31U];
+                auto attribute_7b = rom[template_offset + 0x33U];
+                auto attribute_7c = rom[template_offset + 0x34U];
+                auto attribute_85 = rom[template_offset + 0x37U];
+                auto item18_base = rom[template_offset + 0x32U];
+                auto armor_index = rom[template_offset + 0x28U];
+                auto race_or_state = static_cast<std::int8_t>(
+                    rom[template_offset + 0x41U]);
+                auto class_code = rom[template_offset + 0x42U];
+                auto modifier_flags_df = rom[
+                    shadowrun::rom::kPostObjectEntityTemplate + 0xDFU];
+                auto profile_index_a0 = read_big_endian_word(
+                    rom, template_offset + 0x46U);
+                std::array<std::uint8_t, 8> item_codes{};
+                std::array<std::uint8_t, 8> item_phases{};
+                for (std::size_t item = 0U; item < item_codes.size(); ++item) {
+                    item_codes[item] = rom[template_offset + 0x18U + item];
+                    item_phases[item] = rom[template_offset + 0x20U + item];
+                }
                 const auto actor_name = read_actor_name(template_offset);
                 if (entity_kind > 15U || actor_name.empty()) {
                     throw std::runtime_error(
@@ -3872,6 +3914,58 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                             source_interaction_flags = override_value;
                         } else if (override_offset == 0x4CU) {
                             physical_meter = override_value;
+                        }
+                        if (override_offset == 0x4DU) {
+                            posture = override_value;
+                        } else if (override_offset >= 0x66U &&
+                                   override_offset <= 0x6DU) {
+                            item_codes[override_offset - 0x66U] =
+                                override_value;
+                        } else if (override_offset >= 0x6EU &&
+                                   override_offset <= 0x75U) {
+                            item_phases[override_offset - 0x6EU] =
+                                override_value;
+                        } else if (override_offset == 0x76U) {
+                            armor_index = override_value;
+                        } else if (override_offset == 0x77U) {
+                            attribute_77 = override_value;
+                        } else if (override_offset == 0x78U) {
+                            attribute_78 = override_value;
+                        } else if (override_offset == 0x79U) {
+                            attribute_79 = override_value;
+                        } else if (override_offset == 0x7BU) {
+                            attribute_7b = override_value;
+                        } else if (override_offset == 0x7CU) {
+                            attribute_7c = override_value;
+                        } else if (override_offset == 0x80U) {
+                            item18_base = override_value;
+                        } else if (override_offset == 0x85U) {
+                            attribute_85 = override_value;
+                        } else if (override_offset == 0x90U) {
+                            cyberware_flags = static_cast<std::uint16_t>(
+                                (static_cast<std::uint16_t>(override_value) << 8U) |
+                                (cyberware_flags & 0x00FFU));
+                        } else if (override_offset == 0x91U) {
+                            cyberware_flags = static_cast<std::uint16_t>(
+                                (cyberware_flags & 0xFF00U) |
+                                override_value);
+                        } else if (override_offset == 0x9AU) {
+                            race_or_state = static_cast<std::int8_t>(
+                                override_value);
+                        } else if (override_offset == 0x9BU) {
+                            class_code = override_value;
+                        } else if (override_offset == 0x9CU) {
+                            mental_meter = override_value;
+                        } else if (override_offset == 0xA0U) {
+                            profile_index_a0 = static_cast<std::uint16_t>(
+                                (static_cast<std::uint16_t>(override_value) << 8U) |
+                                (profile_index_a0 & 0x00FFU));
+                        } else if (override_offset == 0xA1U) {
+                            profile_index_a0 = static_cast<std::uint16_t>(
+                                (profile_index_a0 & 0xFF00U) |
+                                override_value);
+                        } else if (override_offset == 0xDFU) {
+                            modifier_flags_df = override_value;
                         }
                         // ROM 0x44BC copies these template bytes into the
                         // live +0x78, +0x7B, and +0x90 delay inputs. Ordered
@@ -3914,6 +4008,11 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     action_kind, source_interaction_flags,
                     physical_meter, delay_primary_attribute,
                     delay_secondary_attribute, delay_capability_flags,
+                    mental_meter, cyberware_flags, posture, attribute_77, attribute_78,
+                    attribute_79, attribute_7b, attribute_7c,
+                    attribute_85, item18_base, armor_index, race_or_state,
+                    class_code, modifier_flags_df, profile_index_a0,
+                    item_codes, item_phases,
                     sprite_stem,
                     first_override ? "-" : overrides.str(),
                 });
@@ -3955,7 +4054,22 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                  "\ttagged_template\ttemplate_offset\tordered_overrides"
                  "\tplacement_rule\tphysical_meter"
                  "\tdelay_primary_attribute\tdelay_secondary_attribute"
-                 "\tdelay_capability_flags\n";
+                 "\tdelay_capability_flags\tcombat_mental_meter"
+                 "\tcombat_cyberware_flags"
+                 "\tcombat_posture\tcombat_attribute_77"
+                 "\tcombat_attribute_78\tcombat_attribute_79"
+                 "\tcombat_attribute_7b\tcombat_attribute_7c"
+                 "\tcombat_attribute_85\tcombat_item18_base"
+                 "\tcombat_armor_index\tcombat_race_or_state"
+                 "\tcombat_class_code\tcombat_modifier_flags_df"
+                 "\tcombat_profile_index_a0";
+        for (std::size_t item = 0U; item < 8U; ++item) {
+            table << "\tcombat_item_code_" << item;
+        }
+        for (std::size_t item = 0U; item < 8U; ++item) {
+            table << "\tcombat_item_phase_" << item;
+        }
+        table << '\n';
         for (const auto& actor : dynamic_world_actor_records) {
             const auto key = std::make_pair(actor.entity_kind, actor.palette_line);
             const auto visual = actor_visual_sources.find(key);
@@ -3984,7 +4098,29 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                   << static_cast<unsigned>(actor.delay_primary_attribute)
                   << '\t'
                   << static_cast<unsigned>(actor.delay_secondary_attribute)
-                  << '\t' << actor.delay_capability_flags << '\n';
+                  << '\t' << actor.delay_capability_flags << '\t'
+                  << static_cast<unsigned>(actor.mental_meter) << '\t'
+                  << actor.cyberware_flags << '\t'
+                  << static_cast<unsigned>(actor.posture) << '\t'
+                  << static_cast<unsigned>(actor.attribute_77) << '\t'
+                  << static_cast<unsigned>(actor.attribute_78) << '\t'
+                  << static_cast<unsigned>(actor.attribute_79) << '\t'
+                  << static_cast<unsigned>(actor.attribute_7b) << '\t'
+                  << static_cast<unsigned>(actor.attribute_7c) << '\t'
+                  << static_cast<unsigned>(actor.attribute_85) << '\t'
+                  << static_cast<unsigned>(actor.item18_base) << '\t'
+                  << static_cast<unsigned>(actor.armor_index) << '\t'
+                  << static_cast<int>(actor.race_or_state) << '\t'
+                  << static_cast<unsigned>(actor.class_code) << '\t'
+                  << static_cast<unsigned>(actor.modifier_flags_df) << '\t'
+                  << actor.profile_index_a0;
+            for (const auto value : actor.item_codes) {
+                table << '\t' << static_cast<unsigned>(value);
+            }
+            for (const auto value : actor.item_phases) {
+                table << '\t' << static_cast<unsigned>(value);
+            }
+            table << '\n';
         }
         if (!table) {
             throw std::runtime_error(

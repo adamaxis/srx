@@ -1177,6 +1177,7 @@ private:
         std::uint8_t source_interaction_flags = 0;
         std::uint8_t source_behavior_flags = 0;
         std::uint8_t source_spawn_state_flags = 0;
+        scripting::ScriptCombatantFacts combatant{};
         std::optional<std::uint8_t> effect_slot;
         bool temporary_world_encounter = false;
         bool target_selected = false;

@@ -509,6 +509,8 @@ local function snapshot(state, action, audio_event, projectile_movement,
     if state.animation_id == "idle" then
         state.animation_frame = 0
     end
+    local combat_meter_update = state.combat_meter_update
+    state.combat_meter_update = nil
     return {
         actor_id = state.actor_id,
         profile_id = state.profile_id,
@@ -553,6 +555,7 @@ local function snapshot(state, action, audio_event, projectile_movement,
         target_selection_processed = state.target_selection_processed,
         selected_world_actor_id = state.target_selection_processed
             and state.selected_world_actor_id or nil,
+        combat_meter_update = combat_meter_update,
         movement_step = state.movement_step,
         projectile_movement = projectile_movement,
     }
@@ -1164,7 +1167,7 @@ local function advance_dynamic_actor_action_animation(state)
     return true
 end
 
-local function begin_dynamic_target_action(state, context)
+local function begin_dynamic_target_action(state, context, target)
     if not context.dynamic_world_encounter_actor or
        state.action_delay >= 0 or state.target_motion_effect_active or
        type(context.action_animation_frame_count) ~= "number" or
@@ -1186,6 +1189,11 @@ local function begin_dynamic_target_action(state, context)
     state.animation_period = context.action_animation_threshold
     state.action_animation_complete = false
     state.action_delay = source_action_delay(context, state, 1)
+    -- ROM 0xB284 invokes the shared 0x55C76 reaction only after the linked
+    -- heading is accepted. Lua resolves the source-derived action now and
+    -- returns a one-heartbeat meter update for the host to apply.
+    state.combat_meter_update = game.modules.combat.resolve_reaction(
+        context, target)
     local heading_event = context.target_heading_audio_alternate
         and 0x4E or 0x4D
     return context.action_animation_audio_event, heading_event
@@ -1769,7 +1777,8 @@ function ActorAI.heartbeat(context)
                             end
                         else
                             audio_event, target_heading_audio_event =
-                                begin_dynamic_target_action(state, context)
+                                begin_dynamic_target_action(
+                                    state, context, target)
                         end
                     end
 

@@ -18,6 +18,7 @@
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
+#include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_animation_conversion.hpp"
@@ -126,6 +127,56 @@ constexpr bool actor_flag_is_set(const std::uint8_t flags,
 constexpr bool actor_flag_is_set(const std::uint8_t flags,
                                  const ActorSpawnStateFlag flag) {
     return (flags & actor_flag_mask(flag)) != 0U;
+}
+
+scripting::ScriptCombatantFacts script_combatant_facts(
+    const RunnerRecordFields& record) {
+    scripting::ScriptCombatantFacts facts{};
+    facts.record_type = record.record_type;
+    facts.source_flags = static_cast<std::uint8_t>(record.flags >> 8U);
+    facts.interaction_flags = static_cast<std::uint8_t>(record.flags);
+    facts.cyberware_flags = record.cyberware_flags;
+    facts.physical_meter = record.delay_meter;
+    facts.mental_meter = record.behavior_meter;
+    facts.posture = record.posture;
+    facts.command_attribute_77 = record.attributes[0];
+    facts.command_attribute_78 = record.attributes[1];
+    facts.command_attribute_79 = record.attributes[2];
+    facts.command_attribute_7b = record.attributes[4];
+    facts.command_attribute_7c = record.attributes[5];
+    facts.command_attribute_85 = record.skills[5];
+    facts.item18_base = record.skills[0];
+    facts.armor_index = record.equipped_armor_index;
+    facts.race_or_state = static_cast<std::int8_t>(record.species_index);
+    facts.class_code = record.archetype_index;
+    facts.equipped_action_code = record.equipped_item_code;
+    facts.action_profile_modifier_flags =
+        record.action_profile_modifier_flags;
+    facts.linked_action_profile_index = record.magic_table_index;
+    facts.item_codes = record.inventory_item_codes;
+    facts.item_phases = record.inventory_phase_bytes;
+    return facts;
+}
+
+std::array<scripting::ScriptActionProfileModifierPair, 5>
+script_action_profile_modifiers(const EntityActionProfileTable& profiles) {
+    std::array<scripting::ScriptActionProfileModifierPair, 5> result{};
+    for (std::size_t index = 0U; index < result.size(); ++index) {
+        const auto primary = profiles.rows[index].primary_modifier();
+        const auto secondary = profiles.rows[index].secondary_modifier();
+        result[index] = scripting::ScriptActionProfileModifierPair{
+            primary.roll_count, primary.difficulty,
+            secondary.roll_count, secondary.difficulty};
+    }
+    return result;
+}
+
+std::array<std::int8_t, 2> script_action_attribute_selectors() {
+    const auto& source_rows = us_magic_spell_catalog();
+    // ROM 0x55786 selects the signed +0x27 byte from D4EA0 rows 5 and 12
+    // when live +0xDF bits 0 and 1 select the primary/secondary branch.
+    return {source_rows[5U].attribute_selector,
+            source_rows[12U].attribute_selector};
 }
 
 constexpr std::string_view kFieldHudAlias = "field.hud.background";
@@ -1765,7 +1816,22 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 "\tsprite_stem\ttagged_template\ttemplate_offset"
                 "\tordered_overrides\tplacement_rule\tphysical_meter"
                 "\tdelay_primary_attribute\tdelay_secondary_attribute"
-                "\tdelay_capability_flags") {
+                "\tdelay_capability_flags\tcombat_mental_meter"
+                "\tcombat_cyberware_flags\tcombat_posture"
+                "\tcombat_attribute_77\tcombat_attribute_78"
+                "\tcombat_attribute_79\tcombat_attribute_7b"
+                "\tcombat_attribute_7c\tcombat_attribute_85"
+                "\tcombat_item18_base\tcombat_armor_index"
+                "\tcombat_race_or_state\tcombat_class_code"
+                "\tcombat_modifier_flags_df\tcombat_profile_index_a0"
+                "\tcombat_item_code_0\tcombat_item_code_1"
+                "\tcombat_item_code_2\tcombat_item_code_3"
+                "\tcombat_item_code_4\tcombat_item_code_5"
+                "\tcombat_item_code_6\tcombat_item_code_7"
+                "\tcombat_item_phase_0\tcombat_item_phase_1"
+                "\tcombat_item_phase_2\tcombat_item_phase_3"
+                "\tcombat_item_phase_4\tcombat_item_phase_5"
+                "\tcombat_item_phase_6\tcombat_item_phase_7") {
         failure_ = "dynamic world-activity actor table header is invalid";
         return false;
     }
@@ -1785,7 +1851,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             while (std::getline(row, field, '\t')) {
                 fields.push_back(std::move(field));
             }
-            if (fields.size() != 22U) {
+            if (fields.size() != 53U) {
                 failure_ = "dynamic world-activity actor row is malformed";
                 return false;
             }
@@ -2166,6 +2232,15 @@ void FieldSceneRuntime::advance_default_field_actors() {
             false,
         };
         context.target_selection_latched = actor.target_selected;
+        context.action_profile_modifiers =
+            script_action_profile_modifiers(state_.action_selection_profiles);
+        context.action_attribute_selectors =
+            script_action_attribute_selectors();
+        context.combat_meter_service_blocked =
+            field_movement_transition_state_.world_mode == 3U;
+        if (actor.temporary_world_encounter) {
+            context.combatant = actor.combatant;
+        }
         if (actor.temporary_world_encounter) {
             context.dynamic_world_encounter_actor = true;
             context.source_record_flags = actor.source_record_flags;
@@ -2210,7 +2285,9 @@ void FieldSceneRuntime::advance_default_field_actors() {
                     const std::uint8_t interaction_flags,
                     const std::uint8_t behavior_flags,
                     const std::uint8_t spawn_state_flags,
-                    const bool world_activity_actor) {
+                    const bool world_activity_actor,
+                    const std::uint8_t source_record_slot,
+                    std::optional<scripting::ScriptCombatantFacts> combatant) {
                     EntityProjectionState projection{};
                     projection.world_x = position.x;
                     projection.world_y = position.y;
@@ -2250,8 +2327,7 @@ void FieldSceneRuntime::advance_default_field_actors() {
                                 actor.world_position.x,
                                 actor.world_position.y,
                                 side_x, side_y));
-                    context.ai_target_candidates.push_back(
-                        scripting::ScriptActorTargetCandidate{
+                    scripting::ScriptActorTargetCandidate candidate{
                             std::move(id),
                             position.x,
                             position.y,
@@ -2273,7 +2349,11 @@ void FieldSceneRuntime::advance_default_field_actors() {
                             static_cast<std::uint16_t>(
                                 std::min<std::uint32_t>(
                                     perpendicular_route.distance,
-                                    0xFFFFU))});
+                                    0xFFFFU))};
+                    candidate.combatant = std::move(combatant);
+                    candidate.source_record_slot = source_record_slot;
+                    context.ai_target_candidates.push_back(
+                        std::move(candidate));
                 };
 
             // ROM 0x14492 chooses the three runner records unless the acting
@@ -2296,7 +2376,9 @@ void FieldSceneRuntime::advance_default_field_actors() {
                     "party.runner." + std::to_string(slot), position,
                     static_cast<std::uint8_t>(flags >> 8U),
                     static_cast<std::uint8_t>(flags & 0x00FFU), 0U, 0U,
-                    false);
+                    false, static_cast<std::uint8_t>(slot),
+                    script_combatant_facts(
+                        field_party_roster_.records()[slot]));
             }
 
             // The other source target pool is the seven world-actor records
@@ -2317,7 +2399,8 @@ void FieldSceneRuntime::advance_default_field_actors() {
                     target.source_record_flags,
                     target.source_interaction_flags,
                     target.source_behavior_flags,
-                    target.source_spawn_state_flags, true);
+                    target.source_spawn_state_flags, true, source_slot,
+                    target.combatant);
             }
 
             context.ai_random_bound = [this](const std::uint16_t bound)
@@ -2485,6 +2568,62 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 reset_field_entity_service_records();
                 source_boundary(
                     "field.random_encounter.sequence_transitions_complete");
+            }
+        }
+        if (decision->combat_meter_update.has_value() &&
+            decision->combat_meter_update->changed) {
+            const auto& update = *decision->combat_meter_update;
+            const auto candidate = std::find_if(
+                context.ai_target_candidates.begin(),
+                context.ai_target_candidates.end(),
+                [&update](const auto& value) {
+                    return value.id == update.target_id &&
+                           value.source_record_slot.has_value();
+                });
+            if (candidate == context.ai_target_candidates.end()) {
+                source_boundary("field.actor.combat.target_missing");
+            } else if (update.record_type < 3U) {
+                const auto slot = static_cast<std::size_t>(
+                    *candidate->source_record_slot);
+                if (slot >= FieldPartyRosterRuntime::kSlotCount ||
+                    !field_party_roster_.slot_active(slot)) {
+                    source_boundary("field.actor.combat.party_target_invalid");
+                } else {
+                    auto& target_record =
+                        field_party_roster_.records()[slot];
+                    target_record.delay_meter = update.physical_meter;
+                    target_record.behavior_meter = update.mental_meter;
+                    if (slot == field_party_roster_.active_slot()) {
+                        refresh_field_hud_runner_slot();
+                    }
+                    source_boundary(update.physical
+                        ? "field.actor.combat.party_physical_meter_changed"
+                        : "field.actor.combat.party_mental_meter_changed");
+                }
+            } else {
+                const auto target_actor = std::find_if(
+                    field_default_actors_.begin(),
+                    field_default_actors_.end(),
+                    [&update](const auto& value) {
+                        return value.active &&
+                               value.actor_instance_id == update.target_id &&
+                               value.source_record_slot.has_value() &&
+                               static_cast<std::uint16_t>(
+                                   *value.source_record_slot) ==
+                                   update.record_type;
+                    });
+                if (target_actor == field_default_actors_.end()) {
+                    source_boundary("field.actor.combat.world_target_invalid");
+                } else {
+                    target_actor->combatant.physical_meter =
+                        update.physical_meter;
+                    target_actor->combatant.mental_meter =
+                        update.mental_meter;
+                    target_actor->physical_meter = update.physical_meter;
+                    source_boundary(update.physical
+                        ? "field.actor.combat.world_physical_meter_changed"
+                        : "field.actor.combat.world_mental_meter_changed");
+                }
             }
         }
         if (actor.temporary_world_encounter &&
@@ -2900,6 +3039,11 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         actor.source_behavior_flags = 0U;
         actor.source_spawn_state_flags = actor_flag_mask(
             ActorSpawnStateFlag::world_activity_member);
+        actor.combatant = source_actor.combatant;
+        actor.combatant.record_type = actor_slot;
+        actor.combatant.source_flags = actor.source_record_flags;
+        actor.combatant.interaction_flags =
+            actor.source_interaction_flags;
         actor.effect_slot = static_cast<std::uint8_t>(
             std::distance(field_world_effect_slots_occupied_.begin(),
                           effect_slot));
@@ -2932,6 +3076,13 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             true,
         };
         context.dynamic_world_encounter_actor = true;
+        context.combatant = actor.combatant;
+        context.action_profile_modifiers =
+            script_action_profile_modifiers(state_.action_selection_profiles);
+        context.action_attribute_selectors =
+            script_action_attribute_selectors();
+        context.combat_meter_service_blocked =
+            field_movement_transition_state_.world_mode == 3U;
         context.source_record_flags = actor.source_record_flags;
         context.source_interaction_flags = actor.source_interaction_flags;
         context.source_behavior_flags = actor.source_behavior_flags;
