@@ -63,6 +63,9 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
         {0x1EU, "audio.effects.resource.030"},
         {0x3FU, "audio.effects.resource.063"},
         {0x51U, "audio.effects.resource.081"},
+        // ROM 0xB1DC requests 0x4C when an ordinary linked-target action
+        // begins; the matching table-2 resource 76 is a decoded sound effect.
+        {0x4CU, "audio.effects.resource.076"},
         {0x24U, "audio.menu.command-024"},
         // ROM command 0x25 is table-2 index 37. The importer emits that
         // zero-based entry as audio.effects.resource.037.

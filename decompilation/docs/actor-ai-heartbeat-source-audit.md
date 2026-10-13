@@ -294,11 +294,14 @@ have 2 frames at `0x0200` for kinds 4-11 and 14, 1 frame at `0x01F4` for kind
 
 The ordinary encounter QA observes the connected transition, both finite-list
 frames, mode-1 delay, and one `0x4C` request. The full 320x224 snapshots retain
-the HUD and map with no black sprite rectangle or stale control. The Hound
-close-effect diversion is separate and remains source-silent. Cue resource
-mapping/playback duration and an independent same-action Genesis capture are
-not established. `0x55C76` still owns the unresolved combat reaction/hit path;
-this visual transition does not claim that damage or actor death is connected.
+the HUD and map with no black sprite rectangle or stale control. Audio event
+`0x4C` now plays extracted table-2 resource 76; the audio QA checks playback
+and its 98,511-sample, 44.1 kHz duration (2.234 seconds). Hound cue `0x55`
+uses slot 85, absent from the extracted non-silent resource set, so it remains
+unmapped. The Hound close-effect diversion is separate and source-silent. An
+independent same-action Genesis capture is not identified. `0x55C76` still
+owns the unresolved combat reaction/hit path; this visual transition does not
+claim that damage or actor death is connected.
 
 ## Projectile behavior is a separate Lua heartbeat
 

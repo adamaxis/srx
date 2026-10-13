@@ -26,6 +26,8 @@ int main(int argc, char** argv) {
         SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH);
     const auto resource_075 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH);
+    const auto resource_076 = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_ACTION_RESOURCE_076_PATH);
     const auto spawn_resource_028 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_028_PATH);
     const auto spawn_resource_029 = std::filesystem::path(
@@ -64,6 +66,9 @@ int main(int argc, char** argv) {
         }
         if (alias == "audio.effects.resource.075") {
             return resource_075;
+        }
+        if (alias == "audio.effects.resource.076") {
+            return resource_076;
         }
         if (alias == "audio.effects.resource.028") {
             return spawn_resource_028;
@@ -125,6 +130,16 @@ int main(int argc, char** argv) {
     }
     if (!std::filesystem::is_regular_file(resource_075)) {
         std::cerr << "the extracted resource-075 FLAC is missing\n";
+        return 1;
+    }
+    if (playback.alias_for_event(0x4CU) !=
+            "audio.effects.resource.076" ||
+        !std::filesystem::is_regular_file(resource_076)) {
+        std::cerr << "ordinary actor cue 0x4C did not select resource 76\n";
+        return 1;
+    }
+    if (!playback.alias_for_event(0x55U).empty()) {
+        std::cerr << "Hell Hound cue 0x55 was assigned an unverified sound\n";
         return 1;
     }
     const std::array<std::pair<std::uint16_t, std::filesystem::path>, 5>
@@ -207,7 +222,7 @@ int main(int argc, char** argv) {
         std::int64_t min_duration_ms;
         std::int64_t max_duration_ms;
     };
-    constexpr std::array<PlaybackExpectation, 15> kMappedEvents{{
+    constexpr std::array<PlaybackExpectation, 16> kMappedEvents{{
         {0x00U, "audio.music.resource.000", 119900, 120100},
         {0x10U, "audio.intro.title.stage-1", 14800, 14900},
         {0x16U, "audio.field.effect-016", 2700, 2800},
@@ -219,6 +234,7 @@ int main(int argc, char** argv) {
         {0x3FU, "audio.effects.resource.063", 2120, 2180},
         {0x4AU, "audio.effects.resource.074", 2200, 2350},
         {0x4BU, "audio.effects.resource.075", 2100, 2300},
+        {0x4CU, "audio.effects.resource.076", 2200, 2300},
         {0x51U, "audio.effects.resource.081", 2530, 2600},
         {0x5CU, "audio.intro.sega-logo-shock-sequence", 4700, 4900},
         {0x5DU, "audio.intro.shadowrun-logo-reveal-sequence", 2680, 2720},

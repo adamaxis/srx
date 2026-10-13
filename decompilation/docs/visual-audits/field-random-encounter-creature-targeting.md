@@ -184,12 +184,16 @@ no visible creature at the source edge-spawn position; the later settled
 selector frame shows the repositioned actor. This is internal rendering and
 state evidence, not an independent Genesis action-animation comparison.
 
-The source makes the `0x4C`/`0x55` cue request at the transition, and the
-ordinary-kind QA observes one `0x4C` request after the silent B press/release.
-The Hound's close-effect diversion remains separate. The cue's resolved audio
-resource, audible playback duration, and an independent matching Genesis
-action sequence remain unverified. The damage/status result, actor retirement,
-and optional child action after `0x55C76` remain open.
+The source makes one `0x4C`/`0x55` request at the transition, and the QA
+observes that the B press/release is silent before the ordinary actor requests
+`0x4C`. Audio playback now maps `0x4C` to extracted table-2 resource 76; its
+FLAC contains 98,511 samples at 44.1 kHz (2.234 seconds), and the audio QA
+checks that it loads, starts, and reports a duration in the expected range.
+The `0x55` request uses table-2 slot 85, which is absent from the extracted
+non-silent resources, so the host leaves it unmapped. The Hound's close-effect
+diversion remains separate. No independent matching Genesis action sequence
+has been identified. The damage/status result, actor retirement, and optional
+child action after `0x55C76` remain open.
 
 ## Eight-question target-action review
 
@@ -210,8 +214,9 @@ and optional child action after `0x55C76` remain open.
    holds the last finite frame until another behavior changes the list. The
    heartbeat follows the render pass, not a separate timer.
 5. **What sound accompanies it?** The ROM requests `0x4C`, or `0x55` for kind
-   12. The QA verifies the ordinary event request. Resource mapping and actual
-   playback length are not established here.
+   12. Ordinary `0x4C` plays resource 76 once per transition; the decoded file
+   lasts 2.234 seconds and the audio QA verifies playback. Slot 85 for `0x55`
+   is verified silent/no-op and remains unmapped.
 6. **Were neighboring regions checked?** Every full-screen encounter and Hound
    frame was reviewed. The right HUD is unchanged, the map remains intact, and
    no prior UI is drawn over by the creature sprite. The natural encounter
