@@ -2921,7 +2921,7 @@ GameScriptRuntime::actor_heartbeat(
     default:
         return fail("gameplay Lua actor animation mode is invalid");
     }
-    lua_createtable(state, 0, 43);
+    lua_createtable(state, 0, 51);
     lua_pushlstring(state, actor_id.data(), actor_id.size());
     lua_setfield(state, -2, "actor_id");
     lua_pushlstring(state, context.profile_id.data(),
@@ -2988,41 +2988,79 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "walk_animation_frame_count");
     lua_pushboolean(state, context.target_selection_latched);
     lua_setfield(state, -2, "target_selection_latched");
-    lua_createtable(state,
-                    static_cast<int>(context.ai_target_candidates.size()), 0);
-    for (std::size_t index = 0;
-         index < context.ai_target_candidates.size(); ++index) {
-        const auto& candidate = context.ai_target_candidates[index];
-        lua_createtable(state, 0, 13);
-        lua_pushlstring(state, candidate.id.data(), candidate.id.size());
-        lua_setfield(state, -2, "id");
-        lua_pushinteger(state, candidate.world_x);
-        lua_setfield(state, -2, "world_x");
-        lua_pushinteger(state, candidate.world_y);
-        lua_setfield(state, -2, "world_y");
-        lua_pushinteger(state, candidate.heading);
-        lua_setfield(state, -2, "heading");
-        lua_pushinteger(state, candidate.distance);
-        lua_setfield(state, -2, "distance");
-        lua_pushinteger(state, candidate.service_flags);
-        lua_setfield(state, -2, "service_flags");
-        lua_pushinteger(state, candidate.interaction_flags);
-        lua_setfield(state, -2, "interaction_flags");
-        lua_pushinteger(state, candidate.behavior_flags);
-        lua_setfield(state, -2, "behavior_flags");
-        lua_pushinteger(state, candidate.spawn_state_flags);
-        lua_setfield(state, -2, "spawn_state_flags");
-        lua_pushboolean(state, candidate.has_action);
-        lua_setfield(state, -2, "has_action");
-        lua_pushboolean(state, candidate.world_activity_actor);
-        lua_setfield(state, -2, "world_activity_actor");
-        lua_pushinteger(state, candidate.projected_heading);
-        lua_setfield(state, -2, "projected_heading");
-        lua_pushinteger(state, candidate.projected_distance);
-        lua_setfield(state, -2, "projected_distance");
-        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
-    }
-    lua_setfield(state, -2, "ai_target_candidates");
+    lua_pushboolean(state, context.target_selection_requested);
+    lua_setfield(state, -2, "target_selection_requested");
+    lua_pushboolean(state, context.target_selection_advances_cursor);
+    lua_setfield(state, -2, "target_selection_advances_cursor");
+    lua_pushboolean(state, context.target_selection_special_marker);
+    lua_setfield(state, -2, "target_selection_special_marker");
+    lua_pushinteger(state, context.target_selection_mode);
+    lua_setfield(state, -2, "target_selection_mode");
+    const auto push_optional_target_slot = [state](
+                                                const char* field,
+                                                const std::optional<std::uint8_t>& slot) {
+        if (slot.has_value()) {
+            lua_pushinteger(state, *slot);
+        } else {
+            lua_pushnil(state);
+        }
+        lua_setfield(state, -2, field);
+    };
+    push_optional_target_slot("target_selection_current_slot",
+                              context.target_selection_current_slot);
+    push_optional_target_slot("target_selection_linked_slot",
+                              context.target_selection_linked_slot);
+    push_optional_target_slot("target_selection_owner_slot",
+                              context.target_selection_owner_slot);
+    const auto push_actor_candidates = [state](
+        const char* field,
+        const std::vector<ScriptActorTargetCandidate>& candidates) {
+        lua_createtable(state, static_cast<int>(candidates.size()), 0);
+        for (std::size_t index = 0; index < candidates.size(); ++index) {
+            const auto& candidate = candidates[index];
+            lua_createtable(state, 0, 15);
+            lua_pushlstring(state, candidate.id.data(), candidate.id.size());
+            lua_setfield(state, -2, "id");
+            lua_pushinteger(state, candidate.world_x);
+            lua_setfield(state, -2, "world_x");
+            lua_pushinteger(state, candidate.world_y);
+            lua_setfield(state, -2, "world_y");
+            lua_pushinteger(state, candidate.heading);
+            lua_setfield(state, -2, "heading");
+            lua_pushinteger(state, candidate.distance);
+            lua_setfield(state, -2, "distance");
+            lua_pushinteger(state, candidate.service_flags);
+            lua_setfield(state, -2, "service_flags");
+            lua_pushinteger(state, candidate.interaction_flags);
+            lua_setfield(state, -2, "interaction_flags");
+            lua_pushinteger(state, candidate.behavior_flags);
+            lua_setfield(state, -2, "behavior_flags");
+            lua_pushinteger(state, candidate.spawn_state_flags);
+            lua_setfield(state, -2, "spawn_state_flags");
+            lua_pushboolean(state, candidate.has_action);
+            lua_setfield(state, -2, "has_action");
+            lua_pushboolean(state, candidate.world_activity_actor);
+            lua_setfield(state, -2, "world_activity_actor");
+            lua_pushinteger(state, candidate.projected_heading);
+            lua_setfield(state, -2, "projected_heading");
+            lua_pushinteger(state, candidate.projected_distance);
+            lua_setfield(state, -2, "projected_distance");
+            if (candidate.source_record_slot.has_value()) {
+                lua_pushinteger(state, *candidate.source_record_slot);
+            } else {
+                lua_pushnil(state);
+            }
+            lua_setfield(state, -2, "source_record_slot");
+            lua_pushinteger(state, candidate.descriptor_class);
+            lua_setfield(state, -2, "descriptor_class");
+            lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+        }
+        lua_setfield(state, -2, field);
+    };
+    push_actor_candidates("ai_target_candidates",
+                          context.ai_target_candidates);
+    push_actor_candidates("world_target_selection_candidates",
+                          context.world_target_selection_candidates);
     lua_pushlightuserdata(state, impl_.get());
     lua_pushcclosure(state, Impl::actor_random_bound, 1);
     lua_setfield(state, -2, "ai_random_bound");
@@ -3248,6 +3286,47 @@ GameScriptRuntime::actor_heartbeat(
         (decision.target_marker_animating &&
          decision.target_marker_radius % 8U != 0U)) {
         return fail("actor_ai.heartbeat returned inconsistent target-marker state");
+    }
+    lua_getfield(state, decision_table, "target_selection_processed");
+    if (!lua_isboolean(state, -1)) {
+        return fail("actor_ai.heartbeat returned invalid target selection state");
+    }
+    decision.target_selection_processed = lua_toboolean(state, -1) != 0;
+    lua_pop(state, 1);
+    const bool target_selection_expected =
+        context.target_selection_requested &&
+        context.phase == ScriptActorHeartbeatPhase::behavior;
+    if (decision.target_selection_processed != target_selection_expected ||
+        (decision.target_selection_processed &&
+         context.profile_id != "field_runner_k03_none00")) {
+        return fail("actor_ai.heartbeat returned an unexpected target selection");
+    }
+    std::string selected_world_actor_id;
+    if (!read_optional_field_string(state, decision_table,
+                                    "selected_world_actor_id",
+                                    selected_world_actor_id)) {
+        return fail("actor_ai.heartbeat returned an invalid selected actor id");
+    }
+    if (!selected_world_actor_id.empty()) {
+        const auto selected_candidate = std::find_if(
+            context.world_target_selection_candidates.begin(),
+            context.world_target_selection_candidates.end(),
+            [&selected_world_actor_id](const auto& candidate) {
+                return candidate.id == selected_world_actor_id &&
+                       candidate.source_record_slot.has_value() &&
+                       (candidate.service_flags & 0x01U) != 0U;
+            });
+        if (!decision.target_selection_processed ||
+            selected_candidate ==
+                context.world_target_selection_candidates.end()) {
+            return fail("actor_ai.heartbeat selected a missing world actor");
+        }
+        decision.selected_world_actor_id =
+            std::move(selected_world_actor_id);
+    }
+    if (!decision.target_selection_processed &&
+        decision.selected_world_actor_id.has_value()) {
+        return fail("actor_ai.heartbeat retained a stale selected actor");
     }
     lua_getfield(state, decision_table, "animation_accumulator");
     if (!lua_isinteger(state, -1)) {

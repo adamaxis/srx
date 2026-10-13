@@ -416,6 +416,8 @@ struct ScriptActorTargetCandidate {
     // 0x15C84 checks the close-range target gate for kinds 0xD/0xE.
     std::uint16_t projected_heading = 0;
     std::uint16_t projected_distance = 0;
+    std::optional<std::uint8_t> source_record_slot;
+    std::uint8_t descriptor_class = 0;
 };
 
 using ScriptActorRandomBound =
@@ -482,7 +484,15 @@ struct ScriptActorBehaviorContext {
     // ROM +0x11.4 target-selection latch, forwarded as a fact; Lua owns the
     // visible 0x5C7E marker cadence and returns its presentation state.
     bool target_selection_latched = false;
+    bool target_selection_requested = false;
+    bool target_selection_advances_cursor = false;
+    bool target_selection_special_marker = false;
+    std::uint8_t target_selection_mode = 0;
+    std::optional<std::uint8_t> target_selection_current_slot;
+    std::optional<std::uint8_t> target_selection_linked_slot;
+    std::optional<std::uint8_t> target_selection_owner_slot;
     std::vector<ScriptActorTargetCandidate> ai_target_candidates;
+    std::vector<ScriptActorTargetCandidate> world_target_selection_candidates;
     ScriptActorRandomBound ai_random_bound;
     std::uint8_t entry_animation_frame_count = 2;
 };
@@ -513,6 +523,8 @@ struct ScriptActorBehaviorDecision {
     bool target_marker_animating = false;
     std::uint8_t target_marker_style = 0;
     std::uint8_t target_marker_radius = 0;
+    bool target_selection_processed = false;
+    std::optional<std::string> selected_world_actor_id;
     std::optional<ScriptActorMovementStep> movement_step;
     std::optional<ScriptActorProjectileMovementDecision>
         projectile_movement;

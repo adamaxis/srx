@@ -1013,7 +1013,8 @@ private:
         const ConversionAssetCatalog& catalog);
     void initialize_default_field_actors(std::uint16_t scene_reference);
     void advance_default_field_actors();
-    void advance_field_entity_target_selection();
+    bool apply_scripted_field_entity_target_selection(
+        const std::optional<std::string>& selected_actor_id);
     void trigger_field_world_effect_sequence();
     std::int16_t select_field_world_effect_sequence();
     void spawn_field_world_effect_sequence();

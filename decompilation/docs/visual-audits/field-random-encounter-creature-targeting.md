@@ -14,22 +14,30 @@
   continuation advances accepted movement on each actor-service pass.
 - `0x14492` chooses the target pool from actor `+0x10.3`; it does not select
   the nearest screen sprite. B's newly pressed bit reaches `0x1DC4C`, which
-  sets the selected actor's `+0x11.4` latch and initializes `+0xA6` for the
-  `0x5C7E` marker animation. The B path itself makes no sound call.
+  scans the source record pool and sets the selected actor's `+0x11.4` latch.
+  Lua now owns that normal/special pool scan from typed record facts; the host
+  applies the returned actor ID to the selected record. Lua also initializes
+  `+0xA6` for the `0x5C7E` marker animation. The B path itself makes no sound
+  call. The separate automatic target-service call from `0x1DD94` remains on
+  the typed native conversion path.
 
 ## Runtime evidence
 
-Release CTest
-`shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa` passed. It
-injects selector rolls `1+2` for Scene 2's sum-3 row and checks the two-Weenr
-sequence, active actor records, source entry cue requests, Lua target link,
-close-range movement, creature walk frames, and B selection surviving button
-release. The script-runtime CTest also checks the four action-code marker
-groups, the 64-to-0 shrink sequence, the persistent marker, and latch clearing.
+Debug and Release CTest
+`shadowrun_gameplay_script_runtime_qa` and
+`shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa` both passed.
+Each field QA run injects selector rolls `1+2` for Scene 2's sum-3 row and
+checks the two-Weenr sequence, active actor records, source entry cue requests,
+Lua target link, close-range movement, creature walk frames, and B selection
+surviving button release. The script-runtime CTest checks the four action-code
+marker groups, the 64-to-0 shrink sequence, the persistent marker, and latch
+clearing.
+It now also checks the Lua-owned B scan's normal cursor advance, reserved-record
+skip, normal restart at slot 3, and special-mode active-only scan and wrap.
 The field QA matches all 14 opaque source pixels in each of the four 8x8
 marker corners and confirms the right-side HUD is unchanged. These are not
 tests of the production random-roll sequence or the full combat route. The
-Release `shadowrun_gameplay_script_runtime_qa` separately checks each
+The script-runtime QA in both configurations separately checks each
 `0x1E166` blocker, the `(frame_counter & 0x3FF) == 10` cadence, threshold
 accept/reject behavior, the sequence-forward branch, and that Lua requests
 the source probability draw only after state/cadence eligibility passes.
@@ -70,10 +78,11 @@ prove a frame-for-frame match with this Scene 2 fixture.
    Independent combat frames show the same separated brackets in yellow and
    red. The exact Scene 2 hue is source-palette-derived, not matched to that
    different combat encounter.
-2. **Does the look reflect the behavioral state?** B sets the selected actor's
-   `+0x11.4` latch and initializes `+0xA6`; Lua retains selection after release
-   and returns the marker style from the actor action byte. The pixel QA checks
-   each of the four drawn corners, not just the state flag.
+2. **Does the look reflect the behavioral state?** Lua applies the B-edge
+   source-pool selection rules and returns the selected actor ID. The host
+   publishes the matching `+0x11.4` latch, and Lua retains it after release,
+   advances `+0xA6`, and returns marker style from the actor action byte. The
+   pixel QA checks each of the four drawn corners, not just the state flag.
 3. **Are the visuals correct?** The marker tiles, palette lines, flips, and
    descriptor offsets are from the ROM. PNG alpha prevents black tile
    backgrounds. The independent frames corroborate shape, but not the exact
@@ -86,8 +95,11 @@ prove a frame-for-frame match with this Scene 2 fixture.
    tested entry sequence requests `0x2E`, which resolves to a verified silent
    or no-op resource; no audible duration is claimed.
 6. **Were neighboring areas checked?** All 11 full 320x224 QA frames were
-   opened, including production edge-spawn frames, the close fixture, two walk
-   poses, and both selector stages. The full HUD remains unchanged.
+   opened individually, including production edge-spawn frames, the close
+   fixture, two walk poses, and both selector stages. The full HUD remains
+   unchanged. Debug counterparts match the reviewed Release frames by SHA-256.
+   The shrinking frame intentionally has widely separated corners; the settled
+   frame has the compact selector around the target.
 7. **Are there multiple frames?** Yes: 0, 30, 180, and 480 service frames,
    two walk poses, selector shrink and settled frames, plus independent
    section-06 longplay frames 2190, 2220, 2430, and 2460.
@@ -100,12 +112,12 @@ prove a frame-for-frame match with this Scene 2 fixture.
 
 ROM-selected spawn, entry state, Lua target acquisition, close-range movement,
 walk animation, and the B selector's typed state and source pixels are covered
-by focused Release QA. The ordinary gate policy is now Lua-owned and its
-blocker/cadence/chance branches are covered by script-runtime QA; the field
-spawn QA still injects the already-bounded selector rolls, so production RNG
-consumption and event dispatch are not covered end to end. This hill remains
-partial: the alternate target action-byte route through `+0x9C`, the full
-actor pool, creature item/spell actions and hit resolution/damage/death, and
-natural approach from the edge are unresolved. The independent longplay
+by focused Debug and Release QA. B's source-pool selection policy and the
+ordinary gate's blocker/cadence/chance branches are covered by script-runtime
+QA; the field spawn QA still injects the already-bounded selector rolls, so
+production RNG consumption and event dispatch are not covered end to end. This
+hill remains partial: the alternate target action-byte route through `+0x9C`,
+the full actor pool, creature item/spell actions, hit resolution, damage/death,
+and natural approach from the edge are unresolved. The independent longplay
 corroborates the marker shape, but does not provide the actor bytes needed to
 verify every palette variant.

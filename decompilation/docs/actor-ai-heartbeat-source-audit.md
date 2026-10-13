@@ -181,14 +181,16 @@ collision use the existing typed host queries, while Lua chooses the creature
 target heading. Item/spell action selection, attack effects, damage/death, and
 retirement after combat are not connected.
 
-The B rising-edge path at `0x1DC4C` now selects a live field actor through the
-same typed record service. The service keeps the two source selection fields
-distinct: candidate reservation is `+0x10.4`, while B's selected-target latch
-is `+0x11.4`. It must not be inferred from the action-link candidate flag.
-Lua now advances the `+0xA6` marker countdown on the render heartbeat, selects
-the four ROM tile/palette groups, and feeds the transparent PNG corner assets
-to the field renderer. The alternate `+0x9C` marker action-byte route and the
-special runner-pool mode remain incomplete.
+The B rising-edge path at `0x1DC4C` now runs its normal/special candidate scan
+in the player's Lua behavior heartbeat. The host supplies the typed record
+facts and publishes Lua's selected actor ID to the selected record. The scan
+keeps the two source selection fields distinct: candidate reservation is
+`+0x10.4`, while B's selected-target latch is `+0x11.4`. Lua advances the
+`+0xA6` marker countdown on the render heartbeat, selects the four ROM
+tile/palette groups, and feeds the transparent PNG corner assets to the field
+renderer. The separate automatic target-service call remains on the native
+conversion path. The alternate `+0x9C` marker action-byte route and the special
+runner-pool mode remain incomplete.
 
 Movement is collision-coupled. `0xB77E` builds a directional probe and calls
 `0xB48C`; `0xB48C` calls terrain collision `0xE7C8` and stores the collision

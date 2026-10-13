@@ -2397,39 +2397,61 @@ void FieldSceneRuntime::refresh_world_entity_service_targets() {
         field_entity_target_records_[*selected].effect_locked;
 }
 
-void FieldSceneRuntime::advance_field_entity_target_selection() {
-    // FFDD22 bit 0x1000 is the newly-pressed B edge. The low held bit is not
-    // used here, so holding B cannot spin the eight-record selector.
-    if ((field_controller_sample_state_.events & 0x1000U) == 0U) {
-        return;
+bool FieldSceneRuntime::apply_scripted_field_entity_target_selection(
+    const std::optional<std::string>& selected_actor_id) {
+    const bool special_path = field_entity_target_owner_.special_marker &&
+        (field_entity_target_owner_.mode == 0x0CU ||
+         field_entity_target_owner_.mode == 0x04U ||
+         field_entity_target_owner_.mode == 0x0BU);
+    if (!special_path) {
+        field_entity_target_owner_.service_marker = 0U;
     }
-    refresh_world_entity_service_targets();
-    const auto action = select_world_entity_service_target(
-        field_entity_target_owner_, field_entity_target_records_, true);
+    field_entity_target_owner_.selected_target.reset();
     for (auto& actor : field_default_actors_) {
         if (!actor.source_record_slot.has_value()) {
             continue;
         }
-        const auto slot = static_cast<std::size_t>(
-            *actor.source_record_slot);
-        actor.target_selected =
-            action == EntityServiceTargetAction::selected &&
-            field_entity_target_owner_.selected_target ==
-                std::optional<std::size_t>{slot};
-        if (actor.target_selected) {
-            actor.source_interaction_flags = static_cast<std::uint8_t>(
-                actor.source_interaction_flags |
-                actor_flag_mask(ActorInteractionFlag::service_selection_latch));
-        } else {
-            actor.source_interaction_flags = static_cast<std::uint8_t>(
-                actor.source_interaction_flags & static_cast<std::uint8_t>(
-                    ~actor_flag_mask(ActorInteractionFlag::service_selection_latch)));
+        actor.target_selected = false;
+        actor.source_interaction_flags = static_cast<std::uint8_t>(
+            actor.source_interaction_flags & static_cast<std::uint8_t>(
+                ~actor_flag_mask(
+                    ActorInteractionFlag::service_selection_latch)));
+    }
+
+    bool selected = false;
+    if (selected_actor_id.has_value()) {
+        const auto actor = std::find_if(
+            field_default_actors_.begin(), field_default_actors_.end(),
+            [this, &selected_actor_id](const auto& candidate) {
+                return candidate.active &&
+                    candidate.scene_reference ==
+                        state_.field_scene_buffers.scene_reference &&
+                    candidate.source_record_slot.has_value() &&
+                    candidate.actor_instance_id == *selected_actor_id;
+            });
+        if (actor == field_default_actors_.end()) {
+            failure_ = "Lua selected a world actor outside the active field";
+            source_boundary("field.target.lua_selected_actor_missing");
+            return false;
         }
+        const auto slot = static_cast<std::size_t>(
+            *actor->source_record_slot);
+        if (slot >= field_entity_target_records_.size()) {
+            failure_ = "Lua selected a world actor with an invalid source slot";
+            source_boundary("field.target.lua_selected_slot_out_of_range");
+            return false;
+        }
+        actor->target_selected = true;
+        actor->source_interaction_flags = static_cast<std::uint8_t>(
+            actor->source_interaction_flags |
+            actor_flag_mask(ActorInteractionFlag::service_selection_latch));
+        field_entity_target_owner_.selected_target = slot;
+        selected = true;
     }
     refresh_world_entity_service_targets();
-    source_boundary(action == EntityServiceTargetAction::selected
-                        ? "field.target.selected_with_b"
-                        : "field.target.no_available_record_with_b");
+    source_boundary(selected ? "field.target.selected_with_b"
+                             : "field.target.no_available_record_with_b");
+    return true;
 }
 
 std::int16_t FieldSceneRuntime::select_field_world_effect_sequence() {
@@ -6598,6 +6620,75 @@ FieldSceneRuntime::heartbeat_field_player(
     actor_context.movement_allowed = script_movement_allowed;
     actor_context.phase = phase;
     if (phase == scripting::ScriptActorHeartbeatPhase::behavior) {
+        const bool target_selection_pressed = ready_ &&
+            (field_controller_sample_state_.events & 0x1000U) != 0U;
+        if (target_selection_pressed) {
+            refresh_world_entity_service_targets();
+            actor_context.target_selection_requested = true;
+            actor_context.target_selection_advances_cursor = true;
+            actor_context.target_selection_special_marker =
+                field_entity_target_owner_.special_marker;
+            actor_context.target_selection_mode =
+                field_entity_target_owner_.mode;
+            const auto copy_slot = [](const std::optional<std::size_t> slot)
+                -> std::optional<std::uint8_t> {
+                if (!slot.has_value() || *slot > 0xFFU) {
+                    return std::nullopt;
+                }
+                return static_cast<std::uint8_t>(*slot);
+            };
+            actor_context.target_selection_current_slot = copy_slot(
+                field_entity_target_owner_.selected_target);
+            actor_context.target_selection_linked_slot = copy_slot(
+                field_entity_target_owner_.linked_target);
+            actor_context.target_selection_owner_slot = copy_slot(
+                field_entity_target_owner_.owner_record);
+
+            actor_context.world_target_selection_candidates.reserve(
+                field_entity_target_records_.size());
+            for (std::size_t slot = 0U;
+                 slot < field_entity_target_records_.size(); ++slot) {
+                const auto& source = field_entity_target_records_[slot];
+                scripting::ScriptActorTargetCandidate candidate{};
+                candidate.source_record_slot =
+                    static_cast<std::uint8_t>(slot);
+                candidate.descriptor_class = source.descriptor_class;
+                candidate.service_flags = static_cast<std::uint8_t>(
+                    (source.active ? 0x01U : 0U) |
+                    (source.service_reserved ? 0x10U : 0U) |
+                    (source.effect_locked ? 0x40U : 0U));
+                candidate.interaction_flags = source.selected ? 0x10U : 0U;
+                candidate.behavior_flags = source.high_effect ? 0x80U : 0U;
+                candidate.has_action = source.has_action;
+                const auto actor = std::find_if(
+                    field_default_actors_.begin(),
+                    field_default_actors_.end(),
+                    [this, slot](const auto& value) {
+                        return value.active &&
+                            value.scene_reference ==
+                                state_.field_scene_buffers.scene_reference &&
+                            value.source_record_slot.has_value() &&
+                            static_cast<std::size_t>(
+                                *value.source_record_slot) == slot;
+                    });
+                if (actor != field_default_actors_.end()) {
+                    candidate.id = actor->actor_instance_id;
+                    candidate.world_x = actor->world_position.x;
+                    candidate.world_y = actor->world_position.y;
+                    candidate.heading = actor->movement_state.heading;
+                    candidate.interaction_flags =
+                        actor->source_interaction_flags;
+                    candidate.behavior_flags =
+                        actor->source_behavior_flags;
+                    candidate.spawn_state_flags =
+                        actor->source_spawn_state_flags;
+                    candidate.world_activity_actor =
+                        actor->temporary_world_encounter;
+                }
+                actor_context.world_target_selection_candidates.push_back(
+                    std::move(candidate));
+            }
+        }
         const auto& runner = active_runner_record();
         const bool valid_weapon_slot =
             runner.equipped_inventory_slot >= 0 &&
@@ -6738,6 +6829,12 @@ FieldSceneRuntime::heartbeat_field_player(
     const auto actor_decision = game_scripts_.actor_heartbeat(actor_context);
     if (actor_decision.has_value()) {
         field_player_actor_script_initialized_ = true;
+        if (actor_decision->target_selection_processed) {
+            if (!apply_scripted_field_entity_target_selection(
+                    actor_decision->selected_world_actor_id)) {
+                return std::nullopt;
+            }
+        }
         if (phase == scripting::ScriptActorHeartbeatPhase::render &&
             actor_context.animation_accumulator_override.has_value()) {
             field_player_animation_reset_pending_ = false;
@@ -6775,8 +6872,6 @@ void FieldSceneRuntime::advance_field_movement() {
         }
         return;
     }
-
-    advance_field_entity_target_selection();
 
     if (movement_transition_paused) {
         // Keep the startup marker alive through the fade, as the ROM does,

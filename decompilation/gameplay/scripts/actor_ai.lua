@@ -316,6 +316,8 @@ local function initial_state(context, profile)
         target_marker_style = 0,
         target_marker_radius = 0,
         target_marker_countdown = 0,
+        selected_world_actor_id = nil,
+        target_selection_processed = false,
     }
     if profile.projectile_animation then
         local animation = context.projectile_animation
@@ -370,6 +372,9 @@ local function snapshot(state, action, audio_event, projectile_movement)
         target_marker_animating = state.target_marker_animating,
         target_marker_style = state.target_marker_style,
         target_marker_radius = state.target_marker_radius,
+        target_selection_processed = state.target_selection_processed,
+        selected_world_actor_id = state.target_selection_processed
+            and state.selected_world_actor_id or nil,
         movement_step = state.movement_step,
         projectile_movement = projectile_movement,
     }
@@ -430,6 +435,96 @@ local function advance_target_marker(state, context)
         state.target_marker_animating = false
         state.target_marker_radius = 0
     end
+end
+
+local function advance_world_target_selection(state, context)
+    state.target_selection_processed = false
+    if context.phase ~= "behavior" or
+       context.target_selection_requested ~= true then
+        return
+    end
+
+    local candidates_by_slot = {}
+    for _, candidate in ipairs(context.world_target_selection_candidates or {}) do
+        local slot = candidate.source_record_slot
+        if type(slot) == "number" and slot % 1 == 0 and
+           slot >= 0 and slot < 16 then
+            candidates_by_slot[slot] = candidate
+        end
+    end
+
+    local special_path = context.target_selection_special_marker == true and
+        (context.target_selection_mode == 0x0c or
+         context.target_selection_mode == 0x04 or
+         context.target_selection_mode == 0x0b)
+    state.selected_world_actor_id = nil
+    local start
+    if special_path then
+        start = context.target_selection_current_slot
+        if start == nil then
+            start = context.target_selection_owner_slot
+        end
+        if start ~= nil and context.target_selection_advances_cursor then
+            start = start + 1
+        end
+        if start ~= nil and
+           (start >= 16 or
+            ((candidates_by_slot[start] or {}).descriptor_class or 0) >= 3) then
+            start = 0
+        end
+    else
+        start = 3
+        local previous = context.target_selection_current_slot
+        if previous ~= nil then
+            if previous < 9 then
+                start = previous
+                if context.target_selection_advances_cursor then
+                    start = start + 1
+                end
+            end
+        elseif context.target_selection_linked_slot ~= nil then
+            start = context.target_selection_linked_slot
+        end
+        if start >= 16 then
+            start = 3
+        end
+        if ((candidates_by_slot[start] or {}).descriptor_class or 0) < 3 then
+            start = 3
+        end
+    end
+
+    if start ~= nil then
+        for offset = 0, 7 do
+            local candidate = candidates_by_slot[start + offset]
+            if candidate ~= nil then
+                local available =
+                    (candidate.service_flags & ActorServiceFlag.active) ~= 0
+                if special_path then
+                    if available and type(candidate.id) == "string" and
+                       candidate.id ~= "" then
+                        state.selected_world_actor_id = candidate.id
+                        break
+                    end
+                else
+                    available = available and
+                        (candidate.service_flags &
+                         ActorServiceFlag.effect_locked) == 0 and
+                        (candidate.service_flags &
+                         ActorServiceFlag.action_candidate_reserved) == 0 and
+                        (candidate.behavior_flags &
+                         ActorBehaviorFlag.high_effect) == 0 and
+                        candidate.has_action == true
+                    if available and type(candidate.id) == "string" and
+                       candidate.id ~= "" then
+                        state.selected_world_actor_id = candidate.id
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    state.target_selection_processed = true
 end
 
 local function advance_projectile_animation(state, context)
@@ -1187,6 +1282,7 @@ function ActorAI.heartbeat(context)
             return nil
         end
         states[context.actor_id] = state
+        advance_world_target_selection(state, context)
         if profile.projectile_animation then
             return projectile_heartbeat(state, context)
         end
@@ -1218,6 +1314,7 @@ function ActorAI.heartbeat(context)
     if not same_actor(state, context) then
         return nil
     end
+    advance_world_target_selection(state, context)
     if profile.projectile_animation then
         return projectile_heartbeat(state, context)
     end
