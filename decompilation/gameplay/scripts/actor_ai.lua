@@ -450,6 +450,7 @@ local function initial_state(context, profile)
         ai_target_id = nil,
         ai_target_heading = nil,
         ai_target_distance = nil,
+        ai_target_engaged = false,
         target_motion_delay = 0,
         target_selection_latched = false,
         target_marker_visible = false,
@@ -522,6 +523,7 @@ local function snapshot(state, action, audio_event, projectile_movement)
         ai_target_id = state.ai_target_id,
         ai_target_heading = state.ai_target_heading,
         ai_target_distance = state.ai_target_distance,
+        ai_target_engaged = state.ai_target_engaged,
         target_motion_delay = state.target_motion_delay,
         action_delay = state.action_delay,
         target_motion_effect_slot_request =
@@ -1154,41 +1156,6 @@ local function requested_movement_heading(context, profile, state)
         state.ai_target_id = target and target.id or nil
         state.ai_target_heading = heading
         state.ai_target_distance = distance
-        if context.movement_allowed and type(heading) == "number" and
-           type(distance) == "number" then
-            -- ROM 0x14C7C: kind 0xC turns/approaches inside 0x600 units;
-            -- its current heading is only replaced in the 0x300..0x5FF
-            -- interval (or by the separate close-effect path). Kinds 0xD/0xE
-            -- project their position through 0x14C56 before the linked-target
-            -- <0x200 check at 0x15C84. The host supplies measured geometry
-            -- and collision queries; Lua owns this policy.
-            if context.entity_kind == EntityKind.hell_hound then
-                if distance < 0x300 and state.action_delay < 0 then
-                    request_target_motion_effect(state, context, heading)
-                end
-            end
-            if (context.entity_kind == EntityKind.gargoyle or
-                context.entity_kind == EntityKind.wendigo) then
-                local projected_heading = target.projected_heading
-                local projected_distance = target.projected_distance
-                if type(projected_heading) ~= "number" then
-                    projected_heading = heading
-                end
-                if type(projected_distance) ~= "number" then
-                    projected_distance = distance
-                end
-                -- ROM 0x14C7C temporarily projects +0x2E through 0x14C56,
-                -- then 0x15C84 accepts only a linked target less than 0x200
-                -- from that projected point. Kind 0xD at frame +0x1E == 2
-                -- stores the 0x1000 animation accumulator and holds heading.
-                if projected_distance < 0x200 then
-                    if context.entity_kind == EntityKind.gargoyle and
-                       context.ai_animation_frame == 2 then
-                        state.animation_accumulator = 0x1000
-                    end
-                end
-            end
-        end
         -- ROM 0x13D0C selects a destination on the +0xB6 timer. Its route is
         -- then followed by the actor's +0x3A continuation each service pass.
         return nil
@@ -1210,6 +1177,69 @@ local function requested_movement_heading(context, profile, state)
         return nil
     end
     return heading
+end
+
+local function resolve_source_target_motion(context, state, target)
+    state.ai_target_engaged = false
+    if not context.movement_allowed or type(target) ~= "table" or
+       type(target.heading) ~= "number" or
+       type(target.distance) ~= "number" then
+        return false
+    end
+
+    local heading = target.heading & 0xffff
+    local distance = target.distance & 0xffff
+    local accepted = false
+
+    if context.entity_kind == EntityKind.hell_hound then
+        -- ROM 0x14D04: inside 0x300, nonnegative +0xDC accepts the target
+        -- heading; negative +0xDC first needs a free effect slot and then
+        -- replaces both +0x2E and +0x34. From 0x300 through 0x5FF both
+        -- headings change immediately. At 0x600 the actor keeps pursuing.
+        if distance < 0x300 then
+            if state.action_delay < 0 then
+                accepted = request_target_motion_effect(
+                    state, context, heading)
+                if accepted then
+                    state.movement_current_heading = heading
+                end
+            else
+                accepted = true
+            end
+        elseif distance < 0x600 then
+            state.movement_current_heading = heading
+            accepted = true
+        end
+    elseif context.entity_kind == EntityKind.gargoyle or
+           context.entity_kind == EntityKind.wendigo then
+        -- 0x14C7C calls 0x15C84, whose 0x15C58 range test measures the
+        -- linked record's actual coordinates and accepts only distance <
+        -- 0x200. The preceding 0x14C56 projection result is not consumed by
+        -- that test. Kind 0xD at frame +0x1E == 2 forces +0x1A to 0x1000,
+        -- but clears carry, so the actor continues its route on that pass.
+        if distance < 0x200 then
+            if context.entity_kind == EntityKind.gargoyle and
+               context.ai_animation_frame == 2 then
+                state.animation_accumulator = 0x1000
+            else
+                state.movement_current_heading = heading
+                accepted = true
+            end
+        end
+    elseif distance < 0x200 then
+        -- Other kinds use 0x15C58 directly. That branch writes +0x34 but
+        -- leaves +0x2E to the actor's own action continuation.
+        accepted = true
+    end
+
+    if accepted then
+        state.movement_heading = heading
+        state.movement_active = false
+        state.movement_route_distance = nil
+        state.ai_target_engaged = true
+        state.direction = direction_from_heading(heading)
+    end
+    return accepted
 end
 
 local function movement_collision_code(code, context)
@@ -1592,9 +1622,11 @@ function ActorAI.heartbeat(context)
                         return nil
                     end
                 else
-                    state.direction = direction_from_heading(
+                    local facing_heading = state.ai_target_engaged
+                        and state.ai_target_heading or
                         state.movement_current_heading or
-                        context.initial_heading)
+                        context.initial_heading
+                    state.direction = direction_from_heading(facing_heading)
                     state.animation_id = "idle"
                     state.animation_frame = 0
                 end
@@ -1636,13 +1668,16 @@ function ActorAI.heartbeat(context)
                         state.behavior_timer = 0x14
                         requested_movement_heading(context, profile, state)
                         local target = retained_linked_target(context, state)
-                        local route_heading =
-                            source_motion_destination_heading(
-                                context, state, target)
-                        state.movement_heading = route_heading
-                        state.movement_active = route_heading ~= nil
-                        if not state.movement_active then
-                            state.movement_route_distance = nil
+                        if not resolve_source_target_motion(
+                            context, state, target) then
+                            local route_heading =
+                                source_motion_destination_heading(
+                                    context, state, target)
+                            state.movement_heading = route_heading
+                            state.movement_active = route_heading ~= nil
+                            if not state.movement_active then
+                                state.movement_route_distance = nil
+                            end
                         end
                     end
 

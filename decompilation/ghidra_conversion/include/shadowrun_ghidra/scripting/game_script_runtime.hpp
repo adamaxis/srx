@@ -416,10 +416,6 @@ struct ScriptActorTargetCandidate {
     std::uint8_t spawn_state_flags = 0; // source entity +0x9E
     bool has_action = false; // source entity +0x0C != 0
     bool world_activity_actor = false;
-    // 0x14C56 projects the acting record one heading-vector step before
-    // 0x15C84 checks the close-range target gate for kinds 0xD/0xE.
-    std::uint16_t projected_heading = 0;
-    std::uint16_t projected_distance = 0;
     // 0x13D0C routes either toward the linked record or toward a point
     // projected perpendicular to it. These are the source 0x15CA4 metrics
     // from the acting record to each candidate endpoint; Lua selects the
@@ -541,6 +537,7 @@ struct ScriptActorBehaviorDecision {
     std::optional<std::string> ai_target_id;
     std::optional<std::uint16_t> ai_target_heading;
     std::optional<std::uint16_t> ai_target_distance;
+    bool ai_target_engaged = false;
     std::uint8_t target_motion_delay = 0;
     std::int16_t action_delay = 0;
     std::optional<std::uint8_t> target_motion_effect_slot_request;

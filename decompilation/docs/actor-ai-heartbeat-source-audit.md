@@ -428,6 +428,38 @@ sequence), not as audible samples or durations. Section-06 longplay frames
 2190/2220 and 2430/2460 independently show the target-bracket visual form; they
 do not expose the source actor/action bytes for this exact scene.
 
+## Creature target acceptance and route handoff
+
+The ROM's `0x13FFE` dispatcher calls `0x14C7C` after selecting an actor's
+linked target. A rejected target leaves the actor in route mode 2. An accepted
+target copies the actor's current coordinates to `+0x96/+0x98`, then selects
+mode 1 or 3 from signed `+0xDC`; this exits pursuit and hands the record to
+its action continuation. Lua now reports that outcome as
+`ai_target_engaged`, preserves the selected `+0x34` heading, and returns no
+movement step for that pass. The Qt runtime accepts this typed engaged state
+without fabricating a collision-resolved move. The attack/action continuations
+remain unported, so engagement here means target acceptance and route stop,
+not a completed attack or hit.
+
+The accepted ranges are sourced from `0x14C7C`, `0x14D58`, `0x15C58`, and
+`0x15C84`. Ordinary kinds accept an active, unlocked linked actor only below
+`0x200`; their branch writes `+0x34` and leaves `+0x2E` to the action
+continuation. Hell Hounds accept below `0x300` when `+0xDC` is nonnegative,
+or after a free effect slot is allocated when it is negative; the latter
+sets both headings. They also set both headings from `0x300` through `0x5FF`,
+and reject at `0x600` and beyond. Gargoyles and Wendigos accept the linked
+actor's measured coordinate distance below `0x200` and set both headings.
+Gargoyle animation frame 2 instead writes `0x1000` to `+0x1A`, clears carry,
+and continues routing for that service pass.
+
+Although the Gargoyle/Wendigo branch calls `0x14C56`, the range helper reached
+through `0x15C84` measures the linked record's actual coordinates; the
+projection result is not used as that threshold. The host no longer computes
+or passes a projected-target distance for this decision. The script-runtime
+QA covers the strict `0x200`/`0x300`/`0x600` boundaries, the `0x5FF` Hound edge,
+the effect-slot path, and the Gargoyle frame-2 carry behavior in Debug and
+Release.
+
 ## Hell Hound close-range effect
 
 The ROM branch at `0x14C7C` separates heading from attack selection by range.

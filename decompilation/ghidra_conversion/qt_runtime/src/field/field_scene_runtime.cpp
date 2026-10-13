@@ -2093,14 +2093,6 @@ void FieldSceneRuntime::advance_default_field_actors() {
                         measure_entity_target_heading_and_distance(
                             actor.world_position.x, actor.world_position.y,
                             position.x, position.y);
-                    const auto projected = project_heading_position(
-                        actor.world_position.x, actor.world_position.y,
-                        actor.movement_state.heading);
-                    const auto projected_relative =
-                        measure_entity_target_heading_and_distance(
-                            static_cast<std::uint16_t>(projected.world_x),
-                            static_cast<std::uint16_t>(projected.world_y),
-                            position.x, position.y);
                     const auto side_heading = static_cast<std::uint16_t>(
                         relative.heading + 0x4000U);
                     const auto side_magnitude = static_cast<std::uint16_t>(
@@ -2142,9 +2134,6 @@ void FieldSceneRuntime::advance_default_field_actors() {
                             spawn_state_flags,
                             projection.screen_y != 0U,
                             world_activity_actor,
-                            projected_relative.heading,
-                            static_cast<std::uint16_t>(std::min<std::uint32_t>(
-                                projected_relative.distance, 0xFFFFU)),
                             direct_route_step_cost,
                             perpendicular_route_step_cost,
                             static_cast<std::uint16_t>(

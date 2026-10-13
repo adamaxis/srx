@@ -121,6 +121,38 @@ prove a frame-for-frame match with this Scene 2 fixture.
    remain transparent, the marker follows the selected actor, and the existing
    HUD is pixel-identical; no old menu or button layer is reused here.
 
+## Creature target acceptance review
+
+1. **Does the actor stop when the ROM accepts a linked target?** Yes. At the
+   source range gate the actor leaves pursuit mode, records its target heading,
+   and does not emit a movement step. The Qt handoff accepts this only when Lua
+   returns `ai_target_engaged`; otherwise a requested movement heading still
+   requires its collision-resolved step.
+2. **Does the state match the kind-specific source branch?** Ordinary actors
+   accept below `0x200`; Hell Hounds accept below `0x300` through their
+   `+0xDC`/effect-slot gate and from `0x300` through `0x5FF`; Gargoyles and
+   Wendigos accept below `0x200`. Gargoyle frame 2 sets its source animation
+   accumulator and keeps routing for that pass. Boundary checks run in both
+   build configurations.
+3. **Are the direction and action visuals fully verified?** The test checks
+   the Lua target heading and current-heading fields. The current field
+   capture can show a creature and its target marker, but there is no
+   independently identified Genesis sequence for this exact creature action.
+   Attack animation, hit resolution, damage, and death remain open.
+4. **Are other screen regions and overlays clean?** All 12 random-encounter
+   frames and all 8 Hound-effect frames were reopened at 320x224. Debug and
+   Release hashes match for each named frame. The entire right HUD remains
+   intact; no stale menu or button layer appears. At the shrinking-marker
+   frame, lower corners fall below the viewport at radius 56; the settled
+   frame shows the compact four-corner marker around the fixture actor.
+5. **Does the effect add unrequested sound or replace old art?** No. The
+   Hound effect uses the transparent extracted frames and requests no sound.
+   The map/HUD remain visible through all three phases and after release.
+
+These captures verify the port's connected state and whole-screen composition;
+they are not independent Genesis proof for target acceptance or creature
+attacks.
+
 ## Hell Hound close-effect review
 
 1. **Does it look correct?** The source descriptor and scene palette produce

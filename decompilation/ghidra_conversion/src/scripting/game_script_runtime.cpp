@@ -3081,10 +3081,6 @@ GameScriptRuntime::actor_heartbeat(
             lua_setfield(state, -2, "has_action");
             lua_pushboolean(state, candidate.world_activity_actor);
             lua_setfield(state, -2, "world_activity_actor");
-            lua_pushinteger(state, candidate.projected_heading);
-            lua_setfield(state, -2, "projected_heading");
-            lua_pushinteger(state, candidate.projected_distance);
-            lua_setfield(state, -2, "projected_distance");
             lua_pushinteger(state, candidate.direct_route_step_cost);
             lua_setfield(state, -2, "direct_route_step_cost");
             lua_pushinteger(state,
@@ -3594,6 +3590,10 @@ GameScriptRuntime::actor_heartbeat(
             decision.ai_target_distance.has_value()) {
         return fail("actor_ai.heartbeat returned incomplete AI target state");
     }
+    if (!read_boolean_field("ai_target_engaged",
+                            decision.ai_target_engaged)) {
+        return fail("actor_ai.heartbeat returned invalid target engagement state");
+    }
     std::uint32_t target_motion_delay = 0U;
     if (!read_field_integer(state, decision_table, "target_motion_delay",
                             6U, target_motion_delay)) {
@@ -3728,7 +3728,8 @@ GameScriptRuntime::actor_heartbeat(
     if (context.movement_services_available &&
         context.phase == ScriptActorHeartbeatPhase::behavior &&
         context.movement_allowed && decision.movement_heading.has_value() &&
-        !decision.movement_step.has_value()) {
+        !decision.movement_step.has_value() &&
+        !decision.ai_target_engaged) {
         return fail("actor_ai.heartbeat omitted the Lua movement step");
     }
     lua_getfield(state, decision_table, "projectile_movement");

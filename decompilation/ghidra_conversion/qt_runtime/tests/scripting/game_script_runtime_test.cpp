@@ -1230,7 +1230,7 @@ int main() {
     hound_effect_context.ai_target_candidates.push_back(
         ScriptActorTargetCandidate{
             "party.runner.0", 0x1000U, 0x1000U, 0x2000U, 0x0100U,
-            0x01U, 0U, 0U, 0U, true, false, 0x2000U, 0x0100U});
+            0x01U, 0U, 0U, 0U, true, false});
     hound_effect_context.ai_random_bound =
         [](const std::uint16_t bound) -> std::optional<std::uint16_t> {
         return bound == 0U
@@ -1323,7 +1323,9 @@ int main() {
             const std::uint8_t action_code,
             const std::uint16_t target_distance,
             const std::uint16_t direct_step_cost,
-            const std::uint16_t perpendicular_step_cost) {
+            const std::uint16_t perpendicular_step_cost,
+            const std::int16_t initial_action_delay = 0,
+            const std::int16_t ai_animation_frame = 0) {
             std::vector<ScriptActorBehaviorDecision> trace;
             auto context = actor_context(
                 profile_id, actor_id, entity_kind, action_kind, action_code,
@@ -1332,12 +1334,14 @@ int main() {
             context.source_record_flags = 0x25U;
             context.entry_animation_frame_count = 1U;
             context.walk_animation_frame_count = 4U;
+            context.initial_action_delay = initial_action_delay;
+            context.ai_animation_frame = ai_animation_frame;
             context.movement_allowed = true;
             context.ai_target_candidates.push_back(
                 ScriptActorTargetCandidate{
                     "party.runner.0", 0x1800U, 0x1800U, 0x2000U,
                     target_distance, 0x01U, 0U, 0U, 0U, true, false,
-                    0x2000U, target_distance, direct_step_cost,
+                    direct_step_cost,
                     perpendicular_step_cost, target_distance,
                     static_cast<std::uint16_t>(target_distance * 2U)});
             context.ai_random_bound =
@@ -1391,6 +1395,42 @@ int main() {
     const auto close_motion = dynamic_motion_trace(
         "motion_close_route", "eye5r_1_k07_item01", 7U,
         ScriptActorActionKind::item, 1U, 0x0400U, 0x0400U, 0x01DFU);
+    const auto hell_hound_close_motion = dynamic_motion_trace(
+        "motion_hound_close", "hell_hound_k0c_none00", 12U,
+        ScriptActorActionKind::none, 0U, 0x0200U, 0x0200U, 0x0400U,
+        120);
+    const auto hell_hound_mid_motion = dynamic_motion_trace(
+        "motion_hound_mid", "hell_hound_k0c_none00", 12U,
+        ScriptActorActionKind::none, 0U, 0x0300U, 0x0300U, 0x0600U,
+        120);
+    const auto hell_hound_outer_motion = dynamic_motion_trace(
+        "motion_hound_outer", "hell_hound_k0c_none00", 12U,
+        ScriptActorActionKind::none, 0U, 0x05FFU, 0x05FFU, 0x0BFEU,
+        120);
+    const auto hell_hound_far_motion = dynamic_motion_trace(
+        "motion_hound_far", "hell_hound_k0c_none00", 12U,
+        ScriptActorActionKind::none, 0U, 0x0600U, 0x0600U, 0x0C00U,
+        1000);
+    const auto gargoyle_close_motion = dynamic_motion_trace(
+        "motion_gargoyle_close", "gargoyle_k0d_none00", 13U,
+        ScriptActorActionKind::none, 0U, 0x01FFU, 0x01FFU, 0x03FEU,
+        120, 1);
+    const auto gargoyle_frame_two_motion = dynamic_motion_trace(
+        "motion_gargoyle_frame_two", "gargoyle_k0d_none00", 13U,
+        ScriptActorActionKind::none, 0U, 0x01FFU, 0x01FFU, 0x03FEU,
+        120, 2);
+    const auto wendigo_close_motion = dynamic_motion_trace(
+        "motion_wendigo_close", "wendigo_k0e_none00", 14U,
+        ScriptActorActionKind::none, 0U, 0x01FFU, 0x01FFU, 0x03FEU,
+        120, 1);
+    const auto generic_close_motion = dynamic_motion_trace(
+        "motion_generic_close", "eye5r_1_k07_item01", 7U,
+        ScriptActorActionKind::item, 1U, 0x01FFU, 0x01FFU, 0x03FEU,
+        120);
+    const auto generic_boundary_motion = dynamic_motion_trace(
+        "motion_generic_boundary", "eye5r_1_k07_item01", 7U,
+        ScriptActorActionKind::item, 1U, 0x0200U, 0x0200U, 0x0400U,
+        120);
     const auto find_motion_decision = [](
                                            const auto& trace,
                                            const std::uint8_t delay,
@@ -1427,6 +1467,61 @@ int main() {
             return decision.transition_complete &&
                    decision.ai_target_id.has_value() &&
                    !decision.movement_heading.has_value();
+        });
+    const auto find_engaged_decision = [](const auto& trace) {
+        return std::find_if(
+            trace.begin(), trace.end(), [](const auto& decision) {
+                return decision.transition_complete &&
+                       decision.ai_target_id.has_value() &&
+                       decision.ai_target_engaged;
+            });
+    };
+    const auto* hound_close_engagement = [&]() {
+        const auto found = find_engaged_decision(hell_hound_close_motion);
+        return found == hell_hound_close_motion.end() ? nullptr : &*found;
+    }();
+    const auto* hound_mid_engagement = [&]() {
+        const auto found = find_engaged_decision(hell_hound_mid_motion);
+        return found == hell_hound_mid_motion.end() ? nullptr : &*found;
+    }();
+    const auto* hound_outer_engagement = [&]() {
+        const auto found = find_engaged_decision(hell_hound_outer_motion);
+        return found == hell_hound_outer_motion.end() ? nullptr : &*found;
+    }();
+    const auto* gargoyle_engagement = [&]() {
+        const auto found = find_engaged_decision(gargoyle_close_motion);
+        return found == gargoyle_close_motion.end() ? nullptr : &*found;
+    }();
+    const auto* wendigo_engagement = [&]() {
+        const auto found = find_engaged_decision(wendigo_close_motion);
+        return found == wendigo_close_motion.end() ? nullptr : &*found;
+    }();
+    const auto* generic_engagement = [&]() {
+        const auto found = find_engaged_decision(generic_close_motion);
+        return found == generic_close_motion.end() ? nullptr : &*found;
+    }();
+    const bool generic_boundary_rejected = std::none_of(
+        generic_boundary_motion.begin(), generic_boundary_motion.end(),
+        [](const auto& decision) {
+            return decision.transition_complete &&
+                   decision.ai_target_id.has_value() &&
+                   decision.ai_target_engaged;
+        });
+    const auto gargoyle_frame_two_hold = std::find_if(
+        gargoyle_frame_two_motion.begin(), gargoyle_frame_two_motion.end(),
+        [](const auto& decision) {
+            return decision.transition_complete &&
+                   decision.ai_target_id.has_value() &&
+                   !decision.ai_target_engaged &&
+                   decision.animation_accumulator == 0x1000;
+        });
+    const bool hound_far_keeps_pursuit = std::any_of(
+        hell_hound_far_motion.begin(), hell_hound_far_motion.end(),
+        [](const auto& decision) {
+            return decision.transition_complete &&
+                   decision.ai_target_id.has_value() &&
+                   !decision.ai_target_engaged &&
+                   decision.movement_heading.has_value();
         });
     bool item_one_heading_slews_between_route_updates = false;
     for (std::size_t index = 0U; index + 1U < item_one_motion.size(); ++index) {
@@ -1491,8 +1586,25 @@ int main() {
                 mage_spell_unresolved != mage_spell_motion.end() &&
                 mage_spell_after_delay != nullptr &&
                 mage_spell_after_delay->movement_heading == 0x6000U &&
-                close_route_stopped && spell_motion_catalog_matches,
-            "Lua actor motion did not honor item/spell profiles, all D4EA0 +0x27 rows, unresolved spell rows, six 21-pass route updates, B574 heading slew/destination distance, or the 0x1E0 route metric")) {
+                close_route_stopped && spell_motion_catalog_matches &&
+                hound_close_engagement != nullptr &&
+                hound_close_engagement->movement_heading == 0x2000U &&
+                hound_close_engagement->ai_target_heading == 0x2000U &&
+                hound_close_engagement->movement_current_heading != 0x2000U &&
+                hound_mid_engagement != nullptr &&
+                hound_mid_engagement->movement_current_heading == 0x2000U &&
+                hound_outer_engagement != nullptr &&
+                hound_outer_engagement->movement_current_heading == 0x2000U &&
+                hound_far_keeps_pursuit &&
+                gargoyle_engagement != nullptr &&
+                gargoyle_engagement->movement_current_heading == 0x2000U &&
+                wendigo_engagement != nullptr &&
+                wendigo_engagement->movement_current_heading == 0x2000U &&
+                generic_engagement != nullptr &&
+                generic_engagement->ai_target_heading == 0x2000U &&
+                generic_boundary_rejected &&
+                gargoyle_frame_two_hold != gargoyle_frame_two_motion.end(),
+            "Lua actor motion failed item/spell routes, six 21-pass route updates, B574 cadence, close target ranges, kind-C bands, or the kind-D frame-two hold")) {
         const auto print_motion_trace = [](const char* label,
                                            const auto& trace) {
             std::cerr << label << " samples=" << trace.size();
