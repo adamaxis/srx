@@ -204,6 +204,30 @@ enum class ScriptFieldEncounterOutcomeKind : std::uint8_t {
     dynamic_world_effect_sequence,
 };
 
+enum class ScriptFieldEncounterTriggerAction : std::uint8_t {
+    blocked,
+    not_due,
+    sample_probability,
+    random_miss,
+    forward_active_sequence,
+    select_scene_outcome,
+};
+
+struct ScriptFieldEncounterTriggerInput {
+    std::uint16_t scene_id = 0;
+    std::uint16_t frame_counter = 0;
+    bool trigger_delay_active = false;
+    bool current_entity_protected = false;
+    bool activity_lock = false;
+    bool sequence_mode = false;
+    bool world_effects_active = false;
+    bool placement_pending = false;
+    // Absent for the first Lua call. The host draws only after Lua reports
+    // sample_probability, preserving the ROM's conditional PRNG consumption.
+    std::optional<std::uint16_t> probability_roll;
+    std::uint16_t probability_threshold = 0;
+};
+
 struct ScriptFieldEncounterActor {
     std::uint16_t source_order = 0;
     std::uint32_t selection_cell_offset = 0;
@@ -559,6 +583,9 @@ public:
     std::optional<ScriptFieldEncounterOutcome> resolve_field_encounter(
         std::uint16_t scene_id, std::uint8_t first_roll,
         std::uint8_t second_roll);
+    std::optional<ScriptFieldEncounterTriggerAction>
+    evaluate_field_encounter_trigger(
+        const ScriptFieldEncounterTriggerInput& input);
     std::optional<std::vector<FieldMapEventRule>> map_event_rules();
     void set_story_state(const StoryFacts& facts);
     void set_story_fact_accessors(StoryFactReader read,

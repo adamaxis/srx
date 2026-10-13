@@ -2,8 +2,9 @@
 
 ## ROM evidence
 
-- `0x59986` selects a field outcome from two source bounded draws; `0x1E166`
-  applies the ordinary frame/random/active-effect gates.
+- `0x59986` selects a field outcome from two source bounded draws; Lua's
+  `field_encounters.trigger_attempt` now applies `0x1E166`'s blocker,
+  cadence, and probability gates before the host consumes the source PRNG.
 - A zero-cell result reaches `0x1E216`; `0x1E25A` initializes each listed
   actor, sets the encounter flags, writes its edge coordinate, and schedules
   the shared timeout. `0x1E302` uses live camera words `FFDDC6/FFDDC8` and map
@@ -27,7 +28,11 @@ release. The script-runtime CTest also checks the four action-code marker
 groups, the 64-to-0 shrink sequence, the persistent marker, and latch clearing.
 The field QA matches all 14 opaque source pixels in each of the four 8x8
 marker corners and confirms the right-side HUD is unchanged. These are not
-tests of the ordinary `0x1E166` chance gate or the full combat route.
+tests of the production random-roll sequence or the full combat route. The
+Release `shadowrun_gameplay_script_runtime_qa` separately checks each
+`0x1E166` blocker, the `(frame_counter & 0x3FF) == 10` cadence, threshold
+accept/reject behavior, the sequence-forward branch, and that Lua requests
+the source probability draw only after state/cadence eligibility passes.
 
 The real edge-spawn captures (`encounter-entry`, `after-30`, `after-180`, and
 `after-480`) keep the full map and HUD composition and contain no visible
@@ -95,9 +100,12 @@ prove a frame-for-frame match with this Scene 2 fixture.
 
 ROM-selected spawn, entry state, Lua target acquisition, close-range movement,
 walk animation, and the B selector's typed state and source pixels are covered
-by focused Release QA. This hill remains partial: the test injects the
-already-bounded selector rolls rather than exercising the ordinary chance
-gate; the alternate target action-byte route through `+0x9C`, the full actor
-pool, combat actions/hit resolution/damage/death, and natural approach from the
-edge are unresolved. The independent longplay corroborates the marker shape,
-but does not provide the actor bytes needed to verify every palette variant.
+by focused Release QA. The ordinary gate policy is now Lua-owned and its
+blocker/cadence/chance branches are covered by script-runtime QA; the field
+spawn QA still injects the already-bounded selector rolls, so production RNG
+consumption and event dispatch are not covered end to end. This hill remains
+partial: the alternate target action-byte route through `+0x9C`, the full
+actor pool, creature item/spell actions and hit resolution/damage/death, and
+natural approach from the edge are unresolved. The independent longplay
+corroborates the marker shape, but does not provide the actor bytes needed to
+verify every palette variant.

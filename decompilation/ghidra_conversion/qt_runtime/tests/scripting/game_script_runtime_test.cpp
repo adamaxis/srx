@@ -292,6 +292,78 @@ int main() {
         return 1;
     }
 
+    ScriptFieldEncounterTriggerInput encounter_trigger{};
+    encounter_trigger.scene_id = 2U;
+    encounter_trigger.frame_counter = 10U;
+    const auto gate_requests_roll =
+        scripts.evaluate_field_encounter_trigger(encounter_trigger);
+    encounter_trigger.frame_counter = 9U;
+    const auto gate_waits_for_cadence =
+        scripts.evaluate_field_encounter_trigger(encounter_trigger);
+    encounter_trigger.frame_counter = 10U;
+    encounter_trigger.trigger_delay_active = true;
+    const auto gate_respects_delay =
+        scripts.evaluate_field_encounter_trigger(encounter_trigger);
+    encounter_trigger.trigger_delay_active = false;
+    encounter_trigger.current_entity_protected = true;
+    const auto gate_respects_protected_actor =
+        scripts.evaluate_field_encounter_trigger(encounter_trigger);
+    encounter_trigger.current_entity_protected = false;
+    encounter_trigger.activity_lock = true;
+    const auto gate_respects_activity_lock =
+        scripts.evaluate_field_encounter_trigger(encounter_trigger);
+    encounter_trigger.activity_lock = false;
+    encounter_trigger.world_effects_active = true;
+    const auto gate_respects_active_world_effect =
+        scripts.evaluate_field_encounter_trigger(encounter_trigger);
+    encounter_trigger.sequence_mode = true;
+    const auto gate_still_rolls_for_active_sequence =
+        scripts.evaluate_field_encounter_trigger(encounter_trigger);
+    encounter_trigger.sequence_mode = false;
+    encounter_trigger.world_effects_active = false;
+    encounter_trigger.placement_pending = true;
+    const auto gate_respects_placement_lock =
+        scripts.evaluate_field_encounter_trigger(encounter_trigger);
+    encounter_trigger.placement_pending = false;
+    encounter_trigger.probability_roll = 4U;
+    encounter_trigger.probability_threshold = 5U;
+    const auto gate_accepts_below_threshold =
+        scripts.evaluate_field_encounter_trigger(encounter_trigger);
+    encounter_trigger.probability_roll = 5U;
+    const auto gate_rejects_at_threshold =
+        scripts.evaluate_field_encounter_trigger(encounter_trigger);
+    encounter_trigger.sequence_mode = true;
+    encounter_trigger.probability_roll = 0U;
+    const auto gate_forwards_without_resampling_outcome =
+        scripts.evaluate_field_encounter_trigger(encounter_trigger);
+    if (!expect(
+            gate_requests_roll ==
+                ScriptFieldEncounterTriggerAction::sample_probability &&
+                gate_waits_for_cadence ==
+                    ScriptFieldEncounterTriggerAction::not_due &&
+                gate_respects_delay ==
+                    ScriptFieldEncounterTriggerAction::blocked &&
+                gate_respects_protected_actor ==
+                    ScriptFieldEncounterTriggerAction::blocked &&
+                gate_respects_activity_lock ==
+                    ScriptFieldEncounterTriggerAction::blocked &&
+                gate_respects_active_world_effect ==
+                    ScriptFieldEncounterTriggerAction::blocked &&
+                gate_still_rolls_for_active_sequence ==
+                    ScriptFieldEncounterTriggerAction::sample_probability &&
+                gate_respects_placement_lock ==
+                    ScriptFieldEncounterTriggerAction::blocked &&
+                gate_accepts_below_threshold ==
+                    ScriptFieldEncounterTriggerAction::select_scene_outcome &&
+                gate_rejects_at_threshold ==
+                    ScriptFieldEncounterTriggerAction::random_miss &&
+                gate_forwards_without_resampling_outcome ==
+                    ScriptFieldEncounterTriggerAction::forward_active_sequence,
+            "Lua ROM encounter gates did not preserve eligibility and random thresholds")) {
+        std::cerr << scripts.failure() << '\n';
+        return 2;
+    }
+
     const auto run_ids =
         scripts.string_list("run_registry", "available_run_ids");
     const std::vector<std::string> expected_run_ids{

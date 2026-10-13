@@ -950,15 +950,19 @@ python decompilation/tools/extract_world_activity_outcomes.py --check
 
 ## Native runtime status (partial)
 
-The Qt field loop now connects the ROM cadence/eligibility gate and two
-bounded-random draws to the Lua `field_encounters` selector. Zero-cell results
-spawn the listed actors through the source edge-placement and entity/effect
-slot rules, then call Lua for behavior and render heartbeats. Dynamic actor
-entry art is extracted by entity kind and direction; entry delay and finite
-C0B2 frame count are passed as typed values. Lua links targets using the ROM
-candidate pools and source PRNG. The B-button target selector is connected to
-live actor records; its `+0x11.4` selected latch remains separate from the
-`+0x10.4` action-candidate reservation.
+The Qt field loop supplies typed state to Lua's `field_encounters` module,
+which owns the ROM cadence/eligibility and probability decisions. Qt advances
+the source PRNG only after Lua reports that blockers and the `0x3FF` cadence
+allow a probability draw. Lua then decides whether to miss, forward an active
+sequence, or select a scene outcome; the host supplies the two bounded draws
+only for the selector branch. Zero-cell results spawn the listed actors
+through the source edge-placement and entity/effect slot rules, then call Lua
+for behavior and render heartbeats. Dynamic actor entry art is extracted by
+entity kind and direction; entry delay and finite C0B2 frame count are passed
+as typed values. Lua links targets using the ROM candidate pools and source
+PRNG. The B-button target selector is connected to live actor records; its
+`+0x11.4` selected latch remains separate from the `+0x10.4` action-candidate
+reservation. Enabled dialogue handlers remain a dispatch boundary.
 
 The creature entry branch also returns the `0xB05E` cue selected by entity
 kind. For the encounter kinds, those requests select table-2 slots 46, 47, 86,

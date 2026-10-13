@@ -16,6 +16,48 @@ local function content()
     return value
 end
 
+-- ROM 0x1E166 owns the encounter attempt policy. The host supplies typed
+-- world facts and performs the source PRNG draw only when this function asks
+-- for one, so blocked/not-due field passes do not consume random state.
+function Encounters.trigger_attempt(context)
+    if type(context) ~= "table" or
+       not integer(context.scene_id, 0, 55) or
+       not integer(context.frame_counter, 0, 0xffff) or
+       type(context.trigger_delay_active) ~= "boolean" or
+       type(context.current_entity_protected) ~= "boolean" or
+       type(context.activity_lock) ~= "boolean" or
+       type(context.sequence_mode) ~= "boolean" or
+       type(context.world_effects_active) ~= "boolean" or
+       type(context.placement_pending) ~= "boolean" then
+        return nil
+    end
+
+    if context.trigger_delay_active or
+       context.current_entity_protected or
+       context.activity_lock or
+       (not context.sequence_mode and context.world_effects_active) or
+       context.placement_pending then
+        return "blocked"
+    end
+    if (context.frame_counter & 0x03ff) ~= 10 then
+        return "not_due"
+    end
+    if context.probability_roll == nil then
+        return "sample_probability"
+    end
+    if not integer(context.probability_roll, 0, 0xffff) or
+       not integer(context.probability_threshold, 0, 0xffff) then
+        return nil
+    end
+    if context.probability_roll >= context.probability_threshold then
+        return "random_miss"
+    end
+    if context.sequence_mode then
+        return "forward_active_sequence"
+    end
+    return "select_scene_outcome"
+end
+
 function Encounters.resolve(scene_id, first_roll, second_roll)
     if not integer(scene_id, 0, 55) or
        not integer(first_roll, 0, 4) or

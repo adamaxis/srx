@@ -2229,6 +2229,92 @@ GameScriptRuntime::resolve_field_encounter(
     return outcome;
 }
 
+std::optional<ScriptFieldEncounterTriggerAction>
+GameScriptRuntime::evaluate_field_encounter_trigger(
+    const ScriptFieldEncounterTriggerInput& input) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for field encounter triggers";
+        return std::nullopt;
+    }
+    if (input.scene_id > 55U) {
+        impl_->failure = "field encounter trigger scene is outside the ROM table";
+        return std::nullopt;
+    }
+
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptFieldEncounterTriggerAction> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("field_encounters")) {
+        return fail("field_encounters.lua module is missing");
+    }
+    lua_getfield(state, -1, "trigger_attempt");
+    if (!lua_isfunction(state, -1)) {
+        return fail("field_encounters.trigger_attempt is missing");
+    }
+    lua_remove(state, -2);
+    lua_createtable(state, 0, 10);
+    const auto set_integer = [state](const char* name,
+                                     const std::uint16_t value) {
+        lua_pushinteger(state, value);
+        lua_setfield(state, -2, name);
+    };
+    const auto set_boolean = [state](const char* name, const bool value) {
+        lua_pushboolean(state, value);
+        lua_setfield(state, -2, name);
+    };
+    set_integer("scene_id", input.scene_id);
+    set_integer("frame_counter", input.frame_counter);
+    set_boolean("trigger_delay_active", input.trigger_delay_active);
+    set_boolean("current_entity_protected", input.current_entity_protected);
+    set_boolean("activity_lock", input.activity_lock);
+    set_boolean("sequence_mode", input.sequence_mode);
+    set_boolean("world_effects_active", input.world_effects_active);
+    set_boolean("placement_pending", input.placement_pending);
+    if (input.probability_roll.has_value()) {
+        set_integer("probability_roll", *input.probability_roll);
+    } else {
+        lua_pushnil(state);
+        lua_setfield(state, -2, "probability_roll");
+    }
+    set_integer("probability_threshold", input.probability_threshold);
+
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("field_encounters.trigger_attempt failed");
+    }
+    if (!lua_isstring(state, -1)) {
+        return fail("field_encounters.trigger_attempt returned invalid action");
+    }
+    std::size_t action_length = 0U;
+    const auto* action_text = lua_tolstring(state, -1, &action_length);
+    const std::string_view action(action_text, action_length);
+    std::optional<ScriptFieldEncounterTriggerAction> result;
+    if (action == "blocked") {
+        result = ScriptFieldEncounterTriggerAction::blocked;
+    } else if (action == "not_due") {
+        result = ScriptFieldEncounterTriggerAction::not_due;
+    } else if (action == "sample_probability") {
+        result = ScriptFieldEncounterTriggerAction::sample_probability;
+    } else if (action == "random_miss") {
+        result = ScriptFieldEncounterTriggerAction::random_miss;
+    } else if (action == "forward_active_sequence") {
+        result = ScriptFieldEncounterTriggerAction::forward_active_sequence;
+    } else if (action == "select_scene_outcome") {
+        result = ScriptFieldEncounterTriggerAction::select_scene_outcome;
+    }
+    if (!result.has_value()) {
+        return fail("field_encounters.trigger_attempt returned unknown action");
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return result;
+}
+
 std::optional<std::vector<FieldMapEventRule>>
 GameScriptRuntime::map_event_rules() {
     auto* state = impl_->state;

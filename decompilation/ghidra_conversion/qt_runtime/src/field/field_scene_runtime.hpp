@@ -43,7 +43,6 @@
 #include "shadowrun_ghidra/world/world_entity_conversion.hpp"
 #include "shadowrun_ghidra/world/world_effect_batch_conversion.hpp"
 #include "shadowrun_ghidra/world/world_effect_edge_conversion.hpp"
-#include "shadowrun_ghidra/world/world_effect_trigger_conversion.hpp"
 #include "shadowrun_ghidra/world/world_frame_logic_conversion.hpp"
 #include "shadowrun_ghidra/world/world_scene_entity_conversion.hpp"
 #include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"

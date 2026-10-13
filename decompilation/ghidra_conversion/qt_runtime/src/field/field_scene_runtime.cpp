@@ -2716,7 +2716,9 @@ void FieldSceneRuntime::reset_field_entity_service_records() {
 }
 
 void FieldSceneRuntime::trigger_field_world_effect_sequence() {
-    WorldEffectTriggerState trigger{};
+    scripting::ScriptFieldEncounterTriggerInput trigger{};
+    trigger.scene_id = state_.field_scene_buffers.scene_reference;
+    trigger.frame_counter = field_world_frame_counter_;
     trigger.trigger_delay_active = state_.display_service_word != 0U;
     trigger.current_entity_protected =
         (field_movement_behavior_record_.record_flags & 0x80U) != 0U;
@@ -2726,32 +2728,56 @@ void FieldSceneRuntime::trigger_field_world_effect_sequence() {
         field_world_activity_timeout_state_.timeout_marker != 0;
     trigger.placement_pending =
         field_world_activity_timeout_state_.scene_36_gate != 0U;
-    trigger.frame_counter = field_world_frame_counter_;
 
-    const WorldEffectTriggerCallbacks callbacks{
-        [this] {
-            return std::pair<std::uint16_t, std::uint16_t>{
-                advance_source_random_seed(field_random_seed_),
-                state_.field_scene_buffers.profile[41]};
-        },
-        [this] {
-            source_boundary("field.random_encounter.forward_existing_sequence");
-        },
-        [this] { return select_field_world_effect_sequence(); },
-        [this] {
-            if (pending_field_encounter_outcome_.has_value() &&
-                pending_field_encounter_outcome_->kind ==
-                    scripting::ScriptFieldEncounterOutcomeKind::dialogue_event) {
-                failure_ = "ROM random-event dialogue handler is selected but not connected";
-                source_boundary(
-                    "field.random_encounter.dialogue_handler_unimplemented");
-                return;
-            }
-            source_boundary("field.random_encounter.begin_world_activity");
-        },
-        [this] { spawn_field_world_effect_sequence(); },
-    };
-    (void)trigger_world_effect_sequence(trigger, callbacks);
+    auto action = game_scripts_.evaluate_field_encounter_trigger(trigger);
+    if (!action.has_value()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.random_encounter.script_gate_failed");
+        return;
+    }
+    if (*action !=
+        scripting::ScriptFieldEncounterTriggerAction::sample_probability) {
+        return;
+    }
+
+    // 0x1E166 advances the source PRNG only after its state and 0x3FF cadence
+    // gates pass. Lua requests this draw, then owns the probability decision.
+    trigger.probability_roll = advance_source_random_seed(field_random_seed_);
+    trigger.probability_threshold =
+        state_.field_scene_buffers.profile[41];
+    action = game_scripts_.evaluate_field_encounter_trigger(trigger);
+    if (!action.has_value()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.random_encounter.script_chance_failed");
+        return;
+    }
+    switch (*action) {
+    case scripting::ScriptFieldEncounterTriggerAction::blocked:
+    case scripting::ScriptFieldEncounterTriggerAction::not_due:
+    case scripting::ScriptFieldEncounterTriggerAction::random_miss:
+        return;
+    case scripting::ScriptFieldEncounterTriggerAction::forward_active_sequence:
+        source_boundary("field.random_encounter.forward_existing_sequence");
+        return;
+    case scripting::ScriptFieldEncounterTriggerAction::select_scene_outcome:
+        (void)select_field_world_effect_sequence();
+        if (!pending_field_encounter_outcome_.has_value()) {
+            return;
+        }
+        if (pending_field_encounter_outcome_->kind ==
+            scripting::ScriptFieldEncounterOutcomeKind::dialogue_event) {
+            failure_ = "ROM random-event dialogue handler is selected but not connected";
+            source_boundary(
+                "field.random_encounter.dialogue_handler_unimplemented");
+            return;
+        }
+        spawn_field_world_effect_sequence();
+        return;
+    case scripting::ScriptFieldEncounterTriggerAction::sample_probability:
+        failure_ = "Lua field encounter gate requested a second probability draw";
+        source_boundary("field.random_encounter.repeated_probability_request");
+        return;
+    }
 }
 
 bool FieldSceneRuntime::load_field_weapon_spawn_assets(

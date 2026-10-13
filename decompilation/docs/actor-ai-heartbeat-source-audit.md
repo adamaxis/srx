@@ -307,8 +307,11 @@ actor-slot dispatch also remain open. This partial slice has a Release build,
 and a focused Release CTest with full-frame captures. The QA selects Scene 2's
 sum-3 two-Weenr row using injected bounded selector rolls, so it verifies list
 resolution, actor allocation, entry transition, target acquisition, movement,
-and the B edge without claiming the ordinary `0x1E166` random gate ran. It
-also corrects the spawn caller to use live camera `FFDDC6/FFDDC8` and map
+and the B edge; the production field loop now asks Lua to enforce the ordinary
+`0x1E166` block/cadence/chance policy before C++ consumes the source PRNG.
+Script-runtime QA covers those gate branches, while the encounter-spawn QA
+still injects selector rolls and does not verify the entire random dispatch
+end to end. The spawn caller also uses live camera `FFDDC6/FFDDC8` and map
 bounds `FFDDCE/FFDDD0`; the sampler normalizes candidates to the same `>>4`
 coordinate space as `0x1E41E`. The target-state QA retains the selected actor
 after B release and verifies the source path makes no sound request.
@@ -325,9 +328,9 @@ pixels from all four source corner descriptors in the complete frame. The
 right-side HUD remains unchanged. Independent section-06 footage at frames
 002190/002220 and 002430/002460 shows yellow and red corner brackets around
 combatants, corroborating the shape but not the exact actor/action-to-palette
-mapping. Keep this hill partial: the ordinary chance gate, alternate `+0x9C`
-selector data route, complete actor pool, natural approach, and combat
-resolution remain open.
+mapping. Keep this hill partial: production random-dispatch capture, the
+alternate `+0x9C` selector data route, complete actor pool, natural approach,
+and creature combat resolution remain open.
 
 The word table at ROM `0xB05E` was read directly for all sixteen kinds. The
 random-encounter kinds use these entry events: kind 4=`0x2F`, 5=`0x2E`,
