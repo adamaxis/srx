@@ -2153,6 +2153,9 @@ GameScriptRuntime::resolve_field_encounter(
             std::uint32_t palette_line = 0U;
             std::uint32_t tagged_template = 0U;
             std::uint32_t template_offset = 0U;
+            std::uint32_t delay_primary_attribute = 0U;
+            std::uint32_t delay_secondary_attribute = 0U;
+            std::uint32_t delay_capability_flags = 0U;
             std::string action_kind;
             const bool valid_actor =
                 read_field_integer(state, actor_index, "source_order", 31U,
@@ -2188,6 +2191,15 @@ GameScriptRuntime::resolve_field_encounter(
                                    0x1FFFFFU, tagged_template) &&
                 read_field_integer(state, actor_index, "template_offset",
                                    0x1FFFFFU, template_offset) &&
+                read_field_integer(state, actor_index,
+                                   "delay_primary_attribute", 0xFFU,
+                                   delay_primary_attribute) &&
+                read_field_integer(state, actor_index,
+                                   "delay_secondary_attribute", 0xFFU,
+                                   delay_secondary_attribute) &&
+                read_field_integer(state, actor_index,
+                                   "delay_capability_flags", 0xFFFFU,
+                                   delay_capability_flags) &&
                 read_field_text(state, actor_index, "ordered_overrides",
                                 actor.ordered_overrides, 512U);
             if (!valid_actor || source_order != index) {
@@ -2214,6 +2226,12 @@ GameScriptRuntime::resolve_field_encounter(
             actor.palette_line = static_cast<std::uint8_t>(palette_line);
             actor.tagged_template = tagged_template;
             actor.template_offset = template_offset;
+            actor.delay_primary_attribute =
+                static_cast<std::uint8_t>(delay_primary_attribute);
+            actor.delay_secondary_attribute =
+                static_cast<std::uint8_t>(delay_secondary_attribute);
+            actor.delay_capability_flags =
+                static_cast<std::uint16_t>(delay_capability_flags);
             if ((actor.action_kind == ScriptActorActionKind::none) !=
                 (actor.action_code == 0U)) {
                 return fail("dynamic world encounter action facts disagree");
@@ -2986,6 +3004,22 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "ai_animation_frame");
     lua_pushinteger(state, context.walk_animation_frame_count);
     lua_setfield(state, -2, "walk_animation_frame_count");
+    lua_pushinteger(state, context.initial_action_delay);
+    lua_setfield(state, -2, "initial_action_delay");
+    lua_pushinteger(state, context.delay_primary_attribute);
+    lua_setfield(state, -2, "delay_primary_attribute");
+    lua_pushinteger(state, context.delay_secondary_attribute);
+    lua_setfield(state, -2, "delay_secondary_attribute");
+    lua_pushinteger(state, context.delay_capability_flags);
+    lua_setfield(state, -2, "delay_capability_flags");
+    lua_createtable(state, static_cast<int>(
+                               context.world_effect_slot_occupancy.size()), 0);
+    for (std::size_t index = 0U;
+         index < context.world_effect_slot_occupancy.size(); ++index) {
+        lua_pushboolean(state, context.world_effect_slot_occupancy[index]);
+        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+    }
+    lua_setfield(state, -2, "world_effect_slot_occupancy");
     lua_pushboolean(state, context.target_selection_latched);
     lua_setfield(state, -2, "target_selection_latched");
     lua_pushboolean(state, context.target_selection_requested);
@@ -3277,6 +3311,66 @@ GameScriptRuntime::actor_heartbeat(
     }
     decision.target_marker_radius =
         static_cast<std::uint8_t>(target_marker_value);
+    int signed_actor_value = 0;
+    if (!read_field_signed_integer(state, decision_table, "action_delay",
+                                   -0x8000, 0x7FFF, signed_actor_value)) {
+        return fail("actor_ai.heartbeat returned an invalid action delay");
+    }
+    decision.action_delay = static_cast<std::int16_t>(signed_actor_value);
+    if (!read_optional_field_integer(
+            state, decision_table, "target_motion_effect_slot_request",
+            17U, decision.target_motion_effect_slot_request)) {
+        return fail("actor_ai.heartbeat returned an invalid creature effect slot");
+    }
+    if (!read_field_boolean(state, decision_table,
+                            "target_motion_effect_visible",
+                            decision.target_motion_effect_visible)) {
+        return fail("actor_ai.heartbeat returned an invalid creature effect visibility");
+    }
+    std::uint32_t creature_effect_value = 0U;
+    if (!read_field_integer(state, decision_table,
+                            "target_motion_effect_direction", 7U,
+                            creature_effect_value)) {
+        return fail("actor_ai.heartbeat returned an invalid creature effect direction");
+    }
+    decision.target_motion_effect_direction =
+        static_cast<std::uint8_t>(creature_effect_value);
+    if (!read_field_integer(state, decision_table,
+                            "target_motion_effect_phase", 4U,
+                            creature_effect_value)) {
+        return fail("actor_ai.heartbeat returned an invalid creature effect phase");
+    }
+    decision.target_motion_effect_phase =
+        static_cast<std::uint8_t>(creature_effect_value);
+    if (!read_field_boolean(state, decision_table,
+                            "target_motion_effect_slot_released",
+                            decision.target_motion_effect_slot_released)) {
+        return fail("actor_ai.heartbeat returned an invalid creature slot release");
+    }
+    const bool hound_encounter = context.dynamic_world_encounter_actor &&
+        context.entity_kind == 12U &&
+        context.profile_id == "hell_hound_k0c_none00";
+    if ((!hound_encounter &&
+         (decision.target_motion_effect_slot_request.has_value() ||
+          decision.target_motion_effect_visible ||
+          decision.target_motion_effect_slot_released)) ||
+        (decision.target_motion_effect_slot_request.has_value() &&
+         (!hound_encounter ||
+          context.phase != ScriptActorHeartbeatPhase::behavior ||
+          context.world_effect_slot_occupancy[
+              *decision.target_motion_effect_slot_request])) ||
+        (decision.target_motion_effect_visible &&
+         (!hound_encounter ||
+          context.phase != ScriptActorHeartbeatPhase::render ||
+          decision.target_motion_effect_phase < 1U ||
+          decision.target_motion_effect_phase > 3U)) ||
+        (decision.target_motion_effect_slot_released &&
+         (!hound_encounter ||
+          context.phase != ScriptActorHeartbeatPhase::render ||
+          decision.target_motion_effect_visible ||
+          decision.target_motion_effect_phase != 4U))) {
+        return fail("actor_ai.heartbeat returned an inconsistent creature effect state");
+    }
     if ((!decision.target_marker_visible &&
          (decision.target_marker_animating ||
           decision.target_marker_style != 0U ||

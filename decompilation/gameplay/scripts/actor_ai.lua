@@ -316,6 +316,18 @@ local function initial_state(context, profile)
         target_marker_style = 0,
         target_marker_radius = 0,
         target_marker_countdown = 0,
+        action_delay = context.initial_action_delay or 0,
+        delay_primary_attribute = context.delay_primary_attribute or 0,
+        delay_secondary_attribute = context.delay_secondary_attribute or 0,
+        delay_capability_flags = context.delay_capability_flags or 0,
+        target_motion_effect_active = false,
+        target_motion_effect_slot = nil,
+        target_motion_effect_slot_request = nil,
+        target_motion_effect_slot_released = false,
+        target_motion_effect_countdown = 0,
+        target_motion_effect_phase = 0,
+        target_motion_effect_direction = 0,
+        target_motion_effect_visible = false,
         selected_world_actor_id = nil,
         target_selection_processed = false,
     }
@@ -368,6 +380,16 @@ local function snapshot(state, action, audio_event, projectile_movement)
         ai_target_id = state.ai_target_id,
         ai_target_heading = state.ai_target_heading,
         ai_target_distance = state.ai_target_distance,
+        action_delay = state.action_delay,
+        target_motion_effect_slot_request =
+            state.target_motion_effect_slot_request,
+        target_motion_effect_visible =
+            state.target_motion_effect_visible,
+        target_motion_effect_direction =
+            state.target_motion_effect_direction,
+        target_motion_effect_phase = state.target_motion_effect_phase,
+        target_motion_effect_slot_released =
+            state.target_motion_effect_slot_released,
         target_marker_visible = state.target_marker_visible,
         target_marker_animating = state.target_marker_animating,
         target_marker_style = state.target_marker_style,
@@ -378,6 +400,93 @@ local function snapshot(state, action, audio_event, projectile_movement)
         movement_step = state.movement_step,
         projectile_movement = projectile_movement,
     }
+end
+
+local function source_action_delay(context, state)
+    -- ROM 0xB11C clears D0 before 0xABFC. 0xD7EA adds the first enabled
+    -- +0x90 capability modifier to the wrapped average of +0x78/+0x7B.
+    local capability_flags = context.delay_capability_flags or
+        state.delay_capability_flags or 0
+    local modifier = 0
+    for bit = 12, 14 do
+        if (capability_flags & (1 << bit)) ~= 0 then
+            modifier = (bit - 11) * 4
+            break
+        end
+    end
+    local primary = context.delay_primary_attribute or
+        state.delay_primary_attribute or 0
+    local secondary = context.delay_secondary_attribute or
+        state.delay_secondary_attribute or 0
+    local wrapped_sum = (primary + secondary) & 0xff
+    local factor = (wrapped_sum >> 1) + modifier - 1
+    if factor < 0 then
+        factor = 0
+    end
+    local delay = 0x6a - factor * 4
+    if delay < 0x0f then
+        delay = 0x0f
+    end
+    return delay
+end
+
+local function advance_source_action_delay(state, context)
+    if context.phase ~= "behavior" or
+       not context.dynamic_world_encounter_actor then
+        return
+    end
+    -- ROM 0xA8EA decrements active actor +0xDC once before the actor-service
+    -- continuation, while the value is nonnegative.
+    if state.action_delay >= 0 then
+        state.action_delay = state.action_delay - 1
+    end
+end
+
+local function advance_target_motion_effect(state, context)
+    state.target_motion_effect_slot_request = nil
+    state.target_motion_effect_slot_released = false
+    state.target_motion_effect_visible = false
+    if context.phase ~= "render" or
+       not state.target_motion_effect_active then
+        return
+    end
+
+    -- ROM 0x4E86 decrements the signed byte at +0x02, reloads 6 on
+    -- underflow, and advances +0x03. Phases 1..3 draw; phase 4 clears the
+    -- shared slot and +0x11.6 without emitting a sprite.
+    state.target_motion_effect_countdown =
+        state.target_motion_effect_countdown - 1
+    if state.target_motion_effect_countdown < 0 then
+        state.target_motion_effect_countdown = 6
+        state.target_motion_effect_phase =
+            state.target_motion_effect_phase + 1
+        if state.target_motion_effect_phase >= 4 then
+            state.target_motion_effect_active = false
+            state.target_motion_effect_slot = nil
+            state.target_motion_effect_slot_released = true
+            return
+        end
+    end
+    state.target_motion_effect_visible = true
+end
+
+local function request_target_motion_effect(state, context, heading)
+    for slot = 0, 17 do
+        if context.world_effect_slot_occupancy[slot + 1] ~= true then
+            state.target_motion_effect_active = true
+            state.target_motion_effect_slot = slot
+            state.target_motion_effect_slot_request = slot
+            state.target_motion_effect_countdown = 0
+            state.target_motion_effect_phase = 0
+            state.target_motion_effect_direction =
+                direction_from_heading(heading)
+            -- 0x14C7C sets +0x11.6; 0x13FFE then enters 0xB11C, which
+            -- resets +0xDC with the actor's source-derived delay attributes.
+            state.action_delay = source_action_delay(context, state)
+            return true
+        end
+    end
+    return false
 end
 
 local function advance_target_marker(state, context)
@@ -910,9 +1019,14 @@ local function requested_movement_heading(context, profile, state)
             -- project their position through 0x14C56 before the linked-target
             -- <0x200 check at 0x15C84. The host supplies measured geometry
             -- and collision queries; Lua owns this policy.
-            if context.entity_kind == EntityKind.hell_hound and
-               distance >= 0x300 and distance < 0x600 then
-                return heading
+            if context.entity_kind == EntityKind.hell_hound then
+                if distance >= 0x300 and distance < 0x600 then
+                    return heading
+                end
+                if distance < 0x300 and state.action_delay < 0 then
+                    request_target_motion_effect(state, context, heading)
+                end
+                return nil
             end
             if (context.entity_kind == EntityKind.gargoyle or
                 context.entity_kind == EntityKind.wendigo) then
@@ -1314,11 +1428,13 @@ function ActorAI.heartbeat(context)
     if not same_actor(state, context) then
         return nil
     end
+    advance_source_action_delay(state, context)
     advance_world_target_selection(state, context)
     if profile.projectile_animation then
         return projectile_heartbeat(state, context)
     end
     advance_target_marker(state, context)
+    advance_target_motion_effect(state, context)
 
     local action = "hold"
     local audio_event

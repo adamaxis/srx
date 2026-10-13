@@ -341,6 +341,17 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Force Scene 0's ROM sum-0 encounter list, place its source Hell Hound inside
+# the close-target band, and review the complete screen through phase 4 release.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_hound_close_effect_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hound-close-effect-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-hound-close-effect-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_hound_close_effect_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Start one cell south of the ROM's Jump House trigger, walk into record 85
 # using normal movement, dismiss its Lua-owned entry narration with A, and
 # verify the retained scene-13 route completes with a clean 320x224 redraw.

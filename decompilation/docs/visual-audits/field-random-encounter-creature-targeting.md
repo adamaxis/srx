@@ -108,10 +108,51 @@ prove a frame-for-frame match with this Scene 2 fixture.
    remain transparent, the marker follows the selected actor, and the existing
    HUD is pixel-identical; no old menu or button layer is reused here.
 
+## Hell Hound close-effect review
+
+1. **Does it look correct?** The source descriptor and scene palette produce
+   a small directional flame effect around the Hound. The full 320x224 captures
+   show the field map and HUD without a black rectangle around the flame.
+2. **Does the look reflect the behavioral state?** Lua requests an effect only
+   below distance `0x300` after signed `+0xDC` becomes negative. The host then
+   reserves the slot returned by Lua; the test verifies slot 0 in the Lua
+   contract and slot 2 after the two sequence actors occupy slots 0 and 1.
+   Template delay 8/2 yields 90 behavior passes before the next effect.
+3. **Are the visuals correct?** The three phases and eight headings are
+   extracted from ROM effect descriptors with each field scene's palette.
+   The renderer consumes the resulting named BMPs; it does not rebuild a VDP
+   effect at runtime.
+4. **What animates, and when?** `0x4E86` advances phases on the render
+   heartbeat. Each visible phase lasts seven passes; phase four releases the
+   effect without drawing. At this diagnostic position, the map foreground
+   occludes phase 3. The full-frame test checks that phases 1 and 2 visibly
+   change the image and that phase 3 matches the released frame under this
+   object, preserving the ROM map-priority layer.
+5. **What sound accompanies it?** Neither the `0x14C7C` close-attack branch
+   nor its `0x4E86` phase path requests sound. The QA observes no audio request;
+   there is no source duration to reproduce for this effect.
+6. **Were neighboring areas checked?** The full-screen captures preserve the
+   whole map and right-side HUD. The vertical map structure remains in front of
+   the effect where their pixels overlap. After the slot releases, the frame
+   matches the no-effect map at the actor area; no pixels or previous art
+   remain behind.
+7. **Are there multiple frames and examples?** Yes: the QA captures encounter
+   entry, the close-target state, effect start, all three source phases, and
+   release. The reviewed longplay references for this hill show target
+   brackets but do not provide a confidently identifiable Hound close-attack
+   sequence, so they are not claimed as independent effect evidence.
+8. **Are new graphics covering stale graphics?** The effect uses transparent
+   source frames and is removed when phase four releases its slot. The old map
+   foreground retains its overlap order and the HUD crop stays unchanged.
+
+The QA-only placement makes the otherwise offscreen ROM encounter visible. It
+does not establish a natural movement or attack route.
+
 ## Status
 
 ROM-selected spawn, entry state, Lua target acquisition, close-range movement,
-walk animation, and the B selector's typed state and source pixels are covered
+walk animation, the Hell Hound's source-timed close effect, and the B selector's
+typed state and source pixels are covered
 by focused Debug and Release QA. B's source-pool selection policy and the
 ordinary gate's blocker/cadence/chance branches are covered by script-runtime
 QA; the field spawn QA still injects the already-bounded selector rolls, so
@@ -120,4 +161,4 @@ hill remains partial: the alternate target action-byte route through `+0x9C`,
 the full actor pool, creature item/spell actions, hit resolution, damage/death,
 and natural approach from the edge are unresolved. The independent longplay
 corroborates the marker shape, but does not provide the actor bytes needed to
-verify every palette variant.
+verify every palette variant or the Hound close-effect sequence.

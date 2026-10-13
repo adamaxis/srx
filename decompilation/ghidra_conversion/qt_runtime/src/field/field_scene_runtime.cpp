@@ -1720,6 +1720,29 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
         }
     }
 
+    field_hound_close_attack_images_by_scene_.clear();
+    field_hound_close_attack_images_by_scene_.resize(56U);
+    for (std::size_t scene = 0U;
+         scene < field_hound_close_attack_images_by_scene_.size(); ++scene) {
+        for (std::uint8_t direction = 0U; direction < 8U; ++direction) {
+            for (std::uint8_t phase = 1U; phase <= 3U; ++phase) {
+                const auto alias =
+                    "field.entities.effects.hell.hound.close.attack.scene." +
+                    std::to_string(scene) + ".heading." +
+                    std::to_string(direction) + ".phase." +
+                    std::to_string(phase);
+                auto& artwork =
+                    field_hound_close_attack_images_by_scene_[scene]
+                        [direction];
+                if (!load_sprite_image(
+                        catalog, alias, artwork.images[phase],
+                        artwork.origin_x[phase], artwork.origin_y[phase])) {
+                    return false;
+                }
+            }
+        }
+    }
+
     const auto* table = catalog.find(std::string(kActorTableAlias));
     if (table == nullptr || table->kind != "state") {
         failure_ = "missing extracted dynamic world-activity actor table";
@@ -1740,7 +1763,9 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 "\taction_kind\taction_code\tsource_interaction_flags"
                 "\tentity_kind\tpalette_line"
                 "\tsprite_stem\ttagged_template\ttemplate_offset"
-                "\tordered_overrides\tplacement_rule\tphysical_meter") {
+                "\tordered_overrides\tplacement_rule\tphysical_meter"
+                "\tdelay_primary_attribute\tdelay_secondary_attribute"
+                "\tdelay_capability_flags") {
         failure_ = "dynamic world-activity actor table header is invalid";
         return false;
     }
@@ -1760,14 +1785,20 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             while (std::getline(row, field, '\t')) {
                 fields.push_back(std::move(field));
             }
-            if (fields.size() != 19U) {
+            if (fields.size() != 22U) {
                 failure_ = "dynamic world-activity actor row is malformed";
                 return false;
             }
             const auto kind = static_cast<std::uint16_t>(std::stoul(fields[11]));
             const auto physical_meter = std::stoul(fields[18]);
+            const auto delay_primary_attribute = std::stoul(fields[19]);
+            const auto delay_secondary_attribute = std::stoul(fields[20]);
+            const auto delay_capability_flags = std::stoul(fields[21]);
             if (kind < 4U || kind > 14U || fields[13].empty() ||
-                physical_meter > 0xFFU) {
+                physical_meter > 0xFFU ||
+                delay_primary_attribute > 0xFFU ||
+                delay_secondary_attribute > 0xFFU ||
+                delay_capability_flags > 0xFFFFU) {
                 failure_ = "dynamic world-activity actor identity is invalid";
                 return false;
             }
@@ -1953,6 +1984,38 @@ void FieldSceneRuntime::initialize_default_field_actors(
         actor.ai_target_id = decision->ai_target_id.value_or("");
         actor.ai_target_heading = decision->ai_target_heading.value_or(0U);
         actor.ai_target_distance = decision->ai_target_distance.value_or(0U);
+        actor.action_delay = decision->action_delay;
+        if (decision->target_motion_effect_slot_request.has_value()) {
+            const auto slot = *decision->target_motion_effect_slot_request;
+            if (slot >= field_world_effect_slots_occupied_.size() ||
+                field_world_effect_slots_occupied_[slot]) {
+                source_boundary(
+                    "field.actor.hound_effect_slot_request_invalid");
+            } else {
+                field_world_effect_slots_occupied_[slot] = true;
+                actor.target_motion_effect_slot = slot;
+                source_boundary("field.actor.hound_effect_started");
+            }
+        }
+        actor.target_motion_effect_visible =
+            decision->target_motion_effect_visible;
+        actor.target_motion_effect_direction =
+            decision->target_motion_effect_direction;
+        actor.target_motion_effect_phase =
+            decision->target_motion_effect_phase;
+        if (decision->target_motion_effect_slot_released) {
+            if (!actor.target_motion_effect_slot.has_value() ||
+                !field_world_effect_slots_occupied_[
+                    *actor.target_motion_effect_slot]) {
+                source_boundary(
+                    "field.actor.hound_effect_slot_release_invalid");
+            } else {
+                field_world_effect_slots_occupied_[
+                    *actor.target_motion_effect_slot] = false;
+                actor.target_motion_effect_slot.reset();
+                source_boundary("field.actor.hound_effect_finished");
+            }
+        }
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
@@ -1998,6 +2061,15 @@ void FieldSceneRuntime::advance_default_field_actors() {
             context.ai_animation_frame = actor.animation_frame;
             context.walk_animation_frame_count =
                 actor.walk_animation_frame_count;
+            context.initial_action_delay = actor.action_delay;
+            context.delay_primary_attribute =
+                actor.delay_primary_attribute;
+            context.delay_secondary_attribute =
+                actor.delay_secondary_attribute;
+            context.delay_capability_flags =
+                actor.delay_capability_flags;
+            context.world_effect_slot_occupancy =
+                field_world_effect_slots_occupied_;
             context.ai_target_candidates.clear();
             const auto append_target_candidate =
                 [this, &actor, &context](
@@ -2216,6 +2288,25 @@ void FieldSceneRuntime::advance_default_field_actors() {
         actor.ai_target_id = decision->ai_target_id.value_or("");
         actor.ai_target_heading = decision->ai_target_heading.value_or(0U);
         actor.ai_target_distance = decision->ai_target_distance.value_or(0U);
+        actor.action_delay = decision->action_delay;
+        if (decision->target_motion_effect_slot_request.has_value()) {
+            const auto slot = *decision->target_motion_effect_slot_request;
+            if (slot >= field_world_effect_slots_occupied_.size() ||
+                field_world_effect_slots_occupied_[slot]) {
+                source_boundary(
+                    "field.actor.hound_effect_behavior_slot_invalid");
+            } else {
+                field_world_effect_slots_occupied_[slot] = true;
+                actor.target_motion_effect_slot = slot;
+                source_boundary("field.actor.hound_effect_behavior_started");
+            }
+        }
+        actor.target_motion_effect_visible =
+            decision->target_motion_effect_visible;
+        actor.target_motion_effect_direction =
+            decision->target_motion_effect_direction;
+        actor.target_motion_effect_phase =
+            decision->target_motion_effect_phase;
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
@@ -2606,6 +2697,12 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         actor.initial_heading = 0U;
         actor.palette_line = source_actor.palette_line;
         actor.physical_meter = source_actor.physical_meter;
+        actor.delay_primary_attribute =
+            source_actor.delay_primary_attribute;
+        actor.delay_secondary_attribute =
+            source_actor.delay_secondary_attribute;
+        actor.delay_capability_flags =
+            source_actor.delay_capability_flags;
         actor.sprite_stem = source_actor.sprite_stem;
         actor.source_interaction_flags =
             source_actor.source_interaction_flags;
@@ -2668,6 +2765,13 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         context.ai_animation_frame = actor.animation_frame;
         context.walk_animation_frame_count =
             actor.walk_animation_frame_count;
+        context.initial_action_delay = actor.action_delay;
+        context.delay_primary_attribute = actor.delay_primary_attribute;
+        context.delay_secondary_attribute = actor.delay_secondary_attribute;
+        context.delay_capability_flags = actor.delay_capability_flags;
+        context.world_effect_slot_occupancy =
+            field_world_effect_slots_occupied_;
+        context.world_effect_slot_occupancy[actor.effect_slot.value()] = true;
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value()) {
             failure_ = game_scripts_.failure();
@@ -2679,6 +2783,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         actor.ai_target_id = decision->ai_target_id.value_or("");
         actor.ai_target_heading = decision->ai_target_heading.value_or(0U);
         actor.ai_target_distance = decision->ai_target_distance.value_or(0U);
+        actor.action_delay = decision->action_delay;
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
@@ -5529,9 +5634,12 @@ bool FieldSceneRuntime::bootstrap(
         std::make_unique<integration::FieldSessionSourceAssets>(assets);
     field_asset_catalog_ = std::make_unique<ConversionAssetCatalog>(
         startup_state.asset_catalog.catalog);
-    const auto scene_reference = restored_field_state != nullptr
-                                     ? restored_field_state->world_mode
-                                     : kInitialFieldSceneReference;
+    const auto scene_reference =
+        field_scene_reference_override_for_dump_.value_or(
+            restored_field_state != nullptr
+                ? restored_field_state->world_mode
+                : kInitialFieldSceneReference);
+    field_scene_reference_override_for_dump_.reset();
     const auto scene_input = integration::make_field_scene_input(
         assets, scene_reference);
     if (!scene_input.has_value()) {
@@ -6129,6 +6237,17 @@ bool FieldSceneRuntime::bootstrap(
     }
     source_boundary("field.bootstrap.ready");
     return true;
+}
+
+bool FieldSceneRuntime::bootstrap_for_scene_dump(
+    const integration::StartupIntegrationState& startup_state,
+    const std::uint16_t scene_reference) {
+    if (scene_reference >= kFieldSceneProfileCount) {
+        failure_ = "scene dump requested an out-of-range field scene";
+        return false;
+    }
+    field_scene_reference_override_for_dump_ = scene_reference;
+    return bootstrap(startup_state);
 }
 
 void FieldSceneRuntime::set_controller_nibble(
@@ -7588,6 +7707,18 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
             context.ai_animation_frame = actor.animation_frame;
             context.walk_animation_frame_count =
                 actor.walk_animation_frame_count;
+            context.initial_action_delay = actor.action_delay;
+            context.delay_primary_attribute =
+                actor.delay_primary_attribute;
+            context.delay_secondary_attribute =
+                actor.delay_secondary_attribute;
+            context.delay_capability_flags =
+                actor.delay_capability_flags;
+            context.world_effect_slot_occupancy =
+                field_world_effect_slots_occupied_;
+            if (actor.effect_slot.has_value()) {
+                context.world_effect_slot_occupancy[*actor.effect_slot] = true;
+            }
         }
         context.phase = scripting::ScriptActorHeartbeatPhase::render;
         context.target_selection_latched = actor.target_selected;
@@ -7605,6 +7736,26 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         actor.target_marker_animating = decision->target_marker_animating;
         actor.target_marker_style = decision->target_marker_style;
         actor.target_marker_radius = decision->target_marker_radius;
+        actor.action_delay = decision->action_delay;
+        actor.target_motion_effect_visible =
+            decision->target_motion_effect_visible;
+        actor.target_motion_effect_direction =
+            decision->target_motion_effect_direction;
+        actor.target_motion_effect_phase =
+            decision->target_motion_effect_phase;
+        if (decision->target_motion_effect_slot_released) {
+            if (!actor.target_motion_effect_slot.has_value() ||
+                !field_world_effect_slots_occupied_[
+                    *actor.target_motion_effect_slot]) {
+                source_boundary(
+                    "field.actor.hound_effect_render_release_invalid");
+            } else {
+                field_world_effect_slots_occupied_[
+                    *actor.target_motion_effect_slot] = false;
+                actor.target_motion_effect_slot.reset();
+                source_boundary("field.actor.hound_effect_render_finished");
+            }
+        }
         actor.transition_started = decision->transition_started;
         actor.transition_complete = decision->transition_complete;
     }
@@ -9898,6 +10049,25 @@ void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
             static_cast<int>(projection.screen_y) - kGenesisSpriteOrigin +
                 sprite.origin_y,
             sprite.image});
+
+        if (actor.target_motion_effect_visible &&
+            current_scene < field_hound_close_attack_images_by_scene_.size() &&
+            actor.target_motion_effect_direction < 8U &&
+            actor.target_motion_effect_phase >= 1U &&
+            actor.target_motion_effect_phase <= 3U) {
+            const auto& effect =
+                field_hound_close_attack_images_by_scene_[current_scene]
+                    [actor.target_motion_effect_direction];
+            const auto phase = actor.target_motion_effect_phase;
+            sprites.push_back(SceneSprite{
+                static_cast<std::int16_t>(actor.world_position.y),
+                static_cast<std::uint16_t>(actor.source_order + 1U),
+                static_cast<int>(projection.screen_x) - kGenesisSpriteOrigin +
+                    effect.origin_x[phase],
+                static_cast<int>(projection.screen_y) - kGenesisSpriteOrigin +
+                    effect.origin_y[phase],
+                &effect.images[phase]});
+        }
 
         if (actor.target_marker_visible &&
             current_scene < field_target_marker_images_by_scene_.size() &&
@@ -12435,6 +12605,31 @@ FieldSceneRuntime::selected_default_actor_target_marker_for_dump() const noexcep
         actor->entity_kind,
         projection.screen_x,
         projection.screen_y};
+}
+
+std::optional<FieldCreatureAttackEffectDebugState>
+FieldSceneRuntime::default_actor_creature_attack_effect_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.active &&
+                   candidate.scene_reference == scene_reference &&
+                   candidate.source_order == source_order &&
+                   candidate.script_profile_id ==
+                       "hell_hound_k0c_none00";
+        });
+    if (actor == field_default_actors_.end()) {
+        return std::nullopt;
+    }
+    return FieldCreatureAttackEffectDebugState{
+        actor->target_motion_effect_visible,
+        actor->target_motion_effect_direction,
+        actor->target_motion_effect_phase,
+        actor->target_motion_effect_slot,
+        actor->action_delay};
 }
 
 bool FieldSceneRuntime::set_default_actor_world_position_for_dump(

@@ -382,3 +382,49 @@ makes no sound request. Entry cues are checked as requests (`0x2E` for this
 sequence), not as audible samples or durations. Section-06 longplay frames
 2190/2220 and 2430/2460 independently show the target-bracket visual form; they
 do not expose the source actor/action bytes for this exact scene.
+
+## Hell Hound close-range effect
+
+The ROM branch at `0x14C7C` separates heading from attack selection by range.
+At distance `>= 0x600`, it leaves the target heading alone. From `0x300` to
+`0x5FF`, it writes current and target heading. Below `0x300`, a nonnegative
+signed actor timer at `+0xDC` only updates the target heading. Once that timer
+is negative, the branch asks `0x1A2CC` for the first free shared effect slot;
+with all 18 slots occupied it exits without beginning the effect. On success,
+it records the allocated slot and sets the actor effect-lock bit at `+0x11.6`.
+The close branch does not request a sound.
+
+`0xA8EA` decrements signed `+0xDC` once per active actor behavior-service
+pass while the timer is nonnegative. The action-delay path at `0xABFC` calls
+`0xD7EA`: the first enabled `+0x90` bits 12-14 contribute 4, 8, or 12; the
+wrapped average of `+0x78` and `+0x7B`, minus one, contributes the remaining
+factor; the factor is floored at zero. The final delay is `max(0x6A - 4*factor,
+0x0F)`. The Hell Hound template at `0x1D6816` supplies `+0x2A=0x0806`,
+`+0x2D=0x02`, and no capability bits in `+0x44`; the live `+0x78/+0x7B`
+values are therefore 8 and 2, producing a 90 behavior-pass delay.
+
+The effect renderer at `0x4E86` is separate from the behavior branch. Its
+signed timer advances one phase every seven calls. Phases 1, 2, and 3 each
+append one directional effect sprite for seven render passes. The next call
+enters phase 4, clears the effect slot and actor lock, and appends no sprite;
+there is no sound request in this path either. ROM effect descriptors and the
+shared effect palette are extracted offline to individually named host art:
+56 field scenes x 8 headings x 3 phases. Lua owns the slot request, action
+delay, effect phase, heading, and visibility state. The Qt field runtime
+reserves/releases the shared slot and draws the named frame at the actor's
+projected location.
+
+The focused Scene 0 QA uses the real sum-zero Hell Hound/vampire sequence, then
+places one live Hound within `0x200` of the runner to expose the effect on
+screen. That placement is diagnostic, not a natural approach replay. Its
+full-screen frame set checks the pre-encounter map, sequence entry, pre-effect
+state, effect start, phases 1-3, and release. The source map's vertical
+foreground structure occludes phase 3 at this placement; the renderer does
+not force the effect through that existing layer. The full-frame regression
+requires phases 1 and 2 to change the image and phase 3 to match the released
+image under that occlusion; release leaves no stale pixels. The audio request
+stays empty. No reviewed longplay frame sequence
+can be confidently tied to this exact Hound attack, so these captures verify
+source-driven state and internal composition, not independent Genesis visual
+fidelity. This branch is connected; general actor-slot dispatch, other
+creature attacks, hit/damage/death, and other effect families remain open.

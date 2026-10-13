@@ -7584,6 +7584,266 @@ int run_field_random_encounter_spawn_qa(
     return 0;
 }
 
+int run_field_hound_close_effect_qa(
+    FieldSceneRuntime& field_scene,
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "Hell Hound effect QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    for (std::filesystem::directory_iterator item(output, error), end;
+         !error && item != end; item.increment(error)) {
+        if (item->is_regular_file(error) &&
+            item->path().extension() == ".bmp") {
+            std::filesystem::remove(item->path(), error);
+        }
+    }
+    if (error) {
+        std::cerr << "Hell Hound effect QA: cannot clear old captures: "
+                  << error.message() << '\n';
+        return 3;
+    }
+
+    auto scene_zero_startup = startup_state;
+    scene_zero_startup.restored_field_state.reset();
+    if (!field_scene.bootstrap_for_scene_dump(scene_zero_startup, 0U) ||
+        field_scene.field_scene_reference_for_dump() != 0U) {
+        std::cerr << "Hell Hound effect QA: Scene 0 bootstrap failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto save = [&output](const std::filesystem::path& path,
+                                const QImage& image) {
+        return image.save(QString::fromStdWString((output / path).wstring()));
+    };
+    const auto before_encounter = render();
+    const bool before_saved = save("before-encounter.bmp", before_encounter);
+    const auto actors_before = field_scene.default_actor_count_for_dump();
+
+    // Scene 0, selector sum 0 is the ROM's ordered Hell Hound + vampire
+    // sequence at 0x1D6D86. Only the hound's position is adjusted below to
+    // exercise the close-target branch; this is diagnostic placement, not a
+    // claimed gameplay path or a new encounter definition.
+    const auto spawned =
+        field_scene.resolve_and_spawn_field_encounter_for_dump(
+            0U, 0U, 0x1234U);
+    const auto profile =
+        field_scene.default_actor_script_profile_for_dump(0U);
+    const auto after_spawn = render();
+    const auto hud_before = before_encounter.copy(272, 0, 48, 224);
+    const bool encounter_saved = save("encounter-entry.bmp", after_spawn);
+    if (!before_saved || spawned != 2U ||
+        field_scene.default_actor_count_for_dump() != actors_before + 2U ||
+        profile != std::optional<std::string>{"hell_hound_k0c_none00"} ||
+        hud_before != after_spawn.copy(272, 0, 48, 224) ||
+        !encounter_saved ||
+        !field_hud_chrome_survives(after_spawn, asset_root)) {
+        std::cerr << "Hell Hound effect QA: ROM Scene 0 actor list did not load"
+                  << " spawned=" << spawned << " profile="
+                  << profile.value_or("<missing>") << " actors="
+                  << actors_before << "->"
+                  << field_scene.default_actor_count_for_dump()
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    const auto runner = field_scene.field_entity_world_position();
+    const auto close_x = static_cast<std::uint16_t>(runner.x + 0x0200U);
+    const auto close_y = runner.y;
+    if (!field_scene.set_default_actor_world_position_for_dump(
+            actors_before, close_x, close_y)) {
+        std::cerr << "Hell Hound effect QA: could not place the ROM hound "
+                     "inside the close-range test distance\n";
+        return 3;
+    }
+    const auto close_target_before_effect = render();
+    const bool close_target_saved =
+        save("close-target-before-effect.bmp", close_target_before_effect);
+
+    std::array<std::uint16_t, 4> visible_frames_by_phase{};
+    std::array<bool, 4> phase_capture_saved{};
+    std::uint8_t previous_visible_phase = 0U;
+    bool effect_started = false;
+    bool effect_released = false;
+    bool effect_release_saved = false;
+    bool effect_slot_valid = true;
+    std::optional<std::size_t> audio_count_at_effect_start;
+    std::optional<std::uint8_t> effect_slot_at_start;
+    std::optional<std::int16_t> effect_delay_at_start;
+    std::optional<std::int16_t> effect_delay_at_phase_three;
+    bool hud_unchanged = true;
+    bool screen_layers_valid = true;
+    for (std::uint16_t frame = 0U; frame < 900U && !effect_released;
+         ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        const auto effect =
+            field_scene.default_actor_creature_attack_effect_for_dump(0U);
+        if (!effect.has_value()) {
+            continue;
+        }
+        if (effect->visible && effect->phase >= 1U && effect->phase <= 3U) {
+            effect_started = true;
+            if (!audio_count_at_effect_start.has_value()) {
+                audio_count_at_effect_start = field_audio_events.size();
+                effect_slot_at_start = effect->effect_slot;
+                effect_delay_at_start = effect->action_delay;
+            }
+            effect_slot_valid = effect_slot_valid &&
+                effect->effect_slot == std::optional<std::uint8_t>{2U};
+            if (effect->phase == 3U &&
+                !effect_delay_at_phase_three.has_value()) {
+                effect_delay_at_phase_three = effect->action_delay;
+            }
+            ++visible_frames_by_phase[effect->phase];
+            const auto image = render();
+            const auto filename =
+                "phase-" + std::to_string(effect->phase) + ".bmp";
+            if (!phase_capture_saved[effect->phase]) {
+                phase_capture_saved[effect->phase] =
+                    save(filename, image);
+            }
+            if (effect->phase == 1U &&
+                !std::filesystem::exists(output / "actual.bmp")) {
+                phase_capture_saved[0] = save("actual.bmp", image);
+            }
+            hud_unchanged = hud_unchanged &&
+                hud_before == image.copy(272, 0, 48, 224);
+            screen_layers_valid = screen_layers_valid &&
+                field_hud_chrome_survives(image, asset_root);
+            previous_visible_phase = effect->phase;
+        } else if (effect_started && previous_visible_phase == 3U &&
+                   effect->phase == 4U && !effect->visible &&
+                   !effect->effect_slot.has_value()) {
+            const auto released_image = render();
+            effect_release_saved = save("effect-released.bmp", released_image);
+            hud_unchanged = hud_unchanged &&
+                hud_before == released_image.copy(272, 0, 48, 224);
+            screen_layers_valid = screen_layers_valid &&
+                field_hud_chrome_survives(released_image, asset_root);
+            effect_released = true;
+        }
+    }
+    const bool no_attack_audio =
+        audio_count_at_effect_start.has_value() &&
+        *audio_count_at_effect_start == field_audio_events.size();
+
+    const auto phase_one_path = output / "phase-1.bmp";
+    const auto phase_two_path = output / "phase-2.bmp";
+    const auto phase_three_path = output / "phase-3.bmp";
+    const auto release_path = output / "effect-released.bmp";
+    const QImage phase_one_image(QString::fromStdWString(
+        phase_one_path.wstring()));
+    const QImage phase_two_image(QString::fromStdWString(
+        phase_two_path.wstring()));
+    const QImage phase_three_image(QString::fromStdWString(
+        phase_three_path.wstring()));
+    const QImage close_target_image(QString::fromStdWString(
+        (output / "close-target-before-effect.bmp").wstring()));
+    const QImage released_image(QString::fromStdWString(
+        release_path.wstring()));
+    const bool effect_removed_after_phase_one =
+        !phase_one_image.isNull() && !released_image.isNull() &&
+        phase_one_image != released_image;
+    const bool visible_phases_change_the_frame =
+        !close_target_image.isNull() && !phase_one_image.isNull() &&
+        !phase_two_image.isNull() &&
+        phase_one_image != close_target_image &&
+        phase_two_image != phase_one_image &&
+        phase_two_image != released_image;
+    // This fixed placement puts phase 3 behind a ROM high-priority map tile.
+    // Keep the source layering rule in the full-frame regression check.
+    const bool phase_three_respects_map_priority =
+        !phase_three_image.isNull() && !released_image.isNull() &&
+        phase_three_image == released_image;
+    const auto actual_image = QImage(QString::fromStdWString(
+        (output / "actual.bmp").wstring()));
+    if (!close_target_saved || !effect_started || !effect_released ||
+        !effect_release_saved || actual_image.isNull() ||
+        visible_frames_by_phase[1] != 7U ||
+        visible_frames_by_phase[2] != 7U ||
+        visible_frames_by_phase[3] != 7U ||
+        effect_delay_at_start != std::optional<std::int16_t>{90} ||
+        !effect_delay_at_phase_three.has_value() ||
+        *effect_delay_at_phase_three >= 90 ||
+        !std::all_of(phase_capture_saved.begin() + 1,
+                     phase_capture_saved.end(),
+                     [](const bool saved) { return saved; }) ||
+        !effect_removed_after_phase_one || !visible_phases_change_the_frame ||
+        !phase_three_respects_map_priority || !hud_unchanged ||
+        !screen_layers_valid || !effect_slot_valid || !no_attack_audio) {
+        std::cerr << "Hell Hound effect QA: close attack frame sequence diverged"
+                  << " visible=" << visible_frames_by_phase[1] << ','
+                  << visible_frames_by_phase[2] << ','
+                  << visible_frames_by_phase[3]
+                  << " started=" << effect_started
+                  << " released=" << effect_released
+                  << " phase_one_removed="
+                  << effect_removed_after_phase_one
+                  << " visible_phases_change_frame="
+                  << visible_phases_change_the_frame
+                  << " phase_three_respects_map_priority="
+                  << phase_three_respects_map_priority
+                  << " slot_delay_valid=" << effect_slot_valid
+                  << " first_slot=";
+        if (effect_slot_at_start.has_value()) {
+            std::cerr << static_cast<unsigned>(*effect_slot_at_start);
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr << " first_delay=";
+        if (effect_delay_at_start.has_value()) {
+            std::cerr << *effect_delay_at_start;
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr << " phase_three_delay=";
+        if (effect_delay_at_phase_three.has_value()) {
+            std::cerr << *effect_delay_at_phase_three;
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr
+                  << " no_attack_audio=" << no_attack_audio
+                  << " hud_unchanged=" << hud_unchanged
+                  << " layers_valid=" << screen_layers_valid
+                  << " failure=" << field_scene.failure()
+                  << " boundaries=";
+        const auto first_boundary = source_boundaries.size() > 12U
+            ? source_boundaries.size() - 12U
+            : 0U;
+        for (std::size_t index = first_boundary;
+             index < source_boundaries.size(); ++index) {
+            std::cerr << ' ' << source_boundaries[index];
+        }
+        std::cerr << '\n';
+        return 3;
+    }
+
+    std::cout << "field_hound_close_effect_qa=passed scene=0 selector=0+0 "
+                 "frames=7,7,7 release=phase4 effect_removed=yes "
+                 "visible_phases=1,2 phase3_map_occluded=yes "
+                 "effect_slot=2 action_delay=90 attack_audio=none artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 int run_field_scene26_event1_physical_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -16935,6 +17195,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_random_encounter_spawn_qa_path;
         std::optional<std::filesystem::path>
+            field_hound_close_effect_qa_path;
+        std::optional<std::filesystem::path>
             field_redmond_vigore_search_qa_path;
         std::optional<std::filesystem::path>
             field_jump_house_entry_qa_path;
@@ -17034,6 +17296,7 @@ int main(int argc, char** argv) {
                        " [--field-transition-qa <output-dir>]"
                        " [--field-world-activity-qa <output-dir>]"
                        " [--field-random-encounter-spawn-qa <output-dir>]"
+                       " [--field-hound-close-effect-qa <output-dir>]"
                        " [--field-redmond-vigore-search-qa <output-dir>]"
                        " [--field-jump-house-entry-qa <output-dir>]"
                        " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
@@ -17123,6 +17386,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_random_encounter_spawn_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-hound-close-effect-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_hound_close_effect_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -17854,6 +18124,12 @@ int main(int argc, char** argv) {
                 return run_field_world_activity_qa(
                     field_scene, asset_root,
                     *field_world_activity_qa_path, field_audio_events);
+            }
+            if (field_hound_close_effect_qa_path.has_value()) {
+                return run_field_hound_close_effect_qa(
+                    field_scene, smoke_state, asset_root,
+                    *field_hound_close_effect_qa_path,
+                    field_audio_events, field_source_boundaries);
             }
             if (field_random_encounter_spawn_qa_path.has_value()) {
                 return run_field_random_encounter_spawn_qa(

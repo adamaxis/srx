@@ -3758,6 +3758,9 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::string action_kind;
         std::uint8_t source_interaction_flags;
         std::uint8_t physical_meter;
+        std::uint8_t delay_primary_attribute;
+        std::uint8_t delay_secondary_attribute;
+        std::uint16_t delay_capability_flags;
         std::string sprite_stem;
         std::string ordered_overrides;
     };
@@ -3826,6 +3829,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 const auto profile_id = make_actor_profile_id(
                     rom, template_offset, entity_kind, action_kind,
                     action_code);
+                auto delay_primary_attribute = rom[template_offset + 0x2AU];
+                auto delay_secondary_attribute = rom[template_offset + 0x2DU];
+                auto delay_capability_flags = read_big_endian_word(
+                    rom, template_offset + 0x44U);
                 auto source_interaction_flags = rom[
                     shadowrun::rom::kPostObjectEntityTemplate + 0x11U];
                 const auto actor_name = read_actor_name(template_offset);
@@ -3853,6 +3860,23 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                         if (override_offset == 0x11U) {
                             source_interaction_flags = override_value;
                         }
+                        // ROM 0x44BC copies these template bytes into the
+                        // live +0x78, +0x7B, and +0x90 delay inputs. Ordered
+                        // list overrides replace those live bytes after the
+                        // template copy, so export the final typed values.
+                        if (override_offset == 0x78U) {
+                            delay_primary_attribute = override_value;
+                        } else if (override_offset == 0x7BU) {
+                            delay_secondary_attribute = override_value;
+                        } else if (override_offset == 0x90U) {
+                            delay_capability_flags = static_cast<std::uint16_t>(
+                                (static_cast<std::uint16_t>(override_value) << 8U) |
+                                (delay_capability_flags & 0x00FFU));
+                        } else if (override_offset == 0x91U) {
+                            delay_capability_flags = static_cast<std::uint16_t>(
+                                (delay_capability_flags & 0xFF00U) |
+                                override_value);
+                        }
                         if (!first_override) {
                             overrides << ',';
                         }
@@ -3875,7 +3899,9 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     static_cast<std::uint32_t>(template_offset), entity_kind,
                     palette_line, actor_name, profile_id, action_code,
                     action_kind, source_interaction_flags,
-                    rom[template_offset + 0x4CU], sprite_stem,
+                    rom[template_offset + 0x4CU], delay_primary_attribute,
+                    delay_secondary_attribute, delay_capability_flags,
+                    sprite_stem,
                     first_override ? "-" : overrides.str(),
                 });
                 const auto key = std::make_pair(entity_kind, palette_line);
@@ -3914,7 +3940,9 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                  "\tsource_interaction_flags"
                  "\tentity_kind\tpalette_line\tsprite_stem"
                  "\ttagged_template\ttemplate_offset\tordered_overrides"
-                 "\tplacement_rule\tphysical_meter\n";
+                 "\tplacement_rule\tphysical_meter"
+                 "\tdelay_primary_attribute\tdelay_secondary_attribute"
+                 "\tdelay_capability_flags\n";
         for (const auto& actor : dynamic_world_actor_records) {
             const auto key = std::make_pair(actor.entity_kind, actor.palette_line);
             const auto visual = actor_visual_sources.find(key);
@@ -3939,7 +3967,11 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                   << format_offset(actor.template_offset) << '\t'
                   << actor.ordered_overrides << '\t'
                   << "open screen-edge candidates based on the current viewport and terrain\t"
-                  << static_cast<unsigned>(actor.physical_meter) << '\n';
+                  << static_cast<unsigned>(actor.physical_meter) << '\t'
+                  << static_cast<unsigned>(actor.delay_primary_attribute)
+                  << '\t'
+                  << static_cast<unsigned>(actor.delay_secondary_attribute)
+                  << '\t' << actor.delay_capability_flags << '\n';
         }
         if (!table) {
             throw std::runtime_error(
@@ -4275,6 +4307,80 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             write_catalog_asset(
                 root, relative_name, marker_images[variant], "sprite", source,
                 false, manifest, written, missing, blank);
+        }
+    }
+
+    // The kind-0xC branch at 0x14C7C claims a shared effect slot. Its 0x4E86
+    // render continuation selects one of four directional descriptor lists
+    // through 0x4F42, then 0x13BE places their sprites using palette line 1.
+    // The first service pass advances +0x03 to phase 1; phase 4 retires the
+    // effect without drawing, so only phases 1..3 are live artwork. Bake the
+    // current field palette into each scene's named frames so Qt consumes
+    // direct assets and never reconstructs the ROM's temporary VRAM slots.
+    constexpr std::size_t kCloseAttackHeadingTableOffset = 0x4F42U;
+    constexpr std::size_t kCloseAttackPaletteOffset = 0x18AC56U;
+    constexpr std::size_t kVramSize = 0x10000U;
+    for (std::uint16_t scene_id = 0U;
+         scene_id < shadowrun::rom::kFieldModeCount; ++scene_id) {
+        const auto resources =
+            shadowrun::graphics::read_genesis_field_mode_resources(
+                rom, scene_id);
+        auto palette = shadowrun::graphics::read_genesis_palette_set(
+            rom, resources.palette_offset);
+        for (std::size_t index = 16U; index < palette.size(); ++index) {
+            palette[index] = shadowrun::graphics::decode_genesis_cram_word(
+                read_big_endian_word(
+                    rom, kCloseAttackPaletteOffset + (index - 16U) * 2U),
+                index % 16U == 0U);
+        }
+
+        for (std::uint16_t heading = 0U; heading < 8U; ++heading) {
+            const auto phase_table = static_cast<std::size_t>(
+                read_big_endian_long(
+                    rom, kCloseAttackHeadingTableOffset + heading * 4U));
+            for (std::uint16_t phase = 1U; phase <= 3U; ++phase) {
+                const auto descriptor_offset = static_cast<std::size_t>(
+                    read_big_endian_long(rom, phase_table + phase * 4U));
+                if (read_big_endian_word(rom, descriptor_offset) != 0x8002U) {
+                    throw std::runtime_error(
+                        "Hell Hound close-attack frame has an unsupported descriptor");
+                }
+                const auto pattern_offset = static_cast<std::size_t>(
+                    read_big_endian_long(rom, descriptor_offset + 2U));
+                const auto pattern_size = static_cast<std::size_t>(
+                    read_big_endian_word(rom, descriptor_offset + 6U));
+                if (pattern_size == 0U || pattern_size > kVramSize ||
+                    pattern_offset > rom.size() ||
+                    pattern_size > rom.size() - pattern_offset) {
+                    throw std::runtime_error(
+                        "Hell Hound close-attack pattern bytes exceed the ROM or host VRAM");
+                }
+                std::vector<std::uint8_t> vram(kVramSize, 0U);
+                std::copy_n(rom.begin() +
+                                static_cast<std::ptrdiff_t>(pattern_offset),
+                            pattern_size, vram.begin());
+                const auto frame = decode_field_entity_sprite_list(
+                    rom, vram, descriptor_offset + 8U, palette, 0x2000U);
+                const auto relative_name =
+                    "field/entities/effects/hell-hound-close-attack/scene-" +
+                    std::to_string(scene_id) + "-heading-" +
+                    std::to_string(heading) + "-phase-" +
+                    std::to_string(phase) + ".bmp";
+                const auto source =
+                    "ROM 0x14C7C kind=0xC; 0x4E86/0x4F42 heading=" +
+                    std::to_string(heading) + " phase=" +
+                    std::to_string(phase) + " descriptor=" +
+                    format_offset(static_cast<std::uint32_t>(
+                        descriptor_offset)) +
+                    " pattern=" +
+                    format_offset(static_cast<std::uint32_t>(pattern_offset)) +
+                    " bytes=" + std::to_string(pattern_size) +
+                    "; 0x13BE palette line 1; scene palette plus 0x18AC56";
+                write_catalog_asset(
+                    root, relative_name, frame.image, "sprite", source, true,
+                    manifest, written, missing, blank, frame.origin_x,
+                    frame.origin_y);
+            }
         }
     }
 

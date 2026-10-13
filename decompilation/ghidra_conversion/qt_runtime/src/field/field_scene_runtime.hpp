@@ -120,6 +120,14 @@ struct FieldTargetMarkerDebugState {
     std::uint16_t projected_y = 0;
 };
 
+struct FieldCreatureAttackEffectDebugState {
+    bool visible = false;
+    std::uint8_t direction = 0;
+    std::uint8_t phase = 0;
+    std::optional<std::uint8_t> effect_slot;
+    std::int16_t action_delay = 0;
+};
+
 constexpr std::uint32_t field_flag_mask(
     const FieldWorldFactFlag flag) noexcept {
     return std::uint32_t{1U} << static_cast<std::uint8_t>(flag);
@@ -218,6 +226,9 @@ public:
 
     bool bootstrap(
         const integration::StartupIntegrationState& startup_state);
+    bool bootstrap_for_scene_dump(
+        const integration::StartupIntegrationState& startup_state,
+        std::uint16_t scene_reference);
     void advance_frame();
     void set_controller_nibble(std::uint8_t dpad_nibble) noexcept;
     void set_controller_port_byte(std::uint8_t port_byte) noexcept;
@@ -231,6 +242,9 @@ public:
     selected_default_actor_id_for_dump() const;
     std::optional<FieldTargetMarkerDebugState>
     selected_default_actor_target_marker_for_dump() const noexcept;
+    std::optional<FieldCreatureAttackEffectDebugState>
+    default_actor_creature_attack_effect_for_dump(
+        std::uint16_t source_order) const noexcept;
     // Resolves injected selector rolls through Lua, then exercises the same
     // ROM-list validation, placement, Lua initialization, and renderer state
     // used by an eligible live random-encounter pass.
@@ -1149,6 +1163,9 @@ private:
         std::uint16_t initial_heading = 0;
         std::uint8_t palette_line = 0;
         std::uint8_t physical_meter = 0;
+        std::uint8_t delay_primary_attribute = 0;
+        std::uint8_t delay_secondary_attribute = 0;
+        std::uint16_t delay_capability_flags = 0;
         std::string sprite_stem;
         std::uint32_t template_offset = 0;
         std::uint32_t position_offset = 0;
@@ -1165,6 +1182,11 @@ private:
         bool target_marker_animating = false;
         std::uint8_t target_marker_style = 0;
         std::uint8_t target_marker_radius = 0;
+        std::optional<std::uint8_t> target_motion_effect_slot;
+        bool target_motion_effect_visible = false;
+        std::uint8_t target_motion_effect_direction = 0;
+        std::uint8_t target_motion_effect_phase = 0;
+        std::int16_t action_delay = 0;
         bool ai_target_valid = false;
         std::uint16_t ai_target_heading = 0;
         std::uint16_t ai_target_distance = 0;
@@ -1199,6 +1221,12 @@ private:
         std::array<std::vector<int>, 8> walk_origin_y{};
         std::uint8_t walk_frame_count = 0;
         std::uint8_t entry_frame_count = 2;
+    };
+
+    struct CreatureEffectArtwork {
+        std::array<QImage, 4> images{};
+        std::array<int, 4> origin_x{};
+        std::array<int, 4> origin_y{};
     };
 
     // Resource-activity scenes are temporary field excursions. Preserve the
@@ -1422,6 +1450,8 @@ private:
         field_dynamic_actor_artwork_;
     std::vector<std::array<QImage, 4>>
         field_target_marker_images_by_scene_;
+    std::vector<std::array<CreatureEffectArtwork, 8>>
+        field_hound_close_attack_images_by_scene_;
     std::vector<DefaultFieldActorPresentation> field_default_actors_;
     std::array<bool, 18> field_world_effect_slots_occupied_{};
     EntityServiceTargetOwner field_entity_target_owner_{};
@@ -1545,6 +1575,7 @@ private:
     FieldEntityPresentation field_entity_{};
     std::string failure_;
     bool ready_ = false;
+    std::optional<std::uint16_t> field_scene_reference_override_for_dump_;
 };
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

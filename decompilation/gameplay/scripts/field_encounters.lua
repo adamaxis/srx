@@ -124,6 +124,9 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
                 tagged_template = row.tagged_template,
                 template_offset = row.template_offset,
                 ordered_overrides = row.ordered_overrides,
+                delay_primary_attribute = row.delay_primary_attribute,
+                delay_secondary_attribute = row.delay_secondary_attribute,
+                delay_capability_flags = row.delay_capability_flags,
             }
         end
     end

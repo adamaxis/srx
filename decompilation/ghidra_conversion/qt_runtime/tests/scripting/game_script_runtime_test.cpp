@@ -1214,6 +1214,104 @@ int main() {
         target_candidate(0U, "special_actor", true, false);
     const auto target_selection_special =
         scripts.actor_heartbeat(special_target_selection_context);
+
+    auto hound_effect_context = actor_context(
+        "hell_hound_k0c_none00", "hell_hound_effect_cadence", 12U,
+        ScriptActorActionKind::none, 0U, 0U, true);
+    hound_effect_context.dynamic_world_encounter_actor = true;
+    hound_effect_context.source_record_flags = 0x01U;
+    hound_effect_context.movement_allowed = true;
+    hound_effect_context.entry_animation_frame_count = 1U;
+    hound_effect_context.walk_animation_frame_count = 1U;
+    hound_effect_context.delay_primary_attribute = 8U;
+    hound_effect_context.delay_secondary_attribute = 2U;
+    hound_effect_context.ai_target_candidates.push_back(
+        ScriptActorTargetCandidate{
+            "party.runner.0", 0x1000U, 0x1000U, 0x2000U, 0x0100U,
+            0x01U, 0U, 0U, 0U, true, false, 0x2000U, 0x0100U});
+    hound_effect_context.ai_random_bound =
+        [](const std::uint16_t bound) -> std::optional<std::uint16_t> {
+        return bound == 0U
+            ? std::nullopt
+            : std::optional<std::uint16_t>{0U};
+    };
+    const auto hound_effect_spawn =
+        scripts.actor_heartbeat(hound_effect_context);
+    hound_effect_context.spawn = false;
+    auto hound_entry = scripts.actor_heartbeat(hound_effect_context);
+    hound_effect_context.phase = ScriptActorHeartbeatPhase::render;
+    for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
+        hound_entry = scripts.actor_heartbeat(hound_effect_context);
+    }
+    hound_effect_context.phase = ScriptActorHeartbeatPhase::behavior;
+    std::optional<ScriptActorBehaviorDecision> hound_effect_start;
+    for (std::uint8_t service = 0U;
+         service < 100U &&
+         (!hound_effect_start.has_value() ||
+          !hound_effect_start->target_motion_effect_slot_request.has_value());
+         ++service) {
+        hound_effect_start =
+            scripts.actor_heartbeat(hound_effect_context);
+    }
+
+    std::array<std::uint8_t, 4> hound_effect_visible_counts{};
+    bool hound_effect_released = false;
+    hound_effect_context.world_effect_slot_occupancy[0] = true;
+    hound_effect_context.phase = ScriptActorHeartbeatPhase::render;
+    for (std::uint8_t frame = 0U; frame < 22U; ++frame) {
+        const auto decision = scripts.actor_heartbeat(hound_effect_context);
+        if (!decision.has_value()) {
+            break;
+        }
+        if (decision->target_motion_effect_visible &&
+            decision->target_motion_effect_phase <
+                hound_effect_visible_counts.size()) {
+            ++hound_effect_visible_counts[
+                decision->target_motion_effect_phase];
+        }
+        hound_effect_released =
+            hound_effect_released ||
+            decision->target_motion_effect_slot_released;
+    }
+
+    hound_effect_context.world_effect_slot_occupancy[0] = false;
+    hound_effect_context.phase = ScriptActorHeartbeatPhase::behavior;
+    bool hound_effect_repeated_before_cooldown = false;
+    for (std::uint8_t service = 0U; service < 90U; ++service) {
+        const auto decision = scripts.actor_heartbeat(hound_effect_context);
+        hound_effect_repeated_before_cooldown =
+            hound_effect_repeated_before_cooldown ||
+            (decision.has_value() &&
+             decision->target_motion_effect_slot_request.has_value());
+    }
+    std::optional<ScriptActorBehaviorDecision> hound_effect_after_cooldown;
+    for (std::uint8_t service = 0U;
+         service < 15U &&
+         (!hound_effect_after_cooldown.has_value() ||
+          !hound_effect_after_cooldown->target_motion_effect_slot_request.has_value());
+         ++service) {
+        hound_effect_after_cooldown =
+            scripts.actor_heartbeat(hound_effect_context);
+    }
+    if (!expect(
+            hound_effect_spawn.has_value() &&
+                hound_entry.has_value() &&
+                hound_effect_start.has_value() &&
+                hound_effect_start->target_motion_effect_slot_request == 0U &&
+                hound_effect_start->action_delay == 90 &&
+                hound_effect_visible_counts[1] == 7U &&
+                hound_effect_visible_counts[2] == 7U &&
+                hound_effect_visible_counts[3] == 7U &&
+                hound_effect_released &&
+                !hound_effect_repeated_before_cooldown &&
+                hound_effect_after_cooldown.has_value() &&
+                hound_effect_after_cooldown->target_motion_effect_slot_request == 0U &&
+                hound_effect_after_cooldown->action_delay == 90,
+            "Hell Hound close effect did not follow its source slot, phase, and +0xDC cadence")) {
+        std::cerr << scripts.failure() << '\n';
+        return 28;
+    }
+
     if (!expect(
             guard_wait.has_value() &&
                 guard_wait->package_id ==

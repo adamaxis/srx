@@ -243,6 +243,9 @@ struct ScriptFieldEncounterActor {
     std::uint32_t template_offset = 0;
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t physical_meter = 0;
+    std::uint8_t delay_primary_attribute = 0;
+    std::uint8_t delay_secondary_attribute = 0;
+    std::uint16_t delay_capability_flags = 0;
     std::string ordered_overrides;
 };
 
@@ -481,6 +484,13 @@ struct ScriptActorBehaviorContext {
     std::int16_t ai_animation_frame = 0;
     // Positive C062 loop length supplied from extracted source art.
     std::uint8_t walk_animation_frame_count = 0;
+    // 0x44BC fills +0x78/+0x7B/+0x90 from the selected ROM template. Lua
+    // uses these typed facts when 0xB11C resets the signed +0xDC delay.
+    std::int16_t initial_action_delay = 0;
+    std::uint8_t delay_primary_attribute = 0;
+    std::uint8_t delay_secondary_attribute = 0;
+    std::uint16_t delay_capability_flags = 0;
+    std::array<bool, 18> world_effect_slot_occupancy{};
     // ROM +0x11.4 target-selection latch, forwarded as a fact; Lua owns the
     // visible 0x5C7E marker cadence and returns its presentation state.
     bool target_selection_latched = false;
@@ -519,6 +529,12 @@ struct ScriptActorBehaviorDecision {
     std::optional<std::string> ai_target_id;
     std::optional<std::uint16_t> ai_target_heading;
     std::optional<std::uint16_t> ai_target_distance;
+    std::int16_t action_delay = 0;
+    std::optional<std::uint8_t> target_motion_effect_slot_request;
+    bool target_motion_effect_visible = false;
+    std::uint8_t target_motion_effect_direction = 0;
+    std::uint8_t target_motion_effect_phase = 0;
+    bool target_motion_effect_slot_released = false;
     bool target_marker_visible = false;
     bool target_marker_animating = false;
     std::uint8_t target_marker_style = 0;
