@@ -629,24 +629,29 @@ event is enabled on `20-34` and `41-43`, and the laser event is enabled on
 badge/dispatch/arrest decision, not a patrol actor automatically spawned on
 map entry.
 
-The known route crosswalk anchors those scene ranges to real locations. These
-names come from ROM-backed area routes in
-`decompilation/gameplay/world/areas/scene-02-site-routes.tsv`,
-`scene-03-site-routes.tsv`, and `scene-05-site-routes.tsv`; map names remain
-unassigned where those records only provide a numeric activity destination.
-Scene 20 is Hollywood Correctional Facility; scene 21 is the Fuchi Industrial
-Electronics route; scene 26 is a Redmond resource-activity destination; scene
-30 is the Mitsuhama Computer Technologies route; scene 35 is the Renraku
-resource-activity destination; and scene 41 is the Lone Star Security route.
-Scene 26 is shared by the Redmond routes for Boris' Greenhouse, Little Chiba's
-Chop Shop, Shiawase Atomics, and the conditional Rat's Nest story path; the
-ROM route profile does not assign that numeric destination to one named
-interior.
-The current area-route evidence does not yet name every intermediate scene or
-every destination interior, so the group ranges should remain numeric until
-those links are traced. The source therefore supports Lone Star event paths
-across many field contexts and several corporate/security locations; it does
-not support limiting the investigation to the six outdoor city maps.
+The known route crosswalk anchors several elevator-connected scene groups to
+named locations. These names combine ROM-backed area routes with the guide's
+map markers; the elevator child lists then connect the sibling scene IDs:
+
+| ROM scenes | Named route anchor | Evidence boundary |
+|---|---|---|
+| `20` | Hollywood Correctional Facility | Redmond records 89/90 conditionally select scene 20 at marker 5. |
+| `21-24` | Fuchi Industrial Electronics | Penumbra record 97 selects scene 21 at marker 2; the ROM elevator list connects 21-24. No floor numbering is established. |
+| `26-28` | Unassigned resource-activity group | Redmond routes can select scene 26, but the ROM and map guide do not tie this numeric group to one named interior. Scene 29 is a separate event-29 selector trigger, not a child-list member. |
+| `30-33` | Mitsuhama Computer Technologies | Penumbra record 95 selects scene 30 at marker 3; the ROM elevator list connects 30-33. No floor numbering is established. |
+| `35-39` | Renraku site | Renraku Arcology record 46 selects scene 35 at marker 2; the guide calls the site Renraku Computer Systems and ROM contract text says Renraku Offices. No floor numbering is established. |
+| `41-42` | Lone Star Security | Penumbra record 96 selects scene 41 at marker 5; the ROM elevator list connects 41-42. No floor numbering is established. |
+
+Scenes `25`, `29`, `34`, `40`, and `43` have event-29 elevator selectors but
+are not members of the child lists above. Their own place names are not
+established. Redmond's scene-2 routes also send several distinct markers to
+numeric scene `26`; that is not evidence of one named office interior or a
+reason to label Redmond as having an office building. Scene-specific names
+are now available in `gameplay/world/areas/map-guide-labels.tsv`; keep every
+unanchored route numeric. The traced footprint therefore includes Lone Star
+events on the Penumbra route and the named multi-floor group, alongside the
+conditional scene-20-to-43 security chains. It is broader than the six outdoor
+city maps, without proving a roaming patrol spawn on every map.
 
 Across all 56 field contexts, the extracted zero-cell dynamic actor table
 separately contains `lone11` and `lonemage` at scene 1/sum 2, and `lonemage`
@@ -755,19 +760,18 @@ only marked rows. A raw ROM sweep found 26 absolute `FFFC38` operands, while
 the direct-reference index lists only eight; the additional instructions
 include this Notebook file-state path. The branch beginning at `0x551C0` sets
 bit 5 at `0x551FC` for the `FFFBBC == 0x14`, `D0 == 0x0A` path when `FFFC1E`
-bit 3 is clear. The
-`FFFBBC == 0x17`, `D0 == 0x0D` path marks bit 6 for heat 1-2, bit 7 for heat
-3-7, and bit 8 for heat 8. These bits control which notices are available in
-the Notebook. The route writes the updated bitfield back at `0x55578` and
-uses text at `0x166968` (“an interesting file that you download to your
-notebook”). The field selector does not consume these bits as patrol-spawn
-state.
+bit 3 is clear. The `FFFBBC == 0x17`, `D0 == 0x0D` path marks bit 6 for heat
+1-2, bit 7 for heat 3-7, and bit 8 for heat 8. These bits control which
+notices are available in the Notebook. The route writes the updated bitfield
+back at `0x55578` and uses text at `0x166968` ("an interesting file that you
+download to your notebook"). The field selector does not consume these bits
+as patrol-spawn state.
 ROM contact text at `0xC63CF` and `0xC651C` offers to delete the Lone Star
 record, while `0x10E3C1` and `0x10F009` describe a Weapon Permit and patrols
 flagging the player down. Those strings establish the service mechanics, not
-a global map-wide patrol spawn. The remaining numeric scene names in the
-conditional plate/laser and direct-patrol routes still need a complete
-map-name crosswalk.
+a global map-wide patrol spawn. The scene-name crosswalk is partial: several
+corporate groups are anchored by route and elevator evidence, while scenes
+25-29, 34, 40, and 43 still lack independent names for every context.
 
 A separate nearby-effect path runs through `0xAB02 -> 0x16B98`. It can place
 one of ten `FF164C` records near the transitioning actor with a weighted

@@ -19,7 +19,11 @@ it does not establish independent visual fidelity or the immediate-input
 experience against a scene-labeled Genesis recording.
 
 Ordinary resource-entry points and saved-session floor restoration remain
-open. The numeric scene IDs in this audit have no verified place-name
+open. Route anchors now identify groups 21-24 as Fuchi Industrial Electronics,
+30-33 as Mitsuhama Computer Technologies, 35-39 as the Renraku site, and 41-42
+as Lone Star Security. The group members have no source-confirmed floor
+numbers. Group 26-28 remains unnamed; trigger scenes 25, 29, 34, 40, and 43
+are not members of their child lists and have no independent place-name
 crosswalk. The Qt fade uses a black overlay rather than the ROM's per-color
 CRAM arithmetic, and route-specific audio output has not been captured with
 loopback.
