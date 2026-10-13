@@ -2586,10 +2586,14 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
         }
         const auto item_index = lua_absindex(state, -1);
         std::uint32_t code = 0U;
+        std::uint32_t profile_value = 0U;
         ScriptItemDefinition item;
         const bool base_fields_valid =
             read_field_integer(state, item_index, "code", 50U, code) &&
             code > 0U &&
+            read_field_integer(state, item_index,
+                               "action_motion_distance_profile", 3U,
+                               profile_value) &&
             read_field_string(state, item_index, "id", item.id) &&
             valid_identifier(item.id) &&
             read_field_string(state, item_index, "kind", item.kind) &&
@@ -2605,6 +2609,8 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
             return fail("items.catalog contains an incomplete item record");
         }
         item.code = static_cast<std::uint8_t>(code);
+        item.action_motion_distance_profile =
+            static_cast<std::uint8_t>(profile_value);
 
         lua_getfield(state, item_index, "pricing");
         if (!lua_istable(state, -1)) {
@@ -3052,7 +3058,7 @@ GameScriptRuntime::actor_heartbeat(
         lua_createtable(state, static_cast<int>(candidates.size()), 0);
         for (std::size_t index = 0; index < candidates.size(); ++index) {
             const auto& candidate = candidates[index];
-            lua_createtable(state, 0, 15);
+            lua_createtable(state, 0, 17);
             lua_pushlstring(state, candidate.id.data(), candidate.id.size());
             lua_setfield(state, -2, "id");
             lua_pushinteger(state, candidate.world_x);
@@ -3079,6 +3085,11 @@ GameScriptRuntime::actor_heartbeat(
             lua_setfield(state, -2, "projected_heading");
             lua_pushinteger(state, candidate.projected_distance);
             lua_setfield(state, -2, "projected_distance");
+            lua_pushinteger(state, candidate.direct_route_step_cost);
+            lua_setfield(state, -2, "direct_route_step_cost");
+            lua_pushinteger(state,
+                            candidate.perpendicular_route_step_cost);
+            lua_setfield(state, -2, "perpendicular_route_step_cost");
             if (candidate.source_record_slot.has_value()) {
                 lua_pushinteger(state, *candidate.source_record_slot);
             } else {
@@ -3579,6 +3590,13 @@ GameScriptRuntime::actor_heartbeat(
             decision.ai_target_distance.has_value()) {
         return fail("actor_ai.heartbeat returned incomplete AI target state");
     }
+    std::uint32_t target_motion_delay = 0U;
+    if (!read_field_integer(state, decision_table, "target_motion_delay",
+                            6U, target_motion_delay)) {
+        return fail("actor_ai.heartbeat returned invalid target motion delay");
+    }
+    decision.target_motion_delay =
+        static_cast<std::uint8_t>(target_motion_delay);
     lua_getfield(state, decision_table, "movement_heading");
     if (lua_type(state, -1) != LUA_TNIL) {
         std::uint32_t heading = 0U;

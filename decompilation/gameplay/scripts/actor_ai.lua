@@ -61,6 +61,27 @@ local ActorSpawnFlag = {
 local ActorBehaviorFlag = {
     high_effect = 0x80,
 }
+-- ROM 0x13E7C has four finite bounds pairs selected by item/spell template
+-- byte +0x27. Coordinates are typed 16-bit scene units.
+local ActionMotionDistanceBounds = {
+    { lower = 0x0500, upper = 0x0640 },
+    { lower = 0x05a0, upper = 0x0780 },
+    { lower = 0x0640, upper = 0x08c0 },
+    { lower = 0x08c0, upper = 0x0c80 },
+}
+local EntityMotionDistanceBounds = {
+    { lower = 0x0640, upper = 0x0780 },
+    { lower = 0x0640, upper = 0x0780 },
+    { lower = 0x0640, upper = 0x0780 },
+    { lower = 0x0460, upper = 0x05a0 },
+    { lower = 0x0460, upper = 0x05a0 },
+    { lower = 0x0460, upper = 0x05a0 },
+    { lower = 0x01e0, upper = 0x03c0 },
+    { lower = 0x01e0, upper = 0x03c0 },
+    { lower = 0x01e0, upper = 0x03c0 },
+}
+local target_motion_reacquire_passes = 6
+local source_close_range_threshold = 0x01e0
 local ItemAction = {
     max_power_heavy_pistol = 6,
 }
@@ -253,6 +274,7 @@ local function linked_target(context, state)
     end
     local world_actor_pool =
         (context.source_record_flags & ActorServiceFlag.targets_world_actors) ~= 0
+    local previous_target_id = state.linked_target_id
     local candidates = {}
     local retained
     for _, candidate in ipairs(source_candidates) do
@@ -277,7 +299,118 @@ local function linked_target(context, state)
     end
     retained = candidates[choice + 1]
     state.linked_target_id = retained.id
+    if not world_actor_pool and retained.id ~= previous_target_id then
+        -- ROM 0x144E0 sets +0xB5 to six only when a new target is linked
+        -- from the three-runner pool. 0x13D0C consumes one on this same
+        -- actor-service pass, then one on each later actor-service pass.
+        state.target_motion_delay = target_motion_reacquire_passes
+    end
     return retained
+end
+
+local function action_motion_distance_profile(context)
+    if context.action_kind == ActionKind.item then
+        local item_module = game.modules.items
+        local item = type(item_module) == "table" and
+            type(item_module.catalog) == "table" and
+            item_module.catalog[context.action_code] or nil
+        if type(item) == "table" and item.code == context.action_code and
+           type(item.action_motion_distance_profile) == "number" then
+            return item.action_motion_distance_profile
+        end
+    elseif context.action_kind == ActionKind.spell then
+        local magic_module = game.modules.magic
+        if type(magic_module) == "table" and
+           type(magic_module.action_motion_distance_profile) == "function" then
+            return magic_module.action_motion_distance_profile(
+                context.action_code)
+        end
+    end
+    return nil
+end
+
+local function source_motion_bounds(context, state)
+    if (context.source_record_flags &
+        ActorServiceFlag.targets_world_actors) ~= 0 then
+        local distance_type = context.source_motion_distance_type
+        if type(distance_type) == "number" and distance_type % 1 == 0 and
+           distance_type >= 0 and
+           distance_type < #EntityMotionDistanceBounds then
+            return EntityMotionDistanceBounds[distance_type + 1], true
+        end
+        -- +0x10.3 always selects the +0x4D table. Until that typed field is
+        -- populated, do not substitute a guessed destination.
+        return nil, false
+    end
+
+    if state.target_motion_delay == 0 then
+        return nil, true
+    end
+    state.target_motion_delay = state.target_motion_delay - 1
+    local profile = action_motion_distance_profile(context)
+    if type(profile) ~= "number" or profile % 1 ~= 0 or
+       profile < 0 or profile >= #ActionMotionDistanceBounds then
+        -- The source indexes the selected row while +0xB5 is active. An
+        -- unknown or 0xFF row remains unresolved for this service pass.
+        return nil, false
+    end
+    return ActionMotionDistanceBounds[profile + 1], true
+end
+
+local function source_motion_destination_heading(context, state, target)
+    if type(target) ~= "table" or not context.movement_allowed or
+       type(target.heading) ~= "number" or
+       type(target.distance) ~= "number" or
+       type(target.direct_route_step_cost) ~= "number" or
+       type(target.perpendicular_route_step_cost) ~= "number" then
+        return nil
+    end
+
+    local bounds, bounds_resolved = source_motion_bounds(context, state)
+    if not bounds_resolved then
+        return nil
+    end
+    local heading = target.heading
+    local distance = target.distance & 0xffff
+    local destination_heading = (heading + 0x4000) & 0xffff
+    local destination_step_cost = target.perpendicular_route_step_cost
+
+    if bounds ~= nil then
+        if distance >= bounds.lower and distance < bounds.upper then
+            -- In-band actors drop +0xB5 and choose the lateral destination.
+            state.target_motion_delay = 0
+        elseif distance >= bounds.upper then
+            -- At or beyond the upper bound the ROM copies the linked
+            -- position and routes directly toward it.
+            destination_heading = heading
+            destination_step_cost = target.direct_route_step_cost
+        end
+    end
+
+    -- 0x144E8/0x1460E finish the route when the source diagonal step metric
+    -- from the acting record to the chosen destination is below 0x1E0.
+    if destination_step_cost < source_close_range_threshold then
+        state.movement_active = false
+        return nil
+    end
+    return destination_heading
+end
+
+local function retained_linked_target(context, state)
+    if type(state.linked_target_id) ~= "string" or
+       type(context.ai_target_candidates) ~= "table" then
+        return nil
+    end
+    local world_actor_pool =
+        (context.source_record_flags &
+         ActorServiceFlag.targets_world_actors) ~= 0
+    for _, candidate in ipairs(context.ai_target_candidates) do
+        if candidate.id == state.linked_target_id and
+           target_is_eligible(candidate, world_actor_pool) then
+            return candidate
+        end
+    end
+    return nil
 end
 
 local function initial_state(context, profile)
@@ -310,6 +443,7 @@ local function initial_state(context, profile)
         ai_target_id = nil,
         ai_target_heading = nil,
         ai_target_distance = nil,
+        target_motion_delay = 0,
         target_selection_latched = false,
         target_marker_visible = false,
         target_marker_animating = false,
@@ -380,6 +514,7 @@ local function snapshot(state, action, audio_event, projectile_movement)
         ai_target_id = state.ai_target_id,
         ai_target_heading = state.ai_target_heading,
         ai_target_distance = state.ai_target_distance,
+        target_motion_delay = state.target_motion_delay,
         action_delay = state.action_delay,
         target_motion_effect_slot_request =
             state.target_motion_effect_slot_request,
@@ -1020,13 +1155,9 @@ local function requested_movement_heading(context, profile, state)
             -- <0x200 check at 0x15C84. The host supplies measured geometry
             -- and collision queries; Lua owns this policy.
             if context.entity_kind == EntityKind.hell_hound then
-                if distance >= 0x300 and distance < 0x600 then
-                    return heading
-                end
                 if distance < 0x300 and state.action_delay < 0 then
                     request_target_motion_effect(state, context, heading)
                 end
-                return nil
             end
             if (context.entity_kind == EntityKind.gargoyle or
                 context.entity_kind == EntityKind.wendigo) then
@@ -1046,21 +1177,13 @@ local function requested_movement_heading(context, profile, state)
                     if context.entity_kind == EntityKind.gargoyle and
                        context.ai_animation_frame == 2 then
                         state.animation_accumulator = 0x1000
-                        return nil
                     end
-                    return projected_heading
                 end
-                return nil
-            end
-            if context.entity_kind ~= EntityKind.hell_hound and
-               context.entity_kind ~= EntityKind.gargoyle and
-               context.entity_kind ~= EntityKind.wendigo and
-               distance < 0x200 then
-                -- The other source kinds share 0x15C58's active/unlocked
-                -- linked-target range gate before 0x13D0C consumes +0x34.
-                return heading
             end
         end
+        -- ROM 0x13D0C services that destination every actor pass. Its route
+        -- result is applied separately below; the periodic heading/AI refresh
+        -- above must not replace that per-pass motion service.
         return nil
     end
     if not profile.controls_movement or not context.movement_allowed then
@@ -1512,6 +1635,22 @@ function ActorAI.heartbeat(context)
                             state.movement_current_heading = heading
                             state.movement_active = true
                         end
+                    end
+
+                    -- ROM 0x13D0C runs on every actor-service pass, while the
+                    -- linked target and creature-specific policy refresh at
+                    -- their slower source cadence. +0xB5 is consumed here on
+                    -- each pass and the finite action profile selects direct
+                    -- versus perpendicular destination geometry.
+                    local target = retained_linked_target(context, state)
+                    local route_heading = source_motion_destination_heading(
+                        context, state, target)
+                    state.movement_heading = route_heading
+                    if route_heading ~= nil then
+                        state.movement_current_heading = route_heading
+                        state.movement_active = true
+                    else
+                        state.movement_active = false
                     end
 
                     -- 0xA8EA invokes the actor's +0x3A continuation every

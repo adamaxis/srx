@@ -24,7 +24,8 @@
 ## Runtime evidence
 
 Debug and Release CTest
-`shadowrun_gameplay_script_runtime_qa` and
+`shadowrun_gameplay_script_runtime_qa`,
+`shadowrun_ghidra_movement_metric`, and
 `shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa` both passed.
 Each field QA run injects selector rolls `1+2` for Scene 2's sum-3 row and
 checks the two-Weenr sequence, active actor records, source entry cue requests,
@@ -37,14 +38,21 @@ skip, normal restart at slot 3, and special-mode active-only scan and wrap.
 The field QA matches all 14 opaque source pixels in each of the four 8x8
 marker corners and confirms the right-side HUD is unchanged. These are not
 tests of the production random-roll sequence or the full combat route. The
-The script-runtime QA in both configurations separately checks each
+script-runtime QA in both configurations separately checks each
 `0x1E166` blocker, the `(frame_counter & 0x3FF) == 10` cadence, threshold
 accept/reject behavior, the sequence-forward branch, and that Lua requests
-the source probability draw only after state/cadence eligibility passes.
+the source probability draw only after state/cadence eligibility passes. The
+movement-metric test compares all eight heading sectors against the ROM basis
+table.
 
 The real edge-spawn captures (`encounter-entry`, `after-30`, `after-180`, and
 `after-480`) keep the full map and HUD composition and contain no visible
 creature because the source candidates are beyond the current viewport. The
+ROM heading correction found during this review changed the natural trace:
+both Scene 2 actors now turn through the runner's area instead of continuing
+away. They remain outside the viewport after 480 service frames, so their full
+approach and arrival remain unresolved. This conversion evidence uses the
+injected `1+2` selector result, not an independent encounter recording. The
 separate `encounter-visible-qa-fixture.bmp` moves the runner close to the
 first creature to inspect its approach and walking art; it is a QA fixture,
 not a simulated gameplay route. `creature-walk-frame-0.bmp` and
@@ -124,26 +132,29 @@ prove a frame-for-frame match with this Scene 2 fixture.
    effect at runtime.
 4. **What animates, and when?** `0x4E86` advances phases on the render
    heartbeat. Each visible phase lasts seven passes; phase four releases the
-   effect without drawing. At this diagnostic position, the map foreground
-   occludes phase 3. The full-frame test checks that phases 1 and 2 visibly
-   change the image and that phase 3 matches the released frame under this
-   object, preserving the ROM map-priority layer.
+   effect without drawing. In this diagnostic placement the plume overlaps
+   nearby field artwork. The full frames show each phase and the actor's
+   continuing animation; the exact object/effect depth order is not confirmed
+   by an independent capture for this encounter.
 5. **What sound accompanies it?** Neither the `0x14C7C` close-attack branch
    nor its `0x4E86` phase path requests sound. The QA observes no audio request;
    there is no source duration to reproduce for this effect.
 6. **Were neighboring areas checked?** The full-screen captures preserve the
-   whole map and right-side HUD. The vertical map structure remains in front of
-   the effect where their pixels overlap. After the slot releases, the frame
-   matches the no-effect map at the actor area; no pixels or previous art
-   remain behind.
+   whole map and right-side HUD. The HUD remains pixel-identical across all
+   phases. The effect overlaps scene artwork in the diagnostic image; because
+   there is no matching independent Genesis sequence, the object-depth result
+   remains unverified. Since the Hound keeps animating, the QA does not claim
+   full-frame equality at release or use it to prove absence of stale pixels;
+   phase four does clear the shared effect slot.
 7. **Are there multiple frames and examples?** Yes: the QA captures encounter
    entry, the close-target state, effect start, all three source phases, and
    release. The reviewed longplay references for this hill show target
    brackets but do not provide a confidently identifiable Hound close-attack
    sequence, so they are not claimed as independent effect evidence.
 8. **Are new graphics covering stale graphics?** The effect uses transparent
-   source frames and is removed when phase four releases its slot. The old map
-   foreground retains its overlap order and the HUD crop stays unchanged.
+   source frames and is removed when phase four releases its slot. The HUD
+   stays unchanged. The effect's overlap with nearby map artwork remains an
+   open visual check because a same-encounter source frame is unavailable.
 
 The QA-only placement makes the otherwise offscreen ROM encounter visible. It
 does not establish a natural movement or attack route.

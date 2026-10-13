@@ -1,7 +1,9 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
+#include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstdint>
@@ -1310,6 +1312,197 @@ int main() {
             "Hell Hound close effect did not follow its source slot, phase, and +0xDC cadence")) {
         std::cerr << scripts.failure() << '\n';
         return 28;
+    }
+
+    const auto dynamic_motion_trace =
+        [&scripts, &actor_context](
+            const std::string_view actor_id,
+            const std::string_view profile_id,
+            const std::uint16_t entity_kind,
+            const ScriptActorActionKind action_kind,
+            const std::uint8_t action_code,
+            const std::uint16_t target_distance,
+            const std::uint16_t direct_step_cost,
+            const std::uint16_t perpendicular_step_cost) {
+            std::vector<ScriptActorBehaviorDecision> trace;
+            auto context = actor_context(
+                profile_id, actor_id, entity_kind, action_kind, action_code,
+                0U, true);
+            context.dynamic_world_encounter_actor = true;
+            context.source_record_flags = 0x25U;
+            context.entry_animation_frame_count = 1U;
+            context.walk_animation_frame_count = 4U;
+            context.movement_allowed = true;
+            context.ai_target_candidates.push_back(
+                ScriptActorTargetCandidate{
+                    "party.runner.0", 0x1800U, 0x1800U, 0x2000U,
+                    target_distance, 0x01U, 0U, 0U, 0U, true, false,
+                    0x2000U, target_distance, direct_step_cost,
+                    perpendicular_step_cost});
+            context.ai_random_bound =
+                [](const std::uint16_t bound)
+                    -> std::optional<std::uint16_t> {
+                return bound == 0U
+                    ? std::nullopt
+                    : std::optional<std::uint16_t>{0U};
+            };
+            if (!scripts.actor_heartbeat(context).has_value()) {
+                return trace;
+            }
+            context.spawn = false;
+            if (!scripts.actor_heartbeat(context).has_value()) {
+                return trace;
+            }
+            context.phase = ScriptActorHeartbeatPhase::render;
+            for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
+                if (!scripts.actor_heartbeat(context).has_value()) {
+                    return trace;
+                }
+            }
+            context.phase = ScriptActorHeartbeatPhase::behavior;
+            for (std::uint16_t pass = 0U; pass < 100U; ++pass) {
+                const auto decision = scripts.actor_heartbeat(context);
+                if (!decision.has_value()) {
+                    trace.clear();
+                    return trace;
+                }
+                trace.push_back(*decision);
+                if (decision->transition_complete &&
+                    decision->movement_heading.has_value() &&
+                    decision->ai_target_id.has_value()) {
+                    if (decision->target_motion_delay == 0U &&
+                        *decision->movement_heading == 0x6000U) {
+                        break;
+                    }
+                }
+            }
+            return trace;
+        };
+    const auto item_one_motion = dynamic_motion_trace(
+        "motion_item_one", "eye5r_1_k07_item01", 7U,
+        ScriptActorActionKind::item, 1U, 0x0700U, 0x0700U, 0x0E00U);
+    const auto bear_totem_motion = dynamic_motion_trace(
+        "motion_bear_totem", "bear_shaman_k0b_item2b", 11U,
+        ScriptActorActionKind::item, 43U, 0x0700U, 0x0700U, 0x0E00U);
+    const auto mage_spell_motion = dynamic_motion_trace(
+        "motion_mage_spell", "rat_shaman_k0b_spell05", 11U,
+        ScriptActorActionKind::spell, 5U, 0x0600U, 0x0600U, 0x0C00U);
+    const auto close_motion = dynamic_motion_trace(
+        "motion_close_route", "eye5r_1_k07_item01", 7U,
+        ScriptActorActionKind::item, 1U, 0x0400U, 0x0400U, 0x01DFU);
+    const auto find_motion_decision = [](
+                                           const auto& trace,
+                                           const std::uint8_t delay,
+                                           const std::uint16_t heading) {
+        for (const auto& decision : trace) {
+            if (decision.transition_complete &&
+                decision.ai_target_id.has_value() &&
+                decision.target_motion_delay == delay &&
+                decision.movement_heading == heading) {
+                return &decision;
+            }
+        }
+        return static_cast<const ScriptActorBehaviorDecision*>(nullptr);
+    };
+    const auto* item_one_initial = find_motion_decision(
+        item_one_motion, 5U, 0x2000U);
+    const auto* item_one_expired = find_motion_decision(
+        item_one_motion, 0U, 0x6000U);
+    const auto* bear_totem_initial = find_motion_decision(
+        bear_totem_motion, 0U, 0x6000U);
+    const auto* mage_spell_after_delay = find_motion_decision(
+        mage_spell_motion, 0U, 0x6000U);
+    const auto mage_spell_unresolved = std::find_if(
+        mage_spell_motion.begin(), mage_spell_motion.end(),
+        [](const auto& decision) {
+            return decision.transition_complete &&
+                   decision.ai_target_id.has_value() &&
+                   decision.target_motion_delay == 5U &&
+                   !decision.movement_heading.has_value();
+        });
+    const bool close_route_stopped = std::any_of(
+        close_motion.begin(), close_motion.end(),
+        [](const auto& decision) {
+            return decision.transition_complete &&
+                   decision.ai_target_id.has_value() &&
+                   !decision.movement_heading.has_value();
+        });
+    constexpr char kHexDigits[] = "0123456789abcdef";
+    bool spell_motion_catalog_matches = true;
+    const auto& source_spell_catalog = us_magic_spell_catalog();
+    for (std::size_t index = 0U; index < source_spell_catalog.size();
+         ++index) {
+        const auto action_phase = static_cast<std::uint8_t>(index + 1U);
+        const auto profile_id =
+            std::string("motion_spell_k0b_spell0") +
+            kHexDigits[action_phase];
+        const auto trace = dynamic_motion_trace(
+            std::string("motion_spell_profile_") +
+                std::string(1U, kHexDigits[action_phase]),
+            profile_id, 11U, ScriptActorActionKind::spell, action_phase,
+            0x0700U, 0x0700U, 0x0E00U);
+        const auto first_motion = std::find_if(
+            trace.begin(), trace.end(), [](const auto& decision) {
+                return decision.transition_complete &&
+                       decision.ai_target_id.has_value();
+            });
+        const auto source_profile = static_cast<std::uint8_t>(
+            source_spell_catalog[index].attribute_selector);
+        const bool valid_first_motion = first_motion != trace.end() &&
+            (source_profile == 0U
+                 ? first_motion->movement_heading == 0x2000U &&
+                       first_motion->target_motion_delay == 5U
+             : source_profile == 1U || source_profile == 2U
+                 ? first_motion->movement_heading == 0x6000U &&
+                       first_motion->target_motion_delay == 0U
+             : source_profile == 3U
+                 ? first_motion->movement_heading == 0x6000U &&
+                       first_motion->target_motion_delay == 5U
+                 : !first_motion->movement_heading.has_value() &&
+                       first_motion->target_motion_delay == 5U);
+        spell_motion_catalog_matches =
+            spell_motion_catalog_matches && valid_first_motion;
+    }
+    if (!expect(
+            item_one_initial != nullptr &&
+                item_one_initial->movement_heading == 0x2000U &&
+                item_one_initial->target_motion_delay == 5U &&
+                item_one_expired != nullptr &&
+                item_one_expired->movement_heading == 0x6000U &&
+                bear_totem_initial != nullptr &&
+                bear_totem_initial->movement_heading == 0x6000U &&
+                mage_spell_unresolved != mage_spell_motion.end() &&
+                mage_spell_after_delay != nullptr &&
+                mage_spell_after_delay->movement_heading == 0x6000U &&
+                close_route_stopped && spell_motion_catalog_matches,
+            "Lua actor motion did not honor item/spell profiles, all D4EA0 +0x27 rows, unresolved spell rows, six source passes, or the 0x1E0 route metric")) {
+        const auto print_motion_trace = [](const char* label,
+                                           const auto& trace) {
+            std::cerr << label << " samples=" << trace.size();
+            for (const auto& decision : trace) {
+                if (decision.transition_complete &&
+                    decision.ai_target_id.has_value()) {
+                    std::cerr << " {delay="
+                              << static_cast<unsigned>(
+                                     decision.target_motion_delay)
+                              << ",heading=";
+                    if (decision.movement_heading.has_value()) {
+                        std::cerr << "0x" << std::hex
+                                  << *decision.movement_heading << std::dec;
+                    } else {
+                        std::cerr << "none";
+                    }
+                    std::cerr << '}';
+                }
+            }
+            std::cerr << '\n';
+        };
+        print_motion_trace("item_one", item_one_motion);
+        print_motion_trace("bear_totem", bear_totem_motion);
+        print_motion_trace("mage_spell", mage_spell_motion);
+        print_motion_trace("close", close_motion);
+        std::cerr << scripts.failure() << '\n';
+        return 29;
     }
 
     if (!expect(
@@ -3358,6 +3551,8 @@ int main() {
                 item.pricing.purchase_base == kBaseCosts[index] &&
                 item.pricing.purchase_base == rom_item.base_cost &&
                 item.pricing.resale_base == kBaseCosts[index] / 2U &&
+                item.action_motion_distance_profile ==
+                    rom_item.source_action_parameter_tail &&
                 item.presentation.icon_resource_key == expected_icon_key &&
                 item.presentation.detail_resource_key == expected_detail_key &&
                 item.has_detail_art == rom_item.has_detail_art &&

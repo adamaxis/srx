@@ -2101,6 +2101,28 @@ void FieldSceneRuntime::advance_default_field_actors() {
                             static_cast<std::uint16_t>(projected.world_x),
                             static_cast<std::uint16_t>(projected.world_y),
                             position.x, position.y);
+                    const auto side_heading = static_cast<std::uint16_t>(
+                        relative.heading + 0x4000U);
+                    const auto side_magnitude = static_cast<std::uint16_t>(
+                        relative.distance * 2U);
+                    const auto side_vector = transform_entity_heading_vector(
+                        side_heading,
+                        static_cast<std::int16_t>(side_magnitude));
+                    const auto side_x = static_cast<std::uint16_t>(
+                        actor.world_position.x + side_vector.horizontal);
+                    const auto side_y = static_cast<std::uint16_t>(
+                        actor.world_position.y + side_vector.vertical);
+                    const auto direct_route_step_cost = static_cast<std::uint16_t>(
+                        compute_record_diagonal_step_cost(
+                            actor.world_position.x,
+                            actor.world_position.y,
+                            position.x, position.y));
+                    const auto perpendicular_route_step_cost =
+                        static_cast<std::uint16_t>(
+                            compute_record_diagonal_step_cost(
+                                actor.world_position.x,
+                                actor.world_position.y,
+                                side_x, side_y));
                     context.ai_target_candidates.push_back(
                         scripting::ScriptActorTargetCandidate{
                             std::move(id),
@@ -2118,7 +2140,9 @@ void FieldSceneRuntime::advance_default_field_actors() {
                             world_activity_actor,
                             projected_relative.heading,
                             static_cast<std::uint16_t>(std::min<std::uint32_t>(
-                                projected_relative.distance, 0xFFFFU))});
+                                projected_relative.distance, 0xFFFFU)),
+                            direct_route_step_cost,
+                            perpendicular_route_step_cost});
                 };
 
             // ROM 0x14492 chooses the three runner records unless the acting
@@ -12649,6 +12673,29 @@ bool FieldSceneRuntime::set_default_actor_world_position_for_dump(
             return true;
         }
         ++active_index;
+    }
+    return false;
+}
+
+bool FieldSceneRuntime::set_selected_default_actor_world_position_for_dump(
+    const std::uint16_t x, const std::uint16_t y) noexcept {
+    if (!field_entity_target_owner_.selected_target.has_value()) {
+        return false;
+    }
+    const auto current_scene = state_.field_scene_buffers.scene_reference;
+    const auto selected_slot = *field_entity_target_owner_.selected_target;
+    for (auto& actor : field_default_actors_) {
+        if (!actor.active || actor.scene_reference != current_scene ||
+            !actor.source_record_slot.has_value() ||
+            static_cast<std::size_t>(*actor.source_record_slot) !=
+                selected_slot) {
+            continue;
+        }
+        actor.world_position = SceneRunnerPosition{x, y};
+        actor.movement_state.position_x = x;
+        actor.movement_state.position_y = y;
+        actor.movement_state_initialized = true;
+        return true;
     }
     return false;
 }

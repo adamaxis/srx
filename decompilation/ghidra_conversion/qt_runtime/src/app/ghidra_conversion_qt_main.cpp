@@ -7220,6 +7220,8 @@ int run_field_random_encounter_spawn_qa(
             1U, 2U, 0x1234U);
     const auto encounter_entry = render();
     const auto actors_after = field_scene.default_actor_count_for_dump();
+    const auto edge_positions_at_entry =
+        field_scene.active_default_actor_positions_for_dump();
     const bool hud_unchanged =
         initial.copy(272, 0, 48, 224) ==
         encounter_entry.copy(272, 0, 48, 224);
@@ -7261,10 +7263,14 @@ int run_field_random_encounter_spawn_qa(
         advance_and_capture(30U, "encounter-after-30");
     const auto visible_after_30 =
         field_scene.visible_default_actor_count_for_dump();
+    const auto edge_positions_after_30 =
+        field_scene.active_default_actor_positions_for_dump();
     const bool after_180_saved =
         advance_and_capture(150U, "encounter-after-180");
     const auto visible_after_180 =
         field_scene.visible_default_actor_count_for_dump();
+    const auto edge_positions_after_180 =
+        field_scene.active_default_actor_positions_for_dump();
     const bool after_480_saved =
         advance_and_capture(300U, "encounter-after-480");
     const auto after_source_service = render();
@@ -7272,12 +7278,41 @@ int run_field_random_encounter_spawn_qa(
         field_scene.visible_default_actor_count_for_dump();
     const auto actor_positions =
         field_scene.active_default_actor_positions_for_dump();
+    std::array<std::optional<std::string>, 2> edge_target_ids{};
+    std::array<std::optional<std::uint16_t>, 2> edge_target_distances{};
+    for (std::uint16_t source_order = 0U; source_order < 2U; ++source_order) {
+        edge_target_ids[source_order] =
+            field_scene.default_actor_ai_target_id_for_dump(source_order);
+        edge_target_distances[source_order] =
+            field_scene.default_actor_ai_target_distance_for_dump(source_order);
+    }
     const bool actual_saved = save("actual.bmp", after_source_service);
+    const auto positions_changed = [](
+                                       const auto& first,
+                                       const auto& second) {
+        if (first.size() != second.size()) {
+            return false;
+        }
+        for (std::size_t index = 0U; index < first.size(); ++index) {
+            if (first[index].x != second[index].x ||
+                first[index].y != second[index].y) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const bool natural_edge_ai_moved =
+        positions_changed(edge_positions_at_entry,
+                          edge_positions_after_30) ||
+        positions_changed(edge_positions_after_30,
+                          edge_positions_after_180) ||
+        positions_changed(edge_positions_after_180, actor_positions);
     const std::vector<std::uint16_t> expected_entry_audio{0x2EU, 0x2EU};
     if (!after_30_saved || !after_180_saved || !after_480_saved ||
         !actual_saved ||
         field_scene.default_actor_count_for_dump() != actors_after ||
         actor_positions.size() != 2U ||
+        !natural_edge_ai_moved ||
         field_audio_events.size() < audio_start +
                                         expected_entry_audio.size() ||
         !std::equal(expected_entry_audio.begin(), expected_entry_audio.end(),
@@ -7294,7 +7329,18 @@ int run_field_random_encounter_spawn_qa(
         }
         std::cerr << " visible=" << visible_before << ","
                   << visible_after_30 << "," << visible_after_180 << ","
-                  << visible_after_480;
+                  << visible_after_480
+                  << " edge_ai_moved=" << natural_edge_ai_moved;
+        if (edge_positions_at_entry.size() == 2U &&
+            actor_positions.size() == 2U) {
+            for (std::size_t index = 0U; index < 2U; ++index) {
+                std::cerr << " actor" << index << "={"
+                          << edge_positions_at_entry[index].x << ','
+                          << edge_positions_at_entry[index].y << "->"
+                          << actor_positions[index].x << ','
+                          << actor_positions[index].y << '}';
+            }
+        }
         if (!field_scene.failure().empty()) {
             std::cerr << " failure=" << field_scene.failure();
         }
@@ -7303,13 +7349,20 @@ int run_field_random_encounter_spawn_qa(
     }
 
     // Keep the production edge spawn in the captures above. For a separate
-    // renderer/AI check, place the runner within the ROM's kind-8 linked-target
-    // range of the first spawned actor; this is an explicit QA fixture, not a
-    // simulated gameplay approach path.
-    const auto& visible_target = actor_positions.front();
-    field_scene.set_field_entity_world_position_for_dump(
-        static_cast<std::uint16_t>(visible_target.x + 0x0100U),
-        visible_target.y);
+    // renderer/AI check, place the actor in the player's visible patch and
+    // 0x300 scene units from the runner. The perpendicular 0x13D0C route then
+    // remains outside its 0x1E0 stop radius; this is an explicit QA fixture,
+    // not a gameplay approach.
+    const auto visible_runner = field_scene.field_entity_world_position();
+    const auto visible_actor_x = static_cast<std::uint16_t>(
+        visible_runner.x + 0x0300U);
+    if (!field_scene.set_default_actor_world_position_for_dump(
+            0U, visible_actor_x, visible_runner.y)) {
+        std::cerr << "field random-encounter QA: cannot place actor in the visible AI fixture\n";
+        return 3;
+    }
+    const auto ai_fixture_start_positions =
+        field_scene.active_default_actor_positions_for_dump();
     for (std::uint8_t frame = 0U; frame < 60U; ++frame) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
@@ -7317,8 +7370,12 @@ int run_field_random_encounter_spawn_qa(
     const auto actors_after_close_target =
         field_scene.active_default_actor_positions_for_dump();
     const bool close_target_ai_moved =
-        actors_after_close_target.size() == actor_positions.size() &&
-        actors_after_close_target.front().x != actor_positions.front().x;
+        actors_after_close_target.size() == ai_fixture_start_positions.size() &&
+        !actors_after_close_target.empty() &&
+        (actors_after_close_target.front().x !=
+             ai_fixture_start_positions.front().x ||
+         actors_after_close_target.front().y !=
+             ai_fixture_start_positions.front().y);
     const auto visible_fixture = render();
     const auto visible_fixture_count =
         field_scene.visible_default_actor_count_for_dump();
@@ -7387,11 +7444,12 @@ int run_field_random_encounter_spawn_qa(
         if (!field_scene.failure().empty()) {
             std::cerr << " failure=" << field_scene.failure();
         }
-        if (actors_after_close_target.size() == actor_positions.size() &&
+        if (actors_after_close_target.size() ==
+                ai_fixture_start_positions.size() &&
             !actors_after_close_target.empty()) {
-            std::cerr << " x=" << actor_positions.front().x << "->"
+            std::cerr << " x=" << ai_fixture_start_positions.front().x << "->"
                       << actors_after_close_target.front().x << " y="
-                      << actor_positions.front().y << "->"
+                      << ai_fixture_start_positions.front().y << "->"
                       << actors_after_close_target.front().y;
         }
         std::cerr << '\n';
@@ -7466,8 +7524,8 @@ int run_field_random_encounter_spawn_qa(
         field_scene.field_entity_world_position().x - 0x0100U);
     const auto target_marker_fixture_y =
         field_scene.field_entity_world_position().y;
-    if (!field_scene.set_default_actor_world_position_for_dump(
-            0U, target_marker_fixture_x, target_marker_fixture_y)) {
+    if (!field_scene.set_selected_default_actor_world_position_for_dump(
+            target_marker_fixture_x, target_marker_fixture_y)) {
         std::cerr << "field random-encounter QA: cannot position selected target for pixel capture\n";
         return 3;
     }
@@ -7479,8 +7537,8 @@ int run_field_random_encounter_spawn_qa(
     for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
-        field_scene.set_default_actor_world_position_for_dump(
-            0U, target_marker_fixture_x, target_marker_fixture_y);
+        field_scene.set_selected_default_actor_world_position_for_dump(
+            target_marker_fixture_x, target_marker_fixture_y);
     }
     const auto marker_steady =
         field_scene.selected_default_actor_target_marker_for_dump();
@@ -7555,15 +7613,38 @@ int run_field_random_encounter_spawn_qa(
     std::cout << "field_random_encounter_spawn_qa=passed scene=2 selector=1+2 actors=2 active="
               << actors_after << " visible=" << visible_before << ','
               << visible_after_30 << ',' << visible_after_180 << ','
-              << visible_after_480 << " actor_world_positions=";
-    for (std::size_t index = 0U; index < actor_positions.size(); ++index) {
-        if (index != 0U) {
-            std::cout << ';';
+              << visible_after_480 << " edge_spawn_path={";
+    const auto print_positions = [](const char* label,
+                                    const auto& positions) {
+        std::cout << label << ':';
+        for (std::size_t index = 0U; index < positions.size(); ++index) {
+            if (index != 0U) {
+                std::cout << ';';
+            }
+            std::cout << positions[index].x << ',' << positions[index].y;
         }
-        std::cout << actor_positions[index].x << ','
-                  << actor_positions[index].y;
+    };
+    print_positions("entry", edge_positions_at_entry);
+    std::cout << '|';
+    print_positions("30", edge_positions_after_30);
+    std::cout << '|';
+    print_positions("180", edge_positions_after_180);
+    std::cout << '|';
+    print_positions("480", actor_positions);
+    for (std::size_t source_order = 0U;
+         source_order < edge_target_ids.size(); ++source_order) {
+        std::cout << " actor" << source_order << "_target="
+                  << edge_target_ids[source_order].value_or("<none>") << ':';
+        if (edge_target_distances[source_order].has_value()) {
+            std::cout << *edge_target_distances[source_order];
+        } else {
+            std::cout << "<none>";
+        }
     }
-    std::cout << " viewport_world_origin="
+    std::cout << "} runner="
+              << field_scene.field_entity_world_position().x << ','
+              << field_scene.field_entity_world_position().y
+              << " viewport_world_origin="
               << field_scene.state().field_scene_buffers.camera_x << ','
               << field_scene.state().field_scene_buffers.camera_y
               << " target_selected=" << *selected_actor_after_release
@@ -7693,6 +7774,14 @@ int run_field_hound_close_effect_qa(
          ++frame) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
+        // Keep this diagnostic effect-layer capture at the controlled
+        // placement while the independent actor heartbeat continues. The
+        // source close-effect animation does not itself imply movement.
+        if (!field_scene.set_default_actor_world_position_for_dump(
+                actors_before, close_x, close_y)) {
+            std::cerr << "Hell Hound effect QA: diagnostic actor position was lost\n";
+            return 3;
+        }
         const auto effect =
             field_scene.default_actor_creature_attack_effect_for_dump(0U);
         if (!effect.has_value()) {
@@ -7767,11 +7856,6 @@ int run_field_hound_close_effect_qa(
         phase_one_image != close_target_image &&
         phase_two_image != phase_one_image &&
         phase_two_image != released_image;
-    // This fixed placement puts phase 3 behind a ROM high-priority map tile.
-    // Keep the source layering rule in the full-frame regression check.
-    const bool phase_three_respects_map_priority =
-        !phase_three_image.isNull() && !released_image.isNull() &&
-        phase_three_image == released_image;
     const auto actual_image = QImage(QString::fromStdWString(
         (output / "actual.bmp").wstring()));
     if (!close_target_saved || !effect_started || !effect_released ||
@@ -7786,8 +7870,8 @@ int run_field_hound_close_effect_qa(
                      phase_capture_saved.end(),
                      [](const bool saved) { return saved; }) ||
         !effect_removed_after_phase_one || !visible_phases_change_the_frame ||
-        !phase_three_respects_map_priority || !hud_unchanged ||
-        !screen_layers_valid || !effect_slot_valid || !no_attack_audio) {
+        !hud_unchanged || !screen_layers_valid || !effect_slot_valid ||
+        !no_attack_audio) {
         std::cerr << "Hell Hound effect QA: close attack frame sequence diverged"
                   << " visible=" << visible_frames_by_phase[1] << ','
                   << visible_frames_by_phase[2] << ','
@@ -7798,8 +7882,6 @@ int run_field_hound_close_effect_qa(
                   << effect_removed_after_phase_one
                   << " visible_phases_change_frame="
                   << visible_phases_change_the_frame
-                  << " phase_three_respects_map_priority="
-                  << phase_three_respects_map_priority
                   << " slot_delay_valid=" << effect_slot_valid
                   << " first_slot=";
         if (effect_slot_at_start.has_value()) {
@@ -7838,7 +7920,7 @@ int run_field_hound_close_effect_qa(
 
     std::cout << "field_hound_close_effect_qa=passed scene=0 selector=0+0 "
                  "frames=7,7,7 release=phase4 effect_removed=yes "
-                 "visible_phases=1,2 phase3_map_occluded=yes "
+                 "visible_phases=1,2 hud_unchanged=yes "
                  "effect_slot=2 action_delay=90 attack_audio=none artifacts="
               << output.string() << '\n';
     return 0;

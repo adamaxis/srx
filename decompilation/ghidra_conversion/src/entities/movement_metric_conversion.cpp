@@ -162,7 +162,9 @@ RelativeHeadingMeasurement measure_heading_and_distance(
         (delta_y < 0 ? 8U : delta_y == 0 ? 4U : 0U) |
         (delta_x < 0 ? 2U : delta_x == 0 ? 1U : 0U));
     auto heading_base = kHeadingBases[sign_index];
-    if ((heading_base & 0x0040U) != 0U) {
+    // ROM 0x15DB0 branches past EXG D4,D5 when basis bit 6 is set.
+    // The exchange occurs only when that bit is clear.
+    if ((heading_base & 0x0040U) == 0U) {
         std::swap(major, minor);
     }
     const auto correction = kHeadingCorrections[(major << 5U) + minor];

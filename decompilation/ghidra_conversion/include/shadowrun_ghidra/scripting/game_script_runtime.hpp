@@ -132,6 +132,7 @@ struct ScriptItemDefinition {
     };
 
     std::uint8_t code = 0;
+    std::uint8_t action_motion_distance_profile = 0;
     std::string id;
     std::string kind;
     std::string name_key;
@@ -419,6 +420,12 @@ struct ScriptActorTargetCandidate {
     // 0x15C84 checks the close-range target gate for kinds 0xD/0xE.
     std::uint16_t projected_heading = 0;
     std::uint16_t projected_distance = 0;
+    // 0x13D0C routes either toward the linked record or toward a point
+    // projected perpendicular to it. These are the source 0x15CA4 metrics
+    // from the acting record to each candidate endpoint; Lua selects the
+    // endpoint and applies the 0x1E0 close-range rule.
+    std::uint16_t direct_route_step_cost = 0;
+    std::uint16_t perpendicular_route_step_cost = 0;
     std::optional<std::uint8_t> source_record_slot;
     std::uint8_t descriptor_class = 0;
 };
@@ -529,6 +536,7 @@ struct ScriptActorBehaviorDecision {
     std::optional<std::string> ai_target_id;
     std::optional<std::uint16_t> ai_target_heading;
     std::optional<std::uint16_t> ai_target_distance;
+    std::uint8_t target_motion_delay = 0;
     std::int16_t action_delay = 0;
     std::optional<std::uint8_t> target_motion_effect_slot_request;
     bool target_motion_effect_visible = false;

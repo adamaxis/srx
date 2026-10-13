@@ -887,6 +887,8 @@ public:
     bool set_default_actor_world_position_for_dump(
         std::size_t active_actor_index, std::uint16_t x,
         std::uint16_t y) noexcept;
+    bool set_selected_default_actor_world_position_for_dump(
+        std::uint16_t x, std::uint16_t y) noexcept;
     bool field_entity_visible_for_dump() const noexcept {
         return field_entity_.visible;
     }

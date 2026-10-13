@@ -44,6 +44,9 @@ local function define_item(id, code, kind, base_cost, has_detail_art, content)
         kind = kind,
         name_key = "items.name." .. code,
         category_key = "items.category." .. code,
+        -- D4540 +0x27 is consumed by 0x13D0C while +0xB5 is active.
+        -- The complete US table is zero except item 43, whose value is 2.
+        action_motion_distance_profile = 0,
         pricing = {
             -- D4540 +0x22 is the purchase base. The source sale path starts
             -- from half of that value before applying runner-dependent cost
@@ -206,7 +209,8 @@ Items.catalog = {
     define_item("combat_sense_spell_lock", 40, "spell_lock", 17500, true),
     define_item("rat_totem", 41, "totem", 2, false),
     define_item("gator_totem", 42, "totem", 65535, false),
-    define_item("bear_totem", 43, "totem", 0, false),
+    define_item("bear_totem", 43, "totem", 0, false,
+        { action_motion_distance_profile = 2 }),
     define_item("armor_vest", 44, "armor", 200, true,
         { armor = { armor_index = 1, primary_modifier = 2,
                     secondary_modifier = 1 } }),

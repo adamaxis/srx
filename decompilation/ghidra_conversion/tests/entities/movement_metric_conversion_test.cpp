@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/entities/movement_metric_conversion.hpp"
 
+#include <array>
+
 namespace {
 
 bool expect(const bool condition) {
@@ -44,12 +46,12 @@ int main() {
     }
 
     const auto negative_vertical = measure_heading_and_distance(0, -100);
-    if (!expect(negative_vertical.heading == 0x4000U &&
+    if (!expect(negative_vertical.heading == 0x0000U &&
                 negative_vertical.distance == 100U)) {
         return 7;
     }
     const auto positive_horizontal = measure_heading_and_distance(100, 0);
-    if (!expect(positive_horizontal.heading == 0x8000U &&
+    if (!expect(positive_horizontal.heading == 0x4000U &&
                 positive_horizontal.distance == 100U)) {
         return 8;
     }
@@ -62,18 +64,33 @@ int main() {
         return 10;
     }
     const auto relative = measure_relative_heading_and_distance(10, 20, 10, 120);
-    if (!expect(relative.heading == 0xC000U && relative.distance == 100U)) {
+    if (!expect(relative.heading == 0x8000U && relative.distance == 100U)) {
         return 11;
     }
     const auto entity_target = measure_entity_target_heading_and_distance(
         0x0100U, 0x0200U, 0x0100U, 0x0264U);
-    if (!expect(entity_target.heading == 0xC000U &&
+    if (!expect(entity_target.heading == 0x8000U &&
                 entity_target.distance == 100U)) {
         return 17;
     }
     const auto quantized = measure_heading_and_distance(-64, -63);
-    if (!expect(quantized.heading == 0xE100U && quantized.distance == 95U)) {
+    if (!expect(quantized.heading == 0xDF00U && quantized.distance == 95U)) {
         return 12;
+    }
+
+    // Cardinal outputs must agree with the ROM's eight movement ordinals:
+    // up, northeast, right, southeast, down, southwest, left, northwest.
+    const std::array<std::array<std::int32_t, 3>, 8> cardinal_headings{{
+        {{0, -100, 0x0000}}, {{100, -100, 0x2000}},
+        {{100, 0, 0x4000}}, {{100, 100, 0x6000}},
+        {{0, 100, 0x8000}}, {{-100, 100, 0xA000}},
+        {{-100, 0, 0xC000}}, {{-100, -100, 0xE000}},
+    }};
+    for (const auto& sample : cardinal_headings) {
+        if (!expect(measure_heading_and_distance(sample[0], sample[1]).heading ==
+                    static_cast<std::uint16_t>(sample[2]))) {
+            return 22;
+        }
     }
 
     // D0 is a word result in 0x15D6C, so the host representation must wrap

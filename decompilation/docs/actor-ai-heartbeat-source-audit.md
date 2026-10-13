@@ -105,6 +105,42 @@ tables in `0x14D6A`; `+0x57` identifies the selected action row. Target
 candidates are collected at `0x1438C` and `0x14446`; actor links are not
 simply the nearest-screen-sprite rule.
 
+The connected Lua motion path uses the item-template `+0x27` profile from
+`0xD4540` or spell-template selector from `0xD4EA0` while the source
+re-target delay is nonzero. The four finite bounds at `0x13E7C` are
+`0x0500..0x0640`, `0x05A0..0x0780`, `0x0640..0x08C0`, and
+`0x08C0..0x0C80`. A distance in a selected band clears the delay and builds a
+lateral destination at heading `+0x4000` and twice the target distance; a
+range at or beyond the upper bound uses the linked position. The Lua snapshot
+consumes the six-pass delay loaded when the runner-pool link changes, with the
+first decrement on that service pass. C++ measures direct and lateral route
+step costs from typed world positions; Lua applies the source `0x01E0`
+close-route gate. The 50 item templates now expose their source byte, including
+Bear Totem item 43's profile 2. Spell entries whose selector is `0xFF` remain
+outside the four finite profiles.
+
+The encounter path review found an inverted branch in the shared heading
+conversion used by this route. US-ROM bytes at `0x15D4E` select a basis word
+from `0x15DF6`; at `0x15DB0`, `BNE` skips `EXG D4,D5` when basis bit 6 is set,
+so the exchange occurs only when the bit is clear. The native helper had done
+the opposite. That made a positive-X target resolve to heading `0x8000` instead
+of the ROM's `0x4000`, sending the actor along a different cardinal vector.
+The condition now follows the ROM, and the registered movement-metric CTest
+checks all eight compass headings against the extracted direction basis. The
+Scene 2 trace now turns through the runner's area rather than continuing away;
+both natural-spawn actors are still outside the viewport at 480 service frames,
+so this does not yet defend their full approach or arrival behavior.
+
+This is still partial: action kind/code are currently the actor's selected
+Lua profile values, the `+0x10.3` entity-distance table path using record
+`+0x4D` is not connected to runtime records, and attacks/hit outcomes are not
+implemented. Debug and Release script-runtime, encounter, and Hound-effect
+QA pass; the 11 Scene 2 and 8 Hound full-frame captures match byte for byte
+across those builds. The Hound comparison checks the HUD but does not treat
+the animating full frame as a static golden or claim a specific map-object
+depth order for this effect. These are internal port checks, not independent
+Genesis visual proof.
+
 ### Creature continuation movement vectors
 
 The target decision and movement step have different cadences and inputs.
@@ -418,12 +454,14 @@ The focused Scene 0 QA uses the real sum-zero Hell Hound/vampire sequence, then
 places one live Hound within `0x200` of the runner to expose the effect on
 screen. That placement is diagnostic, not a natural approach replay. Its
 full-screen frame set checks the pre-encounter map, sequence entry, pre-effect
-state, effect start, phases 1-3, and release. The source map's vertical
-foreground structure occludes phase 3 at this placement; the renderer does
-not force the effect through that existing layer. The full-frame regression
-requires phases 1 and 2 to change the image and phase 3 to match the released
-image under that occlusion; release leaves no stale pixels. The audio request
-stays empty. No reviewed longplay frame sequence
+state, effect start, phases 1-3, and release. At this placement the plume
+overlaps nearby field artwork. The QA verifies the full map composition and
+right-side HUD, but does not claim that an independent source image confirms
+the exact map-object depth order. The Hound sprite keeps animating, so the
+full-frame phase-3 comparison does not claim that the whole phase matches
+release or prove that no stale pixels remain after release; the effect-slot
+state clears on phase 4. The audio request stays empty. No reviewed longplay
+frame sequence
 can be confidently tied to this exact Hound attack, so these captures verify
 source-driven state and internal composition, not independent Genesis visual
 fidelity. This branch is connected; general actor-slot dispatch, other
