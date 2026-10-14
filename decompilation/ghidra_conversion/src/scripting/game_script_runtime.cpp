@@ -2171,6 +2171,9 @@ GameScriptRuntime::resolve_field_encounter(
             std::uint32_t sequence_list_offset = 0U;
             std::uint32_t entity_kind = 0U;
             std::uint32_t action_code = 0U;
+            std::uint32_t source_action_slot = 0U;
+            std::uint32_t source_action_ammo = 0U;
+            std::uint32_t source_action_counter = 0U;
             std::uint32_t source_interaction_flags = 0U;
             std::uint32_t physical_meter = 0U;
             std::uint32_t palette_line = 0U;
@@ -2200,6 +2203,15 @@ GameScriptRuntime::resolve_field_encounter(
                                   action_kind) &&
                 read_field_integer(state, actor_index, "action_code", 255U,
                                    action_code) &&
+                read_field_integer(state, actor_index,
+                                   "source_action_slot", 255U,
+                                   source_action_slot) &&
+                read_field_integer(state, actor_index,
+                                   "source_action_ammo", 255U,
+                                   source_action_ammo) &&
+                read_field_integer(state, actor_index,
+                                   "source_action_counter", 255U,
+                                   source_action_counter) &&
                 read_field_integer(state, actor_index,
                                    "source_interaction_flags", 255U,
                                    source_interaction_flags) &&
@@ -2348,6 +2360,12 @@ GameScriptRuntime::resolve_field_encounter(
             actor.sequence_list_offset = sequence_list_offset;
             actor.entity_kind = static_cast<std::uint16_t>(entity_kind);
             actor.action_code = static_cast<std::uint8_t>(action_code);
+            actor.source_action_slot =
+                static_cast<std::uint8_t>(source_action_slot);
+            actor.source_action_ammo =
+                static_cast<std::uint8_t>(source_action_ammo);
+            actor.source_action_counter =
+                static_cast<std::uint8_t>(source_action_counter);
             actor.source_interaction_flags =
                 static_cast<std::uint8_t>(source_interaction_flags);
             actor.physical_meter =
@@ -3180,6 +3198,25 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "source_interaction_flags");
     lua_pushinteger(state, context.source_behavior_flags);
     lua_setfield(state, -2, "source_behavior_flags");
+    lua_pushinteger(state, context.source_action_slot);
+    lua_setfield(state, -2, "source_action_slot");
+    lua_pushinteger(state, context.source_action_ammo);
+    lua_setfield(state, -2, "source_action_ammo");
+    lua_pushinteger(state, context.source_action_counter);
+    lua_setfield(state, -2, "source_action_counter");
+    lua_pushinteger(state, context.source_animation_selector);
+    lua_setfield(state, -2, "source_animation_selector");
+    if (context.source_item_spawn_result.has_value()) {
+        lua_pushstring(
+            state,
+            *context.source_item_spawn_result ==
+                    ScriptActorItemSpawnResult::spawned
+                ? "spawned"
+                : "blocked");
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "source_item_spawn_result");
     lua_pushinteger(state, context.source_spawn_state_flags);
     lua_setfield(state, -2, "source_spawn_state_flags");
     lua_pushboolean(state, context.world_activity_active);
@@ -3196,6 +3233,12 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "action_animation_increment");
     lua_pushinteger(state, context.action_animation_threshold);
     lua_setfield(state, -2, "action_animation_threshold");
+    lua_pushinteger(state, context.item_action_frame_count);
+    lua_setfield(state, -2, "item_action_frame_count");
+    lua_pushinteger(state, context.item_action_increment);
+    lua_setfield(state, -2, "item_action_increment");
+    lua_pushinteger(state, context.item_action_threshold);
+    lua_setfield(state, -2, "item_action_threshold");
     if (context.action_animation_audio_event.has_value()) {
         lua_pushinteger(state, *context.action_animation_audio_event);
     } else {
@@ -3397,6 +3440,12 @@ GameScriptRuntime::actor_heartbeat(
             lua_setfield(state, -2, "world_y");
             lua_pushinteger(state, candidate.heading);
             lua_setfield(state, -2, "heading");
+            if (candidate.source_record_heading.has_value()) {
+                lua_pushinteger(state, *candidate.source_record_heading);
+            } else {
+                lua_pushnil(state);
+            }
+            lua_setfield(state, -2, "source_record_heading");
             lua_pushinteger(state, candidate.distance);
             lua_setfield(state, -2, "distance");
             lua_pushinteger(state, candidate.service_flags);
@@ -3666,6 +3715,19 @@ GameScriptRuntime::actor_heartbeat(
     }
     decision.source_record_flags =
         static_cast<std::uint8_t>(returned_action_code);
+    if (!read_field_integer(state, decision_table, "source_behavior_flags",
+                            0xFFU, returned_action_code)) {
+        return fail("actor_ai.heartbeat returned invalid source behavior flags");
+    }
+    decision.source_behavior_flags =
+        static_cast<std::uint8_t>(returned_action_code);
+    if (!read_field_integer(state, decision_table,
+                            "source_animation_selector", 0xFFFFU,
+                            returned_action_code)) {
+        return fail("actor_ai.heartbeat returned an invalid animation selector");
+    }
+    decision.source_animation_selector =
+        static_cast<std::uint16_t>(returned_action_code);
     if (!read_field_integer(state, decision_table, "frame", 15U,
                             returned_action_code)) {
         return fail("actor_ai.heartbeat returned an invalid animation frame");
@@ -4464,7 +4526,8 @@ GameScriptRuntime::actor_heartbeat(
          decision.animation_id == "projectile" ||
          decision.animation_id == "hurt" ||
          decision.animation_id == "down" ||
-         decision.animation_id == "spell")) {
+         decision.animation_id == "spell" ||
+         decision.animation_id == "weapon")) {
         decision.action = ScriptActorBehaviorDecision::Action::hold;
     } else if (action == "play_entry" &&
                decision.animation_id == "entry") {
@@ -4488,6 +4551,10 @@ GameScriptRuntime::actor_heartbeat(
     const bool dynamic_creature_down =
         context.dynamic_world_encounter_actor &&
         decision.animation_id == "down";
+    const bool dynamic_item_action =
+        context.dynamic_world_encounter_actor &&
+        context.action_kind == ScriptActorActionKind::item &&
+        decision.animation_id == "weapon";
     if ((decision.animation_id == "walk" ||
          decision.animation_id == "attack") &&
         context.profile_id != "field_runner_k03_none00" &&
@@ -4514,6 +4581,15 @@ GameScriptRuntime::actor_heartbeat(
          decision.animation_frame >= context.entry_animation_frame_count ||
          (decision.source_record_flags & 0x10U) == 0U)) {
         return fail("actor_ai.heartbeat returned an unsupported exhausted pose");
+    }
+    if (decision.animation_id == "weapon" &&
+        (!dynamic_item_action || context.item_action_frame_count == 0U ||
+         context.item_action_increment == 0U ||
+         context.item_action_threshold != 0x1000U ||
+         decision.animation_frame >= context.item_action_frame_count ||
+         (decision.source_animation_selector & 0x7FFFU) !=
+             static_cast<std::uint16_t>(0x40U + decision.direction * 4U))) {
+        return fail("actor_ai.heartbeat returned an unsupported C042 item-action pose");
     }
 
     lua_getfield(state, decision_table, "audio_event");
@@ -4922,7 +4998,11 @@ GameScriptRuntime::actor_heartbeat(
             source_action_dispatch == "suppressed";
         const bool item_label =
             source_action_dispatch == "item_effect" ||
-            source_action_dispatch == "item_gated";
+            source_action_dispatch == "item_gated" ||
+            source_action_dispatch == "item_empty" ||
+            source_action_dispatch == "item_pose_gated" ||
+            source_action_dispatch == "item_target_heading_unresolved" ||
+            source_action_dispatch == "item_spawn_requested";
         const bool label_matches =
             (shared_label && (spell_context || item_context)) ||
             (spell_label && spell_context) ||
@@ -4931,6 +5011,51 @@ GameScriptRuntime::actor_heartbeat(
             !context.dynamic_world_encounter_actor ||
             context.phase != ScriptActorHeartbeatPhase::behavior) {
             return fail("actor_ai.heartbeat returned an invalid action dispatch");
+        }
+        if (source_action_dispatch == "item_spawn_requested") {
+            const auto linked_target =
+                decision.ai_target_id.has_value()
+                    ? std::find_if(
+                          context.ai_target_candidates.begin(),
+                          context.ai_target_candidates.end(),
+                          [&decision](const auto& candidate) {
+                              return candidate.id == *decision.ai_target_id;
+                          })
+                    : context.ai_target_candidates.end();
+            const bool target_has_source_pose =
+                linked_target != context.ai_target_candidates.end() &&
+                linked_target->source_record_slot.has_value() &&
+                linked_target->source_record_heading.has_value();
+            const bool invalid_item_action =
+                context.action_kind != ScriptActorActionKind::item ||
+                context.action_code == 0U || context.action_code > 12U ||
+                context.source_action_ammo == 0U ||
+                (context.source_animation_selector & 0x07FFU) > 0x003CU ||
+                (context.world_scene_state == 0U &&
+                 (decision.source_behavior_flags & 0x10U) == 0U) ||
+                context.source_projection_active != true ||
+                !context.action_line_clear || !target_has_source_pose;
+            if (invalid_item_action) {
+                return fail(
+                    "actor_ai.heartbeat requested an item outside its ROM action window "
+                    "(kind=" + std::to_string(static_cast<unsigned>(
+                                      context.action_kind)) +
+                    ",code=" + std::to_string(context.action_code) +
+                    ",ammo=" + std::to_string(context.source_action_ammo) +
+                    ",selector=" + std::to_string(
+                        context.source_animation_selector) +
+                    ",scene=" + std::to_string(context.world_scene_state) +
+                    ",behavior=" + std::to_string(
+                        decision.source_behavior_flags) +
+                    ",projection=" +
+                        (context.source_projection_active ? "active" : "inactive") +
+                    ",line_probe=" + (context.action_line_clear ? "available" : "missing") +
+                    ",target=" + (decision.ai_target_id.has_value()
+                                       ? *decision.ai_target_id
+                                       : "<missing>") +
+                    ",target_source_pose=" +
+                        (target_has_source_pose ? "yes" : "no") + ")");
+            }
         }
         decision.source_action_dispatch = std::move(source_action_dispatch);
     }
@@ -4988,13 +5113,23 @@ GameScriptRuntime::actor_heartbeat(
     }
     if (decision.source_action_dispatch.has_value() &&
         (*decision.source_action_dispatch == "item_effect" ||
-         *decision.source_action_dispatch == "item_gated") &&
+         *decision.source_action_dispatch == "item_gated" ||
+         *decision.source_action_dispatch == "item_empty" ||
+         *decision.source_action_dispatch == "item_pose_gated" ||
+         *decision.source_action_dispatch ==
+             "item_target_heading_unresolved" ||
+         *decision.source_action_dispatch == "item_spawn_requested") &&
         (decision.animation_id == "action" ||
          decision.animation_id == "spell" ||
          decision.combat_meter_update.has_value() ||
          decision.combat_action_requested ||
          decision.ai_target_engaged)) {
         return fail("actor_ai.heartbeat returned an unsupported item dispatch");
+    }
+    if (decision.source_action_dispatch.has_value() &&
+        *decision.source_action_dispatch == "item_spawn_requested" &&
+        decision.animation_id == "weapon") {
+        return fail("actor_ai.heartbeat spawned from an active C042 pose");
     }
     lua_pop(state, 1);
 

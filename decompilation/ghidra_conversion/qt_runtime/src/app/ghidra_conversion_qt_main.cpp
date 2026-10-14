@@ -196,6 +196,7 @@ std::filesystem::path find_asset_root(
                    " [--field-transition-qa <output-dir>]"
                    " [--field-world-activity-qa <output-dir>]"
                    " [--field-random-encounter-spawn-qa <output-dir>]"
+                   " [--field-npc-item-action-qa <output-dir>]"
                    " [--field-spell-effect-qa <output-dir>]"
                    " [--field-redmond-vigore-search-qa <output-dir>]"
                    " [--field-jump-house-entry-qa <output-dir>]"
@@ -286,6 +287,11 @@ std::filesystem::path find_asset_root(
             continue;
         }
         if (argument == "--field-random-encounter-spawn-qa" &&
+            index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-npc-item-action-qa" &&
             index + 1 < argc) {
             ++index;
             continue;
@@ -8515,6 +8521,340 @@ int run_field_random_encounter_spawn_qa(
               << ',' << static_cast<unsigned>(
                      production_seed->actor_entry_delays[1])
               << ",entry_cues:2x0x2E} "
+              << " artifacts=" << output.string() << '\n';
+    return 0;
+}
+
+int run_field_npc_item_action_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "NPC item-action QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    for (std::filesystem::directory_iterator item(output, error), end;
+         !error && item != end; item.increment(error)) {
+        if (item->is_regular_file(error) &&
+            item->path().extension() == ".bmp") {
+            std::filesystem::remove(item->path(), error);
+        }
+    }
+    if (error || field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "NPC item-action QA: expected a bootstrapped Scene 2; scene="
+                  << field_scene.field_scene_reference_for_dump();
+        if (error) {
+            std::cerr << " output_error=" << error.message();
+        }
+        std::cerr << '\n';
+        return 3;
+    }
+
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto save = [&output](const std::string& name,
+                                const QImage& image) {
+        return image.save(QString::fromStdWString(
+            (output / std::filesystem::path(name)).wstring()));
+    };
+    const auto initial = render();
+    if (!save("initial.bmp", initial)) {
+        std::cerr << "NPC item-action QA: initial frame save failed\n";
+        return 3;
+    }
+
+    // Scene 2's source sum-8 list contains three records: the first is a
+    // Weenr with item action 1, item template 1, and 40 rounds; the following
+    // two are unarmed Weenrs. The selector is an injected bounded pair (4+4);
+    // all three ROM actor rows, placement, AI, spawn service, audio request,
+    // and renderer remain live.
+    const auto actors_before = field_scene.default_actor_count_for_dump();
+    const auto spawned = field_scene.resolve_and_spawn_field_encounter_for_dump(
+        4U, 4U, 0x1234U);
+    const auto profile = field_scene.default_actor_script_profile_for_dump(0U);
+    const auto profile_1 = field_scene.default_actor_script_profile_for_dump(1U);
+    const auto profile_2 = field_scene.default_actor_script_profile_for_dump(2U);
+    const auto item = field_scene.default_actor_weapon_item_for_dump(0U);
+    const auto ammo_before =
+        field_scene.default_actor_source_action_ammo_for_dump(0U);
+    const auto encounter_entry = render();
+    if (spawned != 3U ||
+        field_scene.default_actor_count_for_dump() != actors_before + 3U ||
+        profile != std::optional<std::string>{"weenr2_k08_item01"} ||
+        profile_1 != std::optional<std::string>{"weenr1_k08_none00"} ||
+        profile_2 != std::optional<std::string>{"weenr1_k08_none00"} ||
+        item != std::optional<std::uint8_t>{1U} ||
+        field_scene.default_actor_weapon_item_for_dump(1U).has_value() ||
+        field_scene.default_actor_weapon_item_for_dump(2U).has_value() ||
+        ammo_before != std::optional<std::uint8_t>{40U} ||
+        !save("encounter-entry.bmp", encounter_entry) ||
+        !field_hud_chrome_survives(encounter_entry, asset_root)) {
+        std::cerr << "NPC item-action QA: Scene 2 source item row did not load"
+                  << " spawned=" << spawned
+                  << " actors=" << actors_before << "->"
+                  << field_scene.default_actor_count_for_dump()
+                  << " profile=" << profile.value_or("<missing>")
+                  << " item="
+                  << (item.has_value() ? std::to_string(*item) : "<missing>")
+                  << " ammo="
+                  << (ammo_before.has_value()
+                          ? std::to_string(*ammo_before)
+                          : "<missing>")
+                  << '\n';
+        return 3;
+    }
+
+    const auto actor_id_prefix = std::string{
+        "field.actor.weapon_projectile_spawned:field_scene_2_encounter_"};
+    const auto first_action_boundary = source_boundaries.size();
+    const auto first_action_audio = field_audio_events.size();
+    std::ofstream trace(output / "npc-item-action-trace.tsv",
+                        std::ios::binary);
+    if (!trace) {
+        std::cerr << "NPC item-action QA: cannot create trace file\n";
+        return 3;
+    }
+    trace << "field_frame\tanimation\tframe\tselector\tammo\ttarget_distance"
+             "\tprojectile_spawn_count\taudio_0x1C_count\n";
+    const auto count_boundary = [&source_boundaries](
+                                    const std::size_t begin,
+                                    const std::string& prefix) {
+        return static_cast<std::size_t>(std::count_if(
+            source_boundaries.begin() + static_cast<std::ptrdiff_t>(begin),
+            source_boundaries.end(), [&prefix](const std::string& boundary) {
+                return boundary.compare(0U, prefix.size(), prefix) == 0;
+            }));
+    };
+    const auto count_audio = [&field_audio_events](
+                                 const std::size_t begin,
+                                 const std::uint16_t event) {
+        return static_cast<std::size_t>(std::count(
+            field_audio_events.begin() + static_cast<std::ptrdiff_t>(begin),
+            field_audio_events.end(), event));
+    };
+    std::uint16_t shot_frame = 0U;
+    QImage shot_image;
+    std::size_t shot_count = 0U;
+    for (std::uint16_t frame = 1U; frame <= 1800U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        shot_count = count_boundary(first_action_boundary, actor_id_prefix);
+        const auto animation =
+            field_scene.default_actor_animation_id_for_dump(0U);
+        const auto animation_frame =
+            field_scene.default_actor_animation_frame_for_dump(0U);
+        const auto selector =
+            field_scene.default_actor_source_animation_selector_for_dump(0U);
+        const auto ammo =
+            field_scene.default_actor_source_action_ammo_for_dump(0U);
+        const auto distance =
+            field_scene.default_actor_ai_target_distance_for_dump(0U);
+        trace << frame << '\t' << animation.value_or("<none>") << '\t'
+              << (animation_frame.has_value()
+                      ? std::to_string(*animation_frame)
+                      : "<none>")
+              << '\t'
+              << (selector.has_value()
+                      ? std::to_string(*selector)
+                      : "<none>")
+              << '\t'
+              << (ammo.has_value() ? std::to_string(*ammo) : "<none>")
+              << '\t'
+              << (distance.has_value()
+                      ? std::to_string(*distance)
+                      : "<none>")
+              << '\t' << shot_count << '\t'
+              << count_audio(first_action_audio, 0x001CU) << '\n';
+        if (shot_count != 0U) {
+            shot_frame = frame;
+            shot_image = render();
+            break;
+        }
+    }
+    {
+        std::ofstream events(output / "npc-item-action-boundaries.tsv",
+                             std::ios::binary);
+        events << "boundary_index\tboundary\n";
+        for (std::size_t index = first_action_boundary;
+             index < source_boundaries.size(); ++index) {
+            events << index << '\t' << source_boundaries[index] << '\n';
+        }
+    }
+    if (shot_frame == 0U) {
+        std::cerr << "NPC item-action QA: ROM item actor did not fire within"
+                  << " 1800 field frames; profile="
+                  << profile.value_or("<missing>")
+                  << " animation="
+                  << field_scene.default_actor_animation_id_for_dump(0U)
+                         .value_or("<none>")
+                  << " target="
+                  << field_scene.default_actor_ai_target_id_for_dump(0U)
+                         .value_or("<none>")
+                  << " distance=";
+        const auto distance =
+            field_scene.default_actor_ai_target_distance_for_dump(0U);
+        if (distance.has_value()) {
+            std::cerr << *distance;
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    const auto shooter_heading = field_scene.field_entity_heading_for_dump();
+    auto rotated_heading = static_cast<std::uint16_t>(
+        static_cast<std::uint16_t>(shooter_heading << 3U) |
+        (shooter_heading >> 13U));
+    if ((rotated_heading & 0x8000U) != 0U) {
+        rotated_heading = static_cast<std::uint16_t>(rotated_heading + 1U);
+    }
+    const auto expected_pose_selector = static_cast<std::uint16_t>(
+        0x0040U + (rotated_heading & 0x0007U) * 4U);
+    const auto shot_selector =
+        field_scene.default_actor_source_animation_selector_for_dump(0U);
+    const auto shot_animation =
+        field_scene.default_actor_animation_id_for_dump(0U);
+    const auto ammo_after =
+        field_scene.default_actor_source_action_ammo_for_dump(0U);
+    const auto shot_audio_count = count_audio(first_action_audio, 0x001CU);
+    const bool shot_saved = save("weapon-action-start.bmp", shot_image);
+    const bool actual_saved = save("actual.bmp", shot_image);
+    if (!shot_saved || !actual_saved ||
+        shot_animation != std::optional<std::string>{"weapon"} ||
+        !shot_selector.has_value() ||
+        (*shot_selector & 0x7FFFU) != expected_pose_selector ||
+        ammo_after != std::optional<std::uint8_t>{39U} ||
+        shot_audio_count != 1U ||
+        !field_hud_chrome_survives(shot_image, asset_root)) {
+        std::cerr << "NPC item-action QA: spawn did not publish the ROM C042"
+                  << " pose/ammo/audio facts; frame=" << shot_frame
+                  << " selector=";
+        if (shot_selector.has_value()) {
+            std::cerr << "0x" << std::hex << *shot_selector << std::dec;
+        } else {
+            std::cerr << "<missing>";
+        }
+        std::cerr << " expected_selector=0x" << std::hex
+                  << expected_pose_selector << std::dec << " animation="
+                  << shot_animation.value_or("<none>") << " ammo=";
+        if (ammo_after.has_value()) {
+            std::cerr << static_cast<unsigned>(*ammo_after);
+        } else {
+            std::cerr << "<missing>";
+        }
+        std::cerr << " event_0x1C_count=" << shot_audio_count << '\n';
+        std::cerr << " active_actors="
+                  << field_scene.default_actor_count_for_dump()
+                  << " animations=";
+        for (std::uint16_t source_order = 0U; source_order < 3U;
+             ++source_order) {
+            if (source_order != 0U) {
+                std::cerr << ',';
+            }
+            std::cerr << source_order << ':'
+                      << field_scene.default_actor_animation_id_for_dump(
+                             source_order)
+                             .value_or("<none>");
+        }
+        std::cerr << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    const std::array<std::uint16_t, 4> checkpoints{8U, 16U, 31U, 32U};
+    std::array<bool, 4> checkpoint_saved{};
+    std::optional<std::string> first_return_animation;
+    std::uint16_t first_return_frame = 0U;
+    for (std::uint16_t after_shot = 1U; after_shot <= 64U; ++after_shot) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        const auto animation =
+            field_scene.default_actor_animation_id_for_dump(0U);
+        const auto selector =
+            field_scene.default_actor_source_animation_selector_for_dump(0U);
+        const auto animation_frame =
+            field_scene.default_actor_animation_frame_for_dump(0U);
+        const auto ammo =
+            field_scene.default_actor_source_action_ammo_for_dump(0U);
+        const auto distance =
+            field_scene.default_actor_ai_target_distance_for_dump(0U);
+        const auto action_shots =
+            count_boundary(first_action_boundary, actor_id_prefix);
+        const auto action_sounds = count_audio(first_action_audio, 0x001CU);
+        trace << static_cast<std::uint16_t>(shot_frame + after_shot) << '\t'
+              << animation.value_or("<none>") << '\t'
+              << (animation_frame.has_value()
+                      ? std::to_string(*animation_frame)
+                      : "<none>")
+              << '\t'
+              << (selector.has_value()
+                      ? std::to_string(*selector)
+                      : "<none>")
+              << '\t'
+              << (ammo.has_value() ? std::to_string(*ammo) : "<none>")
+              << '\t'
+              << (distance.has_value()
+                      ? std::to_string(*distance)
+                      : "<none>")
+              << '\t' << action_shots << '\t' << action_sounds << '\n';
+        const auto checkpoint = std::find(checkpoints.begin(),
+                                          checkpoints.end(), after_shot);
+        if (checkpoint != checkpoints.end()) {
+            const auto index = static_cast<std::size_t>(
+                std::distance(checkpoints.begin(), checkpoint));
+            checkpoint_saved[index] = save(
+                "weapon-action-frame-" + std::to_string(after_shot) + ".bmp",
+                render());
+        }
+        if (!first_return_animation.has_value() && animation.has_value() &&
+            *animation != "weapon") {
+            first_return_animation = animation;
+            first_return_frame = after_shot;
+            if (!save("weapon-action-return.bmp", render())) {
+                return 3;
+            }
+        }
+    }
+    const bool checkpoints_ok = std::all_of(
+        checkpoint_saved.begin(), checkpoint_saved.end(),
+        [](const bool saved) { return saved; });
+    const auto terminal = render();
+    const bool terminal_saved = save("weapon-action-after-64.bmp", terminal);
+    if (!checkpoints_ok || !terminal_saved ||
+        !field_hud_chrome_survives(terminal, asset_root)) {
+        std::cerr << "NPC item-action QA: full-screen action checkpoints failed"
+                  << " checkpoints=" << checkpoint_saved[0] << ','
+                  << checkpoint_saved[1] << ',' << checkpoint_saved[2] << ','
+                  << checkpoint_saved[3] << " terminal=" << terminal_saved
+                  << '\n';
+        return 3;
+    }
+    trace.close();
+
+    std::cout << "field_npc_item_action_qa=passed scene=2 selector=4+4"
+                  << " profiles=" << *profile << ',' << *profile_1 << ','
+                  << *profile_2 << " item=1 ammo=40->"
+              << static_cast<unsigned>(*ammo_after)
+              << " first_shot_frame=" << shot_frame
+              << " C042_selector=0x" << std::hex << expected_pose_selector
+              << std::dec << " event_0x1C_count=" << shot_audio_count
+              << " return_animation="
+              << first_return_animation.value_or("<still-C042>")
+              << " return_frame=" << first_return_frame
+              << " after_64="
+              << field_scene.default_actor_animation_id_for_dump(0U)
+                     .value_or("<none>")
               << " artifacts=" << output.string() << '\n';
     return 0;
 }
@@ -19762,6 +20102,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_random_encounter_spawn_qa_path;
         std::optional<std::filesystem::path>
+            field_npc_item_action_qa_path;
+        std::optional<std::filesystem::path>
             field_hound_close_effect_qa_path;
         std::optional<std::filesystem::path>
             field_spell_effect_qa_path;
@@ -19956,6 +20298,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_random_encounter_spawn_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-npc-item-action-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_npc_item_action_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -20729,6 +21078,11 @@ int main(int argc, char** argv) {
                 return run_field_random_encounter_spawn_qa(
                     field_scene, smoke_state, asset_root,
                     *field_random_encounter_spawn_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_npc_item_action_qa_path.has_value()) {
+                return run_field_npc_item_action_qa(
+                    field_scene, asset_root, *field_npc_item_action_qa_path,
                     field_audio_events, field_source_boundaries);
             }
             if (field_redmond_vigore_search_qa_path.has_value()) {

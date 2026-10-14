@@ -61,6 +61,7 @@ local ActorSpawnFlag = {
     effect_route = 0x08,
 }
 local ActorBehaviorFlag = {
+    action_window_open = 0x10,
     high_effect = 0x80,
 }
 -- ROM 0x13E7C has four finite bounds pairs selected by item/spell template
@@ -84,6 +85,15 @@ local EntityMotionDistanceBounds = {
 }
 local target_motion_reacquire_updates = 6
 local source_close_range_threshold = 0x01e0
+local item_action_pose_selectors = {
+    0x40, 0x44, 0x48, 0x4C, 0x50, 0x54, 0x58, 0x5C,
+}
+local idle_pose_selectors = {
+    0x00, 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1C,
+}
+local walk_pose_selectors = {
+    0x20, 0x24, 0x28, 0x2C, 0x30, 0x34, 0x38, 0x3C,
+}
 local ItemAction = {
     max_power_heavy_pistol = 6,
 }
@@ -361,6 +371,8 @@ local function source_motion_bounds(context, state)
 end
 
 local function source_motion_destination_heading(context, state, target)
+    -- ROM 0x13D0C clears +0xB0.4 before selecting the action distance row.
+    state.source_behavior_flags = state.source_behavior_flags & 0xef
     if type(target) ~= "table" or not context.movement_allowed or
        type(target.heading) ~= "number" or
        type(target.distance) ~= "number" or
@@ -377,6 +389,13 @@ local function source_motion_destination_heading(context, state, target)
     end
     local heading = target.heading
     local distance = target.distance & 0xffff
+    if bounds == nil or distance < bounds.upper then
+        -- A zero +0xB5 counter reaches 0x13DCA directly. A selected action
+        -- row reaches the same flag when distance is below its upper bound.
+        state.source_behavior_flags = state.source_behavior_flags |
+            ActorBehaviorFlag.action_window_open
+    end
+    context.movement_state.route_flags = state.source_behavior_flags
     local destination_heading = (heading + 0x4000) & 0xffff
     local destination_step_cost = target.perpendicular_route_step_cost
     local destination_distance = target.perpendicular_route_distance & 0xffff
@@ -430,6 +449,13 @@ local function initial_state(context, profile)
         action_kind = context.action_kind,
         action_code = context.action_code,
         source_record_flags = context.source_record_flags or 0,
+        source_behavior_flags = context.source_behavior_flags or 0,
+        source_action_slot = context.source_action_slot or 0,
+        source_action_ammo = context.source_action_ammo or 0,
+        source_action_counter = context.source_action_counter or 0,
+        source_animation_selector = context.source_animation_selector or
+            idle_pose_selectors[
+                direction_from_heading(context.initial_heading) + 1],
         package_id = profile.package_id,
         weapon_item_id = profile.weapon_item_id,
         direction = direction_from_heading(context.initial_heading),
@@ -452,6 +478,10 @@ local function initial_state(context, profile)
         action_animation_audio_event =
             context.action_animation_audio_event,
         action_animation_complete = false,
+        item_action_frame_count = context.item_action_frame_count or 0,
+        item_action_increment = context.item_action_increment or 0,
+        item_action_threshold = context.item_action_threshold or 0,
+        item_action_complete = false,
         damage_reaction_active = false,
         damage_reaction_animation_complete = false,
         hurt_behavior_timer = 0,
@@ -557,6 +587,11 @@ local function snapshot(state, action, audio_event, projectile_movement,
                         target_heading_audio_event)
     if state.animation_id == "idle" then
         state.animation_frame = 0
+        state.source_animation_selector =
+            idle_pose_selectors[state.direction + 1]
+    elseif state.animation_id == "walk" then
+        state.source_animation_selector =
+            walk_pose_selectors[state.direction + 1]
     end
     local combat_meter_update = state.combat_meter_update
     state.combat_meter_update = nil
@@ -575,6 +610,8 @@ local function snapshot(state, action, audio_event, projectile_movement,
         animation_accumulator = state.animation_accumulator,
         transition_started = state.transition_started,
         transition_complete = state.transition_complete,
+        source_behavior_flags = state.source_behavior_flags,
+        source_animation_selector = state.source_animation_selector,
         combat_action_requested = state.combat_action_requested,
         audio_event = audio_event,
         target_heading_audio_event = target_heading_audio_event,
@@ -1355,6 +1392,45 @@ local function advance_dynamic_actor_action_animation(state)
     return true
 end
 
+local function advance_dynamic_actor_item_action_animation(state)
+    if state.animation_id ~= "weapon" or state.item_action_complete then
+        return true
+    end
+    local frame_count = state.item_action_frame_count
+    local increment = state.item_action_increment
+    local threshold = state.item_action_threshold
+    if type(frame_count) ~= "number" or frame_count < 1 or frame_count > 8 or
+       type(increment) ~= "number" or increment < 1 or increment > 0xffff or
+       type(threshold) ~= "number" or threshold ~= 0x1000 then
+        return false
+    end
+
+    -- ROM 0x600E advances the selected C042 list with its +2 increment and
+    -- the actor's +0x1C threshold, then marks a finite list complete.
+    local accumulated_word =
+        (state.animation_accumulator + increment) & 0xffff
+    local accumulated_signed = accumulated_word
+    if accumulated_word >= 0x8000 then
+        accumulated_signed = accumulated_word - 0x10000
+    end
+    if threshold <= accumulated_signed then
+        state.animation_frame = state.animation_frame + 1
+        state.animation_accumulator = accumulated_word - threshold
+        if state.animation_accumulator >= 0x8000 then
+            state.animation_accumulator = state.animation_accumulator - 0x10000
+        end
+        if state.animation_frame >= frame_count then
+            state.animation_frame = frame_count - 1
+            state.source_animation_selector =
+                state.source_animation_selector | 0x8000
+            state.item_action_complete = true
+        end
+    else
+        state.animation_accumulator = accumulated_signed
+    end
+    return true
+end
+
 -- ROM 0xC082. AF7C/AFAE index this by the same 0xB36A direction as C0A2.
 local spell_pose_selectors = {
     0x80, 0x84, 0x88, 0x8C, 0x90, 0x94, 0x98, 0x9C,
@@ -1401,6 +1477,9 @@ local function classify_item_dispatch(state, context, target)
     if context.source_projection_active ~= true then
         return "offscreen"
     end
+    if (state.source_animation_selector & 0x07ff) > 0x003c then
+        return "item_pose_gated"
+    end
     if not action_line_clear(context, target) then
         return "blocked"
     end
@@ -1408,7 +1487,56 @@ local function classify_item_dispatch(state, context, target)
     if code >= 13 and code <= 15 then
         return "item_effect"
     end
+    if code < 1 or code > 12 then
+        return "item_gated"
+    end
+    if type(target.source_record_heading) ~= "number" then
+        return "item_target_heading_unresolved"
+    end
+    if context.world_scene_state ~= 0 or
+       (state.source_behavior_flags &
+        ActorBehaviorFlag.action_window_open) ~= 0 then
+        if state.source_action_ammo == 0 then
+            return "item_empty"
+        end
+        return "item_spawn_requested"
+    end
     return "item_gated"
+end
+
+local function begin_dynamic_item_action(state, context, target)
+    local heading = type(target) == "table" and
+        target.source_record_heading or nil
+    if type(heading) ~= "number" then
+        return false
+    end
+    local direction = direction_from_heading(heading)
+    local frame_count = context.item_action_frame_count
+    local increment = context.item_action_increment
+    local threshold = context.item_action_threshold
+    if type(frame_count) ~= "number" or frame_count < 1 or frame_count > 8 or
+       type(increment) ~= "number" or increment < 1 or increment > 0xffff or
+       type(threshold) ~= "number" or threshold ~= 0x1000 then
+        return false
+    end
+
+    -- ROM 0xB39A installs the C042 selector for the linked target heading,
+    -- resets the finite animation list, and reloads the ordinary mode-0
+    -- action delay. The host has already run 0x1514E and reports its result.
+    state.direction = direction
+    state.animation_id = "weapon"
+    state.animation_frame = 0
+    state.animation_accumulator = 0
+    state.animation_increment = increment
+    state.source_animation_selector =
+        item_action_pose_selectors[direction + 1]
+    state.item_action_frame_count = frame_count
+    state.item_action_increment = increment
+    state.item_action_threshold = threshold
+    state.item_action_complete = false
+    state.action_delay = source_action_delay(context, state, 0)
+    state.ai_target_engaged = false
+    return true
 end
 
 local function begin_spell_cast(state, context, target, resolution)
@@ -2282,7 +2410,24 @@ function ActorAI.heartbeat(context)
     state.spell_action_resolution = nil
     state.source_record_flags = context.source_record_flags or
                                 state.source_record_flags
+    state.source_behavior_flags = context.source_behavior_flags or
+                                  state.source_behavior_flags
+    state.source_action_slot = context.source_action_slot or
+                               state.source_action_slot
+    state.source_action_ammo = context.source_action_ammo or
+                               state.source_action_ammo
+    state.source_action_counter = context.source_action_counter or
+                                  state.source_action_counter
+    state.source_animation_selector = context.source_animation_selector or
+                                      state.source_animation_selector
     advance_source_action_delay(state, context)
+    if context.action_kind == ActionKind.item and
+       context.source_item_spawn_result == "spawned" then
+        local target = retained_linked_target(context, state)
+        if not begin_dynamic_item_action(state, context, target) then
+            return nil
+        end
+    end
     transfer_pending_spell_effect(state, context)
     advance_world_target_selection(state, context)
     if profile.projectile_animation then
@@ -2360,6 +2505,10 @@ function ActorAI.heartbeat(context)
                     if not advance_dynamic_actor_action_animation(state) then
                         return nil
                     end
+                elseif state.animation_id == "weapon" then
+                    if not advance_dynamic_actor_item_action_animation(state) then
+                        return nil
+                    end
                 elseif state.animation_id == "spell" then
                     -- C082 lists are one frame. Hold it; do not invent a count.
                     state.animation_frame = 0
@@ -2368,6 +2517,8 @@ function ActorAI.heartbeat(context)
                     if not advance_dynamic_actor_walk_animation(state, context) then
                         return nil
                     end
+                    state.source_animation_selector =
+                        walk_pose_selectors[state.direction + 1]
                 else
                     local facing_heading = state.ai_target_engaged
                         and state.ai_target_heading or
@@ -2376,6 +2527,8 @@ function ActorAI.heartbeat(context)
                     state.direction = direction_from_heading(facing_heading)
                     state.animation_id = "idle"
                     state.animation_frame = 0
+                    state.source_animation_selector =
+                        idle_pose_selectors[state.direction + 1]
                 end
             else
                 advance_player_animation(state, context)
@@ -2477,9 +2630,6 @@ function ActorAI.heartbeat(context)
                         elseif context.action_kind == ActionKind.item then
                             -- Nonnegative +0x56 never enters 0x14C7C / 0xB1DC.
                             state.ai_target_engaged = false
-                            state.source_action_dispatch =
-                                classify_item_dispatch(
-                                    state, context, target)
                             local route_heading =
                                 source_motion_destination_heading(
                                     context, state, target)
@@ -2488,6 +2638,9 @@ function ActorAI.heartbeat(context)
                             if not state.movement_active then
                                 state.movement_route_distance = nil
                             end
+                            state.source_action_dispatch =
+                                classify_item_dispatch(
+                                    state, context, target)
                         elseif state.damage_reaction_active then
                             -- 0xB07E owns the service through the B03E cue.
                             -- Starting 0xB1DC on that frame replaces C072

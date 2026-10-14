@@ -300,6 +300,11 @@ public:
         std::uint16_t source_order) const noexcept;
     std::optional<std::uint16_t> default_actor_ai_target_distance_for_dump(
         std::uint16_t source_order) const noexcept;
+    std::optional<std::uint8_t> default_actor_source_action_ammo_for_dump(
+        std::uint16_t source_order) const noexcept;
+    std::optional<std::uint16_t>
+    default_actor_source_animation_selector_for_dump(
+        std::uint16_t source_order) const noexcept;
     std::optional<std::uint8_t> default_actor_weapon_item_for_dump(
         std::uint16_t source_order) const noexcept;
     std::optional<std::uint8_t> default_actor_physical_meter_for_dump(
@@ -1104,6 +1109,10 @@ private:
         const ConversionAssetCatalog& catalog);
     void initialize_default_field_actors(std::uint16_t scene_reference);
     void advance_default_field_actors();
+    void service_dynamic_actor_weapon_action(
+        DefaultFieldActorPresentation& actor,
+        const scripting::ScriptActorBehaviorContext& context,
+        const scripting::ScriptActorBehaviorDecision& decision);
     bool apply_scripted_field_entity_target_selection(
         const std::optional<std::string>& selected_actor_id);
     void trigger_field_world_effect_sequence();
@@ -1214,7 +1223,8 @@ private:
 
     struct FieldWeaponProjectilePresentation {
         scripting::ScriptCombatantFacts shooter_facts{};
-        std::size_t shooter_party_slot = 0U;
+        std::optional<std::size_t> shooter_party_slot;
+        std::string shooter_actor_id;
         SpawnEntityRecordState primary_record{};
         EntityCollisionRecord primary_collision_record{};
         EntityFixedPointPosition primary_fixed_position{};
@@ -1257,6 +1267,15 @@ private:
         std::uint8_t source_interaction_flags = 0;
         std::uint8_t source_behavior_flags = 0;
         std::uint8_t source_spawn_state_flags = 0;
+        std::uint8_t source_action_slot = 0;
+        std::uint8_t source_action_ammo = 0;
+        std::uint8_t source_action_counter = 0;
+        std::uint16_t source_animation_selector = 0;
+        std::optional<scripting::ScriptActorItemSpawnResult>
+            source_item_spawn_result;
+        std::uint8_t item_action_frame_count = 0;
+        std::uint16_t item_action_increment = 0;
+        std::uint16_t item_action_threshold = 0;
         scripting::ScriptCombatantFacts combatant{};
         std::optional<std::uint8_t> effect_slot;
         bool temporary_world_encounter = false;
@@ -1320,6 +1339,9 @@ private:
         std::array<std::vector<QImage>, 8> action_images{};
         std::array<std::vector<int>, 8> action_origin_x{};
         std::array<std::vector<int>, 8> action_origin_y{};
+        std::array<std::vector<QImage>, 8> item_action_images{};
+        std::array<std::vector<int>, 8> item_action_origin_x{};
+        std::array<std::vector<int>, 8> item_action_origin_y{};
         std::array<std::vector<QImage>, 8> hurt_images{};
         std::array<std::vector<int>, 8> hurt_origin_x{};
         std::array<std::vector<int>, 8> hurt_origin_y{};
@@ -1329,6 +1351,9 @@ private:
         std::uint16_t action_frame_increment = 0;
         std::uint16_t action_frame_threshold = 0;
         std::uint16_t action_audio_event = 0;
+        std::uint8_t item_action_frame_count = 0;
+        std::uint16_t item_action_increment = 0;
+        std::uint16_t item_action_threshold = 0;
         std::uint8_t hurt_frame_count = 0;
         std::uint16_t hurt_frame_increment = 0;
         std::uint16_t hurt_frame_threshold = 0;

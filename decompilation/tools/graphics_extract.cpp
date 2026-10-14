@@ -3565,6 +3565,9 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::string actor_name;
         std::string sprite_stem;
         std::uint8_t action_code;
+        std::uint8_t source_action_slot;
+        std::uint8_t source_action_ammo;
+        std::uint8_t source_action_counter;
         std::string action_kind;
         std::uint8_t palette_line;
         std::uint16_t world_x;
@@ -3852,16 +3855,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 const auto palette_line = static_cast<std::uint8_t>(
                     (read_big_endian_word(rom, template_offset + 2U) >> 13U) &
                     0x03U);
-                const auto action_selector = rom[template_offset + 8U];
-                const auto action_code = rom[template_offset + 9U];
-                const auto action_kind = action_code == 0U
-                    ? std::string("none")
-                    : ((action_selector & 0x80U) != 0U
-                           ? std::string("spell")
-                           : std::string("item"));
-                const auto profile_id = make_actor_profile_id(
-                    rom, template_offset, entity_kind, action_kind,
-                    action_code);
+                auto action_selector = rom[template_offset + 8U];
+                auto action_code = rom[template_offset + 9U];
+                auto source_action_ammo = rom[template_offset + 6U];
+                auto source_action_counter = rom[template_offset + 7U];
                 auto delay_primary_attribute = rom[template_offset + 0x2AU];
                 auto delay_secondary_attribute = rom[template_offset + 0x2DU];
                 auto delay_capability_flags = read_big_endian_word(
@@ -3933,6 +3930,14 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                             source_interaction_flags = override_value;
                         } else if (override_offset == 0x4CU) {
                             physical_meter = override_value;
+                        } else if (override_offset == 0x4EU) {
+                            source_action_ammo = override_value;
+                        } else if (override_offset == 0x4FU) {
+                            source_action_counter = override_value;
+                        } else if (override_offset == 0x56U) {
+                            action_selector = override_value;
+                        } else if (override_offset == 0x57U) {
+                            action_code = override_value;
                         }
                         if (override_offset == 0x4DU) {
                             posture = override_value;
@@ -4018,6 +4023,15 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     next_record = pair_offset;
                 }
 
+                const auto action_kind = action_code == 0U
+                    ? std::string("none")
+                    : ((action_selector & 0x80U) != 0U
+                           ? std::string("spell")
+                           : std::string("item"));
+                const auto profile_id = make_actor_profile_id(
+                    rom, template_offset, entity_kind, action_kind,
+                    action_code);
+
                 const auto sprite_stem =
                     "actor-kind-" + std::to_string(entity_kind) +
                     "-palette-" + std::to_string(palette_line);
@@ -4028,7 +4042,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     sequence_list_offset, tagged_template,
                     static_cast<std::uint32_t>(template_offset), entity_kind,
                     palette_line, actor_name, profile_id, action_code,
-                    action_kind, source_interaction_flags,
+                    action_selector, source_action_ammo,
+                    source_action_counter, action_kind, source_interaction_flags,
                     physical_meter, delay_primary_attribute,
                     delay_secondary_attribute, delay_capability_flags,
                     mental_meter, cyberware_flags, posture, attribute_77, attribute_78,
@@ -4111,7 +4126,9 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         for (const auto header : kActionSkillHeaders) {
             table << '\t' << header;
         }
-        table << "\tcombat_auxiliary_roll_bonus";
+        table << "\tcombat_auxiliary_roll_bonus"
+                 "\tsource_action_slot\tsource_action_ammo"
+                 "\tsource_action_counter";
         table << '\n';
         for (const auto& actor : dynamic_world_actor_records) {
             const auto key = std::make_pair(actor.entity_kind, actor.palette_line);
@@ -4171,6 +4188,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             }
             table << '\t'
                   << static_cast<unsigned>(actor.auxiliary_roll_bonus);
+            table << '\t'
+                  << static_cast<unsigned>(actor.source_action_slot) << '\t'
+                  << static_cast<unsigned>(actor.source_action_ammo) << '\t'
+                  << static_cast<unsigned>(actor.source_action_counter);
             table << '\n';
         }
         if (!table) {
@@ -4179,6 +4200,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         }
     }
     constexpr std::size_t kIdleSelectorTableOffset = 0xC052U;
+    constexpr std::size_t kItemActionSelectorTableOffset = 0xC042U;
     constexpr std::size_t kHurtSelectorTableOffset = 0xC072U;
     constexpr std::size_t kSpellSelectorTableOffset = 0xC082U;
     constexpr std::size_t kEntrySelectorTableOffset = 0xC0B2U;
@@ -4215,6 +4237,18 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         << "sprite_stem\tentity_kind\tframe_count\tframe_increment"
            "\tframe_threshold\taudio_event\n";
     std::map<std::string, std::array<std::uint16_t, 3>> action_profile_facts;
+    std::ofstream item_action_profile_table(
+        root / "field/entities/actor-item-action-profiles.tsv",
+        std::ios::binary);
+    if (!item_action_profile_table) {
+        throw std::runtime_error(
+            "cannot create field actor item-action profile table");
+    }
+    item_action_profile_table
+        << "sprite_stem\tentity_kind\tframe_count\tframe_increment"
+           "\tframe_threshold\n";
+    std::map<std::string, std::array<std::uint16_t, 3>>
+        item_action_profile_facts;
     std::ofstream reaction_profile_table(
         root / "field/entities/actor-reaction-profiles.tsv",
         std::ios::binary);
@@ -4375,6 +4409,91 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     rom, 0x62ACU +
                              static_cast<std::size_t>(kind_source.entity_kind) *
                                  4U));
+
+            // ROM 0xB39A selects one of the directional C042 item-action
+            // lists after the projectile service. Keep these separate from
+            // C0A2 target attacks: item actions use this pose family and its
+            // own frame cadence.
+            std::optional<std::array<std::uint16_t, 3>> item_action_facts;
+            for (std::size_t frame_direction = 0U;
+                 frame_direction < 8U; ++frame_direction) {
+                const auto item_action_selector = read_big_endian_word(
+                    rom, kItemActionSelectorTableOffset +
+                             frame_direction * 2U);
+                const auto item_action_list = static_cast<std::size_t>(
+                    read_big_endian_long(
+                        rom, kind_state_pointer + item_action_selector));
+                const auto item_action_marker =
+                    read_big_endian_word(rom, item_action_list);
+                const auto item_action_frame_count =
+                    static_cast<std::uint16_t>(
+                        item_action_marker & 0x7FFFU);
+                const auto item_action_increment =
+                    read_big_endian_word(rom, item_action_list + 2U);
+                if ((item_action_marker & 0x8000U) == 0U ||
+                    item_action_frame_count == 0U ||
+                    item_action_frame_count > 8U ||
+                    item_action_increment == 0U) {
+                    throw std::runtime_error(
+                        "dynamic actor C042 item-action list has an unsupported source layout");
+                }
+                const std::array<std::uint16_t, 3> profile_facts{
+                    kind_source.entity_kind, item_action_frame_count,
+                    item_action_increment};
+                if (item_action_facts.has_value() &&
+                    *item_action_facts != profile_facts) {
+                    throw std::runtime_error(
+                        "dynamic actor C042 item-action lists disagree by direction");
+                }
+                item_action_facts = profile_facts;
+                if (frame_direction == 0U) {
+                    const auto [profile, inserted] =
+                        item_action_profile_facts.emplace(
+                            kind_source.sprite_stem, profile_facts);
+                    if (!inserted && profile->second != profile_facts) {
+                        throw std::runtime_error(
+                            "dynamic actor C042 profiles disagree by sprite stem");
+                    }
+                    if (inserted) {
+                        item_action_profile_table
+                            << kind_source.sprite_stem << '\t'
+                            << kind_source.entity_kind << '\t'
+                            << item_action_frame_count << '\t'
+                            << item_action_increment << '\t' << 0x1000U
+                            << '\n';
+                    }
+                }
+                for (std::uint16_t frame_index = 0U;
+                     frame_index < item_action_frame_count; ++frame_index) {
+                    const auto frame =
+                        shadowrun::graphics::decode_genesis_field_entity_state_frame(
+                            rom, kind_source.entity_kind,
+                            kind_source.palette_line, item_action_selector,
+                            frame_index);
+                    write_catalog_asset(
+                        root, asset_stem + "-item-action-dir-" +
+                                  std::to_string(frame_direction) +
+                                  "-frame-" + std::to_string(frame_index) +
+                                  ".bmp",
+                        frame.image, "sprite",
+                        "0xB39A/0xC042/0x600E kind=" +
+                            std::to_string(kind_source.entity_kind) +
+                            " template=" +
+                            format_offset(kind_source.template_offset) +
+                            " descriptor=" +
+                            format_offset(static_cast<std::uint32_t>(
+                                frame.descriptor_offset)) +
+                            " selector=" +
+                            format_offset(item_action_selector) +
+                            " frame=" + std::to_string(frame_index) +
+                            " increment=" +
+                            std::to_string(item_action_increment) +
+                            " palette-line=" +
+                            std::to_string(kind_source.palette_line),
+                        true, manifest, written, missing, blank,
+                        frame.origin_x, frame.origin_y);
+                }
+            }
 
             // ROM 0xAFF2 selects the directional C072 list when a target's
             // physical meter remains nonzero. 0x600E uses the list's marker

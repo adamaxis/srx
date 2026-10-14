@@ -341,6 +341,18 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Resolve Scene 2's source sum-8 Weenr row, allow its Lua AI to approach the
+# runner, and observe the connected 0x1514E spawn, ammo, sound, and 0xB39A/C042
+# presentation in full-screen captures.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_npc_item_action_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-npc-item-action-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-npc-item-action-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_npc_item_action_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Force Scene 0's ROM sum-0 encounter list, place its source Hell Hound inside
 # the close-target band, and review the complete screen through phase 4 release.
 add_test(NAME shadowrun_ghidra_conversion_qt_field_hound_close_effect_qa

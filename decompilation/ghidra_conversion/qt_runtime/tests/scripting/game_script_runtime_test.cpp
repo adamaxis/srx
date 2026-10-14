@@ -2493,7 +2493,8 @@ int main() {
                                         const std::int16_t initial_delay,
                                         const std::optional<bool> projection,
                                         const ScriptActorActionLineClear& line,
-                                        const std::uint16_t distance)
+                                        const std::uint16_t distance,
+                                        const bool source_heading_available)
         -> SpellRefresh {
         SpellRefresh result;
         auto context = actor_context(
@@ -2501,6 +2502,13 @@ int main() {
             action_code, 0U, true);
         context.dynamic_world_encounter_actor = true;
         context.source_record_flags = 0x01U;
+        context.source_action_slot = 0U;
+        context.source_action_ammo = 10U;
+        context.source_action_counter = 0U;
+        // The Lua route policy opens +0xB0.4 for a close target; the host
+        // begins with the ROM record's clear flag and validates the decision.
+        context.source_behavior_flags = 0U;
+        context.source_animation_selector = 0U;
         context.entry_animation_frame_count = 1U;
         context.walk_animation_frame_count = 4U;
         context.initial_action_delay = initial_delay;
@@ -2515,7 +2523,10 @@ int main() {
         context.ai_target_candidates.push_back(ScriptActorTargetCandidate{
             "party.runner.0", 0x1234U, 0x0ABCU, 0x2000U, distance, 0x01U, 0U,
             0U, 0U, true, false, distance, distance, distance,
-            static_cast<std::uint16_t>(distance * 2U)});
+            static_cast<std::uint16_t>(distance * 2U), 0U});
+        if (source_heading_available) {
+            context.ai_target_candidates.back().source_record_heading = 0U;
+        }
         const auto failed = [&scripts, &result]() {
             std::cerr << scripts.failure() << '\n';
             return result;
@@ -2571,26 +2582,26 @@ int main() {
         };
     const auto item_spawn_request = drive_item_refresh(
         "eye5r_1_k07_item01", "item_spawn_request", 1U, 0, true,
-        item_line_true, 0x0C00U);
+        item_line_true, 0x0C00U, true);
     const bool item_spawn_line = item_line_called;
     item_line_called = false;
     const auto item_close_request = drive_item_refresh(
         "eye5r_1_k07_item01", "item_close_request", 1U, 0, true,
-        item_line_true, 0x0100U);
+        item_line_true, 0x0100U, true);
     const bool item_close_line = item_line_called;
     item_line_called = false;
     const auto frag_request = drive_item_refresh(
         "grenade_k07_item0d", "item_frag", 13U, 0, true, item_line_true,
-        0x0C00U);
+        0x0C00U, true);
     const bool frag_line = item_line_called;
     item_line_called = false;
     const auto concussion_request = drive_item_refresh(
         "grenade_k07_item0f", "item_concussion", 15U, 0, true, item_line_true,
-        0x0C00U);
+        0x0C00U, true);
     item_line_called = false;
     const auto medkit_request = drive_item_refresh(
         "kit_k07_item10", "item_medkit", 16U, 0, true, item_line_true,
-        0x0C00U);
+        0x0C00U, true);
     const bool medkit_line = item_line_called;
     bool item_waiting_line = false;
     const auto item_waiting = drive_item_refresh(
@@ -2599,7 +2610,7 @@ int main() {
             item_waiting_line = true;
             return true;
         },
-        0x0C00U);
+        0x0C00U, true);
     bool item_offscreen_line = false;
     const auto item_offscreen = drive_item_refresh(
         "eye5r_1_k07_item01", "item_offscreen", 1U, 0, false,
@@ -2607,18 +2618,22 @@ int main() {
             item_offscreen_line = true;
             return true;
         },
-        0x0C00U);
+        0x0C00U, true);
     const auto item_blocked_missing = drive_item_refresh(
         "eye5r_1_k07_item01", "item_blocked_missing", 1U, 0, true, {},
-        0x0C00U);
+        0x0C00U, true);
     const auto item_blocked_terrain = drive_item_refresh(
         "grenade_k07_item0d", "item_blocked_terrain", 13U, 0, true,
         [](const std::uint16_t, const std::uint16_t) { return false; },
-        0x0C00U);
+        0x0C00U, true);
+    const auto item_heading_unresolved = drive_item_refresh(
+        "eye5r_1_k07_item01", "item_heading_unresolved", 1U, 0, true,
+        item_line_true, 0x0100U, false);
     const auto item_gate_contract =
         item_request_ok(item_spawn_request, "item_gated", 1U) &&
         item_spawn_line &&
-        item_request_ok(item_close_request, "item_gated", 1U) &&
+        item_request_ok(item_close_request, "item_spawn_requested", 1U) &&
+        (item_close_request.refresh->source_behavior_flags & 0x10U) != 0U &&
         item_close_line &&
         item_request_ok(frag_request, "item_effect", 13U) && frag_line &&
         item_request_ok(concussion_request, "item_effect", 15U) &&
@@ -2640,11 +2655,167 @@ int main() {
         item_blocked_terrain.refresh.has_value() &&
         item_blocked_terrain.refresh->source_action_dispatch.has_value() &&
         *item_blocked_terrain.refresh->source_action_dispatch == "blocked" &&
+        item_heading_unresolved.refresh.has_value() &&
+        item_heading_unresolved.refresh->source_action_dispatch.has_value() &&
+        *item_heading_unresolved.refresh->source_action_dispatch ==
+            "item_target_heading_unresolved" &&
         !item_blocked_terrain.refresh->combat_meter_update.has_value() &&
         item_blocked_terrain.refresh->weapon_item_id == 13U &&
         item_blocked_terrain.refresh->animation_id != "action";
+    const auto drive_item_pose = [&scripts, &actor_context](
+                                     const std::string_view actor_id,
+                                     const ScriptActorItemSpawnResult result)
+        -> std::optional<ScriptActorBehaviorDecision> {
+        auto context = actor_context(
+            "eye5r_1_k07_item01", actor_id, 7U,
+            ScriptActorActionKind::item, 1U, 0U, true);
+        context.dynamic_world_encounter_actor = true;
+        context.source_record_flags = 0x01U;
+        context.source_action_slot = 0U;
+        context.source_behavior_flags = 0x10U;
+        context.source_action_ammo = 10U;
+        context.source_action_counter = 0U;
+        context.source_animation_selector = 0U;
+        context.entry_animation_frame_count = 1U;
+        context.walk_animation_frame_count = 4U;
+        context.item_action_frame_count = 1U;
+        context.item_action_increment = 0x0080U;
+        context.item_action_threshold = 0x1000U;
+        context.initial_action_delay = 0;
+        context.movement_allowed = true;
+        context.source_projection_active = true;
+        context.action_line_clear = [](const std::uint16_t,
+                                       const std::uint16_t) {
+            return true;
+        };
+        context.ai_random_bound =
+            [](const std::uint16_t bound) -> std::optional<std::uint16_t> {
+                return bound == 0U ? std::nullopt
+                                   : std::optional<std::uint16_t>{0U};
+            };
+        context.ai_target_candidates.push_back(ScriptActorTargetCandidate{
+            "party.runner.0", 0x1234U, 0x0ABCU, 0x2000U, 0x0100U,
+            0x01U, 0U, 0U, 0U, true, false, 0x0100U, 0x0100U, 0x0100U,
+            0x0100U, 0U});
+        context.ai_target_candidates.back().source_record_heading = 0U;
+        if (!scripts.actor_heartbeat(context).has_value()) {
+            std::cerr << "item pose initial spawn failed: " << scripts.failure() << '\n';
+            return std::nullopt;
+        }
+        context.spawn = false;
+        if (!scripts.actor_heartbeat(context).has_value()) {
+            std::cerr << "item pose entry behavior failed: " << scripts.failure() << '\n';
+            return std::nullopt;
+        }
+        context.phase = ScriptActorHeartbeatPhase::render;
+        for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
+            if (!scripts.actor_heartbeat(context).has_value()) {
+                std::cerr << "item pose entry render failed: " << scripts.failure() << '\n';
+                return std::nullopt;
+            }
+        }
+        context.phase = ScriptActorHeartbeatPhase::behavior;
+        bool request_seen = false;
+        std::string last_item_dispatch = "<none>";
+        std::string last_target = "<none>";
+        std::uint16_t last_selector = 0U;
+        std::uint8_t last_flags = 0U;
+        for (std::uint16_t pass = 0U; pass < 120U; ++pass) {
+            const auto decision = scripts.actor_heartbeat(context);
+            if (!decision.has_value()) {
+                std::cerr << "item pose behavior failed: " << scripts.failure() << '\n';
+                return std::nullopt;
+            }
+            last_item_dispatch = decision->source_action_dispatch.value_or("<none>");
+            last_target = decision->ai_target_id.value_or("<none>");
+            last_selector = decision->source_animation_selector;
+            last_flags = decision->source_behavior_flags;
+            if (decision->source_action_dispatch ==
+                std::optional<std::string>{"item_spawn_requested"}) {
+                request_seen = true;
+                break;
+            }
+        }
+        if (!request_seen) {
+            std::cerr << "item pose request missing: dispatch="
+                      << last_item_dispatch << " target=" << last_target
+                      << " selector=0x" << std::hex << last_selector
+                      << " flags=0x" << static_cast<unsigned>(last_flags)
+                      << std::dec << " ammo="
+                      << static_cast<unsigned>(context.source_action_ammo)
+                      << " distance=" << context.ai_target_candidates[0].distance
+                      << "\n";
+            return std::nullopt;
+        }
+
+        context.phase = ScriptActorHeartbeatPhase::render;
+        context.source_item_spawn_result = result;
+        auto decision = scripts.actor_heartbeat(context);
+        context.source_item_spawn_result.reset();
+        if (!decision.has_value()) {
+            std::cerr << "item pose result render failed: " << scripts.failure() << '\n';
+            return std::nullopt;
+        }
+        context.source_animation_selector =
+            decision->source_animation_selector;
+        context.source_behavior_flags = decision->source_behavior_flags;
+        if (result == ScriptActorItemSpawnResult::spawned) {
+            for (std::uint8_t frame = 0U; frame < 32U; ++frame) {
+                decision = scripts.actor_heartbeat(context);
+                if (!decision.has_value()) {
+                    std::cerr << "item pose animation render failed: " << scripts.failure() << '\n';
+                    return std::nullopt;
+                }
+                context.source_animation_selector =
+                    decision->source_animation_selector;
+                context.source_behavior_flags =
+                    decision->source_behavior_flags;
+            }
+        }
+        return decision;
+    };
+    const auto item_pose_spawned = drive_item_pose(
+        "item_pose_spawned", ScriptActorItemSpawnResult::spawned);
+    const auto item_pose_blocked = drive_item_pose(
+        "item_pose_blocked", ScriptActorItemSpawnResult::blocked);
+    const bool item_pose_contract = item_pose_spawned.has_value() &&
+        item_pose_spawned->animation_id == "weapon" &&
+        item_pose_spawned->animation_frame == 0U &&
+        item_pose_spawned->source_animation_selector == 0x8040U &&
+        item_pose_blocked.has_value() &&
+        item_pose_blocked->animation_id != "weapon" &&
+        item_pose_blocked->source_animation_selector <= 0x003CU;
     if (!expect(item_gate_contract,
-                "Lua item dispatch failed the 0x13FFE gates")) {
+                "Lua item dispatch failed the 0x13FFE source action gates") ||
+        !expect(item_pose_contract,
+                "Lua did not start a C042 pose only after the host spawned a projectile")) {
+        const auto describe_item = [](const SpellRefresh& value) {
+            return value.refresh.has_value() &&
+                           value.refresh->source_action_dispatch.has_value()
+                ? *value.refresh->source_action_dispatch
+                : std::string{"<none>"};
+        };
+        std::cerr << "item dispatches=" << describe_item(item_spawn_request)
+                  << ',' << describe_item(item_close_request) << ','
+                  << describe_item(frag_request) << ','
+                  << describe_item(concussion_request) << ','
+                  << describe_item(medkit_request) << ','
+                  << describe_item(item_waiting) << ','
+                  << describe_item(item_offscreen) << ','
+                  << describe_item(item_blocked_missing) << ','
+                  << describe_item(item_blocked_terrain)
+                  << " lines=" << item_spawn_line << item_close_line
+                  << frag_line << medkit_line << item_waiting_line
+                  << item_offscreen_line << '\n';
+        const auto describe_pose = [](const auto& value) {
+            return value.has_value()
+                ? value->animation_id + ":" +
+                      std::to_string(value->animation_frame) + ":" +
+                      std::to_string(value->source_animation_selector)
+                : std::string{"<none>"};
+        };
+        std::cerr << "item poses=" << describe_pose(item_pose_spawned)
+                  << ',' << describe_pose(item_pose_blocked) << '\n';
         std::cerr << scripts.failure() << '\n';
         return 31;
     }
@@ -2911,6 +3082,7 @@ int main() {
             "party.runner.0", 0x1234U, 0x0ABCU, 0x2000U, distance, 0x01U,
             0U, 0U, 0U, true, false, distance, distance, distance,
             static_cast<std::uint16_t>(distance * 2U)};
+        target.source_record_heading = 0U;
         if (row.decision == CatalogDecision::unarmed) {
             target.source_record_slot = 0U;
             target.combatant = catalog_defender;

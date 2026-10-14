@@ -348,6 +348,11 @@ struct ScriptFieldEncounterActor {
     std::uint16_t entity_kind = 0;
     ScriptActorActionKind action_kind = ScriptActorActionKind::none;
     std::uint8_t action_code = 0;
+    // ROM 0x44BC copies template +0x08/+0x06/+0x07 into the live action
+    // slot, remaining item uses, and action counter at +0x56/+0x4E/+0x4F.
+    std::uint8_t source_action_slot = 0;
+    std::uint8_t source_action_ammo = 0;
+    std::uint8_t source_action_counter = 0;
     std::uint8_t palette_line = 0;
     std::string sprite_stem;
     std::uint32_t tagged_template = 0;
@@ -382,6 +387,11 @@ struct ScriptFieldEncounterOutcome {
 enum class ScriptActorHeartbeatPhase : std::uint8_t {
     behavior,
     render,
+};
+
+enum class ScriptActorItemSpawnResult : std::uint8_t {
+    spawned,
+    blocked,
 };
 
 enum class ScriptActorAnimationMode : std::uint8_t {
@@ -541,6 +551,10 @@ struct ScriptActorTargetCandidate {
     std::optional<std::uint8_t> source_record_slot;
     std::uint8_t descriptor_class = 0;
     std::optional<ScriptCombatantFacts> combatant;
+    // ROM 0x141E8 reads the linked record's +0x2E heading before jumping to
+    // 0xB39A. `heading` above is the relative bearing used by route policy;
+    // keep the linked record's facing separate for C042 pose selection.
+    std::optional<std::uint16_t> source_record_heading;
 };
 
 using ScriptActorRandomBound =
@@ -608,6 +622,13 @@ struct ScriptActorBehaviorContext {
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t source_behavior_flags = 0;
     std::uint8_t source_spawn_state_flags = 0;
+    std::uint8_t source_action_slot = 0;
+    std::uint8_t source_action_ammo = 0;
+    std::uint8_t source_action_counter = 0;
+    // Live +0x16 selector. C042 is the directional item-action pose family;
+    // C052/C062 are the idle and movement families.
+    std::uint16_t source_animation_selector = 0;
+    std::optional<ScriptActorItemSpawnResult> source_item_spawn_result;
     // ROM 0x13D84 indexes the world-actor route-distance table with live
     // record +0x4D (the typed combatant posture fact).
     std::optional<std::uint8_t> source_actor_posture;
@@ -622,6 +643,10 @@ struct ScriptActorBehaviorContext {
     std::uint16_t action_animation_increment = 0;
     std::uint16_t action_animation_threshold = 0;
     std::optional<std::uint16_t> action_animation_audio_event;
+    // Directional C042 item-action frames extracted from the actor state list.
+    std::uint8_t item_action_frame_count = 0;
+    std::uint16_t item_action_increment = 0;
+    std::uint16_t item_action_threshold = 0;
     // Directional C072/C0B2 hit-reaction facts extracted from each actor
     // template. Lua owns the reaction timer and finite animation state.
     std::uint8_t hurt_animation_frame_count = 0;
@@ -683,6 +708,8 @@ struct ScriptActorBehaviorDecision {
     std::uint8_t direction = 0;
     std::uint8_t animation_frame = 0;
     std::uint8_t source_record_flags = 0;
+    std::uint8_t source_behavior_flags = 0;
+    std::uint16_t source_animation_selector = 0;
     std::optional<std::uint16_t> animation_selector;
     bool combat_action_requested = false;
     bool transition_started = false;
