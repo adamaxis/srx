@@ -937,6 +937,18 @@ public:
         field_entity_.projection.world_y = y;
         field_entity_.visible = true;
     }
+    void set_field_camera_world_position_for_dump(
+        std::uint16_t x, std::uint16_t y) noexcept {
+        state_.field_scene_buffers.camera_x = x;
+        state_.field_scene_buffers.camera_y = y;
+        field_camera_follow_.camera_x = x;
+        field_camera_follow_.camera_y = y;
+        field_camera_follow_.aligned_x =
+            static_cast<std::uint16_t>(x & 0xFF80U);
+        field_camera_follow_.aligned_y =
+            static_cast<std::uint16_t>(y & 0xFF80U);
+        field_camera_alignment_ready_ = true;
+    }
     bool set_default_actor_world_position_for_dump(
         std::size_t active_actor_index, std::uint16_t x,
         std::uint16_t y) noexcept;

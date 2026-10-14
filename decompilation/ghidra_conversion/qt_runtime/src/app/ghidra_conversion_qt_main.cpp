@@ -14781,6 +14781,494 @@ int run_scene19_table_collision_qa(
     return 0;
 }
 
+int run_low_code_object_bounds_census_qa(
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    enum class Side { west, east, north, south };
+    struct CollisionRoute {
+        std::string_view name;
+        std::uint16_t scene;
+        std::uint16_t start_x;
+        std::uint16_t start_y;
+        std::uint8_t input_nibble;
+        std::size_t region_record_index;
+        std::uint32_t region_record_address;
+        TerrainCollisionRectangle region;
+        std::size_t lookup_record_index;
+        std::uint32_t lookup_record_address;
+        TerrainCollisionRectangle lookup;
+        bool expect_blocked;
+        Side side;
+    };
+    constexpr std::array<CollisionRoute, 8U> kRoutes{{
+        {"scene-02-record-1", 2U, 528U * 16U, 1288U * 16U, 0x08U,
+         1U, 0x172DB4U, {592U, 607U, 1248U, 1311U, 1U},
+         1U, 0x172DB4U, {592U, 607U, 1248U, 1311U, 1U}, true,
+         Side::west},
+        {"scene-02-record-2", 2U, 1472U * 16U, 848U * 16U, 0x04U,
+         2U, 0x172DBEU, {1376U, 1407U, 832U, 847U, 2U},
+         2U, 0x172DBEU, {1376U, 1407U, 832U, 847U, 2U}, true,
+         Side::east},
+        {"scene-02-record-3", 2U, 944U * 16U, 960U * 16U, 0x01U,
+         3U, 0x172DC8U, {928U, 959U, 928U, 943U, 3U},
+         3U, 0x172DC8U, {928U, 959U, 928U, 943U, 3U}, true,
+         Side::south},
+        {"scene-07-record-1", 7U, 832U * 16U, 1152U * 16U, 0x08U,
+         1U, 0x1B3D90U, {896U, 927U, 1136U, 1151U, 1U},
+         1U, 0x1B3D90U, {896U, 927U, 1136U, 1151U, 1U}, true,
+         Side::west},
+        {"scene-07-record-2", 7U, 1216U * 16U, 1504U * 16U, 0x08U,
+         2U, 0x1B3D9AU, {1280U, 1311U, 1488U, 1503U, 2U},
+         2U, 0x1B3D9AU, {1280U, 1311U, 1488U, 1503U, 2U}, true,
+         Side::west},
+        {"scene-08-record-1", 8U, 1216U * 16U, 1056U * 16U, 0x08U,
+         1U, 0x1B463EU, {1280U, 1311U, 1040U, 1055U, 1U},
+         1U, 0x1B463EU, {1280U, 1311U, 1040U, 1055U, 1U}, true,
+         Side::west},
+        {"scene-31-record-102-code-4", 31U, 128U * 16U, 280U * 16U, 0x08U,
+         102U, 0x1DB9F4U, {192U, 223U, 264U, 295U, 4U},
+         4U, 0x1DB620U, {640U, 671U, 1120U, 1247U, 0x7FU}, false,
+         Side::west},
+        {"scene-34-record-102-code-4", 34U, 128U * 16U, 280U * 16U, 0x08U,
+         102U, 0x1DB9F4U, {192U, 223U, 264U, 295U, 4U},
+         4U, 0x1DB620U, {640U, 671U, 1120U, 1247U, 0x7FU}, false,
+         Side::west},
+    }};
+    struct ExpectedContact {
+        SceneRunnerPosition before;
+        SceneRunnerPosition candidate;
+        SceneRunnerPosition after;
+        std::array<std::uint8_t, 4U> stop_corners;
+        bool has_lookup_probe = false;
+        SceneRunnerPosition lookup_candidate;
+        std::array<std::uint8_t, 4U> lookup_corners{};
+    };
+    constexpr std::array<ExpectedContact, 8U> kExpectedContacts{{
+        {{9258U, 20608U}, {9288U, 20608U}, {9258U, 20608U},
+         {0U, 1U, 0U, 1U}},
+        {{22742U, 13448U}, {22712U, 13448U}, {22742U, 13448U},
+         {2U, 0U, 2U, 0U}},
+        {{15104U, 15240U}, {15104U, 15210U}, {15104U, 15240U},
+         {3U, 3U, 3U, 3U}},
+        {{14122U, 18282U}, {14152U, 18282U}, {14122U, 18282U},
+         {0U, 1U, 0U, 1U}},
+        {{20266U, 23914U}, {20296U, 23914U}, {20266U, 23914U},
+         {0U, 2U, 0U, 2U}},
+        {{20266U, 16746U}, {20296U, 16746U}, {20266U, 16746U},
+         {0U, 1U, 0U, 1U}},
+        {{3368U, 4330U}, {3398U, 4330U}, {3368U, 4330U},
+         {4U, 0x7FU, 4U, 0x7FU}, true, {2888U, 4330U},
+         {0U, 4U, 0U, 4U}},
+        {{3368U, 4330U}, {3398U, 4330U}, {3368U, 4330U},
+         {4U, 0x7FU, 4U, 0x7FU}, true, {2888U, 4330U},
+         {0U, 4U, 0U, 4U}},
+    }};
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Object-bounds census QA: could not clear prior output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Object-bounds census QA: could not create output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::ofstream census(output / "contacts.tsv", std::ios::trunc);
+    if (!census) {
+        std::cerr << "Object-bounds census QA: could not write contacts.tsv\n";
+        return 3;
+    }
+    census << "scene\tregion_record_index\tregion_record_address"
+              "\tterrain_code\tregion_left\tregion_right\tregion_top"
+              "\tregion_bottom\tlookup_record_index\tlookup_record_address"
+              "\tlookup_left\tlookup_right\tlookup_top\tlookup_bottom"
+              "\tinput_nibble\ttick\tstart_x_fixed\tstart_y_fixed"
+              "\tbefore_x_fixed\tbefore_y_fixed\tcandidate_x_fixed"
+              "\tcandidate_y_fixed\tafter_x_fixed\tafter_y_fixed"
+              "\tlookup_candidate_x_fixed\tlookup_candidate_y_fixed"
+              "\tlookup_result\tstop_record_index\tstop_record_address"
+              "\tcorner0\tcorner1\tcorner2\tcorner3\traw_terrain"
+              "\tcollision_result\tbehavior\trunner_active\trunner_visible"
+              "\tcamera_x_fixed\tcamera_y_fixed\trunner_screen_x"
+              "\trunner_screen_y\tlongplay_frame\n";
+
+    for (std::size_t route_index = 0U; route_index < kRoutes.size();
+         ++route_index) {
+        const auto& route = kRoutes[route_index];
+        const auto& expected = kExpectedContacts[route_index];
+        const auto route_output = output / std::string(route.name);
+        std::filesystem::create_directories(route_output, output_error);
+        if (output_error) {
+            std::cerr << "Object-bounds census QA: route directory could not "
+                         "be created: " << output_error.message() << '\n';
+            return 3;
+        }
+        std::vector<std::string> source_boundaries;
+        std::vector<std::uint16_t> audio_events;
+        FieldSceneRuntime field_scene(
+            [&source_boundaries](const std::string_view boundary) {
+                source_boundaries.emplace_back(boundary);
+            },
+            [&audio_events](const std::uint16_t event) {
+                audio_events.push_back(event);
+            });
+        field_scene.set_source_random_seed_for_dump(0x4000U);
+        field_scene.set_field_world_frame_counter_for_dump(0x0200U);
+        if (!field_scene.bootstrap_for_scene_dump(startup_state,
+                                                  route.scene)) {
+            std::cerr << "Object-bounds census QA: scene " << route.scene
+                      << " bootstrap failed: " << field_scene.failure()
+                      << '\n';
+            return 3;
+        }
+        const auto& metadata =
+            field_scene.state().field_scene_buffers.source_metadata;
+        const auto& records = metadata.terrain_collision_rectangles;
+        const auto matches = [](const TerrainCollisionRectangle& actual,
+                                const TerrainCollisionRectangle& expected) {
+            return actual.left == expected.left &&
+                   actual.right == expected.right &&
+                   actual.top == expected.top &&
+                   actual.bottom == expected.bottom &&
+                   actual.value == expected.value;
+        };
+        if (field_scene.field_scene_reference_for_dump() != route.scene ||
+            records.size() <= route.region_record_index ||
+            records.size() <= route.lookup_record_index ||
+            !matches(records[route.region_record_index], route.region) ||
+            !matches(records[route.lookup_record_index], route.lookup)) {
+            std::cerr << "Object-bounds census QA: ROM collision records do "
+                         "not match Scene " << route.scene << " route "
+                      << route.name << '\n';
+            return 3;
+        }
+        constexpr TerrainCollisionRectangle kScene31AdjacentBlocker{
+            224U, 255U, 256U, 351U, 0x7FU};
+        if (!route.expect_blocked &&
+            (route.scene != 31U && route.scene != 34U)) {
+            std::cerr << "Object-bounds census QA: clear lookup route is "
+                         "not a profiled shared scene\n";
+            return 3;
+        }
+        if (!route.expect_blocked &&
+            (records.size() <= 20U ||
+             !matches(records[20U], kScene31AdjacentBlocker))) {
+            std::cerr << "Object-bounds census QA: adjacent ROM 0x7F "
+                         "record does not match Scene " << route.scene
+                      << '\n';
+            return 3;
+        }
+        const auto center_view_on = [&field_scene](
+                                        const SceneRunnerPosition position) {
+            field_scene.set_field_entity_world_position_for_dump(
+                position.x, position.y);
+            field_scene.set_field_camera_world_position_for_dump(
+                position.x > 160U * 16U
+                    ? static_cast<std::uint16_t>(position.x - 160U * 16U)
+                    : 0U,
+                position.y > 112U * 16U
+                    ? static_cast<std::uint16_t>(position.y - 112U * 16U)
+                    : 0U);
+        };
+        center_view_on(SceneRunnerPosition{route.start_x, route.start_y});
+        field_scene.set_terrain_probe_trace_enabled_for_dump(true);
+        const auto render = [&field_scene] {
+            QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+            image.fill(Qt::black);
+            QPainter painter(&image);
+            field_scene.paint(painter);
+            painter.end();
+            return image;
+        };
+        const auto save = [&](const std::filesystem::path& path,
+                              const QImage& image) {
+            return field_scene.field_entity_active_for_dump() &&
+                   field_scene.field_entity_visible_for_dump() &&
+                   image.size() == QSize(kSceneWidth, kSceneHeight) &&
+                   field_hud_chrome_survives(image, asset_root) &&
+                   image.save(QString::fromStdWString(path.wstring()));
+        };
+        const auto start = field_scene.field_entity_world_position();
+        if (!save(route_output / "entry.bmp", render())) {
+            field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+            std::cerr << "Object-bounds census QA: entry frame failed for "
+                      << route.name << '\n';
+            return 3;
+        }
+        std::ofstream trace(route_output / "terrain-probes.tsv",
+                            std::ios::trunc);
+        if (!trace) {
+            field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+            std::cerr << "Object-bounds census QA: trace could not be written "
+                      << "for " << route.name << '\n';
+            return 3;
+        }
+        trace << "tick\tbefore_x_fixed\tbefore_y_fixed\tafter_x_fixed"
+                "\tafter_y_fixed\tcandidate_x_fixed\tcandidate_y_fixed"
+                "\tnormalized_x\tnormalized_y\tcorner0_x\tcorner0_y"
+                "\tcorner0_byte\tcorner1_x\tcorner1_y\tcorner1_byte"
+                "\tcorner2_x\tcorner2_y\tcorner2_byte\tcorner3_x"
+                "\tcorner3_y\tcorner3_byte\traw_terrain"
+                "\tcollision_result\toutside_bounds\n";
+        field_scene.set_controller_nibble(route.input_nibble);
+        bool behavior_observed = false;
+        bool lookup_clear_observed = false;
+        bool entered_source_region = false;
+        bool source_stop_observed = false;
+        bool retained_approach_side = false;
+        std::uint16_t contact_tick = 0U;
+        SceneRunnerPosition before_contact{};
+        SceneRunnerPosition after_contact{};
+        FieldTerrainProbeTrace contact_probe{};
+        FieldTerrainProbeTrace lookup_probe{};
+        for (std::uint16_t tick = 1U; tick <= 120U; ++tick) {
+            const auto before = field_scene.field_entity_world_position();
+            center_view_on(before);
+            const auto before_frame = render();
+            field_scene.advance_frame();
+            const auto after = field_scene.field_entity_world_position();
+            center_view_on(after);
+            const auto after_frame = render();
+            for (const auto& probe : field_scene.terrain_probe_trace_for_dump()) {
+                trace << tick << '\t' << before.x << '\t' << before.y << '\t'
+                      << after.x << '\t' << after.y << '\t'
+                      << probe.candidate_x_fixed << '\t'
+                      << probe.candidate_y_fixed << '\t'
+                      << probe.normalized_x << '\t' << probe.normalized_y;
+                for (std::size_t corner = 0U;
+                     corner < probe.terrain_bytes.size(); ++corner) {
+                    trace << '\t' << probe.corner_x[corner] << '\t'
+                          << probe.corner_y[corner] << "\t0x" << std::hex
+                          << static_cast<unsigned>(probe.terrain_bytes[corner])
+                          << std::dec;
+                }
+                trace << "\t0x" << std::hex
+                      << static_cast<unsigned>(static_cast<std::uint8_t>(
+                             probe.raw_terrain_code))
+                      << "\t0x" << static_cast<unsigned>(
+                             static_cast<std::uint16_t>(probe.collision_result))
+                      << std::dec << '\t' << probe.outside_bounds << '\n';
+                if (probe.outside_bounds) {
+                    continue;
+                }
+                if (route.expect_blocked &&
+                    probe.raw_terrain_code == route.region.value &&
+                    probe.collision_result == 0x7F) {
+                    behavior_observed = true;
+                    contact_tick = tick;
+                    before_contact = before;
+                    after_contact = after;
+                    contact_probe = probe;
+                    const auto after_x = static_cast<std::uint16_t>(
+                        after.x >> 4U);
+                    const auto after_y = static_cast<std::uint16_t>(
+                        after.y >> 4U);
+                    switch (route.side) {
+                    case Side::west:
+                        retained_approach_side = after_x < route.region.left;
+                        break;
+                    case Side::east:
+                        retained_approach_side = after_x > route.region.right;
+                        break;
+                    case Side::north:
+                        retained_approach_side = after_y < route.region.top;
+                        break;
+                    case Side::south:
+                        retained_approach_side = after_y > route.region.bottom;
+                        break;
+                    }
+                    if (!save(route_output / "contact-before.bmp",
+                              before_frame) ||
+                        !save(route_output / "contact-after.bmp",
+                              after_frame)) {
+                        field_scene.set_controller_nibble(0U);
+                        field_scene.set_terrain_probe_trace_enabled_for_dump(
+                            false);
+                        std::cerr << "Object-bounds census QA: contact frame "
+                                     "failed for " << route.name << '\n';
+                        return 3;
+                    }
+                    break;
+                }
+                if (!route.expect_blocked &&
+                    probe.raw_terrain_code == route.region.value &&
+                    probe.collision_result == 0) {
+                    behavior_observed = true;
+                    if (!lookup_clear_observed) {
+                        lookup_clear_observed = true;
+                        lookup_probe = probe;
+                        if (!save(route_output / "terrain-code-clear.bmp",
+                                  after_frame)) {
+                            field_scene.set_controller_nibble(0U);
+                            field_scene.set_terrain_probe_trace_enabled_for_dump(
+                                false);
+                            std::cerr
+                                << "Object-bounds census QA: clear-code frame "
+                                   "failed for " << route.name << '\n';
+                            return 3;
+                        }
+                    }
+                    entered_source_region = entered_source_region ||
+                        static_cast<std::uint16_t>(after.x >> 4U) >=
+                            route.region.left;
+                }
+                if (!route.expect_blocked && !probe.outside_bounds &&
+                    probe.raw_terrain_code == 0x7F &&
+                    probe.collision_result == 0x7F) {
+                    source_stop_observed = true;
+                    contact_tick = tick;
+                    before_contact = before;
+                    after_contact = after;
+                    contact_probe = probe;
+                    if (!save(route_output / "contact-before.bmp",
+                              before_frame) ||
+                        !save(route_output / "contact-after.bmp",
+                              after_frame)) {
+                        field_scene.set_controller_nibble(0U);
+                        field_scene.set_terrain_probe_trace_enabled_for_dump(
+                            false);
+                        std::cerr << "Object-bounds census QA: neighboring "
+                                     "blocker frame failed for " << route.name
+                                  << '\n';
+                        return 3;
+                    }
+                }
+            }
+            if ((route.expect_blocked && behavior_observed) ||
+                (!route.expect_blocked && source_stop_observed)) {
+                break;
+            }
+        }
+        field_scene.set_controller_nibble(0U);
+        field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+        center_view_on(field_scene.field_entity_world_position());
+        const auto actual = render();
+        if (actual.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !field_hud_chrome_survives(actual, asset_root) ||
+            !actual.save(QString::fromStdWString(
+                (route_output / "actual.bmp").wstring()))) {
+            std::cerr << "Object-bounds census QA: settled frame failed for "
+                      << route.name << '\n';
+            return 3;
+        }
+        const auto position_matches = [](const SceneRunnerPosition actual,
+                                         const SceneRunnerPosition expected) {
+            return actual.x == expected.x && actual.y == expected.y;
+        };
+        const bool stop_evidence_matches =
+            position_matches(before_contact, expected.before) &&
+            position_matches(
+                SceneRunnerPosition{contact_probe.candidate_x_fixed,
+                                    contact_probe.candidate_y_fixed},
+                expected.candidate) &&
+            position_matches(after_contact, expected.after) &&
+            contact_probe.terrain_bytes == expected.stop_corners;
+        const bool lookup_evidence_matches = !expected.has_lookup_probe ||
+            (position_matches(
+                 SceneRunnerPosition{lookup_probe.candidate_x_fixed,
+                                     lookup_probe.candidate_y_fixed},
+                 expected.lookup_candidate) &&
+             lookup_probe.terrain_bytes == expected.lookup_corners);
+        const bool result_matches = route.expect_blocked
+            ? behavior_observed && retained_approach_side &&
+                  contact_probe.collision_result == 0x7F &&
+                  stop_evidence_matches
+            : lookup_clear_observed && entered_source_region &&
+                  source_stop_observed && lookup_probe.collision_result == 0 &&
+                  lookup_probe.raw_terrain_code == route.region.value &&
+                  contact_probe.raw_terrain_code == 0x7F &&
+                  contact_probe.collision_result == 0x7F &&
+                  static_cast<std::uint16_t>(after_contact.x >> 4U) >=
+                      route.region.left && stop_evidence_matches &&
+                  lookup_evidence_matches;
+        if (!result_matches || field_scene.field_scene_reference_for_dump() !=
+                route.scene || !audio_events.empty()) {
+            std::cerr << "Object-bounds census QA: host result differs from "
+                         "ROM for " << route.name << " (observed="
+                      << behavior_observed << ", retained_side="
+                      << retained_approach_side << ", crossed="
+                      << entered_source_region << ", lookup_clear="
+                      << lookup_clear_observed << ", source_stop="
+                      << source_stop_observed << ", expected_blocked="
+                      << route.expect_blocked << ", before="
+                      << before_contact.x << ',' << before_contact.y
+                      << ", after=" << after_contact.x << ','
+                      << after_contact.y << ", candidate="
+                      << contact_probe.candidate_x_fixed << ','
+                      << contact_probe.candidate_y_fixed
+                      << ", stop_evidence_matches="
+                      << stop_evidence_matches
+                      << ", lookup_evidence_matches="
+                      << lookup_evidence_matches << ")\n";
+            return 3;
+        }
+        census << route.scene << '\t' << route.region_record_index << "\t0x"
+               << std::hex << route.region_record_address << std::dec << '\t'
+               << static_cast<unsigned>(route.region.value) << '\t'
+               << route.region.left << '\t' << route.region.right << '\t'
+               << route.region.top << '\t' << route.region.bottom << '\t'
+               << route.lookup_record_index << "\t0x" << std::hex
+               << route.lookup_record_address << std::dec << '\t'
+               << route.lookup.left << '\t' << route.lookup.right << '\t'
+               << route.lookup.top << '\t' << route.lookup.bottom << "\t0x"
+               << std::hex << static_cast<unsigned>(route.input_nibble)
+               << std::dec << '\t' << contact_tick << '\t' << start.x << '\t'
+               << start.y << '\t' << before_contact.x << '\t'
+               << before_contact.y << '\t'
+               << contact_probe.candidate_x_fixed << '\t'
+               << contact_probe.candidate_y_fixed << '\t' << after_contact.x
+               << '\t' << after_contact.y << '\t'
+               << (route.expect_blocked
+                       ? contact_probe.candidate_x_fixed
+                       : lookup_probe.candidate_x_fixed)
+               << '\t'
+               << (route.expect_blocked
+                       ? contact_probe.candidate_y_fixed
+                       : lookup_probe.candidate_y_fixed)
+               << "\t0x" << std::hex << static_cast<unsigned>(
+                      route.expect_blocked
+                          ? static_cast<std::uint16_t>(
+                                contact_probe.collision_result)
+                          : static_cast<std::uint16_t>(
+                                lookup_probe.collision_result))
+               << std::dec << '\t'
+               << (route.expect_blocked ? route.region_record_index : 20U)
+               << "\t0x" << std::hex
+               << (route.expect_blocked
+                       ? route.region_record_address
+                       : 0x1DB6C0U)
+               << std::dec;
+        for (const auto value : contact_probe.terrain_bytes) {
+            census << "\t0x" << std::hex << static_cast<unsigned>(value)
+                   << std::dec;
+        }
+        census << "\t0x" << std::hex
+               << static_cast<unsigned>(static_cast<std::uint8_t>(
+                      contact_probe.raw_terrain_code))
+               << "\t0x" << static_cast<unsigned>(
+                      static_cast<std::uint16_t>(contact_probe.collision_result))
+               << std::dec << '\t'
+               << (route.expect_blocked
+                       ? "blocked-at-object-lookup"
+                       : "code-clear-entry-then-neighboring-0x7F")
+               << '\t' << field_scene.field_entity_active_for_dump() << '\t'
+               << field_scene.field_entity_visible_for_dump() << '\t'
+               << field_scene.field_camera_follow_for_dump().camera_x << '\t'
+               << field_scene.field_camera_follow_for_dump().camera_y << '\t'
+               << field_scene.field_entity_screen_x_for_dump() << '\t'
+               << field_scene.field_entity_screen_y_for_dump()
+               << "\tno exact longplay contact\n";
+    }
+    std::cout << "low_code_object_bounds_census_qa=passed routes="
+              << kRoutes.size() << " blocked=6 lookup_clear=2 artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 int run_field_elevator_physical_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -21126,6 +21614,12 @@ int main(int argc, char** argv) {
                 if (run_scene19_table_collision_qa(
                         smoke_state, asset_root,
                         *field_movement_qa_path / "scene19-table-contact") !=
+                    0) {
+                    return 3;
+                }
+                if (run_low_code_object_bounds_census_qa(
+                        smoke_state, asset_root,
+                        *field_movement_qa_path / "object-bounds-census") !=
                     0) {
                     return 3;
                 }

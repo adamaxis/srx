@@ -270,3 +270,34 @@ L1 is therefore closed as a source-confirmed no-fix review, not as a resolved
 behavior defect. L5a is the reviewed longplay-backed screen. L2-L4, L5b-L5k,
 L6, and L8 remain queued as stated above; no broader defect-closure claim is
 made.
+
+### L2 visible low-code object-bounds census — source-matched
+
+The eight visually recognizable collision regions previously identified in
+Scenes 2, 7, 8, 31, and 34 now run through the existing field movement QA. The
+primary ROM bytes are recorded in
+`decompilation/docs/visual-audits/low-code-object-bounds-census.md`. Six
+low-code rows reject the expected four-corner candidate and retain the source
+position. Scene 31/34 record 102 (`0x04`) resolves to record 4 at `0x1DB620`,
+which does not contain the workstation; movement enters that region, then
+stops at neighboring `0x7F` record 20 at `0x1DB6C0`. This follows the source
+record lookup, so no host collision or map rectangle was changed.
+
+Release and Debug movement CTest now assert exact candidate and committed
+coordinates, all four terrain bytes, and the separate code-4 lookup / adjacent
+boundary result. The first Scene 2 record-3 approach started inside a
+different `0x7F` record; the first Scene 31/34 expectation tried to cross a
+neighboring wall. Both QA routes were corrected from ROM evidence. The eight
+routes' full-screen entry, before-contact, after-contact, and settled outputs
+are under each build's `qt_runtime/field-movement-qa/object-bounds-census/`
+folder. Each `actual.bmp` equals its `contact-after.bmp`. The full visual
+review found no host/source collision mismatch. No exact longplay contact
+frame exists for these routes; host screenshots do not prove Genesis pixels.
+
+L2 is closed as a source-matched no-fix census of the identified visible
+candidates, not as a general reclassification of the 5,163 terrain records.
+The handoff's review objective is complete: L1 received its source-backed
+table contact review, and L5a received one longplay-backed menu review. The
+L1 stop rule applies because its table collision matches the ROM, so no
+behavioral failing-then-passing change was warranted. Remaining queue items
+are L3-L4, L5b-L5k, L6, and L8.
