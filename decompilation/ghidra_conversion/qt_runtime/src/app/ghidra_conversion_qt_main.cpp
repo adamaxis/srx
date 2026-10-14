@@ -7952,7 +7952,8 @@ int run_field_random_encounter_spawn_qa(
     }
 
     // Recreate the source encounter for the zero-meter branch. Actor 0 walks
-    // into range. The one-point meter is the lethal fixture; the shot is not.
+    // into range at its ROM meter. Keep firing the aimed Warhawk until that
+    // meter reaches zero.
     if (!field_scene.bootstrap_for_scene_dump(hit_startup_state, 2U) ||
         field_scene.field_scene_reference_for_dump() != 2U) {
         std::cerr << "field random-encounter QA: could not reset Scene 2 for the zero-meter hit path\n";
@@ -8009,53 +8010,68 @@ int run_field_random_encounter_spawn_qa(
         return image.save(QString::fromStdWString(
             (down_output / std::string(filename)).wstring()));
     };
-    if (!wait_for_actor_zero_in_range() || !select_actor_zero() ||
-        !field_scene.set_default_actor_physical_meter_for_dump(0U, 1U)) {
+    if (!wait_for_actor_zero_in_range() || !select_actor_zero()) {
         report_actor_zero_range(
-            "field random-encounter QA: actor 0 did not walk into range for the one-meter shot");
+            "field random-encounter QA: actor 0 did not walk into range for the downing shots");
         return 3;
     }
+    down_runner.ammo_rounds = 12U;
     const auto alive_before_down_hit = render();
     if (field_scene.visible_default_actor_count_for_dump() == 0U ||
         !save_down_frame("alive-before-down-hit.bmp",
                          alive_before_down_hit) ||
         !field_hud_chrome_survives(alive_before_down_hit, asset_root)) {
-        std::cerr << "field random-encounter QA: full-screen one-meter actor baseline was not clean or visible\n";
+        std::cerr << "field random-encounter QA: full-screen actor baseline was not clean or visible\n";
         return 3;
     }
 
     const auto down_audio_start = field_audio_events.size();
     const auto down_boundary_start = source_boundaries.size();
-    field_scene.set_controller_port_byte(0x40U);
-    field_scene.advance_frame();
-    field_scene.set_controller_port_byte(0U);
-    if (down_runner.ammo_rounds != 5U ||
-        field_scene.field_weapon_primary_count_for_dump() != 1U ||
-        !field_scene.field_weapon_primary_position_for_dump().has_value()) {
-        std::cerr << "field random-encounter QA: could not fire the live Warhawk at the one-meter encounter actor\n";
-        return 3;
-    }
-
+    auto down_boundary_cursor = down_boundary_start;
     bool live_zero_meter_hit_resolved = false;
     std::string live_zero_meter_hit_boundary;
-    for (std::uint8_t frame = 0U; frame < 16U; ++frame) {
+    std::uint8_t down_shots_fired = 0U;
+    for (std::uint8_t shot = 0U; shot < 12U; ++shot) {
+        const auto meter_before_shot =
+            field_scene.default_actor_physical_meter_for_dump(0U);
+        if (meter_before_shot.has_value() && *meter_before_shot == 0U) {
+            break;
+        }
+        const auto ammo_before_shot = down_runner.ammo_rounds;
+        bool shot_fired = false;
+        for (std::uint8_t frame = 0U; frame < 180U && !shot_fired; ++frame) {
+            field_scene.set_controller_port_byte(0x40U);
+            field_scene.advance_frame();
+            if (down_runner.ammo_rounds < ammo_before_shot) {
+                shot_fired = true;
+            }
+        }
         field_scene.set_controller_port_byte(0U);
-        field_scene.advance_frame();
-        const auto hit = std::find_if(
-            source_boundaries.begin() + static_cast<std::ptrdiff_t>(
-                down_boundary_start),
-            source_boundaries.end(), [](const auto& boundary) {
-                return boundary.rfind(
-                           "field.combat.weapon_hit_resolved:", 0U) == 0U;
-            });
-        if (hit != source_boundaries.end()) {
+        if (!shot_fired) {
+            break;
+        }
+        ++down_shots_fired;
+        for (std::uint8_t frame = 0U; frame < 24U; ++frame) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+            const auto hit = std::find_if(
+                source_boundaries.begin() + static_cast<std::ptrdiff_t>(
+                    down_boundary_cursor),
+                source_boundaries.end(), [](const auto& boundary) {
+                    return boundary.rfind(
+                               "field.combat.weapon_hit_resolved:", 0U) ==
+                           0U;
+                });
+            if (hit == source_boundaries.end()) {
+                continue;
+            }
+            down_boundary_cursor = static_cast<std::size_t>(
+                std::distance(source_boundaries.begin(), hit) + 1);
             live_zero_meter_hit_boundary = *hit;
             live_zero_meter_hit_resolved =
-                live_zero_meter_hit_boundary.find(
-                    "field_scene_2_encounter_") != std::string::npos;
-            if (live_zero_meter_hit_resolved) {
-                break;
-            }
+                hit->find("field_scene_2_encounter_") != std::string::npos &&
+                hit->find("_actor_0") != std::string::npos;
+            break;
         }
     }
     const auto down_animation =
@@ -8094,8 +8110,11 @@ int run_field_random_encounter_spawn_qa(
         }
         std::cerr << " animation=" << down_animation.value_or("<none>")
                   << " actors=" << down_actor_count_after_hit << '/'
-                  << down_actor_spawned << " B05E_0x2E_count="
-                  << down_audio_count << '\n';
+                  << down_actor_spawned << " shots="
+                  << static_cast<unsigned>(down_shots_fired)
+                  << " ammo=" << static_cast<unsigned>(down_runner.ammo_rounds)
+                  << " B05E_0x2E_count=" << down_audio_count
+                  << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
 

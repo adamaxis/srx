@@ -2070,6 +2070,14 @@ function ActorAI.heartbeat(context)
                             if not state.movement_active then
                                 state.movement_route_distance = nil
                             end
+                        elseif state.damage_reaction_active then
+                            -- 0xB07E owns the service through the B03E cue.
+                            -- Starting 0xB1DC on that frame replaces C072
+                            -- and publishes the cue under the action pose.
+                            if state.hurt_audio_emitted and
+                               state.animation_id ~= "down" then
+                                state.damage_reaction_active = false
+                            end
                         elseif not resolve_source_target_motion(
                             context, state, target) then
                             -- 0x141DE stores mode 2 when 0x14C7C does not

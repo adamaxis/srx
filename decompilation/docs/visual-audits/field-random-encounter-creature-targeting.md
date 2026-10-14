@@ -354,15 +354,15 @@ accepts it inside `0x200`. B selects that record, and the aimed projectile
 uses the live `0x15ABA` window. The actor is not moved onto the probe. The
 nonlethal path requires that collision, Lua weapon resolution, a changed world
 physical meter, and the next Lua behavior heartbeat selecting C072 before it
-saves its two directional hurt frames and the later B03E cue checkpoint. A
-second fresh encounter repeats the same walk and selection, then seeds a
-one-point physical meter and fires another live Warhawk. The zero-meter path
-requires the changed meter to reach zero, selects directional C0B2, requests
-B05E once, and remains an active record while B target cycling selects the
-other eligible encounter actor. The release encounter QA saves the 320x224
-hurt and down frames. The one-point meter seed is still a diagnostic fixture.
-The longplay does not yet provide a confidently matched Weenr-hit sequence,
-so these captures do not establish independent Genesis visual equivalence.
+saves its two directional hurt frames and the later B03E cue checkpoint.
+`0xB07E` keeps that pose until the cue; `0xB1DC` does not start on the cue
+frame. A second fresh encounter repeats the same walk and selection, then
+fires the aimed Warhawk at the ROM meter until it reaches zero. The zero-meter
+path selects directional C0B2, requests B05E once, and remains an active
+record while B target cycling selects the other eligible encounter actor. The
+release encounter QA saves the 320x224 hurt and down frames. The longplay does
+not yet provide a confidently matched Weenr-hit sequence, so these captures do
+not establish independent Genesis visual equivalence.
 
 Eight-question assessment for the new response:
 
