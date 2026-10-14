@@ -228,3 +228,20 @@ eight-question review is
 closes the handoff's minimum one-screen longplay review and the reported
 initial category-row mismatch. The complete six-category, item-cursor, and
 cancel traversal remains open, along with L2-L4, L5b-L5k, L6, and L8.
+
+### Revalidation and L1 disposition — 2026-10-14
+
+The focused Scene 26 table and Ares category QA tests were rerun in Debug and
+Release; all four runs pass. The Scene 26 full-screen contact pair was
+reopened at original size. ROM record 70 at `0x1D9C2A` covers the reported
+table-shadow stop, so the handoff's explicit stop rule applies: no collision
+change is warranted. The position test asserts the sampled ROM cell and
+retained position, but it did not fail before the assertion was added because
+the host already matched the source. I am not manufacturing a failure or a
+collision fix to satisfy a failing-then-passing requirement when the source
+evidence says the existing behavior is correct.
+
+L1 is therefore closed as a source-confirmed no-fix review, not as a resolved
+behavior defect. L5a is the reviewed longplay-backed screen. L2-L4, L5b-L5k,
+L6, and L8 remain queued as stated above; no broader defect-closure claim is
+made.

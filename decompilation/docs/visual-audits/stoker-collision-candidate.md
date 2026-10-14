@@ -3,10 +3,12 @@
 ## Result
 
 Scene-2 terrain record 2 at ROM `0x172DBE` is not the Stoker doorway. Its
-rectangle is `(0x560..0x57F, 0x340..0x34F)`, far east and south of the motel.
-The tested New Game route contacts its west collision margin at raw position
-`(0x5540, 0x3480)` and world position `(0x554, 0x348)`. The field remains in
-scene 2, event 0 is published, and no dialogue or transition begins.
+inclusive rectangle is `(0x560..0x57F, 0x340..0x34F)`, far east and south of
+the motel. The tested New Game route reaches a blocked candidate at fixed
+position `(0x5540, 0x3534)` from committed position `(0x5522, 0x3534)`.
+Normalized candidate `(0x554, 0x353)` puts the expanded right probes exactly
+on the record's west edge. The field remains in scene 2, event 0 is
+published, and no dialogue or transition begins.
 
 The actual doorway trigger is scene-2 record 91 at `0x173138`, bounds
 `(0x3C0..0x3DF, 0x280..0x29F)`, value `0xC2`. Its physical collision-to-Stoker
@@ -49,12 +51,32 @@ position has settled. A separate held movement into the wall with no usable
 path leaves the actor at the source-derived C052 idle pose.
 
 Record 2 contact remains scene 2/event 0 with the dialogue and interaction
-windows closed. The candidate CTest writes 55 full-screen 320x224 BMPs,
+windows closed. The candidate CTest writes 58 full-screen 320x224 BMPs,
 including the pre-contact wall frame, every frame in the diagonal attempt,
-all 30 neutral release frames, bypass frames, the record-2 approach, contact,
-and final idle frames. Debug and Release contain the same filenames and
-SHA-256 hashes. All 55 Release frames were inspected at full size; the
-Debug images are byte-identical.
+all 30 neutral release frames, bypass frames, the record-2 approach, the
+before/after contact pair, and final idle frames. Debug and Release contain
+the same filenames and SHA-256 hashes. All 58 Release frames were inspected
+at full size; the Debug images are byte-identical.
+
+The contact trace is at
+`build/conversion/qt/release/qt_runtime/field-stoker-collision-qa/` and the
+matching Debug directory. `property-contact-probes.tsv` records candidate
+`(21824,13620)` fixed, normalized `(0x554,0x353)`, with corner bytes
+`0,2,0,2`, raw terrain `0x02`, and return `0x007F`. The committed position
+stays `(21794,13620)` fixed. ROM routine `0xB574` selects movement vectors;
+for this calm on-screen runner, the ROM table at `0xBEC2` advances east by
+`+0x001E` fixed units. This is why the candidate is `0x5540`, not a `0x28`
+step. `0xE8A0` samples the four corners, and `0xE9EE` checks the type-2
+record bounds. The rectangle is the source collision authority; no gameplay
+collision change is warranted.
+
+The QA first failed after it was tightened to require a live record-2
+contact: its trace reader used an accumulating-list index even though the
+runtime clears probes each update, and its assertion assumed `+0x28` rather
+than the ROM's `0xBEC2` `+0x1E` step. The test instrumentation and expectation
+were corrected; no product collision behavior was changed. The Release
+before/after contact frames are `property-contact-before.bmp` and
+`property-contact.bmp` under the path above.
 
 The independent section 03 recording shows the motel approach and populated
 Stoker panel, but it does not show record 2, this wall, the collision
@@ -90,7 +112,9 @@ negative-control path.
 7. **Do multiple frames support the interpretation?** Yes. The wall
    approach, diagonal input, release, bypass, contact, and idle have separate
    full-screen samples; Debug and Release images match byte for byte. The
-   supplied independent clip does not contain this collision route.
+   contact pair shows the live runner immediately before and after the
+   rejected candidate. The supplied independent clip does not contain this
+   collision route.
 8. **Does the new UI replace the old UI cleanly?** This route does not open
    a menu or dialog. No old menu controls or graphics appear over the field.
 9. **Was the affected time window reviewed?** The wall approach, every
@@ -109,7 +133,8 @@ negative-control path.
   along the valid orthogonal route; fully blocked movement still resets.
 - **Internally checked:** the route, field-movement, and collision-to-dialogue
   CTests pass in Debug and Release. Movement route/step contract tests pass in
-  both configurations. All 55 screen dumps match across Debug and Release.
+  both configurations. All 58 screen dumps match across Debug and Release;
+  the record-2 probe and retained position are asserted directly.
 - **Independently visually checked:** no matching real-game frame exists for
   this wall/record-2 path. The separate Stoker doorway frames do not prove it.
 - **Reported defect resolved:** the tested one-side-clear edge case no longer
