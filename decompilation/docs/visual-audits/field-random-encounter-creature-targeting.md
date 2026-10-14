@@ -349,24 +349,20 @@ branch, its `+0x10.4` flag, and its `0x0200/0x1000` finite cadence with a held
 final frame.
 
 The Scene 2 full-screen QA fires the catalog Warhawk into a live ROM sum-3
-Weenr encounter actor. The nonlethal path requires a live collision, Lua weapon
-resolution, a changed world physical meter, and the next Lua behavior
-heartbeat selecting C072 before it saves its two directional hurt frames and
-the later B03E cue checkpoint. A second fresh encounter seeds a one-point
-physical meter, captures the visible live actor before firing, then routes
-another real Warhawk projectile into that actor. The zero-meter path requires
-the changed meter to reach zero, selects directional C0B2, requests B05E once,
-and remains an active record while B target cycling selects the other eligible
-encounter actor. Four complete 320x224 down-path captures show the live actor,
-C0B2 frame 0, frame 1, and the held final frame. I reopened all eight C072 and
-C0B2 response captures at full-screen size, along with the corresponding
-kind-8 extracted directional frames. The encounter sprites sit over the
-existing map, the runner and right HUD remain visible, and no stale panel or
-opaque sprite rectangle appears. Debug and Release SHA-256 pairs match for all
-eight integrated response images. The actor repositioning and one-point meter
-seed are diagnostic fixtures, not natural gameplay. The longplay does not yet
-provide a confidently matched Weenr-hit sequence, so these captures do not
-establish independent Genesis visual equivalence.
+Weenr encounter actor. Actor 0 walks in from the edge spawn until `0x14C7C`
+accepts it inside `0x200`. B selects that record, and the aimed projectile
+uses the live `0x15ABA` window. The actor is not moved onto the probe. The
+nonlethal path requires that collision, Lua weapon resolution, a changed world
+physical meter, and the next Lua behavior heartbeat selecting C072 before it
+saves its two directional hurt frames and the later B03E cue checkpoint. A
+second fresh encounter repeats the same walk and selection, then seeds a
+one-point physical meter and fires another live Warhawk. The zero-meter path
+requires the changed meter to reach zero, selects directional C0B2, requests
+B05E once, and remains an active record while B target cycling selects the
+other eligible encounter actor. The release encounter QA saves the 320x224
+hurt and down frames. The one-point meter seed is still a diagnostic fixture.
+The longplay does not yet provide a confidently matched Weenr-hit sequence,
+so these captures do not establish independent Genesis visual equivalence.
 
 Eight-question assessment for the new response:
 

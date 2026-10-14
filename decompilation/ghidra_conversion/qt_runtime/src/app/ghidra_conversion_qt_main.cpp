@@ -7708,10 +7708,9 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
-    // Re-run the source actor list in a fresh Scene 2 state so a live A-shot
-    // can collide with a ROM encounter record. Place the target on the
-    // projectile's next source probe only after firing; its movement, Lua hit
-    // handoff, C072 selector, countdown, and full-screen rendering stay live.
+    // Re-run the source actor list in a fresh Scene 2 state. Actor 0 walks
+    // into the 0x200 accept, B selects it, and the aimed Warhawk flies the
+    // live 0x15ABA window. Do not move the actor onto the probe.
     auto hit_startup_state = startup_state;
     hit_startup_state.restored_field_state.reset();
     if (!field_scene.bootstrap_for_scene_dump(hit_startup_state, 2U) ||
@@ -7729,8 +7728,66 @@ int run_field_random_encounter_spawn_qa(
                   << hit_actor_spawned << '\n';
         return 3;
     }
-    const auto hit_actors_before =
-        field_scene.default_actor_count_for_dump() - hit_actor_spawned;
+    const auto encounter_actor_zero_selected = [](
+            const std::optional<std::string>& id) {
+        const std::string suffix = "_actor_0";
+        return id.has_value() &&
+               id->find("field_scene_2_encounter_") != std::string::npos &&
+               id->size() >= suffix.size() &&
+               id->compare(id->size() - suffix.size(), suffix.size(),
+                           suffix) == 0;
+    };
+    const auto wait_for_actor_zero_in_range = [&field_scene]() {
+        // 0x14C7C accepts ordinary kinds inside 0x200. Mode 2 has already
+        // walked the edge spawn straight at the runner by then.
+        for (std::uint16_t frame = 0U; frame < 900U; ++frame) {
+            const auto distance =
+                field_scene.default_actor_ai_target_distance_for_dump(0U);
+            if (field_scene.visible_default_actor_count_for_dump() > 0U &&
+                distance.has_value() && *distance < 0x200U) {
+                return true;
+            }
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+        return false;
+    };
+    const auto select_actor_zero = [&field_scene,
+                                    &encounter_actor_zero_selected]() {
+        for (std::uint8_t attempt = 0U; attempt < 4U; ++attempt) {
+            field_scene.set_controller_port_byte(0x10U);
+            field_scene.advance_frame();
+            const auto pressed =
+                field_scene.selected_default_actor_id_for_dump();
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+            if (encounter_actor_zero_selected(pressed) &&
+                field_scene.selected_default_actor_id_for_dump() == pressed) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto report_actor_zero_range = [&field_scene](
+                                             const char* label) {
+        const auto distance =
+            field_scene.default_actor_ai_target_distance_for_dump(0U);
+        std::cerr << label << " visible="
+                  << field_scene.visible_default_actor_count_for_dump()
+                  << " distance=";
+        if (distance.has_value()) {
+            std::cerr << *distance;
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr << " selected="
+                  << field_scene.selected_default_actor_id_for_dump()
+                         .value_or("<none>")
+                  << " animation="
+                  << field_scene.default_actor_animation_id_for_dump(0U)
+                         .value_or("<none>")
+                  << '\n';
+    };
     bool hit_encounter_entry_complete = false;
     for (std::uint16_t frame = 0U;
          frame < 160U && !hit_encounter_entry_complete; ++frame) {
@@ -7765,7 +7822,6 @@ int run_field_random_encounter_spawn_qa(
     hit_runner.ammo_rounds = 6U;
     hit_runner.ammo_clips = 2U;
     field_scene.refresh_field_hud_for_dump();
-    const auto hit_before = render();
     const auto hit_output = output / "hit-response";
     std::filesystem::create_directories(hit_output, error);
     if (error) {
@@ -7779,6 +7835,12 @@ int run_field_random_encounter_spawn_qa(
         return image.save(QString::fromStdWString(
             (hit_output / std::string(filename)).wstring()));
     };
+    if (!wait_for_actor_zero_in_range() || !select_actor_zero()) {
+        report_actor_zero_range(
+            "field random-encounter QA: actor 0 did not walk into attack range and stay B-selected");
+        return 3;
+    }
+    const auto hit_before = render();
     if (!save_hit_frame("before-live-hit.bmp", hit_before)) {
         std::cerr << "field random-encounter QA: could not save the full-screen pre-hit baseline\n";
         return 3;
@@ -7793,30 +7855,16 @@ int run_field_random_encounter_spawn_qa(
     if (hit_runner.ammo_rounds != 5U ||
         field_scene.field_weapon_primary_count_for_dump() != 1U ||
         !live_projectile_position.has_value()) {
-        std::cerr << "field random-encounter QA: A did not fire the configured live Warhawk before the creature collision probe"
+        std::cerr << "field random-encounter QA: A did not fire the configured live Warhawk at the approached actor"
                   << " ammo=" << static_cast<unsigned>(hit_runner.ammo_rounds)
                   << " projectiles="
                   << field_scene.field_weapon_primary_count_for_dump() << '\n';
         return 3;
     }
-    if (!field_scene.set_default_actor_world_position_for_dump(
-            hit_actors_before, live_projectile_position->x,
-            live_projectile_position->y)) {
-        std::cerr << "field random-encounter QA: could not place the source encounter actor on the live projectile route\n";
-        return 3;
-    }
     bool live_creature_hit_resolved = false;
     bool live_creature_meter_changed = false;
     std::string live_creature_hit_boundary;
-    for (std::uint8_t frame = 0U; frame < 4U; ++frame) {
-        const auto projectile_position =
-            field_scene.field_weapon_primary_position_for_dump();
-        if (!projectile_position.has_value() ||
-            !field_scene.set_default_actor_world_position_for_dump(
-                hit_actors_before, projectile_position->x,
-                projectile_position->y)) {
-            break;
-        }
+    for (std::uint8_t frame = 0U; frame < 16U; ++frame) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
         const auto hit = std::find_if(
@@ -7903,10 +7951,8 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
-    // Recreate the source encounter for the zero-meter branch. Seed a wounded
-    // live actor with one physical meter, then let the ordinary Warhawk
-    // projectile, Lua combat resolver, actor heartbeat, and renderer carry it
-    // through the source C0B2 down transition.
+    // Recreate the source encounter for the zero-meter branch. Actor 0 walks
+    // into range. The one-point meter is the lethal fixture; the shot is not.
     if (!field_scene.bootstrap_for_scene_dump(hit_startup_state, 2U) ||
         field_scene.field_scene_reference_for_dump() != 2U) {
         std::cerr << "field random-encounter QA: could not reset Scene 2 for the zero-meter hit path\n";
@@ -7920,8 +7966,6 @@ int run_field_random_encounter_spawn_qa(
                   << down_actor_spawned << '\n';
         return 3;
     }
-    const auto down_actor_active_index =
-        field_scene.default_actor_count_for_dump() - down_actor_spawned;
     bool down_encounter_entry_complete = false;
     for (std::uint16_t frame = 0U;
          frame < 160U && !down_encounter_entry_complete; ++frame) {
@@ -7935,9 +7979,8 @@ int run_field_random_encounter_spawn_qa(
             field_scene.advance_frame();
         }
     }
-    if (!down_encounter_entry_complete ||
-        !field_scene.set_default_actor_physical_meter_for_dump(0U, 1U)) {
-        std::cerr << "field random-encounter QA: could not ready the ROM C0B2 path with a live one-meter Weenr\n";
+    if (!down_encounter_entry_complete) {
+        std::cerr << "field random-encounter QA: source C0B2 entry did not finish before the zero-meter path\n";
         return 3;
     }
 
@@ -7966,13 +8009,10 @@ int run_field_random_encounter_spawn_qa(
         return image.save(QString::fromStdWString(
             (down_output / std::string(filename)).wstring()));
     };
-    const auto down_runner_position = field_scene.field_entity_world_position();
-    const auto visible_down_actor_x = static_cast<std::uint16_t>(
-        down_runner_position.x + 0x0300U);
-    if (!field_scene.set_default_actor_world_position_for_dump(
-            down_actor_active_index, visible_down_actor_x,
-            down_runner_position.y)) {
-        std::cerr << "field random-encounter QA: could not position the live actor for its full-screen baseline\n";
+    if (!wait_for_actor_zero_in_range() || !select_actor_zero() ||
+        !field_scene.set_default_actor_physical_meter_for_dump(0U, 1U)) {
+        report_actor_zero_range(
+            "field random-encounter QA: actor 0 did not walk into range for the one-meter shot");
         return 3;
     }
     const auto alive_before_down_hit = render();
@@ -7989,36 +8029,16 @@ int run_field_random_encounter_spawn_qa(
     field_scene.set_controller_port_byte(0x40U);
     field_scene.advance_frame();
     field_scene.set_controller_port_byte(0U);
-    // Let the source projectile travel into open map space before placing the
-    // diagnostic target on its next probe. This keeps the downed actor's
-    // frames readable instead of stacking the target sprite on the runner.
-    for (std::uint8_t frame = 0U; frame < 1U; ++frame) {
-        field_scene.set_controller_port_byte(0U);
-        field_scene.advance_frame();
-    }
-    auto down_projectile_position =
-        field_scene.field_weapon_primary_position_for_dump();
     if (down_runner.ammo_rounds != 5U ||
         field_scene.field_weapon_primary_count_for_dump() != 1U ||
-        !down_projectile_position.has_value() ||
-        !field_scene.set_default_actor_world_position_for_dump(
-            down_actor_active_index, down_projectile_position->x,
-            down_projectile_position->y)) {
-        std::cerr << "field random-encounter QA: could not fire the live Warhawk into the one-meter encounter actor\n";
+        !field_scene.field_weapon_primary_position_for_dump().has_value()) {
+        std::cerr << "field random-encounter QA: could not fire the live Warhawk at the one-meter encounter actor\n";
         return 3;
     }
 
     bool live_zero_meter_hit_resolved = false;
     std::string live_zero_meter_hit_boundary;
-    for (std::uint8_t frame = 0U; frame < 4U; ++frame) {
-        down_projectile_position =
-            field_scene.field_weapon_primary_position_for_dump();
-        if (!down_projectile_position.has_value() ||
-            !field_scene.set_default_actor_world_position_for_dump(
-                down_actor_active_index, down_projectile_position->x,
-                down_projectile_position->y)) {
-            break;
-        }
+    for (std::uint8_t frame = 0U; frame < 16U; ++frame) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
         const auto hit = std::find_if(
@@ -8120,15 +8140,13 @@ int run_field_random_encounter_spawn_qa(
         field_audio_events.begin() + static_cast<std::ptrdiff_t>(
             down_audio_start),
         field_audio_events.end(), 0x002EU));
+    // Source order 0 is the first active encounter record. The sibling may
+    // still be walking. 0xB330 holds the exhausted actor.
     const bool down_positions_stable =
+        !down_positions_held.empty() &&
         down_positions_held.size() == down_positions_after_hit.size() &&
-        std::equal(
-            down_positions_held.begin(), down_positions_held.end(),
-            down_positions_after_hit.begin(),
-            [](const SceneRunnerPosition& left,
-               const SceneRunnerPosition& right) {
-                return left.x == right.x && left.y == right.y;
-            });
+        down_positions_held.front().x == down_positions_after_hit.front().x &&
+        down_positions_held.front().y == down_positions_after_hit.front().y;
     const bool down_actor_skipped_by_target_scan =
         selected_after_down_hit.has_value() &&
         *selected_after_down_hit != down_hit_actor_id;
