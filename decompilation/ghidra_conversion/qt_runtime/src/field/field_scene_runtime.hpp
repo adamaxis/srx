@@ -78,6 +78,15 @@ class QPainter;
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
+enum class FieldSceneProfileWord : std::uint8_t {
+    random_event_probability_threshold = 41,
+};
+
+constexpr std::size_t field_scene_profile_word_index(
+    const FieldSceneProfileWord word) noexcept {
+    return static_cast<std::size_t>(word);
+}
+
 enum class FieldWorldFactFlag : std::uint8_t {
     errascoe_question_available = 1,
     run_objective_active = 9,
@@ -342,6 +351,17 @@ public:
     // The live field runtime still initializes its own seed.
     void set_source_random_seed_for_dump(std::uint16_t seed) noexcept {
         field_random_seed_ = seed;
+    }
+    std::uint16_t source_random_seed_for_dump() const noexcept {
+        return field_random_seed_;
+    }
+    std::uint16_t field_world_frame_counter_for_dump() const noexcept {
+        return field_world_frame_counter_;
+    }
+    // Places the source field tick at a deterministic cadence boundary for QA.
+    void set_field_world_frame_counter_for_dump(
+        std::uint16_t frame_counter) noexcept {
+        field_world_frame_counter_ = frame_counter;
     }
     HotelMenuEvent advance_hotel_menu_for_dump(std::uint16_t events);
     AttributesSkillsRuntimeEvent advance_hotel_karma_screen_for_dump(

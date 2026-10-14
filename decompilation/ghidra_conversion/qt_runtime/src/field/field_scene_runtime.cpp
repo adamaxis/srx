@@ -3375,8 +3375,9 @@ void FieldSceneRuntime::trigger_field_world_effect_sequence() {
     // 0x1E166 advances the source PRNG only after its state and 0x3FF cadence
     // gates pass. Lua requests this draw, then owns the probability decision.
     trigger.probability_roll = advance_source_random_seed(field_random_seed_);
-    trigger.probability_threshold =
-        state_.field_scene_buffers.profile[41];
+    trigger.probability_threshold = state_.field_scene_buffers.profile[
+        field_scene_profile_word_index(
+            FieldSceneProfileWord::random_event_probability_threshold)];
     action = game_scripts_.evaluate_field_encounter_trigger(trigger);
     if (!action.has_value()) {
         failure_ = game_scripts_.failure();

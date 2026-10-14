@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/core/timing_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
+#include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_delay_conversion.hpp"
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
@@ -8118,6 +8119,234 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
+    // Finish with the ordinary Scene 2 field tick rather than the QA-only
+    // injected selector path above. ROM 0x1E166 owns the cadence/chance gate,
+    // and 0x59986 performs two bound-5 draws; the selected actor list then
+    // consumes one source draw per initial behavior delay.
+    if (!field_scene.bootstrap_for_scene_dump(hit_startup_state, 2U) ||
+        field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "field random-encounter QA: production-dispatch Scene 2 reset failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    const auto profile_threshold_index = field_scene_profile_word_index(
+        FieldSceneProfileWord::random_event_probability_threshold);
+    const auto& scene_profile =
+        field_scene.state().field_scene_buffers.profile;
+    if (scene_profile.size() <= profile_threshold_index) {
+        std::cerr << "field random-encounter QA: Scene 2 profile has no typed random-event threshold word\n";
+        return 3;
+    }
+    const auto probability_threshold = static_cast<std::uint16_t>(
+        scene_profile[profile_threshold_index]);
+    if (probability_threshold != 0x6000U) {
+        std::cerr << "field random-encounter QA: Scene 2 ROM profile threshold changed"
+                  << " word=" << profile_threshold_index
+                  << " value=0x" << std::hex << probability_threshold
+                  << std::dec << " expected=0x6000\n";
+        return 3;
+    }
+    struct ProductionEncounterSeed {
+        std::uint16_t initial_seed = 0U;
+        std::uint16_t probability_roll = 0U;
+        std::uint8_t first_selector_roll = 0U;
+        std::uint8_t second_selector_roll = 0U;
+        std::array<std::uint8_t, 2> actor_entry_delays{};
+        std::uint16_t final_seed = 0U;
+    };
+    std::optional<ProductionEncounterSeed> production_seed;
+    for (std::uint32_t initial = 0U;
+         initial <= std::numeric_limits<std::uint16_t>::max(); ++initial) {
+        auto simulated_seed = static_cast<std::uint16_t>(initial);
+        const auto probability_roll =
+            advance_source_random_seed(simulated_seed);
+        if (probability_roll >= probability_threshold) {
+            continue;
+        }
+        const auto first_roll = sample_source_random_bound(simulated_seed, 5U);
+        const auto second_roll = sample_source_random_bound(simulated_seed, 5U);
+        if (first_roll < 0 || first_roll > 4 || second_roll < 0 ||
+            second_roll > 4 || first_roll + second_roll != 3) {
+            continue;
+        }
+        // ROM actor initialization calls the source PRNG once per listed
+        // actor to seed its initial behavior delay.
+        const std::array<std::uint8_t, 2> actor_entry_delays{
+            static_cast<std::uint8_t>(
+                advance_source_random_seed(simulated_seed) & 0x0FU),
+            static_cast<std::uint8_t>(
+                advance_source_random_seed(simulated_seed) & 0x0FU)};
+        production_seed = ProductionEncounterSeed{
+            static_cast<std::uint16_t>(initial), probability_roll,
+            static_cast<std::uint8_t>(first_roll),
+            static_cast<std::uint8_t>(second_roll), actor_entry_delays,
+            simulated_seed};
+        break;
+    }
+    if (!production_seed.has_value()) {
+        std::cerr << "field random-encounter QA: could not find a deterministic Scene 2 source seed for the sum-3 Weenr row\n";
+        return 3;
+    }
+
+    const auto production_actor_count_before =
+        field_scene.default_actor_count_for_dump();
+    if (production_actor_count_before != 0U) {
+        std::cerr << "field random-encounter QA: fresh production-dispatch scene already has encounter actors"
+                  << " count=" << production_actor_count_before << '\n';
+        return 3;
+    }
+    const auto production_boundary_start = source_boundaries.size();
+    field_scene.set_field_world_frame_counter_for_dump(9U);
+    field_scene.set_source_random_seed_for_dump(0x1357U);
+    field_scene.set_controller_port_byte(0U);
+    const auto tick_9_before = render();
+    const bool tick_9_before_saved =
+        save("production-random-dispatch-tick-9.bmp", tick_9_before);
+    field_scene.advance_frame();
+    const auto tick_10_predecessor = render();
+    const bool tick_10_predecessor_saved =
+        save("production-random-dispatch-tick-10-predecessor.bmp",
+             tick_10_predecessor);
+    if (!tick_9_before_saved || !tick_10_predecessor_saved ||
+        field_scene.field_world_frame_counter_for_dump() != 10U ||
+        field_scene.default_actor_count_for_dump() != 0U ||
+        !field_hud_chrome_survives(tick_9_before, asset_root) ||
+        !field_hud_chrome_survives(tick_10_predecessor, asset_root)) {
+        std::cerr << "field random-encounter QA: the frame-9 field pass spawned early or failed to reach cadence 10"
+                  << " counter="
+                  << field_scene.field_world_frame_counter_for_dump()
+                  << " actors="
+                  << field_scene.default_actor_count_for_dump() << '\n';
+        return 3;
+    }
+
+    field_scene.set_source_random_seed_for_dump(
+        production_seed->initial_seed);
+    const auto tick_10_before = render();
+    const bool tick_10_before_saved =
+        save("production-random-dispatch-tick-10-before.bmp",
+             tick_10_before);
+    const auto production_audio_start = field_audio_events.size();
+    field_scene.advance_frame();
+    const auto production_entry = render();
+    const bool production_entry_saved =
+        save("production-random-dispatch-entry.bmp", production_entry);
+    const auto production_actor_count_after =
+        field_scene.default_actor_count_for_dump();
+    const auto production_dispatch_audio_count =
+        field_audio_events.size() - production_audio_start;
+    const auto production_spawn_count = static_cast<std::size_t>(
+        std::count(source_boundaries.begin() +
+                       static_cast<std::ptrdiff_t>(production_boundary_start),
+                   source_boundaries.end(),
+                   "field.random_encounter.actor_spawned_from_rom_list"));
+    const auto production_profile_zero =
+        field_scene.default_actor_script_profile_for_dump(0U);
+    const auto production_profile_one =
+        field_scene.default_actor_script_profile_for_dump(1U);
+    if (!tick_10_before_saved || !production_entry_saved ||
+        field_scene.field_world_frame_counter_for_dump() != 11U ||
+        production_actor_count_after != 2U ||
+        production_spawn_count != 2U ||
+        production_profile_zero !=
+            std::optional<std::string>{"weenr1_k08_none00"} ||
+        production_profile_one !=
+            std::optional<std::string>{"weenr1_k08_none00"} ||
+        field_scene.source_random_seed_for_dump() !=
+            production_seed->final_seed ||
+        production_dispatch_audio_count != 0U ||
+        !field_hud_chrome_survives(tick_10_before, asset_root) ||
+        !field_hud_chrome_survives(production_entry, asset_root) ||
+        field_scene.field_interaction_open() ||
+        field_scene.dialogue_open() || field_scene.hotel_menu_open() ||
+        field_scene.command_overview_open()) {
+        std::cerr << "field random-encounter QA: live cadence-10 ROM encounter dispatch diverged"
+                  << " actors=" << production_actor_count_before << "->"
+                  << production_actor_count_after
+                  << " spawn_records=" << production_spawn_count
+                  << " profiles=" << production_profile_zero.value_or("<none>")
+                  << ',' << production_profile_one.value_or("<none>")
+                  << " source_seed=0x" << std::hex
+                  << field_scene.source_random_seed_for_dump()
+                  << "/0x" << production_seed->final_seed
+                  << std::dec << " dispatch_audio_count="
+                  << production_dispatch_audio_count
+                  << " counter="
+                  << field_scene.field_world_frame_counter_for_dump();
+        if (!field_scene.failure().empty()) {
+            std::cerr << " failure=" << field_scene.failure();
+        }
+        std::cerr << '\n';
+        return 3;
+    }
+
+    // The ROM actor service begins C0B2 only after each actor's randomized
+    // entry delay. Its B05E[kind] cue therefore belongs to a later heartbeat,
+    // not to the selector/list-dispatch frame.
+    const auto maximum_entry_delay = *std::max_element(
+        production_seed->actor_entry_delays.begin(),
+        production_seed->actor_entry_delays.end());
+    bool entry_heartbeat_cadence_matches = true;
+    for (std::uint16_t service_pass = 1U;
+         service_pass <=
+             static_cast<std::uint16_t>(maximum_entry_delay + 1U);
+         ++service_pass) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        const auto expected_started = static_cast<std::size_t>(
+            std::count_if(
+                production_seed->actor_entry_delays.begin(),
+                production_seed->actor_entry_delays.end(),
+                [service_pass](const std::uint8_t delay) {
+                    return delay < service_pass;
+                }));
+        const auto current_audio_count = field_audio_events.size() -
+                                         production_audio_start;
+        entry_heartbeat_cadence_matches =
+            entry_heartbeat_cadence_matches &&
+            field_scene.default_actor_transition_started_count_for_dump() ==
+                expected_started &&
+            current_audio_count == expected_started &&
+            std::all_of(
+                field_audio_events.begin() + static_cast<std::ptrdiff_t>(
+                    production_audio_start),
+                field_audio_events.end(), [](const std::uint16_t event) {
+                    return event == 0x002EU;
+                });
+        if (!entry_heartbeat_cadence_matches) {
+            break;
+        }
+    }
+    const auto production_entry_cue_frame = render();
+    const bool production_entry_cue_frame_saved = save(
+        "production-random-dispatch-entry-cues.bmp",
+        production_entry_cue_frame);
+    const auto production_entry_audio_count = field_audio_events.size() -
+                                              production_audio_start;
+    if (!production_entry_cue_frame_saved ||
+        production_entry_audio_count != 2U ||
+        field_audio_events[production_audio_start] != 0x002EU ||
+        field_audio_events[production_audio_start + 1U] != 0x002EU ||
+        field_scene.default_actor_transition_started_count_for_dump() !=
+            2U ||
+        !entry_heartbeat_cadence_matches ||
+        !field_hud_chrome_survives(production_entry_cue_frame, asset_root)) {
+        std::cerr << "field random-encounter QA: two Weenr B05E entry cues did not follow their per-actor delays"
+                  << " audio_count=" << production_entry_audio_count
+                  << " transitions_started="
+                  << field_scene.default_actor_transition_started_count_for_dump();
+        for (std::size_t index = production_audio_start;
+             index < field_audio_events.size(); ++index) {
+            std::cerr << " 0x" << std::hex << field_audio_events[index]
+                      << std::dec;
+        }
+        if (!field_scene.failure().empty()) {
+            std::cerr << " failure=" << field_scene.failure();
+        }
+        std::cerr << '\n';
+        return 3;
+    }
+
     std::cout << "field_random_encounter_spawn_qa=passed scene=2 selector=1+2 actors=2 active="
               << actors_after << " long_trace_active=" << actors_after_1200
               << " visible=" << visible_before << ','
@@ -8182,6 +8411,22 @@ int run_field_random_encounter_spawn_qa(
               << ",active:" << down_final_actor_count
               << ",selected:" << selected_after_down_hit.value_or("<none>")
               << ",B05E_0x2E_count:" << down_audio_final_count << "} "
+              << "production_tick={counter:10,threshold:0x" << std::hex
+              << probability_threshold << ",seed:0x"
+              << production_seed->initial_seed << ",chance_roll:0x"
+              << production_seed->probability_roll << std::dec
+              << ",selector:" << static_cast<unsigned>(
+                     production_seed->first_selector_roll)
+              << '+' << static_cast<unsigned>(
+                     production_seed->second_selector_roll)
+              << ",actors:" << production_actor_count_after
+              << ",spawn_records:" << production_spawn_count
+              << ",entry_delays:"
+              << static_cast<unsigned>(
+                     production_seed->actor_entry_delays[0])
+              << ',' << static_cast<unsigned>(
+                     production_seed->actor_entry_delays[1])
+              << ",entry_cues:2x0x2E} "
               << " artifacts=" << output.string() << '\n';
     return 0;
 }

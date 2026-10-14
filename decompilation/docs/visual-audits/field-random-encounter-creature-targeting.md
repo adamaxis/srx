@@ -27,17 +27,27 @@ Debug and Release CTest
 `shadowrun_gameplay_script_runtime_qa`,
 `shadowrun_ghidra_movement_metric`, and
 `shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa` both passed.
-Each field QA run injects selector rolls `1+2` for Scene 2's sum-3 row and
+The field QA first injects selector rolls `1+2` for Scene 2's sum-3 row and
 checks the two-Weenr sequence, active actor records, source entry cue requests,
 Lua target link, close-range movement, creature walk frames, and B selection
-surviving button release. The script-runtime CTest checks the four action-code
+surviving button release. It then bootstraps a fresh Scene 2 and runs the
+production field tick: counter 9 advances to 10 without spawning; counter 10
+uses seed `0x0001`, passes profile word 41's `0x6000` threshold with `0x20E6`,
+and resolves bounded rolls `0+3` to the two ordered `weenr1_k08_none00`
+records. The test checks both actor-list publications and the exact seed after
+the chance roll, two selector rolls, and two initial behavior-delay draws.
+Each `0x2E` B05E entry cue occurs later, after that actor's Lua-owned entry
+delay, and is checked exactly once: the sampled delays are 13 and 2, so the
+entry transitions and cues start on actor-service passes 14 and 3. The
+script-runtime CTest checks the four action-code
 marker groups, the 64-to-0 shrink sequence, the persistent marker, and latch
 clearing.
 It now also checks the Lua-owned B scan's normal cursor advance, reserved-record
 skip, normal restart at slot 3, and special-mode active-only scan and wrap.
 The field QA matches all 14 opaque source pixels in each of the four 8x8
-marker corners and confirms the right-side HUD is unchanged. These are not
-tests of the production random-roll sequence or the full combat route. The
+marker corners and confirms the right-side HUD is unchanged. The production
+tick is checked end to end; the injected path remains useful for deterministic
+coverage of the actor renderer and combat route. The
 script-runtime QA in both configurations separately checks each
 `0x1E166` blocker, the `(frame_counter & 0x3FF) == 10` cadence, threshold
 accept/reject behavior, the sequence-forward branch, and that Lua requests
@@ -53,7 +63,14 @@ both Scene 2 actors now turn through the runner's area instead of continuing
 away. They remain outside the viewport after 480 service frames, so their full
 approach and arrival remain unresolved. This conversion evidence uses the
 injected `1+2` selector result, not an independent encounter recording. The
-separate `encounter-visible-qa-fixture.bmp` moves the runner close to the
+production dispatch also writes five full-screen samples at tick 9, the
+tick-10 predecessor, immediately before and after the selector, and after both
+entry cues. All five Debug/Release pairs have identical SHA-256 hashes. I
+reopened the full frames: the map, runner, and right HUD remain intact with no
+stale panel or overdraw. The source edge positions put both Weenrs outside this
+viewport, so these images do not show the creature art or prove its visual
+match to a real-game encounter. The separate
+`encounter-visible-qa-fixture.bmp` moves the runner close to the
 first creature to inspect its approach and walking art; it is a QA fixture,
 not a simulated gameplay route. `creature-walk-frame-0.bmp` and
 `creature-walk-frame-3.bmp` show distinct source walk poses. The target-marker
@@ -395,9 +412,10 @@ walk animation, the Hell Hound's source-timed close effect, and the B selector's
 typed state and source pixels are covered
 by focused Debug and Release QA. B's source-pool selection policy and the
 ordinary gate's blocker/cadence/chance branches are covered by script-runtime
-QA; the field spawn QA still injects the already-bounded selector rolls, so
-production RNG consumption and event dispatch are not covered end to end. This
-hill remains partial: the alternate target action-byte route through `+0x9C`,
+QA; the Scene 2 production chance, selector, actor-list dispatch, seed
+consumption, and delayed entry-cue path now also pass the field tick QA. This
+hill remains partial: enabled dialogue event handlers, the alternate target
+action-byte route through `+0x9C`,
 the full actor pool, creature item/spell actions, post-down recovery/removal
 outside the traced hit path, and natural approach from the edge are unresolved.
 A diagnostic Scene 2 field shot now connects projectile collision through Lua
@@ -406,3 +424,37 @@ zero-meter C0B2 pose. The zero-meter record remains active, stays stationary,
 and is excluded by B target cycling during QA. The independent longplay
 corroborates the marker shape, but does not provide the actor bytes needed to
 verify every palette variant or the Hound close-effect sequence.
+
+## Production Scene 2 encounter dispatch review
+
+1. **Does it look correct?** The five production frames are byte-identical:
+   map, runner, and HUD do not flicker or acquire a stray panel. The two
+   correctly selected ROM actors spawn beyond the current viewport, so their
+   pixels cannot be judged from this event capture.
+2. **Does the image match the behavior?** Yes for the visible state: no actor
+   is present at tick 9 or before the tick-10 selector; two active
+   `weenr1_k08_none00` records exist after the trigger. Their positions are
+   source edge candidates outside the viewport. The behavior QA also verifies
+   the profile threshold, selector sum, source seed, and delayed entry cues.
+3. **Are the visuals correct?** The full Scene 2 frame is inspected at every
+   saved stage and the right HUD stays unchanged. Creature appearance is not
+   established by these offscreen frames; the separate visible QA fixture
+   covers the named creature artwork and its renderer path.
+4. **What animates, and when?** The actor heartbeat begins C0B2 entry after its
+   per-actor source delay. This production case confirms both transitions
+   start, while separate creature QA samples named entry, walk, action, hurt,
+   and down states. Natural arrival from the map edge is still open.
+5. **What sound accompanies it?** Each Weenr requests B05E event `0x2E` once
+   when its entry starts, on service pass 14 or 3 according to its sampled
+   delay. The ROM audio table maps that slot to silence, so no audible effect
+   or playback duration is expected from this cue.
+6. **Were neighboring areas checked?** Yes. The whole 320x224 image, including
+   the runner and right-side HUD, was reviewed at all five production stages.
+   No interface is redrawn over old controls; the map/HUD remain stable.
+7. **Are there multiple frames?** Yes: tick 9, the tick-10 predecessor,
+   immediately before and after dispatch, and after both delayed cues. Debug
+   and Release hashes match for every frame. They document stable composition,
+   not independent Genesis visual equivalence.
+8. **Are new graphics drawn over stale graphics?** No new actor is visible in
+   this viewport, and no old graphics are obscured or replaced. The source
+   actors remain real active records and are not scenery stand-ins.

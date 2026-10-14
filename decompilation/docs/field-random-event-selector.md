@@ -22,6 +22,14 @@ it. An already active sequence is forwarded rather than replaced. Therefore,
 the nine rows shown per scene are possible table outcomes, not an event
 guaranteed on every visit or movement step.
 
+The threshold comes from scene-profile word 41 (`FFDE18`, with the profile
+beginning at `FFDDC6`). The extracted Scene 2 descriptor stores `0x6000` in
+that word. `0x0D44` advances the shared source seed by `seed * 0x20E5 + 1`
+modulo 16 bits; `0x0D3A` returns the high word of `seed * bound`. A Scene 2
+sum-3 test therefore has to pass the chance draw first, then preserve the two
+bound-5 selector draws and the per-actor source draws that seed initial
+behavior delays.
+
 The 26 UI event handlers targeted by enabled table cells supply prompt records to
 `0x1F246` and `0x1F3C4`. The extractor records each handler's opening panel,
 visible choices, scene IDs, selector sums, and valid roll pairs. The **Field
