@@ -327,7 +327,13 @@ int main() {
                 ShopTransactionMessage::insufficient_funds) ||
         !expect(poor_purchase.funds == 0U) ||
         !expect(transaction_menu.advance_transaction(
-                    0x0100U, cost_context, poor_purchase, sale) ==
+                    0x0040U, cost_context, poor_purchase, sale) ==
+                ShopTransactionEvent::no_change) ||
+        !expect(transaction_menu.transaction_waiting_for_event()) ||
+        !expect(transaction_menu.transaction_message() ==
+                ShopTransactionMessage::insufficient_funds) ||
+        !expect(transaction_menu.advance_transaction(
+                    0x4000U, cost_context, poor_purchase, sale) ==
                 ShopTransactionEvent::message_dismissed) ||
         !expect(transaction_menu.transaction_message() ==
                 ShopTransactionMessage::none) ||

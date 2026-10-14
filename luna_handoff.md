@@ -377,4 +377,34 @@ This is a source-matched no-fix QA expansion: the host already clears the
 one-shot latch and does not redispatch after departure. It is not a
 failing-then-passing gameplay change. L4's held-input regression and physical
 path to Scene 20 record 110 are covered; exact ROM-facing restoration remains
-open. Next: L5b, the full rejected-purchase feedback interval.
+open.
+
+### L5b Ares unaffordable-purchase feedback wait
+
+The Release QA first reproduced the defect: after a purchase attempt with 20
+nuyen, the insufficient-funds feedback was replaced by the Predator detail
+screen on the next update while the purchase A remained held. ROM `0x5794E`
+renders the rejection through `0xC0DA` and enters the controller wait at
+`0xD94`; that wait loops until `FFDD22` has a fresh-press high-byte event. It
+has no timeout. The old host accepted A's still-held low-byte state as a new
+event. `ShopMenuController::advance_transaction` now checks the high byte.
+
+The passing QA preserves 60 held frames, a release without a new press, and a
+fresh A press. Feedback persists through the hold and release and clears only
+on the fresh press; funds remain 20, cursor remains 2, inventory does not
+change, and the audio-request count stays at 4 after the initial `0x24` cue.
+No extra sound request is made during the wait. The before-fix full-screen
+captures are under
+`build/conversion/qt/release/qt_runtime/l5b-shop-feedback/before/`; after-fix
+full-screen artifacts and `timeline.tsv` are under
+`build/conversion/qt/{debug,release}/qt_runtime/field-shop-ares-template-qa/shop-insufficient-feedback/`.
+All 64 artifact hashes match across builds and the 60 held frames are
+pixel-identical. The actual longplay shows a successful purchase at about
+00:25:37–00:25:39 but no failed-purchase frame, so exact rejection-text pixels
+and audible duration remain unverified. The full eight-question review and
+source trace are recorded in
+`decompilation/docs/visual-audits/shop-insufficient-feedback.md`.
+
+The shop runtime and field-shop QA tests pass in Debug and Release. L5b is
+complete for the held-input timing defect; continue with L5c, the runner karma
+menu comparison.

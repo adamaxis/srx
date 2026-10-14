@@ -225,7 +225,10 @@ ShopTransactionEvent ShopMenuController::advance_transaction(
     const FieldActionBaseCostLookup& purchase_base_lookup,
     const FieldActionBaseCostLookup& resale_base_lookup) {
     if (transaction_waiting_for_event_) {
-        if (controller_events == 0U) {
+        // ROM 0x5794E calls the 0xD94 wait after drawing rejected-purchase
+        // feedback. 0xD94 exits only when FFDD22's new-press high byte is set;
+        // the held-button low byte must not dismiss the message.
+        if ((controller_events & 0xFF00U) == 0U) {
             return ShopTransactionEvent::no_change;
         }
         reset_transaction();

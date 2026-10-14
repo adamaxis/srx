@@ -26444,7 +26444,53 @@ int main(int argc, char** argv) {
                                  "did not reach the third weapon\n";
                     return 3;
                 }
-                press_field_input(0x40U); // Purchase with insufficient funds.
+                // The ROM purchase branch calls 0xD94 after rendering the
+                // insufficient-funds text. 0xD94 waits for a new high-byte
+                // controller edge, not merely a nonzero held-button byte.
+                // Keep A physically held across the wait to catch an
+                // accidental same-button dismissal on the next host frame.
+                const auto feedback_directory =
+                    output / "shop-insufficient-feedback";
+                std::filesystem::create_directories(feedback_directory);
+                std::ofstream feedback_trace(
+                    feedback_directory / "timeline.tsv", std::ios::trunc);
+                if (!feedback_trace) {
+                    std::cerr << "field Ares shop QA: could not write the "
+                                 "insufficient-feedback trace\n";
+                    return 3;
+                }
+                feedback_trace
+                    << "phase\tupdate\tinput\twaiting\tmessage\tfunds"
+                       "\tcursor\taudio_requests\tframe\n";
+                const auto write_feedback_frame =
+                    [&](const std::string_view phase,
+                        const std::uint32_t update,
+                        const std::uint8_t input,
+                        const QImage& image) {
+                        const auto relative_path =
+                            std::filesystem::path("shop-insufficient-feedback") /
+                            (std::string(phase) + "-" +
+                             std::to_string(update) + ".bmp");
+                        if (!save_scene(relative_path, image)) {
+                            return false;
+                        }
+                        feedback_trace
+                            << phase << '\t' << update << '\t'
+                            << static_cast<unsigned>(input) << '\t'
+                            << field_scene.shop_transaction_waiting_for_event()
+                            << '\t' << static_cast<unsigned>(
+                                   field_scene.shop_transaction_message())
+                            << '\t' << field_scene.field_funds_for_dump().value_or(
+                                   0xFFFFFFFFU)
+                            << '\t' << static_cast<unsigned>(
+                                   field_scene.shop_menu_cursor()) << '\t'
+                            << field_audio_events.size() << '\t'
+                            << relative_path.generic_string() << '\n';
+                        feedback_trace.flush();
+                        return static_cast<bool>(feedback_trace);
+                    };
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
                 const auto insufficient_funds = render_shop_scene();
                 if (!field_scene.shop_transaction_waiting_for_event() ||
                     field_scene.shop_transaction_message() !=
@@ -26489,7 +26535,73 @@ int main(int argc, char** argv) {
                     std::cerr << ")\n";
                     return 3;
                 }
-                press_field_input(0x40U); // Dismiss the source message.
+                if (!write_feedback_frame("purchase-edge", 0U, 0x40U,
+                                          insufficient_funds)) {
+                    return 3;
+                }
+                const auto feedback_audio_count = field_audio_events.size();
+                const auto held_message = insufficient_funds;
+                for (std::uint32_t update = 1U; update <= 60U; ++update) {
+                    field_scene.advance_frame(); // A remains held.
+                    const auto image = render_shop_scene();
+                    if (!write_feedback_frame("held", update, 0x40U,
+                                              image)) {
+                        return 3;
+                    }
+                    if (!field_scene.shop_transaction_waiting_for_event() ||
+                        field_scene.shop_transaction_message() !=
+                            ShopTransactionMessage::insufficient_funds ||
+                        field_scene.field_funds_for_dump() != 20U ||
+                        field_scene.shop_menu_cursor() != 2U ||
+                        field_scene.active_runner_record()
+                                .inventory_item_codes !=
+                            inventory_before_purchase ||
+                        field_audio_events.size() != feedback_audio_count ||
+                        image != held_message) {
+                        std::cerr << "field Ares shop QA: ROM 0xD94 wait "
+                                     "cleared or changed insufficient-funds "
+                                     "feedback while the purchase A button "
+                                     "remained held at update " << update
+                                  << " (waiting="
+                                  << field_scene
+                                         .shop_transaction_waiting_for_event()
+                                  << ", message=" << static_cast<int>(
+                                         field_scene
+                                             .shop_transaction_message())
+                                  << ", frame-equal=" << (image == held_message)
+                                  << ")\n";
+                        return 3;
+                    }
+                }
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                const auto feedback_released = render_shop_scene();
+                if (!write_feedback_frame("released", 0U, 0U,
+                                          feedback_released) ||
+                    !field_scene.shop_transaction_waiting_for_event() ||
+                    field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::insufficient_funds ||
+                    feedback_released != held_message) {
+                    std::cerr << "field Ares shop QA: releasing A dismissed "
+                                 "the ROM message without a new controller "
+                                 "edge\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame(); // Fresh A edge dismisses it.
+                const auto feedback_dismissed = render_shop_scene();
+                if (!write_feedback_frame("fresh-edge-dismissed", 0U,
+                                          0x40U, feedback_dismissed) ||
+                    field_scene.shop_transaction_waiting_for_event() ||
+                    field_scene.shop_transaction_message() !=
+                        ShopTransactionMessage::none) {
+                    std::cerr << "field Ares shop QA: a fresh controller "
+                                 "edge did not dismiss the source message\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                feedback_trace.close();
                 if (field_scene.shop_transaction_waiting_for_event() ||
                     field_scene.shop_transaction_message() !=
                         ShopTransactionMessage::none ||
