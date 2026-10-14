@@ -232,9 +232,45 @@ EntityAxisUpdate update_entity_axis_relation_state(
     std::int16_t movement_mode,
     std::uint8_t movement_flags);
 
-// ROM 0x15A8C: return the first available source slot in the six-slot range
-// 9..14, or the one-past-last value 15 when every slot is occupied.
+// ROM 0x15A8C scans six records at FF0B00. Only the active flag matters.
+// The returned id is the source slot number 9..14, or 15 when every slot
+// is already active.
+struct AuxiliaryEntitySlot {
+    bool active = false;
+};
+
 std::uint8_t find_first_available_entity_slot(
-    const std::array<std::uint8_t, 6>& slot_flags);
+    const std::array<AuxiliaryEntitySlot, 6>& slots);
+
+// 0xB14C and 0xB2A8 plant this child after a reaction changes the
+// defender's action bytes. 0xAC4E is the continuation: a negative
+// animation selector clears the slot. The selector itself is advanced by
+// the animation service, which is not part of this record.
+enum class AuxiliaryChildContinuation {
+    retire_when_selector_negative,
+};
+
+struct ReactionAuxiliaryChild {
+    bool active = false;
+    std::uint8_t slot = 0;
+    bool presentation_dirty = false; // +0x11 bit 0
+    std::uint16_t entity_kind = 1;
+    std::int16_t animation_selector = 4;
+    std::uint16_t world_x = 0;
+    std::uint16_t world_y = 0;
+    std::uint16_t heading = 0x2000;
+    AuxiliaryChildContinuation continuation =
+        AuxiliaryChildContinuation::retire_when_selector_negative;
+};
+
+std::optional<ReactionAuxiliaryChild> spawn_reaction_auxiliary_child(
+    std::array<AuxiliaryEntitySlot, 6>& slots,
+    std::uint16_t defender_x,
+    std::uint16_t defender_y);
+
+// ROM 0xAC4E. A nonnegative selector leaves the child in the slot.
+bool retire_auxiliary_child(
+    AuxiliaryEntitySlot& slot,
+    ReactionAuxiliaryChild& child);
 
 } // namespace shadowrun::ghidra_conversion

@@ -36,7 +36,7 @@ void reset_world_frame_service_state(WorldFrameServiceState& state) {
 WorldSceneSpecialEffectSpawnResult spawn_scene_special_effect(
     WorldSceneSpecialEffectSpawnState& state) {
     const auto entity_slot =
-        find_first_available_entity_slot(state.candidate_entity_flags);
+        find_first_available_entity_slot(state.auxiliary_slots);
     if (entity_slot >= 15U) {
         return {WorldSceneSpecialEffectSpawnAction::no_entity_slot,
                 std::nullopt};
@@ -57,9 +57,7 @@ WorldSceneSpecialEffectSpawnResult spawn_scene_special_effect(
                 record};
     }
 
-    state.candidate_entity_flags[entity_slot - 9U] =
-        static_cast<std::uint8_t>(
-            state.candidate_entity_flags[entity_slot - 9U] | 0x01U);
+    state.auxiliary_slots[entity_slot - 9U].active = true;
     record.effect_slot = allocation.slot;
     record.effect_record_parameter = allocation.record_parameter;
     record.effect_auxiliary_offset = allocation.record_auxiliary_offset;

@@ -553,13 +553,47 @@ EntityAxisUpdate update_entity_axis_relation_state(
 }
 
 std::uint8_t find_first_available_entity_slot(
-    const std::array<std::uint8_t, 6>& slot_flags) {
-    for (std::size_t index = 0; index < slot_flags.size(); ++index) {
-        if ((slot_flags[index] & 0x01U) == 0U) {
+    const std::array<AuxiliaryEntitySlot, 6>& slots) {
+    for (std::size_t index = 0; index < slots.size(); ++index) {
+        if (!slots[index].active) {
             return static_cast<std::uint8_t>(9U + index);
         }
     }
     return 15U;
+}
+
+std::optional<ReactionAuxiliaryChild> spawn_reaction_auxiliary_child(
+    std::array<AuxiliaryEntitySlot, 6>& slots,
+    const std::uint16_t defender_x,
+    const std::uint16_t defender_y) {
+    const auto slot = find_first_available_entity_slot(slots);
+    if (slot >= 15U) {
+        return std::nullopt;
+    }
+    slots[static_cast<std::size_t>(slot - 9U)].active = true;
+    ReactionAuxiliaryChild child{};
+    child.active = true;
+    child.slot = slot;
+    child.presentation_dirty = true;
+    child.entity_kind = 1U;
+    child.animation_selector = 4;
+    child.world_x = defender_x;
+    child.world_y = static_cast<std::uint16_t>(defender_y + 0x0010U);
+    child.heading = 0x2000U;
+    child.continuation =
+        AuxiliaryChildContinuation::retire_when_selector_negative;
+    return child;
+}
+
+bool retire_auxiliary_child(
+    AuxiliaryEntitySlot& slot,
+    ReactionAuxiliaryChild& child) {
+    if (child.animation_selector >= 0) {
+        return false;
+    }
+    slot.active = false;
+    child.active = false;
+    return true;
 }
 
 } // namespace shadowrun::ghidra_conversion

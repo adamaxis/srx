@@ -164,13 +164,15 @@ int main() {
         special_effect.record->jitter_interval != 3U ||
         special_effect.record->lifetime != -1 ||
         special_effect.record->effect_profile != 0x002AU ||
-        special_effect_state.candidate_entity_flags[0] != 1U ||
+        !special_effect_state.auxiliary_slots[0].active ||
         special_effect_state.effect_slot_flags[0] != 1U) {
         return 101;
     }
 
     special_effect_state = {};
-    special_effect_state.candidate_entity_flags.fill(1U);
+    for (auto& slot : special_effect_state.auxiliary_slots) {
+        slot.active = true;
+    }
     special_effect = spawn_scene_special_effect(special_effect_state);
     if (special_effect.action !=
             WorldSceneSpecialEffectSpawnAction::no_entity_slot ||
@@ -188,7 +190,7 @@ int main() {
         special_effect.record->entity_slot != 9U ||
         special_effect.record->active ||
         !special_effect.record->randomized_motion_enabled ||
-        special_effect_state.candidate_entity_flags[0] != 0U) {
+        special_effect_state.auxiliary_slots[0].active) {
         return 103;
     }
 

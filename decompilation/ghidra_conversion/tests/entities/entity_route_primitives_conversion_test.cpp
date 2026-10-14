@@ -188,7 +188,7 @@ int main() {
         std::vector<std::uint8_t>(128, 0U));
     if (!expect(completed.action == RouteQueueAction::target_reached &&
                 completed.movement_flags == 0U &&
-                completed.heading == 0x8000U)) {
+                completed.heading == 0x4000U)) {
         return 48;
     }
     std::vector<std::uint8_t> path_blocked_map(128, 0U);
@@ -283,17 +283,48 @@ int main() {
         return 23;
     }
 
-    const std::array<std::uint8_t, 6> occupied{{1, 1, 0, 1, 1, 1}};
+    std::array<AuxiliaryEntitySlot, 6> occupied{};
+    occupied[0].active = true;
+    occupied[1].active = true;
+    occupied[3].active = true;
+    occupied[4].active = true;
+    occupied[5].active = true;
     if (!expect(find_first_available_entity_slot(occupied) == 11U)) {
         return 24;
     }
-    const std::array<std::uint8_t, 6> all_occupied{{1, 1, 1, 1, 1, 1}};
+    std::array<AuxiliaryEntitySlot, 6> all_occupied{};
+    for (auto& slot : all_occupied) {
+        slot.active = true;
+    }
     if (!expect(find_first_available_entity_slot(all_occupied) == 15U)) {
         return 25;
     }
-    const std::array<std::uint8_t, 6> non_active_flags{{2, 4, 8, 0, 0, 0}};
-    if (!expect(find_first_available_entity_slot(non_active_flags) == 9U)) {
+    const std::array<AuxiliaryEntitySlot, 6> none_active{};
+    if (!expect(find_first_available_entity_slot(none_active) == 9U)) {
         return 26;
+    }
+
+    std::array<AuxiliaryEntitySlot, 6> child_slots{};
+    child_slots[0].active = true;
+    auto child = spawn_reaction_auxiliary_child(
+        child_slots, 0x1234U, 0xFFF8U);
+    if (!expect(child.has_value() && child->slot == 10U && child->active &&
+                child->presentation_dirty && child->entity_kind == 1U &&
+                child->animation_selector == 4 &&
+                child->world_x == 0x1234U && child->world_y == 0x0008U &&
+                child->heading == 0x2000U && child_slots[1].active &&
+                !retire_auxiliary_child(child_slots[1], *child))) {
+        return 51;
+    }
+    auto retiring = *child;
+    retiring.animation_selector = -1;
+    if (!expect(retire_auxiliary_child(child_slots[1], retiring) &&
+                !child_slots[1].active && !retiring.active)) {
+        return 52;
+    }
+    if (!expect(!spawn_reaction_auxiliary_child(all_occupied, 0U, 0U)
+                     .has_value())) {
+        return 53;
     }
 
     std::vector<std::uint8_t> world_map(256, 0U);

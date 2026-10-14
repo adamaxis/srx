@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/entities/entity_route_primitives_conversion.hpp"
 #include "shadowrun_ghidra/rendering/sprite_record_builder_conversion.hpp"
 
 #include <array>
@@ -119,9 +120,9 @@ struct WorldSceneSpecialEffectRecord {
 };
 
 struct WorldSceneSpecialEffectSpawnState {
-    // The source scans the six world-scene entity records at slots 9..14 and
-    // tests only bit 0 of each record's +0x10 flags byte.
-    std::array<std::uint8_t, 6> candidate_entity_flags{};
+    // ROM 0x15A8C: six entity slots numbered 9..14. Occupancy is the active
+    // flag, not a flags byte.
+    std::array<AuxiliaryEntitySlot, 6> auxiliary_slots{};
     // ROM 0x1A2CC scans the shared eighteen-entry effect table.
     std::array<std::uint8_t, 18> effect_slot_flags{};
 };

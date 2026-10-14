@@ -95,6 +95,21 @@ scene-`0x14` route at seven active rows. `0xA800` pending-list occupancy and
 effect-slot exhaustion are not part of that projection, so it is not a
 general-purpose replacement for the ROM entity pool.
 
+`0x15A8C` is the other allocator. It scans the six records at `FF0B00` and
+returns source slot 9 through 14 for the first inactive record, or 15 when
+all six are active. The host stores that occupancy as
+`AuxiliaryEntitySlot.active`. Callers do not pass a flags byte.
+`0xB14C` and `0xB2A8` use the scan after a reaction changes the defender's
+`+0x4C` or `+0x9C`. The child is kind 1, animation selector 4, heading
+`0x2000`, and sits on the defender with Y increased by `0x10`. Its
+continuation is `0xAC4E`, which clears the slot only when that selector is
+negative. `spawn_reaction_auxiliary_child` and `retire_auxiliary_child` are
+that pair. The live field hit does not call them yet. Lua's meter result
+does not report those two action bytes, and spawning a child on every meter
+change would invent one. A zero-meter actor also does not leave its slot:
+`0xB330` reserves it and `0xB38A` holds it in place. Workbench QA covers the
+slot scan, the child record, and the title-intro caller of the same scan.
+
 ## AI cadence, targeting, action data, and movement
 
 `0x138B8` and `0x13904` decrement the actor's word timer at `+0xB6`. When it
