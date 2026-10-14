@@ -104,6 +104,16 @@
       ]
     },
     {
+      "name": "ghidra-conversion-qt-debug-tests",
+      "displayName": "Build Ghidra Conversion Qt QA and Tests (Debug)",
+      "configurePreset": "ghidra-conversion-qt-debug"
+    },
+    {
+      "name": "ghidra-conversion-qt-release-tests",
+      "displayName": "Build Ghidra Conversion Qt QA and Tests (Release)",
+      "configurePreset": "ghidra-conversion-qt-release"
+    },
+    {
       "name": "ghidra-conversion-release-all",
       "displayName": "Build All Ghidra Conversion Tests (Release)",
       "configurePreset": "ghidra-conversion-release"
@@ -122,6 +132,22 @@
       "name": "ghidra-conversion-release",
       "displayName": "Test Ghidra Conversion Workbench (Release)",
       "configurePreset": "ghidra-conversion-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ghidra-conversion-qt-debug-tests",
+      "displayName": "Run Ghidra Conversion Qt QA and Tests (Debug)",
+      "configurePreset": "ghidra-conversion-qt-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ghidra-conversion-qt-release-tests",
+      "displayName": "Run Ghidra Conversion Qt QA and Tests (Release)",
+      "configurePreset": "ghidra-conversion-qt-release",
       "output": {
         "outputOnFailure": true
       }

@@ -144,6 +144,18 @@ C:/msys64/ucrt64/bin/cmake.exe --build --preset ghidra-conversion-qt-release
 ../../build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe --assets ../assets
 ```
 
+The full Qt QA suite is built and run separately. CTest launches the QA
+commands and component checks without showing the game window. The test preset
+stays quiet when everything passes and prints the failing test output when it
+does not:
+
+```text
+C:/msys64/ucrt64/bin/cmake.exe --build --preset ghidra-conversion-qt-release-tests
+C:/msys64/ucrt64/bin/ctest.exe --quiet --preset ghidra-conversion-qt-release-tests
+```
+
+Use the matching `ghidra-conversion-qt-debug-tests` presets for a Debug run.
+
 The window starts from the converted boot/title integration, presents the
 direct title assets through the converted `0x1A9E` frame coordinator, and
 routes startup-menu input through the converted New Game/Load Game/Joshua menu
