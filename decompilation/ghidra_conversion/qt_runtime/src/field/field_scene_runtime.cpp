@@ -4057,6 +4057,7 @@ bool FieldSceneRuntime::load_field_weapon_spawn_assets(
     return true;
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint16_t>
 FieldSceneRuntime::field_weapon_projectile_selector_for_dump() const noexcept {
     for (const auto& spawn : field_weapon_projectiles_) {
@@ -4067,7 +4068,10 @@ FieldSceneRuntime::field_weapon_projectile_selector_for_dump() const noexcept {
     }
     return std::nullopt;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<bool>
 FieldSceneRuntime::field_weapon_projectile_list_finished_for_dump() const noexcept {
     for (const auto& spawn : field_weapon_projectiles_) {
@@ -4077,7 +4081,10 @@ FieldSceneRuntime::field_weapon_projectile_list_finished_for_dump() const noexce
     }
     return std::nullopt;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint16_t>
 FieldSceneRuntime::field_weapon_projectile_frame_for_dump() const noexcept {
     for (const auto& spawn : field_weapon_projectiles_) {
@@ -4087,7 +4094,10 @@ FieldSceneRuntime::field_weapon_projectile_frame_for_dump() const noexcept {
     }
     return std::nullopt;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::size_t FieldSceneRuntime::field_weapon_primary_count_for_dump() const
     noexcept {
     std::size_t count = 0U;
@@ -4096,7 +4106,10 @@ std::size_t FieldSceneRuntime::field_weapon_primary_count_for_dump() const
     }
     return count;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<SceneRunnerPosition>
 FieldSceneRuntime::field_weapon_primary_position_for_dump() const noexcept {
     for (const auto& spawn : field_weapon_projectiles_) {
@@ -4107,7 +4120,10 @@ FieldSceneRuntime::field_weapon_primary_position_for_dump() const noexcept {
     }
     return std::nullopt;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<SceneRunnerPosition>
 FieldSceneRuntime::field_weapon_primary_spawn_position_for_dump() const
     noexcept {
@@ -4118,7 +4134,10 @@ FieldSceneRuntime::field_weapon_primary_spawn_position_for_dump() const
     }
     return std::nullopt;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint16_t>
 FieldSceneRuntime::field_weapon_primary_heading_for_dump() const noexcept {
     for (auto spawn = field_weapon_projectiles_.rbegin();
@@ -4129,7 +4148,10 @@ FieldSceneRuntime::field_weapon_primary_heading_for_dump() const noexcept {
     }
     return std::nullopt;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<EntityHeadingOffsets>
 FieldSceneRuntime::field_weapon_primary_heading_offsets_for_dump() const
     noexcept {
@@ -4142,7 +4164,10 @@ FieldSceneRuntime::field_weapon_primary_heading_offsets_for_dump() const
     }
     return std::nullopt;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint8_t>
 FieldSceneRuntime::field_weapon_primary_retry_count_for_dump() const noexcept {
     for (const auto& spawn : field_weapon_projectiles_) {
@@ -4152,6 +4177,8 @@ FieldSceneRuntime::field_weapon_primary_retry_count_for_dump() const noexcept {
     }
     return std::nullopt;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 
 bool FieldSceneRuntime::load_field_hud_overlays(
     const ConversionAssetCatalog& catalog) {
@@ -6763,12 +6790,18 @@ bool FieldSceneRuntime::bootstrap(
         std::make_unique<integration::FieldSessionSourceAssets>(assets);
     field_asset_catalog_ = std::make_unique<ConversionAssetCatalog>(
         startup_state.asset_catalog.catalog);
+    const auto restored_scene_reference =
+        restored_field_state != nullptr
+            ? restored_field_state->world_mode
+            : kInitialFieldSceneReference;
+#ifdef SHADOWRUN_QT_QA_DRIVER
     const auto scene_reference =
         field_scene_reference_override_for_dump_.value_or(
-            restored_field_state != nullptr
-                ? restored_field_state->world_mode
-                : kInitialFieldSceneReference);
+            restored_scene_reference);
     field_scene_reference_override_for_dump_.reset();
+#else
+    const auto scene_reference = restored_scene_reference;
+#endif
     const auto scene_input = integration::make_field_scene_input(
         assets, scene_reference);
     if (!scene_input.has_value()) {
@@ -7368,6 +7401,7 @@ bool FieldSceneRuntime::bootstrap(
     return true;
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::bootstrap_for_scene_dump(
     const integration::StartupIntegrationState& startup_state,
     const std::uint16_t scene_reference) {
@@ -7378,6 +7412,8 @@ bool FieldSceneRuntime::bootstrap_for_scene_dump(
     field_scene_reference_override_for_dump_ = scene_reference;
     return bootstrap(startup_state);
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 
 void FieldSceneRuntime::set_controller_nibble(
     const std::uint8_t dpad_nibble) noexcept {
@@ -7391,6 +7427,7 @@ void FieldSceneRuntime::set_controller_port_byte(
     field_controller_nibble_ = static_cast<std::uint8_t>(port_byte & 0x0FU);
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 void FieldSceneRuntime::begin_projected_field_transition_for_dump() noexcept {
     if (!ready_) {
         return;
@@ -7405,6 +7442,8 @@ void FieldSceneRuntime::begin_projected_field_transition_for_dump() noexcept {
     state_.display_service_word = 0xFFFFU;
     field_palette_fade_steps_ = 0U;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 
 std::optional<std::size_t> FieldSceneRuntime::projected_terrain_cell() const {
     const auto& profile = state_.field_scene_buffers.profile;
@@ -7449,6 +7488,7 @@ void FieldSceneRuntime::record_field_activity_start(
     source_boundary("field.world.activity.started");
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::dispatch_field_interaction_through_coordinator_for_dump(
     const FieldInteractionPrompt prompt,
     const std::uint8_t interaction_selection,
@@ -7491,7 +7531,10 @@ bool FieldSceneRuntime::dispatch_field_interaction_through_coordinator_for_dump(
     advance_frame();
     return field_interaction_.open();
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::initialize_world_activity_for_dump(
     const std::uint8_t mode_event_code,
     const std::uint16_t random_seed) {
@@ -7570,7 +7613,10 @@ bool FieldSceneRuntime::initialize_world_activity_for_dump(
            field_security_floor_index_.value() <
                world_activity_routine_state_.resource_random_index_bound;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::return_from_world_activity_for_dump() {
     if (!ready_ || !world_activity_return_snapshot_.has_value()) {
         return false;
@@ -7584,7 +7630,10 @@ bool FieldSceneRuntime::return_from_world_activity_for_dump() {
            state_.field_scene_buffers.initialized &&
            state_.field_scene_buffers.scene_reference == source_scene;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::dispatch_selected_security_terminal_for_dump() {
     if (!ready_ || !field_security_floor_index_.has_value() ||
         world_activity_routine_state_.mode !=
@@ -7602,6 +7651,8 @@ bool FieldSceneRuntime::dispatch_selected_security_terminal_for_dump() {
     return field_interaction_.open() &&
            field_interaction_.panel().option_count == 2U;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 
 bool FieldSceneRuntime::recover_blocked_field_movement(
     const MovementProbeResult& initial_probe) {
@@ -10995,6 +11046,7 @@ void FieldSceneRuntime::advance_frame() {
     }
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::open_command_overview_for_dump() {
     if (!ready_) {
         return false;
@@ -11008,7 +11060,10 @@ bool FieldSceneRuntime::open_command_overview_for_dump() {
         field_controller_port_byte_ & static_cast<std::uint8_t>(~0x80U)));
     return command_overview_.open();
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::open_attributes_skills_for_dump() {
     if (!open_command_overview_for_dump() ||
         !seek_command_overview_page(3U)) {
@@ -11021,7 +11076,10 @@ bool FieldSceneRuntime::open_attributes_skills_for_dump() {
     advance_frame();
     return command_overview_attributes_skills_.is_open();
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::open_stoker_room_payment_for_dump(
     const std::uint32_t funds) {
     if (!ready_) {
@@ -11035,7 +11093,10 @@ bool FieldSceneRuntime::open_stoker_room_payment_for_dump(
     return field_dialogue_.advance_controller_events(0x4000U) ==
            FieldDialogueAdvanceResult::prompt_advanced;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 FieldDialogueAdvanceResult
 FieldSceneRuntime::advance_stoker_dialogue_for_dump(
     const std::uint16_t event_word) {
@@ -11045,6 +11106,8 @@ FieldSceneRuntime::advance_stoker_dialogue_for_dump(
     }
     return result;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 
 bool FieldSceneRuntime::open_gunderson_interaction() {
     if (!ready_ || state_.field_scene_buffers.scene_reference != 13U) {
@@ -11070,9 +11133,12 @@ bool FieldSceneRuntime::open_field_johnson_interaction() {
     return field_dialogue_.open_gameplay_task("johnson", "interaction");
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::open_gunderson_interaction_for_dump() {
     return open_gunderson_interaction();
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 
 FieldInteractionAdvanceResult
 FieldSceneRuntime::advance_field_interaction(
@@ -11537,6 +11603,7 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
     return result;
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 HotelMenuEvent FieldSceneRuntime::advance_hotel_menu_for_dump(
     const std::uint16_t events) {
     if (!hotel_menu_.open()) {
@@ -11549,7 +11616,10 @@ HotelMenuEvent FieldSceneRuntime::advance_hotel_menu_for_dump(
     hotel_menu_.advance_animation(field_random_seed_);
     return process_hotel_menu_events(events);
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 AttributesSkillsRuntimeEvent
 FieldSceneRuntime::advance_hotel_karma_screen_for_dump(
     const std::uint16_t events) {
@@ -11558,6 +11628,8 @@ FieldSceneRuntime::advance_hotel_karma_screen_for_dump(
     }
     return process_hotel_karma_screen_events(events);
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 
 AttributesSkillsRuntimeEvent
 FieldSceneRuntime::process_hotel_karma_screen_events(
@@ -11604,6 +11676,7 @@ FieldSceneRuntime::process_hotel_karma_screen_events(
     return result;
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::begin_ares_shop_event_for_dump() {
     if (!ready_) {
         return false;
@@ -11618,6 +11691,8 @@ bool FieldSceneRuntime::begin_ares_shop_event_for_dump() {
     (void)run_field_exit_orchestrator(field_runtime_state_);
     return field_mode_text_.open();
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 
 bool FieldSceneRuntime::seek_command_overview_page(const std::uint8_t page) {
     if (!command_overview_.open() || page > 6U) {
@@ -14259,6 +14334,7 @@ void FieldSceneRuntime::paint(QPainter& painter) const {
     apply_palette_fade();
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 void FieldSceneRuntime::paint_field_scene_for_dump(
     QPainter& painter) const {
     painter.fillRect(0, 0, 320, 224, Qt::black);
@@ -14267,7 +14343,10 @@ void FieldSceneRuntime::paint_field_scene_for_dump(
     }
     paint_field_scene(painter);
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::size_t FieldSceneRuntime::default_actor_count_for_dump() const noexcept {
     const auto scene_reference = state_.field_scene_buffers.scene_reference;
     return static_cast<std::size_t>(std::count_if(
@@ -14276,7 +14355,10 @@ std::size_t FieldSceneRuntime::default_actor_count_for_dump() const noexcept {
             return actor.active && actor.scene_reference == scene_reference;
         }));
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::vector<SceneRunnerPosition>
 FieldSceneRuntime::active_default_actor_positions_for_dump() const {
     const auto scene_reference = state_.field_scene_buffers.scene_reference;
@@ -14288,7 +14370,10 @@ FieldSceneRuntime::active_default_actor_positions_for_dump() const {
     }
     return positions;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::string>
 FieldSceneRuntime::selected_default_actor_id_for_dump() const {
     if (!field_entity_target_owner_.selected_target.has_value()) {
@@ -14311,7 +14396,10 @@ FieldSceneRuntime::selected_default_actor_id_for_dump() const {
     }
     return actor->actor_instance_id;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<FieldTargetMarkerDebugState>
 FieldSceneRuntime::selected_default_actor_target_marker_for_dump() const noexcept {
     if (!field_entity_target_owner_.selected_target.has_value()) {
@@ -14348,7 +14436,10 @@ FieldSceneRuntime::selected_default_actor_target_marker_for_dump() const noexcep
         projection.screen_x,
         projection.screen_y};
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<FieldCreatureAttackEffectDebugState>
 FieldSceneRuntime::default_actor_creature_attack_effect_for_dump(
     const std::uint16_t source_order) const noexcept {
@@ -14373,7 +14464,10 @@ FieldSceneRuntime::default_actor_creature_attack_effect_for_dump(
         actor->target_motion_effect_slot,
         actor->action_delay};
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::set_default_actor_world_position_for_dump(
     const std::size_t active_actor_index, const std::uint16_t x,
     const std::uint16_t y) noexcept {
@@ -14394,7 +14488,10 @@ bool FieldSceneRuntime::set_default_actor_world_position_for_dump(
     }
     return false;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::set_field_spell_effect_for_dump(
     const std::uint8_t action_code, const std::uint8_t phase,
     const bool visible) noexcept {
@@ -14420,7 +14517,10 @@ bool FieldSceneRuntime::set_field_spell_effect_for_dump(
     field_entity_.spell_effect_phase = phase;
     return true;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::set_selected_default_actor_world_position_for_dump(
     const std::uint16_t x, const std::uint16_t y) noexcept {
     if (!field_entity_target_owner_.selected_target.has_value()) {
@@ -14443,7 +14543,10 @@ bool FieldSceneRuntime::set_selected_default_actor_world_position_for_dump(
     }
     return false;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::size_t FieldSceneRuntime::resolve_and_spawn_field_encounter_for_dump(
     const std::uint8_t first_roll, const std::uint8_t second_roll,
     const std::uint16_t random_seed) {
@@ -14477,7 +14580,10 @@ std::size_t FieldSceneRuntime::resolve_and_spawn_field_encounter_for_dump(
     const auto count_after = default_actor_count_for_dump();
     return count_after >= count_before ? count_after - count_before : 0U;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::size_t
 FieldSceneRuntime::default_actor_transition_started_count_for_dump() const
     noexcept {
@@ -14490,7 +14596,10 @@ FieldSceneRuntime::default_actor_transition_started_count_for_dump() const
                    actor.transition_started;
         }));
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::size_t
 FieldSceneRuntime::default_actor_transition_complete_count_for_dump() const
     noexcept {
@@ -14503,7 +14612,10 @@ FieldSceneRuntime::default_actor_transition_complete_count_for_dump() const
                    actor.transition_complete;
         }));
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint8_t>
 FieldSceneRuntime::default_actor_direction_for_dump(
     const std::uint16_t source_order) const noexcept {
@@ -14520,7 +14632,10 @@ FieldSceneRuntime::default_actor_direction_for_dump(
                ? std::nullopt
                : std::optional<std::uint8_t>{actor->animation_direction};
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint8_t>
 FieldSceneRuntime::default_actor_animation_frame_for_dump(
     const std::uint16_t source_order) const noexcept {
@@ -14538,7 +14653,10 @@ FieldSceneRuntime::default_actor_animation_frame_for_dump(
                : std::optional<std::uint8_t>{
                      actor->animation_frame};
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::string>
 FieldSceneRuntime::default_actor_animation_id_for_dump(
     const std::uint16_t source_order) const {
@@ -14555,7 +14673,10 @@ FieldSceneRuntime::default_actor_animation_id_for_dump(
                ? std::nullopt
                : std::optional<std::string>{actor->animation_id};
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<FieldWorldActorSlot>
 FieldSceneRuntime::default_actor_record_slot_for_dump(
     const std::uint16_t source_order) const noexcept {
@@ -14572,7 +14693,10 @@ FieldSceneRuntime::default_actor_record_slot_for_dump(
                ? std::nullopt
                : actor->source_record_slot;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::string>
 FieldSceneRuntime::default_actor_script_profile_for_dump(
     const std::uint16_t source_order) const {
@@ -14590,7 +14714,10 @@ FieldSceneRuntime::default_actor_script_profile_for_dump(
                ? std::nullopt
                : std::optional<std::string>{actor->script_profile_id};
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::string>
 FieldSceneRuntime::default_actor_ai_package_for_dump(
     const std::uint16_t source_order) const {
@@ -14608,7 +14735,10 @@ FieldSceneRuntime::default_actor_ai_package_for_dump(
                ? std::nullopt
                : std::optional<std::string>{actor->ai_package_id};
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::string>
 FieldSceneRuntime::default_actor_ai_target_id_for_dump(
     const std::uint16_t source_order) const {
@@ -14625,7 +14755,10 @@ FieldSceneRuntime::default_actor_ai_target_id_for_dump(
                ? std::nullopt
                : std::optional<std::string>{actor->ai_target_id};
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<bool>
 FieldSceneRuntime::default_actor_transition_complete_for_dump(
     const std::uint16_t source_order) const noexcept {
@@ -14642,7 +14775,10 @@ FieldSceneRuntime::default_actor_transition_complete_for_dump(
                ? std::nullopt
                : std::optional<bool>{actor->transition_complete};
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<bool>
 FieldSceneRuntime::default_actor_has_ai_target_pool_for_dump(
     const std::uint16_t source_order) const noexcept {
@@ -14659,7 +14795,10 @@ FieldSceneRuntime::default_actor_has_ai_target_pool_for_dump(
                ? std::nullopt
                : std::optional<bool>{actor->ai_target_valid};
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint16_t>
 FieldSceneRuntime::default_actor_ai_target_distance_for_dump(
     const std::uint16_t source_order) const noexcept {
@@ -14676,7 +14815,10 @@ FieldSceneRuntime::default_actor_ai_target_distance_for_dump(
                ? std::nullopt
                : std::optional<std::uint16_t>{actor->ai_target_distance};
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint8_t>
 FieldSceneRuntime::default_actor_weapon_item_for_dump(
     const std::uint16_t source_order) const noexcept {
@@ -14693,7 +14835,10 @@ FieldSceneRuntime::default_actor_weapon_item_for_dump(
                ? std::nullopt
                : actor->ai_weapon_item_id;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint8_t>
 FieldSceneRuntime::default_actor_source_action_ammo_for_dump(
     const std::uint16_t source_order) const noexcept {
@@ -14709,7 +14854,10 @@ FieldSceneRuntime::default_actor_source_action_ammo_for_dump(
                ? std::nullopt
                : std::optional<std::uint8_t>{actor->source_action_ammo};
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint16_t>
 FieldSceneRuntime::default_actor_source_animation_selector_for_dump(
     const std::uint16_t source_order) const noexcept {
@@ -14726,7 +14874,10 @@ FieldSceneRuntime::default_actor_source_animation_selector_for_dump(
                : std::optional<std::uint16_t>{
                      actor->source_animation_selector};
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint8_t>
 FieldSceneRuntime::default_actor_physical_meter_for_dump(
     const std::uint16_t source_order) const noexcept {
@@ -14743,7 +14894,10 @@ FieldSceneRuntime::default_actor_physical_meter_for_dump(
                ? std::nullopt
                : std::optional<std::uint8_t>{actor->physical_meter};
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::set_default_actor_physical_meter_for_dump(
     const std::uint16_t source_order,
     const std::uint8_t physical_meter) noexcept {
@@ -14764,7 +14918,10 @@ bool FieldSceneRuntime::set_default_actor_physical_meter_for_dump(
     actor->combatant.physical_meter = physical_meter;
     return true;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::size_t FieldSceneRuntime::visible_default_actor_count_for_dump() const {
     const auto scene_reference = state_.field_scene_buffers.scene_reference;
     const auto camera_x = static_cast<std::uint16_t>(
@@ -14799,6 +14956,8 @@ std::size_t FieldSceneRuntime::visible_default_actor_count_for_dump() const {
     }
     return visible;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 
 void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
     const auto& scene = state_.field_scene_buffers;

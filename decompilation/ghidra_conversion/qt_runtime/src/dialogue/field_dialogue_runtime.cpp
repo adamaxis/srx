@@ -148,6 +148,7 @@ bool FieldDialogueRuntime::open_field_exit_prompt(
     return open_stoker_prompt(*prompt);
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldDialogueRuntime::open_stoker_prompt_for_dump(
     const StokerMotelPromptId prompt) {
     if (prompt == StokerMotelPromptId::manager_greeting_with_package) {
@@ -170,6 +171,8 @@ bool FieldDialogueRuntime::open_stoker_prompt_for_dump(
     }
     return open_stoker_prompt(prompt);
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 
 bool FieldDialogueRuntime::open_stoker_interaction() {
     if (script_runtime_ != nullptr) {
@@ -189,6 +192,7 @@ bool FieldDialogueRuntime::open_gameplay_task(
                              StokerMotelPromptId::source_boundary);
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldDialogueRuntime::open_stoker_interaction_for_dump(
     const StokerMotelStoryState& story_state) {
     if (script_runtime_ != nullptr) {
@@ -200,7 +204,10 @@ bool FieldDialogueRuntime::open_stoker_interaction_for_dump(
     }
     return open_stoker_interaction();
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
 
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldDialogueRuntime::open_stoker_arrival_result_for_dump(
     const std::uint8_t random_roll) {
     const auto saved_callbacks = arrival_command_callbacks_;
@@ -222,6 +229,8 @@ bool FieldDialogueRuntime::open_stoker_arrival_result_for_dump(
     arrival_command_callbacks_ = saved_callbacks;
     return result_opened;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 
 bool FieldDialogueRuntime::open_stoker_prompt(
     const StokerMotelPromptId prompt) {

@@ -14,7 +14,7 @@ handoff, and stable field hold.
 Command:
 
 ```text
-shadowrun_ghidra_conversion_qt.exe --full-intro-capture 2 2700 <output-dir>
+shadowrun_ghidra_conversion_qt_qa.exe --full-intro-capture 2 2700 <output-dir>
 ```
 
 Output: `build/visual-audits/intro-full/release-gator-shaman-20261006/`.

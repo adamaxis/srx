@@ -79,7 +79,7 @@ text is synthesized for this path.
 The release executable has a deterministic diagnostic path:
 
 ```text
-shadowrun_ghidra_conversion_qt.exe --assets decompilation/assets \
+shadowrun_ghidra_conversion_qt_qa.exe --assets decompilation/assets \
   --field-action-dump <output-dir>
 ```
 
@@ -123,7 +123,7 @@ ROM-derived and runtime-tested but still lacks an independent visual example.
 First Aid has a separate end-to-end route and image dump:
 
 ```text
-shadowrun_ghidra_conversion_qt.exe --assets decompilation/assets \
+shadowrun_ghidra_conversion_qt_qa.exe --assets decompilation/assets \
   --field-archetype samurai --field-first-aid-dump <output-dir>
 ```
 
@@ -138,7 +138,7 @@ physical meter to exercise the injured-target path.
 Automatic-use items have a separate end-to-end route:
 
 ```text
-shadowrun_ghidra_conversion_qt.exe --assets decompilation/assets \
+shadowrun_ghidra_conversion_qt_qa.exe --assets decompilation/assets \
   --field-automatic-use-dump <output-dir>
 ```
 
@@ -155,7 +155,7 @@ independent capture.
 Trade has a separate typed-state route and image dump:
 
 ```text
-shadowrun_ghidra_conversion_qt.exe --assets decompilation/assets \
+shadowrun_ghidra_conversion_qt_qa.exe --assets decompilation/assets \
   --field-inventory-trade-dump <output-dir>
 ```
 

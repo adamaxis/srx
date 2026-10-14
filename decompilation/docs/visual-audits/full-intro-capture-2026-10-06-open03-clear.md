@@ -10,7 +10,7 @@ and 120 stable field frames.
 Command:
 
 ```text
-shadowrun_ghidra_conversion_qt.exe --full-intro-capture 2 2700 <output-dir>
+shadowrun_ghidra_conversion_qt_qa.exe --full-intro-capture 2 2700 <output-dir>
 ```
 
 The run exited with code 0 and wrote 6,782 consecutive 320x224 PNGs

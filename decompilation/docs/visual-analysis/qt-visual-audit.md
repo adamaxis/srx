@@ -622,7 +622,7 @@ The focused CTests are
 `shadowrun_ghidra_first_aid_conversion`,
 `shadowrun_ghidra_field_party_roster_runtime`, and
 `shadowrun_ghidra_field_menu_text_catalog`. The CLI command is
-`shadowrun_ghidra_conversion_qt.exe --assets decompilation/assets --field-archetype samurai --field-first-aid-dump <output-dir>`;
+`shadowrun_ghidra_conversion_qt_qa.exe --assets decompilation/assets --field-archetype samurai --field-first-aid-dump <output-dir>`;
 it writes `actual.bmp` plus the interaction checkpoints and verifies that
 held A does not dismiss the result before a fresh controller edge. This hill stays
 `partial`: Joshua-only roster integration, host RNG seeding, Windows loopback
@@ -1107,18 +1107,18 @@ These commands write verification artifacts outside `assets/`:
 
 ```text
 shadowrun_visual_dump.exe <asset-dir> <out-dir> --scene <scene> --frames 0,90,128,500
-shadowrun_ghidra_conversion_qt.exe --startup-qa <audit-dir> --assets <assets>
-shadowrun_ghidra_conversion_qt.exe --field-dump <file> --assets <assets>
-shadowrun_ghidra_conversion_qt.exe --field-hud-qa <audit-dir> --assets <assets>
-shadowrun_ghidra_conversion_qt.exe --field-command-dump <file> --field-archetype <samurai|decker|gator> --assets <assets>
-shadowrun_ghidra_conversion_qt.exe --field-action-dump <dir> --assets <assets>
-shadowrun_ghidra_conversion_qt.exe --field-first-aid-dump <dir> --field-archetype samurai --assets <assets>
-shadowrun_ghidra_conversion_qt.exe --field-automatic-use-dump <dir> --assets <assets>
-shadowrun_ghidra_conversion_qt.exe --field-inventory-trade-dump <dir> --assets <assets>
-shadowrun_ghidra_conversion_qt.exe --field-clips-dump <dir> --assets <assets>
-shadowrun_ghidra_conversion_qt.exe --field-player-action-dump <dir> --assets <assets>
-shadowrun_ghidra_conversion_qt.exe --field-magic-dump <dir> --field-archetype gator --assets <assets>
-shadowrun_ghidra_conversion_qt.exe --field-dialogue-dump <prompt> <file> --assets <assets>
+shadowrun_ghidra_conversion_qt_qa.exe --startup-qa <audit-dir> --assets <assets>
+shadowrun_ghidra_conversion_qt_qa.exe --field-dump <file> --assets <assets>
+shadowrun_ghidra_conversion_qt_qa.exe --field-hud-qa <audit-dir> --assets <assets>
+shadowrun_ghidra_conversion_qt_qa.exe --field-command-dump <file> --field-archetype <samurai|decker|gator> --assets <assets>
+shadowrun_ghidra_conversion_qt_qa.exe --field-action-dump <dir> --assets <assets>
+shadowrun_ghidra_conversion_qt_qa.exe --field-first-aid-dump <dir> --field-archetype samurai --assets <assets>
+shadowrun_ghidra_conversion_qt_qa.exe --field-automatic-use-dump <dir> --assets <assets>
+shadowrun_ghidra_conversion_qt_qa.exe --field-inventory-trade-dump <dir> --assets <assets>
+shadowrun_ghidra_conversion_qt_qa.exe --field-clips-dump <dir> --assets <assets>
+shadowrun_ghidra_conversion_qt_qa.exe --field-player-action-dump <dir> --assets <assets>
+shadowrun_ghidra_conversion_qt_qa.exe --field-magic-dump <dir> --field-archetype gator --assets <assets>
+shadowrun_ghidra_conversion_qt_qa.exe --field-dialogue-dump <prompt> <file> --assets <assets>
 ```
 
 The `--field-archetype` switch selects an existing startup record; it does

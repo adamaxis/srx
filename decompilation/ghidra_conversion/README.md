@@ -119,6 +119,9 @@ The `ghidra-conversion-qt-release` configure, build, and workflow presets
 target `shadowrun_ghidra_conversion_qt.exe` at the Qt Release build-directory
 root. Close the running executable before rebuilding.
 
+The production executable `shadowrun_ghidra_conversion_qt.exe` accepts `--assets`
+and `--help`, then opens the game window. Screenshot, smoke, and behavior-check
+commands belong to the separate `shadowrun_ghidra_conversion_qt_qa.exe` runner.
 Build the separate Debug application from this directory:
 
 ```text
@@ -126,11 +129,11 @@ C:/msys64/ucrt64/bin/cmake.exe --preset ghidra-conversion-qt-debug
 C:/msys64/ucrt64/bin/cmake.exe --build --preset ghidra-conversion-qt-debug
 ../../build/conversion/qt/debug/shadowrun_ghidra_conversion_qt.exe --assets ../assets
 # Directly exercise the converted field-entry bridge without opening a window.
-../../build/conversion/qt/debug/shadowrun_ghidra_conversion_qt.exe --field-smoke --assets ../assets
+../../build/conversion/qt/debug/shadowrun_ghidra_conversion_qt_qa.exe --field-smoke --assets ../assets
 # Write the source-sized field frame for visual inspection.
-../../build/conversion/qt/debug/shadowrun_ghidra_conversion_qt.exe --field-dump field.bmp --assets ../assets
+../../build/conversion/qt/debug/shadowrun_ghidra_conversion_qt_qa.exe --field-dump field.bmp --assets ../assets
 # Write a pre-title frame at a specific converted source-frame boundary.
-../../build/conversion/qt/debug/shadowrun_ghidra_conversion_qt.exe --boot-dump-frame 200 boot-200.bmp --assets ../assets
+../../build/conversion/qt/debug/shadowrun_ghidra_conversion_qt_qa.exe --boot-dump-frame 200 boot-200.bmp --assets ../assets
 ```
 
 Release:

@@ -7,7 +7,7 @@ route with 2,700 title-idle updates, the full intro, the opening field event,
 and the first stable field/dialogue state:
 
 ```text
-shadowrun_ghidra_conversion_qt.exe --assets decompilation/assets \
+shadowrun_ghidra_conversion_qt_qa.exe --assets decompilation/assets \
   --full-intro-capture 2 2700 build/visual-review/intro-full-capture-20261009
 ```
 

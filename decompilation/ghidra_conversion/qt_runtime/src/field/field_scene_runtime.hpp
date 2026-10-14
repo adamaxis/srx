@@ -1725,7 +1725,9 @@ private:
     FieldEntityPresentation field_entity_{};
     std::string failure_;
     bool ready_ = false;
+#ifdef SHADOWRUN_QT_QA_DRIVER
     std::optional<std::uint16_t> field_scene_reference_override_for_dump_;
+#endif
 };
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

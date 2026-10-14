@@ -1,10 +1,10 @@
 # Ghidra-conversion Qt startup QA
 
-The separate executable `shadowrun_ghidra_conversion_qt` now has one
+The separate executable `shadowrun_ghidra_conversion_qt_qa` has the
 deterministic startup walk:
 
 ```text
-shadowrun_ghidra_conversion_qt \
+shadowrun_ghidra_conversion_qt_qa \
   --assets decompilation/assets \
   --startup-qa <output-directory>
 ```

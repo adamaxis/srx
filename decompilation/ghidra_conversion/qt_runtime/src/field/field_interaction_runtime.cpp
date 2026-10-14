@@ -213,6 +213,7 @@ bool FieldInteractionRuntime::open(
     return false;
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldInteractionRuntime::open_prompt_for_dump(
     const FieldInteractionPrompt prompt,
     const std::uint8_t interaction_selection,
@@ -241,6 +242,8 @@ bool FieldInteractionRuntime::open_prompt_for_dump(
     build_prompt(selected);
     return open();
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 
 void FieldInteractionRuntime::build_prompt(
     const FieldInteractionPrompt prompt) {
@@ -789,10 +792,13 @@ void FieldInteractionRuntime::reset_session() noexcept {
     security_alarm_disabled_ = false;
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 const WorldActivityTimeoutState&
 FieldInteractionRuntime::world_activity_timeout_for_dump() const noexcept {
     return *alert_timeout_state_;
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 
 void FieldInteractionRuntime::paint(QPainter& painter) const {
     presenter_.paint(painter, panel_);

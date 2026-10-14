@@ -93,7 +93,7 @@ mode, or prompt.
 
 ## Reproduction and artifacts
 
-Run `shadowrun_ghidra_conversion_qt --assets decompilation/assets
+Run `shadowrun_ghidra_conversion_qt_qa --assets decompilation/assets
 --field-ares-collision-shop-qa <output-dir>`. CTest name:
 `shadowrun_ghidra_conversion_qt_field_ares_collision_shop_qa`.
 

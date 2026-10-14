@@ -338,7 +338,7 @@ screen element.
 
 The source and host dump were compared at the wilderness transition using the
 numbered frames in section 02 and the deterministic Qt command
-`shadowrun_ghidra_conversion_qt.exe --startup-dump opening 2 <frame> <bmp>`.
+`shadowrun_ghidra_conversion_qt_qa.exe --startup-dump opening 2 <frame> <bmp>`.
 The comparison exposed two conversion/presentation errors:
 
 - The ROM's `0x5AE9E` writer had been misread. It writes `without_warning` at

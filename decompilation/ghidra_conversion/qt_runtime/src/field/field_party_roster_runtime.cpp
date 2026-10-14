@@ -67,6 +67,7 @@ void FieldPartyRosterRuntime::set_active_slot(const std::size_t slot) noexcept {
     active_slot_ = 0U;
 }
 
+#ifdef SHADOWRUN_QT_QA_DRIVER
 void FieldPartyRosterRuntime::install_party_member_for_dump(
     const std::size_t slot, RunnerRecordFields record, std::string name,
     const std::uint8_t portrait_asset_family) {
@@ -82,6 +83,8 @@ void FieldPartyRosterRuntime::install_party_member_for_dump(
         source_ = Source::restored_save;
     }
 }
+#endif // SHADOWRUN_QT_QA_DRIVER
+
 
 bool FieldPartyRosterRuntime::deactivate_party_member(
     const std::size_t slot) noexcept {
