@@ -8,12 +8,7 @@ set(SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering")
 
-# This is the runnable Qt host for the converted source contracts. It is a
-# child of ghidra_conversion, not a target in the native-port CMake project.
-# It deliberately does not link shadowrun_port, shadowrun_native,
-# shadowrun_qt, GenesisBus, or the native asset decoder.
-add_executable(shadowrun_ghidra_conversion_qt
-    src/app/ghidra_conversion_qt_main.cpp
+set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/field/field_scene_runtime.cpp
     src/field/field_map_composition.cpp
     src/field/elevator_selector_runtime.cpp
@@ -31,7 +26,15 @@ add_executable(shadowrun_ghidra_conversion_qt
     src/menus/hotel_menu_runtime.cpp
     src/field/field_mode_text_runtime.cpp
     src/field/field_interaction_runtime.cpp
-    src/audio/audio_playback.cpp
+    src/audio/audio_playback.cpp)
+
+# This is the runnable Qt host for the converted source contracts. It is a
+# child of ghidra_conversion, not a target in the native-port CMake project.
+# It deliberately does not link shadowrun_port, shadowrun_native,
+# shadowrun_qt, GenesisBus, or the native asset decoder.
+add_executable(shadowrun_ghidra_conversion_qt
+    src/app/ghidra_conversion_qt_main.cpp
+    ${SHADOWRUN_GHIDRA_QT_GAME_SOURCES}
 )
 
 # The command-line screenshot and behavior harness is built separately from
@@ -39,24 +42,7 @@ add_executable(shadowrun_ghidra_conversion_qt
 # contains the interactive Qt application and its runtime systems.
 add_executable(shadowrun_ghidra_conversion_qt_qa
     tests/qa/ghidra_conversion_qt_qa_main.cpp
-    src/field/field_scene_runtime.cpp
-    src/field/field_map_composition.cpp
-    src/field/elevator_selector_runtime.cpp
-    src/menus/attributes_skills_menu_runtime.cpp
-    src/field/field_clips_menu_runtime.cpp
-    src/menus/shop_menu_runtime.cpp
-    src/field/field_party_roster_runtime.cpp
-    src/field/field_menu_text_catalog.cpp
-    src/field/field_command_overview_bridge.cpp
-    src/rendering/genesis_image_compositor.cpp
-    src/rendering/numeric_visual_renderer.cpp
-    src/dialogue/dialogue_panel.cpp
-    src/dialogue/dialogue_panel_presenter.cpp
-    src/dialogue/field_dialogue_runtime.cpp
-    src/menus/hotel_menu_runtime.cpp
-    src/field/field_mode_text_runtime.cpp
-    src/field/field_interaction_runtime.cpp
-    src/audio/audio_playback.cpp
+    ${SHADOWRUN_GHIDRA_QT_GAME_SOURCES}
 )
 target_include_directories(shadowrun_ghidra_conversion_qt_qa
     PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
@@ -153,96 +139,75 @@ if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         "-Wl,-e,mainCRTStartup")
 endif()
 
+function(add_shadowrun_qt_qa_case test_name)
+    add_test(NAME "${test_name}"
+        COMMAND shadowrun_ghidra_conversion_qt_qa ${ARGN})
+    set_tests_properties("${test_name}" PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=windows")
+endfunction()
+
 # One end-to-end startup/field QA walk. The executable writes its visual
 # checkpoints outside the asset tree so this remains a verification artifact,
 # not a runtime resource or another generated asset pile.
-add_test(NAME shadowrun_ghidra_conversion_qt_startup_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_startup_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --startup-qa "${CMAKE_CURRENT_BINARY_DIR}/startup-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_startup_qa PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Source no-input timeout returns to the ordinary boot/title cycle instead of
 # remaining on the fully faded black title frame.
-add_test(NAME shadowrun_ghidra_conversion_qt_title_idle_restart_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_title_idle_restart_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --title-idle-restart-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/title-idle-restart-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_title_idle_restart_qa PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Launch from the runtime build directory without --assets. The installed
 # executable must locate the checked-in named assets from its own path rather
 # than depending on the shell's working directory.
-add_test(NAME shadowrun_ghidra_conversion_qt_asset_autodiscovery_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_asset_autodiscovery_qa
                  --startup-dump start_options 0 0
                  "${CMAKE_CURRENT_BINARY_DIR}/asset-autodiscovery-start-options.bmp")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_asset_autodiscovery_qa PROPERTIES
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    ENVIRONMENT "QT_QPA_PLATFORM=windows")
+set_tests_properties(shadowrun_ghidra_conversion_qt_asset_autodiscovery_qa
+    PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
 
 # The six airport rotor descriptors advance every six source frames. Capture
 # all six whole screens plus the 36-frame repeat and check the animated strip
 # against the horizontally translated, otherwise stable aircraft body.
-add_test(NAME shadowrun_ghidra_conversion_qt_opening_rotor_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_rotor_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --opening-rotor-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/opening-rotor-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_opening_rotor_qa PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # The landing path uses the ROM-selected movement art until the computed Y
 # enters its narrow special-image window. Save whole-screen frames at every
 # landing event and across entry/exit from that window.
-add_test(NAME shadowrun_ghidra_conversion_qt_opening_landing_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_landing_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --opening-landing-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/opening-landing-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_opening_landing_qa PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # The source Start edge is sampled and latched during the opening sequence,
 # then returns through the New Game field setup without running A/B as skips.
-add_test(NAME shadowrun_ghidra_conversion_qt_opening_start_skip_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_start_skip_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --opening-start-skip-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/opening-start-skip-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_opening_start_skip_qa PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # During 0x59D7C the wilderness body layers pan with FFDD08/FFDD0A while the
 # Indian's head SAT advances with DD46/DD48. Verify their relative placement
 # and capture complete start/midpoint/settled screens from the Gator Shaman
 # route.
-add_test(NAME shadowrun_ghidra_conversion_qt_opening_wilderness_pan_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_wilderness_pan_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --opening-wilderness-pan-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/opening-wilderness-pan-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_opening_wilderness_pan_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # ROM 0x5A2D0 replaces all fifteen colors on palette line 1 with white, then
 # 0x5A328 steps them once every nine frames. The head SAT and right actor plate
 # share this palette while the six timed body/smoke frames continue separately.
-add_test(NAME shadowrun_ghidra_conversion_qt_opening_ambush_flash_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_ambush_flash_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --opening-ambush-flash-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/opening-ambush-flash-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_opening_ambush_flash_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 add_executable(shadowrun_ghidra_conversion_qt_title_intro_motion_test
     ../tests/title_intro/title_intro_motion_conversion_test.cpp)
@@ -254,26 +219,18 @@ add_test(NAME shadowrun_ghidra_conversion_qt_title_intro_motion_qa
 # The six 0x5A080 updates replace the left wilderness region. At 0x59F8E's
 # terminal event, ROM fills that region with the blank tile before drawing the
 # death pose. Verify the full-screen lifetime and the cockpit handoff.
-add_test(NAME shadowrun_ghidra_conversion_qt_opening_death_layer_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_death_layer_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --opening-death-layer-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/opening-death-layer-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_opening_death_layer_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # The ROM marks the fixed trivid-left and timed SAT lists high priority
 # (0xC000/0xE000) while the moving trivid-right list is low priority (0x6000).
 # Whole-screen QA checks these layers across the full 0x115-frame scene loop.
-add_test(NAME shadowrun_ghidra_conversion_qt_opening_trivid_layer_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_opening_trivid_layer_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --opening-trivid-layer-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/opening-trivid-layer-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_opening_trivid_layer_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # The Qt preset excludes the broader conversion-test glob, so retain this
 # source-contract test here alongside the end-to-end image/cadence QA.
@@ -295,45 +252,32 @@ add_test(NAME shadowrun_ghidra_conversion_qt_title_intro_overlay_qa
 # startup walk: the ROM fades SEGA to black, fades FASA in, holds for 0x79
 # VBlanks, fades back out, then holds title on black for 0x5A updates before
 # revealing the first Shadowrun logo column.
-add_test(NAME shadowrun_ghidra_conversion_qt_boot_fasa_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_boot_fasa_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --boot-fasa-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/boot-fasa-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_boot_fasa_qa PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-add_test(NAME shadowrun_ghidra_conversion_qt_field_action_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_action_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-action-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-action-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_action_qa PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Empty magazines reload through the live FieldSceneRuntime A-button path.
 # The current weapon supplies its own capacity while the runner-wide clip
 # reserve decreases; this dump is internal route evidence, not an independent
 # Genesis visual reference.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_player_action_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_player_action_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-player-action-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-player-action-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_player_action_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Field input is held across multiple ROM-timed updates so direction slew,
 # collision-accepted motion, walk-frame cadence, release-to-idle, and the
 # replacement actor draw all have visible checkpoints in this scene.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_movement_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_movement_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-movement-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-movement-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_movement_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Every accepted collision is policy-routed through field_events.lua; the
 # native event system records the typed result and still supports scoped
@@ -350,86 +294,59 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_map_event_system_qa
 # even counts and publishes FFDF3E only after the signed counter falls below
 # zero; keep several full-frame captures so timer and screen clearing stay in
 # sync.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_transition_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_transition_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-transition-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-transition-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_transition_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # The active field event byte selects a named resource scene, samples its ROM
 # bound into a typed floor index, and carries that state through the existing
 # Security Terminal result prompt. Captures also verify full-scene replacement
 # and clearing the modal before returning to the field.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_world_activity_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_world_activity_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-world-activity-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-world-activity-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_world_activity_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Resolve Scene 2's ROM sum-3 actor sequence through Lua and pass its ordered
 # templates through source edge placement, Lua actor initialization, and the
 # live field renderer. The selector rolls are injected so this QA isolates the
 # spawn path; it does not claim to cover the random chance/frame gate.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-random-encounter-spawn-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-random-encounter-spawn-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Resolve Scene 2's source sum-8 Weenr row, allow its Lua AI to approach the
 # runner, and observe the connected 0x1514E spawn, ammo, sound, and 0xB39A/C042
 # presentation in full-screen captures.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_npc_item_action_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_npc_item_action_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-npc-item-action-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-npc-item-action-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_npc_item_action_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Force Scene 0's ROM sum-0 encounter list, place its source Hell Hound inside
 # the close-target band, and review the complete screen through phase 4 release.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_hound_close_effect_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hound_close_effect_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-hound-close-effect-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-hound-close-effect-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_hound_close_effect_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Render all four ROM spell-effect phase sets over Scene 1's loaded map, HUD,
 # runner, and ROM-selected Lone Star mage. Lua timing and target effect ownership
 # are asserted separately by shadowrun_gameplay_script_runtime_qa.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_spell_effect_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_spell_effect_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-spell-effect-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-spell-effect-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_spell_effect_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Start one cell south of the ROM's Jump House trigger, walk into record 85
 # using normal movement, dismiss its Lua-owned entry narration with A, and
 # verify the retained scene-13 route completes with a clean 320x224 redraw.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_jump_house_entry_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_jump_house_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-jump-house-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-jump-house-entry-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_jump_house_entry_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # The completed New Game opening starts the source heading-zero automatic walk
 # from the scene-2 spawn. It reaches the motel doorway's source C2 collision,
@@ -437,14 +354,10 @@ set_tests_properties(
 # the manager's three-choice Michael-package offer, C opens the debt question,
 # B opens the Jump House referral, and A returns to a freshly drawn field.
 # Every checkpoint is a complete 320x224 screen dump for visual review.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-stoker-collision-to-dialogue-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-stoker-collision-to-dialogue-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # The completed 0x59C5E New Game opening must carry its one-shot automatic
 # field movement marker into the real field-ready handoff. This source-level
@@ -465,372 +378,255 @@ add_test(NAME shadowrun_ghidra_conversion_qt_startup_integration_qa
 # (the physical Ares entrance), publishes event 11, waits through the source
 # fade and generic prompt, enters the shop with A, then verifies a clean field
 # redraw after Start. No mode/event tuple is injected.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_ares_collision_shop_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_ares_collision_shop_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-ares-collision-shop-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-ares-collision-shop-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_ares_collision_shop_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Ordinary D-pad input contacts the paired scene-2 C0 doorway records,
 # enters scene 0x14, walks to the scene-20 maglock, and opens its source-backed
 # choice panel. C/Walk Away returns to a clean field-only redraw. The QA writes
 # actual.bmp and clears its dedicated directory before every run.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene20-physical-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-physical-entry-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Scene 20 record 110 is a source C0/event-0 contact with no event-table row.
 # Enter through Scene 2's physical C0 route, then walk around the adjacent
 # 0x7F rectangle with ordinary Left and Up input. Keep Up held through the
 # following service update, then verify source-context return and retry latch.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_c0_exit_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene20_c0_exit_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene20-c0-exit-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-c0-exit-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_scene20_c0_exit_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Normal Right then Up+Right input from New Game contacts scene-2 collision
 # record 93 (C1/event 1). Its map event-table row 1 selects resource scene
 # 0x1A; this captures the source fade and complete destination scene after the
 # typed world-activity resource selection and scene re-entry.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_scene26_event1_entry_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene26_event1_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene26-event1-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene26-event1-entry-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_scene26_event1_entry_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Continue the ordinary-input event-table route into scene 26, cross its ROM
 # event-29 elevator trigger, animate the two independently tracked floor
 # labels at the 17x8 cadence, then load the selected child scene through its
 # extracted profile group. Captures cover the full selector, animation, and
 # clean destination field with its HUD.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_physical_entry_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_physical_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-elevator-physical-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-physical-entry-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_elevator_physical_entry_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Scene 25 is the non-member entry scene for the source child-scene group
 # 21/22/23/24. Walk from its descriptor spawn into event 29, visit all four
 # floor selections, then ride to scene 22 and inspect every captured frame.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene25_entry_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_scene25_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-elevator-scene25-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene25-entry-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_elevator_scene25_entry_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Enter the 21/22/23/24 group from scene 25, then follow source selector
 # handoffs through each member-scene event-29 trigger and back to scene 22.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene25_group_roundtrip_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_scene25_group_roundtrip_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-elevator-scene25-group-roundtrip-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene25-group-roundtrip-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_elevator_scene25_group_roundtrip_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Scene 29 is the non-member entry scene for the source child-scene group
 # 26/27/28. Walk from its descriptor spawn into its paired event-29 records,
 # verify the group starts at floor index 0, then ride to scene 27 and inspect
 # every frame through the clean scene replacement.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene29_entry_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_scene29_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-elevator-scene29-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene29-entry-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_elevator_scene29_entry_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Scene 34 is the non-member entry scene for the source child-scene group
 # 30/31/32/33. Walk from its descriptor spawn into event 29, visit all four
 # floor selections, then ride to scene 31 and inspect every captured frame.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene34_entry_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_scene34_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-elevator-scene34-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene34-entry-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_elevator_scene34_entry_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Enter the 30/31/32/33 group from scene 34, then follow source selector
 # handoffs through each member-scene event-29 trigger and back to scene 31.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene34_group_roundtrip_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_scene34_group_roundtrip_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-elevator-scene34-group-roundtrip-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene34-group-roundtrip-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_elevator_scene34_group_roundtrip_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Scene 40 is the non-member entry scene for the source child-scene group
 # 35/36/37/38/39. Walk north into event 29, visit every floor, then ride to 36.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene40_entry_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_scene40_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-elevator-scene40-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene40-entry-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_elevator_scene40_entry_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Enter the 35/36/37/38/39 group from scene 40, then follow native selector
 # handoffs through each member-scene event-29 trigger and back to scene 36.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene40_group_roundtrip_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_scene40_group_roundtrip_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-elevator-scene40-group-roundtrip-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene40-group-roundtrip-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_elevator_scene40_group_roundtrip_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Scene 43 enters the 41/42 group; continue through both member-scene triggers
 # to verify the source current-floor index and the complete group round trip.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_elevator_scene43_group_roundtrip_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_scene43_group_roundtrip_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-elevator-scene43-group-roundtrip-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene43-group-roundtrip-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_elevator_scene43_group_roundtrip_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Follow the same ordinary-input route, select the visible Frag Grenade option
 # with B, and exercise the no-item result and its clean A dismissal. The New
 # Game party inventory is checked before the choice; this is not a synthetic
 # prompt or injected world event.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_grenade_no_item_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene20_grenade_no_item_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene20-grenade-no-item-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-grenade-no-item-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_scene20_grenade_no_item_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Follow the same physical map route with one QA-only passkey in the active
 # runner's live inventory. Ordinary A must disable record 117's lock, request
 # sound 0x4B, preserve the item, update the map counter, and return without a
 # leftover modal or HUD layer drawn over the field.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_passkey_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene20_passkey_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene20-passkey-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-passkey-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_scene20_passkey_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Follow the same physical route with a QA-only quality-1 passkey. ROM 0x21628
 # compares key quality with the current selection (2 here), so ordinary A must
 # retain the generic three-choice prompt, leave the key and map untouched, and
 # request no unlock sound before Walk Away returns to the field.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_insufficient_passkey_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene20_insufficient_passkey_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene20-insufficient-passkey-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-insufficient-passkey-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_scene20_insufficient_passkey_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # The US ROM's Samurai template at 0x7291A has Electronics 0 at +0x8A. Follow
 # its normal C0 doorway route; ROM 0x21692 must show the no-skill result
 # without running the random trial, changing the map/inventory, or adding a
 # sound.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_electronics_no_skill_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene20_electronics_no_skill_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-archetype samurai
                  --field-scene20-electronics-no-skill-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-electronics-no-skill-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_scene20_electronics_no_skill_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Follow the same physical route with the New Game Decker. Seed 0 yields a
 # below-target no-kit trial; ROM 0x21692 must show the klaxon text and arm the
 # scene-0x14 timeout without changing selection, inventory, map, or audio.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_electronics_alert_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene20_electronics_alert_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-archetype decker
                  --field-scene20-electronics-alert-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-electronics-alert-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_scene20_electronics_alert_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # The US Decker template has Electronics 1 and no Electronics Kit. Verify
 # one partial no-kit attempt, source collision re-entry resetting selection
 # from event 2, then a QA-seeded Electronics Kit trial that opens the lock.
 # Pin source PRNG state only at tested action boundaries.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_electronics_trials_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene20_electronics_trials_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-archetype decker
                  --field-scene20-electronics-trials-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-electronics-trials-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_scene20_electronics_trials_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Follow ordinary D-pad movement through a scene-2 obstacle edge and collision
 # record 2. The source record is a type-2 collision object, not a Stoker
 # identity or event code; this QA checks the ROM's side-step fallback, its
 # neutral release, and the record's event-0/no-dialogue result.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_stoker_collision_candidate_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_stoker_collision_candidate_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-stoker-collision-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-stoker-collision-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_stoker_collision_candidate_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Follow ordinary New Game movement into the west wall of Stoker's motel,
 # hold against the source collision cells, move diagonally along the frontage,
 # and retreat. Whole-screen checkpoints and a per-frame coordinate log keep
 # the player away from scene-2's C2 doorway event while testing collision.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_scene2_motel_street_collision_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene2_motel_street_collision_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene2-motel-street-collision-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene2-motel-street-collision-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_scene2_motel_street_collision_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # First Aid shares the real item cell/action path, then exercises the active
 # party list, CANCEL row, RNG-backed medkit effect, result wait, and inventory
 # return against directly extracted source text and HUD assets.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_first_aid_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_first_aid_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-archetype samurai
                  --field-first-aid-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-first-aid-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_first_aid_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Automatic-use utility items share the real inventory selector/action loop,
 # then wait for a fresh controller edge without changing item/equipment state.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_automatic_use_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_automatic_use_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-automatic-use-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-automatic-use-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_automatic_use_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Item Trade scans the typed active party roster, tests recipient capacity,
 # lets the player cycle the source Yes/No choice, then mutates both records.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_inventory_trade_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_inventory_trade_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-inventory-trade-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-inventory-trade-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_inventory_trade_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-add_test(NAME shadowrun_ghidra_conversion_qt_field_clips_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_clips_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-clips-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-clips-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_clips_qa PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # The plain command route is its own QA entry because it is the shared shell
 # consumed by the inventory, posture, clips, cyberware, and status pages. A
 # test that only enters a nested action can miss a broken base layer.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_command_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_command_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-command-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-command-qa.bmp")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_command_qa PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # The runner summary uses the equipped item's Lua-backed name/category before
 # its ROM-indexed damage and power rows. Keep that shared menu panel covered by
 # a full-frame artifact with the default equipped Model 101T fixture.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_runner_summary_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_runner_summary_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-command-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-runner-summary-qa.bmp"
                  --field-command-page 2)
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_runner_summary_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
-add_test(NAME shadowrun_ghidra_conversion_qt_field_runner_summary_gator_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_runner_summary_gator_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-command-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-runner-summary-gator-qa.bmp"
                  --field-command-page 2
                  --field-archetype gator)
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_runner_summary_gator_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Command-menu Attributes/Skills is the view-only Karma page. Its separate
 # Hotel route exposes the upgrade preview and spending prompt; keep the
 # captures and verification for those distinct screen variants separate.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_attributes_skills_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_attributes_skills_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-attributes-skills-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-attributes-skills-view-only-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_attributes_skills_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-add_test(NAME shadowrun_ghidra_conversion_qt_inventory_selector_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_inventory_selector_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-command-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-inventory-selector-qa.bmp"
                  --field-archetype gator
                  --field-command-page 1)
-set_tests_properties(shadowrun_ghidra_conversion_qt_inventory_selector_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # All three Joshua archetypes must reach the field HUD with their own
 # extracted face/bar/item families. A single-default dump cannot prove that
 # Decker or Gator/Shaman propagation works.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_hud_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hud_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-hud-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-hud-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_hud_qa PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Follow normal New Game field controls from the physical Stoker C2 doorway
 # through the first-visit scripted package offer, room payment, Hotel
@@ -838,13 +634,10 @@ set_tests_properties(shadowrun_ghidra_conversion_qt_field_hud_qa PROPERTIES
 # whole-screen capture starts at field spawn and includes a 30-frame stable
 # field return. The route does not inject dialogue, payment results, or menu
 # state.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_hotel_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hotel_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-hotel-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-hotel-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_hotel_qa PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Both menu routes share the ROM's Attributes/Skills grid and current-Karma
 # value, but render different detail lines. Compare fresh output from each
@@ -871,111 +664,72 @@ set_tests_properties(
 
 # The Pocket Secretary route must open from the command overview's sixth
 # tab and render its own full-screen composition.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_secretary_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_secretary_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-secretary-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-secretary-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_secretary_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Dump the source-backed Stoker package prompt as the dialogue hill's named
 # actual image. The focused runtime test checks its panel pixels and branches.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_dialogue_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-dialogue-dump manager-package
                  "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/manager-package/actual.bmp")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_dialogue_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_arrival_manager_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_dialogue_arrival_manager_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-dialogue-dump arrival-manager
                  "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/arrival-manager/actual.bmp")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_dialogue_arrival_manager_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_room_paid_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_dialogue_room_paid_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-dialogue-dump room-paid
                  "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/room-paid/actual.bmp")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_dialogue_room_paid_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_room_insufficient_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_dialogue_room_insufficient_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-dialogue-dump room-insufficient
                  "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/room-insufficient/actual.bmp")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_dialogue_room_insufficient_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Exercise the Lua Michael quest choice through its native debt/referral
 # services and verify those mutations feed the dynamic Notebook row gates.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_debt_followup_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_dialogue_debt_followup_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-dialogue-dump debt-followup
                  "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/debt-followup/actual.bmp")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_dialogue_debt_followup_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_referral_followup_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_dialogue_referral_followup_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-dialogue-dump referral-followup
                  "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/referral-followup/actual.bmp")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_dialogue_referral_followup_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Run command 0x05 from the debt question with the New Game wallet. The source
 # 20-nuyen balance takes the insufficient-funds branch to the Jump House page.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_dialogue_debt_payment_insufficient_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_dialogue_debt_payment_insufficient_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-dialogue-dump debt-payment-insufficient
                  "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/debt-payment-insufficient/actual.bmp")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_dialogue_debt_payment_insufficient_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # The Ares title-only mode-text prompt is a separate presenter from the
 # Stoker/NPC route. This diagnostic dump exercises its source-selected text,
 # shared text wells, and no-button composition without fabricating a live
 # field-event trigger.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_mode_text_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_mode_text_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-mode-text-dump introduction
                  "${CMAKE_CURRENT_BINARY_DIR}/field-mode-text-qa/introduction/actual.bmp")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_mode_text_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Door and Security Terminal object prompts use the shared dialogue frame and
 # the same source-timed A/B/C prompt controller as NPC and mode text.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_interaction_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_interaction_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-interaction-dump maglock-choices
                  "${CMAKE_CURRENT_BINARY_DIR}/field-interaction-qa/maglock-choices/actual.bmp")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_interaction_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-add_test(NAME shadowrun_ghidra_conversion_qt_security_terminal_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_security_terminal_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-interaction-dump security-terminal
                  "${CMAKE_CURRENT_BINARY_DIR}/field-interaction-qa/security-terminal/actual.bmp")
-set_tests_properties(shadowrun_ghidra_conversion_qt_security_terminal_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Scene 26 collision records 124-125 contain the signed event-0x18 Security
 # Terminal region. Start at the source-coordinate pre-trigger checkpoint
@@ -983,108 +737,76 @@ set_tests_properties(shadowrun_ghidra_conversion_qt_security_terminal_qa
 # Away. Descriptor-spawn exploration reaches the event-0x1D elevator and then
 # the A2/event-2 electromagnetic-lock introduction; its action result and the
 # path from there to the D8 terminal remain unverified.
-add_test(NAME shadowrun_ghidra_conversion_qt_security_terminal_physical_entry_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_security_terminal_physical_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-security-terminal-physical-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-security-terminal-physical-entry-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_security_terminal_physical_entry_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Enter scene 26 at its real map descriptor spawn, take the event-0x1D elevator
 # back to the current floor, use an active-party passkey at both maglocks, and
 # follow the collision map with ordinary input to the D8 Security Terminal.
-add_test(NAME shadowrun_ghidra_conversion_qt_scene26_maglock_descriptor_route_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_scene26_maglock_descriptor_route_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene26-maglock-descriptor-route-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/scene26-maglock-descriptor-route-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_scene26_maglock_descriptor_route_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Keep one FieldSceneRuntime alive across the normal scene-2 event-1 handoff,
 # the physical scene-26 route, and the D8 Security Terminal result. This checks
 # that the floor selected at 0x167AE survives traversal into 0x20EC2. Only the
 # passkey, Electronics skill, and PRNG result are QA fixtures.
-add_test(NAME shadowrun_ghidra_conversion_qt_scene26_event1_terminal_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_scene26_event1_terminal_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene26-event1-terminal-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/scene26-event1-terminal-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_scene26_event1_terminal_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Ares mode 2/event 11 must pass through the generic 30-frame prompt before
 # entering its modal service menu. This captures category/item selection,
 # insufficient funds, default-No/Yes confirmation, ordinary and E-coded
 # purchases, sale/refund (including equipped-weapon ammo cleanup and a 30-frame
 # unarmed HUD hold), protected-item feedback, and full-screen return.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_shop_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_shop_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-shop-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-shop-ares-template-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_shop_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # Exercise both ROM 0x11950 branches. The normal field smoke record has bit 0
 # set; the explicit empty fixture drives the zero-word branch and NONE text.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_cyberware_populated_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_cyberware_populated_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-cyberware-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-cyberware-populated/actual.bmp")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_cyberware_populated_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
-add_test(NAME shadowrun_ghidra_conversion_qt_field_cyberware_empty_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_cyberware_empty_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-cyberware-empty-qa
                  --field-cyberware-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-cyberware-empty/actual.bmp")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_cyberware_empty_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # ROM 0x119CE posture focus: Up/Down on every command row, Left/Right and
 # clamping, 0x25 audio requests, static hold, exact redraw, and field return.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_posture_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_posture_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-posture-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-posture-qa.bmp")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_posture_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # The page-5 A route has two source branches. Exercise the fallback with
 # Samurai's unmodified source record (class 2, +0x7F = 0); the separate spell
 # test uses Gator Shaman's source record. These are runtime regression
 # artifacts, not independent Genesis goldens.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_magic_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_magic_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-archetype samurai
                  --field-magic-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-magic-nonmagic-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_magic_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 # This route preserves the Gator field composition's typed magic gate/table
 # and walks the spell panel, live selection, four cursor phases, and return.
 # Its snapshots are Qt regression artifacts, not independent Genesis goldens.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_magic_spell_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_magic_spell_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-archetype gator
                  --field-magic-spell-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-magic-spell-qa")
-set_tests_properties(shadowrun_ghidra_conversion_qt_field_magic_spell_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
 add_executable(shadowrun_ghidra_magic_menu_conversion_test
     ../tests/menus/magic_menu_conversion_test.cpp
@@ -1442,11 +1164,7 @@ set_tests_properties(shadowrun_ghidra_audio_playback PROPERTIES
 # then enter scene-2/event-7 with ordinary controller movement. This verifies
 # the downstream service; it does not exercise the still-unwired E7 dialogue
 # route. Capture each modal page, idle hold, one-shot award and clean return.
-add_test(NAME shadowrun_ghidra_conversion_qt_field_redmond_vigore_search_qa
-         COMMAND shadowrun_ghidra_conversion_qt_qa
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_redmond_vigore_search_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-redmond-vigore-search-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-redmond-vigore-search-qa")
-set_tests_properties(
-    shadowrun_ghidra_conversion_qt_field_redmond_vigore_search_qa
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")

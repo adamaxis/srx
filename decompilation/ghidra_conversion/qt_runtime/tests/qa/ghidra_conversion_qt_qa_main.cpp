@@ -9,16 +9,7 @@ int run_field_world_activity_qa(
     std::vector<std::uint16_t>& field_audio_events) {
     std::filesystem::create_directories(output);
     std::error_code output_directory_error;
-    for (std::filesystem::directory_iterator item(output,
-                                                  output_directory_error),
-         end;
-         !output_directory_error && item != end;
-         item.increment(output_directory_error)) {
-        if (item->is_regular_file(output_directory_error) &&
-            item->path().extension() == ".bmp") {
-            std::filesystem::remove(item->path(), output_directory_error);
-        }
-    }
+    clear_qa_bitmap_artifacts(output, output_directory_error);
     if (output_directory_error) {
         std::cerr << "field world-activity QA: could not clear stale BMP "
                      "checkpoints: "
@@ -192,13 +183,7 @@ int run_field_random_encounter_spawn_qa(
                   << error.message() << '\n';
         return 3;
     }
-    for (std::filesystem::directory_iterator item(output, error), end;
-         !error && item != end; item.increment(error)) {
-        if (item->is_regular_file(error) &&
-            item->path().extension() == ".bmp") {
-            std::filesystem::remove(item->path(), error);
-        }
-    }
+    clear_qa_bitmap_artifacts(output, error);
     if (error) {
         std::cerr << "field random-encounter QA: cannot clear old captures: "
                   << error.message() << '\n';
@@ -1700,13 +1685,7 @@ int run_field_npc_item_action_qa(
                   << error.message() << '\n';
         return 3;
     }
-    for (std::filesystem::directory_iterator item(output, error), end;
-         !error && item != end; item.increment(error)) {
-        if (item->is_regular_file(error) &&
-            item->path().extension() == ".bmp") {
-            std::filesystem::remove(item->path(), error);
-        }
-    }
+    clear_qa_bitmap_artifacts(output, error);
     if (error || field_scene.field_scene_reference_for_dump() != 2U) {
         std::cerr << "NPC item-action QA: expected a bootstrapped Scene 2; scene="
                   << field_scene.field_scene_reference_for_dump();
@@ -2028,13 +2007,7 @@ int run_field_hound_close_effect_qa(
                   << error.message() << '\n';
         return 3;
     }
-    for (std::filesystem::directory_iterator item(output, error), end;
-         !error && item != end; item.increment(error)) {
-        if (item->is_regular_file(error) &&
-            item->path().extension() == ".bmp") {
-            std::filesystem::remove(item->path(), error);
-        }
-    }
+    clear_qa_bitmap_artifacts(output, error);
     if (error) {
         std::cerr << "Hell Hound effect QA: cannot clear old captures: "
                   << error.message() << '\n';
@@ -2277,13 +2250,7 @@ int run_field_spell_effect_qa(
                   << error.message() << '\n';
         return 3;
     }
-    for (std::filesystem::directory_iterator item(output, error), end;
-         !error && item != end; item.increment(error)) {
-        if (item->is_regular_file(error) &&
-            item->path().extension() == ".bmp") {
-            std::filesystem::remove(item->path(), error);
-        }
-    }
+    clear_qa_bitmap_artifacts(output, error);
     if (error) {
         std::cerr << "Spell effect QA: cannot clear old captures: "
                   << error.message() << '\n';
@@ -3820,10 +3787,7 @@ int run_field_scene26_event1_terminal_qa(
             return 3;
         }
     }
-    field_scene.set_controller_port_byte(0x40U); // ordinary A: Electronics
-    field_scene.advance_frame();
-    field_scene.set_controller_port_byte(0U);
-    field_scene.advance_frame();
+    tap_qa_controller_button(field_scene, 0x40U); // ordinary A: Electronics
 
     const auto& result_panel = field_scene.field_interaction_panel();
     bool first_floor_visible = false;
@@ -14119,10 +14083,7 @@ int run_field_redmond_vigore_search_qa(
         }
     }
     const auto advance = [&field_scene] {
-        field_scene.set_controller_port_byte(0x40U);
-        field_scene.advance_frame();
-        field_scene.set_controller_port_byte(0U);
-        field_scene.advance_frame();
+        tap_qa_controller_button(field_scene, 0x40U);
     };
     for (std::size_t page = 1U; page < expected_text.size(); ++page) {
         advance();
@@ -15348,6 +15309,21 @@ int main(int argc, char** argv) {
                 if (route_status != 0) {
                     return route_status;
                 }
+                const auto run_group_members = [&](const auto& member_routes) {
+                    for (const auto& [member_scene, destination_floor] :
+                         member_routes) {
+                        const auto member_status = run_scene_route(
+                            member_scene,
+                            *field_elevator_nonmember_entry_qa_path /
+                                ("scene" + std::to_string(member_scene) +
+                                 "-member-trigger"),
+                            destination_floor);
+                        if (member_status != 0) {
+                            return member_status;
+                        }
+                    }
+                    return 0;
+                };
                 if (*field_elevator_nonmember_entry_scene == 43U) {
                     for (const auto member_scene :
                          std::array<std::uint16_t, 2U>{{42U, 41U}}) {
@@ -15366,54 +15342,21 @@ int main(int argc, char** argv) {
                                      5U>
                         member_routes{{{36U, 2U}, {37U, 3U}, {38U, 4U},
                                        {39U, 0U}, {35U, 1U}}};
-                    for (const auto& [member_scene, destination_floor] :
-                         member_routes) {
-                        route_status = run_scene_route(
-                            member_scene,
-                            *field_elevator_nonmember_entry_qa_path /
-                                ("scene" + std::to_string(member_scene) +
-                                 "-member-trigger"),
-                            destination_floor);
-                        if (route_status != 0) {
-                            return route_status;
-                        }
-                    }
+                    return run_group_members(member_routes);
                 } else if (*field_elevator_nonmember_entry_scene == 25U &&
                            field_elevator_scene25_group_roundtrip_qa) {
                     const std::array<std::pair<std::uint16_t, std::uint8_t>,
                                      4U>
                         member_routes{{{22U, 2U}, {23U, 3U}, {24U, 0U},
                                        {21U, 1U}}};
-                    for (const auto& [member_scene, destination_floor] :
-                         member_routes) {
-                        route_status = run_scene_route(
-                            member_scene,
-                            *field_elevator_nonmember_entry_qa_path /
-                                ("scene" + std::to_string(member_scene) +
-                                 "-member-trigger"),
-                            destination_floor);
-                        if (route_status != 0) {
-                            return route_status;
-                        }
-                    }
+                    return run_group_members(member_routes);
                 } else if (*field_elevator_nonmember_entry_scene == 34U &&
                            field_elevator_scene34_group_roundtrip_qa) {
                     const std::array<std::pair<std::uint16_t, std::uint8_t>,
                                      4U>
                         member_routes{{{31U, 2U}, {32U, 3U}, {33U, 0U},
                                        {30U, 1U}}};
-                    for (const auto& [member_scene, destination_floor] :
-                         member_routes) {
-                        route_status = run_scene_route(
-                            member_scene,
-                            *field_elevator_nonmember_entry_qa_path /
-                                ("scene" + std::to_string(member_scene) +
-                                 "-member-trigger"),
-                            destination_floor);
-                        if (route_status != 0) {
-                            return route_status;
-                        }
-                    }
+                    return run_group_members(member_routes);
                 }
                 return 0;
             }
@@ -17600,10 +17543,7 @@ int main(int argc, char** argv) {
                     weapon_fire_scene
                         .set_default_actor_world_position_for_dump(
                             aim_actors_before, aim_player.x, aim_player.y);
-                weapon_fire_scene.set_controller_port_byte(0x10U);
-                weapon_fire_scene.advance_frame();
-                weapon_fire_scene.set_controller_port_byte(0U);
-                weapon_fire_scene.advance_frame();
+                tap_qa_controller_button(weapon_fire_scene, 0x10U);
                 const auto aim_facing =
                     weapon_fire_scene.field_entity_heading_for_dump();
                 auto aim_x = aim_player.x;
@@ -17870,18 +17810,12 @@ int main(int argc, char** argv) {
                         std::cerr << "field dialogue dump: could not return to the field Notebook route\n";
                         return 3;
                     }
-                    field_scene.set_controller_port_byte(0x40U);
-                    field_scene.advance_frame();
-                    field_scene.set_controller_port_byte(0U);
-                    field_scene.advance_frame();
+                    tap_qa_controller_button(field_scene, 0x40U);
                     if (!field_scene.pocket_secretary_open()) {
                         std::cerr << "field dialogue dump: Pocket Secretary did not open\n";
                         return 3;
                     }
-                    field_scene.set_controller_port_byte(0x40U);
-                    field_scene.advance_frame();
-                    field_scene.set_controller_port_byte(0U);
-                    field_scene.advance_frame();
+                    tap_qa_controller_button(field_scene, 0x40U);
                     if (!field_scene.pocket_secretary_notebook_open() ||
                         field_scene.pocket_secretary_notebook_option_count() !=
                             4U) {
@@ -17938,14 +17872,8 @@ int main(int argc, char** argv) {
                         return 3;
                     }
 
-                    field_scene.set_controller_port_byte(0x02U);
-                    field_scene.advance_frame();
-                    field_scene.set_controller_port_byte(0U);
-                    field_scene.advance_frame();
-                    field_scene.set_controller_port_byte(0x40U);
-                    field_scene.advance_frame();
-                    field_scene.set_controller_port_byte(0U);
-                    field_scene.advance_frame();
+                    tap_qa_controller_button(field_scene, 0x02U);
+                    tap_qa_controller_button(field_scene, 0x40U);
                     if (!field_scene.pocket_secretary_notebook_tips_open() ||
                         field_scene
                                 .pocket_secretary_notebook_visible_tip_count() !=
@@ -18886,10 +18814,7 @@ int main(int argc, char** argv) {
                     for (int frame = 0; frame < 30; ++frame) {
                         field_scene.advance_frame();
                     }
-                    field_scene.set_controller_port_byte(0x40U);
-                    field_scene.advance_frame();
-                    field_scene.set_controller_port_byte(0U);
-                    field_scene.advance_frame();
+                    tap_qa_controller_button(field_scene, 0x40U);
                     return field_scene.shop_menu_open();
                 };
 
@@ -18912,10 +18837,7 @@ int main(int argc, char** argv) {
                 for (int frame = 0; frame < 30; ++frame) {
                     field_scene.advance_frame();
                 }
-                field_scene.set_controller_port_byte(0x40U);
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x40U);
                 if (!field_scene.shop_menu_open()) {
                     std::cerr << "field Ares shop QA: prompt return did not "
                                  "open the shop controller\n";
@@ -18942,10 +18864,7 @@ int main(int argc, char** argv) {
                 // Scope the sound assertion to menu navigation; the generic
                 // prompt/entry work above is a separate route.
                 field_audio_events.clear();
-                field_scene.set_controller_port_byte(0x02U); // Down: offers.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x02U); // Down: offers.
                 if (!field_scene.shop_menu_offers_active() ||
                     field_scene.shop_menu_cursor() != 0U) {
                     std::cerr << "field Ares shop QA: Down did not select the "
@@ -18976,10 +18895,7 @@ int main(int argc, char** argv) {
                     original_loaded_rounds;
                 field_scene.refresh_field_hud_for_dump();
 
-                field_scene.set_controller_port_byte(0x08U); // Right.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x08U); // Right.
                 if (field_scene.shop_menu_cursor() != 1U) {
                     std::cerr << "field Ares shop QA: Right did not move the "
                                  "item cursor\n";
@@ -19019,10 +18935,7 @@ int main(int argc, char** argv) {
                 for (std::size_t offer_index = 2U;
                      offer_index < ares_weapon_capacities.size();
                      ++offer_index) {
-                    field_scene.set_controller_port_byte(0x08U);
-                    field_scene.advance_frame();
-                    field_scene.set_controller_port_byte(0U);
-                    field_scene.advance_frame();
+                    tap_qa_controller_button(field_scene, 0x08U);
                     if (field_scene.shop_menu_cursor() != offer_index) {
                         std::cerr << "field Ares shop QA: weapon detail "
                                      "cursor did not reach source offer "
@@ -19096,10 +19009,7 @@ int main(int argc, char** argv) {
                 }
                 field_audio_events.clear();
 
-                field_scene.set_controller_port_byte(0x80U); // Start return.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x80U); // Start return.
                 if (field_scene.shop_menu_open()) {
                     std::cerr << "field Ares shop QA: Start did not return "
                                  "to the field\n";
@@ -19126,14 +19036,8 @@ int main(int argc, char** argv) {
                 for (int frame = 0; frame < 30; ++frame) {
                     field_scene.advance_frame();
                 }
-                field_scene.set_controller_port_byte(0x40U);
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0x08U); // Other items.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x08U); // Other items.
                 if (!field_scene.shop_menu_open() ||
                     field_scene.shop_menu_group() !=
                         ShopActionGroup::other_items ||
@@ -19149,10 +19053,7 @@ int main(int argc, char** argv) {
                                  "other-items actual.bmp\n";
                     return 3;
                 }
-                field_scene.set_controller_port_byte(0x02U); // Offers.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x02U); // Offers.
                 if (!field_scene.shop_menu_offers_active() ||
                     field_scene.shop_menu_group() !=
                         ShopActionGroup::other_items ||
@@ -19191,10 +19092,7 @@ int main(int argc, char** argv) {
                                  "movement audio requests are unexpected\n";
                     return 3;
                 }
-                field_scene.set_controller_port_byte(0x80U); // Start return.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x80U); // Start return.
                 const auto clips_returned = render_shop_scene();
                 if (field_scene.shop_menu_open() ||
                     clips_returned == universal_clips ||
@@ -19932,19 +19830,7 @@ int main(int argc, char** argv) {
                     return QImage(QString::fromStdWString(
                         (asset_root / relative_path).wstring()));
                 };
-                const auto region_matches = [](const QImage& scene,
-                                               const QImage& asset,
-                                               const int origin_x,
-                                               const int origin_y) {
-                    if (asset.isNull() || origin_x < 0 || origin_y < 0 ||
-                        origin_x + asset.width() > scene.width() ||
-                        origin_y + asset.height() > scene.height()) {
-                        return false;
-                    }
-                    return scene.copy(origin_x, origin_y, asset.width(),
-                                      asset.height()) ==
-                           asset.convertToFormat(QImage::Format_RGB32);
-                };
+                const auto region_matches = image_region_matches_rgb32_asset;
                 const auto visible_asset_pixels_match = [](
                     const QImage& scene, const QImage& asset,
                     const int origin_x, const int origin_y) {
@@ -20027,10 +19913,7 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                field_scene.set_controller_port_byte(0x40U);
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x40U);
                 if (!field_scene.magic_spell_panel_open() ||
                     !field_scene.magic_selected_spell().has_value() ||
                     field_scene.magic_spell_selection().column != 0U ||
@@ -20308,10 +20191,7 @@ int main(int argc, char** argv) {
                                  "restore page 5\n";
                     return 3;
                 }
-                field_scene.set_controller_port_byte(0x40U);
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x40U);
                 if (!field_scene.magic_spell_panel_open() ||
                     field_scene.magic_spell_selection().column != 0U ||
                     field_scene.magic_spell_selection().row != 0U ||
@@ -20559,21 +20439,7 @@ int main(int argc, char** argv) {
                                left.ammo_rounds == right.ammo_rounds &&
                                left.ammo_clips == right.ammo_clips;
                     };
-                const auto region_matches = [](const QImage& scene,
-                                               const QImage& asset,
-                                               const int origin_x,
-                                               const int origin_y) {
-                    if (asset.isNull() || origin_x < 0 || origin_y < 0 ||
-                        origin_x + asset.width() > scene.width() ||
-                        origin_y + asset.height() > scene.height()) {
-                        return false;
-                    }
-                    const auto expected =
-                        asset.convertToFormat(QImage::Format_RGB32);
-                    const auto actual = scene.copy(
-                        origin_x, origin_y, asset.width(), asset.height());
-                    return actual == expected;
-                };
+                const auto region_matches = image_region_matches_rgb32_asset;
 
                 const auto page_scene = render_scene();
                 if (!field_command_shell_survives(page_scene, asset_root) ||
@@ -20585,10 +20451,7 @@ int main(int argc, char** argv) {
                                  "portrait, or initial capture failed\n";
                     return 3;
                 }
-                field_scene.set_controller_port_byte(0x40U);
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x40U);
                 if (!field_scene.magic_defense_open() ||
                     field_scene.magic_spell_interface_open() ||
                     !field_scene.command_overview_open() ||
@@ -20721,10 +20584,7 @@ int main(int argc, char** argv) {
 
                 // A fresh directional edge satisfies ROM 0x0D94's
                 // one-event wait and returns to the same command page.
-                field_scene.set_controller_port_byte(0x04U);
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x04U);
                 if (field_scene.magic_defense_open() ||
                     !field_scene.command_overview_open() ||
                     field_scene.command_overview_view().source_state
@@ -21352,10 +21212,7 @@ int main(int argc, char** argv) {
                 }
                 // The converted command loop dispatches A on page 4 to the
                 // ROM 0x11950 Cyberware view.
-                field_scene.set_controller_port_byte(0x40U);
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x40U);
                 if (!field_scene.cyberware_menu_open()) {
                     std::cerr << "field Cyberware dump: A did not open the "
                                  "Cyberware view\n";
@@ -21483,10 +21340,7 @@ int main(int argc, char** argv) {
 
                 // ROM 0x11950 waits for one event before restoring the shared
                 // row. A directional event must close only this subview.
-                field_scene.set_controller_port_byte(0x04U);
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x04U);
                 const auto returned_command_page = render_scene();
                 if (field_scene.cyberware_menu_open() ||
                     !field_scene.command_overview_open() ||
@@ -21501,10 +21355,7 @@ int main(int argc, char** argv) {
                                  "restore command page 4 pixel-for-pixel\n";
                     return 3;
                 }
-                field_scene.set_controller_port_byte(0x40U);
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x40U);
                 const auto reopened_scene = render_scene();
                 if (!field_scene.cyberware_menu_open() ||
                     reopened_scene != cyberware_scene ||
@@ -21541,10 +21392,7 @@ int main(int argc, char** argv) {
                 // Press A on the Pocket Secretary tab: port bit 6 is the
                 // A button in the sampled controller word (0x4000 in the
                 // expanded events consumed by the command loop).
-                field_scene.set_controller_port_byte(0x40U);
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x40U);
                 if (!field_scene.pocket_secretary_open()) {
                     std::cerr << "field secretary dump: Pocket Secretary "
                                  "did not open\n";
@@ -21670,10 +21518,7 @@ int main(int argc, char** argv) {
                 auto previous_secretary_scene = secretary_scene;
                 for (std::uint8_t selection = 1U; selection <= 4U;
                      ++selection) {
-                    field_scene.set_controller_port_byte(0x02U); // Down.
-                    field_scene.advance_frame();
-                    field_scene.set_controller_port_byte(0U);
-                    field_scene.advance_frame();
+                    tap_qa_controller_button(field_scene, 0x02U); // Down.
                     if (field_scene.pocket_secretary_selection() !=
                             selection ||
                         !field_audio_events.empty()) {
@@ -21707,10 +21552,7 @@ int main(int argc, char** argv) {
                     }
                     previous_secretary_scene = secretary_scene;
                 }
-                field_scene.set_controller_port_byte(0x02U); // Down wraps.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x02U); // Down wraps.
                 if (field_scene.pocket_secretary_selection() != 0U ||
                     !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: Down did not wrap "
@@ -21966,10 +21808,7 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 field_audio_events.clear();
-                field_scene.set_controller_port_byte(0x02U); // Down.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x02U); // Down.
                 if (field_scene.pocket_secretary_notebook_selection() != 1U ||
                     !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: Notebook Down did "
@@ -22072,10 +21911,7 @@ int main(int argc, char** argv) {
                 }
                 const auto first_tip_page = render_secretary_scene();
                 field_audio_events.clear();
-                field_scene.set_controller_port_byte(0x08U); // Right.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x08U); // Right.
                 if (field_scene.pocket_secretary_notebook_tips_selection() !=
                         1U ||
                     field_scene
@@ -22381,22 +22217,10 @@ int main(int argc, char** argv) {
                                  "rebuild the selected Notebook row cleanly\n";
                     return 3;
                 }
-                field_scene.set_controller_port_byte(0x01U); // Up.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0x01U); // Up.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0x01U); // Up to row 0.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0x40U); // Current Run.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x01U); // Up.
+                tap_qa_controller_button(field_scene, 0x01U); // Up.
+                tap_qa_controller_button(field_scene, 0x01U); // Up to row 0.
+                tap_qa_controller_button(field_scene, 0x40U); // Current Run.
                 if (!field_scene.pocket_secretary_notebook_no_run_waiting()) {
                     std::cerr << "field secretary dump: Current Run did not "
                                  "enter its no-run response wait\n";
@@ -22451,10 +22275,7 @@ int main(int argc, char** argv) {
                                  "not persist or E660 chrome did not animate\n";
                     return 3;
                 }
-                field_scene.set_controller_port_byte(0x80U); // dismiss wait.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x80U); // dismiss wait.
                 if (!field_scene.pocket_secretary_notebook_open() ||
                     field_scene.pocket_secretary_notebook_no_run_waiting() ||
                     field_scene.pocket_secretary_notebook_selection() != 0U ||
@@ -22471,10 +22292,7 @@ int main(int argc, char** argv) {
                                  "retained stale no-run response text\n";
                     return 3;
                 }
-                field_scene.set_controller_port_byte(0x10U); // B to parent.
-                field_scene.advance_frame();
-                field_scene.set_controller_port_byte(0U);
-                field_scene.advance_frame();
+                tap_qa_controller_button(field_scene, 0x10U); // B to parent.
                 if (field_scene.pocket_secretary_notebook_open() ||
                     !field_scene.pocket_secretary_open() ||
                     field_scene.pocket_secretary_selection() != 0U ||
@@ -22813,10 +22631,7 @@ int main(int argc, char** argv) {
                 };
                 const auto press = [&field_scene](
                                        const std::uint8_t port_byte) {
-                    field_scene.set_controller_port_byte(port_byte);
-                    field_scene.advance_frame();
-                    field_scene.set_controller_port_byte(0U);
-                    field_scene.advance_frame();
+                    tap_qa_controller_button(field_scene, port_byte);
                 };
                 const auto region_matches_asset = [](
                                                        const QImage& scene,
@@ -23245,22 +23060,7 @@ int main(int argc, char** argv) {
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
                 };
-                const auto region_has_green_ink = [](
-                                                   const QImage& scene,
-                                                   const QRect& region) {
-                    const auto clipped = region.intersected(scene.rect());
-                    for (int y = clipped.top(); y <= clipped.bottom(); ++y) {
-                        for (int x = clipped.left(); x <= clipped.right(); ++x) {
-                            const auto pixel = scene.pixelColor(x, y);
-                            if (pixel.green() > 40 &&
-                                pixel.green() > pixel.red() * 2 &&
-                                pixel.green() > pixel.blue() * 2) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
-                };
+                const auto region_has_green_ink = image_region_has_dominant_green_ink;
                 const auto same_region = [](const QImage& left,
                                             const QImage& right,
                                             const QRect& region) {
@@ -23449,21 +23249,7 @@ int main(int argc, char** argv) {
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
                 };
-                const auto has_green_ink = [](const QImage& scene,
-                                              const QRect& region) {
-                    const auto clipped = region.intersected(scene.rect());
-                    for (int y = clipped.top(); y <= clipped.bottom(); ++y) {
-                        for (int x = clipped.left(); x <= clipped.right(); ++x) {
-                            const auto pixel = scene.pixelColor(x, y);
-                            if (pixel.green() > 40 &&
-                                pixel.green() > pixel.red() * 2 &&
-                                pixel.green() > pixel.blue() * 2) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
-                };
+                const auto has_green_ink = image_region_has_dominant_green_ink;
                 const auto image_region_matches = [](
                                                       const QImage& scene,
                                                       const int x,
@@ -23837,22 +23623,7 @@ int main(int argc, char** argv) {
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
                 };
-                const auto region_has_green_ink = [](
-                                                   const QImage& scene,
-                                                   const QRect& region) {
-                    const auto clipped = region.intersected(scene.rect());
-                    for (int y = clipped.top(); y <= clipped.bottom(); ++y) {
-                        for (int x = clipped.left(); x <= clipped.right(); ++x) {
-                            const auto pixel = scene.pixelColor(x, y);
-                            if (pixel.green() > 40 &&
-                                pixel.green() > pixel.red() * 2 &&
-                                pixel.green() > pixel.blue() * 2) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
-                };
+                const auto region_has_green_ink = image_region_has_dominant_green_ink;
                 const auto target_face_matches = [&](const QImage& scene) {
                     const QImage face(QString::fromStdWString(
                         (asset_root / "field" / "hud" /
@@ -24438,10 +24209,7 @@ int main(int argc, char** argv) {
                         }
                         for (std::uint8_t row = 0U; row < secondary_page;
                              ++row) {
-                            fresh_scene.set_controller_port_byte(0x02U);
-                            fresh_scene.advance_frame();
-                            fresh_scene.set_controller_port_byte(0U);
-                            fresh_scene.advance_frame();
+                            tap_qa_controller_button(fresh_scene, 0x02U);
                         }
                         QImage image(kSceneWidth, kSceneHeight,
                                      QImage::Format_RGB32);

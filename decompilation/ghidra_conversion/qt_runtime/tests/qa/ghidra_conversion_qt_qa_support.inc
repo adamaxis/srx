@@ -20,6 +20,25 @@ bool save_qa_image(const std::filesystem::path& output_directory,
         (output_directory / relative_path).wstring()));
 }
 
+void tap_qa_controller_button(FieldSceneRuntime& field_scene,
+                              const std::uint8_t port_byte) {
+    field_scene.set_controller_port_byte(port_byte);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+}
+
+void clear_qa_bitmap_artifacts(const std::filesystem::path& output,
+                               std::error_code& error) {
+    for (std::filesystem::directory_iterator item(output, error), end;
+         !error && item != end; item.increment(error)) {
+        if (item->is_regular_file(error) &&
+            item->path().extension() == ".bmp") {
+            std::filesystem::remove(item->path(), error);
+        }
+    }
+}
+
 bool finish_field_modal_return_transition(FieldSceneRuntime& field_scene) {
     auto remaining =
         field_scene.field_modal_return_transition_frames_for_dump();
@@ -56,6 +75,35 @@ bool image_has_green_ink(const QImage& image, const int x, const int y,
         }
     }
     return false;
+}
+
+bool image_region_has_dominant_green_ink(const QImage& image,
+                                         const QRect& region) {
+    const auto clipped = region.intersected(image.rect());
+    for (int y = clipped.top(); y <= clipped.bottom(); ++y) {
+        for (int x = clipped.left(); x <= clipped.right(); ++x) {
+            const auto pixel = image.pixelColor(x, y);
+            if (pixel.green() > 40 &&
+                pixel.green() > pixel.red() * 2 &&
+                pixel.green() > pixel.blue() * 2) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool image_region_matches_rgb32_asset(const QImage& scene,
+                                     const QImage& asset,
+                                     const int origin_x,
+                                     const int origin_y) {
+    if (asset.isNull() || origin_x < 0 || origin_y < 0 ||
+        origin_x + asset.width() > scene.width() ||
+        origin_y + asset.height() > scene.height()) {
+        return false;
+    }
+    return scene.copy(origin_x, origin_y, asset.width(), asset.height()) ==
+           asset.convertToFormat(QImage::Format_RGB32);
 }
 
 bool image_region_differs(const QImage& first, const QImage& second,
