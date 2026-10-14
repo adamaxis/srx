@@ -3828,7 +3828,7 @@ GameScriptRuntime::actor_heartbeat(
         return fail("actor_ai.heartbeat returned invalid spell effect visibility");
     }
     std::uint32_t spell_effect_phase_value = 0U;
-    if (!read_field_integer(state, decision_table, "spell_effect_phase", 9U,
+    if (!read_field_integer(state, decision_table, "spell_effect_phase", 16U,
                             spell_effect_phase_value)) {
         return fail("actor_ai.heartbeat returned an invalid spell effect phase");
     }
@@ -3893,6 +3893,8 @@ GameScriptRuntime::actor_heartbeat(
             return std::uint8_t{6U};
         case 5U:
             return std::uint8_t{9U};
+        case 12U:
+            return std::uint8_t{16U};
         default:
             return std::uint8_t{0U};
         }
@@ -4418,13 +4420,22 @@ GameScriptRuntime::actor_heartbeat(
         resolution.effect_value = static_cast<std::int16_t>(signed_value);
         resolution.physical_meter = static_cast<std::uint8_t>(value);
         if (!read_field_integer(state, resolution_table, "mental_meter",
-                                0xFFU, value) ||
-            !read_field_boolean(state, resolution_table, "changed",
-                                resolution.changed)) {
+                                0xFFU, value)) {
             return fail(
                 "actor_ai.heartbeat returned incomplete spell effect meters");
         }
         resolution.mental_meter = static_cast<std::uint8_t>(value);
+        if (!read_field_integer(state, resolution_table, "source_flags",
+                                0xFFU, value) ||
+            !read_field_boolean(state, resolution_table,
+                                "source_flags_changed",
+                                resolution.source_record_flags_changed) ||
+            !read_field_boolean(state, resolution_table, "changed",
+                                resolution.changed)) {
+            return fail(
+                "actor_ai.heartbeat returned incomplete spell effect state");
+        }
+        resolution.source_record_flags = static_cast<std::uint8_t>(value);
 
         const bool target_context_matches = context.combatant.has_value() &&
             context.instance_id == resolution.target_id &&
@@ -4445,6 +4456,11 @@ GameScriptRuntime::actor_heartbeat(
             (resolution.physical_meter !=
                  context.combatant->physical_meter ||
              resolution.mental_meter != context.combatant->mental_meter);
+        const bool source_flags_changed = target_context_matches &&
+            resolution.source_record_flags !=
+                context.combatant->source_flags;
+        const bool any_state_changed =
+            meters_changed || source_flags_changed;
         static constexpr std::array<std::string_view, 5> kSpellEffectOutcomes{
             "source_special_target_path", "random_service_unavailable",
             "target_resisted", "effect_applied", "effect_no_change"};
@@ -4454,7 +4470,8 @@ GameScriptRuntime::actor_heartbeat(
         if (!known_outcome || !linked_target ||
             resolution.physical != (resolution.action_code != 5U) ||
             resolution.effect_value < 0 || resolution.effect_value > 10 ||
-            meters_changed != resolution.changed ||
+            source_flags_changed != resolution.source_record_flags_changed ||
+            any_state_changed != resolution.changed ||
             (resolution.outcome == "effect_applied" &&
              (!resolution.changed || resolution.effect_value == 0)) ||
             (resolution.outcome == "effect_no_change" &&
@@ -4474,6 +4491,9 @@ GameScriptRuntime::actor_heartbeat(
             update.record_type = resolution.target_record_type;
             update.physical_meter = resolution.physical_meter;
             update.mental_meter = resolution.mental_meter;
+            update.source_record_flags = resolution.source_record_flags;
+            update.source_record_flags_updated =
+                resolution.source_record_flags_changed;
             update.physical = resolution.physical;
             update.changed = true;
             decision.combat_meter_update = std::move(update);

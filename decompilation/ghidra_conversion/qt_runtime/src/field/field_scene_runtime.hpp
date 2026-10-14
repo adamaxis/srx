@@ -1368,9 +1368,9 @@ private:
     };
 
     struct SpellEffectArtwork {
-        std::array<QImage, 9> images{};
-        std::array<int, 9> origin_x{};
-        std::array<int, 9> origin_y{};
+        std::array<QImage, 16> images{};
+        std::array<int, 16> origin_x{};
+        std::array<int, 16> origin_y{};
     };
 
     // Resource-activity scenes are temporary field excursions. Preserve the
@@ -1597,7 +1597,7 @@ private:
         field_target_marker_images_by_scene_;
     std::vector<std::array<CreatureEffectArtwork, 8>>
         field_hound_close_attack_images_by_scene_;
-    std::vector<std::array<SpellEffectArtwork, 4>>
+    std::vector<std::array<SpellEffectArtwork, 5>>
         field_spell_effect_images_by_scene_;
     std::vector<DefaultFieldActorPresentation> field_default_actors_;
     std::array<bool, 18> field_world_effect_slots_occupied_{};

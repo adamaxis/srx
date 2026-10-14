@@ -87,6 +87,8 @@ local actor_effect_profile_by_code = {
             palette_line = 3 },
     [9] = { id = "mana-blast", repeat_countdown = 4, phase_count = 6,
             palette_line = 2 },
+    [12] = { id = "heal-wounds", repeat_countdown = 4, phase_count = 16,
+             palette_line = 3 },
 }
 
 local function text_keys(ids, prefix)

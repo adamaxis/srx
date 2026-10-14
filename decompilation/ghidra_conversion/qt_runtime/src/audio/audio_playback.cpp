@@ -63,11 +63,12 @@ AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
         {0x1EU, "audio.effects.resource.030"},
         // ROM 0x15830 indexes 0x4946 with the hex action code after an effect
         // slot is accepted. The table-2 resource suffix is decimal: 0x32 ->
-        // 50, 0x34 -> 52, 0x35 -> 53, and 0x37 -> 55.
+        // 50, 0x34 -> 52, 0x35 -> 53, 0x37 -> 55, and 0x3A -> 58.
         {0x32U, "audio.effects.resource.050"},
         {0x34U, "audio.effects.resource.052"},
         {0x35U, "audio.effects.resource.053"},
         {0x37U, "audio.effects.resource.055"},
+        {0x3AU, "audio.effects.resource.058"},
         {0x3FU, "audio.effects.resource.063"},
         {0x51U, "audio.effects.resource.081"},
         // ROM 0xB1DC requests 0x4C when an ordinary linked-target action

@@ -236,13 +236,14 @@ struct FieldSpellEffectProfile {
     std::string_view asset_id;
     std::uint8_t phase_count;
 };
-constexpr std::array<FieldSpellEffectProfile, 4> kFieldSpellEffectProfiles{{
+constexpr std::array<FieldSpellEffectProfile, 5> kFieldSpellEffectProfiles{{
     {1U, "flame-dart", 4U},
     {2U, "flame-bolt", 6U},
     {5U, "sleep", 9U},
     {9U, "mana-blast", 6U},
+    {12U, "heal-wounds", 16U},
 }};
-constexpr std::size_t kFieldSpellEffectPhaseCapacity = 9U;
+constexpr std::size_t kFieldSpellEffectPhaseCapacity = 16U;
 constexpr std::string_view kFieldWeaponProjectileAliasPrefix =
     "field.weapons.projectile.";
 constexpr std::string_view kElevatorAnimationAliasPrefix =
@@ -9070,6 +9071,12 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
         }
         target.delay_meter = update.physical_meter;
         target.behavior_meter = update.mental_meter;
+        if (update.source_record_flags_updated) {
+            target.flags = static_cast<std::uint16_t>(
+                (target.flags & 0x00ffU) |
+                (static_cast<std::uint16_t>(
+                     update.source_record_flags) << 8U));
+        }
         if (slot == field_party_roster_.active_slot()) {
             refresh_field_hud_runner_slot();
         }
@@ -9103,6 +9110,10 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
 
     target->combatant.physical_meter = update.physical_meter;
     target->combatant.mental_meter = update.mental_meter;
+    if (update.source_record_flags_updated) {
+        target->source_record_flags = update.source_record_flags;
+        target->combatant.source_flags = update.source_record_flags;
+    }
     // This meter gates the live actor collision record. Keep the update on
     // that record as well as in the Lua-owned combat facts so later movement,
     // collision, and drawing passes see one current actor state.

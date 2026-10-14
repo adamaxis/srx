@@ -364,9 +364,13 @@ local function copy_combatant(record)
 end
 
 local function commit_combatant_meters(target, defender, physical_meter,
-                                      mental_meter)
+                                      mental_meter, source_flags)
+    if type(source_flags) == "number" then
+        defender.source_flags = source_flags & 0xff
+    end
     local changed = physical_meter ~= defender.physical_meter or
-                    mental_meter ~= defender.mental_meter
+                    mental_meter ~= defender.mental_meter or
+                    defender.source_flags ~= target.combatant.source_flags
     if not changed then
         return false
     end
@@ -618,8 +622,38 @@ function Combat.resolve_spell_impact(context, pending, target)
         physical = pending.action_code ~= 5,
         physical_meter = defender.physical_meter,
         mental_meter = defender.mental_meter,
+        source_flags = defender.source_flags,
+        source_flags_changed = false,
         changed = false,
     }
+
+    if pending.action_code == 12 then
+        -- ROM 0x56DE ends by calling 0x55C2C. That callback heals directly
+        -- from the caster's stored +0x9F result; unlike the offensive spell
+        -- callback, it does not perform a second target roll.
+        local heal_amount = signed_byte(pending.action_result)
+        if heal_amount <= 0 then
+            heal_amount = 1
+        end
+        local next_flags = (defender.source_flags & 0xaf) | 0x01
+        local physical_meter = (defender.source_flags & 0x01) ~= 0
+            and math.min(defender.physical_meter + heal_amount, 10) or 0
+        local mental_meter = defender.mental_meter
+        if mental_meter == 0 and (next_flags & 0x01) ~= 0 then
+            mental_meter = math.min(mental_meter + 1, 10)
+        end
+        result.physical_meter = physical_meter
+        result.mental_meter = mental_meter
+        result.source_flags = next_flags
+        result.source_flags_changed = next_flags ~= defender.source_flags
+        result.changed = commit_combatant_meters(
+            target, defender, physical_meter, mental_meter, next_flags)
+        result.effect_value = result.changed and
+            math.min(heal_amount, 10) or 0
+        result.outcome = result.changed and
+            "effect_applied" or "effect_no_change"
+        return result
+    end
 
     -- 0x55B78 has a special early branch for the first three action codes
     -- against +0x9B == 0x17. It supplies D4/D6 but inherits D5 from its

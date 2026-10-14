@@ -286,6 +286,8 @@ struct ScriptCombatMeterUpdate {
     std::uint16_t record_type = 0;
     std::uint8_t physical_meter = 0;
     std::uint8_t mental_meter = 0;
+    std::uint8_t source_record_flags = 0;
+    bool source_record_flags_updated = false;
     bool physical = false;
     bool changed = false;
 };
@@ -330,6 +332,8 @@ struct ScriptActorSpellEffectResolution {
     bool physical = true;
     std::uint8_t physical_meter = 0;
     std::uint8_t mental_meter = 0;
+    std::uint8_t source_record_flags = 0;
+    bool source_record_flags_changed = false;
     bool changed = false;
 };
 

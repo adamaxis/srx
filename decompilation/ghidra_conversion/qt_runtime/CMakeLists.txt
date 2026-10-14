@@ -1351,6 +1351,7 @@ target_compile_definitions(shadowrun_ghidra_audio_playback_test PRIVATE
     SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_34_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-052.flac"
     SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_35_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-053.flac"
     SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_37_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-055.flac"
+    SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_3A_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-058.flac"
     SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-075.flac"
     SHADOWRUN_GHIDRA_AUDIO_ACTION_RESOURCE_076_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-076.flac"
     SHADOWRUN_GHIDRA_AUDIO_TARGET_RESOURCE_077_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-077.flac"

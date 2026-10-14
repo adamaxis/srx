@@ -3673,6 +3673,9 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 actor_name,
                 sprite_stem,
                 action_code,
+                action_selector,
+                rom[template_offset + 6U],
+                rom[template_offset + 7U],
                 action_kind,
                 palette_line,
                 read_big_endian_word(rom, position_offset),
@@ -3769,6 +3772,9 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::string actor_name;
         std::string profile_id;
         std::uint8_t action_code;
+        std::uint8_t source_action_slot;
+        std::uint8_t source_action_ammo;
+        std::uint8_t source_action_counter;
         std::string action_kind;
         std::uint8_t source_interaction_flags;
         std::uint8_t physical_meter;
@@ -4414,9 +4420,13 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             // lists after the projectile service. Keep these separate from
             // C0A2 target attacks: item actions use this pose family and its
             // own frame cadence.
-            std::optional<std::array<std::uint16_t, 3>> item_action_facts;
-            for (std::size_t frame_direction = 0U;
-                 frame_direction < 8U; ++frame_direction) {
+            // The complete C042 family is emitted once for this actor kind.
+            // It already iterates all eight directions, unlike the surrounding
+            // C072/C0B2/C062/C0A2 exports that use the outer direction loop.
+            if (direction == 0U) {
+                std::optional<std::array<std::uint16_t, 3>> item_action_facts;
+                for (std::size_t frame_direction = 0U;
+                     frame_direction < 8U; ++frame_direction) {
                 const auto item_action_selector = read_big_endian_word(
                     rom, kItemActionSelectorTableOffset +
                              frame_direction * 2U);
@@ -4492,6 +4502,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                             std::to_string(kind_source.palette_line),
                         true, manifest, written, missing, blank,
                         frame.origin_x, frame.origin_y);
+                }
                 }
             }
 
@@ -4921,11 +4932,12 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint16_t palette_attributes;
         std::string_view handler;
     };
-    constexpr std::array<SpellEffectSourceProfile, 4> kSpellEffects{{
+    constexpr std::array<SpellEffectSourceProfile, 5> kSpellEffects{{
         {1U, "flame-dart", 0x58B6U, 4U, 0x2000U, "0x521E"},
         {2U, "flame-bolt", 0x589EU, 6U, 0x2000U, "0x5152"},
         {5U, "sleep", 0x5876U, 9U, 0x6000U, "0x52BE/0x5322"},
         {9U, "mana-blast", 0x512AU, 6U, 0x4000U, "0x4FE2"},
+        {12U, "heal-wounds", 0x5756U, 16U, 0x6000U, "0x56DE"},
     }};
     for (std::uint16_t scene_id = 0U;
          scene_id < shadowrun::rom::kFieldModeCount; ++scene_id) {

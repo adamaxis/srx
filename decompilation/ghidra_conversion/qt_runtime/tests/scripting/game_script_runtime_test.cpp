@@ -14,6 +14,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <vector>
 
 namespace {
@@ -1788,8 +1789,8 @@ int main() {
         std::uint8_t spell_effect_visible_heartbeats = 0U;
         std::uint8_t spell_effect_heartbeat_count = 0U;
         bool effect_completed_early = false;
-        std::array<std::uint8_t, 64> spell_effect_phase_trace{};
-        std::array<bool, 64> spell_effect_visible_trace{};
+        std::array<std::uint8_t, 96> spell_effect_phase_trace{};
+        std::array<bool, 96> spell_effect_visible_trace{};
         std::vector<std::string> fanout_actor_ids;
         std::vector<std::uint8_t> fanout_heartbeat_counts;
         std::vector<bool> fanout_released_slot;
@@ -1934,6 +1935,31 @@ int main() {
                 context.action_code =
                     *decision->spell_action_resolution->next_action_code;
             }
+            if (decision->spell_action_resolution.has_value()) {
+                const auto& target_resolution =
+                    *decision->spell_action_resolution;
+                const auto target_candidate = std::find_if(
+                    context.ai_target_candidates.begin(),
+                    context.ai_target_candidates.end(),
+                    [&target_resolution](const auto& candidate) {
+                        return candidate.id == target_resolution.target_id &&
+                               candidate.source_record_slot.has_value() &&
+                               *candidate.source_record_slot ==
+                                   target_resolution.target_record_slot;
+                    });
+                if (target_candidate != context.ai_target_candidates.end() &&
+                    target_candidate->combatant.has_value()) {
+                    effect_target_context.instance_id =
+                        active_runner_alias &&
+                                target_resolution.target_record_slot == 0U
+                            ? std::string_view{"field_player_runner"}
+                            : std::string_view{target_candidate->id};
+                    effect_target_context.source_record_slot =
+                        target_resolution.target_record_slot;
+                    effect_target_context.combatant =
+                        *target_candidate->combatant;
+                }
+            }
             context.phase = ScriptActorHeartbeatPhase::render;
             result.render_hold = scripts.actor_heartbeat(context);
             if (!result.render_hold.has_value()) {
@@ -1941,7 +1967,7 @@ int main() {
             }
             effect_target_context.phase =
                 ScriptActorHeartbeatPhase::render;
-            for (std::uint8_t frame = 0U; frame < 64U; ++frame) {
+            for (std::uint8_t frame = 0U; frame < 96U; ++frame) {
                 const auto effect_heartbeat =
                     scripts.actor_heartbeat(effect_target_context);
                 if (!effect_heartbeat.has_value()) {
@@ -1959,7 +1985,8 @@ int main() {
                         ? 12U
                         : action_code == 2U || action_code == 9U
                               ? 31U
-                              : action_code == 5U ? 62U : 0U;
+                              : action_code == 5U ? 62U
+                              : action_code == 12U ? 81U : 0U;
                     result.effect_completed_early =
                         expected_heartbeats == 0U ||
                         static_cast<std::uint16_t>(frame) + 1U !=
@@ -2002,7 +2029,7 @@ int main() {
                     }
                     result.fanout_actor_ids.push_back(candidate.id);
                     std::uint8_t fanout_heartbeats = 1U;
-                    for (std::uint8_t frame = 1U; frame < 64U; ++frame) {
+                    for (std::uint8_t frame = 1U; frame < 96U; ++frame) {
                         heartbeat = scripts.actor_heartbeat(followup);
                         if (!heartbeat.has_value()) {
                             return failed();
@@ -2124,6 +2151,48 @@ int main() {
     const auto mana_blast_cast = drive_spell_refresh(
         "elven_mage_k06_spell09", "spell_mana_blast_resolved", 6U, 9U, 0,
         true, spell_line_true, &spell_caster, &spell_target);
+    ScriptCombatantFacts heal_lane_zero = spell_target;
+    heal_lane_zero.physical_meter = 4U;
+    ScriptCombatantFacts heal_lane_one = spell_target;
+    heal_lane_one.physical_meter = 3U;
+    heal_lane_one.mental_meter = 0U;
+    ScriptCombatantFacts heal_lane_two = spell_target;
+    heal_lane_two.physical_meter = 1U;
+    std::vector<ScriptActorTargetCandidate> heal_lane_candidates;
+    for (const auto [slot, id, combatant] : {
+             std::tuple<std::uint8_t, const char*, ScriptCombatantFacts>{
+                 1U, "party.runner.1", heal_lane_one},
+             std::tuple<std::uint8_t, const char*, ScriptCombatantFacts>{
+                 2U, "party.runner.2", heal_lane_two}}) {
+        ScriptActorTargetCandidate candidate{};
+        candidate.id = id;
+        candidate.service_flags = 0x01U;
+        candidate.has_action = true;
+        candidate.world_activity_actor = false;
+        candidate.source_record_slot = slot;
+        candidate.combatant = combatant;
+        heal_lane_candidates.push_back(std::move(candidate));
+    }
+    const auto heal_wounds_cast = drive_spell_refresh(
+        "generic_k0a_spell0c", "spell_heal_wounds", 10U, 12U, 0,
+        true, spell_line_true, &spell_caster, &heal_lane_zero, false, 0U,
+        std::nullopt, &heal_lane_candidates);
+    auto heal_candidates_with_absent_slot = heal_lane_candidates;
+    heal_candidates_with_absent_slot.front().service_flags = 0U;
+    const auto heal_skips_absent_lane = drive_spell_refresh(
+        "generic_k0a_spell0c", "spell_heal_skips_absent_lane", 10U, 12U,
+        0, true, spell_line_true, &spell_caster, &heal_lane_zero, false, 0U,
+        std::nullopt, &heal_candidates_with_absent_slot);
+    auto no_wounded_lanes = heal_lane_candidates;
+    for (auto& candidate : no_wounded_lanes) {
+        if (candidate.combatant.has_value()) {
+            candidate.combatant->physical_meter = 4U;
+        }
+    }
+    const auto heal_without_wounded_lane = drive_spell_refresh(
+        "generic_k0a_spell0c", "spell_heal_no_wounded_lane", 10U, 12U,
+        0, true, spell_line_true, &spell_caster, &heal_lane_zero, false, 0U,
+        std::nullopt, &no_wounded_lanes);
     auto code2_spell_caster = spell_caster;
     code2_spell_caster.equipped_action_code = 2U;
     const auto code2_scene_state_skip = drive_spell_refresh(
@@ -2170,6 +2239,8 @@ int main() {
                   ? std::optional<std::uint16_t>{0x0037U}
             : action_code == 9U
                   ? std::optional<std::uint16_t>{0x0035U}
+            : action_code == 12U
+                  ? std::optional<std::uint16_t>{0x003aU}
                   : std::nullopt;
         return driven.refresh.has_value() &&
                expected_audio_event.has_value() &&
@@ -2252,6 +2323,43 @@ int main() {
         spell_target_update->target_id == "party.runner.0" &&
         spell_target_update->physical_meter == spell_effect_result->physical_meter &&
         spell_target_update->mental_meter == spell_effect_result->mental_meter;
+    const auto heal_action_result =
+        heal_wounds_cast.refresh.has_value()
+            ? heal_wounds_cast.refresh->spell_action_resolution
+            : std::nullopt;
+    const auto heal_effect_result =
+        heal_wounds_cast.completed_effect.has_value()
+            ? heal_wounds_cast.completed_effect->spell_effect_resolution
+            : std::nullopt;
+    const bool heal_wounds_source_lane_matches =
+        heal_wounds_cast.refresh.has_value() &&
+        heal_action_result.has_value() &&
+        heal_action_result->action_code == 12U &&
+        heal_action_result->target_id == "party.runner.1" &&
+        heal_action_result->target_record_slot == 1U &&
+        heal_effect_result.has_value() &&
+        heal_effect_result->action_code == 12U &&
+        heal_effect_result->target_id == "party.runner.1" &&
+        heal_effect_result->target_record_slot == 1U &&
+        heal_effect_result->outcome == "effect_applied" &&
+        heal_effect_result->physical_meter > heal_lane_one.physical_meter &&
+        heal_effect_result->mental_meter == heal_lane_one.mental_meter + 1U &&
+        heal_effect_result->source_record_flags == 0x01U &&
+        heal_wounds_cast.completed_effect->spell_effect_slot_released ==
+            std::optional<std::uint8_t>{0U};
+    const bool heal_lane_presence_and_empty_gate_match =
+        heal_skips_absent_lane.refresh.has_value() &&
+        heal_skips_absent_lane.refresh->spell_action_resolution.has_value() &&
+        heal_skips_absent_lane.refresh->spell_action_resolution->target_id ==
+            "party.runner.2" &&
+        heal_skips_absent_lane.refresh->spell_action_resolution->target_record_slot ==
+            2U &&
+        heal_without_wounded_lane.refresh.has_value() &&
+        heal_without_wounded_lane.refresh->source_action_dispatch ==
+            std::optional<std::string>{"suppressed"} &&
+        !heal_without_wounded_lane.refresh->spell_action_resolution.has_value() &&
+        !heal_without_wounded_lane.refresh->audio_event.has_value() &&
+        !heal_without_wounded_lane.completed_effect.has_value();
     const bool code2_scene_callback_gate_matches =
         code2_scene_state_skip.completed_effect.has_value() &&
         code2_scene_state_skip.completed_effect->spell_effect_completed &&
@@ -2415,6 +2523,10 @@ int main() {
         spell_effect_profile_matches(flame_bolt_cast, 2U, 31U, 6U, 30U) &&
         spell_effect_profile_matches(sleep_cast, 5U, 62U, 9U, 61U) &&
         spell_effect_profile_matches(mana_blast_cast, 9U, 31U, 6U, 30U) &&
+        spell_effect_profile_matches(heal_wounds_cast, 12U, 81U, 16U,
+                                     80U) &&
+        heal_wounds_source_lane_matches &&
+        heal_lane_presence_and_empty_gate_match &&
         code2_scene_callback_gate_matches && sleep_scan_fanout_matches &&
         full_spell_effect_pool_blocks_spawn &&
         source_spell_gate_switches_action &&
@@ -2473,6 +2585,23 @@ int main() {
                          resolved_spell_cast.completed_effect->spell_effect_slot_released.has_value())
                   << " result=" << spell_effect_result.has_value()
                   << " code2=" << code2_scene_callback_gate_matches
+                  << " heal_profile=" << spell_effect_profile_matches(
+                         heal_wounds_cast, 12U, 81U, 16U, 80U)
+                  << " heal_lane=" << heal_wounds_source_lane_matches
+                  << " heal_presence=" << heal_lane_presence_and_empty_gate_match
+                  << " heal_dispatch=" << (heal_action_result.has_value()
+                         ? heal_wounds_cast.refresh->source_action_dispatch.value_or("nil")
+                         : "missing")
+                  << " heal_heartbeats=" << static_cast<unsigned>(
+                         heal_wounds_cast.spell_effect_heartbeat_count)
+                  << " heal_visible=" << static_cast<unsigned>(
+                         heal_wounds_cast.spell_effect_visible_heartbeats)
+                  << " heal_slot=" << (heal_action_result.has_value() &&
+                         heal_action_result->spell_effect_slot.has_value())
+                  << " heal_target=" << (heal_action_result.has_value()
+                         ? heal_action_result->target_id : "missing")
+                  << " heal_outcome=" << (heal_effect_result.has_value()
+                         ? heal_effect_result->outcome : "missing")
                   << " code2skip=" << (code2_scene_state_skip.completed_effect.has_value() &&
                          code2_scene_state_skip.completed_effect->spell_effect_resolution.has_value())
                   << " code2callback=" << (code2_scene_state_callback.completed_effect.has_value() &&

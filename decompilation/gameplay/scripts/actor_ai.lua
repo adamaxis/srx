@@ -1492,6 +1492,35 @@ local function action_line_clear(context, target)
         line_clear(target.world_x, target.world_y) == true
 end
 
+local function first_wounded_party_runner(context)
+    -- ROM 0x13C20 checks the three runner records in order and selects the
+    -- first present lane whose physical meter is below four. The runtime
+    -- candidate list contains party slots only when their roster marker is
+    -- present; temporary world actors are never heal lanes.
+    local by_slot = {}
+    for _, candidate in ipairs(context.ai_target_candidates or {}) do
+        local slot = type(candidate) == "table"
+            and candidate.source_record_slot or nil
+        if type(candidate) == "table" and
+           candidate.world_activity_actor ~= true and
+           type(candidate.service_flags) == "number" and
+           (candidate.service_flags & ActorServiceFlag.active) ~= 0 and
+           type(slot) == "number" and slot >= 0 and slot <= 2 and
+           type(candidate.combatant) == "table" and
+           type(candidate.combatant.physical_meter) == "number" then
+            by_slot[slot] = candidate
+        end
+    end
+    for slot = 0, 2 do
+        local candidate = by_slot[slot]
+        if type(candidate) == "table" and
+           candidate.combatant.physical_meter < 4 then
+            return candidate, slot
+        end
+    end
+    return nil, nil
+end
+
 local function classify_spell_dispatch(state, context, target)
     -- 0x13FFE reaches the spell branch only with a linked target. Delay and
     -- the projected +0x0C word are tested before the code-4/11 RTS.
@@ -2621,9 +2650,21 @@ function ActorAI.heartbeat(context)
                         if context.action_kind == ActionKind.spell then
                             -- Negative +0x56 never enters 0x14C7C / 0xB1DC.
                             state.ai_target_engaged = false
-                            state.source_action_dispatch =
-                                classify_spell_dispatch(
-                                    state, context, target)
+                            local spell_target = target
+                            if context.action_code == 12 then
+                                spell_target =
+                                    first_wounded_party_runner(context)
+                            end
+                            if context.action_code == 12 and
+                               spell_target == nil then
+                                -- 0x13BBA returns carry clear when 0x13C20
+                                -- finds no eligible runner lane.
+                                state.source_action_dispatch = "suppressed"
+                            else
+                                state.source_action_dispatch =
+                                    classify_spell_dispatch(
+                                        state, context, target)
+                            end
                             if state.source_action_dispatch == "spell" then
                                 local spell_resolution
                                 local combat = game.modules.combat
@@ -2632,7 +2673,7 @@ function ActorAI.heartbeat(context)
                                        "function" then
                                     spell_resolution =
                                         combat.resolve_spell_action(context,
-                                                                    target)
+                                                                    spell_target)
                                     if spell_resolution ~= nil then
                                         state.spell_action_resolution =
                                             spell_resolution
@@ -2665,7 +2706,7 @@ function ActorAI.heartbeat(context)
                                         end
                                     end
                                 end
-                                begin_spell_cast(state, context, target,
+                                begin_spell_cast(state, context, spell_target,
                                                  spell_resolution)
                             elseif state.animation_id ~= "spell" then
                                 local route_heading =

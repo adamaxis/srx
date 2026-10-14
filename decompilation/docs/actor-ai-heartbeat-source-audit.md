@@ -651,23 +651,27 @@ dispatch. QA exercises both the skipped and called branches. The separate
 setup callback table at `0x4964` remains an explicit boundary.
 
 The source event bytes at `0x4946` are `0x32`, `0x34`, `0x37`, and `0x35` for
-the four live spell action codes. Event IDs are hex, but table-2 filenames use
-decimal resource numbers: `0x32` -> resource 50, `0x34` -> 52, `0x37` -> 55,
-and `0x35` -> 53. The Qt audio aliases now follow that conversion. Their
-decoded one-shot lengths are 2.467, 2.517, 2.820, and 2.434 seconds; Debug and
-Release playback QA checks their routes and playback states.
+the four encounter spell profiles. Generic action code 12 selects event
+`0x3A`. Event IDs are hex, but table-2 filenames use decimal resource numbers:
+`0x32` -> resource 50, `0x34` -> 52, `0x37` -> 55, `0x35` -> 53, and `0x3A`
+-> 58. The Qt audio aliases follow that conversion. Their decoded one-shot
+lengths are 2.467, 2.517, 2.820, 2.434, and 2.703 seconds; Debug and Release
+playback QA checks their routes and playback states.
 
 The offline importer extracts the spell cast pose and the per-scene effect
 frames from ROM tables. The Qt renderer draws each named effect at the target
 record's projected point, above its actor sprite and underneath the right-side
 HUD. The Lua test verifies the four source clocks, delayed result, code-2
 condition, code-5 scan/fan-out, target ownership, event IDs, and slot release.
-The field QA writes 25 whole-screen
-phase images from a ROM-selected Scene 1 Lone Star encounter and verifies the
-HUD remains pixel-identical. No independent Genesis cast sequence has yet
-confirmed the exact appearance or sound. Code 12's `FFE190` party retarget and
-the spell status/effect families outside these four encounter actions remain
-partial.
+The field QA writes 41 whole-screen phase images from a ROM-selected Scene 1
+Lone Star encounter and verifies the HUD remains pixel-identical. Code 12's
+generic path scans active runner lanes in source order, chooses the first with
+physical meter below four, and applies its delayed direct heal at the target
+render callback. The 16 extracted phases and event `0x3A` route are covered by
+the same asset and playback checks. The indirect setup-table dispatch at
+`0x4964` remains open. No independent Genesis cast sequence has yet confirmed
+the exact appearance or sound; other spell status/effect families outside the
+four encounter profiles remain partial.
 
 The full eight-question screen and layering review for the probe is
 [`visual-audits/actor-spell-item-line-probe.md`](visual-audits/actor-spell-item-line-probe.md);

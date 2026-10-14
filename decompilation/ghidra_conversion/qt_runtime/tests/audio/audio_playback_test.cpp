@@ -32,6 +32,8 @@ int main(int argc, char** argv) {
         SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_35_PATH);
     const auto spell_event_37 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_37_PATH);
+    const auto spell_event_3a = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_3A_PATH);
     const auto resource_075 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH);
     const auto resource_076 = std::filesystem::path(
@@ -87,6 +89,9 @@ int main(int argc, char** argv) {
         }
         if (alias == "audio.effects.resource.055") {
             return spell_event_37;
+        }
+        if (alias == "audio.effects.resource.058") {
+            return spell_event_3a;
         }
         if (alias == "audio.effects.resource.075") {
             return resource_075;
@@ -145,12 +150,13 @@ int main(int argc, char** argv) {
         std::cerr << "event 0x24 did not select its command sound\n";
         return 1;
     }
-    const std::array<std::pair<std::uint16_t, std::string_view>, 4>
+    const std::array<std::pair<std::uint16_t, std::string_view>, 5>
         spell_event_aliases{{
             {0x32U, "audio.effects.resource.050"},
             {0x34U, "audio.effects.resource.052"},
             {0x35U, "audio.effects.resource.053"},
             {0x37U, "audio.effects.resource.055"},
+            {0x3AU, "audio.effects.resource.058"},
         }};
     for (const auto& [event, expected_alias] : spell_event_aliases) {
         if (playback.alias_for_event(event) != expected_alias) {
@@ -158,6 +164,10 @@ int main(int argc, char** argv) {
                       << " did not select its decimal-numbered table-2 sound\n";
             return 1;
         }
+    }
+    if (!std::filesystem::is_regular_file(spell_event_3a)) {
+        std::cerr << "the extracted heal-wounds resource-058 FLAC is missing\n";
+        return 1;
     }
     if (!std::filesystem::is_regular_file(menu_024)) {
         std::cerr << "the extracted menu command-024 FLAC is missing\n";
@@ -275,7 +285,7 @@ int main(int argc, char** argv) {
         std::int64_t min_duration_ms;
         std::int64_t max_duration_ms;
     };
-    constexpr std::array<PlaybackExpectation, 22> kMappedEvents{{
+    constexpr std::array<PlaybackExpectation, 23> kMappedEvents{{
         {0x00U, "audio.music.resource.000", 119900, 120100},
         {0x10U, "audio.intro.title.stage-1", 14800, 14900},
         {0x16U, "audio.field.effect-016", 2700, 2800},
@@ -294,6 +304,7 @@ int main(int argc, char** argv) {
         {0x34U, "audio.effects.resource.052", 2490, 2540},
         {0x35U, "audio.effects.resource.053", 2410, 2460},
         {0x37U, "audio.effects.resource.055", 2790, 2850},
+        {0x3AU, "audio.effects.resource.058", 2700, 2710},
         {0x51U, "audio.effects.resource.081", 2530, 2600},
         {0x5CU, "audio.intro.sega-logo-shock-sequence", 4700, 4900},
         {0x5DU, "audio.intro.shadowrun-logo-reveal-sequence", 2680, 2720},

@@ -9378,11 +9378,12 @@ int run_field_spell_effect_qa(
         std::uint8_t phase_count;
         std::string_view name;
     };
-    constexpr std::array<EffectCapture, 4> effects{{
+    constexpr std::array<EffectCapture, 5> effects{{
         {1U, 4U, "flame-dart"},
         {2U, 6U, "flame-bolt"},
         {5U, 9U, "sleep"},
         {9U, 6U, "mana-blast"},
+        {12U, 16U, "heal-wounds"},
     }};
     bool all_phases_saved = true;
     bool hud_unchanged = true;
@@ -9415,6 +9416,11 @@ int run_field_spell_effect_qa(
             if (effect.action_code == 1U && phase == 1U) {
                 all_phases_saved = save("actual.bmp", image) &&
                                    all_phases_saved;
+            }
+            if (effect.action_code == 12U && phase == 1U) {
+                all_phases_saved = save(
+                    std::filesystem::path("heal-wounds") / "actual.bmp",
+                    image) && all_phases_saved;
             }
 
             std::size_t changed_pixels = 0U;
@@ -9459,24 +9465,32 @@ int run_field_spell_effect_qa(
 
     const QImage actual_image(QString::fromStdWString(
         (output / "actual.bmp").wstring()));
+    const QImage heal_wounds_actual_image(QString::fromStdWString(
+        (output / "heal-wounds" / "actual.bmp").wstring()));
     if (!all_phases_saved || !hud_unchanged || !full_screen_layers_clean ||
         !effect_frames_differ || phase_one_changed_pixels == 0U ||
         actual_image.isNull() || actual_image.size() !=
-            QSize(kSceneWidth, kSceneHeight)) {
+            QSize(kSceneWidth, kSceneHeight) ||
+        heal_wounds_actual_image.isNull() ||
+        heal_wounds_actual_image.size() != QSize(kSceneWidth, kSceneHeight)) {
         std::cerr << "Spell effect QA: scene composite failed"
                   << " all_phases_saved=" << all_phases_saved
                   << " hud_unchanged=" << hud_unchanged
                   << " layers_clean=" << full_screen_layers_clean
                   << " phase_pixels=" << phase_one_changed_pixels
                   << " phase_frames_valid=" << effect_frames_differ
-                  << " actual=" << !actual_image.isNull() << '\n';
+                  << " actual=" << !actual_image.isNull()
+                  << " heal_wounds_actual="
+                  << !heal_wounds_actual_image.isNull() << '\n';
         return 3;
     }
 
     std::cout << "field_spell_effect_qa=passed scene=" << kScene
-              << " encounter=lonemage_k0a_spell01 profiles=4 phases=25 "
+              << " encounter=lonemage_k0a_spell01 profiles=5 phases=41 "
                  "hud_unchanged=yes alpha_overlay_bounded=yes "
-                 "actual.bmp=" << output.string() << '\n';
+                 "actual.bmp=" << (output / "actual.bmp").string()
+              << " heal_wounds_actual.bmp="
+              << (output / "heal-wounds" / "actual.bmp").string() << '\n';
     return 0;
 }
 
