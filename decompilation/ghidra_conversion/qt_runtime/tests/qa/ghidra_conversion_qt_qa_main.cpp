@@ -5081,7 +5081,8 @@ int run_field_scene20_physical_entry_qa(
                              const std::uint16_t target,
                              const std::uint8_t input,
                              const std::string_view stage,
-                             const std::uint16_t tolerance) {
+                             const std::uint16_t tolerance,
+                             const auto& is_live) {
         const auto coordinate = [&] {
             const auto position = world_position();
             return horizontal ? position.first : position.second;
@@ -5091,7 +5092,7 @@ int run_field_scene20_physical_entry_qa(
                               : coordinate() <= target;
         };
         std::uint16_t ticks = 0U;
-        while (ticks < 500U && !reached() && field_is_live()) {
+        while (ticks < 500U && !reached() && is_live()) {
             field_scene.set_controller_nibble(input);
             field_scene.advance_frame();
             ++frame;
@@ -5111,7 +5112,7 @@ int run_field_scene20_physical_entry_qa(
         const auto settled = coordinate();
         const auto difference = settled > target ? settled - target
                                                  : target - settled;
-        if (!field_is_live() || !reached() || difference > tolerance ||
+        if (!is_live() || !reached() || difference > tolerance ||
             !save(stage)) {
             const auto position = world_position();
             std::cerr << "Scene-20 physical-entry QA: normal input did not "
@@ -5127,10 +5128,14 @@ int run_field_scene20_physical_entry_qa(
     // The straight west path is blocked by the source collision wall at
     // x=0x320. Walk through its open southern row, cross the wall, then return
     // to the north-side alley that reaches the paired C0 entrance.
-    if (!walk_to(false, true, 0x0310U, 0x02U, "south-lane", 24U) ||
-        !walk_to(true, false, 0x0160U, 0x04U, "west-south-lane", 24U) ||
-        !walk_to(false, false, 0x02D0U, 0x01U, "north-alley", 24U) ||
-        !walk_to(true, false, 0x0100U, 0x04U, "doorway-lane", 24U)) {
+    if (!walk_to(false, true, 0x0310U, 0x02U, "south-lane", 24U,
+                 field_is_live) ||
+        !walk_to(true, false, 0x0160U, 0x04U, "west-south-lane", 24U,
+                 field_is_live) ||
+        !walk_to(false, false, 0x02D0U, 0x01U, "north-alley", 24U,
+                 field_is_live) ||
+        !walk_to(true, false, 0x0100U, 0x04U, "doorway-lane", 24U,
+                 field_is_live)) {
         return 3;
     }
 
@@ -5842,53 +5847,6 @@ int run_field_scene20_physical_entry_qa(
                   << " artifacts=" << output.string() << '\n';
         return 0;
     }
-    const auto walk_scene20_to = [&](const bool horizontal,
-                                     const bool increasing,
-                                     const std::uint16_t target,
-                                     const std::uint8_t input,
-                                     const std::string_view stage) {
-        const auto coordinate = [&] {
-            const auto position = world_position();
-            return horizontal ? position.first : position.second;
-        };
-        const auto reached = [&] {
-            return increasing ? coordinate() >= target
-                              : coordinate() <= target;
-        };
-        std::uint16_t ticks = 0U;
-        while (ticks < 500U && !reached() && scene20_is_live()) {
-            field_scene.set_controller_nibble(input);
-            field_scene.advance_frame();
-            ++frame;
-            ++ticks;
-            if (ticks == 32U || ticks == 96U || ticks == 160U ||
-                ticks == 224U || ticks == 320U) {
-                if (!save(std::string(stage) + "-" + std::to_string(ticks))) {
-                    return false;
-                }
-                write_state(std::string(stage) + "-" +
-                            std::to_string(ticks));
-            }
-        }
-        field_scene.set_controller_nibble(0U);
-        field_scene.advance_frame();
-        ++frame;
-        const auto settled = coordinate();
-        const auto difference = settled > target ? settled - target
-                                                 : target - settled;
-        if (!scene20_is_live() || !reached() || difference > 16U ||
-            !save(stage)) {
-            const auto position = world_position();
-            std::cerr << "Scene-20 physical-entry QA: normal input did not "
-                      << "reach " << stage << " (ticks=" << ticks
-                      << ", position=" << position.first << ','
-                      << position.second << ", target=" << target << ")\n";
-            return false;
-        }
-        write_state(stage);
-        return true;
-    };
-
     // The source collision cells describe a narrow path around the central
     // wall before record 117's physical maglock. Stay in cell centers so the
     // player's four probes follow clear cells through the scene.
@@ -5950,12 +5908,12 @@ int run_field_scene20_physical_entry_qa(
         return 3;
     }
     write_state("interior-east-hall");
-    if (!walk_scene20_to(true, false, 0x0528U, 0x04U,
-                         "interior-south-turn") ||
-        !walk_scene20_to(false, false, 0x011CU, 0x01U,
-                         "interior-north-hall") ||
-        !walk_scene20_to(true, false, 0x047CU, 0x04U,
-                         "maglock-approach")) {
+    if (!walk_to(true, false, 0x0528U, 0x04U, "interior-south-turn", 16U,
+                 scene20_is_live) ||
+        !walk_to(false, false, 0x011CU, 0x01U, "interior-north-hall", 16U,
+                 scene20_is_live) ||
+        !walk_to(true, false, 0x047CU, 0x04U, "maglock-approach", 16U,
+                 scene20_is_live)) {
         return 3;
     }
 
