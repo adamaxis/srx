@@ -60,13 +60,25 @@ the initializer's actual source byte and honor a live `+0x4C` override. This
 corrects the actor meter used by encounter state and collision eligibility.
 Behavior should read the resulting record facts rather than derive flags from
 a package name.
+The same copy loop maps template `+0x28..+0x31` to live `+0x76..+0x7F`,
+`+0x32` to `+0x80`, `+0x33..+0x36` to `+0x81..+0x84`, `+0x37` to `+0x85`,
+and `+0x49` to `+0x9D` (`disassembly.s` `0x4542..0x45BE`). The dynamic
+encounter catalog now exports the full `+0x76..+0x7F` window, all four action
+skills, and the auxiliary `+0x9D` roll bonus. Its ordered override list is
+applied after the template copy to these same live offsets. Lua receives these
+facts as named combatant fields; the runtime does not read ROM addresses.
+Script-runtime QA checks the Lonemage template bytes and the Elven Mage's
+overridden `+0x9D` value. This corrects the previously shifted attribute
+mapping. It supplies the inputs for `0x1033E`, but its spell trial, effect,
+residual, and meter branches are not yet connected to the live Lua actor
+heartbeat.
 The default-map NPC profile still does not receive the general branch tree's
 complete `+0x10`, `+0x11`, `+0x4C`, `+0x9E`, and route state. The temporary
 random-world actor path now carries typed `+0x10` service flags and the
 resolved `+0x11` render/selection flags into Lua, plus the ROM entry delay and
-the creature's directional C0B2 frame count. Remaining ordered template
-overrides are retained as source data but are not yet all interpreted by the
-runtime. The player
+the creature's directional C0B2 frame count. The encounter loader now also
+interprets ordered overrides at `+0x76..+0x85` and `+0x9D`; other override
+fields remain source data until their runtime behavior is traced. The player
 heartbeat receives the normalized controller nibble and source heading table.
 Lua chooses its target heading, advances the current heading with the `0xB530`
 `0x0800`-step rule, and now runs the `0xB77E`/`0xB732`/`0xBADE`/`0xBB86`

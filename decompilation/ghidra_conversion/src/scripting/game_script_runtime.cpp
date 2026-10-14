@@ -2265,6 +2265,8 @@ GameScriptRuntime::resolve_field_encounter(
                                      actor.combatant.command_attribute_85) &&
                     read_combat_byte("item18_base",
                                      actor.combatant.item18_base) &&
+                    read_combat_byte("auxiliary_roll_bonus",
+                                     actor.combatant.auxiliary_roll_bonus) &&
                     read_combat_byte("armor_index",
                                      actor.combatant.armor_index) &&
                     read_combat_byte("class_code",
@@ -2317,10 +2319,15 @@ GameScriptRuntime::resolve_field_encounter(
                         return true;
                     };
                     valid_actor =
+                        read_combat_array("action_skills",
+                                          actor.combatant.action_skills) &&
                         read_combat_array("item_codes",
                                           actor.combatant.item_codes) &&
                         read_combat_array("item_phases",
-                                          actor.combatant.item_phases);
+                                          actor.combatant.item_phases) &&
+                        read_combat_array(
+                            "action_phase_extension",
+                            actor.combatant.action_phase_extension);
                 }
             }
             lua_pop(state, 1);
@@ -3253,6 +3260,10 @@ GameScriptRuntime::actor_heartbeat(
         set_integer("command_attribute_85",
                     combatant.command_attribute_85);
         set_integer("item18_base", combatant.item18_base);
+        set_integer("auxiliary_roll_bonus",
+                    combatant.auxiliary_roll_bonus);
+        set_integer("roll_count_cap",
+                    combatant.action_phase_extension.back());
         set_integer("armor_index", combatant.armor_index);
         set_integer("race_or_state", combatant.race_or_state);
         set_integer("class_code", combatant.class_code);

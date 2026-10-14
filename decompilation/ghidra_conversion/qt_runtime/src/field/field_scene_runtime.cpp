@@ -159,6 +159,7 @@ scripting::ScriptCombatantFacts script_combatant_facts(
     facts.command_attribute_7c = record.attributes[5];
     facts.command_attribute_85 = record.skills[5];
     facts.item18_base = record.skills[0];
+    facts.auxiliary_roll_bonus = record.magic_force;
     facts.action_skills = {record.skills[1], record.skills[2],
                            record.skills[3], record.skills[4]};
     facts.armor_index = record.equipped_armor_index;
@@ -1855,7 +1856,15 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 "\tcombat_item_phase_0\tcombat_item_phase_1"
                 "\tcombat_item_phase_2\tcombat_item_phase_3"
                 "\tcombat_item_phase_4\tcombat_item_phase_5"
-                "\tcombat_item_phase_6\tcombat_item_phase_7") {
+                "\tcombat_item_phase_6\tcombat_item_phase_7"
+                "\tcombat_action_phase_76\tcombat_action_phase_77"
+                "\tcombat_action_phase_78\tcombat_action_phase_79"
+                "\tcombat_action_phase_7a\tcombat_action_phase_7b"
+                "\tcombat_action_phase_7c\tcombat_action_phase_7d"
+                "\tcombat_action_phase_7e\tcombat_action_phase_7f"
+                "\tcombat_action_skill_81\tcombat_action_skill_82"
+                "\tcombat_action_skill_83\tcombat_action_skill_84"
+                "\tcombat_auxiliary_roll_bonus") {
         failure_ = "dynamic world-activity actor table header is invalid";
         return false;
     }
@@ -1875,7 +1884,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             while (std::getline(row, field, '\t')) {
                 fields.push_back(std::move(field));
             }
-            if (fields.size() != 53U) {
+            if (fields.size() != 68U) {
                 failure_ = "dynamic world-activity actor row is malformed";
                 return false;
             }

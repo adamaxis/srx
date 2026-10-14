@@ -262,6 +262,20 @@ int main() {
         scripts.resolve_field_encounter(2U, 1U, 1U);
     const auto lone_star_sequence =
         scripts.resolve_field_encounter(1U, 1U, 1U);
+    const auto elven_mage_sequence =
+        scripts.resolve_field_encounter(3U, 0U, 0U);
+    if (!redmond_creature_sequence.has_value() ||
+        !barrens_creature_sequence.has_value() ||
+        !lone_star_sequence.has_value() ||
+        !elven_mage_sequence.has_value()) {
+        std::cerr << "encounter lookup presence: redmond="
+                  << redmond_creature_sequence.has_value()
+                  << " barrens=" << barrens_creature_sequence.has_value()
+                  << " lone_star=" << lone_star_sequence.has_value()
+                  << " elven_mage=" << elven_mage_sequence.has_value()
+                  << " detail=" << scripts.failure() << '\n';
+        return 1;
+    }
     if (!expect(
             redmond_creature_sequence.has_value() &&
                 redmond_creature_sequence->kind ==
@@ -288,7 +302,29 @@ int main() {
                 lone_star_sequence->actors[1].actor_name == "lonemage" &&
                 lone_star_sequence->actors[1].action_kind ==
                     ScriptActorActionKind::spell &&
-                lone_star_sequence->actors[1].physical_meter == 10U,
+                lone_star_sequence->actors[1].physical_meter == 10U &&
+                lone_star_sequence->actors[1].combatant
+                        .command_attribute_77 == 3U &&
+                lone_star_sequence->actors[1].combatant
+                        .command_attribute_78 == 5U &&
+                lone_star_sequence->actors[1].combatant
+                        .command_attribute_79 == 2U &&
+                lone_star_sequence->actors[1].combatant
+                        .command_attribute_7b == 6U &&
+                lone_star_sequence->actors[1].combatant
+                        .command_attribute_7c == 6U &&
+                lone_star_sequence->actors[1].combatant
+                        .action_phase_extension ==
+                    std::array<std::uint8_t, 10>{
+                        0U, 3U, 5U, 2U, 5U, 6U, 6U, 5U, 6U, 6U} &&
+                lone_star_sequence->actors[1].combatant.action_skills ==
+                    std::array<std::uint8_t, 4>{2U, 0U, 0U, 0U} &&
+                lone_star_sequence->actors[1].combatant
+                        .auxiliary_roll_bonus == 2U &&
+                elven_mage_sequence.has_value() &&
+                elven_mage_sequence->actors.size() == 1U &&
+                elven_mage_sequence->actors[0].combatant
+                        .auxiliary_roll_bonus == 2U,
             "ROM field encounter catalog did not resolve creature and Lone Star sequences")) {
         std::cerr << scripts.failure() << '\n';
         return 1;

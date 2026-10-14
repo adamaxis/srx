@@ -148,6 +148,26 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
                         row.combat_modifier_flags_df,
                     linked_action_profile_index =
                         row.combat_profile_index_a0,
+                    auxiliary_roll_bonus =
+                        row.combat_auxiliary_roll_bonus,
+                    action_skills = {
+                        row.combat_action_skill_81,
+                        row.combat_action_skill_82,
+                        row.combat_action_skill_83,
+                        row.combat_action_skill_84,
+                    },
+                    action_phase_extension = {
+                        row.combat_action_phase_76,
+                        row.combat_action_phase_77,
+                        row.combat_action_phase_78,
+                        row.combat_action_phase_79,
+                        row.combat_action_phase_7a,
+                        row.combat_action_phase_7b,
+                        row.combat_action_phase_7c,
+                        row.combat_action_phase_7d,
+                        row.combat_action_phase_7e,
+                        row.combat_action_phase_7f,
+                    },
                     item_codes = {
                         row.combat_item_code_0,
                         row.combat_item_code_1,

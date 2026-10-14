@@ -256,6 +256,8 @@ struct ScriptCombatantFacts {
     std::uint8_t command_attribute_7c = 0;
     std::uint8_t command_attribute_85 = 0;
     std::uint8_t item18_base = 0;
+    // ROM 0x1033E adds live +0x9D to the initial action trial count.
+    std::uint8_t auxiliary_roll_bonus = 0;
     std::array<std::uint8_t, 4> action_skills{}; // live +0x81..+0x84
     std::uint8_t armor_index = 0;
     std::int8_t race_or_state = 0;

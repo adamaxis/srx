@@ -3789,6 +3789,9 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint16_t profile_index_a0;
         std::array<std::uint8_t, 8> item_codes;
         std::array<std::uint8_t, 8> item_phases;
+        std::array<std::uint8_t, 10> action_phase_extension;
+        std::array<std::uint8_t, 4> action_skills;
+        std::uint8_t auxiliary_roll_bonus;
         std::string sprite_stem;
         std::string ordered_overrides;
     };
@@ -3870,14 +3873,27 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 auto cyberware_flags = read_big_endian_word(
                     rom, template_offset + 0x44U);
                 auto posture = rom[template_offset + 0x05U];
-                auto attribute_77 = rom[template_offset + 0x2FU];
-                auto attribute_78 = rom[template_offset + 0x30U];
-                auto attribute_79 = rom[template_offset + 0x31U];
-                auto attribute_7b = rom[template_offset + 0x33U];
-                auto attribute_7c = rom[template_offset + 0x34U];
+                std::array<std::uint8_t, 10> action_phase_extension{};
+                for (std::size_t field = 0U;
+                     field < action_phase_extension.size(); ++field) {
+                    action_phase_extension[field] =
+                        rom[template_offset + 0x28U + field];
+                }
+                std::array<std::uint8_t, 4> action_skills{};
+                for (std::size_t skill = 0U;
+                     skill < action_skills.size(); ++skill) {
+                    action_skills[skill] =
+                        rom[template_offset + 0x33U + skill];
+                }
+                auto attribute_77 = action_phase_extension[1];
+                auto attribute_78 = action_phase_extension[2];
+                auto attribute_79 = action_phase_extension[3];
+                auto attribute_7b = action_phase_extension[5];
+                auto attribute_7c = action_phase_extension[6];
                 auto attribute_85 = rom[template_offset + 0x37U];
                 auto item18_base = rom[template_offset + 0x32U];
-                auto armor_index = rom[template_offset + 0x28U];
+                auto armor_index = action_phase_extension[0];
+                auto auxiliary_roll_bonus = rom[template_offset + 0x49U];
                 auto race_or_state = static_cast<std::int8_t>(
                     rom[template_offset + 0x41U]);
                 auto class_code = rom[template_offset + 0x42U];
@@ -3928,18 +3944,20 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                                    override_offset <= 0x75U) {
                             item_phases[override_offset - 0x6EU] =
                                 override_value;
-                        } else if (override_offset == 0x76U) {
-                            armor_index = override_value;
-                        } else if (override_offset == 0x77U) {
-                            attribute_77 = override_value;
-                        } else if (override_offset == 0x78U) {
-                            attribute_78 = override_value;
-                        } else if (override_offset == 0x79U) {
-                            attribute_79 = override_value;
-                        } else if (override_offset == 0x7BU) {
-                            attribute_7b = override_value;
-                        } else if (override_offset == 0x7CU) {
-                            attribute_7c = override_value;
+                        } else if (override_offset >= 0x76U &&
+                                   override_offset <= 0x7FU) {
+                            action_phase_extension[override_offset - 0x76U] =
+                                override_value;
+                            armor_index = action_phase_extension[0];
+                            attribute_77 = action_phase_extension[1];
+                            attribute_78 = action_phase_extension[2];
+                            attribute_79 = action_phase_extension[3];
+                            attribute_7b = action_phase_extension[5];
+                            attribute_7c = action_phase_extension[6];
+                        } else if (override_offset >= 0x81U &&
+                                   override_offset <= 0x84U) {
+                            action_skills[override_offset - 0x81U] =
+                                override_value;
                         } else if (override_offset == 0x80U) {
                             item18_base = override_value;
                         } else if (override_offset == 0x85U) {
@@ -3959,6 +3977,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                             class_code = override_value;
                         } else if (override_offset == 0x9CU) {
                             mental_meter = override_value;
+                        } else if (override_offset == 0x9DU) {
+                            auxiliary_roll_bonus = override_value;
                         } else if (override_offset == 0xA0U) {
                             profile_index_a0 = static_cast<std::uint16_t>(
                                 (static_cast<std::uint16_t>(override_value) << 8U) |
@@ -4015,7 +4035,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     attribute_79, attribute_7b, attribute_7c,
                     attribute_85, item18_base, armor_index, race_or_state,
                     class_code, modifier_flags_df, profile_index_a0,
-                    item_codes, item_phases,
+                    item_codes, item_phases, action_phase_extension,
+                    action_skills, auxiliary_roll_bonus,
                     sprite_stem,
                     first_override ? "-" : overrides.str(),
                 });
@@ -4072,6 +4093,25 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         for (std::size_t item = 0U; item < 8U; ++item) {
             table << "\tcombat_item_phase_" << item;
         }
+        static constexpr std::array<std::string_view, 10>
+            kActionPhaseHeaders{
+                "combat_action_phase_76", "combat_action_phase_77",
+                "combat_action_phase_78", "combat_action_phase_79",
+                "combat_action_phase_7a", "combat_action_phase_7b",
+                "combat_action_phase_7c", "combat_action_phase_7d",
+                "combat_action_phase_7e", "combat_action_phase_7f"};
+        for (const auto header : kActionPhaseHeaders) {
+            table << '\t' << header;
+        }
+        static constexpr std::array<std::string_view, 4>
+            kActionSkillHeaders{"combat_action_skill_81",
+                                "combat_action_skill_82",
+                                "combat_action_skill_83",
+                                "combat_action_skill_84"};
+        for (const auto header : kActionSkillHeaders) {
+            table << '\t' << header;
+        }
+        table << "\tcombat_auxiliary_roll_bonus";
         table << '\n';
         for (const auto& actor : dynamic_world_actor_records) {
             const auto key = std::make_pair(actor.entity_kind, actor.palette_line);
@@ -4123,6 +4163,14 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             for (const auto value : actor.item_phases) {
                 table << '\t' << static_cast<unsigned>(value);
             }
+            for (const auto value : actor.action_phase_extension) {
+                table << '\t' << static_cast<unsigned>(value);
+            }
+            for (const auto value : actor.action_skills) {
+                table << '\t' << static_cast<unsigned>(value);
+            }
+            table << '\t'
+                  << static_cast<unsigned>(actor.auxiliary_roll_bonus);
             table << '\n';
         }
         if (!table) {
