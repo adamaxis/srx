@@ -1317,6 +1317,12 @@ local spell_pose_selectors = {
     0x80, 0x84, 0x88, 0x8C, 0x90, 0x94, 0x98, 0x9C,
 }
 
+local function action_line_clear(context, target)
+    local line_clear = context.action_line_clear
+    return type(line_clear) == "function" and
+        line_clear(target.world_x, target.world_y) == true
+end
+
 local function classify_spell_dispatch(state, context, target)
     -- 0x13FFE reaches the spell branch only with a linked target. Delay and
     -- the projected +0x0C word are tested before the code-4/11 RTS.
@@ -1332,12 +1338,34 @@ local function classify_spell_dispatch(state, context, target)
     if context.action_code == 4 or context.action_code == 11 then
         return "suppressed"
     end
-    local line_clear = context.action_line_clear
-    if type(line_clear) ~= "function" or
-       line_clear(target.world_x, target.world_y) ~= true then
+    if not action_line_clear(context, target) then
         return "blocked"
     end
     return "spell"
+end
+
+local function classify_item_dispatch(state, context, target)
+    -- 0x13FFE tests delay and +0x0C before the nonnegative +0x56 branch.
+    -- Codes 13..15 reach 0x15646. Other nonzero codes reach the 0x1411E
+    -- gate, which needs FFE186 or +0xB0 bit 4. Those facts are not hosted,
+    -- so a clear probe is not a spawn and not a C042/C092 pose.
+    if type(target) ~= "table" then
+        return nil
+    end
+    if state.action_delay >= 0 then
+        return "waiting"
+    end
+    if context.source_projection_active ~= true then
+        return "offscreen"
+    end
+    if not action_line_clear(context, target) then
+        return "blocked"
+    end
+    local code = context.action_code
+    if code >= 13 and code <= 15 then
+        return "item_effect"
+    end
+    return "item_gated"
 end
 
 local function begin_spell_cast(state, context, target)
@@ -2027,6 +2055,20 @@ function ActorAI.heartbeat(context)
                                 if not state.movement_active then
                                     state.movement_route_distance = nil
                                 end
+                            end
+                        elseif context.action_kind == ActionKind.item then
+                            -- Nonnegative +0x56 never enters 0x14C7C / 0xB1DC.
+                            state.ai_target_engaged = false
+                            state.source_action_dispatch =
+                                classify_item_dispatch(
+                                    state, context, target)
+                            local route_heading =
+                                source_motion_destination_heading(
+                                    context, state, target)
+                            state.movement_heading = route_heading
+                            state.movement_active = route_heading ~= nil
+                            if not state.movement_active then
+                                state.movement_route_distance = nil
                             end
                         elseif not resolve_source_target_motion(
                             context, state, target) then

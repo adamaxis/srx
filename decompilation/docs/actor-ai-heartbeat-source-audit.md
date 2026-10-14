@@ -555,8 +555,39 @@ not install the line callback: the typed `0x14D8E` probe does not consume
 live word coordinates on the same scale, so a wired probe would sample the
 wrong terrain. Production casts therefore stay fail-closed. `0xC082` frames
 are not in the extracted action lists, and the presenter draws no spell
-sprite. Item actors still share the unarmed C0A2 path. No independent
-Genesis capture shows these casts.
+sprite. No independent Genesis capture shows these casts.
+
+## Item dispatch for a nonnegative action slot
+
+After the same link, delay, and `+0x0C` gates, a nonnegative `+0x56` with
+nonzero `+0x57` does not enter `0x14C7C` or `0xB1DC`. Codes 13..15 call
+`0x14D8E` and, when carry is clear, `0x15646`, then jump to `0xB3FE`.
+Every other nonzero code calls `0x14D8E` and, when carry is clear, reaches
+`0x1411E`. That gate continues only when `FFE186` is nonzero or `+0xB0`
+bit 4 is set, then calls `0x1514E` and jumps to `0xB39A` on carry clear.
+Carry set at the probe stores the `0x12345678` sentinel. `0x1411E` with
+both gate facts clear returns without that sentinel, so `0x13D0C` still
+runs.
+
+Lua classifies this on the 21-pass refresh for `action_kind == item`.
+`waiting` and `offscreen` match the spell gates and do not call the line
+probe. `blocked` is a missing or false probe. `item_effect` is codes
+13..15 after a clear probe. `item_gated` is every other nonzero code
+after a clear probe. Neither request calls `0x15646`, `0x1514E`,
+`0x55C76`, or the ammo path, and neither installs a C042 or C092 pose.
+`FFE186` and `+0xB0` bit 4 are not host facts, so a clear probe is not
+treated as a spawn. The actor keeps the existing route. The unarmed
+reaction tests now use `eye5r_1_k07_none00`, whose `+0x57` is zero, so
+they still enter `0x14C7C`.
+
+Script-runtime QA covers code 1 and code 16 as `item_gated`, codes 13 and
+15 as `item_effect`, a close code-1 target that does not engage, `waiting`
+before the probe, `offscreen` without the probe, and `blocked` for a
+missing or false probe. Those decisions keep the item id and publish no
+meter. Debug and Release `shadowrun_gameplay_script_runtime_qa` both pass.
+The field host still leaves the line callback unset, so a projected item
+actor reports `blocked` and keeps walking. No independent Genesis capture
+shows these requests.
 
 ## Hell Hound close-range effect
 

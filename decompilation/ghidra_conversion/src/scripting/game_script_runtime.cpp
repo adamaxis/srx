@@ -4399,20 +4399,31 @@ GameScriptRuntime::actor_heartbeat(
     if (!read_optional_field_string(state, decision_table,
                                     "source_action_dispatch",
                                     source_action_dispatch)) {
-        return fail("actor_ai.heartbeat returned an invalid spell dispatch");
+        return fail("actor_ai.heartbeat returned an invalid action dispatch");
     }
     if (!source_action_dispatch.empty()) {
-        const bool known_dispatch =
-            source_action_dispatch == "spell" ||
+        const bool spell_context =
+            context.action_kind == ScriptActorActionKind::spell;
+        const bool item_context =
+            context.action_kind == ScriptActorActionKind::item;
+        const bool shared_label =
             source_action_dispatch == "waiting" ||
-            source_action_dispatch == "suppressed" ||
             source_action_dispatch == "blocked" ||
             source_action_dispatch == "offscreen";
-        if (!known_dispatch ||
-            context.action_kind != ScriptActorActionKind::spell ||
+        const bool spell_label =
+            source_action_dispatch == "spell" ||
+            source_action_dispatch == "suppressed";
+        const bool item_label =
+            source_action_dispatch == "item_effect" ||
+            source_action_dispatch == "item_gated";
+        const bool label_matches =
+            (shared_label && (spell_context || item_context)) ||
+            (spell_label && spell_context) ||
+            (item_label && item_context);
+        if (!label_matches ||
             !context.dynamic_world_encounter_actor ||
             context.phase != ScriptActorHeartbeatPhase::behavior) {
-            return fail("actor_ai.heartbeat returned an invalid spell dispatch");
+            return fail("actor_ai.heartbeat returned an invalid action dispatch");
         }
         decision.source_action_dispatch = std::move(source_action_dispatch);
     }
@@ -4441,6 +4452,16 @@ GameScriptRuntime::actor_heartbeat(
         *decision.source_action_dispatch == "spell" &&
         (!spell_pose || decision.action_delay < 0x0F)) {
         return fail("actor_ai.heartbeat returned an unsupported spell dispatch");
+    }
+    if (decision.source_action_dispatch.has_value() &&
+        (*decision.source_action_dispatch == "item_effect" ||
+         *decision.source_action_dispatch == "item_gated") &&
+        (decision.animation_id == "action" ||
+         decision.animation_id == "spell" ||
+         decision.combat_meter_update.has_value() ||
+         decision.combat_action_requested ||
+         decision.ai_target_engaged)) {
+        return fail("actor_ai.heartbeat returned an unsupported item dispatch");
     }
     lua_pop(state, 1);
 
