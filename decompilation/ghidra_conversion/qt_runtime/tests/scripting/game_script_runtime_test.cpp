@@ -2119,6 +2119,425 @@ int main() {
         return 31;
     }
 
+    // Unique profile_id values in dynamic-world-activity-actors.tsv.
+    // The heartbeat result is the assert; the file check only keeps this
+    // list on the catalog.
+    enum class CatalogDecision {
+        spell,
+        item_gated,
+        unarmed,
+        hound_effect,
+    };
+    struct CatalogProfile {
+        const char* profile_id;
+        std::uint16_t entity_kind;
+        ScriptActorActionKind action_kind;
+        std::uint8_t action_code;
+        CatalogDecision decision;
+    };
+    constexpr CatalogProfile catalog_profiles[] = {
+        {"hell_hound_k0c_none00", 12U, ScriptActorActionKind::none, 0U,
+         CatalogDecision::hound_effect},
+        {"vampire_k09_none00", 9U, ScriptActorActionKind::none, 0U,
+         CatalogDecision::unarmed},
+        {"eye5r_2_k07_item04", 7U, ScriptActorActionKind::item, 4U,
+         CatalogDecision::item_gated},
+        {"eye5r_1_k07_item01", 7U, ScriptActorActionKind::item, 1U,
+         CatalogDecision::item_gated},
+        {"lone11_k05_item03", 5U, ScriptActorActionKind::item, 3U,
+         CatalogDecision::item_gated},
+        {"lonemage_k0a_spell01", 10U, ScriptActorActionKind::spell, 1U,
+         CatalogDecision::spell},
+        {"ork_ganger_k04_none00", 4U, ScriptActorActionKind::none, 0U,
+         CatalogDecision::unarmed},
+        {"rat_shaman_k0b_spell05", 11U, ScriptActorActionKind::spell, 5U,
+         CatalogDecision::spell},
+        {"indian_warior_k0b_item05", 11U, ScriptActorActionKind::item, 5U,
+         CatalogDecision::item_gated},
+        {"wendigo_k0e_none00", 14U, ScriptActorActionKind::none, 0U,
+         CatalogDecision::unarmed},
+        {"bandersnatch_k04_none00", 4U, ScriptActorActionKind::none, 0U,
+         CatalogDecision::unarmed},
+        {"weenr1_k08_none00", 8U, ScriptActorActionKind::none, 0U,
+         CatalogDecision::unarmed},
+        {"weenr2_k08_item01", 8U, ScriptActorActionKind::item, 1U,
+         CatalogDecision::item_gated},
+        {"elven_mage_k06_spell09", 6U, ScriptActorActionKind::spell, 9U,
+         CatalogDecision::spell},
+        {"gator_shaman_k09_spell02", 9U, ScriptActorActionKind::spell, 2U,
+         CatalogDecision::spell},
+        {"gargoyle_k0d_none00", 13U, ScriptActorActionKind::none, 0U,
+         CatalogDecision::unarmed},
+        {"guard1_k05_item03", 5U, ScriptActorActionKind::item, 3U,
+         CatalogDecision::item_gated},
+        {"lone13_k05_item0a", 5U, ScriptActorActionKind::item, 10U,
+         CatalogDecision::item_gated},
+        {"ghoul1_k07_none00", 7U, ScriptActorActionKind::none, 0U,
+         CatalogDecision::unarmed},
+    };
+    constexpr std::size_t catalog_profile_count =
+        sizeof(catalog_profiles) / sizeof(catalog_profiles[0]);
+    const auto catalog_path =
+        std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
+        "field/entities/dynamic-world-activity-actors.tsv";
+    std::ifstream catalog_file(catalog_path);
+    std::string catalog_line;
+    struct CatalogSeen {
+        std::string profile_id;
+        std::string action_kind;
+        unsigned entity_kind = 0;
+        unsigned action_code = 0;
+    };
+    std::vector<CatalogSeen> catalog_seen;
+    bool catalog_file_ok = static_cast<bool>(catalog_file);
+    if (catalog_file_ok) {
+        std::getline(catalog_file, catalog_line);
+    }
+    const auto parse_unsigned =
+        [](const std::string& text, unsigned& value) {
+            if (text.empty()) {
+                return false;
+            }
+            unsigned parsed = 0U;
+            for (const char character : text) {
+                if (character < '0' || character > '9') {
+                    return false;
+                }
+                parsed = parsed * 10U +
+                         static_cast<unsigned>(character - '0');
+            }
+            value = parsed;
+            return true;
+        };
+    while (catalog_file_ok && std::getline(catalog_file, catalog_line)) {
+        if (!catalog_line.empty() && catalog_line.back() == '\r') {
+            catalog_line.pop_back();
+        }
+        if (catalog_line.empty()) {
+            continue;
+        }
+        std::vector<std::string> columns;
+        std::string cell;
+        for (const char character : catalog_line) {
+            if (character == '\t') {
+                columns.push_back(cell);
+                cell.clear();
+            } else {
+                cell.push_back(character);
+            }
+        }
+        columns.push_back(cell);
+        if (columns.size() < 12U) {
+            catalog_file_ok = false;
+            break;
+        }
+        unsigned entity_kind = 0U;
+        unsigned action_code = 0U;
+        if (!parse_unsigned(columns[11], entity_kind) ||
+            !parse_unsigned(columns[9], action_code)) {
+            catalog_file_ok = false;
+            break;
+        }
+        const auto existing = std::find_if(
+            catalog_seen.begin(), catalog_seen.end(),
+            [&columns](const CatalogSeen& seen) {
+                return seen.profile_id == columns[7];
+            });
+        if (existing == catalog_seen.end()) {
+            catalog_seen.push_back(CatalogSeen{
+                columns[7], columns[8], entity_kind, action_code});
+        } else if (existing->action_kind != columns[8] ||
+                   existing->entity_kind != entity_kind ||
+                   existing->action_code != action_code) {
+            catalog_file_ok = false;
+            break;
+        }
+    }
+    const auto catalog_row_for =
+        [&catalog_profiles](const std::string& profile_id)
+        -> const CatalogProfile* {
+        for (const auto& row : catalog_profiles) {
+            if (profile_id == row.profile_id) {
+                return &row;
+            }
+        }
+        return nullptr;
+    };
+    const auto action_name = [](const ScriptActorActionKind kind) {
+        if (kind == ScriptActorActionKind::item) {
+            return "item";
+        }
+        if (kind == ScriptActorActionKind::spell) {
+            return "spell";
+        }
+        return "none";
+    };
+    bool catalog_ids_match =
+        catalog_file_ok && catalog_seen.size() == catalog_profile_count &&
+        catalog_profile_count == 19U;
+    if (catalog_ids_match) {
+        for (const auto& seen : catalog_seen) {
+            const auto* row = catalog_row_for(seen.profile_id);
+            if (row == nullptr ||
+                action_name(row->action_kind) != seen.action_kind ||
+                row->entity_kind != seen.entity_kind ||
+                row->action_code != seen.action_code) {
+                catalog_ids_match = false;
+                std::cerr << "catalog identity mismatch for "
+                          << seen.profile_id << '\n';
+                break;
+            }
+        }
+    }
+    if (!expect(catalog_ids_match,
+                "dynamic-world catalog no longer has the 19 "
+                "profile/action pairs")) {
+        std::cerr << catalog_path.string() << " unique="
+                  << catalog_seen.size() << '\n';
+        return 32;
+    }
+
+    ScriptCombatantFacts catalog_attacker{};
+    catalog_attacker.record_type = 7U;
+    catalog_attacker.source_flags = 0x25U;
+    catalog_attacker.cyberware_flags = 0x0008U;
+    catalog_attacker.command_attribute_77 = 2U;
+    catalog_attacker.command_attribute_78 = 4U;
+    catalog_attacker.command_attribute_79 = 1U;
+    catalog_attacker.command_attribute_7b = 4U;
+    catalog_attacker.command_attribute_7c = 4U;
+    catalog_attacker.command_attribute_85 = 3U;
+    catalog_attacker.race_or_state = 4;
+    catalog_attacker.class_code = 7U;
+    catalog_attacker.equipped_action_code = 1U;
+    ScriptCombatantFacts catalog_defender{};
+    catalog_defender.record_type = 0U;
+    catalog_defender.source_flags = 0x01U;
+    catalog_defender.interaction_flags = 0x80U;
+    catalog_defender.physical_meter = 10U;
+    catalog_defender.mental_meter = 10U;
+    catalog_defender.command_attribute_77 = 1U;
+    catalog_defender.command_attribute_78 = 4U;
+    catalog_defender.command_attribute_79 = 1U;
+    catalog_defender.command_attribute_7b = 4U;
+    catalog_defender.command_attribute_7c = 4U;
+    catalog_defender.armor_index = 0U;
+    catalog_defender.class_code = 0U;
+    catalog_defender.equipped_action_code = 0U;
+    const auto& catalog_spell_rows = us_magic_spell_catalog();
+    const auto drive_catalog_decision =
+        [&](const CatalogProfile& row)
+        -> std::optional<ScriptActorBehaviorDecision> {
+        const std::string actor_id =
+            std::string("catalog_") + row.profile_id;
+        const std::uint16_t distance =
+            row.decision == CatalogDecision::item_gated ? 0x0C00U : 0x0100U;
+        auto context = actor_context(
+            row.profile_id, actor_id, row.entity_kind, row.action_kind,
+            row.action_code, 0U, true);
+        context.dynamic_world_encounter_actor = true;
+        context.source_record_flags = 0x01U;
+        context.entry_animation_frame_count = 1U;
+        context.walk_animation_frame_count = 4U;
+        context.movement_allowed = true;
+        context.initial_action_delay = 0;
+        if (row.decision == CatalogDecision::hound_effect) {
+            // Template +0x78/+0x7B. 0xD7EA with no capability bits yields 90.
+            context.delay_primary_attribute = 8U;
+            context.delay_secondary_attribute = 2U;
+        }
+        if (row.decision == CatalogDecision::unarmed) {
+            context.action_animation_frame_count = 2U;
+            context.action_animation_increment = 0x0200U;
+            context.action_animation_threshold = 0x1000U;
+            context.action_animation_audio_event = 0x004CU;
+            context.combatant = catalog_attacker;
+            context.action_attribute_selectors = {
+                catalog_spell_rows[5U].attribute_selector,
+                catalog_spell_rows[12U].attribute_selector};
+        }
+        if (row.decision == CatalogDecision::item_gated) {
+            context.source_projection_active = true;
+            context.action_line_clear =
+                [](const std::uint16_t, const std::uint16_t) { return true; };
+        }
+        std::size_t roll_index = 0U;
+        context.ai_random_bound =
+            [&roll_index](const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+            if (bound == 0U) {
+                return std::nullopt;
+            }
+            if (bound == 1U) {
+                return 0U;
+            }
+            if (bound == 6U) {
+                const auto value = (roll_index++ & 1U) == 0U ? 5U : 0U;
+                return static_cast<std::uint16_t>(value);
+            }
+            return 0U;
+        };
+        ScriptActorTargetCandidate target{
+            "party.runner.0", 0x1234U, 0x0ABCU, 0x2000U, distance, 0x01U,
+            0U, 0U, 0U, true, false, distance, distance, distance,
+            static_cast<std::uint16_t>(distance * 2U)};
+        if (row.decision == CatalogDecision::unarmed) {
+            target.source_record_slot = 0U;
+            target.combatant = catalog_defender;
+        }
+        context.ai_target_candidates.push_back(target);
+        const auto failed = [&scripts]() {
+            std::cerr << scripts.failure() << '\n';
+            return std::optional<ScriptActorBehaviorDecision>{};
+        };
+        if (!scripts.actor_heartbeat(context).has_value()) {
+            return failed();
+        }
+        context.spawn = false;
+        if (!scripts.actor_heartbeat(context).has_value()) {
+            return failed();
+        }
+        context.phase = ScriptActorHeartbeatPhase::render;
+        for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
+            if (!scripts.actor_heartbeat(context).has_value()) {
+                return failed();
+            }
+        }
+        context.phase = ScriptActorHeartbeatPhase::behavior;
+        for (std::uint8_t pass = 0U; pass < 120U; ++pass) {
+            const auto decision = scripts.actor_heartbeat(context);
+            if (!decision.has_value()) {
+                return failed();
+            }
+            const bool found =
+                (row.decision == CatalogDecision::item_gated &&
+                 decision->source_action_dispatch.has_value()) ||
+                (row.decision == CatalogDecision::unarmed &&
+                 decision->animation_id == "action") ||
+                (row.decision == CatalogDecision::hound_effect &&
+                 decision->target_motion_effect_slot_request.has_value());
+            if (found) {
+                return decision;
+            }
+        }
+        std::cerr << "catalog refresh missing for " << row.profile_id
+                  << '\n';
+        return std::nullopt;
+    };
+    const auto dump_catalog_decision =
+        [](const ScriptActorBehaviorDecision& decision) {
+            std::cerr << " anim=" << decision.animation_id
+                      << " delay=" << decision.action_delay
+                      << " engaged=" << decision.ai_target_engaged
+                      << " motion_delay="
+                      << static_cast<unsigned>(decision.target_motion_delay);
+            if (decision.movement_heading.has_value()) {
+                std::cerr << " heading=0x" << std::hex
+                          << *decision.movement_heading << std::dec;
+            }
+            if (decision.source_action_dispatch.has_value()) {
+                std::cerr << " dispatch=" << *decision.source_action_dispatch;
+            }
+            if (decision.weapon_item_id.has_value()) {
+                std::cerr << " weapon="
+                          << static_cast<unsigned>(*decision.weapon_item_id);
+            }
+            if (decision.target_motion_effect_slot_request.has_value()) {
+                std::cerr << " effect="
+                          << static_cast<unsigned>(
+                                 *decision.target_motion_effect_slot_request);
+            }
+            if (decision.audio_event.has_value()) {
+                std::cerr << " audio=0x" << std::hex << *decision.audio_event
+                          << std::dec;
+            }
+            if (decision.combat_meter_update.has_value()) {
+                std::cerr << " meter="
+                          << static_cast<unsigned>(
+                                 decision.combat_meter_update->physical_meter);
+            }
+            std::cerr << '\n';
+        };
+    bool catalog_decisions_ok = true;
+    for (const auto& row : catalog_profiles) {
+        bool row_ok = false;
+        std::optional<ScriptActorBehaviorDecision> decision;
+        if (row.decision == CatalogDecision::spell) {
+            const auto driven = drive_spell_refresh(
+                row.profile_id,
+                std::string("catalog_") + row.profile_id, row.entity_kind,
+                row.action_code, 0, true, spell_line_true);
+            row_ok = spell_cast_ok(driven, 0x0084U);
+            decision = driven.refresh;
+        } else {
+            decision = drive_catalog_decision(row);
+            const bool dispatch_matches =
+                decision.has_value() &&
+                ((row.decision == CatalogDecision::item_gated) ==
+                 decision->source_action_dispatch.has_value());
+            if (dispatch_matches && !decision->combat_action_requested) {
+                if (row.decision == CatalogDecision::item_gated) {
+                    row_ok =
+                        decision->source_action_dispatch.has_value() &&
+                        *decision->source_action_dispatch == "item_gated" &&
+                        decision->weapon_item_id == row.action_code &&
+                        decision->animation_id != "action" &&
+                        decision->animation_id != "spell" &&
+                        !decision->ai_target_engaged &&
+                        !decision->combat_meter_update.has_value() &&
+                        !decision->audio_event.has_value() &&
+                        decision->movement_heading == 0x2000U &&
+                        decision->target_motion_delay == 5U;
+                } else if (row.decision == CatalogDecision::hound_effect) {
+                    row_ok =
+                        decision->target_motion_effect_slot_request == 0U &&
+                        decision->action_delay == 90 &&
+                        decision->ai_target_engaged &&
+                        decision->animation_id != "action" &&
+                        decision->animation_id != "spell" &&
+                        !decision->combat_meter_update.has_value() &&
+                        !decision->weapon_item_id.has_value() &&
+                        !decision->audio_event.has_value() &&
+                        decision->movement_heading == 0x2000U;
+                } else {
+                    // Zero delay attributes, mode 1: floor(0x6A / 2) == 53.
+                    // Meter 7 is the shared dice stub, not the template row.
+                    row_ok =
+                        decision->animation_id == "action" &&
+                        decision->ai_target_engaged &&
+                        decision->action_delay == 53 &&
+                        decision->audio_event == 0x004CU &&
+                        decision->target_heading_audio_event == 0x004DU &&
+                        !decision->weapon_item_id.has_value() &&
+                        decision->movement_heading == 0x2000U &&
+                        decision->combat_meter_update.has_value() &&
+                        decision->combat_meter_update->target_id ==
+                            "party.runner.0" &&
+                        decision->combat_meter_update->record_type == 0U &&
+                        decision->combat_meter_update->physical &&
+                        decision->combat_meter_update->changed &&
+                        decision->combat_meter_update->physical_meter == 7U &&
+                        decision->combat_meter_update->mental_meter == 10U;
+                }
+            }
+        }
+        if (!row_ok) {
+            catalog_decisions_ok = false;
+            std::cerr << "catalog decision failed for " << row.profile_id
+                      << '\n';
+            if (decision.has_value()) {
+                dump_catalog_decision(*decision);
+            }
+            break;
+        }
+    }
+    if (!expect(catalog_decisions_ok,
+                "Lua catalog profiles did not publish their "
+                "0x13FFE/0x14C7C decisions")) {
+        std::cerr << scripts.failure() << '\n';
+        return 32;
+    }
+
     auto combat_probe_context = actor_context(
         "eye5r_1_k07_none00", "combat_reaction_probe", 7U,
         ScriptActorActionKind::none, 0U, 0U, true);

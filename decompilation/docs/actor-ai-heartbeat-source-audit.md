@@ -589,6 +589,31 @@ The field host still leaves the line callback unset, so a projected item
 actor reports `blocked` and keeps walking. No independent Genesis capture
 shows these requests.
 
+## Catalog profile decisions
+
+`dynamic-world-activity-actors.tsv` has 731 rows and 19 unique
+`profile_id` values. Script-runtime QA reads that file, requires those 19
+ids, and drives each id through one behavior refresh. The assert is the
+decision, not the row.
+
+The four spell ids (`lonemage_k0a_spell01`, `gator_shaman_k09_spell02`,
+`rat_shaman_k0b_spell05`, `elven_mage_k06_spell09`) report `spell`,
+selector `0x84`, frame 0, and delay `0x6A` when the projection is active
+and the line callback accepts the linked target. The seven item ids use
+codes 1, 3, 4, 5, and 10. None of those codes are 13..15, so each reports
+`item_gated`, keeps its item id, stays unengaged, and routes at heading
+`0x2000` while the reacquire delay is 5. `hell_hound_k0c_none00` at
+distance `0x100` with template attributes 8 and 2 requests effect slot 0,
+sets delay 90, and does not install C0A2 or a meter. The other seven
+`none` ids at that distance install C0A2, request audio `0x4C` and heading
+audio `0x4D`, and publish the shared dice stub's physical meter 7. Zero
+delay attributes make that unarmed delay 53, which is mode 1. Debug and
+Release `shadowrun_gameplay_script_runtime_qa` both pass.
+
+This does not run `0x1514E`, `0x15646`, or `0x1033E`, and it does not show
+that a live scene spawned these rows. The unarmed meter is the probe's
+dice stub, not each template's combat columns.
+
 ## Hell Hound close-range effect
 
 The ROM branch at `0x14C7C` separates heading from attack selection by range.
