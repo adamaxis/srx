@@ -9125,7 +9125,8 @@ int run_field_scene26_maglock_descriptor_route_qa(
     // Turn south-east to clear the elevator trigger lane, pass east of the
     // machinery, then follow the open south corridor to the A2 door. These
     // directional phases follow the observed collision-free route.
-    for (std::uint8_t tick = 0U; tick < 6U; ++tick) {
+    // Tick counts follow the same corridor at the on-screen 0xBEC2 step of 30.
+    for (std::uint8_t tick = 0U; tick < 8U; ++tick) {
         if (!tick_dpad(0x02U, "clear-elevator-trigger", "dpad-down") ||
             field_scene.elevator_selector_open_for_dump() ||
             field_scene.field_interaction_open()) {
@@ -9134,7 +9135,7 @@ int run_field_scene26_maglock_descriptor_route_qa(
             return 3;
         }
     }
-    for (std::uint8_t tick = 0U; tick < 13U; ++tick) {
+    for (std::uint8_t tick = 0U; tick < 18U; ++tick) {
         if (!tick_dpad(0x08U, "east-of-elevator", "dpad-right") ||
             field_scene.elevator_selector_open_for_dump() ||
             field_scene.field_interaction_open()) {
@@ -9144,7 +9145,7 @@ int run_field_scene26_maglock_descriptor_route_qa(
         }
     }
     std::uint16_t south_ticks = 0U;
-    for (; south_ticks < 116U; ++south_ticks) {
+    for (; south_ticks < 155U; ++south_ticks) {
         if (!tick_dpad(0x02U, "southbound-open-corridor", "dpad-down") ||
             field_scene.elevator_selector_open_for_dump()) {
             std::cerr << "Scene-26 descriptor route QA: unexpected modal or "
@@ -9158,7 +9159,7 @@ int run_field_scene26_maglock_descriptor_route_qa(
         }
     }
     std::uint16_t a2_ticks = 0U;
-    while (a2_ticks < 20U && !field_scene.field_interaction_open()) {
+    while (a2_ticks < 28U && !field_scene.field_interaction_open()) {
         if (!tick_dpad(0x08U, "cross-a2-passage", "dpad-right") ||
             field_scene.elevator_selector_open_for_dump()) {
             std::cerr << "Scene-26 descriptor route QA: unexpected modal or "
@@ -9759,14 +9760,14 @@ int run_field_scene26_maglock_descriptor_route_qa(
         [&] {
             return field_scene.field_entity_world_position().y <= 0x0D80U;
         },
-        40U);
+        56U);
     const auto east_to_terminal_corridor = north_through_secondary_door
         ? walk_to(0x08U, "east-corridor-to-terminal", "dpad-right",
                   [&] {
                       return field_scene.field_entity_world_position().x >=
                              0x2000U;
                   },
-                  60U)
+                  84U)
         : std::nullopt;
     const auto north_to_terminal_lane = east_to_terminal_corridor
         ? walk_to(0x01U, "north-corridor-to-terminal", "dpad-up",
@@ -9774,7 +9775,7 @@ int run_field_scene26_maglock_descriptor_route_qa(
                       return field_scene.field_entity_world_position().y <=
                              0x0640U;
                   },
-                  100U)
+                  136U)
         : std::nullopt;
     const auto west_to_terminal_lane = north_to_terminal_lane
         ? walk_to(0x04U, "align-terminal-trigger-lane", "dpad-left",
@@ -9782,7 +9783,7 @@ int run_field_scene26_maglock_descriptor_route_qa(
                       return field_scene.field_entity_world_position().x <=
                              0x1B80U;
                   },
-                  40U)
+                  56U)
         : std::nullopt;
     if (!north_through_secondary_door || !east_to_terminal_corridor ||
         !north_to_terminal_lane || !west_to_terminal_lane) {
@@ -9794,7 +9795,7 @@ int run_field_scene26_maglock_descriptor_route_qa(
     }
 
     std::uint16_t terminal_entry_ticks = 0U;
-    while (terminal_entry_ticks < 32U &&
+    while (terminal_entry_ticks < 48U &&
            !field_scene.field_interaction_open()) {
         if (!tick_dpad(0x01U, "enter-d8-security-terminal", "dpad-up") ||
             field_scene.elevator_selector_open_for_dump()) {
@@ -19564,10 +19565,12 @@ int main(int argc, char** argv) {
                     std::cerr << "field movement QA: release dump failed\n";
                     return 3;
                 }
+                // Fifteen accepted steps in sixteen held frames. On-screen
+                // calm movement uses 0xBEC2 (30): five diagonal, ten east.
                 if (held_target != 0x4000U ||
                     heading_after_eight_ticks != 0x4000U ||
-                    held_heading != 0x4000U || x_delta != 600 ||
-                    y_delta != -200 || held_animation_frame_at_sixteen >= 4U ||
+                    held_heading != 0x4000U || x_delta != 450 ||
+                    y_delta != -150 || held_animation_frame_at_sixteen >= 4U ||
                     frame_advance_count < 5U || frame_wrap_count == 0U ||
                     !std::all_of(observed_walk_frames.begin(),
                                  observed_walk_frames.end(),

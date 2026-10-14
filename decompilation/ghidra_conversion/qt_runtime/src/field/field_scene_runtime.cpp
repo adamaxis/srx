@@ -7485,6 +7485,18 @@ FieldSceneRuntime::heartbeat_field_player(
                         field_movement_behavior_record_.route_flags};
                 };
         }
+        // 0xB574 reads Quickness, FFDF84, and the projected +0x0C word.
+        // The decoded ±40 list stays the host default until Lua selects.
+        actor_context.combatant =
+            script_combatant_facts(active_runner_record());
+        actor_context.world_activity_active =
+            field_world_activity_timeout_state_.timeout_marker != 0;
+        actor_context.source_projection_active = caster_projection_active(
+            field_entity_.world_position.x, field_entity_.world_position.y,
+            static_cast<std::uint16_t>(
+                state_.field_scene_buffers.camera_x),
+            static_cast<std::uint16_t>(
+                state_.field_scene_buffers.camera_y));
     }
     const auto actor_decision = game_scripts_.actor_heartbeat(actor_context);
     if (actor_decision.has_value()) {

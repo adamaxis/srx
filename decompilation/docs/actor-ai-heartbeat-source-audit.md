@@ -189,29 +189,37 @@ step sizes:
 
 | `+0xC8` / actor condition | ROM table | Per-axis step |
 | --- | --- | ---: |
-| `< 0x100` | `0xBDD2` | 8 |
-| `< 0x200` | `0xBDB2` | 10 |
-| `< 0x360` | `0xBD92` | 15 |
-| `< 0x460` | `0xBD72` | 20 |
-| Far, ordinary record (`+0x10=0x25`, `+0xB0=0`, `+0x9E=0x40`) | `0xBEA2` | 18 |
-| Far, high-effect route (`+0xB0.7`) | `0xBEC2` | 30 |
-| Far, world-actor target pool (`+0x10.3`) | `0xBFE2` | 31 |
-| Far, transition bit (`+0x9E.5`) | `0xBE82` / `0xBE62` | 22 / 10, selected by `FFDF84` |
+| `< 0x100` and `+0x10.1` clear | `0xBDD2` | 8 |
+| `< 0x200` and `+0x10.1` clear | `0xBDB2` | 10 |
+| `< 0x360` and `+0x10.1` clear | `0xBD92` | 15 |
+| `< 0x460` and `+0x10.1` clear | `0xBD72` | 20 |
+| Far, calm ordinary record (`+0x10=0x25`, `FFDF84==0`) | `0xBEA2` | 18 |
+| Far, calm bit-3 or high-effect record | `0xBEC2` | 30 |
+| Far, `FFDF84 != 0`, `+0xB0.7` clear | `0xBDF2` by Quickness 0..9 | 9, 9, 12, 16, 19, 22, 25, 27, 29, 31 |
+| Far, `FFDF84 != 0` and `+0xB0.7` | `0xBE82` | 22 |
+| Far, `+0x10.3` with `+0x10.1` clear | `0xBFE2`, then the near bands | 31 |
+| `+0x9E.5`, `FFDF84 != 0` / `== 0` | `0xBE82` / `0xBE62` | 22 / 10 |
+| `+0x10.3` and projected `+0x0C == 0` | `0xC022` | 40 |
+| On-screen calm runner (`+0x10=0x0F`, `FFDF84==0`) | `0xBEC2` | 30 |
 
 Kind `0xD` uses a separate frame gate: frame `+0x1E == 2` sets `+0x08=-20`
 and moves with `0xBE42` (36-unit vectors); other frames set `+0x08=0` and use
 the zero-vector table `0xBE22`. The common record bytes at ROM `0x7361A`
 initialize `+0x08` to zero. The connected Lua actor heartbeat now keeps the
 21-pass target refresh separate from per-pass continuation movement, selects
-these vectors from the typed actor flags and target distance, and preserves
-that common `+0x08` value. B selection's `+0x11.4` latch is also kept out of
-the `+0x10` service byte, which previously corrupted the actor's active flags.
+these vectors from the typed actor flags, target distance, Quickness, and the
+`FFDF84` timeout marker, and preserves that common `+0x08` value. The runner
+uses the same `0xB574` selector. `0xC002` (±40) is the kind-`0x0C` attack pose
+at `0xBABC`, and the off-screen catch-up at `0xB678`. It is not the on-screen
+walk. B selection's `+0x11.4` latch is also kept out of the `+0x10` service
+byte, which previously corrupted the actor's active flags.
 
 This remains partial. Random-encounter actors use the ordinary common flags,
-so their far-range vector and four near-range bands are resolved; the separate
-`+0x10.3` posture table is also passed to Lua and tested across all nine source
-values. The global `FFE168` special table and complete template overrides
-remain open. Kind-`0xD` cadence and Hell Hound close-effect allocation have
+so their calm far-range vector and four near-range bands are resolved. While
+`FFDF84` is nonzero the far step follows Quickness, and a bit-3 actor whose
+projected Y is zero uses the 40-unit catch-up. The separate `+0x10.3` posture
+table is also passed to Lua and tested across all nine source values. The
+global `FFE168` special table and complete template overrides remain open. Kind-`0xD` cadence and Hell Hound close-effect allocation have
 source-derived Lua paths and focused QA. Accepted creature actions call the
 Lua `0x55C76` combat path and return typed meter updates; a separate field QA
 connects projectile hits through meter change and hurt/down animation. Full

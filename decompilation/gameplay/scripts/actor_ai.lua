@@ -1572,51 +1572,103 @@ local function movement_collision_code(code, context)
     return code
 end
 
+-- ROM 0xBDF2, cardinal step by Quickness clamped to 0..9.
+local quickness_cardinal_steps = { 9, 9, 12, 16, 19, 22, 25, 27, 29, 31 }
+
 local function creature_movement_offsets(context, state)
-    if context.dynamic_world_encounter_actor ~= true then
+    -- Contexts without a live Quickness byte keep the host vector list.
+    -- The collision-policy fixture injects its own offsets and has no combatant.
+    local attribute_speed =
+        context.dynamic_world_encounter_actor == true or
+        (type(context.combatant) == "table" and
+         type(context.combatant.command_attribute_78) == "number")
+    if not attribute_speed then
         return context.movement_offsets
     end
 
+    -- +0x10. The runner publishes it as movement_entity_flags. Dynamic
+    -- actors publish the same byte as source_record_flags.
+    local record_flags = context.dynamic_world_encounter_actor == true
+        and context.source_record_flags
+        or context.movement_entity_flags
+    -- 0xACAE installs 0xB574 when +0x10 bit 1 is set. Bit 1 clear is the
+    -- distance-band path at 0xB6E4.
+    local controlled_action = 0x02
+    local targets_world =
+        (record_flags & ActorServiceFlag.targets_world_actors) ~= 0
+    local high_effect =
+        (context.source_behavior_flags & ActorBehaviorFlag.high_effect) ~= 0
+    local activity = context.world_activity_active == true
     local step
+
     if context.entity_kind == EntityKind.gargoyle then
-        -- ROM 0xB574 selects the zero-vector list until frame +0x1E reaches 2;
-        -- that frame selects the 36-unit creature step list.
+        -- 0xB574: frame +0x1E == 2 uses 0xBE42. Other frames use 0xBE22.
+        -- Both branches join 0xB678.
         step = context.ai_animation_frame == 2 and 36 or 0
     else
-        local distance = state.movement_route_distance
-        if type(distance) ~= "number" then
-            return context.movement_offsets
-        end
-        if distance < 0x100 then
-            step = 8
-        elseif distance < 0x200 then
-            step = 10
-        elseif distance < 0x360 then
-            step = 15
-        elseif distance < 0x460 then
-            step = 20
-        elseif (context.source_record_flags &
-                ActorServiceFlag.targets_world_actors) ~= 0 then
-            step = 31
-        elseif (context.source_spawn_state_flags &
-                ActorSpawnFlag.transitioning) ~= 0 then
-            -- ROM 0xB610 selects 22 or 10 from the shared FFE84 world-activity
-            -- gate. Here the typed world-activity state supplies that fact.
-            step = context.world_activity_active and 22 or 10
-        elseif (context.source_behavior_flags &
-                ActorBehaviorFlag.high_effect) ~= 0 then
-            step = 30
-        else
+        -- FFE168's 0xC022 shortcut stays off. Its only writer is the menu
+        -- path, and a cleared byte leaves the flag table in force.
+        step = 30
+        if not targets_world and not high_effect then
             step = 18
         end
+        local skip_quickness = false
+        if (context.source_spawn_state_flags &
+                ActorSpawnFlag.transitioning) ~= 0 then
+            step = 22
+            if activity then
+                skip_quickness = true
+            else
+                step = 10
+            end
+        end
+        if not skip_quickness then
+            if activity and high_effect then
+                step = 22
+            elseif activity then
+                local quickness = type(context.combatant) == "table" and
+                    context.combatant.command_attribute_78 or nil
+                if type(quickness) == "number" then
+                    local index = quickness
+                    if index >= 128 then
+                        index = index - 256
+                    end
+                    if index >= 10 then
+                        index = 9
+                    end
+                    if index >= 0 then
+                        step = quickness_cardinal_steps[index + 1]
+                    end
+                end
+            end
+        end
+        if (record_flags & controlled_action) == 0 then
+            local distance = state.movement_route_distance
+            if type(distance) ~= "number" then
+                return context.movement_offsets
+            end
+            if targets_world then
+                step = 31
+            end
+            if distance < 0x100 then
+                step = 8
+            elseif distance < 0x200 then
+                step = 10
+            elseif distance < 0x360 then
+                step = 15
+            elseif distance < 0x460 then
+                step = 20
+            end
+        end
+    end
+
+    -- 0xB678: bit 3 and projected Y == 0 replace the table with 0xC022.
+    if targets_world and context.source_projection_active ~= true then
+        step = 40
     end
 
     -- ROM 0xBADE copies the selected vector table's +4 word to actor +0xCA.
     state.animation_timing_word = step
-
-    -- The ROM tables at 0xBD72..0xBFE2 contain these eight signed X/Y
-    -- displacements. Expand their selected speed into ordinary Lua vectors;
-    -- the host still owns only the collision query.
     return {
         {0, -step}, {step, -step}, {step, 0}, {step, step},
         {0, step}, {-step, step}, {-step, 0}, {-step, -step},

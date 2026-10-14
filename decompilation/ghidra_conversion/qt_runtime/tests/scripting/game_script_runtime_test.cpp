@@ -3287,6 +3287,34 @@ int main() {
         }
     }
 
+    auto quickness_actor = make_encounter_reaction_context(
+        "field_scene_2_encounter_quickness_step");
+    quickness_actor.profile_id = "weenr1_k08_none00";
+    quickness_actor.entity_kind = 8U;
+    quickness_actor.source_record_flags = 0x25U;
+    quickness_actor.initial_heading = 0x2000U;
+    quickness_actor.world_activity_active = true;
+    quickness_actor.source_projection_active = true;
+    ScriptCombatantFacts quickness_facts{};
+    quickness_facts.command_attribute_78 = 4U;
+    quickness_actor.combatant = quickness_facts;
+    configure_encounter_movement(quickness_actor, 0x0700U);
+    const bool quickness_entered =
+        scripts.actor_heartbeat(quickness_actor).has_value() &&
+        finish_encounter_entry(quickness_actor);
+    const bool quickness_moved =
+        quickness_entered && prime_encounter_movement(quickness_actor);
+    if (!expect(
+            quickness_moved &&
+                quickness_actor.movement_state.position_x ==
+                    static_cast<std::uint16_t>(0x1800U + 19U) &&
+                quickness_actor.movement_state.position_y ==
+                    static_cast<std::uint16_t>(0x1800U - 19U),
+            "far actor with FFDF84 set did not step the Quickness 4 row of 0xBDF2")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+
     auto injured_actor_context = make_encounter_reaction_context(
         "field_scene_2_encounter_1_actor_0");
     const auto injured_actor_spawn =
@@ -3838,6 +3866,56 @@ int main() {
                 route_step->movement_step->direction_animation == 0x42U &&
                 reset_collision_queries == 4U,
             "Lua movement policy did not preserve event retry state or resolve clear, route, slide, and reset cases")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    const auto accept_attribute_step =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptMovementCollisionResult{0, 0U};
+        };
+    const auto attribute_move = [&](const std::string& actor_id,
+                                    const std::uint8_t quickness,
+                                    const bool activity,
+                                    const bool on_screen) {
+        auto context = player_step_context(actor_id, 0x4000U, 0x4000U);
+        context.movement_entity_flags = 0x0FU;
+        context.world_activity_active = activity;
+        context.source_projection_active = on_screen;
+        ScriptCombatantFacts facts{};
+        facts.command_attribute_78 = quickness;
+        context.combatant = facts;
+        context.movement_collision = accept_attribute_step;
+        context.movement_route_lookup =
+            [](const std::uint16_t) { return ScriptMovementRouteFacts{}; };
+        return scripts.actor_heartbeat(context);
+    };
+    const auto calm_runner = attribute_move(
+        "movement_attribute_calm", 3U, false, true);
+    const auto alert_quickness_3 = attribute_move(
+        "movement_attribute_q3", 3U, true, true);
+    const auto alert_quickness_5 = attribute_move(
+        "movement_attribute_q5", 5U, true, true);
+    const auto offscreen_runner = attribute_move(
+        "movement_attribute_offscreen", 3U, true, false);
+    const auto stepped_x = [](const std::optional<ScriptActorBehaviorDecision>&
+                                  step) -> std::optional<std::uint16_t> {
+        if (!step.has_value() || !step->movement_step.has_value() ||
+            step->movement_step->outcome !=
+                ScriptActorMovementStep::Outcome::accepted) {
+            return std::nullopt;
+        }
+        return step->movement_step->state.position_x;
+    };
+    if (!expect(
+            stepped_x(calm_runner) == std::optional<std::uint16_t>{130U} &&
+                stepped_x(alert_quickness_3) ==
+                    std::optional<std::uint16_t>{116U} &&
+                stepped_x(alert_quickness_5) ==
+                    std::optional<std::uint16_t>{122U} &&
+                stepped_x(offscreen_runner) ==
+                    std::optional<std::uint16_t>{140U},
+            "0xB574 did not step the on-screen runner at 30, Quickness 3/5 at 16/22, or the off-screen runner at 40")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
     }
