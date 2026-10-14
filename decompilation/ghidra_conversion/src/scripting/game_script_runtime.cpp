@@ -3561,7 +3561,7 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "projectile_animation");
     if (context.projectile_movement.has_value()) {
         const auto& movement = *context.projectile_movement;
-        lua_createtable(state, 0, 13);
+        lua_createtable(state, 0, 16);
         const auto role = movement.role == ScriptActorProjectileRole::primary
                               ? "primary"
                               : "secondary";
@@ -3585,6 +3585,12 @@ GameScriptRuntime::actor_heartbeat(
         lua_setfield(state, -2, "retry_counter");
         lua_pushinteger(state, movement.linked_action_timer);
         lua_setfield(state, -2, "linked_action_timer");
+        lua_pushinteger(state, movement.heading);
+        lua_setfield(state, -2, "heading");
+        lua_pushinteger(state, movement.saved_position_x);
+        lua_setfield(state, -2, "saved_position_x");
+        lua_pushinteger(state, movement.saved_position_y);
+        lua_setfield(state, -2, "saved_position_y");
         lua_pushinteger(state, movement.action_result);
         lua_setfield(state, -2, "action_result");
         lua_pushinteger(state, movement.animation_selector);
@@ -3672,7 +3678,30 @@ GameScriptRuntime::actor_heartbeat(
         return fail("actor_ai.heartbeat: " + stack_error(state));
     }
     if (!lua_istable(state, -1)) {
-        return fail("actor_ai.heartbeat must return an actor snapshot table");
+        std::string reason =
+            "actor_ai.heartbeat did not return a snapshot: actor=" +
+            std::string(context.instance_id) + " profile=" +
+            std::string(context.profile_id) + " phase=" +
+            (context.phase == ScriptActorHeartbeatPhase::behavior
+                 ? std::string("behavior")
+                 : std::string("render")) +
+            " spawn=" + (context.spawn ? "true" : "false");
+        if (context.projectile_movement.has_value()) {
+            const auto& movement = *context.projectile_movement;
+            reason += " projectile={role=" +
+                (movement.role == ScriptActorProjectileRole::primary
+                     ? std::string("primary")
+                     : std::string("secondary")) +
+                ",active=" + (movement.active ? "true" : "false") +
+                ",record_flags=" +
+                std::to_string(static_cast<unsigned>(movement.record_flags)) +
+                ",selector=" +
+                std::to_string(movement.animation_selector) +
+                ",timer=" +
+                std::to_string(static_cast<int>(movement.linked_action_timer)) +
+                "}";
+        }
+        return fail(std::move(reason));
     }
 
     const auto decision_table = lua_absindex(state, -1);
@@ -4912,6 +4941,27 @@ GameScriptRuntime::actor_heartbeat(
         }
         movement_decision.state.linked_action_timer =
             static_cast<std::int8_t>(signed_value);
+        if (!read_field_integer(state, movement_table, "heading", 0xFFFFU,
+                                unsigned_value)) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid projectile heading");
+        }
+        movement_decision.state.heading =
+            static_cast<std::uint16_t>(unsigned_value);
+        if (!read_field_integer(state, movement_table, "saved_position_x",
+                                0xFFFFU, unsigned_value)) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid projectile origin X");
+        }
+        movement_decision.state.saved_position_x =
+            static_cast<std::uint16_t>(unsigned_value);
+        if (!read_field_integer(state, movement_table, "saved_position_y",
+                                0xFFFFU, unsigned_value)) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid projectile origin Y");
+        }
+        movement_decision.state.saved_position_y =
+            static_cast<std::uint16_t>(unsigned_value);
         if (!read_signed("action_result", -128, 127, signed_value)) {
             return fail(
                 "actor_ai.heartbeat returned invalid projectile action result");
@@ -4963,6 +5013,9 @@ GameScriptRuntime::actor_heartbeat(
         } else if (outcome == "linked_followup_pending") {
             movement_decision.outcome =
                 ScriptActorProjectileOutcome::linked_followup_pending;
+        } else if (outcome == "burst_followup_restarted") {
+            movement_decision.outcome =
+                ScriptActorProjectileOutcome::burst_followup_restarted;
         } else {
             return fail(
                 "actor_ai.heartbeat returned an unsupported projectile outcome");
@@ -5169,7 +5222,9 @@ GameScriptRuntime::actor_heartbeat(
          (decision.projectile_movement->outcome ==
               ScriptActorProjectileOutcome::linked_followup_pending ||
           decision.projectile_movement->outcome ==
-              ScriptActorProjectileOutcome::hit_resolution_pending)) ||
+              ScriptActorProjectileOutcome::hit_resolution_pending ||
+          decision.projectile_movement->outcome ==
+              ScriptActorProjectileOutcome::burst_followup_restarted)) ||
         (decision.transition_complete && !decision.transition_started) ||
         (decision.animation_id == "entry" &&
          !decision.transition_started) ||

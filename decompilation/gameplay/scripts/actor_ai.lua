@@ -23,6 +23,7 @@ local projectile = {
         retired = "retired",
         hit_resolution_pending = "hit_resolution_pending",
         linked_followup_pending = "linked_followup_pending",
+        burst_followup_restarted = "burst_followup_restarted",
     },
     movement_probes_per_update = 4,
     impact_sound_event = 0x003c,
@@ -983,6 +984,12 @@ local function projectile_movement_snapshot(context, state)
        type(source.linked_action_timer) ~= "number" or
        source.linked_action_timer < -128 or
        source.linked_action_timer > 127 or
+       type(source.heading) ~= "number" or source.heading < 0 or
+       source.heading > 0xffff or
+       type(source.saved_position_x) ~= "number" or
+       source.saved_position_x < 0 or source.saved_position_x > 0xffff or
+       type(source.saved_position_y) ~= "number" or
+       source.saved_position_y < 0 or source.saved_position_y > 0xffff or
        type(source.animation_selector) ~= "number" or
        source.animation_selector < 0 or source.animation_selector > 0xffff then
         return nil
@@ -999,6 +1006,9 @@ local function projectile_movement_snapshot(context, state)
         tile_offset_y = source.tile_offset_y,
         retry_counter = source.retry_counter,
         linked_action_timer = source.linked_action_timer,
+        heading = source.heading,
+        saved_position_x = source.saved_position_x,
+        saved_position_y = source.saved_position_y,
         action_result = state.action_result or source.action_result,
         animation_selector = source.animation_selector,
         outcome = projectile.outcome.none,
@@ -1032,7 +1042,35 @@ local function projectile_movement_snapshot(context, state)
                 result.active = false
                 result.outcome = projectile.outcome.retired
             else
-                result.outcome = projectile.outcome.linked_followup_pending
+                -- ROM 0x14F86 starts the next member of the three-round
+                -- weapon burst at the saved spawn coordinate. It rotates the
+                -- heading by -0x400 for the second shot and +0x800 for the
+                -- third, then derives the 0x150E8 movement offsets.
+                result.heading = (result.heading +
+                    (result.linked_action_timer ~= 0 and -0x0400 or 0x0800)) &
+                    0xffff
+                result.world_x = signed_word_from_long(
+                    (result.saved_position_x << fixed_integer_shift) |
+                    (result.world_x & 0xffff))
+                result.world_y = signed_word_from_long(
+                    (result.saved_position_y << fixed_integer_shift) |
+                    (result.world_y & 0xffff))
+                local entity_motion = game.modules.entity_motion
+                local offsets = type(entity_motion) == "table" and
+                    type(entity_motion.heading_offsets) == "function" and
+                    entity_motion.heading_offsets(result.heading) or nil
+                if type(offsets) ~= "table" or
+                   type(offsets.horizontal) ~= "number" or
+                   type(offsets.vertical) ~= "number" then
+                    return nil
+                end
+                result.tile_offset_x = offsets.horizontal
+                result.tile_offset_y = offsets.vertical
+                result.retry_counter = 0x20
+                result.animation_selector = 0x14
+                result.record_flags = result.record_flags &
+                                      ~projectile.flags.stopped_record
+                result.outcome = projectile.outcome.burst_followup_restarted
             end
         end
         return result, nil
@@ -1155,6 +1193,18 @@ local function projectile_heartbeat(state, context)
     local movement, audio_event = projectile_movement_snapshot(context, state)
     if movement == nil then
         return nil
+    end
+    if movement.outcome == projectile.outcome.burst_followup_restarted then
+        local result = game.modules.combat.resolve_weapon_attack_seed(context)
+        if type(result) ~= "number" then
+            return nil
+        end
+        state.attack_seed_resolved = true
+        state.action_result = result
+        movement.action_result = result
+        -- ROM 0x14F86 clears +0x18 and +0x1E before the next render pass.
+        state.animation_frame = 0
+        state.animation_accumulator = 0
     end
     if movement.outcome == projectile.outcome.hit_resolution_pending then
         local hit_target

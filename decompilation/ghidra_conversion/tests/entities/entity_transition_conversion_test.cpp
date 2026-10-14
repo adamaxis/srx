@@ -264,6 +264,7 @@ int main() {
                cycle.selected_audio_event == 0x4AU &&
                cycle.special_follow_up &&
                cycle.primary->lifecycle_state == 2U &&
+               cycle.primary->field_0x41 == 2 &&
                cycle.primary->saved_position_x == 0x10B0U &&
                cycle.primary->field_0x89 == 0x20U &&
                cycle.primary->field_0x8b == 1U &&

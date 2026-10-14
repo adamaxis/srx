@@ -173,6 +173,8 @@ void initialize_entity_spawn_record(
 
 void prepare_special_spawn_record(SpawnEntityRecordState& record) {
     record.lifecycle_state = 2U;
+    // ROM 0x152FA seeds the two remaining rays after the initial shot.
+    record.field_0x41 = 2;
     record.saved_position_x = record.position_x;
     record.saved_position_y = record.position_y;
     record.field_0x8b = 1U;

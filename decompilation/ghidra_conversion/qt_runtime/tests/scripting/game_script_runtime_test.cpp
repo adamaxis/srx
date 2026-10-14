@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
+#include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
@@ -4375,9 +4376,29 @@ int main() {
         return 26;
     }
 
-    stopped_projectile.linked_action_timer = 2;
+    auto burst_projectile = stopped_projectile;
+    burst_projectile.record_flags = 0x09U;
+    burst_projectile.linked_action_timer = 2;
+    burst_projectile.heading = 0x2000U;
+    burst_projectile.saved_position_x = 0x2345U;
+    burst_projectile.saved_position_y = 0x3456U;
+    burst_projectile.world_x = 20 * 0x10000 + 0xABCD;
+    burst_projectile.world_y = 30 * 0x10000 + 0x1357;
     auto linked_projectile_context = projectile_behavior_context(
-        "field_weapon_slot_linked", stopped_projectile);
+        "field_weapon_slot_linked", burst_projectile);
+    linked_projectile_context.projectile_action_code = 8U;
+    linked_projectile_context.combatant =
+        source_weapon_hit_context.combatant;
+    linked_projectile_context.projectile_animation->increment = 0x270f;
+    linked_projectile_context.projectile_animation->period = 0x1000;
+    std::uint32_t burst_attack_seed_rolls = 0U;
+    linked_projectile_context.ai_random_bound =
+        [&burst_attack_seed_rolls](const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+        ++burst_attack_seed_rolls;
+        return bound == 0U ? std::nullopt
+                           : std::optional<std::uint16_t>{0U};
+    };
     linked_projectile_context.projectile_terrain_probe =
         [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileTerrainSample{};
@@ -4389,16 +4410,155 @@ int main() {
         };
     const auto linked_projectile_step =
         scripts.actor_heartbeat(linked_projectile_context);
+    const auto first_burst = linked_projectile_step.has_value() &&
+        linked_projectile_step->projectile_movement.has_value()
+        ? linked_projectile_step->projectile_movement->state
+        : ScriptActorProjectileMovement{};
+    const auto first_burst_source_offsets =
+        shadowrun::ghidra_conversion::derive_entity_heading_offsets(0x1c00U);
     if (!expect(
             linked_projectile_step.has_value() &&
                 linked_projectile_step->projectile_movement.has_value() &&
-                linked_projectile_step->projectile_movement->state.linked_action_timer ==
-                    1 &&
-                linked_projectile_step->projectile_movement->state.active &&
+                first_burst.linked_action_timer == 1 &&
+                first_burst.active && first_burst.heading == 0x1c00U &&
+                first_burst.world_x ==
+                    static_cast<std::int32_t>(0x2345abcdU) &&
+                first_burst.world_y ==
+                    static_cast<std::int32_t>(0x34561357U) &&
+                first_burst.tile_offset_x ==
+                    first_burst_source_offsets.horizontal &&
+                first_burst.tile_offset_y ==
+                    first_burst_source_offsets.vertical &&
+                first_burst.retry_counter == 0x20U &&
+                first_burst.animation_selector == 0x14U &&
+                first_burst.record_flags == 0x01U &&
+                first_burst.action_result == 0 &&
                 linked_projectile_step->projectile_movement->outcome ==
-                    ScriptActorProjectileOutcome::linked_followup_pending,
-            "Lua stopped projectile did not expose the unresolved linked-action branch")) {
+                    ScriptActorProjectileOutcome::burst_followup_restarted &&
+                burst_attack_seed_rolls > 0U,
+            "Lua did not restart the first source AK-97 burst ray at the saved origin with its -0x400 heading and fresh attack seed")) {
         std::cerr << scripts.failure() << '\n';
+        return 27;
+    }
+
+    linked_projectile_context.spawn = false;
+    linked_projectile_context.phase = ScriptActorHeartbeatPhase::render;
+    linked_projectile_context.projectile_movement.reset();
+    linked_projectile_context.projectile_animation->selector = 0x14U;
+    linked_projectile_context.projectile_animation->frame = 0U;
+    linked_projectile_context.projectile_animation->accumulator = 0;
+    const auto burst_restart_frame =
+        scripts.actor_heartbeat(linked_projectile_context);
+    if (!expect(burst_restart_frame.has_value() &&
+                    burst_restart_frame->animation_frame == 1U &&
+                    burst_restart_frame->animation_selector == 0x14U,
+                "Lua did not restart the burst animation clock from frame zero")) {
+        std::cerr << scripts.failure() << '\n';
+        return 27;
+    }
+
+    auto second_burst_state = first_burst;
+    second_burst_state.record_flags = 0x09U;
+    second_burst_state.animation_selector = 0x8014U;
+    linked_projectile_context.phase = ScriptActorHeartbeatPhase::behavior;
+    linked_projectile_context.projectile_movement = second_burst_state;
+    const auto second_burst_step =
+        scripts.actor_heartbeat(linked_projectile_context);
+    const auto second_burst = second_burst_step.has_value() &&
+        second_burst_step->projectile_movement.has_value()
+        ? second_burst_step->projectile_movement->state
+        : ScriptActorProjectileMovement{};
+    const auto second_burst_source_offsets =
+        shadowrun::ghidra_conversion::derive_entity_heading_offsets(0x2400U);
+    if (!expect(second_burst_step.has_value() &&
+                    second_burst_step->projectile_movement.has_value() &&
+                    second_burst.linked_action_timer == 0 &&
+                    second_burst.heading == 0x2400U &&
+                    second_burst.tile_offset_x ==
+                        second_burst_source_offsets.horizontal &&
+                    second_burst.tile_offset_y ==
+                        second_burst_source_offsets.vertical &&
+                    second_burst.animation_selector == 0x14U &&
+                    second_burst.record_flags == 0x01U &&
+                    second_burst_step->projectile_movement->outcome ==
+                        ScriptActorProjectileOutcome::burst_followup_restarted &&
+                    burst_attack_seed_rolls > 1U,
+                "Lua did not restart the final source AK-97 burst ray at the +0x800 heading and reroll its action pair")) {
+        std::cerr << scripts.failure() << '\n';
+        std::cerr << "second burst: present=" << second_burst_step.has_value()
+                  << " state=" << (second_burst_step.has_value() &&
+                         second_burst_step->projectile_movement.has_value())
+                  << " timer=" << static_cast<int>(second_burst.linked_action_timer)
+                  << " heading=0x" << std::hex << second_burst.heading
+                  << " offset=" << std::dec << second_burst.tile_offset_x
+                  << ',' << second_burst.tile_offset_y
+                  << " selector=0x" << std::hex << second_burst.animation_selector
+                  << " flags=0x" << static_cast<unsigned>(second_burst.record_flags)
+                  << " outcome=" << (second_burst_step.has_value() &&
+                         second_burst_step->projectile_movement.has_value()
+                         ? static_cast<unsigned>(second_burst_step->projectile_movement->outcome)
+                         : 999U)
+                  << " rng=" << std::dec << burst_attack_seed_rolls << '\n';
+        return 27;
+    }
+
+    auto final_burst_state = second_burst;
+    final_burst_state.record_flags = 0x09U;
+    final_burst_state.animation_selector = 0x8014U;
+    linked_projectile_context.projectile_movement = final_burst_state;
+    const auto final_burst_step =
+        scripts.actor_heartbeat(linked_projectile_context);
+    if (!expect(final_burst_step.has_value() &&
+                    final_burst_step->projectile_movement.has_value() &&
+                    final_burst_step->projectile_movement->state.linked_action_timer ==
+                        -1 &&
+                    !final_burst_step->projectile_movement->state.active &&
+                    final_burst_step->projectile_movement->outcome ==
+                        ScriptActorProjectileOutcome::retired,
+                "Lua did not retire the AK-97 primary after exactly three source burst rays")) {
+        std::cerr << scripts.failure() << '\n';
+        return 27;
+    }
+
+    auto source_table_sample = stopped_projectile;
+    source_table_sample.record_flags = 0x09U;
+    source_table_sample.linked_action_timer = 2;
+    source_table_sample.heading = 0xE200U;
+    source_table_sample.saved_position_x = 0x2345U;
+    source_table_sample.saved_position_y = 0x3456U;
+    source_table_sample.animation_selector = 0x8000U;
+    linked_projectile_context.projectile_movement = source_table_sample;
+    const auto questioned_source_sample_step =
+        scripts.actor_heartbeat(linked_projectile_context);
+    if (!expect(questioned_source_sample_step.has_value() &&
+                    questioned_source_sample_step->projectile_movement.has_value() &&
+                    questioned_source_sample_step->projectile_movement->state.heading ==
+                        0xDE00U &&
+                    questioned_source_sample_step->projectile_movement->state.tile_offset_x ==
+                        -18119 &&
+                    questioned_source_sample_step->projectile_movement->state.tile_offset_y ==
+                        -16503,
+                "Lua heading helper did not preserve ROM table entry 111 and its companion sample")) {
+        std::cerr << scripts.failure() << '\n';
+        if (questioned_source_sample_step.has_value() &&
+            questioned_source_sample_step->projectile_movement.has_value()) {
+            const auto& state =
+                questioned_source_sample_step->projectile_movement->state;
+            std::cerr << "table-sample heading=0x" << std::hex << state.heading
+                      << " offsets=" << std::dec << state.tile_offset_x << ','
+                      << state.tile_offset_y << " active=" << state.active
+                      << " timer=" << static_cast<int>(state.linked_action_timer)
+                      << " outcome=" << static_cast<unsigned>(
+                             questioned_source_sample_step->projectile_movement->outcome)
+                      << '\n';
+        } else {
+            std::cerr << "table-sample decision present="
+                      << questioned_source_sample_step.has_value()
+                      << " movement present="
+                      << (questioned_source_sample_step.has_value() &&
+                          questioned_source_sample_step->projectile_movement.has_value())
+                      << '\n';
+        }
         return 27;
     }
 

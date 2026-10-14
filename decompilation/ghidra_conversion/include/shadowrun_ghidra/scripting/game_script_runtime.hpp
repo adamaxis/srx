@@ -470,6 +470,7 @@ enum class ScriptActorProjectileOutcome : std::uint8_t {
     retired,
     hit_resolution_pending,
     linked_followup_pending,
+    burst_followup_restarted,
 };
 
 struct ScriptActorProjectileMovement {
@@ -483,6 +484,9 @@ struct ScriptActorProjectileMovement {
     std::int16_t tile_offset_y = 0;
     std::uint8_t retry_counter = 0;
     std::int8_t linked_action_timer = 0;
+    std::uint16_t heading = 0;
+    std::uint16_t saved_position_x = 0;
+    std::uint16_t saved_position_y = 0;
     std::int8_t action_result = 0; // live +0x9F, shared by the projectile pair
     std::uint16_t animation_selector = 0;
     std::string hit_target_id;

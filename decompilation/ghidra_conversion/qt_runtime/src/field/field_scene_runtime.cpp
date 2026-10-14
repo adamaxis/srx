@@ -8828,6 +8828,9 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                 primary_record ? record.heading_offset_y : std::int16_t{0},
                 record.field_0x89,
                 record.field_0x41,
+                record.heading,
+                record.saved_position_x,
+                record.saved_position_y,
                 record.action_result,
                 record.animation_resource};
         context.projectile_movement->action_result = record.action_result;
@@ -8835,6 +8838,27 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
             primary_record && !script_initialized;
         if (primary_record) {
             context.combatant = spawn.shooter_facts;
+            if (spawn.shooter_party_slot.has_value() &&
+                *spawn.shooter_party_slot <
+                    FieldPartyRosterRuntime::kSlotCount &&
+                field_party_roster_.slot_active(
+                    *spawn.shooter_party_slot)) {
+                context.combatant = script_combatant_facts(
+                    field_party_roster_.records()[
+                        *spawn.shooter_party_slot]);
+            } else if (!spawn.shooter_actor_id.empty()) {
+                const auto shooter = std::find_if(
+                    field_default_actors_.begin(),
+                    field_default_actors_.end(),
+                    [&spawn](const auto& candidate) {
+                        return candidate.active &&
+                               candidate.actor_instance_id ==
+                                   spawn.shooter_actor_id;
+                    });
+                if (shooter != field_default_actors_.end()) {
+                    context.combatant = shooter->combatant;
+                }
+            }
         }
         context.projectile_combat_targets = live_projectile_combat_targets;
         context.ai_target_candidates = live_party_combat_candidates;
@@ -8907,14 +8931,23 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         }
         script_initialized = true;
         const auto& movement = decision->projectile_movement->state;
+        const auto projectile_outcome =
+            decision->projectile_movement->outcome;
         record.flags = movement.flags;
         record.record_flags = movement.record_flags;
         record.animation_resource = movement.animation_selector;
         record.field_0x89 = movement.retry_counter;
         record.field_0x41 = movement.linked_action_timer;
         record.action_result = movement.action_result;
-        if (primary_record && context.projectile_attack_seed_pending) {
-            spawn.source_record.action_result = movement.action_result;
+        const bool attack_seed_refreshed = primary_record &&
+            (context.projectile_attack_seed_pending ||
+             projectile_outcome == scripting::ScriptActorProjectileOutcome::
+                                       burst_followup_restarted);
+        if (attack_seed_refreshed) {
+            spawn.shooter_facts.action_result = movement.action_result;
+            if (context.projectile_attack_seed_pending) {
+                spawn.source_record.action_result = movement.action_result;
+            }
             if (spawn.shooter_party_slot.has_value() &&
                 *spawn.shooter_party_slot <
                     FieldPartyRosterRuntime::kSlotCount &&
@@ -8938,18 +8971,25 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
             }
         }
         if (primary_record) {
+            record.heading = movement.heading;
             record.heading_offset_x = movement.tile_offset_x;
             record.heading_offset_y = movement.tile_offset_y;
             spawn.primary_fixed_position.world_x = movement.world_x;
             spawn.primary_fixed_position.world_y = movement.world_y;
             record.position_x = word_from_fixed(movement.world_x);
             record.position_y = word_from_fixed(movement.world_y);
+            if (projectile_outcome ==
+                scripting::ScriptActorProjectileOutcome::
+                    burst_followup_restarted) {
+                animation.frame = 0U;
+                animation.accumulator = 0;
+            }
         }
         if (decision->audio_event.has_value() &&
             source_audio_event_callback_) {
             source_audio_event_callback_(*decision->audio_event);
         }
-        if (decision->projectile_movement->outcome ==
+        if (projectile_outcome ==
             scripting::ScriptActorProjectileOutcome::hit_resolution_pending) {
             const auto& target_id =
                 decision->projectile_movement->state.hit_target_id;
@@ -8966,10 +9006,24 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                                 target_id);
             }
         }
-        if (decision->projectile_movement->outcome ==
+        if (projectile_outcome ==
             scripting::ScriptActorProjectileOutcome::linked_followup_pending) {
             source_boundary(
                 "field.combat.weapon_linked_action_followup_pending");
+        }
+        if (projectile_outcome ==
+            scripting::ScriptActorProjectileOutcome::
+                burst_followup_restarted) {
+            source_boundary(
+                "field.combat.weapon_projectile_burst_followup_started:" +
+                std::to_string(static_cast<unsigned>(
+                    movement.linked_action_timer)) +
+                ":heading=" + std::to_string(movement.heading) +
+                ":position=" +
+                std::to_string(word_from_fixed(movement.world_x)) + "," +
+                std::to_string(word_from_fixed(movement.world_y)) +
+                ":action_result=" +
+                std::to_string(static_cast<int>(movement.action_result)));
         }
         active = movement.active;
         if (!active) {

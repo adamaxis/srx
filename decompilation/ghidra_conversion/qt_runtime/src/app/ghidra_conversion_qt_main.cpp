@@ -7720,8 +7720,9 @@ int run_field_random_encounter_spawn_qa(
     }
 
     // Re-run the source actor list in a fresh Scene 2 state. Actor 0 walks
-    // into the 0x200 accept, B selects it, and the aimed Warhawk flies the
-    // live 0x15ABA window. Do not move the actor onto the probe.
+    // into the 0x200 accept, B selects it, and one A press sends all three
+    // source AK-97 burst rays through the live 0x15ABA window. Do not move
+    // the actor onto the probe.
     auto hit_startup_state = startup_state;
     hit_startup_state.restored_field_state.reset();
     if (!field_scene.bootstrap_for_scene_dump(hit_startup_state, 2U) ||
@@ -7826,10 +7827,12 @@ int run_field_random_encounter_spawn_qa(
     hit_runner.inventory_item_codes[0] = 5U;
     hit_runner.equipped_inventory_slot = 0;
     hit_runner.equipped_item_code = 5U;
-    // Use the catalog's Warhawk (+3 source effect) and a high but valid
-    // firearm skill so the deterministic target roll produces real damage.
+    // Preserve the one-shot Warhawk route for the live C072 reaction and
+    // its source hurt cue. The AK-97 burst has a separate connected route.
     hit_runner.skills[1U] = 10U;
     hit_runner.skills[2U] = 10U;
+    hit_runner.skills[3U] = 10U;
+    hit_runner.skills[4U] = 10U;
     hit_runner.ammo_rounds = 6U;
     hit_runner.ammo_clips = 2U;
     field_scene.refresh_field_hud_for_dump();
@@ -7858,15 +7861,23 @@ int run_field_random_encounter_spawn_qa(
     }
     const auto hit_audio_start = field_audio_events.size();
     const auto hit_boundary_start = source_boundaries.size();
+    // Movement and actor heartbeats consume source RNG during the approach.
+    // Pin the source seed at the action edge so this QA exercises a repeatable
+    // live hit while the runtime keeps the ROM's normal random flow.
+    field_scene.set_source_random_seed_for_dump(0x4000U);
     field_scene.set_controller_port_byte(0x40U);
     field_scene.advance_frame();
     field_scene.set_controller_port_byte(0U);
     const auto live_projectile_position =
         field_scene.field_weapon_primary_position_for_dump();
+    const auto first_warhawk_ray_image = render();
+    const bool first_warhawk_ray_saved = save_hit_frame(
+        "first-warhawk-ray.bmp", first_warhawk_ray_image);
     if (hit_runner.ammo_rounds != 5U ||
         field_scene.field_weapon_primary_count_for_dump() != 1U ||
-        !live_projectile_position.has_value()) {
-        std::cerr << "field random-encounter QA: A did not fire the configured live Warhawk at the approached actor"
+        !live_projectile_position.has_value() || !first_warhawk_ray_saved ||
+        !field_hud_chrome_survives(first_warhawk_ray_image, asset_root)) {
+        std::cerr << "field random-encounter QA: one A press did not consume one Warhawk round and spawn its live ray"
                   << " ammo=" << static_cast<unsigned>(hit_runner.ammo_rounds)
                   << " projectiles="
                   << field_scene.field_weapon_primary_count_for_dump() << '\n';
@@ -7959,6 +7970,163 @@ int run_field_random_encounter_spawn_qa(
                   << " saved=" << hit_frame_zero_saved << ','
                   << hit_frame_one_saved << ','
                   << hit_frame_after_countdown_saved << '\n';
+        return 3;
+    }
+
+    // Recreate the source encounter with the AK-97. The preceding Warhawk
+    // route owns hit reaction/audio verification; this route checks that one
+    // item action traverses all three live projectile records.
+    if (!field_scene.bootstrap_for_scene_dump(hit_startup_state, 2U) ||
+        field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "field random-encounter QA: burst Scene 2 reset failed\n";
+        return 3;
+    }
+    field_scene.set_source_random_seed_for_dump(0U);
+    const auto burst_actor_spawned =
+        field_scene.resolve_and_spawn_field_encounter_for_dump(
+            1U, 2U, 0x1234U);
+    if (burst_actor_spawned != 2U) {
+        std::cerr << "field random-encounter QA: could not recreate the ROM Weenr encounter for AK-97 burst review; spawned="
+                  << burst_actor_spawned << '\n';
+        return 3;
+    }
+    bool burst_encounter_entry_complete = false;
+    for (std::uint16_t frame = 0U;
+         frame < 160U && !burst_encounter_entry_complete; ++frame) {
+        burst_encounter_entry_complete =
+            field_scene.default_actor_transition_complete_for_dump(0U) ==
+                std::optional<bool>{true} &&
+            field_scene.default_actor_transition_complete_for_dump(1U) ==
+                std::optional<bool>{true};
+        if (!burst_encounter_entry_complete) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+    }
+    if (!burst_encounter_entry_complete ||
+        !wait_for_actor_zero_in_range() || !select_actor_zero()) {
+        report_actor_zero_range(
+            "field random-encounter QA: AK-97 target did not enter range and remain B-selected");
+        return 3;
+    }
+    auto& burst_runner = field_scene.active_runner_record();
+    burst_runner.flags = static_cast<std::uint16_t>(
+        burst_runner.flags | 0x0300U);
+    burst_runner.inventory_item_codes[0] = 8U;
+    burst_runner.equipped_inventory_slot = 0;
+    burst_runner.equipped_item_code = 8U;
+    burst_runner.skills[1U] = 10U;
+    burst_runner.skills[2U] = 10U;
+    burst_runner.skills[3U] = 10U;
+    burst_runner.skills[4U] = 10U;
+    burst_runner.ammo_rounds = 30U;
+    burst_runner.ammo_clips = 2U;
+    field_scene.refresh_field_hud_for_dump();
+    const auto burst_audio_start = field_audio_events.size();
+    const auto burst_boundary_start = source_boundaries.size();
+    field_scene.set_source_random_seed_for_dump(0x4000U);
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    const auto first_burst_ray_image = render();
+    const bool first_burst_ray_saved = save_hit_frame(
+        "first-burst-ray.bmp", first_burst_ray_image);
+    if (burst_runner.ammo_rounds != 27U ||
+        field_scene.field_weapon_primary_count_for_dump() != 1U ||
+        !field_scene.field_weapon_primary_position_for_dump().has_value() ||
+        !first_burst_ray_saved ||
+        !field_hud_chrome_survives(first_burst_ray_image, asset_root)) {
+        std::cerr << "field random-encounter QA: one A press did not consume three AK-97 rounds and spawn the first live burst ray"
+                  << " ammo=" << static_cast<unsigned>(burst_runner.ammo_rounds)
+                  << " projectiles="
+                  << field_scene.field_weapon_primary_count_for_dump() << '\n';
+        return 3;
+    }
+
+    const std::string burst_followup_prefix =
+        "field.combat.weapon_projectile_burst_followup_started:";
+    std::vector<std::string> burst_followup_records;
+    std::vector<bool> burst_followup_frames_saved;
+    auto burst_boundary_cursor = burst_boundary_start;
+    for (std::uint16_t frame = 0U;
+         frame < 180U && burst_followup_records.size() < 2U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        for (; burst_boundary_cursor < source_boundaries.size();
+             ++burst_boundary_cursor) {
+            const auto& boundary = source_boundaries[burst_boundary_cursor];
+            if (boundary.rfind(burst_followup_prefix, 0U) != 0U) {
+                continue;
+            }
+            burst_followup_records.push_back(boundary);
+            const auto filename = "burst-followup-" +
+                std::to_string(burst_followup_records.size()) + ".bmp";
+            const auto image = render();
+            const bool saved = save_hit_frame(filename, image) &&
+                field_hud_chrome_survives(image, asset_root);
+            burst_followup_frames_saved.push_back(saved);
+            if (burst_followup_records.size() == 2U) {
+                break;
+            }
+        }
+    }
+    for (std::uint16_t frame = 0U;
+         frame < 240U &&
+         field_scene.field_weapon_primary_count_for_dump() != 0U;
+         ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const auto burst_settled_frame = render();
+    const bool burst_settled_saved = save_hit_frame(
+        "burst-settled.bmp", burst_settled_frame);
+    const auto expected_fire_audio_event =
+        (burst_runner.inventory_phase_bytes[0U] & 0x06U) != 0U
+            ? 0x004AU
+            : 0x001EU;
+    const auto fire_sound_count = static_cast<std::size_t>(std::count_if(
+        field_audio_events.begin() + static_cast<std::ptrdiff_t>(burst_audio_start),
+        field_audio_events.end(), [](const std::uint16_t event) {
+            return event == 0x001eU || event == 0x004aU;
+        }));
+    const auto expected_fire_event_count = static_cast<std::size_t>(std::count(
+        field_audio_events.begin() +
+            static_cast<std::ptrdiff_t>(burst_audio_start),
+        field_audio_events.end(), expected_fire_audio_event));
+    const bool first_followup_timer =
+        burst_followup_records.size() > 0U &&
+        burst_followup_records[0].find(":1:heading=") != std::string::npos;
+    const bool second_followup_timer =
+        burst_followup_records.size() > 1U &&
+        burst_followup_records[1].find(":0:heading=") != std::string::npos;
+    const bool burst_full_screen_clean =
+        std::all_of(burst_followup_frames_saved.begin(),
+                    burst_followup_frames_saved.end(),
+                    [](const bool saved) { return saved; }) &&
+        field_hud_chrome_survives(burst_settled_frame, asset_root) &&
+        !field_scene.field_interaction_open() &&
+        !field_scene.dialogue_open() && !field_scene.hotel_menu_open() &&
+        !field_scene.command_overview_open();
+    if (burst_followup_records.size() != 2U || !first_followup_timer ||
+        !second_followup_timer || fire_sound_count != 1U ||
+        expected_fire_event_count != 1U ||
+        !burst_settled_saved || !burst_full_screen_clean ||
+        field_scene.field_weapon_primary_count_for_dump() != 0U ||
+        burst_runner.ammo_rounds != 27U) {
+        std::cerr << "field random-encounter QA: one A press did not complete exactly three ROM AK-97 burst rays"
+                  << " followups=" << burst_followup_records.size()
+                  << " fire_sounds=" << fire_sound_count
+                  << " expected_fire_event=0x" << std::hex
+                  << expected_fire_audio_event << std::dec
+                  << " expected_count=" << expected_fire_event_count
+                  << " ammo=" << static_cast<unsigned>(burst_runner.ammo_rounds)
+                  << " primary_slots="
+                  << field_scene.field_weapon_primary_count_for_dump()
+                  << " boundaries=";
+        for (const auto& boundary : burst_followup_records) {
+            std::cerr << '[' << boundary << ']';
+        }
+        std::cerr << '\n';
         return 3;
     }
 
