@@ -28,6 +28,7 @@
 #include "shadowrun_ghidra/entities/entity_delay_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_combat_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_transition_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_animation_spawn_probe_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_animation_player_action_conversion.hpp"
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
@@ -2574,6 +2575,123 @@ void FieldSceneRuntime::advance_default_field_actors() {
                     return std::nullopt;
                 }
                 return static_cast<std::uint16_t>(choice);
+            };
+
+            context.action_line_clear = [this, &actor, current_scene](
+                const std::uint16_t target_x,
+                const std::uint16_t target_y) {
+                // ROM 0x13FFE calls 0x14D8E before it enters the spell or
+                // item branch. Keep the script's target policy in Lua and
+                // provide the source terrain and linked-record queries here.
+                EntityAnimationSpawnProbeState probe_state{};
+                const SpawnEntityParentState parent{
+                    actor.world_position.x,
+                    actor.world_position.y,
+                    actor.movement_state.heading,
+                    actor.source_record_flags,
+                    actor.source_interaction_flags,
+                    actor.source_behavior_flags,
+                    actor.source_spawn_state_flags};
+                std::optional<SpawnEntityLinkedState> linked_target{
+                    SpawnEntityLinkedState{target_x, target_y, 0x01U, false}};
+                EntityAnimationSpawnProbeRequest request{};
+                request.parent = parent;
+                request.linked_target = linked_target;
+                request.protected_source_candidate =
+                    actor.source_record_slot.has_value()
+                        ? std::optional<std::size_t>{
+                              static_cast<std::size_t>(
+                                  *actor.source_record_slot)}
+                        : std::nullopt;
+
+                EntityCollisionRecord probe_collision_record{};
+                std::array<std::uint8_t, 4> probe_sample_state{};
+                std::vector<CollisionCandidate> collision_candidates(10U);
+                for (std::size_t slot = 0U;
+                     slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
+                    if (!field_party_roster_.slot_active(slot)) {
+                        continue;
+                    }
+                    auto position = state_.field_scene_buffers
+                                        .source_metadata
+                                        .initial_field_records[slot];
+                    if (slot == field_party_roster_.active_slot() &&
+                        field_entity_.active) {
+                        position = field_entity_.world_position;
+                    }
+                    const auto& runner = field_party_roster_.records()[slot];
+                    auto& candidate = collision_candidates[slot];
+                    candidate.world_x = position.x;
+                    candidate.world_y = position.y;
+                    candidate.flags = static_cast<std::uint8_t>(
+                        runner.flags >> 8U);
+                    candidate.interaction_flags =
+                        static_cast<std::uint8_t>(runner.flags & 0x00FFU);
+                    candidate.collision_enabled = runner.delay_meter != 0U;
+                }
+                for (const auto& target : field_default_actors_) {
+                    if (!target.active ||
+                        target.scene_reference != current_scene ||
+                        !target.source_record_slot.has_value()) {
+                        continue;
+                    }
+                    const auto slot = static_cast<std::size_t>(
+                        *target.source_record_slot);
+                    if (slot >= collision_candidates.size()) {
+                        continue;
+                    }
+                    auto& candidate = collision_candidates[slot];
+                    candidate.world_x = target.world_position.x;
+                    candidate.world_y = target.world_position.y;
+                    candidate.flags = target.source_record_flags;
+                    candidate.interaction_flags =
+                        target.source_interaction_flags;
+                    candidate.behavior_flags = target.source_behavior_flags;
+                    candidate.collision_enabled =
+                        target.physical_meter != 0U;
+                }
+
+                const auto probe_result = probe_entity_spawn_collision_window(
+                    probe_state,
+                    request,
+                    EntityAnimationSpawnProbeCallbacks{
+                        [this, &probe_state,
+                         &probe_collision_record, &probe_sample_state](
+                            const std::int32_t fixed_x,
+                            const std::int32_t fixed_y) {
+                            // 0x14F26 supplies 16.16 values. The field
+                            // collision service takes the source 16.4 word;
+                            // retaining the high word preserves world units.
+                            const auto collision_coordinate = [](
+                                const std::int32_t value) {
+                                return static_cast<std::uint16_t>(
+                                    static_cast<std::uint32_t>(value) >> 16U);
+                            };
+                            bool terrain_boundary_active = false;
+                            bool outside_bounds = false;
+                            const auto collision_code =
+                                evaluate_field_collision(
+                                    collision_coordinate(fixed_x),
+                                    collision_coordinate(fixed_y),
+                                    probe_collision_record,
+                                    probe_sample_state,
+                                    probe_state.scratch_record
+                                        .behavior_defaults.flags,
+                                    false,
+                                    nullptr,
+                                    &terrain_boundary_active,
+                                    &outside_bounds);
+                            return EntityTerrainProbeSample{
+                                static_cast<std::uint16_t>(collision_code),
+                                terrain_boundary_active, outside_bounds};
+                        },
+                        [&collision_candidates](
+                            const EntityCollisionSearchContext& collision) {
+                            return find_colliding_entity(
+                                collision, collision_candidates);
+                        }});
+                return !probe_result.boundary_unresolved &&
+                    !probe_result.source_carry;
             };
 
             const bool has_candidate_in_source_pool = std::any_of(
@@ -7146,10 +7264,13 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
     std::array<std::uint8_t, 4>& sample_state,
     const std::uint8_t entity_behavior_flags,
     const bool publish_movement_state,
-    std::uint16_t* terrain_collision_code_output) {
+    std::uint16_t* terrain_collision_code_output,
+    bool* terrain_boundary_active_output,
+    bool* outside_bounds_output) {
     const auto collision_evaluator =
         [this, &sample_state, entity_behavior_flags, publish_movement_state,
-         terrain_collision_code_output](
+         terrain_collision_code_output, terrain_boundary_active_output,
+         outside_bounds_output](
             const std::uint16_t evaluated_x,
             const std::uint16_t evaluated_y) {
             const auto& metadata = state_.field_scene_buffers.source_metadata;
@@ -7207,6 +7328,13 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
                             object_id, object_x, object_y, object_lookup);
                     },
                     {}});
+            if (terrain_boundary_active_output != nullptr) {
+                *terrain_boundary_active_output =
+                    result.state.directional_collision_marker;
+            }
+            if (outside_bounds_output != nullptr) {
+                *outside_bounds_output = result.state.outside_bounds_marker;
+            }
             if (publish_movement_state &&
                 field_terrain_probe_trace_enabled_) {
                 constexpr std::array<std::pair<std::int16_t, std::int16_t>, 4>

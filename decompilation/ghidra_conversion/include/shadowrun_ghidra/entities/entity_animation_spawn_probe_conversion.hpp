@@ -21,16 +21,14 @@ struct EntityAnimationSpawnProbeState {
     std::int16_t source_marker = 0;
     std::uint8_t attempts = 0;
     std::optional<EntityWorldProbeResult> last_probe;
+    bool last_terrain_boundary_active = false;
+    bool last_outside_bounds = false;
     std::optional<EntityCollisionSearchResult> last_collision;
 };
 
 struct EntityAnimationSpawnProbeRequest {
     SpawnEntityParentState parent{};
     std::optional<SpawnEntityLinkedState> linked_target;
-
-    // FFDFE2 is a separate source terrain-boundary latch, not a field in the
-    // entity record. The caller supplies its typed value explicitly.
-    bool terrain_boundary_active = false;
 
     // 0x15ABA compares the scan record against the saved source A1 while
     // 0xFFDFD8 is nonzero. A host index is the typed equivalent of that
@@ -48,7 +46,7 @@ using EntitySpawnProbeCollisionSearch =
         const EntityCollisionSearchContext&)>;
 
 struct EntityAnimationSpawnProbeCallbacks {
-    EntityWorldProbe terrain_probe;
+    EntityTerrainProbe terrain_probe;
     EntitySpawnProbeCollisionSearch collision_search;
 };
 

@@ -574,14 +574,27 @@ action, an ammo item, or a `0x55C76` meter. The existing rat-shaman motion
 trace still reaches heading `0x6000` when the new facts are absent.
 Debug and Release `shadowrun_gameplay_script_runtime_qa` both pass.
 
+The field host now installs the line callback for temporary world actors.
+It constructs the linked scratch record through the typed `0x14FF8` path,
+converts its signed word position to 16.16, and supplies the source terrain
+query and ten-record collision scan to the 27 attempts in `0x14D8E`. Each
+terrain result carries the `FFDFE2` marker written by that same query; the
+spell gate no longer reads a stale movement marker. The actor's own source
+record slot is excluded using the protected-source rule. Tests cover all
+eight raw position/probe table directions and the carry behavior for terrain,
+boundary, and inner collision outcomes. The full field QA remains a runtime
+composition check, not a Genesis cast capture.
+
 This does not roll `0x1033E` or spawn `0x15830`. Code 12's `FFE190` party
-retarget is not implemented. The field host now publishes the caster's
-`0x5A62` projection on encounter behavior and render heartbeats. It does
-not install the line callback: the typed `0x14D8E` probe does not consume
-live word coordinates on the same scale, so a wired probe would sample the
-wrong terrain. Production casts therefore stay fail-closed. `0xC082` frames
-are not in the extracted action lists, and the presenter draws no spell
-sprite. No independent Genesis capture shows these casts.
+retarget is not implemented. `0xC082` frames are not in the extracted action
+lists, and the presenter draws no spell sprite. The reviewed encounter rows
+currently contain no spell-action template, so this connected gate has not
+yet been exercised by a production spell actor. No independent Genesis
+capture shows a spell cast; the cast effect, its sound, and the visual pose
+remain unresolved.
+
+The full eight-question screen and layering review for this connection is
+[`visual-audits/actor-spell-item-line-probe.md`](visual-audits/actor-spell-item-line-probe.md).
 
 ## Item dispatch for a nonnegative action slot
 
@@ -611,9 +624,10 @@ Script-runtime QA covers code 1 and code 16 as `item_gated`, codes 13 and
 before the probe, `offscreen` without the probe, and `blocked` for a
 missing or false probe. Those decisions keep the item id and publish no
 meter. Debug and Release `shadowrun_gameplay_script_runtime_qa` both pass.
-The field host still leaves the line callback unset, so a projected item
-actor reports `blocked` and keeps walking. No independent Genesis capture
-shows these requests.
+The field host now shares the connected `0x14D8E` line callback with this
+branch. The later `0x1411E` inventory facts and item-effect presentation
+remain unimplemented, so a clear probe is not yet a complete item use. No
+independent Genesis capture shows these requests.
 
 ## Catalog profile decisions
 

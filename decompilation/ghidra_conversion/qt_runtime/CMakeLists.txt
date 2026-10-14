@@ -1286,7 +1286,8 @@ add_test(NAME shadowrun_ghidra_shop_menu_runtime
 # action dump proves the live A-button wiring; these tests guard the typed
 # source tables and ammo/paired-slot ordering independently of the presenter.
 foreach(SHADOWRUN_GHIDRA_ENTITY_TEST IN ITEMS
-        entity_combat entity_transition movement_metric)
+        entity_combat entity_transition entity_animation_spawn_probe
+        movement_metric)
     add_executable(shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test
         ../tests/entities/${SHADOWRUN_GHIDRA_ENTITY_TEST}_conversion_test.cpp
     )

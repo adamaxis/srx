@@ -35,8 +35,10 @@ EntityAnimationSpawnProbeResult probe_entity_spawn_collision_window(
         state.linked_target,
         request.prepare_spawn);
     state.probe_position = EntityFixedPointPosition{
-        static_cast<std::int32_t>(state.scratch_record.position_x),
-        static_cast<std::int32_t>(state.scratch_record.position_y),
+        static_cast<std::int32_t>(static_cast<std::int16_t>(
+            state.scratch_record.position_x)) * 0x10000,
+        static_cast<std::int32_t>(static_cast<std::int16_t>(
+            state.scratch_record.position_y)) * 0x10000,
         state.scratch_record.heading_offset_x,
         state.scratch_record.heading_offset_y};
 
@@ -52,9 +54,19 @@ EntityAnimationSpawnProbeResult probe_entity_spawn_collision_window(
              static_cast<std::uint16_t>(kEntitySpawnProbeAttemptCount - 1U);
          ; --remaining) {
         ++state.attempts;
-        const auto probe = probe_entity_world_position(
-            state.probe_position, callbacks.terrain_probe);
+        const auto world_x = state.probe_position.world_x +
+            static_cast<std::int32_t>(state.probe_position.tile_offset_x) *
+                0x100;
+        const auto world_y = state.probe_position.world_y +
+            static_cast<std::int32_t>(state.probe_position.tile_offset_y) *
+                0x100;
+        const auto terrain = callbacks.terrain_probe(world_x, world_y);
+        const EntityWorldProbeResult probe{
+            world_x, world_y, terrain.terrain_result};
         state.last_probe = probe;
+        state.last_terrain_boundary_active =
+            terrain.terrain_boundary_active;
+        state.last_outside_bounds = terrain.outside_bounds_marker;
 
         // 0x14DBE writes D5/D6 back to the scratch record before testing D0;
         // the host keeps that long-coordinate write in the typed probe
@@ -63,10 +75,10 @@ EntityAnimationSpawnProbeResult probe_entity_spawn_collision_window(
         state.probe_position.world_x = probe.world_x;
         state.probe_position.world_y = probe.world_y;
 
-        // 0x14DD0-0x14DD6: a terrain hit is terminal only when the source
-        // boundary flag is clear. FFDFE2 is represented by the request's
-        // explicit host policy field; it is not conflated with record flags.
-        if (probe.terrain_result != 0U && !request.terrain_boundary_active) {
+        // 0x14DD0-0x14DD6: E7C8 writes FFDFE2 for this exact probe before the
+        // branch reads it. The marker therefore travels with the sample.
+        if (probe.terrain_result != 0U &&
+            !terrain.terrain_boundary_active) {
             finish_marker(state);
             result.action = EntityAnimationSpawnProbeAction::terrain_blocked;
             result.source_carry = true;

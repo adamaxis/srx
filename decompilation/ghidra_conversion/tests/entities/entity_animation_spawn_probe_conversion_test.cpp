@@ -16,20 +16,37 @@ int main() {
 
     EntityAnimationSpawnProbeRequest request{};
     request.parent = SpawnEntityParentState{
-        0x8000U, 0x8000U, 0x6000U, 0U, 0U, 0U, 0U};
+        0x2000U, 0x3000U, 0x6000U, 0U, 0U, 0U, 0U};
     request.protected_source_candidate = 0U;
     std::uint32_t preparation_calls = 0;
     request.prepare_spawn = [&preparation_calls]() { ++preparation_calls; };
 
+    EntityAnimationSpawnProbeState unresolved{};
+    const auto unresolved_result = probe_entity_spawn_collision_window(
+        unresolved, request, EntityAnimationSpawnProbeCallbacks{});
+    if (expect(unresolved_result.boundary_unresolved &&
+               !unresolved_result.source_carry &&
+               unresolved_result.action ==
+                   EntityAnimationSpawnProbeAction::boundary_unresolved) != 0) {
+        return 7;
+    }
+
     std::uint32_t terrain_calls = 0;
+    std::int32_t first_probe_x = 0;
+    std::int32_t first_probe_y = 0;
     EntityAnimationSpawnProbeState terrain_blocked{};
     const auto terrain_result = probe_entity_spawn_collision_window(
         terrain_blocked,
         request,
         EntityAnimationSpawnProbeCallbacks{
-            [&terrain_calls](const std::int32_t, const std::int32_t) {
+            [&terrain_calls, &first_probe_x, &first_probe_y](
+                const std::int32_t world_x, const std::int32_t world_y) {
+                if (terrain_calls == 0U) {
+                    first_probe_x = world_x;
+                    first_probe_y = world_y;
+                }
                 ++terrain_calls;
-                return static_cast<std::uint16_t>(1U);
+                return EntityTerrainProbeSample{1U, false, false};
             },
             [](const EntityCollisionSearchContext&) {
                 return EntityCollisionSearchResult{};
@@ -39,6 +56,18 @@ int main() {
                terrain_result.source_carry &&
                terrain_blocked.source_marker == 0 &&
                terrain_blocked.attempts == 1U && terrain_calls == 1U &&
+               first_probe_x ==
+                   static_cast<std::int32_t>(static_cast<std::int16_t>(
+                       terrain_blocked.scratch_record.position_x)) * 0x10000 +
+                       static_cast<std::int32_t>(
+                           terrain_blocked.scratch_record.heading_offset_x) *
+                           0x100 &&
+               first_probe_y ==
+                   static_cast<std::int32_t>(static_cast<std::int16_t>(
+                       terrain_blocked.scratch_record.position_y)) * 0x10000 +
+                       static_cast<std::int32_t>(
+                           terrain_blocked.scratch_record.heading_offset_y) *
+                           0x100 &&
                preparation_calls == 0U) != 0) {
         return 1;
     }
@@ -51,7 +80,7 @@ int main() {
         EntityAnimationSpawnProbeCallbacks{
             [&exhausted_calls](const std::int32_t, const std::int32_t) {
                 ++exhausted_calls;
-                return static_cast<std::uint16_t>(0U);
+                return EntityTerrainProbeSample{0U, false, false};
             },
             [](const EntityCollisionSearchContext&) {
                 return EntityCollisionSearchResult{};
@@ -65,15 +94,13 @@ int main() {
         return 2;
     }
 
-    auto boundary_request = request;
-    boundary_request.terrain_boundary_active = true;
     EntityAnimationSpawnProbeState boundary_allowed{};
     const auto boundary_result = probe_entity_spawn_collision_window(
         boundary_allowed,
-        boundary_request,
+        request,
         EntityAnimationSpawnProbeCallbacks{
             [](const std::int32_t, const std::int32_t) {
-                return static_cast<std::uint16_t>(1U);
+                return EntityTerrainProbeSample{1U, true, false};
             },
             [](const EntityCollisionSearchContext&) {
                 return EntityCollisionSearchResult{};
@@ -93,7 +120,7 @@ int main() {
         request,
         EntityAnimationSpawnProbeCallbacks{
             [](const std::int32_t, const std::int32_t) {
-                return static_cast<std::uint16_t>(0U);
+                return EntityTerrainProbeSample{0U, false, false};
             },
             [&collision_calls](const EntityCollisionSearchContext&) {
                 ++collision_calls;
@@ -117,7 +144,7 @@ int main() {
         request,
         EntityAnimationSpawnProbeCallbacks{
             [](const std::int32_t, const std::int32_t) {
-                return static_cast<std::uint16_t>(0U);
+                return EntityTerrainProbeSample{0U, false, false};
             },
             [](const EntityCollisionSearchContext& context) {
                 const std::vector<CollisionCandidate> candidates{
@@ -130,6 +157,30 @@ int main() {
                shared_search.last_collision->source_carry &&
                !shared_search.last_collision->candidate_index.has_value()) != 0) {
         return 5;
+    }
+
+    EntityAnimationSpawnProbeState fresh_boundary_sample{};
+    std::uint32_t boundary_sample_calls = 0;
+    const auto fresh_boundary_result = probe_entity_spawn_collision_window(
+        fresh_boundary_sample,
+        request,
+        EntityAnimationSpawnProbeCallbacks{
+            [&boundary_sample_calls](const std::int32_t, const std::int32_t) {
+                ++boundary_sample_calls;
+                return boundary_sample_calls == 1U
+                    ? EntityTerrainProbeSample{1U, true, false}
+                    : EntityTerrainProbeSample{1U, false, false};
+            },
+            [](const EntityCollisionSearchContext&) {
+                return EntityCollisionSearchResult{};
+            }});
+    if (expect(fresh_boundary_result.action ==
+                   EntityAnimationSpawnProbeAction::terrain_blocked &&
+               fresh_boundary_result.source_carry &&
+               fresh_boundary_sample.attempts == 2U &&
+               fresh_boundary_sample.last_terrain_boundary_active == false) !=
+        0) {
+        return 6;
     }
 
     return 0;

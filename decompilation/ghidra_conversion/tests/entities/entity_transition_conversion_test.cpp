@@ -134,16 +134,64 @@ int main() {
                spawned_record.behavior_defaults.vertical_offset == -12 &&
                spawned_record.behavior_defaults.flags == 0x09U &&
                spawned_record.flags == 0x09U &&
-               spawned_record.position_x == 0x1050U &&
-               spawned_record.position_y == 0x2000U &&
-               spawned_record.heading == 0xC000U &&
+               spawned_record.position_x == 0x1000U &&
+               spawned_record.position_y == 0x20B0U &&
+               spawned_record.heading == 0x8000U &&
                spawned_record.source_identifier == 0xFFFFU &&
                spawned_record.behavior_code == 0x0014U &&
-               spawned_record.directional_probe_x == 0x1080U &&
-               spawned_record.directional_probe_y == 0x20C0U &&
-               spawned_record.heading_offset_x == -24576 &&
-               spawned_record.heading_offset_y == 0) != 0) {
+               spawned_record.directional_probe_x == 0x1000U &&
+               spawned_record.directional_probe_y == 0x2020U &&
+               spawned_record.heading_offset_x == 0 &&
+               spawned_record.heading_offset_y == 24575) != 0) {
         return 14;
+    }
+
+    constexpr std::array<std::uint16_t, 8> headings{
+        0x0000U, 0x2000U, 0x4000U, 0x6000U,
+        0x8000U, 0xA000U, 0xC000U, 0xE000U};
+    constexpr std::array<std::int16_t, 8> source_position_x{
+        0, 124, 176, 124, 0, -124, -176, -124};
+    constexpr std::array<std::int16_t, 8> source_position_y{
+        -176, -124, 0, 124, 176, 124, 0, -124};
+    constexpr std::array<std::int16_t, 8> source_probe_x{
+        64, 288, 384, 208, 0, -384, -384, -256};
+    constexpr std::array<std::int16_t, 8> source_probe_y{
+        -256, -240, -64, 80, 32, 64, -64, -192};
+    for (std::size_t direction = 0U; direction < headings.size(); ++direction) {
+        auto directional_parent = parent;
+        directional_parent.position_x = 0x1000U;
+        directional_parent.position_y = 0x2000U;
+        directional_parent.heading = headings[direction];
+        SpawnEntityRecordState directional_record{};
+        std::optional<SpawnEntityLinkedState> no_directional_target;
+        initialize_entity_spawn_record(
+            directional_record, directional_parent, 0xFFFFU, true,
+            no_directional_target, {});
+        const auto add_source_delta = [](const std::uint16_t base,
+                                         const std::int16_t delta) {
+            return static_cast<std::uint16_t>(
+                static_cast<std::int32_t>(base) + delta);
+        };
+        if (directional_record.position_x != add_source_delta(
+                directional_parent.position_x,
+                source_position_x[direction])) {
+            return 27;
+        }
+        if (directional_record.position_y != add_source_delta(
+                directional_parent.position_y,
+                source_position_y[direction])) {
+            return 27;
+        }
+        if (directional_record.directional_probe_x != add_source_delta(
+                directional_parent.position_x,
+                source_probe_x[direction])) {
+            return 27;
+        }
+        if (directional_record.directional_probe_y != add_source_delta(
+                directional_parent.position_y,
+                source_probe_y[direction])) {
+            return 27;
+        }
     }
 
     std::optional<SpawnEntityLinkedState> inactive_target =
@@ -219,8 +267,8 @@ int main() {
                cycle.primary->saved_position_x == 0x10B0U &&
                cycle.primary->field_0x89 == 0x20U &&
                cycle.primary->field_0x8b == 1U &&
-               cycle.secondary->position_x == 0x1080U &&
-               cycle.secondary->position_y == 0x20C0U &&
+               cycle.secondary->position_x == 0x1180U &&
+               cycle.secondary->position_y == 0x1FC0U &&
                cycle.secondary->behavior_defaults.animation_state == 0U &&
                cycle.secondary->behavior_defaults.behavior_timer == 0x1000U &&
                cycle.secondary->animation_resource == 0x28U &&

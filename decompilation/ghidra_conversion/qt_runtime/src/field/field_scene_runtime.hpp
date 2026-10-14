@@ -1073,7 +1073,9 @@ private:
         std::array<std::uint8_t, 4>& sample_state,
         std::uint8_t entity_behavior_flags,
         bool publish_movement_state,
-        std::uint16_t* terrain_collision_code_output = nullptr);
+        std::uint16_t* terrain_collision_code_output = nullptr,
+        bool* terrain_boundary_active_output = nullptr,
+        bool* outside_bounds_output = nullptr);
     void source_boundary(std::string_view boundary) const;
     bool load_image(const ConversionAssetCatalog& catalog,
                     std::string_view alias,
