@@ -204,8 +204,8 @@ host and ROM terrain sampler both classify the candidate as blocked. Per the
 stop rule above, collision was not changed. The QA now asserts the sampled
 coordinates, bytes, candidate, and retained position; it passed before and
 after adding those assertions, so this is a source-confirmed report, not a
-failing-then-passing behavior fix. The broader Scene 19 and object census
-remain open.
+failing-then-passing behavior fix. The Scene 19 table contact was measured
+later in this log; the broader object-bounds census remains open.
 
 ### L5a Ares category and offers panel: initial sequence reviewed
 
@@ -228,6 +228,31 @@ eight-question review is
 closes the handoff's minimum one-screen longplay review and the reported
 initial category-row mismatch. The complete six-category, item-cursor, and
 cancel traversal remains open, along with L2-L4, L5b-L5k, L6, and L8.
+
+### L1 Scene 19 pool-table contact: source stop confirmed
+
+Release and Debug `shadowrun_ghidra_conversion_qt_field_movement_qa` now run
+the Scene 19 table route against records 8 and 9. ROM bytes at `0x1D5F28` and
+`0x1D5F32` confirm the inclusive `0x7E` rectangles `(64..127,128..159)` and
+`(160..223,128..159)`. Five clear-side approaches capture all four corners,
+the blocked candidate, the returned `0x7F`, and the committed position. The
+movement fallback can advance along or away from the rectangle, so QA checks
+that the final position stays on its approach side; it does not incorrectly
+require the whole runner position to freeze when the source fallback moved
+the other coordinate.
+
+The first test spawn was inside a different ROM `0x7F` border rectangle
+`(0..31,96..255)` and never reached the table. The first contact assertion
+also treated any accepted fallback movement as a committed blocked step.
+Those were test setup/assertion errors, not host collision defects. Clear
+coordinates and the source fallback rule now pass in Debug and Release. No
+game collision code or ROM rectangle changed. The complete audit, including
+full-screen before/after paths, the nine visual questions, and longplay limits
+is `decompilation/docs/visual-audits/scene19-table-collision.md`. Longplay
+section 09 frames `006990` and `007035` show the tables and player at different
+positions, but do not show the exact contact inputs. This is a source-confirmed
+no-fix result; L2's object-bounds census and L3's isolated probe coverage remain
+open.
 
 ### Revalidation and L1 disposition — 2026-10-14
 
