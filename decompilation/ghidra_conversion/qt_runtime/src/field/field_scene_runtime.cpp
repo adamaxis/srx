@@ -2455,6 +2455,8 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 actor.source_spawn_state_flags;
             context.world_activity_active =
                 world_frame_logic_state_.world_active != 0U;
+            context.world_scene_state =
+                world_frame_logic_state_.scene_state;
             context.movement_scene_id = current_scene;
             context.entry_animation_frame_count =
                 actor.entry_animation_frame_count;
@@ -3498,6 +3500,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         context.source_spawn_state_flags = actor.source_spawn_state_flags;
         context.world_activity_active =
             world_frame_logic_state_.world_active != 0U;
+        context.world_scene_state = world_frame_logic_state_.scene_state;
         context.entry_animation_frame_count =
             actor.entry_animation_frame_count;
         context.ai_animation_frame = actor.animation_frame;
@@ -7754,6 +7757,8 @@ FieldSceneRuntime::heartbeat_field_player(
             script_combatant_facts(active_runner_record());
         actor_context.world_activity_active =
             field_world_activity_timeout_state_.timeout_marker != 0;
+        actor_context.world_scene_state =
+            world_frame_logic_state_.scene_state;
         actor_context.source_projection_active = caster_projection_active(
             field_entity_.world_position.x, field_entity_.world_position.y,
             static_cast<std::uint16_t>(
@@ -8706,10 +8711,15 @@ void FieldSceneRuntime::advance_field_actor_animation() {
             }
             if (decision->spell_effect_slot_released.has_value()) {
                 const auto slot = *decision->spell_effect_slot_released;
+                const auto active_party_target_id =
+                    "party.runner." + std::to_string(
+                        field_party_roster_.active_slot());
                 if (slot >= field_world_effect_slots_occupied_.size() ||
                     !field_world_effect_slots_occupied_[slot] ||
-                    field_spell_effect_slot_target_ids_[slot] !=
-                        "field_player_runner") {
+                    (field_spell_effect_slot_target_ids_[slot] !=
+                         "field_player_runner" &&
+                     field_spell_effect_slot_target_ids_[slot] !=
+                         active_party_target_id)) {
                     failure_ = "Lua released an unowned runner spell effect record";
                     source_boundary(
                         "field.player.spell.effect_slot_release_invalid");
@@ -8771,6 +8781,8 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 actor.source_spawn_state_flags;
             context.world_activity_active =
                 world_frame_logic_state_.world_active != 0U;
+            context.world_scene_state =
+                world_frame_logic_state_.scene_state;
             context.entry_animation_frame_count =
                 actor.entry_animation_frame_count;
             context.ai_animation_frame = actor.animation_frame;

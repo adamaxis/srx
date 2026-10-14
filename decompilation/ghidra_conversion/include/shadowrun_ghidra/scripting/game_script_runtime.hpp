@@ -594,6 +594,7 @@ struct ScriptActorBehaviorContext {
     std::uint8_t movement_entity_flags = 0;
     bool movement_transition_active = false;
     std::uint16_t movement_scene_id = 0;
+    std::uint8_t world_scene_state = 0; // FFE186; delayed spell callback gate
     std::uint16_t movement_collision_mode = 0;
     ScriptMovementCollisionQuery movement_collision;
     ScriptMovementRouteLookup movement_route_lookup;
@@ -706,6 +707,7 @@ struct ScriptActorBehaviorDecision {
     bool spell_effect_visible = false;
     std::uint8_t spell_effect_phase = 0;
     std::uint8_t spell_effect_action_code = 0;
+    bool spell_effect_completed = false;
     std::optional<std::uint8_t> spell_effect_slot_released;
     bool target_marker_visible = false;
     bool target_marker_animating = false;

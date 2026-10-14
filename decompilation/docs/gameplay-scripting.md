@@ -255,8 +255,10 @@ rather than a second Lua copy.
   Magic panel labels and headings. The field text catalog reads these menus
   from Lua and binds the ROM copy back to the typed presenter; script and
   catalog QA check every ID, key, value, and source ordering. The runner's
-  spell table still filters available spells, and force, posture, cursor
-  timing, and spell effects remain native state. The non-magic
+  spell table still filters available spells, and force, posture, and cursor
+  timing remain native state. Actor spell-effect timing and target fan-out live
+  in `actor_ai.lua`; C++ forwards scene/record facts and presents its phase
+  output. The non-magic
   `Magical Defense` fallback overlays its title and two bars on the shared
   page; the host renderer clears the title's source-written leading blank
   cell along with the title row so the parent glyph cannot show through.

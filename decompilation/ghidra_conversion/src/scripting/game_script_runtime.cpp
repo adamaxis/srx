@@ -3184,6 +3184,8 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "source_spawn_state_flags");
     lua_pushboolean(state, context.world_activity_active);
     lua_setfield(state, -2, "world_activity_active");
+    lua_pushinteger(state, context.world_scene_state);
+    lua_setfield(state, -2, "world_scene_state");
     lua_pushinteger(state, context.ai_animation_frame);
     lua_setfield(state, -2, "ai_animation_frame");
     lua_pushinteger(state, context.walk_animation_frame_count);
@@ -3763,6 +3765,10 @@ GameScriptRuntime::actor_heartbeat(
         decision.spell_effect_slot_released =
             static_cast<std::uint8_t>(*released_spell_slot);
     }
+    if (!read_field_boolean(state, decision_table, "spell_effect_completed",
+                            decision.spell_effect_completed)) {
+        return fail("actor_ai.heartbeat returned an invalid spell effect completion state");
+    }
     const bool hound_encounter = context.dynamic_world_encounter_actor &&
         context.entity_kind == 12U &&
         context.profile_id == "hell_hound_k0c_none00";
@@ -3801,7 +3807,8 @@ GameScriptRuntime::actor_heartbeat(
         }
     };
     const bool spell_effect_reported = decision.spell_effect_visible ||
-        decision.spell_effect_slot_released.has_value();
+        decision.spell_effect_slot_released.has_value() ||
+        decision.spell_effect_completed;
     const bool spell_effect_target_context =
         context.phase == ScriptActorHeartbeatPhase::render &&
         context.source_record_slot.has_value() && context.combatant.has_value() &&
@@ -3809,6 +3816,11 @@ GameScriptRuntime::actor_heartbeat(
          context.profile_id == "field_runner_k03_none00");
     const auto expected_spell_phases =
         spell_phase_count(decision.spell_effect_action_code);
+    const bool invalid_spell_completion = decision.spell_effect_completed &&
+        (decision.spell_effect_visible ||
+         decision.spell_effect_phase != expected_spell_phases ||
+         (decision.spell_effect_action_code != 5U &&
+          !decision.spell_effect_slot_released.has_value()));
     if ((spell_effect_reported &&
          (!spell_effect_target_context || expected_spell_phases == 0U)) ||
         (!spell_effect_reported &&
@@ -3818,7 +3830,8 @@ GameScriptRuntime::actor_heartbeat(
           decision.spell_effect_slot_released.has_value())) ||
         (decision.spell_effect_slot_released.has_value() &&
          (decision.spell_effect_visible ||
-          decision.spell_effect_phase != expected_spell_phases))) {
+          decision.spell_effect_phase != expected_spell_phases)) ||
+        invalid_spell_completion) {
         return fail("actor_ai.heartbeat returned an inconsistent spell effect state");
     }
     if ((!decision.target_marker_visible &&

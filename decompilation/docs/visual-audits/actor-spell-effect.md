@@ -20,11 +20,11 @@ table at `0x490A` selects the target render handler. The delayed callback is
 
 The four live render clocks read directly from ROM are:
 
-| Action code | Actor profile | Render handler | Reload | Phases | Delayed callback |
+| Action code | Actor profile | Render handler | Reload | Phases | Terminal behavior |
 |---:|---|---:|---:|---:|---:|
 | 1 | Lone Mage | `0x521E` | 1 | 4 | heartbeat 12 |
 | 2 | Gator Shaman | `0x5152` | 4 | 6 | heartbeat 31 |
-| 5 | Rat Shaman | `0x52BE` -> `0x5322` | 6 | 9 | heartbeat 62 |
+| 5 | Rat Shaman | `0x52BE` -> `0x5322` | 6 | 9 | heartbeat 62; serial target fan-out |
 | 9 | Elven Mage | `0x4FE2` | 4 | 6 | heartbeat 31 |
 
 All four start with target countdown 5. Their visible phase counts are 11,
@@ -55,9 +55,12 @@ unverified.
    leave the underlying map visible. This supports clean compositing, not an
    independent claim that the effect exactly matches a Genesis frame.
 2. **Does the look reflect the behavioral state?** Lua stores pending effect
-   state under the target's stable actor ID, with source slot, scene, action,
-   and effect-slot identity. The target render heartbeat advances that state;
-   the script test asserts all four cadences, delayed impact, and slot release.
+   state with the target source slot, actor ID, scene, action, and effect-slot
+   identity. The slot handoff handles the active runner's `party.runner.N` /
+   `field_player_runner` behavior-render alias. The target render heartbeat
+   advances the state. Script QA asserts all four cadences, delayed impact,
+   effect-slot ownership, the code-2 callback branch, and sequential code-5
+   fan-out.
 3. **Are the visuals correct?** ROM effect tables, per-scene palettes, and
    directional cast poses are extracted offline. Runtime code loads named
    images and uses the scene palette result directly. The field QA confirms
@@ -100,10 +103,17 @@ runner for clear inspection; that placement is diagnostic, not a claimed
 natural encounter replay. The four script timers use a separate target actor
 render heartbeat, not the caster's behavior heartbeat.
 
-Code 5's source handler clones the completed effect to active, non-excluded
-records with `+0xDE == 5`; Lua propagation is still open. The code-2 handler
-also checks `FFE186 == 3` and source `+0x10` bit 3 before calling the delayed
-callback; those facts are not yet in the typed Lua context. Other spell codes,
-independent visual/audio references, and the Scene 1 map surround remain
-unresolved. See [`actor-ai-heartbeat-source-audit.md`](../actor-ai-heartbeat-source-audit.md)
+Code 5's `0x1597E` scan stores markers for active records whose direct route
+cost is below `0x500` and whose source `+0x10` bit 6 is clear. At heartbeat 62,
+`0x5322` clears the completed record and starts the same nine-phase effect on
+the first still-marked active, unlocked record; each terminal pass advances
+the next record in source order. Lua models the scan marks and pending effect
+by source slot, and QA verifies two eligible records plus the strict range
+edge, inactive, and locked exclusions. Code 2 now reads the current typed
+`FFE186` scene state and the caster's current service flags from the live actor
+candidate list; it skips `0x55B78` only when the scene state is 3 and caster
+`+0x10` bit 3 is clear. Both outcomes are tested. The independent Genesis
+cast pixels/audio, the separate `0x4964` setup callback, other spell codes,
+and the Scene 1 map surround remain unresolved. See
+[`actor-ai-heartbeat-source-audit.md`](../actor-ai-heartbeat-source-audit.md)
 and [`audio-playback-verification.md`](../visual-analysis/audio-playback-verification.md).

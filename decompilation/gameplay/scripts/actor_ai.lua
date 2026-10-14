@@ -3,7 +3,8 @@
 -- drawing consumes each returned snapshot without advancing it again.
 local ActorAI = {}
 local states = game.actors
-local pending_spell_effects_by_actor = {}
+local pending_spell_effects_by_source_slot = {}
+local spell_effect_scans_by_source_slot = {}
 
 -- The directional weapon-effect records at ROM 0x630C use this descriptor
 -- cadence in their finite 0x8003/0x800B lists.
@@ -480,6 +481,8 @@ local function initial_state(context, profile)
             and context.combatant.action_result or 0,
         spell_action_resolution = nil,
         spell_effect_pending = nil,
+        spell_effect_scan_marker = nil,
+        spell_effect_completed = false,
         spell_effect_slot_released = nil,
         spell_effect_resolution = nil,
         spell_effect_visible = false,
@@ -589,6 +592,7 @@ local function snapshot(state, action, audio_event, projectile_movement,
         target_motion_effect_slot_request =
             state.target_motion_effect_slot_request,
         spell_effect_slot_released = state.spell_effect_slot_released,
+        spell_effect_completed = state.spell_effect_completed,
         spell_effect_visible = state.spell_effect_visible,
         spell_effect_phase = state.spell_effect_phase,
         spell_effect_action_code = state.spell_effect_action_code,
@@ -1451,6 +1455,7 @@ local function begin_spell_cast(state, context, target, resolution)
             target_id = target.id,
             source_record_slot = target.source_record_slot,
             effect_slot = resolution.spell_effect_slot,
+            initial_countdown = effect_profile.initial_countdown,
             countdown = effect_profile.initial_countdown,
             phase = 0,
             phase_count = effect_profile.phase_count,
@@ -1458,13 +1463,119 @@ local function begin_spell_cast(state, context, target, resolution)
             caster_combatant = resolution.combatant,
             ai_target_candidates = context.ai_target_candidates,
             scene_id = context.movement_scene_id,
+            caster_actor_id = state.actor_id,
+            caster_source_flags = context.source_record_flags or 0,
+            owns_effect_slot = true,
         }
-        local target_state = states[target.id]
-        if type(target_state) == "table" then
-            target_state.spell_effect_pending = pending
-        else
-            pending_spell_effects_by_actor[target.id] = pending
+
+        -- ROM 0x1597E's type-5 scan marks every live record under the 0x500
+        -- route-cost bound. 0x5322 later consumes those marks one record at
+        -- a time as the preceding sleep animation finishes.
+        if context.action_code == 5 and
+           type(context.ai_target_candidates) == "table" then
+            for _, candidate in ipairs(context.ai_target_candidates) do
+                if type(candidate) == "table" and
+                   type(candidate.id) == "string" and
+                   type(candidate.source_record_slot) == "number" and
+                   type(candidate.service_flags) == "number" and
+                   type(candidate.direct_route_step_cost) == "number" and
+                   (candidate.service_flags & ActorServiceFlag.active) ~= 0 and
+                   (candidate.service_flags & ActorServiceFlag.effect_locked) == 0 and
+                   candidate.direct_route_step_cost < 0x0500 then
+                    local marker = {
+                        action_code = 5,
+                        actor_id = candidate.id,
+                        scene_id = context.movement_scene_id,
+                    }
+                    spell_effect_scans_by_source_slot[
+                        candidate.source_record_slot] = marker
+                    local candidate_state = type(candidate.id) == "string" and
+                        states[candidate.id] or nil
+                    if type(candidate_state) == "table" then
+                        candidate_state.spell_effect_scan_marker = marker
+                    end
+                end
+            end
         end
+
+        -- Source record slots remain stable across the field-player alias
+        -- used by the behavior and render passes (party.runner.N vs
+        -- field_player_runner). Lua uses the slot to transfer the pending
+        -- target-owned effect to the actor heartbeat that renders that record.
+        if type(target.source_record_slot) == "number" then
+            pending_spell_effects_by_source_slot[
+                target.source_record_slot] = pending
+        end
+    end
+end
+
+local function actor_matches_pending_spell_target(context, pending)
+    if context.actor_id == pending.target_id then
+        return true
+    end
+    local slot = pending.source_record_slot
+    return slot ~= nil and context.source_record_slot == slot and
+        pending.target_id == "party.runner." .. tostring(slot) and
+        context.actor_id == "field_player_runner"
+end
+
+local function transfer_pending_spell_effect(state, context)
+    local slot = context.source_record_slot
+    if type(slot) ~= "number" then
+        return
+    end
+    local pending = pending_spell_effects_by_source_slot[slot]
+    if type(pending) ~= "table" then
+        return
+    end
+    if pending.scene_id ~= context.movement_scene_id then
+        pending_spell_effects_by_source_slot[slot] = nil
+        return
+    end
+    if not actor_matches_pending_spell_target(context, pending) then
+        return
+    end
+    state.spell_effect_pending = pending
+    pending_spell_effects_by_source_slot[slot] = nil
+end
+
+local function spell_scan_marker(candidate, scene_id)
+    if type(candidate) ~= "table" or
+       type(candidate.source_record_slot) ~= "number" then
+        return nil
+    end
+    local marker = spell_effect_scans_by_source_slot[
+        candidate.source_record_slot]
+    if type(marker) == "table" and marker.scene_id ~= scene_id then
+        spell_effect_scans_by_source_slot[
+            candidate.source_record_slot] = nil
+        marker = nil
+    end
+    if type(marker) == "table" and marker.scene_id == scene_id and
+       marker.actor_id == candidate.id then
+        return marker
+    end
+    local candidate_state = type(candidate.id) == "string" and
+        states[candidate.id] or nil
+    marker = type(candidate_state) == "table" and
+        candidate_state.spell_effect_scan_marker or nil
+    if type(marker) == "table" and marker.scene_id == scene_id and
+       marker.actor_id == candidate.id then
+        return marker
+    end
+    return nil
+end
+
+local function clear_spell_scan_marker(slot, actor_id)
+    local marker = spell_effect_scans_by_source_slot[slot]
+    if type(marker) == "table" and marker.actor_id == actor_id then
+        spell_effect_scans_by_source_slot[slot] = nil
+    end
+    local candidate_state = states[actor_id]
+    if type(candidate_state) == "table" and
+       type(candidate_state.spell_effect_scan_marker) == "table" and
+       candidate_state.spell_effect_scan_marker.actor_id == actor_id then
+        candidate_state.spell_effect_scan_marker = nil
     end
 end
 
@@ -1474,6 +1585,8 @@ local function advance_spell_effect(state, context)
     state.spell_effect_visible = false
     state.spell_effect_phase = 0
     state.spell_effect_action_code = 0
+    state.spell_effect_completed = false
+    transfer_pending_spell_effect(state, context)
     if context.phase ~= "render" or
        type(state.spell_effect_pending) ~= "table" then
         return
@@ -1485,14 +1598,17 @@ local function advance_spell_effect(state, context)
         state.spell_effect_pending = nil
         return
     end
-    if context.actor_id ~= pending.target_id then
+    if not actor_matches_pending_spell_target(context, pending) then
         return
     end
     state.spell_effect_action_code = pending.action_code
     if context.source_record_slot ~= pending.source_record_slot then
         state.spell_effect_phase = pending.phase_count
-        state.spell_effect_slot_released = pending.effect_slot
+        if pending.owns_effect_slot ~= false then
+            state.spell_effect_slot_released = pending.effect_slot
+        end
         state.spell_effect_pending = nil
+        state.spell_effect_completed = true
         return
     end
     pending.countdown = pending.countdown - 1
@@ -1502,7 +1618,22 @@ local function advance_spell_effect(state, context)
         state.spell_effect_phase = pending.phase
         if pending.phase >= pending.phase_count then
             local combat = game.modules.combat
-            if type(combat) == "table" and
+            local caster_source_flags = pending.caster_source_flags
+            if type(context.ai_target_candidates) == "table" then
+                for _, candidate in ipairs(context.ai_target_candidates) do
+                    if type(candidate) == "table" and
+                       candidate.id == pending.caster_actor_id and
+                       type(candidate.service_flags) == "number" then
+                        caster_source_flags = candidate.service_flags
+                        break
+                    end
+                end
+            end
+            local skip_delayed_callback = pending.action_code == 2 and
+                context.world_scene_state == 3 and
+                (caster_source_flags & 0x08) == 0
+            if pending.action_code ~= 5 and not skip_delayed_callback and
+               type(combat) == "table" and
                type(combat.resolve_spell_impact) == "function" and
                type(context.combatant) == "table" and
                type(pending.caster_combatant) == "table" then
@@ -1523,8 +1654,56 @@ local function advance_spell_effect(state, context)
                     combat.resolve_spell_impact(
                         effect_context, pending, target)
             end
-            state.spell_effect_slot_released = pending.effect_slot
+            if pending.owns_effect_slot ~= false then
+                state.spell_effect_slot_released = pending.effect_slot
+            end
             state.spell_effect_pending = nil
+            state.spell_effect_completed = true
+
+            if pending.action_code == 5 then
+                clear_spell_scan_marker(
+                    pending.source_record_slot, pending.target_id)
+                local candidates = type(context.ai_target_candidates) == "table"
+                    and context.ai_target_candidates or
+                    pending.ai_target_candidates
+                if type(candidates) == "table" then
+                    for _, candidate in ipairs(candidates) do
+                        local marker = spell_scan_marker(
+                            candidate, pending.scene_id)
+                        if type(candidate) == "table" and
+                           type(candidate.source_record_slot) == "number" and
+                           type(candidate.service_flags) == "number" and
+                           (candidate.service_flags & ActorServiceFlag.active) ~= 0 and
+                           (candidate.service_flags & ActorServiceFlag.effect_locked) == 0 and
+                           marker ~= nil then
+                            local next_pending = {
+                                action_code = pending.action_code,
+                                action_result = pending.action_result,
+                                target_id = candidate.id,
+                                source_record_slot =
+                                    candidate.source_record_slot,
+                                effect_slot = pending.effect_slot,
+                                initial_countdown =
+                                    pending.initial_countdown,
+                                countdown = pending.initial_countdown,
+                                phase = 0,
+                                phase_count = pending.phase_count,
+                                repeat_countdown = pending.repeat_countdown,
+                                caster_combatant = pending.caster_combatant,
+                                ai_target_candidates = candidates,
+                                scene_id = pending.scene_id,
+                                caster_source_flags =
+                                    pending.caster_source_flags,
+                                caster_actor_id = pending.caster_actor_id,
+                                owns_effect_slot = false,
+                            }
+                            pending_spell_effects_by_source_slot[
+                                candidate.source_record_slot] = next_pending
+                            break
+                        end
+                    end
+                end
+            end
             return
         end
     end
@@ -2064,10 +2243,8 @@ function ActorAI.heartbeat(context)
         if state == nil then
             return nil
         end
-        state.spell_effect_pending =
-            pending_spell_effects_by_actor[context.actor_id]
-        pending_spell_effects_by_actor[context.actor_id] = nil
         states[context.actor_id] = state
+        transfer_pending_spell_effect(state, context)
         advance_world_target_selection(state, context)
         advance_spell_effect(state, context)
         if profile.projectile_animation then
@@ -2106,6 +2283,7 @@ function ActorAI.heartbeat(context)
     state.source_record_flags = context.source_record_flags or
                                 state.source_record_flags
     advance_source_action_delay(state, context)
+    transfer_pending_spell_effect(state, context)
     advance_world_target_selection(state, context)
     if profile.projectile_animation then
         return projectile_heartbeat(state, context)

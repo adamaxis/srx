@@ -1789,6 +1789,9 @@ int main() {
         bool effect_completed_early = false;
         std::array<std::uint8_t, 64> spell_effect_phase_trace{};
         std::array<bool, 64> spell_effect_visible_trace{};
+        std::vector<std::string> fanout_actor_ids;
+        std::vector<std::uint8_t> fanout_heartbeat_counts;
+        std::vector<bool> fanout_released_slot;
     };
     const auto drive_spell_refresh = [&scripts, &actor_context](
                                          const std::string& profile_id,
@@ -1803,7 +1806,15 @@ int main() {
                                          const ScriptCombatantFacts* target_facts =
                                              nullptr,
                                          const bool occupy_all_effect_slots =
-                                             false)
+                                             false,
+                                         const std::uint8_t world_scene_state =
+                                             0U,
+                                         const std::optional<std::uint8_t>
+                                             caster_render_flags = std::nullopt,
+                                         const std::vector<ScriptActorTargetCandidate>*
+                                             additional_scan_candidates =
+                                                 nullptr,
+                                         const bool active_runner_alias = false)
         -> SpellRefresh {
         SpellRefresh result;
         auto context = actor_context(
@@ -1811,6 +1822,7 @@ int main() {
             action_code, 0U, true);
         context.dynamic_world_encounter_actor = true;
         context.source_record_flags = 0x01U;
+        context.world_scene_state = world_scene_state;
         context.entry_animation_frame_count = 1U;
         context.walk_animation_frame_count = 4U;
         context.initial_action_delay = initial_delay;
@@ -1828,17 +1840,36 @@ int main() {
             "party.runner.0", 0x1234U, 0x0ABCU, 0x2000U, 0x0C00U, 0x01U, 0U,
             0U, 0U, true, false, 0x0100U, 0x0200U, 0x0C00U, 0x1800U});
         context.ai_target_candidates.back().source_record_slot = 0U;
+        if (additional_scan_candidates != nullptr) {
+            context.ai_target_candidates.insert(
+                context.ai_target_candidates.end(),
+                additional_scan_candidates->begin(),
+                additional_scan_candidates->end());
+        }
         if (caster != nullptr) {
             context.combatant = *caster;
         }
         if (target_facts != nullptr) {
-            context.ai_target_candidates.back().combatant = *target_facts;
+            context.ai_target_candidates.front().combatant = *target_facts;
         }
+        const std::string effect_target_actor_id = active_runner_alias
+            ? "field_player_runner"
+            : "party.runner.0";
         auto effect_target_context = actor_context(
-            "field_runner_k03_none00", "party.runner.0", 3U,
+            "field_runner_k03_none00", effect_target_actor_id, 3U,
             ScriptActorActionKind::none, 0U, 0U, true);
         effect_target_context.source_record_slot = 0U;
         effect_target_context.movement_scene_id = 2U;
+        effect_target_context.world_scene_state = world_scene_state;
+        effect_target_context.ai_target_candidates =
+            context.ai_target_candidates;
+        if (caster_render_flags.has_value()) {
+            ScriptActorTargetCandidate caster_candidate{};
+            caster_candidate.id = actor_id;
+            caster_candidate.service_flags = *caster_render_flags;
+            effect_target_context.ai_target_candidates.push_back(
+                std::move(caster_candidate));
+        }
         effect_target_context.combatant = target_facts == nullptr
             ? ScriptCombatantFacts{}
             : *target_facts;
@@ -1922,8 +1953,7 @@ int main() {
                 if (effect_heartbeat->spell_effect_visible) {
                     ++result.spell_effect_visible_heartbeats;
                 }
-                if (effect_heartbeat->spell_effect_resolution.has_value() ||
-                    effect_heartbeat->spell_effect_slot_released.has_value()) {
+                if (effect_heartbeat->spell_effect_completed) {
                     const auto expected_heartbeats = action_code == 1U
                         ? 12U
                         : action_code == 2U || action_code == 9U
@@ -1941,6 +1971,57 @@ int main() {
             }
             context.phase = ScriptActorHeartbeatPhase::behavior;
             result.next_behavior = scripts.actor_heartbeat(context);
+            if (action_code == 5U &&
+                result.completed_effect.has_value() &&
+                additional_scan_candidates != nullptr) {
+                for (const auto& candidate : *additional_scan_candidates) {
+                    if (!candidate.source_record_slot.has_value()) {
+                        continue;
+                    }
+                    auto followup = actor_context(
+                        "field_runner_k03_none00", candidate.id, 3U,
+                        ScriptActorActionKind::none, 0U, 0U, true);
+                    followup.spawn = true;
+                    followup.phase = ScriptActorHeartbeatPhase::render;
+                    followup.source_record_slot =
+                        candidate.source_record_slot;
+                    followup.movement_scene_id = 2U;
+                    followup.world_scene_state = world_scene_state;
+                    followup.ai_target_candidates =
+                        effect_target_context.ai_target_candidates;
+                    followup.combatant = candidate.combatant.value_or(
+                        ScriptCombatantFacts{});
+                    auto heartbeat = scripts.actor_heartbeat(followup);
+                    if (!heartbeat.has_value()) {
+                        return failed();
+                    }
+                    followup.spawn = false;
+                    if (!heartbeat->spell_effect_visible) {
+                        continue;
+                    }
+                    result.fanout_actor_ids.push_back(candidate.id);
+                    std::uint8_t fanout_heartbeats = 1U;
+                    for (std::uint8_t frame = 1U; frame < 64U; ++frame) {
+                        heartbeat = scripts.actor_heartbeat(followup);
+                        if (!heartbeat.has_value()) {
+                            return failed();
+                        }
+                        ++fanout_heartbeats;
+                        if (heartbeat->spell_effect_completed) {
+                            break;
+                        }
+                    }
+                    if (!heartbeat->spell_effect_completed) {
+                        std::cerr << "spell fanout did not complete for "
+                                  << candidate.id << '\n';
+                        return failed();
+                    }
+                    result.fanout_heartbeat_counts.push_back(
+                        fanout_heartbeats);
+                    result.fanout_released_slot.push_back(
+                        heartbeat->spell_effect_slot_released.has_value());
+                }
+            }
             return result;
         }
         std::cerr << "spell refresh missing for " << actor_id << '\n';
@@ -2042,6 +2123,40 @@ int main() {
     const auto mana_blast_cast = drive_spell_refresh(
         "elven_mage_k06_spell09", "spell_mana_blast_resolved", 6U, 9U, 0,
         true, spell_line_true, &spell_caster, &spell_target);
+    auto code2_spell_caster = spell_caster;
+    code2_spell_caster.equipped_action_code = 2U;
+    const auto code2_scene_state_skip = drive_spell_refresh(
+        "gator_shaman_k09_spell02", "spell_code2_scene_skip", 9U, 2U, 0,
+        true, spell_line_true, &code2_spell_caster, &spell_target, false, 3U,
+        0x01U);
+    const auto code2_scene_state_callback = drive_spell_refresh(
+        "gator_shaman_k09_spell02", "spell_code2_scene_callback", 9U, 2U,
+        0, true, spell_line_true, &code2_spell_caster, &spell_target, false,
+        3U, 0x09U);
+    std::vector<ScriptActorTargetCandidate> sleep_scan_candidates;
+    const auto add_sleep_candidate = [&sleep_scan_candidates](
+                                         const std::string& id,
+                                         const std::uint8_t slot,
+                                         const std::uint8_t flags,
+                                         const std::uint16_t route_cost) {
+        ScriptActorTargetCandidate candidate{};
+        candidate.id = id;
+        candidate.service_flags = flags;
+        candidate.direct_route_step_cost = route_cost;
+        candidate.source_record_slot = slot;
+        sleep_scan_candidates.push_back(std::move(candidate));
+    };
+    add_sleep_candidate("sleep_near", 1U, 0x01U, 0x04FFU);
+    add_sleep_candidate("sleep_at_range_limit", 2U, 0x01U, 0x0500U);
+    add_sleep_candidate("sleep_inactive", 3U, 0x00U, 0x0100U);
+    add_sleep_candidate("sleep_effect_locked", 4U, 0x41U, 0x0100U);
+    add_sleep_candidate("sleep_near_world_actor", 5U, 0x01U, 0x0400U);
+    auto sleep_spell_caster = spell_caster;
+    sleep_spell_caster.equipped_action_code = 5U;
+    const auto sleep_fanout_cast = drive_spell_refresh(
+        "rat_shaman_k0b_spell05", "spell_sleep_fanout", 11U, 5U, 0,
+        true, spell_line_true, &sleep_spell_caster, &spell_target, false, 0U,
+        std::nullopt, &sleep_scan_candidates, true);
     const auto spell_effect_profile_matches = [](
         const SpellRefresh& driven, const std::uint8_t action_code,
         const std::uint8_t heartbeat_count, const std::uint8_t phase_count,
@@ -2136,6 +2251,27 @@ int main() {
         spell_target_update->target_id == "party.runner.0" &&
         spell_target_update->physical_meter == spell_effect_result->physical_meter &&
         spell_target_update->mental_meter == spell_effect_result->mental_meter;
+    const bool code2_scene_callback_gate_matches =
+        code2_scene_state_skip.completed_effect.has_value() &&
+        code2_scene_state_skip.completed_effect->spell_effect_completed &&
+        code2_scene_state_skip.completed_effect->spell_effect_slot_released ==
+            std::optional<std::uint8_t>{0U} &&
+        !code2_scene_state_skip.completed_effect->spell_effect_resolution &&
+        !code2_scene_state_skip.completed_effect->combat_meter_update &&
+        code2_scene_state_callback.completed_effect.has_value() &&
+        code2_scene_state_callback.completed_effect->spell_effect_completed &&
+        code2_scene_state_callback.completed_effect->spell_effect_resolution &&
+        code2_scene_state_callback.completed_effect->spell_effect_resolution->
+                action_code == 2U;
+    const bool sleep_scan_fanout_matches =
+        sleep_fanout_cast.completed_effect.has_value() &&
+        sleep_fanout_cast.completed_effect->spell_effect_completed &&
+        sleep_fanout_cast.fanout_actor_ids ==
+            std::vector<std::string>{"sleep_near", "sleep_near_world_actor"} &&
+        sleep_fanout_cast.fanout_heartbeat_counts ==
+            std::vector<std::uint8_t>{62U, 62U} &&
+        sleep_fanout_cast.fanout_released_slot ==
+            std::vector<bool>{false, false};
     const auto full_effect_pool_cast = drive_spell_refresh(
         "lonemage_k0a_spell01", "spell_effect_pool_full", 10U, 1U, 0,
         true, spell_line_true, &spell_caster, &spell_target, true);
@@ -2278,6 +2414,7 @@ int main() {
         spell_effect_profile_matches(flame_bolt_cast, 2U, 31U, 6U, 30U) &&
         spell_effect_profile_matches(sleep_cast, 5U, 62U, 9U, 61U) &&
         spell_effect_profile_matches(mana_blast_cast, 9U, 31U, 6U, 30U) &&
+        code2_scene_callback_gate_matches && sleep_scan_fanout_matches &&
         full_spell_effect_pool_blocks_spawn &&
         source_spell_gate_switches_action &&
         waiting_cast.refresh.has_value() &&
@@ -2334,6 +2471,13 @@ int main() {
                   << " release=" << (resolved_spell_cast.completed_effect.has_value() &&
                          resolved_spell_cast.completed_effect->spell_effect_slot_released.has_value())
                   << " result=" << spell_effect_result.has_value()
+                  << " code2=" << code2_scene_callback_gate_matches
+                  << " code2skip=" << (code2_scene_state_skip.completed_effect.has_value() &&
+                         code2_scene_state_skip.completed_effect->spell_effect_resolution.has_value())
+                  << " code2callback=" << (code2_scene_state_callback.completed_effect.has_value() &&
+                         code2_scene_state_callback.completed_effect->spell_effect_resolution.has_value())
+                  << " sleepfan=" << sleep_scan_fanout_matches
+                  << " fanout=" << sleep_fanout_cast.fanout_actor_ids.size()
                   << (spell_effect_result.has_value()
                           ? " outcome=" + spell_effect_result->outcome
                           : std::string{})

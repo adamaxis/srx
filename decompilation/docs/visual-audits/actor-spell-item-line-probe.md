@@ -87,8 +87,8 @@ selector, or stale UI layer from this bridge. The line-probe callback requests
 no sound; the downstream spell action requests its own table-driven cue.
 The four spell profiles now traverse Lua action/effect resolution, target-owned
 render timing, named cast/effect assets, sound routing, and a full-screen
-renderer capture. Code-5 propagation to other eligible records and the
-code-2 `FFE186` branch remain open; independent Genesis visuals/audio for a
-same-action cast also remain unavailable. See
+renderer capture. Code-5 propagation and the code-2 `FFE186` callback gate are
+now covered by source-driven Lua state and script QA; independent Genesis
+visuals/audio for a same-action cast remain unavailable. See
 [`actor-spell-effect.md`](actor-spell-effect.md) for the source trace and
 screen-by-screen review.

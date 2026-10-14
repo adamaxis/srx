@@ -618,11 +618,12 @@ after accepting the slot, then separately calls the setup handler from
 `0x521E` (code 1) reloads the target countdown to 1 and advances four phases;
 `0x5152` (code 2) reloads 4 and advances six phases; `0x52BE` dispatches to
 `0x5322` (code 5), which reloads 6 and advances nine phases; `0x4FE2` (code 9)
-reloads 4 and advances six phases. The shared delayed callback `0x55B78`
-resolves the effect against the target. From initial phase zero, these handlers
-complete on target render heartbeat 12, 31, 62, and 31 respectively; their
-visible phase counts are 11, 30, 61, and 30. These are source-service counts,
-not elapsed seconds.
+reloads 4 and advances six phases. Codes 1, 2, and 9 call shared delayed
+callback `0x55B78`; code 5 instead uses its terminal handler to advance the
+effect to another record marked by the earlier target scan. From initial phase
+zero, these handlers complete on target render heartbeat 12, 31, 62, and 31
+respectively; their visible phase counts are 11, 30, 61, and 30. These are
+source-service counts, not elapsed seconds.
 
 The handler phase pointer tables are `0x58B6` for code 1, `0x589E` for code 2,
 `0x5876` for code 5, and `0x512A` for code 9. Their effect palette attributes
@@ -630,14 +631,24 @@ are `0x2000`, `0x2000`, `0x6000`, and `0x4000`. The offline importer resolves
 these source references together with each scene palette and exports stable
 named phase images; runtime rendering does not walk the ROM tables.
 
-For code 5, `0x52BE` also scans the ten auxiliary records after its first
-target completes and clones the effect state to active, non-excluded records
-whose `+0xDE` value is 5. Lua currently resolves the linked target's sleep
-effect but does not yet propagate it to those additional records. Code 2 also
-has a source-state branch at `0x518E` (`FFE186 == 3` and source `+0x10` bit 3
-clear) that skips the shared delayed callback; that global-state condition is
-not yet represented in the typed script context. Those remain explicit
-behavior boundaries.
+`0x1597E` scans the ten records in source order. For action code 5 it sets
+`+0xDE=5` and the caster link on each active candidate whose direct route cost
+is below `0x500` and whose source `+0x10` bit 6 is clear. When a target's
+code-5 handler completes at `0x5322`, it clears that target's marker, then
+copies the effect slot, heading, action code, countdown, phase, and caster link
+to the first still-marked active, unlocked record. The following target's own
+terminal render pass advances the next record, so the effects travel
+sequentially. Lua stores scan marks and pending effects by source slot to
+preserve target ownership when the active runner ID differs across heartbeat
+passes. Script QA checks two in-range targets, strict exclusion at `0x500`,
+inactive/effect-locked records, and order.
+
+Code 2's `0x518E` branch skips `0x55B78` only if current `FFE186` is 3 and the
+caster's current source `+0x10` bit 3 is clear. The typed context now carries
+`FFE186`, and the render target finds the live caster record in its candidate
+facts; if that record is unavailable, Lua retains the source flags captured at
+dispatch. QA exercises both the skipped and called branches. The separate
+setup callback table at `0x4964` remains an explicit boundary.
 
 The source event bytes at `0x4946` are `0x32`, `0x34`, `0x37`, and `0x35` for
 the four live spell action codes. Event IDs are hex, but table-2 filenames use
@@ -649,13 +660,14 @@ Release playback QA checks their routes and playback states.
 The offline importer extracts the spell cast pose and the per-scene effect
 frames from ROM tables. The Qt renderer draws each named effect at the target
 record's projected point, above its actor sprite and underneath the right-side
-HUD. The new Lua test verifies the four source clocks, delayed result, target
-ownership, event IDs, and slot release. The field QA writes 25 whole-screen
+HUD. The Lua test verifies the four source clocks, delayed result, code-2
+condition, code-5 scan/fan-out, target ownership, event IDs, and slot release.
+The field QA writes 25 whole-screen
 phase images from a ROM-selected Scene 1 Lone Star encounter and verifies the
 HUD remains pixel-identical. No independent Genesis cast sequence has yet
-confirmed the exact appearance or sound. Code 12's `FFE190` party retarget,
-code-5 fan-out, code-2 global condition, and the spell status/effect families
-outside these four encounter actions remain partial.
+confirmed the exact appearance or sound. Code 12's `FFE190` party retarget and
+the spell status/effect families outside these four encounter actions remain
+partial.
 
 The full eight-question screen and layering review for the probe is
 [`visual-audits/actor-spell-item-line-probe.md`](visual-audits/actor-spell-item-line-probe.md);
