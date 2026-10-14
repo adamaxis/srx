@@ -196,6 +196,7 @@ std::filesystem::path find_asset_root(
                    " [--field-transition-qa <output-dir>]"
                    " [--field-world-activity-qa <output-dir>]"
                    " [--field-random-encounter-spawn-qa <output-dir>]"
+                   " [--field-spell-effect-qa <output-dir>]"
                    " [--field-redmond-vigore-search-qa <output-dir>]"
                    " [--field-jump-house-entry-qa <output-dir>]"
                    " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
@@ -286,6 +287,10 @@ std::filesystem::path find_asset_root(
         }
         if (argument == "--field-random-encounter-spawn-qa" &&
             index + 1 < argc) {
+            ++index;
+            continue;
+        }
+        if (argument == "--field-spell-effect-qa" && index + 1 < argc) {
             ++index;
             continue;
         }
@@ -8768,6 +8773,198 @@ int run_field_hound_close_effect_qa(
                  "visible_phases=1,2 hud_unchanged=yes "
                  "effect_slot=2 action_delay=90 attack_audio=none artifacts="
               << output.string() << '\n';
+    return 0;
+}
+
+int run_field_spell_effect_qa(
+    FieldSceneRuntime& field_scene,
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "Spell effect QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    for (std::filesystem::directory_iterator item(output, error), end;
+         !error && item != end; item.increment(error)) {
+        if (item->is_regular_file(error) &&
+            item->path().extension() == ".bmp") {
+            std::filesystem::remove(item->path(), error);
+        }
+    }
+    if (error) {
+        std::cerr << "Spell effect QA: cannot clear old captures: "
+                  << error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::uint16_t kScene = 1U;
+    auto scene_startup = startup_state;
+    scene_startup.restored_field_state.reset();
+    if (!field_scene.bootstrap_for_scene_dump(scene_startup, kScene) ||
+        field_scene.field_scene_reference_for_dump() != kScene ||
+        !field_scene.field_entity_visible_for_dump()) {
+        std::cerr << "Spell effect QA: Scene 1 bootstrap failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    // The ROM selector sum 1+1 resolves the Lone Star pair in Scene 1. This
+    // loads the real map and actor templates; the actor is moved beside the
+    // runner only to keep the renderer capture legible. The effect phases are
+    // injected through the dump-only setter, while the Lua CTest verifies the
+    // target-owned phase clock, delayed impact, and effect-slot release.
+    const auto actors_before = field_scene.default_actor_count_for_dump();
+    const auto spawned =
+        field_scene.resolve_and_spawn_field_encounter_for_dump(
+            1U, 1U, 0x1234U);
+    const auto expected_mage_index = actors_before + 1U;
+    const auto mage_profile =
+        field_scene.default_actor_script_profile_for_dump(
+            static_cast<std::uint16_t>(expected_mage_index));
+    const auto runner = field_scene.field_entity_world_position();
+    const auto mage_near_runner_x =
+        static_cast<std::uint16_t>(runner.x + 0x0200U);
+    if (spawned != 2U ||
+        field_scene.default_actor_count_for_dump() != actors_before + 2U ||
+        mage_profile !=
+            std::optional<std::string>{"lonemage_k0a_spell01"} ||
+        !field_scene.set_default_actor_world_position_for_dump(
+            expected_mage_index, mage_near_runner_x, runner.y)) {
+        std::cerr << "Spell effect QA: Scene 1 ROM actor sequence did not load"
+                  << " spawned=" << spawned << " actors=" << actors_before
+                  << "->" << field_scene.default_actor_count_for_dump()
+                  << " mage=" << mage_profile.value_or("<missing>")
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto save = [&output](const std::filesystem::path& path,
+                                const QImage& image) {
+        return image.save(QString::fromStdWString((output / path).wstring()));
+    };
+    const auto before_effect = render();
+    if (!save("before-effect.bmp", before_effect) ||
+        !field_hud_chrome_survives(before_effect, asset_root)) {
+        std::cerr << "Spell effect QA: baseline field image is invalid\n";
+        return 3;
+    }
+
+    struct EffectCapture {
+        std::uint8_t action_code;
+        std::uint8_t phase_count;
+        std::string_view name;
+    };
+    constexpr std::array<EffectCapture, 4> effects{{
+        {1U, 4U, "flame-dart"},
+        {2U, 6U, "flame-bolt"},
+        {5U, 9U, "sleep"},
+        {9U, 6U, "mana-blast"},
+    }};
+    bool all_phases_saved = true;
+    bool hud_unchanged = true;
+    bool full_screen_layers_clean = true;
+    bool effect_frames_differ = true;
+    std::size_t phase_one_changed_pixels = 0U;
+    for (const auto& effect : effects) {
+        const auto effect_directory = output / effect.name;
+        std::filesystem::create_directories(effect_directory, error);
+        if (error) {
+            std::cerr << "Spell effect QA: cannot create phase directory: "
+                      << error.message() << '\n';
+            return 3;
+        }
+        QImage first_phase;
+        bool profile_phases_change_the_frame = false;
+        for (std::uint8_t phase = 0U; phase < effect.phase_count; ++phase) {
+            if (!field_scene.set_field_spell_effect_for_dump(
+                    effect.action_code, phase, true)) {
+                std::cerr << "Spell effect QA: rejected source phase code="
+                          << static_cast<unsigned>(effect.action_code)
+                          << " phase=" << static_cast<unsigned>(phase)
+                          << '\n';
+                return 3;
+            }
+            const auto image = render();
+            const auto filename = effect_directory /
+                ("phase-" + std::to_string(phase) + ".bmp");
+            all_phases_saved = save(filename, image) && all_phases_saved;
+            if (effect.action_code == 1U && phase == 1U) {
+                all_phases_saved = save("actual.bmp", image) &&
+                                   all_phases_saved;
+            }
+
+            std::size_t changed_pixels = 0U;
+            int min_x = kSceneWidth;
+            int min_y = kSceneHeight;
+            int max_x = -1;
+            int max_y = -1;
+            for (int y = 0; y < kSceneHeight; ++y) {
+                for (int x = 0; x < kSceneWidth; ++x) {
+                    if (image.pixel(x, y) == before_effect.pixel(x, y)) {
+                        continue;
+                    }
+                    ++changed_pixels;
+                    min_x = std::min(min_x, x);
+                    min_y = std::min(min_y, y);
+                    max_x = std::max(max_x, x);
+                    max_y = std::max(max_y, y);
+                }
+            }
+            effect_frames_differ = effect_frames_differ &&
+                changed_pixels > 0U && changed_pixels < 900U &&
+                min_x >= 0 && max_x < 272 && min_y >= 0 &&
+                max_y < kSceneHeight;
+            if (phase == 0U) {
+                first_phase = image;
+            } else if (image != first_phase) {
+                profile_phases_change_the_frame = true;
+            }
+            if (effect.action_code == 1U && phase == 1U) {
+                phase_one_changed_pixels = changed_pixels;
+            }
+            hud_unchanged = hud_unchanged &&
+                image.copy(272, 0, 48, kSceneHeight) ==
+                    before_effect.copy(272, 0, 48, kSceneHeight);
+            full_screen_layers_clean = full_screen_layers_clean &&
+                field_hud_chrome_survives(image, asset_root);
+        }
+        effect_frames_differ = effect_frames_differ &&
+            profile_phases_change_the_frame;
+    }
+    field_scene.set_field_spell_effect_for_dump(0U, 0U, false);
+
+    const QImage actual_image(QString::fromStdWString(
+        (output / "actual.bmp").wstring()));
+    if (!all_phases_saved || !hud_unchanged || !full_screen_layers_clean ||
+        !effect_frames_differ || phase_one_changed_pixels == 0U ||
+        actual_image.isNull() || actual_image.size() !=
+            QSize(kSceneWidth, kSceneHeight)) {
+        std::cerr << "Spell effect QA: scene composite failed"
+                  << " all_phases_saved=" << all_phases_saved
+                  << " hud_unchanged=" << hud_unchanged
+                  << " layers_clean=" << full_screen_layers_clean
+                  << " phase_pixels=" << phase_one_changed_pixels
+                  << " phase_frames_valid=" << effect_frames_differ
+                  << " actual=" << !actual_image.isNull() << '\n';
+        return 3;
+    }
+
+    std::cout << "field_spell_effect_qa=passed scene=" << kScene
+              << " encounter=lonemage_k0a_spell01 profiles=4 phases=25 "
+                 "hud_unchanged=yes alpha_overlay_bounded=yes "
+                 "actual.bmp=" << output.string() << '\n';
     return 0;
 }
 
@@ -18512,6 +18709,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_hound_close_effect_qa_path;
         std::optional<std::filesystem::path>
+            field_spell_effect_qa_path;
+        std::optional<std::filesystem::path>
             field_redmond_vigore_search_qa_path;
         std::optional<std::filesystem::path>
             field_jump_house_entry_qa_path;
@@ -18612,6 +18811,7 @@ int main(int argc, char** argv) {
                        " [--field-world-activity-qa <output-dir>]"
                        " [--field-random-encounter-spawn-qa <output-dir>]"
                        " [--field-hound-close-effect-qa <output-dir>]"
+                       " [--field-spell-effect-qa <output-dir>]"
                        " [--field-redmond-vigore-search-qa <output-dir>]"
                        " [--field-jump-house-entry-qa <output-dir>]"
                        " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
@@ -18708,6 +18908,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_hound_close_effect_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-spell-effect-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_spell_effect_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -19445,6 +19651,11 @@ int main(int argc, char** argv) {
                     field_scene, smoke_state, asset_root,
                     *field_hound_close_effect_qa_path,
                     field_audio_events, field_source_boundaries);
+            }
+            if (field_spell_effect_qa_path.has_value()) {
+                return run_field_spell_effect_qa(
+                    field_scene, smoke_state, asset_root,
+                    *field_spell_effect_qa_path);
             }
             if (field_random_encounter_spawn_qa_path.has_value()) {
                 return run_field_random_encounter_spawn_qa(

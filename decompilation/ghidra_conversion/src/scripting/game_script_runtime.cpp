@@ -3162,6 +3162,12 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "movement_heading_override");
     lua_pushboolean(state, context.dynamic_world_encounter_actor);
     lua_setfield(state, -2, "dynamic_world_encounter_actor");
+    if (context.source_record_slot.has_value()) {
+        lua_pushinteger(state, *context.source_record_slot);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "source_record_slot");
     lua_pushinteger(state, context.source_record_flags);
     lua_setfield(state, -2, "source_record_flags");
     if (context.source_actor_posture.has_value()) {
@@ -3262,6 +3268,11 @@ GameScriptRuntime::actor_heartbeat(
         set_integer("item18_base", combatant.item18_base);
         set_integer("auxiliary_roll_bonus",
                     combatant.auxiliary_roll_bonus);
+        // The same +0x9D byte acts as the caster's force in 0x10660 and
+        // 0x55B78. Keep the equipment-facing legacy name available while
+        // exposing its spell meaning directly to Lua.
+        set_integer("force", combatant.auxiliary_roll_bonus);
+        set_integer("action_result", combatant.action_result);
         set_integer("roll_count_cap",
                     combatant.action_phase_extension.back());
         set_integer("armor_index", combatant.armor_index);
@@ -3719,6 +3730,39 @@ GameScriptRuntime::actor_heartbeat(
                             decision.target_motion_effect_slot_released)) {
         return fail("actor_ai.heartbeat returned an invalid creature slot release");
     }
+    if (!read_field_boolean(state, decision_table, "spell_effect_visible",
+                            decision.spell_effect_visible)) {
+        return fail("actor_ai.heartbeat returned invalid spell effect visibility");
+    }
+    std::uint32_t spell_effect_phase_value = 0U;
+    if (!read_field_integer(state, decision_table, "spell_effect_phase", 9U,
+                            spell_effect_phase_value)) {
+        return fail("actor_ai.heartbeat returned an invalid spell effect phase");
+    }
+    decision.spell_effect_phase =
+        static_cast<std::uint8_t>(spell_effect_phase_value);
+    std::uint32_t spell_effect_action_code = 0U;
+    if (!read_field_integer(state, decision_table,
+                            "spell_effect_action_code", 13U,
+                            spell_effect_action_code)) {
+        return fail("actor_ai.heartbeat returned an invalid spell effect action code");
+    }
+    decision.spell_effect_action_code =
+        static_cast<std::uint8_t>(spell_effect_action_code);
+    std::optional<std::uint32_t> released_spell_slot;
+    if (!read_optional_field_u32(state, decision_table,
+                                 "spell_effect_slot_released", 17U,
+                                 released_spell_slot)) {
+        return fail("actor_ai.heartbeat returned an invalid spell effect slot release");
+    }
+    if (released_spell_slot.has_value()) {
+        if (context.phase != ScriptActorHeartbeatPhase::render ||
+            !context.source_record_slot.has_value()) {
+            return fail("actor_ai.heartbeat released a spell effect outside its render pass");
+        }
+        decision.spell_effect_slot_released =
+            static_cast<std::uint8_t>(*released_spell_slot);
+    }
     const bool hound_encounter = context.dynamic_world_encounter_actor &&
         context.entity_kind == 12U &&
         context.profile_id == "hell_hound_k0c_none00";
@@ -3742,6 +3786,40 @@ GameScriptRuntime::actor_heartbeat(
           decision.target_motion_effect_visible ||
           decision.target_motion_effect_phase != 4U))) {
         return fail("actor_ai.heartbeat returned an inconsistent creature effect state");
+    }
+    const auto spell_phase_count = [](const std::uint8_t action_code) {
+        switch (action_code) {
+        case 1U:
+            return std::uint8_t{4U};
+        case 2U:
+        case 9U:
+            return std::uint8_t{6U};
+        case 5U:
+            return std::uint8_t{9U};
+        default:
+            return std::uint8_t{0U};
+        }
+    };
+    const bool spell_effect_reported = decision.spell_effect_visible ||
+        decision.spell_effect_slot_released.has_value();
+    const bool spell_effect_target_context =
+        context.phase == ScriptActorHeartbeatPhase::render &&
+        context.source_record_slot.has_value() && context.combatant.has_value() &&
+        (context.dynamic_world_encounter_actor ||
+         context.profile_id == "field_runner_k03_none00");
+    const auto expected_spell_phases =
+        spell_phase_count(decision.spell_effect_action_code);
+    if ((spell_effect_reported &&
+         (!spell_effect_target_context || expected_spell_phases == 0U)) ||
+        (!spell_effect_reported &&
+         decision.spell_effect_action_code != 0U) ||
+        (decision.spell_effect_visible &&
+         (decision.spell_effect_phase >= expected_spell_phases ||
+          decision.spell_effect_slot_released.has_value())) ||
+        (decision.spell_effect_slot_released.has_value() &&
+         (decision.spell_effect_visible ||
+          decision.spell_effect_phase != expected_spell_phases))) {
+        return fail("actor_ai.heartbeat returned an inconsistent spell effect state");
     }
     if ((!decision.target_marker_visible &&
          (decision.target_marker_animating ||
@@ -3894,6 +3972,411 @@ GameScriptRuntime::actor_heartbeat(
         decision.combat_meter_update = std::move(update);
     }
     lua_pop(state, 1);
+    lua_getfield(state, decision_table, "spell_action_resolution");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        if (!lua_istable(state, -1)) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid spell action resolution");
+        }
+        const auto resolution_table = lua_absindex(state, -1);
+        ScriptActorSpellActionResolution resolution{};
+        std::uint32_t resolution_value = 0U;
+        int signed_resolution_value = 0;
+        if (!read_field_integer(state, resolution_table, "action_code",
+                                0xFFU, resolution_value) ||
+            !read_field_string(state, resolution_table, "target_id",
+                               resolution.target_id) ||
+            !read_field_integer(state, resolution_table,
+                                "source_record_slot", 0xFFU,
+                                resolution_value)) {
+            return fail(
+                "actor_ai.heartbeat returned incomplete spell target facts");
+        }
+        resolution.target_record_slot =
+            static_cast<std::uint8_t>(resolution_value);
+        std::uint32_t action_code = 0U;
+        if (!read_field_integer(state, resolution_table, "action_code",
+                                0xFFU, action_code) ||
+            !read_field_integer(state, resolution_table, "record_type",
+                                0xFFFFU, resolution_value)) {
+            return fail(
+                "actor_ai.heartbeat returned incomplete spell source facts");
+        }
+        resolution.action_code = static_cast<std::uint8_t>(action_code);
+        resolution.target_record_type =
+            static_cast<std::uint16_t>(resolution_value);
+        if (!read_field_integer(state, resolution_table, "action_result",
+                                0xFFU, resolution_value) ||
+            !read_field_boolean(state, resolution_table, "roll_attempted",
+                                resolution.roll_attempted) ||
+            !read_field_string(state, resolution_table, "outcome",
+                               resolution.outcome) ||
+            !read_field_boolean(state, resolution_table, "effect_requested",
+                                resolution.effect_requested) ||
+            !read_field_boolean(state, resolution_table, "effect_started",
+                                resolution.effect_started) ||
+            !read_field_signed_integer(state, resolution_table,
+                                       "residual_effect", -0x8000, 0x7FFF,
+                                       signed_resolution_value)) {
+            return fail(
+                "actor_ai.heartbeat returned incomplete spell result facts");
+        }
+        resolution.action_result =
+            static_cast<std::uint8_t>(resolution_value);
+        resolution.residual_effect =
+            static_cast<std::int16_t>(signed_resolution_value);
+        if (!read_field_integer(state, resolution_table,
+                                "behavior_meter_delta", 0xFFU,
+                                resolution_value)) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid spell meter delta");
+        }
+        resolution.behavior_meter_delta =
+            static_cast<std::uint8_t>(resolution_value);
+        if (!read_field_boolean(state, resolution_table, "inventory_changed",
+                                resolution.inventory_changed) ||
+            !read_field_boolean(state, resolution_table,
+                                "special_result_published",
+                                resolution.special_result_published) ||
+            !read_field_integer(state, resolution_table,
+                                "special_result_successes", 0xFFU,
+                                resolution_value)) {
+            return fail(
+                "actor_ai.heartbeat returned invalid spell side effects");
+        }
+        resolution.special_result_successes =
+            static_cast<std::uint8_t>(resolution_value);
+        if (!read_field_integer(state, resolution_table,
+                                "special_result_bonus", 0xFFU,
+                                resolution_value)) {
+            return fail(
+                "actor_ai.heartbeat returned invalid spell side effects");
+        }
+        resolution.special_result_bonus =
+            static_cast<std::uint8_t>(resolution_value);
+
+        const auto read_optional_byte = [&](const char* field,
+                                            std::optional<std::uint8_t>& value) {
+            lua_getfield(state, resolution_table, field);
+            if (lua_type(state, -1) == LUA_TNIL) {
+                lua_pop(state, 1);
+                value.reset();
+                return true;
+            }
+            std::uint32_t parsed = 0U;
+            const bool valid = read_integer(state, -1, 0xFFU, parsed);
+            lua_pop(state, 1);
+            if (valid) {
+                value = static_cast<std::uint8_t>(parsed);
+            }
+            return valid;
+        };
+        if (!read_optional_byte("initial_trial_count",
+                                resolution.initial_trial_count) ||
+            !read_optional_byte("difficulty", resolution.difficulty) ||
+            !read_optional_byte("spell_effect_slot",
+                                resolution.spell_effect_slot)) {
+            return fail(
+                "actor_ai.heartbeat returned invalid spell roll facts");
+        }
+        lua_getfield(state, resolution_table, "next_action_kind");
+        if (lua_type(state, -1) != LUA_TNIL) {
+            std::string next_action_kind;
+            if (!read_string(state, -1, next_action_kind)) {
+                return fail(
+                    "actor_ai.heartbeat returned an invalid next spell action");
+            }
+            if (next_action_kind == "none") {
+                resolution.next_action_kind = ScriptActorActionKind::none;
+            } else if (next_action_kind == "item") {
+                resolution.next_action_kind = ScriptActorActionKind::item;
+            } else {
+                return fail(
+                    "actor_ai.heartbeat returned an unsupported next spell action");
+            }
+        }
+        lua_pop(state, 1);
+        lua_getfield(state, resolution_table, "next_action_code");
+        if (lua_type(state, -1) != LUA_TNIL) {
+            std::uint32_t next_action_code = 0U;
+            if (!read_integer(state, -1, 0xFFU, next_action_code)) {
+                return fail(
+                    "actor_ai.heartbeat returned an invalid next action code");
+            }
+            resolution.next_action_code =
+                static_cast<std::uint8_t>(next_action_code);
+        }
+        lua_pop(state, 1);
+        std::string next_profile_id;
+        if (!read_optional_field_string(state, resolution_table,
+                                        "next_profile_id",
+                                        next_profile_id)) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid next actor profile");
+        }
+        if (!next_profile_id.empty()) {
+            if (!valid_identifier(next_profile_id)) {
+                return fail(
+                    "actor_ai.heartbeat returned an invalid next actor profile");
+            }
+            resolution.next_profile_id = std::move(next_profile_id);
+        }
+
+        lua_getfield(state, resolution_table, "combatant");
+        if (!lua_istable(state, -1)) {
+            return fail(
+                "actor_ai.heartbeat omitted the updated spell caster state");
+        }
+        const auto updated_combatant_table = lua_absindex(state, -1);
+        if (!read_field_integer(state, updated_combatant_table,
+                                "action_result", 0xFFU, resolution_value)) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid spell action result");
+        }
+        const auto returned_action_result =
+            static_cast<std::uint8_t>(resolution_value);
+        if ((resolution.roll_attempted &&
+             returned_action_result != resolution.action_result) ||
+            !read_field_integer(state, updated_combatant_table,
+                                "mental_meter", 0xFFU, resolution_value)) {
+            return fail(
+                "actor_ai.heartbeat returned inconsistent spell caster state");
+        }
+        resolution.mental_meter =
+            static_cast<std::uint8_t>(resolution_value);
+        const auto read_byte_array = [&](const char* field,
+                                         auto& values) {
+            lua_getfield(state, updated_combatant_table, field);
+            if (!lua_istable(state, -1) ||
+                lua_rawlen(state, -1) != values.size()) {
+                lua_pop(state, 1);
+                return false;
+            }
+            const auto array_table = lua_absindex(state, -1);
+            for (std::size_t index = 0U; index < values.size(); ++index) {
+                lua_rawgeti(state, array_table,
+                            static_cast<lua_Integer>(index + 1U));
+                std::uint32_t value = 0U;
+                const bool valid = read_integer(state, -1, 0xFFU, value);
+                lua_pop(state, 1);
+                if (!valid) {
+                    lua_pop(state, 1);
+                    return false;
+                }
+                values[index] = static_cast<std::uint8_t>(value);
+            }
+            lua_pop(state, 1);
+            return true;
+        };
+        if (!read_byte_array("item_codes", resolution.item_codes) ||
+            !read_byte_array("item_phases", resolution.item_phases)) {
+            return fail(
+                "actor_ai.heartbeat returned invalid spell inventory state");
+        }
+        lua_pop(state, 1);
+
+        static const std::array<std::string_view, 8> spell_outcomes{
+            "target_state_gate", "roll_failed", "source_data_unavailable",
+            "profile_data_unavailable", "random_service_unavailable",
+            "effect_dispatched", "effect_residual_empty", "fetish_consumed"};
+        const bool known_outcome =
+            std::find(spell_outcomes.begin(), spell_outcomes.end(),
+                      resolution.outcome) != spell_outcomes.end() ||
+            resolution.outcome == "fetish_exhausted";
+        const bool effect_outcome =
+            resolution.outcome == "effect_dispatched" ||
+            resolution.outcome == "effect_residual_empty" ||
+            resolution.outcome == "fetish_consumed" ||
+            resolution.outcome == "fetish_exhausted";
+        const auto target = std::find_if(
+            context.ai_target_candidates.begin(),
+            context.ai_target_candidates.end(),
+            [&resolution](const auto& candidate) {
+                return candidate.id == resolution.target_id &&
+                       candidate.source_record_slot.has_value() &&
+                       *candidate.source_record_slot ==
+                           resolution.target_record_slot &&
+                       candidate.combatant.has_value() &&
+                       candidate.combatant->record_type ==
+                           resolution.target_record_type;
+            });
+        const bool linked_target =
+            target != context.ai_target_candidates.end() &&
+            context.dynamic_world_encounter_actor &&
+            context.phase == ScriptActorHeartbeatPhase::behavior &&
+            target->world_activity_actor !=
+                (resolution.target_record_type < 3U) &&
+            ((resolution.target_record_type < 3U &&
+              resolution.target_record_slot < 3U) ||
+             (resolution.target_record_type >= 3U &&
+              resolution.target_record_slot >= 3U));
+        if (!known_outcome || action_code != context.action_code ||
+            !context.combatant.has_value() || !linked_target ||
+            resolution.action_code != context.action_code ||
+            resolution.effect_requested != effect_outcome ||
+            (resolution.effect_started &&
+             (!resolution.effect_requested ||
+              !resolution.spell_effect_slot.has_value())) ||
+            (resolution.spell_effect_slot.has_value() !=
+             resolution.effect_started) ||
+            (resolution.effect_started &&
+             (*resolution.spell_effect_slot >=
+                  context.world_effect_slot_occupancy.size() ||
+              context.world_effect_slot_occupancy[
+                  *resolution.spell_effect_slot])) ||
+            (resolution.roll_attempted &&
+             ((resolution.action_result > 0U) !=
+              resolution.effect_requested)) ||
+            (!resolution.roll_attempted &&
+             (resolution.action_result != 0U ||
+              resolution.effect_requested)) ||
+            (resolution.behavior_meter_delta != 0U &&
+             resolution.behavior_meter_delta != 1U) ||
+            (resolution.inventory_changed && !resolution.effect_requested) ||
+            (resolution.next_action_kind.has_value() !=
+             resolution.next_action_code.has_value()) ||
+            (resolution.next_action_kind.has_value() !=
+             resolution.next_profile_id.has_value()) ||
+            (resolution.next_action_kind.has_value() &&
+             ((resolution.next_action_kind == ScriptActorActionKind::none) !=
+              (*resolution.next_action_code == 0U))) ||
+            (resolution.next_action_kind.has_value() &&
+             resolution.outcome != "target_state_gate") ||
+            (resolution.special_result_published &&
+             (resolution.action_code != 6U &&
+              resolution.action_code != 13U))) {
+            return fail(
+                "actor_ai.heartbeat returned an inconsistent spell action resolution");
+        }
+        decision.spell_action_resolution = std::move(resolution);
+    }
+    lua_pop(state, 1);
+
+    lua_getfield(state, decision_table, "spell_effect_resolution");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        if (!lua_istable(state, -1)) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid spell effect resolution");
+        }
+        const auto resolution_table = lua_absindex(state, -1);
+        ScriptActorSpellEffectResolution resolution{};
+        std::uint32_t value = 0U;
+        int signed_value = 0;
+        if (!read_field_integer(state, resolution_table, "action_code",
+                                0xFFU, value)) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid spell effect action");
+        }
+        resolution.action_code = static_cast<std::uint8_t>(value);
+        if (!read_field_string(state, resolution_table, "target_id",
+                               resolution.target_id) ||
+            !read_field_integer(state, resolution_table,
+                                "source_record_slot", 0xFFU, value)) {
+            return fail(
+                "actor_ai.heartbeat returned incomplete spell effect target facts");
+        }
+        resolution.target_record_slot = static_cast<std::uint8_t>(value);
+        if (!read_field_integer(state, resolution_table, "record_type",
+                                0xFFFFU, value)) {
+            return fail(
+                "actor_ai.heartbeat returned incomplete spell effect target facts");
+        }
+        resolution.target_record_type = static_cast<std::uint16_t>(value);
+        if (!read_field_integer(state, resolution_table, "target_trial_count",
+                                0xFFU, value)) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid spell target roll count");
+        }
+        resolution.target_trial_count = static_cast<std::uint8_t>(value);
+        if (!read_field_integer(state, resolution_table, "difficulty",
+                                0xFFU, value)) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid spell target difficulty");
+        }
+        resolution.difficulty = static_cast<std::uint8_t>(value);
+        if (!read_field_integer(state, resolution_table,
+                                "target_roll_successes", 0xFFU, value)) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid spell target result");
+        }
+        resolution.target_roll_successes = static_cast<std::uint8_t>(value);
+        if (!read_field_signed_integer(state, resolution_table, "effect_value",
+                                       -128, 127, signed_value) ||
+            !read_field_string(state, resolution_table, "outcome",
+                               resolution.outcome) ||
+            !read_field_boolean(state, resolution_table, "physical",
+                                resolution.physical) ||
+            !read_field_integer(state, resolution_table, "physical_meter",
+                                0xFFU, value)) {
+            return fail(
+                "actor_ai.heartbeat returned incomplete spell effect results");
+        }
+        resolution.effect_value = static_cast<std::int16_t>(signed_value);
+        resolution.physical_meter = static_cast<std::uint8_t>(value);
+        if (!read_field_integer(state, resolution_table, "mental_meter",
+                                0xFFU, value) ||
+            !read_field_boolean(state, resolution_table, "changed",
+                                resolution.changed)) {
+            return fail(
+                "actor_ai.heartbeat returned incomplete spell effect meters");
+        }
+        resolution.mental_meter = static_cast<std::uint8_t>(value);
+
+        const bool target_context_matches = context.combatant.has_value() &&
+            context.instance_id == resolution.target_id &&
+            context.source_record_slot.has_value() &&
+            *context.source_record_slot == resolution.target_record_slot &&
+            context.combatant->record_type == resolution.target_record_type &&
+            (context.dynamic_world_encounter_actor !=
+             (resolution.target_record_type < 3U)) &&
+            ((resolution.target_record_type < 3U &&
+              resolution.target_record_slot < 3U) ||
+             (resolution.target_record_type >= 3U &&
+              resolution.target_record_slot >= 3U &&
+              resolution.target_record_slot <= 9U));
+        const bool linked_target = target_context_matches &&
+            spell_effect_target_context &&
+            decision.spell_effect_action_code == resolution.action_code;
+        const bool meters_changed = target_context_matches &&
+            (resolution.physical_meter !=
+                 context.combatant->physical_meter ||
+             resolution.mental_meter != context.combatant->mental_meter);
+        static constexpr std::array<std::string_view, 5> kSpellEffectOutcomes{
+            "source_special_target_path", "random_service_unavailable",
+            "target_resisted", "effect_applied", "effect_no_change"};
+        const bool known_outcome =
+            std::find(kSpellEffectOutcomes.begin(), kSpellEffectOutcomes.end(),
+                      resolution.outcome) != kSpellEffectOutcomes.end();
+        if (!known_outcome || !linked_target ||
+            resolution.physical != (resolution.action_code != 5U) ||
+            resolution.effect_value < 0 || resolution.effect_value > 10 ||
+            meters_changed != resolution.changed ||
+            (resolution.outcome == "effect_applied" &&
+             (!resolution.changed || resolution.effect_value == 0)) ||
+            (resolution.outcome == "effect_no_change" &&
+             (resolution.changed || resolution.effect_value == 0)) ||
+            ((resolution.outcome == "target_resisted" ||
+              resolution.outcome == "source_special_target_path" ||
+              resolution.outcome == "random_service_unavailable") &&
+             (resolution.changed || resolution.effect_value != 0))) {
+            return fail(
+                "actor_ai.heartbeat returned an inconsistent spell effect result");
+        }
+        decision.spell_effect_resolution = resolution;
+        if (resolution.changed) {
+            ScriptCombatMeterUpdate update{};
+            update.target_id = resolution.target_id;
+            update.source_record_slot = resolution.target_record_slot;
+            update.record_type = resolution.target_record_type;
+            update.physical_meter = resolution.physical_meter;
+            update.mental_meter = resolution.mental_meter;
+            update.physical = resolution.physical;
+            update.changed = true;
+            decision.combat_meter_update = std::move(update);
+        }
+    }
+    lua_pop(state, 1);
+
     lua_getfield(state, decision_table, "animation_accumulator");
     if (!lua_isinteger(state, -1)) {
         return fail(
@@ -4444,25 +4927,51 @@ GameScriptRuntime::actor_heartbeat(
                (selector & 0x0003U) == 0U;
     };
     const bool spell_pose = decision.animation_id == "spell";
+    static constexpr std::array<std::uint16_t, 14> kSpellActionAudioEvents{
+        0U, 0x0032U, 0x0034U, 0x0034U, 0x0031U, 0x0037U, 0x0038U,
+        0U, 0x0033U, 0x0035U, 0x0035U, 0x0039U, 0x003AU, 0x0036U};
+    bool spell_action_audio_matches = false;
+    if (decision.spell_action_resolution.has_value()) {
+        const auto& resolution = *decision.spell_action_resolution;
+        const auto expected_audio =
+            resolution.action_code < kSpellActionAudioEvents.size()
+                ? kSpellActionAudioEvents[resolution.action_code]
+                : 0U;
+        spell_action_audio_matches =
+            (!resolution.effect_started && !decision.audio_event.has_value()) ||
+            (resolution.effect_started &&
+             ((expected_audio == 0U && !decision.audio_event.has_value()) ||
+             (expected_audio != 0U && decision.audio_event.has_value() &&
+              *decision.audio_event == expected_audio)));
+    }
     if (spell_pose &&
         (!context.dynamic_world_encounter_actor ||
          context.action_kind != ScriptActorActionKind::spell ||
          decision.animation_frame != 0U ||
          !decision.animation_selector.has_value() ||
          !spell_pose_selector(*decision.animation_selector) ||
-         decision.audio_event.has_value() ||
          decision.target_heading_audio_event.has_value() ||
-         decision.combat_meter_update.has_value() ||
+         (decision.combat_meter_update.has_value() &&
+          !decision.spell_effect_resolution.has_value()) ||
          decision.combat_action_requested ||
          decision.ai_target_engaged ||
          decision.movement_step.has_value() ||
-         decision.movement_heading.has_value())) {
+         decision.movement_heading.has_value() ||
+         (decision.spell_action_resolution.has_value() &&
+          !spell_action_audio_matches))) {
         return fail("actor_ai.heartbeat returned an unsupported spell pose");
     }
     if (decision.source_action_dispatch.has_value() &&
         *decision.source_action_dispatch == "spell" &&
         (!spell_pose || decision.action_delay < 0x0F)) {
         return fail("actor_ai.heartbeat returned an unsupported spell dispatch");
+    }
+    if (decision.spell_action_resolution.has_value() &&
+        (!spell_pose || !decision.source_action_dispatch.has_value() ||
+         *decision.source_action_dispatch != "spell" ||
+         !spell_action_audio_matches)) {
+        return fail(
+            "actor_ai.heartbeat returned a spell result outside its cast dispatch");
     }
     if (decision.source_action_dispatch.has_value() &&
         (*decision.source_action_dispatch == "item_effect" ||
@@ -4493,9 +5002,12 @@ GameScriptRuntime::actor_heartbeat(
           *decision.audio_event == *context.hurt_audio_event) ||
          (context.down_audio_event.has_value() &&
           *decision.audio_event == *context.down_audio_event));
+    const bool spell_action_audio =
+        spell_pose && decision.spell_action_resolution.has_value() &&
+        spell_action_audio_matches;
     if (((begins_entry != decision.audio_event.has_value()) &&
          !projectile_behavior && !begins_dynamic_target_action &&
-         !dynamic_hit_reaction_audio) ||
+         !dynamic_hit_reaction_audio && !spell_action_audio) ||
         (begins_dynamic_target_action !=
          decision.target_heading_audio_event.has_value()) ||
         (decision.animation_id == "action" &&

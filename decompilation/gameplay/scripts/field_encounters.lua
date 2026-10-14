@@ -144,6 +144,7 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
                     race_or_state = row.combat_race_or_state,
                     class_code = row.combat_class_code,
                     equipped_action_code = row.action_code,
+                    action_result = 0,
                     action_profile_modifier_flags =
                         row.combat_modifier_flags_df,
                     linked_action_profile_index =

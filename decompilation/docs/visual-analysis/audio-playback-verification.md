@@ -3,7 +3,8 @@
 ## Scope
 
 This review covers the shared audio service for source events `0x16`, `0x1E`,
-`0x24`, `0x25`, `0x4A`, `0x4B`, `0x5C`, and `0x5D`. Events `0x5C` and `0x5D`
+`0x24`, `0x25`, `0x32`, `0x34`, `0x35`, `0x37`, `0x4A`, `0x4B`, `0x5C`, and
+`0x5D`. Events `0x5C` and `0x5D`
 use ROM-cadenced composite sequence assets rather than the standalone
 one-start resource files. This does not cover every ROM sound call or the full
 lifecycle of background music and persistent event `0x30`.
@@ -42,6 +43,15 @@ lifecycle of background music and persistent event `0x30`.
   alternate state sends event `0x4A` / resource 74 (2.267 seconds). These
   durations come from their decoded FLAC sample counts; no independent
   longplay shot has yet confirmed either sound in context.
+- Spell effects reach the `0x4946` event table once after `0x15830` reserves
+  an effect slot. Its encounter action IDs are hexadecimal, while the named
+  table-2 resource filenames are decimal: `0x32` -> resource 50 (2.467 s),
+  `0x34` -> 52 (2.517 s), `0x37` -> 55 (2.820 s), and `0x35` -> 53
+  (2.434 s). These lengths are the extracted FLAC sample counts at 44.1 kHz.
+  Debug/Release audio QA checks the event-to-resource routes and live Qt
+  decoding/playback. The supplied longplay has not yet provided a confirmed
+  same-action spell sound, so these are host resource lengths, not a Genesis
+  hardware lifetime measurement.
 - The empty-ammo player action submits `0x4B` after the selected-action
   behavior gate and held-A input gate: ROM `0x14226` dispatches
   it before the delay/clip/meter update, then the successful `0xAAD2` return
@@ -97,9 +107,13 @@ The shared scene paths also passed Debug and Release Qt QA:
   emits full-frame images under `qt_runtime/field-shop-ares-qa/`.
 - `shadowrun_ghidra_conversion_qt_field_magic_spell_qa` exercises a menu path
   carrying event `0x24`.
+- `shadowrun_ghidra_conversion_qt_field_spell_effect_qa` exercises all four
+  source spell profiles in its field renderer capture; the sound route is
+  separately decoded by the audio playback test.
 - The audio playback test separately resolves and decodes the combat spawn
-  assets for events `0x1E` and `0x4A`; it does not establish that live Qt
-  combat reaches the spawn service.
+  assets for events `0x1E` and `0x4A` and spell assets for events `0x32`,
+  `0x34`, `0x35`, and `0x37`; it does not establish that an independent
+  Genesis cast reaches the spell service.
 
 The shop frame inspected at
 `field-shop-ares-qa/shop-item/actual.bmp` remains a clean 320x224 page. The
@@ -145,8 +159,10 @@ they do not establish exact emulator frame timing.
    90-second ROM trace; loops for other background music remain open.
 5. **Does it have sound, and how long does it play?** The files, output route,
    start state, duration, and stop behavior are checked for the events listed
-   above. Spawn events `0x1E`/`0x4A` decode to 2.284/2.267-second one-shots;
-   their independent gameplay audio match is still missing. The boot path's
+   above. Spell events `0x32`/`0x34`/`0x35`/`0x37` decode to 2.467/2.517/
+   2.434/2.820-second one-shots; no matching independent gameplay audio was
+   identified. Spawn events `0x1E`/`0x4A` decode to 2.284/2.267-second one-
+   shots; their independent gameplay audio match is still missing. The boot path's
    `0x16` is a stop operation, while other callers can start resource 22 with
    `FF 10 16`. Release loopback matches the 60-start shock and 19-start reveal
    assets; independent 50 ms RMS envelopes match at Pearson 0.983 and 0.980

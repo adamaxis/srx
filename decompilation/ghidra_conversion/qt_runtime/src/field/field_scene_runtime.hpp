@@ -945,6 +945,9 @@ public:
     bool field_entity_visible_for_dump() const noexcept {
         return field_entity_.visible;
     }
+    bool set_field_spell_effect_for_dump(std::uint8_t action_code,
+                                         std::uint8_t phase,
+                                         bool visible) noexcept;
     std::uint16_t field_entity_screen_x_for_dump() const noexcept {
         return field_entity_.projection.screen_x;
     }
@@ -1033,7 +1036,8 @@ private:
     void advance_field_weapon_projectile_animations();
     void advance_field_weapon_projectiles();
     bool apply_script_combat_meter_update(
-        const scripting::ScriptCombatMeterUpdate& update);
+        const scripting::ScriptCombatMeterUpdate& update,
+        std::string_view boundary_prefix = "field.combat.weapon_hit");
     void service_player_weapon_action(bool requested_by_lua);
     void initialize_field_entity_selection_state();
     void refresh_field_runner_state_and_assets();
@@ -1191,6 +1195,9 @@ private:
         EntityProjectionState projection{};
         std::uint8_t direction = 0;
         bool visible = false;
+        bool spell_effect_visible = false;
+        std::uint8_t spell_effect_action_code = 0U;
+        std::uint8_t spell_effect_phase = 0U;
     };
 
     struct FieldWeaponProjectilePresentation {
@@ -1251,6 +1258,9 @@ private:
         std::uint8_t target_motion_effect_direction = 0;
         std::uint8_t target_motion_effect_phase = 0;
         std::int16_t action_delay = 0;
+        bool spell_effect_visible = false;
+        std::uint8_t spell_effect_action_code = 0U;
+        std::uint8_t spell_effect_phase = 0U;
         bool ai_target_valid = false;
         std::uint16_t ai_target_heading = 0;
         std::uint16_t ai_target_distance = 0;
@@ -1286,6 +1296,9 @@ private:
         std::array<QImage, 8> idle_images{};
         std::array<int, 8> idle_origin_x{};
         std::array<int, 8> idle_origin_y{};
+        std::array<QImage, 8> spell_images{};
+        std::array<int, 8> spell_origin_x{};
+        std::array<int, 8> spell_origin_y{};
         std::array<std::array<QImage, 8>, 8> entry_images{};
         std::array<std::array<int, 8>, 8> entry_origin_x{};
         std::array<std::array<int, 8>, 8> entry_origin_y{};
@@ -1317,6 +1330,12 @@ private:
         std::array<int, 4> origin_y{};
     };
 
+    struct SpellEffectArtwork {
+        std::array<QImage, 9> images{};
+        std::array<int, 9> origin_x{};
+        std::array<int, 9> origin_y{};
+    };
+
     // Resource-activity scenes are temporary field excursions. Preserve the
     // active typed scene and runner presentation so source 0x2F32 can rebuild
     // that scene on return without looking for an event table on the resource
@@ -1333,6 +1352,7 @@ private:
         WorldActivityState activity_state{};
         WorldActivityTimeoutState activity_timeout{};
         std::array<bool, 18> world_effect_slots_occupied{};
+        std::array<std::string, 18> spell_effect_slot_target_ids{};
         EntityServiceTargetOwner entity_target_owner{};
         std::vector<EntityServiceTargetRecord> entity_target_records;
         EntityAnimationState player_animation{};
@@ -1540,8 +1560,11 @@ private:
         field_target_marker_images_by_scene_;
     std::vector<std::array<CreatureEffectArtwork, 8>>
         field_hound_close_attack_images_by_scene_;
+    std::vector<std::array<SpellEffectArtwork, 4>>
+        field_spell_effect_images_by_scene_;
     std::vector<DefaultFieldActorPresentation> field_default_actors_;
     std::array<bool, 18> field_world_effect_slots_occupied_{};
+    std::array<std::string, 18> field_spell_effect_slot_target_ids_{};
     EntityServiceTargetOwner field_entity_target_owner_{};
     std::vector<EntityServiceTargetRecord> field_entity_target_records_{16U};
     std::optional<scripting::ScriptFieldEncounterOutcome>

@@ -3,6 +3,7 @@
 -- drawing consumes each returned snapshot without advancing it again.
 local ActorAI = {}
 local states = game.actors
+local pending_spell_effects_by_actor = {}
 
 -- The directional weapon-effect records at ROM 0x630C use this descriptor
 -- cadence in their finite 0x8003/0x800B lists.
@@ -475,6 +476,16 @@ local function initial_state(context, profile)
         target_marker_radius = 0,
         target_marker_countdown = 0,
         action_delay = context.initial_action_delay or 0,
+        action_result = type(context.combatant) == "table"
+            and context.combatant.action_result or 0,
+        spell_action_resolution = nil,
+        spell_effect_pending = nil,
+        spell_effect_slot_released = nil,
+        spell_effect_resolution = nil,
+        spell_effect_visible = false,
+        spell_effect_phase = 0,
+        spell_effect_action_code = 0,
+        pending_source_action = nil,
         delay_primary_attribute = context.delay_primary_attribute or 0,
         delay_secondary_attribute = context.delay_secondary_attribute or 0,
         delay_capability_flags = context.delay_capability_flags or 0,
@@ -510,11 +521,33 @@ local function initial_state(context, profile)
     return state
 end
 
-local function same_actor(state, context)
-    return state.profile_id == context.profile_id and
-           state.entity_kind == context.entity_kind and
-           state.action_kind == context.action_kind and
-           state.action_code == context.action_code
+local function same_actor(state, context, profile)
+    if state.profile_id == context.profile_id and
+       state.entity_kind == context.entity_kind and
+       state.action_kind == context.action_kind and
+       state.action_code == context.action_code then
+        return true
+    end
+    local pending = state.pending_source_action
+    if type(pending) ~= "table" or
+       pending.profile_id ~= context.profile_id or
+       pending.action_kind ~= context.action_kind or
+       pending.action_code ~= context.action_code or
+       state.entity_kind ~= context.entity_kind then
+        return false
+    end
+    state.profile_id = context.profile_id
+    state.action_kind = context.action_kind
+    state.action_code = context.action_code
+    state.package_id = profile.package_id
+    state.weapon_item_id = profile.weapon_item_id
+    state.pending_source_action = nil
+    state.animation_id = "idle"
+    state.animation_selector = nil
+    state.animation_frame = 0
+    state.animation_accumulator = 0
+    state.animation_increment = 0
+    return true
 end
 
 local function snapshot(state, action, audio_event, projectile_movement,
@@ -555,6 +588,10 @@ local function snapshot(state, action, audio_event, projectile_movement,
         action_delay = state.action_delay,
         target_motion_effect_slot_request =
             state.target_motion_effect_slot_request,
+        spell_effect_slot_released = state.spell_effect_slot_released,
+        spell_effect_visible = state.spell_effect_visible,
+        spell_effect_phase = state.spell_effect_phase,
+        spell_effect_action_code = state.spell_effect_action_code,
         target_motion_effect_visible =
             state.target_motion_effect_visible,
         target_motion_effect_direction =
@@ -570,6 +607,8 @@ local function snapshot(state, action, audio_event, projectile_movement,
         selected_world_actor_id = state.target_selection_processed
             and state.selected_world_actor_id or nil,
         combat_meter_update = combat_meter_update,
+        spell_action_resolution = state.spell_action_resolution,
+        spell_effect_resolution = state.spell_effect_resolution,
         source_action_dispatch = state.source_action_dispatch,
         movement_step = state.movement_step,
         projectile_movement = projectile_movement,
@@ -1368,10 +1407,11 @@ local function classify_item_dispatch(state, context, target)
     return "item_gated"
 end
 
-local function begin_spell_cast(state, context, target)
+local function begin_spell_cast(state, context, target, resolution)
     -- 0xAE6E aims +0x2E at the link, then AF7C/AFAE install C082 and reload
-    -- +0xDC with mode 0. 0x1033E runs before that pose. This slice records
-    -- the entry; it does not roll dice or spawn the 0x15830 effect.
+    -- +0xDC with mode 0. A successful 0x1033E action has already reserved an
+    -- effect record through 0x15830; its 0x521E phase clock owns the delayed
+    -- target callback.
     local heading = target.heading & 0xffff
     local direction = direction_from_heading(heading)
     state.direction = direction
@@ -1389,6 +1429,107 @@ local function begin_spell_cast(state, context, target)
     state.movement_step = nil
     state.combat_meter_update = nil
     state.combat_action_requested = false
+    state.spell_effect_visible = false
+    state.spell_effect_phase = 0
+    state.spell_effect_action_code = 0
+    state.spell_effect_slot_released = nil
+    state.spell_effect_resolution = nil
+    if type(resolution) == "table" and resolution.effect_started == true and
+       type(resolution.spell_effect_slot) == "number" and
+       type(target.id) == "string" and
+       type(target.source_record_slot) == "number" then
+        local magic = game.modules.magic
+        local effect_profile = type(magic) == "table" and
+            type(magic.actor_effect_profile) == "function" and
+            magic.actor_effect_profile(context.action_code) or nil
+        if type(effect_profile) ~= "table" then
+            return
+        end
+        local pending = {
+            action_code = context.action_code,
+            action_result = resolution.action_result,
+            target_id = target.id,
+            source_record_slot = target.source_record_slot,
+            effect_slot = resolution.spell_effect_slot,
+            countdown = effect_profile.initial_countdown,
+            phase = 0,
+            phase_count = effect_profile.phase_count,
+            repeat_countdown = effect_profile.repeat_countdown,
+            caster_combatant = resolution.combatant,
+            ai_target_candidates = context.ai_target_candidates,
+            scene_id = context.movement_scene_id,
+        }
+        local target_state = states[target.id]
+        if type(target_state) == "table" then
+            target_state.spell_effect_pending = pending
+        else
+            pending_spell_effects_by_actor[target.id] = pending
+        end
+    end
+end
+
+local function advance_spell_effect(state, context)
+    state.spell_effect_slot_released = nil
+    state.spell_effect_resolution = nil
+    state.spell_effect_visible = false
+    state.spell_effect_phase = 0
+    state.spell_effect_action_code = 0
+    if context.phase ~= "render" or
+       type(state.spell_effect_pending) ~= "table" then
+        return
+    end
+
+    local pending = state.spell_effect_pending
+    if pending.scene_id ~= nil and
+       pending.scene_id ~= context.movement_scene_id then
+        state.spell_effect_pending = nil
+        return
+    end
+    if context.actor_id ~= pending.target_id then
+        return
+    end
+    state.spell_effect_action_code = pending.action_code
+    if context.source_record_slot ~= pending.source_record_slot then
+        state.spell_effect_phase = pending.phase_count
+        state.spell_effect_slot_released = pending.effect_slot
+        state.spell_effect_pending = nil
+        return
+    end
+    pending.countdown = pending.countdown - 1
+    if pending.countdown < 0 then
+        pending.countdown = pending.repeat_countdown
+        pending.phase = pending.phase + 1
+        state.spell_effect_phase = pending.phase
+        if pending.phase >= pending.phase_count then
+            local combat = game.modules.combat
+            if type(combat) == "table" and
+               type(combat.resolve_spell_impact) == "function" and
+               type(context.combatant) == "table" and
+               type(pending.caster_combatant) == "table" then
+                local effect_context = {
+                    combatant = pending.caster_combatant,
+                    ai_random_bound = context.ai_random_bound,
+                    ai_target_candidates =
+                        pending.ai_target_candidates,
+                    combat_meter_service_blocked =
+                        context.combat_meter_service_blocked,
+                }
+                local target = {
+                    id = context.actor_id,
+                    source_record_slot = context.source_record_slot,
+                    combatant = context.combatant,
+                }
+                state.spell_effect_resolution =
+                    combat.resolve_spell_impact(
+                        effect_context, pending, target)
+            end
+            state.spell_effect_slot_released = pending.effect_slot
+            state.spell_effect_pending = nil
+            return
+        end
+    end
+    state.spell_effect_visible = true
+    state.spell_effect_phase = pending.phase
 end
 
 local function begin_dynamic_target_action(state, context, target)
@@ -1923,8 +2064,12 @@ function ActorAI.heartbeat(context)
         if state == nil then
             return nil
         end
+        state.spell_effect_pending =
+            pending_spell_effects_by_actor[context.actor_id]
+        pending_spell_effects_by_actor[context.actor_id] = nil
         states[context.actor_id] = state
         advance_world_target_selection(state, context)
+        advance_spell_effect(state, context)
         if profile.projectile_animation then
             return projectile_heartbeat(state, context)
         end
@@ -1953,10 +2098,11 @@ function ActorAI.heartbeat(context)
         advance_target_marker(state, context)
         return snapshot(state, "hold", nil)
     end
-    if not same_actor(state, context) then
+    if not same_actor(state, context, profile) then
         return nil
     end
     state.source_action_dispatch = nil
+    state.spell_action_resolution = nil
     state.source_record_flags = context.source_record_flags or
                                 state.source_record_flags
     advance_source_action_delay(state, context)
@@ -1966,6 +2112,7 @@ function ActorAI.heartbeat(context)
     end
     advance_target_marker(state, context)
     advance_target_motion_effect(state, context)
+    advance_spell_effect(state, context)
 
     local reaction_audio_event
     if context.dynamic_world_encounter_actor then
@@ -2097,7 +2244,48 @@ function ActorAI.heartbeat(context)
                                 classify_spell_dispatch(
                                     state, context, target)
                             if state.source_action_dispatch == "spell" then
-                                begin_spell_cast(state, context, target)
+                                local spell_resolution
+                                local combat = game.modules.combat
+                                if type(combat) == "table" and
+                                   type(combat.resolve_spell_action) ==
+                                       "function" then
+                                    spell_resolution =
+                                        combat.resolve_spell_action(context,
+                                                                    target)
+                                    if spell_resolution ~= nil then
+                                        state.spell_action_resolution =
+                                            spell_resolution
+                                        state.action_result =
+                                            spell_resolution.action_result
+                                        if type(spell_resolution.next_action_kind) ==
+                                               "string" and
+                                           type(spell_resolution.next_action_code) ==
+                                               "number" and
+                                           type(spell_resolution.next_profile_id) ==
+                                               "string" then
+                                            state.pending_source_action = {
+                                                profile_id =
+                                                    spell_resolution.next_profile_id,
+                                                action_kind =
+                                                    spell_resolution.next_action_kind,
+                                                action_code =
+                                                    spell_resolution.next_action_code,
+                                            }
+                                        end
+                                        if type(spell_resolution.combatant) ==
+                                           "table" then
+                                            state.combatant =
+                                                spell_resolution.combatant
+                                        end
+                                        if type(spell_resolution.audio_event) ==
+                                           "number" then
+                                            audio_event =
+                                                spell_resolution.audio_event
+                                        end
+                                    end
+                                end
+                                begin_spell_cast(state, context, target,
+                                                 spell_resolution)
                             elseif state.animation_id ~= "spell" then
                                 local route_heading =
                                     source_motion_destination_heading(

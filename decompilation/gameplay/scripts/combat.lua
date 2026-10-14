@@ -8,6 +8,11 @@ local function signed_byte(value)
     return value >= 0x80 and value - 0x100 or value
 end
 
+local function signed_word(value)
+    value = value & 0xffff
+    return value >= 0x8000 and value - 0x10000 or value
+end
+
 local function add_source_byte(value, delta)
     return (value + delta) & 0xff
 end
@@ -35,6 +40,78 @@ end
 
 local function posture_reduction(value, posture)
     return math.floor((value * posture * 25) / 100)
+end
+
+local function item18_skill_value(record)
+    local value = record.item18_base & 0xff
+    -- 0x55F02 scans slots 6..0; possession cell 7 is reserved for the
+    -- separate special-item modifier path at 0x104F6.
+    for slot = 7, 1, -1 do
+        if record.item_codes[slot] == 0x18 then
+            return add_source_byte_to_word(
+                value, record.item_phases[slot])
+        end
+    end
+    return value
+end
+
+local function action_phase_modifier(value, record, action_code)
+    local item_code = action_code + 0x18
+    -- The ROM scans only possession cells 6..0 for the action phase.
+    for slot = 7, 1, -1 do
+        if record.item_codes[slot] == item_code then
+            value = add_source_byte_to_word(value, record.item_phases[slot])
+            break
+        end
+    end
+
+    local slot_item_code = record.item_codes[8]
+    if slot_item_code < 0x29 or slot_item_code > 0x2b then
+        return value
+    end
+    local magic = game.modules.magic
+    local items = game.modules.items
+    local definition = type(magic) == "table" and
+        type(magic.spell_action_definition) == "function" and
+        magic.spell_action_definition(action_code) or nil
+    local selector = type(definition) == "table" and
+        definition.action_modifier_selector or nil
+    if type(selector) ~= "number" or selector < 0 then
+        return value
+    end
+    if selector > 2 then
+        return nil
+    end
+    local item = type(items) == "table" and
+        type(items.catalog) == "table" and
+        items.catalog[slot_item_code] or nil
+    local words = type(item) == "table" and
+        item.source_action_modifier_words or nil
+    if type(words) ~= "table" or type(words[selector + 1]) ~= "number" then
+        return nil
+    end
+    value = (value + words[selector + 1]) & 0xffff
+    if signed_word(value) <= 0 then
+        value = 1
+    end
+    return value
+end
+
+local function spell_residual(force, roll_count, spell)
+    -- ROM 0x10660 starts with caster +0x9D (force), rounds it upward when
+    -- halved, adds D4EA0 +0x26, then applies its integer percentage and
+    -- half-value sequence. This is the caster's fetish/behavior-meter path;
+    -- it is distinct from the delayed target roll at 0x55B78/0x559BC.
+    local effective = math.max(
+        math.floor((force + 1) / 2) + spell.difficulty_modifier, 2)
+    local percent_steps = effective >= 7 and 10 or (7 - effective) * 20
+    local product = roll_count * percent_steps
+    local adjusted = math.floor(product / 100)
+    if (product % 100) >= 50 then
+        adjusted = adjusted + 1
+    end
+    adjusted = math.floor(adjusted / 2)
+    return spell.base_effect - adjusted
 end
 
 local function first_cyberware_modifier(flags, first_bit, bit_count)
@@ -311,6 +388,304 @@ local function commit_combatant_meters(target, defender, physical_meter,
         }
     end
     return true
+end
+
+local function consume_fetish_residual(record, residual)
+    local remaining = residual
+    local changed = false
+    -- 0x10660 scans item code 0x13 in all eight possession cells. It is the
+    -- ROM's fetish item, not firearm ammunition; spells never decrement a
+    -- weapon magazine here.
+    for slot = #record.item_codes, 1, -1 do
+        if record.item_codes[slot] == 0x13 then
+            local phase = record.item_phases[slot]
+            changed = true
+            if remaining <= phase then
+                record.item_phases[slot] = (phase - remaining) & 0xff
+                if record.item_phases[slot] == 0 then
+                    record.item_codes[slot] = 0
+                end
+                return "fetish_consumed", changed
+            end
+            remaining = remaining - phase
+            record.item_codes[slot] = 0
+            record.item_phases[slot] = 0
+        end
+    end
+    return "fetish_exhausted", changed
+end
+
+function Combat.resolve_spell_action(context, target)
+    if type(context) ~= "table" or type(target) ~= "table" or
+       type(context.combatant) ~= "table" or
+       type(target.combatant) ~= "table" or
+       type(context.ai_random_bound) ~= "function" or
+       type(context.action_code) ~= "number" or
+       type(target.id) ~= "string" or
+       type(target.source_record_slot) ~= "number" then
+        return nil
+    end
+    local magic = game.modules.magic
+    local spell = type(magic) == "table" and
+        type(magic.spell_action_definition) == "function" and
+        magic.spell_action_definition(context.action_code) or nil
+    if type(spell) ~= "table" then
+        return nil
+    end
+
+    local attacker = copy_combatant(context.combatant)
+    local defender = copy_combatant(target.combatant)
+    local result = {
+        action_code = context.action_code,
+        target_id = target.id,
+        source_record_slot = target.source_record_slot,
+        record_type = defender.record_type,
+        action_result = 0,
+        roll_attempted = false,
+        outcome = "roll_failed",
+        effect_requested = false,
+        effect_started = false,
+        behavior_meter_delta = 0,
+        residual_effect = 0,
+        inventory_changed = false,
+        special_result_published = false,
+        special_result_successes = 0,
+        special_result_bonus = 0,
+        combatant = attacker,
+    }
+
+    -- ROM 0x1033E skips this action when +0x9C is one. For type-three and
+    -- later records it resets the active action header to the first carried
+    -- item; the field host applies that header after the heartbeat.
+    if attacker.mental_meter == 1 then
+        if attacker.record_type >= 3 then
+            local first_item = attacker.item_codes[1] or 0
+            result.next_action_kind = first_item == 0 and "none" or "item"
+            result.next_action_code = first_item
+            local profile_prefix = type(context.profile_id) == "string" and
+                string.match(context.profile_id,
+                             "^(.-_k%x%x)_[a-z]+%x%x$") or nil
+            if profile_prefix ~= nil then
+                result.next_profile_id = string.format(
+                    "%s_%s%02x", profile_prefix,
+                    result.next_action_kind, first_item)
+            end
+            attacker.equipped_action_code = first_item
+        end
+        result.outcome = "target_state_gate"
+        return result
+    end
+
+    local skill = item18_skill_value(attacker)
+    local initial_trials = posture_reduction(skill, attacker.posture)
+    initial_trials = math.min(
+        initial_trials, attacker.action_phase_extension[10] or 0)
+    initial_trials = add_source_byte_to_word(
+        initial_trials, attacker.force or
+            attacker.auxiliary_roll_bonus or 0)
+    initial_trials = action_phase_modifier(
+        initial_trials, attacker, context.action_code)
+    if initial_trials == nil then
+        result.outcome = "source_data_unavailable"
+        return result
+    end
+    initial_trials = initial_trials & 0xff
+    result.initial_trial_count = initial_trials
+
+    local difficulty = condition_modifier(4, attacker, defender)
+    difficulty = dynamic_status_modifier(
+        difficulty, attacker, defender, context)
+    if difficulty == nil then
+        result.outcome = "profile_data_unavailable"
+        return result
+    end
+    difficulty = add_wound_difficulty_penalty(
+        difficulty, attacker.physical_meter, attacker.mental_meter)
+    difficulty = math.max(difficulty, 2)
+    result.difficulty = difficulty
+
+    result.roll_attempted = true
+    local successes = thresholded_rolls(
+        initial_trials, difficulty, context.ai_random_bound)
+    if successes == nil then
+        result.outcome = "random_service_unavailable"
+        return result
+    end
+    attacker.action_result = successes
+    result.action_result = successes
+    result.combatant = attacker
+    if successes == 0 then
+        return result
+    end
+
+    -- 0x103D8 dispatches the target effect before resolving the residual.
+    result.outcome = "effect_dispatched"
+    result.effect_requested = true
+    -- ROM 0x1582A reserves one of the eighteen shared effect records. A full
+    -- pool still leaves the successful action result and 0x10660 caster path,
+    -- but it creates no target effect and emits no 0x4946 cue.
+    for slot = 0, 17 do
+        if context.world_effect_slot_occupancy == nil or
+           context.world_effect_slot_occupancy[slot + 1] ~= true then
+            result.spell_effect_slot = slot
+            result.effect_started = true
+            break
+        end
+    end
+    if result.effect_started and spell.audio_event ~= 0 then
+        result.audio_event = spell.audio_event
+    end
+    if context.action_code == 6 or context.action_code == 13 then
+        result.special_result_published = true
+        result.special_result_successes = successes
+        result.special_result_bonus = attacker.force or
+            attacker.auxiliary_roll_bonus or 0
+    end
+
+    local remaining_skill = skill - posture_reduction(skill, attacker.posture)
+    local effect_trials = (remaining_skill + attacker.command_attribute_7c) & 0xff
+    local residual = spell_residual(
+        attacker.force or attacker.auxiliary_roll_bonus or 0,
+        effect_trials, spell)
+    result.residual_effect = residual
+    if residual <= 0 then
+        if attacker.mental_meter == 0 then
+            result.behavior_meter_delta = 1
+            if (attacker.source_flags & 0x01) ~= 0 then
+                attacker.mental_meter = math.min(
+                    attacker.mental_meter + result.behavior_meter_delta, 10)
+            else
+                attacker.mental_meter = 0
+            end
+        else
+            result.outcome = "effect_residual_empty"
+        end
+        return result
+    end
+
+    local consumption, inventory_changed = consume_fetish_residual(
+        attacker, residual)
+    result.outcome = consumption
+    result.inventory_changed = inventory_changed
+    if consumption == "fetish_exhausted" and attacker.mental_meter == 0 then
+        result.behavior_meter_delta = 1
+        if (attacker.source_flags & 0x01) ~= 0 then
+            attacker.mental_meter = math.min(
+                attacker.mental_meter + result.behavior_meter_delta, 10)
+        else
+            attacker.mental_meter = 0
+        end
+    end
+    result.combatant = attacker
+    return result
+end
+
+function Combat.resolve_spell_impact(context, pending, target)
+    if type(context) ~= "table" or type(pending) ~= "table" or
+       type(target) ~= "table" or type(context.combatant) ~= "table" or
+       type(target.combatant) ~= "table" or
+       type(context.ai_random_bound) ~= "function" or
+       type(pending.action_code) ~= "number" or
+       type(pending.action_result) ~= "number" or
+       type(pending.target_id) ~= "string" or
+       type(target.id) ~= "string" or
+       type(target.source_record_slot) ~= "number" or
+       target.id ~= pending.target_id or
+       target.source_record_slot ~= pending.source_record_slot then
+        return nil
+    end
+
+    local magic = game.modules.magic
+    local spell = type(magic) == "table" and
+        type(magic.spell_action_definition) == "function" and
+        magic.spell_action_definition(pending.action_code) or nil
+    if type(spell) ~= "table" then
+        return nil
+    end
+
+    local caster = copy_combatant(context.combatant)
+    local defender = copy_combatant(target.combatant)
+    local result = {
+        action_code = pending.action_code,
+        target_id = target.id,
+        source_record_slot = target.source_record_slot,
+        record_type = defender.record_type,
+        target_trial_count = 0,
+        difficulty = 2,
+        target_roll_successes = 0,
+        effect_value = 0,
+        outcome = "target_roll_failed",
+        physical = pending.action_code ~= 5,
+        physical_meter = defender.physical_meter,
+        mental_meter = defender.mental_meter,
+        changed = false,
+    }
+
+    -- 0x55B78 has a special early branch for the first three action codes
+    -- against +0x9B == 0x17. It supplies D4/D6 but inherits D5 from its
+    -- caller; keep that path explicit until the effect callback's D5 input
+    -- is traced rather than assigning it an invented spell strength.
+    if pending.action_code <= 3 and defender.race_or_state == 0x17 then
+        result.outcome = "source_special_target_path"
+        result.target_trial_count = 12
+        result.difficulty = 2
+        return result
+    end
+
+    local attribute = spell.attribute_selector < 0
+        and defender.command_attribute_7c
+        or defender.command_attribute_77
+    if defender.record_type < 3 then
+        attribute = add_source_byte_to_word(
+            attribute, ready_party_bonus(context))
+    end
+    result.target_trial_count = attribute & 0xff
+    local force = caster.force or caster.auxiliary_roll_bonus or 0
+    result.difficulty = math.max(force, 2)
+    local target_successes = thresholded_rolls(
+        result.target_trial_count, result.difficulty,
+        context.ai_random_bound)
+    if target_successes == nil then
+        result.outcome = "random_service_unavailable"
+        return result
+    end
+    result.target_roll_successes = target_successes
+
+    -- ROM 0x559BC subtracts the target's +0x9F roll from the caster's stored
+    -- action result and adjusts the D4EA0 effect value by that signed byte.
+    local action_result = pending.action_result & 0xff
+    local delta = signed_byte(action_result - target_successes)
+    local effect_value = spell.target_effect or 0
+    if delta < 0 then
+        effect_value = signed_byte(add_source_byte(effect_value, delta))
+        if effect_value <= 0 then
+            result.outcome = "target_resisted"
+            return result
+        end
+    else
+        effect_value = effect_value + delta
+        if effect_value >= 0x0b then
+            effect_value = 0x0a
+        end
+    end
+
+    -- 0xFFF112 is one here, so the target armor-table subtractor is skipped;
+    -- 0x55E62 applies the caster's interaction/defensive equipment modifier.
+    effect_value = defense_modifier(effect_value, caster)
+    if effect_value <= 0 then
+        result.outcome = "target_resisted"
+        return result
+    end
+
+    local physical_meter, mental_meter = adjusted_meters(
+        defender, result.physical, effect_value, context)
+    result.effect_value = effect_value
+    result.physical_meter = physical_meter
+    result.mental_meter = mental_meter
+    result.changed = commit_combatant_meters(
+        target, defender, physical_meter, mental_meter)
+    result.outcome = result.changed and "effect_applied" or "effect_no_change"
+    return result
 end
 
 function Combat.resolve_reaction(context, target)

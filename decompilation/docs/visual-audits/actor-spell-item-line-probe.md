@@ -19,9 +19,10 @@ boundary marker from that same collision sample.
 ## Eight-question visual and behavior review
 
 1. **Does it look correct?** The probe is an action gate and draws no pixels.
-   The reviewed field frames show no new rectangle or selector. This does not
-   establish the appearance of a spell cast because the production encounter
-   rows reviewed here contain no spell-action actor.
+   Its earlier field frames show no new rectangle or selector. The separate
+   spell-effect field capture now shows the ROM-selected Lone Star mage and
+   target effect; that capture verifies internal rendering, not Genesis
+   fidelity.
 2. **Does the look reflect the behavioral state?** The callback is installed
    on temporary world actors. Lua invokes it only after the linked-target,
    expired-delay, active-projection, and unsuppressed-code gates. A blocked
@@ -29,18 +30,22 @@ boundary marker from that same collision sample.
    terrain and the terminal inner collision branch preserve the ROM's clear
    outer carry. An unresolved probe fails closed in the Qt bridge. Conversion
    tests cover these outcomes and stale-marker avoidance.
-3. **Are the visuals correct?** This change adds no graphic. If a future source
-   actor reaches the successful spell branch, Lua selects a `C082` pose, but
-   those directional frames are not extracted and the presenter currently
-   draws no spell sprite. That visual remains unresolved.
+3. **Are the visuals correct?** The offline importer now extracts the
+   directional `C082` cast poses and per-scene spell-effect frames. The field
+   renderer uses those named assets. The full-screen spell audit checks their
+   placement and transparency; no independent Genesis cast capture is
+   available to confirm exact visual fidelity.
 4. **Is it animated, and when?** The collision window is a synchronous
    27-probe routine, not a timed animation. A successful Lua spell dispatch
-   records frame 0 and holds it on the render heartbeat. The visible `C082`
-   animation cadence remains unverified until its frames are extracted and
-   compared with a same-action game capture.
-5. **Does it make a sound?** The traced `0x14D8E` path has no sound request and
-   this bridge adds none. The downstream `0x1033E`/`0x15830` effect and any
-   associated cast audio are still open, so no cast duration is claimed.
+   selects a directional `C082` pose. The target effect runs on its render
+   heartbeat for 12, 31, 62, or 31 calls for action codes 1, 2, 5, or 9.
+   The shared source callback resolves on the final call; full phase and
+   visibility traces are covered by the Lua test.
+5. **Does it make a sound?** `0x14D8E` itself has no sound request. Once
+   `0x15830` accepts an effect slot, its `0x4946` table selects events
+   `0x32`/`0x34`/`0x37`/`0x35`, routed to decimal table-2 resources
+   50/52/55/53. Their decoded host one-shot lengths are 2.467/2.517/2.820/
+   2.434 seconds. No independent Genesis spell sound is matched yet.
 6. **Were neighboring screen areas checked?** All 27 full 320x224 Scene 2
    random-encounter BMPs and all 8 Hell Hound effect BMPs were opened: route
    entry and checkpoints, the visible QA fixture, both walk and action poses,
@@ -52,15 +57,20 @@ boundary marker from that same collision sample.
    selected actors stay outside the viewport and their entry cue is silent.
    The hit captures retain the selected actor's red corner marker; the QA
    sends B to cycle away from the downed record only after those screenshots.
-   Debug/Release image hashes match for these routes. The collision callback
-   does not draw or publish global movement markers while probing.
+   The separate Scene 1 spell QA reviews all 25 effect-phase captures and
+   checks that the right HUD is pixel-identical to the baseline. Its broad
+   crosshatched map surround is present in the pre-effect image too; this
+   slice does not establish that underlying scene's independent fidelity.
+   Debug/Release image hashes match for the existing routes. The collision
+   callback does not draw or publish global movement markers while probing.
 7. **Are there multiple frames and an independent example?** The encounter
    frames show entry, approach, two walk poses, and both action frames. The
    target-selection captures distinguish an active marker from the preceding
    field frame. Independent longplay frames 2190/2220 and 2430/2460 in section
    06 show separated yellow and red target brackets. They corroborate marker
    shape and hue variation, but they do not show this actor's spell gate or a
-   cast pose.
+   cast pose. The spell capture contains every extracted source phase,
+   including repeated images where the ROM holds a phase across calls.
 8. **Are new graphics covering stale graphics?** The bridge adds no drawing
    operation or UI layer. The existing full-frame captures show no additional
    button, menu, or stale panel underneath the actor and HUD.
@@ -74,7 +84,11 @@ Debug and Release passed `shadowrun_ghidra_entity_transition`,
 typed probe, source placement tables, and existing full-frame actor
 composition. The full-screen review confirms there is no new rectangle,
 selector, or stale UI layer from this bridge. The line-probe callback requests
-no sound, and the field captures do not trigger the new spell/item callback.
-The next spell work still needs an actual source-backed actor action, the
-`0x1033E` dice/effect path, `0x15830` target effect, `C082` assets, and an
-independent same-action capture before visual correctness can be claimed.
+no sound; the downstream spell action requests its own table-driven cue.
+The four spell profiles now traverse Lua action/effect resolution, target-owned
+render timing, named cast/effect assets, sound routing, and a full-screen
+renderer capture. Code-5 propagation to other eligible records and the
+code-2 `FFE186` branch remain open; independent Genesis visuals/audio for a
+same-action cast also remain unavailable. See
+[`actor-spell-effect.md`](actor-spell-effect.md) for the source trace and
+screen-by-screen review.

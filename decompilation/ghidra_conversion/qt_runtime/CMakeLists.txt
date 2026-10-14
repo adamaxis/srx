@@ -352,6 +352,18 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_hound_close_effect_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Render all four ROM spell-effect phase sets over Scene 1's loaded map, HUD,
+# runner, and ROM-selected Lone Star mage. Lua timing and target effect ownership
+# are asserted separately by shadowrun_gameplay_script_runtime_qa.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_spell_effect_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-spell-effect-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-spell-effect-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_spell_effect_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Start one cell south of the ROM's Jump House trigger, walk into record 85
 # using normal movement, dismiss its Lua-owned entry narration with A, and
 # verify the retained scene-13 route completes with a clean 320x224 redraw.
@@ -1306,10 +1318,9 @@ target_link_libraries(shadowrun_ghidra_movement_mode_transition_test
 add_test(NAME shadowrun_ghidra_movement_mode_transition
          COMMAND shadowrun_ghidra_movement_mode_transition_test)
 
-# Verify the source selector and maglock unlock events reach their extracted
-# assets, the FLAC decoder loads the resource, and a mapped event starts on the
-# host audio output. Unknown, silent, or lifecycle-unresolved commands stay
-# unmapped.
+# Verify source field, menu, combat, and spell events reach their extracted
+# assets, the FLAC decoder loads them, and mapped events start on the host
+# output. Unknown, silent, or lifecycle-unresolved commands stay unmapped.
 add_executable(shadowrun_ghidra_audio_playback_test
     tests/audio/audio_playback_test.cpp
     src/audio/audio_playback.cpp
@@ -1324,6 +1335,10 @@ target_compile_definitions(shadowrun_ghidra_audio_playback_test PRIVATE
     SHADOWRUN_GHIDRA_AUDIO_MENU_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/menu/menu-024.flac"
     SHADOWRUN_GHIDRA_AUDIO_FIELD_EFFECT_016_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/field/effect-016.flac"
     SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-037.flac"
+    SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_32_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-050.flac"
+    SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_34_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-052.flac"
+    SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_35_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-053.flac"
+    SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_37_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-055.flac"
     SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-075.flac"
     SHADOWRUN_GHIDRA_AUDIO_ACTION_RESOURCE_076_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-076.flac"
     SHADOWRUN_GHIDRA_AUDIO_TARGET_RESOURCE_077_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/sound-effects/resource-077.flac"

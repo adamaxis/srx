@@ -230,6 +230,18 @@ constexpr std::string_view kFieldEntityWalkAliasPrefix =
     "field.entities.movement.";
 constexpr std::string_view kFieldEntityAttackAliasPrefix =
     "field.entities.attack.";
+struct FieldSpellEffectProfile {
+    std::uint8_t action_code;
+    std::string_view asset_id;
+    std::uint8_t phase_count;
+};
+constexpr std::array<FieldSpellEffectProfile, 4> kFieldSpellEffectProfiles{{
+    {1U, "flame-dart", 4U},
+    {2U, "flame-bolt", 6U},
+    {5U, "sleep", 9U},
+    {9U, "mana-blast", 6U},
+}};
+constexpr std::size_t kFieldSpellEffectPhaseCapacity = 9U;
 constexpr std::string_view kFieldWeaponProjectileAliasPrefix =
     "field.weapons.projectile.";
 constexpr std::string_view kElevatorAnimationAliasPrefix =
@@ -1819,6 +1831,33 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
         }
     }
 
+    field_spell_effect_images_by_scene_.clear();
+    field_spell_effect_images_by_scene_.resize(56U);
+    for (std::size_t scene = 0U;
+         scene < field_spell_effect_images_by_scene_.size(); ++scene) {
+        for (std::size_t profile_index = 0U;
+             profile_index < kFieldSpellEffectProfiles.size();
+             ++profile_index) {
+            const auto& profile = kFieldSpellEffectProfiles[profile_index];
+            std::string effect_alias(profile.asset_id);
+            std::replace(effect_alias.begin(), effect_alias.end(), '-', '.');
+            for (std::uint8_t phase = 0U;
+                 phase < profile.phase_count; ++phase) {
+                const auto alias =
+                    "field.entities.effects.spell." + effect_alias +
+                    ".scene." + std::to_string(scene) + ".phase." +
+                    std::to_string(phase);
+                auto& artwork =
+                    field_spell_effect_images_by_scene_[scene][profile_index];
+                if (!load_sprite_image(
+                        catalog, alias, artwork.images[phase],
+                        artwork.origin_x[phase], artwork.origin_y[phase])) {
+                    return false;
+                }
+            }
+        }
+    }
+
     const auto* table = catalog.find(std::string(kActorTableAlias));
     if (table == nullptr || table->kind != "state") {
         failure_ = "missing extracted dynamic world-activity actor table";
@@ -2137,6 +2176,14 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                     artwork.idle_origin_y[direction])) {
                 return false;
             }
+            const auto spell_alias = alias_prefix + ".spell" + suffix;
+            if (!load_sprite_image(
+                    catalog, spell_alias,
+                    artwork.spell_images[direction],
+                    artwork.spell_origin_x[direction],
+                    artwork.spell_origin_y[direction])) {
+                return false;
+            }
             std::uint8_t entry_frames = 0U;
             for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
                 const auto entry_alias =
@@ -2263,6 +2310,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
             }),
         field_default_actors_.end());
     field_world_effect_slots_occupied_.fill(false);
+    field_spell_effect_slot_target_ids_.fill(std::string{});
     field_entity_target_owner_ = EntityServiceTargetOwner{};
     field_entity_target_records_.assign(16U, EntityServiceTargetRecord{});
     pending_field_encounter_outcome_.reset();
@@ -2814,6 +2862,45 @@ void FieldSceneRuntime::advance_default_field_actors() {
         actor.ai_target_heading = decision->ai_target_heading.value_or(0U);
         actor.ai_target_distance = decision->ai_target_distance.value_or(0U);
         actor.action_delay = decision->action_delay;
+        if (decision->spell_action_resolution.has_value()) {
+            const auto& resolution = *decision->spell_action_resolution;
+            actor.combatant.action_result = resolution.roll_attempted
+                ? resolution.action_result
+                : actor.combatant.action_result;
+            actor.combatant.mental_meter = resolution.mental_meter;
+            actor.combatant.item_codes = resolution.item_codes;
+            actor.combatant.item_phases = resolution.item_phases;
+            if (resolution.next_action_kind.has_value() &&
+                resolution.next_action_code.has_value() &&
+                resolution.next_profile_id.has_value()) {
+                actor.action_kind = *resolution.next_action_kind;
+                actor.initial_action_code = *resolution.next_action_code;
+                actor.combatant.equipped_action_code =
+                    *resolution.next_action_code;
+                actor.script_profile_id = *resolution.next_profile_id;
+            }
+            if (resolution.effect_started &&
+                resolution.spell_effect_slot.has_value()) {
+                const auto slot = *resolution.spell_effect_slot;
+                if (slot >= field_world_effect_slots_occupied_.size() ||
+                    field_world_effect_slots_occupied_[slot] ||
+                    resolution.target_id.empty() ||
+                    !field_spell_effect_slot_target_ids_[slot].empty()) {
+                    failure_ = "Lua selected an occupied spell effect record";
+                    source_boundary(
+                        "field.actor.spell.effect_slot_reservation_invalid");
+                    actor.active = false;
+                    continue;
+                }
+                field_world_effect_slots_occupied_[slot] = true;
+                field_spell_effect_slot_target_ids_[slot] =
+                    resolution.target_id;
+                source_boundary("field.actor.spell.effect_slot_reserved");
+            }
+            source_boundary(resolution.effect_requested
+                ? "field.actor.spell.effect_requested"
+                : "field.actor.spell.action_resolved");
+        }
         if (actor.temporary_world_encounter) {
             actor.source_record_flags = decision->source_record_flags;
         }
@@ -2995,9 +3082,12 @@ FieldSceneRuntime::default_actor_sprite_view(
             artwork->walk_origin_y[direction][frame]};
     }
     if (actor.animation_id == "spell") {
-        // 0xC082 selectors are 0x80..0x9C. Those frames are not in the
-        // extracted C0A2 action lists, so the cast has no presenter art yet.
-        return {};
+        // 0xAF7C/0xAFAE install a directional C082 selector and 0xAFE0 holds
+        // that first source frame until another actor state replaces it.
+        return DefaultActorSpriteView{
+            &artwork->spell_images[direction],
+            artwork->spell_origin_x[direction],
+            artwork->spell_origin_y[direction]};
     }
     if (actor.animation_id == "action") {
         const auto& frames = artwork->action_images[direction];
@@ -7441,6 +7531,10 @@ FieldSceneRuntime::heartbeat_field_player(
     actor_context.entity_kind = 3U;
     actor_context.action_kind = scripting::ScriptActorActionKind::none;
     actor_context.instance_id = "field_player_runner";
+    actor_context.source_record_slot = static_cast<std::uint8_t>(
+        field_party_roster_.active_slot());
+    actor_context.movement_scene_id =
+        state_.field_scene_buffers.scene_reference;
     actor_context.initial_heading =
         phase == scripting::ScriptActorHeartbeatPhase::render
             ? field_movement_state_.animation_heading
@@ -7667,6 +7761,22 @@ FieldSceneRuntime::heartbeat_field_player(
             static_cast<std::uint16_t>(
                 state_.field_scene_buffers.camera_y));
     }
+    actor_context.combatant =
+        script_combatant_facts(active_runner_record());
+    actor_context.combat_meter_service_blocked =
+        field_movement_transition_state_.world_mode == 3U;
+    actor_context.ai_random_bound = [this](const std::uint16_t bound)
+        -> std::optional<std::uint16_t> {
+        if (bound == 0U) {
+            return std::nullopt;
+        }
+        const auto choice =
+            sample_source_random_bound(field_random_seed_, bound);
+        if (choice < 0 || choice >= bound) {
+            return std::nullopt;
+        }
+        return static_cast<std::uint16_t>(choice);
+    };
     const auto actor_decision = game_scripts_.actor_heartbeat(actor_context);
     if (actor_decision.has_value()) {
         field_player_actor_script_initialized_ = true;
@@ -8493,7 +8603,14 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
 }
 
 bool FieldSceneRuntime::apply_script_combat_meter_update(
-    const scripting::ScriptCombatMeterUpdate& update) {
+    const scripting::ScriptCombatMeterUpdate& update,
+    const std::string_view boundary_prefix) {
+    const auto report = [this, boundary_prefix](const std::string_view suffix) {
+        std::string boundary(boundary_prefix);
+        boundary.push_back('.');
+        boundary.append(suffix);
+        source_boundary(boundary);
+    };
     if (!update.changed) {
         return true;
     }
@@ -8502,12 +8619,12 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
             update.source_record_slot);
         if (slot >= FieldPartyRosterRuntime::kSlotCount ||
             !field_party_roster_.slot_active(slot)) {
-            source_boundary("field.combat.weapon_hit.party_target_invalid");
+            report("party_target_invalid");
             return false;
         }
         auto& target = field_party_roster_.records()[slot];
         if (target.record_type != update.record_type) {
-            source_boundary("field.combat.weapon_hit.party_target_type_mismatch");
+            report("party_target_type_mismatch");
             return false;
         }
         target.delay_meter = update.physical_meter;
@@ -8515,9 +8632,8 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
         if (slot == field_party_roster_.active_slot()) {
             refresh_field_hud_runner_slot();
         }
-        source_boundary(update.physical
-            ? "field.combat.weapon_hit.party_physical_meter_changed"
-            : "field.combat.weapon_hit.party_mental_meter_changed");
+        report(update.physical ? "party_physical_meter_changed"
+                               : "party_mental_meter_changed");
         return true;
     }
 
@@ -8525,7 +8641,7 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
             static_cast<std::uint8_t>(FieldWorldActorSlot::slot_3) ||
         update.source_record_slot >
             static_cast<std::uint8_t>(FieldWorldActorSlot::slot_9)) {
-        source_boundary("field.combat.weapon_hit.world_target_slot_invalid");
+        report("world_target_slot_invalid");
         return false;
     }
     const auto target = std::find_if(
@@ -8540,7 +8656,7 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
                    actor.combatant.record_type == update.record_type;
         });
     if (target == field_default_actors_.end()) {
-        source_boundary("field.combat.weapon_hit.world_target_missing");
+        report("world_target_missing");
         return false;
     }
 
@@ -8550,9 +8666,8 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
     // that record as well as in the Lua-owned combat facts so later movement,
     // collision, and drawing passes see one current actor state.
     target->physical_meter = update.physical_meter;
-    source_boundary(update.physical
-        ? "field.combat.weapon_hit.world_physical_meter_changed"
-        : "field.combat.weapon_hit.world_mental_meter_changed");
+    report(update.physical ? "world_physical_meter_changed"
+                           : "world_mental_meter_changed");
     return true;
 }
 
@@ -8571,6 +8686,40 @@ void FieldSceneRuntime::advance_field_actor_animation() {
             field_entity_animation_.accumulator =
                 decision->animation_accumulator;
             field_entity_animation_id_ = decision->animation_id;
+            field_entity_.spell_effect_visible =
+                decision->spell_effect_visible;
+            field_entity_.spell_effect_action_code =
+                decision->spell_effect_action_code;
+            field_entity_.spell_effect_phase = decision->spell_effect_phase;
+            if (decision->spell_effect_resolution.has_value()) {
+                if (decision->combat_meter_update.has_value() &&
+                    !apply_script_combat_meter_update(
+                        *decision->combat_meter_update,
+                        "field.player.spell.effect")) {
+                    failure_ =
+                        "Lua spell effect targeted an unavailable runner record";
+                    source_boundary(
+                        "field.player.spell.effect_apply_failed");
+                } else {
+                    source_boundary("field.player.spell.effect_resolved");
+                }
+            }
+            if (decision->spell_effect_slot_released.has_value()) {
+                const auto slot = *decision->spell_effect_slot_released;
+                if (slot >= field_world_effect_slots_occupied_.size() ||
+                    !field_world_effect_slots_occupied_[slot] ||
+                    field_spell_effect_slot_target_ids_[slot] !=
+                        "field_player_runner") {
+                    failure_ = "Lua released an unowned runner spell effect record";
+                    source_boundary(
+                        "field.player.spell.effect_slot_release_invalid");
+                } else {
+                    field_world_effect_slots_occupied_[slot] = false;
+                    field_spell_effect_slot_target_ids_[slot].clear();
+                    source_boundary(
+                        "field.player.spell.effect_slot_released");
+                }
+            }
             const auto selector_changed =
                 decision->animation_selector.has_value() &&
                 *decision->animation_selector !=
@@ -8605,6 +8754,11 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
             actor.initial_heading,
             false,
         };
+        context.movement_scene_id = current_scene;
+        if (actor.source_record_slot.has_value()) {
+            context.source_record_slot = static_cast<std::uint8_t>(
+                *actor.source_record_slot);
+        }
         if (actor.temporary_world_encounter) {
             context.dynamic_world_encounter_actor = true;
             context.combatant = actor.combatant;
@@ -8656,6 +8810,69 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
             if (actor.effect_slot.has_value()) {
                 context.world_effect_slot_occupancy[*actor.effect_slot] = true;
             }
+
+            // The delayed 0x521E effect callback needs the current linked
+            // combat records when its final render heartbeat reaches 0x55B78.
+            // These are source actor facts only; Lua retains the pending
+            // target identity and decides when the effect lands.
+            context.combat_meter_service_blocked =
+                field_movement_transition_state_.world_mode == 3U;
+            for (std::size_t slot = 0U;
+                 slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
+                if (!field_party_roster_.slot_active(slot)) {
+                    continue;
+                }
+                const auto& runner = field_party_roster_.records()[slot];
+                scripting::ScriptActorTargetCandidate candidate{};
+                candidate.id = slot == field_party_roster_.active_slot()
+                    ? "field_player_runner"
+                    : "party.runner." + std::to_string(slot);
+                candidate.service_flags = static_cast<std::uint8_t>(
+                    runner.flags >> 8U);
+                candidate.interaction_flags = static_cast<std::uint8_t>(
+                    runner.flags & 0x00FFU);
+                candidate.has_action = true;
+                candidate.world_activity_actor = false;
+                candidate.source_record_slot =
+                    static_cast<std::uint8_t>(slot);
+                candidate.combatant = script_combatant_facts(runner);
+                context.ai_target_candidates.push_back(
+                    std::move(candidate));
+            }
+            for (const auto& target : field_default_actors_) {
+                if (!target.active || target.scene_reference != current_scene ||
+                    !target.source_record_slot.has_value() ||
+                    target.combatant.record_type < 3U) {
+                    continue;
+                }
+                scripting::ScriptActorTargetCandidate candidate{};
+                candidate.id = target.actor_instance_id;
+                candidate.service_flags = target.source_record_flags;
+                candidate.interaction_flags =
+                    target.source_interaction_flags;
+                candidate.behavior_flags = target.source_behavior_flags;
+                candidate.spawn_state_flags =
+                    target.source_spawn_state_flags;
+                candidate.has_action = target.physical_meter != 0U;
+                candidate.world_activity_actor = true;
+                candidate.source_record_slot = static_cast<std::uint8_t>(
+                    *target.source_record_slot);
+                candidate.combatant = target.combatant;
+                context.ai_target_candidates.push_back(
+                    std::move(candidate));
+            }
+            context.ai_random_bound = [this](const std::uint16_t bound)
+                -> std::optional<std::uint16_t> {
+                if (bound == 0U) {
+                    return std::nullopt;
+                }
+                const auto choice =
+                    sample_source_random_bound(field_random_seed_, bound);
+                if (choice < 0 || choice >= bound) {
+                    return std::nullopt;
+                }
+                return static_cast<std::uint16_t>(choice);
+            };
         }
         context.phase = scripting::ScriptActorHeartbeatPhase::render;
         context.target_selection_latched = actor.target_selected;
@@ -8671,6 +8888,37 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         actor.animation_frame = decision->animation_frame;
         if (actor.temporary_world_encounter) {
             actor.source_record_flags = decision->source_record_flags;
+        }
+        if (decision->spell_effect_resolution.has_value()) {
+            if (decision->combat_meter_update.has_value() &&
+                !apply_script_combat_meter_update(
+                    *decision->combat_meter_update,
+                    "field.actor.spell.effect")) {
+                failure_ =
+                    "Lua spell effect targeted an unavailable combat record";
+                source_boundary("field.actor.spell.effect_apply_failed");
+            } else {
+                source_boundary("field.actor.spell.effect_resolved");
+            }
+        }
+        actor.spell_effect_visible = decision->spell_effect_visible;
+        actor.spell_effect_action_code =
+            decision->spell_effect_action_code;
+        actor.spell_effect_phase = decision->spell_effect_phase;
+        if (decision->spell_effect_slot_released.has_value()) {
+            const auto slot = *decision->spell_effect_slot_released;
+            if (slot >= field_world_effect_slots_occupied_.size() ||
+                !field_world_effect_slots_occupied_[slot] ||
+                field_spell_effect_slot_target_ids_[slot] !=
+                    actor.actor_instance_id) {
+                failure_ = "Lua released an unowned spell effect record";
+                source_boundary(
+                    "field.actor.spell.effect_slot_release_invalid");
+            } else {
+                field_world_effect_slots_occupied_[slot] = false;
+                field_spell_effect_slot_target_ids_[slot].clear();
+                source_boundary("field.actor.spell.effect_slot_released");
+            }
         }
         actor.target_marker_visible = decision->target_marker_visible;
         actor.target_marker_animating = decision->target_marker_animating;
@@ -9002,6 +9250,8 @@ void FieldSceneRuntime::snapshot_world_activity_source_scene() {
     snapshot.activity_timeout = field_world_activity_timeout_state_;
     snapshot.world_effect_slots_occupied =
         field_world_effect_slots_occupied_;
+    snapshot.spell_effect_slot_target_ids =
+        field_spell_effect_slot_target_ids_;
     snapshot.entity_target_owner = field_entity_target_owner_;
     snapshot.entity_target_records = field_entity_target_records_;
     snapshot.player_animation = field_entity_animation_;
@@ -9055,6 +9305,8 @@ bool FieldSceneRuntime::restore_world_activity_source_scene(
     field_world_activity_timeout_state_ = snapshot.activity_timeout;
     field_world_effect_slots_occupied_ =
         snapshot.world_effect_slots_occupied;
+    field_spell_effect_slot_target_ids_ =
+        snapshot.spell_effect_slot_target_ids;
     field_entity_target_owner_ = snapshot.entity_target_owner;
     field_entity_target_records_ = snapshot.entity_target_records;
     field_entity_animation_ = snapshot.player_animation;
@@ -10911,6 +11163,8 @@ void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
         state_.field_scene_buffers.camera_x);
     const auto camera_y = static_cast<std::uint16_t>(
         state_.field_scene_buffers.camera_y);
+    const auto current_scene =
+        state_.field_scene_buffers.scene_reference;
 
     if (field_entity_.active && field_entity_.visible) {
         const auto direction = static_cast<std::size_t>(
@@ -10954,11 +11208,38 @@ void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
                 static_cast<int>(projection.screen_y) -
                     kGenesisSpriteOrigin + origin_y,
                 &image});
+            if (field_entity_.spell_effect_visible &&
+                field_entity_.spell_effect_phase <
+                    kFieldSpellEffectPhaseCapacity &&
+                current_scene < field_spell_effect_images_by_scene_.size()) {
+                const auto profile = std::find_if(
+                    kFieldSpellEffectProfiles.cbegin(),
+                    kFieldSpellEffectProfiles.cend(),
+                    [this](const auto& candidate) {
+                        return candidate.action_code ==
+                            field_entity_.spell_effect_action_code;
+                    });
+                if (profile != kFieldSpellEffectProfiles.cend()) {
+                    const auto profile_index = static_cast<std::size_t>(
+                        std::distance(kFieldSpellEffectProfiles.cbegin(),
+                                      profile));
+                    const auto phase = field_entity_.spell_effect_phase;
+                    const auto& effect =
+                        field_spell_effect_images_by_scene_[current_scene]
+                                                           [profile_index];
+                    sprites.push_back(SceneSprite{
+                        depth,
+                        1U,
+                        static_cast<int>(projection.screen_x) -
+                            kGenesisSpriteOrigin + effect.origin_x[phase],
+                        static_cast<int>(projection.screen_y) -
+                            kGenesisSpriteOrigin + effect.origin_y[phase],
+                        &effect.images[phase]});
+                }
+            }
         }
     }
 
-    const auto current_scene =
-        state_.field_scene_buffers.scene_reference;
     for (const auto& actor : field_default_actors_) {
         if (actor.scene_reference != current_scene) {
             continue;
@@ -10989,6 +11270,35 @@ void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
             static_cast<int>(projection.screen_y) - kGenesisSpriteOrigin +
                 sprite.origin_y,
             sprite.image});
+
+        if (actor.spell_effect_visible &&
+            actor.spell_effect_phase < kFieldSpellEffectPhaseCapacity &&
+            current_scene < field_spell_effect_images_by_scene_.size()) {
+            const auto profile = std::find_if(
+                kFieldSpellEffectProfiles.cbegin(),
+                kFieldSpellEffectProfiles.cend(),
+                [&actor](const auto& candidate) {
+                    return candidate.action_code ==
+                        actor.spell_effect_action_code;
+                });
+            if (profile != kFieldSpellEffectProfiles.cend()) {
+                const auto profile_index = static_cast<std::size_t>(
+                    std::distance(kFieldSpellEffectProfiles.cbegin(),
+                                  profile));
+                const auto phase = actor.spell_effect_phase;
+                const auto& effect =
+                    field_spell_effect_images_by_scene_[current_scene]
+                                                       [profile_index];
+                sprites.push_back(SceneSprite{
+                    static_cast<std::int16_t>(actor.world_position.y),
+                    static_cast<std::uint16_t>(actor.source_order + 1U),
+                    static_cast<int>(projection.screen_x) -
+                        kGenesisSpriteOrigin + effect.origin_x[phase],
+                    static_cast<int>(projection.screen_y) -
+                        kGenesisSpriteOrigin + effect.origin_y[phase],
+                    &effect.images[phase]});
+            }
+        }
 
         if (actor.target_motion_effect_visible &&
             current_scene < field_hound_close_attack_images_by_scene_.size() &&
@@ -13594,6 +13904,32 @@ bool FieldSceneRuntime::set_default_actor_world_position_for_dump(
         ++active_index;
     }
     return false;
+}
+
+bool FieldSceneRuntime::set_field_spell_effect_for_dump(
+    const std::uint8_t action_code, const std::uint8_t phase,
+    const bool visible) noexcept {
+    if (!visible) {
+        field_entity_.spell_effect_visible = false;
+        field_entity_.spell_effect_action_code = 0U;
+        field_entity_.spell_effect_phase = 0U;
+        return true;
+    }
+
+    const auto profile = std::find_if(
+        kFieldSpellEffectProfiles.cbegin(), kFieldSpellEffectProfiles.cend(),
+        [action_code](const auto& candidate) {
+            return candidate.action_code == action_code;
+        });
+    if (profile == kFieldSpellEffectProfiles.cend() ||
+        phase >= profile->phase_count) {
+        return false;
+    }
+
+    field_entity_.spell_effect_visible = true;
+    field_entity_.spell_effect_action_code = action_code;
+    field_entity_.spell_effect_phase = phase;
+    return true;
 }
 
 bool FieldSceneRuntime::set_selected_default_actor_world_position_for_dump(

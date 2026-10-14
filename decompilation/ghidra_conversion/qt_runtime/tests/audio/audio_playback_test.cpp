@@ -24,6 +24,14 @@ int main(int argc, char** argv) {
         SHADOWRUN_GHIDRA_AUDIO_FIELD_EFFECT_016_PATH);
     const auto resource_037 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH);
+    const auto spell_event_32 = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_32_PATH);
+    const auto spell_event_34 = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_34_PATH);
+    const auto spell_event_35 = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_35_PATH);
+    const auto spell_event_37 = std::filesystem::path(
+        SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_37_PATH);
     const auto resource_075 = std::filesystem::path(
         SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH);
     const auto resource_076 = std::filesystem::path(
@@ -67,6 +75,18 @@ int main(int argc, char** argv) {
         }
         if (alias == "audio.effects.resource.037") {
             return resource_037;
+        }
+        if (alias == "audio.effects.resource.050") {
+            return spell_event_32;
+        }
+        if (alias == "audio.effects.resource.052") {
+            return spell_event_34;
+        }
+        if (alias == "audio.effects.resource.053") {
+            return spell_event_35;
+        }
+        if (alias == "audio.effects.resource.055") {
+            return spell_event_37;
         }
         if (alias == "audio.effects.resource.075") {
             return resource_075;
@@ -124,6 +144,20 @@ int main(int argc, char** argv) {
     if (playback.alias_for_event(0x24U) != "audio.menu.command-024") {
         std::cerr << "event 0x24 did not select its command sound\n";
         return 1;
+    }
+    const std::array<std::pair<std::uint16_t, std::string_view>, 4>
+        spell_event_aliases{{
+            {0x32U, "audio.effects.resource.050"},
+            {0x34U, "audio.effects.resource.052"},
+            {0x35U, "audio.effects.resource.053"},
+            {0x37U, "audio.effects.resource.055"},
+        }};
+    for (const auto& [event, expected_alias] : spell_event_aliases) {
+        if (playback.alias_for_event(event) != expected_alias) {
+            std::cerr << "spell event 0x" << std::hex << event << std::dec
+                      << " did not select its decimal-numbered table-2 sound\n";
+            return 1;
+        }
     }
     if (!std::filesystem::is_regular_file(menu_024)) {
         std::cerr << "the extracted menu command-024 FLAC is missing\n";
@@ -241,7 +275,7 @@ int main(int argc, char** argv) {
         std::int64_t min_duration_ms;
         std::int64_t max_duration_ms;
     };
-    constexpr std::array<PlaybackExpectation, 18> kMappedEvents{{
+    constexpr std::array<PlaybackExpectation, 22> kMappedEvents{{
         {0x00U, "audio.music.resource.000", 119900, 120100},
         {0x10U, "audio.intro.title.stage-1", 14800, 14900},
         {0x16U, "audio.field.effect-016", 2700, 2800},
@@ -256,6 +290,10 @@ int main(int argc, char** argv) {
         {0x4CU, "audio.effects.resource.076", 2200, 2300},
         {0x4DU, "audio.effects.resource.077", 2100, 2130},
         {0x4EU, "audio.effects.resource.078", 2100, 2130},
+        {0x32U, "audio.effects.resource.050", 2440, 2490},
+        {0x34U, "audio.effects.resource.052", 2490, 2540},
+        {0x35U, "audio.effects.resource.053", 2410, 2460},
+        {0x37U, "audio.effects.resource.055", 2790, 2850},
         {0x51U, "audio.effects.resource.081", 2530, 2600},
         {0x5CU, "audio.intro.sega-logo-shock-sequence", 4700, 4900},
         {0x5DU, "audio.intro.shadowrun-logo-reveal-sequence", 2680, 2720},

@@ -4180,6 +4180,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     }
     constexpr std::size_t kIdleSelectorTableOffset = 0xC052U;
     constexpr std::size_t kHurtSelectorTableOffset = 0xC072U;
+    constexpr std::size_t kSpellSelectorTableOffset = 0xC082U;
     constexpr std::size_t kEntrySelectorTableOffset = 0xC0B2U;
     constexpr std::size_t kActionSelectorTableOffset = 0xC0A2U;
     constexpr std::size_t kActorHurtAudioTableOffset = 0xB03EU;
@@ -4342,6 +4343,33 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     std::to_string(kind_source.palette_line),
                 true, manifest, written, missing, blank,
                 idle_frame.origin_x, idle_frame.origin_y);
+
+            // AF7C/AFAE install the directional C082 state and switch the
+            // actor callback to 0xAFE0. That callback is a NOP, so the cast
+            // pose holds the first C082 image until another actor action
+            // replaces it. Export that source frame as an ordinary host
+            // sprite with its descriptor origin for the Qt field renderer.
+            const auto spell_selector = read_big_endian_word(
+                rom, kSpellSelectorTableOffset + direction * 2U);
+            const auto spell_frame =
+                shadowrun::graphics::decode_genesis_field_entity_state_frame(
+                    rom, kind_source.entity_kind, kind_source.palette_line,
+                    spell_selector, 0U);
+            const auto spell_name = asset_stem +
+                (direction == 0U
+                     ? std::string("-spell.bmp")
+                     : "-spell-dir-" + std::to_string(direction) + ".bmp");
+            write_catalog_asset(
+                root, spell_name, spell_frame.image, "sprite",
+                "0xAF7C/0xAFAE/0xC082/0xAFE0/0x600E actor=" +
+                    kind_source.actor_name + " kind=" +
+                    std::to_string(kind_source.entity_kind) + " template=" +
+                    format_offset(kind_source.template_offset) +
+                    " selector=" + format_offset(spell_selector) +
+                    " frame=0 palette-line=" +
+                    std::to_string(kind_source.palette_line),
+                true, manifest, written, missing, blank,
+                spell_frame.origin_x, spell_frame.origin_y);
             const auto kind_state_pointer = static_cast<std::size_t>(
                 read_big_endian_long(
                     rom, 0x62ACU +
@@ -4754,6 +4782,83 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     format_offset(static_cast<std::uint32_t>(pattern_offset)) +
                     " bytes=" + std::to_string(pattern_size) +
                     "; 0x13BE palette line 1; scene palette plus 0x18AC56";
+                write_catalog_asset(
+                    root, relative_name, frame.image, "sprite", source, true,
+                    manifest, written, missing, blank, frame.origin_x,
+                    frame.origin_y);
+            }
+        }
+    }
+
+    // The four spell action handlers present in the encounter actor catalog
+    // read the effect record from the target actor during 0x4658 rendering.
+    // Their phase pointers are source data, but the Qt runtime consumes these
+    // individually named frames and never reconstructs the temporary VRAM.
+    struct SpellEffectSourceProfile {
+        std::uint8_t action_code;
+        std::string_view asset_id;
+        std::size_t phase_table;
+        std::uint8_t phase_count;
+        std::uint16_t palette_attributes;
+        std::string_view handler;
+    };
+    constexpr std::array<SpellEffectSourceProfile, 4> kSpellEffects{{
+        {1U, "flame-dart", 0x58B6U, 4U, 0x2000U, "0x521E"},
+        {2U, "flame-bolt", 0x589EU, 6U, 0x2000U, "0x5152"},
+        {5U, "sleep", 0x5876U, 9U, 0x6000U, "0x52BE/0x5322"},
+        {9U, "mana-blast", 0x512AU, 6U, 0x4000U, "0x4FE2"},
+    }};
+    for (std::uint16_t scene_id = 0U;
+         scene_id < shadowrun::rom::kFieldModeCount; ++scene_id) {
+        const auto resources =
+            shadowrun::graphics::read_genesis_field_mode_resources(
+                rom, scene_id);
+        const auto palette = shadowrun::graphics::read_genesis_palette_set(
+            rom, resources.palette_offset);
+        for (const auto& profile : kSpellEffects) {
+            for (std::uint8_t phase = 0U;
+                 phase < profile.phase_count; ++phase) {
+                const auto descriptor_offset = static_cast<std::size_t>(
+                    read_big_endian_long(
+                        rom, profile.phase_table + phase * 4U));
+                if (read_big_endian_word(rom, descriptor_offset) != 0x8002U) {
+                    throw std::runtime_error(
+                        "spell effect frame has an unsupported source descriptor");
+                }
+                const auto pattern_offset = static_cast<std::size_t>(
+                    read_big_endian_long(rom, descriptor_offset + 2U));
+                const auto pattern_size = static_cast<std::size_t>(
+                    read_big_endian_word(rom, descriptor_offset + 6U));
+                if (pattern_size == 0U || pattern_size > kVramSize ||
+                    pattern_offset > rom.size() ||
+                    pattern_size > rom.size() - pattern_offset) {
+                    throw std::runtime_error(
+                        "spell effect pattern exceeds the ROM or host VRAM");
+                }
+                std::vector<std::uint8_t> vram(kVramSize, 0U);
+                std::copy_n(rom.begin() +
+                                static_cast<std::ptrdiff_t>(pattern_offset),
+                            pattern_size, vram.begin());
+                const auto frame = decode_field_entity_sprite_list(
+                    rom, vram, descriptor_offset + 8U, palette,
+                    profile.palette_attributes);
+                const auto relative_name =
+                    "field/entities/effects/spell/" +
+                    std::string(profile.asset_id) + "/scene-" +
+                    std::to_string(scene_id) + "-phase-" +
+                    std::to_string(phase) + ".bmp";
+                const auto source =
+                    "ROM 0x490A action=" +
+                    std::to_string(profile.action_code) + " handler=" +
+                    std::string(profile.handler) + " phase=" +
+                    std::to_string(phase) + " descriptor=" +
+                    format_offset(static_cast<std::uint32_t>(
+                        descriptor_offset)) + " pattern=" +
+                    format_offset(static_cast<std::uint32_t>(pattern_offset)) +
+                    " bytes=" + std::to_string(pattern_size) +
+                    "; palette line=" +
+                    std::to_string(profile.palette_attributes >> 13U) +
+                    " scene=" + std::to_string(scene_id);
                 write_catalog_asset(
                     root, relative_name, frame.image, "sprite", source, true,
                     manifest, written, missing, blank, frame.origin_x,

@@ -258,6 +258,7 @@ struct ScriptCombatantFacts {
     std::uint8_t item18_base = 0;
     // ROM 0x1033E adds live +0x9D to the initial action trial count.
     std::uint8_t auxiliary_roll_bonus = 0;
+    std::uint8_t action_result = 0; // live +0x9F
     std::array<std::uint8_t, 4> action_skills{}; // live +0x81..+0x84
     std::uint8_t armor_index = 0;
     std::int8_t race_or_state = 0;
@@ -286,6 +287,49 @@ struct ScriptCombatMeterUpdate {
     std::uint8_t physical_meter = 0;
     std::uint8_t mental_meter = 0;
     bool physical = false;
+    bool changed = false;
+};
+
+struct ScriptActorSpellActionResolution {
+    std::uint8_t action_code = 0;
+    std::string target_id;
+    std::uint8_t target_record_slot = 0;
+    std::uint16_t target_record_type = 0;
+    std::uint8_t action_result = 0;
+    bool roll_attempted = false;
+    std::optional<std::uint8_t> initial_trial_count;
+    std::optional<std::uint8_t> difficulty;
+    bool effect_started = false;
+    std::optional<std::uint8_t> spell_effect_slot;
+    std::optional<ScriptActorActionKind> next_action_kind;
+    std::optional<std::uint8_t> next_action_code;
+    std::optional<std::string> next_profile_id;
+    std::string outcome;
+    bool effect_requested = false;
+    std::int16_t residual_effect = 0;
+    std::uint8_t behavior_meter_delta = 0;
+    bool inventory_changed = false;
+    std::array<std::uint8_t, 8> item_codes{};
+    std::array<std::uint8_t, 8> item_phases{};
+    std::uint8_t mental_meter = 0;
+    bool special_result_published = false;
+    std::uint8_t special_result_successes = 0;
+    std::uint8_t special_result_bonus = 0;
+};
+
+struct ScriptActorSpellEffectResolution {
+    std::uint8_t action_code = 0;
+    std::string target_id;
+    std::uint8_t target_record_slot = 0;
+    std::uint16_t target_record_type = 0;
+    std::uint8_t target_trial_count = 0;
+    std::uint8_t difficulty = 0;
+    std::uint8_t target_roll_successes = 0;
+    std::int16_t effect_value = 0;
+    std::string outcome;
+    bool physical = true;
+    std::uint8_t physical_meter = 0;
+    std::uint8_t mental_meter = 0;
     bool changed = false;
 };
 
@@ -558,6 +602,7 @@ struct ScriptActorBehaviorContext {
     // measured target facts from the native geometry query. Lua chooses the
     // behavior; the host does not infer a target from screen proximity.
     bool dynamic_world_encounter_actor = false;
+    std::optional<std::uint8_t> source_record_slot;
     std::uint8_t source_record_flags = 0;
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t source_behavior_flags = 0;
@@ -658,6 +703,10 @@ struct ScriptActorBehaviorDecision {
     std::uint8_t target_motion_effect_direction = 0;
     std::uint8_t target_motion_effect_phase = 0;
     bool target_motion_effect_slot_released = false;
+    bool spell_effect_visible = false;
+    std::uint8_t spell_effect_phase = 0;
+    std::uint8_t spell_effect_action_code = 0;
+    std::optional<std::uint8_t> spell_effect_slot_released;
     bool target_marker_visible = false;
     bool target_marker_animating = false;
     std::uint8_t target_marker_style = 0;
@@ -670,6 +719,10 @@ struct ScriptActorBehaviorDecision {
     std::optional<std::int16_t> animation_increment;
     std::int16_t animation_accumulator = 0;
     std::optional<ScriptCombatMeterUpdate> combat_meter_update;
+    std::optional<ScriptActorSpellActionResolution>
+        spell_action_resolution;
+    std::optional<ScriptActorSpellEffectResolution>
+        spell_effect_resolution;
     // One 0x13FFE spell result for the 21-pass refresh. Nil on other passes.
     std::optional<std::string> source_action_dispatch;
 };

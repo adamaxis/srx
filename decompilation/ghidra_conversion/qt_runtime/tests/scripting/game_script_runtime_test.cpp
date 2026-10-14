@@ -1782,7 +1782,13 @@ int main() {
     struct SpellRefresh {
         std::optional<ScriptActorBehaviorDecision> refresh;
         std::optional<ScriptActorBehaviorDecision> render_hold;
+        std::optional<ScriptActorBehaviorDecision> completed_effect;
         std::optional<ScriptActorBehaviorDecision> next_behavior;
+        std::uint8_t spell_effect_visible_heartbeats = 0U;
+        std::uint8_t spell_effect_heartbeat_count = 0U;
+        bool effect_completed_early = false;
+        std::array<std::uint8_t, 64> spell_effect_phase_trace{};
+        std::array<bool, 64> spell_effect_visible_trace{};
     };
     const auto drive_spell_refresh = [&scripts, &actor_context](
                                          const std::string& profile_id,
@@ -1791,7 +1797,13 @@ int main() {
                                          const std::uint8_t action_code,
                                          const std::int16_t initial_delay,
                                          const std::optional<bool> projection,
-                                         const ScriptActorActionLineClear& line)
+                                         const ScriptActorActionLineClear& line,
+                                         const ScriptCombatantFacts* caster =
+                                             nullptr,
+                                         const ScriptCombatantFacts* target_facts =
+                                             nullptr,
+                                         const bool occupy_all_effect_slots =
+                                             false)
         -> SpellRefresh {
         SpellRefresh result;
         auto context = actor_context(
@@ -1802,9 +1814,11 @@ int main() {
         context.entry_animation_frame_count = 1U;
         context.walk_animation_frame_count = 4U;
         context.initial_action_delay = initial_delay;
+        context.movement_scene_id = 2U;
         context.movement_allowed = true;
         context.source_projection_active = projection;
         context.action_line_clear = line;
+        context.world_effect_slot_occupancy.fill(occupy_all_effect_slots);
         context.ai_random_bound =
             [](const std::uint16_t bound) -> std::optional<std::uint16_t> {
                 return bound == 0U ? std::nullopt
@@ -1813,6 +1827,39 @@ int main() {
         context.ai_target_candidates.push_back(ScriptActorTargetCandidate{
             "party.runner.0", 0x1234U, 0x0ABCU, 0x2000U, 0x0C00U, 0x01U, 0U,
             0U, 0U, true, false, 0x0100U, 0x0200U, 0x0C00U, 0x1800U});
+        context.ai_target_candidates.back().source_record_slot = 0U;
+        if (caster != nullptr) {
+            context.combatant = *caster;
+        }
+        if (target_facts != nullptr) {
+            context.ai_target_candidates.back().combatant = *target_facts;
+        }
+        auto effect_target_context = actor_context(
+            "field_runner_k03_none00", "party.runner.0", 3U,
+            ScriptActorActionKind::none, 0U, 0U, true);
+        effect_target_context.source_record_slot = 0U;
+        effect_target_context.movement_scene_id = 2U;
+        effect_target_context.combatant = target_facts == nullptr
+            ? ScriptCombatantFacts{}
+            : *target_facts;
+        std::size_t combat_dice_index = 0U;
+        if (caster != nullptr) {
+            context.ai_random_bound = [&combat_dice_index](
+                                          const std::uint16_t bound)
+                -> std::optional<std::uint16_t> {
+                if (bound == 0U) {
+                    return std::nullopt;
+                }
+                if (bound == 6U) {
+                    const auto face = (combat_dice_index++ & 1U) == 0U
+                        ? 5U
+                        : 0U;
+                    return static_cast<std::uint16_t>(face);
+                }
+                return 0U;
+            };
+        }
+        effect_target_context.ai_random_bound = context.ai_random_bound;
         const auto failed = [&scripts, &result]() {
             std::cerr << scripts.failure() << '\n';
             return result;
@@ -1820,7 +1867,11 @@ int main() {
         if (!scripts.actor_heartbeat(context).has_value()) {
             return failed();
         }
+        if (!scripts.actor_heartbeat(effect_target_context).has_value()) {
+            return failed();
+        }
         context.spawn = false;
+        effect_target_context.spawn = false;
         if (!scripts.actor_heartbeat(context).has_value()) {
             return failed();
         }
@@ -1840,8 +1891,54 @@ int main() {
                 continue;
             }
             result.refresh = decision;
+            if (decision->spell_action_resolution.has_value() &&
+                decision->spell_action_resolution->next_action_kind.has_value() &&
+                decision->spell_action_resolution->next_action_code.has_value() &&
+                decision->spell_action_resolution->next_profile_id.has_value()) {
+                context.profile_id =
+                    *decision->spell_action_resolution->next_profile_id;
+                context.action_kind =
+                    *decision->spell_action_resolution->next_action_kind;
+                context.action_code =
+                    *decision->spell_action_resolution->next_action_code;
+            }
             context.phase = ScriptActorHeartbeatPhase::render;
             result.render_hold = scripts.actor_heartbeat(context);
+            if (!result.render_hold.has_value()) {
+                return failed();
+            }
+            effect_target_context.phase =
+                ScriptActorHeartbeatPhase::render;
+            for (std::uint8_t frame = 0U; frame < 64U; ++frame) {
+                const auto effect_heartbeat =
+                    scripts.actor_heartbeat(effect_target_context);
+                if (!effect_heartbeat.has_value()) {
+                    return failed();
+                }
+                result.spell_effect_phase_trace[frame] =
+                    effect_heartbeat->spell_effect_phase;
+                result.spell_effect_visible_trace[frame] =
+                    effect_heartbeat->spell_effect_visible;
+                if (effect_heartbeat->spell_effect_visible) {
+                    ++result.spell_effect_visible_heartbeats;
+                }
+                if (effect_heartbeat->spell_effect_resolution.has_value() ||
+                    effect_heartbeat->spell_effect_slot_released.has_value()) {
+                    const auto expected_heartbeats = action_code == 1U
+                        ? 12U
+                        : action_code == 2U || action_code == 9U
+                              ? 31U
+                              : action_code == 5U ? 62U : 0U;
+                    result.effect_completed_early =
+                        expected_heartbeats == 0U ||
+                        static_cast<std::uint16_t>(frame) + 1U !=
+                            expected_heartbeats;
+                    result.spell_effect_heartbeat_count =
+                        static_cast<std::uint8_t>(frame + 1U);
+                    result.completed_effect = effect_heartbeat;
+                    break;
+                }
+            }
             context.phase = ScriptActorHeartbeatPhase::behavior;
             result.next_behavior = scripts.actor_heartbeat(context);
             return result;
@@ -1874,6 +1971,8 @@ int main() {
                held->animation_frame == 0U &&
                held->animation_selector == selector &&
                !held->source_action_dispatch.has_value() &&
+               !held->spell_effect_visible &&
+               held->spell_effect_action_code == 0U &&
                next->animation_id == "spell" &&
                next->animation_frame == 0U &&
                next->action_delay == 0x69 &&
@@ -1912,6 +2011,229 @@ int main() {
     const bool elven_line_hit_target =
         spell_line_called && spell_line_x == 0x1234U &&
         spell_line_y == 0x0ABCU;
+    ScriptCombatantFacts spell_caster{};
+    spell_caster.record_type = 7U;
+    spell_caster.source_flags = 0x01U;
+    spell_caster.physical_meter = 10U;
+    spell_caster.mental_meter = 0U;
+    spell_caster.posture = 4U;
+    spell_caster.command_attribute_7c = 8U;
+    spell_caster.item18_base = 8U;
+    spell_caster.race_or_state = 4;
+    spell_caster.equipped_action_code = 1U;
+    spell_caster.action_phase_extension[9] = 20U;
+    spell_caster.item_codes[0] = 6U;
+    ScriptCombatantFacts spell_target{};
+    spell_target.record_type = 0U;
+    spell_target.source_flags = 0x01U;
+    spell_target.interaction_flags = 0x80U;
+    spell_target.command_attribute_77 = 8U;
+    spell_target.physical_meter = 10U;
+    spell_target.mental_meter = 10U;
+    const auto resolved_spell_cast = drive_spell_refresh(
+        "lonemage_k0a_spell01", "spell_action_resolved", 10U, 1U, 0,
+        true, spell_line_true, &spell_caster, &spell_target);
+    const auto flame_bolt_cast = drive_spell_refresh(
+        "gator_shaman_k09_spell02", "spell_bolt_resolved", 9U, 2U, 0,
+        true, spell_line_true, &spell_caster, &spell_target);
+    const auto sleep_cast = drive_spell_refresh(
+        "rat_shaman_k0b_spell05", "spell_sleep_resolved", 11U, 5U, 0,
+        true, spell_line_true, &spell_caster, &spell_target);
+    const auto mana_blast_cast = drive_spell_refresh(
+        "elven_mage_k06_spell09", "spell_mana_blast_resolved", 6U, 9U, 0,
+        true, spell_line_true, &spell_caster, &spell_target);
+    const auto spell_effect_profile_matches = [](
+        const SpellRefresh& driven, const std::uint8_t action_code,
+        const std::uint8_t heartbeat_count, const std::uint8_t phase_count,
+        const std::uint8_t visible_count) {
+        const auto expected_audio_event = action_code == 1U
+            ? std::optional<std::uint16_t>{0x0032U}
+            : action_code == 2U
+                  ? std::optional<std::uint16_t>{0x0034U}
+            : action_code == 5U
+                  ? std::optional<std::uint16_t>{0x0037U}
+            : action_code == 9U
+                  ? std::optional<std::uint16_t>{0x0035U}
+                  : std::nullopt;
+        return driven.refresh.has_value() &&
+               expected_audio_event.has_value() &&
+               driven.refresh->audio_event == expected_audio_event &&
+               driven.refresh->spell_action_resolution.has_value() &&
+               driven.refresh->spell_action_resolution->effect_started &&
+               driven.spell_effect_heartbeat_count == heartbeat_count &&
+               driven.spell_effect_visible_heartbeats == visible_count &&
+               !driven.effect_completed_early &&
+               driven.completed_effect.has_value() &&
+               driven.completed_effect->spell_effect_action_code ==
+                   action_code &&
+               driven.completed_effect->spell_effect_phase == phase_count &&
+               driven.completed_effect->spell_effect_slot_released.has_value();
+    };
+    const auto spell_action_result = resolved_spell_cast.refresh.has_value()
+        ? resolved_spell_cast.refresh->spell_action_resolution
+        : std::nullopt;
+    const bool spell_action_roll_resolved =
+        resolved_spell_cast.refresh.has_value() &&
+        spell_action_result.has_value() &&
+        spell_action_result->action_code == 1U &&
+        spell_action_result->target_id == "party.runner.0" &&
+        spell_action_result->target_record_slot == 0U &&
+        spell_action_result->target_record_type == 0U &&
+        spell_action_result->roll_attempted &&
+        spell_action_result->initial_trial_count.has_value() &&
+        *spell_action_result->initial_trial_count == 8U &&
+        spell_action_result->difficulty.has_value() &&
+        *spell_action_result->difficulty == 6U &&
+        spell_action_result->action_result == 8U &&
+        spell_action_result->effect_requested &&
+        resolved_spell_cast.refresh->audio_event == 0x0032U &&
+        !spell_action_result->inventory_changed &&
+        spell_action_result->item_codes[0] == 6U;
+    const auto spell_effect_result =
+        resolved_spell_cast.completed_effect.has_value()
+            ? resolved_spell_cast.completed_effect->spell_effect_resolution
+            : std::nullopt;
+    const auto spell_target_update =
+        resolved_spell_cast.completed_effect.has_value()
+            ? resolved_spell_cast.completed_effect->combat_meter_update
+            : std::nullopt;
+    const std::array<std::uint8_t, 12> expected_spell_phase_trace{
+        0U, 0U, 0U, 0U, 0U, 1U, 1U, 2U, 2U, 3U, 3U, 4U};
+    const std::array<bool, 12> expected_spell_visibility_trace{
+        true, true, true, true, true, true, true, true, true, true, true,
+        false};
+    const bool delayed_spell_impact_applied =
+        spell_action_result.has_value() &&
+        spell_action_result->effect_started &&
+        spell_action_result->spell_effect_slot ==
+            std::optional<std::uint8_t>{0U} &&
+        resolved_spell_cast.spell_effect_visible_heartbeats == 11U &&
+        !resolved_spell_cast.effect_completed_early &&
+        std::equal(expected_spell_phase_trace.begin(),
+                   expected_spell_phase_trace.end(),
+                   resolved_spell_cast.spell_effect_phase_trace.begin()) &&
+        std::equal(expected_spell_visibility_trace.begin(),
+                   expected_spell_visibility_trace.end(),
+                   resolved_spell_cast.spell_effect_visible_trace.begin()) &&
+        resolved_spell_cast.completed_effect.has_value() &&
+        resolved_spell_cast.completed_effect->spell_effect_action_code == 1U &&
+        resolved_spell_cast.completed_effect->spell_effect_slot_released ==
+            std::optional<std::uint8_t>{0U} &&
+        resolved_spell_cast.completed_effect->spell_effect_phase == 4U &&
+        spell_effect_result.has_value() &&
+        spell_effect_result->action_code == 1U &&
+        spell_effect_result->target_id == "party.runner.0" &&
+        spell_effect_result->target_trial_count == 8U &&
+        spell_effect_result->difficulty == 2U &&
+        spell_effect_result->target_roll_successes == 8U &&
+        spell_effect_result->outcome == "effect_applied" &&
+        spell_effect_result->physical && spell_effect_result->changed &&
+        spell_effect_result->effect_value == 3 &&
+        spell_effect_result->physical_meter == 7U &&
+        spell_effect_result->mental_meter == spell_target.mental_meter &&
+        spell_target_update.has_value() && spell_target_update->changed &&
+        spell_target_update->physical &&
+        spell_target_update->target_id == "party.runner.0" &&
+        spell_target_update->physical_meter == spell_effect_result->physical_meter &&
+        spell_target_update->mental_meter == spell_effect_result->mental_meter;
+    const auto full_effect_pool_cast = drive_spell_refresh(
+        "lonemage_k0a_spell01", "spell_effect_pool_full", 10U, 1U, 0,
+        true, spell_line_true, &spell_caster, &spell_target, true);
+    const auto full_effect_pool_result =
+        full_effect_pool_cast.refresh.has_value()
+            ? full_effect_pool_cast.refresh->spell_action_resolution
+            : std::nullopt;
+    const bool full_spell_effect_pool_blocks_spawn =
+        full_effect_pool_result.has_value() &&
+        full_effect_pool_result->roll_attempted &&
+        full_effect_pool_result->action_result == 8U &&
+        full_effect_pool_result->effect_requested &&
+        !full_effect_pool_result->effect_started &&
+        !full_effect_pool_result->spell_effect_slot.has_value() &&
+        !full_effect_pool_cast.refresh->audio_event.has_value() &&
+        !full_effect_pool_cast.completed_effect.has_value() &&
+        full_effect_pool_cast.spell_effect_visible_heartbeats == 0U;
+    auto gated_spell_caster = spell_caster;
+    gated_spell_caster.mental_meter = 1U;
+    const auto gated_spell_cast = drive_spell_refresh(
+        "lonemage_k0a_spell01", "spell_action_gated", 10U, 1U, 0,
+        true, spell_line_true, &gated_spell_caster, &spell_target);
+    const auto gated_spell_result = gated_spell_cast.refresh.has_value()
+        ? gated_spell_cast.refresh->spell_action_resolution
+        : std::nullopt;
+    const bool source_spell_gate_switches_action =
+        gated_spell_result.has_value() &&
+        gated_spell_result->outcome == "target_state_gate" &&
+        !gated_spell_result->roll_attempted &&
+        gated_spell_result->next_action_kind == ScriptActorActionKind::item &&
+        gated_spell_result->next_action_code == 6U &&
+        gated_spell_result->next_profile_id ==
+            std::optional<std::string>{"lonemage_k0a_item06"} &&
+        gated_spell_cast.render_hold.has_value() &&
+        gated_spell_cast.next_behavior.has_value();
+    if (!spell_action_roll_resolved || !source_spell_gate_switches_action) {
+        const auto dump_spell_resolution = [](const char* name,
+                                              const SpellRefresh& driven) {
+            std::cerr << name;
+            if (!driven.refresh.has_value()) {
+                std::cerr << " missing refresh\n";
+                return;
+            }
+            std::cerr << " dispatch="
+                      << driven.refresh->source_action_dispatch.value_or("nil")
+                      << " animation=" << driven.refresh->animation_id
+                      << " render=" << driven.render_hold.has_value()
+                      << " next=" << driven.next_behavior.has_value();
+            if (driven.refresh->spell_action_resolution.has_value()) {
+                const auto& value =
+                    *driven.refresh->spell_action_resolution;
+                std::cerr << " outcome=" << value.outcome
+                          << " action_code="
+                          << static_cast<unsigned>(value.action_code)
+                          << " rolls=" << value.roll_attempted
+                          << " trials="
+                          << (value.initial_trial_count.has_value()
+                                  ? std::to_string(*value.initial_trial_count)
+                                  : "nil")
+                          << " difficulty="
+                          << (value.difficulty.has_value()
+                                  ? std::to_string(*value.difficulty)
+                                  : "nil")
+                          << " successes="
+                          << static_cast<unsigned>(value.action_result)
+                          << " effect=" << value.effect_requested
+                          << " target=" << value.target_id
+                          << " slot="
+                          << static_cast<unsigned>(value.target_record_slot)
+                          << " type=" << value.target_record_type;
+                if (value.next_action_kind.has_value()) {
+                    std::cerr << " next_kind="
+                              << static_cast<unsigned>(
+                                     *value.next_action_kind)
+                              << " next_code="
+                              << static_cast<unsigned>(
+                                     value.next_action_code.value_or(0U))
+                              << " next_profile="
+                              << value.next_profile_id.value_or("nil");
+                }
+                std::cerr << " inventory=" << value.inventory_changed
+                          << " slot1="
+                          << static_cast<unsigned>(value.item_codes[0]);
+            } else {
+                std::cerr << " missing typed resolution";
+            }
+            std::cerr << " audio="
+                      << (driven.refresh->audio_event.has_value()
+                              ? std::to_string(*driven.refresh->audio_event)
+                              : "nil") << '\n';
+            if (!driven.render_hold.has_value() ||
+                !driven.next_behavior.has_value()) {
+                std::cerr << name << " did not resume its subsequent heartbeat\n";
+            }
+        };
+        dump_spell_resolution("resolved spell", resolved_spell_cast);
+        dump_spell_resolution("gated spell", gated_spell_cast);
+    }
     bool waiting_line_called = false;
     const auto waiting_cast = drive_spell_refresh(
         "lonemage_k0a_spell01", "spell_waiting", 10U, 1U, 400, true,
@@ -1950,6 +2272,14 @@ int main() {
         spell_cast_ok(gator_cast, 0x0084U) &&
         spell_cast_ok(rat_cast, 0x0084U) &&
         spell_cast_ok(elven_cast, 0x0084U) && elven_line_hit_target &&
+        spell_action_roll_resolved && delayed_spell_impact_applied &&
+        spell_effect_profile_matches(resolved_spell_cast, 1U, 12U, 4U,
+                                     11U) &&
+        spell_effect_profile_matches(flame_bolt_cast, 2U, 31U, 6U, 30U) &&
+        spell_effect_profile_matches(sleep_cast, 5U, 62U, 9U, 61U) &&
+        spell_effect_profile_matches(mana_blast_cast, 9U, 31U, 6U, 30U) &&
+        full_spell_effect_pool_blocks_spawn &&
+        source_spell_gate_switches_action &&
         waiting_cast.refresh.has_value() &&
         waiting_cast.refresh->source_action_dispatch.has_value() &&
         *waiting_cast.refresh->source_action_dispatch == "waiting" &&
@@ -1986,8 +2316,28 @@ int main() {
         !blocked_terrain.refresh->combat_action_requested &&
         !blocked_terrain.refresh->weapon_item_id.has_value();
     if (!expect(spell_gate_contract,
-                "Lua spell dispatch failed the 0x13FFE gates for the four "
-                "templates")) {
+                "Lua spell dispatch failed the 0x13FFE gates or the live "
+                "0x1033E roll, target, effect, and audio result")) {
+        std::cerr << "spell gates: action=" << spell_action_roll_resolved
+                  << " delayed=" << delayed_spell_impact_applied
+                  << " pool=" << full_spell_effect_pool_blocks_spawn
+                  << " casts=" << spell_cast_ok(lonemage_cast, 0x0084U)
+                  << spell_cast_ok(gator_cast, 0x0084U)
+                  << spell_cast_ok(rat_cast, 0x0084U)
+                  << spell_cast_ok(elven_cast, 0x0084U)
+                  << " visible=" << static_cast<unsigned>(
+                         resolved_spell_cast.spell_effect_visible_heartbeats)
+                  << " phase=" << static_cast<unsigned>(
+                         resolved_spell_cast.completed_effect.has_value()
+                             ? resolved_spell_cast.completed_effect->spell_effect_phase
+                             : 0U)
+                  << " release=" << (resolved_spell_cast.completed_effect.has_value() &&
+                         resolved_spell_cast.completed_effect->spell_effect_slot_released.has_value())
+                  << " result=" << spell_effect_result.has_value()
+                  << (spell_effect_result.has_value()
+                          ? " outcome=" + spell_effect_result->outcome
+                          : std::string{})
+                  << '\n';
         std::cerr << scripts.failure() << '\n';
         return 30;
     }
