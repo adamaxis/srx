@@ -1,0 +1,12 @@
+    std::vector<PreTitleAudioRequest> pre_title_audio_requests_;
+    std::vector<std::string> presentation_boundaries_;
+    std::uint32_t title_vblanks_ = 0U;
+    std::size_t title_exit_palette_steps_ = 0U;
+    std::size_t title_mode_entry_transactions_ = 0U;
+    std::size_t title_mode_entry_vblanks_ = 0U;
+    std::size_t title_mode_entry_flushes_ = 0U;
+    std::size_t title_mode_entry_audio_ticks_ = 0U;
+    std::size_t title_sprite_record_builds_ = 0U;
+    std::uint32_t last_source_delay_ = 0U;
+    bool display_initialized_ = false;
+    bool display_ready_ = false;
