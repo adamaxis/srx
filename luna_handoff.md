@@ -301,3 +301,32 @@ table contact review, and L5a received one longplay-backed menu review. The
 L1 stop rule applies because its table collision matches the ROM, so no
 behavioral failing-then-passing change was warranted. Remaining queue items
 are L3-L4, L5b-L5k, L6, and L8.
+
+### L3 four-corner probes — source-matched, no movement fix warranted
+
+The Release and Debug `shadowrun_ghidra_conversion_qt_field_movement_qa`
+asserts exact Scene 19 `0x7E` contacts from all four cardinal directions and
+Scene 2 record 1 (`0x172DB4`, value `0x01`) from its in-bounds west, east, and
+north approaches. Each case pins candidate and post-fallback fixed-point
+positions, four terrain bytes, and `0x7F`. The south-side Scene 2 lookup was
+tested separately because its candidate is below the map's exclusive Y bound;
+the trace labels it `inside_scene_bounds=0` and does not claim a playable
+approach.
+
+Scene 26 table record 70 (`0x1D9C2A`) now has a diagonal Down+Right QA route.
+At candidate `(1420,3500)`, the corner bytes are `00,00,00,7E`; the ROM-style
+axis fallback keeps `(1420,3470)`. Thirty neutral updates confirm no position
+creep. Full 320x224 entry, contact, settled, and 30 consecutive neutral BMPs
+were inspected. HUD and priority layering stay present, the runner remains
+visible, the idle sprite continues animating, and the route adds no audio
+request. No exact longplay contact frame exists for Scene 26, and none of
+these internal captures are represented as an independent Genesis visual.
+
+Release and Debug movement and Scene 26 entry CTests pass after the exact
+assertions were pinned; the selected Release/Debug full-frame SHA-256 values
+also match. This is a test-coverage completion
+and source-matched no-fix review, not a failing-then-passing behavior fix;
+the existing host collision path already matched these ROM contacts.
+
+L3 is now closed with that scope. Remaining handoff work is L4, L5b-L5k,
+L6, and L8; L5a and the minimum longplay-backed menu review are complete.

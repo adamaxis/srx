@@ -106,5 +106,33 @@ adjustment was introduced. This is the handoff's explicit source-rectangle
 stop condition, not a claim that the full controller movement path or map
 hill is defended.
 
+### L3 diagonal furniture edge and idle tail
+
+The same `shadowrun_ghidra_conversion_qt_field_scene26_event1_entry_qa` now
+captures a Down+Right approach to record 70 after aligning the ROM heading.
+The deterministic route's full-screen frames are in
+`build/conversion/qt/release/qt_runtime/field-scene26-event1-entry-qa/table-collision/diagonal-corner/`:
+`entry.bmp`, `contact-before.bmp`, `contact-after.bmp`, `actual.bmp`, and
+`neutral-01.bmp` through `neutral-30.bmp`. The complete probe and idle traces
+are `movement.tsv`, `contact.tsv`, and `neutral.tsv`.
+
+On update 10, the runner is at `(1390,3470)` fixed point. The diagonal
+candidate is `(1420,3500)` and normalizes to `(88,218)`. Its four ROM terrain
+samples are `00,00,00,7E`; record 70 at `0x1D9C2A` supplies the lower-right
+blocked sample. Collision returns `0x7F`. The later axis fallback commits
+`(1420,3470)`, preserving the clear X movement while rejecting the Y
+component. This is the same source result in the typed host path, so no
+movement fix was warranted. Thirty neutral updates keep the world position
+fixed; the runner sprite's animation continues, and the route adds no audio
+request or modal state.
+
+The 320x224 entry/contact/settled frames were reopened at original size. The
+field HUD stays in place, the runner remains visible at the table edge, and
+the teal table is priority-drawn over the runner while the dark shadow remains
+part of the base map. No extra control or stale panel is layered over the HUD.
+There is no exact longplay frame for this Scene 26 contact, so these frames
+review host composition only. The source collision rectangle and one-corner
+sample are the behavioral evidence.
+
 The broader object-bound census, Scene 19 table records 8/9, independent
 Genesis visuals for Scene 26, and the other collision/menu rows remain open.

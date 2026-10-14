@@ -3,8 +3,9 @@
 **Status:** Eight visibly recognizable map regions were probed against their
 active ROM collision records. Six stop on the matching low-code record. The
 two shared office-map rows sample code `0x04` and enter that region, then stop
-on a separate neighboring `0x7F` record. The host matches the source trace in
-all eight routes; no gameplay collision change is indicated.
+on a separate neighboring `0x7F` record. L3 added two more live approaches to
+Scene 2 record 1 and a four-direction lookup probe. The host matches the source
+trace in all ten live routes; no gameplay collision change is indicated.
 
 ## Reproduction and source
 
@@ -82,6 +83,55 @@ record-3 candidate. The first Scene 31/34 test also incorrectly required the
 runner to leave the entire code-4 rectangle; the adjacent record-20 wall makes
 that impossible. It now verifies the accepted lookup and the actual adjacent
 source stop as separate observations.
+
+## L3 four-corner and cardinal-direction extension
+
+The Release and Debug movement QA now adds live east and north approaches to
+Scene 2 record 1 at `0x172DB4`, complementing its existing west approach. Each
+pins the attempted candidate, the committed position after the ROM fallback,
+all four corner bytes, and result `0x7F`:
+
+| Side | Candidate -> committed (fixed point) | Corner bytes |
+|---|---|---|
+| West | `(9288,20608) -> (9258,20608)` | `00,01,00,01` |
+| East | `(9912,20608) -> (9942,20608)` | `01,00,01,00` |
+| North | `(9600,19884) -> (9630,19824)` | `00,00,01,00` |
+
+The fourth, south-side object sample is blocked by the scene's exclusive
+terrain bound at normalized Y `1304`: the candidate `(9600,21088)` normalizes
+to Y `1318`, so ordinary movement returns at the bounds check before object
+lookup. To exercise the lookup handler itself, the test separately calls the
+typed source-derived collision path with a widened *test-only* bounds record.
+That isolated probe samples `01,00,00,00`, returns `0x7F`, and retains
+`(9600,21128)`. Its TSV row explicitly says `inside_scene_bounds=0`; this is
+not a playable south approach and does not change the map's bounds.
+
+The same Release CTest now records Scene 19 record 8 at `0x1D5F28` from all
+four cardinal input directions. Every candidate samples the ROM's `0x7E`
+table rectangle and returns `0x7F`; the position after `0xBB86` fallback is
+pinned separately from the rejected candidate. Scene 26 record 70 at
+`0x1D9C2A` supplies the furniture-edge case: a Down+Right input reaches
+candidate `(1420,3500)`, whose corner bytes are `00,00,00,7E`. The diagonal
+candidate is rejected, the ROM-style axis fallback commits `(1420,3470)`,
+and 30 subsequent neutral updates keep that position stable. The full capture
+also verifies the field HUD and priority-drawn table remain present; no audio
+request is added.
+
+Scene 2 full-screen entry, contact-before, contact-after, and settled frames
+are under
+`build/conversion/qt/release/qt_runtime/field-movement-qa/object-bounds-census/scene-02-record-1-east/`
+and `.../scene-02-record-1-north/`. Scene 26's full-screen sequence and all
+30 neutral frames are under
+`build/conversion/qt/release/qt_runtime/field-scene26-event1-entry-qa/table-collision/diagonal-corner/`.
+The exact Scene 19 cardinal frames are under
+`build/conversion/qt/release/qt_runtime/field-movement-qa/scene19-table-contact/`.
+All are 320x224 host captures. There is no exact longplay contact frame for
+these inputs. The reviewed frames show stable HUD/panel composition, the
+runner remains visible, the table body is priority drawn over the actor while
+its black shadow remains base-map art, and no new control or graphic overlaps
+the HUD. Runner animation changes during the neutral tail while world
+position stays fixed; this is the active host animation cadence and is not
+claimed as an independently measured Genesis cadence.
 
 ## Visual review
 

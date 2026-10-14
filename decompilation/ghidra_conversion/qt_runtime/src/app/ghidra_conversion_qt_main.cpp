@@ -9504,7 +9504,8 @@ int run_field_scene26_event1_physical_entry_qa(
 int run_scene26_table_collision_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
-    const std::filesystem::path& output);
+    const std::filesystem::path& output,
+    std::vector<std::uint16_t>& field_audio_events);
 
 int run_field_elevator_physical_entry_qa(
     FieldSceneRuntime& field_scene,
@@ -14693,10 +14694,270 @@ int run_field_scene26_event1_physical_entry_qa(
     return 0;
 }
 
+int run_scene26_table_corner_fallback_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    std::vector<std::uint16_t>& field_audio_events) {
+    constexpr std::size_t kTableRecordIndex = 70U;
+    constexpr std::uint32_t kTableRecordAddress = 0x1D9C2AU;
+    constexpr std::uint8_t kTableCollisionValue = 0x7EU;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    if (field_scene.field_scene_reference_for_dump() != 26U ||
+        metadata.terrain_collision_rectangles.size() <= kTableRecordIndex) {
+        std::cerr << "Scene-26 diagonal table QA: scene or ROM record is "
+                     "unavailable\n";
+        return 3;
+    }
+    const auto& record = metadata.terrain_collision_rectangles[
+        kTableRecordIndex];
+    if (record.left != 96U || record.right != 191U || record.top != 224U ||
+        record.bottom != 255U || record.value != kTableCollisionValue) {
+        std::cerr << "Scene-26 diagonal table QA: ROM record 70 at 0x1D9C2A "
+                     "changed\n";
+        return 3;
+    }
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-26 diagonal table QA: cannot clear output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        return 3;
+    }
+    const auto audio_count_before = field_audio_events.size();
+    bool source_heading_aligned = false;
+    constexpr std::uint8_t kDownRightInput = 0x0AU;
+    for (std::uint8_t tick = 0U; tick < 32U; ++tick) {
+        field_scene.set_controller_nibble(kDownRightInput);
+        field_scene.advance_frame();
+        if (field_scene.field_entity_heading_for_dump() ==
+            field_scene.field_entity_target_heading_for_dump()) {
+            source_heading_aligned = true;
+            break;
+        }
+        if (field_scene.field_scene_reference_for_dump() != 26U ||
+            field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+            field_scene.shop_menu_open()) {
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    for (std::uint8_t tick = 0U; tick < 24U; ++tick) {
+        field_scene.advance_frame();
+    }
+    if (!source_heading_aligned ||
+        field_scene.field_scene_reference_for_dump() != 26U ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.shop_menu_open()) {
+        std::cerr << "Scene-26 diagonal table QA: could not establish the ROM "
+                     "Down+Right heading\n";
+        return 3;
+    }
+
+    // Record 70 is a real Scene-26 0x7E rectangle. With the four source
+    // offsets, center (87,217) samples only corner 3 in its first 32x32 cell.
+    // Start at (70,200) on that diagonal, where the ordinary field map is
+    // clear, then use the normal controller and Lua movement route.
+    field_scene.set_field_entity_world_position_for_dump(70U * 16U,
+                                                          200U * 16U);
+    field_scene.set_field_camera_world_position_for_dump(0U, 80U * 16U);
+    field_scene.set_terrain_probe_trace_enabled_for_dump(true);
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto save = [&](const std::filesystem::path& path,
+                          const QImage& image) {
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+               field_hud_chrome_survives(image, asset_root) &&
+               image.save(QString::fromStdWString(path.wstring()));
+    };
+    if (!save(output / "entry.bmp", render())) {
+        field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+        std::cerr << "Scene-26 diagonal table QA: entry frame failed\n";
+        return 3;
+    }
+    std::ofstream trace(output / "movement.tsv", std::ios::trunc);
+    if (!trace) {
+        field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+        return 3;
+    }
+    trace << "tick\tbefore_x_fixed\tbefore_y_fixed\tafter_x_fixed"
+             "\tafter_y_fixed\tcandidate_x_fixed\tcandidate_y_fixed"
+             "\tnormalized_x\tnormalized_y\tcorner0\tcorner1\tcorner2"
+             "\tcorner3\traw_terrain\tcollision_result\twalking"
+             "\tselector\tanimation_frame\n";
+    bool contact_found = false;
+    std::uint16_t contact_tick = 0U;
+    SceneRunnerPosition before_contact{};
+    SceneRunnerPosition after_contact{};
+    FieldTerrainProbeTrace contact_probe{};
+    constexpr std::array<std::uint8_t, 4U> kOneBlockedCorner{
+        0U, 0U, 0U, kTableCollisionValue};
+    for (std::uint16_t tick = 1U; tick <= 80U && !contact_found; ++tick) {
+        const auto before = field_scene.field_entity_world_position();
+        const auto before_frame = render();
+        field_scene.set_controller_nibble(kDownRightInput);
+        field_scene.advance_frame();
+        const auto after = field_scene.field_entity_world_position();
+        const auto after_frame = render();
+        for (const auto& probe : field_scene.terrain_probe_trace_for_dump()) {
+            trace << tick << '\t' << before.x << '\t' << before.y << '\t'
+                  << after.x << '\t' << after.y << '\t'
+                  << probe.candidate_x_fixed << '\t'
+                  << probe.candidate_y_fixed << '\t' << probe.normalized_x
+                  << '\t' << probe.normalized_y;
+            for (const auto value : probe.terrain_bytes) {
+                trace << "\t0x" << std::hex << static_cast<unsigned>(value)
+                      << std::dec;
+            }
+            trace << "\t0x" << std::hex
+                  << static_cast<unsigned>(static_cast<std::uint8_t>(
+                         probe.raw_terrain_code))
+                  << "\t0x" << static_cast<unsigned>(
+                         static_cast<std::uint16_t>(probe.collision_result))
+                  << std::dec << '\t'
+                  << field_scene.field_entity_walking_for_dump() << '\t'
+                  << field_scene.field_entity_animation_selector_for_dump()
+                  << '\t'
+                  << field_scene.field_entity_animation_frame_for_dump()
+                  << '\n';
+            if (probe.outside_bounds || !probe.expanded_probe ||
+                probe.raw_terrain_code != kTableCollisionValue ||
+                probe.collision_result != 0x7F ||
+                probe.terrain_bytes != kOneBlockedCorner) {
+                continue;
+            }
+            contact_found = true;
+            contact_tick = tick;
+            before_contact = before;
+            after_contact = after;
+            contact_probe = probe;
+            if (!save(output / "contact-before.bmp", before_frame) ||
+                !save(output / "contact-after.bmp", after_frame)) {
+                field_scene.set_controller_nibble(0U);
+                field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+                return 3;
+            }
+            break;
+        }
+        if (field_scene.field_scene_reference_for_dump() != 26U ||
+            field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+            field_scene.shop_menu_open()) {
+            field_scene.set_controller_nibble(0U);
+            field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+            std::cerr << "Scene-26 diagonal table QA: a modal or scene change "
+                         "interrupted the furniture approach\n";
+            return 3;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+    if (!contact_found ||
+        (after_contact.x == contact_probe.candidate_x_fixed &&
+         after_contact.y == contact_probe.candidate_y_fixed) ||
+        field_scene.field_scene_reference_for_dump() != 26U) {
+        std::cerr << "Scene-26 diagonal table QA: the one-corner ROM block "
+                     "did not retain/fallback from the rejected candidate "
+                     "(found=" << contact_found << ", before="
+                  << before_contact.x << ',' << before_contact.y
+                  << ", candidate=" << contact_probe.candidate_x_fixed << ','
+                  << contact_probe.candidate_y_fixed << ", after="
+                  << after_contact.x << ',' << after_contact.y << ")\n";
+        return 3;
+    }
+    std::ofstream contact(output / "contact.tsv", std::ios::trunc);
+    if (!contact) {
+        return 3;
+    }
+    contact << "scene\trom_record\trom_address\tinput\ttick"
+               "\tbefore_x_fixed\tbefore_y_fixed\tcandidate_x_fixed"
+               "\tcandidate_y_fixed\tafter_x_fixed\tafter_y_fixed"
+               "\tcorner0\tcorner1\tcorner2\tcorner3\traw_terrain"
+               "\tcollision_result\tlongplay_frame\n";
+    contact << "26\t70\t0x" << std::hex << kTableRecordAddress << std::dec
+            << "\tDown+Right(0x0A)\t" << contact_tick << '\t'
+            << before_contact.x << '\t' << before_contact.y << '\t'
+            << contact_probe.candidate_x_fixed << '\t'
+            << contact_probe.candidate_y_fixed << '\t' << after_contact.x
+            << '\t' << after_contact.y;
+    for (const auto value : contact_probe.terrain_bytes) {
+        contact << "\t0x" << std::hex << static_cast<unsigned>(value)
+                << std::dec;
+    }
+    contact << "\t0x" << std::hex
+            << static_cast<unsigned>(static_cast<std::uint8_t>(
+                   contact_probe.raw_terrain_code))
+            << "\t0x" << static_cast<unsigned>(
+                   static_cast<std::uint16_t>(contact_probe.collision_result))
+            << std::dec << "\tno exact longplay contact\n";
+
+    std::ofstream idle_trace(output / "neutral.tsv", std::ios::trunc);
+    if (!idle_trace) {
+        return 3;
+    }
+    idle_trace << "tick\tx_fixed\ty_fixed\theading\twalking\tselector"
+                  "\tanimation_frame\taudio_event_count\n";
+    SceneRunnerPosition neutral_tail_position{};
+    bool neutral_tail_stable = true;
+    for (std::uint8_t tick = 1U; tick <= 30U; ++tick) {
+        field_scene.advance_frame();
+        const auto position = field_scene.field_entity_world_position();
+        if (tick == 24U) {
+            neutral_tail_position = position;
+        } else if (tick > 24U &&
+                   (position.x != neutral_tail_position.x ||
+                    position.y != neutral_tail_position.y)) {
+            neutral_tail_stable = false;
+        }
+        idle_trace << static_cast<unsigned>(tick) << '\t' << position.x << '\t'
+                   << position.y << '\t'
+                   << field_scene.field_entity_heading_for_dump() << '\t'
+                   << field_scene.field_entity_walking_for_dump() << '\t'
+                   << field_scene.field_entity_animation_selector_for_dump()
+                   << '\t'
+                   << field_scene.field_entity_animation_frame_for_dump()
+                   << '\t' << field_audio_events.size() << '\n';
+        if (!save(output / ("neutral-" +
+                            (tick < 10U ? std::string("0") : std::string()) +
+                            std::to_string(tick) + ".bmp"), render())) {
+            return 3;
+        }
+    }
+    if (!neutral_tail_stable || field_audio_events.size() != audio_count_before ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.shop_menu_open() ||
+        !save(output / "actual.bmp", render())) {
+        std::cerr << "Scene-26 diagonal table QA: neutral state, modal layer, "
+                     "or audio differs (stable=" << neutral_tail_stable
+                  << ", audio_before=" << audio_count_before
+                  << ", audio_after=" << field_audio_events.size() << ")\n";
+        return 3;
+    }
+    std::cout << "scene26_table_diagonal_corner_qa=passed scene=26 record=70 "
+                 "contact_tick=" << contact_tick << " before="
+              << before_contact.x << ',' << before_contact.y << " candidate="
+              << contact_probe.candidate_x_fixed << ','
+              << contact_probe.candidate_y_fixed << " after=" << after_contact.x
+              << ',' << after_contact.y << " corners=0,0,0,0x7E artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 int run_scene26_table_collision_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
-    const std::filesystem::path& output) {
+    const std::filesystem::path& output,
+    std::vector<std::uint16_t>& field_audio_events) {
     constexpr std::size_t kTableRecordIndex = 70U;
     constexpr std::uint32_t kTableRecordAddress = 0x1D9C2AU;
     constexpr std::uint8_t kTableCollisionValue = 0x7EU;
@@ -14973,6 +15234,11 @@ int run_scene26_table_collision_qa(
         std::cerr << "Scene-26 table collision QA: actual full-screen dump failed\n";
         return 3;
     }
+    if (run_scene26_table_corner_fallback_qa(
+            field_scene, asset_root, output / "diagonal-corner",
+            field_audio_events) != 0) {
+        return 3;
+    }
     std::cout << "scene26_table_collision_qa=observed scene=26 record="
               << kTableRecordIndex << " rom=0x" << std::hex
               << kTableRecordAddress << " value=0x"
@@ -15019,6 +15285,28 @@ int run_scene19_table_collision_qa(
         {"record-9-west", 144U * 16U, 140U * 16U, 0x08U, 9U,
          0x1D5F32U, ContactRoute::Side::west},
     }};
+    struct ExpectedContact {
+        SceneRunnerPosition start;
+        SceneRunnerPosition before;
+        SceneRunnerPosition candidate;
+        SceneRunnerPosition after;
+        std::array<std::uint8_t, 4U> terrain_bytes;
+    };
+    // These values are the source-route samples recorded from the ROM terrain
+    // map (0xFF1700) after 0xE8A0's four +/-12,+/-7 corner probes.  Pin each
+    // contact so this route cannot silently stop testing a different edge.
+    constexpr std::array<ExpectedContact, 5U> kExpectedContacts{{
+        {{768U, 2240U}, {828U, 2150U}, {858U, 2120U}, {828U, 2120U},
+         {0U, 0U, 0U, 0x7EU}},
+        {{2304U, 2240U}, {2244U, 2120U}, {2214U, 2090U}, {2244U, 2090U},
+         {0U, 0U, 0x7EU, 0U}},
+        {{1536U, 1792U}, {1896U, 1912U}, {1896U, 1942U}, {1926U, 1882U},
+         {0U, 0U, 0x7EU, 0U}},
+        {{1536U, 2816U}, {1536U, 2696U}, {1536U, 2666U}, {1536U, 2696U},
+         {0x7EU, 0x7EU, 0U, 0U}},
+        {{2304U, 2240U}, {2364U, 2150U}, {2394U, 2120U}, {2364U, 2120U},
+         {0U, 0U, 0U, 0x7EU}},
+    }};
     constexpr std::array<TerrainCollisionRectangle, 2U> kRomTableRecords{{
         {64U, 127U, 128U, 159U, 0x7EU},
         {160U, 223U, 128U, 159U, 0x7EU},
@@ -15053,7 +15341,10 @@ int run_scene19_table_collision_qa(
                 "\tcorner2_byte\tcorner3_x\tcorner3_y\tcorner3_byte"
                 "\traw_terrain\tcollision_result\tlongplay_frames\n";
 
-    for (const auto& route : kRoutes) {
+    for (std::size_t route_index = 0U; route_index < kRoutes.size();
+         ++route_index) {
+        const auto& route = kRoutes[route_index];
+        const auto& expected = kExpectedContacts[route_index];
         const auto route_output = output / std::string(route.name);
         std::filesystem::create_directories(route_output, output_error);
         if (output_error) {
@@ -15240,7 +15531,17 @@ int run_scene19_table_collision_qa(
             contact_probe.normalized_y >=
                 static_cast<std::uint16_t>(record.top - 7U) &&
             contact_probe.normalized_y <= record.bottom + 7U;
+        const bool exact_rom_contact_matches =
+            start.x == expected.start.x && start.y == expected.start.y &&
+            before_contact.x == expected.before.x &&
+            before_contact.y == expected.before.y &&
+            contact_probe.candidate_x_fixed == expected.candidate.x &&
+            contact_probe.candidate_y_fixed == expected.candidate.y &&
+            after_contact.x == expected.after.x &&
+            after_contact.y == expected.after.y &&
+            contact_probe.terrain_bytes == expected.terrain_bytes;
         if (!contact_found || !contact_position_keeps_approach_side ||
+            !exact_rom_contact_matches ||
             !center_within_rom_extent ||
             field_scene.field_scene_reference_for_dump() != 19U ||
             !audio_events.empty()) {
@@ -15251,6 +15552,7 @@ int run_scene19_table_collision_qa(
                       << " (route=" << route.name << ", found="
                       << contact_found << ", retained_approach_side="
                       << contact_position_keeps_approach_side
+                      << ", exact_rom_sample=" << exact_rom_contact_matches
                       << ", center_in_extent=" << center_within_rom_extent
                       << ", before=" << before_contact.x << ','
                       << before_contact.y << ", after=" << after_contact.x
@@ -15303,6 +15605,182 @@ int run_scene19_table_collision_qa(
     return 0;
 }
 
+bool run_scene2_object_bounds_four_side_lookup_qa(
+    const FieldSceneSourceMetadata& metadata,
+    const std::filesystem::path& output) {
+    struct ProbeCase {
+        std::string_view side;
+        std::uint8_t direction_ordinal;
+        SceneRunnerPosition candidate;
+        std::array<std::uint8_t, 4U> expected_bytes;
+    };
+    constexpr std::array<ProbeCase, 4U> kCases{{
+        {"west", 2U, {580U * 16U, 1288U * 16U}, {0U, 1U, 0U, 1U}},
+        {"east", 6U, {619U * 16U, 1288U * 16U}, {1U, 0U, 1U, 0U}},
+        {"north", 4U, {600U * 16U, 1241U * 16U}, {0U, 0U, 1U, 0U}},
+        {"south", 0U, {600U * 16U, 1318U * 16U}, {1U, 0U, 0U, 0U}},
+    }};
+    if (metadata.terrain_collision_rectangles.size() <= 1U ||
+        metadata.terrain_collision_map.empty()) {
+        return false;
+    }
+    const auto& object_record = metadata.terrain_collision_rectangles[1U];
+    if (object_record.left != 592U || object_record.right != 607U ||
+        object_record.top != 1248U || object_record.bottom != 1311U ||
+        object_record.value != 1U) {
+        return false;
+    }
+    std::array<MovementOffset, 8U> movement_offsets{};
+    for (std::size_t direction = 0U; direction < movement_offsets.size();
+         ++direction) {
+        movement_offsets[direction] = MovementOffset{
+            kFieldMovementDirectionTableWords[direction * 2U],
+            kFieldMovementDirectionTableWords[direction * 2U + 1U]};
+    }
+    const auto sample_tiles = [&metadata](
+                                  const std::uint16_t x,
+                                  const std::uint16_t y,
+                                  const bool expanded_probe) {
+        return sample_terrain_collision_tiles(
+            x, y, expanded_probe,
+            [&metadata](const std::uint16_t index) {
+                const auto& map = metadata.terrain_collision_map;
+                return index < map.size() ? map[index] : 0x7FU;
+            });
+    };
+    const TerrainCollisionBounds isolated_object_bounds{
+        0U, 4096U, 0U, 4096U};
+    const TerrainCollisionCallbacks collision_callbacks{
+        sample_tiles,
+        [&metadata](const std::uint8_t object_id,
+                    const std::int16_t x,
+                    const std::int16_t y) {
+            const auto& records = metadata.terrain_collision_rectangles;
+            if (object_id >= records.size()) {
+                return true;
+            }
+            const auto lookup = [&records](const std::uint16_t index) {
+                if (index >= records.size()) {
+                    return TerrainObjectBounds{};
+                }
+                const auto& record = records[index];
+                return TerrainObjectBounds{
+                    static_cast<std::int16_t>(record.left),
+                    static_cast<std::int16_t>(record.right),
+                    static_cast<std::int16_t>(record.top),
+                    static_cast<std::int16_t>(record.bottom)};
+            };
+            return contains_terrain_object_bounds(object_id, x, y, lookup);
+        },
+        {}};
+
+    std::ofstream trace(output, std::ios::trunc);
+    if (!trace) {
+        return false;
+    }
+    trace << "scene\trom_object_record\trom_address\tside"
+             "\tdirection_ordinal\tstart_x_fixed\tstart_y_fixed"
+             "\tcandidate_x_fixed\tcandidate_y_fixed\tretained_x_fixed"
+             "\tretained_y_fixed\tcorner0\tcorner1\tcorner2\tcorner3"
+             "\traw_terrain\tcollision_result\tinside_scene_bounds\n";
+
+    for (const auto& test_case : kCases) {
+        const auto& offset = movement_offsets[test_case.direction_ordinal];
+        const SceneRunnerPosition start{
+            static_cast<std::uint16_t>(
+                static_cast<std::int32_t>(test_case.candidate.x) - offset.x),
+            static_cast<std::uint16_t>(
+                static_cast<std::int32_t>(test_case.candidate.y) - offset.y)};
+        EntityMovementStepState entity{};
+        entity.position_x = start.x;
+        entity.position_y = start.y;
+        entity.heading = static_cast<std::uint16_t>(
+            test_case.direction_ordinal << 13U);
+        auto last_probe = MovementProbeResult{};
+        auto last_collision = TerrainCollisionResult{};
+        const auto movement_probe = [&](const std::uint16_t direction_slot) {
+            const auto direction = static_cast<std::uint8_t>(
+                (direction_slot >> 1U) & 0x07U);
+            last_probe = probe_entity_directional_collision(
+                MovementProbeInput{entity.position_x, entity.position_y,
+                                   direction, 0x04U},
+                movement_offsets,
+                [&](const std::uint16_t candidate_x,
+                    const std::uint16_t candidate_y) {
+                    last_collision = evaluate_terrain_collision(
+                        TerrainCollisionInput{
+                            candidate_x, candidate_y, 0x04U,
+                            isolated_object_bounds, {}},
+                        collision_callbacks);
+                    return last_collision.code;
+                });
+            return last_probe;
+        };
+        std::uint8_t reset_count = 0U;
+        const auto direction_slot = static_cast<std::uint16_t>(
+            test_case.direction_ordinal * 2U);
+        advance_entity_movement_step(
+            entity, field_movement_step_context_word(direction_slot),
+            direction_slot, {}, movement_probe,
+            [] { return false; },
+            [] { return MovementRouteResult{false, std::nullopt}; },
+            movement_probe, [&reset_count] { ++reset_count; });
+
+        const auto normalized_x =
+            static_cast<std::uint16_t>(test_case.candidate.x >> 4U);
+        const auto normalized_y =
+            static_cast<std::uint16_t>(test_case.candidate.y >> 4U);
+        const bool inside_scene_bounds =
+            normalized_x >= metadata.terrain_x_inclusive_lower &&
+            normalized_x < metadata.terrain_x_exclusive_upper &&
+            normalized_y >= metadata.terrain_y_inclusive_lower &&
+            normalized_y < metadata.terrain_y_exclusive_upper;
+        const bool exact_source_probe =
+            last_probe.candidate_x == test_case.candidate.x &&
+            last_probe.candidate_y == test_case.candidate.y &&
+            last_collision.state.sample.values == test_case.expected_bytes &&
+            last_collision.state.raw_terrain_code == 1 &&
+            last_collision.code == 0x7F && reset_count == 1U &&
+            entity.position_x == start.x && entity.position_y == start.y;
+        if (!exact_source_probe) {
+            std::cerr << "Object-bounds four-side lookup QA: ROM record 1 "
+                         "probe differs on " << test_case.side
+                      << " (candidate=" << last_probe.candidate_x << ','
+                      << last_probe.candidate_y << ", expected="
+                      << test_case.candidate.x << ','
+                      << test_case.candidate.y << ", raw="
+                      << last_collision.state.raw_terrain_code << ", result="
+                      << last_collision.code << ", retained="
+                      << entity.position_x << ',' << entity.position_y
+                      << ", reset=" << static_cast<unsigned>(reset_count)
+                      << ")\n";
+            return false;
+        }
+        trace << 2U << '\t' << 1U << "\t0x172DB4\t" << test_case.side
+              << '\t' << static_cast<unsigned>(test_case.direction_ordinal)
+              << '\t' << start.x << '\t' << start.y << '\t'
+              << last_probe.candidate_x << '\t' << last_probe.candidate_y
+              << '\t' << entity.position_x << '\t' << entity.position_y;
+        for (const auto value : last_collision.state.sample.values) {
+            trace << "\t0x" << std::hex << static_cast<unsigned>(value)
+                  << std::dec;
+        }
+        trace << "\t0x" << std::hex
+              << static_cast<unsigned>(static_cast<std::uint8_t>(
+                     last_collision.state.raw_terrain_code))
+              << "\t0x" << static_cast<unsigned>(
+                     static_cast<std::uint16_t>(last_collision.code))
+              << std::dec << '\t' << inside_scene_bounds << '\n';
+        if (test_case.direction_ordinal != 0U && !inside_scene_bounds) {
+            return false;
+        }
+        if (test_case.direction_ordinal == 0U && inside_scene_bounds) {
+            return false;
+        }
+    }
+    return true;
+}
+
 int run_low_code_object_bounds_census_qa(
     const StartupIntegrationState& startup_state,
     const std::filesystem::path& asset_root,
@@ -15322,12 +15800,21 @@ int run_low_code_object_bounds_census_qa(
         TerrainCollisionRectangle lookup;
         bool expect_blocked;
         Side side;
+        bool prealign_heading = false;
     };
-    constexpr std::array<CollisionRoute, 8U> kRoutes{{
+    constexpr std::array<CollisionRoute, 10U> kRoutes{{
         {"scene-02-record-1", 2U, 528U * 16U, 1288U * 16U, 0x08U,
          1U, 0x172DB4U, {592U, 607U, 1248U, 1311U, 1U},
          1U, 0x172DB4U, {592U, 607U, 1248U, 1311U, 1U}, true,
          Side::west},
+        {"scene-02-record-1-east", 2U, 672U * 16U, 1288U * 16U, 0x04U,
+         1U, 0x172DB4U, {592U, 607U, 1248U, 1311U, 1U},
+         1U, 0x172DB4U, {592U, 607U, 1248U, 1311U, 1U}, true,
+         Side::east, true},
+        {"scene-02-record-1-north", 2U, 600U * 16U, 1224U * 16U, 0x02U,
+         1U, 0x172DB4U, {592U, 607U, 1248U, 1311U, 1U},
+         1U, 0x172DB4U, {592U, 607U, 1248U, 1311U, 1U}, true,
+         Side::north, true},
         {"scene-02-record-2", 2U, 1472U * 16U, 848U * 16U, 0x04U,
          2U, 0x172DBEU, {1376U, 1407U, 832U, 847U, 2U},
          2U, 0x172DBEU, {1376U, 1407U, 832U, 847U, 2U}, true,
@@ -15365,10 +15852,15 @@ int run_low_code_object_bounds_census_qa(
         bool has_lookup_probe = false;
         SceneRunnerPosition lookup_candidate;
         std::array<std::uint8_t, 4U> lookup_corners{};
+        bool pin_exact = true;
     };
-    constexpr std::array<ExpectedContact, 8U> kExpectedContacts{{
+    constexpr std::array<ExpectedContact, 10U> kExpectedContacts{{
         {{9258U, 20608U}, {9288U, 20608U}, {9258U, 20608U},
          {0U, 1U, 0U, 1U}},
+        {{9942U, 20608U}, {9912U, 20608U}, {9942U, 20608U},
+         {1U, 0U, 1U, 0U}},
+        {{9600U, 19854U}, {9600U, 19884U}, {9630U, 19824U},
+         {0U, 0U, 1U, 0U}},
         {{22742U, 13448U}, {22712U, 13448U}, {22742U, 13448U},
          {2U, 0U, 2U, 0U}},
         {{15104U, 15240U}, {15104U, 15210U}, {15104U, 15240U},
@@ -15418,6 +15910,7 @@ int run_low_code_object_bounds_census_qa(
               "\tcamera_x_fixed\tcamera_y_fixed\trunner_screen_x"
               "\trunner_screen_y\tlongplay_frame\n";
 
+    bool four_side_object_lookup_passed = false;
     for (std::size_t route_index = 0U; route_index < kRoutes.size();
          ++route_index) {
         const auto& route = kRoutes[route_index];
@@ -15483,6 +15976,46 @@ int run_low_code_object_bounds_census_qa(
                          "record does not match Scene " << route.scene
                       << '\n';
             return 3;
+        }
+        if (!four_side_object_lookup_passed && route.scene == 2U &&
+            route.region_record_index == 1U) {
+            if (!run_scene2_object_bounds_four_side_lookup_qa(
+                    metadata,
+                    output / "scene-02-record-1-four-side-lookup.tsv")) {
+                std::cerr << "Object-bounds census QA: four-side ROM lookup "
+                             "did not match record 1\n";
+                return 3;
+            }
+            four_side_object_lookup_passed = true;
+        }
+        if (route.prealign_heading) {
+            bool source_heading_aligned = false;
+            for (std::uint16_t tick = 0U; tick < 32U; ++tick) {
+                field_scene.set_controller_nibble(route.input_nibble);
+                field_scene.advance_frame();
+                if (field_scene.field_entity_heading_for_dump() ==
+                    field_scene.field_entity_target_heading_for_dump()) {
+                    source_heading_aligned = true;
+                    break;
+                }
+                if (field_scene.field_scene_reference_for_dump() !=
+                        route.scene || field_scene.dialogue_open() ||
+                    field_scene.field_interaction_open()) {
+                    break;
+                }
+            }
+            field_scene.set_controller_nibble(0U);
+            for (std::uint8_t settle = 0U; settle < 24U; ++settle) {
+                field_scene.advance_frame();
+            }
+            if (!source_heading_aligned ||
+                field_scene.field_scene_reference_for_dump() != route.scene ||
+                field_scene.dialogue_open() ||
+                field_scene.field_interaction_open()) {
+                std::cerr << "Object-bounds census QA: source heading could "
+                             "not be aligned for " << route.name << '\n';
+                return 3;
+            }
         }
         const auto center_view_on = [&field_scene](
                                         const SceneRunnerPosition position) {
@@ -15682,13 +16215,14 @@ int run_low_code_object_bounds_census_qa(
             return actual.x == expected.x && actual.y == expected.y;
         };
         const bool stop_evidence_matches =
-            position_matches(before_contact, expected.before) &&
+            !expected.pin_exact ||
+            (position_matches(before_contact, expected.before) &&
             position_matches(
                 SceneRunnerPosition{contact_probe.candidate_x_fixed,
                                     contact_probe.candidate_y_fixed},
                 expected.candidate) &&
             position_matches(after_contact, expected.after) &&
-            contact_probe.terrain_bytes == expected.stop_corners;
+            contact_probe.terrain_bytes == expected.stop_corners);
         const bool lookup_evidence_matches = !expected.has_lookup_probe ||
             (position_matches(
                  SceneRunnerPosition{lookup_probe.candidate_x_fixed,
@@ -15785,8 +16319,13 @@ int run_low_code_object_bounds_census_qa(
                << field_scene.field_entity_screen_y_for_dump()
                << "\tno exact longplay contact\n";
     }
+    if (!four_side_object_lookup_passed) {
+        std::cerr << "Object-bounds census QA: four-side lookup was not run\n";
+        return 3;
+    }
     std::cout << "low_code_object_bounds_census_qa=passed routes="
-              << kRoutes.size() << " blocked=6 lookup_clear=2 artifacts="
+              << kRoutes.size() << " blocked=" << (kRoutes.size() - 2U)
+              << " lookup_clear=2 four_side_lookup=record-1 artifacts="
               << output.string() << '\n';
     return 0;
 }
@@ -21343,7 +21882,8 @@ int main(int argc, char** argv) {
                 return run_scene26_table_collision_qa(
                     field_scene, asset_root,
                     *field_scene26_event1_entry_qa_path /
-                        "table-collision");
+                        "table-collision",
+                    field_audio_events);
             }
             if (field_elevator_physical_entry_qa_path.has_value()) {
                 return run_field_elevator_physical_entry_qa(
