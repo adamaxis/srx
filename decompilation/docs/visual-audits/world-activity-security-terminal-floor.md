@@ -33,8 +33,10 @@ field. The feature remains partial where noted.
    resolves its generic world-activity table route through `building.lua`,
    keeping those meanings separate. The selected resource has random bound 3;
    its bundle cursor fields are `+0x14 = 0x18` and `+0x16 = 0`. With
-   deterministic host seed `0x1234`, the source-shaped PRNG callbacks publish
-   `FFE12C = 2` and `FFE185 = 2`; the successful result text says “third
+   deterministic host seed `0x1234`, Scene 26 first initializes its one
+   source-listed corporate guard, consuming one behavior-delay PRNG advance.
+   The subsequent source draws publish `FFE12C = 2` and `FFE185 = 3`; the
+   successful result text says “third
    floor.” QA compares each typed field and the resulting visible text. The
    physical collision that writes this focused QA's resolved event code is
    outside this test; the separate event-1 route verifies normal collision-to-
@@ -58,10 +60,12 @@ field. The feature remains partial where noted.
 
 5. **Is there a sound, and how long does it play? — Partly known.** No sound
    call was found in the traced world-activity selection or resource-cursor
-   copy. The successful Security Terminal result requests event `0x30`, which
-   maps to persistent resource 048; its source stop lifetime is unresolved.
-   QA checks the event request only. It does not prove host playback or a
-   duration.
+   copy. When scene preparation initializes its one corporate guard, the Lua
+   actor profile requests entry event `0x2E`; the successful Security Terminal
+   result later requests event `0x30`, which maps to persistent resource 048.
+   QA checks the ordered requests `{0x2E, 0x30}` only. It does not prove host
+   playback or a matching Genesis waveform, and the `0x30` stop lifetime
+   remains unresolved.
 
 6. **Are the other visible parts of the screen correct? — Internally checked.**
    Full-frame captures include the field HUD, selected map, prompt, and result.
