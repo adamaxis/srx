@@ -260,7 +260,10 @@ and the remaining actor-slot lifecycle are not fully connected.
 
 The B rising-edge path at `0x1DC4C` now runs its normal/special candidate scan
 in the player's Lua behavior heartbeat. The host supplies the typed record
-facts and publishes Lua's selected actor ID to the selected record. The scan
+facts and publishes Lua's selected actor ID to the selected record. A later
+weapon spawn reads that same record: `0x151BE` loads it and `0x14FF8` aims
+the projectile at its live position when the record is still active. With no
+selection, the shot keeps the shooter's facing. The scan
 keeps the two source selection fields distinct: candidate reservation is
 `+0x10.4`, while B's selected-target latch is `+0x11.4`. Lua advances the
 `+0xA6` marker countdown on the render heartbeat, selects the four ROM

@@ -20168,6 +20168,8 @@ int main(int argc, char** argv) {
                 }
                 const auto fire_before_selector = weapon_fire_scene
                                                       .field_entity_animation_selector_for_dump();
+                const auto fire_before_heading =
+                    weapon_fire_scene.field_entity_heading_for_dump();
                 weapon_fire_scene.set_controller_port_byte(0x40U);
                 weapon_fire_scene.advance_frame();
                 const auto fire_actual = render_weapon_fire_scene();
@@ -20184,6 +20186,8 @@ int main(int argc, char** argv) {
                 const auto primary_heading_offsets =
                     weapon_fire_scene
                         .field_weapon_primary_heading_offsets_for_dump();
+                const auto untargeted_heading =
+                    weapon_fire_scene.field_weapon_primary_heading_for_dump();
                 const auto fire_attack_saved = save_weapon_fire_scene(
                     "attack", fire_actual);
                 if (weapon_fire_scene.active_runner_record().ammo_rounds !=
@@ -20204,6 +20208,8 @@ int main(int argc, char** argv) {
                     !primary_position_before_delay.has_value() ||
                     !primary_spawn_position.has_value() ||
                     !primary_heading_offsets.has_value() ||
+                    untargeted_heading !=
+                        std::optional<std::uint16_t>{fire_before_heading} ||
                     projectile_selector != std::optional<std::uint16_t>{0U} ||
                     projectile_frame != std::optional<std::uint16_t>{0U} ||
                     weapon_fire_audio != std::vector<std::uint16_t>{0x001CU} ||
@@ -21213,6 +21219,120 @@ int main(int argc, char** argv) {
                                weapon_fire_audio.end(), 0x001CU) != 2 ||
                     !moving_position_advanced) {
                     std::cerr << "field player action dump: moving hold did not consume exactly one round per source delay\n";
+                    return 3;
+                }
+
+                // ROM 0x151BE/0x14FF8: after B publishes +0xA2, the next shot
+                // aims at that record instead of the shooter's facing.
+                weapon_fire_scene.set_controller_port_byte(0U);
+                for (std::uint16_t frame = 0U;
+                     frame < 512U &&
+                     (held_fire_runner.animation_action_gate >= 0 ||
+                      weapon_fire_scene.field_entity_attack_pose_for_dump());
+                     ++frame) {
+                    weapon_fire_scene.advance_frame();
+                }
+                weapon_fire_scene.set_source_random_seed_for_dump(0x1234U);
+                const auto aim_actors_before =
+                    weapon_fire_scene.default_actor_count_for_dump();
+                const auto aim_spawned =
+                    weapon_fire_scene
+                        .resolve_and_spawn_field_encounter_for_dump(
+                            1U, 2U, 0x1234U);
+                bool aim_entry_complete = false;
+                for (std::uint16_t frame = 0U;
+                     frame < 160U && !aim_entry_complete; ++frame) {
+                    aim_entry_complete =
+                        weapon_fire_scene
+                                .default_actor_transition_complete_for_dump(
+                                    0U) == std::optional<bool>{true} &&
+                        weapon_fire_scene
+                                .default_actor_transition_complete_for_dump(
+                                    1U) == std::optional<bool>{true};
+                    if (aim_entry_complete) {
+                        break;
+                    }
+                    weapon_fire_scene.set_controller_port_byte(0U);
+                    weapon_fire_scene.advance_frame();
+                }
+                const auto aim_player =
+                    weapon_fire_scene.field_entity_world_position();
+                // ROM 0x5A94 clears +0x0C outside the window, and 0x1DC4C
+                // skips that record. The edge spawn is outside it. Park the
+                // new actor on the runner so the B scan can publish +0xA2.
+                const bool aim_actor_on_runner =
+                    weapon_fire_scene
+                        .set_default_actor_world_position_for_dump(
+                            aim_actors_before, aim_player.x, aim_player.y);
+                weapon_fire_scene.set_controller_port_byte(0x10U);
+                weapon_fire_scene.advance_frame();
+                weapon_fire_scene.set_controller_port_byte(0U);
+                weapon_fire_scene.advance_frame();
+                const auto aim_facing =
+                    weapon_fire_scene.field_entity_heading_for_dump();
+                auto aim_x = aim_player.x;
+                auto aim_y = aim_player.y;
+                std::uint16_t expected_aim_heading = 0x4000U;
+                if ((aim_facing >> 13U) != 2U && aim_player.x <= 0xF000U) {
+                    aim_x = static_cast<std::uint16_t>(aim_player.x + 0x0200U);
+                    expected_aim_heading = 0x4000U;
+                } else if ((aim_facing >> 13U) != 4U &&
+                           aim_player.y <= 0xF000U) {
+                    aim_y = static_cast<std::uint16_t>(aim_player.y + 0x0200U);
+                    expected_aim_heading = 0x8000U;
+                } else if (aim_player.x >= 0x0200U) {
+                    aim_x = static_cast<std::uint16_t>(aim_player.x - 0x0200U);
+                    expected_aim_heading = 0xC000U;
+                } else {
+                    aim_y = static_cast<std::uint16_t>(aim_player.y - 0x0200U);
+                    expected_aim_heading = 0x0000U;
+                }
+                const auto aim_selected =
+                    weapon_fire_scene.selected_default_actor_id_for_dump();
+                const auto aim_rounds_before =
+                    held_fire_runner.ammo_rounds;
+                if (held_fire_runner.animation_action_gate >= 0 ||
+                    weapon_fire_scene.field_entity_attack_pose_for_dump() ||
+                    aim_spawned != 2U || !aim_entry_complete ||
+                    !aim_actor_on_runner || !aim_selected.has_value() ||
+                    !weapon_fire_scene
+                         .set_selected_default_actor_world_position_for_dump(
+                             aim_x, aim_y)) {
+                    std::cerr << "field player action dump: B did not publish a live actor to aim at"
+                              << " spawned=" << aim_spawned
+                              << " entry=" << aim_entry_complete
+                              << " placed=" << aim_actor_on_runner
+                              << " actors_before=" << aim_actors_before
+                              << " selected="
+                              << aim_selected.value_or("<none>")
+                              << " gate="
+                              << held_fire_runner.animation_action_gate
+                              << '\n';
+                    return 3;
+                }
+                weapon_fire_scene.set_controller_port_byte(0x40U);
+                weapon_fire_scene.advance_frame();
+                const auto aimed_heading =
+                    weapon_fire_scene.field_weapon_primary_heading_for_dump();
+                if (held_fire_runner.ammo_rounds + 1U != aim_rounds_before ||
+                    weapon_fire_scene.last_field_weapon_spawn_action_for_dump() !=
+                        EntitySpawnCycleAction::spawned ||
+                    aimed_heading !=
+                        std::optional<std::uint16_t>{expected_aim_heading} ||
+                    expected_aim_heading == aim_facing) {
+                    std::cerr << "field player action dump: selected-target shot did not take the 0x14FF8 heading"
+                              << " facing=0x" << std::hex << aim_facing
+                              << " expected=0x" << expected_aim_heading
+                              << " actual=";
+                    if (aimed_heading.has_value()) {
+                        std::cerr << "0x" << *aimed_heading;
+                    } else {
+                        std::cerr << "<none>";
+                    }
+                    std::cerr << std::dec << " ammo="
+                              << static_cast<unsigned>(
+                                     held_fire_runner.ammo_rounds)
+                              << '\n';
                     return 3;
                 }
 

@@ -3531,6 +3531,17 @@ FieldSceneRuntime::field_weapon_primary_spawn_position_for_dump() const
     return std::nullopt;
 }
 
+std::optional<std::uint16_t>
+FieldSceneRuntime::field_weapon_primary_heading_for_dump() const noexcept {
+    for (auto spawn = field_weapon_projectiles_.rbegin();
+         spawn != field_weapon_projectiles_.rend(); ++spawn) {
+        if (spawn->primary_active) {
+            return spawn->primary_record.heading;
+        }
+    }
+    return std::nullopt;
+}
+
 std::optional<EntityHeadingOffsets>
 FieldSceneRuntime::field_weapon_primary_heading_offsets_for_dump() const
     noexcept {
@@ -7724,6 +7735,44 @@ void FieldSceneRuntime::service_player_weapon_action(
         field_runtime_state_.field_scene_gate);
     spawn_state.entity_flags = spawn_state.parent.flags;
     spawn_state.source_status_flags = source_status_flags;
+    // ROM 0x151BE loads the shooter's +0xA2. 0x14FF8 aims the projectile at
+    // that record when its active flag is set; otherwise the shot keeps the
+    // shooter's facing.
+    if (field_entity_target_owner_.selected_target.has_value()) {
+        const auto slot = *field_entity_target_owner_.selected_target;
+        if (slot < field_entity_target_records_.size() &&
+            field_entity_target_records_[slot].active) {
+            std::optional<SceneRunnerPosition> aim;
+            const auto current_scene =
+                state_.field_scene_buffers.scene_reference;
+            const auto selected_actor = std::find_if(
+                field_default_actors_.begin(), field_default_actors_.end(),
+                [current_scene, slot](const auto& candidate) {
+                    return candidate.active &&
+                        candidate.scene_reference == current_scene &&
+                        candidate.source_record_slot.has_value() &&
+                        static_cast<std::size_t>(
+                            *candidate.source_record_slot) == slot;
+                });
+            if (selected_actor != field_default_actors_.end()) {
+                aim = selected_actor->world_position;
+            } else if (slot < FieldPartyRosterRuntime::kSlotCount &&
+                       field_party_roster_.slot_active(slot) &&
+                       slot < state_.field_scene_buffers.source_metadata
+                                  .initial_field_records.size()) {
+                aim = state_.field_scene_buffers.source_metadata
+                          .initial_field_records[slot];
+                if (slot == field_party_roster_.active_slot() &&
+                    field_entity_.active) {
+                    aim = field_entity_.world_position;
+                }
+            }
+            if (aim.has_value()) {
+                spawn_state.linked_target = SpawnEntityLinkedState{
+                    aim->x, aim->y, 0x01U, false};
+            }
+        }
+    }
 
     const auto ammo_before = runner.ammo_rounds;
     std::vector<std::uint16_t> allocated_slots;

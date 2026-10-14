@@ -970,6 +970,8 @@ public:
     field_weapon_primary_spawn_position_for_dump() const noexcept;
     std::optional<EntityHeadingOffsets>
     field_weapon_primary_heading_offsets_for_dump() const noexcept;
+    std::optional<std::uint16_t>
+    field_weapon_primary_heading_for_dump() const noexcept;
     std::optional<std::uint8_t>
     field_weapon_primary_retry_count_for_dump() const noexcept;
     std::optional<std::uint16_t>
