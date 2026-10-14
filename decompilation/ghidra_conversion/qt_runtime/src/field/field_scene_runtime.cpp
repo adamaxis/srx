@@ -11370,11 +11370,14 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
         }
     }
 
-    const auto count = group == ShopActionGroup::sell
+    const auto stock_group = field_shop_menu_.offers_panel_active()
+        ? group
+        : field_shop_menu_.displayed_offer_group();
+    const auto count = stock_group == ShopActionGroup::sell
         ? active_runner_record().inventory_item_codes.size()
-        : field_shop_menu_.offer_count(group);
+        : field_shop_menu_.offer_count(stock_group);
     for (std::size_t index = 0; index < count && index < 8U; ++index) {
-        if (group == ShopActionGroup::sell) {
+        if (stock_group == ShopActionGroup::sell) {
             const auto item_code =
                 active_runner_record().inventory_item_codes[index];
             if (item_code > 0U &&
@@ -11385,7 +11388,7 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
             }
             continue;
         }
-        const auto offer = field_shop_menu_.offer(group, index);
+        const auto offer = field_shop_menu_.offer(stock_group, index);
         if (!offer.has_value()) {
             continue;
         }

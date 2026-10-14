@@ -93,6 +93,8 @@ bool ShopMenuController::open(
     }
     shop_ = shop;
     group_ids_ = std::move(group_ids);
+    displayed_offer_group_ =
+        group_from_id(group_ids_.front()).value_or(ShopActionGroup::weapons);
     confirmation_choice_ids_ = confirmation_choice_ids;
     offer_groups_ = std::move(offer_groups);
     menu_mode_ = kAresMenuMode;
@@ -114,6 +116,7 @@ void ShopMenuController::close() noexcept {
     reset_transaction();
     source_state_ = FieldModeServiceState{};
     group_ids_ = {};
+    displayed_offer_group_ = ShopActionGroup::weapons;
     confirmation_choice_ids_ = {};
     offer_groups_ = {};
     menu_mode_ = 0U;
@@ -130,6 +133,11 @@ void ShopMenuController::finish_action() noexcept {
     source_state_.action_selection.action_cursor = 0;
     source_state_.action_selection.action_panel = 0;
     source_state_.action_selection.selected_action = 0;
+    displayed_offer_group_ =
+        group_ids_.empty()
+            ? ShopActionGroup::weapons
+            : group_from_id(group_ids_.front())
+                  .value_or(ShopActionGroup::weapons);
 }
 
 void ShopMenuController::clear_pending_action() noexcept {
@@ -404,6 +412,7 @@ ShopMenuEvent ShopMenuController::advance(
                                              navigation_callbacks);
         if (selection.action_panel != before) {
             source_state_.action_selection.selected_action = selected_group;
+            displayed_offer_group_ = this->selected_group();
             return ShopMenuEvent::panel_changed;
         }
         return ShopMenuEvent::no_change;

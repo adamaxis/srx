@@ -10672,6 +10672,9 @@ int run_field_ares_collision_shop_qa(
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries) {
+    // The ordinary route advances source-backed NPC and encounter timers;
+    // pin its random stream so the physical doorway and menu captures repeat.
+    field_scene.set_source_random_seed_for_dump(0U);
     std::filesystem::create_directories(output);
     std::error_code directory_error;
     for (std::filesystem::directory_iterator item(output, directory_error), end;
@@ -10845,6 +10848,7 @@ int run_field_ares_collision_shop_qa(
         field_scene.advance_frame();
         ++frame;
         ++north_ticks;
+        write_state("north-step-" + std::to_string(north_ticks));
         if (north_ticks == 16U || north_ticks == 32U ||
             north_ticks == 64U || north_ticks == 128U ||
             north_ticks == 180U || north_ticks == 200U) {
@@ -10852,8 +10856,8 @@ int run_field_ares_collision_shop_qa(
                 return 3;
             }
         }
-        if (field_scene.field_terrain_collision_code_for_dump() ==
-                0xFFCBU ||
+        if (field_scene.field_projected_code_for_dump() == 0xFFCBU ||
+            field_scene.field_mode_event_code_for_dump() == 11U ||
             field_scene.field_interaction_transition_active_for_dump() ||
             field_scene.field_transition_pending_for_dump() ||
             field_scene.field_mode_text_open_for_dump() ||
@@ -10862,6 +10866,7 @@ int run_field_ares_collision_shop_qa(
         }
     }
     const auto contact_position = world_position();
+    (void)save("north-raw-contact");
     if (field_scene.field_terrain_collision_code_for_dump() != 0xFFCBU ||
         field_scene.field_projected_code_for_dump() != 0xFFCBU ||
         field_scene.field_mode_event_code_for_dump() != 11U ||
@@ -10889,6 +10894,19 @@ int run_field_ares_collision_shop_qa(
                   << ", field_mode=" << static_cast<unsigned>(
                          field_scene.field_runtime_state_for_dump().field_mode)
                   << ")\n";
+        std::size_t printed_boundaries = 0U;
+        for (auto boundary = source_boundaries.rbegin();
+             boundary != source_boundaries.rend() &&
+             printed_boundaries < 24U;
+             ++boundary) {
+            if (boundary->find("movement") == std::string::npos &&
+                boundary->find("map_event") == std::string::npos &&
+                boundary->find("mode_event") == std::string::npos) {
+                continue;
+            }
+            std::cerr << "  source_boundary=" << *boundary << '\n';
+            ++printed_boundaries;
+        }
         return 3;
     }
     if (!save("doorway-contact")) {
@@ -11016,6 +11034,70 @@ int run_field_ares_collision_shop_qa(
         return 3;
     }
     write_state("ares-shop-category");
+
+    // Follow the same source cursor path visible in the longplay: begin on
+    // Weapons, move Right to the other-items category, then Down into its
+    // first stock offer (Universal Gun Clips). Capture each full screen so
+    // the selected tab and detail panel can be reviewed together.
+    field_scene.set_controller_port_byte(0x08U); // ordinary Right
+    field_scene.advance_frame();
+    ++frame;
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto equipment_category_image = render();
+    const auto equipment_category_saved =
+        save("ares-shop-other-items-category");
+    const bool equipment_category_state_valid =
+        field_scene.shop_menu_open() &&
+        field_scene.shop_menu_group() == ShopActionGroup::other_items &&
+        field_scene.shop_menu_cursor() == 1U &&
+        !field_scene.shop_menu_offers_active();
+    const bool equipment_category_presentation_valid =
+        equipment_category_saved &&
+        image_region_differs(shop_image, equipment_category_image,
+                             64, 128, 144, 16) &&
+        image_region_differs(shop_image, equipment_category_image,
+                             64, 144, 160, 16) &&
+        !image_region_differs(shop_image, equipment_category_image,
+                              16, 168, 240, 24);
+    if (!equipment_category_state_valid ||
+        !equipment_category_presentation_valid) {
+        std::cerr << "Ares collision QA: category navigation did not keep "
+                     "the source cursor and stock panel in sync (group="
+                  << static_cast<int>(field_scene.shop_menu_group())
+                  << ", cursor=" << static_cast<unsigned>(
+                         field_scene.shop_menu_cursor())
+                  << ", offers=" << field_scene.shop_menu_offers_active()
+                  << ", row_preserved="
+                  << !image_region_differs(shop_image,
+                                           equipment_category_image,
+                                           16, 168, 240, 24)
+                  << ", frame_saved=" << equipment_category_saved << ")\n";
+        return 3;
+    }
+    write_state("ares-shop-other-items-category");
+
+    field_scene.set_controller_port_byte(0x02U); // ordinary Down
+    field_scene.advance_frame();
+    ++frame;
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto clips_offer = render();
+    if (!field_scene.shop_menu_open() ||
+        field_scene.shop_menu_group() != ShopActionGroup::other_items ||
+        !field_scene.shop_menu_offers_active() ||
+        field_scene.shop_menu_cursor() != 0U ||
+        !image_region_differs(shop_image, clips_offer, 16, 168, 240, 24) ||
+        !image_has_green_ink(clips_offer, 24, 56, 224, 64) ||
+        !image_has_green_ink(clips_offer, 104, 144, 64, 16) ||
+        !save("ares-shop-universal-clips-detail")) {
+        std::cerr << "Ares collision QA: Down did not select the first "
+                     "other-items offer and redraw its detail panel\n";
+        return 3;
+    }
+    write_state("ares-shop-universal-clips-detail");
 
     field_scene.set_controller_port_byte(0x80U); // ordinary Start return
     field_scene.advance_frame();

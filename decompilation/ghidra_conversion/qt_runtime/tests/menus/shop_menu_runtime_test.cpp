@@ -53,6 +53,8 @@ int main() {
                     ares, reordered_definition, confirmation_choice_ids)) ||
         !expect(reordered_menu.selected_group() ==
                 ShopActionGroup::other_items) ||
+        !expect(reordered_menu.displayed_offer_group() ==
+                ShopActionGroup::other_items) ||
         !expect(reordered_menu.offer_count(
                     ShopActionGroup::other_items) == 4U)) {
         return 17;
@@ -74,15 +76,40 @@ int main() {
         !expect(menu.source_state().action_selection.menu_result == -1) ||
         !expect(menu.advance(0x0800U) == ShopMenuEvent::selection_moved) ||
         !expect(menu.selected_group() == ShopActionGroup::other_items) ||
+        !expect(menu.displayed_offer_group() == ShopActionGroup::weapons) ||
         !expect(menu.advance(0x0200U) == ShopMenuEvent::panel_changed) ||
         !expect(menu.offers_panel_active()) ||
         !expect(menu.selected_group() == ShopActionGroup::other_items) ||
+        !expect(menu.displayed_offer_group() == ShopActionGroup::other_items) ||
         !expect(menu.advance(0x4000U) == ShopMenuEvent::purchase_selected) ||
         !expect(menu.pending_action().has_value()) ||
         !expect(menu.pending_action()->offer->type == 0x45U)) {
         return 3;
     }
     menu.finish_action();
+    if (!expect(menu.selected_group() == ShopActionGroup::weapons) ||
+        !expect(menu.displayed_offer_group() == ShopActionGroup::weapons)) {
+        return 20;
+    }
+
+    ShopMenuController retained_display_menu;
+    if (!expect(retained_display_menu.open(
+                    ares, ares_definition, confirmation_choice_ids)) ||
+        !expect(retained_display_menu.advance(0x0800U) ==
+                ShopMenuEvent::selection_moved) ||
+        !expect(retained_display_menu.advance(0x0200U) ==
+                ShopMenuEvent::panel_changed) ||
+        !expect(retained_display_menu.displayed_offer_group() ==
+                ShopActionGroup::other_items) ||
+        !expect(retained_display_menu.advance(0x0100U) ==
+                ShopMenuEvent::panel_changed) ||
+        !expect(!retained_display_menu.offers_panel_active()) ||
+        !expect(retained_display_menu.selected_group() ==
+                ShopActionGroup::weapons) ||
+        !expect(retained_display_menu.displayed_offer_group() ==
+                ShopActionGroup::other_items)) {
+        return 21;
+    }
 
     if (!expect(menu.advance(0x0200U) == ShopMenuEvent::panel_changed) ||
         !expect(menu.advance(0x0800U) == ShopMenuEvent::selection_moved) ||

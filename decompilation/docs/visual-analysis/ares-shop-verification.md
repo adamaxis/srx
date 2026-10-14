@@ -327,9 +327,9 @@ and field returns. Their Debug/Release BMP hashes match. A leftover
 `shop-sale-quote` BMP dated 2026-10-04 was not produced by the current test and
 was excluded from this review. The independent captures at 01:39:47 and
 01:39:48 show the clips and patch price rows; no periodic shop animation or
-additional sound is associated with this layout-only fix. The shop remains
-partial: unaffordable-feedback duration and the reported category activation
-sequence are still open.
+additional sound is associated with this layout-only fix. The shop remains partial: the initial category sequence is reviewed in
+[Ares category audit](../visual-audits/ares-category-longplay-review.md);
+full category/item/cancel traversal and unaffordable-feedback duration remain open.
 
 ## Equipped weapon sale cleanup follow-up (2026-10-10)
 

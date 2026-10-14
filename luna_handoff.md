@@ -206,3 +206,25 @@ coordinates, bytes, candidate, and retained position; it passed before and
 after adding those assertions, so this is a source-confirmed report, not a
 failing-then-passing behavior fix. The broader Scene 19 and object census
 remain open.
+
+### L5a Ares category and offers panel: initial sequence reviewed
+
+The ordinary Release route now captures Weapons, Right to Equipment, and
+Down into Universal Gun Clips. Longplay section 25 frames `004950`, `004980`,
+and `005010` support the sequence: the Equipment tab/heading changes while
+the Weapons stock row remains visible; the row/detail changes when the
+offers panel opens. ROM `0x58C54` refreshes the category title/tab without
+calling `0x57C7A`; entering the offers panel through `0x58CDE` reaches
+`0x58D32`, which calls `0x57C7A` for the selected offer.
+
+Before the presenter change, the Release Ares QA failed its stock-row
+assertion and preserved the 320x224 frame at
+`build/conversion/qt/release/qt_runtime/l5-ares-category-review/before/ares-shop-other-items-category.bmp`.
+After the fix, the full route frames are under
+`build/conversion/qt/release/qt_runtime/field-ares-collision-shop-qa/`; both
+the Ares route and shop-menu runtime CTests pass in Debug and Release. The
+eight-question review is
+`decompilation/docs/visual-audits/ares-category-longplay-review.md`. This
+closes the handoff's minimum one-screen longplay review and the reported
+initial category-row mismatch. The complete six-category, item-cursor, and
+cancel traversal remains open, along with L2-L4, L5b-L5k, L6, and L8.

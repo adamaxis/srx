@@ -126,6 +126,9 @@ public:
         return last_sale_outcome_;
     }
     ShopActionGroup selected_group() const noexcept;
+    ShopActionGroup displayed_offer_group() const noexcept {
+        return displayed_offer_group_;
+    }
     std::uint8_t selected_cursor() const noexcept {
         return static_cast<std::uint8_t>(
             source_state_.action_selection.action_cursor);
@@ -166,6 +169,7 @@ private:
     FieldModeServiceState source_state_{};
     std::optional<ShopActionRequest> pending_action_;
     std::array<std::string, 6> group_ids_{};
+    ShopActionGroup displayed_offer_group_ = ShopActionGroup::weapons;
     std::array<std::string, 2> confirmation_choice_ids_{};
     std::array<std::vector<FieldActionCostRecord>, 6> offer_groups_{};
     MenuConfirmationState transaction_confirmation_{};
