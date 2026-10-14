@@ -145,11 +145,13 @@ heading over multiple service passes. At 1,200 passes both natural-spawn actors
 remain outside the viewport; their long path is not yet corroborated by an
 independent Genesis capture, so approach and arrival behavior remain open.
 
-This is still partial: action kind/code are currently the actor's selected
-Lua profile values, and attacks/hit outcomes are not implemented. The separate
+This is still partial: the complete actor pool and several source action/effect
+continuations are not defended. The profile, kind, action kind/code, and
+combatant facts for dynamic encounters come from the extracted ROM actor rows;
+Lua validates them before applying the generic actor package. The separate
 `+0x10.3` world-actor route now receives the typed live posture fact that the
-ROM reads from actor `+0x4D`: `0x13D84` indexes the nine-pair table at `0x13E58`,
-and the script-runtime QA exercises posture 2 in its `0x0640..0x0780` band.
+ROM reads from actor `+0x4D`: `0x13D84` indexes the nine-pair table at `0x13E58`.
+Script-runtime QA checks all nine posture values across the three source bands.
 The production Scene 2 Weenr profile uses flags `0x25`, so its captured route
 does not activate this `+0x10.3` branch. Debug and Release script-runtime,
 encounter, and Hound-effect QA pass; the 12 Scene 2 and 8 Hound full-frame
@@ -190,13 +192,17 @@ these vectors from the typed actor flags and target distance, and preserves
 that common `+0x08` value. B selection's `+0x11.4` latch is also kept out of
 the `+0x10` service byte, which previously corrupted the actor's active flags.
 
-This is a partial movement port. The random-encounter records currently have
-the ordinary common flags, so their far-range vector and four near-range
-bands are resolved. The global `FFE168` special table branch, complete
-template overrides, kind-`0xD` animation frame cadence, close-range effect
-allocation, item/spell attacks, hit resolution, and damage/death are not yet
-connected. The host movement query still shares the existing collision/route
-service; it does not choose a creature target or movement vector.
+This remains partial. Random-encounter actors use the ordinary common flags,
+so their far-range vector and four near-range bands are resolved; the separate
+`+0x10.3` posture table is also passed to Lua and tested across all nine source
+values. The global `FFE168` special table and complete template overrides
+remain open. Kind-`0xD` cadence and Hell Hound close-effect allocation have
+source-derived Lua paths and focused QA. Accepted creature actions call the
+Lua `0x55C76` combat path and return typed meter updates; a separate field QA
+connects projectile hits through meter change and hurt/down animation. Full
+item/spell action effects and post-down actor lifecycle remain partial. The
+host collision service returns typed route facts; Lua chooses the creature
+target and movement route.
 
 ### Target candidate contract
 
@@ -232,9 +238,10 @@ ROM `+0x0C` projected-Y gate without adding a viewport-clipping rule, and lets
 Lua retain/select a target with the source bounded-random service. This is
 connected for the temporary random-world actor path; default-profile NPC target
 links and the full sixteen-record service loop remain partial. Movement and
-collision use the existing typed host queries, while Lua chooses the creature
-target heading. Item/spell action selection, attack effects, damage/death, and
-retirement after combat are not connected.
+collision use typed host queries, while Lua chooses the creature target
+heading. Accepted linked targets run the Lua `0x55C76` reaction and publish a
+typed meter update. Item/spell-specific effects, post-down recovery/removal,
+and the remaining actor-slot lifecycle are not fully connected.
 
 The B rising-edge path at `0x1DC4C` now runs its normal/special candidate scan
 in the player's Lua behavior heartbeat. The host supplies the typed record
@@ -478,9 +485,12 @@ its action continuation. Lua now reports that outcome as
 `ai_target_engaged`, preserves the selected `+0x34` heading, and returns no
 movement step for that pass. The Qt runtime accepts this typed engaged state
 without fabricating a collision-resolved move. Lua now plays the source-backed
-C0A2 pose and requests the target-action cue on the `0xB1DC` transition, but
-the following `0x55C76` combat reaction remains unconnected. Engagement and
-the visible action pose therefore do not mean a completed attack or hit.
+C0A2 pose, requests the target-action cue, and calls
+`combat.resolve_reaction` on the `0xB1DC` transition. The source `0x55C76`
+result is returned as a typed meter update and applied to the live party/world
+actor record. Script-runtime QA covers the reaction branches; independent
+Genesis evidence for the action outcome and optional child-record allocation
+remain open.
 
 The accepted ranges are sourced from `0x14C7C`, `0x14D58`, `0x15C58`, and
 `0x15C84`. Ordinary kinds accept an active, unlocked linked actor only below

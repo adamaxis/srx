@@ -216,9 +216,10 @@ performs the exchange. The helper now follows that branch, with
 Scene 2 actors now turn through the runner's area in the 480-pass trace, but
 remain outside the viewport; the natural approach and encounter arrival are
 still partial. The world-actor `+0x10.3` route also now consumes the typed
-`+0x4D` posture used by ROM `0x13D84/0x13E58`; script-runtime QA checks posture
-2's `0x0640..0x0780` band. Scene 2 production captures use flags `0x25`, so
-they do not exercise this branch. The creature hill status and screenshot
+`+0x4D` posture used by ROM `0x13D84/0x13E58`; Debug/Release script-runtime QA
+checks all nine posture values across the three range bands. Scene 2
+production captures use flags `0x25`, so they do not exercise this branch. The
+creature hill status and screenshot
 review are in
 [`field-random-encounter-creature-targeting.md`](visual-audits/field-random-encounter-creature-targeting.md).
 

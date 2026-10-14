@@ -2353,7 +2353,8 @@ int main() {
         return context;
     };
     const auto configure_encounter_movement = [](
-        ScriptActorBehaviorContext& context) {
+        ScriptActorBehaviorContext& context,
+        const std::uint16_t target_distance) {
         context.movement_allowed = true;
         context.movement_services_available = true;
         context.movement_state.position_x = 0x1800U;
@@ -2390,8 +2391,11 @@ int main() {
         context.ai_target_candidates.push_back(
             ScriptActorTargetCandidate{
                 "party.runner.0", 0x1800U, 0x1800U, 0x2000U,
-                0x0700U, 0x01U, 0U, 0U, 0U, true, false,
-                0x0700U, 0x0E00U, 0x0700U, 0x0E00U});
+                target_distance, 0x01U, 0U, 0U, 0U, true, false,
+                target_distance,
+                static_cast<std::uint16_t>(target_distance * 2U),
+                target_distance,
+                static_cast<std::uint16_t>(target_distance * 2U)});
     };
     const auto finish_encounter_entry = [&scripts](
                                             ScriptActorBehaviorContext& context) {
@@ -2445,38 +2449,47 @@ int main() {
         return false;
     };
 
-    auto posture_band_actor = make_encounter_reaction_context(
-        "field_scene_2_encounter_posture_band_actor");
-    posture_band_actor.source_record_flags = 0x2DU;
-    posture_band_actor.source_actor_posture = 2U;
-    configure_encounter_movement(posture_band_actor);
-    posture_band_actor.ai_target_candidates.front().world_activity_actor =
-        true;
-    posture_band_actor.ai_target_candidates.front().source_record_slot = 3U;
-    const auto posture_band_spawn =
-        scripts.actor_heartbeat(posture_band_actor);
-    const bool posture_band_entered = posture_band_spawn.has_value() &&
-        finish_encounter_entry(posture_band_actor);
-    const bool posture_band_moved = posture_band_entered &&
-        prime_encounter_movement(posture_band_actor);
-    if (!expect(
-            posture_band_moved &&
-                posture_band_actor.source_actor_posture ==
-                    std::optional<std::uint8_t>{2U} &&
-                posture_band_actor.source_record_flags == 0x2DU,
-            "world-actor target route did not use the live +0x4D posture fact")) {
-        std::cerr << scripts.failure() << '\n';
-        return 24;
-    }
-    const auto posture_band_route = scripts.actor_heartbeat(
-        posture_band_actor);
-    if (!expect(
-            posture_band_route.has_value() &&
-                posture_band_route->movement_heading == 0x6000U &&
-                posture_band_route->movement_route_distance == 0x0E00U,
-            "posture 2 did not select the ROM lateral route in the 0x0640..0x0780 band")) {
-        std::cerr << scripts.failure() << '\n';
-        return 24;
+    for (std::uint8_t posture = 0U; posture < 9U; ++posture) {
+        const std::uint16_t target_distance = posture < 3U ? 0x0700U
+            : posture < 6U ? 0x0500U : 0x0300U;
+        const auto posture_actor_id =
+            "field_scene_2_encounter_posture_band_" +
+            std::to_string(posture);
+        auto posture_band_actor = make_encounter_reaction_context(
+            posture_actor_id);
+        posture_band_actor.profile_id = "weenr1_k08_none00";
+        posture_band_actor.entity_kind = 8U;
+        posture_band_actor.source_record_flags = 0x2DU;
+        posture_band_actor.source_actor_posture = posture;
+        posture_band_actor.entry_animation_frame_count = 2U;
+        posture_band_actor.walk_animation_frame_count = 4U;
+        configure_encounter_movement(posture_band_actor, target_distance);
+        posture_band_actor.ai_target_candidates.front().world_activity_actor =
+            true;
+        posture_band_actor.ai_target_candidates.front().source_record_slot = 3U;
+        const auto posture_band_spawn =
+            scripts.actor_heartbeat(posture_band_actor);
+        const bool posture_band_entered = posture_band_spawn.has_value() &&
+            finish_encounter_entry(posture_band_actor);
+        const bool posture_band_moved = posture_band_entered &&
+            prime_encounter_movement(posture_band_actor);
+        const auto posture_band_route = posture_band_moved
+            ? scripts.actor_heartbeat(posture_band_actor)
+            : std::nullopt;
+        if (!expect(
+                posture_band_route.has_value() &&
+                    posture_band_actor.source_actor_posture ==
+                        std::optional<std::uint8_t>{posture} &&
+                    posture_band_actor.source_record_flags == 0x2DU &&
+                    posture_band_route->movement_heading == 0x6000U &&
+                    posture_band_route->movement_route_distance ==
+                        static_cast<std::uint16_t>(target_distance * 2U),
+                "world-actor posture did not select its ROM lateral route band")) {
+            std::cerr << scripts.failure() << '\n';
+            std::cerr << "posture=" << static_cast<unsigned>(posture)
+                      << '\n';
+            return 24;
+        }
     }
 
     auto injured_actor_context = make_encounter_reaction_context(
@@ -2591,7 +2604,7 @@ int main() {
 
     auto moving_actor_context = make_encounter_reaction_context(
         "field_scene_2_encounter_1_actor_2");
-    configure_encounter_movement(moving_actor_context);
+    configure_encounter_movement(moving_actor_context, 0x0700U);
     const auto moving_actor_spawn =
         scripts.actor_heartbeat(moving_actor_context);
     if (!expect(moving_actor_spawn.has_value() &&

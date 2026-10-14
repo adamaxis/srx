@@ -60,10 +60,11 @@ The linked-motion route also has a world-actor branch selected by record flag
 the live actor posture at `+0x4D`; posture values 0-2 use `0x0640..0x0780`,
 3-5 use `0x0460..0x05A0`, and 6-8 use `0x01E0..0x03C0`. The native bridge
 passes the encounter's typed `combatant.posture` to Lua as
-`source_actor_posture`, and script-runtime QA checks posture 2 selecting the
-middle route band. Current production Scene 2 Weenrs use flags `0x25`, so the
-production screenshots do not exercise this branch; the test verifies the
-typed branch and route choice, not an independent Genesis encounter trace.
+`source_actor_posture`, and Debug/Release script-runtime QA checks all nine
+posture values selecting their three route bands. Current production Scene 2
+Weenrs use flags `0x25`, so the production screenshots do not exercise this
+branch; the test verifies the typed branch and route choices, not an
+independent Genesis encounter trace.
 
 The real edge-spawn captures (`encounter-entry`, `after-30`, `after-180`, and
 `after-480`) keep the full map and HUD composition and contain no visible
@@ -161,11 +162,11 @@ prove a frame-for-frame match with this Scene 2 fixture.
    Wendigos accept below `0x200`. Gargoyle frame 2 sets its source animation
    accumulator and keeps routing for that pass. Boundary checks run in both
    build configurations.
-3. **Are the direction and action visuals fully verified?** The test checks
-   the Lua target heading and current-heading fields. The current field
-   capture can show a creature and its target marker, but there is no
-   independently identified Genesis sequence for this exact creature action.
-   Attack animation, hit resolution, damage, and death remain open.
+3. **Are the direction and action visuals fully verified?** The tests check
+   the Lua target heading, accepted-action transition, `0x55C76` meter result,
+   and hurt/down state. There is no independently identified Genesis
+   sequence for this exact creature action, so its complete visual timing and
+   outcome remain uncorroborated.
 4. **Are other screen regions and overlays clean?** All 12 random-encounter
    frames and all 8 Hound-effect frames were reopened at 320x224. Debug and
    Release hashes match for each named frame. The entire right HUD remains
