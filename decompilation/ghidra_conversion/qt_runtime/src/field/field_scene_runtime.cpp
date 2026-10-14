@@ -7207,6 +7207,38 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
                             object_id, object_x, object_y, object_lookup);
                     },
                     {}});
+            if (publish_movement_state &&
+                field_terrain_probe_trace_enabled_) {
+                constexpr std::array<std::pair<std::int16_t, std::int16_t>, 4>
+                    source_corner_offsets{{
+                        {-12, -7}, {12, -7}, {-12, 7}, {12, 7}}};
+                const auto normalized_x = static_cast<std::uint16_t>(
+                    evaluated_x >> 4U);
+                const auto normalized_y = static_cast<std::uint16_t>(
+                    evaluated_y >> 4U);
+                FieldTerrainProbeTrace trace{};
+                trace.candidate_x_fixed = evaluated_x;
+                trace.candidate_y_fixed = evaluated_y;
+                trace.normalized_x = normalized_x;
+                trace.normalized_y = normalized_y;
+                for (std::size_t index = 0U;
+                     index < source_corner_offsets.size(); ++index) {
+                    trace.corner_x[index] = static_cast<std::uint16_t>(
+                        static_cast<std::int32_t>(normalized_x) +
+                        source_corner_offsets[index].first);
+                    trace.corner_y[index] = static_cast<std::uint16_t>(
+                        static_cast<std::int32_t>(normalized_y) +
+                        source_corner_offsets[index].second);
+                }
+                trace.terrain_bytes = result.state.sample.values;
+                trace.selected_tile_index =
+                    result.state.sample.selected_tile_index;
+                trace.raw_terrain_code = result.state.raw_terrain_code;
+                trace.collision_result = result.code;
+                trace.expanded_probe = (entity_behavior_flags & 0x04U) != 0U;
+                trace.outside_bounds = result.state.outside_bounds_marker;
+                field_terrain_probe_trace_.push_back(trace);
+            }
             sample_state = field_sample_state_from_result(
                 result.packed_sample_state);
             if (terrain_collision_code_output != nullptr &&
@@ -7518,6 +7550,9 @@ FieldSceneRuntime::heartbeat_field_player(
 void FieldSceneRuntime::advance_field_movement() {
     if (!field_entity_.active) {
         return;
+    }
+    if (field_terrain_probe_trace_enabled_) {
+        field_terrain_probe_trace_.clear();
     }
 
     const bool movement_transition_paused =

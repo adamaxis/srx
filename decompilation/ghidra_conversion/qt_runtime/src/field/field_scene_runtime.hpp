@@ -223,6 +223,24 @@ struct PocketSecretaryMenuContent {
     std::array<std::string, kNotebookChoiceCount> notebook_choice_ids{};
 };
 
+// Opt-in trace for one ordinary player movement pass. The normalized sample
+// coordinates and four terrain bytes make a collision decision auditable
+// against ROM 0xE7C8/0xE8A0 without changing movement policy.
+struct FieldTerrainProbeTrace {
+    std::uint16_t candidate_x_fixed = 0;
+    std::uint16_t candidate_y_fixed = 0;
+    std::uint16_t normalized_x = 0;
+    std::uint16_t normalized_y = 0;
+    std::array<std::uint16_t, 4> corner_x{};
+    std::array<std::uint16_t, 4> corner_y{};
+    std::array<std::uint8_t, 4> terrain_bytes{};
+    std::uint16_t selected_tile_index = 0;
+    std::int16_t raw_terrain_code = 0;
+    std::int16_t collision_result = 0;
+    bool expanded_probe = false;
+    bool outside_bounds = false;
+};
+
 // Composition-only adapter for the separate Ghidra-conversion Qt executable.
 // It owns no ROM view and does not duplicate converted field state. The
 // conversion bootstrap remains authoritative; this class supplies host
@@ -507,6 +525,16 @@ public:
     }
     std::uint16_t field_terrain_collision_code_for_dump() const noexcept {
         return field_movement_transition_state_.terrain_collision_code;
+    }
+    void set_terrain_probe_trace_enabled_for_dump(bool enabled) noexcept {
+        field_terrain_probe_trace_enabled_ = enabled;
+        if (!enabled) {
+            field_terrain_probe_trace_.clear();
+        }
+    }
+    const std::vector<FieldTerrainProbeTrace>&
+    terrain_probe_trace_for_dump() const noexcept {
+        return field_terrain_probe_trace_;
     }
     const std::array<std::int8_t, 4>&
     field_directional_probe_signs_for_dump() const noexcept {
@@ -1593,6 +1621,8 @@ private:
     std::uint8_t field_projected_terrain_mark_count_ = 0;
     bool field_terrain_render_dirty_ = false;
     std::array<std::uint8_t, 4> field_terrain_sample_state_{};
+    bool field_terrain_probe_trace_enabled_ = false;
+    std::vector<FieldTerrainProbeTrace> field_terrain_probe_trace_;
     // Current outputs of the most recent source 0xE7C8 terrain probe.
     bool field_terrain_boundary_active_ = false;
     bool field_terrain_outside_bounds_marker_ = false;

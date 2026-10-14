@@ -8778,6 +8778,11 @@ int run_field_scene26_event1_physical_entry_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries);
 
+int run_scene26_table_collision_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output);
+
 int run_field_elevator_physical_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -13880,6 +13885,306 @@ int run_field_scene26_event1_physical_entry_qa(
               << activity.resource_random_index_bound << " audio_events="
               << field_audio_events.size() << " artifacts="
               << output.string() << '\n';
+    return 0;
+}
+
+int run_scene26_table_collision_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    constexpr std::size_t kTableRecordIndex = 70U;
+    constexpr std::uint32_t kTableRecordAddress = 0x1D9C2AU;
+    constexpr std::uint8_t kTableCollisionValue = 0x7EU;
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-26 table collision QA: could not clear prior output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-26 table collision QA: could not create output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    const auto& metadata = field_scene.state().field_scene_buffers.source_metadata;
+    if (field_scene.field_scene_reference_for_dump() != 26U ||
+        field_scene.field_entity_world_position().x != 0x0A00U ||
+        field_scene.field_entity_world_position().y != 0x0500U ||
+        metadata.terrain_collision_rectangles.size() <= kTableRecordIndex) {
+        std::cerr << "Scene-26 table collision QA: event-1 route did not leave "
+                     "the runner at the ROM scene-26 spawn\n";
+        return 3;
+    }
+    const auto& table_record =
+        metadata.terrain_collision_rectangles[kTableRecordIndex];
+    if (table_record.left != 0x0060U || table_record.right != 0x00BFU ||
+        table_record.top != 0x00E0U || table_record.bottom != 0x00FFU ||
+        table_record.value != kTableCollisionValue) {
+        std::cerr << "Scene-26 table collision QA: ROM record 70 changed: "
+                     "address=0x1D9C2A bounds=("
+                  << table_record.left << ',' << table_record.top << ")..("
+                  << table_record.right << ',' << table_record.bottom
+                  << ") value=0x" << std::hex
+                  << static_cast<unsigned>(table_record.value) << std::dec
+                  << '\n';
+        return 3;
+    }
+
+    // Seed the runner into the clear lane north of record 70. This keeps the
+    // contact and actor visible together in the full-screen route capture.
+    field_scene.set_field_entity_world_position_for_dump(0x0800U, 0x0C00U);
+
+    const auto render = [&field_scene] {
+        QImage image(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        field_scene.paint(painter);
+        painter.end();
+        return image;
+    };
+    const auto save_image = [&](const std::filesystem::path& path,
+                                const QImage& image) {
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+            field_hud_chrome_survives(image, asset_root) &&
+            image.save(QString::fromStdWString(path.wstring()));
+    };
+    const auto initial_position = field_scene.field_entity_world_position();
+    const auto initial_frame = render();
+    if (!save_image(output / "table-approach-start.bmp", initial_frame)) {
+        std::cerr << "Scene-26 table collision QA: initial full-screen dump failed\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "terrain-probes.tsv", std::ios::trunc);
+    if (!trace) {
+        std::cerr << "Scene-26 table collision QA: could not create probe trace\n";
+        return 3;
+    }
+    trace << "tick\tbefore_x_fixed\tbefore_y_fixed\tafter_x_fixed"
+             "\tafter_y_fixed\tcandidate_x_fixed\tcandidate_y_fixed"
+             "\tnormalized_x\tnormalized_y\texpanded\tcorner0_x"
+             "\tcorner0_y\tcorner0_byte\tcorner1_x\tcorner1_y"
+             "\tcorner1_byte\tcorner2_x\tcorner2_y\tcorner2_byte"
+             "\tcorner3_x\tcorner3_y\tcorner3_byte\tselected_tile_index"
+             "\traw_terrain\tcollision_result\toutside_bounds\n";
+    field_scene.set_terrain_probe_trace_enabled_for_dump(true);
+    auto previous_accepted_step = std::uint16_t{0U};
+    auto contact_tick = std::uint16_t{0U};
+    SceneRunnerPosition before_contact{};
+    SceneRunnerPosition after_contact{};
+    FieldTerrainProbeTrace contact_probe{};
+    bool contact_found = false;
+    constexpr std::uint16_t kMaximumApproachSteps = 160U;
+    for (std::uint16_t tick = 1U; tick <= kMaximumApproachSteps; ++tick) {
+        const auto before = field_scene.field_entity_world_position();
+        const auto before_image = render();
+        field_scene.set_controller_nibble(0x02U); // ROM D-pad Down
+        field_scene.advance_frame();
+        const auto after = field_scene.field_entity_world_position();
+        const auto& probes = field_scene.terrain_probe_trace_for_dump();
+        for (const auto& probe : probes) {
+            const auto& corners_x = probe.corner_x;
+            const auto& corners_y = probe.corner_y;
+            const auto& bytes = probe.terrain_bytes;
+            trace << tick << '\t' << before.x << '\t' << before.y << '\t'
+                  << after.x << '\t' << after.y << '\t'
+                  << probe.candidate_x_fixed << '\t'
+                  << probe.candidate_y_fixed << '\t'
+                  << probe.normalized_x << '\t' << probe.normalized_y << '\t'
+                  << probe.expanded_probe;
+            for (std::size_t corner = 0U; corner < bytes.size(); ++corner) {
+                trace << '\t' << corners_x[corner] << '\t'
+                      << corners_y[corner] << "\t0x" << std::hex
+                      << static_cast<unsigned>(bytes[corner]) << std::dec;
+            }
+            trace << '\t' << probe.selected_tile_index << "\t0x" << std::hex
+                  << static_cast<unsigned>(static_cast<std::uint8_t>(
+                         probe.raw_terrain_code))
+                  << "\t0x" << static_cast<unsigned>(
+                         static_cast<std::uint16_t>(probe.collision_result))
+                  << std::dec << '\t' << probe.outside_bounds << '\n';
+            const bool table_record_sample =
+                !probe.outside_bounds && probe.expanded_probe &&
+                probe.normalized_x >= 0x0060U &&
+                probe.normalized_x <= 0x00BFU &&
+                probe.normalized_y >= 0x00D0U &&
+                probe.normalized_y <= 0x0110U &&
+                std::any_of(bytes.begin(), bytes.end(),
+                            [](const std::uint8_t value) {
+                                return value == kTableCollisionValue;
+                            }) &&
+                probe.raw_terrain_code == kTableCollisionValue &&
+                probe.collision_result == 0x7F;
+            if (!table_record_sample || contact_found) {
+                continue;
+            }
+            before_contact = before;
+            after_contact = after;
+            contact_probe = probe;
+            contact_tick = tick;
+            contact_found = true;
+            if (!save_image(output / "table-contact-before.bmp",
+                            before_image) ||
+                !save_image(output / "table-contact-after.bmp", render())) {
+                field_scene.set_controller_nibble(0U);
+                field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+                std::cerr << "Scene-26 table collision QA: contact full-screen "
+                             "dump failed\n";
+                return 3;
+            }
+        }
+        if (contact_found) {
+            break;
+        }
+        const auto moved_y = static_cast<std::int32_t>(after.y) -
+                             static_cast<std::int32_t>(before.y);
+        if (moved_y != 0 && moved_y >= -0x7FFF && moved_y <= 0x7FFF) {
+            previous_accepted_step = static_cast<std::uint16_t>(
+                moved_y < 0 ? -moved_y : moved_y);
+        }
+        if (field_scene.field_scene_reference_for_dump() != 26U ||
+            field_scene.dialogue_open() ||
+            field_scene.field_interaction_open() ||
+            field_scene.shop_menu_open()) {
+            field_scene.set_controller_nibble(0U);
+            field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+            std::cerr << "Scene-26 table collision QA: another scene or modal "
+                         "interrupted the table approach\n";
+            return 3;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+    if (!contact_found) {
+        std::cerr << "Scene-26 table collision QA: the visible north approach did not sample "
+                     "record 70 (ROM 0x1D9C2A, value 0x7E); start="
+                  << initial_position.x << ',' << initial_position.y
+                  << " end=" << field_scene.field_entity_world_position().x
+                  << ',' << field_scene.field_entity_world_position().y
+                  << " last_step=" << previous_accepted_step << '\n';
+        return 3;
+    }
+
+    std::ofstream report(output / "table-contact.tsv", std::ios::trunc);
+    if (!report) {
+        std::cerr << "Scene-26 table collision QA: could not create contact report\n";
+        return 3;
+    }
+    report << "scene\tstart_x_fixed\tstart_y_fixed\tinput\ttick"
+              "\tcommitted_before_x\tcommitted_before_y"
+              "\tcommitted_after_x\tcommitted_after_y"
+              "\tlast_accepted_step\trom_record_index\trom_record_address"
+              "\trom_value\trom_left\trom_right\trom_top\trom_bottom"
+              "\tcandidate_x_fixed\tcandidate_y_fixed\tnormalized_x"
+              "\tnormalized_y\tcorner0_x\tcorner0_y\tcorner0_byte"
+              "\tcorner1_x\tcorner1_y\tcorner1_byte"
+              "\tcorner2_x\tcorner2_y\tcorner2_byte"
+              "\tcorner3_x\tcorner3_y\tcorner3_byte"
+              "\tselected_tile_index\traw_terrain\tcollision_result\n";
+    report << 26U << '\t' << initial_position.x << '\t'
+           << initial_position.y << "\tDown(0x02)\t" << contact_tick << '\t'
+           << before_contact.x << '\t' << before_contact.y << '\t'
+           << after_contact.x << '\t' << after_contact.y << '\t'
+           << previous_accepted_step << '\t' << kTableRecordIndex << "\t0x"
+           << std::hex << kTableRecordAddress << "\t0x"
+           << static_cast<unsigned>(table_record.value) << std::dec << '\t'
+           << table_record.left << '\t' << table_record.right << '\t'
+           << table_record.top << '\t' << table_record.bottom << '\t'
+           << contact_probe.candidate_x_fixed << '\t'
+           << contact_probe.candidate_y_fixed << '\t'
+           << contact_probe.normalized_x << '\t'
+           << contact_probe.normalized_y;
+    for (std::size_t corner = 0U;
+         corner < contact_probe.terrain_bytes.size(); ++corner) {
+        report << '\t' << contact_probe.corner_x[corner] << '\t'
+               << contact_probe.corner_y[corner] << "\t0x" << std::hex
+               << static_cast<unsigned>(
+                      contact_probe.terrain_bytes[corner]) << std::dec;
+    }
+    report << '\t' << contact_probe.selected_tile_index << "\t0x" << std::hex
+           << static_cast<unsigned>(static_cast<std::uint8_t>(
+                  contact_probe.raw_terrain_code))
+           << "\t0x" << static_cast<unsigned>(
+                  static_cast<std::uint16_t>(contact_probe.collision_result))
+           << '\n';
+    report.flush();
+
+    // ROM 0xE8A0 samples (-12,-7), (+12,-7), (-12,+7), (+12,+7) in
+    // this order. Record 70's lower two samples are inside its inclusive
+    // 0x7E cell; 0xE7C8 returns 0x7F. The captured route retains its prior
+    // position after its movement policy handles this blocked candidate.
+    constexpr std::array<std::uint16_t, 4U> kExpectedCornerX{
+        138U, 162U, 138U, 162U};
+    constexpr std::array<std::uint16_t, 4U> kExpectedCornerY{
+        211U, 211U, 225U, 225U};
+    constexpr std::array<std::uint8_t, 4U> kExpectedTerrainBytes{
+        0U, 0U, kTableCollisionValue, kTableCollisionValue};
+    const bool expected_contact_matches =
+        initial_position.x == 2048U && initial_position.y == 3072U &&
+        before_contact.x == 2408U && before_contact.y == 3462U &&
+        after_contact.x == before_contact.x &&
+        after_contact.y == before_contact.y &&
+        previous_accepted_step == 30U &&
+        contact_probe.candidate_x_fixed == 2408U &&
+        contact_probe.candidate_y_fixed == 3492U &&
+        contact_probe.normalized_x == 150U &&
+        contact_probe.normalized_y == 218U &&
+        contact_probe.corner_x == kExpectedCornerX &&
+        contact_probe.corner_y == kExpectedCornerY &&
+        contact_probe.terrain_bytes == kExpectedTerrainBytes &&
+        contact_probe.selected_tile_index == 453U &&
+        contact_probe.raw_terrain_code == kTableCollisionValue &&
+        contact_probe.collision_result == 0x7F &&
+        contact_probe.expanded_probe && !contact_probe.outside_bounds;
+    if (!expected_contact_matches) {
+        std::cerr << "Scene-26 table collision QA: movement result differs "
+                     "from the expected route/source-collision trace; "
+                     "expected committed "
+                     "(2408,3462), candidate (2408,3492), samples "
+                     "0,0,0x7E,0x7E, result 0x7F; got before=("
+                  << before_contact.x << ',' << before_contact.y << ") after=("
+                  << after_contact.x << ',' << after_contact.y
+                  << ") candidate=(" << contact_probe.candidate_x_fixed
+                  << ',' << contact_probe.candidate_y_fixed << ") samples=";
+        for (std::size_t corner = 0U;
+             corner < contact_probe.terrain_bytes.size(); ++corner) {
+            std::cerr << (corner == 0U ? "" : ",") << "0x" << std::hex
+                      << static_cast<unsigned>(
+                             contact_probe.terrain_bytes[corner]);
+        }
+        std::cerr << std::dec << " result=0x"
+                  << std::hex << static_cast<unsigned>(
+                         static_cast<std::uint16_t>(
+                             contact_probe.collision_result))
+                  << std::dec << '\n';
+        return 3;
+    }
+
+    const auto after_image = render();
+    if (!save_image(output / "actual.bmp", after_image)) {
+        std::cerr << "Scene-26 table collision QA: actual full-screen dump failed\n";
+        return 3;
+    }
+    std::cout << "scene26_table_collision_qa=observed scene=26 record="
+              << kTableRecordIndex << " rom=0x" << std::hex
+              << kTableRecordAddress << " value=0x"
+              << static_cast<unsigned>(table_record.value) << std::dec
+              << " tick=" << contact_tick << " before=" << before_contact.x
+              << ',' << before_contact.y << " after=" << after_contact.x
+              << ',' << after_contact.y << " candidate="
+              << contact_probe.candidate_x_fixed << ','
+              << contact_probe.candidate_y_fixed << " normalized="
+              << contact_probe.normalized_x << ','
+              << contact_probe.normalized_y << " corners="
+              << static_cast<unsigned>(contact_probe.terrain_bytes[0]) << ','
+              << static_cast<unsigned>(contact_probe.terrain_bytes[1]) << ','
+              << static_cast<unsigned>(contact_probe.terrain_bytes[2]) << ','
+              << static_cast<unsigned>(contact_probe.terrain_bytes[3])
+              << " selected_tile=" << contact_probe.selected_tile_index
+              << " output=" << output.string() << '\n';
     return 0;
 }
 
@@ -19130,10 +19435,18 @@ int main(int argc, char** argv) {
                     Scene20PhysicalEntryQaPath::electronics_trials);
             }
             if (field_scene26_event1_entry_qa_path.has_value()) {
-                return run_field_scene26_event1_physical_entry_qa(
+                const auto entry_result =
+                    run_field_scene26_event1_physical_entry_qa(
                     field_scene, asset_root,
                     *field_scene26_event1_entry_qa_path,
                     field_audio_events, field_source_boundaries);
+                if (entry_result != 0) {
+                    return entry_result;
+                }
+                return run_scene26_table_collision_qa(
+                    field_scene, asset_root,
+                    *field_scene26_event1_entry_qa_path /
+                        "table-collision");
             }
             if (field_elevator_physical_entry_qa_path.has_value()) {
                 return run_field_elevator_physical_entry_qa(
