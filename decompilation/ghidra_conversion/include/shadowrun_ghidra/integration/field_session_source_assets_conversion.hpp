@@ -106,7 +106,10 @@ struct FieldSceneSourceRecord {
     FieldMapSourceDescriptor descriptor{};
     std::vector<TerrainCollisionRectangle>
         terrain_collision_rectangles;
-    std::array<std::uint8_t, 0x1000> terrain_collision_map{};
+    // Heap-backed because the loader retains all 56 scene grids at once.
+    // Keeping a 4 KiB array in every record overflows the Windows Debug stack
+    // while startup loads and transfers the complete typed catalog.
+    std::vector<std::uint8_t> terrain_collision_map;
 };
 
 struct FieldElevatorSceneGroupSourceRecord {

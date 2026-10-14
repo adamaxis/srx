@@ -478,9 +478,12 @@ FieldSessionSourceAssetLoadResult load_field_session_source_assets(
             decode_field_terrain_collision_rectangles(
                 *collision_rectangles, collision_rectangles->size() / 10U);
         rebuild_requested = true;
+        std::array<std::uint8_t, 0x1000> terrain_collision_map{};
         rebuild_terrain_collision_map(
-            scene.terrain_collision_map, rebuild_requested,
+            terrain_collision_map, rebuild_requested,
             scene.terrain_collision_rectangles, [](auto&) {});
+        scene.terrain_collision_map.assign(terrain_collision_map.begin(),
+                                           terrain_collision_map.end());
         assets.field_scene_resources[scene_id] = std::move(scene);
     }
     for (std::size_t scene_id = 0; scene_id < kFieldSceneProfileCount;
@@ -537,8 +540,13 @@ std::optional<FieldSceneBufferInput> make_field_scene_input(
         scene.world_activity_resource_cursor;
     input.source_metadata.terrain_collision_rectangles =
         scene.terrain_collision_rectangles;
-    input.source_metadata.terrain_collision_map =
-        scene.terrain_collision_map;
+    if (scene.terrain_collision_map.size() !=
+        input.source_metadata.terrain_collision_map.size()) {
+        return std::nullopt;
+    }
+    std::copy(scene.terrain_collision_map.begin(),
+              scene.terrain_collision_map.end(),
+              input.source_metadata.terrain_collision_map.begin());
     return input;
 }
 
