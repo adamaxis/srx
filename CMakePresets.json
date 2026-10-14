@@ -2,100 +2,173 @@
   "version": 6,
   "vendor": {
     "shadowrun": {
-      "purpose": "Visual Studio/CMake IDE umbrella only; standalone native and Ghidra projects remain independently buildable."
+      "toolchainPolicy": "The Ghidra conversion workbench uses the MSYS2 UCRT64 toolchain and never shares a build directory with the native port."
     }
   },
   "configurePresets": [
     {
-      "name": "shadowrun-ide-release",
-      "displayName": "Shadowrun IDE (Release, MSYS2 UCRT64)",
-      "description": "IDE umbrella configure for separate native-port and Ghidra-conversion targets.",
+      "name": "ghidra-conversion-debug",
+      "displayName": "Ghidra Conversion Workbench (Debug, MSYS2 UCRT64)",
+      "description": "Debug build of the standalone ROM-to-readable-C++ conversion workbench.",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/ide/release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
-      }
-    },
-    {
-      "name": "shadowrun-ide-debug",
-      "displayName": "Shadowrun IDE (Debug, MSYS2 UCRT64)",
-      "description": "IDE umbrella configure for separate native-port and Ghidra-conversion targets.",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/ide/debug",
+      "binaryDir": "${sourceDir}/build/conversion/workbench/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
       }
     },
     {
-      "name": "shadowrun-ide-msvc-debug",
-      "displayName": "Shadowrun IDE (Debug, Visual Studio 2022)",
-      "description": "IDE umbrella configure using the Visual Studio generator.",
-      "generator": "Visual Studio 17 2022",
-      "architecture": "x64",
-      "binaryDir": "${sourceDir}/build/ide/msvc/debug"
+      "name": "ghidra-conversion-release",
+      "displayName": "Ghidra Conversion Workbench (Release, MSYS2 UCRT64)",
+      "description": "Release build of the standalone ROM-to-readable-C++ conversion workbench.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/conversion/workbench/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
+      }
+    },
+    {
+      "name": "ghidra-conversion-qt-debug",
+      "displayName": "Ghidra Conversion Qt (Debug, MSYS2 UCRT64)",
+      "description": "Separate Qt build of the converted startup/runtime contracts.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/conversion/qt/debug",
+      "environment": {
+        "PATH": "C:/msys64/ucrt64/bin;C:/Qt/6.9.1/mingw_64/bin;$penv{PATH}"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe",
+        "CMAKE_MAKE_PROGRAM": "C:/msys64/ucrt64/bin/ninja.exe",
+        "SHADOWRUN_GHIDRA_QT_FRONTEND": "ON",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.9.1/mingw_64"
+      }
+    },
+    {
+      "name": "ghidra-conversion-qt-release",
+      "displayName": "Ghidra Conversion Qt (Release, MSYS2 UCRT64)",
+      "description": "Separate release Qt build of the converted startup/runtime contracts.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/conversion/qt/release",
+      "environment": {
+        "PATH": "C:/msys64/ucrt64/bin;C:/Qt/6.9.1/mingw_64/bin;$penv{PATH}"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe",
+        "CMAKE_MAKE_PROGRAM": "C:/msys64/ucrt64/bin/ninja.exe",
+        "SHADOWRUN_GHIDRA_QT_FRONTEND": "ON",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.9.1/mingw_64"
+      }
     }
   ],
   "buildPresets": [
     {
-      "name": "shadowrun-ide-ghidra-release",
-      "displayName": "Build Ghidra Conversion (IDE Release)",
-      "configurePreset": "shadowrun-ide-release",
-      "targets": ["shadowrun_ghidra_conversion_runner"]
+      "name": "ghidra-conversion-debug",
+      "displayName": "Build Ghidra Conversion Workbench (Debug)",
+      "configurePreset": "ghidra-conversion-debug",
+      "targets": [
+        "shadowrun_ghidra_conversion_runner"
+      ]
     },
     {
-      "name": "shadowrun-ide-native-release",
-      "displayName": "Build Native Port (IDE Release)",
-      "configurePreset": "shadowrun-ide-release",
-      "targets": ["shadowrun_native"]
+      "name": "ghidra-conversion-debug-all",
+      "displayName": "Build All Ghidra Conversion Tests (Debug)",
+      "configurePreset": "ghidra-conversion-debug"
     },
     {
-      "name": "shadowrun-ide-all-release",
-      "displayName": "Build All IDE Targets (Release)",
-      "configurePreset": "shadowrun-ide-release"
+      "name": "ghidra-conversion-release",
+      "displayName": "Build Ghidra Conversion Workbench (Release)",
+      "configurePreset": "ghidra-conversion-release",
+      "targets": [
+        "shadowrun_ghidra_conversion_runner"
+      ]
     },
     {
-      "name": "shadowrun-ide-ghidra-debug",
-      "displayName": "Build Ghidra Conversion (IDE Debug)",
-      "configurePreset": "shadowrun-ide-debug",
-      "targets": ["shadowrun_ghidra_conversion_runner"]
+      "name": "ghidra-conversion-qt-debug",
+      "displayName": "Build Ghidra Conversion Qt (Debug)",
+      "configurePreset": "ghidra-conversion-qt-debug",
+      "targets": [
+        "shadowrun_ghidra_conversion_qt",
+        "shadowrun_ghidra_movement_mode_transition_test"
+      ]
     },
     {
-      "name": "shadowrun-ide-native-debug",
-      "displayName": "Build Native Port (IDE Debug)",
-      "configurePreset": "shadowrun-ide-debug",
-      "targets": ["shadowrun_native"]
+      "name": "ghidra-conversion-qt-release",
+      "displayName": "Build Ghidra Conversion Qt (Release)",
+      "configurePreset": "ghidra-conversion-qt-release",
+      "targets": [
+        "shadowrun_ghidra_conversion_qt",
+        "shadowrun_ghidra_movement_mode_transition_test"
+      ]
     },
     {
-      "name": "shadowrun-ide-all-debug",
-      "displayName": "Build All IDE Targets (Debug)",
-      "configurePreset": "shadowrun-ide-debug"
+      "name": "ghidra-conversion-qt-debug-tests",
+      "displayName": "Build Ghidra Conversion Qt QA and Tests (Debug)",
+      "configurePreset": "ghidra-conversion-qt-debug"
     },
     {
-      "name": "shadowrun-ide-ghidra-msvc-debug",
-      "displayName": "Build Ghidra Conversion (Visual Studio Debug)",
-      "configurePreset": "shadowrun-ide-msvc-debug",
-      "configuration": "Debug",
-      "targets": ["shadowrun_ghidra_conversion_runner"]
+      "name": "ghidra-conversion-qt-release-tests",
+      "displayName": "Build Ghidra Conversion Qt QA and Tests (Release)",
+      "configurePreset": "ghidra-conversion-qt-release"
+    },
+    {
+      "name": "ghidra-conversion-release-all",
+      "displayName": "Build All Ghidra Conversion Tests (Release)",
+      "configurePreset": "ghidra-conversion-release"
     }
   ],
   "testPresets": [
     {
-      "name": "shadowrun-ide-release",
-      "displayName": "CTest (IDE Release)",
-      "configurePreset": "shadowrun-ide-release",
+      "name": "ghidra-conversion-debug",
+      "displayName": "Test Ghidra Conversion Workbench (Debug)",
+      "configurePreset": "ghidra-conversion-debug",
       "output": {
         "outputOnFailure": true
       }
     },
     {
-      "name": "shadowrun-ide-debug",
-      "displayName": "CTest (IDE Debug)",
-      "configurePreset": "shadowrun-ide-debug",
+      "name": "ghidra-conversion-release",
+      "displayName": "Test Ghidra Conversion Workbench (Release)",
+      "configurePreset": "ghidra-conversion-release",
       "output": {
         "outputOnFailure": true
       }
+    },
+    {
+      "name": "ghidra-conversion-qt-debug-tests",
+      "displayName": "Run Ghidra Conversion Qt QA and Tests (Debug)",
+      "configurePreset": "ghidra-conversion-qt-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ghidra-conversion-qt-release-tests",
+      "displayName": "Run Ghidra Conversion Qt QA and Tests (Release)",
+      "configurePreset": "ghidra-conversion-qt-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "ghidra-conversion-qt-debug",
+      "displayName": "Ghidra Conversion Qt (Debug, MSYS2 UCRT64)",
+      "steps": [
+        { "type": "configure", "name": "ghidra-conversion-qt-debug" },
+        { "type": "build", "name": "ghidra-conversion-qt-debug" }
+      ]
+    },
+    {
+      "name": "ghidra-conversion-qt-release",
+      "displayName": "Ghidra Conversion Qt (Release, MSYS2 UCRT64)",
+      "steps": [
+        { "type": "configure", "name": "ghidra-conversion-qt-release" },
+        { "type": "build", "name": "ghidra-conversion-qt-release" }
+      ]
     }
   ]
 }

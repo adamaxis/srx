@@ -1,0 +1,3 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_EC	96	160	32	32	field_events.resolve_collision	ROM event 31 at 0x15BDEC	Exact 32x32 Scene-4 event cell from docs/ghidra/field-map-trigger-records.tsv; see scene-04-site-routes.tsv.
+rom_event_BA	192	160	32	32	field_events.resolve_collision	ROM event 2 at 0x15BDBA	Exact 32x32 Scene-4 event cell from docs/ghidra/field-map-trigger-records.tsv; see scene-04-site-routes.tsv.

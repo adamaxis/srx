@@ -1,2 +1,0 @@
-interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
-rom_event_C4	160	288	32	32	building.resolve_field_location_route	ROM event 1 at 0x15BDC4	Exact 32x32 Scene-4 event cell from decompilation/docs/field-map-trigger-records.tsv; see scene-04-site-routes.tsv.

@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_CE	160	448	32	32	building.resolve_field_location_route	ROM event 0 at 0x15BDCE	Exact 32x32 Scene-4 event cell from docs/ghidra/field-map-trigger-records.tsv; see scene-04-site-routes.tsv.

@@ -1,59 +1,48 @@
 # Shadowrun Ghidra Conversion
 
-The active Shadowrun implementation is the typed C++/Qt project in
-`decompilation/ghidra_conversion/`. The outer `decompilation/` directory is a
-shared source-data and research root; it also still contains an older native
-port that is not the current development target.
+The repository root is the active Ghidra reconstruction project. Its C++/Qt
+host application and Lua content are the current implementation; the retired
+native port and Ghidra database are preserved under `archive/`.
 
-## Active project
+## Project layout
 
-- `decompilation/ghidra_conversion/include/`, `src/`, and `tests/` contain the
-  source-derived conversion model and checks.
-- `decompilation/ghidra_conversion/qt_runtime/` contains the Qt executable and
-  its adapters.
-- `decompilation/input/`, `decompilation/export/`, and
-  `decompilation/assets/` provide the ROM, Ghidra evidence, and individually
-  named extracted assets consumed by the active project.
-- `decompilation/gameplay/scripts/` contains Lua content loaded by the Qt
-  runtime. `decompilation/docs/` and `video analysis/` contain research and
-  visual references.
-- `decompilation/ghidra_conversion/tools/map_entity_viewer/` is the standalone
-  Qt map and entity authoring app.
-
-The older native-port sources are under `decompilation/include/`,
-`decompilation/src/`, and `decompilation/tests/`. They are retained for
-reference and are not the project to build or extend for current work.
+- `include/`, `src/`, and `qt_runtime/` contain the typed C++ model and Qt
+  application.
+- `gameplay/scripts/` contains Lua gameplay, dialogue, menu, and event content.
+- `assets/` contains named runtime assets. `input/` holds the US Genesis ROM,
+  while `export/` holds Ghidra-derived evidence.
+- `docs/ghidra/` contains source and behavior audits; `docs/handoffs/` contains
+  project handoffs.
+- `tools/map_entity_viewer/` is the standalone Qt map and entity viewer.
+- `tools/rom_research/` contains offline ROM/Ghidra research tools.
+- `video analysis/` remains the gameplay-video and frame-analysis archive.
+- `archive/legacy_native_port/` preserves the inactive native-port source.
+  `archive/ghidra_analysis_project/` preserves the local Ghidra database.
 
 ## Build and run the Release Qt app
 
-Open `shadowrun.code-workspace` in VS Code. Its CMake Tools project selector,
-build tasks, and launch configurations point only to the Ghidra conversion.
-The root CMake umbrella and the legacy native-port presets are not part of the
-normal workflow.
-
-From `decompilation/ghidra_conversion/`:
+Open `shadowrun.code-workspace` in VS Code, or run these commands from the
+repository root:
 
 ```powershell
 C:/msys64/ucrt64/bin/cmake.exe --preset ghidra-conversion-qt-release
 C:/msys64/ucrt64/bin/cmake.exe --build --preset ghidra-conversion-qt-release
-../../build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe --assets ../assets
+build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe --assets assets
 ```
 
 The canonical Release executable is
-`build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe`.
-Debug output is kept separately under `build/conversion/qt/debug/`.
+`build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe`. Debug output
+is kept separately under `build/conversion/qt/debug/`.
 
 ## Standalone map and entity viewer
 
-The viewer has its own source, dependencies, build launcher, and executable
-folder under `decompilation/ghidra_conversion/tools/map_entity_viewer/`. Run
-`build.cmd` there to create its standalone Windows executable in `dist/`; see
-that folder's README for Python launch and authoring details.
+Run `python tools/map_entity_viewer/map_entity_viewer.py` from the repository
+root. To package the standalone Windows application, run
+`tools/map_entity_viewer/build.cmd`; its ignored `dist/` output stays beside
+the viewer source.
 
-## Workspace layout
+## Build output
 
-`build/conversion/` holds active Ghidra Release and Debug outputs. `build/` also
-contains `archive/` for earlier binaries and QA captures; those archived files
-are retained as evidence and are not active executables. See
-[`decompilation/WORKSPACE.md`](decompilation/WORKSPACE.md) for ownership and
-path conventions.
+`build/conversion/` contains the active Ghidra workbench and Qt Release/Debug
+builds. Other archived build outputs are disposable; source and research
+archives live under `archive/`.

@@ -7,7 +7,7 @@
   ],
   "settings": {
     "cmake.useCMakePresets": "always",
-    "cmake.sourceDirectory": "${workspaceFolder}/decompilation/ghidra_conversion",
+    "cmake.sourceDirectory": "${workspaceFolder}",
     "cmake.configureOnOpen": false
   }
 }

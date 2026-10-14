@@ -1,23 +1,18 @@
-# Active and archived CMake output is centralized at the repository root.
+# Centralized active build outputs and generated editor artifacts.
 /build/
-# Guard the old source-local output paths for older commands/checkouts.
-/decompilation/build-debug/
-/decompilation/ghidra_conversion/build-ghidra-conversion-qt-debug/
-/decompilation/ghidra_conversion/build-ghidra-conversion-qt-release/
-/decompilation/ghidra_conversion/tools/map_entity_viewer/dist/
+# Ignore stale local output from the former nested project layout. Active
+# source and data now live at the repository root; legacy source is archived.
+/decompilation/
 **/bin/
 **/obj/
 **/Testing/
-
-# Generator state can also appear in ad-hoc CMake build trees.
 **/CMakeFiles/
 **/CMakeCache.txt
 **/build.ninja
 **/.ninja_deps
 **/.ninja_log
-
-# Compiler and CMake products that some generators place beside source files
-# instead of in one of the ignored build directories above.
+**/cmake_install.cmake
+**/compile_commands.json
 **/*.o
 **/*.obj
 **/*.a
@@ -32,15 +27,13 @@
 **/*.ipch
 **/*.tlog
 **/*.lastbuildstate
-**/cmake_install.cmake
-**/compile_commands.json
 
-# Python bytecode and per-directory import caches.
+# Python caches and standalone viewer output.
 **/__pycache__/
 **/*.py[cod]
+/tools/map_entity_viewer/dist/
 
-# Visual Studio/MSBuild user state and output databases. These can be emitted
-# beside a project even when the main CMake tree is out of source.
+# Local Visual Studio state and databases.
 **/.vs/
 **/*.suo
 **/*.user
@@ -49,49 +42,51 @@
 **/*.sdf
 **/*.opensdf
 **/*.opendb
-
-# Ghidra project databases are large, host-specific working state. The
-# exported listings and C++ evidence under export/ remain versioned.
-/decompilation/ShadowRunGenesis.gpr
-/decompilation/ShadowRunGenesis.rep/
-/decompilation/analysis/ghidra-*/
-
-# Host-rendered diagnostics and explicit extraction outputs.
-/decompilation/assets/**/*.bmp
-/decompilation/assets/**/*.png
-/decompilation/assets/**/*.jpg
-/decompilation/assets/native/*.srna
-!/decompilation/assets/title/
-!/decompilation/assets/title/**/*.bmp
-!/decompilation/assets/boot/
-!/decompilation/assets/boot/**/*.bmp
-!/decompilation/assets/startup/
-!/decompilation/assets/startup/**/*.bmp
-!/decompilation/assets/intro/
-!/decompilation/assets/intro/**/*.bmp
-!/decompilation/assets/field/
-!/decompilation/assets/field/**/*.bmp
-!/decompilation/assets/field/entities/target-marker/*.png
-!/decompilation/assets/manifest.tsv
-
-# Local screenshot and raw listing diagnostics are disposable analysis output,
-# not reconstructed game resources or source.
-/*.bmp
-/decompilation/*.bmp
-/decompilation/*.png
-/decompilation/*.jpg
-/decompilation/*.txt
-/decompilation/*.log
-
-# Keep the project-level VS Code/CMake integration, while ignoring other local
-# editor state.
 /.vs/
+
+# The local Ghidra database is host-specific. Keep its project files locally,
+# but do not add the database to Git.
+/archive/ghidra_analysis_project/ShadowRunGenesis.gpr
+/archive/ghidra_analysis_project/ShadowRunGenesis.rep/
+/archive/retired_analysis/analysis/ghidra-*/
+/archive/retired_analysis/analysis/retired/webm_ffmpeg_microframes/capture-audio.wav
+/archive/qa-artifacts/
+
+# Host-rendered diagnostics are not extracted game assets. Keep reviewed
+# resource images in the explicitly allowed folders below.
+/assets/**/*.bmp
+/assets/**/*.png
+/assets/**/*.jpg
+/assets/native/*.srna
+!/assets/title/
+!/assets/title/**/*.bmp
+!/assets/boot/
+!/assets/boot/**/*.bmp
+!/assets/startup/
+!/assets/startup/**/*.bmp
+!/assets/intro/
+!/assets/intro/**/*.bmp
+!/assets/field/
+!/assets/field/**/*.bmp
+!/assets/field/maps/*-priority-overlay.png
+!/assets/field/entities/target-marker/*.png
+!/assets/manifest.tsv
+
+# Per-machine research utilities and gameplay-video analysis are kept outside
+# normal source control.
+/tools/rom_research/ffmpeg/
+/video analysis/
+/archive/handoffs/deepseek.txt
+/Shadow Run (U) *.zip
+
+# Local dumps and logs beside the repository root.
+/*.bmp
+/*.png
+/*.jpg
+/*.log
+
+# Keep only the project-level VS Code integration files.
 /.vscode/*
 !/.vscode/launch.json
 !/.vscode/settings.json
 !/.vscode/tasks.json
-
-decompilation/tools/ffmpeg
-video analysis/
-/decompilation/analysis/retired/webm_ffmpeg_microframes/capture-audio.wav
-/deepseek.txt
