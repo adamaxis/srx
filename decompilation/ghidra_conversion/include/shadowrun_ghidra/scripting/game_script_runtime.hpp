@@ -557,6 +557,9 @@ struct ScriptActorBehaviorContext {
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t source_behavior_flags = 0;
     std::uint8_t source_spawn_state_flags = 0;
+    // ROM 0x13D84 indexes the world-actor route-distance table with live
+    // record +0x4D (the typed combatant posture fact).
+    std::optional<std::uint8_t> source_actor_posture;
     bool world_activity_active = false;
     // ROM 0x14C7C's kind-0xD branch checks animation frame +0x1E here.
     std::int16_t ai_animation_frame = 0;

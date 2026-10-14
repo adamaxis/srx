@@ -146,12 +146,16 @@ remain outside the viewport; their long path is not yet corroborated by an
 independent Genesis capture, so approach and arrival behavior remain open.
 
 This is still partial: action kind/code are currently the actor's selected
-Lua profile values, the `+0x10.3` entity-distance table path using record
-`+0x4D` is not connected to runtime records, and attacks/hit outcomes are not
-implemented. Debug and Release script-runtime, encounter, and Hound-effect
-QA pass; the 12 Scene 2 and 8 Hound full-frame captures match byte for byte
-across those builds. The Scene 2 review includes the 1,200-pass frame, where
-the creatures remain outside the viewport. The Hound comparison checks the HUD but does not treat
+Lua profile values, and attacks/hit outcomes are not implemented. The separate
+`+0x10.3` world-actor route now receives the typed live posture fact that the
+ROM reads from actor `+0x4D`: `0x13D84` indexes the nine-pair table at `0x13E58`,
+and the script-runtime QA exercises posture 2 in its `0x0640..0x0780` band.
+The production Scene 2 Weenr profile uses flags `0x25`, so its captured route
+does not activate this `+0x10.3` branch. Debug and Release script-runtime,
+encounter, and Hound-effect QA pass; the 12 Scene 2 and 8 Hound full-frame
+captures match byte for byte across those builds. The Scene 2 review includes
+the 1,200-pass frame, where the creatures remain outside the viewport. The
+Hound comparison checks the HUD but does not treat
 the animating full frame as a static golden or claim a specific map-object
 depth order for this effect. These are internal port checks, not independent
 Genesis visual proof.

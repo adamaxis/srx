@@ -2444,6 +2444,41 @@ int main() {
         }
         return false;
     };
+
+    auto posture_band_actor = make_encounter_reaction_context(
+        "field_scene_2_encounter_posture_band_actor");
+    posture_band_actor.source_record_flags = 0x2DU;
+    posture_band_actor.source_actor_posture = 2U;
+    configure_encounter_movement(posture_band_actor);
+    posture_band_actor.ai_target_candidates.front().world_activity_actor =
+        true;
+    posture_band_actor.ai_target_candidates.front().source_record_slot = 3U;
+    const auto posture_band_spawn =
+        scripts.actor_heartbeat(posture_band_actor);
+    const bool posture_band_entered = posture_band_spawn.has_value() &&
+        finish_encounter_entry(posture_band_actor);
+    const bool posture_band_moved = posture_band_entered &&
+        prime_encounter_movement(posture_band_actor);
+    if (!expect(
+            posture_band_moved &&
+                posture_band_actor.source_actor_posture ==
+                    std::optional<std::uint8_t>{2U} &&
+                posture_band_actor.source_record_flags == 0x2DU,
+            "world-actor target route did not use the live +0x4D posture fact")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+    const auto posture_band_route = scripts.actor_heartbeat(
+        posture_band_actor);
+    if (!expect(
+            posture_band_route.has_value() &&
+                posture_band_route->movement_heading == 0x6000U &&
+                posture_band_route->movement_route_distance == 0x0E00U,
+            "posture 2 did not select the ROM lateral route in the 0x0640..0x0780 band")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+
     auto injured_actor_context = make_encounter_reaction_context(
         "field_scene_2_encounter_1_actor_0");
     const auto injured_actor_spawn =

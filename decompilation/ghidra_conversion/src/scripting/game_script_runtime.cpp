@@ -3134,6 +3134,12 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "dynamic_world_encounter_actor");
     lua_pushinteger(state, context.source_record_flags);
     lua_setfield(state, -2, "source_record_flags");
+    if (context.source_actor_posture.has_value()) {
+        lua_pushinteger(state, *context.source_actor_posture);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "source_actor_posture");
     lua_pushinteger(state, context.source_interaction_flags);
     lua_setfield(state, -2, "source_interaction_flags");
     lua_pushinteger(state, context.source_behavior_flags);

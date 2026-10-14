@@ -2373,6 +2373,7 @@ void FieldSceneRuntime::advance_default_field_actors() {
             field_movement_transition_state_.world_mode == 3U;
         if (actor.temporary_world_encounter) {
             context.combatant = actor.combatant;
+            context.source_actor_posture = actor.combatant.posture;
         }
         if (actor.temporary_world_encounter) {
             context.dynamic_world_encounter_actor = true;
@@ -8350,6 +8351,8 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         };
         if (actor.temporary_world_encounter) {
             context.dynamic_world_encounter_actor = true;
+            context.combatant = actor.combatant;
+            context.source_actor_posture = actor.combatant.posture;
             context.source_record_flags = actor.source_record_flags;
             context.source_interaction_flags =
                 actor.source_interaction_flags;

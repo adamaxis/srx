@@ -332,14 +332,15 @@ end
 local function source_motion_bounds(context, state)
     if (context.source_record_flags &
         ActorServiceFlag.targets_world_actors) ~= 0 then
-        local distance_type = context.source_motion_distance_type
+        -- ROM 0x13D84 indexes the nine-pair table at 0x13E58 with the live
+        -- actor's +0x4D posture. The host supplies that named typed fact.
+        local distance_type = context.source_actor_posture
         if type(distance_type) == "number" and distance_type % 1 == 0 and
            distance_type >= 0 and
            distance_type < #EntityMotionDistanceBounds then
             return EntityMotionDistanceBounds[distance_type + 1], true
         end
-        -- +0x10.3 always selects the +0x4D table. Until that typed field is
-        -- populated, do not substitute a guessed destination.
+        -- Do not guess a destination when the source posture is unavailable.
         return nil, false
     end
 
