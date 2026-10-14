@@ -7267,8 +7267,42 @@ int run_field_random_encounter_spawn_qa(
         field_scene.visible_default_actor_count_for_dump();
     const auto edge_positions_after_30 =
         field_scene.active_default_actor_positions_for_dump();
+    // Sample C062 while the mode-2 route is still outside the 0x200
+    // accept range. Arrival later switches the actor to the C0A2 pose.
+    std::array<bool, 16> creature_walk_frames_seen{};
+    std::uint8_t creature_walk_frame_count = 0U;
+    bool creature_walk_captures_saved = true;
+    std::uint16_t walk_sample_frames = 0U;
+    for (; walk_sample_frames < 120U && creature_walk_frame_count < 2U;
+         ++walk_sample_frames) {
+        const auto animation_id =
+            field_scene.default_actor_animation_id_for_dump(0U);
+        const auto animation_frame =
+            field_scene.default_actor_animation_frame_for_dump(0U);
+        if (animation_id == std::optional<std::string>{"walk"} &&
+            animation_frame.has_value() &&
+            *animation_frame < creature_walk_frames_seen.size() &&
+            !creature_walk_frames_seen[*animation_frame]) {
+            creature_walk_frames_seen[*animation_frame] = true;
+            ++creature_walk_frame_count;
+            const auto walk_frame_image = render();
+            creature_walk_captures_saved = save(
+                "creature-walk-frame-" +
+                    std::to_string(*animation_frame) + ".bmp",
+                walk_frame_image) &&
+                creature_walk_captures_saved &&
+                field_hud_chrome_survives(walk_frame_image, asset_root) &&
+                initial.copy(272, 0, 48, 224) ==
+                    walk_frame_image.copy(272, 0, 48, 224);
+        }
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
     const bool after_180_saved =
-        advance_and_capture(150U, "encounter-after-180");
+        advance_and_capture(
+            static_cast<std::uint16_t>(150U - std::min<std::uint16_t>(
+                walk_sample_frames, 150U)),
+            "encounter-after-180");
     const auto visible_after_180 =
         field_scene.visible_default_actor_count_for_dump();
     const auto edge_positions_after_180 =
@@ -7282,8 +7316,33 @@ int run_field_random_encounter_spawn_qa(
         field_scene.default_actor_count_for_dump();
     const auto actor_positions =
         field_scene.active_default_actor_positions_for_dump();
+    std::array<bool, 8> approach_action_frames_seen{};
+    std::uint8_t approach_action_frame_count = 0U;
+    bool approach_action_frames_saved = true;
+    for (std::uint16_t frame = 0U; frame < 720U; ++frame) {
+        const auto animation_id =
+            field_scene.default_actor_animation_id_for_dump(0U);
+        const auto animation_frame =
+            field_scene.default_actor_animation_frame_for_dump(0U);
+        if (animation_id == std::optional<std::string>{"action"} &&
+            animation_frame.has_value() &&
+            *animation_frame < approach_action_frames_seen.size() &&
+            !approach_action_frames_seen[*animation_frame]) {
+            approach_action_frames_seen[*animation_frame] = true;
+            ++approach_action_frame_count;
+            const auto action_frame_image = render();
+            approach_action_frames_saved = save(
+                "creature-target-action-frame-" +
+                    std::to_string(*animation_frame) + ".bmp",
+                action_frame_image) &&
+                approach_action_frames_saved &&
+                field_hud_chrome_survives(action_frame_image, asset_root);
+        }
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
     const bool after_1200_saved =
-        advance_and_capture(720U, "encounter-after-1200");
+        save("encounter-after-1200.bmp", render());
     const auto after_long_source_service = render();
     const auto visible_after_1200 =
         field_scene.visible_default_actor_count_for_dump();
@@ -7321,6 +7380,16 @@ int run_field_random_encounter_spawn_qa(
                           edge_positions_after_180) ||
         positions_changed(edge_positions_after_180, actor_positions);
     const std::vector<std::uint16_t> expected_entry_audio{0x2EU, 0x2EU};
+    bool approach_attack_cued = false;
+    for (std::size_t index = audio_start + expected_entry_audio.size();
+         index + 1U < field_audio_events.size(); ++index) {
+        if (field_audio_events[index] == 0x004CU &&
+            (field_audio_events[index + 1U] == 0x004DU ||
+             field_audio_events[index + 1U] == 0x004EU)) {
+            approach_attack_cued = true;
+            break;
+        }
+    }
     if (!after_30_saved || !after_180_saved || !after_480_saved ||
         !after_1200_saved || !actual_saved ||
         actor_count_after_480 != actors_after ||
@@ -7332,7 +7401,11 @@ int run_field_random_encounter_spawn_qa(
                     field_audio_events.begin() +
                         static_cast<std::ptrdiff_t>(audio_start)) ||
         !field_hud_chrome_survives(after_source_service, asset_root) ||
-        !field_hud_chrome_survives(after_long_source_service, asset_root)) {
+        !field_hud_chrome_survives(after_long_source_service, asset_root) ||
+        visible_after_1200 <= visible_before ||
+        approach_action_frame_count < 2U ||
+        !approach_action_frames_saved ||
+        !approach_attack_cued) {
         std::cerr << "field random-encounter QA: actor service or entry cues diverged"
                   << " actors=" << field_scene.default_actor_count_for_dump()
                   << " audio=";
@@ -7344,7 +7417,10 @@ int run_field_random_encounter_spawn_qa(
         std::cerr << " visible=" << visible_before << ","
                   << visible_after_30 << "," << visible_after_180 << ","
                   << visible_after_480 << "," << visible_after_1200
-                  << " edge_ai_moved=" << natural_edge_ai_moved;
+                  << " edge_ai_moved=" << natural_edge_ai_moved
+                  << " attack_cued=" << approach_attack_cued
+                  << " action_frames="
+                  << static_cast<unsigned>(approach_action_frame_count);
         if (edge_positions_at_entry.size() == 2U &&
             actor_positions.size() == 2U &&
             actor_positions_after_1200.size() <= 2U) {
@@ -7477,34 +7553,6 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
-    std::array<bool, 16> creature_walk_frames_seen{};
-    std::uint8_t creature_walk_frame_count = 0U;
-    bool creature_walk_captures_saved = true;
-    for (std::uint8_t sample = 0U;
-         sample < 48U && creature_walk_frame_count < 2U; ++sample) {
-        const auto animation_id =
-            field_scene.default_actor_animation_id_for_dump(0U);
-        const auto animation_frame =
-            field_scene.default_actor_animation_frame_for_dump(0U);
-        if (animation_id == std::optional<std::string>{"walk"} &&
-            animation_frame.has_value() &&
-            *animation_frame < creature_walk_frames_seen.size() &&
-            !creature_walk_frames_seen[*animation_frame]) {
-            creature_walk_frames_seen[*animation_frame] = true;
-            ++creature_walk_frame_count;
-            const auto walk_frame_image = render();
-            creature_walk_captures_saved = save(
-                "creature-walk-frame-" +
-                    std::to_string(*animation_frame) + ".bmp",
-                walk_frame_image) &&
-                creature_walk_captures_saved &&
-                field_hud_chrome_survives(walk_frame_image, asset_root) &&
-                initial.copy(272, 0, 48, 224) ==
-                    walk_frame_image.copy(272, 0, 48, 224);
-        }
-        field_scene.set_controller_port_byte(0U);
-        field_scene.advance_frame();
-    }
     if (creature_walk_frame_count < 2U || !creature_walk_captures_saved) {
         std::cerr << "field random-encounter QA: creature C062 walk frames did not animate through named art"
                   << " unique_frames="
@@ -7525,6 +7573,7 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
+    const auto selector_hud = render();
     const auto audio_before_target_selection = field_audio_events.size();
     field_scene.set_controller_port_byte(0x10U); // ordinary B: cycle target
     field_scene.advance_frame();
@@ -7582,7 +7631,7 @@ int run_field_random_encounter_spawn_qa(
                 action_frame_image) &&
                 creature_action_frames_saved &&
                 field_hud_chrome_survives(action_frame_image, asset_root) &&
-                initial.copy(272, 0, 48, 224) ==
+                selector_hud.copy(272, 0, 48, 224) ==
                     action_frame_image.copy(272, 0, 48, 224);
         }
     }
@@ -7619,19 +7668,12 @@ int run_field_random_encounter_spawn_qa(
         marker_steady->animating || marker_steady->radius != 0U ||
         audio_after_target_press != audio_before_target_selection ||
         audio_after_target_release != audio_before_target_selection ||
-        audio_after_target_action != audio_before_target_selection + 2U ||
-        field_audio_events.size() < audio_before_target_selection + 2U ||
-        field_audio_events[audio_before_target_selection] != 0x004CU ||
-        (field_audio_events[audio_before_target_selection + 1U] != 0x004DU &&
-         field_audio_events[audio_before_target_selection + 1U] != 0x004EU) ||
-        creature_action_frame_count < 2U ||
-        !creature_action_frames_saved ||
         !target_selection_saved ||
         !target_selection_static_saved ||
         !target_marker_pixels_visible ||
         !field_hud_chrome_survives(target_selection_image, asset_root) ||
         !field_hud_chrome_survives(target_selection_static_image, asset_root) ||
-        initial.copy(272, 0, 48, 224) !=
+        selector_hud.copy(272, 0, 48, 224) !=
             target_selection_static_image.copy(272, 0, 48, 224)) {
         std::cerr << "field random-encounter QA: B did not retain the selected live actor"
                   << " event=0x" << std::hex << target_selection_event

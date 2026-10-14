@@ -69,10 +69,10 @@ independent Genesis encounter trace.
 The real edge-spawn captures (`encounter-entry`, `after-30`, `after-180`, and
 `after-480`) keep the full map and HUD composition and contain no visible
 creature because the source candidates are beyond the current viewport. The
-ROM heading correction found during this review changed the natural trace:
-both Scene 2 actors now turn through the runner's area instead of continuing
-away. They remain outside the viewport after 480 service frames, so their full
-approach and arrival remain unresolved. This conversion evidence uses the
+ROM heading correction found during this review changed the natural trace.
+Out of attack range, `0x141DE` sets mode 2 and `0x13D42` copies the linked
+record, so `0x145A2` routes straight at the runner. The 1,200-pass capture
+now has a visible actor and the `0x4C` attack cue. This conversion evidence uses the
 injected `1+2` selector result, not an independent encounter recording. The
 production dispatch also writes five full-screen samples at tick 9, the
 tick-10 predecessor, immediately before and after the selector, and after both
@@ -137,8 +137,8 @@ prove a frame-for-frame match with this Scene 2 fixture.
    actor-service passes, the close fixture, two walk poses, and both selector
    stages. The full HUD remains
    unchanged. Debug counterparts match the reviewed Release frames by SHA-256.
-   Both natural-spawn creatures remain outside the viewport in the long trace,
-   so this capture does not verify their approach or attack behavior.
+   The 1,200-pass trace now shows a visible actor and the source attack cue.
+   It is still the injected `1+2` selector, not an independent Genesis recording.
    The shrinking frame intentionally has widely separated corners; the settled
    frame has the compact selector around the target.
 7. **Are there multiple frames?** Yes: 0, 30, 180, 480, and 1,200 service frames,

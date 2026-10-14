@@ -3276,10 +3276,10 @@ int main() {
                     posture_band_actor.source_actor_posture ==
                         std::optional<std::uint8_t>{posture} &&
                     posture_band_actor.source_record_flags == 0x2DU &&
-                    posture_band_route->movement_heading == 0x6000U &&
+                    posture_band_route->movement_heading == 0x2000U &&
                     posture_band_route->movement_route_distance ==
-                        static_cast<std::uint16_t>(target_distance * 2U),
-                "world-actor posture did not select its ROM lateral route band")) {
+                        target_distance,
+                "out-of-range actor did not route at the linked record")) {
             std::cerr << scripts.failure() << '\n';
             std::cerr << "posture=" << static_cast<unsigned>(posture)
                       << '\n';

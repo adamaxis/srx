@@ -2072,14 +2072,23 @@ function ActorAI.heartbeat(context)
                             end
                         elseif not resolve_source_target_motion(
                             context, state, target) then
-                            local route_heading =
-                                source_motion_destination_heading(
-                                    context, state, target)
-                            state.movement_heading = route_heading
-                            state.movement_active = route_heading ~= nil
-                            if not state.movement_active then
+                            -- 0x141DE stores mode 2 when 0x14C7C does not
+                            -- accept. 0x13D42 copies the linked position and
+                            -- 0x145A2 routes straight at it. The +0xB5 flank
+                            -- stays on the spell and item callers.
+                            local route_heading = nil
+                            if context.movement_allowed and
+                               type(target) == "table" and
+                               type(target.heading) == "number" and
+                               type(target.distance) == "number" then
+                                route_heading = target.heading & 0xffff
+                                state.movement_route_distance =
+                                    target.distance & 0xffff
+                            else
                                 state.movement_route_distance = nil
                             end
+                            state.movement_heading = route_heading
+                            state.movement_active = route_heading ~= nil
                         else
                             audio_event, target_heading_audio_event =
                                 begin_dynamic_target_action(

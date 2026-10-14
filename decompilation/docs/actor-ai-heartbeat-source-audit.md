@@ -483,8 +483,8 @@ For every new actor behavior branch:
 `build/conversion/qt/release/qt_runtime/field-random-encounter-spawn-qa/`.
 All 12 full 320x224 frames were reopened. Production edge-spawn frames at
 30, 180, 480, and 1,200 service passes keep the same map/HUD composition;
-both creatures remain outside the viewport, and their long path still needs
-independent ROM footage to confirm approach behavior. The controlled
+the mode-2 route now reaches the viewport and requests the `0x4C` attack
+cue. This is still the injected selector, not an independent Genesis recording. The controlled
 fixture shows the two creatures and distinct walk poses. The marker fixture
 checks the four source tile corners at their projected positions and leaves
 the right-side HUD unchanged. B retains the typed target, and the source path
