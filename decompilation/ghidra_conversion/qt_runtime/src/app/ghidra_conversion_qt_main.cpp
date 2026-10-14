@@ -203,6 +203,7 @@ std::filesystem::path find_asset_root(
                    " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
                    " [--field-ares-collision-shop-qa <output-dir>]"
                    " [--field-scene20-physical-entry-qa <output-dir>]"
+                   " [--field-scene20-c0-exit-qa <output-dir>]"
                    " [--field-scene20-passkey-qa <output-dir>]"
                    " [--field-scene20-insufficient-passkey-qa <output-dir>]"
                    " [--field-scene20-electronics-no-skill-qa <output-dir>]"
@@ -11633,6 +11634,13 @@ int run_field_ares_collision_shop_qa(
         }
         return 3;
     }
+    const auto ares_trigger_position =
+        field_scene.field_entity_world_position();
+    const auto ares_trigger_heading =
+        field_scene.field_entity_heading_for_dump();
+    const auto ares_trigger_dispatches =
+        field_scene.field_map_event_system_for_dump()
+            .collision_dispatch_count();
     if (!save("doorway-contact")) {
         return 3;
     }
@@ -11852,6 +11860,120 @@ int run_field_ares_collision_shop_qa(
     }
     write_state("field-return");
 
+    const auto ares_return_position =
+        field_scene.field_entity_world_position();
+    if (ares_return_position.x != ares_trigger_position.x ||
+        ares_return_position.y != ares_trigger_position.y ||
+        field_scene.field_entity_heading_for_dump() != ares_trigger_heading ||
+        field_scene.field_map_event_system_for_dump()
+                .collision_dispatch_count() != ares_trigger_dispatches ||
+        (field_scene.field_movement_route_flags_for_dump() & 0x20U) == 0U) {
+        std::cerr << "Ares collision QA: Start changed the source contact "
+                     "position/facing or lost the one-shot retry state\n";
+        return 3;
+    }
+    std::ofstream exit_trace(output / "ares-held-and-fresh-direction.tsv",
+                             std::ios::trunc);
+    if (!exit_trace) {
+        std::cerr << "Ares collision QA: could not write the exit route trace\n";
+        return 3;
+    }
+    exit_trace
+        << "phase\tinput\tframe\tx\ty\theading\ttarget_heading"
+           "\troute_flags\traw_collision\tevent\tdispatches"
+           "\ttransition\tmode_text\tshop\taudio_events\n";
+    const auto write_exit_state = [&](const std::string_view phase,
+                                      const std::string_view input) {
+        const auto position = field_scene.field_entity_world_position();
+        exit_trace
+            << phase << '\t' << input << '\t' << frame << '\t'
+            << position.x << '\t' << position.y << '\t'
+            << field_scene.field_entity_heading_for_dump() << '\t'
+            << field_scene.field_entity_target_heading_for_dump() << '\t'
+            << static_cast<unsigned>(
+                   field_scene.field_movement_route_flags_for_dump())
+            << '\t' << field_scene.field_terrain_collision_code_for_dump()
+            << '\t' << static_cast<unsigned>(
+                   field_scene.field_mode_event_code_for_dump())
+            << '\t' << field_scene.field_map_event_system_for_dump()
+                           .collision_dispatch_count()
+            << '\t' << field_scene.field_transition_pending_for_dump()
+            << '\t' << field_scene.field_mode_text_open_for_dump() << '\t'
+            << field_scene.shop_menu_open() << '\t'
+            << field_audio_events.size() << '\n';
+        return static_cast<bool>(exit_trace);
+    };
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!write_exit_state("release-after-shop", "none") ||
+        !save("field-release-after-shop")) {
+        return 3;
+    }
+    for (std::uint32_t tick = 1U; tick <= 16U; ++tick) {
+        field_scene.set_controller_nibble(0x02U); // held ordinary Down
+        field_scene.advance_frame();
+        ++frame;
+        if (!route_is_live() ||
+            field_scene.field_map_event_system_for_dump()
+                    .collision_dispatch_count() != ares_trigger_dispatches) {
+            field_scene.set_controller_nibble(0U);
+            std::cerr << "Ares collision QA: held Down reopened its source "
+                         "interaction or left scene 2 at update " << tick
+                      << '\n';
+            return 3;
+        }
+        if (!write_exit_state("held-down", "Down") ||
+            (tick == 1U && !save("field-held-down-01")) ||
+            (tick == 4U && !save("field-held-down-04")) ||
+            (tick == 8U && !save("field-held-down-08")) ||
+            (tick == 16U && !save("field-held-down-16"))) {
+            field_scene.set_controller_nibble(0U);
+            return 3;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto ares_departure_position =
+        field_scene.field_entity_world_position();
+    if (!write_exit_state("release-after-held-down", "none") ||
+        ares_departure_position.y <= ares_return_position.y ||
+        (field_scene.field_movement_route_flags_for_dump() & 0x20U) != 0U ||
+        field_scene.field_terrain_collision_code_for_dump() != 0U ||
+        !route_is_live() || !save("field-clear-of-ares-trigger")) {
+        std::cerr << "Ares collision QA: held Down did not clear the source "
+                     "trigger and its retry bit\n";
+        return 3;
+    }
+    for (std::uint32_t tick = 1U; tick <= 8U; ++tick) {
+        field_scene.set_controller_nibble(0x08U); // fresh ordinary Right
+        field_scene.advance_frame();
+        ++frame;
+        if (!route_is_live() ||
+            field_scene.field_map_event_system_for_dump()
+                    .collision_dispatch_count() != ares_trigger_dispatches) {
+            field_scene.set_controller_nibble(0U);
+            std::cerr << "Ares collision QA: fresh Right replayed the service "
+                         "event after the runner cleared its trigger\n";
+            return 3;
+        }
+        if (!write_exit_state("fresh-right", "Right") ||
+            (tick == 1U && !save("field-fresh-right-01")) ||
+            (tick == 4U && !save("field-fresh-right-04")) ||
+            (tick == 8U && !save("field-fresh-right-08"))) {
+            field_scene.set_controller_nibble(0U);
+            return 3;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!save("actual")) {
+        return 3;
+    }
+    exit_trace.close();
+
     {
         std::ofstream boundaries(output / "source-boundaries.txt",
                                  std::ios::trunc);
@@ -11886,6 +12008,7 @@ int run_field_ares_collision_shop_qa(
 }
 
 enum class Scene20PhysicalEntryQaPath : std::uint8_t {
+    c0_exit_lifetime,
     walk_away,
     grenade_unavailable,
     passkey_success,
@@ -12177,6 +12300,10 @@ int run_field_scene20_physical_entry_qa(
                          field_scene.field_mode_event_code_for_dump()) << ")\n";
         return 3;
     }
+    const auto scene2_return_position =
+        field_scene.field_entity_world_position();
+    const auto scene2_return_heading =
+        field_scene.field_entity_heading_for_dump();
     write_state("doorway-contact");
     field_scene.set_controller_nibble(0U);
 
@@ -12494,6 +12621,351 @@ int run_field_scene20_physical_entry_qa(
                !field_scene.field_transition_pending_for_dump() &&
                !field_scene.field_interaction_transition_active_for_dump();
     };
+    const auto scene2_is_live = [&field_scene] {
+        return field_scene.field_scene_reference_for_dump() == 2U &&
+               !field_scene.dialogue_open() &&
+               !field_scene.field_interaction_open() &&
+               !field_scene.field_mode_text_open_for_dump() &&
+               !field_scene.shop_menu_open() &&
+               !field_scene.field_transition_pending_for_dump() &&
+               !field_scene.field_interaction_transition_active_for_dump();
+    };
+    if (path == Scene20PhysicalEntryQaPath::c0_exit_lifetime) {
+        constexpr std::size_t kDoorRecordIndex = 110U;
+        constexpr std::uint32_t kDoorRecordAddress = 0x1D96DEU;
+        const auto& door_metadata =
+            field_scene.state().field_scene_buffers.source_metadata;
+        if (scene20_rectangles.size() <= kDoorRecordIndex ||
+            scene20_rectangles[kDoorRecordIndex].left != 0x0580U ||
+            scene20_rectangles[kDoorRecordIndex].right != 0x059FU ||
+            scene20_rectangles[kDoorRecordIndex].top != 0x0020U ||
+            scene20_rectangles[kDoorRecordIndex].bottom != 0x003FU ||
+            scene20_rectangles[kDoorRecordIndex].value != 0xC0U ||
+            door_metadata.event_table_available || !scene20_is_live()) {
+            std::cerr << "Scene-20 C0 QA: record 110, its null event table, "
+                         "or the ordinary field state differs from the ROM\n";
+            return 3;
+        }
+        std::ofstream exit_trace(output / "scene20-c0-exit-lifetime.tsv",
+                                 std::ios::trunc);
+        if (!exit_trace) {
+            return 3;
+        }
+        exit_trace
+            << "phase\tinput\tframe\tx\ty\theading\ttarget_heading"
+               "\troute_flags\traw_collision\tprojected\tevent"
+               "\tdispatches\ttransition\tmode_text\tinteraction"
+               "\tdialogue\taudio_events\n";
+        const auto write_exit_state = [&](const std::string_view phase,
+                                          const std::string_view input) {
+            const auto position = field_scene.field_entity_world_position();
+            exit_trace
+                << phase << '\t' << input << '\t' << frame << '\t'
+                << position.x << '\t' << position.y << '\t'
+                << field_scene.field_entity_heading_for_dump() << '\t'
+                << field_scene.field_entity_target_heading_for_dump() << '\t'
+                << static_cast<unsigned>(
+                       field_scene.field_movement_route_flags_for_dump())
+                << '\t' << field_scene.field_terrain_collision_code_for_dump()
+                << '\t' << field_scene.field_projected_code_for_dump()
+                << '\t' << static_cast<unsigned>(
+                       field_scene.field_mode_event_code_for_dump())
+                << '\t' << field_scene.field_map_event_system_for_dump()
+                               .collision_dispatch_count()
+                << '\t' << field_scene.field_transition_pending_for_dump()
+                << '\t' << field_scene.field_mode_text_open_for_dump()
+                << '\t' << field_scene.field_interaction_open() << '\t'
+                << field_scene.dialogue_open() << '\t'
+                << field_audio_events.size() << '\n';
+            return static_cast<bool>(exit_trace);
+        };
+        const auto dispatches_before_door =
+            field_scene.field_map_event_system_for_dump()
+                .collision_dispatch_count();
+        if (!write_exit_state("scene20-entry", "none")) {
+            return 3;
+        }
+        // The source spawn is directly east of record 110's open approach
+        // strip. Move left around record 109's 0x7F wall, then approach the
+        // C0 bounds from the south using ordinary controller input.
+        constexpr std::uint16_t kLateralApproachTicks = 8U;
+        for (std::uint16_t tick = 1U; tick <= kLateralApproachTicks; ++tick) {
+            field_scene.set_controller_nibble(0x04U); // ordinary Left
+            field_scene.advance_frame();
+            ++frame;
+            if (!scene20_is_live() ||
+                field_scene.field_map_event_system_for_dump()
+                        .collision_dispatch_count() != dispatches_before_door ||
+                !write_exit_state("approach-left", "Left") ||
+                (tick == 1U &&
+                 (field_scene.field_terrain_collision_code_for_dump() != 0U ||
+                  (field_scene.field_movement_route_flags_for_dump() &
+                   0x20U) != 0U)) ||
+                (tick == 4U && !save("scene20-c0-route-left-04")) ||
+                (tick == 8U && !save("scene20-c0-route-left-08"))) {
+                field_scene.set_controller_nibble(0U);
+                std::cerr << "Scene-20 C0 QA: ordinary Left did not clear "
+                             "the entry latch or stay in the source scene\n";
+                return 3;
+            }
+        }
+        const auto lateral_approach = world_position();
+        if (lateral_approach.first < 0x0580U ||
+            lateral_approach.first >= 0x05A0U ||
+            lateral_approach.second <= 0x0040U ||
+            !write_exit_state("southwest-approach", "Left")) {
+            std::cerr << "Scene-20 C0 QA: ordinary Left did not reach the "
+                         "open source lane west of record 109 (position="
+                      << lateral_approach.first << ','
+                      << lateral_approach.second << ")\n";
+            return 3;
+        }
+        field_scene.set_terrain_probe_trace_enabled_for_dump(true);
+        std::uint16_t north_ticks_to_door = 0U;
+        while (north_ticks_to_door < 48U && scene20_is_live()) {
+            field_scene.set_controller_nibble(0x01U); // ordinary Up
+            field_scene.advance_frame();
+            ++frame;
+            ++north_ticks_to_door;
+            if (!write_exit_state("approach-up", "Up") ||
+                (north_ticks_to_door == 8U &&
+                 !save("scene20-c0-route-up-08")) ||
+                (north_ticks_to_door == 16U &&
+                 !save("scene20-c0-route-up-16")) ||
+                (north_ticks_to_door == 24U &&
+                 !save("scene20-c0-route-up-24")) ||
+                (north_ticks_to_door == 32U &&
+                 !save("scene20-c0-route-up-32")) ||
+                (north_ticks_to_door == 40U &&
+                 !save("scene20-c0-route-up-40"))) {
+                field_scene.set_controller_nibble(0U);
+                field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+                return 3;
+            }
+            if (field_scene.field_interaction_transition_active_for_dump() ||
+                field_scene.field_transition_pending_for_dump()) {
+                break;
+            }
+        }
+        field_scene.set_controller_nibble(0U);
+        const auto door_contact = field_scene.field_entity_world_position();
+        const auto door_contact_heading =
+            field_scene.field_entity_heading_for_dump();
+        const auto door_contact_world = world_position();
+        const auto dispatches_at_door =
+            field_scene.field_map_event_system_for_dump()
+                .collision_dispatch_count();
+        const auto& door_dispatch =
+            field_scene.field_map_event_system_for_dump()
+                .last_collision_dispatch();
+        const auto& probe_history =
+            field_scene.terrain_probe_trace_for_dump();
+        {
+            std::ofstream probe_trace(
+                output / "scene20-c0-terrain-probes.tsv", std::ios::trunc);
+            if (!probe_trace) {
+                field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+                return 3;
+            }
+            probe_trace
+                << "candidate_x_fixed\tcandidate_y_fixed\tnormalized_x\t"
+                   "normalized_y\tcorner_x\tcorner_y\tterrain_byte\t"
+                   "tile\traw_code\tcollision_result\texpanded\toutside\n";
+            const auto begin = probe_history.size() > 64U
+                                   ? probe_history.size() - 64U
+                                   : 0U;
+            for (std::size_t index = begin;
+                 index < probe_history.size(); ++index) {
+                const auto& probe = probe_history[index];
+                for (std::size_t corner = 0U;
+                     corner < probe.terrain_bytes.size(); ++corner) {
+                    probe_trace << probe.candidate_x_fixed << '\t'
+                                << probe.candidate_y_fixed << '\t'
+                                << probe.normalized_x << '\t'
+                                << probe.normalized_y << '\t'
+                                << probe.corner_x[corner] << '\t'
+                                << probe.corner_y[corner] << '\t'
+                                << static_cast<unsigned>(
+                                       probe.terrain_bytes[corner])
+                                << '\t' << probe.selected_tile_index << '\t'
+                                << probe.raw_terrain_code << '\t'
+                                << probe.collision_result << '\t'
+                                << probe.expanded_probe << '\t'
+                                << probe.outside_bounds << '\n';
+                }
+            }
+        }
+        field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+        const bool contact_is_inside_source_probe_bounds =
+            door_contact_world.first + 12U >= 0x0580U &&
+            door_contact_world.first <= 0x059FU + 12U &&
+            door_contact_world.second + 7U >= 0x0020U &&
+            door_contact_world.second <= 0x003FU + 7U;
+        if (field_scene.field_scene_reference_for_dump() != 0x14U ||
+            field_scene.field_terrain_collision_code_for_dump() != 0xFFC0U ||
+            field_scene.field_projected_code_for_dump() != 0xFFC0U ||
+            field_scene.field_mode_event_code_for_dump() != 0U ||
+            door_contact_heading != 0U ||
+            !field_scene.field_interaction_transition_active_for_dump() ||
+            !contact_is_inside_source_probe_bounds ||
+            dispatches_at_door != dispatches_before_door + 1U ||
+            !door_dispatch.has_value() ||
+            door_dispatch->input.scene_id != 0x14U ||
+            door_dispatch->input.raw_collision_code != 0xFFC0U ||
+            !save("scene20-c0-doorway-contact")) {
+            std::cerr << "Scene-20 C0 QA: ordinary Left/Up did not contact "
+                         "ROM record 110 exactly once (left-ticks="
+                      << kLateralApproachTicks << ", up-ticks="
+                      << north_ticks_to_door << ", position="
+                      << door_contact_world.first << ','
+                      << door_contact_world.second << ", raw=0x" << std::hex
+                      << field_scene.field_terrain_collision_code_for_dump()
+                      << ", projected=0x"
+                      << field_scene.field_projected_code_for_dump()
+                      << std::dec << ", dispatches="
+                      << dispatches_before_door << "->" << dispatches_at_door
+                      << ")\n";
+            return 3;
+        }
+        if (!write_exit_state("scene20-c0-contact", "Up")) {
+            return 3;
+        }
+        const auto fade_start_frame = frame;
+        for (const auto checkpoint :
+             std::array<std::uint32_t, 3U>{8U, 16U, 17U}) {
+            const auto target_frame = fade_start_frame + checkpoint - 1U;
+            while (frame < target_frame) {
+                field_scene.advance_frame();
+                ++frame;
+            }
+            const auto expected_timer = checkpoint == 8U ? 8 :
+                                        checkpoint == 16U ? 0 : -1;
+            const auto expected_palette_steps = checkpoint == 8U ? 4U :
+                                                checkpoint == 16U ? 8U : 9U;
+            const auto name = "scene20-c0-fade-" +
+                (checkpoint < 10U ? std::string("0") : std::string()) +
+                std::to_string(checkpoint);
+            if (field_scene.field_interaction_transition_timer_for_dump() !=
+                    expected_timer ||
+                field_scene.field_palette_fade_steps_for_dump() !=
+                    expected_palette_steps ||
+                !write_exit_state(name, "none") || !save(name)) {
+                std::cerr << "Scene-20 C0 QA: source fade diverged at frame "
+                          << checkpoint << '\n';
+                return 3;
+            }
+        }
+        for (std::uint16_t settle = 0U;
+             settle < 120U && !scene2_is_live(); ++settle) {
+            field_scene.advance_frame();
+            ++frame;
+        }
+        const auto returned_contact =
+            field_scene.field_entity_world_position();
+        if (!write_exit_state("post-transition-settle", "none") ||
+            !save("scene20-c0-post-transition-settle")) {
+            return 3;
+        }
+        if (!scene2_is_live() ||
+            returned_contact.x != scene2_return_position.x ||
+            returned_contact.y != scene2_return_position.y ||
+            field_scene.field_entity_heading_for_dump() !=
+                scene2_return_heading ||
+            field_scene.field_map_event_system_for_dump()
+                    .collision_dispatch_count() != dispatches_at_door ||
+            !field_hud_chrome_survives(render(), asset_root) ||
+            count_playfield_lit(render()) < 100U ||
+            !write_exit_state("scene2-return", "none") ||
+            !save("scene20-c0-scene2-return")) {
+            std::cerr << "Scene-20 C0 QA: event 0 did not restore the "
+                         "source scene-2 contact position and facing\n";
+            return 3;
+        }
+
+        const auto dispatches_after_c0 =
+            field_scene.field_map_event_system_for_dump()
+                .collision_dispatch_count();
+        for (std::uint32_t tick = 1U; tick <= 16U; ++tick) {
+            field_scene.set_controller_nibble(0x02U); // held Down, away
+            field_scene.advance_frame();
+            ++frame;
+            if (!scene2_is_live() ||
+                field_scene.field_map_event_system_for_dump()
+                        .collision_dispatch_count() != dispatches_after_c0 ||
+                !write_exit_state("held-down", "Down")) {
+                field_scene.set_controller_nibble(0U);
+                std::cerr << "Scene-20 C0 QA: held Down retriggered event 0 "
+                             "or left scene 2 at update " << tick
+                          << '\n';
+                return 3;
+            }
+            if ((tick == 1U || tick == 4U || tick == 8U || tick == 16U) &&
+                !save("scene20-c0-held-down-" +
+                      (tick < 10U ? std::string("0") : std::string()) +
+                      std::to_string(tick))) {
+                field_scene.set_controller_nibble(0U);
+                return 3;
+            }
+        }
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto clear_position =
+            field_scene.field_entity_world_position();
+        if (clear_position.y <= returned_contact.y ||
+            field_scene.field_terrain_collision_code_for_dump() != 0U ||
+            (field_scene.field_movement_route_flags_for_dump() & 0x20U) !=
+                0U ||
+            !write_exit_state("released-after-down", "none") ||
+            !save("scene20-c0-clear-of-trigger")) {
+            std::cerr << "Scene-20 C0 QA: held Down did not clear the door "
+                         "record and source retry latch\n";
+            return 3;
+        }
+        for (std::uint32_t tick = 1U; tick <= 8U; ++tick) {
+            field_scene.set_controller_nibble(0x08U); // fresh ordinary Right
+            field_scene.advance_frame();
+            ++frame;
+            if (!scene2_is_live() ||
+                field_scene.field_map_event_system_for_dump()
+                        .collision_dispatch_count() != dispatches_after_c0 ||
+                !write_exit_state("fresh-right", "Right")) {
+                field_scene.set_controller_nibble(0U);
+                std::cerr << "Scene-20 C0 QA: fresh Right retriggered event 0 "
+                             "after clearing its record\n";
+                return 3;
+            }
+            if ((tick == 1U || tick == 4U || tick == 8U) &&
+                !save("scene20-c0-fresh-right-" +
+                      (tick < 10U ? std::string("0") : std::string()) +
+                      std::to_string(tick))) {
+                field_scene.set_controller_nibble(0U);
+                return 3;
+            }
+        }
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto actual = render();
+        if (!scene2_is_live() ||
+            !field_hud_chrome_survives(actual, asset_root) ||
+            count_playfield_lit(actual) < 100U || !save("actual")) {
+            return 3;
+        }
+        exit_trace.close();
+        std::cout << "scene20_c0_return_lifetime_qa=passed record=110 rom=0x"
+                  << std::hex << kDoorRecordAddress << std::dec
+                  << " event=0 destination=source-scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " scene20_contact=" << door_contact.x << ','
+                  << door_contact.y << " source_return="
+                  << scene2_return_position.x << ','
+                  << scene2_return_position.y << " dispatches="
+                  << dispatches_before_door << "->" << dispatches_at_door
+                  << " held_down=16 fresh_right=8"
+                  << " artifacts=" << output.string() << '\n';
+        return 0;
+    }
     const auto walk_scene20_to = [&](const bool horizontal,
                                      const bool increasing,
                                      const std::uint16_t target,
@@ -18357,7 +18829,7 @@ int run_field_stoker_collision_to_dialogue_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries) {
     std::filesystem::create_directories(output);
-    constexpr std::array<std::string_view, 38> stale_or_current_frames{
+    constexpr std::array<std::string_view, 42> stale_or_current_frames{
         "actual.bmp",
         "destination-entry.bmp",
         "destination-idle-01.bmp",
@@ -18374,6 +18846,10 @@ int run_field_stoker_collision_to_dialogue_qa(
         "leave-walk-04.bmp",
         "leave-walk-08.bmp",
         "leave-walk-16.bmp",
+        "leave-release-before-fresh-direction.bmp",
+        "leave-fresh-right-01.bmp",
+        "leave-fresh-right-04.bmp",
+        "leave-fresh-right-08.bmp",
         "movement-8.bmp",
         "movement-16.bmp",
         "movement-32.bmp",
@@ -18783,6 +19259,10 @@ int run_field_stoker_collision_to_dialogue_qa(
         trace.flush();
     };
     write_state("stoker-arrival-dialogue");
+    const auto stoker_trigger_position =
+        field_scene.field_entity_world_position();
+    const auto stoker_trigger_heading =
+        field_scene.field_entity_heading_for_dump();
 
     const auto& arrival = field_scene.dialogue_panel();
     const auto arrival_text_present = [&arrival] {
@@ -18915,7 +19395,11 @@ int run_field_stoker_collision_to_dialogue_qa(
     }
     const auto returned_position = field_scene.field_entity_world_position();
     const auto returned_image = render_field();
-    if (!save_frame("returned-to-field", true) ||
+    if (returned_position.x != stoker_trigger_position.x ||
+        returned_position.y != stoker_trigger_position.y ||
+        field_scene.field_entity_heading_for_dump() !=
+            stoker_trigger_heading ||
+        !save_frame("returned-to-field", true) ||
         !returned_image.save(QString::fromStdWString(
             (output / "actual.bmp").wstring())) ||
         !field_hud_chrome_survives(returned_image, asset_root) ||
@@ -18987,6 +19471,20 @@ int run_field_stoker_collision_to_dialogue_qa(
     const auto dispatches_before_departure =
         field_scene.field_map_event_system_for_dump().collision_dispatch_count();
     const auto audio_events_before_departure = field_audio_events.size();
+    if (departure_start.x != stoker_trigger_position.x ||
+        departure_start.y != stoker_trigger_position.y ||
+        field_scene.field_entity_heading_for_dump() !=
+            stoker_trigger_heading) {
+        std::cerr << "Stoker collision QA: same-scene Leave changed the ROM "
+                     "contact coordinate or facing (contact="
+                  << stoker_trigger_position.x << ','
+                  << stoker_trigger_position.y << ", return="
+                  << departure_start.x << ',' << departure_start.y
+                  << ", contact_heading=" << stoker_trigger_heading
+                  << ", return_heading="
+                  << field_scene.field_entity_heading_for_dump() << ")\n";
+        return 3;
+    }
     if ((field_scene.field_movement_route_flags_for_dump() & 0x20U) == 0U) {
         std::cerr << "Stoker collision QA: B7B8 retry bit was lost across "
                      "the same-scene dialogue return\n";
@@ -19106,6 +19604,96 @@ int run_field_stoker_collision_to_dialogue_qa(
     }
     write_state("leave-walk-16");
 
+    std::ofstream fresh_direction_trace(
+        output / "stoker-fresh-direction.tsv", std::ios::trunc);
+    if (!fresh_direction_trace) {
+        std::cerr << "Stoker collision QA: could not write the fresh-direction "
+                     "trace\n";
+        return 3;
+    }
+    fresh_direction_trace
+        << "phase\tinput\tframe\tx\ty\theading\troute_flags"
+           "\traw_collision\tevent\tdispatches\ttransition"
+           "\tinteraction\tdialogue\taudio_events\n";
+    const auto fresh_direction_dispatches =
+        field_scene.field_map_event_system_for_dump()
+            .collision_dispatch_count();
+    const auto trace_fresh_direction = [&](const std::string_view phase,
+                                           const std::string_view input) {
+        const auto position = field_scene.field_entity_world_position();
+        fresh_direction_trace
+            << phase << '\t' << input << '\t' << frame << '\t'
+            << position.x << '\t' << position.y << '\t'
+            << field_scene.field_entity_heading_for_dump() << '\t'
+            << static_cast<unsigned>(
+                   field_scene.field_movement_route_flags_for_dump())
+            << '\t' << field_scene.field_terrain_collision_code_for_dump()
+            << '\t' << static_cast<unsigned>(
+                   field_scene.field_mode_event_code_for_dump())
+            << '\t' << field_scene.field_map_event_system_for_dump()
+                           .collision_dispatch_count()
+            << '\t' << field_scene.field_transition_pending_for_dump()
+            << '\t' << field_scene.field_interaction_open() << '\t'
+            << field_scene.dialogue_open() << '\t'
+            << field_audio_events.size() << '\n';
+        return static_cast<bool>(fresh_direction_trace);
+    };
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!trace_fresh_direction("release-between-directions", "none") ||
+        !save_frame("leave-release-before-fresh-direction", true)) {
+        return 3;
+    }
+    bool fresh_direction_moved_east = false;
+    constexpr std::array<std::uint32_t, 3> fresh_direction_checkpoints{
+        1U, 4U, 8U};
+    for (std::uint32_t tick = 1U; tick <= 8U; ++tick) {
+        field_scene.set_controller_nibble(0x08U); // fresh ordinary Right
+        field_scene.advance_frame();
+        ++frame;
+        const auto position = field_scene.field_entity_world_position();
+        fresh_direction_moved_east =
+            fresh_direction_moved_east || position.x > departure_end.x;
+        if (!trace_fresh_direction("fresh-right", "Right") ||
+            field_scene.field_scene_reference_for_dump() != 2U ||
+            field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+            field_scene.shop_menu_open() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_map_event_system_for_dump()
+                    .collision_dispatch_count() != fresh_direction_dispatches) {
+            field_scene.set_controller_nibble(0U);
+            std::cerr << "Stoker collision QA: a fresh direction retriggered "
+                         "or left the field after the runner cleared the C2 "
+                         "trigger\n";
+            return 3;
+        }
+        if (std::find(fresh_direction_checkpoints.begin(),
+                      fresh_direction_checkpoints.end(), tick) !=
+            fresh_direction_checkpoints.end()) {
+            const auto name = "leave-fresh-right-" +
+                (tick < 10U ? std::string("0") : std::string()) +
+                std::to_string(tick);
+            if (!save_frame(name, true)) {
+                field_scene.set_controller_nibble(0U);
+                return 3;
+            }
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    ++frame;
+    if (!fresh_direction_moved_east ||
+        field_scene.field_map_event_system_for_dump()
+                .collision_dispatch_count() != fresh_direction_dispatches ||
+        !save_frame("actual", true)) {
+        std::cerr << "Stoker collision QA: releasing Down and pressing fresh "
+                     "Right did not stay on the field without replaying the "
+                     "Stoker event\n";
+        return 3;
+    }
+    fresh_direction_trace.close();
+
     trace.close();
 
     const auto mode_entry_commands_after = std::count(
@@ -19156,6 +19744,10 @@ int run_field_stoker_collision_to_dialogue_qa(
         "fade-08.bmp",
         "fade-16.bmp",
         "fade-17.bmp",
+        "leave-fresh-right-01.bmp",
+        "leave-fresh-right-04.bmp",
+        "leave-fresh-right-08.bmp",
+        "leave-release-before-fresh-direction.bmp",
         "leave-walk-01.bmp",
         "leave-walk-02.bmp",
         "leave-walk-04.bmp",
@@ -19188,7 +19780,7 @@ int run_field_stoker_collision_to_dialogue_qa(
     }
     std::sort(actual_bmp_names.begin(), actual_bmp_names.end());
     if (actual_bmp_names != expected_bmp_names) {
-        std::cerr << "Stoker collision QA: expected 21 full-screen checkpoints, "
+        std::cerr << "Stoker collision QA: expected 25 full-screen checkpoints, "
                      "found " << actual_bmp_names.size() << '\n';
         for (const auto& name : actual_bmp_names) {
             std::cerr << "  frame: " << name << '\n';
@@ -20839,6 +21431,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene20_physical_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_scene20_c0_exit_qa_path;
+        std::optional<std::filesystem::path>
             field_scene20_passkey_qa_path;
         std::optional<std::filesystem::path>
             field_scene20_insufficient_passkey_qa_path;
@@ -21074,6 +21668,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene20_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene20-c0-exit-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene20_c0_exit_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-scene20-passkey-qa" &&
@@ -21835,6 +22436,13 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_scene20_physical_entry_qa_path,
                     field_audio_events, field_source_boundaries);
+            }
+            if (field_scene20_c0_exit_qa_path.has_value()) {
+                return run_field_scene20_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_scene20_c0_exit_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    Scene20PhysicalEntryQaPath::c0_exit_lifetime);
             }
             if (field_scene20_passkey_qa_path.has_value()) {
                 return run_field_scene20_physical_entry_qa(

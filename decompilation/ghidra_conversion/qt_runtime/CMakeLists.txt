@@ -444,6 +444,19 @@ set_tests_properties(
     shadowrun_ghidra_conversion_qt_field_scene20_physical_entry_qa
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
 
+# Scene 20 record 110 is a source C0/event-0 contact with no event-table row.
+# Enter through Scene 2's physical C0 route, then walk around the adjacent
+# 0x7F rectangle with ordinary Left and Up input. Keep Up held through the
+# following service update, then verify source-context return and retry latch.
+add_test(NAME shadowrun_ghidra_conversion_qt_field_scene20_c0_exit_qa
+         COMMAND shadowrun_ghidra_conversion_qt
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene20-c0-exit-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-c0-exit-qa")
+set_tests_properties(
+    shadowrun_ghidra_conversion_qt_field_scene20_c0_exit_qa
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows")
+
 # Normal Right then Up+Right input from New Game contacts scene-2 collision
 # record 93 (C1/event 1). Its map event-table row 1 selects resource scene
 # 0x1A; this captures the source fade and complete destination scene after the

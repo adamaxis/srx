@@ -260,17 +260,34 @@ intro-complete flag. The native registry tracks trigger lifetime and dispatches
 the Lua handler; the map viewer displays the exact source scope in its
 containing 32-pixel cell.
 
-One important unresolved record is scene 20 record 110 at `0x1D96DE`: raw
-`0x00C0`, event 0, source bounds `x=0x0580..0x059F`,
-`y=0x0020..0x003F`. Its profile's
-event-table pointer at `0x1D91C8` is null. The generic `0xB7B8` path publishes
-event 0 and calls `0x1651E`; the scene-`0x14` branch in `0x1651E` only writes
-its special map cells when the incoming event byte is nonzero. The shared
-projection/carry path may still run, but this record supplies no map writes or
-event-table destination. Therefore no reverse-scene transition is established.
-`building.lua` reports the route as `no_route`; the rectangle is not
-currently classified as an exit. The new focused CTest covers that unresolved
-classification, but there is no physical-input scene-20 C0 QA route yet.
+Scene 20 record 110 at `0x1D96DE` is raw `0x00C0`, event 0, bounds
+`x=0x0580..0x059F`, `y=0x0020..0x003F`; profile event-table pointer
+`0x1D91C8` is null. ROM `0xB7B8` sends the zero event through `0x1651E`; the
+zero-event return sets carry, after which `0xB7B8` starts its `0x10`-update
+field transition. There is no event-table destination byte for this record.
+The source context path snapshots 49 scene words at `0x16E30`, copies actor
+X/Y anchors at `0x2FA4`, and restores scene state and anchors in
+`0x2F32`. This supports the host's return to the saved Scene 2 doorway
+contact. The Scene-20 transition reuses the live player record rather than
+running the initial entity reset at `0xA7B4`, so heading 0 persists in this
+route; other approach headings have not been exercised.
+
+Debug/Release CTest `shadowrun_ghidra_conversion_qt_field_scene20_c0_exit_qa`
+enters Scene 20 through Scene 2's physical row-0 route, then approaches record
+110 with ordinary input: eight Left updates clear the neighboring record 109
+`0x7F` wall, followed by held Up. The first C0 terrain sample is at
+`(1421,69)`; the next Up/service update dispatches event 0 once and begins the
+transition. The full transition takes 17 updates, and the host returns to
+Scene 2 at fixed position `(3944,10350)`, heading 0. The `0x20` retry bit
+stays set until held Down produces a clear-terrain sample at update 15; after
+release, fresh Right input remains in Scene 2 and does not dispatch again.
+All 45 full-screen BMPs were reviewed; Debug/Release hashes match. The
+screenshots retain the HUD and clean field redraw, with no stale panel.
+Scene 20's visible guards match default ROM actor records 3/4 at
+`0x1D9266`/`0x1D926C` in the list at `0x1D91DA`. Audio count does not increase
+across the contact/return sequence. No independent longplay frame of this exit
+has been identified. Thus the current no-retrigger behavior and ordinary path
+to record 110 are source-matched and covered; exact ROM facing remains open.
 
 ## Event-table values in maps 0-9
 

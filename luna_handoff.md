@@ -183,12 +183,13 @@ These routes already run. The complaint is cadence.
 - `AUDIO-RECHECK-02`. Inventory intro-stage sound requests and stops. One
   cue per stage boundary, loopback duration written down. No new music.
 
-## Done when
+## Completion condition
 
-L1 has a failing-then-passing position test and a full-frame capture where
-the feet stop on the ROM cell. L5 has one reviewed screen with a longplay
-diff, not a batch of menu tweaks in one commit. The rest can sit in the
-queue.
+The user asked to finish this handoff, so work through every queued item
+below. Close an item only with the source evidence and review its entry asks
+for; where the current implementation already matches the ROM, record a
+source-confirmed no-fix result instead of manufacturing a code change. Commit
+each completed slice before moving to the next one.
 
 ## Progress log
 
@@ -330,3 +331,50 @@ the existing host collision path already matched these ROM contacts.
 
 L3 is now closed with that scope. Remaining handoff work is L4, L5b-L5k,
 L6, and L8; L5a and the minimum longplay-backed menu review are complete.
+
+### L4 Stoker, Ares, and Scene 20 doorway return/latch review
+
+The Release and Debug route CTests now exercise the post-interaction exit
+sequence for Stoker, Ares, and Scene 20 record 110. The ordinary Stoker/Ares
+routes return to their Scene 2 contact positions and headings; holding Down
+for 16 updates clears the `0x20` retry bit, and a released then fresh Right
+input stays in Scene 2 without another collision dispatch. Their full-screen
+frames were inspected in the prior pass and the tests still pass in both
+configurations.
+
+Scene 20 record 110 is ROM `0x1D96DE`, raw `0x00C0`, bounds
+`x=0x0580..0x059F`, `y=0x0020..0x003F`; profile pointer `0x1D91C8` has no
+event table. ROM `0xB7B8` sends its event 0 through `0x1651E`, whose zero-event
+path returns carry and lets `0xB7B8` begin the 16-update transition. The
+world-context snapshot at `0x16E30`, actor-anchor copy at `0x2FA4`, and field
+restore at `0x2F32` support returning to the prior Scene 2 field context; the
+route table does not name a destination for record 110. The test enters Scene
+20 through Scene 2's physical C0 route and uses only ordinary input to reach
+record 110. Eight Left updates move around adjacent record 109's `0x7F` wall;
+held Up then approaches record 110 from the south. The first raw C0 sample at
+`(1421, 69)` is published one update before the zero-event dispatch, so the QA
+keeps Up held until that next service update. The host returns to the saved
+Scene 2 contact `(3944, 10350)` at heading 0. `0x2FA4` explicitly saves X/Y;
+the transition reuses the live player record and does not run the initial
+entity reset at `0xA7B4`, so heading 0 persists on this route. Other approach
+headings remain untested.
+After the return, held Down clears the retry bit at update 15, release plus
+fresh Right stays on Scene 2, and the collision dispatch count remains 2.
+
+The CTest `shadowrun_ghidra_conversion_qt_field_scene20_c0_exit_qa` passes in
+Debug and Release. All 45 Release BMPs in the route directory were inspected
+at original size; all 45 Debug/Release file hashes match. The reviewed frames
+keep the complete HUD and field redraw, show the expected black fade at
+updates 16-17, and contain no stale interaction/shop controls. The two visible
+Scene 20 guards match default actor records 3/4 at `0x1D9266` and `0x1D926C`
+from the ROM actor list at `0x1D91DA`; they are not gameplay corpses. Player
+movement is animated, the map has no observed animation in this sequence, and
+the collision adds no sound request (audio count remains 7). There is no
+identified independent longplay frame of this Scene 20 doorway exit, so these
+captures validate host consistency and complete-screen redraw only.
+
+This is a source-matched no-fix QA expansion: the host already clears the
+one-shot latch and does not redispatch after departure. It is not a
+failing-then-passing gameplay change. L4's held-input regression and physical
+path to Scene 20 record 110 are covered; exact ROM-facing restoration remains
+open. Next: L5b, the full rejected-purchase feedback interval.
