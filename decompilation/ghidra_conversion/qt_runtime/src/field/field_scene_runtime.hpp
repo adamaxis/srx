@@ -275,6 +275,11 @@ public:
         std::uint16_t source_order) const noexcept;
     std::optional<std::uint8_t> default_actor_weapon_item_for_dump(
         std::uint16_t source_order) const noexcept;
+    std::optional<std::uint8_t> default_actor_physical_meter_for_dump(
+        std::uint16_t source_order) const noexcept;
+    // Seeds a live encounter actor for deterministic field QA only.
+    bool set_default_actor_physical_meter_for_dump(
+        std::uint16_t source_order, std::uint8_t physical_meter) noexcept;
     bool open_command_overview_for_dump();
     bool open_attributes_skills_for_dump();
     bool attributes_skills_menu_open() const noexcept {

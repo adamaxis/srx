@@ -7860,6 +7860,264 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
+    // Recreate the source encounter for the zero-meter branch. Seed a wounded
+    // live actor with one physical meter, then let the ordinary Warhawk
+    // projectile, Lua combat resolver, actor heartbeat, and renderer carry it
+    // through the source C0B2 down transition.
+    if (!field_scene.bootstrap_for_scene_dump(hit_startup_state, 2U) ||
+        field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "field random-encounter QA: could not reset Scene 2 for the zero-meter hit path\n";
+        return 3;
+    }
+    const auto down_actor_spawned =
+        field_scene.resolve_and_spawn_field_encounter_for_dump(
+            1U, 2U, 0x1234U);
+    if (down_actor_spawned != 2U) {
+        std::cerr << "field random-encounter QA: could not recreate the ROM Weenr encounter for the zero-meter path; spawned="
+                  << down_actor_spawned << '\n';
+        return 3;
+    }
+    const auto down_actor_active_index =
+        field_scene.default_actor_count_for_dump() - down_actor_spawned;
+    bool down_encounter_entry_complete = false;
+    for (std::uint16_t frame = 0U;
+         frame < 160U && !down_encounter_entry_complete; ++frame) {
+        down_encounter_entry_complete =
+            field_scene.default_actor_transition_complete_for_dump(0U) ==
+                std::optional<bool>{true} &&
+            field_scene.default_actor_transition_complete_for_dump(1U) ==
+                std::optional<bool>{true};
+        if (!down_encounter_entry_complete) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+    }
+    if (!down_encounter_entry_complete ||
+        !field_scene.set_default_actor_physical_meter_for_dump(0U, 1U)) {
+        std::cerr << "field random-encounter QA: could not ready the ROM C0B2 path with a live one-meter Weenr\n";
+        return 3;
+    }
+
+    auto& down_runner = field_scene.active_runner_record();
+    down_runner.flags = static_cast<std::uint16_t>(
+        down_runner.flags | 0x0300U);
+    down_runner.inventory_item_codes[0] = 5U;
+    down_runner.equipped_inventory_slot = 0;
+    down_runner.equipped_item_code = 5U;
+    down_runner.skills[1U] = 10U;
+    down_runner.skills[2U] = 10U;
+    down_runner.ammo_rounds = 6U;
+    down_runner.ammo_clips = 2U;
+    field_scene.refresh_field_hud_for_dump();
+
+    const auto down_output = hit_output / "zero-meter-down";
+    std::filesystem::create_directories(down_output, error);
+    if (error) {
+        std::cerr << "field random-encounter QA: cannot create zero-meter output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    const auto save_down_frame = [&down_output](
+                                     const std::string_view filename,
+                                     const QImage& image) {
+        return image.save(QString::fromStdWString(
+            (down_output / std::string(filename)).wstring()));
+    };
+    const auto down_runner_position = field_scene.field_entity_world_position();
+    const auto visible_down_actor_x = static_cast<std::uint16_t>(
+        down_runner_position.x + 0x0300U);
+    if (!field_scene.set_default_actor_world_position_for_dump(
+            down_actor_active_index, visible_down_actor_x,
+            down_runner_position.y)) {
+        std::cerr << "field random-encounter QA: could not position the live actor for its full-screen baseline\n";
+        return 3;
+    }
+    const auto alive_before_down_hit = render();
+    if (field_scene.visible_default_actor_count_for_dump() == 0U ||
+        !save_down_frame("alive-before-down-hit.bmp",
+                         alive_before_down_hit) ||
+        !field_hud_chrome_survives(alive_before_down_hit, asset_root)) {
+        std::cerr << "field random-encounter QA: full-screen one-meter actor baseline was not clean or visible\n";
+        return 3;
+    }
+
+    const auto down_audio_start = field_audio_events.size();
+    const auto down_boundary_start = source_boundaries.size();
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    // Let the source projectile travel into open map space before placing the
+    // diagnostic target on its next probe. This keeps the downed actor's
+    // frames readable instead of stacking the target sprite on the runner.
+    for (std::uint8_t frame = 0U; frame < 1U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    auto down_projectile_position =
+        field_scene.field_weapon_primary_position_for_dump();
+    if (down_runner.ammo_rounds != 5U ||
+        field_scene.field_weapon_primary_count_for_dump() != 1U ||
+        !down_projectile_position.has_value() ||
+        !field_scene.set_default_actor_world_position_for_dump(
+            down_actor_active_index, down_projectile_position->x,
+            down_projectile_position->y)) {
+        std::cerr << "field random-encounter QA: could not fire the live Warhawk into the one-meter encounter actor\n";
+        return 3;
+    }
+
+    bool live_zero_meter_hit_resolved = false;
+    std::string live_zero_meter_hit_boundary;
+    for (std::uint8_t frame = 0U; frame < 4U; ++frame) {
+        down_projectile_position =
+            field_scene.field_weapon_primary_position_for_dump();
+        if (!down_projectile_position.has_value() ||
+            !field_scene.set_default_actor_world_position_for_dump(
+                down_actor_active_index, down_projectile_position->x,
+                down_projectile_position->y)) {
+            break;
+        }
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        const auto hit = std::find_if(
+            source_boundaries.begin() + static_cast<std::ptrdiff_t>(
+                down_boundary_start),
+            source_boundaries.end(), [](const auto& boundary) {
+                return boundary.rfind(
+                           "field.combat.weapon_hit_resolved:", 0U) == 0U;
+            });
+        if (hit != source_boundaries.end()) {
+            live_zero_meter_hit_boundary = *hit;
+            live_zero_meter_hit_resolved =
+                live_zero_meter_hit_boundary.find(
+                    "field_scene_2_encounter_") != std::string::npos;
+            if (live_zero_meter_hit_resolved) {
+                break;
+            }
+        }
+    }
+    const auto down_animation =
+        field_scene.default_actor_animation_id_for_dump(0U);
+    const auto down_frame_zero = render();
+    const bool down_frame_zero_saved =
+        save_down_frame("down-frame-0.bmp", down_frame_zero);
+    const auto down_physical_meter =
+        field_scene.default_actor_physical_meter_for_dump(0U);
+    const auto down_actor_count_after_hit =
+        field_scene.default_actor_count_for_dump();
+    const auto down_positions_after_hit =
+        field_scene.active_default_actor_positions_for_dump();
+    const auto down_audio_count = static_cast<std::size_t>(std::count(
+        field_audio_events.begin() + static_cast<std::ptrdiff_t>(
+            down_audio_start),
+        field_audio_events.end(), 0x002EU));
+    if (!live_zero_meter_hit_resolved ||
+        !down_physical_meter.has_value() || *down_physical_meter != 0U ||
+        down_animation != std::optional<std::string>{"down"} ||
+        down_actor_count_after_hit != down_actor_spawned ||
+        down_positions_after_hit.size() != down_actor_spawned ||
+        down_audio_count != 1U || !down_frame_zero_saved ||
+        !field_hud_chrome_survives(down_frame_zero, asset_root) ||
+        field_scene.field_interaction_open() ||
+        field_scene.dialogue_open() || field_scene.hotel_menu_open() ||
+        field_scene.command_overview_open()) {
+        std::cerr << "field random-encounter QA: live zero-meter hit did not select the persistent C0B2 down state and one silent B05E cue"
+                  << " hit=" << live_zero_meter_hit_resolved
+                  << " boundary=" << live_zero_meter_hit_boundary
+                  << " physical=";
+        if (down_physical_meter.has_value()) {
+            std::cerr << static_cast<unsigned>(*down_physical_meter);
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr << " animation=" << down_animation.value_or("<none>")
+                  << " actors=" << down_actor_count_after_hit << '/'
+                  << down_actor_spawned << " B05E_0x2E_count="
+                  << down_audio_count << '\n';
+        return 3;
+    }
+
+    for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const auto down_animation_frame_one =
+        field_scene.default_actor_animation_frame_for_dump(0U);
+    const auto down_frame_one = render();
+    const bool down_frame_one_saved =
+        save_down_frame("down-frame-1.bmp", down_frame_one);
+    for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const auto down_animation_final =
+        field_scene.default_actor_animation_frame_for_dump(0U);
+    const auto down_frame_held = render();
+    const bool down_frame_held_saved =
+        save_down_frame("down-frame-held.bmp", down_frame_held);
+    const auto down_positions_held =
+        field_scene.active_default_actor_positions_for_dump();
+
+    // B cycles through the ROM candidates. The exhausted actor is still an
+    // active rendered record, but +0x10.4 reserves it from target selection.
+    field_scene.set_controller_port_byte(0x10U);
+    field_scene.advance_frame();
+    const auto selected_after_down_hit =
+        field_scene.selected_default_actor_id_for_dump();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    const auto down_hit_actor_id = live_zero_meter_hit_boundary.substr(
+        std::string("field.combat.weapon_hit_resolved:").size());
+    const auto down_final_actor_count =
+        field_scene.default_actor_count_for_dump();
+    const auto down_final_meter =
+        field_scene.default_actor_physical_meter_for_dump(0U);
+    const auto down_final_animation =
+        field_scene.default_actor_animation_id_for_dump(0U);
+    const auto down_audio_final_count = static_cast<std::size_t>(std::count(
+        field_audio_events.begin() + static_cast<std::ptrdiff_t>(
+            down_audio_start),
+        field_audio_events.end(), 0x002EU));
+    const bool down_positions_stable =
+        down_positions_held.size() == down_positions_after_hit.size() &&
+        std::equal(
+            down_positions_held.begin(), down_positions_held.end(),
+            down_positions_after_hit.begin(),
+            [](const SceneRunnerPosition& left,
+               const SceneRunnerPosition& right) {
+                return left.x == right.x && left.y == right.y;
+            });
+    const bool down_actor_skipped_by_target_scan =
+        selected_after_down_hit.has_value() &&
+        *selected_after_down_hit != down_hit_actor_id;
+    if (down_animation_frame_one != std::optional<std::uint8_t>{1U} ||
+        down_animation_final != std::optional<std::uint8_t>{1U} ||
+        !down_positions_stable ||
+        down_final_actor_count != down_actor_spawned ||
+        down_final_meter != std::optional<std::uint8_t>{0U} ||
+        down_final_animation != std::optional<std::string>{"down"} ||
+        down_audio_final_count != 1U || !down_frame_one_saved ||
+        !down_frame_held_saved ||
+        !field_hud_chrome_survives(down_frame_one, asset_root) ||
+        !field_hud_chrome_survives(down_frame_held, asset_root) ||
+        !down_actor_skipped_by_target_scan) {
+        std::cerr << "field random-encounter QA: C0B2 did not advance at the ROM cadence, hold while stationary, remain active at zero meter, or stay out of B target selection"
+                  << " hit_actor=" << down_hit_actor_id
+                  << " selected="
+                  << selected_after_down_hit.value_or("<none>")
+                  << " animation="
+                  << down_final_animation.value_or("<none>")
+                  << " frame=";
+        if (down_animation_final.has_value()) {
+            std::cerr << static_cast<unsigned>(*down_animation_final);
+        } else {
+            std::cerr << "<none>";
+        }
+        std::cerr << " actors=" << down_final_actor_count << '/'
+                  << down_actor_spawned << " B05E_0x2E_count="
+                  << down_audio_final_count << '\n';
+        return 3;
+    }
+
     std::cout << "field_random_encounter_spawn_qa=passed scene=2 selector=1+2 actors=2 active="
               << actors_after << " long_trace_active=" << actors_after_1200
               << " visible=" << visible_before << ','
@@ -7918,6 +8176,12 @@ int run_field_random_encounter_spawn_qa(
               << " hit_response={" << live_creature_hit_boundary
               << ",animation:" << *hit_frame_one_animation
               << ",B03E_0x41_count:" << hit_audio_count << "} "
+              << "zero_meter_down={" << live_zero_meter_hit_boundary
+              << ",animation:" << *down_final_animation
+              << ",frame:" << static_cast<unsigned>(*down_animation_final)
+              << ",active:" << down_final_actor_count
+              << ",selected:" << selected_after_down_hit.value_or("<none>")
+              << ",B05E_0x2E_count:" << down_audio_final_count << "} "
               << " artifacts=" << output.string() << '\n';
     return 0;
 }

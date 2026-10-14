@@ -13600,6 +13600,44 @@ FieldSceneRuntime::default_actor_weapon_item_for_dump(
                : actor->ai_weapon_item_id;
 }
 
+std::optional<std::uint8_t>
+FieldSceneRuntime::default_actor_physical_meter_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+               ? std::nullopt
+               : std::optional<std::uint8_t>{actor->physical_meter};
+}
+
+bool FieldSceneRuntime::set_default_actor_physical_meter_for_dump(
+    const std::uint16_t source_order,
+    const std::uint8_t physical_meter) noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active &&
+                   candidate.source_order == source_order &&
+                   candidate.temporary_world_encounter;
+        });
+    if (actor == field_default_actors_.end()) {
+        return false;
+    }
+    actor->physical_meter = physical_meter;
+    actor->combatant.physical_meter = physical_meter;
+    return true;
+}
+
 std::size_t FieldSceneRuntime::visible_default_actor_count_for_dump() const {
     const auto scene_reference = state_.field_scene_buffers.scene_reference;
     const auto camera_x = static_cast<std::uint16_t>(

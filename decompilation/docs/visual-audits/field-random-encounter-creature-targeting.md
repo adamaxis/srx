@@ -320,21 +320,25 @@ the same C072 cue countdown continues. They also check the zero-meter C0B2
 branch, its `+0x10.4` flag, and its `0x0200/0x1000` finite cadence with a held
 final frame.
 
-The Scene 2 full-screen QA now fires the catalog Warhawk into a live ROM sum-3
-Weenr encounter actor. This diagnostic positions the spawned actor on the
-projectile's next collision probe, then requires the live collision, Lua weapon
-resolution, a changed world physical meter, and the actor's next Lua behavior
-heartbeat to select C072 before it saves images. It writes four complete
-320x224 captures: before the shot, C072 frame 0, C072 frame 1, and after the
-eight-service B03E countdown. I reopened each full screen and the matching
-kind-8 extracted directional C072 frames. The encounter art is placed over the
+The Scene 2 full-screen QA fires the catalog Warhawk into a live ROM sum-3
+Weenr encounter actor. The nonlethal path requires a live collision, Lua weapon
+resolution, a changed world physical meter, and the next Lua behavior
+heartbeat selecting C072 before it saves its two directional hurt frames and
+the later B03E cue checkpoint. A second fresh encounter seeds a one-point
+physical meter, captures the visible live actor before firing, then routes
+another real Warhawk projectile into that actor. The zero-meter path requires
+the changed meter to reach zero, selects directional C0B2, requests B05E once,
+and remains an active record while B target cycling selects the other eligible
+encounter actor. Four complete 320x224 down-path captures show the live actor,
+C0B2 frame 0, frame 1, and the held final frame. I reopened all eight C072 and
+C0B2 response captures at full-screen size, along with the corresponding
+kind-8 extracted directional frames. The encounter sprites sit over the
 existing map, the runner and right HUD remain visible, and no stale panel or
-opaque sprite rectangle appears. Debug and Release SHA-256 pairs match for the
-four hit-response images. This confirms the integrated internal path and
-composition; the actor repositioning is a diagnostic fixture, not a natural
-approach replay. The longplay does not yet provide a confidently matched
-Weenr-hit sequence, so these captures do not establish independent Genesis
-visual equivalence.
+opaque sprite rectangle appears. Debug and Release SHA-256 pairs match for all
+eight integrated response images. The actor repositioning and one-point meter
+seed are diagnostic fixtures, not natural gameplay. The longplay does not yet
+provide a confidently matched Weenr-hit sequence, so these captures do not
+establish independent Genesis visual equivalence.
 
 Eight-question assessment for the new response:
 
@@ -351,9 +355,10 @@ Eight-question assessment for the new response:
    without discarding the pending B07E cue.
 3. **Are the visuals correct?** Directional frame selectors, finite counts,
    increments, and origins come from ROM extraction. The C++ renderer consumes
-   the named frames. Whole-screen Scene 2 captures now check the hurt sprite
-   against the map, runner, and HUD; the zero-meter down state still lacks an
-   integrated field capture.
+   the named frames. Whole-screen Scene 2 captures check both hurt and down
+   sprites against the map, runner, and HUD. The down-path images show the hit
+   effect clearing while C0B2 advances; no independent same-event Genesis
+   frame is available.
 4. **What animates, and when?** While stationary, C072 advances by `0x0300`
    against the actor's `0x1000` period on render services. When a route movement
    is accepted, B574 selects the matching C062 walk list. B07E's sound delay
@@ -366,20 +371,22 @@ Eight-question assessment for the new response:
    behavior services. It does not verify audible playback or duration for this
    exact cue.
 6. **Were neighboring areas checked?** The full encounter and Hound screens
-   were reopened, including all four hit-response frames, encounter actor,
-   runner, and right HUD. The HUD remains present and no stale menu layer
-   appears. Exact overlap against an independently captured Genesis frame
-   remains open.
-7. **Are there multiple frames?** The field capture contains both C072 frames
-   plus a later frame after the eight-service sound countdown. The runtime test
-   also advances both hurt and down reactions through multiple heartbeats and
-   verifies final-frame holds. No supplied longplay segment has yet been
-   matched to this same hit event.
-8. **Are new graphics drawn over stale graphics?** Hurt art is a transparent
-   actor sprite selected by the existing entity presentation path; it does
-   not add a panel or reuse menu controls. The integrated hurt captures show
-   clean map/HUD composition without stale controls or an opaque rectangle.
-   The down-state equivalent still needs its own integrated capture.
+   were reopened, including all eight integrated hurt and down-response frames,
+   encounter actor, runner, and right HUD. The HUD remains present and no stale
+   menu layer appears. The downed record remains active and fixed in place for
+   the captured interval. Exact overlap against an independently captured
+   Genesis frame remains open.
+7. **Are there multiple frames?** The field captures contain both C072 frames,
+   the B03E countdown checkpoint, and four down-path states: live, C0B2 frame
+   0, frame 1, and held final frame. The runtime test also advances both hurt
+   and down reactions through multiple heartbeats and verifies final-frame
+   holds. No supplied longplay segment has yet been matched to this same hit
+   event.
+8. **Are new graphics drawn over stale graphics?** Hurt and down art are
+   transparent actor sprites selected by the existing entity presentation
+   path; they do not add a panel or reuse menu controls. The integrated captures
+   show clean map/HUD composition without stale controls or an opaque
+   rectangle.
 
 ## Status
 
@@ -391,10 +398,11 @@ ordinary gate's blocker/cadence/chance branches are covered by script-runtime
 QA; the field spawn QA still injects the already-bounded selector rolls, so
 production RNG consumption and event dispatch are not covered end to end. This
 hill remains partial: the alternate target action-byte route through `+0x9C`,
-the full actor pool, creature item/spell actions, zero-meter down-state
-composition, meter-exhaustion removal, and natural approach from the edge are
-unresolved. A diagnostic Scene 2 field shot now connects projectile collision
-through Lua damage, a world-meter change, target Lua state, and both C072
-full-screen frames. The independent longplay
+the full actor pool, creature item/spell actions, post-down recovery/removal
+outside the traced hit path, and natural approach from the edge are unresolved.
+A diagnostic Scene 2 field shot now connects projectile collision through Lua
+damage, a world-meter change, target Lua state, both C072 frames, and the
+zero-meter C0B2 pose. The zero-meter record remains active, stays stationary,
+and is excluded by B target cycling during QA. The independent longplay
 corroborates the marker shape, but does not provide the actor bytes needed to
 verify every palette variant or the Hound close-effect sequence.
