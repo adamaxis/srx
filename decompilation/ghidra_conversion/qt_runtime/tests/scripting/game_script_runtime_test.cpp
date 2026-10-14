@@ -1743,6 +1743,219 @@ int main() {
         return 29;
     }
 
+    struct SpellRefresh {
+        std::optional<ScriptActorBehaviorDecision> refresh;
+        std::optional<ScriptActorBehaviorDecision> render_hold;
+        std::optional<ScriptActorBehaviorDecision> next_behavior;
+    };
+    const auto drive_spell_refresh = [&scripts, &actor_context](
+                                         const std::string& profile_id,
+                                         const std::string& actor_id,
+                                         const std::uint16_t entity_kind,
+                                         const std::uint8_t action_code,
+                                         const std::int16_t initial_delay,
+                                         const std::optional<bool> projection,
+                                         const ScriptActorActionLineClear& line)
+        -> SpellRefresh {
+        SpellRefresh result;
+        auto context = actor_context(
+            profile_id, actor_id, entity_kind, ScriptActorActionKind::spell,
+            action_code, 0U, true);
+        context.dynamic_world_encounter_actor = true;
+        context.source_record_flags = 0x01U;
+        context.entry_animation_frame_count = 1U;
+        context.walk_animation_frame_count = 4U;
+        context.initial_action_delay = initial_delay;
+        context.movement_allowed = true;
+        context.source_projection_active = projection;
+        context.action_line_clear = line;
+        context.ai_random_bound =
+            [](const std::uint16_t bound) -> std::optional<std::uint16_t> {
+                return bound == 0U ? std::nullopt
+                                   : std::optional<std::uint16_t>{0U};
+            };
+        context.ai_target_candidates.push_back(ScriptActorTargetCandidate{
+            "party.runner.0", 0x1234U, 0x0ABCU, 0x2000U, 0x0C00U, 0x01U, 0U,
+            0U, 0U, true, false, 0x0100U, 0x0200U, 0x0C00U, 0x1800U});
+        const auto failed = [&scripts, &result]() {
+            std::cerr << scripts.failure() << '\n';
+            return result;
+        };
+        if (!scripts.actor_heartbeat(context).has_value()) {
+            return failed();
+        }
+        context.spawn = false;
+        if (!scripts.actor_heartbeat(context).has_value()) {
+            return failed();
+        }
+        context.phase = ScriptActorHeartbeatPhase::render;
+        for (std::uint8_t frame = 0U; frame < 12U; ++frame) {
+            if (!scripts.actor_heartbeat(context).has_value()) {
+                return failed();
+            }
+        }
+        context.phase = ScriptActorHeartbeatPhase::behavior;
+        for (std::uint8_t pass = 0U; pass < 120U; ++pass) {
+            const auto decision = scripts.actor_heartbeat(context);
+            if (!decision.has_value()) {
+                return failed();
+            }
+            if (!decision->source_action_dispatch.has_value()) {
+                continue;
+            }
+            result.refresh = decision;
+            context.phase = ScriptActorHeartbeatPhase::render;
+            result.render_hold = scripts.actor_heartbeat(context);
+            context.phase = ScriptActorHeartbeatPhase::behavior;
+            result.next_behavior = scripts.actor_heartbeat(context);
+            return result;
+        }
+        std::cerr << "spell refresh missing for " << actor_id << '\n';
+        return result;
+    };
+    const auto spell_cast_ok = [](const SpellRefresh& driven,
+                                  const std::uint16_t selector) {
+        const auto& cast = driven.refresh;
+        const auto& held = driven.render_hold;
+        const auto& next = driven.next_behavior;
+        return cast.has_value() && held.has_value() && next.has_value() &&
+               cast->source_action_dispatch.has_value() &&
+               *cast->source_action_dispatch == "spell" &&
+               cast->animation_id == "spell" &&
+               cast->animation_frame == 0U &&
+               cast->animation_selector == selector &&
+               cast->direction == 1U &&
+               cast->action_delay == 0x6A &&
+               !cast->ai_target_engaged &&
+               !cast->combat_action_requested &&
+               !cast->combat_meter_update.has_value() &&
+               !cast->audio_event.has_value() &&
+               !cast->target_heading_audio_event.has_value() &&
+               !cast->weapon_item_id.has_value() &&
+               !cast->movement_step.has_value() &&
+               !cast->movement_heading.has_value() &&
+               held->animation_id == "spell" &&
+               held->animation_frame == 0U &&
+               held->animation_selector == selector &&
+               !held->source_action_dispatch.has_value() &&
+               next->animation_id == "spell" &&
+               next->animation_frame == 0U &&
+               next->action_delay == 0x69 &&
+               !next->source_action_dispatch.has_value() &&
+               !next->movement_step.has_value() &&
+               !next->ai_target_engaged;
+    };
+    bool spell_line_called = false;
+    std::uint16_t spell_line_x = 0U;
+    std::uint16_t spell_line_y = 0U;
+    const ScriptActorActionLineClear spell_line_true =
+        [&spell_line_called, &spell_line_x, &spell_line_y](
+            const std::uint16_t x, const std::uint16_t y) {
+            spell_line_called = true;
+            spell_line_x = x;
+            spell_line_y = y;
+            return true;
+        };
+    const ScriptActorActionLineClear spell_line_false =
+        [](const std::uint16_t, const std::uint16_t) { return false; };
+    const auto lonemage_cast = drive_spell_refresh(
+        "lonemage_k0a_spell01", "spell_lonemage", 10U, 1U, 0, true,
+        spell_line_true);
+    spell_line_called = false;
+    const auto gator_cast = drive_spell_refresh(
+        "gator_shaman_k09_spell02", "spell_gator", 9U, 2U, 0, true,
+        spell_line_true);
+    spell_line_called = false;
+    const auto rat_cast = drive_spell_refresh(
+        "rat_shaman_k0b_spell05", "spell_rat", 11U, 5U, 0, true,
+        spell_line_true);
+    spell_line_called = false;
+    const auto elven_cast = drive_spell_refresh(
+        "elven_mage_k06_spell09", "spell_elven", 6U, 9U, 0, true,
+        spell_line_true);
+    const bool elven_line_hit_target =
+        spell_line_called && spell_line_x == 0x1234U &&
+        spell_line_y == 0x0ABCU;
+    bool waiting_line_called = false;
+    const auto waiting_cast = drive_spell_refresh(
+        "lonemage_k0a_spell01", "spell_waiting", 10U, 1U, 400, true,
+        [&waiting_line_called](const std::uint16_t, const std::uint16_t) {
+            waiting_line_called = true;
+            return true;
+        });
+    bool suppressed_line_called = false;
+    const auto invisibility = drive_spell_refresh(
+        "rat_shaman_k0b_spell04", "spell_invisibility", 11U, 4U, 0, true,
+        [&suppressed_line_called](const std::uint16_t, const std::uint16_t) {
+            suppressed_line_called = true;
+            return true;
+        });
+    const auto rockskin = drive_spell_refresh(
+        "rat_shaman_k0b_spell0b", "spell_rockskin", 11U, 11U, 0, true,
+        spell_line_true);
+    bool offscreen_line_called = false;
+    const auto offscreen = drive_spell_refresh(
+        "lonemage_k0a_spell01", "spell_offscreen", 10U, 1U, 0, false,
+        [&offscreen_line_called](const std::uint16_t, const std::uint16_t) {
+            offscreen_line_called = true;
+            return true;
+        });
+    const auto unmeasured = drive_spell_refresh(
+        "lonemage_k0a_spell01", "spell_unmeasured", 10U, 1U, 0, std::nullopt,
+        spell_line_true);
+    const auto blocked_missing = drive_spell_refresh(
+        "gator_shaman_k09_spell02", "spell_blocked_missing", 9U, 2U, 0, true,
+        {});
+    const auto blocked_terrain = drive_spell_refresh(
+        "elven_mage_k06_spell09", "spell_blocked_terrain", 6U, 9U, 0, true,
+        spell_line_false);
+    const auto spell_gate_contract =
+        spell_cast_ok(lonemage_cast, 0x0084U) &&
+        spell_cast_ok(gator_cast, 0x0084U) &&
+        spell_cast_ok(rat_cast, 0x0084U) &&
+        spell_cast_ok(elven_cast, 0x0084U) && elven_line_hit_target &&
+        waiting_cast.refresh.has_value() &&
+        waiting_cast.refresh->source_action_dispatch.has_value() &&
+        *waiting_cast.refresh->source_action_dispatch == "waiting" &&
+        waiting_cast.refresh->animation_id != "spell" &&
+        waiting_cast.refresh->action_delay >= 0 &&
+        !waiting_cast.refresh->combat_meter_update.has_value() &&
+        !waiting_line_called &&
+        invisibility.refresh.has_value() &&
+        invisibility.refresh->source_action_dispatch.has_value() &&
+        *invisibility.refresh->source_action_dispatch == "suppressed" &&
+        invisibility.refresh->animation_id != "spell" &&
+        !invisibility.refresh->ai_target_engaged &&
+        !suppressed_line_called &&
+        rockskin.refresh.has_value() &&
+        rockskin.refresh->source_action_dispatch.has_value() &&
+        *rockskin.refresh->source_action_dispatch == "suppressed" &&
+        rockskin.refresh->animation_id != "spell" &&
+        offscreen.refresh.has_value() &&
+        offscreen.refresh->source_action_dispatch.has_value() &&
+        *offscreen.refresh->source_action_dispatch == "offscreen" &&
+        offscreen.refresh->animation_id != "spell" &&
+        !offscreen_line_called &&
+        unmeasured.refresh.has_value() &&
+        unmeasured.refresh->source_action_dispatch.has_value() &&
+        *unmeasured.refresh->source_action_dispatch == "offscreen" &&
+        blocked_missing.refresh.has_value() &&
+        blocked_missing.refresh->source_action_dispatch.has_value() &&
+        *blocked_missing.refresh->source_action_dispatch == "blocked" &&
+        blocked_missing.refresh->animation_id != "spell" &&
+        blocked_terrain.refresh.has_value() &&
+        blocked_terrain.refresh->source_action_dispatch.has_value() &&
+        *blocked_terrain.refresh->source_action_dispatch == "blocked" &&
+        blocked_terrain.refresh->animation_id != "spell" &&
+        !blocked_terrain.refresh->combat_action_requested &&
+        !blocked_terrain.refresh->weapon_item_id.has_value();
+    if (!expect(spell_gate_contract,
+                "Lua spell dispatch failed the 0x13FFE gates for the four "
+                "templates")) {
+        std::cerr << scripts.failure() << '\n';
+        return 30;
+    }
+
     auto combat_probe_context = actor_context(
         "eye5r_1_k07_item01", "combat_reaction_probe", 7U,
         ScriptActorActionKind::item, 1U, 0U, true);

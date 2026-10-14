@@ -711,6 +711,29 @@ struct GameScriptRuntime::Impl {
         }
     }
 
+    static int actor_action_line_clear(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        std::uint32_t x = 0U;
+        std::uint32_t y = 0U;
+        if (self == nullptr || self->active_actor_context == nullptr ||
+            !self->active_actor_context->action_line_clear ||
+            !read_integer(lua, 1, 0xFFFFU, x) ||
+            !read_integer(lua, 2, 0xFFFFU, y)) {
+            return luaL_error(
+                lua, "spell line probe expects target world coordinates");
+        }
+        try {
+            const auto clear =
+                self->active_actor_context->action_line_clear(
+                    static_cast<std::uint16_t>(x),
+                    static_cast<std::uint16_t>(y));
+            lua_pushboolean(lua, clear ? 1 : 0);
+            return 1;
+        } catch (...) {
+            return luaL_error(lua, "spell line probe failed");
+        }
+    }
+
     static int movement_route(lua_State* lua) {
         auto* self = from_upvalue(lua);
         std::uint32_t route_key = 0U;
@@ -3413,6 +3436,19 @@ GameScriptRuntime::actor_heartbeat(
     lua_pushlightuserdata(state, impl_.get());
     lua_pushcclosure(state, Impl::actor_random_bound, 1);
     lua_setfield(state, -2, "ai_random_bound");
+    if (context.source_projection_active.has_value()) {
+        lua_pushboolean(state, *context.source_projection_active ? 1 : 0);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "source_projection_active");
+    if (context.action_line_clear) {
+        lua_pushlightuserdata(state, impl_.get());
+        lua_pushcclosure(state, Impl::actor_action_line_clear, 1);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "action_line_clear");
     lua_pushlstring(state, heartbeat_phase.data(), heartbeat_phase.size());
     lua_setfield(state, -2, "phase");
     lua_pushlstring(state, animation_mode.data(), animation_mode.size());
@@ -3920,7 +3956,8 @@ GameScriptRuntime::actor_heartbeat(
          decision.animation_id == "attack" ||
          decision.animation_id == "projectile" ||
          decision.animation_id == "hurt" ||
-         decision.animation_id == "down")) {
+         decision.animation_id == "down" ||
+         decision.animation_id == "spell")) {
         decision.action = ScriptActorBehaviorDecision::Action::hold;
     } else if (action == "play_entry" &&
                decision.animation_id == "entry") {
@@ -4356,6 +4393,54 @@ GameScriptRuntime::actor_heartbeat(
     if (context.action_kind == ScriptActorActionKind::item &&
         !decision.weapon_item_id.has_value()) {
         return fail("actor_ai.heartbeat omitted the source item action");
+    }
+
+    std::string source_action_dispatch;
+    if (!read_optional_field_string(state, decision_table,
+                                    "source_action_dispatch",
+                                    source_action_dispatch)) {
+        return fail("actor_ai.heartbeat returned an invalid spell dispatch");
+    }
+    if (!source_action_dispatch.empty()) {
+        const bool known_dispatch =
+            source_action_dispatch == "spell" ||
+            source_action_dispatch == "waiting" ||
+            source_action_dispatch == "suppressed" ||
+            source_action_dispatch == "blocked" ||
+            source_action_dispatch == "offscreen";
+        if (!known_dispatch ||
+            context.action_kind != ScriptActorActionKind::spell ||
+            !context.dynamic_world_encounter_actor ||
+            context.phase != ScriptActorHeartbeatPhase::behavior) {
+            return fail("actor_ai.heartbeat returned an invalid spell dispatch");
+        }
+        decision.source_action_dispatch = std::move(source_action_dispatch);
+    }
+    const auto spell_pose_selector = [](const std::uint16_t selector) {
+        // ROM words at 0xC082: 0x80, 0x84, ... 0x9C.
+        return selector >= 0x0080U && selector <= 0x009CU &&
+               (selector & 0x0003U) == 0U;
+    };
+    const bool spell_pose = decision.animation_id == "spell";
+    if (spell_pose &&
+        (!context.dynamic_world_encounter_actor ||
+         context.action_kind != ScriptActorActionKind::spell ||
+         decision.animation_frame != 0U ||
+         !decision.animation_selector.has_value() ||
+         !spell_pose_selector(*decision.animation_selector) ||
+         decision.audio_event.has_value() ||
+         decision.target_heading_audio_event.has_value() ||
+         decision.combat_meter_update.has_value() ||
+         decision.combat_action_requested ||
+         decision.ai_target_engaged ||
+         decision.movement_step.has_value() ||
+         decision.movement_heading.has_value())) {
+        return fail("actor_ai.heartbeat returned an unsupported spell pose");
+    }
+    if (decision.source_action_dispatch.has_value() &&
+        *decision.source_action_dispatch == "spell" &&
+        (!spell_pose || decision.action_delay < 0x0F)) {
+        return fail("actor_ai.heartbeat returned an unsupported spell dispatch");
     }
     lua_pop(state, 1);
 

@@ -477,8 +477,9 @@ do not expose the source actor/action bytes for this exact scene.
 
 ## Creature target acceptance and route handoff
 
-The ROM's `0x13FFE` dispatcher calls `0x14C7C` after selecting an actor's
-linked target. A rejected target leaves the actor in route mode 2. An accepted
+When `+0x57` is zero, the ROM's `0x13FFE` dispatcher calls `0x14C7C` after
+selecting an actor's linked target. A negative `+0x56` never takes that
+branch. A rejected target leaves the actor in route mode 2. An accepted
 target copies the actor's current coordinates to `+0x96/+0x98`, then selects
 mode 1 or 3 from signed `+0xDC`; this exits pursuit and hands the record to
 its action continuation. Lua now reports that outcome as
@@ -510,6 +511,52 @@ or passes a projected-target distance for this decision. The script-runtime
 QA covers the strict `0x200`/`0x300`/`0x600` boundaries, the `0x5FF` Hound edge,
 the effect-slot path, and the Gargoyle frame-2 carry behavior in Debug and
 Release.
+
+## Spell dispatch for a negative action slot
+
+`0x13FFE` tests the linked target, then `+0x57 == 0`, then signed `+0xDC`,
+then the caster's projected `+0x0C`, then the sign of `+0x56`. A negative
+slot is the D4EA0 spell. Codes 4 and 11 return without a cast. Every other
+spell code calls `0x14D8E`; carry set aborts, carry clear enters `0xAE6E`
+and then `0x1033E`. The following `0xAF7C`/`0xAFAE` pose uses the `0xC082`
+selector for the linked heading and reloads `+0xDC` at delay mode 0. That
+path does not call `0x55C76`, `0x1514E`, or `0x38AC`.
+
+Lua classifies this on the 21-pass refresh for `action_kind == spell`.
+`waiting` means `+0xDC` is still nonnegative, so the spell stays equipped
+and the line probe is not called. `offscreen` means the host did not report
+the caster's projected `+0x0C` as active; the line probe is not called.
+`suppressed` is code 4 or 11 after those two gates. `blocked` means the
+host line callback is absent or returns false. `spell` installs selector
+`0x80, 0x84, 0x88, 0x8C, 0x90, 0x94, 0x98, 0x9C` from the same direction
+split as C0A2, holds frame 0, and reloads mode-0 delay. The same pass does
+not step, does not engage, and does not publish a meter or an item id.
+Later passes keep that pose until another refresh replaces it. While the
+pose is held, `0x13E40` would see a selector above `0x3C` and return
+without a step; Lua does the same.
+
+Script-runtime QA drives `lonemage_k0a_spell01`, `gator_shaman_k09_spell02`,
+`rat_shaman_k0b_spell05`, and `elven_mage_k06_spell09` with heading
+`0x2000`. Each legal cast reports dispatch `spell`, selector `0x84`,
+direction 1, frame 0, and delay `0x6A` from zero delay attributes. The next
+render holds frame 0. The next behavior pass still holds the pose, delay
+`0x69`, and no dispatch. The same QA shows `waiting` before the probe,
+`suppressed` for codes 4 and 11 without the probe, `offscreen` for a false
+or unset projection without the probe, and `blocked` when the probe is
+missing or returns false. None of those decisions request the player
+action, an ammo item, or a `0x55C76` meter. The existing rat-shaman motion
+trace still reaches heading `0x6000` when the new facts are absent.
+Debug and Release `shadowrun_gameplay_script_runtime_qa` both pass.
+
+This does not roll `0x1033E` or spawn `0x15830`. Code 12's `FFE190` party
+retarget is not implemented. The field host now publishes the caster's
+`0x5A62` projection on encounter behavior and render heartbeats. It does
+not install the line callback: the typed `0x14D8E` probe does not consume
+live word coordinates on the same scale, so a wired probe would sample the
+wrong terrain. Production casts therefore stay fail-closed. `0xC082` frames
+are not in the extracted action lists, and the presenter draws no spell
+sprite. Item actors still share the unarmed C0A2 path. No independent
+Genesis capture shows these casts.
 
 ## Hell Hound close-range effect
 

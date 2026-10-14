@@ -570,6 +570,7 @@ local function snapshot(state, action, audio_event, projectile_movement,
         selected_world_actor_id = state.target_selection_processed
             and state.selected_world_actor_id or nil,
         combat_meter_update = combat_meter_update,
+        source_action_dispatch = state.source_action_dispatch,
         movement_step = state.movement_step,
         projectile_movement = projectile_movement,
     }
@@ -1311,6 +1312,57 @@ local function advance_dynamic_actor_action_animation(state)
     return true
 end
 
+-- ROM 0xC082. AF7C/AFAE index this by the same 0xB36A direction as C0A2.
+local spell_pose_selectors = {
+    0x80, 0x84, 0x88, 0x8C, 0x90, 0x94, 0x98, 0x9C,
+}
+
+local function classify_spell_dispatch(state, context, target)
+    -- 0x13FFE reaches the spell branch only with a linked target. Delay and
+    -- the projected +0x0C word are tested before the code-4/11 RTS.
+    if type(target) ~= "table" then
+        return nil
+    end
+    if state.action_delay >= 0 then
+        return "waiting"
+    end
+    if context.source_projection_active ~= true then
+        return "offscreen"
+    end
+    if context.action_code == 4 or context.action_code == 11 then
+        return "suppressed"
+    end
+    local line_clear = context.action_line_clear
+    if type(line_clear) ~= "function" or
+       line_clear(target.world_x, target.world_y) ~= true then
+        return "blocked"
+    end
+    return "spell"
+end
+
+local function begin_spell_cast(state, context, target)
+    -- 0xAE6E aims +0x2E at the link, then AF7C/AFAE install C082 and reload
+    -- +0xDC with mode 0. 0x1033E runs before that pose. This slice records
+    -- the entry; it does not roll dice or spawn the 0x15830 effect.
+    local heading = target.heading & 0xffff
+    local direction = direction_from_heading(heading)
+    state.direction = direction
+    state.animation_id = "spell"
+    state.animation_selector = spell_pose_selectors[direction + 1]
+    state.animation_frame = 0
+    state.animation_accumulator = 0
+    state.animation_increment = 0
+    state.action_animation_complete = false
+    state.action_delay = source_action_delay(context, state, 0)
+    state.ai_target_engaged = false
+    state.movement_heading = nil
+    state.movement_active = false
+    state.movement_route_distance = nil
+    state.movement_step = nil
+    state.combat_meter_update = nil
+    state.combat_action_requested = false
+end
+
 local function begin_dynamic_target_action(state, context, target)
     if not context.dynamic_world_encounter_actor or
        state.action_delay >= 0 or state.target_motion_effect_active or
@@ -1824,6 +1876,7 @@ function ActorAI.heartbeat(context)
     if not same_actor(state, context) then
         return nil
     end
+    state.source_action_dispatch = nil
     state.source_record_flags = context.source_record_flags or
                                 state.source_record_flags
     advance_source_action_delay(state, context)
@@ -1902,6 +1955,10 @@ function ActorAI.heartbeat(context)
                     if not advance_dynamic_actor_action_animation(state) then
                         return nil
                     end
+                elseif state.animation_id == "spell" then
+                    -- C082 lists are one frame. Hold it; do not invent a count.
+                    state.animation_frame = 0
+                    state.animation_accumulator = 0
                 elseif state.animation_id == "walk" then
                     if not advance_dynamic_actor_walk_animation(state, context) then
                         return nil
@@ -1953,7 +2010,25 @@ function ActorAI.heartbeat(context)
                         state.behavior_timer = 0x14
                         requested_movement_heading(context, profile, state)
                         local target = retained_linked_target(context, state)
-                        if not resolve_source_target_motion(
+                        if context.action_kind == ActionKind.spell then
+                            -- Negative +0x56 never enters 0x14C7C / 0xB1DC.
+                            state.ai_target_engaged = false
+                            state.source_action_dispatch =
+                                classify_spell_dispatch(
+                                    state, context, target)
+                            if state.source_action_dispatch == "spell" then
+                                begin_spell_cast(state, context, target)
+                            elseif state.animation_id ~= "spell" then
+                                local route_heading =
+                                    source_motion_destination_heading(
+                                        context, state, target)
+                                state.movement_heading = route_heading
+                                state.movement_active = route_heading ~= nil
+                                if not state.movement_active then
+                                    state.movement_route_distance = nil
+                                end
+                            end
+                        elseif not resolve_source_target_motion(
                             context, state, target) then
                             local route_heading =
                                 source_motion_destination_heading(

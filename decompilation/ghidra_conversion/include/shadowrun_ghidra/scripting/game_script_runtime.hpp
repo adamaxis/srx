@@ -499,6 +499,9 @@ struct ScriptActorTargetCandidate {
 
 using ScriptActorRandomBound =
     std::function<std::optional<std::uint16_t>(std::uint16_t)>;
+// True when 0x14D8E leaves carry clear for these linked world coordinates.
+using ScriptActorActionLineClear =
+    std::function<bool(std::uint16_t world_x, std::uint16_t world_y)>;
 
 // Source-derived identity and spawn facts passed to an actor's Lua heartbeat.
 // Lua owns per-instance behavior state; the host retains world facts and
@@ -612,6 +615,12 @@ struct ScriptActorBehaviorContext {
     // The source weapon row copied into projectile +0x57; this is separate
     // from the actor profile's item/spell action classification above.
     std::uint8_t projectile_action_code = 0;
+    // ROM 0x5A94 writes the caster's projected Y to +0x0C and 0x5ABE clears
+    // it outside the field window. Unset means the host did not measure it.
+    std::optional<bool> source_projection_active;
+    // Closed over the caster. Unset means the host cannot run 0x14D8E
+    // honestly, and Lua then refuses the cast.
+    ScriptActorActionLineClear action_line_clear;
 };
 
 struct ScriptActorBehaviorDecision {
@@ -659,6 +668,8 @@ struct ScriptActorBehaviorDecision {
     std::optional<std::int16_t> animation_increment;
     std::int16_t animation_accumulator = 0;
     std::optional<ScriptCombatMeterUpdate> combat_meter_update;
+    // One 0x13FFE spell result for the 21-pass refresh. Nil on other passes.
+    std::optional<std::string> source_action_dispatch;
 };
 
 struct ScriptNativeOperation {

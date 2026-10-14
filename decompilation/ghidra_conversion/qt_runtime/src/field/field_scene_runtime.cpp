@@ -57,6 +57,18 @@ namespace {
 // that scene reference with the saved row; both paths use the same typed scene
 // resource selection below.
 constexpr std::uint16_t kInitialFieldSceneReference = 2U;
+
+// ROM 0x5A94/0x5ABE: +0x0C is the projected Y, cleared outside the window.
+bool caster_projection_active(const std::uint16_t world_x,
+                              const std::uint16_t world_y,
+                              const std::uint16_t camera_x,
+                              const std::uint16_t camera_y) {
+    EntityProjectionState projection{};
+    projection.world_x = world_x;
+    projection.world_y = world_y;
+    project_entity_screen_position_standard(projection, camera_x, camera_y);
+    return projection.screen_y != 0U;
+}
 constexpr std::uint8_t kFieldModalReturnTransitionFrames = 60U;
 constexpr std::array<FieldWorldActorSlot, 7> kFieldWorldActorSlots{{
     FieldWorldActorSlot::slot_3,
@@ -2418,6 +2430,12 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 actor.delay_capability_flags;
             context.world_effect_slot_occupancy =
                 field_world_effect_slots_occupied_;
+            context.source_projection_active = caster_projection_active(
+                actor.world_position.x, actor.world_position.y,
+                static_cast<std::uint16_t>(
+                    state_.field_scene_buffers.camera_x),
+                static_cast<std::uint16_t>(
+                    state_.field_scene_buffers.camera_y));
             context.ai_target_candidates.clear();
             const auto append_target_candidate =
                 [this, &actor, &context](
@@ -2848,6 +2866,11 @@ FieldSceneRuntime::default_actor_sprite_view(
             &frames[frame],
             artwork->walk_origin_x[direction][frame],
             artwork->walk_origin_y[direction][frame]};
+    }
+    if (actor.animation_id == "spell") {
+        // 0xC082 selectors are 0x80..0x9C. Those frames are not in the
+        // extracted C0A2 action lists, so the cast has no presenter art yet.
+        return {};
     }
     if (actor.animation_id == "action") {
         const auto& frames = artwork->action_images[direction];
@@ -8391,6 +8414,12 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 actor.delay_capability_flags;
             context.world_effect_slot_occupancy =
                 field_world_effect_slots_occupied_;
+            context.source_projection_active = caster_projection_active(
+                actor.world_position.x, actor.world_position.y,
+                static_cast<std::uint16_t>(
+                    state_.field_scene_buffers.camera_x),
+                static_cast<std::uint16_t>(
+                    state_.field_scene_buffers.camera_y));
             if (actor.effect_slot.has_value()) {
                 context.world_effect_slot_occupancy[*actor.effect_slot] = true;
             }
