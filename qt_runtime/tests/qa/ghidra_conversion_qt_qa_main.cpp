@@ -20618,6 +20618,30 @@ int main(int argc, char** argv) {
                             command_background.copy(x, y, width, height),
                             x, y);
                     };
+                const auto panel_matches_clean_redraw = [&] {
+                    // The encoded ROM title uses a 16-cell field with a
+                    // leading blank cell; the final glyph occupies cell 15.
+                    constexpr auto kMagicDefenseTitleRight = 112 + 16 * 8;
+                    for (int y = 16; y < 160; ++y) {
+                        for (int x = 96; x < 264; ++x) {
+                            const auto title_pixel =
+                                y >= 48 && y < 56 && x >= 112 &&
+                                x < kMagicDefenseTitleRight;
+                            const auto strip_pixel =
+                                ((y >= 80 && y < 88) ||
+                                 (y >= 104 && y < 112)) &&
+                                x >= 120 && x < 224;
+                            if (title_pixel || strip_pixel) {
+                                continue;
+                            }
+                            if (actual_scene.pixel(x, y) !=
+                                command_background.pixel(x, y)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
                 if (physical.value != expected_physical ||
                     mana.value != expected_mana ||
                     !valid_view(physical) || !valid_view(mana) ||
@@ -20625,6 +20649,7 @@ int main(int argc, char** argv) {
                                     120, 80) ||
                     !region_matches(actual_scene, expected_mana_bar,
                                     120, 104) ||
+                    !panel_matches_clean_redraw() ||
                     !panel_matches_background(128, 64, 120, 16) ||
                     !panel_matches_background(112, 112, 8, 8) ||
                     !panel_matches_background(128, 120, 120, 40)) {
