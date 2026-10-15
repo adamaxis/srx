@@ -19,6 +19,8 @@ constexpr std::uint16_t kPosture = 2U;
 constexpr std::uint16_t kAttributes = 5U;
 constexpr std::uint16_t kCyberware = 6U;
 constexpr std::uint16_t kPocketSecretary = 9U;
+constexpr std::uint16_t kDismissRunner = 11U;
+constexpr std::uint16_t kGroupItems = 17U;
 constexpr std::uint16_t kClips = 4U;
 constexpr std::uint16_t kClipTrade = 22U;
 constexpr std::uint16_t kReloadConfirm = 23U;
@@ -62,6 +64,10 @@ int main() {
     int posture = 2;
     int reselect_count = 0;
     int closed_count = 0;
+    bool pocket_extra_row = false;
+    std::vector<int> random_bounds;
+    bool random_high_branch = false;
+    int dismissed_slot = -1;
     bool legacy_active = false;
     std::array<ScriptMenuPartyMember, 3> party{{
         {1U, 3U, 20U, 0, 2U},
@@ -140,6 +146,20 @@ int main() {
         first_aid_roll = {count, threshold};
         return 2;
     };
+    bindings.game.pocket_extra_row = [&pocket_extra_row] {
+        return pocket_extra_row;
+    };
+    bindings.game.source_random_bound = [&random_bounds,
+                                         &random_high_branch](const int bound) {
+        random_bounds.push_back(bound);
+        if (random_high_branch) {
+            return bound == 2 ? 1 : (bound == 4 ? 3 : 0);
+        }
+        return 0;
+    };
+    bindings.game.dismiss_runner = [&dismissed_slot](const int slot) {
+        dismissed_slot = slot;
+    };
     runtime.set_menu_route_bindings(std::move(bindings));
 
     const auto opened = runtime.open_menu_route(kCommand);
@@ -193,25 +213,84 @@ int main() {
           "Start in posture exits without requesting a sound", failures);
 
     check(runtime.open_menu_route(kCommand), "reopen command route", failures);
-    runtime.advance_menu_route(0x1000U); // A: Pocket Secretary child.
+    const auto legacy_count_before_secretary = legacy_screens.size();
+    runtime.advance_menu_route(0x4000U); // A: Pocket Secretary child.
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kPocketSecretary && route.page == 6,
-          "A pushes Pocket Secretary while preserving command selection",
+    check(route.top_screen == kPocketSecretary && route.page == 6 &&
+              route.top_row == 0,
+          "A opens the Lua Pocket Secretary root at row zero", failures);
+    check(legacy_screens.size() == legacy_count_before_secretary,
+          "Pocket Secretary root no longer opens through the legacy adapter",
           failures);
-    check(!legacy_screens.empty() &&
-              legacy_screens.back() == kPocketSecretary && legacy_active,
-          "legacy child opens through the host adapter", failures);
+    const auto sounds_before_secretary = sounds.size();
+    runtime.advance_menu_route(0x1000U); // B: no-op at 0xC2A6.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kPocketSecretary && route.top_row == 0 &&
+              sounds.size() == sounds_before_secretary,
+          "Pocket Secretary ignores B without moving or playing a sound",
+          failures);
+    runtime.advance_menu_route(0x0200U); // Down: row zero -> Group Items.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kPocketSecretary && route.top_row == 1 &&
+              sounds.size() == sounds_before_secretary &&
+              random_bounds == std::vector<int>{2, 8, 3, 2, 8, 3} &&
+              route.top_grid_cells_present && route.top_grid_cells[0] == 0 &&
+              route.top_grid_effect_frames == 2,
+          "Pocket Secretary Lua owns silent row movement and its three-draw shared-frame effect",
+          failures);
+    runtime.advance_menu_route(0x4000U); // A dispatches Group Items.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kGroupItems && !legacy_screens.empty() &&
+              legacy_screens.back() == kGroupItems && legacy_active,
+          "Lua Pocket Secretary dispatches its child through the host adapter",
+          failures);
     legacy_active = false;
     runtime.advance_menu_route(0U);
     route = runtime.menu_route_snapshot();
+    check(route.top_screen == kPocketSecretary && route.top_row == 1 &&
+              route.top_grid_effect_frames == 4 &&
+              random_bounds.size() == 12U,
+          "legacy child returns to the Lua-selected row after its shared grid frame advances",
+          failures);
+    runtime.advance_menu_route(0x8000U); // Start returns to Command.
+    route = runtime.menu_route_snapshot();
     check(route.top_screen == kCommand && route.page == 6,
-          "legacy return rebuilds its parent command page", failures);
+          "Start returns from the Lua Pocket Secretary to command page six",
+          failures);
+
+    runtime.advance_menu_route(0x4000U); // Open Pocket Secretary again.
+    runtime.advance_menu_route(0x0200U); // Group Items.
+    runtime.advance_menu_route(0x0200U); // Cyberdeck.
+    runtime.advance_menu_route(0x0200U); // Dismiss Runner.
+    runtime.advance_menu_route(0x4000U); // Open Lua Dismiss Runner.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kDismissRunner && route.top_row == 0 &&
+              legacy_screens.size() == legacy_count_before_secretary + 1U,
+          "Dismiss Runner is a registered Lua child, not a legacy adapter",
+          failures);
+    random_high_branch = true;
+    runtime.advance_menu_route(0x0100U); // Select slot 1 below Abort.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kDismissRunner && route.top_row == 1 &&
+              sounds.back() == kMoveSound && route.top_grid_cells_present &&
+              route.top_grid_cells[11] == 6,
+          "Lua Dismiss Runner selects a candidate and applies the alternate ROM grid branch",
+          failures);
+    runtime.advance_menu_route(0x4000U); // Dismiss slot 1.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kPocketSecretary && route.top_row == 3 &&
+              dismissed_slot == 1,
+          "Lua Dismiss Runner dispatches the selected stable party slot",
+          failures);
+    runtime.close_menu_route();
+    runtime.open_menu_route(kCommand);
 
     runtime.advance_menu_route(0x0400U); // page 6 -> 5
     runtime.advance_menu_route(0x0400U); // page 5 -> 4
     runtime.advance_menu_route(0x0400U); // page 4 -> 3
     check(runtime.menu_route_snapshot().page == 3,
           "command page navigation reaches Attributes/Skills", failures);
+    const auto legacy_count_before_attributes = legacy_screens.size();
     runtime.advance_menu_route(0x1000U);
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kAttributes && !windows.empty() &&
@@ -234,7 +313,7 @@ int main() {
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kCommand && route.page == 6 &&
               windows.back() == kSidebarWindow && sounds.back() == kMoveSound &&
-              legacy_screens.back() == kPocketSecretary,
+              legacy_screens.size() == legacy_count_before_attributes,
           "view-only Attributes return fully reinitializes page six without "
           "entering the C++ legacy adapter",
           failures);
@@ -566,7 +645,7 @@ int main() {
           failures);
 
     runtime.close_menu_route();
-    check(!runtime.menu_route_snapshot().open && closed_count == 2,
+    check(!runtime.menu_route_snapshot().open && closed_count == 3,
           "host scene transition closes the complete route", failures);
 
     if (failures != 0) {

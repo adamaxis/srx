@@ -232,3 +232,21 @@ Rejected (must not return):
 - Mode `0x1A` (security interior) as the motel doorway.
 - Generic “empty building” interiors.
 - Six full-screen title frames as the claimed title sequence.
+
+## Pocket Secretary root route (2026-10-15)
+
+The `0xC2A6` root and `0xC448` Dismiss Runner screen are registered in the field
+Lua route. Lua owns root row wrap, A-only dispatch, silent Up/Down navigation,
+C-button leader reselect, and Start return. Dismiss Runner selection and stable
+party-slot dispatch are also Lua-owned. The shared E660 frame effect keeps its
+12-cell state and per-frame three-draw cadence in Lua; C++ supplies ROM RNG and
+projects the resulting cells into the Qt presenter. Notebook, Group Items,
+Cyberdeck, Save/Load, and Debug child behavior still uses the C++ adapter. The
+hidden row remains unavailable because the active field context does not import
+FFF101.
+
+The route CTest passes in Debug and Release. Field Secretary Qt QA passes in
+both configurations and writes 79 full-screen BMP captures. Route checks cover
+both E660 random branches and the Dismiss stable-slot action. This is internal
+regression evidence; an independent Genesis capture is still unavailable, so
+the hill remains partial.

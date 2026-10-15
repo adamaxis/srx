@@ -578,6 +578,9 @@ struct GameScriptRuntime::Impl {
         slot_active_set,
         commit_party,
         roll_successes,
+        pocket_extra_row,
+        source_random_bound,
+        dismiss_runner,
     };
 
     lua_State* state = nullptr;
@@ -892,6 +895,28 @@ struct GameScriptRuntime::Impl {
             lua_pushinteger(lua, successes);
             return 1;
         }
+        case MenuBinding::pocket_extra_row:
+            lua_pushboolean(
+                lua, self->menu_route_bindings.game.pocket_extra_row &&
+                             self->menu_route_bindings.game.pocket_extra_row()
+                         ? 1
+                         : 0);
+            return 1;
+        case MenuBinding::source_random_bound: {
+            const auto bound = std::clamp(integer_argument(1), 0, 0xFFFF);
+            const auto value =
+                self->menu_route_bindings.game.source_random_bound
+                    ? self->menu_route_bindings.game.source_random_bound(bound)
+                    : 0;
+            lua_pushinteger(lua, std::clamp(value, 0, 0xFFFF));
+            return 1;
+        }
+        case MenuBinding::dismiss_runner:
+            if (self->menu_route_bindings.game.dismiss_runner) {
+                self->menu_route_bindings.game.dismiss_runner(
+                    integer_argument(1));
+            }
+            return 0;
         }
         lua_pushnil(lua);
         return 1;
@@ -952,6 +977,12 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::commit_party);
         add_menu_binding(state, table_index, "roll_successes",
                          MenuBinding::roll_successes);
+        add_menu_binding(state, table_index, "pocket_extra_row",
+                         MenuBinding::pocket_extra_row);
+        add_menu_binding(state, table_index, "source_random_bound",
+                         MenuBinding::source_random_bound);
+        add_menu_binding(state, table_index, "dismiss_runner",
+                         MenuBinding::dismiss_runner);
     }
 
     bool refresh_menu_route_snapshot() {
@@ -1036,6 +1067,27 @@ struct GameScriptRuntime::Impl {
                     read_optional(screen_state_index, "dst_slot");
                 menu_route_state.top_target =
                     read_optional(screen_state_index, "target");
+                menu_route_state.top_grid_effect_frames =
+                    read_optional(screen_state_index, "grid_effect_frames");
+                lua_getfield(state, screen_state_index, "grid_cells");
+                if (lua_istable(state, -1)) {
+                    menu_route_state.top_grid_cells_present = true;
+                    menu_route_state.top_grid_cells.fill(-1);
+                    const auto grid_index = lua_absindex(state, -1);
+                    for (std::size_t cell = 0;
+                         cell < menu_route_state.top_grid_cells.size(); ++cell) {
+                        lua_rawgeti(state, grid_index,
+                                    static_cast<lua_Integer>(cell + 1U));
+                        int is_number = 0;
+                        const auto value = lua_tointegerx(state, -1, &is_number);
+                        if (is_number && value >= -1 && value <= 0x7F) {
+                            menu_route_state.top_grid_cells[cell] =
+                                static_cast<std::int8_t>(value);
+                        }
+                        lua_pop(state, 1);
+                    }
+                }
+                lua_pop(state, 1);
                 lua_getfield(state, screen_state_index, "yes");
                 if (lua_isboolean(state, -1)) {
                     menu_route_state.top_yes = lua_toboolean(state, -1) != 0;

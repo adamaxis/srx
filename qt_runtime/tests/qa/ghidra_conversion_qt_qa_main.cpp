@@ -21448,6 +21448,7 @@ int main(int argc, char** argv) {
                                  "page 6\n";
                     return 3;
                 }
+                field_audio_events.clear();
                 // Press A on the Pocket Secretary tab: port bit 6 is the
                 // A button in the sampled controller word (0x4000 in the
                 // expanded events consumed by the command loop).
@@ -21460,7 +21461,11 @@ int main(int argc, char** argv) {
                 if (field_audio_events !=
                     std::vector<std::uint16_t>{0x24U}) {
                     std::cerr << "field secretary dump: parent A did not "
-                                 "request the single page-entry event 0x24\n";
+                                 "request the single page-entry event 0x24; got";
+                    for (const auto event : field_audio_events) {
+                        std::cerr << " 0x" << std::hex << event << std::dec;
+                    }
+                    std::cerr << '\n';
                     return 3;
                 }
                 // ROM 0xC2A6 has no move-sound call: it advances E660,

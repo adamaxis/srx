@@ -5421,6 +5421,40 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.host.blank = [](const std::uint16_t) {};
     bindings.host.set_window = [](const std::uint16_t) {};
     bindings.host.set_screen = [this](const std::uint16_t screen) {
+        const auto is_secretary_tree_screen = [](const std::uint16_t value) {
+            switch (static_cast<srx::MenuScreen>(value)) {
+            case srx::MenuScreen::POCKET_SECRETARY:
+            case srx::MenuScreen::NOTEBOOK:
+            case srx::MenuScreen::DISMISS_RUNNER:
+            case srx::MenuScreen::SAVE_LOAD:
+            case srx::MenuScreen::GROUP_ITEMS:
+            case srx::MenuScreen::CYBERDECK:
+            case srx::MenuScreen::DEBUG_MENU:
+                return true;
+            default:
+                return false;
+            }
+        };
+        const auto pocket_secretary_screen = static_cast<std::uint16_t>(
+            srx::MenuScreen::POCKET_SECRETARY);
+        if (screen == pocket_secretary_screen &&
+            !pocket_secretary_.open) {
+            begin_pocket_secretary();
+        } else if (screen == static_cast<std::uint16_t>(
+                                srx::MenuScreen::DISMISS_RUNNER) &&
+                   menu_route_screen_ != screen) {
+            begin_pocket_secretary_dismiss_runner();
+        } else if (menu_route_screen_ == static_cast<std::uint16_t>(
+                                           srx::MenuScreen::DISMISS_RUNNER) &&
+                   screen != static_cast<std::uint16_t>(
+                                 srx::MenuScreen::DISMISS_RUNNER)) {
+            dismiss_runner_ = DismissRunnerMenuState{};
+        } else if (is_secretary_tree_screen(menu_route_screen_) &&
+                   !is_secretary_tree_screen(screen)) {
+            pocket_secretary_.open = false;
+            dismiss_runner_ = DismissRunnerMenuState{};
+        }
+
         const auto attributes_screen = static_cast<std::uint16_t>(
             srx::MenuScreen::ATTRIBUTES_SKILLS);
         const auto cyberware_screen = static_cast<std::uint16_t>(
@@ -5462,6 +5496,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
         command_overview_attributes_skills_.close_to_parent();
         command_overview_clips_.close();
         command_overview_.close();
+        pocket_secretary_.open = false;
+        dismiss_runner_ = DismissRunnerMenuState{};
     };
     bindings.host.legacy_open =
         [this](const std::uint16_t screen,
@@ -5607,7 +5643,71 @@ void FieldSceneRuntime::configure_field_menu_route() {
                 return sample_source_random_bound(field_random_seed_, bound);
             }));
     };
+    bindings.game.pocket_extra_row = [this] {
+        return pocket_secretary_.maximum_selection > 4U;
+    };
+    bindings.game.source_random_bound = [this](const int bound) {
+        if (bound <= 0 || bound > 0xFFFF) {
+            return 0;
+        }
+        return static_cast<int>(sample_source_random_bound(
+            field_random_seed_, static_cast<std::uint16_t>(bound)));
+    };
+    bindings.game.dismiss_runner = [this](const int slot) {
+        if (slot >= 0 && slot <
+                             static_cast<int>(FieldPartyRosterRuntime::kSlotCount)) {
+            finish_pocket_secretary_dismiss_runner(
+                static_cast<std::size_t>(slot));
+        }
+    };
     game_scripts_.set_menu_route_bindings(std::move(bindings));
+}
+
+void FieldSceneRuntime::advance_field_menu_route() {
+    game_scripts_.advance_menu_route(field_controller_sample_state_.events);
+    const auto route_state = game_scripts_.menu_route_snapshot();
+    synchronize_command_overview_clips_from_route(route_state);
+    synchronize_command_overview_inventory_from_route(route_state);
+    if (route_state.page.has_value() && route_state.row.has_value()) {
+        command_overview_.sync_script_selection(
+            static_cast<std::uint8_t>(*route_state.page),
+            static_cast<std::uint8_t>(*route_state.row));
+    }
+    menu_route_screen_ = route_state.top_screen;
+    posture_dialog_active_ =
+        route_state.open &&
+        menu_route_screen_ == static_cast<std::uint16_t>(
+                                  srx::MenuScreen::POSTURE);
+    if (menu_route_screen_ == static_cast<std::uint16_t>(
+                                  srx::MenuScreen::ATTRIBUTES_SKILLS) &&
+        route_state.top_column.has_value() &&
+        route_state.top_row.has_value()) {
+        command_overview_attributes_skills_.synchronize_cursor(
+            *route_state.top_column, *route_state.top_row,
+            active_runner_record());
+    }
+    if (route_state.top_screen == static_cast<std::uint16_t>(
+                                      srx::MenuScreen::POCKET_SECRETARY) &&
+        route_state.top_row.has_value()) {
+        pocket_secretary_.selection = static_cast<std::uint8_t>(
+            std::clamp(*route_state.top_row, 0,
+                       static_cast<int>(
+                           pocket_secretary_.maximum_selection)));
+    }
+    if (route_state.top_screen == static_cast<std::uint16_t>(
+                                      srx::MenuScreen::DISMISS_RUNNER) &&
+        route_state.top_row.has_value() && dismiss_runner_.open) {
+        dismiss_runner_.selection = static_cast<std::uint8_t>(
+            std::clamp(*route_state.top_row, 0,
+                       static_cast<int>(dismiss_runner_.candidate_count)));
+    }
+    if (route_state.top_grid_cells_present) {
+        dismiss_runner_random_grid_cells_ = route_state.top_grid_cells;
+    }
+    if (route_state.top_grid_effect_frames.has_value()) {
+        dismiss_runner_effect_frames_ = static_cast<std::uint32_t>(
+            std::max(0, *route_state.top_grid_effect_frames));
+    }
 }
 
 void FieldSceneRuntime::synchronize_command_overview_clips_from_route(
@@ -5904,6 +6004,47 @@ void FieldSceneRuntime::start_command_menu_legacy_screen(
     } else if (screen == static_cast<std::uint16_t>(
                             srx::MenuScreen::POCKET_SECRETARY)) {
         begin_pocket_secretary();
+    } else if (screen == static_cast<std::uint16_t>(
+                            srx::MenuScreen::NOTEBOOK)) {
+        const auto event_gates = notebook_event_gates();
+        if (event_gates.has_value()) {
+            begin_pocket_secretary_notebook(
+                pocket_secretary_, notebook_current_run_available_,
+                *event_gates);
+        } else {
+            source_boundary(
+                "field.pocket_secretary.notebook.event_flags_unresolved");
+        }
+    } else if (screen == static_cast<std::uint16_t>(
+                            srx::MenuScreen::GROUP_ITEMS)) {
+        if (group_item_flags_.has_value()) {
+            begin_pocket_secretary_group_items(
+                pocket_secretary_, *group_item_flags_);
+        } else {
+            source_boundary(
+                "field.pocket_secretary.group_items_flags_unresolved");
+        }
+    } else if (screen == static_cast<std::uint16_t>(
+                            srx::MenuScreen::CYBERDECK)) {
+        if (cyberdeck_available_.has_value() &&
+            !*cyberdeck_available_) {
+            begin_pocket_secretary_cyberdeck_unavailable(
+                pocket_secretary_);
+        } else if (cyberdeck_available_.has_value()) {
+            source_boundary("field.pocket_secretary.matrix_path_pending");
+        } else {
+            source_boundary(
+                "field.pocket_secretary.cyberdeck_flag_unresolved");
+        }
+    } else if (screen == static_cast<std::uint16_t>(
+                            srx::MenuScreen::DISMISS_RUNNER)) {
+        begin_pocket_secretary_dismiss_runner();
+    } else if (screen == static_cast<std::uint16_t>(
+                            srx::MenuScreen::SAVE_LOAD)) {
+        source_boundary("field.pocket_secretary.save_load_pending");
+    } else if (screen == static_cast<std::uint16_t>(
+                            srx::MenuScreen::DEBUG_MENU)) {
+        source_boundary("field.pocket_secretary.debug_menu_pending");
     } else {
         source_boundary("field.command_overview.lua_legacy_route_unmapped");
     }
@@ -5939,6 +6080,21 @@ bool FieldSceneRuntime::command_menu_legacy_screen_active(
     if (screen == static_cast<std::uint16_t>(
                       srx::MenuScreen::POCKET_SECRETARY)) {
         return pocket_secretary_.open || dismiss_runner_.open;
+    }
+    if (screen == static_cast<std::uint16_t>(srx::MenuScreen::NOTEBOOK)) {
+        return pocket_secretary_.notebook.open;
+    }
+    if (screen == static_cast<std::uint16_t>(
+                      srx::MenuScreen::GROUP_ITEMS)) {
+        return pocket_secretary_.group_items_wait;
+    }
+    if (screen == static_cast<std::uint16_t>(
+                      srx::MenuScreen::CYBERDECK)) {
+        return pocket_secretary_.cyberdeck_unavailable_wait;
+    }
+    if (screen == static_cast<std::uint16_t>(
+                      srx::MenuScreen::DISMISS_RUNNER)) {
+        return dismiss_runner_.open;
     }
     return false;
 }
@@ -11287,11 +11443,23 @@ void FieldSceneRuntime::advance_frame() {
             }
             return;
         }
-        if (pocket_secretary_.open) {
-            // C2A6's parent loop and C448's child loop both call E660 once
-            // after the VBlank input sample. Its named cell assets are kept
-            // in typed panel state and painted with the active secretary UI.
-            advance_pocket_secretary_dismiss_runner_effect();
+        const auto secretary_screen = static_cast<srx::MenuScreen>(
+            menu_route_screen_);
+        const bool legacy_secretary_child_active =
+            (secretary_screen == srx::MenuScreen::NOTEBOOK &&
+             pocket_secretary_.notebook.open) ||
+            (secretary_screen == srx::MenuScreen::GROUP_ITEMS &&
+             pocket_secretary_.group_items_wait) ||
+            (secretary_screen == srx::MenuScreen::CYBERDECK &&
+             pocket_secretary_.cyberdeck_unavailable_wait);
+        const bool dismiss_runner_was_open = dismiss_runner_.open;
+        if (pocket_secretary_.open &&
+            (!menu_route_active_ || legacy_secretary_child_active)) {
+            // The Lua route advances E660 for the active screen. Retain the
+            // C++ loop only for the historical, route-less field adapter.
+            if (!menu_route_active_) {
+                advance_pocket_secretary_dismiss_runner_effect();
+            }
             if (dismiss_runner_.open) {
                 const auto event = apply_dismiss_runner_input(
                     dismiss_runner_, field_controller_sample_state_.events);
@@ -11336,6 +11504,12 @@ void FieldSceneRuntime::advance_frame() {
                         RandomGridEffectState{};
                     dismiss_runner_random_grid_cells_.fill(-1);
                 }
+                if (!menu_route_active_) {
+                    return;
+                }
+            }
+            if (dismiss_runner_was_open) {
+                advance_field_menu_route();
                 return;
             }
             const auto event = apply_pocket_secretary_input(
@@ -11531,6 +11705,9 @@ void FieldSceneRuntime::advance_frame() {
                 pocket_secretary_.open = false;
                 source_boundary("field.pocket_secretary.exited");
             }
+            if (menu_route_active_) {
+                advance_field_menu_route();
+            }
             return;
         }
         if (command_overview_inventory_action_active_ &&
@@ -11543,29 +11720,7 @@ void FieldSceneRuntime::advance_frame() {
         }
         const auto was_open = command_overview_.open();
         if (menu_route_active_) {
-            game_scripts_.advance_menu_route(
-                field_controller_sample_state_.events);
-            const auto route_state = game_scripts_.menu_route_snapshot();
-            synchronize_command_overview_clips_from_route(route_state);
-            synchronize_command_overview_inventory_from_route(route_state);
-            if (route_state.page.has_value() && route_state.row.has_value()) {
-                command_overview_.sync_script_selection(
-                    static_cast<std::uint8_t>(*route_state.page),
-                    static_cast<std::uint8_t>(*route_state.row));
-            }
-            menu_route_screen_ = route_state.top_screen;
-            posture_dialog_active_ =
-                route_state.open &&
-                menu_route_screen_ == static_cast<std::uint16_t>(
-                                          srx::MenuScreen::POSTURE);
-            if (menu_route_screen_ == static_cast<std::uint16_t>(
-                                          srx::MenuScreen::ATTRIBUTES_SKILLS) &&
-                route_state.top_column.has_value() &&
-                route_state.top_row.has_value()) {
-                command_overview_attributes_skills_.synchronize_cursor(
-                    *route_state.top_column, *route_state.top_row,
-                    active_runner_record());
-            }
+            advance_field_menu_route();
         } else {
             command_overview_.advance(
                 field_controller_sample_state_.events);

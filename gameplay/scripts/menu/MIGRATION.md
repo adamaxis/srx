@@ -3,6 +3,14 @@ The rules move to Lua (route.lua plus screens/*). C++ keeps only menu_binding.hp
 FSR = srx `decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp`; bridge = `field_command_overview_bridge.cpp`.
 Tests: `lua5.4 tests/menu_tests.lua` (27 checks).
 
+## Active profile status (2026-10-15)
+`field_init.lua` is the runtime registry. A script module counts as connected
+only when this profile registers it and the live Qt route exercises its host
+services. The Pocket Secretary root and Dismiss Runner input are Lua-owned.
+Notebook, Group Items, Cyberdeck, Save/Load, and Debug still use the C++ adapter.
+Unregistered Magic and deck-screen modules in this tree are drafts, not
+completed ports.
+
 ## Moved blocks
 | FSR / bridge location | what | new home | status |
 |---|---|---|---|
@@ -15,7 +23,7 @@ Tests: `lua5.4 tests/menu_tests.lua` (27 checks).
 | FSR 10603-10612 | Cyberware full-screen wait/return | `screens/wait_any.lua` (`FULL`); Qt presenter builds the typed +0x90 rows | **ported** |
 | FSR 10613-10625 | magical_defense_wait | `wait_any` (MAGICAL_DEFENSE); MAGIC pushes it once ported | ported module |
 | FSR 10626-10692 | posture dialog | `screens/posture.lua` | **ported** (fix D4) |
-| FSR 10693-10938 | pocket secretary / dismiss runner | legacy POCKET_SECRETARY (returns `exit_menu` = FFF0CD) | port queue |
+| FSR 10693-10938 | Pocket Secretary root and child loops | `screens/pocket_secretary.lua` owns root row movement/dispatch and Dismiss Runner; other child loops still use the C++ adapter | root and Dismiss Runner ported; remaining children queued |
 | FSR 10939-10945 | inventory_action (6471, discard 6333) | legacy ITEM_ACTION | port queue |
 | bridge 196-240 | page/row/A/C/Start priority | `screens/command.lua` `input` | **ported** |
 | bridge 172-192 + `advance_command_overview_secondary_page` | 0x11506 row and posture gate | `command.step_row` | **ported** |
@@ -40,7 +48,7 @@ Tests: `lua5.4 tests/menu_tests.lua` (27 checks).
 - D12 Item-action children REPLACE the action row, so their result returns straight to the Command page; no "return-to-row" flag.
 - D13 Attributes/Skills from the Command page is view-only (srx command_view_only); karma upgrades only when opened with args.karma (hotel). Previously one flag in FSR did both.
 - D14 `leader_spell_gate` renamed to `leader_archetype`: +0x9B is the archetype (< 2 = caster), not a gate.
-- D15 Pocket Secretary: only A (bit 14) dispatches; B does nothing (FSR treated B like A) [C 0xC2A6]. Save/Load + Cyberdeck stay host services (legacy adapter) and report FFF0CD as exit_menu.
+- D15 Pocket Secretary root: only A (bit 14) dispatches; B does nothing (FSR treated B like A) [C 0xC2A6]. Lua owns root input/row and Dismiss Runner selection/action; Notebook, Group Items, Cyberdeck, Save/Load, and Debug remain adapter boundaries.
 - D16 Magic: the force/posture loop is two stacked screens (MAGIC_FORCE, MAGIC_POSTURE) instead of a mode int.
 
 - D17 Clips is ONE-SHOT per ROM 0x11B58: every outcome prints its text, waits for any edge (0xD94, silent) and returns to the Command page; Cancel / trade-Start print "Function Aborted!" (0xD1ED8, new MenuMessage.FUNCTION_ABORTED=21). B and C act like A; the main loop has NO Start check. Reload prompt: default No (0x11D00 clr + 0x127B0 eori), A only, "No" exits silently. srx/FSR kept the menu open and closed on B/Start: replaced [C].
@@ -49,10 +57,10 @@ Tests: `lua5.4 tests/menu_tests.lua` (27 checks).
 Sound sites for all of these: out/menu_sound_sites.txt (0x25 = move/toggle, 0x24 = confirm; Start paths silent) [C].
 
 - D20 Automatic-use items (0x13, 0x14, 0x16, 0x18..0x2B: fetish, passkey, smart goggles, foci, talisman, spell lock, totems) only print "This item is automatically used." (0xD202F) and wait (0x12168 -> 0x121C0). The menu applies no effect, so nothing is missing from the port [C]. The passive effects are read elsewhere by code; that's outside the menu scope.
-- D21 Pocket Secretary row 5 = the debug menu 0x599DA (docs/12), now screens/debug_menu.lua (+ DEBUG_PICK_SYSTEM). It is one-shot (FFF101 is cleared on A). The effects are Lua rules over the party table and named RAM-write services. Pick System → jack-in exits the menu tree [H: exact return path].
+- D21 Pocket Secretary row 5 = the debug menu 0x599DA (docs/12). A `screens/debug_menu.lua` draft exists but is not registered in `field_init.lua`; FFF101 is also not connected to the active field context, so the hidden row is not reachable in the live route.
 
-- D22 Magic value maths moved to Lua (rules/magic.lua; docs/02 "Magic value maths"): success dice, drain, fetish absorption and magical defense, with all four ROM tables checked against rom.bin. Removed the game.magical_defense() / magic_values() C++ services. The magic screens keep st.values = {success, drain}.
-- D23 Pick System return path is now ROM-exact (0xE47A..0xE4C6). After the Matrix, the Pocket Secretary closes and the Command page rebuilds; it does not leave the menu (D21 had guessed "exit"). Sound 0x1A = MenuSound.JACK_IN.
+- D22 Magic rule/screen drafts exist under `rules/magic.lua` and `screens/magic.lua`, but Magic is not registered in the active field route and still enters the C++ adapter.
+- D23 Pick System return path still needs live route wiring and Qt verification; the Matrix route is not active in `field_init.lua`.
 
 ## Timing contract [C unless marked]
 - One `route.frame` per VBlank sample.
@@ -60,15 +68,15 @@ Sound sites for all of these: out/menu_sound_sites.txt (0x25 = move/toggle, 0x24
 - A full build = `blank(OFF)`, then FULL, then `blank(ON)`. That gives at least one black frame; the exact count is [H] (it depends on the build length, not measured).
 
 ## Port queue (next)
-Done: item action, clips, attributes/skills, magic, pocket secretary (tests/submenu_tests.lua 50/50). Left in legacy: SAVE_LOAD, CYBERDECK (host services by design).
-Open [H]: drain-damage tail at 0x1046E (kept in the C++ damage service); FFF0B1 meaning inside the Matrix. (Auto-use and row 5 resolved: D20, D21.) (Clip/dismiss/item sounds and the species table are now ROM-traced, D17-D19.)
+Done in the active route: command/posture, item actions, Clips, Attributes/Skills, and Pocket Secretary root. Magic and Pocket Secretary child loops still use C++ adapters. Save/Load, Cyberdeck/Matrix, and Debug screens are not active route ports.
+Open source/behavior boundaries: the drain-damage tail at 0x1046E, FFF0B1 inside the Matrix, FFF101 cheat-state import, and child-loop migration.
 In-game wiring: host/menu_game_fsr.sketch.cpp (MenuGame/MenuHost over srx FieldSceneRuntime, file:line per service).
 
 Order: ITEM_ACTION (6471, 6333, 6400, 6581, 6597), CLIPS (6049; ROM 0x11B58), POCKET_SECRETARY (C2A6, 0xC376 widget), MAGIC (5914, 0xFBA6), ATTRIBUTES_SKILLS (0xD01C).
 Each one replaces its `legacy(...)` line in menu/init.lua.
 
-- D24 Save/Load 0xEFB4 is now a Lua screen (screens/save_load.lua) and replaces legacy(). Gate texts (FFDF40, FFDF84) return to the Pocket Secretary. Start in the menu or slot picker (FFF0CC) returns to the Pocket Secretary without exiting. Every save/load result, including "no game saved here", exits the whole menu (FFF0DC + FFF0CD). The old adapter exited only on a host flag.
-- D25 Cyberdeck 0x18150/0x1822C is now a Lua screen (screens/cyberdeck.lua) with the 4x4 grid, the FFF0B7 mode per button, and the pull-the-plug prompt. Dumpshock rules are Lua. Sub-loops 0x19238 and 0xE2DFE stay host services. The "no deck" message is still a Pocket Secretary MESSAGE. Fix vs the old adapter: a failed Willpower roll that the runner survives does NOT log out (0x18598 → 0x1831A).
+- D24 A `screens/save_load.lua` draft exists but is not registered in the active profile; live Save/Load behavior is still behind the adapter.
+- D25 A `screens/cyberdeck.lua` draft exists but is not registered in the active profile; live Cyberdeck/Matrix behavior remains pending.
 
 - D26 The program slot screen 0x19238 and the 0xE2DFE functions (CyberInfo, Storage, Map/Retreat) are now Lua (screens/deck_screens.lua, rules/deck.lua). The host services deck_program_slots/deck_function are gone. C++ keeps only RAM proxies (deck_record/deck_slots + deck_commit), painting, and the map/retreat VDP work.
 - D27 Texts the ROM prints with a plain rts (no slots/memory, not on a run, run complete, no datafiles, no retreat node) return {text=} to the grid instead of a MESSAGE wait, matching the ROM. Storage only acts on A and its erase prompt defaults to Yes; both are ROM quirks, kept.

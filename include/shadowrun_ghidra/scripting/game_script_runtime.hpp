@@ -101,6 +101,9 @@ struct ScriptMenuRouteGame {
     std::function<void(const std::array<ScriptMenuPartyMember, 3>&)>
         commit_party;
     std::function<int(int, int)> roll_successes;
+    std::function<bool()> pocket_extra_row;
+    std::function<int(int)> source_random_bound;
+    std::function<void(int)> dismiss_runner;
 };
 
 struct ScriptMenuRouteBindings {
@@ -129,6 +132,9 @@ struct ScriptMenuRouteSnapshot {
     std::vector<int> top_targets;
     std::optional<bool> top_recipient_full;
     std::optional<bool> top_yes;
+    bool top_grid_cells_present = false;
+    std::array<std::int8_t, 12> top_grid_cells{};
+    std::optional<int> top_grid_effect_frames;
 };
 
 using ScriptStringMap = std::unordered_map<std::string, std::string>;
