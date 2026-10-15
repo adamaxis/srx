@@ -1,0 +1,745 @@
+-- actor/actions.lua: logic: action delays, target markers, world target selection, spell/item dispatch.
+-- Split from the pre-module gameplay/scripts/actor_ai.lua; see docs/ghidra/lua-actor-ai-module-boundaries.md.
+local R = require("actor.registry")
+local E = require("enums")
+local I = require("lib.int68k")
+local u8, u16, s16 = I.u8, I.u16, I.s16
+local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
+    E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local states = game.actors
+R.pending_spell_effects_by_source_slot = R.pending_spell_effects_by_source_slot or {}
+R.spell_effect_scans_by_source_slot = R.spell_effect_scans_by_source_slot or {}
+local pending_spell_effects_by_source_slot = R.pending_spell_effects_by_source_slot
+local spell_effect_scans_by_source_slot = R.spell_effect_scans_by_source_slot
+local BehaviorFlag = R.BehaviorFlag   -- from actor/tables.lua
+local ActorStatus = R.ActorStatus   -- from actor/tables.lua
+local function direction_from_heading(...) return R.direction_from_heading(...) end   -- from actor/targeting.lua
+local item_action_pose_selectors = R.item_action_pose_selectors   -- from actor/tables.lua
+local spell_pose_selectors = R.spell_pose_selectors   -- from actor/anim.lua
+
+local function source_action_delay(context, state, mode)
+    -- ROM 0xB11C clears D0 before 0xABFC. 0xD7EA adds the first enabled
+    -- +0x90 capability modifier to the wrapped average of +0x78/+0x7B.
+    local capability_flags = context.delay_capability_flags or
+        state.delay_capability_flags or 0
+    local modifier = 0
+    for bit = 12, 14 do
+        if (capability_flags & (1 << bit)) ~= 0 then
+            modifier = (bit - 11) * 4
+            break
+        end
+    end
+    local primary = context.delay_primary_attribute or
+        state.delay_primary_attribute or 0
+    local secondary = context.delay_secondary_attribute or
+        state.delay_secondary_attribute or 0
+    local wrapped_sum = u8(primary + secondary)
+    local factor = (wrapped_sum >> 1) + modifier - 1
+    if factor < 0 then
+        factor = 0
+    end
+    local delay = 0x6a - factor * 4
+    -- ROM 0xABFC halves D2 with ASR when D0 is 1 (the B1DC target-action
+    -- transition). Keep the ordinary full reset used by B11C as mode 0.
+    if mode == 1 then
+        delay = math.floor(delay / 2)
+    elseif mode == 2 then
+        delay = delay * 2
+    end
+    if delay < 0x0f then
+        delay = 0x0f
+    end
+    return delay
+end
+
+local function advance_source_action_delay(state, context)
+    if context.phase ~= "behavior" or
+       not context.dynamic_world_encounter_actor then
+        return
+    end
+    -- ROM 0xA8EA decrements active actor +0xDC once before the actor-service
+    -- continuation, while the value is nonnegative.
+    if state.action_delay >= 0 then
+        state.action_delay = state.action_delay - 1
+    end
+end
+
+local function advance_target_motion_effect(state, context)
+    state.target_motion_effect_slot_request = nil
+    state.target_motion_effect_slot_released = false
+    state.target_motion_effect_visible = false
+    if context.phase ~= "render" or
+       not state.target_motion_effect_active then
+        return
+    end
+
+    -- ROM 0x4E86 decrements the signed byte at +0x02, reloads 6 on
+    -- underflow, and advances +0x03. Phases 1..3 draw; phase 4 clears the
+    -- shared slot and +0x11.6 without emitting a sprite.
+    state.target_motion_effect_countdown =
+        state.target_motion_effect_countdown - 1
+    if state.target_motion_effect_countdown < 0 then
+        state.target_motion_effect_countdown = 6
+        state.target_motion_effect_phase =
+            state.target_motion_effect_phase + 1
+        if state.target_motion_effect_phase >= 4 then
+            state.target_motion_effect_active = false
+            state.target_motion_effect_slot = nil
+            state.target_motion_effect_slot_released = true
+            return
+        end
+    end
+    state.target_motion_effect_visible = true
+end
+
+local function request_target_motion_effect(state, context, heading)
+    for slot = 0, 17 do
+        if context.world_effect_slot_occupancy[slot + 1] ~= true then
+            state.target_motion_effect_active = true
+            state.target_motion_effect_slot = slot
+            state.target_motion_effect_slot_request = slot
+            state.target_motion_effect_countdown = 0
+            state.target_motion_effect_phase = 0
+            state.target_motion_effect_direction =
+                direction_from_heading(heading)
+            -- 0x14C7C sets +0x11.6; 0x13FFE then enters 0xB11C, which
+            -- resets +0xDC with the actor's source-derived delay attributes.
+            state.action_delay = source_action_delay(context, state)
+            return true
+        end
+    end
+    return false
+end
+
+local function advance_target_marker(state, context)
+    if context.phase ~= "render" then
+        return
+    end
+    if context.target_selection_latched ~= true then
+        state.target_selection_latched = false
+        state.target_marker_visible = false
+        state.target_marker_animating = false
+        state.target_marker_style = 0
+        state.target_marker_radius = 0
+        state.target_marker_countdown = 0
+        return
+    end
+
+    -- ROM 0x5C7E chooses a tile/palette group from the actor's +0x4C action
+    -- byte. The alternate +0x9C path depends on mode/runner flags which are
+    -- not present on these world-encounter records yet.
+    local action_code = context.action_code or 0
+    if action_code >= 9 then
+        state.target_marker_style = 3
+    elseif action_code >= 6 then
+        state.target_marker_style = 2
+    elseif action_code >= 3 then
+        state.target_marker_style = 1
+    else
+        state.target_marker_style = 0
+    end
+
+    if not state.target_selection_latched then
+        -- ROM 0x1DC4C seeds +0xA6 with -0x7FF7. The render pass then calls
+        -- 0x5C7E, which decrements that signed word before placing its four
+        -- corner sprites at an 8-pixel-per-step shrinking radius.
+        state.target_marker_countdown = -0x7ff7
+    end
+    state.target_selection_latched = true
+    state.target_marker_visible = true
+
+    local countdown = state.target_marker_countdown or 0
+    if countdown < 0 then
+        local next_word = u16(countdown - 1)
+        local next_countdown = next_word >= 0x8000
+            and next_word - 0x10000 or next_word
+        if next_countdown < 0 then
+            state.target_marker_countdown = next_countdown
+            state.target_marker_animating = true
+            state.target_marker_radius = (next_word & 0x7f) * 8
+        else
+            state.target_marker_countdown = 0
+            state.target_marker_animating = false
+            state.target_marker_radius = 0
+        end
+    else
+        state.target_marker_animating = false
+        state.target_marker_radius = 0
+    end
+end
+
+local function advance_world_target_selection(state, context)
+    state.target_selection_processed = false
+    if context.phase ~= "behavior" or
+       context.target_selection_requested ~= true then
+        return
+    end
+
+    local candidates_by_slot = {}
+    for _, candidate in ipairs(context.world_target_selection_candidates or {}) do
+        local slot = candidate.source_record_slot
+        if type(slot) == "number" and slot % 1 == 0 and
+           slot >= 0 and slot < 16 then
+            candidates_by_slot[slot] = candidate
+        end
+    end
+
+    local special_path = context.target_selection_special_marker == true and
+        (context.target_selection_mode == 0x0c or
+         context.target_selection_mode == 0x04 or
+         context.target_selection_mode == 0x0b)
+    state.selected_world_actor_id = nil
+    local start
+    if special_path then
+        start = context.target_selection_current_slot
+        if start == nil then
+            start = context.target_selection_owner_slot
+        end
+        if start ~= nil and context.target_selection_advances_cursor then
+            start = start + 1
+        end
+        if start ~= nil and
+           (start >= 16 or
+            ((candidates_by_slot[start] or {}).descriptor_class or 0) >= 3) then
+            start = 0
+        end
+    else
+        start = 3
+        local previous = context.target_selection_current_slot
+        if previous ~= nil then
+            if previous < 9 then
+                start = previous
+                if context.target_selection_advances_cursor then
+                    start = start + 1
+                end
+            end
+        elseif context.target_selection_linked_slot ~= nil then
+            start = context.target_selection_linked_slot
+        end
+        if start >= 16 then
+            start = 3
+        end
+        if ((candidates_by_slot[start] or {}).descriptor_class or 0) < 3 then
+            start = 3
+        end
+    end
+
+    if start ~= nil then
+        for offset = 0, 7 do
+            local candidate = candidates_by_slot[start + offset]
+            if candidate ~= nil then
+                local available =
+                    (candidate.service_flags & ActorStatus.ACTIVE) ~= 0
+                if special_path then
+                    if available and type(candidate.id) == "string" and
+                       candidate.id ~= "" then
+                        state.selected_world_actor_id = candidate.id
+                        break
+                    end
+                else
+                    available = available and
+                        (candidate.service_flags &
+                         ActorStatus.DEAD) == 0 and
+                        (candidate.service_flags &
+                         ActorStatus.DOWN) == 0 and
+                        (candidate.behavior_flags &
+                         BehaviorFlag.ESCORT) == 0 and
+                        candidate.has_action == true
+                    if available and type(candidate.id) == "string" and
+                       candidate.id ~= "" then
+                        state.selected_world_actor_id = candidate.id
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    state.target_selection_processed = true
+end
+
+local function action_line_clear(context, target)
+    local line_clear = context.action_line_clear
+    return type(line_clear) == "function" and
+        line_clear(target.world_x, target.world_y) == true
+end
+
+local function first_wounded_party_runner(context)
+    -- ROM 0x13C20 checks the three runner records in order and selects the
+    -- first present lane whose physical meter is below four. The runtime
+    -- candidate list contains party slots only when their roster marker is
+    -- present; temporary world actors are never heal lanes.
+    local by_slot = {}
+    for _, candidate in ipairs(context.ai_target_candidates or {}) do
+        local slot = type(candidate) == "table"
+            and candidate.source_record_slot or nil
+        if type(candidate) == "table" and
+           candidate.world_activity_actor ~= true and
+           type(candidate.service_flags) == "number" and
+           (candidate.service_flags & ActorStatus.ACTIVE) ~= 0 and
+           type(slot) == "number" and slot >= 0 and slot <= 2 and
+           type(candidate.combatant) == "table" and
+           type(candidate.combatant.physical_meter) == "number" then
+            by_slot[slot] = candidate
+        end
+    end
+    for slot = 0, 2 do
+        local candidate = by_slot[slot]
+        if type(candidate) == "table" and
+           candidate.combatant.physical_meter < 4 then
+            return candidate, slot
+        end
+    end
+    return nil, nil
+end
+
+local function classify_spell_dispatch(state, context, target)
+    -- 0x13FFE reaches the spell branch only with a linked target. Delay and
+    -- the projected +0x0C word are tested before the code-4/11 RTS.
+    if type(target) ~= "table" then
+        return nil
+    end
+    if state.action_delay >= 0 then
+        return "waiting"
+    end
+    if context.source_projection_active ~= true then
+        return "offscreen"
+    end
+    if context.action_code == 4 or context.action_code == 11 then
+        return "suppressed"
+    end
+    if not action_line_clear(context, target) then
+        return "blocked"
+    end
+    return "spell"
+end
+
+local function classify_item_dispatch(state, context, target)
+    -- 0x13FFE tests delay and +0x0C before the nonnegative +0x56 branch.
+    -- Codes 13..15 reach 0x15646. Other nonzero codes reach the 0x1411E
+    -- gate, which needs FFE186 or +0xB0 bit 4. Those facts are not hosted,
+    -- so a clear probe is not a spawn and not a C042/C092 pose.
+    if type(target) ~= "table" then
+        return nil
+    end
+    if state.action_delay >= 0 then
+        return "waiting"
+    end
+    if context.source_projection_active ~= true then
+        return "offscreen"
+    end
+    if (state.source_animation_selector & 0x07ff) > 0x003c then
+        return "item_pose_gated"
+    end
+    if not action_line_clear(context, target) then
+        return "blocked"
+    end
+    local code = context.action_code
+    if code >= 13 and code <= 15 then
+        return "item_effect"
+    end
+    if code < 1 or code > 12 then
+        return "item_gated"
+    end
+    if type(target.source_record_heading) ~= "number" then
+        return "item_target_heading_unresolved"
+    end
+    if context.world_scene_state ~= 0 or
+       (state.source_behavior_flags &
+        BehaviorFlag.IN_BAND) ~= 0 then
+        if state.source_action_ammo == 0 then
+            return "item_empty"
+        end
+        return "item_spawn_requested"
+    end
+    return "item_gated"
+end
+
+local function begin_dynamic_item_action(state, context, target)
+    local heading = type(target) == "table" and
+        target.source_record_heading or nil
+    if type(heading) ~= "number" then
+        return false
+    end
+    local direction = direction_from_heading(heading)
+    local frame_count = context.item_action_frame_count
+    local increment = context.item_action_increment
+    local threshold = context.item_action_threshold
+    if type(frame_count) ~= "number" or frame_count < 1 or frame_count > 8 or
+       type(increment) ~= "number" or increment < 1 or increment > 0xffff or
+       type(threshold) ~= "number" or threshold ~= 0x1000 then
+        return false
+    end
+
+    -- ROM 0xB39A installs the C042 selector for the linked target heading,
+    -- resets the finite animation list, and reloads the ordinary mode-0
+    -- action delay. The host has already run 0x1514E and reports its result.
+    state.direction = direction
+    state.animation_id = "weapon"
+    state.animation_frame = 0
+    state.animation_accumulator = 0
+    state.animation_increment = increment
+    state.source_animation_selector =
+        item_action_pose_selectors[direction + 1]
+    state.item_action_frame_count = frame_count
+    state.item_action_increment = increment
+    state.item_action_threshold = threshold
+    state.item_action_complete = false
+    state.action_delay = source_action_delay(context, state, 0)
+    state.ai_target_engaged = false
+    return true
+end
+
+local function begin_spell_cast(state, context, target, resolution)
+    -- 0xAE6E aims +0x2E at the link, then AF7C/AFAE install C082 and reload
+    -- +0xDC with mode 0. A successful 0x1033E action has already reserved an
+    -- effect record through 0x15830; its 0x521E phase clock owns the delayed
+    -- target callback.
+    local heading = target.heading & 0xffff
+    local direction = direction_from_heading(heading)
+    state.direction = direction
+    state.animation_id = "spell"
+    state.animation_selector = spell_pose_selectors[direction + 1]
+    state.animation_frame = 0
+    state.animation_accumulator = 0
+    state.animation_increment = 0
+    state.action_animation_complete = false
+    state.action_delay = source_action_delay(context, state, 0)
+    state.ai_target_engaged = false
+    state.movement_heading = nil
+    state.movement_active = false
+    state.movement_route_distance = nil
+    state.movement_step = nil
+    state.combat_meter_update = nil
+    state.combat_action_requested = false
+    state.spell_effect_visible = false
+    state.spell_effect_phase = 0
+    state.spell_effect_action_code = 0
+    state.spell_effect_slot_released = nil
+    state.spell_effect_resolution = nil
+    if type(resolution) == "table" and resolution.effect_started == true and
+       type(resolution.spell_effect_slot) == "number" and
+       type(target.id) == "string" and
+       type(target.source_record_slot) == "number" then
+        local magic = game.modules.magic
+        local effect_profile = type(magic) == "table" and
+            type(magic.actor_effect_profile) == "function" and
+            magic.actor_effect_profile(context.action_code) or nil
+        if type(effect_profile) ~= "table" then
+            return
+        end
+        local pending = {
+            action_code = context.action_code,
+            action_result = resolution.action_result,
+            target_id = target.id,
+            source_record_slot = target.source_record_slot,
+            effect_slot = resolution.spell_effect_slot,
+            initial_countdown = effect_profile.initial_countdown,
+            countdown = effect_profile.initial_countdown,
+            phase = 0,
+            phase_count = effect_profile.phase_count,
+            repeat_countdown = effect_profile.repeat_countdown,
+            caster_combatant = resolution.combatant,
+            ai_target_candidates = context.ai_target_candidates,
+            scene_id = context.movement_scene_id,
+            caster_actor_id = state.actor_id,
+            caster_source_flags = context.source_record_flags or 0,
+            owns_effect_slot = true,
+        }
+
+        -- ROM 0x1597E's type-5 scan marks every live record under the 0x500
+        -- route-cost bound. 0x5322 later consumes those marks one record at
+        -- a time as the preceding sleep animation finishes.
+        if context.action_code == 5 and
+           type(context.ai_target_candidates) == "table" then
+            for _, candidate in ipairs(context.ai_target_candidates) do
+                if type(candidate) == "table" and
+                   type(candidate.id) == "string" and
+                   type(candidate.source_record_slot) == "number" and
+                   type(candidate.service_flags) == "number" and
+                   type(candidate.direct_route_step_cost) == "number" and
+                   (candidate.service_flags & ActorStatus.ACTIVE) ~= 0 and
+                   (candidate.service_flags & ActorStatus.DEAD) == 0 and
+                   candidate.direct_route_step_cost < 0x0500 then
+                    local marker = {
+                        action_code = 5,
+                        actor_id = candidate.id,
+                        scene_id = context.movement_scene_id,
+                    }
+                    spell_effect_scans_by_source_slot[
+                        candidate.source_record_slot] = marker
+                    local candidate_state = type(candidate.id) == "string" and
+                        states[candidate.id] or nil
+                    if type(candidate_state) == "table" then
+                        candidate_state.spell_effect_scan_marker = marker
+                    end
+                end
+            end
+        end
+
+        -- Source record slots remain stable across the field-player alias
+        -- used by the behavior and render passes (party.runner.N vs
+        -- field_player_runner). Lua uses the slot to transfer the pending
+        -- target-owned effect to the actor heartbeat that renders that record.
+        if type(target.source_record_slot) == "number" then
+            pending_spell_effects_by_source_slot[
+                target.source_record_slot] = pending
+        end
+    end
+end
+
+local function actor_matches_pending_spell_target(context, pending)
+    if context.actor_id == pending.target_id then
+        return true
+    end
+    local slot = pending.source_record_slot
+    return slot ~= nil and context.source_record_slot == slot and
+        pending.target_id == "party.runner." .. tostring(slot) and
+        context.actor_id == "field_player_runner"
+end
+
+local function transfer_pending_spell_effect(state, context)
+    local slot = context.source_record_slot
+    if type(slot) ~= "number" then
+        return
+    end
+    local pending = pending_spell_effects_by_source_slot[slot]
+    if type(pending) ~= "table" then
+        return
+    end
+    if pending.scene_id ~= context.movement_scene_id then
+        pending_spell_effects_by_source_slot[slot] = nil
+        return
+    end
+    if not actor_matches_pending_spell_target(context, pending) then
+        return
+    end
+    state.spell_effect_pending = pending
+    pending_spell_effects_by_source_slot[slot] = nil
+end
+
+local function spell_scan_marker(candidate, scene_id)
+    if type(candidate) ~= "table" or
+       type(candidate.source_record_slot) ~= "number" then
+        return nil
+    end
+    local marker = spell_effect_scans_by_source_slot[
+        candidate.source_record_slot]
+    if type(marker) == "table" and marker.scene_id ~= scene_id then
+        spell_effect_scans_by_source_slot[
+            candidate.source_record_slot] = nil
+        marker = nil
+    end
+    if type(marker) == "table" and marker.scene_id == scene_id and
+       marker.actor_id == candidate.id then
+        return marker
+    end
+    local candidate_state = type(candidate.id) == "string" and
+        states[candidate.id] or nil
+    marker = type(candidate_state) == "table" and
+        candidate_state.spell_effect_scan_marker or nil
+    if type(marker) == "table" and marker.scene_id == scene_id and
+       marker.actor_id == candidate.id then
+        return marker
+    end
+    return nil
+end
+
+local function clear_spell_scan_marker(slot, actor_id)
+    local marker = spell_effect_scans_by_source_slot[slot]
+    if type(marker) == "table" and marker.actor_id == actor_id then
+        spell_effect_scans_by_source_slot[slot] = nil
+    end
+    local candidate_state = states[actor_id]
+    if type(candidate_state) == "table" and
+       type(candidate_state.spell_effect_scan_marker) == "table" and
+       candidate_state.spell_effect_scan_marker.actor_id == actor_id then
+        candidate_state.spell_effect_scan_marker = nil
+    end
+end
+
+local function advance_spell_effect(state, context)
+    state.spell_effect_slot_released = nil
+    state.spell_effect_resolution = nil
+    state.spell_effect_visible = false
+    state.spell_effect_phase = 0
+    state.spell_effect_action_code = 0
+    state.spell_effect_completed = false
+    transfer_pending_spell_effect(state, context)
+    if context.phase ~= "render" or
+       type(state.spell_effect_pending) ~= "table" then
+        return
+    end
+
+    local pending = state.spell_effect_pending
+    if pending.scene_id ~= nil and
+       pending.scene_id ~= context.movement_scene_id then
+        state.spell_effect_pending = nil
+        return
+    end
+    if not actor_matches_pending_spell_target(context, pending) then
+        return
+    end
+    state.spell_effect_action_code = pending.action_code
+    if context.source_record_slot ~= pending.source_record_slot then
+        state.spell_effect_phase = pending.phase_count
+        if pending.owns_effect_slot ~= false then
+            state.spell_effect_slot_released = pending.effect_slot
+        end
+        state.spell_effect_pending = nil
+        state.spell_effect_completed = true
+        return
+    end
+    pending.countdown = pending.countdown - 1
+    if pending.countdown < 0 then
+        pending.countdown = pending.repeat_countdown
+        pending.phase = pending.phase + 1
+        state.spell_effect_phase = pending.phase
+        if pending.phase >= pending.phase_count then
+            local combat = game.modules.combat
+            local caster_source_flags = pending.caster_source_flags
+            if type(context.ai_target_candidates) == "table" then
+                for _, candidate in ipairs(context.ai_target_candidates) do
+                    if type(candidate) == "table" and
+                       candidate.id == pending.caster_actor_id and
+                       type(candidate.service_flags) == "number" then
+                        caster_source_flags = candidate.service_flags
+                        break
+                    end
+                end
+            end
+            local skip_delayed_callback = pending.action_code == 2 and
+                context.world_scene_state == 3 and
+                (caster_source_flags & 0x08) == 0
+            if pending.action_code ~= 5 and not skip_delayed_callback and
+               type(combat) == "table" and
+               type(combat.resolve_spell_impact) == "function" and
+               type(context.combatant) == "table" and
+               type(pending.caster_combatant) == "table" then
+                local effect_context = {
+                    combatant = pending.caster_combatant,
+                    ai_random_bound = context.ai_random_bound,
+                    ai_target_candidates =
+                        pending.ai_target_candidates,
+                    combat_meter_service_blocked =
+                        context.combat_meter_service_blocked,
+                }
+                local target = {
+                    id = context.actor_id,
+                    source_record_slot = context.source_record_slot,
+                    combatant = context.combatant,
+                }
+                state.spell_effect_resolution =
+                    combat.resolve_spell_impact(
+                        effect_context, pending, target)
+            end
+            if pending.owns_effect_slot ~= false then
+                state.spell_effect_slot_released = pending.effect_slot
+            end
+            state.spell_effect_pending = nil
+            state.spell_effect_completed = true
+
+            if pending.action_code == 5 then
+                clear_spell_scan_marker(
+                    pending.source_record_slot, pending.target_id)
+                local candidates = type(context.ai_target_candidates) == "table"
+                    and context.ai_target_candidates or
+                    pending.ai_target_candidates
+                if type(candidates) == "table" then
+                    for _, candidate in ipairs(candidates) do
+                        local marker = spell_scan_marker(
+                            candidate, pending.scene_id)
+                        if type(candidate) == "table" and
+                           type(candidate.source_record_slot) == "number" and
+                           type(candidate.service_flags) == "number" and
+                           (candidate.service_flags & ActorStatus.ACTIVE) ~= 0 and
+                           (candidate.service_flags & ActorStatus.DEAD) == 0 and
+                           marker ~= nil then
+                            local next_pending = {
+                                action_code = pending.action_code,
+                                action_result = pending.action_result,
+                                target_id = candidate.id,
+                                source_record_slot =
+                                    candidate.source_record_slot,
+                                effect_slot = pending.effect_slot,
+                                initial_countdown =
+                                    pending.initial_countdown,
+                                countdown = pending.initial_countdown,
+                                phase = 0,
+                                phase_count = pending.phase_count,
+                                repeat_countdown = pending.repeat_countdown,
+                                caster_combatant = pending.caster_combatant,
+                                ai_target_candidates = candidates,
+                                scene_id = pending.scene_id,
+                                caster_source_flags =
+                                    pending.caster_source_flags,
+                                caster_actor_id = pending.caster_actor_id,
+                                owns_effect_slot = false,
+                            }
+                            pending_spell_effects_by_source_slot[
+                                candidate.source_record_slot] = next_pending
+                            break
+                        end
+                    end
+                end
+            end
+            return
+        end
+    end
+    state.spell_effect_visible = true
+    state.spell_effect_phase = pending.phase
+end
+
+local function begin_dynamic_target_action(state, context, target)
+    if not context.dynamic_world_encounter_actor or
+       state.action_delay >= 0 or state.target_motion_effect_active or
+       type(context.action_animation_frame_count) ~= "number" or
+       context.action_animation_frame_count < 1 or
+       type(context.action_animation_increment) ~= "number" or
+       context.action_animation_increment < 1 or
+       type(context.action_animation_threshold) ~= "number" or
+       context.action_animation_threshold < 1 or
+       type(context.action_animation_audio_event) ~= "number" then
+        return nil
+    end
+
+    -- ROM 0xB1DC selects C0A2 for the accepted target heading, requests the
+    -- kind-specific action cue, resets +0x1A/+0x1E, and applies delay mode 1.
+    state.animation_id = "action"
+    state.animation_frame = 0
+    state.animation_accumulator = 0
+    state.animation_increment = context.action_animation_increment
+    state.animation_period = context.action_animation_threshold
+    state.action_animation_complete = false
+    state.action_delay = source_action_delay(context, state, 1)
+    -- ROM 0xB284 invokes the shared 0x55C76 reaction only after the linked
+    -- heading is accepted. Lua resolves the source-derived action now and
+    -- returns a one-heartbeat meter update for the host to apply.
+    state.combat_meter_update = game.modules.combat.resolve_reaction(
+        context, target)
+    local heading_event = context.target_heading_audio_alternate
+        and SoundId.TARGET_HEADING_ALT or SoundId.TARGET_HEADING
+    return context.action_animation_audio_event, heading_event
+end
+
+
+-- register this module's definitions
+R.source_action_delay = source_action_delay
+R.advance_source_action_delay = advance_source_action_delay
+R.advance_target_motion_effect = advance_target_motion_effect
+R.request_target_motion_effect = request_target_motion_effect
+R.advance_target_marker = advance_target_marker
+R.advance_world_target_selection = advance_world_target_selection
+R.action_line_clear = action_line_clear
+R.first_wounded_party_runner = first_wounded_party_runner
+R.classify_spell_dispatch = classify_spell_dispatch
+R.classify_item_dispatch = classify_item_dispatch
+R.begin_dynamic_item_action = begin_dynamic_item_action
+R.begin_spell_cast = begin_spell_cast
+R.actor_matches_pending_spell_target = actor_matches_pending_spell_target
+R.transfer_pending_spell_effect = transfer_pending_spell_effect
+R.spell_scan_marker = spell_scan_marker
+R.clear_spell_scan_marker = clear_spell_scan_marker
+R.advance_spell_effect = advance_spell_effect
+R.begin_dynamic_target_action = begin_dynamic_target_action
+return R
