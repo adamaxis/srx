@@ -5402,13 +5402,22 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.host.set_screen = [this](const std::uint16_t screen) {
         const auto attributes_screen = static_cast<std::uint16_t>(
             srx::MenuScreen::ATTRIBUTES_SKILLS);
+        const auto cyberware_screen = static_cast<std::uint16_t>(
+            srx::MenuScreen::CYBERWARE);
         const auto was_attributes =
             menu_route_screen_ == attributes_screen;
         const auto is_attributes = screen == attributes_screen;
+        const auto was_cyberware = menu_route_screen_ == cyberware_screen;
+        const auto is_cyberware = screen == cyberware_screen;
         if (is_attributes && !was_attributes) {
             begin_command_overview_attributes_skills();
         } else if (was_attributes && !is_attributes) {
             command_overview_attributes_skills_.close_to_parent();
+        }
+        if (is_cyberware && !was_cyberware) {
+            begin_command_overview_cyberware();
+        } else if (was_cyberware && !is_cyberware) {
+            command_overview_cyberware_active_ = false;
         }
         menu_route_screen_ = screen;
         posture_dialog_active_ =
@@ -5418,6 +5427,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
         menu_route_active_ = false;
         menu_route_screen_ = 0U;
         posture_dialog_active_ = false;
+        command_overview_cyberware_active_ = false;
         command_overview_attributes_skills_.close_to_parent();
         command_overview_.close();
     };
@@ -10784,7 +10794,7 @@ void FieldSceneRuntime::advance_frame() {
             (field_controller_sample_state_.events & 0x0F00U) != 0U) {
             command_overview_inventory_selector_suppressed_ = false;
         }
-        if (command_overview_cyberware_active_) {
+        if (command_overview_cyberware_active_ && !menu_route_active_) {
             // ROM 0x11950 waits for one controller event after drawing the
             // +0x90 bit rows, refreshes the shared menu row, and returns.
             // Keep the wait non-blocking in the Qt event loop.

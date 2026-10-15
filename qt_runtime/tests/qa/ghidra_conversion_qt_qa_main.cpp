@@ -21173,6 +21173,9 @@ int main(int argc, char** argv) {
                 }
                 // The converted command loop dispatches A on page 4 to the
                 // ROM 0x11950 Cyberware view.
+                // Isolate this action from command entry and page-navigation
+                // sounds so the assertion covers only the A dispatch.
+                field_audio_events.clear();
                 tap_qa_controller_button(field_scene, 0x40U);
                 if (!field_scene.cyberware_menu_open()) {
                     std::cerr << "field Cyberware dump: A did not open the "
@@ -21308,12 +21311,16 @@ int main(int argc, char** argv) {
                     field_scene.command_overview_view().source_state
                             .primary_page != 4U ||
                     returned_command_page != command_page_scene ||
-                    field_audio_events !=
-                        std::vector<std::uint16_t>{0x24U} ||
                     !save_named_scene("returned-command-page",
                                       returned_command_page)) {
                     std::cerr << "field Cyberware dump: return event did not "
                                  "restore command page 4 pixel-for-pixel\n";
+                    return 3;
+                }
+                if (field_audio_events !=
+                    std::vector<std::uint16_t>{0x24U, 0x25U}) {
+                    std::cerr << "field Cyberware dump: source return refresh "
+                                 "did not request event 0x25 once\n";
                     return 3;
                 }
                 tap_qa_controller_button(field_scene, 0x40U);
@@ -21321,7 +21328,7 @@ int main(int argc, char** argv) {
                 if (!field_scene.cyberware_menu_open() ||
                     reopened_scene != cyberware_scene ||
                     field_audio_events !=
-                        std::vector<std::uint16_t>{0x24U, 0x24U} ||
+                        std::vector<std::uint16_t>{0x24U, 0x25U, 0x24U} ||
                     !save_named_scene("reopened", reopened_scene)) {
                     std::cerr << "field Cyberware dump: reopen left stale "
                                  "or changed page content\n";

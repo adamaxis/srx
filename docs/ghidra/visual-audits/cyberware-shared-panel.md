@@ -1,6 +1,6 @@
 # Cyberware Shared Command-Panel Audit
 
-Date: 2026-10-09
+Date: 2026-10-14
 ROM: US Genesis Shadowrun
 Screen: command selector page 4, A opens Cyberware (`0x11950`)
 
@@ -47,11 +47,14 @@ active runner's `+0x90` word selects.
 4. **Does it animate?** No timer or cursor animation is used by this text page.
    The ROM draws once and waits for a controller event. Thirty held frames in
    the Qt route are pixel-identical to entry.
-5. **Is there a sound?** The parent command handler requests event `0x24` on
-   A. It maps to `audio.menu.command-024` / `menu-024.flac`, with 2.484 seconds
-   of file audio including its release tail. The route QA sees exactly one
-   event on entry, no repeat during the hold or return, and one more on reopen.
-   This audit does not claim a Windows loopback measurement for this route.
+5. **Is there a sound?** A on the command row requests event `0x24`. The
+   Cyberware child and its 30-frame hold are silent. On return the parent
+   resumes at `0x10D90`, rebuilds the command view, and requests event `0x25`;
+   reopening the child requests `0x24` again. The QA checks that sequence.
+   Event `0x24` maps to `audio.menu.command-024` / `menu-024.flac` (2.484
+   seconds including its release tail), and `0x25` to
+   `audio.menu.command-025` / `menu-025.flac` (2.134 seconds). This audit does
+   not claim a Windows loopback measurement for this route.
 6. **Are the other screen parts correct?** Full 320x224 parent, child, held,
    return, reopen, populated, and empty-branch frames were checked. The left
    runner portrait, all inventory cells, posture bar/value, selected command
@@ -75,16 +78,19 @@ active runner's `+0x90` word selects.
 
 ## Verification
 
-- **Code changed:** `FieldSceneRuntime::paint_command_overview` redraws only
-  the center content panel when Cyberware opens. In this content slice,
-  `cyberware.lua` also supplies explicit keys for the 18 source strings; the
-  typed presenter still selects and draws the page.
+- **Code changed:** the Lua route now owns the Cyberware wait-any input and
+  return. `FieldSceneRuntime` opens/closes the typed Cyberware presenter as the
+  route enters/leaves; the renderer still draws its existing full-screen
+  content. In the earlier content slice, `cyberware.lua` added explicit keys
+  for the 18 source strings.
 - **Behavior implemented:** the `+0x90` installed-bit list and empty branch
-  retain their source ordering and input/return behavior.
+  retain their source ordering. Lua waits for a fresh high-byte controller
+  event; the parent command screen then performs the ROM refresh and sound.
 - **Regression coverage:**
   `shadowrun_ghidra_conversion_qt_field_cyberware_populated_qa` and
-  `shadowrun_ghidra_conversion_qt_field_cyberware_empty_qa` pass in Debug and
-  Release. They save `command-page.bmp`, `actual.bmp`, `held.bmp`,
+  `shadowrun_ghidra_conversion_qt_field_cyberware_empty_qa` and
+  `shadowrun_ghidra_gameplay_script_menu_route` pass in Debug and Release. They
+  save `command-page.bmp`, `actual.bmp`, `held.bmp`,
   `returned-command-page.bmp`, and `reopened.bmp` under
   `build/conversion/qt/<configuration>/qt_runtime/field-cyberware-populated/`
   and the corresponding `field-cyberware-empty/` directory.

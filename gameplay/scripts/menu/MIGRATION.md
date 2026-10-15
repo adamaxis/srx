@@ -12,7 +12,7 @@ Tests: `lua5.4 tests/menu_tests.lua` (27 checks).
 | FSR 10577-10581 | magic spell interface (advance 5914) | legacy MAGIC | port queue |
 | FSR 10582-10598 | automatic_use 6581, first_aid 6597, inventory_trade 6400 | children of ITEM_ACTION (legacy) | port queue |
 | FSR 10599-10602 | selector-suppressed latch | dropped: the route stack makes it unnecessary [H, verify after ITEM_ACTION port] | removed |
-| FSR 10603-10612 | cyberware wait | `wait_any` (CYBERWARE) | **ported** |
+| FSR 10603-10612 | Cyberware full-screen wait/return | `screens/wait_any.lua` (`FULL`); Qt presenter builds the typed +0x90 rows | **ported** |
 | FSR 10613-10625 | magical_defense_wait | `wait_any` (MAGICAL_DEFENSE); MAGIC pushes it once ported | ported module |
 | FSR 10626-10692 | posture dialog | `screens/posture.lua` | **ported** (fix D4) |
 | FSR 10693-10938 | pocket secretary / dismiss runner | legacy POCKET_SECRETARY (returns `exit_menu` = FFF0CD) | port queue |

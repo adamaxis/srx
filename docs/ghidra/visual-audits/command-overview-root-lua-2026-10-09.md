@@ -94,8 +94,9 @@ focus state and posture input. C++ samples the focused Qt controller once per
 field frame, exposes narrow live-runner services, mirrors the Lua-selected
 page/row into the existing typed presenter, and paints the full command panel.
 The Attributes/Skills command view is now a Lua screen; its full-screen Qt
-presenter mirrors the Lua column/row cursor and live runner facts. Other child
-screens are registered as explicit transitional adapters:
+presenter mirrors the Lua column/row cursor and live runner facts. Cyberware
+uses the shared Lua wait-any screen while Qt builds its typed bit-list panel.
+Other child screens are registered as explicit transitional adapters:
 their stack position is Lua-routed, but their behavior and input state still
 use the existing C++ screen implementation.
 

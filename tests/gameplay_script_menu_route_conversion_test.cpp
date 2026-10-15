@@ -15,6 +15,7 @@ namespace {
 constexpr std::uint16_t kCommand = 1U;
 constexpr std::uint16_t kPosture = 2U;
 constexpr std::uint16_t kAttributes = 5U;
+constexpr std::uint16_t kCyberware = 6U;
 constexpr std::uint16_t kPocketSecretary = 9U;
 constexpr std::uint16_t kMoveSound = 0x25U;
 constexpr std::uint16_t kSelectSound = 0x24U;
@@ -191,6 +192,26 @@ int main() {
     check(std::find(sounds.begin(), sounds.end(), kSelectSound) !=
               sounds.end(),
           "command action uses the select sound", failures);
+
+    runtime.advance_menu_route(0x0400U); // page 6 -> 5.
+    runtime.advance_menu_route(0x0400U); // page 5 -> 4 (Cyberware).
+    check(runtime.menu_route_snapshot().page == 4,
+          "command navigation reaches Cyberware", failures);
+    const auto legacy_count_before_cyberware = legacy_screens.size();
+    runtime.advance_menu_route(0x1000U); // A opens the wait-only screen.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kCyberware && route.page == 4 &&
+              legacy_screens.size() == legacy_count_before_cyberware,
+          "Cyberware is a Lua wait screen, not a legacy adapter", failures);
+    runtime.advance_menu_route(0x0002U); // held input is not a new edge.
+    check(runtime.menu_route_snapshot().top_screen == kCyberware,
+          "Cyberware waits through held-only input", failures);
+    runtime.advance_menu_route(0x0100U); // a fresh Up edge returns.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kCommand && route.page == 4,
+          "any fresh controller edge returns to the selected command page",
+          failures);
+
     runtime.close_menu_route();
     check(!runtime.menu_route_snapshot().open && closed_count == 2,
           "host scene transition closes the complete route", failures);
