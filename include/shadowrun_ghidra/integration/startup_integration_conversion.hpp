@@ -130,6 +130,10 @@ struct StartupIntegrationState {
     // runtime when the opening completes or exits on Start and returns to the
     // shared field setup; loading a save does not set it.
     bool new_game_opening_completed = false;
+    // ROM 0x1A9E clears FFF101 at title-loop entry and 0x1BAC sets it to FF
+    // only after the seven-edge sequence matches. Preserve that result across
+    // the title-to-field handoff; field menu exposure remains a separate port.
+    bool title_debug_menu_unlocked = false;
     std::vector<std::string> event_log;
 };
 

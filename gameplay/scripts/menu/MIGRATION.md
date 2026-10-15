@@ -69,7 +69,7 @@ not connected to the live field route yet.
 Sound sites for all of these: out/menu_sound_sites.txt (0x25 = move/toggle, 0x24 = confirm; Start paths silent) [C].
 
 - D20 Automatic-use items (0x13, 0x14, 0x16, 0x18..0x2B: fetish, passkey, smart goggles, foci, talisman, spell lock, totems) only print "This item is automatically used." (0xD202F) and wait (0x12168 -> 0x121C0). The menu applies no effect, so nothing is missing from the port [C]. The passive effects are read elsewhere by code; that's outside the menu scope.
-- D21 Pocket Secretary row 5 = the debug menu 0x599DA (docs/12). A `screens/debug_menu.lua` draft exists but is not registered in `field_init.lua`; FFF101 is also not connected to the active field context, so the hidden row is not reachable in the live route.
+- D21 Pocket Secretary row 5 = the debug menu 0x599DA (docs/12). The title-loop match is now carried as `StartupIntegrationState::title_debug_menu_unlocked`, but it is not yet imported into the active field context. A `screens/debug_menu.lua` draft exists but is not registered in `field_init.lua`, so the hidden row remains unavailable in the live route.
 
 - D22 Magic rules and screens are registered in the active field route. Lua owns class/resource routing, spell selection, success/effect/defense values, force/posture input, equipment publication, and cursor cadence; C++ supplies typed ROM spell records and paints the resulting view. Field spell casting/target effects remain a separate gameplay route.
 - D23 Pick System return path still needs live route wiring and Qt verification; the Matrix route is not active in `field_init.lua`.

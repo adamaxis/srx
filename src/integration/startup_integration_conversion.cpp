@@ -227,6 +227,7 @@ StartupIntegrationStartResult restart_startup_attract_loop(
     state.save_field_restore_result.reset();
     state.pre_title_complete = false;
     state.new_game_opening_completed = false;
+    state.title_debug_menu_unlocked = false;
     state.event_log.emplace_back("attract_loop.restart");
     return begin_pre_title_from_loaded_assets(state, callbacks);
 }

@@ -1033,6 +1033,11 @@ private:
         const auto result =
             advance_title_loop_frame(title_loop_, title_loop_callbacks_);
         if (result == TitleLoopFrameResult::palette_transition_complete) {
+            // 0x1BAC publishes FFF101 only after the title exit palette pass
+            // has completed; carry the typed result into startup state before
+            // the title loop is retired by the following menu/field routes.
+            state_.title_debug_menu_unlocked =
+                title_loop_.input_history.sequence_complete;
             // 0x075E runs the six-command, 18-VBlank audio service after the
             // title loop returns and before it enters the Start Options page.
             begin_title_mode_entry_service(title_mode_entry_service_,
