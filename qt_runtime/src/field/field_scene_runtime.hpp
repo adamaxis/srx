@@ -315,6 +315,10 @@ public:
     bool set_default_actor_physical_meter_for_dump(
         std::uint16_t source_order, std::uint8_t physical_meter) noexcept;
     bool open_command_overview_for_dump();
+#ifdef SHADOWRUN_QT_QA_DRIVER
+    // Injects the stale parent action-row condition for a visual overlap probe.
+    void set_inventory_action_overlay_probe_for_dump(bool active) noexcept;
+#endif
     bool open_attributes_skills_for_dump();
     bool attributes_skills_menu_open() const noexcept {
         return command_overview_attributes_skills_.is_open();

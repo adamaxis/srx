@@ -2117,20 +2117,29 @@ independent magazines would contradict this ROM's `+0x4E` transitions.
 
 1. **Does it look correct?** The 26 full-screen 320x224 captures cover the
    Clips selector, nested Trade, recipient changes, messages, reload prompt,
-   and result states. The panel text and controls stay in the center panel;
-   portrait, inventory, posture bars, and right HUD remain visible around it.
-   This is a host rendering check using extracted ROM assets, not an
-   independent Genesis pixel match.
+   and result states. Review caught the center clear erasing the upper part of
+   the posture strip; the presenter now restores its frame, bar, and status
+   label before drawing the Clips row. The four selectors and selection-driven
+   root/Trade footer are checked against their extracted assets and source text
+   field. This is a
+   host rendering check, not an independent Genesis pixel match.
 2. **Does the visible look reflect the behavioral state?** Lua owns the route
    cursor and nested state. QA confirms all four top-level selections, each
    Trade focus, the displayed Ricky-to-Winston recipient change and wrap back
    to Ricky, quantity changes, and default-No/Yes reload state. Typed route
    tests check ammo writes and byte arithmetic.
 3. **Are the visuals themselves correct?** ROM blocks `0xCD33E`, `0xCD37A`,
-   and `0xCD3B6` supply separate Clips, Trade, and confirmation rows. Their
-   selected focus blocks and imported labels are visible in the expected
-   region. The available longplay has no matching Clips sequence, so external
-   Genesis fidelity remains unverified.
+   and `0xCD3B6` supply separate Clips, Trade, and confirmation rows. The Clips
+   focus blocks start at x=136,160,184,208 over the four button positions; the
+   shared posture strip remains pixel-identical to its parent. The Yes/No
+   focus blocks line up with their controls, including the first Yes control
+   at x=160 (the earlier x=136 placement duplicated it). Result waits restore
+   the shared command tabs from `CD2C6`, and recipient names center in the
+   Trade prompt field. Root and Trade captions follow D1DDC/D1E24 selection;
+   those labels and reload Yes/No are centered in the fixed 17-character
+   field. The
+   available longplay shows the parent Clips command at frame `002550`, but not
+   the Clips child, so child-screen Genesis fidelity remains unverified.
 4. **Is it animated, and should it be?** The ROM samples the root, prompt,
    and Trade loops after VBlank. No timed animation call is traced for these
    screens; their visible changes follow input and inventory state.
@@ -2139,34 +2148,39 @@ independent magazines would contradict this ROM's `+0x4E` transitions.
    event `0x24` (2.484 s including its release tail). Route QA checks event
    requests; Windows loopback for this exact route remains unrecorded.
 6. **Are the other visible parts of the screen also correct?** Every capture
-   includes the complete frame. Message and confirmation panels do not replace
-   the side portraits, inventory, posture, or right HUD. Both child returns
-   restore their parent composition.
+   includes the complete frame. Trade and confirmation retain the side
+   portraits, inventory, restored posture panel, and right HUD. Message pages
+   clear the old title and restore the shared command-tab row. Both child
+   returns restore their parent composition.
 7. **Do multiple frames support the interpretation?** Captures cover all
    selector positions, wrap, no-recipient and zero-reserve outcomes, Trade
    quantity and recipient changes, transfer/completion, reload No/Yes, and
-   return. Debug and Release emit the same 26 filenames with matching
-   SHA-256 hashes. No matching independent Genesis sequence exists in the
-   supplied video.
-8. **Was old UI cleared before new controls were drawn?** The renderer clears
-   the source center panel before the message or child state appears. The
-   message screen removes its title and button strip; the Cancel message
-   acknowledgement returns to a pixel-identical parent image. The nested
-   Trade completion also clears the old controls before showing its result.
-9. **Was the complete affected sequence reviewed?** All 26 current full-screen
-   captures were reviewed in the complete sequence. The dedicated QA output
-   directory is cleared before each dump, and the corresponding Release
-   captures have the same names and SHA-256 hashes.
+   return. Debug and Release emit the same 27 filenames, representing 18
+   unique images, with matching SHA-256 hashes. No matching independent Clips
+   child sequence exists in the supplied video.
+8. **Was old UI cleared before new controls were drawn?** The Clips and Trade
+   child rows replace the parent five-button row; their focus blocks overlay
+   only their aligned buttons. The shared posture strip is redrawn after the
+   center clear. Reload confirmation replaces the row with the two-button
+   source art, and result waits restore the shared parent command controls.
+   Cancel acknowledgement returns to a pixel-identical parent image.
+9. **Was the complete affected sequence reviewed?** All 27 current full-screen
+   captures were reviewed in three full-frame contact sheets and key states at
+   native resolution. The dedicated QA output directory is cleared before
+   each dump; Release has the same filenames and SHA-256 hashes.
 
 **Code changed:** Lua now owns Clips selection, reload confirmation, Trade,
 distribution, and result flow; the typed host bridge supplies active party and
 ammo records, magazine capacity, and write-back. **Behavior implemented:** ROM
 selector/wait flow, recipient filtering and cycling, reload capacity, transfer,
-and byte-based distribution. **Internally checked:** Debug and Release route
-tests pass; 24 named states plus two aliases (26 BMPs) match by SHA-256.
-**Independent evidence:** the supplied longplay contains no matching Clips
-sequence. **Open:** loaded-save field composition and route-level audio
-loopback remain unverified.
+and byte-based distribution. **Internally checked:** Debug and Release Clips,
+command-menu, and inventory-action QA pass; 18 unique Clips images across 27
+BMPs match by SHA-256. Inventory-action QA verifies that one B
+acknowledges the reload message and restores the parent Clips page; pressing B
+again would re-enter the child. The 58 action captures also match by SHA-256.
+**Independent evidence:** the supplied longplay shows the parent Clips page at
+frame `002550` but no matching Clips child sequence. **Open:** loaded-save
+field composition and route-level audio loopback remain unverified.
 
 ### Applied review: held D-pad movement and field redraw
 

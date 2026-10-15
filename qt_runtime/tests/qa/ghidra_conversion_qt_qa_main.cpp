@@ -2,6 +2,97 @@
 
 namespace {
 
+bool source_menu_caption_matches(const QImage& scene, const QImage& font,
+                                const int origin_x, const int origin_y,
+                                const std::string_view text) {
+    if (font.isNull() || font.width() < 8 || font.height() < 8 ||
+        origin_x < 0 || origin_y < 0 ||
+        origin_x + static_cast<int>(text.size() * 8U) > scene.width() ||
+        origin_y + 8 > scene.height()) {
+        return false;
+    }
+
+    QImage expected(static_cast<int>(text.size() * 8U), 8,
+                    QImage::Format_ARGB32_Premultiplied);
+    expected.fill(Qt::black);
+    QPainter painter(&expected);
+    auto cursor_x = 0;
+    for (const unsigned char code : text) {
+        if (code == '\n') {
+            painter.end();
+            return false;
+        }
+        if (code < 0x20U || code > 0x7EU) {
+            cursor_x += 8;
+            continue;
+        }
+        const auto glyph = static_cast<int>(code - 0x20U);
+        const auto source_x = (glyph % 16) * 8;
+        const auto source_y = (glyph / 16) * 8;
+        if (source_x + 8 > font.width() || source_y + 8 > font.height()) {
+            painter.end();
+            return false;
+        }
+
+        QImage tinted_glyph(8, 8, QImage::Format_ARGB32_Premultiplied);
+        tinted_glyph.fill(Qt::transparent);
+        for (int glyph_y = 0; glyph_y < 8; ++glyph_y) {
+            for (int glyph_x = 0; glyph_x < 8; ++glyph_x) {
+                const auto source_pixel =
+                    font.pixelColor(source_x + glyph_x,
+                                    source_y + glyph_y);
+                const auto coverage = std::max(
+                    {source_pixel.red(), source_pixel.green(),
+                     source_pixel.blue()});
+                if (source_pixel.alpha() == 0 || coverage == 0) {
+                    continue;
+                }
+                const auto alpha = static_cast<int>(
+                    (static_cast<std::uint32_t>(source_pixel.alpha()) *
+                     static_cast<std::uint32_t>(coverage)) /
+                    255U);
+                tinted_glyph.setPixelColor(
+                    glyph_x, glyph_y, QColor(0, 255, 0, alpha));
+            }
+        }
+        painter.drawImage(cursor_x, 0, tinted_glyph);
+        cursor_x += 8;
+    }
+    painter.end();
+
+    const auto expected_rgb = expected.convertToFormat(QImage::Format_RGB32);
+    for (int y = 0; y < expected_rgb.height(); ++y) {
+        for (int x = 0; x < expected_rgb.width(); ++x) {
+            if (scene.pixel(origin_x + x, origin_y + y) !=
+                expected_rgb.pixel(x, y)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool centered_source_menu_text_matches(
+    const QImage& scene, const QImage& font, const int field_x,
+    const int field_width, const int origin_y, const std::string_view text) {
+    const auto text_width = static_cast<int>(text.size() * 8U);
+    if (field_width < 0 || text_width > field_width) {
+        return false;
+    }
+    const auto origin_x = field_x + (field_width - text_width) / 2;
+    return source_menu_caption_matches(scene, font, origin_x, origin_y, text);
+}
+
+std::string centered_source_menu_caption(const std::string_view label) {
+    constexpr std::size_t kCaptionWidth = 17U;
+    std::string caption(kCaptionWidth, ' ');
+    if (label.size() <= kCaptionWidth) {
+        const auto offset = (kCaptionWidth - label.size()) / 2U;
+        caption.replace(offset, label.size(), label);
+    }
+    return caption;
+}
+
 int run_field_world_activity_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -24286,7 +24377,10 @@ int main(int argc, char** argv) {
                 }
                 const auto action_open_scene = render_scene();
                 const auto weapon_one_equipped_icon = direct_weapon_icon(1U, 1U);
-                if (!region_matches(action_open_scene, focus_equip, 128, 184) ||
+                if (!region_matches(action_open_scene, focus_equip, 136, 184) ||
+                    !source_menu_caption_matches(
+                        action_open_scene, direct_asset("font.bmp"), 112,
+                        200, "    Inventory    ") ||
                     !field_inventory_selector_survives(action_open_scene, 0U,
                                                        0U) ||
                     !weapon_damage_row_matches(action_open_scene, 1U) ||
@@ -24313,8 +24407,11 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto action_cancel_scene = render_scene();
-                if (!region_matches(action_cancel_scene, focus_cancel, 200,
+                if (!region_matches(action_cancel_scene, focus_cancel, 208,
                                     184) ||
+                    !source_menu_caption_matches(
+                        action_cancel_scene, direct_asset("font.bmp"), 112,
+                        200, "    Inventory    ") ||
                     !save_scene("01_inventory_action_cancel",
                                 action_cancel_scene)) {
                     std::cerr << "field action dump: cancel focus is "
@@ -24329,7 +24426,7 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto action_reselected_scene = render_scene();
-                if (!region_matches(action_reselected_scene, focus_equip, 128,
+                if (!region_matches(action_reselected_scene, focus_equip, 136,
                                     184) ||
                     !same_image(action_open_scene, action_reselected_scene) ||
                     !save_scene("02_inventory_action_reselected",
@@ -25407,7 +25504,7 @@ int main(int argc, char** argv) {
                 }
                 const auto gear_action_scene = render_scene();
                 if (!field_scene.inventory_action_open() ||
-                    !region_matches(gear_action_scene, focus_equip, 128, 184) ||
+                    !region_matches(gear_action_scene, focus_equip, 136, 184) ||
                     !save_scene("32_gear_action_menu", gear_action_scene) ||
                     !press_with_expected_audio(0x40U, 0x24U)) {
                     std::cerr << "field action dump: gear action row or "
@@ -25592,6 +25689,33 @@ int main(int argc, char** argv) {
                     return QImage(QString::fromStdWString(
                         (asset_root / "menu" / "field" / name).wstring()));
                 };
+                const auto button_panel_matches =
+                    [&](const QImage& scene, const QImage& row_background,
+                        const QImage& focus, const int focus_x) {
+                        const auto shell = direct_asset("background.bmp");
+                        if (shell.isNull() || row_background.isNull() ||
+                            focus.isNull()) {
+                            return false;
+                        }
+                        QImage expected(160, 16, QImage::Format_RGB32);
+                        expected.fill(Qt::black);
+                        QPainter expected_painter(&expected);
+                        // Keep only the shared shell outside the source's
+                        // 15-cell child row. The five parent tabs are not
+                        // allowed to survive anywhere in this 160 px panel.
+                        expected_painter.drawImage(
+                            QRect(0, 0, 24, 16), shell,
+                            QRect(96, 184, 24, 16));
+                        expected_painter.drawImage(
+                            QRect(144, 0, 16, 16), shell,
+                            QRect(240, 184, 16, 16));
+                        expected_painter.drawImage(
+                            24, 0, row_background.convertToFormat(
+                                        QImage::Format_RGB32));
+                        expected_painter.drawImage(24 + focus_x, 0, focus);
+                        expected_painter.end();
+                        return region_matches(scene, expected, 96, 184);
+                    };
                 const auto same_clip_record =
                     [](const RunnerRecordFields& left,
                        const RunnerRecordFields& right) {
@@ -25602,6 +25726,13 @@ int main(int argc, char** argv) {
                                left.equipped_item_code ==
                                    right.equipped_item_code;
                     };
+                constexpr std::array<std::string_view, 4>
+                    kClipsActionCaptions{{
+                        "Reload", "Trade", "Distribute", "Cancel"}};
+                constexpr std::array<std::string_view, 4>
+                    kClipsTradeCaptions{{
+                        "Increase Clips", "Decrease Clips", "Trade Clips",
+                        "Change Recipient"}};
                 const auto clips_row_matches =
                     [&](const QImage& scene, const QImage& focus,
                         const std::size_t focus_index) {
@@ -25611,14 +25742,13 @@ int main(int argc, char** argv) {
                             focus_index >= 4U) {
                             return false;
                         }
-                        auto expected = background.convertToFormat(
-                            QImage::Format_RGB32);
-                        QPainter expected_painter(&expected);
-                        expected_painter.drawImage(
-                            8 + static_cast<int>(focus_index * 24U), 0,
-                            focus);
-                        expected_painter.end();
-                        return region_matches(scene, expected, 120, 184);
+                        return button_panel_matches(
+                                   scene, background, focus,
+                                   16 + static_cast<int>(focus_index * 24U)) &&
+                               source_menu_caption_matches(
+                                   scene, direct_asset("font.bmp"), 112, 200,
+                                   centered_source_menu_caption(
+                                       kClipsActionCaptions[focus_index]));
                     };
                 const auto clips_confirmation_row_matches =
                     [&](const QImage& scene, const bool yes_selected) {
@@ -25630,13 +25760,15 @@ int main(int argc, char** argv) {
                         if (background.isNull() || focus.isNull()) {
                             return false;
                         }
-                        auto expected = background.convertToFormat(
-                            QImage::Format_RGB32);
-                        QPainter expected_painter(&expected);
-                        expected_painter.drawImage(
-                            yes_selected ? 16 : 64, 0, focus);
-                        expected_painter.end();
-                        return region_matches(scene, expected, 120, 184);
+                        return button_panel_matches(
+                                   scene, background, focus,
+                                   yes_selected ? 40 : 64) &&
+                               source_menu_caption_matches(
+                                   scene, direct_asset("font.bmp"), 112,
+                                   200,
+                                   yes_selected
+                                       ? "       Yes       "
+                                       : "       No        ");
                     };
                 const auto clips_trade_row_matches =
                     [&](const QImage& scene, const QImage& focus,
@@ -25667,17 +25799,22 @@ int main(int argc, char** argv) {
                         }
                         return true;
                     };
-                const auto clips_message_controls_are_clear =
+                const auto clips_parent_button_panel_matches =
                     [&](const QImage& scene) {
-                        if (!clips_modal_title_is_clear(scene)) return false;
-                        for (int y = 184; y < 200; ++y) {
-                            for (int x = 120; x < 240; ++x) {
-                                if (scene.pixelColor(x, y) != Qt::black) {
-                                    return false;
-                                }
-                            }
+                        const auto shell = direct_asset("background.bmp");
+                        if (shell.isNull() || shell.width() < 256 ||
+                            shell.height() < 200) {
+                            return false;
                         }
-                        return true;
+                        const auto expected = shell.copy(96, 184, 160, 16)
+                                                  .convertToFormat(
+                                                      QImage::Format_RGB32);
+                        return region_matches(scene, expected, 96, 184);
+                    };
+                const auto clips_result_screen_matches =
+                    [&](const QImage& scene) {
+                        return clips_modal_title_is_clear(scene) &&
+                               clips_parent_button_panel_matches(scene);
                     };
                 const auto clips_region_differs =
                     [](const QImage& left, const QImage& right,
@@ -25702,23 +25839,38 @@ int main(int argc, char** argv) {
                         if (expected.size() != actual.size()) {
                             return false;
                         }
-                        // Selection changes only the source action row and
-                        // the command caption. Every other pixel in the
-                        // Clips frame (portrait, inventory cells, status
-                        // bars, title, counter, and surrounding shell) must
-                        // remain stable while the selector moves.
+                        // Selection changes the source action row and its
+                        // D1DDC/D1E24 footer caption. Every other pixel in
+                        // the Clips frame must remain stable.
                         for (int y = 0; y < expected.height(); ++y) {
                             for (int x = 0; x < expected.width(); ++x) {
                                 const auto in_action_row =
                                     x >= 120 && x < 240 && y >= 184 &&
                                     y < 200;
-                                const auto in_command_caption =
-                                    x >= 104 && x < 264 && y >= 200 &&
+                                const auto in_action_caption =
+                                    x >= 112 && x < 248 && y >= 200 &&
                                     y < 208;
-                                if (in_action_row || in_command_caption) {
+                                if (in_action_row || in_action_caption) {
                                     continue;
                                 }
                                 if (expected.pixel(x, y) != actual.pixel(x, y)) {
+                                    return false;
+                                }
+                            }
+                        }
+                        return true;
+                    };
+                const auto clips_posture_panel_matches =
+                    [](const QImage& parent, const QImage& child) {
+                        if (parent.size() != child.size()) {
+                            return false;
+                        }
+                        // ROM 0x11B5C redraws the shared shell after the
+                        // center clear. The posture strip must survive Clips
+                        // entry pixel-for-pixel above the replacement row.
+                        for (int y = 160; y < 184; ++y) {
+                            for (int x = 96; x < 256; ++x) {
+                                if (parent.pixel(x, y) != child.pixel(x, y)) {
                                     return false;
                                 }
                             }
@@ -25779,11 +25931,30 @@ int main(int argc, char** argv) {
                 }
                 const auto initial_clips_scene = render_scene();
                 if (!clips_row_matches(initial_clips_scene, clips_focus[0], 0U) ||
+                    !clips_posture_panel_matches(clips_parent_scene,
+                                                 initial_clips_scene) ||
                     !save_scene("00_clips_reload_selected",
                                 initial_clips_scene) ||
                     !save_scene("actual", initial_clips_scene)) {
-                    std::cerr << "field clips dump: Clips row did not replace "
-                                 "the five-button command row\n";
+                    std::cerr << "field clips dump: Clips child did not "
+                                 "replace the command row and restore the "
+                                 "shared posture panel\n";
+                    return 3;
+                }
+
+                // A stale inventory action can coexist with Clips after an
+                // interrupted route. The child panel must still own all 160
+                // pixels; the parent action row and footer cannot be painted
+                // over it later in the frame.
+                field_scene.set_inventory_action_overlay_probe_for_dump(true);
+                const auto stale_action_overlay_scene = render_scene();
+                field_scene.set_inventory_action_overlay_probe_for_dump(false);
+                if (!clips_row_matches(stale_action_overlay_scene,
+                                       clips_focus[0], 0U) ||
+                    !save_scene("00a_clips_stale_inventory_overlay_hidden",
+                                stale_action_overlay_scene)) {
+                    std::cerr << "field clips dump: stale inventory controls "
+                                 "overlapped the Clips button panel\n";
                     return 3;
                 }
 
@@ -25844,7 +26015,7 @@ int main(int argc, char** argv) {
                 if (!field_scene.clips_menu_open() ||
                     field_scene.clips_menu_message() !=
                         ClipsMenuMessage::function_aborted ||
-                    !clips_message_controls_are_clear(clips_cancel_scene) ||
+                    !clips_result_screen_matches(clips_cancel_scene) ||
                     !same_clip_record(field_scene.active_runner_record(),
                                       initial_record) ||
                     !save_scene("05_clips_cancel_message",
@@ -25881,7 +26052,7 @@ int main(int argc, char** argv) {
                 if (!field_scene.clips_menu_open() ||
                     field_scene.clips_menu_message() !=
                         ClipsMenuMessage::no_party_members ||
-                    !clips_message_controls_are_clear(no_party_scene) ||
+                    !clips_result_screen_matches(no_party_scene) ||
                     !save_scene("05a_clips_no_party_message",
                                 no_party_scene)) {
                     std::cerr << "field clips dump: no-recipient Trade did "
@@ -25898,7 +26069,7 @@ int main(int argc, char** argv) {
                 const auto empty_reserve_scene = render_scene();
                 if (field_scene.clips_menu_message() !=
                         ClipsMenuMessage::function_aborted ||
-                    !clips_message_controls_are_clear(empty_reserve_scene) ||
+                    !clips_result_screen_matches(empty_reserve_scene) ||
                     !save_scene("05b_clips_zero_reserve_message",
                                 empty_reserve_scene)) {
                     std::cerr << "field clips dump: zero reserve did not show "
@@ -25913,7 +26084,7 @@ int main(int argc, char** argv) {
                 if (field_scene.clips_menu_message() !=
                         ClipsMenuMessage::function_aborted ||
                     field_scene.active_runner_record().ammo_clips != 0U ||
-                    !clips_message_controls_are_clear(signed_reserve_scene) ||
+                    !clips_result_screen_matches(signed_reserve_scene) ||
                     !save_scene("05c_clips_signed_negative_reserve_message",
                                 signed_reserve_scene)) {
                     std::cerr << "field clips dump: signed-negative reserve "
@@ -26016,6 +26187,9 @@ int main(int argc, char** argv) {
                 press(0x40U); // Select Winston Marrs.
                 const auto winston_recipient_scene = render_scene();
                 if (field_scene.clips_trade_recipient_record() != 2U ||
+                    !centered_source_menu_text_matches(
+                        winston_recipient_scene, direct_asset("font.bmp"),
+                        120, 120, 88, "Winston Marrs") ||
                     !clips_region_differs(change_recipient_scene,
                                           winston_recipient_scene, 120, 64,
                                           120, 40) ||
@@ -26028,6 +26202,9 @@ int main(int argc, char** argv) {
                 press(0x40U); // Wrap back to Ricky.
                 const auto ricky_recipient_scene = render_scene();
                 if (field_scene.clips_trade_recipient_record() != 1U ||
+                    !centered_source_menu_text_matches(
+                        ricky_recipient_scene, direct_asset("font.bmp"), 120,
+                        120, 88, "Ricky") ||
                     !clips_region_differs(winston_recipient_scene,
                                           ricky_recipient_scene, 120, 64,
                                           120, 40) ||
@@ -26063,7 +26240,7 @@ int main(int argc, char** argv) {
                             expected_trade_quantity ||
                     field_scene.field_party_records_for_dump()[1U].ammo_clips !=
                         expected_recipient_clips ||
-                    !clips_message_controls_are_clear(trade_complete_scene) ||
+                    !clips_result_screen_matches(trade_complete_scene) ||
                     !save_scene("06i_clips_trade_complete",
                                 trade_complete_scene)) {
                     std::cerr << "field clips dump: Lua Trade did not commit "
@@ -26158,7 +26335,7 @@ int main(int argc, char** argv) {
                                           expected_confirmed) ||
                         field_scene.clips_menu_message() !=
                             ClipsMenuMessage::reload_success ||
-                        !clips_message_controls_are_clear(render_scene()) ||
+                        !clips_result_screen_matches(render_scene()) ||
                         !write_scene("10_clips_after_reload")) {
                         std::cerr << "field clips dump: confirmed Lua reload "
                                      "did not commit and show its result\n";
@@ -26169,7 +26346,7 @@ int main(int argc, char** argv) {
                                           expected_reload) ||
                         field_scene.clips_menu_message() !=
                             ClipsMenuMessage::reload_success ||
-                        !clips_message_controls_are_clear(render_scene()) ||
+                        !clips_result_screen_matches(render_scene()) ||
                         !write_scene("07_clips_after_reload")) {
                         std::cerr << "field clips dump: direct Lua reload did "
                                      "not commit and show its result\n";
@@ -26180,7 +26357,7 @@ int main(int argc, char** argv) {
                                           before_reload) ||
                         field_scene.clips_menu_message() ==
                             ClipsMenuMessage::none ||
-                        !clips_message_controls_are_clear(render_scene()) ||
+                        !clips_result_screen_matches(render_scene()) ||
                         !write_scene("07_clips_reload_gate_message")) {
                         std::cerr << "field clips dump: reload gate did not "
                                      "replace the page with its result\n";

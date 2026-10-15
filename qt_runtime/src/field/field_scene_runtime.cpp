@@ -309,23 +309,44 @@ constexpr int kCommandOverviewActionBackgroundY = 184;
 // 0x80-byte name-table row holds 64 two-byte cells: host pixel (160,144).
 constexpr int kRunnerPreviewPanelX = 160;
 constexpr int kRunnerPreviewPanelY = 144;
-constexpr std::array<int, 4> kCommandOverviewActionFocusX{{128, 152, 176,
-                                                             200}};
+// CD33E/CD37A button art begins 16 px into the 120 px strip. The prior
+// positions reused the five-tab command row's 8 px inset and shifted every
+// focus block left, leaving the unselected button art visible beside it.
+constexpr std::array<int, 4> kCommandOverviewActionFocusX{{136, 160, 184,
+                                                             208}};
 constexpr int kCommandOverviewActionFocusY = 184;
-// ROM 0x127FC writes Yes at plane-B EBA2 and No at EBAE, over the
-// source CD3B6 confirmation row installed at EB9E.
-constexpr std::array<int, 2> kCommandOverviewActionConfirmationFocusX{{136,
+// CD3B6 places its Yes and No controls at x=160 and x=184 in the centered
+// 120 px row. Keep the selected 16x16 art on those same controls; offsetting
+// Yes to x=136 draws a duplicate button beside the two source choices.
+constexpr std::array<int, 2> kCommandOverviewActionConfirmationFocusX{{160,
                                                                         184}};
 constexpr int kCommandOverviewActionConfirmationFocusY = 184;
-// 0x11B58 and 0x11E7E use the same lower four-button row origin as the
-// inventory action loop, but select from their own four-entry focus tables.
-// Painting this opaque 120x16 row is intentional: it replaces the five
-// command-tab blocks in the base panel, including the unused fifth position.
+// 0x11B58 and 0x11E7E use the same centered 15x2 child row as the inventory
+// action loop, but select from their own four-entry focus tables. The caller
+// clears the complete 20x2 button panel before placing this child row.
 constexpr int kCommandOverviewClipsBackgroundX = 120;
 constexpr int kCommandOverviewClipsBackgroundY = 184;
-constexpr std::array<int, 4> kCommandOverviewClipsFocusX{{128, 152, 176,
-                                                            200}};
+constexpr std::array<int, 4> kCommandOverviewClipsFocusX{{136, 160, 184,
+                                                            208}};
 constexpr int kCommandOverviewClipsFocusY = 184;
+// The ROM writes the selected command caption into a 17-character name-table
+// field beginning at x=112. Pad Lua's semantic label into that same field so
+// labels remain centered while the button selector moves independently.
+std::string centered_command_text(const std::string_view label,
+                                  const std::size_t columns) {
+    if (columns == 0U || label.size() >= columns) {
+        return std::string(label);
+    }
+    const auto padding = columns - label.size();
+    const auto left_padding = padding / 2U;
+    const auto right_padding = padding - left_padding;
+    return std::string(left_padding, ' ') + std::string(label) +
+           std::string(right_padding, ' ');
+}
+
+std::string centered_command_footer(const std::string_view label) {
+    return centered_command_text(label, 17U);
+}
 // FFDE08 is profile word 33. The 48-word block starts at FFDDC6.
 constexpr std::size_t kSceneProfileEntityPositionWord = 33U;
 
@@ -11386,6 +11407,11 @@ bool FieldSceneRuntime::open_command_overview_for_dump() {
         field_controller_port_byte_ & static_cast<std::uint8_t>(~0x80U)));
     return command_overview_.open();
 }
+
+void FieldSceneRuntime::set_inventory_action_overlay_probe_for_dump(
+    const bool active) noexcept {
+    command_overview_inventory_action_active_ = active;
+}
 #endif // SHADOWRUN_QT_QA_DRIVER
 
 
@@ -13014,6 +13040,24 @@ void FieldSceneRuntime::paint_command_overview_clips(
     // source 20x20 cell region. The field HUD is composed afterward as a
     // separate shared layer.
     painter.fillRect(96, 16, 160, 160, Qt::black);
+    // The clear includes the top 16 pixels of the shared posture panel.
+    // ROM 0x11B5C re-enters 0x11900 after that clear, rebuilding this shell
+    // before installing the Clips row. Restore the panel as one unit here.
+    paint_command_overview_posture_panel(painter);
+
+    // The parent command tabs occupy the full 160 px panel. CD33E/CD37A are
+    // only 15 cells wide, so replacing just their centered 120 px strip can
+    // leave parts of the old five-button row at the sides. Rebuild the whole
+    // panel row, keeping only the shared frame edges before drawing a child
+    // row. Result messages restore the parent row from this same background.
+    constexpr QRect kButtonPanelRect{96, 184, 160, 16};
+    constexpr QRect kButtonPanelLeftFrameRect{96, 184, 24, 16};
+    constexpr QRect kButtonPanelRightFrameRect{240, 184, 16, 16};
+    painter.fillRect(kButtonPanelRect, Qt::black);
+    painter.drawImage(kButtonPanelLeftFrameRect, command_overview_background_,
+                      kButtonPanelLeftFrameRect);
+    painter.drawImage(kButtonPanelRightFrameRect, command_overview_background_,
+                      kButtonPanelRightFrameRect);
 
     const auto draw_lines = [this, &painter](const auto& lines,
                                               const int x,
@@ -13039,9 +13083,10 @@ void FieldSceneRuntime::paint_command_overview_clips(
         draw_lines(field_menu_text_.clips_reload_prompt, 120, 72);
         draw_command_overview_text(
             painter, 112, 200,
-            command_overview_clips_.reload_confirmation_yes()
-                ? field_menu_text_.action_choice_yes
-                : field_menu_text_.action_choice_no);
+            centered_command_footer(
+                command_overview_clips_.reload_confirmation_yes()
+                    ? field_menu_text_.action_choice_yes
+                    : field_menu_text_.action_choice_no));
         return;
     }
 
@@ -13062,10 +13107,14 @@ void FieldSceneRuntime::paint_command_overview_clips(
         if (recipient < FieldPartyRosterRuntime::kSlotCount &&
             !field_party_roster_.name(recipient).empty()) {
             draw_command_overview_text(
-                painter, 120, 88, field_party_roster_.name(recipient));
+                painter, 120, 88,
+                centered_command_text(field_party_roster_.name(recipient),
+                                      15U));
         } else {
             draw_command_overview_text(painter, 120, 88,
-                                       field_menu_text_.clips_trade_prompt[2]);
+                                       centered_command_text(
+                                           field_menu_text_.clips_trade_prompt[2],
+                                           15U));
         }
         draw_command_overview_number(
             painter, command_overview_font_, 200, 72,
@@ -13077,19 +13126,27 @@ void FieldSceneRuntime::paint_command_overview_clips(
             painter.drawImage(kCommandOverviewClipsFocusX[focus_index],
                               kCommandOverviewClipsFocusY,
                               command_overview_clips_trade_focus_[focus_index]);
-            draw_command_overview_text(
-                painter, 112, 200,
-                field_menu_text_.clips_trade_commands[focus_index]);
         }
+        // ROM 0x11EA0/0x11EF8 select the nested Trade caption from D1E24.
+        // Keep the visible footer in step with the selected button art.
+        const auto footer_index =
+            selection >= 2U && selection <= 5U
+                ? static_cast<std::size_t>(selection - 2U)
+                : 0U;
+        draw_command_overview_text(painter, 112, 200,
+                                   centered_command_footer(
+                                       field_menu_text_.clips_trade_commands[
+                                           footer_index]));
         return;
     }
 
     if (command_overview_clips_.message() != ClipsMenuMessage::none) {
-        // ROM's result/abort path clears the Clips button strip with CD2C6
-        // before waiting for a fresh button edge. Clear the old controls and
-        // title as a complete panel replacement; text must not sit over the
-        // selector row that led to the result.
-        painter.fillRect(120, 184, 120, 16, Qt::black);
+        // ROM 0x12C36 clears only the center window through y=176. At 0x11CB6
+        // the result path uploads CD2C6, restoring the shared command tabs
+        // while the result text waits for a fresh controller edge. Keep the
+        // parent row here; showing the child Clips/Trade row would be stale.
+        painter.drawImage(kButtonPanelRect, command_overview_background_,
+                          kButtonPanelRect);
         switch (command_overview_clips_.message()) {
         case ClipsMenuMessage::out_of_ammo: {
             const auto active_slot = field_party_roster_.active_slot();
@@ -13146,9 +13203,37 @@ void FieldSceneRuntime::paint_command_overview_clips(
         painter.drawImage(kCommandOverviewClipsFocusX[focus_index],
                           kCommandOverviewClipsFocusY,
                           command_overview_clips_focus_[focus_index]);
-        draw_command_overview_text(
-            painter, 112, 200,
-            field_menu_text_.clips_commands[focus_index]);
+    }
+    // ROM 0x11BC2/0x11C1A select the matching action caption from D1DDC.
+    // Keep the visible footer in step with the selected button art.
+    const auto footer_index =
+        selection >= 2U && selection <= 5U
+            ? static_cast<std::size_t>(selection - 2U)
+            : 0U;
+    draw_command_overview_text(painter, 112, 200,
+                               centered_command_footer(
+                                   field_menu_text_.clips_commands[
+                                       footer_index]));
+}
+
+void FieldSceneRuntime::paint_command_overview_posture_panel(
+    QPainter& painter) const {
+    // ROM 0x11900 redraws the common lower shell after Clips clears the
+    // center window. The posture frame is part of that shared panel; drawing
+    // this crop prevents the child clear from leaving a black band above the
+    // action buttons.
+    constexpr QRect kPosturePanelRect{96, 160, 160, 24};
+    painter.drawImage(kPosturePanelRect, command_overview_background_,
+                      kPosturePanelRect);
+
+    const auto posture = std::min<std::size_t>(
+        active_runner_record().posture,
+        command_overview_status_bars_.size() - 1U);
+    painter.drawImage(176, 168, command_overview_status_bars_[posture]);
+    draw_command_overview_text(painter, 136, 176,
+                               field_menu_text_.status_names[posture]);
+    if (posture_dialog_active_) {
+        painter.drawImage(120, 168, posture_focus_);
     }
 }
 
@@ -13966,19 +14051,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             ? field_menu_text_.runner_names[0]
             : field_party_roster_.name(field_party_roster_.active_slot()));
 
-    // 0x11928/0x11AE4 places the five-state posture bar at CAAC (176,168).
-    const auto posture = std::min<std::size_t>(
-        active_runner_record().posture,
-        command_overview_status_bars_.size() - 1U);
-    painter.drawImage(176, 168, command_overview_status_bars_[posture]);
-    draw_command_overview_text(painter, 136, 176,
-                               field_menu_text_.status_names[posture]);
-    if (posture_dialog_active_) {
-        // 0x119CE writes the six-tile POSTURE focus row at CA9E (120,168).
-        // The five-state strip starts separately at CAAC (176,168), so keep
-        // it visible and replace only the static label beneath the selector.
-        painter.drawImage(120, 168, posture_focus_);
-    }
+    // 0x11928/0x11AE4 places the five-state bar and status name. Keeping this
+    // in a helper lets child screens restore the shared panel after clearing
+    // their content region.
+    paint_command_overview_posture_panel(painter);
 
     const auto draw_item_detail_rows =
         [this, &painter](const std::uint8_t item_code,
@@ -14299,7 +14375,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             }
         }
     }
-    if (command_overview_clips_.is_open()) {
+    const bool clips_owns_button_panel = command_overview_clips_.is_open();
+    if (clips_owns_button_panel) {
         paint_command_overview_clips(painter);
     } else if (!command_overview_inventory_action_active_ &&
         view.source_state.primary_page >= 2U &&
@@ -14309,7 +14386,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         painter.drawImage(128 + static_cast<int>(focus_index * 24U), 184,
                           command_overview_focus_[focus_index]);
     }
-    if (command_overview_inventory_action_active_) {
+    // Each child menu owns this button panel exclusively. In particular, do
+    // not repaint an old inventory-action row after Clips has replaced it.
+    if (!clips_owns_button_panel &&
+        command_overview_inventory_action_active_) {
         if (command_overview_discard_confirmation_active_) {
             painter.drawImage(
                 kCommandOverviewActionBackgroundX,
@@ -14359,7 +14439,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                                   command_overview_action_focus_[focus_index]);
             }
         }
-    } else if (command_overview_inventory_trade_.open) {
+    } else if (!clips_owns_button_panel &&
+               command_overview_inventory_trade_.open) {
         painter.drawImage(kCommandOverviewActionBackgroundX,
                           kCommandOverviewActionBackgroundY,
                           command_overview_action_confirmation_background_);
@@ -14430,10 +14511,12 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         }
         draw_command_overview_text(
             painter, 112, 200,
-            command_overview_inventory_trade_.yes_selected
-                ? field_menu_text_.action_choice_yes
-                : field_menu_text_.action_choice_no);
-    } else if (command_overview_action_message_ !=
+            centered_command_footer(
+                command_overview_inventory_trade_.yes_selected
+                    ? field_menu_text_.action_choice_yes
+                    : field_menu_text_.action_choice_no));
+    } else if (!clips_owns_button_panel &&
+               command_overview_action_message_ !=
                CommandOverviewActionMessage::none) {
         if (command_overview_action_message_ ==
             CommandOverviewActionMessage::cannot_discard) {
@@ -14444,14 +14527,16 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             draw_command_overview_text(
                 painter, 136, 96, field_menu_text_.action_cannot_trade);
         }
-    } else if (!command_overview_clips_.is_open() &&
+    } else if (!clips_owns_button_panel &&
                command_overview_first_aid_state_ ==
                    CommandOverviewFirstAidState::inactive &&
                view.source_state.primary_page <
                field_menu_text_.command_labels.size()) {
         draw_command_overview_text(
             painter, 112, 200,
-            field_menu_text_.command_labels[view.source_state.primary_page]);
+            centered_command_footer(
+                field_menu_text_.command_labels[
+                    view.source_state.primary_page]));
     }
 
     if (command_overview_magic_state_ ==

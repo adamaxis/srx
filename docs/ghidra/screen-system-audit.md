@@ -333,12 +333,29 @@ extracted rows and paints their selected focus blocks. The source text at
 0xD1ED8, `Function Aborted!`, is also available through the Lua text catalog.
 The source 0x12C36 clear starts at name-table C118 (screen 96,16), covers its
 20x20-cell center region, and leaves the separately composed field HUD intact.
+That clear also reaches the top 16 pixels of the shared posture panel. The
+subsequent 0x11B5C call into 0x11900 redraws the common shell, so the Qt Clips
+presenter now restores the posture frame, current bar, and status label after
+its center clear. Its four-button row starts at x=120,y=184; focus blocks start
+at x=136,160,184,208 to align with the extracted button art. The selected
+root and Trade captions come from D1DDC and D1E24; reload Yes/No uses its
+prompt table. Each caption is centered in the 17-character field beginning at
+x=112.
+The result path at `0x11CB6` uploads `CD2C6` while waiting for a fresh input
+edge, so result and abort messages show the shared five-command tab row. The
+child Clips/Trade row is not left under the message. The `CD3B6` two-choice
+confirmation art places Yes and No at x=160 and x=184; the selected Yes block
+must align with the existing Yes control at x=160. The Trade recipient name is
+centered in its 15-character field spanning x=120..240. Clips QA compares the
+posture strip with the parent frame pixel-for-pixel and checks these button,
+focus, name, and caption pixels.
 
 Debug and Release CLI QA captures all four selector positions and wrap,
 Function Aborted and message acknowledgement, every nested Trade focus and a
-source-template Ricky transfer, reload No and Yes, decline without mutation,
-and reload success. It compares focus pixels and requires the acknowledged
-Cancel message to restore the full parent image exactly. The common zero-
+source-template Ricky transfer, centered Ricky/Winston recipient names, reload
+No and Yes, decline without mutation, and reload success. It compares focus
+pixels and requires the parent command tabs on every result wait; acknowledging
+Cancel restores the full parent image exactly. The common zero-
 reserve gate follows 0x12062 into the 0x11C9C Function Aborted path. The
 nested Trade loop follows D1E24/0x1209A/0x120E4 for quantity and recipient
 changes. Distribution follows 0x11FDE/0x12014: it accumulates a byte total,
