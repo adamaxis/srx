@@ -49,13 +49,23 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
         }
     } cleanup{temporary_directory};
 
-    for (std::filesystem::directory_iterator iterator(source_directory, error),
+    for (std::filesystem::recursive_directory_iterator iterator(
+             source_directory, error),
          end;
          !error && iterator != end; iterator.increment(error)) {
         if (iterator->is_regular_file(error) &&
             iterator->path().extension() == ".lua") {
+            const auto relative_path =
+                iterator->path().lexically_relative(source_directory);
+            const auto destination = temporary_directory / relative_path;
+            std::filesystem::create_directories(destination.parent_path(),
+                                                error);
+            if (error) {
+                return expect(false,
+                              "could not create nested Lua module directory");
+            }
             std::filesystem::copy_file(
-                iterator->path(), temporary_directory / iterator->path().filename(),
+                iterator->path(), destination,
                 std::filesystem::copy_options::overwrite_existing, error);
             if (error) {
                 return expect(false,
@@ -65,6 +75,39 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
     }
     if (error) {
         return expect(false, "could not enumerate Lua modules for plugin test");
+    }
+
+    std::filesystem::create_directories(temporary_directory / "data", error);
+    if (error) {
+        return expect(false, "could not create nested Lua probe module");
+    }
+    {
+        std::ofstream module(temporary_directory / "data" / "probe.lua",
+                            std::ios::binary);
+        module << "local E = require('enums')\n"
+                  "local Probe = {}\n"
+                  "Probe.__index = Probe\n"
+                  "setmetatable(Probe, { __call = function(_, value)\n"
+                  "  return setmetatable({ value = value, posture = E.Posture.NEUTRAL }, Probe)\n"
+                  "end })\n"
+                  "local M = {}\n"
+                  "function M.verify()\n"
+                  "  local instance = Probe(13)\n"
+                  "  return require('data.probe') == M and instance.value == 13 and\n"
+                  "         instance.posture == E.Posture.NEUTRAL\n"
+                  "end\n"
+                  "return M\n";
+        if (!module) {
+            return expect(false, "could not write nested Lua probe module");
+        }
+    }
+    {
+        std::ofstream module(temporary_directory / "data" / "cycle.lua",
+                             std::ios::binary);
+        module << "return require('data.cycle')\n";
+        if (!module) {
+            return expect(false, "could not write circular Lua probe module");
+        }
     }
 
     {
@@ -80,6 +123,53 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
                   "  return offer.id\n"
                   "end\n"
                   "function Probe.present_offer() return 'probe_presented' end\n"
+                  "function Probe.module_probe()\n"
+                  "  local module_ok = require('data.probe').verify()\n"
+                  "  local items = require('items')\n"
+                  "  local records = require('data.items').by_id\n"
+                  "  local weapons = require('data.weapons')\n"
+                  "  local spells = require('data.spells').by_type\n"
+                  "  local accessories = require('data.accessories').by_id\n"
+                  "  local profiles = require('data.actor_profiles').by_id\n"
+                  "  local magic = require('magic')\n"
+                  "  for code = 1, 50 do\n"
+                  "    local item = items.by_code[code]\n"
+                  "    if item == nil or item.source_record ~= records[code] or\n"
+                  "       item.pricing.purchase_base ~= records[code].price then return 'item catalog mismatch' end\n"
+                  "    if code <= 15 then\n"
+                  "      local template = weapons.get(code)\n"
+                  "      if template == nil or item.source_weapon_template ~= template or\n"
+                  "         template.clip_size ~= records[code].b24 or\n"
+                  "         template.damage_class ~= records[code].b25 or\n"
+                  "         template.power ~= records[code].b26 or\n"
+                  "         template.band ~= records[code].b27 then return 'weapon ROM fields mismatch' end\n"
+                  "      if code <= 12 and (item.weapon == nil or\n"
+                  "         item.weapon.template ~= template or\n"
+                  "         item.weapon.magazine_capacity ~= template.clip_size or\n"
+                  "         item.weapon.damage_bar_index ~= template.damage_class or\n"
+                  "         item.weapon.rounds_per_action ~= template.rounds_per_shot) then return 'firearm host view mismatch' end\n"
+                  "    end\n"
+                  "    if item.armor ~= nil and\n"
+                  "       (item.armor.primary_modifier ~= records[code].b25 or\n"
+                  "        item.armor.secondary_modifier ~= records[code].b26) then return 'armor ROM fields mismatch' end\n"
+                  "  end\n"
+                  "  for code = 1, 13 do\n"
+                  "    local definition = magic.spell_action_definition(code)\n"
+                  "    if definition == nil or definition.source_record ~= spells[code - 1] then return 'spell record mismatch' end\n"
+                  "  end\n"
+                  "  for id = 0, 5 do\n"
+                  "    local accessory = accessories[id]\n"
+                  "    if accessory == nil or accessory.id ~= id or\n"
+                  "       type(accessory:base_price(0)) ~= 'number' or\n"
+                  "       type(accessory:base_price(1)) ~= 'number' or\n"
+                  "       type(accessory:base_price(2)) ~= 'number' then return 'accessory price record mismatch' end\n"
+                  "  end\n"
+                  "  if profiles['corp_guard_k05_item06'] == nil or\n"
+                  "     profiles['corp_guard_k05_item06']:weapon_record() ~= weapons.get(6) then return 'actor weapon profile mismatch' end\n"
+                  "  local safe = pcall(require, '..')\n"
+                  "  local cycle = pcall(require, 'data.cycle')\n"
+                  "  return module_ok and not safe and not cycle and 'module_catalog_ok' or 'module_probe_failed'\n"
+                  "end\n"
                   "return Probe\n";
         if (!plugin) {
             return expect(false, "could not write temporary Lua run module");
@@ -112,6 +202,14 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
         return false;
     }
     selection = extensible_scripts.complete_native_service_result("roll_8");
+    const auto module_probe = extensible_scripts.call_string(
+        "run_dynamic_probe", "module_probe");
+    if (!module_probe.has_value() ||
+        *module_probe != "module_catalog_ok") {
+        std::cerr << "module probe result: "
+                  << module_probe.value_or("<no string result>") << "; "
+                  << extensible_scripts.failure() << '\n';
+    }
     return expect(selection.status == ScriptTaskStep::Status::completed &&
                       selection.result_id ==
                           std::optional<std::string>{"dynamic_probe"} &&
@@ -120,7 +218,9 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
                           std::optional<std::string>{"dynamic_probe"} &&
                       extensible_scripts.call_string(
                           "run_dynamic_probe", "present_offer") ==
-                          std::optional<std::string>{"probe_presented"},
+                          std::optional<std::string>{"probe_presented"} &&
+                      module_probe == std::optional<std::string>{
+                                          "module_catalog_ok"},
                   "new Lua run was not selected and dispatched independently");
 }
 

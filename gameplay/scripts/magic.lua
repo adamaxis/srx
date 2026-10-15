@@ -1,6 +1,7 @@
 -- Stable spell IDs follow the ROM D4EA0 name/description table order.
 -- The native spell table filters this catalog for the active runner.
 local Magic = {}
+local SourceSpellRecords = require("data.spells").by_type
 
 local spell_ids = {
     "flame_dart",
@@ -16,14 +17,6 @@ local spell_ids = {
     "rockskin",
     "heal_wounds",
     "confusion",
-}
-
--- D4EA0 +0x27 feeds 0x13D0C's animation-action distance profile. Values
--- 0xFF are retained as source data; they do not name one of 0x13E7C's four
--- finite range bands, so the native Lua policy leaves that lookup unresolved.
-local action_motion_distance_profile_by_code = {
-    0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00,
-    0xFF, 0xFF, 0xFF, 0x00, 0x00, 0xFF,
 }
 
 -- D4EA0 action rows in one-based live-record action-code order. The row
@@ -58,12 +51,6 @@ local spell_action_by_code = {
       base_effect = 3, target_effect = 0, attribute_selector = 0 },
     { availability = -1, effect_table_index = 2, difficulty_modifier = 0,
       base_effect = 6, target_effect = 0, attribute_selector = -1 },
-}
-
--- C8AE0 selects a D4540 action-modifier word only for nonnegative selectors
--- 0..2. These are the thirteen spell rows consumed by actor action codes 1..13.
-local action_modifier_selector_by_code = {
-    1, 1, 1, 0, 1, 0, -1, 1, 1, 1, -1, 2, 0,
 }
 
 -- ROM 0x4946. Zero entries are silent at the 0x15830 action-effect handoff.
@@ -110,10 +97,11 @@ end
 
 function Magic.action_motion_distance_profile(code)
     if type(code) ~= "number" or code % 1 ~= 0 or
-       code < 1 or code > #action_motion_distance_profile_by_code then
+       code < 1 or code > #spell_action_by_code then
         return nil
     end
-    return action_motion_distance_profile_by_code[code]
+    local source_record = SourceSpellRecords[code - 1]
+    return source_record and source_record.flag27 or nil
 end
 
 function Magic.spell_action_definition(code)
@@ -122,6 +110,10 @@ function Magic.spell_action_definition(code)
         return nil
     end
     local row = spell_action_by_code[code]
+    local source_record = SourceSpellRecords[code - 1]
+    if source_record == nil then
+        return nil
+    end
     local effect_profile = actor_effect_profile_by_code[code]
     return {
         spell_id = spell_ids[code],
@@ -132,8 +124,8 @@ function Magic.spell_action_definition(code)
         base_effect = row.base_effect,
         target_effect = row.target_effect,
         attribute_selector = row.attribute_selector,
-        action_modifier_selector =
-            action_modifier_selector_by_code[code],
+        action_modifier_selector = source_record.totem_category,
+        source_record = source_record,
         audio_event = action_effect_audio_event_by_code[code] or 0,
         actor_effect = effect_profile,
     }

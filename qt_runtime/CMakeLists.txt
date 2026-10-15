@@ -6,7 +6,8 @@ set(SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/dialogue"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/field"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering")
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/srx_refactor")
 
 set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/field/field_scene_runtime.cpp

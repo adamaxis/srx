@@ -10,10 +10,13 @@ extern "C" {
 
 #include <algorithm>
 #include <cstdint>
+#include <filesystem>
 #include <set>
+#include <string>
 #include <system_error>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion::scripting {
 namespace {
@@ -50,17 +53,25 @@ void instruction_budget_hook(lua_State* state, lua_Debug*) {
 
 class ScopedInstructionBudget final {
 public:
-    explicit ScopedInstructionBudget(lua_State* state) : state_(state) {
+    explicit ScopedInstructionBudget(lua_State* state)
+        : state_(state), previous_hook_(lua_gethook(state)),
+          previous_mask_(lua_gethookmask(state)),
+          previous_count_(lua_gethookcount(state)) {
         lua_sethook(state_, instruction_budget_hook, LUA_MASKCOUNT,
                     kScriptInstructionBudget);
     }
-    ~ScopedInstructionBudget() { lua_sethook(state_, nullptr, 0, 0); }
+    ~ScopedInstructionBudget() {
+        lua_sethook(state_, previous_hook_, previous_mask_, previous_count_);
+    }
 
     ScopedInstructionBudget(const ScopedInstructionBudget&) = delete;
     ScopedInstructionBudget& operator=(const ScopedInstructionBudget&) = delete;
 
 private:
     lua_State* state_;
+    lua_Hook previous_hook_;
+    int previous_mask_;
+    int previous_count_;
 };
 
 bool read_string(lua_State* state, const int index, std::string& value) {
@@ -268,6 +279,48 @@ bool valid_identifier(const std::string_view value) {
            });
 }
 
+bool valid_lua_module_name(const std::string_view value) {
+    if (value.empty() || value.size() > kMaximumIdentifierLength) {
+        return false;
+    }
+    bool component_start = true;
+    for (const char character : value) {
+        if (character == '.') {
+            if (component_start) {
+                return false;
+            }
+            component_start = true;
+            continue;
+        }
+        const bool letter = (character >= 'a' && character <= 'z') ||
+                            (character >= 'A' && character <= 'Z');
+        const bool digit = character >= '0' && character <= '9';
+        if (component_start) {
+            if (!letter && character != '_') {
+                return false;
+            }
+        } else if (!letter && character != '_' && !digit) {
+            return false;
+        }
+        component_start = false;
+    }
+    return !component_start;
+}
+
+bool path_is_within_root(const std::filesystem::path& root,
+                         const std::filesystem::path& candidate) {
+    const auto relative = candidate.lexically_relative(root);
+    if (relative.empty() || relative.is_absolute()) {
+        return false;
+    }
+    for (const auto& component : relative) {
+        if (component == "..") {
+            return false;
+        }
+    }
+    return true;
+}
+
 void open_safe_libraries(lua_State* state) {
     luaL_requiref(state, LUA_GNAME, luaopen_base, 1);
     lua_pop(state, 1);
@@ -283,8 +336,7 @@ void open_safe_libraries(lua_State* state) {
     // Scripts are event handlers and menu descriptions, not plug-ins with
     // filesystem, process, or dynamic module access.
     for (const char* name : {"dofile", "loadfile", "load",
-                             "collectgarbage", "getmetatable",
-                             "setmetatable"}) {
+                             "collectgarbage", "getmetatable"}) {
         lua_pushnil(state);
         lua_setglobal(state, name);
     }
@@ -509,6 +561,9 @@ struct GameScriptRuntime::Impl {
     int modules_reference = LUA_NOREF;
     int task_reference = LUA_NOREF;
     bool task_waiting = false;
+    std::filesystem::path script_root;
+    std::set<std::string> modules_loading;
+    std::size_t loaded_module_count = 0U;
     std::optional<ScriptNativeOperation> pending_task_operation;
     std::optional<ScriptNativeOperation> active_native_operation;
     StoryFacts story_facts;
@@ -527,6 +582,119 @@ struct GameScriptRuntime::Impl {
 
     static Impl* from_upvalue(lua_State* lua) {
         return static_cast<Impl*>(lua_touserdata(lua, lua_upvalueindex(1)));
+    }
+
+    bool load_module(const std::string_view name, std::string& error) {
+        if (state == nullptr || modules_reference == LUA_NOREF ||
+            !valid_lua_module_name(name)) {
+            error = "invalid gameplay module name";
+            return false;
+        }
+
+        lua_rawgeti(state, LUA_REGISTRYINDEX, modules_reference);
+        const int modules_index = lua_absindex(state, -1);
+        lua_pushlstring(state, name.data(), name.size());
+        lua_gettable(state, modules_index);
+        if (lua_istable(state, -1)) {
+            lua_remove(state, modules_index);
+            return true;
+        }
+        if (!lua_isnil(state, -1)) {
+            lua_settop(state, modules_index - 1);
+            error = "gameplay module cache contains a non-table value";
+            return false;
+        }
+        lua_pop(state, 1);
+
+        const std::string module_name(name);
+        if (modules_loading.find(module_name) != modules_loading.end()) {
+            lua_settop(state, modules_index - 1);
+            error = "cyclic gameplay module dependency: " + module_name;
+            return false;
+        }
+        constexpr std::size_t kMaximumLoadedModules = 256U;
+        if (loaded_module_count >= kMaximumLoadedModules) {
+            lua_settop(state, modules_index - 1);
+            error = "gameplay module package exceeds module limit";
+            return false;
+        }
+
+        modules_loading.insert(module_name);
+        struct RemoveLoadingModule {
+            std::set<std::string>& modules;
+            const std::string& name;
+            ~RemoveLoadingModule() { modules.erase(name); }
+        } remove_loading_module{modules_loading, module_name};
+
+        std::filesystem::path relative_path;
+        std::string component;
+        for (const char character : name) {
+            if (character == '.') {
+                relative_path /= component;
+                component.clear();
+            } else {
+                component.push_back(character);
+            }
+        }
+        relative_path /= component + ".lua";
+
+        std::error_code path_error;
+        const auto module_path =
+            std::filesystem::weakly_canonical(script_root / relative_path,
+                                              path_error);
+        if (path_error || !path_is_within_root(script_root, module_path) ||
+            !std::filesystem::is_regular_file(module_path, path_error) ||
+            path_error) {
+            lua_settop(state, modules_index - 1);
+            error = "gameplay module is missing or outside script root: " +
+                    module_name;
+            return false;
+        }
+
+        int status = LUA_OK;
+        {
+            ScopedInstructionBudget instruction_budget(state);
+            status = luaL_loadfilex(state, module_path.string().c_str(), "t");
+            if (status == LUA_OK) {
+                status = lua_pcall(state, 0, 1, 0);
+            }
+        }
+        if (status != LUA_OK) {
+            error = module_name + ": " + stack_error(state);
+            lua_settop(state, modules_index - 1);
+            return false;
+        }
+        if (!lua_istable(state, -1)) {
+            lua_settop(state, modules_index - 1);
+            error = module_name + " must return a definition table";
+            return false;
+        }
+
+        const int definition_index = lua_absindex(state, -1);
+        lua_pushlstring(state, name.data(), name.size());
+        lua_pushvalue(state, definition_index);
+        lua_settable(state, modules_index);
+        lua_remove(state, modules_index);
+        ++loaded_module_count;
+        return true;
+    }
+
+    static int require_module(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        bool loaded = false;
+        {
+            std::string module_name;
+            std::string error;
+            if (self != nullptr && read_string(lua, 1, module_name)) {
+                loaded = self->load_module(module_name, error);
+            } else {
+                error = "require expects a dotted gameplay module name";
+            }
+            if (!loaded) {
+                lua_pushlstring(lua, error.data(), error.size());
+            }
+        }
+        return loaded ? 1 : lua_error(lua);
     }
 
     static int state_index(lua_State* lua) {
@@ -1232,6 +1400,9 @@ struct GameScriptRuntime::Impl {
         modules_reference = LUA_NOREF;
         task_reference = LUA_NOREF;
         task_waiting = false;
+        script_root.clear();
+        modules_loading.clear();
+        loaded_module_count = 0U;
         pending_task_operation.reset();
         active_native_operation.reset();
         story_facts.clear();
@@ -1332,6 +1503,10 @@ struct GameScriptRuntime::Impl {
         lua_rawgeti(state, LUA_REGISTRYINDEX, modules_reference);
         lua_setfield(state, -2, "modules");
         lua_setglobal(state, "game");
+
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, require_module, 1);
+        lua_setglobal(state, "require");
     }
 
     bool push_module(const std::string_view name) {
@@ -1366,6 +1541,13 @@ bool GameScriptRuntime::load_package(
     if (!std::filesystem::is_directory(script_directory, error) || error) {
         impl_->failure = "gameplay script directory is missing: " +
                          script_directory.string();
+        return false;
+    }
+    impl_->script_root =
+        std::filesystem::weakly_canonical(script_directory, error);
+    if (error) {
+        impl_->failure = "could not resolve gameplay script directory: " +
+                         error.message();
         return false;
     }
 
@@ -1412,25 +1594,13 @@ bool GameScriptRuntime::load_package(
         if (module == "world_content_data") {
             continue;
         }
-        ScopedInstructionBudget instruction_budget(state);
-        if (luaL_loadfilex(state, file.string().c_str(), "t") != LUA_OK ||
-            lua_pcall(state, 0, 1, 0) != LUA_OK) {
+        std::string module_error;
+        if (!impl_->load_module(module, module_error)) {
             impl_->failure = file.filename().string() + ": " +
-                             stack_error(state);
-            return false;
-        }
-        if (!lua_istable(state, -1)) {
-            impl_->failure = file.filename().string() +
-                             " must return a definition table";
-            lua_pop(state, 1);
+                             module_error;
             return false;
         }
         const auto definition_index = lua_absindex(state, -1);
-        lua_rawgeti(state, LUA_REGISTRYINDEX, impl_->modules_reference);
-        lua_pushlstring(state, module.data(), module.size());
-        lua_pushvalue(state, definition_index);
-        lua_settable(state, -3);
-        lua_pop(state, 1);
 
         // Run content is a Lua plug-in family. Adding run_<id>.lua makes its
         // returned table available to other scripts through game.runs[id];

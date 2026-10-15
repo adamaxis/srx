@@ -1,0 +1,65 @@
+code	name	kind_repo	cat_ptr_1A	detail_ptr_1E	w22	b24	b25	b26	b27	w28	w2A	w2C	w2E	meaning
+01	Streetline Special	firearm	0D17DC	000CCA4A	100	6	0	4	0	0000	0000	0000	0000	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+02	Model 101T Light Pistol	firearm	0D17DC	000CCAA4	350	12	0	6	0	0000	0000	0000	0000	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+03	American L36 Light Pistol	firearm	0D17DC	000CCAFE	300	11	0	6	0	0000	0000	0000	0000	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+04	Security 500 Light Pistol	firearm	0D17DC	000CCB58	450	25	0	6	0	0000	0000	0000	0000	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+05	Warhawk Heavy Pistol	firearm	0D17E8	000CCBB2	500	6	1	10	0	0002	0002	0002	0002	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+06	Max-Power Heavy Pistol	firearm	0D17E8	000CCC0C	450	10	1	9	0	0000	0000	0000	0000	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+07	Predator Heavy Pistol	firearm	0D17E8	000CCC66	450	15	1	9	0	0000	0000	0000	0000	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+08	AK-97 SMG	firearm	0D17F4	000CCCC0	1000	30	1	6	0	0000	0000	0000	0000	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+09	HK227-S SMG	firearm	0D17F4	000CCD1A	1500	28	1	7	0	0000	0000	0000	0000	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+0A	Mach 22 SMG	firearm	0D17F4	000CCD74	800	24	1	6	0	0000	0000	0000	0000	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+0B	Allegiance Shotgun	firearm	0D1800	000CCE28	1400	5	2	10	0	0000	0000	0000	0000	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+0C	Roomsweeper Shotgun	firearm	0D1800	000CCDCE	1000	8	2	9	0	0000	0000	0000	0000	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+0D	Frag Grenade	grenade	0D180C	000CCE82	300	6	2	8	0	0000	0000	0000	0000	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+0E	Scatter Grenade	grenade	0D180C	000CCE82	180	6	1	6	0	0000	0000	0000	0000	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+0F	Concussion Grenade	grenade	0D180C	000CCE82	180	6	1	10	0	0000	0000	0000	0000	w22 price, b24 magazine/qty, b25 damage class (0x166AD4 idx), b26 power, b27 motion
+10	Medkit	medical_kit	0D1824	000CCEDC	200	6	0	0	0	0000	0000	0000	0000	w22 price
+11	Stim Patch	stim_patch	0D1830	000CCF36	300	6	0	0	0	0000	0000	0000	0000	w22 price
+12	Trauma Patch	trauma_patch	0D1830	000CCF36	300	6	0	0	0	0000	0000	0000	0000	w22 price
+13	Fetish	fetish	0D189C	000CCF90	500	0	0	0	0	0000	0000	0000	0000	w22 price
+14	Maglock Passkey	passkey	0D1848	000CCFEA	10000	0	0	0	0	0000	0000	0000	0000	w22 price
+15	Electronic Kit	electronic_kit	0D1854	000CD044	1000	0	0	0	0	0000	0000	0000	0000	w22 price
+16	Smart Goggles	smart_goggles	0D1818	000CD09E	3000	0	0	0	0	0000	0000	0000	0000	w22 price
+17	Enchanted Dagger	enchanted_dagger	0D18CC	000CD0F8	50000	0	0	0	0	0000	0000	0000	0000	w22 price
+18	Power Focus	power_focus	0D1884	000CD152	15000	0	0	0	0	0000	0000	0000	0000	w22 price
+19	Flame Dart Spell Focus	spell_focus	0D1890	000CD1AC	4000	0	0	0	0	0000	0000	0000	0000	w22 price
+1A	Flame Bolt Spell Focus	spell_focus	0D1890	000CD1AC	4000	0	0	0	0	0000	0000	0000	0000	w22 price
+1B	Hellblast Spell Focus	spell_focus	0D1890	000CD1AC	4000	0	0	0	0	0000	0000	0000	0000	w22 price
+1C	Invisibility Spell Focus	spell_focus	0D1890	000CD1AC	4000	0	0	0	0	0000	0000	0000	0000	w22 price
+1D	Sleep Spell Focus	spell_focus	0D1890	000CD1AC	4000	0	0	0	0	0000	0000	0000	0000	w22 price
+1E	Stink Spell Focus	spell_focus	0D1890	000CD1AC	4000	0	0	0	0	0000	0000	0000	0000	w22 price
+1F	Supr Barrier Spell Focus	spell_focus	0D1890	000CD1AC	4000	0	0	0	0	0000	0000	0000	0000	w22 price
+20	Mana Zap Spell Focus	spell_focus	0D1890	000CD1AC	4000	0	0	0	0	0000	0000	0000	0000	w22 price
+21	Mana Blast Spell Focus	spell_focus	0D1890	000CD1AC	4000	0	0	0	0	0000	0000	0000	0000	w22 price
+22	Mana Storm Spell Focus	spell_focus	0D1890	000CD1AC	4000	0	0	0	0	0000	0000	0000	0000	w22 price
+23	Rockskin Spell Focus	spell_focus	0D1890	000CD1AC	4000	0	0	0	0	0000	0000	0000	0000	w22 price
+24	Heal Wounds Spell Focus	spell_focus	0D1890	000CD1AC	4000	0	0	0	0	0000	0000	0000	0000	w22 price
+25	Confusion Spell Focus	spell_focus	0D1890	000CD1AC	4000	0	0	0	0	0000	0000	0000	0000	w22 price
+26	Barrier Spell Focus	spell_focus	0D1890	000CD1AC	4000	0	0	0	0	0000	0000	0000	0000	w22 price
+27	Protection Talisman	talisman	0D18D8	000CD206	17500	0	0	0	0	0000	0000	0000	0000	w22 price
+28	Combat Sense Spell Lock	spell_lock	0D18D8	000CD206	17500	0	0	0	0	0000	0000	0000	0000	w22 price
+29	Rat Totem	totem	0D18A8	FFFFFFFF	2	255	255	0	0	0000	0000	0000	0000	w22/w24/w26 spell-category dice modifiers (0x104F6, cat = 0xC8AE0[spell]); 1E=FFFFFFFF
+2A	Gator Totem	totem	0D18C0	FFFFFFFF	65535	0	2	0	0	0000	0000	0000	0000	w22/w24/w26 spell-category dice modifiers (0x104F6, cat = 0xC8AE0[spell]); 1E=FFFFFFFF
+2B	Bear Totem	totem	0D18B4	FFFFFFFF	0	0	0	0	2	0000	0000	0000	0000	w22/w24/w26 spell-category dice modifiers (0x104F6, cat = 0xC8AE0[spell]); 1E=FFFFFFFF
+2C	Armor Vest	armor	0D183C	000CD260	200	0	2	1	0	0000	0000	0000	0000	w22 price, b25 ballistic [H], b26 impact [H]
+2D	Armor Clothing	armor	0D183C	000CD260	500	0	1	2	0	0000	0000	0000	0000	w22 price, b25 ballistic [H], b26 impact [H]
+2E	Armor Jacket	armor	0D183C	000CD260	900	0	5	3	0	0000	0000	0000	0000	w22 price, b25 ballistic [H], b26 impact [H]
+2F	Vest w/Plates	armor	0D183C	000CD260	600	0	4	3	0	0000	0000	0000	0000	w22 price, b25 ballistic [H], b26 impact [H]
+30	Lined Duster	armor	0D183C	000CD260	700	0	3	2	0	0000	0000	0000	0000	w22 price, b25 ballistic [H], b26 impact [H]
+31	Light Combat Armor	armor	0D183C	000CD260	10000	0	6	4	0	0000	0000	0000	0000	w22 price, b25 ballistic [H], b26 impact [H]
+32	Heavy Combat Armor	armor	0D183C	000CD260	20000	0	8	6	0	0000	0000	0000	0000	w22 price, b25 ballistic [H], b26 impact [H]
+33	Flame Dart	(absent)	0D18E4	000D5140	0	0	1	1	0	0000	0000	0000	0000	spell: b24 class?, b25/b26/b27 spell params [H]; 1E = description text ptr
+34	Flame Bolt	(absent)	0D18F0	000D5172	0	1	2	1	0	0000	0000	0000	0000	spell: b24 class?, b25/b26/b27 spell params [H]; 1E = description text ptr
+35	Hellblast	(absent)	0D18FC	000D51A4	0	3	3	3	0	0000	0000	0000	0000	spell: b24 class?, b25/b26/b27 spell params [H]; 1E = description text ptr
+36	Invisibility	(absent)	0D1908	000D5209	0	1	255	0	0	0000	0000	0000	0000	spell: b24 class?, b25/b26/b27 spell params [H]; 1E = description text ptr
+37	Sleep	(absent)	0D1914	000D5303	0	2	1	0	255	0000	0000	0000	0000	spell: b24 class?, b25/b26/b27 spell params [H]; 1E = description text ptr
+38	Stink	(absent)	0D1920	000D53E3	0	2	255	0	255	0000	0000	0000	0000	spell: b24 class?, b25/b26/b27 spell params [H]; 1E = description text ptr
+39	Super Barrier	(absent)	0D192C	000D53B1	0	2	255	2	0	0000	0000	0000	0000	spell: b24 class?, b25/b26/b27 spell params [H]; 1E = description text ptr
+3A	Mana Zap	(absent)	0D1938	000D525A	0	0	0	0	255	0000	0000	0000	0000	spell: b24 class?, b25/b26/b27 spell params [H]; 1E = description text ptr
+3B	Mana Blast	(absent)	0D1944	000D528C	0	1	1	0	255	0000	0000	0000	0000	spell: b24 class?, b25/b26/b27 spell params [H]; 1E = description text ptr
+3C	Mana Storm	(absent)	0D1950	000D52C2	0	2	2	1	255	0000	0000	0000	0000	spell: b24 class?, b25/b26/b27 spell params [H]; 1E = description text ptr
+3D	Rockskin	(absent)	0D195C	000D51DA	0	1	255	2	0	0000	0000	0000	0000	spell: b24 class?, b25/b26/b27 spell params [H]; 1E = description text ptr
+3E	Heal Wounds	(absent)	0D1968	000D534D	0	1	255	0	0	0000	0000	0000	0000	spell: b24 class?, b25/b26/b27 spell params [H]; 1E = description text ptr
+3F	Confusion	(absent)	0D1974	000D5369	0	2	255	0	255	0000	0000	0000	0000	spell: b24 class?, b25/b26/b27 spell params [H]; 1E = description text ptr
+40	Barrier	(absent)	0D1980	000D5225	0	1	255	2	0	0000	0000	0000	0000	spell: b24 class?, b25/b26/b27 spell params [H]; 1E = description text ptr

@@ -3,6 +3,7 @@
 -- drawing consumes each returned snapshot without advancing it again.
 local ActorAI = {}
 local states = game.actors
+local ActorProfileCatalog = require("data.actor_profiles")
 local pending_spell_effects_by_source_slot = {}
 local spell_effect_scans_by_source_slot = {}
 
@@ -178,6 +179,25 @@ local profiles = {
     },
 }
 
+-- The extracted profile records supply actor identity and equipment facts;
+-- this table retains only policy structure that is unique to the host AI.
+for profile_id, profile in pairs(profiles) do
+    local source_profile = ActorProfileCatalog.by_id[profile_id]
+    assert(source_profile ~= nil,
+           "actor profile has no source record: " .. profile_id)
+    assert(source_profile.package_id == profile.package_id and
+               source_profile.action_kind == profile.action_kind and
+               source_profile.action_code == profile.action_code,
+           "actor profile differs from source record: " .. profile_id)
+    profile.source_profile = source_profile
+    profile.entity_kind = source_profile.sprite_type
+    profile.weapon_item_id = source_profile.weapon
+    profile.entry_audio_event = source_profile.entry_sound
+    profile.controls_movement = source_profile.controls_movement
+    profile.projectile_animation = source_profile.projectile
+    profile.dynamic_encounter_only = source_profile.dynamic_encounter_only
+end
+
 local function direction_from_heading(heading)
     -- ROM 0xB36A rotates the heading three bits, rounds signed values upward,
     -- then masks to one of the eight C0B2 directional animation lists.
@@ -227,17 +247,20 @@ local function dynamic_encounter_profile(context)
        action_code ~= context.action_code then
         return nil
     end
+    local source_actor_profile = ActorProfileCatalog.dynamic(
+        entity_kind, action_kind, action_code)
     return {
         package_id = "world_actor.kind_" .. tostring(entity_kind) ..
                      ".source_target_motion",
-        entity_kind = entity_kind,
-        action_kind = action_kind,
-        action_code = action_code,
-        weapon_item_id = action_kind == ActionKind.item
-            and action_code or nil,
-        controls_movement = true,
-        dynamic_encounter_only = true,
-        entry_audio_event = EntryAudioEventByKind[entity_kind],
+        entity_kind = source_actor_profile.sprite_type,
+        action_kind = source_actor_profile.action_kind,
+        action_code = source_actor_profile.action_code,
+        weapon_item_id = source_actor_profile.weapon,
+        controls_movement = source_actor_profile.controls_movement,
+        dynamic_encounter_only =
+            source_actor_profile.dynamic_encounter_only,
+        entry_audio_event = source_actor_profile.entry_sound,
+        source_profile = source_actor_profile,
     }
 end
 
