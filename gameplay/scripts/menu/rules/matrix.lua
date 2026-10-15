@@ -55,20 +55,31 @@ local DIRS = {   -- order 0x53434: up, right, down, left; {delta, block-bit, nei
     {  14, "down",  "CONNECT_UP",    "CONNECT_DOWN",  "up" },
     {  -1, "left",  "CONNECT_RIGHT", "CONNECT_LEFT",  "right" },
 }
-local function flood(map, known, cur, block)
+local function flood(map, known, expanded, cur, block)
+    -- The ROM uses connector masks to avoid walking straight back across the
+    -- edge it just traversed. A closed connector loop can still revisit a
+    -- cell, so track this reveal pass to keep traversal finite.
+    if expanded[cur] then return end
+    expanded[cur] = true
     for _, d in ipairs(DIRS) do
         if not block[d[2]] then
             local c = cur + d[1]
             if c >= 0 and c <= M.LAST then
                 if map[c] > 0x0B then
-                    if M[d[3]][map[c]] then known[c] = true; flood(map, known, c, { [d[5]] = true }) end
+                    if M[d[3]][map[c]] then
+                        known[c] = true
+                        flood(map, known, expanded, c, { [d[5]] = true })
+                    end
                 elseif M[d[4]][map[cur]] then known[c] = true end
             end
         end
     end
 end
 function M.reveal(map, known, x, y)
-    local cur = y * M.W + x; known[cur] = true; flood(map, known, cur, {}); return known
+    local cur = y * M.W + x
+    known[cur] = true
+    flood(map, known, {}, cur, {})
+    return known
 end
 -- 0x53338 draw: unknown cell -> blank tile 0x15C3CC. Known: status nibble FFFB30[cell] & 0xF selects
 -- palette/tile table: 0 -> pal 1 (0x2000) tbl 0x15FC0E; 1 -> pal 2 0x15FC0E; 2 -> pal 3 0x15FC0E; 3 -> pal 2 0x15FC6A;

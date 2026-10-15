@@ -120,6 +120,23 @@ alert, overload = MX.raise_alert(1, 1, true)
 eq(alert, MX.ACTIVE, "active alert saturates")
 eq(overload, true, "armed overload returned")
 
+-- A connected map region may contain a loop of connector cells. Reveal must
+-- mark every reachable cell once and terminate while preserving the ROM's
+-- directional connector checks.
+local matrix_map = {}
+for cell = 0, MX.LAST do matrix_map[cell] = 0xFF end
+matrix_map[0] = 0
+matrix_map[1] = 19
+matrix_map[2] = 19
+matrix_map[15] = 20
+matrix_map[16] = 18
+local visible = MX.reveal(matrix_map, {}, 0, 0)
+eq(visible[0], true, "map reveals current node")
+eq(visible[1], true, "map reveals first connector")
+eq(visible[2], true, "map follows connector east")
+eq(visible[15], true, "map follows connector south")
+eq(visible[16], true, "map follows connector loop")
+
 -- Deck pool splits, target floors, and source word-sized memory math.
 local deck = {
     mpcp = 8, response = 2, ratings = { [0] = 3, [1] = 4, [2] = 2,
