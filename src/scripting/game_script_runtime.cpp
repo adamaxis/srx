@@ -2621,6 +2621,29 @@ bool GameScriptRuntime::load_package(
         lua_pop(state, 1);
     }
 
+    // Run modules are registered above as game.runs[run_id]. Publish the
+    // shared registry alongside them so gameplay scripts can read and update
+    // the active offer through the same Lua-owned game facade.
+    {
+        const auto stack_base = lua_gettop(state);
+        if (!impl_->push_module("run_registry") || !lua_istable(state, -1)) {
+            lua_settop(state, stack_base);
+            impl_->failure = "run_registry.lua module is missing";
+            return false;
+        }
+        const auto registry_index = lua_absindex(state, -1);
+        lua_getglobal(state, "game");
+        lua_getfield(state, -1, "runs");
+        if (!lua_istable(state, -1)) {
+            lua_settop(state, stack_base);
+            impl_->failure = "game.runs registry table is missing";
+            return false;
+        }
+        lua_pushvalue(state, registry_index);
+        lua_setfield(state, -2, "registry");
+        lua_settop(state, stack_base);
+    }
+
     if (!dialogue_text_file.empty()) {
         error.clear();
         const auto fail_dialogue = [this, state](const std::string& message) {
