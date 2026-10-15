@@ -320,8 +320,9 @@ int main() {
     runtime.advance_menu_route(0x4000U); // Explicit unresolved page boundary.
     check(runtime.menu_route_snapshot().top_screen == kNotebook &&
               notebook_boundaries.back() ==
-                  ScriptNotebookBoundary::contacts_unimplemented,
-          "unported Contacts page remains an explicit boundary", failures);
+                  ScriptNotebookBoundary::contacts_flags_unresolved,
+          "Contacts remains behind its unresolved source flag boundary",
+          failures);
     runtime.advance_menu_route(0x0200U); // Mr. Johnsons.
     runtime.advance_menu_route(0x4000U);
     route = runtime.menu_route_snapshot();
@@ -368,22 +369,26 @@ int main() {
     runtime.advance_menu_route(0x4000U); // Open Lua Dismiss Runner.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kDismissRunner && route.top_row == 0 &&
+              route.top_grid_effect_frames == 4 &&
+              route.top_grid_cells_present && route.top_grid_cells[0] == 0 &&
               legacy_screens.size() == legacy_count_before_secretary,
-          "Dismiss Runner is a registered Lua child, not a legacy adapter",
+          "Dismiss Runner keeps the parent's lower-bezel state on entry",
           failures);
     random_high_branch = true;
     runtime.advance_menu_route(0x0100U); // Select slot 1 below Abort.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kDismissRunner && route.top_row == 1 &&
               sounds.back() == kMoveSound && route.top_grid_cells_present &&
-              route.top_grid_cells[11] == 6,
+              route.top_grid_cells[0] == 0 && route.top_grid_cells[11] == 6,
           "Lua Dismiss Runner selects a candidate and applies the alternate ROM grid branch",
           failures);
     runtime.advance_menu_route(0x4000U); // Dismiss slot 1.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kPocketSecretary && route.top_row == 3 &&
-              dismissed_slot == 1,
-          "Lua Dismiss Runner dispatches the selected stable party slot",
+              route.top_grid_effect_frames == 6 &&
+              route.top_grid_cells_present && route.top_grid_cells[0] == 0 &&
+              route.top_grid_cells[11] == 6 && dismissed_slot == 1,
+          "Dismiss Runner returns without clearing lower-bezel E660 writes",
           failures);
     runtime.close_menu_route();
     runtime.open_menu_route(kCommand);

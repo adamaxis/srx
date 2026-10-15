@@ -40,12 +40,10 @@ end
 function M.child_returned(st, child, res, ctx)
     if res.exit_menu then return { transition = T.POP, result = { exit_menu = true } } end
     if res.exit_secretary then return { transition = T.POP, result = { exit_menu = false } } end    -- FFF0DC < 0 only [C]   -- FFF0DC<0 -> rts; FFF0CD -> exit [C]
-    if child == E.MenuScreen.DISMISS_RUNNER then
-        Grid.reset() -- C448 returns through the parent's rebuilt panel [C]
-        st.grid_effect_frames = 0
-    else
-        st.grid_effect_frames = Grid.frames
-    end
+    -- Direct children redraw only the inner C3E6 grid before returning to
+    -- C2AA. The lower bezel is outside that clear and keeps its E660 writes.
+    st.grid_effect_frames = Grid.frames
+    st.grid_cells = Grid.cells
     ctx.host.blank(E.DisplayBlank.OFF); ctx.redraw(R.FULL); ctx.host.blank(E.DisplayBlank.ON)  -- bra 0xC2AA rebuild [C]
 end
 
@@ -326,10 +324,10 @@ local Shadowrunners = make_record_page(
 
 -- Dismiss Runner 0xC448: rows = Abort + candidates (slots 1..2 active); Up/Down 0x25; A/B/C 0x24 [srx FSR sounds H]
 local Dismiss = { window = E.WindowPlane.SIDEBAR }
-function Dismiss.new() return { row = 0, grid_cells = Grid.cells, grid_effect_frames = 0 } end
+function Dismiss.new() return { row = 0, grid_cells = Grid.cells, grid_effect_frames = Grid.frames } end
 function Dismiss.enter(st, ctx)
-    Grid.reset()
-    st.grid_effect_frames = 0
+    -- C448 replaces the inner panel but shares the parent's E660 lower bezel.
+    st.grid_effect_frames = Grid.frames
     st.candidates = {}
     local party = ctx.game.party()
     for s = 1, 2 do if ctx.game.slot_active_set()[s] and party[s] and party[s].status & E.RunnerStatus.ACTIVE ~= 0 then st.candidates[#st.candidates + 1] = s end end

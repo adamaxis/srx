@@ -72,6 +72,21 @@ fixed assets in selector order while leaving the offline catalog names in ROM
 address order. Lua continues to store the source selector; Qt presents that
 state with the matching named art.
 
+## Child-screen continuity
+
+The root loop at `0xC2D4` calls `0xE660` once per VBlank before dispatching
+input. Selecting Dismiss Runner transfers to `0xC448`; its child redraw changes
+the inner menu region. Returning to the parent resumes at `0xC2AA`, whose
+`0xC3E6` rebuild clears the inner grid and labels. Neither path rewrites the
+twelve lower-bezel destinations above. Those cells therefore retain their last
+`0xE660` writes until the Pocket Secretary panel itself is rebuilt.
+
+The Lua route had been resetting the shared light-cell state on Dismiss Runner
+entry and return. It now carries the existing cell map and effect-frame count
+through that child. The route regression test checks preserved cells on child
+entry, after another source effect update, and after returning to the parent.
+The Qt field-secretary QA dump also captures the complete composed screens.
+
 ## Verification
 
 Debug and Release builds pass. The gameplay script runtime, Pocket Secretary

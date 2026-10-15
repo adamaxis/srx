@@ -6695,9 +6695,8 @@ void FieldSceneRuntime::begin_pocket_secretary_dismiss_runner() {
         }
     }
     begin_dismiss_runner_menu(dismiss_runner_, candidates, count);
-    dismiss_runner_random_grid_effect_ = RandomGridEffectState{};
-    dismiss_runner_effect_frames_ = 0U;
-    dismiss_runner_random_grid_cells_.fill(-1);
+    // Dismiss Runner redraws only the inner panel. E660's lower-bezel cells
+    // remain installed until the Pocket Secretary panel is rebuilt.
     source_boundary("field.pocket_secretary.dismiss_runner.opened");
 }
 
@@ -11830,13 +11829,8 @@ void FieldSceneRuntime::advance_frame() {
                 case DismissRunnerMenuEvent::waiting:
                     break;
                 }
-                if (!dismiss_runner_.open) {
-                    // Returning to the parent reconstructs its own menu
-                    // panel. Do not let child grid writes survive the redraw.
-                    dismiss_runner_random_grid_effect_ =
-                        RandomGridEffectState{};
-                    dismiss_runner_random_grid_cells_.fill(-1);
-                }
+                // C448 returns through the parent's inner-panel redraw; the
+                // lower-bezel E660 writes are outside that cleared region.
                 if (!menu_route_active_) {
                     return;
                 }
