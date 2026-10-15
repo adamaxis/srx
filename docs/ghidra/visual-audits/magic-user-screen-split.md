@@ -72,7 +72,12 @@ unmodified record.
    strip, outer frame, and right HUD remain present. The yellow page replaces
    the old center content; the Defense fallback clears the old status/item
    content before drawing its title and bars. No stale spell text or unrelated
-   selector is visible after entry or return.
+   selector is visible after entry or return. The Samurai fallback test now
+   compares the entire frame outside the replaced center against the parent
+   page, then checks return, reopen, and a second return. This specifically
+   guards the shared posture/action row and HUD against defense-panel overdraw.
+   ROM `0x11900`/`0x11928` rebuild that common row, so it remains visible by
+   design.
 7. **Do multiple frames support the interpretation? — Unknown for the full
    split; yes for the spell route.** Independent section 06 frames
    `000001`/`000002` show Rockskin, `000005` shows Mana Zap,
@@ -109,7 +114,8 @@ unmodified record.
   Magic fallback QA uses the genuine Samurai startup record and asserts class
   2, `+0x7F=0`, fallback state, two source values/bar assets, cleared old
   model/weapon/Atk/Def content, a black leading title cell, persistent HUD,
-  and return. A conversion unit case checks that class 3 still falls back
+  full-frame equality outside the center panel, and a return/reopen/return
+  cycle. A conversion unit case checks that class 3 still falls back
   with a nonzero resource byte.
 - **Behavior implemented:** the live Lua route distinguishes the
   yellow spell page from the two-bar Magical Defense page using runner class

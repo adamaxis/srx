@@ -20610,6 +20610,24 @@ int main(int argc, char** argv) {
                      ("defense-bar-" + std::to_string(mana.bar_row) + ".bmp"))
                         .wstring()));
                 const auto actual_scene = render_scene();
+                const auto shared_layout_matches_command_page = [&] {
+                    // FBA6 replaces only the central grid. The row rebuilt
+                    // by 0x11900/0x11928 and the independently painted HUD
+                    // must remain byte-for-byte identical to page 5; this
+                    // catches defense text/bars leaking onto shared controls.
+                    for (int y = 0; y < actual_scene.height(); ++y) {
+                        for (int x = 0; x < actual_scene.width(); ++x) {
+                            if (x >= 96 && x < 264 && y >= 16 && y < 160) {
+                                continue;
+                            }
+                            if (actual_scene.pixel(x, y) !=
+                                page_scene.pixel(x, y)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
                 const auto panel_matches_background =
                     [&](const int x, const int y, const int width,
                         const int height) {
@@ -20650,12 +20668,13 @@ int main(int argc, char** argv) {
                     !region_matches(actual_scene, expected_mana_bar,
                                     120, 104) ||
                     !panel_matches_clean_redraw() ||
+                    !shared_layout_matches_command_page() ||
                     !panel_matches_background(128, 64, 120, 16) ||
                     !panel_matches_background(112, 112, 8, 8) ||
                     !panel_matches_background(128, 120, 120, 40)) {
                     std::cerr << "field Magic dump: physical/mana values, "
-                                 "source rows, strip placement, or cleared "
-                                 "center panel diverged\n";
+                                 "source rows, strip placement, clean center "
+                                 "redraw, or shared layout diverged\n";
                     return 3;
                 }
                 int title_ink = 0;
@@ -20719,6 +20738,22 @@ int main(int argc, char** argv) {
                                  "the same page-5 frame\n";
                     return 3;
                 }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto reopened_scene = render_scene();
+                if (!field_scene.magic_defense_open() ||
+                    reopened_scene != actual_scene ||
+                    !save_scene("reopened", reopened_scene)) {
+                    std::cerr << "field Magic dump: defense page reopen "
+                                 "did not replace the center cleanly\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x04U);
+                if (field_scene.magic_defense_open() ||
+                    render_scene() != page_scene) {
+                    std::cerr << "field Magic dump: second return left "
+                                 "stale defense graphics or controls\n";
+                    return 3;
+                }
                 std::cout << "field_magic_dump=written path="
                           << field_magic_dump_path->string()
                           << " class="
@@ -20727,7 +20762,7 @@ int main(int argc, char** argv) {
                           << static_cast<int>(physical.bar_row)
                           << " mana=" << mana.value << ":"
                           << static_cast<int>(mana.bar_row)
-                          << " held_frames=30 return=page5\n";
+                          << " held_frames=30 return=reopen=return=page5\n";
                 return 0;
             }
             if (field_command_dump_path.has_value()) {
