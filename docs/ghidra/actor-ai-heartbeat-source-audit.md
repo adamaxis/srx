@@ -399,7 +399,7 @@ guards can run independent timers and decisions.
 
 ## Port coverage and current boundary
 
-`gameplay/scripts/actor_ai.lua` now keeps independent state per actor instance
+`gameplay/scripts/actor/heartbeat.lua` now keeps independent state per actor instance
 and returns an animation snapshot on every Lua heartbeat. The profile-actor
 entry branch ports the source's random 0..15 initial delay, 21-pass completion
 check, directional C0B2 selection, two-frame `0x0200`/`0x1000` cadence,

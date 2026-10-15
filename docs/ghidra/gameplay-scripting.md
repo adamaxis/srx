@@ -257,7 +257,7 @@ rather than a second Lua copy.
   catalog QA check every ID, key, value, and source ordering. The runner's
   spell table still filters available spells, and force, posture, and cursor
   timing remain native state. Actor spell-effect timing and target fan-out live
-  in `actor_ai.lua`; C++ forwards scene/record facts and presents its phase
+  in `actor/actions.lua` and `actor/heartbeat.lua`; C++ forwards scene/record facts and presents its phase
   output. The non-magic
   `Magical Defense` fallback overlays its title and two bars on the shared
   page; the host renderer clears the title's source-written leading blank
@@ -338,7 +338,7 @@ Lua. The current field scene has no live collision candidates, so the
 linked hit/status/damage continuation remains an explicit boundary. Most NPC
 behavior and the full 16-record population remain unconnected.
 
-- `gameplay/scripts/actor_ai.lua` resolves Lua AI packages from a stable
+- `gameplay/scripts/actor/targeting.lua` resolves Lua AI packages from a stable
   source-template profile ID plus the ROM's item/spell/none action class and
   code. Every active profile actor has a stable instance ID and receives a
   Lua behavior heartbeat on each field behavior-service pass and a render

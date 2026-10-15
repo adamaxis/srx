@@ -627,7 +627,7 @@ Lua then copied its stale route-flags byte back to the native record and erased
 bit 5 immediately after `0xB7B8` set it. The first normal Down update therefore
 dispatched the same C2 event a second time. `ScriptMovementCollisionRecoveryResult`
 now carries the decision and post-service route-flags byte together;
-`actor_ai.lua` merges bit 5 from that result into Lua movement state before
+`actor/movement.lua` merges bit 5 from that result into Lua movement state before
 returning its step. The movement decision remains a separate return value,
 and the other route-state bits stay in the script snapshot.
 

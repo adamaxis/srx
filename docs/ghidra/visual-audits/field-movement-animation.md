@@ -44,7 +44,7 @@ frame 7 at completion. This is not the ordinary held-D-pad cycle.
 The extractor writes C062 frames as individually named files at
 `assets/field/entities/movement-<direction>-<frame>.bmp`, with
 `0xB6DE/0xC062/0x600E` provenance. The Qt renderer consumes those files
-directly. `actor_ai.lua` owns the player's render-phase frame accumulator,
+directly. `actor/anim.lua` owns the player's render-phase frame accumulator,
 four-pose cadence, and idle/walk/attack animation selection; it also owns the
 default NPCs' C0B2 transition animation cadence. `FieldSceneRuntime` retains
 the accepted position and collision state, then applies the movement position

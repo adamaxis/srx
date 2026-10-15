@@ -12,6 +12,7 @@ local pending_spell_effects_by_source_slot = R.pending_spell_effects_by_source_s
 local spell_effect_scans_by_source_slot = R.spell_effect_scans_by_source_slot
 local ActionKind = R.ActionKind   -- from actor/tables.lua
 local function advance_dynamic_actor_action_animation(...) return R.advance_dynamic_actor_action_animation(...) end   -- from actor/anim.lua
+local function advance_dynamic_actor_item_action_animation(...) return R.advance_dynamic_actor_item_action_animation(...) end   -- from actor/anim.lua
 local function advance_dynamic_actor_walk_animation(...) return R.advance_dynamic_actor_walk_animation(...) end   -- from actor/anim.lua
 local function advance_entity_movement(...) return R.advance_entity_movement(...) end   -- from actor/movement.lua
 local function advance_entry_animation(...) return R.advance_entry_animation(...) end   -- from actor/anim.lua

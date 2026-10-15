@@ -268,7 +268,7 @@ table, and code zero means no active action. Those are typed data inputs; the
 profile ID contains no runtime ROM address.
 
 The Qt actor service passes that identity, action class/code, instance ID,
-initial delay, and source heading to `gameplay/scripts/actor_ai.lua`. Lua
+initial delay, and source heading to `gameplay/scripts/actor/heartbeat.lua`. Lua
 selects the `corp_guard_k05_item06` package for the kind-5 guard and
 `pedestrian_k0b_none00` for the kind-11 pedestrian. The guard package binds
 item 6 (Max-Power / Heavy Pistol); the pedestrian has no active item action.

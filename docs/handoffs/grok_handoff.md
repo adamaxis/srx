@@ -29,7 +29,7 @@ This does **not** establish that Scene 2’s production Weenrs use this route br
 
 The changes and supporting evidence are documented in [actor-ai-heartbeat-source-audit.md](../ghidra/actor-ai-heartbeat-source-audit.md), [field-random-encounter-creature-targeting.md](../ghidra/visual-audits/field-random-encounter-creature-targeting.md), [HILLS.md](../ghidra/HILLS.md), and [decompiled-function-status.tsv](../ghidra/decompiled-function-status.tsv).
 
-Relevant implementation and test files are [actor_ai.lua](../../gameplay/scripts/actor_ai.lua), [field_scene_runtime.cpp](../../qt_runtime/src/field/field_scene_runtime.cpp), and [game_script_runtime_test.cpp](../../qt_runtime/tests/scripting/game_script_runtime_test.cpp).
+Relevant implementation and test files are [the actor heartbeat](../../gameplay/scripts/actor/heartbeat.lua), [the actor module map](../ghidra/lua-actor-ai-module-boundaries.md), [field_scene_runtime.cpp](../../qt_runtime/src/field/field_scene_runtime.cpp), and [game_script_runtime_test.cpp](../../qt_runtime/tests/scripting/game_script_runtime_test.cpp).
 
 ## Verification performed
 

@@ -33,7 +33,7 @@ The US ROM is the primary source for these paths. The disassembly and exported G
 
 ### Player firearms
 
-`FieldSceneRuntime` passes held A, action readiness, and a firearm-availability fact into the player Lua heartbeat. Lua returns `combat_action_requested`. The C++ `service_player_weapon_action()` then validates the record again, handles empty-magazine reload, calls the typed spawn-cycle helper, commits ammunition, allocates source slots 9–14, and starts the attack pose. The projectile's subsequent movement and hit policy are in `actor_ai.lua` and `combat.lua`; C++ supplies terrain/collision facts and applies the returned typed meter update.
+`FieldSceneRuntime` passes held A, action readiness, and a firearm-availability fact into the player Lua heartbeat. Lua returns `combat_action_requested`. The C++ `service_player_weapon_action()` then validates the record again, handles empty-magazine reload, calls the typed spawn-cycle helper, commits ammunition, allocates source slots 9–14, and starts the attack pose. The projectile's subsequent movement policy is in `actor/movement.lua`, action and effect handling is in `actor/actions.lua`, and hit policy is in `combat.lua`; C++ supplies terrain/collision facts and applies the returned typed meter update.
 
 The catalog has typed rows for the 12 firearms, including magazine capacity and the ROM-derived item-effect/difficulty fields. The source's three-ray grouping is by action codes 8–10, not by a unique animation for each gun. The extracted projectile lists are shared directional families selected by action class and heading; the sound event is selected by action code and item status. The ROM does not appear to supply a unique projectile clip for each firearm.
 
@@ -55,7 +55,7 @@ There is partial NPC spell/effect infrastructure and named effect presentation f
 
 ### 1. Player spell selection ends before a cast
 
-This is a functional disconnect, not a visual uncertainty. In `field_scene_runtime.cpp`, `combat_action_available` requires `FieldCombatActionKind::weapon_ammo` (`~8037–8055`). `service_player_weapon_action()` returns immediately for `magic_spell` (`~8356–8384`). The spell menu only records the selected spell/force and returns to the map. In Lua, `resolve_spell_action()` is reached from the dynamic actor spell branch (`actor_ai.lua` around 2672), with no corresponding player action dispatch. The code correctly avoids spending ammo on a spell, but currently does so by doing nothing.
+This is a functional disconnect, not a visual uncertainty. In `field_scene_runtime.cpp`, `combat_action_available` requires `FieldCombatActionKind::weapon_ammo` (`~8037–8055`). `service_player_weapon_action()` returns immediately for `magic_spell` (`~8356–8384`). The spell menu only records the selected spell/force and returns to the map. In Lua, `resolve_spell_action()` is reached from the dynamic actor spell branch in `actor/actions.lua` (orchestrated by `actor/heartbeat.lua`), with no corresponding player action dispatch. The code correctly avoids spending ammo on a spell, but currently does so by doing nothing.
 
 ### 2. Player combat policy and animation timing still live in C++
 
@@ -77,7 +77,7 @@ Lua's combat result carries both `source_record_slot` and `record_type` as separ
 
 ### 6. Player damage has no matching reaction state
 
-`combat.lua` queues `incoming_hit` only for targets with `record_type >= 3` (world actors). `begin_received_hit_reaction()` is serviced only in the dynamic-world-encounter branch of `actor_ai.lua`. Party records receive meter updates, but the active player heartbeat has no corresponding hurt/down transition. Thus the current creature-action path can change a player meter without a connected player damage pose/audio/recovery lifecycle. This is separate from the well-covered creature hurt reaction after a player projectile.
+`combat.lua` queues `incoming_hit` only for targets with `record_type >= 3` (world actors). `actor/heartbeat.lua` services `begin_received_hit_reaction()` only in the dynamic-world-encounter branch and delegates its pose to `actor/anim.lua`. Party records receive meter updates, but the active player heartbeat has no corresponding hurt/down transition. Thus the current creature-action path can change a player meter without a connected player damage pose/audio/recovery lifecycle. This is separate from the well-covered creature hurt reaction after a player projectile.
 
 ### 7. Hit follow-through and record lifecycle remain partial
 
@@ -94,7 +94,10 @@ Existing QA checks many deterministic internal transitions and full-screen frame
 ## Evidence and coverage already present
 
 - `gameplay/scripts/combat.lua`: shared dice, spell, creature-reaction, firearm attack-seed, and firearm-hit resolvers.
-- `gameplay/scripts/actor_ai.lua`: player held-A request, target selection, projectile heartbeat, dynamic creature action, and world-actor damage reactions.
+- `gameplay/scripts/actor/heartbeat.lua`: player and actor behavior/render heartbeat orchestration.
+- `gameplay/scripts/actor/targeting.lua`: actor profile validation, target selection, and heading decisions.
+- `gameplay/scripts/actor/movement.lua`: movement candidates, collision results, and projectile progression.
+- `gameplay/scripts/actor/actions.lua` and `gameplay/scripts/actor/anim.lua`: action dispatch, effects, and animation/reaction state.
 - `gameplay/scripts/items.lua`: item catalog and current weapon templates.
 - `qt_runtime/src/field/field_scene_runtime.cpp`: player action gate and host spawn/ammo service, target/collision queries, typed meter commits, and effect rendering.
 - `qt_runtime/tests/scripting/game_script_runtime_test.cpp`: deterministic resolver and actor-heartbeat cases, including projectile hit and damage-result cases.

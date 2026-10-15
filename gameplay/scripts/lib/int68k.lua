@@ -1,5 +1,5 @@
 -- lib/int68k.lua: 68000 integer helpers shared by every module (replaces the copies in combat.lua:6-14,
--- entity_motion.lua:25 and actor_ai.lua:949-963).
+-- entity_motion.lua:25 and pre-module actor_ai.lua:949-963).
 local I = {}
 function I.u8(v)  return v & 0xFF end
 function I.u16(v) return v & 0xFFFF end

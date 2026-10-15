@@ -31,7 +31,7 @@ E.StateFn   = { IDLE = 0xB45C, WALK = 0xB574, PROJECTILE = 0xAC4E }             
 E.CombatPhase = { NONE = 0, ATTACK_ANIM = 1, APPROACH = 2, HOLD = 3 }               -- FFDFE0 [C]
 E.EndingState = { NONE = 0, FINAL_FIGHT = 3 }                                        -- FFE186 [C]
 E.SpriteType  = { FIELD_RUNNER = 3, CORP_GUARD = 5, GHOUL = 7, PEDESTRIAN = 11, HELL_HOUND = 12, GARGOYLE = 13,
-                  WENDIGO = 14, THON = 15 }   -- +0x0E [C: 7,12,13,15 from our trace; 3,5,11,14 names from repo actor_ai.lua:40-46]
+                  WENDIGO = 14, THON = 15 }   -- +0x0E [C: 7,12,13,15 from our trace; 3,5,11,14 names from pre-module actor_ai.lua:40-46]
 
 -- Item codes (= +0x57 for weapons, = inventory byte); records 0xD4540 + 0x30*(code-1) (doc 08) [C]
 E.ItemId = {
@@ -69,7 +69,7 @@ E.SoundId = {   -- played through 0x530DE (doc 10) [C]
     SHOT_LIGHT_PISTOL = 0x1C, SHOT_HEAVY_PISTOL = 0x51, SHOT_SMG_OR_THROWN = 0x1E, SHOT_SHOTGUN = 0x1D,  -- 0x15318
     SHOT_SILENCED = 0x3F, SHOT_SILENCED_SMG_OR_THROWN = 0x4A,                                            -- 0x15336
     RELOAD_OR_EMPTY = 0x4B, ALARM = 0x30, PICKUP = 0x24,
-    -- [H] repo-named (actor_ai.lua), not yet traced to a ROM table:
+    -- [H] repo-named (pre-module actor_ai.lua), not yet traced to a ROM table:
     TARGET_HEADING = 0x4D, TARGET_HEADING_ALT = 0x4E, PROJECTILE_IMPACT = 0x3C,
 }
 E.SceneId = { ALARM_COMBAT = 0x14, FINAL = 0x37 }                                    -- 0x1E04A, 0xA38 [C]
