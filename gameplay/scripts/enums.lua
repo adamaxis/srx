@@ -94,6 +94,7 @@ E.DirectionStep = { [0] = -0x40, [2] = 1, [4] = 0x40, [6] = -1 }                
 E.Pad = { UP = 0x0100, DOWN = 0x0200, LEFT = 0x0400, RIGHT = 0x0800, B = 0x1000, C = 0x2000, A = 0x4000, START = 0x8000,
           HELD_UP = 0x0001, HELD_DOWN = 0x0002, HELD_LEFT = 0x0004, HELD_RIGHT = 0x0008, EDGES = 0xFF00, DPAD = 0x0F00 }
 E.MenuSound = { MOVE = 0x25, SELECT = 0x24, JACK_IN = 0x1A, DAMAGE = 0x18 }   -- 0x1A: 0xE47A jack-in [C]   -- 0x10E2E / 0x10E4E / 0x11A72 via 0x530DE [C]
+E.MatrixDeckMode = { ATTACK = 0xFF, BALANCED = 0x00, DEFENSE = 0x01 }      -- FFF0B7: A/B/C split the Matrix pool [C]
 -- FFF0D0 primary page; pages 0/1 are the two inventory columns, 2..6 dispatch through table 0xD2A0A [C]
 E.MenuPage = { INVENTORY_LEFT = 0, INVENTORY_RIGHT = 1, CLIPS = 2, ATTRIBUTES_SKILLS = 3, CYBERWARE = 4, MAGIC = 5,
                POCKET_SECRETARY = 6, COUNT = 7 }

@@ -1,0 +1,84 @@
+-- cyberdeck.lua: Pocket Secretary row 2 -> 0x18150 -> deck loop 0x1822C, ROM-traced [C unless marked].
+-- 0x18150: FF018F b0 == 0 -> 0xE43D1 "You do not have a cyberdeck!!" (Pocket Secretary handles it). Else host
+--   deck_enter (window off, FFF0B7 = 0, screen 0xE2E3A, 0x177CC, deck +0x0C = 10), loop, deck_leave (field restore).
+-- 0x1822C: saves/restores FFF0B7 + FFDD08, clears FFF0B1. 4x4 grid FFF0D0 col / FFF0D1 row, 0..3 wrap, silent;
+--   cursor FFD986 x = col*0x20+0x8C, y = row*0x28+0x94; 0x196F2 per frame (host tick).
+--   A -> FFF0B7 = FF, B -> 0, C -> 1 (0x18630..), then dispatch 0x1842E:
+--     row < 3 -> program slot screen 0x19238 (screens/deck_screens.lua); row 3 col 3 -> pull the plug (only when FFF0B0 online);
+--     row 3 col 0..2 -> table 0xE2DFE (0x18AA6, 0x18D1A, 0x19018; col 2 only online); FFF0AD set -> loop exits.
+--   Start -> exit (d7 = -1).
+local E = require("enums")
+local MX = require("menu.rules.matrix")
+local P, R, T, MM, S = E.Pad, E.MenuRegion, E.MenuTransition, E.MenuMessage, E.MenuSound
+local M = { window = E.WindowPlane.OFF, PLUG_ROW = 3, PLUG_COL = 3, BLACK_IC = 8, BODY_TN = 5, STUN_LOSS = 3 }
+local MODE = {
+    [P.A] = E.MatrixDeckMode.ATTACK,
+    [P.B] = E.MatrixDeckMode.BALANCED,
+    [P.C] = E.MatrixDeckMode.DEFENSE,
+} -- FFF0B7 (read by the 0x55F6C pool step, docs/18)
+
+M.FUNCTION = { [0] = E.MenuScreen.DECK_CYBERINFO, E.MenuScreen.DECK_STORAGE, E.MenuScreen.DECK_MAP }   -- 0x18AA6, 0x18D1A, 0x19018
+function M.cursor_xy(col, row) return col * 0x20 + 0x8C, row * 0x28 + 0x94 end
+
+function M.new() return { col = 0, row = 0 } end
+function M.enter(st, ctx) st.saved = ctx.game.deck_enter(); ctx.redraw(R.FULL) end
+local function leave(st, ctx, res) ctx.game.deck_leave(st.saved); return { transition = T.POP, result = res } end
+function M.input(st, events, ctx)
+    local g = ctx.game
+    g.deck_tick()                                                                        -- 0x196F2
+    local col, row, moved = MX.step_deck_cursor(
+        st.col, st.row,
+        events & P.UP ~= 0, events & P.DOWN ~= 0,
+        events & P.LEFT ~= 0, events & P.RIGHT ~= 0)
+    if moved then st.col, st.row = col, row; ctx.redraw(R.SUBMENU); return end
+    if events & P.START ~= 0 then return leave(st, ctx) end
+    local btn = events & P.A ~= 0 and P.A or events & P.B ~= 0 and P.B or events & P.C ~= 0 and P.C
+    if not btn then return end
+    g.set_deck_mode(MODE[btn])
+    st.text = nil
+    if st.row ~= M.PLUG_ROW then return { transition = T.PUSH, screen = E.MenuScreen.DECK_PROGRAM, args = { col = st.col, row = st.row } } end
+    if st.col == M.PLUG_COL then
+        if not g.matrix_online() then return end
+        local black = MX.ic_type(g.matrix_node(), g.alert(), g.in_alert(), g.map_seen()) == M.BLACK_IC and g.in_combat()   -- 0x19B40 == 8 && FFDF84
+        return { transition = T.PUSH, screen = E.MenuScreen.PULL_PLUG, args = { black_ic = black } }
+    end
+    if st.col == 2 and not g.matrix_online() then return end
+    return { transition = T.PUSH, screen = M.FUNCTION[st.col] }                         -- 0xE2DFE[col]
+end
+function M.child_returned(st, child, res, ctx)
+    if res.logged_out then return leave(st, ctx, { exit_secretary = true }) end          -- FFF0DC = FF
+    if res.exit_deck then return leave(st, ctx) end                                      -- FFF0AD -> clr, d7 = 0, exit
+    st.text, st.list = res.text, res.list                                                -- left on screen (rts, no wait)
+    ctx.redraw(R.FULL)                                                                   -- 0x1882E grid redraw
+end
+
+-- Pull the plug: 0xE438A (+0xE43B0 Black IC warning), Yes/No 0xE387E, FFF0DC default 1 = No; A/B/C confirm.
+-- Yes + Black IC: Willpower (+0x7C) dice vs TN = IC rating (0x19BF6 d6) via 0xDBA.
+--   0 successes -> physical -(TN >> 1) (0x17D90), sfx 0x18; alive -> back to the deck grid (NO logout); dead -> logout.
+--   else Body (+0x77) dice vs 5; 0 successes -> stun -3 (min 1), sfx 0x18. Then logout.
+-- Logout: FFF0DC = FF, 0x18776, 0x26A00 (sfx 0x29, FFF0B1 = FF).
+local Plug = { window = E.WindowPlane.OFF }
+function Plug.new(a) return { black_ic = a.black_ic, yes = false } end
+function Plug.enter(st, ctx) ctx.redraw(R.MESSAGE) end
+function M.dumpshock(ctx)
+    local g = ctx.game; local r = g.party()[g.active_slot()]
+    local tn = MX.ic_rating(g.matrix_node(), g.alert())                 -- 0x19BF6
+    if g.roll_successes(r.attributes[5], tn) == 0 then
+        g.apply_physical(-(tn >> 1)); ctx.sound(S.DAMAGE)
+        return r.physical == 0
+    end
+    if g.roll_successes(r.attributes[0], M.BODY_TN) == 0 then
+        r.stun = r.stun - M.STUN_LOSS; if r.stun < 1 then r.stun = 1 end; ctx.sound(S.DAMAGE)
+    end
+    return true
+end
+function Plug.input(st, events, ctx)
+    if events & (P.UP | P.DOWN) ~= 0 then st.yes = not st.yes; ctx.redraw(R.MESSAGE); return end  -- [H toggle on 2 rows]
+    if events & (P.A | P.B | P.C) == 0 then return end
+    if not st.yes then return { transition = T.POP, result = {} } end
+    if st.black_ic and not M.dumpshock(ctx) then return { transition = T.POP, result = {} } end
+    ctx.game.matrix_logout()
+    return { transition = T.POP, result = { logged_out = true } }
+end
+
+return { Cyberdeck = M, PullPlug = Plug }
