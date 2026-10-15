@@ -104,6 +104,31 @@ int main() {
             "Caleb Brightmore is\nan upper-level Johnson\nwho specializes in\n"
             "Matrix Runs.\n\nCan be contacted at\nIcarus Descending in\n"
             "Downtown Seattle."}};
+    std::array<std::string, kNotebookContactCount> expected_contact_text_ids{};
+    for (std::size_t index = 0; index < expected_contact_text_ids.size();
+         ++index) {
+        expected_contact_text_ids[index] =
+            "record_" + std::to_string(index);
+    }
+    std::array<std::string, kNotebookShadowrunnerCount>
+        expected_shadowrunner_text_ids{};
+    for (std::size_t index = 0;
+         index < expected_shadowrunner_text_ids.size(); ++index) {
+        expected_shadowrunner_text_ids[index] =
+            "record_" + std::to_string(index);
+    }
+    const std::array<std::string, kNotebookContactCount>
+        expected_contact_names{{
+            "Capt Quinton Jaymes", "Alesandro Hobbs", "Sharkey",
+            "Kipp David", "Wilma Temmenhoff", "Sgt. Macklemann",
+            "Gregory Wilns", "Mr. Faradouchi", "Agira Tetsumi",
+            "Henry J. Culver", "Max", "Sgt. Chillicut",
+            "Prof. Jefferson"}};
+    const std::array<std::string, kNotebookShadowrunnerCount>
+        expected_shadowrunner_names{{
+            "Ricky", "Winston Marrs", "Trent Delisario", "Petr Uvehr",
+            "Walking Bear", "Phantom", "Ilene Two Fists",
+            "Freya Goldenhair", "Rianna Heartbane", "Stark"}};
     const std::array<std::string, kNotebookTipsMetadataCount>
         expected_notebook_tips_metadata_text_ids{{
             "title", "separator", "page_count", "page_number_clear"}};
@@ -263,6 +288,17 @@ int main() {
             expected_johnson_text_ids ||
         text.catalog.notebook_mr_johnson_detail_text_ids !=
             expected_johnson_text_ids ||
+        text.catalog.notebook_contact_name_text_ids !=
+            expected_contact_text_ids ||
+        text.catalog.notebook_contact_detail_text_ids !=
+            expected_contact_text_ids ||
+        text.catalog.notebook_shadowrunner_name_text_ids !=
+            expected_shadowrunner_text_ids ||
+        text.catalog.notebook_shadowrunner_detail_text_ids !=
+            expected_shadowrunner_text_ids ||
+        text.catalog.notebook_record_page_text_ids !=
+            std::array<std::string, kNotebookRecordPageLabelCount>{
+                "next", "prior"} ||
         text.catalog.notebook_tips_metadata_text_ids !=
             expected_notebook_tips_metadata_text_ids ||
         text.catalog.notebook_tip_text_ids !=
@@ -350,6 +386,16 @@ int main() {
                 "     Get a job!!"} ||
         text.catalog.notebook_mr_johnson_names != expected_johnson_names ||
         text.catalog.notebook_mr_johnson_details != expected_johnson_details ||
+        text.catalog.notebook_contact_names != expected_contact_names ||
+        text.catalog.notebook_shadowrunner_names !=
+            expected_shadowrunner_names ||
+        text.catalog.notebook_record_page_labels !=
+            std::array<std::string, kNotebookRecordPageLabelCount>{
+                "<Next Screen>", "<Prior Screen>"} ||
+        text.catalog.notebook_contact_details[0].find(
+            "Capt. Quinton Jaymes\n\nEx-Merc") != 0U ||
+        text.catalog.notebook_shadowrunner_details[9].find(
+            "Stark is the only\nsurviving member") != 0U ||
         text.catalog.notebook_tips_title != "Tips & Clues" ||
         text.catalog.notebook_tips_separator !=
             std::string("[") + std::string(15U, static_cast<char>(92)) ||

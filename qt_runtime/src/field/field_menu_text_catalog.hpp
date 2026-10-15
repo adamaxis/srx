@@ -62,6 +62,9 @@ static_assert(kNotebookTipCount % kNotebookTipsPageCount == 0U,
               "Notebook tips must divide evenly into source-ordered pages");
 inline constexpr std::size_t kNotebookTipsMetadataCount = 4U;
 inline constexpr std::size_t kNotebookMrJohnsonCount = 5U;
+inline constexpr std::size_t kNotebookContactCount = 13U;
+inline constexpr std::size_t kNotebookShadowrunnerCount = 10U;
+inline constexpr std::size_t kNotebookRecordPageLabelCount = 2U;
 
 struct FieldMenuTextCatalog {
     std::array<std::string, kCommandOverviewLabelCount> command_labels{};
@@ -197,6 +200,26 @@ struct FieldMenuTextCatalog {
         notebook_mr_johnson_details{};
     std::array<std::string, kNotebookMrJohnsonCount>
         notebook_mr_johnson_detail_text_ids{};
+    std::array<std::string, kNotebookContactCount>
+        notebook_contact_names{};
+    std::array<std::string, kNotebookContactCount>
+        notebook_contact_name_text_ids{};
+    std::array<std::string, kNotebookContactCount>
+        notebook_contact_details{};
+    std::array<std::string, kNotebookContactCount>
+        notebook_contact_detail_text_ids{};
+    std::array<std::string, kNotebookShadowrunnerCount>
+        notebook_shadowrunner_names{};
+    std::array<std::string, kNotebookShadowrunnerCount>
+        notebook_shadowrunner_name_text_ids{};
+    std::array<std::string, kNotebookShadowrunnerCount>
+        notebook_shadowrunner_details{};
+    std::array<std::string, kNotebookShadowrunnerCount>
+        notebook_shadowrunner_detail_text_ids{};
+    std::array<std::string, kNotebookRecordPageLabelCount>
+        notebook_record_page_labels{};
+    std::array<std::string, kNotebookRecordPageLabelCount>
+        notebook_record_page_text_ids{};
     std::array<std::string, kNotebookTipsMetadataCount>
         notebook_tips_metadata_text_ids{};
     std::array<std::string, kNotebookTipCount> notebook_tip_text_ids{};

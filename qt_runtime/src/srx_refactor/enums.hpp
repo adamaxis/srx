@@ -286,6 +286,8 @@ enum class MenuMessage : std::int64_t {
     NO_DATAFILES = 0x1F,
     RETREAT_COMBAT = 0x20,
     RETREAT_NO_NODE = 0x21,
+    NOTEBOOK_CONTACT_DETAIL = 0x22,
+    NOTEBOOK_SHADOWRUNNER_DETAIL = 0x23,
 };
 enum class MenuPage : std::int64_t {
     INVENTORY_LEFT = 0x0,
@@ -357,6 +359,8 @@ enum class MenuScreen : std::int64_t {
     DECK_CYBERINFO = 0x20,
     DECK_STORAGE = 0x21,
     DECK_MAP = 0x22,
+    NOTEBOOK_CONTACTS = 0x23,
+    NOTEBOOK_SHADOWRUNNERS = 0x24,
 };
 enum class MenuSound : std::int64_t {
     DAMAGE = 0x18,

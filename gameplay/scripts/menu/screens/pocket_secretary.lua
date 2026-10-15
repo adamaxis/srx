@@ -133,11 +133,28 @@ function Notebook.input(st, events, ctx)
                      args = { flags = st.nb.referrals } }
         end
         if opt == N.CONTACTS then
-            ctx.host.notebook_boundary(
-                E.NotebookBoundary.CONTACTS_UNIMPLEMENTED)
+            local refreshed = ctx.game.notebook()
+            if not refreshed or refreshed.contacts == nil then
+                ctx.host.notebook_boundary(
+                    E.NotebookBoundary.CONTACTS_FLAGS_UNRESOLVED)
+                return
+            end
+            st.nb = refreshed
+            return { transition = T.PUSH,
+                     screen = E.MenuScreen.NOTEBOOK_CONTACTS,
+                     args = { kind = "contacts", flags = refreshed.contacts } }
         elseif opt == N.SHADOWRUNNERS then
-            ctx.host.notebook_boundary(
-                E.NotebookBoundary.SHADOWRUNNERS_UNIMPLEMENTED)
+            local refreshed = ctx.game.notebook()
+            if not refreshed or refreshed.shadowrunners == nil then
+                ctx.host.notebook_boundary(
+                    E.NotebookBoundary.SHADOWRUNNERS_FLAGS_UNRESOLVED)
+                return
+            end
+            st.nb = refreshed
+            return { transition = T.PUSH,
+                     screen = E.MenuScreen.NOTEBOOK_SHADOWRUNNERS,
+                     args = { kind = "shadowrunners",
+                              flags = refreshed.shadowrunners } }
         end
         return
     end
@@ -222,6 +239,91 @@ function Johnsons.child_returned(st, child, res, ctx)
     ctx.redraw(R.SUBMENU)
 end
 
+-- Contacts 0xF840 and Shadowrunners 0xF6DC share the ROM 0xF5F4
+-- bitmask-list builder. Its inserted eighth row is the source's page-forward
+-- string; the final overflow row on the continuation page returns to page 1.
+local function build_notebook_record_rows(flags, count)
+    local selected = {}
+    for source_index = 0, count - 1 do
+        if (flags >> source_index) & 1 ~= 0 then
+            selected[#selected + 1] = source_index
+        end
+    end
+    if #selected <= 8 then return selected end
+    local rows = {}
+    for index = 1, 7 do rows[#rows + 1] = selected[index] end
+    rows[#rows + 1] = count -- C661D, inserted before source record eight.
+    for index = 8, #selected do rows[#rows + 1] = selected[index] end
+    rows[#rows + 1] = count + 1 -- C662B, continuation return row.
+    return rows
+end
+
+local function record_page(rows, page)
+    if page == 0 then
+        local visible = {}
+        for index = 1, math.min(8, #rows) do
+            visible[#visible + 1] = rows[index]
+        end
+        return visible
+    end
+    local visible = {}
+    for index = 9, #rows do visible[#visible + 1] = rows[index] end
+    return visible
+end
+
+local function make_record_page(count, detail_message)
+    local Records = { window = E.WindowPlane.SIDEBAR }
+    function Records.new(args)
+        local rows = build_notebook_record_rows(args.flags or 0, count)
+        return { rows = rows, visible = record_page(rows, 0), row = 0,
+                 page = 0, count = count, detail_message = detail_message,
+                 grid_cells = Grid.cells, grid_effect_frames = Grid.frames }
+    end
+    function Records.enter(st, ctx)
+        if #st.visible == 0 then return { transition = T.POP } end
+        ctx.redraw(R.SUBMENU)
+    end
+    function Records.input(st, events, ctx)
+        st.grid_effect_frames = Grid.advance(ctx)
+        if events & (P.UP | P.DOWN) ~= 0 then
+            local n = #st.visible
+            st.row = events & P.UP ~= 0 and
+                (st.row == 0 and n - 1 or st.row - 1) or (st.row + 1) % n
+            ctx.redraw(R.SUBMENU); return
+        end
+        if events & (P.A | P.B) ~= 0 then
+            local source_index = st.visible[st.row + 1]
+            if st.page == 0 and source_index == count then
+                st.page = 1; st.visible = record_page(st.rows, 1); st.row = 0
+                ctx.redraw(R.SUBMENU); return
+            elseif st.page == 1 and source_index == count + 1 then
+                st.page = 0; st.visible = record_page(st.rows, 0); st.row = 0
+                ctx.redraw(R.SUBMENU); return
+            end
+            return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE,
+                     args = { message = detail_message, grid_effect = true,
+                              data = { index = source_index, row = st.row,
+                                       visible = st.visible } } }
+        end
+        if events & P.C ~= 0 then
+            ctx.sound(E.MenuSound.MOVE)
+            ctx.game.reselect_leader()
+            return
+        end
+        if events & P.START ~= 0 then return { transition = T.POP } end
+    end
+    function Records.child_returned(st, child, res, ctx)
+        st.grid_effect_frames = Grid.frames
+        st.grid_cells = Grid.cells
+        ctx.redraw(R.SUBMENU)
+    end
+    return Records
+end
+
+local Contacts = make_record_page(13, E.MenuMessage.NOTEBOOK_CONTACT_DETAIL)
+local Shadowrunners = make_record_page(
+    10, E.MenuMessage.NOTEBOOK_SHADOWRUNNER_DETAIL)
+
 -- Dismiss Runner 0xC448: rows = Abort + candidates (slots 1..2 active); Up/Down 0x25; A/B/C 0x24 [srx FSR sounds H]
 local Dismiss = { window = E.WindowPlane.SIDEBAR }
 function Dismiss.new() return { row = 0, grid_cells = Grid.cells, grid_effect_frames = 0 } end
@@ -248,4 +350,7 @@ function Dismiss.input(st, events, ctx)
     if events & P.START ~= 0 then return { transition = T.POP } end
 end
 
-return { PocketSecretary = M, GroupItems = GroupItems, Notebook = Notebook, Tips = Tips, Johnsons = Johnsons, Dismiss = Dismiss, row_cursor = row_cursor }
+return { PocketSecretary = M, GroupItems = GroupItems, Notebook = Notebook,
+         Tips = Tips, Johnsons = Johnsons, Contacts = Contacts,
+         Shadowrunners = Shadowrunners, Dismiss = Dismiss,
+         row_cursor = row_cursor }

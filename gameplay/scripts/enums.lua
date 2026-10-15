@@ -107,7 +107,8 @@ E.MenuScreen = { COMMAND = 1, POSTURE = 2, ITEM_ACTION = 3, CLIPS = 4, ATTRIBUTE
                  CYBERDECK = 18, MESSAGE = 19, MR_JOHNSONS = 20, NOTEBOOK_TIPS = 21, CLIP_TRADE = 22,
                  RELOAD_CONFIRM = 23, UPGRADE_PROMPT = 24, MAGIC_FORCE = 25, MAGIC_POSTURE = 26,
                  DEBUG_MENU = 27, DEBUG_PICK_SYSTEM = 28, SAVE_SLOT = 29, PULL_PLUG = 30,
-                 DECK_PROGRAM = 31, DECK_CYBERINFO = 32, DECK_STORAGE = 33, DECK_MAP = 34 }   -- 0x19238 / 0x18AA6 / 0x18D1A / 0x19018 [C]   -- 0x599DA / 0x59A9A (docs/12) [C]
+                 DECK_PROGRAM = 31, DECK_CYBERINFO = 32, DECK_STORAGE = 33, DECK_MAP = 34,
+                 NOTEBOOK_CONTACTS = 35, NOTEBOOK_SHADOWRUNNERS = 36 }   -- Notebook records share ROM 0xF5F4 paging [C]
 -- Presenter regions (docs/09 section 10.1 coordinates) [C positions]
 E.MenuRegion = { ITEM_PICTURE = 0x0001, ITEM_HEADER = 0x0002, RATING = 0x0004, DAMAGE_POWER = 0x0008, COMBAT_BARS = 0x0010,
                  WEAPON_BARS = 0x0020, ARMOR = 0x0040, POSTURE_BLOCK = 0x0080, BUTTON_STRIP = 0x0100,
@@ -134,8 +135,8 @@ E.SaveLoadOption = { SAVE = 0, LOAD = 1 }   -- 0xC2600 rows [C]
 E.PocketOption = { NOTEBOOK = 0, GROUP_ITEMS = 1, CYBERDECK = 2, DISMISS_RUNNER = 3, SAVE_LOAD = 4, DEBUG = 5 } -- table 0xC1400; 5 = debug menu 0x599DA (FFF101) [C]
 E.NotebookOption = { CURRENT_RUN = 0, TIPS_AND_CLUES = 1, CONTACTS = 2, MR_JOHNSONS = 3, SHADOWRUNNERS = 4 }
 E.NotebookBoundary = { EVENT_GATES_UNRESOLVED = 0, TIPS_FLAGS_UNRESOLVED = 1,
-                       CURRENT_RUN_UNRESOLVED = 2, CONTACTS_UNIMPLEMENTED = 3,
-                       SHADOWRUNNERS_UNIMPLEMENTED = 4,
+                       CURRENT_RUN_UNRESOLVED = 2, CONTACTS_FLAGS_UNRESOLVED = 3,
+                       SHADOWRUNNERS_FLAGS_UNRESOLVED = 4,
                        MR_JOHNSON_FLAGS_UNRESOLVED = 5 }
 E.MenuMessage = { OUT_OF_AMMO = 1, ITEM_NO_CLIPS = 2, NO_PARTY = 3, RELOADED = 4, EXCHANGE_COMPLETE = 5, CANNOT_DISCARD = 6,
                   CANNOT_TRADE = 7, AUTOMATIC_USE = 8, FIRST_AID_USED = 9, SLAP_PATCH_USED = 10, NOT_INJURED = 11,
@@ -144,7 +145,8 @@ E.MenuMessage = { OUT_OF_AMMO = 1, ITEM_NO_CLIPS = 2, NO_PARTY = 3, RELOADED = 4
                   FUNCTION_ABORTED = 21, SAVE_OUTSIDE_ONLY = 22, SAVE_IN_COMBAT = 23, GAME_SAVED = 24,
                   LOAD_EMPTY = 25, LOAD_OK = 26,
                   DECK_NO_SLOTS = 27, DECK_NO_MEMORY = 28, NOT_ON_RUN = 29, RUN_COMPLETE = 30, NO_DATAFILES = 31,
-                  RETREAT_COMBAT = 32, RETREAT_NO_NODE = 33 }   -- 27..33: 0xE383D+0xE384A, 0xE383D+0xE3851, 0xE443F, 0xE445D, 0xE3A6C, 0xE39DF, 0xE4011 [C]   -- 22..26: 0xC26C3, 0xC26F0, 0xC26B6, 0x1B6527, 0x1B6577 [C]   -- 21: "Function Aborted!" 0xD1ED8 (clips exit 0x11C9C) [C]
+                  RETREAT_COMBAT = 32, RETREAT_NO_NODE = 33,
+                  NOTEBOOK_CONTACT_DETAIL = 34, NOTEBOOK_SHADOWRUNNER_DETAIL = 35 }   -- Detail waits share ROM 0xF312 edge loop [C]
 
 
 -- FFFC1E story-progress long; bit k = byte FFFC21-k/8, bit k%8. Cleared whole at 0x818 (new game) [C].

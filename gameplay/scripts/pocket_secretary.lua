@@ -121,6 +121,46 @@ function PocketSecretary.mr_johnson_details()
         }, "pocket_secretary.notebook.mr_johnson.detail.option.")
 end
 
+local function notebook_record_text_ids(count)
+    local ids = {}
+    for source_index = 0, count - 1 do
+        ids[#ids + 1] = "record_" .. source_index
+    end
+    return ids
+end
+
+local function notebook_record_text_catalog(count, kind, part)
+    local ids = notebook_record_text_ids(count)
+    local keys = {}
+    for index, id in ipairs(ids) do
+        keys[index] = "pocket_secretary.notebook." .. kind .. "." .. part .. ".option." .. id
+    end
+    return ids, nil, keys
+end
+
+function PocketSecretary.notebook_contact_names()
+    return notebook_record_text_catalog(13, "contact", "name")
+end
+
+function PocketSecretary.notebook_contact_details()
+    return notebook_record_text_catalog(13, "contact", "detail")
+end
+
+function PocketSecretary.notebook_shadowrunner_names()
+    return notebook_record_text_catalog(10, "shadowrunner", "name")
+end
+
+function PocketSecretary.notebook_shadowrunner_details()
+    return notebook_record_text_catalog(10, "shadowrunner", "detail")
+end
+
+function PocketSecretary.notebook_record_page_labels()
+    return { "next", "prior" }, nil, {
+        "pocket_secretary.notebook.record_page.option.next",
+        "pocket_secretary.notebook.record_page.option.prior",
+    }
+end
+
 function PocketSecretary.notebook_tips_metadata()
     return text_entries(
         { "title", "separator", "page_count", "page_number_clear" },

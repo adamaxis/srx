@@ -31,6 +31,8 @@ Route.register(E.MenuScreen.POCKET_SECRETARY, secretary.PocketSecretary)
 Route.register(E.MenuScreen.NOTEBOOK, secretary.Notebook)
 Route.register(E.MenuScreen.NOTEBOOK_TIPS, secretary.Tips)
 Route.register(E.MenuScreen.MR_JOHNSONS, secretary.Johnsons)
+Route.register(E.MenuScreen.NOTEBOOK_CONTACTS, secretary.Contacts)
+Route.register(E.MenuScreen.NOTEBOOK_SHADOWRUNNERS, secretary.Shadowrunners)
 Route.register(E.MenuScreen.GROUP_ITEMS, secretary.GroupItems)
 Route.register(E.MenuScreen.DISMISS_RUNNER, secretary.Dismiss)
 
@@ -54,6 +56,8 @@ for screen = E.MenuScreen.ITEM_ACTION, E.MenuScreen.DECK_MAP do
        screen ~= E.MenuScreen.NOTEBOOK and
        screen ~= E.MenuScreen.NOTEBOOK_TIPS and
        screen ~= E.MenuScreen.MR_JOHNSONS and
+        screen ~= E.MenuScreen.NOTEBOOK_CONTACTS and
+        screen ~= E.MenuScreen.NOTEBOOK_SHADOWRUNNERS and
        screen ~= E.MenuScreen.GROUP_ITEMS and
        screen ~= E.MenuScreen.DISMISS_RUNNER then
         local window = E.WindowPlane.SIDEBAR

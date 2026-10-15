@@ -270,6 +270,21 @@ bool is_pocket_secretary_text_label_key(
                key, "pocket_secretary.notebook.mr_johnson.detail.option.",
                catalog.notebook_mr_johnson_detail_text_ids) ||
            has_semantic_label_key(
+               key, "pocket_secretary.notebook.contact.name.option.",
+               catalog.notebook_contact_name_text_ids) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.notebook.contact.detail.option.",
+               catalog.notebook_contact_detail_text_ids) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.notebook.shadowrunner.name.option.",
+               catalog.notebook_shadowrunner_name_text_ids) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.notebook.shadowrunner.detail.option.",
+               catalog.notebook_shadowrunner_detail_text_ids) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.notebook.record_page.option.",
+               catalog.notebook_record_page_text_ids) ||
+           has_semantic_label_key(
                key, "pocket_secretary.notebook.tips.option.",
                catalog.notebook_tips_metadata_text_ids) ||
            is_notebook_tip_text_label_key(key,
@@ -796,6 +811,46 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         &result.catalog.notebook_mr_johnson_detail_text_ids);
     result.catalog.notebook_mr_johnson_details =
         std::move(mr_johnson_details);
+    std::array<std::string, kNotebookContactCount> contact_names{};
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "notebook_contact_names",
+        "pocket_secretary.notebook.contact.name", "catalog", contact_names,
+        result.errors, nullptr,
+        &result.catalog.notebook_contact_name_text_ids);
+    result.catalog.notebook_contact_names = std::move(contact_names);
+    std::array<std::string, kNotebookContactCount> contact_details{};
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "notebook_contact_details",
+        "pocket_secretary.notebook.contact.detail", "catalog",
+        contact_details, result.errors, nullptr,
+        &result.catalog.notebook_contact_detail_text_ids);
+    result.catalog.notebook_contact_details = std::move(contact_details);
+    std::array<std::string, kNotebookShadowrunnerCount> shadowrunner_names{};
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "notebook_shadowrunner_names",
+        "pocket_secretary.notebook.shadowrunner.name", "catalog",
+        shadowrunner_names, result.errors, nullptr,
+        &result.catalog.notebook_shadowrunner_name_text_ids);
+    result.catalog.notebook_shadowrunner_names =
+        std::move(shadowrunner_names);
+    std::array<std::string, kNotebookShadowrunnerCount>
+        shadowrunner_details{};
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "notebook_shadowrunner_details",
+        "pocket_secretary.notebook.shadowrunner.detail", "catalog",
+        shadowrunner_details, result.errors, nullptr,
+        &result.catalog.notebook_shadowrunner_detail_text_ids);
+    result.catalog.notebook_shadowrunner_details =
+        std::move(shadowrunner_details);
+    std::array<std::string, kNotebookRecordPageLabelCount>
+        record_page_labels{};
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "notebook_record_page_labels",
+        "pocket_secretary.notebook.record_page", "catalog",
+        record_page_labels, result.errors, nullptr,
+        &result.catalog.notebook_record_page_text_ids);
+    result.catalog.notebook_record_page_labels =
+        std::move(record_page_labels);
     std::array<std::string, kNotebookTipsMetadataCount> notebook_tips_metadata{};
     load_script_menu_labels(
         scripts, "pocket_secretary", "notebook_tips_metadata",
@@ -1044,6 +1099,12 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
         decode_newlines(description);
     }
     for (auto& detail : result.catalog.notebook_mr_johnson_details) {
+        decode_newlines(detail);
+    }
+    for (auto& detail : result.catalog.notebook_contact_details) {
+        decode_newlines(detail);
+    }
+    for (auto& detail : result.catalog.notebook_shadowrunner_details) {
         decode_newlines(detail);
     }
     for (auto& tip : result.catalog.notebook_tips) {

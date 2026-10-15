@@ -1045,6 +1045,23 @@ struct GameScriptRuntime::Impl {
                 lua_pushnil(lua);
                 lua_setfield(lua, -2, "referrals");
             }
+            if (facts->contact_flags.has_value()) {
+                lua_pushinteger(lua,
+                                static_cast<lua_Integer>(*facts->contact_flags));
+                lua_setfield(lua, -2, "contacts");
+            } else {
+                lua_pushnil(lua);
+                lua_setfield(lua, -2, "contacts");
+            }
+            if (facts->shadowrunner_flags.has_value()) {
+                lua_pushinteger(lua,
+                                static_cast<lua_Integer>(
+                                    *facts->shadowrunner_flags));
+                lua_setfield(lua, -2, "shadowrunners");
+            } else {
+                lua_pushnil(lua);
+                lua_setfield(lua, -2, "shadowrunners");
+            }
             return 1;
         }
         }

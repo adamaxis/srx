@@ -21514,6 +21514,16 @@ int main(int argc, char** argv) {
                                  "page 6\n";
                     return 3;
                 }
+                // Fixture only: force the ROM's known ten Contacts bits and
+                // all ten Shadowrunners bits so both source list branches and
+                // continuation pages are exercised in this repeatable dump.
+                if (!field_scene.set_notebook_contact_flags_for_dump(0x1C7FU) ||
+                    !field_scene.set_notebook_shadowrunner_flags_for_dump(
+                        0x03FFU)) {
+                    std::cerr << "field secretary dump: Notebook record flags "
+                                 "could not be seeded for QA\n";
+                    return 3;
+                }
                 field_audio_events.clear();
                 // Press A on the Pocket Secretary tab: port bit 6 is the
                 // A button in the sampled controller word (0x4000 in the
@@ -21620,7 +21630,47 @@ int main(int argc, char** argv) {
                              (std::string(name) + ".bmp"))
                                 .wstring()));
                     };
+                const auto save_notebook_record_scene =
+                    [&field_secretary_dump_path](
+                        const std::string_view kind,
+                        const std::string_view stage,
+                        const QImage& scene) {
+                        const auto directory = *field_secretary_dump_path /
+                            "notebook-records" / std::string(kind) /
+                            std::string(stage);
+                        std::filesystem::create_directories(directory);
+                        return scene.save(QString::fromStdWString(
+                            (directory / "actual.bmp").wstring()));
+                    };
+                // E660's fixed-family selector is not in catalog address
+                // order: source roll 0 chooses CE136 (the extracted
+                // random-grid-fixed-2 yellow pattern). Pin the seed so the
+                // lower-bezel write checks the ROM selector-to-art mapping,
+                // rather than merely checking that some pixels changed.
+                field_scene.set_source_random_seed_for_dump(0x0012U);
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
                 auto secretary_scene = render_secretary_scene();
+                const auto* yellow_grid_resource =
+                    smoke_state.asset_catalog.catalog.find(
+                        "menu.field.random.grid.fixed.2");
+                QImage expected_yellow_grid;
+                if (yellow_grid_resource != nullptr) {
+                    expected_yellow_grid = QImage(QString::fromStdWString(
+                        yellow_grid_resource->absolute_path.wstring()));
+                }
+                if (field_scene.source_random_seed_for_dump() != 0x4BC9U ||
+                    expected_yellow_grid.isNull() ||
+                    secretary_scene.copy(QRect(40, 200, 16, 8)) !=
+                        expected_yellow_grid.convertToFormat(
+                            QImage::Format_RGB32) ||
+                    !save_secretary_scene(
+                        "random-grid-source-roll-0", secretary_scene)) {
+                    std::cerr << "field secretary dump: E660 source roll 0 "
+                                 "did not write its CE136 yellow pattern at "
+                                 "the first ROM destination\n";
+                    return 3;
+                }
                 if (!image_has_green_ink(secretary_scene, 88, 32, 80, 8) ||
                     !image_has_green_ink(secretary_scene, 88, 40, 96, 8)) {
                     std::cerr << "field secretary dump: source title or "
@@ -21902,7 +21952,7 @@ int main(int argc, char** argv) {
                 press_secretary_button(0x40U);
                 if (!field_scene.pocket_secretary_notebook_open() ||
                     field_scene.pocket_secretary_notebook_option_count() !=
-                        4U ||
+                        5U ||
                     !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: Notebook did not "
                                  "build its rows silently on A dispatch\n";
@@ -21914,6 +21964,8 @@ int main(int argc, char** argv) {
                     !image_has_green_ink(notebook_scene, 88, 56, 160, 8) ||
                     !image_has_green_ink(notebook_scene, 88, 72, 160, 8) ||
                     !image_has_green_ink(notebook_scene, 88, 88, 160, 8) ||
+                    !image_has_green_ink(notebook_scene, 88, 104, 160, 8) ||
+                    !image_has_green_ink(notebook_scene, 88, 120, 160, 8) ||
                     !image_has_green_ink(notebook_scene, 72, 56, 8, 8) ||
                     !save_secretary_scene("notebook-menu", notebook_scene)) {
                     std::cerr << "field secretary dump: Notebook source "
@@ -22347,6 +22399,276 @@ int main(int argc, char** argv) {
                                  "rebuild the selected Notebook row cleanly\n";
                     return 3;
                 }
+                tap_qa_controller_button(field_scene, 0x01U); // Contacts row.
+                if (field_scene.pocket_secretary_notebook_selection() != 2U) {
+                    std::cerr << "field secretary dump: Contacts row did not "
+                                 "follow the Notebook cursor\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press_secretary_button(0x40U);
+                if (!field_scene.pocket_secretary_notebook_contacts_open() ||
+                    field_scene
+                            .pocket_secretary_notebook_contacts_visible_count() !=
+                        8U ||
+                    field_scene
+                            .pocket_secretary_notebook_contacts_source_index(0U) !=
+                        0U ||
+                    field_scene
+                            .pocket_secretary_notebook_contacts_source_index(6U) !=
+                        6U ||
+                    field_scene
+                            .pocket_secretary_notebook_contacts_source_index(7U) !=
+                        13U ||
+                    !field_audio_events.empty()) {
+                    std::cerr << "field secretary dump: FFFC2C did not build "
+                                 "the seven-name plus page-forward row\n";
+                    return 3;
+                }
+                auto contacts_page_one = render_secretary_scene();
+                if (!save_notebook_record_scene("contacts", "page-1",
+                                                contacts_page_one)) {
+                    std::cerr << "field secretary dump: could not save "
+                                 "Contacts page 1 capture\n";
+                    return 3;
+                }
+                if (!image_has_green_ink(contacts_page_one, 88, 32, 128, 8) ||
+                    !image_has_green_ink(contacts_page_one, 72, 40, 144, 8) ||
+                    !image_has_green_ink(contacts_page_one, 88, 56, 144, 8) ||
+                    !image_has_green_ink(contacts_page_one, 88, 152, 144, 8) ||
+                    !image_has_green_ink(contacts_page_one, 88, 168, 144, 8)) {
+                    std::cerr << "field secretary dump: Contacts page 1 did "
+                                 "not draw the header, all rows, and source "
+                                 "page-forward label\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press_secretary_button(0x40U); // Open first contact detail.
+                const auto contact_detail = render_secretary_scene();
+                if (!field_scene
+                         .pocket_secretary_notebook_contacts_detail_waiting() ||
+                    !image_has_green_ink(contact_detail, 48, 56, 192, 64) ||
+                    image_region_differs(contacts_page_one, contact_detail,
+                                         24, 48, 224, 136) == false ||
+                    !save_notebook_record_scene("contacts", "detail-0",
+                                                contact_detail) ||
+                    !field_audio_events.empty()) {
+                    std::cerr << "field secretary dump: contact detail did "
+                                 "not replace the full list panel cleanly\n";
+                    return 3;
+                }
+                press_secretary_button(0x08U); // Source detail wait edge.
+                contacts_page_one = render_secretary_scene();
+                if (field_scene
+                        .pocket_secretary_notebook_contacts_detail_waiting() ||
+                    !image_has_green_ink(contacts_page_one, 72, 56, 8, 8) ||
+                    image_region_differs(contact_detail, contacts_page_one,
+                                         24, 48, 224, 136) == false ||
+                    !save_notebook_record_scene("contacts", "detail-return",
+                                                contacts_page_one)) {
+                    std::cerr << "field secretary dump: contact detail return "
+                                 "did not restore the selected list cleanly\n";
+                    return 3;
+                }
+                for (int row = 0; row < 7; ++row) {
+                    press_secretary_button(0x02U);
+                }
+                field_audio_events.clear();
+                press_secretary_button(0x40U); // C661D continuation row.
+                if (field_scene
+                            .pocket_secretary_notebook_contacts_visible_count() !=
+                        4U ||
+                    field_scene
+                            .pocket_secretary_notebook_contacts_source_index(0U) !=
+                        10U ||
+                    field_scene
+                            .pocket_secretary_notebook_contacts_source_index(1U) !=
+                        11U ||
+                    field_scene
+                            .pocket_secretary_notebook_contacts_source_index(2U) !=
+                        12U ||
+                    field_scene
+                            .pocket_secretary_notebook_contacts_source_index(3U) !=
+                        14U ||
+                    !field_audio_events.empty()) {
+                    std::cerr << "field secretary dump: Contacts continuation "
+                                 "did not preserve source order and prior row\n";
+                    return 3;
+                }
+                auto contacts_page_two = render_secretary_scene();
+                if (!image_has_green_ink(contacts_page_two, 88, 56, 144, 8) ||
+                    !image_has_green_ink(contacts_page_two, 88, 104, 144, 8) ||
+                    image_has_green_ink(contacts_page_two, 88, 120, 144, 8) ||
+                    !save_notebook_record_scene("contacts", "page-2",
+                                                contacts_page_two)) {
+                    std::cerr << "field secretary dump: Contacts continuation "
+                                 "rows or old page content are incorrect\n";
+                    return 3;
+                }
+                for (int row = 0; row < 3; ++row) {
+                    press_secretary_button(0x02U);
+                }
+                press_secretary_button(0x40U); // C662B returns to page 1.
+                if (field_scene
+                            .pocket_secretary_notebook_contacts_visible_count() !=
+                        8U ||
+                    field_scene
+                            .pocket_secretary_notebook_contacts_source_index(7U) !=
+                        13U) {
+                    std::cerr << "field secretary dump: Contacts prior row did "
+                                 "not return to the first page\n";
+                    return 3;
+                }
+                press_secretary_button(0x80U); // Return to Notebook.
+                const auto contacts_parent_return = render_secretary_scene();
+                (void)save_notebook_record_scene(
+                    "contacts", "parent-return", contacts_parent_return);
+                const auto contacts_parent_stale_ink = image_has_green_ink(
+                    contacts_parent_return, 48, 56, 24, 128);
+                if (!field_scene.pocket_secretary_notebook_open() ||
+                    field_scene.pocket_secretary_notebook_selection() != 2U ||
+                    field_scene.pocket_secretary_notebook_contacts_open() ||
+                    contacts_parent_stale_ink) {
+                    std::cerr << "field secretary dump: Contacts return left "
+                                 "stale detail text or selection state="
+                              << field_scene.pocket_secretary_notebook_open()
+                              << ','
+                              << static_cast<int>(
+                                     field_scene.pocket_secretary_notebook_selection())
+                              << ','
+                              << field_scene
+                                     .pocket_secretary_notebook_contacts_open()
+                              << ',' << contacts_parent_stale_ink << '\n';
+                    return 3;
+                }
+                // Exactly eight selected records fill the ROM page without
+                // replacing the eighth record with a paging control.
+                if (!field_scene.set_notebook_contact_flags_for_dump(0x00FFU)) {
+                    std::cerr << "field secretary dump: could not seed the "
+                                 "eight-record Contacts boundary\n";
+                    return 3;
+                }
+                press_secretary_button(0x40U); // Reopen Contacts.
+                if (!field_scene.pocket_secretary_notebook_contacts_open() ||
+                    field_scene
+                            .pocket_secretary_notebook_contacts_visible_count() !=
+                        8U ||
+                    field_scene
+                            .pocket_secretary_notebook_contacts_source_index(7U) !=
+                        7U) {
+                    std::cerr << "field secretary dump: exactly eight "
+                                 "Contacts records incorrectly added a pager\n";
+                    return 3;
+                }
+                const auto contacts_exact_eight = render_secretary_scene();
+                if (!image_has_green_ink(contacts_exact_eight,
+                                         88, 168, 144, 8) ||
+                    !save_notebook_record_scene("contacts", "exact-eight",
+                                                contacts_exact_eight)) {
+                    std::cerr << "field secretary dump: exact-eight "
+                                 "Contacts page did not draw its eighth record\n";
+                    return 3;
+                }
+                press_secretary_button(0x80U); // Return to Notebook.
+                if (!field_scene.pocket_secretary_notebook_open() ||
+                    field_scene.pocket_secretary_notebook_contacts_open()) {
+                    std::cerr << "field secretary dump: exact-eight Contacts "
+                                 "page did not return cleanly\n";
+                    return 3;
+                }
+                press_secretary_button(0x02U);
+                press_secretary_button(0x02U); // Shadowrunners row.
+                if (field_scene.pocket_secretary_notebook_selection() != 4U) {
+                    std::cerr << "field secretary dump: Shadowrunners row was "
+                                 "not appended after Mr. Johnsons\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                press_secretary_button(0x40U);
+                if (!field_scene
+                         .pocket_secretary_notebook_shadowrunners_open() ||
+                    field_scene
+                            .pocket_secretary_notebook_shadowrunners_visible_count() !=
+                        8U ||
+                    field_scene
+                            .pocket_secretary_notebook_shadowrunners_source_index(
+                                0U) != 0U ||
+                    field_scene
+                            .pocket_secretary_notebook_shadowrunners_source_index(
+                                7U) != 10U ||
+                    !field_audio_events.empty()) {
+                    std::cerr << "field secretary dump: FFFC2A did not build "
+                                 "the seven-runner plus page-forward row\n";
+                    return 3;
+                }
+                auto runners_page_one = render_secretary_scene();
+                if (!image_has_green_ink(runners_page_one, 88, 32, 128, 8) ||
+                    !image_has_green_ink(runners_page_one, 88, 56, 144, 8) ||
+                    !image_has_green_ink(runners_page_one, 88, 168, 144, 8) ||
+                    !save_notebook_record_scene("shadowrunners", "page-1",
+                                                runners_page_one)) {
+                    std::cerr << "field secretary dump: Shadowrunners page 1 "
+                                 "did not fully redraw its rows and header\n";
+                    return 3;
+                }
+                press_secretary_button(0x10U); // B opens selected detail.
+                const auto runner_detail = render_secretary_scene();
+                if (!field_scene
+                         .pocket_secretary_notebook_shadowrunners_detail_waiting() ||
+                    !image_has_green_ink(runner_detail, 48, 56, 192, 64) ||
+                    !save_notebook_record_scene("shadowrunners", "detail-0",
+                                                runner_detail)) {
+                    std::cerr << "field secretary dump: Shadowrunner detail "
+                                 "did not replace the list panel\n";
+                    return 3;
+                }
+                press_secretary_button(0x40U); // Return on a fresh A edge.
+                for (int row = 0; row < 7; ++row) {
+                    press_secretary_button(0x02U);
+                }
+                press_secretary_button(0x40U); // Next Screen.
+                if (field_scene
+                            .pocket_secretary_notebook_shadowrunners_visible_count() !=
+                        4U ||
+                    field_scene
+                            .pocket_secretary_notebook_shadowrunners_source_index(
+                                0U) != 7U ||
+                    field_scene
+                            .pocket_secretary_notebook_shadowrunners_source_index(
+                                1U) != 8U ||
+                    field_scene
+                            .pocket_secretary_notebook_shadowrunners_source_index(
+                                2U) != 9U ||
+                    field_scene
+                            .pocket_secretary_notebook_shadowrunners_source_index(
+                                3U) != 11U) {
+                    std::cerr << "field secretary dump: Shadowrunners "
+                                 "continuation rows are incorrect\n";
+                    return 3;
+                }
+                auto runners_page_two = render_secretary_scene();
+                if (!image_has_green_ink(runners_page_two, 88, 56, 144, 8) ||
+                    !image_has_green_ink(runners_page_two, 88, 104, 144, 8) ||
+                    image_has_green_ink(runners_page_two, 88, 120, 144, 8) ||
+                    !save_notebook_record_scene("shadowrunners", "page-2",
+                                                runners_page_two)) {
+                    std::cerr << "field secretary dump: Shadowrunners page 2 "
+                                 "retained stale rows or missed the prior row\n";
+                    return 3;
+                }
+                for (int row = 0; row < 3; ++row) {
+                    press_secretary_button(0x02U);
+                }
+                press_secretary_button(0x40U); // Prior Screen.
+                press_secretary_button(0x80U); // Return to Notebook.
+                if (!field_scene.pocket_secretary_notebook_open() ||
+                    field_scene.pocket_secretary_notebook_selection() != 4U ||
+                    field_scene.pocket_secretary_notebook_shadowrunners_open()) {
+                    std::cerr << "field secretary dump: Shadowrunners return "
+                                 "did not restore its parent row\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x01U); // Up to row 3.
                 tap_qa_controller_button(field_scene, 0x01U); // Up.
                 tap_qa_controller_button(field_scene, 0x01U); // Up.
                 tap_qa_controller_button(field_scene, 0x01U); // Up to row 0.
@@ -22727,10 +23049,10 @@ int main(int argc, char** argv) {
                              "e660_pixels=pending "
                              "source_audio=0x25_resource_037\n";
                 std::cout << "notebook_review=menu,current-run-no-run,wait,return "
-                             "contacts_gate=visible source_effect=not_rendered\n";
+                             "contacts,shadowrunners,details,paging,clean-redraw\n";
                 std::cout << "field_secretary_dump=written path="
                           << field_secretary_dump_path->string()
-                          << " frames=21 selection="
+                          << " frame_set=expanded selection="
                           << static_cast<int>(
                                  field_scene.pocket_secretary_selection())
                           << '\n';

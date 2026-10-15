@@ -59,8 +59,8 @@ enum class ScriptNotebookBoundary : std::uint8_t {
     event_gates_unresolved,
     tips_flags_unresolved,
     current_run_unresolved,
-    contacts_unimplemented,
-    shadowrunners_unimplemented,
+    contacts_flags_unresolved,
+    shadowrunners_flags_unresolved,
     mr_johnsons_flags_unresolved,
 };
 
@@ -121,6 +121,8 @@ struct ScriptNotebookFacts {
     std::optional<std::array<bool, 3>> event_gates;
     std::optional<std::array<std::uint32_t, 3>> tip_flags;
     std::optional<std::uint8_t> referral_flags;
+    std::optional<std::uint32_t> contact_flags;
+    std::optional<std::uint16_t> shadowrunner_flags;
 };
 
 struct ScriptMenuRouteGame {

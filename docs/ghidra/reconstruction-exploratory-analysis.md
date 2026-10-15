@@ -810,18 +810,19 @@ Notebook dispatches to `0xF236`. Its setup helper `0xF33E` writes the title
 and two ungated rows from `0xC567E`, then appends `Contacts`, `Mr. Johnsons`,
 and `Shadowrunners` only when `FFFC2C`, `FFFC27`, and `FFFC2A` are nonzero.
 The New Game initializer at `0x59C48` stores `0x1C7F` in `FFFC2C`, so a
-fresh post-opening session has Contacts visible; the native state data carries
+fresh post-opening session has Contacts visible; the typed Qt facts preserve
 that initial gate rather than hiding the row.
 The copied action table at `0xC6648` resolves those rows to `0xF2E2`,
 `0xF9A4`, `0xF840`, `0xF416`, and `0xF6DC`; `FFF0B9` is the inclusive
-selector bound and `FFF0DC` is the cursor. The native port now extracts all
-six labels and the `0xC56E7` three-line response. In a fresh session, where
+selector bound and `FFF0DC` is the cursor. The Qt text catalog loads the
+Notebook labels and the `0xC56E7` three-line response. In a fresh session, where
 the current-run flag is not active, selecting `Current Run` follows `0xF2E2`
 and displays `You are not currently / engaged in a shadowrun. / Get a job!!`,
 then waits for an input edge before rebuilding Notebook. The Tips & Clues
-pointer lists and the three conditional event setters remain explicit next
-boundaries; they must be ported from their source tables rather than replaced
-with an always-visible invented list.
+page and conditional child routes are now connected. The positive Current Run
+branch and story-event writers for conditional Notebook rows remain explicit
+boundaries; child lists filter typed source masks rather than use an invented
+always-visible list.
 
 The raw US ROM placement is now recorded for the Qt base screen. `0xF33E`
 clears the inner panel through `0xC3E6`, draws `0xC567E` at `0xC216`, and
@@ -884,10 +885,35 @@ dynamic list: `Mr. Gunderson` (`0xC5728`), `Julius Strouther` (`0xC5755`),
 `Caleb Brightmore` (`0xC5744`). Its selector starts at zero and uses the same
 `C376` bound/cursor family, but A writes the selected entry through a separate
 `C38C` destination; C returns, B calls `0x391A`, and Start continues the loop.
-The five fixed names are now extracted into the organized Notebook state data
-with their source order preserved. The native list/detail loop and the story
-writers that set `FFFC27` remain pending until the omitted middle block is
-resolved against the bytecode.
+The five fixed names are extracted into the Notebook text catalog in source
+order. Its Lua list/detail loop is connected to the Qt presenter; the story
+writers for `FFFC27` bits 1 through 4 remain unresolved.
+
+Contacts (`0xF840`) and Shadowrunners (`0xF6DC`) are separate Notebook child
+screens. They share the `0xF5F4` flag-filtered list builder, but read different
+source masks and record tables: Contacts uses `FFFC2C` with 13 names at
+`0xC66AC` and 13 descriptions at `0xC66E0`; Shadowrunners uses `FFFC2A` with
+10 names at `0xC665C` and 10 descriptions at `0xC6684`. A set bit selects its
+same-index record, preserving source order. The builder shows up to eight
+records on one page. When more than eight bits are set, it replaces row eight
+with the source `<Next Screen>` label (`0xC661D`), shows remaining records on
+page two, and appends `<Prior Screen>` (`0xC662B`). Exactly eight selected
+records do not create a page control. A/B opens a selected record's separate
+description wait; a fresh input edge returns to the list. C uses the shared
+`0x391A` action; Start returns to Notebook.
+
+The field route now gives each page its own Lua screen state and cursor. Lua
+filters records, paginates, handles controls, and selects detail records;
+Qt receives the typed visible-index snapshot and renders the ROM-extracted
+text from `assets/dialogue/script-text.lua`. The offline importer is
+`tools/rom_research/extract_notebook_records.py`; the runtime does not read ROM
+pointers. Debug and Release route QA covers both tables, details, forward and
+prior paging, parent return without stale child text, and the exact-eight
+boundary. The QA masks `0x1C7F` and `0x03FF` are diagnostic fixtures; they do
+not establish every story writer for these flags. No independent Genesis
+Notebook captures have been identified in the supplied longplay, so the
+current captures verify the converted screens' full-frame cleanliness and
+state transitions, not independent visual fidelity.
 
 ### Matrix
 

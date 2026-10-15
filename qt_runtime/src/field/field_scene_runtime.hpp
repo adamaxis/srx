@@ -905,6 +905,38 @@ public:
                    ? page.visible_source_indices[entry]
                    : 0xFFU;
     }
+    bool pocket_secretary_notebook_contacts_open() const noexcept {
+        return pocket_secretary_.notebook.contacts.open;
+    }
+    bool pocket_secretary_notebook_contacts_detail_waiting() const noexcept {
+        return pocket_secretary_.notebook.contacts.detail_wait;
+    }
+    std::uint8_t pocket_secretary_notebook_contacts_visible_count() const noexcept {
+        return pocket_secretary_.notebook.contacts.visible_count;
+    }
+    std::uint8_t pocket_secretary_notebook_contacts_source_index(
+        std::size_t entry) const noexcept {
+        const auto& page = pocket_secretary_.notebook.contacts;
+        return entry < page.visible_count
+                   ? page.visible_source_indices[entry]
+                   : 0xFFU;
+    }
+    bool pocket_secretary_notebook_shadowrunners_open() const noexcept {
+        return pocket_secretary_.notebook.shadowrunners.open;
+    }
+    bool pocket_secretary_notebook_shadowrunners_detail_waiting() const noexcept {
+        return pocket_secretary_.notebook.shadowrunners.detail_wait;
+    }
+    std::uint8_t pocket_secretary_notebook_shadowrunners_visible_count() const noexcept {
+        return pocket_secretary_.notebook.shadowrunners.visible_count;
+    }
+    std::uint8_t pocket_secretary_notebook_shadowrunners_source_index(
+        std::size_t entry) const noexcept {
+        const auto& page = pocket_secretary_.notebook.shadowrunners;
+        return entry < page.visible_count
+                   ? page.visible_source_indices[entry]
+                   : 0xFFU;
+    }
     bool notebook_tip_flags_resolved() const noexcept {
         return notebook_tip_flags_resolved_;
     }
@@ -920,6 +952,17 @@ public:
             return false;
         }
         notebook_referral_flags_ = static_cast<std::uint8_t>(flags & 0x1FU);
+        return true;
+    }
+    bool set_notebook_contact_flags_for_dump(std::uint32_t flags) noexcept {
+        if (!notebook_contacts_flags_.has_value()) return false;
+        notebook_contacts_flags_ = flags & 0x1FFFU;
+        return true;
+    }
+    bool set_notebook_shadowrunner_flags_for_dump(std::uint16_t flags) noexcept {
+        if (!notebook_shadowrunner_flags_.has_value()) return false;
+        notebook_shadowrunner_flags_ =
+            static_cast<std::uint16_t>(flags & 0x03FFU);
         return true;
     }
     // QA seam for the source FFFC22 catalog branch. Normal play obtains this

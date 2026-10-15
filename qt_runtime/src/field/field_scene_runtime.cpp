@@ -4367,9 +4367,14 @@ bool FieldSceneRuntime::load_command_overview_assets(
     }
     for (std::size_t index = 0;
          index < dismiss_runner_random_grid_patterns_.size(); ++index) {
+        // E660's fixed-family RNG result selects source tables in this order:
+        // 0 -> CE136 (yellow), 1 -> CE12E (red), 2 -> CE126 (blue). The
+        // extracted catalog is address-ordered (CE126, CE12E, CE136), so
+        // store those three images in source-selection order for both the Lua
+        // route and the remaining native menu adapters.
         const auto alias = index < 3U
             ? std::string(kRandomGridFixedAliasPrefix) +
-                  std::to_string(index)
+                  std::to_string(2U - index)
             : std::string(kRandomGridIndexedAliasPrefix) +
                   std::to_string(index - 3U);
         if (!load_image(catalog, alias,
@@ -5427,6 +5432,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
             case srx::MenuScreen::NOTEBOOK:
             case srx::MenuScreen::NOTEBOOK_TIPS:
             case srx::MenuScreen::MR_JOHNSONS:
+            case srx::MenuScreen::NOTEBOOK_CONTACTS:
+            case srx::MenuScreen::NOTEBOOK_SHADOWRUNNERS:
             case srx::MenuScreen::MESSAGE:
             case srx::MenuScreen::DISMISS_RUNNER:
             case srx::MenuScreen::SAVE_LOAD:
@@ -5542,13 +5549,13 @@ void FieldSceneRuntime::configure_field_menu_route() {
                 source_boundary(
                     "field.pocket_secretary.notebook.current_run.path_pending");
                 break;
-            case scripting::ScriptNotebookBoundary::contacts_unimplemented:
+            case scripting::ScriptNotebookBoundary::contacts_flags_unresolved:
                 source_boundary(
-                    "field.pocket_secretary.notebook.contacts.pending");
+                    "field.pocket_secretary.notebook.contacts.flags_unresolved");
                 break;
-            case scripting::ScriptNotebookBoundary::shadowrunners_unimplemented:
+            case scripting::ScriptNotebookBoundary::shadowrunners_flags_unresolved:
                 source_boundary(
-                    "field.pocket_secretary.notebook.shadowrunners.pending");
+                    "field.pocket_secretary.notebook.shadowrunners.flags_unresolved");
                 break;
             case scripting::ScriptNotebookBoundary::
                 mr_johnsons_flags_unresolved:
@@ -5763,6 +5770,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
             facts.tip_flags = notebook_tip_flags_;
         }
         facts.referral_flags = notebook_referral_flags_;
+        facts.contact_flags = notebook_contacts_flags_;
+        facts.shadowrunner_flags = notebook_shadowrunner_flags_;
         return facts;
     };
     game_scripts_.set_menu_route_bindings(std::move(bindings));
@@ -5927,11 +5936,23 @@ void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
     const bool johnson_detail =
         is_message && message ==
                           static_cast<int>(srx::MenuMessage::MR_JOHNSON_DETAIL);
+    const bool contacts_detail =
+        is_message && message == static_cast<int>(
+                                      srx::MenuMessage::NOTEBOOK_CONTACT_DETAIL);
+    const bool shadowrunners_detail =
+        is_message && message == static_cast<int>(
+                                      srx::MenuMessage::
+                                          NOTEBOOK_SHADOWRUNNER_DETAIL);
+    const bool contacts_page =
+        screen == srx::MenuScreen::NOTEBOOK_CONTACTS;
+    const bool shadowrunners_page =
+        screen == srx::MenuScreen::NOTEBOOK_SHADOWRUNNERS;
     auto& notebook = pocket_secretary_.notebook;
     if (screen != srx::MenuScreen::NOTEBOOK &&
         screen != srx::MenuScreen::NOTEBOOK_TIPS &&
         screen != srx::MenuScreen::MR_JOHNSONS && !no_current_run &&
-        !johnson_detail) {
+        !johnson_detail && !contacts_page && !shadowrunners_page &&
+        !contacts_detail && !shadowrunners_detail) {
         notebook = NotebookMenuState{};
         return;
     }
@@ -5942,6 +5963,10 @@ void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
     notebook.mr_johnsons.open = screen == srx::MenuScreen::MR_JOHNSONS ||
                                 johnson_detail;
     notebook.mr_johnsons.detail_wait = johnson_detail;
+    notebook.contacts.open = contacts_page || contacts_detail;
+    notebook.contacts.detail_wait = contacts_detail;
+    notebook.shadowrunners.open = shadowrunners_page || shadowrunners_detail;
+    notebook.shadowrunners.detail_wait = shadowrunners_detail;
 
     if (screen == srx::MenuScreen::NOTEBOOK) {
         notebook.option_count = static_cast<std::uint8_t>(
@@ -5989,6 +6014,27 @@ void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
             std::clamp(selected_row, 0,
                        std::max(0, static_cast<int>(page.visible_count) - 1)));
     }
+    const auto synchronize_record_page =
+        [&route_state](NotebookMenuState::RecordPageState& page,
+                       const bool detail_wait) {
+            if (!page.open) return;
+            page.visible_count = static_cast<std::uint8_t>(
+                std::min<std::size_t>(route_state.top_visible_source_ids.size(),
+                                      page.visible_source_indices.size()));
+            for (std::size_t index = 0; index < page.visible_count; ++index) {
+                page.visible_source_indices[index] =
+                    static_cast<std::uint8_t>(
+                        route_state.top_visible_source_ids[index]);
+            }
+            const auto selected_row = detail_wait
+                                          ? route_state.top_detail_row.value_or(0)
+                                          : route_state.top_row.value_or(0);
+            page.selection = static_cast<std::uint8_t>(std::clamp(
+                selected_row, 0,
+                std::max(0, static_cast<int>(page.visible_count) - 1)));
+        };
+    synchronize_record_page(notebook.contacts, contacts_detail);
+    synchronize_record_page(notebook.shadowrunners, shadowrunners_detail);
 }
 
 void FieldSceneRuntime::synchronize_command_overview_clips_from_route(
@@ -6364,6 +6410,14 @@ bool FieldSceneRuntime::command_menu_legacy_screen_active(
     }
     if (screen == static_cast<std::uint16_t>(srx::MenuScreen::NOTEBOOK)) {
         return pocket_secretary_.notebook.open;
+    }
+    if (screen == static_cast<std::uint16_t>(
+                      srx::MenuScreen::NOTEBOOK_CONTACTS)) {
+        return pocket_secretary_.notebook.contacts.open;
+    }
+    if (screen == static_cast<std::uint16_t>(
+                      srx::MenuScreen::NOTEBOOK_SHADOWRUNNERS)) {
+        return pocket_secretary_.notebook.shadowrunners.open;
     }
     if (screen == static_cast<std::uint16_t>(
                       srx::MenuScreen::GROUP_ITEMS)) {
@@ -14545,6 +14599,80 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     static_cast<std::size_t>(pattern)]);
         }
         if (pocket_secretary_.notebook.open) {
+            const auto draw_notebook_record_page =
+                [this, &painter](
+                    const NotebookMenuState::RecordPageState& page,
+                    const std::size_t record_count,
+                    const std::size_t title_index,
+                    const auto& names,
+                    const auto& details) {
+                    if (!page.open) return false;
+                    draw_command_overview_text(
+                        painter, 88, 32,
+                        field_menu_text_.notebook_labels[title_index]);
+                    draw_command_overview_text(
+                        painter, 72, 40,
+                        field_menu_text_.notebook_tips_separator);
+                    if (page.detail_wait) {
+                        // ROM 0xC38A clears the inner record area before
+                        // drawing the chosen source description. This removes
+                        // every list row and selector during the wait.
+                        painter.drawImage(QRect(24, 48, 224, 136),
+                                          pocket_secretary_grid_,
+                                          QRect(0, 24, 224, 136));
+                        if (page.selection < page.visible_count) {
+                            const auto source_index =
+                                page.visible_source_indices[page.selection];
+                            if (source_index < record_count &&
+                                source_index < details.size()) {
+                                draw_command_overview_text(
+                                    painter, 48, 56,
+                                    details[source_index]);
+                            }
+                        }
+                        return true;
+                    }
+                    for (std::size_t row = 0; row < page.visible_count; ++row) {
+                        const auto source_index =
+                            page.visible_source_indices[row];
+                        const auto y = 56 + static_cast<int>(row) * 16;
+                        if (source_index < record_count &&
+                            source_index < names.size()) {
+                            draw_command_overview_text(
+                                painter, 88, y, names[source_index]);
+                        } else if (source_index == record_count) {
+                            draw_command_overview_text(
+                                painter, 88, y,
+                                field_menu_text_
+                                    .notebook_record_page_labels[0]);
+                        } else if (source_index == record_count + 1U) {
+                            draw_command_overview_text(
+                                painter, 88, y,
+                                field_menu_text_
+                                    .notebook_record_page_labels[1]);
+                        }
+                    }
+                    if (page.selection < page.visible_count) {
+                        draw_command_overview_text(
+                            painter, 72,
+                            56 + static_cast<int>(page.selection) * 16, "x");
+                    }
+                    return true;
+                };
+            if (draw_notebook_record_page(
+                    pocket_secretary_.notebook.contacts,
+                    kNotebookContactCount, 3U,
+                    field_menu_text_.notebook_contact_names,
+                    field_menu_text_.notebook_contact_details)) {
+                return;
+            }
+            if (draw_notebook_record_page(
+                    pocket_secretary_.notebook.shadowrunners,
+                    kNotebookShadowrunnerCount, 5U,
+                    field_menu_text_.notebook_shadowrunner_names,
+                    field_menu_text_.notebook_shadowrunner_details)) {
+                return;
+            }
             if (pocket_secretary_.notebook.mr_johnsons.open) {
                 const auto& page =
                     pocket_secretary_.notebook.mr_johnsons;

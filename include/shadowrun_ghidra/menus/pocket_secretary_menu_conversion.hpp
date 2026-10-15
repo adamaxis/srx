@@ -10,6 +10,8 @@ namespace shadowrun::ghidra_conversion {
 
 inline constexpr std::size_t kNotebookTipCount = 96U;
 inline constexpr std::size_t kNotebookMrJohnsonCount = 5U;
+inline constexpr std::size_t kNotebookContactCount = 13U;
+inline constexpr std::size_t kNotebookShadowrunnerCount = 10U;
 // Field-mode caller at ROM 0xC2A6 selects this five-row variant.
 inline constexpr std::size_t kPocketSecretaryFieldMenuRowCount = 5U;
 
@@ -42,6 +44,14 @@ struct NotebookMenuState {
         bool open = false;
         bool detail_wait = false;
     } mr_johnsons{};
+    struct RecordPageState {
+        std::array<std::uint8_t, kNotebookContactCount>
+            visible_source_indices{};
+        std::uint8_t visible_count = 0U;
+        std::uint8_t selection = 0U;
+        bool open = false;
+        bool detail_wait = false;
+    } contacts{}, shadowrunners{};
 };
 
 struct PocketSecretaryMenuState {
