@@ -1,0 +1,585 @@
+// enums.hpp: GENERATED from enums.lua by gen_enums_hpp.lua; do not edit. ROM sources are cited in enums.lua.
+#pragma once
+#include <cstdint>
+namespace srx {
+enum class Accessory : std::int64_t {
+    SMARTGUN = 0x0,
+    SILENCER = 0x1,
+    SOUND_SUPPRESSOR = 0x2,
+    LASER_SIGHT = 0x3,
+    GAS_VENT_2 = 0x4,
+    GAS_VENT_3 = 0x5,
+};
+enum class AccessoryMask : std::int64_t {
+    SILENCED = 0x6,
+};
+enum class ActorField : std::int64_t {
+    X = 0x0,
+    Y = 0x4,
+    SCREEN_X = 0xA,
+    SCREEN_Y = 0xC,
+    SPRITE_TYPE = 0xE,
+    STATUS = 0x10,
+    STATUS_EX = 0x11,
+    ANIM_TIMER = 0x16,
+    FACING = 0x2E,
+    HEADING = 0x34,
+    STATE_FN = 0x3A,
+    SLOT_ID = 0x3E,
+    PHYSICAL = 0x4C,
+    POSTURE = 0x4D,
+    ROUNDS = 0x4E,
+    CLIPS = 0x4F,
+    WEAPON_SLOT = 0x56,
+    WEAPON_CODE = 0x57,
+    INVENTORY = 0x66,
+    ITEM_EXTRA = 0x6E,
+    CYBER_BITS = 0x90,
+    TARGET_X = 0x96,
+    TARGET_Y = 0x98,
+    SPELL_GATE = 0x9B,
+    STUN = 0x9C,
+    FORCE = 0x9D,
+    ROLE = 0x9E,
+    SPELL_LIST = 0xA0,
+    TARGET = 0xA2,
+    GROUP_LEADER = 0xA8,
+    CHASE = 0xAC,
+    BEHAVIOR = 0xB0,
+    STEER = 0xB1,
+    APPROACH = 0xB5,
+    THINK = 0xB6,
+    STEER_TIMER = 0xB8,
+    WP_POS = 0xBA,
+    PATH = 0xBC,
+    WALK_DIST = 0xC8,
+    ACTION_DELAY = 0xDC,
+    WAYPOINTS = 0xE0,
+    WP_INDEX = 0xE4,
+};
+enum class ActorFlag : std::int64_t {
+    SPOTTED = 0x1,
+    REINFORCEMENT = 0x2,
+    DESPAWN_OFFSCREEN = 0x4,
+    QUEST = 0x8,
+    RUNNER = 0x10,
+    PEDESTRIAN = 0x20,
+    HOSTILE = 0x40,
+};
+enum class ActorPool : std::int64_t {
+    PARTY = 0x3,
+    PROJECTILES = 0x6,
+    OTHERS = 0x7,
+    STRIDE = 0x100,
+};
+enum class ActorStatus : std::int64_t {
+    ACTIVE = 0x1,
+    THINK = 0x2,
+    AI_RUNNER = 0x8,
+    DOWN = 0x10,
+    GROUP_LEADER = 0x20,
+    DEAD = 0x40,
+};
+enum class ActorStatusEx : std::int64_t {
+    PROJECTILE = 0x1,
+    BREATH_OUT = 0x40,
+    UNSEEN = 0x80,
+};
+enum class AiTuning : std::int64_t {
+    SPELL_GATE_MAX = 0x2,
+    HURT_BELOW = 0x4,
+    CAST_MIN_STUN = 0x5,
+    PATH_TRIES = 0x5,
+    APPROACH_TICKS = 0x6,
+    THON_PERIOD = 0x8,
+    THINK_FRAMES = 0x14,
+    RELOAD_ROUNDS = 0x26,
+    ENDING_HOLD_ROUNDS = 0x28,
+    ANIM_BUSY = 0x3C,
+    FLANK_RADIUS = 0xE0,
+    ARRIVE_DIST = 0x1E0,
+    ENGAGE_DIST = 0x500,
+    WATCH_DIST = 0x640,
+    ANIM_TIMER_MASK = 0x7FF,
+    ALARM_FRAMES = 0x960,
+    FLEE_CAMERA_BIAS = 0xA00,
+    STEER_NONE = 0x1000,
+    FLEE_OFFSET = 0x2580,
+    QUARTER_TURN = 0x4000,
+    FLANK_ANGLE = 0x6000,
+    NO_TARGET = 0x12345678,
+};
+enum class Archetype : std::int64_t {
+    CASTER_LIMIT = 0x2,
+};
+enum class BehaviorFlag : std::int64_t {
+    ROUTE_CLEAR = 0x1,
+    PATH = 0x2,
+    RESTART_STEER = 0x4,
+    WALL_FOLLOW = 0x8,
+    IN_BAND = 0x10,
+    ROUTE_TRANSITION = 0x20,
+    FLEEING = 0x40,
+    ESCORT = 0x80,
+};
+enum class ClipTradeCommand : std::int64_t {
+    INCREASE = 0x2,
+    DECREASE = 0x3,
+    TRADE = 0x4,
+    CHANGE_RECIPIENT = 0x5,
+};
+enum class ClipsCommand : std::int64_t {
+    RELOAD = 0x2,
+    TRADE = 0x3,
+    DISTRIBUTE = 0x4,
+    CANCEL = 0x5,
+};
+enum class Collision : std::int64_t {
+    IMPASSABLE_FROM = 0x18,
+    LOW_BITS = 0x1F,
+    BLOCKED = 0x7F,
+};
+enum class CombatPhase : std::int64_t {
+    NONE = 0x0,
+    ATTACK_ANIM = 0x1,
+    APPROACH = 0x2,
+    HOLD = 0x3,
+};
+enum class CyberBit : std::int64_t {
+    DATAJACK = 0x0,
+    CYBEREYES = 0x1,
+    HAND_RAZORS = 0x2,
+    SPURS = 0x3,
+    SMARTLINK = 0x4,
+};
+enum class DebugOption : std::int64_t {
+    NUYEN = 0x0,
+    SPELLS = 0x1,
+    TEST_DECK = 0x2,
+    PICK_SYSTEM = 0x3,
+    HEAL_ALL = 0x4,
+    KARMA = 0x5,
+    CONTACTS = 0x6,
+    WALK_FAST = 0x7,
+};
+enum class Direction : std::int64_t {
+    UP = 0x0,
+    RIGHT = 0x2,
+    DOWN = 0x4,
+    LEFT = 0x6,
+};
+// DirectionStep: index-keyed table, see enums.lua
+enum class DisplayBlank : std::int64_t {
+    OFF = 0x8134,
+    ON = 0x8174,
+};
+enum class EndingState : std::int64_t {
+    NONE = 0x0,
+    FINAL_FIGHT = 0x3,
+};
+enum class EntryDelayMax : std::int64_t {
+    STATIC = 0xF,
+    DYNAMIC_ENCOUNTER = 0x28,
+};
+enum class EventFn : std::int64_t {
+    GUARD_SPOTS_YOU = 0x20FEC,
+};
+inline constexpr std::int64_t FIRST_NON_WEAPON = 0xD;
+enum class Grid : std::int64_t {
+    CELL_SHIFT = 0x9,
+    ROW_CELLS = 0x40,
+    CELL_CENTER = 0x100,
+    PATH_END = 0xFFFF,
+};
+enum class InventoryGrid : std::int64_t {
+    COLUMNS = 0x2,
+    ROWS = 0x4,
+    CURSOR_DY = 0x18,
+    CURSOR_DX = 0x28,
+};
+enum class ItemAction : std::int64_t {
+    EQUIP_OR_USE = 0x2,
+    DISCARD = 0x3,
+    TRADE = 0x4,
+    CANCEL = 0x5,
+};
+enum class ItemBranch : std::int64_t {
+    FIRST_AID = 0x1,
+    AUTOMATIC_USE = 0x2,
+    WEAPON_OR_GEAR = 0x3,
+    ARMOR = 0x4,
+};
+enum class ItemId : std::int64_t {
+    NONE = 0x0,
+    STREETLINE_SPECIAL = 0x1,
+    MODEL_101T = 0x2,
+    AMERICAN_L36 = 0x3,
+    SECURITY_500 = 0x4,
+    WARHAWK = 0x5,
+    MAX_POWER = 0x6,
+    PREDATOR = 0x7,
+    AK97 = 0x8,
+    HK227S = 0x9,
+    MACH22 = 0xA,
+    ALLEGIANCE = 0xB,
+    ROOMSWEEPER = 0xC,
+    FRAG_GRENADE = 0xD,
+    SCATTER_GRENADE = 0xE,
+    CONCUSSION_GRENADE = 0xF,
+    MEDKIT = 0x10,
+    STIM_PATCH = 0x11,
+    TRAUMA_PATCH = 0x12,
+    FETISH = 0x13,
+    MAGLOCK_PASSKEY = 0x14,
+    ELECTRONIC_KIT = 0x15,
+    SMART_GOGGLES = 0x16,
+};
+enum class ItemKind : std::int64_t {
+    FIREARM = 0x1,
+    GRENADE = 0x2,
+    MEDICAL_KIT = 0x3,
+    STIM_PATCH = 0x4,
+    TRAUMA_PATCH = 0x5,
+    FETISH = 0x6,
+    PASSKEY = 0x7,
+    ELECTRONIC_KIT = 0x8,
+    SMART_GOGGLES = 0x9,
+    ENCHANTED_DAGGER = 0xA,
+    POWER_FOCUS = 0xB,
+    SPELL_FOCUS = 0xC,
+    TALISMAN = 0xD,
+    SPELL_LOCK = 0xE,
+    TOTEM = 0xF,
+    ARMOR = 0x10,
+};
+enum class MenuMessage : std::int64_t {
+    OUT_OF_AMMO = 0x1,
+    ITEM_NO_CLIPS = 0x2,
+    NO_PARTY = 0x3,
+    RELOADED = 0x4,
+    EXCHANGE_COMPLETE = 0x5,
+    CANNOT_DISCARD = 0x6,
+    CANNOT_TRADE = 0x7,
+    AUTOMATIC_USE = 0x8,
+    FIRST_AID_USED = 0x9,
+    SLAP_PATCH_USED = 0xA,
+    NOT_INJURED = 0xB,
+    INSUFFICIENT_KARMA = 0xC,
+    MAGE_ONLY = 0xD,
+    NOT_RAISABLE = 0xE,
+    MAX_LEVEL = 0xF,
+    NO_CURRENT_RUN = 0x10,
+    NO_CYBERDECK = 0x11,
+    GROUP_ITEMS = 0x12,
+    MR_JOHNSON_DETAIL = 0x13,
+    MAGICAL_DEFENSE = 0x14,
+    FUNCTION_ABORTED = 0x15,
+    SAVE_OUTSIDE_ONLY = 0x16,
+    SAVE_IN_COMBAT = 0x17,
+    GAME_SAVED = 0x18,
+    LOAD_EMPTY = 0x19,
+    LOAD_OK = 0x1A,
+    DECK_NO_SLOTS = 0x1B,
+    DECK_NO_MEMORY = 0x1C,
+    NOT_ON_RUN = 0x1D,
+    RUN_COMPLETE = 0x1E,
+    NO_DATAFILES = 0x1F,
+    RETREAT_COMBAT = 0x20,
+    RETREAT_NO_NODE = 0x21,
+};
+enum class MenuPage : std::int64_t {
+    INVENTORY_LEFT = 0x0,
+    INVENTORY_RIGHT = 0x1,
+    CLIPS = 0x2,
+    ATTRIBUTES_SKILLS = 0x3,
+    CYBERWARE = 0x4,
+    MAGIC = 0x5,
+    POCKET_SECRETARY = 0x6,
+    COUNT = 0x7,
+};
+enum class MenuPageHandler : std::int64_t {
+    POCKET_SECRETARY = 0xC2A6,
+    ATTRIBUTES_SKILLS = 0xD01C,
+    MAGIC = 0xFBA6,
+    CYBERWARE = 0x11950,
+    CLIPS = 0x11B58,
+};
+enum class MenuRegion : std::int64_t {
+    ITEM_PICTURE = 0x1,
+    ITEM_HEADER = 0x2,
+    RATING = 0x4,
+    DAMAGE_POWER = 0x8,
+    COMBAT_BARS = 0x10,
+    WEAPON_BARS = 0x20,
+    ARMOR = 0x40,
+    POSTURE_BLOCK = 0x80,
+    BUTTON_STRIP = 0x100,
+    COMMAND_LABEL = 0x200,
+    INVENTORY_CURSOR = 0x400,
+    POSTURE_LABEL = 0x800,
+    SIDEBAR_SLOT = 0x1000,
+    MESSAGE = 0x2000,
+    SUBMENU = 0x4000,
+    FULL = 0x8000,
+};
+enum class MenuScreen : std::int64_t {
+    COMMAND = 0x1,
+    POSTURE = 0x2,
+    ITEM_ACTION = 0x3,
+    CLIPS = 0x4,
+    ATTRIBUTES_SKILLS = 0x5,
+    CYBERWARE = 0x6,
+    MAGIC = 0x7,
+    MAGICAL_DEFENSE = 0x8,
+    POCKET_SECRETARY = 0x9,
+    NOTEBOOK = 0xA,
+    DISMISS_RUNNER = 0xB,
+    FIRST_AID = 0xC,
+    AUTOMATIC_USE = 0xD,
+    INVENTORY_TRADE = 0xE,
+    DISCARD_CONFIRM = 0xF,
+    SAVE_LOAD = 0x10,
+    GROUP_ITEMS = 0x11,
+    CYBERDECK = 0x12,
+    MESSAGE = 0x13,
+    MR_JOHNSONS = 0x14,
+    NOTEBOOK_TIPS = 0x15,
+    CLIP_TRADE = 0x16,
+    RELOAD_CONFIRM = 0x17,
+    UPGRADE_PROMPT = 0x18,
+    MAGIC_FORCE = 0x19,
+    MAGIC_POSTURE = 0x1A,
+    DEBUG_MENU = 0x1B,
+    DEBUG_PICK_SYSTEM = 0x1C,
+    SAVE_SLOT = 0x1D,
+    PULL_PLUG = 0x1E,
+    DECK_PROGRAM = 0x1F,
+    DECK_CYBERINFO = 0x20,
+    DECK_STORAGE = 0x21,
+    DECK_MAP = 0x22,
+};
+enum class MenuSound : std::int64_t {
+    DAMAGE = 0x18,
+    JACK_IN = 0x1A,
+    SELECT = 0x24,
+    MOVE = 0x25,
+};
+enum class MenuTransition : std::int64_t {
+    NONE = 0x0,
+    PUSH = 0x1,
+    POP = 0x2,
+    REPLACE = 0x3,
+    REBUILD = 0x4,
+    EXIT = 0x5,
+};
+enum class NotebookOption : std::int64_t {
+    CURRENT_RUN = 0x0,
+    TIPS_AND_CLUES = 0x1,
+    CONTACTS = 0x2,
+    MR_JOHNSONS = 0x3,
+    SHADOWRUNNERS = 0x4,
+};
+enum class Pad : std::int64_t {
+    HELD_UP = 0x1,
+    HELD_DOWN = 0x2,
+    HELD_LEFT = 0x4,
+    HELD_RIGHT = 0x8,
+    UP = 0x100,
+    DOWN = 0x200,
+    LEFT = 0x400,
+    RIGHT = 0x800,
+    DPAD = 0xF00,
+    B = 0x1000,
+    C = 0x2000,
+    A = 0x4000,
+    START = 0x8000,
+    EDGES = 0xFF00,
+};
+enum class Pickup : std::int64_t {
+    GARGOYLE_HORN = 0x64,
+    HOUND_PELT = 0x65,
+    NUYEN_FLAG = 0x8000,
+    CLIPS_FLAG = 0xC000,
+};
+enum class PocketOption : std::int64_t {
+    NOTEBOOK = 0x0,
+    GROUP_ITEMS = 0x1,
+    CYBERDECK = 0x2,
+    DISMISS_RUNNER = 0x3,
+    SAVE_LOAD = 0x4,
+    DEBUG = 0x5,
+};
+enum class Posture : std::int64_t {
+    FULL_DEFENSE = 0x0,
+    MEDIUM_DEFENSE = 0x1,
+    NEUTRAL = 0x2,
+    MEDIUM_OFFENSE = 0x3,
+    FULL_OFFENSE = 0x4,
+};
+enum class RunnerField : std::int64_t {
+    STATUS = 0x10,
+    STATE_FN = 0x3A,
+    PHYSICAL = 0x4C,
+    POSTURE = 0x4D,
+    ROUNDS = 0x4E,
+    CLIPS = 0x4F,
+    WEAPON_SLOT = 0x56,
+    WEAPON_CODE = 0x57,
+    INVENTORY = 0x66,
+    ITEM_PHASE = 0x6E,
+    ARMOR = 0x76,
+    ATTRIBUTES = 0x77,
+    MAGIC = 0x7F,
+    SKILLS_A = 0x80,
+    SKILLS_B = 0x87,
+    KARMA = 0x8D,
+    SPECIES = 0x9A,
+    ARCHETYPE = 0x9B,
+    STUN = 0x9C,
+    FORCE = 0x9D,
+    SPELL_TABLE = 0xA0,
+};
+enum class RunnerStatus : std::int64_t {
+    ACTIVE = 0x1,
+    REMAINDER = 0x2,
+    DOWN = 0x10,
+    DEAD = 0x40,
+};
+inline constexpr std::int64_t SPELL_ITEM_BASE = 0x33;
+enum class SaveLoadOption : std::int64_t {
+    SAVE = 0x0,
+    LOAD = 0x1,
+};
+enum class SceneId : std::int64_t {
+    ALARM_COMBAT = 0x14,
+    FINAL = 0x37,
+};
+enum class SceneMode : std::int64_t {
+    NONE = 0x0,
+    STREET = 0x1,
+    BUILDING = 0x2,
+    CAVE = 0x3,
+};
+enum class Shop : std::int64_t {
+    WEAPONS_WORLD = 0x0,
+    ARES_WEAPON_EMPORIUM = 0x1,
+    CRIME_MALL = 0x2,
+    MEDICINE_LODGE = 0x3,
+    RIANNONS = 0x4,
+    MERLINS_LORE = 0x5,
+    MICROTRONICS = 0x6,
+    WIRE_MASTERS = 0x7,
+    LITTLE_CHIBA = 0x8,
+    DR_BOBS = 0x9,
+    COUNCIL_ISLAND_HOSPITAL = 0xA,
+    SEATTLE_GENERAL_HOSPITAL = 0xB,
+};
+enum class Skill : std::int64_t {
+    SORCERY = 0x0,
+    FIREARMS = 0x1,
+    PISTOLS = 0x2,
+    SMGS = 0x3,
+    SHOTGUNS = 0x4,
+    BIOTECH = 0x8,
+};
+enum class SoundId : std::int64_t {
+    SHOT_LIGHT_PISTOL = 0x1C,
+    SHOT_SHOTGUN = 0x1D,
+    SHOT_SMG_OR_THROWN = 0x1E,
+    PICKUP = 0x24,
+    ALARM = 0x30,
+    PROJECTILE_IMPACT = 0x3C,
+    SHOT_SILENCED = 0x3F,
+    SHOT_SILENCED_SMG_OR_THROWN = 0x4A,
+    RELOAD_OR_EMPTY = 0x4B,
+    TARGET_HEADING = 0x4D,
+    TARGET_HEADING_ALT = 0x4E,
+    SHOT_HEAVY_PISTOL = 0x51,
+};
+enum class SpellType : std::int64_t {
+    FLAME_DART = 0x0,
+    FLAME_BOLT = 0x1,
+    HELLBLAST = 0x2,
+    INVISIBILITY = 0x3,
+    SLEEP = 0x4,
+    STINK = 0x5,
+    SUPER_BARRIER = 0x6,
+    MANA_ZAP = 0x7,
+    MANA_BLAST = 0x8,
+    MANA_STORM = 0x9,
+    ROCKSKIN = 0xA,
+    HEAL_WOUNDS = 0xB,
+    CONFUSION = 0xC,
+    BARRIER = 0xD,
+};
+enum class SpriteType : std::int64_t {
+    FIELD_RUNNER = 0x3,
+    CORP_GUARD = 0x5,
+    GHOUL = 0x7,
+    PEDESTRIAN = 0xB,
+    HELL_HOUND = 0xC,
+    GARGOYLE = 0xD,
+    WENDIGO = 0xE,
+    THON = 0xF,
+};
+enum class StateFn : std::int64_t {
+    PROJECTILE = 0xAC4E,
+    IDLE = 0xB45C,
+    WALK = 0xB574,
+};
+enum class SteerFlag : std::int64_t {
+    TARGET_RIGHT = 0x1,
+    TARGET_BELOW = 0x2,
+    OVERSHOOT_X = 0x4,
+    OVERSHOOT_Y = 0x8,
+};
+enum class StoryFlag : std::int64_t {
+    MOTEL_BILL_PAID = 0x0,
+    TARISLAR_ASKED_SHALE = 0x1,
+    OWLFEATHER_ASKED = 0x2,
+    ARAGORN_FOUND = 0x3,
+    ARAGORN_FREED_TOLD = 0x4,
+    SHAMAN_MET = 0x5,
+    SHAMAN_ITEM4_GIVEN = 0x6,
+    SHAMAN_PELT_GIVEN = 0x7,
+    SERPENT_SCALE_TAKEN = 0x8,
+    SHAMAN_TASKS_DONE = 0x9,
+    MICHAEL_ALIAS_LEARNED = 0xA,
+    MAKO_DEFEATED = 0xB,
+    RENRAKU_MAP_OVERLAY = 0xC,
+    MICHAEL_MISSION_TOLD = 0xD,
+    CYBERHEART_SAFE = 0xE,
+    OGAMI_LEFT = 0xF,
+    ITO_FIGHT_WON = 0x10,
+    RITUAL_OF_BINDING = 0x11,
+    RED_BUFFALO_WOMAN = 0x12,
+    ILENE_MET = 0x13,
+    GILLIAN_INITIATION = 0x14,
+    GARDEN_APTS_ENTERED = 0x15,
+    LANDMARK_MAP_TAKEN = 0x16,
+    HOLOPIX_SHOWN = 0x17,
+    MEDICINE_LODGE_TURNED_AWAY = 0x18,
+    HOSPITAL_VISITED = 0x19,
+    RENRAKU_MAP_SHOWN = 0x1A,
+    BOTH_MAPS_SHOWN = 0x1B,
+    POST_ITO_BRIEFED = 0x1C,
+    HEART_DELIVERED = 0x1D,
+    FROSTY_MET = 0x1E,
+    UNUSED_31 = 0x1F,
+};
+enum class WeaponClass : std::int64_t {
+    LIGHT_PISTOL = 0x0,
+    HEAVY_PISTOL = 0x1,
+    SMG = 0x2,
+    SHOTGUN = 0x3,
+    THROWN = 0x4,
+};
+enum class WeaponSlot : std::int64_t {
+    NONE = 0x7F,
+};
+enum class WindowPlane : std::int64_t {
+    OFF = 0x9100,
+    SIDEBAR = 0x9191,
+};
+template <class T> constexpr std::int64_t v(T e) { return static_cast<std::int64_t>(e); }  // enum -> value
+}  // namespace srx
