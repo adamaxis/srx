@@ -195,14 +195,17 @@ and the source action loop are implemented. In the Qt conversion the visible
 yellowish selector is a one-pixel outline directly on the 24x16 item art; it is
 not the larger equipment-cell rectangle.
 first A/B edge enters the four-choice `0x11740` loop; the second A/B edge
-confirms its selected action. The native loop uses the source `Equip/Unequip`,
-`Discard`, `Trade`, `Cancel`, and medical `First Aid` labels. Equip/Unequip,
-Discard, and the reviewed Trade branch now route through their source-backed
-native handlers. Possession and
-equipment are separate: an item in one of the eight cells is not active until
-the source equip action sets the live record's equipped slot/item bytes.
-Medical items stay in their source-specific First Aid path and never become
-weapons through the generic Equip/Unequip branch.
+confirms its selected action. The source `Equip/Unequip`, `Discard`, `Trade`,
+`Cancel`, and medical `First Aid` choices are now routed by Lua modules under
+`gameplay/scripts/menu/screens/item_action.lua`, with inventory and medical
+rules in the adjacent `rules/` files. `field_init.lua` registers these screens
+as active route owners, so the prior C++ input handlers are bypassed while the
+Lua route is open. C++ supplies typed party snapshots, capacity and roll
+services, and commits; Qt presents the Lua-selected screen through the shared
+field panel. Possession and equipment stay separate: an item in one of the
+eight cells is not active until the source equip action sets the live record's
+equipped slot/item bytes. Medical items remain on their First Aid path and do
+not enter the generic Equip/Unequip branch.
 The four source action positions are now declared as stable IDs by
 `gameplay/scripts/items.lua`; the field text catalog checks their ROM order,
 and the Qt dispatcher resolves the selected typed source action to its Lua ID.
@@ -221,12 +224,13 @@ not present in the supplied longplay, so visual fidelity remains partial.
 Inventory-action confirm also now emits the source `0x24` request before the
 item handler; the mapped audio file runs 2.484 seconds including its release
 tail. The wait itself does not issue another sound request.
-The target-effect leaf at `0x1253E` is also converted separately in
-`first_aid_conversion`: its full-target gate, difficulty formula, roll-result
-fallback, meter order, status transition, and `0xB45C` continuation are
-covered without importing ROM state into the runtime. The same isolated module
-now includes the `0x12298` active-target/CANCEL list, wrapped target cursor,
-the `0x12466`/`0x1247E` patch branches, and `0x124AE` phase consumption.
+The target-effect leaf at `0x1253E` has the same typed source-derived rules in
+Lua: its full-target gate, difficulty formula, roll-result fallback, meter
+order, status transition, and `0xB45C` continuation. The `0x12298`
+active-target/CANCEL list, wrapped target cursor, `0x12466`/`0x1247E` patch
+branches, and `0x124AE` phase consumption also run in Lua. A typed host roll
+service supplies the shared source RNG; the medkit rule itself remains in
+Lua.
 The armor-selection leaf at `0x11352` is separately represented in
 `armor_selection_conversion`. The Qt inventory now presents the same typed
 selection directly: item code minus `0x2B` chooses the lower armor panel at
@@ -258,13 +262,15 @@ and `0x129FE` possession transfer are now connected in the Qt conversion
 through typed roster and item records. The recipient HUD-panel call at
 `0x110E8`, Windows loopback capture for this exact Trade route, and an independent Trade capture remain open.
 
-The separate Qt conversion retains the selected inventory slot while the
-First Aid state is active, accepts the source A edge for target choice, waits
-for a fresh high-byte event to dismiss the result, and returns to the same
-Inventory page. Its CTest writes `actual.bmp` and target/CANCEL/use/return
-checkpoints and checks the live HUD and one-pixel item selector. This remains
-partial while the host random seed differs from source startup, event `0x25` maps to resource 037 and shared audio QA starts it on the default output;
-Windows loopback for this exact First Aid route remains unrecorded, and the recruited-runner visual roster is unavailable.
+The active Lua route retains the selected inventory slot while First Aid is
+open, accepts A for target choice, waits for a fresh controller edge to dismiss
+the result, and returns to the same Inventory page. Its CTest writes
+`actual.bmp` and target/CANCEL/use/return checkpoints and checks the live HUD
+and one-pixel item selector. Debug and Release route tests cover the Lua rule
+and the whole-screen output; their BMP hashes match and the captured screens
+were reviewed. The hill remains partial while the host random seed differs
+from source startup, Windows loopback for this exact route remains unrecorded,
+and the recruited-runner visual roster is unavailable.
 
 ### Posture (`0x11928`, `0x119CE`, `0x11ABE`, `0x11AE4`)
 

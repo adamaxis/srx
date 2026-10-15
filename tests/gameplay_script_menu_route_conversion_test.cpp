@@ -23,6 +23,10 @@ constexpr std::uint16_t kClips = 4U;
 constexpr std::uint16_t kClipTrade = 22U;
 constexpr std::uint16_t kReloadConfirm = 23U;
 constexpr std::uint16_t kMessage = 19U;
+constexpr std::uint16_t kItemAction = 3U;
+constexpr std::uint16_t kFirstAid = 12U;
+constexpr std::uint16_t kInventoryTrade = 14U;
+constexpr std::uint16_t kDiscardConfirm = 15U;
 constexpr std::uint16_t kMoveSound = 0x25U;
 constexpr std::uint16_t kSelectSound = 0x24U;
 constexpr std::uint16_t kSidebarWindow = 0x9191U;
@@ -97,11 +101,15 @@ int main() {
         posture = value;
     };
     bindings.game.leader_archetype = [] { return 3; };
-    bindings.game.inventory_item = [](int, int) { return false; };
+    bindings.game.inventory_item = [&party](const int column, const int row) {
+        if (column < 0 || column > 1 || row < 0 || row > 3) return false;
+        const auto slot = static_cast<std::size_t>(row * 2 + column);
+        return party[0].inventory[slot] != 0U;
+    };
     bindings.game.party = [&party] { return party; };
     bindings.game.active_slot = [] { return 0; };
     bindings.game.magazine_capacity = [](int code) {
-        return code == 2 ? 30 : 0;
+        return code == 2 ? 30 : (code == 3 ? 12 : 0);
     };
     bindings.game.set_runner_ammo =
         [&party, &ammo_commits](const int slot, const int clips,
@@ -113,6 +121,25 @@ int main() {
                 static_cast<std::uint8_t>(rounds);
             ammo_commits.push_back({slot, clips, rounds});
         };
+    bindings.game.slot_active_set = [&party] {
+        return std::array<bool, 3>{
+            (party[0].status & 1U) != 0U,
+            (party[1].status & 1U) != 0U,
+            (party[2].status & 1U) != 0U};
+    };
+    int inventory_commits = 0;
+    bindings.game.commit_party = [&party, &inventory_commits](
+                                    const std::array<ScriptMenuPartyMember,
+                                                     3>& next) {
+        party = next;
+        ++inventory_commits;
+    };
+    std::array<int, 2> first_aid_roll{};
+    bindings.game.roll_successes = [&first_aid_roll](const int count,
+                                                     const int threshold) {
+        first_aid_roll = {count, threshold};
+        return 2;
+    };
     runtime.set_menu_route_bindings(std::move(bindings));
 
     const auto opened = runtime.open_menu_route(kCommand);
@@ -405,6 +432,138 @@ int main() {
     check(runtime.menu_route_snapshot().top_screen == kCommand &&
               runtime.menu_route_snapshot().page == 2,
           "message acknowledgement restores the Clips command page", failures);
+
+    // Inventory actions now run through the Grok-authored Lua route. The
+    // host exposes typed records and commits, while the script owns selector,
+    // discard, trade, and First Aid input decisions.
+    party[0].inventory[1] = 3U;
+    party[0].phase[1] = 0U;
+    party[0].weapon_slot = 0;
+    party[0].weapon_code = 2U;
+    party[0].rounds = 30U;
+    runtime.advance_menu_route(0x0400U); // Clips -> inventory right.
+    runtime.advance_menu_route(0x4000U); // Open selected item.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kItemAction && route.top_selection == 2 &&
+              route.top_item_slot == 1 && route.top_item_code == 3,
+          "Lua item-action route opens with the selected template item",
+          failures);
+    runtime.advance_menu_route(0x0C00U); // Simultaneous Left+Right: ROM checks Left first.
+    check(runtime.menu_route_snapshot().top_selection == 5,
+          "simultaneous item-action directions follow ROM Left priority",
+          failures);
+    runtime.advance_menu_route(0x0800U); // Right wraps Cancel to Equip/Use.
+    runtime.advance_menu_route(0x4000U); // Equip the L36.
+    route = runtime.menu_route_snapshot();
+    if (!(route.top_screen == kCommand && route.page == 1 &&
+          party[0].weapon_slot == 1 && party[0].weapon_code == 3U &&
+          party[0].rounds == 12U && inventory_commits == 1)) {
+        std::cerr << "inventory equipment debug: screen=" << route.top_screen
+                  << " page=" << route.page.value_or(-1)
+                  << " slot=" << party[0].weapon_slot
+                  << " code=" << static_cast<int>(party[0].weapon_code)
+                  << " rounds=" << static_cast<int>(party[0].rounds)
+                  << " commits=" << inventory_commits << '\n';
+    }
+    check(route.top_screen == kCommand && route.page == 1 &&
+              party[0].weapon_slot == 1 && party[0].weapon_code == 3U &&
+              party[0].rounds == 12U && inventory_commits == 1,
+          "Lua equipment action writes the selected weapon and its capacity",
+          failures);
+
+    runtime.advance_menu_route(0x4000U); // Open the L36 action row.
+    runtime.advance_menu_route(0x0800U); // Discard.
+    runtime.advance_menu_route(0x0800U); // Trade.
+    runtime.advance_menu_route(0x4000U); // Open recipient prompt.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kInventoryTrade && route.top_recipient == 1 &&
+              route.top_destination_slot == 0 &&
+              route.top_recipient_full == false && route.top_yes == false,
+          "Lua Trade starts with the first active recipient and No selected",
+          failures);
+    runtime.advance_menu_route(0x0800U); // Yes.
+    runtime.advance_menu_route(0x4000U); // Transfer.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kCommand && route.page == 1 &&
+              party[0].inventory[1] == 0U && party[0].weapon_slot == -1 &&
+              party[0].rounds == 12U && party[1].inventory[0] == 3U &&
+              inventory_commits == 2,
+          "Lua Trade clears source equipment but preserves loaded rounds",
+          failures);
+
+    party[0].inventory[2] = 2U;
+    runtime.advance_menu_route(0x0400U); // Inventory left.
+    runtime.advance_menu_route(0x0200U); // Row one.
+    runtime.advance_menu_route(0x4000U); // Open item actions.
+    runtime.advance_menu_route(0x0800U); // Discard.
+    runtime.advance_menu_route(0x4000U); // Confirmation starts at No.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kDiscardConfirm && route.top_yes == false &&
+              route.top_item_slot == 2,
+          "Lua discard confirmation starts at No for the selected cell",
+          failures);
+    runtime.advance_menu_route(0x0800U); // Yes.
+    runtime.advance_menu_route(0x2000U); // C confirms discard (ROM 0x12750).
+    check(runtime.menu_route_snapshot().top_screen == kCommand &&
+              party[0].inventory[2] == 0U && inventory_commits == 3,
+          "Lua discard commits the cell removal and returns to inventory",
+          failures);
+
+    party[0].inventory[4] = 0x10U;
+    party[0].phase[4] = 1U;
+    party[0].skills[8] = 4U;
+    party[0].attributes[0] = 9U;
+    runtime.advance_menu_route(0x0200U); // Row two.
+    runtime.advance_menu_route(0x4000U); // Open actions.
+    runtime.advance_menu_route(0x4000U); // First Aid.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kFirstAid && route.top_row == 0 &&
+              route.top_targets == std::vector<int>{0, 1},
+          "Lua First Aid builds the ROM-order active-party target list",
+          failures);
+    runtime.advance_menu_route(0x1000U); // B confirms; ROM shares A/B/C target path.
+    route = runtime.menu_route_snapshot();
+    if (!(route.top_screen == kMessage && route.top_message == 9 &&
+          route.top_target == 0 && party[0].inventory[4] == 0U &&
+          party[0].physical == 2U && party[0].stun == 2U &&
+          party[0].state_function == 0xB45CU && inventory_commits == 4 &&
+          first_aid_roll == std::array<int, 2>{4, 5})) {
+        std::cerr << "inventory first aid debug: screen=" << route.top_screen
+                  << " message=" << route.top_message.value_or(-1)
+                  << " target=" << route.top_target.value_or(-1)
+                  << " item=" << static_cast<int>(party[0].inventory[4])
+                  << " physical=" << static_cast<int>(party[0].physical)
+                  << " stun=" << static_cast<int>(party[0].stun)
+                  << " continuation=" << party[0].state_function
+                  << " commits=" << inventory_commits
+                  << " roll=" << first_aid_roll[0] << ','
+                  << first_aid_roll[1] << '\n';
+    }
+    check(route.top_screen == kMessage && route.top_message == 9 &&
+              route.top_target == 0 && party[0].inventory[4] == 0U &&
+              party[0].physical == 2U && party[0].stun == 2U &&
+              party[0].state_function == 0xB45CU && inventory_commits == 4 &&
+              first_aid_roll == std::array<int, 2>{4, 5},
+          "B-confirmed Lua medkit commits meter, item, continuation, and ROM roll inputs",
+          failures);
+    runtime.advance_menu_route(0x4000U);
+    check(runtime.menu_route_snapshot().top_screen == kCommand &&
+              runtime.menu_route_snapshot().page == 0,
+          "First Aid result returns to the inventory grid", failures);
+
+    party[0].inventory[4] = 0x11U;
+    party[0].phase[4] = 1U;
+    runtime.advance_menu_route(0x4000U); // Reopen the selected cell.
+    runtime.advance_menu_route(0x4000U); // Equip/Use opens First Aid.
+    check(runtime.menu_route_snapshot().top_screen == kFirstAid,
+          "slap patch reopens the Lua First Aid target screen", failures);
+    runtime.advance_menu_route(0x2000U); // C confirms through ROM 0x1251C.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMessage && route.top_message == 10 &&
+              route.top_target == 0 && party[0].inventory[4] == 0U &&
+              party[0].stun == 4U && inventory_commits == 5,
+          "C-confirmed slap patch applies the ROM target effect and consumes one item",
+          failures);
 
     runtime.close_menu_route();
     check(!runtime.menu_route_snapshot().open && closed_count == 2,

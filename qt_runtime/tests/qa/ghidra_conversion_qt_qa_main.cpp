@@ -23516,7 +23516,10 @@ int main(int argc, char** argv) {
                 if (!field_scene.inventory_trade_open() ||
                     !field_scene.inventory_trade_recipient_full() ||
                     !field_scene.inventory_trade_yes_selected() ||
-                    !image_region_matches(full_yes_scene, 136, 184, yes_focus) ||
+                    // 0x127B0 flips FFF114 and 0x127FC moves the selected
+                    // CD3B6 focus by one 6-byte grid column: Yes is x=160,
+                    // No is x=184 in the centered 120-pixel row.
+                    !image_region_matches(full_yes_scene, 160, 184, yes_focus) ||
                     !has_green_ink(full_yes_scene, QRect(120, 104, 176, 48)) ||
                     image_region_matches(full_yes_scene, 160, 144,
                                          full_recipient_preview) ||
@@ -23593,7 +23596,7 @@ int main(int argc, char** argv) {
                 press(0x04U);
                 const auto dog_yes_scene = render_scene();
                 if (!field_scene.inventory_trade_yes_selected() ||
-                    !image_region_matches(dog_yes_scene, 136, 184, yes_focus) ||
+                    !image_region_matches(dog_yes_scene, 160, 184, yes_focus) ||
                     !image_region_matches(dog_yes_scene, 160, 144,
                                           available_recipient_preview) ||
                     !has_green_ink(dog_yes_scene, QRect(112, 200, 128, 8)) ||
@@ -23788,24 +23791,6 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                // The ROM's target loop confirms with bit 14 only. B/C
-                // presses must neither consume the item nor acknowledge the
-                // target or emit the A-confirm audio command.
-                const auto audio_events_before_non_a = field_audio_events;
-                press(0x20U);
-                press(0x10U);
-                if (!field_scene.first_aid_open() ||
-                    field_scene.first_aid_target_cursor() != 0U ||
-                    field_scene.active_runner_record()
-                            .inventory_phase_bytes[medkit_slot] !=
-                        medkit_phase ||
-                    field_audio_events != audio_events_before_non_a ||
-                    render_scene() != target_scene) {
-                    std::cerr << "field First Aid dump: B/C changed the "
-                                 "A-only target loop\n";
-                    return 3;
-                }
-
                 press(0x02U);
                 if (field_scene.first_aid_target_cursor() !=
                     field_scene.first_aid_targets().cancel_row()) {
@@ -23947,9 +23932,16 @@ int main(int argc, char** argv) {
                                  "selector, target face, or live HUD failed\n";
                     return 3;
                 }
+                // 0x10D30 requests 0x25 on command entry and after each
+                // page/row move (0x10E2E). Then 0x11740 and the First Aid
+                // loop contribute the action, target-move, cancel, and
+                // medkit-confirm events below.
                 if (field_audio_events != std::vector<std::uint16_t>{
-                                              0x24U, 0x24U, 0x25U, 0x24U,
-                                              0x24U, 0x24U, 0x24U}) {
+                                              0x25U, 0x25U, 0x25U, 0x25U,
+                                              0x25U, 0x25U, 0x25U, 0x25U,
+                                              0x25U, 0x24U, 0x24U, 0x25U,
+                                              0x24U, 0x25U, 0x25U, 0x24U,
+                                              0x24U, 0x24U}) {
                     std::cerr << "field First Aid dump: source audio events "
                                  "do not match the menu/move/use sequence:";
                     for (const auto event : field_audio_events) {
@@ -24438,13 +24430,27 @@ int main(int argc, char** argv) {
 
                 const auto item_before_cancel =
                     field_scene.active_runner_record().inventory_item_codes[0];
-                press(0x10U);
+                press(0x20U); // C is ignored by the ROM action-row loop.
+                if (!field_scene.inventory_action_open() ||
+                    !field_scene.command_overview_open() ||
+                    field_scene.active_runner_record().inventory_item_codes[0] !=
+                        item_before_cancel ||
+                    field_scene.active_runner_record()
+                            .equipped_inventory_slot != 0 ||
+                    !same_image(action_open_scene, render_scene())) {
+                    std::cerr << "field action dump: C changed the action "
+                                 "row or its item state\n";
+                    return 3;
+                }
+                press(0x80U); // Start exits the row without selecting it.
                 if (field_scene.inventory_action_open() ||
                     !field_scene.command_overview_open() ||
                     field_scene.active_runner_record().inventory_item_codes[0] !=
                         item_before_cancel ||
+                    field_scene.active_runner_record()
+                            .equipped_inventory_slot != 0 ||
                     !write_scene("03_inventory_action_unselected")) {
-                    std::cerr << "field action dump: B did not un-select "
+                    std::cerr << "field action dump: Start did not return "
                                  "without mutating the item\n";
                     return 3;
                 }
@@ -24492,7 +24498,25 @@ int main(int argc, char** argv) {
                     field_scene.active_runner_record()
                             .equipped_inventory_slot != -1) {
                     std::cerr << "field action dump: equip action did not "
-                                 "return to the command overview\n";
+                                 "return to the command overview (open="
+                              << field_scene.command_overview_open()
+                              << ", action="
+                              << field_scene.inventory_action_open()
+                              << ", equipped-slot="
+                              << static_cast<int>(field_scene
+                                                      .active_runner_record()
+                                                      .equipped_inventory_slot)
+                              << ", selected-code="
+                              << static_cast<int>(selected->item_code)
+                              << ", selected-slot=" << selected->slot
+                              << ", branch="
+                              << static_cast<int>(selected_branch)
+                              << ", expected-mutation="
+                              << static_cast<int>(expected_mutation)
+                              << ", before-equipped-slot="
+                              << static_cast<int>(before_equip
+                                                      .equipped_inventory_slot)
+                              << ")\n";
                     return 3;
                 }
                 const auto unequipped_scene = render_scene();
@@ -24798,22 +24822,37 @@ int main(int argc, char** argv) {
                                  "six rounds, consume one clip, and confirm\n";
                     return 3;
                 }
-                press(0x10U);
-                if (field_scene.clips_menu_message() !=
-                    qt_runtime::ClipsMenuMessage::none) {
-                    std::cerr << "field action dump: reload result did not "
-                                 "acknowledge\n";
-                    return 3;
-                }
                 clips_audio_event_count = field_audio_events.size();
                 press(0x10U);
                 if (field_scene.clips_menu_open() ||
+                    !field_scene.command_overview_open() ||
+                    field_scene.command_overview_view().source_state
+                            .primary_page != 2U ||
+                    field_scene.clips_menu_message() !=
+                        qt_runtime::ClipsMenuMessage::none ||
                     field_audio_events.size() != clips_audio_event_count + 1U ||
-                    field_audio_events.back() != 0x24U ||
+                    field_audio_events.back() != 0x25U ||
                     !save_scene("16_clips_closed_parent_redraw",
                                 render_scene())) {
                     std::cerr << "field action dump: Clips return did not "
-                                 "restore its command page\n";
+                                 "restore its command page and one source "
+                                 "0x25 command refresh (clips="
+                              << field_scene.clips_menu_open()
+                              << ", command="
+                              << field_scene.command_overview_open()
+                              << ", page="
+                              << static_cast<int>(field_scene
+                                                      .command_overview_view()
+                                                      .source_state.primary_page)
+                              << ", message="
+                              << static_cast<int>(field_scene
+                                                      .clips_menu_message())
+                              << ", audio-delta="
+                              << field_audio_events.size() -
+                                     clips_audio_event_count
+                              << ", last-audio="
+                              << static_cast<int>(field_audio_events.back())
+                              << ")\n";
                     return 3;
                 }
                 const auto parent_after_reload = render_scene();
@@ -24836,14 +24875,36 @@ int main(int argc, char** argv) {
                                  "not captured before Clips\n";
                     return 3;
                 }
+                clips_audio_event_count = field_audio_events.size();
                 press(0x40U);
+                const auto cancel_message = render_scene();
+                if (!field_scene.clips_menu_open() ||
+                    field_scene.clips_menu_message() !=
+                        qt_runtime::ClipsMenuMessage::function_aborted ||
+                    field_audio_events.size() != clips_audio_event_count + 1U ||
+                    field_audio_events.back() != 0x24U ||
+                    !save_scene("clips_cancel_message", cancel_message)) {
+                    std::cerr << "field action dump: Clips Cancel did not "
+                                 "show Function Aborted with confirm sound\n";
+                    return 3;
+                }
+                clips_audio_event_count = field_audio_events.size();
+                press(0x10U);
                 const auto parent_after_cancel = render_scene();
                 if (field_scene.clips_menu_open() ||
+                    !field_scene.command_overview_open() ||
+                    field_scene.command_overview_view().source_state
+                            .primary_page != 2U ||
+                    field_scene.clips_menu_message() !=
+                        qt_runtime::ClipsMenuMessage::none ||
+                    field_audio_events.size() != clips_audio_event_count + 1U ||
+                    field_audio_events.back() != 0x25U ||
                     !same_image(parent_after_reload, parent_after_cancel) ||
-                    !save_scene("17_clips_cancel_clears_child_controls",
+                    !save_scene("clips_cancel_parent_redraw",
                                 parent_after_cancel)) {
-                    std::cerr << "field action dump: Clips cancel left stale "
-                                 "child buttons over the command page\n";
+                    std::cerr << "field action dump: dismissing Function "
+                                 "Aborted left stale Clips controls or failed "
+                                 "the command refresh\n";
                     return 3;
                 }
                 press(0x04U);
@@ -24932,10 +24993,23 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 press(0x10U);
-                press(0x10U);
-                if (field_scene.clips_menu_open()) {
-                    std::cerr << "field action dump: weapon 2 Clips menu did "
-                                 "not close after acknowledging reload\n";
+                const auto weapon_two_reload_return_scene = render_scene();
+                if (field_scene.clips_menu_open() ||
+                    !field_scene.command_overview_open() ||
+                    field_scene.command_overview_view().source_state
+                            .primary_page != 2U ||
+                    !region_matches(
+                        weapon_two_reload_return_scene,
+                        direct_asset("command-focus-0.bmp"), 128, 184) ||
+                    !source_menu_caption_matches(
+                        weapon_two_reload_return_scene,
+                        direct_asset("font.bmp"), 112, 200,
+                        "      Clips      ") ||
+                    !save_scene("22_weapon_2_reload_ack_return",
+                                weapon_two_reload_return_scene)) {
+                    std::cerr << "field action dump: reload acknowledgement "
+                                 "did not restore the selected Clips command "
+                                 "page cleanly\n";
                     return 3;
                 }
                 press(0x04U);
@@ -24995,18 +25069,28 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 press(0x40U);
+                const auto discard_no_scene = render_scene();
                 if (!field_scene.discard_confirmation_open() ||
-                    !write_scene("07_discard_confirmation_no")) {
+                    !source_menu_caption_matches(
+                        discard_no_scene, direct_asset("font.bmp"), 112,
+                        200, "       No        ") ||
+                    !save_scene("07_discard_confirmation_no",
+                                discard_no_scene)) {
                     std::cerr << "field action dump: discard confirmation "
-                                 "did not open\n";
+                                 "did not open with the centered No caption\n";
                     return 3;
                 }
 
                 press(0x08U);
+                const auto discard_yes_scene = render_scene();
                 if (!field_scene.discard_confirmation_yes() ||
-                    !write_scene("08_discard_confirmation_yes")) {
+                    !source_menu_caption_matches(
+                        discard_yes_scene, direct_asset("font.bmp"), 112,
+                        200, "       Yes       ") ||
+                    !save_scene("08_discard_confirmation_yes",
+                                discard_yes_scene)) {
                     std::cerr << "field action dump: confirmation did not "
-                                 "toggle to yes\n";
+                                 "toggle to centered Yes\n";
                     return 3;
                 }
                 press(0x40U);
@@ -25042,9 +25126,11 @@ int main(int argc, char** argv) {
                 const auto armor_cursor_audio_count =
                     field_audio_events.size();
                 press(0x02U);
-                if (field_audio_events.size() != armor_cursor_audio_count) {
+                if (field_audio_events.size() !=
+                        armor_cursor_audio_count + 1U ||
+                    field_audio_events.back() != 0x25U) {
                     std::cerr << "field action dump: inventory row movement "
-                                 "unexpectedly requested audio\n";
+                                 "did not request the source 0x25 move event\n";
                     return 3;
                 }
                 const auto armor_before_record =
@@ -25084,7 +25170,7 @@ int main(int argc, char** argv) {
                 const auto armor_action_scene = render_scene();
                 if (!field_scene.inventory_action_open() ||
                     field_scene.inventory_action_selection() != 2U ||
-                    !region_matches(armor_action_scene, focus_equip, 128,
+                    !region_matches(armor_action_scene, focus_equip, 136,
                                     184) ||
                     !icon_interior_matches(armor_action_scene,
                                            armor_before_icon, 16, 144) ||
@@ -25153,7 +25239,7 @@ int main(int argc, char** argv) {
                 const auto armor_unequip_action_scene = render_scene();
                 if (!field_scene.inventory_action_open() ||
                     !region_matches(armor_unequip_action_scene, focus_equip,
-                                    128, 184) ||
+                                    136, 184) ||
                     !save_scene("24_armor_unequip_action_menu",
                                 armor_unequip_action_scene)) {
                     std::cerr << "field action dump: armor unequip action "
@@ -25301,9 +25387,11 @@ int main(int argc, char** argv) {
                     field_audio_events.size();
                 press(0x08U);
                 if (field_audio_events.size() !=
-                    replacement_cursor_audio_count) {
+                        replacement_cursor_audio_count + 1U ||
+                    field_audio_events.back() != 0x25U) {
                     std::cerr << "field action dump: inventory column "
-                                 "movement unexpectedly requested audio\n";
+                                 "movement did not request the source 0x25 "
+                                 "move event\n";
                     return 3;
                 }
                 const auto replacement_selection_record =
@@ -25470,9 +25558,12 @@ int main(int argc, char** argv) {
                 const auto gear_cursor_audio_count = field_audio_events.size();
                 press(0x04U);
                 press(0x02U);
-                if (field_audio_events.size() != gear_cursor_audio_count) {
+                if (field_audio_events.size() !=
+                        gear_cursor_audio_count + 2U ||
+                    field_audio_events.back() != 0x25U ||
+                    field_audio_events[gear_cursor_audio_count] != 0x25U) {
                     std::cerr << "field action dump: gear cursor movement "
-                                 "unexpectedly requested audio\n";
+                                 "did not request two source 0x25 move events\n";
                     return 3;
                 }
                 const auto gear_before_record =
@@ -25779,14 +25870,13 @@ int main(int argc, char** argv) {
                             focus_index >= 4U) {
                             return false;
                         }
-                        auto expected = background.convertToFormat(
-                            QImage::Format_RGB32);
-                        QPainter expected_painter(&expected);
-                        expected_painter.drawImage(
-                            8 + static_cast<int>(focus_index * 24U), 0,
-                            focus);
-                        expected_painter.end();
-                        return region_matches(scene, expected, 120, 184);
+                        return button_panel_matches(
+                                   scene, background, focus,
+                                   16 + static_cast<int>(focus_index * 24U)) &&
+                               source_menu_caption_matches(
+                                   scene, direct_asset("font.bmp"), 112, 200,
+                                   centered_source_menu_caption(
+                                       kClipsTradeCaptions[focus_index]));
                     };
                 const auto clips_modal_title_is_clear =
                     [](const QImage& scene) {

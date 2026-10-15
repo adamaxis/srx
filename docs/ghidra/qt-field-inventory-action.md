@@ -128,8 +128,10 @@ shadowrun_ghidra_conversion_qt_qa.exe --assets assets \
 ```
 
 `shadowrun_ghidra_conversion_qt_field_first_aid_qa` checks target/CANCEL,
-B/C rejection, Medkit use/result/acknowledgement, source event IDs, record
-updates, adjacent shell/HUD, and the selected-item outline. It writes
+Medkit use/result/acknowledgement through A, source event IDs, record updates,
+adjacent shell/HUD, and the selected-item outline. The menu-route CTest also
+confirms the target through B with a Medkit and through C with a slap patch,
+matching ROM branches `0x1250C` and `0x1251C`. It writes
 `actual.bmp` and named checkpoints for target, idle hold, CANCEL, cancellation
 return, use result, and Inventory return. It confirms that held A does not
 dismiss the result before a fresh controller edge. The test lowers the typed

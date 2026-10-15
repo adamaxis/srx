@@ -76,6 +76,14 @@ struct ScriptMenuPartyMember {
     std::uint8_t rounds = 0U;
     int weapon_slot = -1;
     std::uint8_t weapon_code = 0U;
+    std::uint8_t armor = 0U;
+    std::uint8_t physical = 0U;
+    std::uint8_t stun = 0U;
+    std::uint32_t state_function = 0U;
+    std::array<std::uint8_t, 8> inventory{};
+    std::array<std::uint8_t, 8> phase{};
+    std::array<std::uint8_t, 8> attributes{};
+    std::array<std::uint8_t, 12> skills{};
 };
 
 struct ScriptMenuRouteGame {
@@ -89,6 +97,10 @@ struct ScriptMenuRouteGame {
     std::function<int()> active_slot;
     std::function<int(int)> magazine_capacity;
     std::function<void(int, int, int)> set_runner_ammo;
+    std::function<std::array<bool, 3>()> slot_active_set;
+    std::function<void(const std::array<ScriptMenuPartyMember, 3>&)>
+        commit_party;
+    std::function<int(int, int)> roll_successes;
 };
 
 struct ScriptMenuRouteBindings {
@@ -107,7 +119,15 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_command;
     std::optional<int> top_quantity;
     std::optional<int> top_recipient;
+    std::optional<int> top_source;
+    std::optional<int> top_destination_slot;
     std::optional<int> top_message;
+    std::optional<int> top_item_slot;
+    std::optional<int> top_item_code;
+    std::optional<int> top_item_phase;
+    std::optional<int> top_target;
+    std::vector<int> top_targets;
+    std::optional<bool> top_recipient_full;
     std::optional<bool> top_yes;
 };
 

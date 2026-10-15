@@ -1157,6 +1157,7 @@ private:
         const AttributesSkillsMenuController& menu) const;
     void paint_command_overview(QPainter& painter) const;
     void paint_command_overview_clips(QPainter& painter) const;
+    void paint_command_overview_posture_panel(QPainter& painter) const;
     void paint_field_shop(QPainter& painter) const;
     std::optional<std::uint8_t> selected_shop_item_code() const;
     std::optional<std::uint8_t> weapon_magazine_capacity_for_item(
@@ -1226,6 +1227,8 @@ private:
         std::uint16_t controller_events);
     void configure_field_menu_route();
     void synchronize_command_overview_clips_from_route(
+        const scripting::ScriptMenuRouteSnapshot& route_state);
+    void synchronize_command_overview_inventory_from_route(
         const scripting::ScriptMenuRouteSnapshot& route_state);
     void start_command_menu_legacy_screen(
         std::uint16_t screen,
@@ -1562,6 +1565,7 @@ private:
     CommandOverviewActionMessage command_overview_action_message_ =
         CommandOverviewActionMessage::none;
     bool command_overview_inventory_action_active_ = false;
+    bool command_overview_inventory_lua_route_active_ = false;
     bool command_overview_inventory_selector_suppressed_ = false;
     bool command_overview_discard_confirmation_active_ = false;
     std::array<QImage, kFieldHudSlotCount> field_hud_faces_{};

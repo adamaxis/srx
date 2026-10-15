@@ -5448,6 +5448,16 @@ void FieldSceneRuntime::configure_field_menu_route() {
         menu_route_active_ = false;
         menu_route_screen_ = 0U;
         posture_dialog_active_ = false;
+        command_overview_inventory_lua_route_active_ = false;
+        command_overview_inventory_action_active_ = false;
+        command_overview_discard_confirmation_active_ = false;
+        command_overview_inventory_trade_ = InventoryTradeState{};
+        command_overview_first_aid_state_ =
+            CommandOverviewFirstAidState::inactive;
+        command_overview_automatic_use_state_ =
+            CommandOverviewAutomaticUseState::inactive;
+        command_overview_action_message_ =
+            CommandOverviewActionMessage::none;
         command_overview_cyberware_active_ = false;
         command_overview_attributes_skills_.close_to_parent();
         command_overview_clips_.close();
@@ -5506,12 +5516,20 @@ void FieldSceneRuntime::configure_field_menu_route() {
         const auto& records = field_party_roster_.records();
         for (std::size_t slot = 0; slot < records.size(); ++slot) {
             const auto& record = records[slot];
-            party[slot] = scripting::ScriptMenuPartyMember{
-                static_cast<std::uint8_t>(record.flags >> 8U),
-                record.ammo_clips,
-                record.ammo_rounds,
-                static_cast<int>(record.equipped_inventory_slot),
-                record.equipped_item_code};
+            auto& member = party[slot];
+            member.status = static_cast<std::uint8_t>(record.flags >> 8U);
+            member.clips = record.ammo_clips;
+            member.rounds = record.ammo_rounds;
+            member.weapon_slot = record.equipped_inventory_slot;
+            member.weapon_code = record.equipped_item_code;
+            member.armor = record.equipped_armor_index;
+            member.physical = record.delay_meter;
+            member.stun = record.behavior_meter;
+            member.state_function = record.first_aid_continuation;
+            member.inventory = record.inventory_item_codes;
+            member.phase = record.inventory_phase_bytes;
+            member.attributes = record.attributes;
+            member.skills = record.skills;
         }
         return party;
     };
@@ -5542,6 +5560,52 @@ void FieldSceneRuntime::configure_field_menu_route() {
             std::clamp(rounds, 0, 0xFF));
         refresh_field_hud_runner_slot();
         refresh_command_overview_combat_bars();
+    };
+    bindings.game.slot_active_set = [this] {
+        std::array<bool, FieldPartyRosterRuntime::kSlotCount> active{};
+        for (std::size_t slot = 0; slot < active.size(); ++slot) {
+            active[slot] = field_party_roster_.slot_active(slot);
+        }
+        return active;
+    };
+    bindings.game.commit_party = [this](
+        const std::array<scripting::ScriptMenuPartyMember,
+                         FieldPartyRosterRuntime::kSlotCount>& party) {
+        auto& records = field_party_roster_.records();
+        for (std::size_t slot = 0; slot < records.size(); ++slot) {
+            auto& record = records[slot];
+            const auto& member = party[slot];
+            record.flags = static_cast<std::uint16_t>(
+                (record.flags & 0x00FFU) |
+                (static_cast<std::uint16_t>(member.status) << 8U));
+            record.ammo_clips = member.clips;
+            record.ammo_rounds = member.rounds;
+            record.equipped_inventory_slot = static_cast<std::int8_t>(
+                std::clamp(member.weapon_slot, -128, 127));
+            record.equipped_item_code = member.weapon_code;
+            record.equipped_armor_index = member.armor;
+            record.delay_meter = member.physical;
+            record.behavior_meter = member.stun;
+            record.first_aid_continuation = member.state_function;
+            record.inventory_item_codes = member.inventory;
+            record.inventory_phase_bytes = member.phase;
+            record.attributes = member.attributes;
+            record.skills = member.skills;
+        }
+        refresh_field_hud_runner_slot();
+        refresh_command_overview_combat_bars();
+        refresh_command_overview_item_detail();
+    };
+    bindings.game.roll_successes = [this](const int rolls,
+                                          const int threshold) {
+        const auto count = static_cast<std::uint8_t>(
+            std::clamp(rolls, 0, 0xFF));
+        const auto difficulty = static_cast<std::int16_t>(
+            std::clamp(threshold, 0, 0x7FFF));
+        return static_cast<int>(count_thresholded_random_rolls(
+            count, difficulty, [this](const std::uint16_t bound) {
+                return sample_source_random_bound(field_random_seed_, bound);
+            }));
     };
     game_scripts_.set_menu_route_bindings(std::move(bindings));
 }
@@ -5604,6 +5668,204 @@ void FieldSceneRuntime::synchronize_command_overview_clips_from_route(
             ? static_cast<std::size_t>(*route_state.top_recipient)
             : 0U,
         message);
+}
+
+void FieldSceneRuntime::synchronize_command_overview_inventory_from_route(
+    const scripting::ScriptMenuRouteSnapshot& route_state) {
+    const auto action = static_cast<std::uint16_t>(
+        srx::MenuScreen::ITEM_ACTION);
+    const auto discard = static_cast<std::uint16_t>(
+        srx::MenuScreen::DISCARD_CONFIRM);
+    const auto trade = static_cast<std::uint16_t>(
+        srx::MenuScreen::INVENTORY_TRADE);
+    const auto first_aid = static_cast<std::uint16_t>(
+        srx::MenuScreen::FIRST_AID);
+    const auto message = static_cast<std::uint16_t>(
+        srx::MenuScreen::MESSAGE);
+    const bool inventory_page = route_state.page.has_value() &&
+                                *route_state.page >= 0 &&
+                                *route_state.page < 2;
+    const bool item_message = route_state.top_screen == message &&
+                              route_state.top_item_slot.has_value();
+    const bool inventory_screen = route_state.top_screen == action ||
+                                  route_state.top_screen == discard ||
+                                  route_state.top_screen == trade ||
+                                  route_state.top_screen == first_aid ||
+                                  item_message;
+    const bool routed = route_state.open && inventory_page &&
+                        inventory_screen;
+    const bool was_routed = command_overview_inventory_lua_route_active_;
+    command_overview_inventory_lua_route_active_ = routed;
+    if (!routed) {
+        if (was_routed) {
+            const bool source_wait_clears_selector =
+                command_overview_first_aid_state_ !=
+                    CommandOverviewFirstAidState::inactive ||
+                command_overview_automatic_use_state_ !=
+                    CommandOverviewAutomaticUseState::inactive;
+            command_overview_inventory_action_ = InventoryActionMenuState{};
+            command_overview_selected_inventory_item_.reset();
+            command_overview_inventory_action_active_ = false;
+            command_overview_discard_confirmation_active_ = false;
+            command_overview_discard_confirmation_ = MenuConfirmationState{};
+            command_overview_inventory_trade_ = InventoryTradeState{};
+            command_overview_first_aid_state_ =
+                CommandOverviewFirstAidState::inactive;
+            command_overview_first_aid_targets_ = FirstAidTargetList{};
+            command_overview_first_aid_cursor_ = 0U;
+            command_overview_first_aid_message_ = FirstAidMessage::none;
+            command_overview_automatic_use_state_ =
+                CommandOverviewAutomaticUseState::inactive;
+            command_overview_action_message_ =
+                CommandOverviewActionMessage::none;
+            // The First Aid and utility wait tails return through 0x11928,
+            // which clears the yellow selector. Ordinary equipment, discard,
+            // Trade, and no-recipient returns keep the inventory cursor state.
+            if (source_wait_clears_selector) {
+                command_overview_inventory_selector_suppressed_ = true;
+            }
+        }
+        return;
+    }
+
+    command_overview_action_message_ = CommandOverviewActionMessage::none;
+    command_overview_first_aid_state_ =
+        CommandOverviewFirstAidState::inactive;
+    command_overview_first_aid_targets_ = FirstAidTargetList{};
+    command_overview_first_aid_cursor_ = 0U;
+    command_overview_first_aid_message_ = FirstAidMessage::none;
+    command_overview_automatic_use_state_ =
+        CommandOverviewAutomaticUseState::inactive;
+    command_overview_discard_confirmation_active_ = false;
+    command_overview_inventory_trade_ = InventoryTradeState{};
+
+    if (route_state.top_item_slot.has_value() &&
+        route_state.top_item_code.has_value() &&
+        *route_state.top_item_slot >= 0 &&
+        *route_state.top_item_slot < 8 &&
+        *route_state.top_item_code > 0 &&
+        *route_state.top_item_code <= 0xFF) {
+        command_overview_selected_inventory_item_ = SelectedInventoryItem{
+            static_cast<std::size_t>(*route_state.top_item_slot),
+            static_cast<std::uint8_t>(*route_state.top_item_code),
+            static_cast<std::uint8_t>(std::clamp(
+                route_state.top_item_phase.value_or(0), 0, 0xFF))};
+    } else {
+        command_overview_selected_inventory_item_.reset();
+    }
+
+    if (route_state.top_screen == action ||
+        route_state.top_screen == discard) {
+        command_overview_inventory_action_active_ = true;
+        command_overview_inventory_action_.open = true;
+        command_overview_inventory_action_.column = static_cast<std::uint8_t>(
+            std::clamp(route_state.top_column.value_or(0), 0, 1));
+        command_overview_inventory_action_.row = static_cast<std::uint8_t>(
+            std::clamp(route_state.top_row.value_or(0), 0, 3));
+        command_overview_inventory_action_.action_selector =
+            static_cast<std::uint8_t>(std::clamp(
+                route_state.top_selection.value_or(2), 2, 5));
+    } else {
+        command_overview_inventory_action_active_ = false;
+    }
+
+    if (route_state.top_screen == discard) {
+        command_overview_discard_confirmation_active_ = true;
+        command_overview_discard_confirmation_.selected_option =
+            route_state.top_yes.value_or(false) ? 0U : 1U;
+    }
+    if (route_state.top_screen == trade) {
+        auto& state = command_overview_inventory_trade_;
+        state.open = true;
+        if (command_overview_selected_inventory_item_.has_value()) {
+            state.selected_item = *command_overview_selected_inventory_item_;
+        }
+        state.source_slot = static_cast<std::size_t>(std::clamp(
+            route_state.top_source.value_or(
+                static_cast<int>(field_party_roster_.active_slot())),
+            0, static_cast<int>(FieldPartyRosterRuntime::kSlotCount - 1U)));
+        state.recipient_slot = static_cast<std::size_t>(std::clamp(
+            route_state.top_recipient.value_or(0), 0,
+            static_cast<int>(FieldPartyRosterRuntime::kSlotCount - 1U)));
+        state.recipient_inventory_slot = static_cast<std::size_t>(
+            std::clamp(route_state.top_destination_slot.value_or(0), 0, 7));
+        state.recipient_inventory_full =
+            route_state.top_recipient_full.value_or(false);
+        state.yes_selected = route_state.top_yes.value_or(false);
+    }
+    if (route_state.top_screen == first_aid) {
+        command_overview_first_aid_state_ =
+            CommandOverviewFirstAidState::target_selection;
+        auto& targets = command_overview_first_aid_targets_;
+        for (const auto slot : route_state.top_targets) {
+            if (slot < 0 ||
+                slot >= static_cast<int>(FieldPartyRosterRuntime::kSlotCount) ||
+                targets.active_count >= targets.active_record_indices.size()) {
+                continue;
+            }
+            targets.active_record_indices[targets.active_count++] =
+                static_cast<std::size_t>(slot);
+        }
+        command_overview_first_aid_cursor_ = static_cast<std::size_t>(
+            std::clamp(route_state.top_row.value_or(0), 0,
+                       static_cast<int>(targets.cancel_row())));
+    }
+    if (route_state.top_screen == message &&
+        route_state.top_message.has_value()) {
+        switch (*route_state.top_message) {
+        case 6:
+            command_overview_action_message_ =
+                CommandOverviewActionMessage::cannot_discard;
+            break;
+        case 7:
+            command_overview_action_message_ =
+                CommandOverviewActionMessage::cannot_trade;
+            break;
+        case 8:
+            command_overview_automatic_use_state_ =
+                CommandOverviewAutomaticUseState::result_wait;
+            break;
+        case 9:
+        case 10:
+        case 11: {
+            command_overview_first_aid_state_ =
+                CommandOverviewFirstAidState::result_wait;
+            command_overview_first_aid_message_ =
+                *route_state.top_message == 9
+                    ? FirstAidMessage::medkit_used
+                    : (*route_state.top_message == 10
+                           ? FirstAidMessage::slap_patch_used
+                           : FirstAidMessage::target_not_injured);
+            for (const auto slot : route_state.top_targets) {
+                if (slot < 0 ||
+                    slot >= static_cast<int>(
+                               FieldPartyRosterRuntime::kSlotCount) ||
+                    command_overview_first_aid_targets_.active_count >=
+                        command_overview_first_aid_targets_
+                            .active_record_indices.size()) {
+                    continue;
+                }
+                command_overview_first_aid_targets_
+                    .active_record_indices[
+                        command_overview_first_aid_targets_.active_count++] =
+                    static_cast<std::size_t>(slot);
+            }
+            if (route_state.top_target.has_value()) {
+                const auto target = std::find(
+                    route_state.top_targets.begin(),
+                    route_state.top_targets.end(), *route_state.top_target);
+                if (target != route_state.top_targets.end()) {
+                    command_overview_first_aid_cursor_ =
+                        static_cast<std::size_t>(std::distance(
+                            route_state.top_targets.begin(), target));
+                }
+            }
+            break;
+        }
+        default:
+            break;
+        }
+    }
 }
 
 void FieldSceneRuntime::start_command_menu_legacy_screen(
@@ -5688,6 +5950,7 @@ void FieldSceneRuntime::open_command_overview() {
 
     command_overview_inventory_action_ = InventoryActionMenuState{};
     command_overview_selected_inventory_item_.reset();
+    command_overview_inventory_lua_route_active_ = false;
     command_overview_first_aid_state_ =
         CommandOverviewFirstAidState::inactive;
     command_overview_first_aid_targets_ = FirstAidTargetList{};
@@ -5748,6 +6011,7 @@ void FieldSceneRuntime::open_command_overview() {
                 static_cast<std::uint8_t>(*route_state.row));
         }
         synchronize_command_overview_clips_from_route(route_state);
+        synchronize_command_overview_inventory_from_route(route_state);
     }
     refresh_command_overview_combat_bars();
     refresh_command_overview_item_detail();
@@ -6036,6 +6300,16 @@ void FieldSceneRuntime::begin_command_overview_clips() {
         source_boundary("field.command_overview.clips.invalid_route");
         return;
     }
+    // Entering this top-level child replaces the shared command button row.
+    // Drop any stale inventory-action presentation so it cannot be layered
+    // over Clips if a prior menu route left that state behind.
+    command_overview_inventory_action_ = InventoryActionMenuState{};
+    command_overview_selected_inventory_item_.reset();
+    command_overview_inventory_action_active_ = false;
+    command_overview_discard_confirmation_ = MenuConfirmationState{};
+    command_overview_discard_confirmation_active_ = false;
+    command_overview_inventory_trade_ = InventoryTradeState{};
+    command_overview_action_message_ = CommandOverviewActionMessage::none;
     command_overview_clips_.open();
     source_boundary("field.command_overview.clips.opened");
 }
@@ -10899,19 +11173,22 @@ void FieldSceneRuntime::advance_frame() {
                 field_controller_sample_state_.events);
             return;
         }
-        if (command_overview_automatic_use_state_ !=
+        if (!command_overview_inventory_lua_route_active_ &&
+            command_overview_automatic_use_state_ !=
             CommandOverviewAutomaticUseState::inactive) {
             advance_command_overview_automatic_use(
                 field_controller_sample_state_.events);
             return;
         }
-        if (command_overview_first_aid_state_ !=
+        if (!command_overview_inventory_lua_route_active_ &&
+            command_overview_first_aid_state_ !=
             CommandOverviewFirstAidState::inactive) {
             advance_command_overview_first_aid(
                 field_controller_sample_state_.events);
             return;
         }
-        if (command_overview_inventory_trade_.open) {
+        if (!command_overview_inventory_lua_route_active_ &&
+            command_overview_inventory_trade_.open) {
             advance_command_overview_inventory_trade(
                 field_controller_sample_state_.events);
             return;
@@ -11256,7 +11533,8 @@ void FieldSceneRuntime::advance_frame() {
             }
             return;
         }
-        if (command_overview_inventory_action_active_) {
+        if (command_overview_inventory_action_active_ &&
+            !command_overview_inventory_lua_route_active_) {
             advance_command_overview_inventory_action(
                 field_controller_sample_state_.events);
             refresh_command_overview_combat_bars();
@@ -11269,6 +11547,7 @@ void FieldSceneRuntime::advance_frame() {
                 field_controller_sample_state_.events);
             const auto route_state = game_scripts_.menu_route_snapshot();
             synchronize_command_overview_clips_from_route(route_state);
+            synchronize_command_overview_inventory_from_route(route_state);
             if (route_state.page.has_value() && route_state.row.has_value()) {
                 command_overview_.sync_script_selection(
                     static_cast<std::uint8_t>(*route_state.page),
@@ -14422,9 +14701,11 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             }
             draw_command_overview_text(
                 painter, 112, 200,
-                command_overview_discard_confirmation_.selected_option == 0U
-                    ? field_menu_text_.action_choice_yes
-                    : field_menu_text_.action_choice_no);
+                centered_command_footer(
+                    command_overview_discard_confirmation_
+                                .selected_option == 0U
+                        ? field_menu_text_.action_choice_yes
+                        : field_menu_text_.action_choice_no));
         } else {
             painter.drawImage(kCommandOverviewActionBackgroundX,
                               kCommandOverviewActionBackgroundY,
@@ -14437,6 +14718,15 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 painter.drawImage(kCommandOverviewActionFocusX[focus_index],
                                   kCommandOverviewActionFocusY,
                                   command_overview_action_focus_[focus_index]);
+            }
+            // ROM 0x117D0/0x11712 shows the Inventory footer for the item
+            // action row. First Aid changes it only after entering its child.
+            const auto inventory_page = view.source_state.primary_page;
+            if (inventory_page < field_menu_text_.command_labels.size()) {
+                draw_command_overview_text(
+                    painter, 112, 200,
+                    centered_command_footer(
+                        field_menu_text_.command_labels[inventory_page]));
             }
         }
     } else if (!clips_owns_button_panel &&

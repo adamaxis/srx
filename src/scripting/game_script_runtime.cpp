@@ -575,6 +575,9 @@ struct GameScriptRuntime::Impl {
         active_slot,
         magazine_capacity,
         set_runner_ammo,
+        slot_active_set,
+        commit_party,
+        roll_successes,
     };
 
     lua_State* state = nullptr;
@@ -737,17 +740,36 @@ struct GameScriptRuntime::Impl {
             lua_createtable(lua, static_cast<int>(party.size()), 0);
             for (std::size_t index = 0; index < party.size(); ++index) {
                 const auto& member = party[index];
-                lua_createtable(lua, 0, 5);
-                lua_pushinteger(lua, member.status);
-                lua_setfield(lua, -2, "status");
-                lua_pushinteger(lua, member.clips);
-                lua_setfield(lua, -2, "clips");
-                lua_pushinteger(lua, member.rounds);
-                lua_setfield(lua, -2, "rounds");
-                lua_pushinteger(lua, member.weapon_slot);
-                lua_setfield(lua, -2, "weapon_slot");
-                lua_pushinteger(lua, member.weapon_code);
-                lua_setfield(lua, -2, "weapon_code");
+                lua_createtable(lua, 0, 14);
+                const auto set_integer = [lua](const char* name,
+                                               const lua_Integer value) {
+                    lua_pushinteger(lua, value);
+                    lua_setfield(lua, -2, name);
+                };
+                set_integer("status", member.status);
+                set_integer("clips", member.clips);
+                set_integer("rounds", member.rounds);
+                set_integer("weapon_slot", member.weapon_slot);
+                set_integer("weapon_code", member.weapon_code);
+                set_integer("armor", member.armor);
+                set_integer("physical", member.physical);
+                set_integer("stun", member.stun);
+                set_integer("state_function", member.state_function);
+                const auto push_array = [lua](const char* name,
+                                              const auto& values) {
+                    lua_createtable(lua, static_cast<int>(values.size()), 0);
+                    for (std::size_t array_index = 0;
+                         array_index < values.size(); ++array_index) {
+                        lua_pushinteger(lua, values[array_index]);
+                        lua_rawseti(lua, -2,
+                                    static_cast<lua_Integer>(array_index));
+                    }
+                    lua_setfield(lua, -2, name);
+                };
+                push_array("inventory", member.inventory);
+                push_array("phase", member.phase);
+                push_array("attributes", member.attributes);
+                push_array("skills", member.skills);
                 lua_rawseti(lua, -2, static_cast<lua_Integer>(index));
             }
             return 1;
@@ -772,6 +794,104 @@ struct GameScriptRuntime::Impl {
                     integer_argument(3));
             }
             return 0;
+        case MenuBinding::slot_active_set: {
+            const auto active = self->menu_route_bindings.game.slot_active_set
+                                    ? self->menu_route_bindings.game
+                                          .slot_active_set()
+                                    : std::array<bool, 3>{};
+            lua_createtable(lua, static_cast<int>(active.size()), 0);
+            for (std::size_t index = 0; index < active.size(); ++index) {
+                lua_pushboolean(lua, active[index] ? 1 : 0);
+                lua_rawseti(lua, -2, static_cast<lua_Integer>(index));
+            }
+            return 1;
+        }
+        case MenuBinding::commit_party: {
+            if (!self->menu_route_bindings.game.commit_party ||
+                !lua_istable(lua, 1)) {
+                return 0;
+            }
+            std::array<ScriptMenuPartyMember, 3> party{};
+            const auto read_integer = [lua](const int table_index,
+                                            const char* name,
+                                            const lua_Integer fallback) {
+                lua_getfield(lua, table_index, name);
+                int is_number = 0;
+                const auto value = lua_tointegerx(lua, -1, &is_number);
+                lua_pop(lua, 1);
+                return is_number ? value : fallback;
+            };
+            const auto read_array = [lua](const int table_index,
+                                          const char* name, auto& values) {
+                lua_getfield(lua, table_index, name);
+                const auto array_index = lua_absindex(lua, -1);
+                if (lua_istable(lua, array_index)) {
+                    for (std::size_t index = 0; index < values.size();
+                         ++index) {
+                        lua_rawgeti(lua, array_index,
+                                    static_cast<lua_Integer>(index));
+                        int is_number = 0;
+                        const auto value = lua_tointegerx(lua, -1, &is_number);
+                        if (is_number) {
+                            values[index] = static_cast<std::uint8_t>(
+                                std::clamp<lua_Integer>(value, 0, 0xFF));
+                        }
+                        lua_pop(lua, 1);
+                    }
+                }
+                lua_pop(lua, 1);
+            };
+            const auto party_index = lua_absindex(lua, 1);
+            for (std::size_t index = 0; index < party.size(); ++index) {
+                lua_rawgeti(lua, party_index,
+                            static_cast<lua_Integer>(index));
+                if (lua_istable(lua, -1)) {
+                    const auto member_index = lua_absindex(lua, -1);
+                    auto& member = party[index];
+                    const auto bounded_byte = [&read_integer](
+                                                  const int table_index,
+                                                  const char* name) {
+                        return static_cast<std::uint8_t>(
+                            std::clamp<lua_Integer>(
+                                read_integer(table_index, name, 0), 0, 0xFF));
+                    };
+                    member.status = bounded_byte(member_index, "status");
+                    member.clips = bounded_byte(member_index, "clips");
+                    member.rounds = bounded_byte(member_index, "rounds");
+                    member.weapon_slot = static_cast<int>(
+                        std::clamp<lua_Integer>(
+                            read_integer(member_index, "weapon_slot", -1),
+                            -128, 127));
+                    member.weapon_code =
+                        bounded_byte(member_index, "weapon_code");
+                    member.armor = bounded_byte(member_index, "armor");
+                    member.physical =
+                        bounded_byte(member_index, "physical");
+                    member.stun = bounded_byte(member_index, "stun");
+                    member.state_function = static_cast<std::uint32_t>(
+                        std::clamp<lua_Integer>(
+                            read_integer(member_index, "state_function", 0),
+                            0, 0xFFFFFFFFLL));
+                    read_array(member_index, "inventory", member.inventory);
+                    read_array(member_index, "phase", member.phase);
+                    read_array(member_index, "attributes", member.attributes);
+                    read_array(member_index, "skills", member.skills);
+                }
+                lua_pop(lua, 1);
+            }
+            self->menu_route_bindings.game.commit_party(party);
+            return 0;
+        }
+        case MenuBinding::roll_successes: {
+            const auto successes = self->menu_route_bindings.game.roll_successes
+                                       ? self->menu_route_bindings.game
+                                             .roll_successes(
+                                                 integer_argument(1),
+                                                 integer_argument(2))
+                                       : 0;
+            lua_pushinteger(lua, successes);
+            return 1;
+        }
         }
         lua_pushnil(lua);
         return 1;
@@ -826,6 +946,12 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::magazine_capacity);
         add_menu_binding(state, table_index, "set_runner_ammo",
                          MenuBinding::set_runner_ammo);
+        add_menu_binding(state, table_index, "slot_active_set",
+                         MenuBinding::slot_active_set);
+        add_menu_binding(state, table_index, "commit_party",
+                         MenuBinding::commit_party);
+        add_menu_binding(state, table_index, "roll_successes",
+                         MenuBinding::roll_successes);
     }
 
     bool refresh_menu_route_snapshot() {
@@ -861,6 +987,15 @@ struct GameScriptRuntime::Impl {
                        ? std::optional<int>(static_cast<int>(value))
                        : std::nullopt;
         };
+        const auto read_optional_alias = [&read_optional](
+                                             const int table_index,
+                                             const char* primary,
+                                             const char* alias)
+            -> std::optional<int> {
+            const auto value = read_optional(table_index, primary);
+            return value.has_value() ? value
+                                     : read_optional(table_index, alias);
+        };
         lua_getfield(state, route_index, "top");
         lua_pushvalue(state, route_index);
         if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
@@ -881,22 +1016,124 @@ struct GameScriptRuntime::Impl {
             if (lua_istable(state, -1)) {
                 const auto screen_state_index = lua_absindex(state, -1);
                 menu_route_state.top_column =
-                    read_optional(screen_state_index, "col");
+                    read_optional_alias(screen_state_index, "col", "column");
                 menu_route_state.top_row =
                     read_optional(screen_state_index, "row");
                 menu_route_state.top_selection =
-                    read_optional(screen_state_index, "selection");
+                    read_optional_alias(screen_state_index, "selection",
+                                        "selector");
                 menu_route_state.top_command =
                     read_optional(screen_state_index, "command");
                 menu_route_state.top_quantity =
                     read_optional(screen_state_index, "quantity");
                 menu_route_state.top_message =
                     read_optional(screen_state_index, "message");
+                menu_route_state.top_source =
+                    read_optional(screen_state_index, "source");
+                menu_route_state.top_recipient =
+                    read_optional(screen_state_index, "recipient");
+                menu_route_state.top_destination_slot =
+                    read_optional(screen_state_index, "dst_slot");
+                menu_route_state.top_target =
+                    read_optional(screen_state_index, "target");
                 lua_getfield(state, screen_state_index, "yes");
                 if (lua_isboolean(state, -1)) {
                     menu_route_state.top_yes = lua_toboolean(state, -1) != 0;
                 }
                 lua_pop(state, 1);
+                lua_getfield(state, screen_state_index, "full");
+                if (lua_isboolean(state, -1)) {
+                    menu_route_state.top_recipient_full =
+                        lua_toboolean(state, -1) != 0;
+                }
+                lua_pop(state, 1);
+
+                const auto read_item = [this, lua](
+                                           const int item_index) {
+                    if (!lua_istable(lua, item_index)) {
+                        return;
+                    }
+                    const auto read_item_integer = [lua, item_index](
+                                                       const char* name)
+                        -> std::optional<int> {
+                        lua_getfield(lua, item_index, name);
+                        int is_number = 0;
+                        const auto value = lua_tointegerx(lua, -1, &is_number);
+                        lua_pop(lua, 1);
+                        return is_number
+                                   ? std::optional<int>(static_cast<int>(value))
+                                   : std::nullopt;
+                    };
+                    menu_route_state.top_item_slot =
+                        read_item_integer("slot");
+                    menu_route_state.top_item_code =
+                        read_item_integer("code");
+                    menu_route_state.top_item_phase =
+                        read_item_integer("phase");
+                };
+                lua_getfield(state, screen_state_index, "sel");
+                read_item(lua_absindex(state, -1));
+                lua_pop(state, 1);
+                if (!menu_route_state.top_item_slot.has_value()) {
+                    lua_getfield(state, screen_state_index, "data");
+                    if (lua_istable(state, -1)) {
+                        lua_getfield(state, -1, "sel");
+                        read_item(lua_absindex(state, -1));
+                        lua_pop(state, 1);
+                    }
+                    lua_pop(state, 1);
+                }
+
+                lua_getfield(state, screen_state_index, "targets");
+                if (lua_istable(state, -1)) {
+                    const auto targets_index = lua_absindex(state, -1);
+                    const auto target_count = std::min<std::size_t>(
+                        static_cast<std::size_t>(lua_rawlen(state, targets_index)),
+                        3U);
+                    for (std::size_t index = 0; index < target_count; ++index) {
+                        lua_rawgeti(state, targets_index,
+                                    static_cast<lua_Integer>(index + 1U));
+                        if (lua_isinteger(state, -1)) {
+                            menu_route_state.top_targets.push_back(
+                                static_cast<int>(lua_tointeger(state, -1)));
+                        }
+                        lua_pop(state, 1);
+                    }
+                }
+                lua_pop(state, 1);
+                if (!menu_route_state.top_target.has_value() ||
+                    menu_route_state.top_targets.empty()) {
+                    lua_getfield(state, screen_state_index, "data");
+                    if (lua_istable(state, -1)) {
+                        const auto data_index = lua_absindex(state, -1);
+                        if (!menu_route_state.top_target.has_value()) {
+                            menu_route_state.top_target = read_optional(
+                                data_index, "target");
+                        }
+                        if (menu_route_state.top_targets.empty()) {
+                            lua_getfield(state, data_index, "targets");
+                            if (lua_istable(state, -1)) {
+                                const auto targets_index = lua_absindex(state, -1);
+                                const auto target_count = std::min<std::size_t>(
+                                    static_cast<std::size_t>(lua_rawlen(
+                                        state, targets_index)),
+                                    3U);
+                                for (std::size_t index = 0;
+                                     index < target_count; ++index) {
+                                    lua_rawgeti(state, targets_index,
+                                                static_cast<lua_Integer>(index + 1U));
+                                    if (lua_isinteger(state, -1)) {
+                                        menu_route_state.top_targets.push_back(
+                                            static_cast<int>(lua_tointeger(state, -1)));
+                                    }
+                                    lua_pop(state, 1);
+                                }
+                            }
+                            lua_pop(state, 1);
+                        }
+                    }
+                    lua_pop(state, 1);
+                }
 
                 // Clip Trade keeps its recipient list in the Lua screen
                 // state and advances an index through that filtered list.

@@ -549,8 +549,10 @@ open.
    `CommandOverviewFirstAidState`, target list/cursor, selected inventory slot,
    `RunnerRecordFields` meters/flags/phase, and continuation drive the Qt
    screen. QA reaches Medkit through the inventory action row, verifies the
-   single active Joshua target, rejects B/C, confirms A, then checks the
-   meter, item phase, flags, continuation, result wait, and return.
+   single active Joshua target and confirms A in the full-screen QA; the menu
+   route CTest separately confirms the target with B and C and checks both
+   item effects. The screen QA then checks meter, phase, flags, continuation,
+   result wait, and return.
 3. **Are the visuals correct?** The prompt and rows are placed from source
    name-table destinations: `C5A0` for `Heal who??`, `C6A0` for the first
    target name, `+0x80` per following active record, and `+0x86` before

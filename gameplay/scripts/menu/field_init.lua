@@ -1,6 +1,5 @@
--- Field menu route profile. Command, Posture, Attributes/Skills, Cyberware,
--- Clips, and Clips' message/confirmation/trade children are Lua-owned; other
--- children remain adapters.
+-- Field menu route profile. The command shell, inventory actions, and Clips
+-- children are Lua-owned; screens without a live port remain adapters.
 local E = require("enums")
 local Route = require("menu.route")
 
@@ -16,6 +15,11 @@ Route.register(E.MenuScreen.CLIPS, clips.Clips)
 Route.register(E.MenuScreen.RELOAD_CONFIRM, clips.Confirm)
 Route.register(E.MenuScreen.CLIP_TRADE, clips.Trade)
 Route.register(E.MenuScreen.MESSAGE, require("menu.screens.message"))
+local inventory = require("menu.screens.item_action")
+Route.register(E.MenuScreen.ITEM_ACTION, inventory.ItemAction)
+Route.register(E.MenuScreen.DISCARD_CONFIRM, inventory.Discard)
+Route.register(E.MenuScreen.INVENTORY_TRADE, inventory.Trade)
+Route.register(E.MenuScreen.FIRST_AID, inventory.FirstAid)
 
 local legacy = require("menu.screens.legacy")
 for screen = E.MenuScreen.ITEM_ACTION, E.MenuScreen.DECK_MAP do
@@ -24,6 +28,10 @@ for screen = E.MenuScreen.ITEM_ACTION, E.MenuScreen.DECK_MAP do
        screen ~= E.MenuScreen.CLIPS and
        screen ~= E.MenuScreen.RELOAD_CONFIRM and
        screen ~= E.MenuScreen.CLIP_TRADE and
+       screen ~= E.MenuScreen.ITEM_ACTION and
+       screen ~= E.MenuScreen.DISCARD_CONFIRM and
+       screen ~= E.MenuScreen.INVENTORY_TRADE and
+       screen ~= E.MenuScreen.FIRST_AID and
        screen ~= E.MenuScreen.MESSAGE then
         local window = E.WindowPlane.SIDEBAR
         if screen == E.MenuScreen.CYBERDECK then
