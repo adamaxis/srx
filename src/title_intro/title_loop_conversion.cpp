@@ -32,17 +32,16 @@ ControllerEventLatchResult latch_controller_events(
     };
 }
 
+// docs/24 R2: the title draws from the shared FFF9F8 word; `state` only mirrors it for existing callers.
 std::uint32_t advance_source_prng(std::uint32_t& state) {
-    auto seed = static_cast<std::uint16_t>(state);
-    state = advance_source_random_seed(seed);
+    state = advance_source_random_seed(source_random_seed());
     return state;
 }
 
 std::int16_t sample_source_random_bound(std::uint32_t& state,
                                         const std::uint16_t bound) {
-    auto seed = static_cast<std::uint16_t>(state);
-    const auto rolled = sample_source_random_bound(seed, bound);
-    state = seed;
+    const auto rolled = sample_source_random_bound(source_random_seed(), bound);
+    state = source_random_seed();
     return rolled;
 }
 

@@ -76,6 +76,8 @@
 
 class QPainter;
 
+#include "shadowrun_ghidra/core/random_conversion.hpp"
+
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
 enum class FieldSceneProfileWord : std::uint8_t {
@@ -1512,7 +1514,8 @@ private:
         FirstAidMessage::none;
     CommandOverviewAutomaticUseState command_overview_automatic_use_state_ =
         CommandOverviewAutomaticUseState::inactive;
-    std::uint16_t field_random_seed_ = 0U;
+    // docs/24 R1: aliases the single ROM RNG word FFF9F8 shared with title/menus/Matrix (random_conversion.hpp).
+    std::uint16_t& field_random_seed_ = source_random_seed();
     std::uint16_t field_world_frame_counter_ = 0U;
     std::uint32_t field_world_encounter_sequence_ = 0U;
     std::optional<SelectedInventoryItem>

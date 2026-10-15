@@ -126,7 +126,8 @@ int main() {
     };
     callbacks.count_matrix_node_action_rolls =
         [&](const std::uint16_t trial_count, const std::uint8_t difficulty) {
-            gate_values_verified = trial_count == 5U && difficulty == 6U;
+            // docs/24 R6: min(4, 2) + 2 - (band - 1) = 3 (srx had max -> 5).
+            gate_values_verified = trial_count == 3U && difficulty == 6U;
             return std::int8_t{2};
         };
     callbacks.redraw_matrix_node_action_grid =

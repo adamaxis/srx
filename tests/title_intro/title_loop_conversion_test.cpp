@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/title_intro/title_loop_conversion.hpp"
+#include "shadowrun_ghidra/core/random_conversion.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -42,13 +43,16 @@ int main() {
         return 1;
     }
 
+    // docs/24 R2: the title shares FFF9F8; `random_state` mirrors it.
     std::uint32_t random_state = 0U;
+    source_random_seed() = 0U;
     if (!expect(advance_source_prng(random_state) == 1U &&
                 random_state == 1U &&
                 advance_source_prng(random_state) == 0x20E6U)) {
         return 1;
     }
     random_state = 0U;
+    source_random_seed() = 0U;
     if (!expect(sample_source_random_bound(random_state, 0xFFFFU) == 0 &&
                 random_state == 1U &&
                 sample_source_random_bound(random_state, 0xFFFFU) ==
@@ -56,6 +60,7 @@ int main() {
         return 1;
     }
     random_state = 0xFFFFFFFFU;
+    source_random_seed() = 0xFFFFU;
     if (!expect(advance_source_prng(random_state) == 0xDF1CU &&
                 random_state == 0xDF1CU)) {
         return 1;

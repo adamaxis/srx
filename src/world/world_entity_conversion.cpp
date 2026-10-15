@@ -503,7 +503,7 @@ EffectVariantScanOutput run_effect_variant_a(
     jitter.offset_x = shared.offset_x;
     jitter.offset_y = shared.offset_y;
     jitter.random_word = shared.random_word;
-    jitter.seed = shared.seed;
+    jitter.seed = source_random_seed();             // docs/24 R3: ROM jitter advances FFF9F8 itself
     output.sprites = advance_jitter_effect(jitter, first_sequence);
     self.spawn.countdown =
         static_cast<std::uint8_t>(jitter.animation.countdown);
@@ -513,7 +513,8 @@ EffectVariantScanOutput run_effect_variant_a(
     shared.offset_x = jitter.offset_x;
     shared.offset_y = jitter.offset_y;
     shared.random_word = jitter.random_word;
-    shared.seed = jitter.seed;
+    source_random_seed() = jitter.seed;
+    shared.seed = jitter.seed;                      // mirror kept for existing dumps
     if (self.spawn.auxiliary != 0) {
         output.result = EffectVariantScanResult::jitter_live;
         return output;
@@ -586,7 +587,8 @@ EffectVariantScanOutput run_effect_variant_b(
     variant.screen_y = self.screen_y;
     variant.attribute_offset = self.spawn.attribute;
     variant.auxiliary = self.spawn.auxiliary;
-    variant.jitter_bit = static_cast<std::uint16_t>(shared.seed & 1U);
+    // docs/24 R4: ROM 0x53A8/0x5562/0x56C2 peek FFF9F8 bit 0 without advancing it.
+    variant.jitter_bit = static_cast<std::uint16_t>(source_random_seed() & 1U);
     output.sprites = advance_effect_animation_variant(variant, first_sequence);
     self.spawn.countdown =
         static_cast<std::uint8_t>(variant.animation.countdown);

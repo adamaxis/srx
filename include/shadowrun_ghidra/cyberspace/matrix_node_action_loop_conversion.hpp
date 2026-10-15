@@ -189,7 +189,8 @@ struct MatrixNodeActionLoopCallbacks {
     std::function<void()> wait_for_vblank;
     std::function<void()> latch_controller_events;
     std::function<std::uint16_t()> sample_controller_input;
-    // 0x54662 calls 0x55F44, then reads the active runner's +0x88 delay byte.
+    // 0x54662 calls 0x55F44, then reads the active runner's +0x88 byte. +0x88 is the Computer skill (the 0x55F44
+    // pool base), not an action delay (docs/24 R7); field names are kept for API stability.
     // The callback may use the typed 0x55F44 conversion and live runner model.
     std::function<MatrixNodeActionGateInputs()>
         calculate_matrix_node_action_gate_inputs;

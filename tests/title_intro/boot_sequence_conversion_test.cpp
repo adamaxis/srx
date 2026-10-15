@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/title_intro/boot_sequence_conversion.hpp"
+#include "shadowrun_ghidra/core/random_conversion.hpp"
 
 #include <algorithm>
 #include <string>
@@ -49,6 +50,10 @@ int main() {
     }
 
     PreTitleSequenceState pre_title{};
+    // ROM 0x5D746 consumes one shared FFF9F8 draw for each of 224 scanlines
+    // across 0x151 frames. A zeroed-RAM cold boot therefore reaches 0xD29F
+    // before title setup; verify the complete boot sequence, not just the LCG.
+    source_random_seed() = 0xFFFFU;
     pre_title.logo_phase_countdown = 0x7FFF;
     std::size_t waits = 0;
     std::size_t sprite_builds = 0;
@@ -147,6 +152,8 @@ int main() {
         palette_fades != 2U ||
         controller_samples != 2U || controller_latches != 102U ||
         palette_transition_calls != 2U ||
+        source_random_seed() != 0xD29FU ||
+        pre_title.random_state != 0xD29FU ||
         pre_title.presentation_stage !=
             PreTitleSequenceState::PresentationStage::complete ||
         pre_title.fasa_hold_frames != 0U ||

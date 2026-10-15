@@ -12,6 +12,21 @@ bool expect(const bool condition) {
 
 int main() {
     using namespace shadowrun::ghidra_conversion;
+    {   // docs/24 R5: negative counts roll one die (ROM 0x0DBA SUBQ/BPL/CLR.W), not 65535.
+        int calls = 0;
+        count_thresholded_random_rolls(static_cast<std::uint16_t>(-3), 2,
+            [&calls](std::uint16_t) { ++calls; return std::int16_t{0}; });
+        if (calls != 1) return 20;
+        std::vector<std::uint32_t> ram(0x3FE0U, 0U);
+        if (cold_boot_source_random_seed(ram.data()) != 0xFFFFU) return 21;   // D1 = 0x0000FFFF
+        warm_reset_source_random_seed(0x10002U);
+        if (source_random_seed() != 0x0001U) return 22;
+        int events = 0;
+        set_source_random_observer([&events](int, std::uint16_t, std::int32_t, std::uint16_t) { ++events; });
+        sample_source_random_bound(source_random_seed(), 6U);
+        set_source_random_observer({});
+        if (events != 1) return 23;
+    }
 
     const std::vector<std::int16_t> rolls{5, 2, 0, 4};
     std::size_t cursor = 0;

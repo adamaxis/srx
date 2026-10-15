@@ -39,7 +39,6 @@
 
 #include <QPainter>
 #include <QColor>
-#include <QRandomGenerator>
 
 #include <algorithm>
 #include <charconv>
@@ -6827,8 +6826,8 @@ bool FieldSceneRuntime::bootstrap(
     field_controller_nibble_ = 0U;
     field_controller_port_byte_ = 0U;
     field_player_actor_script_initialized_ = false;
-    field_random_seed_ = static_cast<std::uint16_t>(
-        QRandomGenerator::global()->generate());
+    // docs/24 R1: no host entropy. FFF9F8 keeps its boot value (cold_boot_source_random_seed, 0xFFFF with zeroed
+    // work RAM) plus every title-screen draw, exactly as the ROM; the debugger records it in the SEEDS chunk.
     field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
     jump_house_entry_transition_pending_ = false;
     field_mode_entry_transition_pending_ = false;

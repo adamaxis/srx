@@ -205,8 +205,9 @@ bool run_matrix_node_action_loop(
                 auto trial_count = gate.calculated_runner_action_delay;
                 const auto active_delay = static_cast<std::uint16_t>(
                     gate.active_runner_action_delay);
-                // 0x548BE..0x548C6: CMP.W D6,D7 / BPL, then ADD.W D7,D6.
-                if (active_delay >= trial_count) {
+                // 0x548BE..0x548C6: CMP.W D6,D7 / BPL skips the MOVE when D7 >= D6, so D6 = min(pool, D7),
+                // then ADD.W D7,D6 (docs/24 R6; same rule as 0x55FD8).
+                if (active_delay < trial_count) {
                     trial_count = active_delay;
                 }
                 trial_count = static_cast<std::uint16_t>(
