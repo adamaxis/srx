@@ -1849,6 +1849,8 @@ private:
     std::optional<std::uint8_t> field_dialogue_register_{0U};
     std::uint32_t field_render_effect_flags_ = 0;
     std::optional<std::uint32_t> field_funds_{0x14U};
+    // ROM FFE168 bit 0; set by debug-menu option 0x59C54.
+    bool field_walk_fast_enabled_ = false;
     // The fresh New Game runtime initializes these typed source globals to
     // zero. The loaded-save adapter does not restore them, so paid writes stay
     // explicit for that path.

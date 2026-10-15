@@ -145,6 +145,7 @@ struct ScriptMenuRouteGame {
     std::function<bool()> pocket_extra_row;
     std::function<void(std::uint32_t)> set_nuyen;
     std::function<void(std::uint32_t)> set_contact_flags;
+    std::function<void()> set_walk_fast;
     std::function<int(int)> source_random_bound;
     std::function<void(int)> dismiss_runner;
     std::function<std::optional<std::uint32_t>()> group_item_flags;
@@ -781,6 +782,7 @@ struct ScriptActorBehaviorContext {
     std::array<std::uint16_t, 8> movement_idle_selectors{};
     ScriptMovementStepState movement_state{};
     std::uint8_t movement_entity_flags = 0;
+    bool walk_fast_enabled = false;
     bool movement_transition_active = false;
     std::uint16_t movement_scene_id = 0;
     std::uint8_t world_scene_state = 0; // FFE186; delayed spell callback gate

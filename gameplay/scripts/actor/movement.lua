@@ -399,24 +399,26 @@ end
 local quickness_cardinal_steps = { 9, 9, 12, 16, 19, 22, 25, 27, 29, 31 }
 
 local function creature_movement_offsets(context, state)
-    -- Contexts without a live Quickness byte keep the host vector list.
-    -- The collision-policy fixture injects its own offsets and has no combatant.
-    local attribute_speed =
-        context.dynamic_world_encounter_actor == true or
-        (type(context.combatant) == "table" and
-         type(context.combatant.command_attribute_78) == "number")
-    if not attribute_speed then
-        return context.movement_offsets
-    end
-
     -- +0x10. The runner publishes it as movement_entity_flags. Dynamic
     -- actors publish the same byte as source_record_flags.
     local record_flags = context.dynamic_world_encounter_actor == true
         and context.source_record_flags
         or context.movement_entity_flags
+    local controlled_action = ActorStatus.THINK
+    local walk_fast_selected = context.walk_fast_enabled == true and
+        (record_flags & controlled_action) ~= 0
+    -- Contexts without a live Quickness byte keep the host vector list.
+    -- Walk Fast is an earlier ROM branch and does not require Quickness.
+    local attribute_speed =
+        context.dynamic_world_encounter_actor == true or
+        (type(context.combatant) == "table" and
+         type(context.combatant.command_attribute_78) == "number")
+    if not attribute_speed and not walk_fast_selected then
+        return context.movement_offsets
+    end
+
     -- 0xACAE installs 0xB574 when +0x10 bit 1 is set. Bit 1 clear is the
     -- distance-band path at 0xB6E4.
-    local controlled_action = 0x02
     local targets_world =
         (record_flags & ActorStatus.AI_RUNNER) ~= 0
     local high_effect =
@@ -428,9 +430,11 @@ local function creature_movement_offsets(context, state)
         -- 0xB574: frame +0x1E == 2 uses 0xBE42. Other frames use 0xBE22.
         -- Both branches join 0xB678.
         step = context.ai_animation_frame == 2 and 36 or 0
+    elseif walk_fast_selected then
+        -- ROM 0xB5CA: FFE168 bit 0 plus actor +0x10 bit 1 selects 0xC022
+        -- directly, bypassing the normal distance/Quickness table selection.
+        step = 40
     else
-        -- FFE168's 0xC022 shortcut stays off. Its only writer is the menu
-        -- path, and a cleared byte leaves the flag table in force.
         step = 30
         if not targets_world and not high_effect then
             step = 18

@@ -230,13 +230,17 @@ This remains partial. Random-encounter actors use the ordinary common flags,
 so their calm far-range vector and four near-range bands are resolved. While
 `FFDF84` is nonzero the far step follows Quickness, and a bit-3 actor whose
 projected Y is zero uses the 40-unit catch-up. The separate `+0x10.3` posture
-table is also passed to Lua and tested across all nine source values. The
-global `FFE168` special table and complete template overrides remain open. Kind-`0xD` cadence and Hell Hound close-effect allocation have
-source-derived Lua paths and focused QA. Accepted creature actions call the
-Lua `0x55C76` combat path and return typed meter updates; a separate field QA
-connects projectile hits through meter change and hurt/down animation. Full
-item/spell action effects and post-down actor lifecycle remain partial. The
-host collision service returns typed route facts; Lua chooses the creature
+table is also passed to Lua and tested across all nine source values. Debug
+option `0x59C54` sets the typed `FFE168` host fact; Lua now follows the ROM
+`0xB5CA` branch when bit 0 and actor `+0x10.1` are set, selecting the
+40-unit vector while bypassing the normal distance/Quickness table selection.
+Complete template overrides remain open, and this branch still needs focused
+regression coverage. Kind-`0xD` cadence and Hell Hound close-effect allocation
+have source-derived Lua paths and focused QA. Accepted creature actions call
+the Lua `0x55C76` combat path and return typed meter updates; a separate field
+QA connects projectile hits through meter change and hurt/down animation.
+Full item/spell action effects and post-down actor lifecycle remain partial.
+The host collision service returns typed route facts; Lua chooses the creature
 target and movement route.
 
 ### Target candidate contract

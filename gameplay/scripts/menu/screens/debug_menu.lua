@@ -1,6 +1,6 @@
 -- ROM 0x599DA: eight-row developer menu. The parent row is normally unlocked
 -- by the title input sequence at 0x1BAC; Qt currently keeps it exposed for
--- development. Four source effects are wired to typed host services below.
+-- development. Five source effects are wired to typed host services below.
 local E = require("enums")
 local Grid = require("menu.rules.random_grid")
 local P, D, R, T, St = E.Pad, E.DebugOption, E.MenuRegion,
@@ -17,7 +17,7 @@ local M = {
         "Heal All",
         "+10 Karma",
         "Contacts",
-        "Walk Fast (pending)",
+        "Walk Fast",
     },
     nuyen = 0x3D090,
     contacts = 0x1C7F,
@@ -58,6 +58,9 @@ M.effects = {
     end,
     [D.CONTACTS] = function(ctx)
         ctx.game.set_contact_flags(M.contacts) -- ROM 0x59C48 writes FFFC2C.
+    end,
+    [D.WALK_FAST] = function(ctx)
+        ctx.game.set_walk_fast() -- ROM 0x59C54 writes FFE168 = 0xFF.
     end,
 }
 

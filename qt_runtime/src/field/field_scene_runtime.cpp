@@ -2576,6 +2576,7 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 : actor.initial_heading,
             false,
         };
+        context.walk_fast_enabled = field_walk_fast_enabled_;
         context.target_selection_latched = actor.target_selected;
         context.action_profile_modifiers =
             script_action_profile_modifiers(state_.action_selection_profiles);
@@ -5752,6 +5753,9 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.game.set_contact_flags = [this](const std::uint32_t flags) {
         notebook_contacts_flags_ = flags & 0x1FFFU;
     };
+    bindings.game.set_walk_fast = [this] {
+        field_walk_fast_enabled_ = true;
+    };
     bindings.game.source_random_bound = [this](const int bound) {
         if (bound <= 0 || bound > 0xFFFF) {
             return 0;
@@ -7830,6 +7834,7 @@ bool FieldSceneRuntime::bootstrap(
     field_shop_menu_.close();
     field_shop_route_pending_ = false;
     field_funds_.reset();
+    field_walk_fast_enabled_ = false;
     command_overview_magic_state_ = CommandOverviewMagicState::inactive;
     command_overview_magic_physical_defense_ = MagicDefenseStripView{};
     command_overview_magic_mana_defense_ = MagicDefenseStripView{};
@@ -9065,6 +9070,7 @@ FieldSceneRuntime::heartbeat_field_player(
     actor_context.entity_kind = 3U;
     actor_context.action_kind = scripting::ScriptActorActionKind::none;
     actor_context.instance_id = "field_player_runner";
+    actor_context.walk_fast_enabled = field_walk_fast_enabled_;
     actor_context.source_record_slot = static_cast<std::uint8_t>(
         field_party_roster_.active_slot());
     actor_context.movement_scene_id =

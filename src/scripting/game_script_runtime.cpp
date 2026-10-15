@@ -588,6 +588,7 @@ struct GameScriptRuntime::Impl {
         notebook_boundary,
         set_nuyen,
         set_contact_flags,
+        set_walk_fast,
     };
 
     lua_State* state = nullptr;
@@ -1095,6 +1096,11 @@ struct GameScriptRuntime::Impl {
                         std::max(integer_argument(1), 0)));
             }
             return 0;
+        case MenuBinding::set_walk_fast:
+            if (self->menu_route_bindings.game.set_walk_fast) {
+                self->menu_route_bindings.game.set_walk_fast();
+            }
+            return 0;
         }
         lua_pushnil(lua);
         return 1;
@@ -1175,6 +1181,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::set_nuyen);
         add_menu_binding(state, table_index, "set_contact_flags",
                          MenuBinding::set_contact_flags);
+        add_menu_binding(state, table_index, "set_walk_fast",
+                         MenuBinding::set_walk_fast);
     }
 
     bool refresh_menu_route_snapshot() {
@@ -4813,6 +4821,8 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "movement_state");
     lua_pushinteger(state, context.movement_entity_flags);
     lua_setfield(state, -2, "movement_entity_flags");
+    lua_pushboolean(state, context.walk_fast_enabled);
+    lua_setfield(state, -2, "walk_fast_enabled");
     lua_pushboolean(state, context.movement_transition_active);
     lua_setfield(state, -2, "movement_transition_active");
     lua_pushinteger(state, context.movement_scene_id);
