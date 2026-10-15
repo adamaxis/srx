@@ -26,6 +26,7 @@ set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/dialogue/dialogue_panel_presenter.cpp
     src/dialogue/field_dialogue_runtime.cpp
     src/menus/hotel_menu_runtime.cpp
+    src/persistence/game_save_snapshot.cpp
     src/persistence/game_save_store.cpp
     src/field/field_mode_text_runtime.cpp
     src/field/field_interaction_runtime.cpp

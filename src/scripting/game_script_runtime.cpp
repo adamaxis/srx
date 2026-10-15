@@ -9,8 +9,10 @@ extern "C" {
 }
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
+#include <limits>
 #include <set>
 #include <string>
 #include <system_error>
@@ -553,6 +555,188 @@ bool parse_explicit_menu_text_keys(lua_State* state,
     return true;
 }
 
+constexpr std::size_t kMaximumPersistentStateNodes = 10000U;
+constexpr std::size_t kMaximumPersistentStateDepth = 32U;
+constexpr std::size_t kMaximumPersistentStateStringBytes = 65536U;
+
+struct PersistentReadContext {
+    std::size_t nodes = 0U;
+    std::set<const void*> active_tables;
+    std::string error;
+};
+
+bool read_persistent_value(lua_State* state, const int index,
+                          ScriptPersistentValue& output,
+                          PersistentReadContext& context,
+                          const std::size_t depth) {
+    if (depth > kMaximumPersistentStateDepth ||
+        ++context.nodes > kMaximumPersistentStateNodes) {
+        context.error = "script save state exceeds its size limit";
+        return false;
+    }
+    switch (lua_type(state, index)) {
+    case LUA_TNIL:
+        output.value = std::monostate{};
+        return true;
+    case LUA_TBOOLEAN:
+        output.value = lua_toboolean(state, index) != 0;
+        return true;
+    case LUA_TNUMBER:
+        if (lua_isinteger(state, index)) {
+            output.value = static_cast<std::int64_t>(lua_tointeger(state, index));
+            return true;
+        } else {
+            const auto value = static_cast<double>(lua_tonumber(state, index));
+            if (!std::isfinite(value)) {
+                context.error = "script save state contains a non-finite number";
+                return false;
+            }
+            output.value = value;
+            return true;
+        }
+    case LUA_TSTRING: {
+        std::size_t size = 0U;
+        const auto* value = lua_tolstring(state, index, &size);
+        if (value == nullptr || size > kMaximumPersistentStateStringBytes) {
+            context.error = "script save state contains an oversized string";
+            return false;
+        }
+        output.value = std::string(value, size);
+        return true;
+    }
+    case LUA_TTABLE:
+        break;
+    default:
+        context.error = "script save state contains a non-data Lua value";
+        return false;
+    }
+
+    const auto table_index = lua_absindex(state, index);
+    const auto* identity = lua_topointer(state, table_index);
+    if (identity == nullptr || !context.active_tables.insert(identity).second) {
+        context.error = "script save state contains a cyclic table";
+        return false;
+    }
+    ScriptPersistentValue::Object object;
+    std::map<lua_Integer, ScriptPersistentValue> indexed;
+    bool has_string_keys = false;
+    bool has_integer_keys = false;
+    lua_pushnil(state);
+    while (lua_next(state, table_index) != 0) {
+        ScriptPersistentValue child;
+        if (!read_persistent_value(state, -1, child, context, depth + 1U)) {
+            lua_pop(state, 1);
+            context.active_tables.erase(identity);
+            return false;
+        }
+        if (lua_type(state, -2) == LUA_TSTRING) {
+            std::size_t key_size = 0U;
+            const auto* key = lua_tolstring(state, -2, &key_size);
+            if (key == nullptr || key_size == 0U || key_size > 256U) {
+                context.error = "script save state has an invalid object key";
+                lua_pop(state, 1);
+                context.active_tables.erase(identity);
+                return false;
+            }
+            has_string_keys = true;
+            object.emplace(std::string(key, key_size), std::move(child));
+        } else if (lua_isinteger(state, -2)) {
+            const auto key = lua_tointeger(state, -2);
+            if (key < 1 || static_cast<lua_Unsigned>(key) >
+                               kMaximumPersistentStateNodes) {
+                context.error = "script save state has an invalid array index";
+                lua_pop(state, 1);
+                context.active_tables.erase(identity);
+                return false;
+            }
+            has_integer_keys = true;
+            indexed.emplace(key, std::move(child));
+        } else {
+            context.error = "script save state has an unsupported table key";
+            lua_pop(state, 1);
+            context.active_tables.erase(identity);
+            return false;
+        }
+        lua_pop(state, 1);
+    }
+    context.active_tables.erase(identity);
+    if (has_string_keys && has_integer_keys) {
+        context.error = "script save state mixes array and object keys";
+        return false;
+    }
+    if (has_integer_keys) {
+        ScriptPersistentValue::Array array;
+        array.reserve(indexed.size());
+        lua_Integer expected = 1;
+        for (auto& [key, value] : indexed) {
+            if (key != expected++ ||
+                std::holds_alternative<std::monostate>(value.value)) {
+                context.error = "script save state has a sparse or null array";
+                return false;
+            }
+            array.push_back(std::move(value));
+        }
+        output.value = std::move(array);
+    } else {
+        output.value = std::move(object);
+    }
+    return true;
+}
+
+bool push_persistent_value(lua_State* state,
+                           const ScriptPersistentValue& value,
+                           std::size_t& nodes, const std::size_t depth) {
+    if (depth > kMaximumPersistentStateDepth ||
+        ++nodes > kMaximumPersistentStateNodes) {
+        return false;
+    }
+    if (std::holds_alternative<std::monostate>(value.value)) {
+        lua_pushnil(state);
+    } else if (const auto* boolean = std::get_if<bool>(&value.value)) {
+        lua_pushboolean(state, *boolean);
+    } else if (const auto* integer = std::get_if<std::int64_t>(&value.value)) {
+        if (*integer < static_cast<std::int64_t>(LUA_MININTEGER) ||
+            *integer > static_cast<std::int64_t>(LUA_MAXINTEGER)) {
+            return false;
+        }
+        lua_pushinteger(state, static_cast<lua_Integer>(*integer));
+    } else if (const auto* number = std::get_if<double>(&value.value)) {
+        if (!std::isfinite(*number)) return false;
+        lua_pushnumber(state, static_cast<lua_Number>(*number));
+    } else if (const auto* string = std::get_if<std::string>(&value.value)) {
+        if (string->size() > kMaximumPersistentStateStringBytes) return false;
+        lua_pushlstring(state, string->data(), string->size());
+    } else if (const auto* array =
+                   std::get_if<ScriptPersistentValue::Array>(&value.value)) {
+        lua_createtable(state, static_cast<int>(array->size()), 0);
+        const auto table_index = lua_absindex(state, -1);
+        for (std::size_t index = 0; index < array->size(); ++index) {
+            if (std::holds_alternative<std::monostate>((*array)[index].value) ||
+                !push_persistent_value(state, (*array)[index], nodes,
+                                       depth + 1U)) {
+                return false;
+            }
+            lua_rawseti(state, table_index,
+                        static_cast<lua_Integer>(index + 1U));
+        }
+    } else if (const auto* object =
+                   std::get_if<ScriptPersistentValue::Object>(&value.value)) {
+        lua_createtable(state, 0, static_cast<int>(object->size()));
+        const auto table_index = lua_absindex(state, -1);
+        for (const auto& [key, child] : *object) {
+            lua_pushlstring(state, key.data(), key.size());
+            if (std::holds_alternative<std::monostate>(child.value)) {
+                lua_pushnil(state);
+            } else if (!push_persistent_value(state, child, nodes,
+                                              depth + 1U)) {
+                return false;
+            }
+            lua_settable(state, table_index);
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 struct GameScriptRuntime::Impl {
@@ -580,6 +764,10 @@ struct GameScriptRuntime::Impl {
         commit_party,
         roll_successes,
         pocket_extra_row,
+        in_combat,
+        save_game,
+        load_game,
+        save_status,
         source_random_bound,
         dismiss_runner,
         group_item_flags,
@@ -974,6 +1162,36 @@ struct GameScriptRuntime::Impl {
                          ? 1
                          : 0);
             return 1;
+        case MenuBinding::in_combat:
+            lua_pushboolean(
+                lua, self->menu_route_bindings.game.in_combat &&
+                             self->menu_route_bindings.game.in_combat()
+                         ? 1
+                         : 0);
+            return 1;
+        case MenuBinding::save_game:
+            lua_pushboolean(
+                lua, self->menu_route_bindings.game.save_game &&
+                             self->menu_route_bindings.game.save_game(
+                                 integer_argument(1))
+                         ? 1
+                         : 0);
+            return 1;
+        case MenuBinding::load_game:
+            lua_pushboolean(
+                lua, self->menu_route_bindings.game.load_game &&
+                             self->menu_route_bindings.game.load_game(
+                                 integer_argument(1))
+                         ? 1
+                         : 0);
+            return 1;
+        case MenuBinding::save_status:
+            lua_pushinteger(
+                lua, self->menu_route_bindings.game.save_status
+                         ? self->menu_route_bindings.game.save_status(
+                               integer_argument(1))
+                         : 0);
+            return 1;
         case MenuBinding::source_random_bound: {
             const auto bound = std::clamp(integer_argument(1), 0, 0xFFFF);
             const auto value =
@@ -1173,6 +1391,14 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::roll_successes);
         add_menu_binding(state, table_index, "pocket_extra_row",
                          MenuBinding::pocket_extra_row);
+        add_menu_binding(state, table_index, "in_combat",
+                         MenuBinding::in_combat);
+        add_menu_binding(state, table_index, "save_game",
+                         MenuBinding::save_game);
+        add_menu_binding(state, table_index, "load_game",
+                         MenuBinding::load_game);
+        add_menu_binding(state, table_index, "save_status",
+                         MenuBinding::save_status);
         add_menu_binding(state, table_index, "source_random_bound",
                          MenuBinding::source_random_bound);
         add_menu_binding(state, table_index, "dismiss_runner",
@@ -2936,6 +3162,117 @@ GameScriptRuntime::resolve_active_run_field_event(
     lua_settop(state, stack_base);
     impl_->failure.clear();
     return decision;
+}
+
+std::optional<ScriptPersistentValue>
+GameScriptRuntime::save_run_registry_state() {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for run-state saves";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string& reason)
+        -> std::optional<ScriptPersistentValue> {
+        lua_settop(state, stack_base);
+        impl_->failure = reason;
+        return std::nullopt;
+    };
+    if (!impl_->push_module("run_registry")) {
+        return fail("run_registry.lua module is missing");
+    }
+    lua_getfield(state, -1, "save_state");
+    if (!lua_isfunction(state, -1)) {
+        return fail("run_registry save_state is missing");
+    }
+    lua_remove(state, -2);
+    if (lua_pcall(state, 0, 1, 0) != LUA_OK) {
+        return fail("run_registry save_state failed: " + stack_error(state));
+    }
+    ScriptPersistentValue result;
+    PersistentReadContext context;
+    if (!read_persistent_value(state, -1, result, context, 0U)) {
+        return fail(context.error);
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return result;
+}
+
+bool GameScriptRuntime::validate_run_registry_state(
+    const ScriptPersistentValue& saved_state) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for run-state restores";
+        return false;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string& reason) {
+        lua_settop(state, stack_base);
+        impl_->failure = reason;
+        return false;
+    };
+    if (!impl_->push_module("run_registry")) {
+        return fail("run_registry.lua module is missing");
+    }
+    lua_getfield(state, -1, "validate_saved_state");
+    if (!lua_isfunction(state, -1)) {
+        return fail("run_registry validate_saved_state is missing");
+    }
+    lua_remove(state, -2);
+    std::size_t nodes = 0U;
+    if (!push_persistent_value(state, saved_state, nodes, 0U)) {
+        return fail("saved run state is not JSON-compatible");
+    }
+    if (lua_pcall(state, 1, 2, 0) != LUA_OK) {
+        return fail("run_registry state validation failed: " +
+                    stack_error(state));
+    }
+    const bool valid = lua_isboolean(state, -2) &&
+                       lua_toboolean(state, -2) != 0;
+    std::string reason = "saved run state failed Lua validation";
+    if (!valid && lua_type(state, -1) == LUA_TSTRING) {
+        std::size_t size = 0U;
+        const auto* message = lua_tolstring(state, -1, &size);
+        if (message != nullptr) reason.assign(message, size);
+    }
+    lua_settop(state, stack_base);
+    if (!valid) {
+        impl_->failure = std::move(reason);
+        return false;
+    }
+    impl_->failure.clear();
+    return true;
+}
+
+bool GameScriptRuntime::restore_run_registry_state(
+    const ScriptPersistentValue& saved_state) {
+    if (!validate_run_registry_state(saved_state)) return false;
+    auto* state = impl_->state;
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string& reason) {
+        lua_settop(state, stack_base);
+        impl_->failure = reason;
+        return false;
+    };
+    if (!impl_->push_module("run_registry")) {
+        return fail("run_registry.lua module is missing");
+    }
+    lua_getfield(state, -1, "restore_saved_state");
+    if (!lua_isfunction(state, -1)) {
+        return fail("run_registry restore_saved_state is missing");
+    }
+    lua_remove(state, -2);
+    std::size_t nodes = 0U;
+    if (!push_persistent_value(state, saved_state, nodes, 0U)) {
+        return fail("saved run state is not JSON-compatible");
+    }
+    if (lua_pcall(state, 1, 0, 0) != LUA_OK) {
+        return fail("run_registry restore failed: " + stack_error(state));
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return true;
 }
 
 std::optional<ScriptLocationEntryDecision>

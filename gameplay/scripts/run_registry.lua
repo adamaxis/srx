@@ -262,4 +262,62 @@ function Registry.current_payment_values()
     }
 end
 
+-- The host save file stores durable run state as ordinary JSON-compatible
+-- data. The game script remains responsible for deciding which parts of its
+-- live registry make up that state; native code only transports the value.
+function Registry.save_state()
+    return {
+        schema_version = 1,
+        current_offer = Registry.current_offer,
+        active_offer = Registry.active_offer,
+        last_completed_offer = Registry.last_completed_offer,
+        last_offer_result = Registry._last_offer_result,
+    }
+end
+
+function Registry.validate_saved_state(state)
+    if type(state) ~= "table" or state.schema_version ~= 1 then
+        return false, "The save has an unsupported run-state version."
+    end
+
+    local function valid_offer(offer)
+        if offer == nil then return true end
+        if type(offer) ~= "table" or type(offer.id) ~= "string" or
+           type(offer.category) ~= "string" or
+           type(offer.objective) ~= "string" or
+           type(offer.completion_condition) ~= "string" or
+           type(offer.runner_progress_delta) ~= "number" or
+           offer.runner_progress_delta < 0 or
+           offer.runner_progress_delta > 255 or
+           offer.runner_progress_delta % 1 ~= 0 then
+            return false
+        end
+        local run = game.runs[offer.id]
+        return type(run) == "table" and
+               type(run.prepare_offer) == "function" and
+               type(run.resolve_field_event) == "function"
+    end
+
+    if not valid_offer(state.current_offer) or
+       not valid_offer(state.active_offer) or
+       not valid_offer(state.last_completed_offer) then
+        return false, "The save contains an invalid run offer."
+    end
+    if state.last_offer_result ~= nil and
+       state.last_offer_result ~= "accepted" and
+       state.last_offer_result ~= "declined" then
+        return false, "The save contains an invalid run decision."
+    end
+    return true
+end
+
+function Registry.restore_saved_state(state)
+    local valid, message = Registry.validate_saved_state(state)
+    assert(valid, message)
+    Registry.current_offer = state.current_offer
+    Registry.active_offer = state.active_offer
+    Registry.last_completed_offer = state.last_completed_offer
+    Registry._last_offer_result = state.last_offer_result
+end
+
 return Registry

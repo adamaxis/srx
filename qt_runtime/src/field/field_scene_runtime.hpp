@@ -60,6 +60,8 @@
 #include "field_interaction_runtime.hpp"
 #include "elevator_selector_runtime.hpp"
 #include "field_menu_text_catalog.hpp"
+#include "game_save_snapshot.hpp"
+#include "game_save_store.hpp"
 #include "shop_menu_runtime.hpp"
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 #include "enums.hpp"
@@ -1318,6 +1320,12 @@ private:
         std::uint16_t controller_events);
     void configure_field_menu_route();
     void advance_field_menu_route();
+    bool save_game_slot(int slot);
+    bool load_game_slot(int slot);
+    int game_save_slot_status(int slot) const;
+    std::optional<QJsonObject> capture_game_save_snapshot(QString* error);
+    bool restore_game_save_snapshot(const QJsonObject& snapshot,
+                                    QString* error);
     void synchronize_pocket_secretary_notebook_from_route(
         const scripting::ScriptMenuRouteSnapshot& route_state);
     void synchronize_command_overview_clips_from_route(
@@ -1553,6 +1561,7 @@ private:
     CommandMenuKarmaViewRuntime command_overview_attributes_skills_{};
     HotelKarmaUpgradeRuntime hotel_karma_skills_{};
     scripting::GameScriptRuntime game_scripts_;
+    GameSaveStore game_save_store_{};
     bool menu_route_active_ = false;
     std::uint16_t menu_route_screen_ = 0U;
     std::optional<scripting::ScriptMenuRouteSnapshot::MagicView>

@@ -67,6 +67,25 @@ void FieldPartyRosterRuntime::set_active_slot(const std::size_t slot) noexcept {
     active_slot_ = 0U;
 }
 
+bool FieldPartyRosterRuntime::restore_saved_party(
+    const std::array<RunnerRecordFields, kSlotCount>& records,
+    const std::array<std::string, kSlotCount>& names,
+    const std::array<bool, kSlotCount>& active_slots,
+    const std::array<std::uint8_t, kSlotCount>& portrait_families,
+    const std::size_t active_slot) noexcept {
+    if (active_slot >= kSlotCount || !active_slots[active_slot] ||
+        !active_slots[0]) {
+        return false;
+    }
+    records_ = records;
+    names_ = names;
+    active_slots_ = active_slots;
+    portrait_asset_families_ = portrait_families;
+    active_slot_ = active_slot;
+    source_ = Source::restored_save;
+    return true;
+}
+
 #ifdef SHADOWRUN_QT_QA_DRIVER
 void FieldPartyRosterRuntime::install_party_member_for_dump(
     const std::size_t slot, RunnerRecordFields record, std::string name,

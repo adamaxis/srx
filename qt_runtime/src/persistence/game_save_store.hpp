@@ -30,7 +30,7 @@ struct GameSaveLoadResult {
 // object; it is deliberately independent of the Genesis SRAM record layout.
 class GameSaveStore final {
 public:
-    static constexpr int kSchemaVersion = 1;
+    static constexpr int kSchemaVersion = 2;
 
     explicit GameSaveStore(QString directory = {});
 

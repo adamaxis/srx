@@ -36,6 +36,12 @@ public:
     bool available() const noexcept { return source_ != Source::unavailable; }
     std::size_t active_slot() const noexcept { return active_slot_; }
     void set_active_slot(std::size_t slot) noexcept;
+    bool restore_saved_party(
+        const std::array<RunnerRecordFields, kSlotCount>& records,
+        const std::array<std::string, kSlotCount>& names,
+        const std::array<bool, kSlotCount>& active_slots,
+        const std::array<std::uint8_t, kSlotCount>& portrait_families,
+        std::size_t active_slot) noexcept;
     void install_party_member_for_dump(std::size_t slot,
                                        RunnerRecordFields record,
                                        std::string name,

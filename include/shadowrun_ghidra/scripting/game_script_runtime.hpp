@@ -6,11 +6,13 @@
 #include <filesystem>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <variant>
 #include <utility>
 #include <vector>
 
@@ -21,6 +23,16 @@ using StoryFactReader =
     std::function<std::optional<bool>(std::string_view)>;
 using StoryFactWriter =
     std::function<bool(std::string_view, bool)>;
+
+// JSON-compatible Lua data used for durable game state. Functions, userdata,
+// cyclic tables, and non-string/non-array keys are deliberately excluded.
+struct ScriptPersistentValue {
+    using Array = std::vector<ScriptPersistentValue>;
+    using Object = std::map<std::string, ScriptPersistentValue>;
+    using Storage = std::variant<std::monostate, bool, std::int64_t, double,
+                                 std::string, Array, Object>;
+    Storage value;
+};
 
 struct ScriptMenuChoice {
     std::string id;
@@ -143,6 +155,10 @@ struct ScriptMenuRouteGame {
         commit_party;
     std::function<int(int, int)> roll_successes;
     std::function<bool()> pocket_extra_row;
+    std::function<bool()> in_combat;
+    std::function<bool(int)> save_game;
+    std::function<bool(int)> load_game;
+    std::function<int(int)> save_status;
     std::function<void(std::uint32_t)> set_nuyen;
     std::function<void(std::uint32_t)> set_contact_flags;
     std::function<void()> set_walk_fast;
@@ -986,6 +1002,9 @@ public:
         const FieldScriptRouteContext& context);
     std::optional<ScriptRunFieldEventDecision> resolve_active_run_field_event(
         std::uint8_t map_id, std::uint8_t event_id);
+    std::optional<ScriptPersistentValue> save_run_registry_state();
+    bool validate_run_registry_state(const ScriptPersistentValue& state);
+    bool restore_run_registry_state(const ScriptPersistentValue& state);
     std::optional<ScriptLocationEntryDecision> resolve_field_location_entry(
         std::uint16_t scene_id, FieldCollisionEventCode event_code,
         const std::vector<std::vector<std::uint16_t>>& source_elevator_groups);

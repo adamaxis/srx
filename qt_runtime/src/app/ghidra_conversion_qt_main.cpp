@@ -1,5 +1,7 @@
 #include "ghidra_conversion_qt_window.hpp"
 
+#include <QCoreApplication>
+
 int main(int argc, char** argv) {
     try {
         std::optional<std::filesystem::path> explicit_assets;
@@ -57,6 +59,9 @@ int main(int argc, char** argv) {
         }
         int qt_argument_count = static_cast<int>(qt_arguments.size());
         qt_arguments.push_back(nullptr);
+        QCoreApplication::setOrganizationName(QStringLiteral("Shadowrun"));
+        QCoreApplication::setApplicationName(
+            QStringLiteral("Shadowrun Ghidra Conversion"));
         QApplication application(qt_argument_count, qt_arguments.data());
         GhidraConversionWindow window(asset_root);
         window.show();
