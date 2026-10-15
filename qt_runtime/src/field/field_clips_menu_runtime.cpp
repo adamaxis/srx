@@ -56,6 +56,29 @@ void FieldClipsMenuRuntime::close() noexcept {
     trade_state_ = ClipTradeState{};
 }
 
+void FieldClipsMenuRuntime::synchronize_route_presentation(
+    const std::uint8_t selection,
+    const bool reload_confirmation_open,
+    const bool reload_confirmation_yes,
+    const bool trade_open,
+    const std::uint8_t trade_selection,
+    const std::uint8_t trade_quantity,
+    const std::size_t trade_recipient,
+    const ClipsMenuMessage message) {
+    open_ = true;
+    selection_ = selection;
+    reload_confirmation_open_ = reload_confirmation_open;
+    reload_confirmation_yes_ = reload_confirmation_yes;
+    message_ = message;
+    trade_state_ = ClipTradeState{};
+    trade_state_.active = trade_open;
+    trade_state_.command = trade_selection;
+    trade_state_.quantity = trade_quantity;
+    if (trade_open) {
+        trade_state_.recipient_records.push_back(trade_recipient);
+    }
+}
+
 ClipsMenuEvent FieldClipsMenuRuntime::show_message(
     const ClipsMenuMessage message) noexcept {
     message_ = message;

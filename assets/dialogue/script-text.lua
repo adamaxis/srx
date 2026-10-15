@@ -649,6 +649,8 @@ return {
         ["clips.text.option.no_party_first"] = " You have no",
         ["clips.text.option.no_party_second"] = "party members",
         ["clips.text.option.no_party_third"] = "to trade with.",
+        -- ROM 0xD1ED8, rendered at (128,88) by the Clips abort path.
+        ["clips.text.option.function_aborted"] = "Function\nAborted!",
         ["items.display.option.power_meager"] = "Meager",
         ["items.display.option.power_minor"] = "Minor",
         ["items.display.option.power_very_low"] = "Very Low",

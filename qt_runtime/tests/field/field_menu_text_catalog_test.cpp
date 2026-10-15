@@ -160,7 +160,7 @@ int main() {
         "out_of_ammo_name_suffix", "out_of_ammo_clips",
         "item_without_clips_first", "item_without_clips_second",
         "item_without_clips_third", "no_party_first", "no_party_second",
-        "no_party_third"}};
+        "no_party_third", "function_aborted"}};
     const std::array<std::string, kItemUiTextCount> expected_item_ui_text_ids{{
         "equipped_prefix", "equipped_suffix", "discard_prompt",
         "cannot_discard", "cannot_trade", "trade_recipient",
@@ -229,14 +229,15 @@ int main() {
         text.catalog.clips_item_no_clips[2],
         text.catalog.clips_no_party[0],
         text.catalog.clips_no_party[1],
-        text.catalog.clips_no_party[2]}};
+        text.catalog.clips_no_party[2],
+        text.catalog.clips_function_aborted}};
     const std::array<std::string, kClipsTextCount> expected_clips_text{{
         "    CLIPS", std::string("   [") + std::string(6U, '\\'),
         "  Clips", "Trade", "clips to", "  ????", "Exchange", "complete",
         "You still have", "  ammo left.", "   Reload?", "Rock & Roll,",
         " chummers!!", "  is out of", " ammo clips!", "This item",
         " does not", "use clips!!", " You have no", "party members",
-        "to trade with."}};
+        "to trade with.", "Function\nAborted!"}};
     if (!text.catalog.field_service_titles[0].empty() ||
         !text.catalog.field_service_titles[1].empty() ||
         text.catalog.field_service_title_destinations[1] != 0xC110U ||
@@ -433,6 +434,7 @@ int main() {
         text.catalog.clips_item_no_clips[1] != " does not" ||
         text.catalog.clips_no_party[0] != " You have no" ||
         text.catalog.clips_no_party[2] != "to trade with." ||
+        text.catalog.clips_function_aborted != "Function\nAborted!" ||
         text.catalog.armor_labels[1][0] != "   Armor    " ||
         text.catalog.armor_labels[1][1] != "  Clothing  " ||
         text.catalog.power_labels[0].empty() ||

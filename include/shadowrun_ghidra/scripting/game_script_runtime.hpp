@@ -68,6 +68,16 @@ struct ScriptMenuRouteHost {
         legacy_advance;
 };
 
+struct ScriptMenuPartyMember {
+    // Source record +0x10 is a big-endian word; the +0x10 byte used by the
+    // Clips rules is its high byte.
+    std::uint8_t status = 0U;
+    std::uint8_t clips = 0U;
+    std::uint8_t rounds = 0U;
+    int weapon_slot = -1;
+    std::uint8_t weapon_code = 0U;
+};
+
 struct ScriptMenuRouteGame {
     std::function<bool()> leader_incapacitated;
     std::function<void()> reselect_leader;
@@ -75,6 +85,10 @@ struct ScriptMenuRouteGame {
     std::function<void(int)> set_leader_posture;
     std::function<int()> leader_archetype;
     std::function<bool(int, int)> inventory_item;
+    std::function<std::array<ScriptMenuPartyMember, 3>()> party;
+    std::function<int()> active_slot;
+    std::function<int(int)> magazine_capacity;
+    std::function<void(int, int, int)> set_runner_ammo;
 };
 
 struct ScriptMenuRouteBindings {
@@ -89,6 +103,12 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> row;
     std::optional<int> top_column;
     std::optional<int> top_row;
+    std::optional<int> top_selection;
+    std::optional<int> top_command;
+    std::optional<int> top_quantity;
+    std::optional<int> top_recipient;
+    std::optional<int> top_message;
+    std::optional<bool> top_yes;
 };
 
 using ScriptStringMap = std::unordered_map<std::string, std::string>;

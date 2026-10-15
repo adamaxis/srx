@@ -2115,63 +2115,58 @@ independent magazines would contradict this ROM's `+0x4E` transitions.
 
 ### Applied review: Clips button-row redraw and child screens
 
-1. **Does it look correct?** The full-screen frames in
-   `build/conversion/qt/{debug,release}/qt_runtime/field-clips-qa/` now show
-   three different row compositions: Clips, nested Trade, and Reload
-   confirmation. The prior runtime reused the inventory action row, leaving
-   unrelated icons behind the Yes/No prompt. The current frames match the
-   separately extracted row assets; this establishes internal consistency,
-   not an independent Genesis visual match.
-2. **Does the visible look reflect the behavioral state?** The selector is
-   driven by the typed Clips action state. The top-level cursor traverses all
-   four source commands; nested Trade changes the selected recipient action;
-   reload confirmation selects No or Yes and returns the chosen result. The
-   QA captures decline without ammunition mutation, then separately captures
-   reload and its visible counter change.
+1. **Does it look correct?** The 26 full-screen 320x224 captures cover the
+   Clips selector, nested Trade, recipient changes, messages, reload prompt,
+   and result states. The panel text and controls stay in the center panel;
+   portrait, inventory, posture bars, and right HUD remain visible around it.
+   This is a host rendering check using extracted ROM assets, not an
+   independent Genesis pixel match.
+2. **Does the visible look reflect the behavioral state?** Lua owns the route
+   cursor and nested state. QA confirms all four top-level selections, each
+   Trade focus, the displayed Ricky-to-Winston recipient change and wrap back
+   to Ricky, quantity changes, and default-No/Yes reload state. Typed route
+   tests check ammo writes and byte arithmetic.
 3. **Are the visuals themselves correct?** ROM blocks `0xCD33E`, `0xCD37A`,
-   and `0xCD3B6` supply the top-level, nested Trade, and confirmation rows.
-   Their dimensions and distinct pixels are checked against the generic
-   inventory row at `0xCD302`. The focus state is checked with each row. No
-   independent Genesis Clips sequence appears in the supplied longplay, so
-   exact external visual fidelity remains open.
-4. **Is it animated, and should it be?** No timed animation is traced for
-   these button rows or their focus. They change only in response to menu
-   input and action state; Debug and Release captures show no periodic redraw
-   or animation.
-5. **Does it have a sound, and how long does it play?** Clips navigation
-   requests event `0x25`, mapped to `audio.effects.resource.037` (2.134 s).
-   Confirmation/reload requests event `0x24`, mapped to `menu-024.flac`
-   (2.484 s including the release tail). The route QA checks event requests;
-   Windows loopback for this exact interaction remains unrecorded.
-6. **Are the other visible parts of the screen also correct?** The review
-   includes the complete 320x224 frame, not only the changed row. Portraits,
-   inventory, status/HUD, and field framing remain stable while the child
-   menus change. Top-level Cancel restores its parent pixel-for-pixel, and the
-   nested return is captured separately.
-7. **Do multiple frames support the interpretation?** Fifteen named full-
-   screen states cover cursor movement/wrap, cancel/reopen, nested Trade and
-   return, No decline, Yes confirmation, and reload result. `actual.bmp` and
-   `trade-actual.bmp` are additional aliases. Debug and Release outputs match
-   byte-for-byte. These are host captures checked against extracted ROM
-   resources; no independent Genesis Clips/Trade/confirmation sequence is
-   available.
-8. **Was old UI cleared before new controls were drawn?** Yes in the tested
-   Qt path. The scene clears the source 20-by-20-cell center region before
-   drawing the child panel, and each state uses its own row resource. This
-   removes the stale four-action row from Yes/No confirmation. The A Cancel
-   parent frame is pixel-identical to its pre-entry frame, guarding against
-   leftover child controls.
+   and `0xCD3B6` supply separate Clips, Trade, and confirmation rows. Their
+   selected focus blocks and imported labels are visible in the expected
+   region. The available longplay has no matching Clips sequence, so external
+   Genesis fidelity remains unverified.
+4. **Is it animated, and should it be?** The ROM samples the root, prompt,
+   and Trade loops after VBlank. No timed animation call is traced for these
+   screens; their visible changes follow input and inventory state.
+5. **Does it have a sound, and how long does it play?** Navigation requests
+   event `0x25` (mapped resource duration 2.134 s); confirmation requests
+   event `0x24` (2.484 s including its release tail). Route QA checks event
+   requests; Windows loopback for this exact route remains unrecorded.
+6. **Are the other visible parts of the screen also correct?** Every capture
+   includes the complete frame. Message and confirmation panels do not replace
+   the side portraits, inventory, posture, or right HUD. Both child returns
+   restore their parent composition.
+7. **Do multiple frames support the interpretation?** Captures cover all
+   selector positions, wrap, no-recipient and zero-reserve outcomes, Trade
+   quantity and recipient changes, transfer/completion, reload No/Yes, and
+   return. Debug and Release emit the same 26 filenames with matching
+   SHA-256 hashes. No matching independent Genesis sequence exists in the
+   supplied video.
+8. **Was old UI cleared before new controls were drawn?** The renderer clears
+   the source center panel before the message or child state appears. The
+   message screen removes its title and button strip; the Cancel message
+   acknowledgement returns to a pixel-identical parent image. The nested
+   Trade completion also clears the old controls before showing its result.
+9. **Was the complete affected sequence reviewed?** All 26 current full-screen
+   captures were reviewed in the complete sequence. The dedicated QA output
+   directory is cleared before each dump, and the corresponding Release
+   captures have the same names and SHA-256 hashes.
 
-**Code changed:** the runtime now loads distinct CD33E, CD37A, and CD3B6
-button rows and clears the source panel region. **Behavior implemented:**
-top-level Clips, nested Trade, and reload confirmation each display their own
-ROM-defined row and focus state. **Internally checked:** Debug and Release
-route QA passes and all 17 BMP files match byte-for-byte; the CLI emits 15
-named states plus the two `actual.bmp` aliases. **Independently visually
-checked:** no exact Clips sequence is present in the supplied longplay.
-**Defect status:** the stale-row redraw defect is fixed in the current Qt
-route; Genesis visual fidelity remains unverified pending an independent
-matching capture.
+**Code changed:** Lua now owns Clips selection, reload confirmation, Trade,
+distribution, and result flow; the typed host bridge supplies active party and
+ammo records, magazine capacity, and write-back. **Behavior implemented:** ROM
+selector/wait flow, recipient filtering and cycling, reload capacity, transfer,
+and byte-based distribution. **Internally checked:** Debug and Release route
+tests pass; 24 named states plus two aliases (26 BMPs) match by SHA-256.
+**Independent evidence:** the supplied longplay contains no matching Clips
+sequence. **Open:** loaded-save field composition and route-level audio
+loopback remain unverified.
 
 ### Applied review: held D-pad movement and field redraw
 

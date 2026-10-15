@@ -719,6 +719,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
                 result.catalog.clips_item_no_clips.begin());
     std::copy_n(clips_text.begin() + 18, 3,
                 result.catalog.clips_no_party.begin());
+    result.catalog.clips_function_aborted = clips_text[21];
     std::array<std::string, kNotebookChoiceCount> notebook_choice_labels{};
     std::string notebook_title;
     load_script_menu_labels(

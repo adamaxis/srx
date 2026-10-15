@@ -571,6 +571,10 @@ struct GameScriptRuntime::Impl {
         set_leader_posture,
         leader_archetype,
         inventory_item,
+        party,
+        active_slot,
+        magazine_capacity,
+        set_runner_ammo,
     };
 
     lua_State* state = nullptr;
@@ -726,6 +730,48 @@ struct GameScriptRuntime::Impl {
                          ? 1
                          : 0);
             return 1;
+        case MenuBinding::party: {
+            const auto party = self->menu_route_bindings.game.party
+                                   ? self->menu_route_bindings.game.party()
+                                   : std::array<ScriptMenuPartyMember, 3>{};
+            lua_createtable(lua, static_cast<int>(party.size()), 0);
+            for (std::size_t index = 0; index < party.size(); ++index) {
+                const auto& member = party[index];
+                lua_createtable(lua, 0, 5);
+                lua_pushinteger(lua, member.status);
+                lua_setfield(lua, -2, "status");
+                lua_pushinteger(lua, member.clips);
+                lua_setfield(lua, -2, "clips");
+                lua_pushinteger(lua, member.rounds);
+                lua_setfield(lua, -2, "rounds");
+                lua_pushinteger(lua, member.weapon_slot);
+                lua_setfield(lua, -2, "weapon_slot");
+                lua_pushinteger(lua, member.weapon_code);
+                lua_setfield(lua, -2, "weapon_code");
+                lua_rawseti(lua, -2, static_cast<lua_Integer>(index));
+            }
+            return 1;
+        }
+        case MenuBinding::active_slot:
+            lua_pushinteger(
+                lua, self->menu_route_bindings.game.active_slot
+                         ? self->menu_route_bindings.game.active_slot()
+                         : 0);
+            return 1;
+        case MenuBinding::magazine_capacity:
+            lua_pushinteger(
+                lua, self->menu_route_bindings.game.magazine_capacity
+                         ? self->menu_route_bindings.game.magazine_capacity(
+                               integer_argument(1))
+                         : 0);
+            return 1;
+        case MenuBinding::set_runner_ammo:
+            if (self->menu_route_bindings.game.set_runner_ammo) {
+                self->menu_route_bindings.game.set_runner_ammo(
+                    integer_argument(1), integer_argument(2),
+                    integer_argument(3));
+            }
+            return 0;
         }
         lua_pushnil(lua);
         return 1;
@@ -773,6 +819,13 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::leader_archetype);
         add_menu_binding(state, table_index, "inventory_item",
                          MenuBinding::inventory_item);
+        add_menu_binding(state, table_index, "party", MenuBinding::party);
+        add_menu_binding(state, table_index, "active_slot",
+                         MenuBinding::active_slot);
+        add_menu_binding(state, table_index, "magazine_capacity",
+                         MenuBinding::magazine_capacity);
+        add_menu_binding(state, table_index, "set_runner_ammo",
+                         MenuBinding::set_runner_ammo);
     }
 
     bool refresh_menu_route_snapshot() {
@@ -831,6 +884,40 @@ struct GameScriptRuntime::Impl {
                     read_optional(screen_state_index, "col");
                 menu_route_state.top_row =
                     read_optional(screen_state_index, "row");
+                menu_route_state.top_selection =
+                    read_optional(screen_state_index, "selection");
+                menu_route_state.top_command =
+                    read_optional(screen_state_index, "command");
+                menu_route_state.top_quantity =
+                    read_optional(screen_state_index, "quantity");
+                menu_route_state.top_message =
+                    read_optional(screen_state_index, "message");
+                lua_getfield(state, screen_state_index, "yes");
+                if (lua_isboolean(state, -1)) {
+                    menu_route_state.top_yes = lua_toboolean(state, -1) != 0;
+                }
+                lua_pop(state, 1);
+
+                // Clip Trade keeps its recipient list in the Lua screen
+                // state and advances an index through that filtered list.
+                // Snapshot the selected stable party slot for the Qt painter;
+                // the list and its behavior remain Lua-owned.
+                lua_getfield(state, screen_state_index, "recipients");
+                const auto recipients_index = lua_absindex(state, -1);
+                lua_getfield(state, screen_state_index, "index");
+                if (lua_istable(state, recipients_index) &&
+                    lua_isinteger(state, -1)) {
+                    const auto recipient_index = lua_tointeger(state, -1);
+                    if (recipient_index > 0) {
+                        lua_rawgeti(state, recipients_index, recipient_index);
+                        if (lua_isinteger(state, -1)) {
+                            menu_route_state.top_recipient =
+                                static_cast<int>(lua_tointeger(state, -1));
+                        }
+                        lua_pop(state, 1);
+                    }
+                }
+                lua_pop(state, 2);
             }
             lua_pop(state, 1);
         }

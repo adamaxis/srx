@@ -20,6 +20,7 @@ enum class ClipsMenuMessage : std::uint8_t {
     reload_success,
     exchange_complete,
     no_party_members,
+    function_aborted,
 };
 
 enum class ClipsMenuEvent : std::uint8_t {
@@ -44,6 +45,13 @@ class FieldClipsMenuRuntime final {
 public:
     void open() noexcept;
     void close() noexcept;
+    // FieldSceneRuntime copies the Lua route's state here for painting only.
+    // The Lua route remains the only input/behavior owner when it is active.
+    void synchronize_route_presentation(
+        std::uint8_t selection, bool reload_confirmation_open,
+        bool reload_confirmation_yes, bool trade_open,
+        std::uint8_t trade_selection, std::uint8_t trade_quantity,
+        std::size_t trade_recipient, ClipsMenuMessage message);
 
     bool is_open() const noexcept { return open_; }
     bool reload_confirmation_open() const noexcept {

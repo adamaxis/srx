@@ -426,35 +426,36 @@ into that presentation, so the item art, phase-value tiles, Damage/Power,
 Wpns/Guns, and Atk/Def rows are not recomputed by Qt. The label catalog is
 generated offline from ROM text tables into `dialogue/script-text.lua`; the
 action-detail data for Attributes, Cyberware, Magic, and Pocket Secretary
-remain explicit conversion work. The top-level Clips branch is now connected
-through a separate `FieldClipsMenuRuntime`: its four-entry selector,
-reload-confirmation state, and typed ammunition mutation are presented by
-`FieldSceneRuntime` without adding a second menu state machine. The renderer
-loads separate named source rows for top-level Clips (`0xCD33E`), nested Trade
-(`0xCD37A`), and Reload confirmation (`0xCD3B6`); it no longer reuses the
-inventory action row (`0xCD302`) beneath those screens. The nested
-recruited-recipient trade path consumes the
-same typed `FieldPartyRosterRuntime` records that the field scene uses:
-`0x11DD2` recipient filtering, `0x1209A` recipient cycling, quantity
-wrap/clamp, transfer arithmetic, and the `0x11FDE` distribution branch are
-connected through converted routines. The selected runner's display name comes
-from the typed live-record `+0x58..+0x65` field; the direct `D1B71`
-`????` text is only the source fallback for a missing name. Loaded-save
-field composition remains an explicit boundary.
+remain explicit conversion work. The top-level Clips branch now runs through
+`gameplay/scripts/menu/screens/clips.lua` and its source-derived arithmetic in
+`gameplay/scripts/menu/rules/clips.lua`. C++ exposes typed party/ammunition
+facts, magazine capacity, and a narrow ammo-record write; Lua owns selector,
+confirmation, trade, distribution, and result-wait state. `FieldSceneRuntime`
+mirrors that state into the Qt presenter. The renderer loads separate named
+source rows for top-level Clips (`0xCD33E`), nested Trade (`0xCD37A`), and
+Reload confirmation (`0xCD3B6`); it no longer reuses the inventory action row
+(`0xCD302`) beneath those screens. The Trade path consumes the same typed
+`FieldPartyRosterRuntime` records used by the field scene: `0x11DD2` recipient
+filtering, `0x1209A` recipient cycling, `0x120E4` quantity changes, transfer
+arithmetic, and `0x11FDE` distribution are all scripted. The selected
+runner's display name comes from its live-record `+0x58..+0x65` field; source
+`D1B71` `????` text remains the fallback for a missing name. Loaded-save field
+composition remains an explicit boundary.
 
 The Clips branch also establishes the menu verification shape for later
-panels. Selection movement is tested across every entry and the wrap edge,
-deselection/reselection is tested without record mutation, and a frame-shell
-comparison ignores only the source action row and its changing caption. This
-catches a focus sprite painted over a stale five-button row, or a selector
-transition that accidentally changes the portrait, inventory, status bars, or
-other surrounding panel state. The Clips CLI QA also compares Debug and Release
-full-screen captures for top-level, nested Trade, confirmation, and return
-states; its source-asset comparisons remain internal checks because there is
-not yet an independent Genesis Clips capture. The party-roster test additionally checks
-new-game Joshua projection, signed save-marker activation, active-slot
-selection, and typed clip transfer without allowing the Qt presenter to
-fabricate a local party array.
+panels. Selection movement is tested across every entry and wrap edge, while a
+frame-shell comparison ignores only the source action row and its changing
+caption. This catches a focus sprite painted over a stale five-button row, or
+a selector transition that changes the portrait, inventory, status bars, or
+other surrounding panel state. The Clips CLI QA also compares Debug and
+Release full-screen captures for root, nested Trade, reload confirmation,
+messages, and return states; its source-asset comparisons remain internal
+checks because there is not yet an independent Genesis Clips capture. Route
+tests also cover the ROM's byte-wrapped distribution total and quotient writes
+to inactive roster slots. The party-roster test checks new-game Joshua
+projection, signed save-marker activation, active-slot selection, and typed
+clip transfer without allowing the Qt presenter to fabricate a local party
+array.
 
 ### IntroDirector
 

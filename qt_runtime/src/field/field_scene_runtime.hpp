@@ -772,6 +772,18 @@ public:
     std::uint8_t clips_menu_selection() const noexcept {
         return command_overview_clips_.selection();
     }
+    bool clips_trade_open() const noexcept {
+        return command_overview_clips_.trade_open();
+    }
+    std::uint8_t clips_trade_selection() const noexcept {
+        return command_overview_clips_.trade_selection();
+    }
+    std::uint8_t clips_trade_quantity() const noexcept {
+        return command_overview_clips_.trade_quantity();
+    }
+    std::size_t clips_trade_recipient_record() const noexcept {
+        return command_overview_clips_.trade_recipient_record();
+    }
     bool clips_reload_confirmation_open() const noexcept {
         return command_overview_clips_.reload_confirmation_open();
     }
@@ -1209,6 +1221,8 @@ private:
     void advance_command_overview_inventory_trade(
         std::uint16_t controller_events);
     void configure_field_menu_route();
+    void synchronize_command_overview_clips_from_route(
+        const scripting::ScriptMenuRouteSnapshot& route_state);
     void start_command_menu_legacy_screen(
         std::uint16_t screen,
         const scripting::ScriptMenuRouteArgs& args);

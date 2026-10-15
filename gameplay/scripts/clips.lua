@@ -50,6 +50,7 @@ function Clips.text_entries()
         "no_party_first",
         "no_party_second",
         "no_party_third",
+        "function_aborted",
     }
     return ids, nil, label_keys(ids, "clips.text.option.")
 end

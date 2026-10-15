@@ -306,9 +306,12 @@ The clips screen has its own selector loop and uses the active record's clip
 and ammunition bytes. Its top-level source labels are `Reload`, `Trade`,
 `Distribute`, and `Cancel` from `D1DDC`; `Increase Clips`, `Decrease Clips`,
 `Trade Clips`, and `Change Recipient` belong to the nested trade table at
-`D1E24`. A dispatch is gated by the extracted clip count; an empty count
-produces the source `D1AC6`/`D1AD3` result (`is out of ammo clips!`) rather
-than changing the weapon state. Reload also rejects no-equipment and
+`D1E24`. A dispatch is gated by the signed byte at `+0x4F` using `TST.B` and
+`BGT`; zero and values `0x80..0xFF` enter the no-reserve path. `0x12062`
+temporarily renders the runner name and the `D1AC6`/`D1AD3` “is out of ammo
+clips!” text, clears the count, and returns to `0x11C46`; the signed `bgt`
+then fails and immediately enters `0x11C9C`, which clears the panel and
+displays the final `Function Aborted!` message from `D1ED8`. Reload also rejects no-equipment and
 non-clip-using items through `D1B40` (`This item does not use clips!!`).
 
 The ROM does not keep an independent magazine count in each inventory slot.
@@ -318,33 +321,32 @@ the newly equipped gun's `0xD4540 + 0x24` capacity. `+0x4F` is the runner's
 shared Universal Gun Clips count. The live Clips route resolves reload capacity
 from the currently equipped item's `+0x24` value on each input step.
 
-Native status: selector bounds, source labels, extracted ammunition fields,
-action gates, exact reviewed error text, and the native transition are
-implemented in the separate Qt conversion runtime. ROM 0x11B98 installs
-button row CD33E for Clips, 0x11E7E installs CD37A for nested Trade, and
-0x11D06/0x127B0 replaces that row with CD3B6 for reload Yes/No. The prior Qt
-presenter reused the inventory row for these states; it now consumes three
-separately extracted named assets and paints the matching selected focus.
-The top-level and nested selector IDs plus all 21 Clips panel and message
-text IDs live in `gameplay/scripts/clips.lua`, paired with explicit ordered
-label keys for the selector tables at `D1DDC` and `D1E24` and the extracted
-prompt and status copy. The typed controller validates the script order
-before projecting selector labels or messages into the existing screen.
+The top-level and nested selector IDs plus Clips panel/message text IDs live
+in `gameplay/scripts/clips.lua` and `assets/dialogue/script-text.lua`. The
+screen and math now run in `gameplay/scripts/menu/screens/clips.lua` and
+`gameplay/scripts/menu/rules/clips.lua`; C++ supplies typed runner records,
+active slot, magazine capacity, and ammo writes. `FieldSceneRuntime` presents
+Lua's current route snapshot. ROM 0x11B98 installs button row CD33E for Clips,
+0x11E7E installs CD37A for nested Trade, and 0x11D06/0x127B0 replaces that
+row with CD3B6 for reload Yes/No. The presenter consumes these three separate
+extracted rows and paints their selected focus blocks. The source text at
+0xD1ED8, `Function Aborted!`, is also available through the Lua text catalog.
 The source 0x12C36 clear starts at name-table C118 (screen 96,16), covers its
 20x20-cell center region, and leaves the separately composed field HUD intact.
 
-Debug and Release CLI QA captures every top-level selector entry and wrap,
-B deselection/reselection, A Cancel, the nested Trade row and its first two
-selection states using the ROM save-roster Ricky template, reload No and Yes,
-decline without mutation, and reload success. It compares the source row and
-focus pixels, and requires the A Cancel/B parent return to match the fresh
-parent image exactly. Top-level Cancel follows 0x11C9C to the shared
-0x11928 command-row redraw. The nested Trade loop follows
-D1E24/0x1209A/0x120E4 for quantity wrapping and recipient changes; the
-positive top-level Distribute average follows 0x11FDE/0x12014 with the source
-remainder-bit rule. Reload follows 0x11CCA/0x11D86/0x36FC: it gates non-clip
-items, consumes one clip, clamps loaded ammunition to the extracted item
-capacity, and emits the source “Rock & Roll, chummers!!” result.
+Debug and Release CLI QA captures all four selector positions and wrap,
+Function Aborted and message acknowledgement, every nested Trade focus and a
+source-template Ricky transfer, reload No and Yes, decline without mutation,
+and reload success. It compares focus pixels and requires the acknowledged
+Cancel message to restore the full parent image exactly. The common zero-
+reserve gate follows 0x12062 into the 0x11C9C Function Aborted path. The
+nested Trade loop follows D1E24/0x1209A/0x120E4 for quantity and recipient
+changes. Distribution follows 0x11FDE/0x12014: it accumulates a byte total,
+writes the quotient to all three records when nonzero, and gives the remainder
+to the record marked by status bit 1. Lua route QA covers both the inactive
+record write and the byte-total wrap case. Reload follows 0x11CCA/0x11D86/0x36FC:
+it gates non-clip items, consumes one clip, clamps loaded ammunition to the
+equipped item's capacity, and emits the source “Rock & Roll, chummers!!” result.
 
 Menu movement and Yes/No toggling request event 0x25; action/confirmation
 requests event 0x24. Shared audio QA resolves them to resources 037 and 024

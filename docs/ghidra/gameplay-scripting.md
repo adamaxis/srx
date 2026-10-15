@@ -298,8 +298,11 @@ rather than a second Lua copy.
   It also declares stable IDs for the Clips panel labels, reload/trade prompts,
   and status messages. Each definition returns explicit ordered text keys with
   its IDs, and the field menu catalog resolves the extracted copy from those
-  Lua keys; QA checks key and source-text order against the ROM. Cursor,
-  reload, trade, ammunition, and runner-record state remain native.
+  Lua keys; QA checks key and source-text order against the ROM. The separate
+  `menu/screens/clips.lua` and `menu/rules/clips.lua` modules own cursor,
+  reload, trade, distribution, ammunition decisions, and result waits. C++
+  supplies a typed three-runner snapshot, active slot, weapon capacity query,
+  and ammo-record writes; the Qt painter mirrors Lua's route state.
 - `gameplay/scripts/ui.lua` declares the shared Yes/No confirmation menu and
   shared field-stat caption IDs with explicit ordered text keys. The field
   text catalog resolves those keys without a duplicate label list in C++;

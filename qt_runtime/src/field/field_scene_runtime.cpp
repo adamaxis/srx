@@ -5429,6 +5429,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
         posture_dialog_active_ = false;
         command_overview_cyberware_active_ = false;
         command_overview_attributes_skills_.close_to_parent();
+        command_overview_clips_.close();
         command_overview_.close();
     };
     bindings.host.legacy_open =
@@ -5478,7 +5479,110 @@ void FieldSceneRuntime::configure_field_menu_route() {
         return slot < active_runner_record().inventory_item_codes.size() &&
                active_runner_record().inventory_item_codes[slot] != 0U;
     };
+    bindings.game.party = [this] {
+        std::array<scripting::ScriptMenuPartyMember,
+                   FieldPartyRosterRuntime::kSlotCount> party{};
+        const auto& records = field_party_roster_.records();
+        for (std::size_t slot = 0; slot < records.size(); ++slot) {
+            const auto& record = records[slot];
+            party[slot] = scripting::ScriptMenuPartyMember{
+                static_cast<std::uint8_t>(record.flags >> 8U),
+                record.ammo_clips,
+                record.ammo_rounds,
+                static_cast<int>(record.equipped_inventory_slot),
+                record.equipped_item_code};
+        }
+        return party;
+    };
+    bindings.game.active_slot = [this] {
+        return static_cast<int>(field_party_roster_.active_slot());
+    };
+    bindings.game.magazine_capacity = [this](const int weapon_code) {
+        if (weapon_code < 0 || weapon_code > 0xFF) {
+            return 0;
+        }
+        return static_cast<int>(weapon_magazine_capacity_for_item(
+                                    static_cast<std::uint8_t>(weapon_code))
+                                    .value_or(0U));
+    };
+    bindings.game.set_runner_ammo = [this](const int slot,
+                                           const int clips,
+                                           const int rounds) {
+        if (slot < 0 ||
+            static_cast<std::size_t>(slot) >=
+                FieldPartyRosterRuntime::kSlotCount) {
+            return;
+        }
+        auto& record = field_party_roster_.records()[
+            static_cast<std::size_t>(slot)];
+        record.ammo_clips = static_cast<std::uint8_t>(
+            std::clamp(clips, 0, 0xFF));
+        record.ammo_rounds = static_cast<std::uint8_t>(
+            std::clamp(rounds, 0, 0xFF));
+        refresh_field_hud_runner_slot();
+        refresh_command_overview_combat_bars();
+    };
     game_scripts_.set_menu_route_bindings(std::move(bindings));
+}
+
+void FieldSceneRuntime::synchronize_command_overview_clips_from_route(
+    const scripting::ScriptMenuRouteSnapshot& route_state) {
+    constexpr int kClipsPage = 2;
+    constexpr std::uint16_t kClips =
+        static_cast<std::uint16_t>(srx::MenuScreen::CLIPS);
+    constexpr std::uint16_t kReloadConfirm =
+        static_cast<std::uint16_t>(srx::MenuScreen::RELOAD_CONFIRM);
+    constexpr std::uint16_t kClipTrade =
+        static_cast<std::uint16_t>(srx::MenuScreen::CLIP_TRADE);
+    constexpr std::uint16_t kMessage =
+        static_cast<std::uint16_t>(srx::MenuScreen::MESSAGE);
+    const bool clips_route =
+        route_state.open && route_state.page == kClipsPage &&
+        (route_state.top_screen == kClips ||
+         route_state.top_screen == kReloadConfirm ||
+         route_state.top_screen == kClipTrade ||
+         route_state.top_screen == kMessage);
+    if (!clips_route) {
+        if (command_overview_clips_.is_open()) {
+            command_overview_clips_.close();
+        }
+        return;
+    }
+
+    if (!command_overview_clips_.is_open()) {
+        command_overview_clips_.open();
+    }
+    auto message = ClipsMenuMessage::none;
+    if (route_state.top_screen == kMessage &&
+        route_state.top_message.has_value()) {
+        switch (*route_state.top_message) {
+        case 1: message = ClipsMenuMessage::out_of_ammo; break;
+        case 2: message = ClipsMenuMessage::item_does_not_use_clips; break;
+        case 3: message = ClipsMenuMessage::no_party_members; break;
+        case 4: message = ClipsMenuMessage::reload_success; break;
+        case 5: message = ClipsMenuMessage::exchange_complete; break;
+        case 21: message = ClipsMenuMessage::function_aborted; break;
+        default: break;
+        }
+    }
+    const auto u8_or = [](const std::optional<int>& value,
+                          const std::uint8_t fallback) {
+        return static_cast<std::uint8_t>(
+            value.has_value() ? std::clamp(*value, 0, 0xFF) : fallback);
+    };
+    const bool reload_confirmation = route_state.top_screen == kReloadConfirm;
+    const bool trade = route_state.top_screen == kClipTrade;
+    command_overview_clips_.synchronize_route_presentation(
+        u8_or(route_state.top_selection,
+              command_overview_clips_.selection()),
+        reload_confirmation,
+        reload_confirmation && route_state.top_yes.value_or(false), trade,
+        u8_or(route_state.top_command, 2U),
+        u8_or(route_state.top_quantity, active_runner_record().ammo_clips),
+        route_state.top_recipient.has_value() && *route_state.top_recipient >= 0
+            ? static_cast<std::size_t>(*route_state.top_recipient)
+            : 0U,
+        message);
 }
 
 void FieldSceneRuntime::start_command_menu_legacy_screen(
@@ -5622,6 +5726,7 @@ void FieldSceneRuntime::open_command_overview() {
                 static_cast<std::uint8_t>(*route_state.page),
                 static_cast<std::uint8_t>(*route_state.row));
         }
+        synchronize_command_overview_clips_from_route(route_state);
     }
     refresh_command_overview_combat_bars();
     refresh_command_overview_item_detail();
@@ -10763,7 +10868,7 @@ void FieldSceneRuntime::advance_frame() {
             }
             return;
         }
-        if (command_overview_clips_.is_open()) {
+        if (command_overview_clips_.is_open() && !menu_route_active_) {
             advance_command_overview_clips(
                 field_controller_sample_state_.events);
             return;
@@ -11142,6 +11247,7 @@ void FieldSceneRuntime::advance_frame() {
             game_scripts_.advance_menu_route(
                 field_controller_sample_state_.events);
             const auto route_state = game_scripts_.menu_route_snapshot();
+            synchronize_command_overview_clips_from_route(route_state);
             if (route_state.page.has_value() && route_state.row.has_value()) {
                 command_overview_.sync_script_selection(
                     static_cast<std::uint8_t>(*route_state.page),
@@ -12909,11 +13015,6 @@ void FieldSceneRuntime::paint_command_overview_clips(
     // separate shared layer.
     painter.fillRect(96, 16, 160, 160, Qt::black);
 
-    draw_command_overview_text(painter, 136, 40,
-                               field_menu_text_.clips_title);
-    draw_command_overview_text(painter, 136, 48,
-                               field_menu_text_.clips_separator);
-
     const auto draw_lines = [this, &painter](const auto& lines,
                                               const int x,
                                               const int y) {
@@ -12983,36 +13084,55 @@ void FieldSceneRuntime::paint_command_overview_clips(
         return;
     }
 
+    if (command_overview_clips_.message() != ClipsMenuMessage::none) {
+        // ROM's result/abort path clears the Clips button strip with CD2C6
+        // before waiting for a fresh button edge. Clear the old controls and
+        // title as a complete panel replacement; text must not sit over the
+        // selector row that led to the result.
+        painter.fillRect(120, 184, 120, 16, Qt::black);
+        switch (command_overview_clips_.message()) {
+        case ClipsMenuMessage::out_of_ammo: {
+            const auto active_slot = field_party_roster_.active_slot();
+            draw_command_overview_text(
+                painter, 112, 80,
+                field_party_roster_.name(active_slot).empty()
+                    ? field_menu_text_.runner_names[0]
+                    : field_party_roster_.name(active_slot));
+            draw_lines(field_menu_text_.clips_out_of_ammo, 112, 88);
+            break;
+        }
+        case ClipsMenuMessage::item_does_not_use_clips:
+            draw_lines(field_menu_text_.clips_item_no_clips, 136, 80);
+            break;
+        case ClipsMenuMessage::reload_success:
+            draw_lines(field_menu_text_.clips_reload_success, 112, 80);
+            break;
+        case ClipsMenuMessage::exchange_complete:
+            draw_lines(field_menu_text_.clips_exchange_complete, 112, 80);
+            break;
+        case ClipsMenuMessage::no_party_members:
+            draw_lines(field_menu_text_.clips_no_party, 120, 72);
+            break;
+        case ClipsMenuMessage::function_aborted:
+            draw_command_overview_text(
+                painter, 128, 88, field_menu_text_.clips_function_aborted);
+            break;
+        case ClipsMenuMessage::none:
+            break;
+        }
+        return;
+    }
+
+    draw_command_overview_text(painter, 136, 40,
+                               field_menu_text_.clips_title);
+    draw_command_overview_text(painter, 136, 48,
+                               field_menu_text_.clips_separator);
+
     // ROM 0x11B98 installs the top-level Clips row from CD33E. It has the
     // same footprint as the inventory action row but different button art.
     painter.drawImage(kCommandOverviewClipsBackgroundX,
                       kCommandOverviewClipsBackgroundY,
                       command_overview_clips_background_);
-
-    switch (command_overview_clips_.message()) {
-    case ClipsMenuMessage::out_of_ammo:
-        draw_command_overview_text(
-            painter, 112, 80,
-            field_party_roster_.name(0U).empty()
-                ? field_menu_text_.runner_names[0]
-                : field_party_roster_.name(0U));
-        draw_lines(field_menu_text_.clips_out_of_ammo, 112, 88);
-        return;
-    case ClipsMenuMessage::item_does_not_use_clips:
-        draw_lines(field_menu_text_.clips_item_no_clips, 136, 80);
-        return;
-    case ClipsMenuMessage::reload_success:
-        draw_lines(field_menu_text_.clips_reload_success, 112, 80);
-        return;
-    case ClipsMenuMessage::exchange_complete:
-        draw_lines(field_menu_text_.clips_exchange_complete, 112, 80);
-        return;
-    case ClipsMenuMessage::no_party_members:
-        draw_lines(field_menu_text_.clips_no_party, 120, 72);
-        return;
-    case ClipsMenuMessage::none:
-        break;
-    }
 
     draw_command_overview_text(painter, 136, 72,
                                field_menu_text_.clips_counter_label);

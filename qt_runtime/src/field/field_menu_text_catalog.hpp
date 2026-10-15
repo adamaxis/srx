@@ -28,7 +28,7 @@ inline constexpr std::size_t kFieldMenuItemDetailLabelCount = 3U;
 inline constexpr std::size_t kFieldActionDetailTextCount = 32U;
 inline constexpr std::size_t kFieldMenuItemNameCount = 50U;
 inline constexpr std::size_t kFieldMenuClipsCommandCount = 4U;
-inline constexpr std::size_t kClipsTextCount = 21U;
+inline constexpr std::size_t kClipsTextCount = 22U;
 inline constexpr std::size_t kItemUiTextCount = 14U;
 inline constexpr std::size_t kItemDisplayTextCount =
     kFieldMenuPowerLabelCount +
@@ -219,6 +219,7 @@ struct FieldMenuTextCatalog {
     std::array<std::string, 2> clips_out_of_ammo{};
     std::array<std::string, 3> clips_item_no_clips{};
     std::array<std::string, 3> clips_no_party{};
+    std::string clips_function_aborted;
     struct Item {
         scripting::ScriptItemDefinition definition;
         std::string name;
