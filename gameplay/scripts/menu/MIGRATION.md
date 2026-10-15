@@ -17,6 +17,12 @@ restored-save flag still enters the explicit Cyberdeck
 adapter boundary. Deck-present Matrix entry, Save/Load, and Debug remain
 unimplemented in the live field route.
 
+The shared `0xC376` signed-byte row-wrap rule is in
+`rules/cursor.lua` and serves the active Pocket Secretary family selectors,
+including Notebook and its child lists. The presenter still owns the ROM
+cursor-cell erase/draw operation. Remaining callers such as Save/Load are
+not connected to the live field route yet.
+
 ## Moved blocks
 | FSR / bridge location | what | new home | status |
 |---|---|---|---|
@@ -78,7 +84,7 @@ Done in the active route: command/posture, item actions, Clips, Attributes/Skill
 Open source/behavior boundaries: the drain-damage tail at 0x1046E, FFF0B1 inside the Matrix, FFF101 cheat-state import, and child-loop migration.
 In-game wiring: host/menu_game_fsr.sketch.cpp (MenuGame/MenuHost over srx FieldSceneRuntime, file:line per service).
 
-Order: remaining POCKET_SECRETARY child routes (C376 widget/extended caller), then Cyberdeck/Matrix, Save/Load, and Debug. Notebook's positive-current-run record path, Contacts, Shadowrunners, restored-save fact import, and spell cast/target resolution are explicit open boundaries.
+Order: connect the remaining POCKET_SECRETARY extended caller, then Cyberdeck/Matrix, Save/Load, and Debug. Notebook's positive-current-run content, normal story acquisition/restored-save facts, and spell cast/target resolution are explicit open boundaries; Contacts and Shadowrunners list/detail screens are already registered and implemented.
 Each one replaces its `legacy(...)` line in menu/init.lua.
 
 - D24 A `screens/save_load.lua` draft exists but is not registered in the active profile; live Save/Load behavior is still behind the adapter.

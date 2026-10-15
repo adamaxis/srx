@@ -7,9 +7,8 @@ local E = require("enums")
 local P, O, N, R, T, MM = E.Pad, E.PocketOption, E.NotebookOption,
                          E.MenuRegion, E.MenuTransition, E.MenuMessage
 local Grid = require("menu.rules.random_grid")
+local Cursor = require("menu.rules.cursor")
 local M = { window = E.WindowPlane.SIDEBAR }
-
-local function row_cursor(cur, d, max) local n = cur + d; if n < 0 then return max elseif n > max then return 0 end; return n end   -- 0xC376 [C]
 
 function M.new() return { row = 0, grid_cells = Grid.cells, grid_effect_frames = 0 } end
 function M.enter(st, ctx)
@@ -20,8 +19,8 @@ function M.enter(st, ctx)
 end
 function M.input(st, events, ctx)
     st.grid_effect_frames = Grid.advance(ctx)                  -- 0xE660, three ROM RNG draws per frame [C]
-    if events & P.UP ~= 0 then st.row = row_cursor(st.row, -1, st.max); ctx.redraw(R.SUBMENU); return end
-    if events & P.DOWN ~= 0 then st.row = row_cursor(st.row, 1, st.max); ctx.redraw(R.SUBMENU); return end
+    if events & P.UP ~= 0 then st.row = Cursor.step(st.row, -1, st.max); ctx.redraw(R.SUBMENU); return end
+    if events & P.DOWN ~= 0 then st.row = Cursor.step(st.row, 1, st.max); ctx.redraw(R.SUBMENU); return end
     if events & P.A ~= 0 then
         if st.row == O.NOTEBOOK then return { transition = T.PUSH, screen = E.MenuScreen.NOTEBOOK } end
         if st.row == O.GROUP_ITEMS then return { transition = T.PUSH, screen = E.MenuScreen.GROUP_ITEMS } end
@@ -101,7 +100,7 @@ function Notebook.input(st, events, ctx)
     if events & (P.B | P.START) ~= 0 then return { transition = T.POP } end
     if events & (P.UP | P.DOWN) ~= 0 then
         local n = #st.options
-        st.row = events & P.UP ~= 0 and (st.row == 0 and n - 1 or st.row - 1) or (st.row + 1) % n
+        st.row = Cursor.step(st.row, events & P.UP ~= 0 and -1 or 1, n - 1)
         ctx.redraw(R.SUBMENU); return
     end
     if events & P.A ~= 0 then
@@ -222,7 +221,7 @@ function Johnsons.input(st, events, ctx)
     st.grid_effect_frames = Grid.advance(ctx)
     if events & (P.UP | P.DOWN) ~= 0 then
         local n = #st.visible
-        st.row = events & P.UP ~= 0 and (st.row == 0 and n - 1 or st.row - 1) or (st.row + 1) % n
+        st.row = Cursor.step(st.row, events & P.UP ~= 0 and -1 or 1, n - 1)
         ctx.redraw(R.SUBMENU); return
     end
     if events & (P.A | P.B) ~= 0 then
@@ -293,8 +292,8 @@ local function make_record_page(count, detail_message)
         st.grid_effect_frames = Grid.advance(ctx)
         if events & (P.UP | P.DOWN) ~= 0 then
             local n = #st.visible
-            st.row = events & P.UP ~= 0 and
-                (st.row == 0 and n - 1 or st.row - 1) or (st.row + 1) % n
+            st.row = Cursor.step(st.row, events & P.UP ~= 0 and -1 or 1,
+                                 n - 1)
             ctx.redraw(R.SUBMENU); return
         end
         if events & (P.A | P.B) ~= 0 then
@@ -345,7 +344,7 @@ function Dismiss.input(st, events, ctx)
     st.grid_effect_frames = Grid.advance(ctx)
     if events & (P.UP | P.DOWN) ~= 0 then
         local n = #st.candidates + 1
-        st.row = events & P.UP ~= 0 and (st.row == 0 and n - 1 or st.row - 1) or (st.row + 1) % n
+        st.row = Cursor.step(st.row, events & P.UP ~= 0 and -1 or 1, n - 1)
         ctx.sound(E.MenuSound.MOVE); ctx.redraw(R.SUBMENU); return
     end
     if events & (P.A | P.B | P.C) ~= 0 then
@@ -359,4 +358,4 @@ end
 return { PocketSecretary = M, GroupItems = GroupItems, Notebook = Notebook,
          Tips = Tips, Johnsons = Johnsons, Contacts = Contacts,
          Shadowrunners = Shadowrunners, Dismiss = Dismiss,
-         row_cursor = row_cursor }
+         row_cursor = Cursor.step }
