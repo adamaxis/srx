@@ -5642,7 +5642,7 @@ int main() {
     constexpr std::array<std::string_view, 4> kClipsTradeCommandLabels{{
         "Increase Clips", "Decrease Clips", "Trade Clips",
         "Change Recipient"}};
-    constexpr std::array<std::string_view, 21> kClipsTextIds{{
+    constexpr std::array<std::string_view, 22> kClipsTextIds{{
         "header_title", "header_separator", "counter_label",
         "trade_prompt_action", "trade_prompt_clips_to",
         "trade_prompt_recipient", "exchange_complete_first",
@@ -5652,8 +5652,8 @@ int main() {
         "out_of_ammo_name_suffix", "out_of_ammo_clips",
         "item_without_clips_first", "item_without_clips_second",
         "item_without_clips_third", "no_party_first", "no_party_second",
-        "no_party_third"}};
-    constexpr std::array<std::string_view, 21> kClipsTextLabelKeys{{
+        "no_party_third", "function_aborted"}};
+    constexpr std::array<std::string_view, 22> kClipsTextLabelKeys{{
         "clips.text.option.header_title",
         "clips.text.option.header_separator",
         "clips.text.option.counter_label",
@@ -5675,6 +5675,7 @@ int main() {
         "clips.text.option.no_party_first",
         "clips.text.option.no_party_second",
         "clips.text.option.no_party_third",
+        "clips.text.option.function_aborted",
     }};
     bool clips_rows_match =
         clips_commands.has_value() && clips_trade_commands.has_value() &&
