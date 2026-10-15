@@ -243,16 +243,20 @@ Items reads the typed FFFC22 fact, builds visible item IDs from bits 14 down to
 stable-party-slot dispatch are also Lua-owned. The shared E660 frame effect
 keeps its 12-cell state and per-frame three-draw cadence in Lua; C++ supplies
 ROM RNG and projects the resulting state into the Qt presenter. Notebook,
-Cyberdeck, Save/Load, and Debug child behavior still uses the C++ adapter. The
-hidden row remains unavailable because the active field context does not
-import FFF101. Group Items remains partial: normal FFFC22 acquisition and
-restored-save state are not wired, and there is no independent Genesis capture.
+Tips & Clues, and Mr. Johnsons now also run through the Lua route: Lua filters
+rows from typed ROM facts, owns selection, detail/no-run waits, C actions, and
+return paths; C++ mirrors the route snapshot only for painting. Positive
+current-run records, Contacts, Shadowrunners, Cyberdeck, Save/Load, and Debug
+remain explicit adapter/source boundaries. The hidden row remains unavailable
+because the active field context does not import FFF101. Group Items remains
+partial: normal FFFC22 acquisition and restored-save state are not wired.
 
 The route CTest passes in Debug and Release. Field Secretary Qt QA passes in
 both configurations and writes 79 full-screen BMP captures. Route checks cover
 both E660 random branches, Group Items descending-bit rows and fresh-edge
-dismissal, and the Dismiss stable-slot action. The complete Debug/Release
-capture sets have matching hashes; full-screen review confirms the child
-replaces the parent panel and the return redraws it cleanly. This is internal
-regression evidence; an independent Genesis capture is still unavailable, so
-the hill remains partial.
+dismissal, the no-run message, filtered Tips pages, all five diagnostic
+Mr. Johnson details, C and Start actions, and the Dismiss stable-slot action.
+The 79-frame Debug/Release capture sets have matching hashes and were reviewed
+full-screen; child panels replace the parent content and return cleanly. This
+is internal regression evidence; an independent Genesis capture is still
+unavailable, so the hill remains partial.

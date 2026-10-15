@@ -55,6 +55,15 @@ struct ScriptMenuRouteArgs {
     std::optional<int> column;
 };
 
+enum class ScriptNotebookBoundary : std::uint8_t {
+    event_gates_unresolved,
+    tips_flags_unresolved,
+    current_run_unresolved,
+    contacts_unimplemented,
+    shadowrunners_unimplemented,
+    mr_johnsons_flags_unresolved,
+};
+
 struct ScriptMenuRouteHost {
     std::function<void(std::uint16_t)> play_sound;
     std::function<void(std::uint32_t)> redraw;
@@ -66,6 +75,7 @@ struct ScriptMenuRouteHost {
         legacy_open;
     std::function<std::pair<bool, bool>(std::uint16_t, std::uint16_t)>
         legacy_advance;
+    std::function<void(ScriptNotebookBoundary)> notebook_boundary;
 };
 
 struct ScriptMenuPartyMember {
@@ -84,6 +94,13 @@ struct ScriptMenuPartyMember {
     std::array<std::uint8_t, 8> phase{};
     std::array<std::uint8_t, 8> attributes{};
     std::array<std::uint8_t, 12> skills{};
+};
+
+struct ScriptNotebookFacts {
+    bool current_run_available = false;
+    std::optional<std::array<bool, 3>> event_gates;
+    std::optional<std::array<std::uint32_t, 3>> tip_flags;
+    std::optional<std::uint8_t> referral_flags;
 };
 
 struct ScriptMenuRouteGame {
@@ -105,6 +122,7 @@ struct ScriptMenuRouteGame {
     std::function<int(int)> source_random_bound;
     std::function<void(int)> dismiss_runner;
     std::function<std::optional<std::uint32_t>()> group_item_flags;
+    std::function<std::optional<ScriptNotebookFacts>()> notebook_facts;
 };
 
 struct ScriptMenuRouteBindings {
@@ -130,6 +148,9 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_item_code;
     std::optional<int> top_item_phase;
     std::optional<int> top_target;
+    std::optional<int> top_page;
+    std::optional<int> top_detail_index;
+    std::optional<int> top_detail_row;
     std::vector<int> top_targets;
     std::optional<bool> top_recipient_full;
     std::optional<bool> top_yes;
@@ -137,6 +158,8 @@ struct ScriptMenuRouteSnapshot {
     std::array<std::int8_t, 12> top_grid_cells{};
     std::optional<int> top_grid_effect_frames;
     std::vector<int> top_visible_item_ids;
+    std::vector<int> top_visible_option_ids;
+    std::vector<int> top_visible_source_ids;
 };
 
 using ScriptStringMap = std::unordered_map<std::string, std::string>;

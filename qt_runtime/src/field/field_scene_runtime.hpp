@@ -1227,6 +1227,8 @@ private:
         std::uint16_t controller_events);
     void configure_field_menu_route();
     void advance_field_menu_route();
+    void synchronize_pocket_secretary_notebook_from_route(
+        const scripting::ScriptMenuRouteSnapshot& route_state);
     void synchronize_command_overview_clips_from_route(
         const scripting::ScriptMenuRouteSnapshot& route_state);
     void synchronize_command_overview_inventory_from_route(

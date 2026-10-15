@@ -582,6 +582,8 @@ struct GameScriptRuntime::Impl {
         source_random_bound,
         dismiss_runner,
         group_item_flags,
+        notebook_facts,
+        notebook_boundary,
     };
 
     lua_State* state = nullptr;
@@ -697,6 +699,18 @@ struct GameScriptRuntime::Impl {
             lua_pushboolean(lua, result.first ? 1 : 0);
             lua_pushboolean(lua, result.second ? 1 : 0);
             return 2;
+        }
+        case MenuBinding::notebook_boundary: {
+            const auto value = integer_argument(1);
+            if (value >= 0 &&
+                value <= static_cast<int>(
+                             ScriptNotebookBoundary::
+                                 mr_johnsons_flags_unresolved) &&
+                self->menu_route_bindings.host.notebook_boundary) {
+                self->menu_route_bindings.host.notebook_boundary(
+                    static_cast<ScriptNotebookBoundary>(value));
+            }
+            return 0;
         }
         case MenuBinding::leader_incapacitated:
             lua_pushboolean(
@@ -930,6 +944,59 @@ struct GameScriptRuntime::Impl {
             }
             return 1;
         }
+        case MenuBinding::notebook_facts: {
+            const auto facts = self->menu_route_bindings.game.notebook_facts
+                                   ? self->menu_route_bindings.game
+                                         .notebook_facts()
+                                   : std::nullopt;
+            if (!facts.has_value()) {
+                lua_pushnil(lua);
+                return 1;
+            }
+            lua_createtable(lua, 0, 4);
+            lua_pushboolean(lua, facts->current_run_available ? 1 : 0);
+            lua_setfield(lua, -2, "current_run");
+            if (facts->event_gates.has_value()) {
+                lua_createtable(lua,
+                                static_cast<int>(facts->event_gates->size()),
+                                0);
+                for (std::size_t index = 0;
+                     index < facts->event_gates->size(); ++index) {
+                    lua_pushboolean(lua, (*facts->event_gates)[index] ? 1 : 0);
+                    lua_rawseti(lua, -2,
+                                static_cast<lua_Integer>(index + 1U));
+                }
+                lua_setfield(lua, -2, "gates");
+            } else {
+                lua_pushnil(lua);
+                lua_setfield(lua, -2, "gates");
+            }
+            const auto push_optional_array = [lua](
+                const char* field,
+                const std::optional<std::array<std::uint32_t, 3>>& values) {
+                if (!values.has_value()) {
+                    lua_pushnil(lua);
+                    lua_setfield(lua, -2, field);
+                    return;
+                }
+                lua_createtable(lua, static_cast<int>(values->size()), 0);
+                for (std::size_t index = 0; index < values->size(); ++index) {
+                    lua_pushinteger(lua, (*values)[index]);
+                    lua_rawseti(lua, -2,
+                                static_cast<lua_Integer>(index + 1U));
+                }
+                lua_setfield(lua, -2, field);
+            };
+            push_optional_array("tips", facts->tip_flags);
+            if (facts->referral_flags.has_value()) {
+                lua_pushinteger(lua, *facts->referral_flags);
+                lua_setfield(lua, -2, "referrals");
+            } else {
+                lua_pushnil(lua);
+                lua_setfield(lua, -2, "referrals");
+            }
+            return 1;
+        }
         }
         lua_pushnil(lua);
         return 1;
@@ -960,6 +1027,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::legacy_open);
         add_menu_binding(state, table_index, "legacy_advance",
                          MenuBinding::legacy_advance);
+        add_menu_binding(state, table_index, "notebook_boundary",
+                         MenuBinding::notebook_boundary);
     }
 
     void push_menu_game() {
@@ -998,6 +1067,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::dismiss_runner);
         add_menu_binding(state, table_index, "group_item_flags",
                          MenuBinding::group_item_flags);
+        add_menu_binding(state, table_index, "notebook",
+                         MenuBinding::notebook_facts);
     }
 
     bool refresh_menu_route_snapshot() {
@@ -1042,6 +1113,33 @@ struct GameScriptRuntime::Impl {
             return value.has_value() ? value
                                      : read_optional(table_index, alias);
         };
+        const auto read_integer_array = [lua](
+            const int table_index, const char* name,
+            const std::size_t maximum_count, const int minimum,
+            const int maximum) {
+            std::vector<int> values;
+            lua_getfield(lua, table_index, name);
+            if (lua_istable(lua, -1)) {
+                const auto array_index = lua_absindex(lua, -1);
+                const auto count = std::min<std::size_t>(
+                    static_cast<std::size_t>(lua_rawlen(lua, array_index)),
+                    maximum_count);
+                values.reserve(count);
+                for (std::size_t index = 0; index < count; ++index) {
+                    lua_rawgeti(lua, array_index,
+                                static_cast<lua_Integer>(index + 1U));
+                    if (lua_isinteger(lua, -1)) {
+                        const auto value = lua_tointeger(lua, -1);
+                        if (value >= minimum && value <= maximum) {
+                            values.push_back(static_cast<int>(value));
+                        }
+                    }
+                    lua_pop(lua, 1);
+                }
+            }
+            lua_pop(lua, 1);
+            return values;
+        };
         lua_getfield(state, route_index, "top");
         lua_pushvalue(state, route_index);
         if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
@@ -1065,6 +1163,8 @@ struct GameScriptRuntime::Impl {
                     read_optional_alias(screen_state_index, "col", "column");
                 menu_route_state.top_row =
                     read_optional(screen_state_index, "row");
+                menu_route_state.top_page =
+                    read_optional(screen_state_index, "page");
                 menu_route_state.top_selection =
                     read_optional_alias(screen_state_index, "selection",
                                         "selector");
@@ -1122,6 +1222,12 @@ struct GameScriptRuntime::Impl {
                     }
                 }
                 lua_pop(state, 1);
+                menu_route_state.top_visible_option_ids =
+                    read_integer_array(screen_state_index, "options", 5U,
+                                       0, 4);
+                menu_route_state.top_visible_source_ids =
+                    read_integer_array(screen_state_index, "visible", 96U,
+                                       0, 95);
                 lua_getfield(state, screen_state_index, "yes");
                 if (lua_isboolean(state, -1)) {
                     menu_route_state.top_yes = lua_toboolean(state, -1) != 0;
@@ -1131,6 +1237,20 @@ struct GameScriptRuntime::Impl {
                 if (lua_isboolean(state, -1)) {
                     menu_route_state.top_recipient_full =
                         lua_toboolean(state, -1) != 0;
+                }
+                lua_pop(state, 1);
+                lua_getfield(state, screen_state_index, "data");
+                if (lua_istable(state, -1)) {
+                    const auto data_index = lua_absindex(state, -1);
+                    menu_route_state.top_detail_index =
+                        read_optional(data_index, "index");
+                    menu_route_state.top_detail_row =
+                        read_optional(data_index, "row");
+                    if (menu_route_state.top_visible_source_ids.empty()) {
+                        menu_route_state.top_visible_source_ids =
+                            read_integer_array(data_index, "visible", 96U,
+                                               0, 95);
+                    }
                 }
                 lua_pop(state, 1);
 

@@ -281,10 +281,12 @@ rather than a second Lua copy.
   ROM-derived catalog. `FieldSceneRuntime` consumes the root and Notebook
   definitions directly and uses their IDs when dispatching the selected row;
   the text catalog resolves the keyed ROM labels from
-  `assets/dialogue/script-text.lua`. Native state still applies the three
-  story-flag row gates and owns cursor movement, selection cadence, drawing,
-  and child-page behavior. Save/Load and the extended six-row caller remain
-  explicit boundaries; the Notebook page state and actions remain native.
+  `assets/dialogue/script-text.lua`. Lua now owns Notebook row gates, input,
+  Tips flag filtering/page selection, Mr. Johnsons referral filtering/detail
+  waits, C actions, returns, and E660 frame state. C++ supplies typed story
+  facts and mirrors the route snapshot into the Qt painter state. The positive
+  current-run record path, Contacts, Shadowrunners, restored-save fact import,
+  Save/Load, and the extended six-row caller remain explicit boundaries.
 - `gameplay/scripts/command_overview.lua` declares the seven stable IDs for the
   in-game command root in ROM order, including the two distinct Inventory
   columns, with each menu row paired to its explicit Lua text key. It also

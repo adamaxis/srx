@@ -4,7 +4,7 @@ Date: 2026-10-07
 ROM: US Genesis Shadowrun
 Scope: Notebook route `0xF416`, visible Johnson list, detail wait, C action, and return
 
-## ROM trace and native route
+## ROM trace and Lua route
 
 Raw US-ROM bytes at `0xF416` are the primary source. The handler clears and
 rebuilds the child panel, writes the `Mr. Johnsons` title from `0xC56AE`, and
@@ -27,13 +27,14 @@ resumes the same list selection. Start returns to the Notebook. A/B detail
 selection, list movement, and Start do not make a sound request in this handler.
 
 The host imports the five names and details as keyed entries in
-`assets/dialogue/script-text.lua`; doubled `0x80` line breaks are
-preserved. The runtime reads those Lua values into the typed Notebook model and stores the visible source
-indices, selection, and detail-wait state in the typed Notebook model. The
-Qt projection redraws the lower panel grid at the detail transition before
-placing text, then redraws the list and selector on return. It keeps the title,
-separator, and shared frame. The source wait also advances the shared E660
-lower-bezel effect once per VBlank.
+`assets/dialogue/script-text.lua`; doubled `0x80` line breaks are preserved.
+Lua stores the visible source indices, selection, and detail-wait state and
+owns the list input and transitions. `FieldSceneRuntime` supplies typed
+FFFC27/story facts, then projects the Lua route snapshot into the existing Qt
+painter state. The Qt projection redraws the lower panel grid at the detail
+transition before placing text, then redraws the list and selector on return.
+It keeps the title, separator, and shared frame. The Lua wait advances the
+shared E660 lower-bezel effect once per VBlank.
 
 The Stoker Jump House response at `0x213E2` sets FFFC27 bit 0 and is covered by
 the referral route QA. This audit's all-five-entry pass uses the explicitly
@@ -101,15 +102,16 @@ not a claim that ordinary play currently unlocks every name.
 
 ## Evidence and disposition
 
-- **Code changed:** source text import, typed child-page state and input,
-  full-panel replacement/return drawing, and field-secretary QA captures.
+- **Code changed:** Lua-owned child-page state and input, typed source-fact
+  bindings, route-to-painter projection, full-panel replacement/return
+  drawing, and field-secretary QA captures.
 - **Behavior implemented:** FFFC27-filtered list, A/B detail wait, C event
   `0x25`, cursor wrapping, and Start return.
 - **Internally checked:** Debug/Release CTests
-  `shadowrun_ghidra_conversion_qt_field_secretary_qa` and
-  `shadowrun_ghidra_field_menu_text_catalog`; Debug/Release unit test
-  `shadowrun_ghidra_pocket_secretary_menu`; root Debug/Release
-  `shadowrun_graphics`. Full-screen output is under
+  `shadowrun_ghidra_gameplay_script_menu_route`,
+  `shadowrun_ghidra_conversion_qt_field_secretary_qa`,
+  `shadowrun_ghidra_conversion_qt_field_dialogue_referral_followup_qa`, and
+  `shadowrun_ghidra_field_menu_text_catalog`. Full-screen output is under
   `qt_runtime/field-secretary-qa/`, including `notebook-mr-johnsons-list.bmp`,
   `notebook-mr-johnsons-detail-0.bmp` through `-4.bmp`, detail-return frames,
   `notebook-mr-johnsons-detail-wait-frame-00.bmp` through `-30.bmp`, and

@@ -10,6 +10,8 @@
 #include <vector>
 
 using shadowrun::ghidra_conversion::scripting::GameScriptRuntime;
+using shadowrun::ghidra_conversion::scripting::ScriptNotebookBoundary;
+using shadowrun::ghidra_conversion::scripting::ScriptNotebookFacts;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuPartyMember;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteBindings;
 
@@ -21,6 +23,8 @@ constexpr std::uint16_t kAttributes = 5U;
 constexpr std::uint16_t kCyberware = 6U;
 constexpr std::uint16_t kPocketSecretary = 9U;
 constexpr std::uint16_t kNotebook = 10U;
+constexpr std::uint16_t kNotebookTips = 21U;
+constexpr std::uint16_t kMrJohnsons = 20U;
 constexpr std::uint16_t kGroupItems = 17U;
 constexpr std::uint16_t kDismissRunner = 11U;
 constexpr std::uint16_t kClips = 4U;
@@ -71,6 +75,13 @@ int main() {
     bool random_high_branch = false;
     int dismissed_slot = -1;
     bool legacy_active = false;
+    std::vector<ScriptNotebookBoundary> notebook_boundaries;
+    ScriptNotebookFacts notebook_facts;
+    notebook_facts.current_run_available = false;
+    notebook_facts.event_gates = std::array<bool, 3>{true, true, false};
+    notebook_facts.tip_flags =
+        std::array<std::uint32_t, 3>{0x5U, 0x1U, 0U};
+    notebook_facts.referral_flags = 0x15U;
     std::array<ScriptMenuPartyMember, 3> party{{
         {1U, 3U, 20U, 0, 2U},
         {3U, 5U, 0U, 0, 2U},
@@ -101,6 +112,10 @@ int main() {
     bindings.host.legacy_advance =
         [&legacy_active](std::uint16_t, std::uint16_t) {
             return std::pair<bool, bool>{legacy_active, false};
+        };
+    bindings.host.notebook_boundary =
+        [&notebook_boundaries](const ScriptNotebookBoundary boundary) {
+            notebook_boundaries.push_back(boundary);
         };
     bindings.game.leader_incapacitated = [] { return false; };
     bindings.game.reselect_leader = [&reselect_count] { ++reselect_count; };
@@ -164,6 +179,9 @@ int main() {
     };
     bindings.game.group_item_flags = [] {
         return std::optional<std::uint32_t>{(1U << 14U) | (1U << 1U) | 1U};
+    };
+    bindings.game.notebook_facts = [&notebook_facts] {
+        return std::optional<ScriptNotebookFacts>{notebook_facts};
     };
     runtime.set_menu_route_bindings(std::move(bindings));
 
@@ -258,19 +276,85 @@ int main() {
           "Group Items returns to the Lua-selected row after its shared grid frame advances",
           failures);
     runtime.advance_menu_route(0x0100U); // Up to Notebook.
-    runtime.advance_menu_route(0x4000U); // Open the remaining legacy child.
+    runtime.advance_menu_route(0x4000U); // Open Notebook through Lua.
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kNotebook && legacy_active &&
-              legacy_screens.back() == kNotebook,
-          "Notebook remains an explicit legacy adapter boundary", failures);
-    legacy_active = false;
-    runtime.advance_menu_route(0U);
-    route = runtime.menu_route_snapshot();
-    check(route.top_screen == kPocketSecretary && route.top_row == 0 &&
-              route.top_grid_effect_frames == 7 &&
-              random_bounds.size() == 21U,
-          "Lua-owned E660 cadence continues while Notebook is on the adapter",
+    check(route.top_screen == kNotebook && route.top_row == 0 &&
+              route.top_visible_option_ids == std::vector<int>{0, 1, 2, 3} &&
+              legacy_screens.size() == legacy_count_before_secretary,
+          "Lua Notebook builds the ROM-order rows from typed story gates",
           failures);
+    const auto notebook_draw_count = random_bounds.size();
+    runtime.advance_menu_route(0U); // F236 services E660 once per frame.
+    check(random_bounds.size() == notebook_draw_count + 3U,
+          "Lua Notebook advances the shared bezel effect once per VBlank",
+          failures);
+    runtime.advance_menu_route(0x4000U); // Current Run, no run is available.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMessage && route.top_message == 16 &&
+              route.top_grid_cells_present,
+          "Notebook Current Run shows its source no-run response and keeps E660 active",
+          failures);
+    runtime.advance_menu_route(0x1000U); // B dismisses the no-run response.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kNotebook && route.top_row == 0,
+          "Notebook no-run response returns to the selected row", failures);
+    runtime.advance_menu_route(0x0200U); // Tips & Clues.
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kNotebookTips && route.top_page == 0 &&
+              route.top_visible_source_ids == std::vector<int>{0, 2, 32},
+          "Tips & Clues filters the three source bitsets in LSB-first order",
+          failures);
+    runtime.advance_menu_route(0x0400U); // Left clamps at zero.
+    runtime.advance_menu_route(0x0800U); // Right to second unlocked tip.
+    runtime.advance_menu_route(0x0800U); // Right to third unlocked tip.
+    runtime.advance_menu_route(0x0800U); // Right clamps at the last tip.
+    check(runtime.menu_route_snapshot().top_page == 2,
+          "Tips & Clues page selection clamps to its unlocked records",
+          failures);
+    runtime.advance_menu_route(0x4000U); // A returns to Notebook.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kNotebook && route.top_row == 1,
+          "Tips & Clues returns to its selected Notebook row", failures);
+    runtime.advance_menu_route(0x0200U); // Contacts.
+    runtime.advance_menu_route(0x4000U); // Explicit unresolved page boundary.
+    check(runtime.menu_route_snapshot().top_screen == kNotebook &&
+              notebook_boundaries.back() ==
+                  ScriptNotebookBoundary::contacts_unimplemented,
+          "unported Contacts page remains an explicit boundary", failures);
+    runtime.advance_menu_route(0x0200U); // Mr. Johnsons.
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMrJohnsons && route.top_row == 0 &&
+              route.top_visible_source_ids == std::vector<int>{0, 2, 4},
+          "Mr. Johnsons exposes only the five ROM-defined referral bits",
+          failures);
+    runtime.advance_menu_route(0x0100U); // Up wraps to the final visible row.
+    runtime.advance_menu_route(0x1000U); // B opens the selected detail.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMessage && route.top_message == 19 &&
+              route.top_detail_index == 4 && route.top_detail_row == 2 &&
+              route.top_visible_source_ids == std::vector<int>{0, 2, 4},
+          "Mr. Johnson detail carries its source record and selected row to the presenter",
+          failures);
+    runtime.advance_menu_route(0x1000U); // Dismiss detail, preserving selection.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMrJohnsons && route.top_row == 2,
+          "Mr. Johnson detail wait returns to the same selected list row",
+          failures);
+    const auto notebook_reselects_before_johnsons = reselect_count;
+    runtime.advance_menu_route(0x2000U); // C: mode action stays on the list.
+    check(runtime.menu_route_snapshot().top_screen == kMrJohnsons &&
+              reselect_count == notebook_reselects_before_johnsons + 1,
+          "Mr. Johnsons C action reselects without leaving the page", failures);
+    runtime.advance_menu_route(0x8000U); // Start returns to Notebook.
+    check(runtime.menu_route_snapshot().top_screen == kNotebook &&
+              runtime.menu_route_snapshot().top_row == 3,
+          "Start returns from Mr. Johnsons to its Notebook selection", failures);
+    runtime.advance_menu_route(0x8000U); // Start returns to Pocket Secretary.
+    check(runtime.menu_route_snapshot().top_screen == kPocketSecretary &&
+              runtime.menu_route_snapshot().top_row == 0,
+          "Start returns from Notebook to the Pocket Secretary", failures);
     runtime.advance_menu_route(0x8000U); // Start returns to Command.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kCommand && route.page == 6,
@@ -284,7 +368,7 @@ int main() {
     runtime.advance_menu_route(0x4000U); // Open Lua Dismiss Runner.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kDismissRunner && route.top_row == 0 &&
-              legacy_screens.size() == legacy_count_before_secretary + 1U,
+              legacy_screens.size() == legacy_count_before_secretary,
           "Dismiss Runner is a registered Lua child, not a legacy adapter",
           failures);
     random_high_branch = true;
@@ -337,9 +421,10 @@ int main() {
           "entering the C++ legacy adapter",
           failures);
 
+    const auto command_reselect_count = reselect_count;
     runtime.advance_menu_route(0x2000U); // C: reselect and refresh.
     route = runtime.menu_route_snapshot();
-    check(route.page == 6 && reselect_count == 1,
+    check(route.page == 6 && reselect_count == command_reselect_count + 1,
           "C reselects the leader and returns to page six", failures);
     check(std::find(sounds.begin(), sounds.end(), kSelectSound) !=
               sounds.end(),

@@ -5425,6 +5425,9 @@ void FieldSceneRuntime::configure_field_menu_route() {
             switch (static_cast<srx::MenuScreen>(value)) {
             case srx::MenuScreen::POCKET_SECRETARY:
             case srx::MenuScreen::NOTEBOOK:
+            case srx::MenuScreen::NOTEBOOK_TIPS:
+            case srx::MenuScreen::MR_JOHNSONS:
+            case srx::MenuScreen::MESSAGE:
             case srx::MenuScreen::DISMISS_RUNNER:
             case srx::MenuScreen::SAVE_LOAD:
             case srx::MenuScreen::GROUP_ITEMS:
@@ -5523,6 +5526,36 @@ void FieldSceneRuntime::configure_field_menu_route() {
         [this](const std::uint16_t screen, const std::uint16_t) {
             return std::pair<bool, bool>{
                 command_menu_legacy_screen_active(screen), false};
+        };
+    bindings.host.notebook_boundary =
+        [this](const scripting::ScriptNotebookBoundary boundary) {
+            switch (boundary) {
+            case scripting::ScriptNotebookBoundary::event_gates_unresolved:
+                source_boundary(
+                    "field.pocket_secretary.notebook.event_flags_unresolved");
+                break;
+            case scripting::ScriptNotebookBoundary::tips_flags_unresolved:
+                source_boundary(
+                    "field.pocket_secretary.notebook.tips.flags_unresolved");
+                break;
+            case scripting::ScriptNotebookBoundary::current_run_unresolved:
+                source_boundary(
+                    "field.pocket_secretary.notebook.current_run.path_pending");
+                break;
+            case scripting::ScriptNotebookBoundary::contacts_unimplemented:
+                source_boundary(
+                    "field.pocket_secretary.notebook.contacts.pending");
+                break;
+            case scripting::ScriptNotebookBoundary::shadowrunners_unimplemented:
+                source_boundary(
+                    "field.pocket_secretary.notebook.shadowrunners.pending");
+                break;
+            case scripting::ScriptNotebookBoundary::
+                mr_johnsons_flags_unresolved:
+                source_boundary(
+                    "field.pocket_secretary.notebook.mr_johnsons.flags_unresolved");
+                break;
+            }
         };
     bindings.game.leader_incapacitated = [this] {
         constexpr auto incapacitated =
@@ -5682,6 +5715,17 @@ void FieldSceneRuntime::configure_field_menu_route() {
         }
         return *group_item_flags_ & 0x7FFFU;
     };
+    bindings.game.notebook_facts = [this]()
+        -> std::optional<scripting::ScriptNotebookFacts> {
+        scripting::ScriptNotebookFacts facts;
+        facts.current_run_available = notebook_current_run_available_;
+        facts.event_gates = notebook_event_gates();
+        if (notebook_tip_flags_resolved_) {
+            facts.tip_flags = notebook_tip_flags_;
+        }
+        facts.referral_flags = notebook_referral_flags_;
+        return facts;
+    };
     game_scripts_.set_menu_route_bindings(std::move(bindings));
 }
 
@@ -5737,12 +5781,87 @@ void FieldSceneRuntime::advance_field_menu_route() {
                     route_state.top_visible_item_ids[index]);
         }
     }
+    synchronize_pocket_secretary_notebook_from_route(route_state);
     if (route_state.top_grid_cells_present) {
         dismiss_runner_random_grid_cells_ = route_state.top_grid_cells;
     }
     if (route_state.top_grid_effect_frames.has_value()) {
         dismiss_runner_effect_frames_ = static_cast<std::uint32_t>(
             std::max(0, *route_state.top_grid_effect_frames));
+    }
+}
+
+void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
+    const scripting::ScriptMenuRouteSnapshot& route_state) {
+    const auto screen = static_cast<srx::MenuScreen>(route_state.top_screen);
+    const bool is_message = screen == srx::MenuScreen::MESSAGE;
+    const auto message = route_state.top_message.value_or(0);
+    const bool no_current_run =
+        is_message && message == static_cast<int>(srx::MenuMessage::NO_CURRENT_RUN);
+    const bool johnson_detail =
+        is_message && message ==
+                          static_cast<int>(srx::MenuMessage::MR_JOHNSON_DETAIL);
+    auto& notebook = pocket_secretary_.notebook;
+    if (screen != srx::MenuScreen::NOTEBOOK &&
+        screen != srx::MenuScreen::NOTEBOOK_TIPS &&
+        screen != srx::MenuScreen::MR_JOHNSONS && !no_current_run &&
+        !johnson_detail) {
+        notebook = NotebookMenuState{};
+        return;
+    }
+
+    notebook.open = true;
+    notebook.no_current_run_wait = no_current_run;
+    notebook.tips.open = screen == srx::MenuScreen::NOTEBOOK_TIPS;
+    notebook.mr_johnsons.open = screen == srx::MenuScreen::MR_JOHNSONS ||
+                                johnson_detail;
+    notebook.mr_johnsons.detail_wait = johnson_detail;
+
+    if (screen == srx::MenuScreen::NOTEBOOK) {
+        notebook.option_count = static_cast<std::uint8_t>(
+            std::min<std::size_t>(route_state.top_visible_option_ids.size(),
+                                  notebook.visible_options.size()));
+        for (std::size_t index = 0; index < notebook.option_count; ++index) {
+            notebook.visible_options[index] =
+                static_cast<NotebookMenuOption>(
+                    route_state.top_visible_option_ids[index]);
+        }
+        notebook.selection = static_cast<std::uint8_t>(
+            std::clamp(route_state.top_row.value_or(0), 0,
+                       std::max(0, static_cast<int>(notebook.option_count) - 1)));
+    }
+
+    if (notebook.tips.open) {
+        auto& tips = notebook.tips;
+        tips.visible_count = static_cast<std::uint8_t>(
+            std::min<std::size_t>(route_state.top_visible_source_ids.size(),
+                                  tips.visible_source_indices.size()));
+        for (std::size_t index = 0; index < tips.visible_count; ++index) {
+            tips.visible_source_indices[index] = static_cast<std::uint8_t>(
+                route_state.top_visible_source_ids[index]);
+        }
+        tips.selection = static_cast<std::uint8_t>(
+            std::clamp(route_state.top_page.value_or(0), 0,
+                       std::max(0, static_cast<int>(tips.visible_count) - 1)));
+    } else {
+        notebook.tips.open = false;
+    }
+
+    if (notebook.mr_johnsons.open) {
+        auto& page = notebook.mr_johnsons;
+        page.visible_count = static_cast<std::uint8_t>(
+            std::min<std::size_t>(route_state.top_visible_source_ids.size(),
+                                  page.visible_source_indices.size()));
+        for (std::size_t index = 0; index < page.visible_count; ++index) {
+            page.visible_source_indices[index] = static_cast<std::uint8_t>(
+                route_state.top_visible_source_ids[index]);
+        }
+        const auto selected_row = johnson_detail
+                                      ? route_state.top_detail_row.value_or(0)
+                                      : route_state.top_row.value_or(0);
+        page.selection = static_cast<std::uint8_t>(
+            std::clamp(selected_row, 0,
+                       std::max(0, static_cast<int>(page.visible_count) - 1)));
     }
 }
 
@@ -6204,6 +6323,7 @@ void FieldSceneRuntime::open_command_overview() {
         }
         synchronize_command_overview_clips_from_route(route_state);
         synchronize_command_overview_inventory_from_route(route_state);
+        synchronize_pocket_secretary_notebook_from_route(route_state);
     }
     refresh_command_overview_combat_bars();
     refresh_command_overview_item_detail();
@@ -11482,8 +11602,6 @@ void FieldSceneRuntime::advance_frame() {
         const auto secretary_screen = static_cast<srx::MenuScreen>(
             menu_route_screen_);
         const bool legacy_secretary_child_active =
-            (secretary_screen == srx::MenuScreen::NOTEBOOK &&
-             pocket_secretary_.notebook.open) ||
             (secretary_screen == srx::MenuScreen::CYBERDECK &&
              pocket_secretary_.cyberdeck_unavailable_wait);
         const bool dismiss_runner_was_open = dismiss_runner_.open;
