@@ -10,6 +10,12 @@ Route.register(E.MenuScreen.ATTRIBUTES_SKILLS,
 local wait_any = require("menu.screens.wait_any")
 Route.register(E.MenuScreen.CYBERWARE,
                wait_any.make(E.MenuRegion.FULL))
+local magic = require("menu.screens.magic")
+Route.register(E.MenuScreen.MAGIC, magic.Magic)
+Route.register(E.MenuScreen.MAGICAL_DEFENSE,
+               wait_any.make(E.MenuRegion.FULL))
+Route.register(E.MenuScreen.MAGIC_FORCE, magic.Force)
+Route.register(E.MenuScreen.MAGIC_POSTURE, magic.Posture)
 local clips = require("menu.screens.clips")
 Route.register(E.MenuScreen.CLIPS, clips.Clips)
 Route.register(E.MenuScreen.RELOAD_CONFIRM, clips.Confirm)
@@ -32,6 +38,10 @@ local legacy = require("menu.screens.legacy")
 for screen = E.MenuScreen.ITEM_ACTION, E.MenuScreen.DECK_MAP do
     if screen ~= E.MenuScreen.ATTRIBUTES_SKILLS and
        screen ~= E.MenuScreen.CYBERWARE and
+       screen ~= E.MenuScreen.MAGIC and
+       screen ~= E.MenuScreen.MAGICAL_DEFENSE and
+       screen ~= E.MenuScreen.MAGIC_FORCE and
+       screen ~= E.MenuScreen.MAGIC_POSTURE and
        screen ~= E.MenuScreen.CLIPS and
        screen ~= E.MenuScreen.RELOAD_CONFIRM and
        screen ~= E.MenuScreen.CLIP_TRADE and

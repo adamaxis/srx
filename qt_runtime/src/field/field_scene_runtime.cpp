@@ -5609,6 +5609,11 @@ void FieldSceneRuntime::configure_field_menu_route() {
             member.armor = record.equipped_armor_index;
             member.physical = record.delay_meter;
             member.stun = record.behavior_meter;
+            member.magic_resource = record.auxiliary[0];
+            member.archetype = record.archetype_index;
+            member.magic_force = record.magic_force;
+            member.posture = record.posture;
+            member.magic_table_index = record.magic_table_index;
             member.state_function = record.first_aid_continuation;
             member.inventory = record.inventory_item_codes;
             member.phase = record.inventory_phase_bytes;
@@ -5616,6 +5621,35 @@ void FieldSceneRuntime::configure_field_menu_route() {
             member.skills = record.skills;
         }
         return party;
+    };
+    bindings.game.spell_table = [](const int table_index)
+        -> std::optional<scripting::ScriptMenuSpellTable> {
+        if (table_index < 0 || table_index > 0xFFFF) {
+            return std::nullopt;
+        }
+        const auto* source_table = find_us_magic_spell_table(
+            static_cast<std::uint16_t>(table_index));
+        if (source_table == nullptr ||
+            source_table->entry_count >
+                scripting::ScriptMenuSpellTable{}.entries.size()) {
+            return std::nullopt;
+        }
+        scripting::ScriptMenuSpellTable result;
+        result.entry_count = source_table->entry_count;
+        for (std::size_t index = 0; index < result.entry_count; ++index) {
+            const auto& source_entry = source_table->entries[index];
+            const auto* spell = find_us_magic_spell(source_entry.spell_code);
+            if (spell == nullptr) {
+                return std::nullopt;
+            }
+            result.entries[index] = {
+                source_entry.spell_code,
+                source_entry.force_limit,
+                spell->availability_byte,
+                spell->difficulty_modifier,
+                spell->base_effect};
+        }
+        return result;
     };
     bindings.game.active_slot = [this] {
         return static_cast<int>(field_party_roster_.active_slot());
@@ -5670,6 +5704,11 @@ void FieldSceneRuntime::configure_field_menu_route() {
             record.equipped_armor_index = member.armor;
             record.delay_meter = member.physical;
             record.behavior_meter = member.stun;
+            record.auxiliary[0] = member.magic_resource;
+            record.archetype_index = member.archetype;
+            record.magic_force = member.magic_force;
+            record.posture = member.posture;
+            record.magic_table_index = member.magic_table_index;
             record.first_aid_continuation = member.state_function;
             record.inventory_item_codes = member.inventory;
             record.inventory_phase_bytes = member.phase;
@@ -5734,6 +5773,7 @@ void FieldSceneRuntime::advance_field_menu_route() {
     const auto route_state = game_scripts_.menu_route_snapshot();
     synchronize_command_overview_clips_from_route(route_state);
     synchronize_command_overview_inventory_from_route(route_state);
+    synchronize_command_overview_magic_from_route(route_state);
     if (route_state.page.has_value() && route_state.row.has_value()) {
         command_overview_.sync_script_selection(
             static_cast<std::uint8_t>(*route_state.page),
@@ -5789,6 +5829,92 @@ void FieldSceneRuntime::advance_field_menu_route() {
         dismiss_runner_effect_frames_ = static_cast<std::uint32_t>(
             std::max(0, *route_state.top_grid_effect_frames));
     }
+}
+
+void FieldSceneRuntime::synchronize_command_overview_magic_from_route(
+    const scripting::ScriptMenuRouteSnapshot& route_state) {
+    menu_route_magic_view_.reset();
+    menu_route_magic_physical_defense_ = MagicDefenseStripView{};
+    menu_route_magic_mana_defense_ = MagicDefenseStripView{};
+    if (!route_state.open) {
+        command_overview_magic_state_ = CommandOverviewMagicState::inactive;
+        command_overview_magic_selected_spell_.reset();
+        return;
+    }
+
+    switch (static_cast<srx::MenuScreen>(route_state.top_screen)) {
+    case srx::MenuScreen::MAGIC:
+        command_overview_magic_state_ = CommandOverviewMagicState::spell_panel;
+        break;
+    case srx::MenuScreen::MAGICAL_DEFENSE:
+        command_overview_magic_state_ =
+            CommandOverviewMagicState::magical_defense_wait;
+        break;
+    case srx::MenuScreen::MAGIC_FORCE:
+        command_overview_magic_state_ =
+            CommandOverviewMagicState::spell_force_selection;
+        break;
+    case srx::MenuScreen::MAGIC_POSTURE:
+        command_overview_magic_state_ =
+            CommandOverviewMagicState::spell_posture_selection;
+        break;
+    default:
+        command_overview_magic_state_ = CommandOverviewMagicState::inactive;
+        command_overview_magic_selected_spell_.reset();
+        return;
+    }
+
+    if (!route_state.magic_view.has_value() ||
+        !route_state.magic_view->present) {
+        command_overview_magic_state_ = CommandOverviewMagicState::inactive;
+        source_boundary("field.command_overview.magic.lua_view_missing");
+        return;
+    }
+    const auto& view = *route_state.magic_view;
+    menu_route_magic_view_ = view;
+    command_overview_magic_loop_.selection = {
+        static_cast<std::uint8_t>(std::clamp(view.column, 0, 0xFF)),
+        static_cast<std::uint8_t>(std::clamp(view.row, 0, 0xFF))};
+    command_overview_magic_force_.current_force =
+        static_cast<std::uint16_t>(std::clamp(view.force, 0, 0xFFFF));
+    command_overview_magic_force_.maximum_force =
+        static_cast<std::uint16_t>(std::clamp(view.maximum_force, 0, 0xFFFF));
+    command_overview_magic_cursor_phase_ =
+        static_cast<std::uint8_t>(std::clamp(view.cursor_phase, 0, 0xFF));
+    menu_route_magic_physical_defense_ = {
+        static_cast<std::uint16_t>(std::clamp(
+            view.physical_defense_value, 0, 0xFFFF)),
+        static_cast<std::uint8_t>(std::clamp(
+            view.physical_defense_row, 0, 0xFF))};
+    menu_route_magic_mana_defense_ = {
+        static_cast<std::uint16_t>(std::clamp(
+            view.mana_defense_value, 0, 0xFFFF)),
+        static_cast<std::uint8_t>(std::clamp(
+            view.mana_defense_row, 0, 0xFF))};
+    command_overview_magic_physical_defense_ =
+        menu_route_magic_physical_defense_;
+    command_overview_magic_mana_defense_ = menu_route_magic_mana_defense_;
+
+    if (view.spell_code < 0 || view.spell_code > 0xFF) {
+        command_overview_magic_selected_spell_.reset();
+        return;
+    }
+    const auto* spell = find_us_magic_spell(
+        static_cast<std::uint8_t>(view.spell_code));
+    if (spell == nullptr) {
+        command_overview_magic_selected_spell_.reset();
+        source_boundary("field.command_overview.magic.lua_spell_missing");
+        return;
+    }
+    command_overview_magic_selected_spell_ = MagicSpellSelection{
+        static_cast<std::uint16_t>(std::clamp(
+            view.table_entry_index, 0, 0xFFFF)),
+        static_cast<std::uint8_t>(view.spell_code),
+        static_cast<std::uint8_t>(std::clamp(view.maximum_force, 0, 0xFF)),
+        spell->availability_byte,
+        spell->availability_byte >= 0
+            ? MagicSpellAvailability::available
+            : MagicSpellAvailability::unavailable};
 }
 
 void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
@@ -6323,6 +6449,7 @@ void FieldSceneRuntime::open_command_overview() {
         }
         synchronize_command_overview_clips_from_route(route_state);
         synchronize_command_overview_inventory_from_route(route_state);
+        synchronize_command_overview_magic_from_route(route_state);
         synchronize_pocket_secretary_notebook_from_route(route_state);
     }
     refresh_command_overview_combat_bars();
@@ -11480,7 +11607,7 @@ void FieldSceneRuntime::advance_frame() {
                 field_controller_sample_state_.events);
             return;
         }
-        if (magic_spell_interface_open()) {
+        if (!menu_route_active_ && magic_spell_interface_open()) {
             advance_command_overview_magic(
                 field_controller_sample_state_.events);
             return;
@@ -11519,7 +11646,7 @@ void FieldSceneRuntime::advance_frame() {
             }
             return;
         }
-        if (command_overview_magic_state_ ==
+        if (!menu_route_active_ && command_overview_magic_state_ ==
             CommandOverviewMagicState::magical_defense_wait) {
             // ROM 0x0D94 services VBlank/input until any newly pressed
             // high-byte event arrives, takes one final sample, then 0x11928
@@ -14068,6 +14195,10 @@ void FieldSceneRuntime::paint_command_overview_magic(
     // overview shell is therefore absent beneath transparent Magic cells;
     // its separately presented right-hand field HUD is composed afterward.
     painter.drawImage(0, 0, command_overview_magic_panel_background_);
+    const auto* const lua_view =
+        menu_route_active_ && menu_route_magic_view_.has_value()
+            ? &*menu_route_magic_view_
+            : nullptr;
     const auto* table = find_us_magic_spell_table(
         active_runner_record().magic_table_index);
     if (table != nullptr) {
@@ -14088,11 +14219,16 @@ void FieldSceneRuntime::paint_command_overview_magic(
         }
     }
 
-    if (!command_overview_magic_selected_spell_.has_value()) {
+    const auto selected_spell_code =
+        lua_view != nullptr
+            ? lua_view->spell_code
+            : command_overview_magic_selected_spell_.has_value()
+                  ? static_cast<int>(command_overview_magic_selected_spell_->spell_code)
+                  : -1;
+    if (selected_spell_code < 0 || selected_spell_code > 0xFF) {
         return;
     }
-    const auto spell_code =
-        command_overview_magic_selected_spell_->spell_code;
+    const auto spell_code = static_cast<std::uint8_t>(selected_spell_code);
     const auto* spell = find_us_magic_spell(spell_code);
     if (spell_code < field_menu_text_.magic_spell_names.size()) {
         // ROM 0x10276 sends the selected D4EA0 glyph triplet to C194, which
@@ -14132,16 +14268,24 @@ void FieldSceneRuntime::paint_command_overview_magic(
     draw_field_menu_font_text(
         painter, 160, 104, field_menu_text_.magic_force_posture_labels,
         magic_menu_font_);
-        draw_numeric_visual(
-            painter, magic_menu_font_, 216, 104,
-            command_overview_magic_force_.current_force);
+    draw_numeric_visual(painter, magic_menu_font_, 216, 104,
+                        magic_current_force());
 
     const auto& runner = active_runner_record();
     MagicMenuValueRefreshInput success_input{};
-    success_input.current_force =
-        command_overview_magic_force_.current_force;
+    success_input.current_force = magic_current_force();
     success_input.action_cap = runner.auxiliary[0];
     success_input.active_entity = magic_action_record_from_runner(runner);
+    if (lua_view != nullptr) {
+        if (lua_view->success_row >= 0 &&
+            static_cast<std::size_t>(lua_view->success_row) <
+                command_overview_magic_metric_bars_.size()) {
+            painter.drawImage(
+                32, 88,
+                command_overview_magic_metric_bars_[
+                    static_cast<std::size_t>(lua_view->success_row)]);
+        }
+    } else {
     MagicMenuValueRefreshCallbacks success_callbacks{};
     success_callbacks.resolve_menu_metric =
         [this, &runner, &success_input](
@@ -14200,7 +14344,27 @@ void FieldSceneRuntime::paint_command_overview_magic(
             command_overview_magic_metric_bars_[
                 success.grid_requests.front().row]);
     }
+    }
 
+    if (lua_view != nullptr) {
+        if (lua_view->physical_defense_row >= 0 &&
+            static_cast<std::size_t>(lua_view->physical_defense_row) <
+                command_overview_magic_metric_bars_.size()) {
+            painter.drawImage(
+                32, 128,
+                command_overview_magic_metric_bars_[static_cast<std::size_t>(
+                    lua_view->physical_defense_row)]);
+        }
+        if (lua_view->mana_defense_value != 0 &&
+            lua_view->mana_defense_row >= 0 &&
+            static_cast<std::size_t>(lua_view->mana_defense_row) <
+                command_overview_magic_metric_bars_.size()) {
+            painter.drawImage(
+                32, 144,
+                command_overview_magic_metric_bars_[static_cast<std::size_t>(
+                    lua_view->mana_defense_row)]);
+        }
+    } else {
     MagicMenuValueRefreshInput defense_input{};
     defense_input.refresh_defense_strips = true;
     defense_input.active_entity = success_input.active_entity;
@@ -14226,26 +14390,44 @@ void FieldSceneRuntime::paint_command_overview_magic(
                               command_overview_magic_metric_bars_[request.row]);
         }
     }
+    }
 
     // 0x1088C draws the spell's availability label and seven-tile row only
     // for nonnegative +0x25 values. The negative branch clears that region.
-    if (spell != nullptr && spell->availability_byte >= 0) {
+    const auto availability =
+        lua_view != nullptr ? lua_view->availability
+                            : spell != nullptr ? spell->availability_byte : -1;
+    if (spell != nullptr && availability >= 0) {
         draw_field_menu_font_text(
             painter, 160, 80, field_menu_text_.magic_availability_label,
             magic_menu_font_);
-        const auto availability = static_cast<std::size_t>(
-            spell->availability_byte);
-        if (availability < command_overview_magic_availability_bars_.size()) {
+        const auto availability_index =
+            static_cast<std::size_t>(availability);
+        if (availability_index <
+            command_overview_magic_availability_bars_.size()) {
             painter.drawImage(
                 160, 88,
-                command_overview_magic_availability_bars_[availability]);
+                command_overview_magic_availability_bars_[availability_index]);
         }
     }
 
     // 0x105E6 writes `None` at C68C for nonpositive residuals, otherwise the
     // selected seven-tile C86F8 row at C688. The typed calculation consumes
     // the active runner and spell records; the extracted rows supply pixels.
-    if (spell != nullptr) {
+    if (spell != nullptr && lua_view != nullptr) {
+        if (lua_view->effect_value <= 0) {
+            draw_field_menu_font_text(painter, 48, 104,
+                                      field_menu_text_.none_label,
+                                      magic_menu_font_);
+        } else if (lua_view->effect_row >= 0 &&
+                   static_cast<std::size_t>(lua_view->effect_row) <
+                       command_overview_magic_damage_bars_.size()) {
+            painter.drawImage(
+                32, 104,
+                command_overview_magic_damage_bars_[static_cast<std::size_t>(
+                    lua_view->effect_row)]);
+        }
+    } else if (spell != nullptr) {
         const MagicActionEffectValueInput effect_input{
             command_overview_magic_force_.current_force,
             magic_action_record_from_runner(runner), *spell};
@@ -14303,9 +14485,9 @@ void FieldSceneRuntime::paint_command_overview_magic(
                           static_cast<std::uint16_t>(maximum_force + 2U)),
                       112, command_overview_magic_force_meter_tiles_[1]);
 
-    const auto selection = command_overview_magic_loop_.selection;
+    const auto selection = magic_spell_selection();
     const auto phase = static_cast<std::size_t>(
-        command_overview_magic_cursor_phase_ %
+        magic_cursor_phase() %
         command_overview_magic_cursor_frames_.size());
     painter.drawImage(
         static_cast<int>(selection.column) * 32,
@@ -15137,12 +15319,16 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
 
     if (command_overview_magic_state_ ==
         CommandOverviewMagicState::magical_defense_wait) {
-        // ROM 0xFBA6 writes C89C0 at name-plane C31C (screen 112,48), then
-        // 0x106DA writes 13-tile strips at C51E/C69E (120,80 and 120,104).
-        // The encoded title begins with a blank tile. VDP name-plane writes
-        // replace the covered cells, including that blank; clear the same
-        // 16-tile text row before the transparent host-font draw so parent
-        // command text cannot show through its leading space or title cells.
+        // ROM 0xFBA6 rebuilds the common menu row (0x11900), clears the
+        // central menu grid (0x12C36), then writes C89C0 at C31C and the two
+        // 13-tile strips at C51E/C69E. Replace the Qt panel's previous status
+        // text/details with its named blank background before drawing this
+        // screen; otherwise model, weapon, and Atk/Def content leaks through
+        // the Magical Defense title and bars.
+        constexpr QRect kMagicDefenseContentRect{96, 16, 168, 144};
+        painter.drawImage(kMagicDefenseContentRect,
+                          command_overview_background_,
+                          kMagicDefenseContentRect);
         painter.fillRect(112, 48,
                          static_cast<int>(
                              field_menu_text_.magic_defense_title.size()) * 8,

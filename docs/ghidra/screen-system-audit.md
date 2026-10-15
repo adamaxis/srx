@@ -561,11 +561,11 @@ The spell text table at ROM `0xD4EA0` now has semantic IDs in
 all 13 names, all 13 descriptions, and seven shared panel labels. The field
 text catalog resolves those keys into the typed presenter; the native runner
 spell table still controls which spells appear for each archetype. For the
-non-magic fallback at `0xFBA6`, the source writes a 16-cell ` Magical Defense`
-title row (including its leading blank) and overlays the two defense strips
-while retaining the shared command/status page. The Qt renderer clears that
-title row before its transparent host-font draw to preserve the source's
-blank-cell overwrite and prevent stale parent glyphs.
+non-magic fallback at `0xFBA6`, the source rebuilds the center menu grid before
+writing a 16-cell ` Magical Defense` title row (including its leading blank)
+and the two defense strips. The outer runner frame, posture control, command
+tab, and right HUD remain. Qt now redraws the center panel before the title
+and bars, so old status/item text is not visible behind the fallback.
 
 The manual and the source both make posture consequential: the five settings
 are Full Defense, Med Defense, Neutral, Med Offense, and Full Offense; computer

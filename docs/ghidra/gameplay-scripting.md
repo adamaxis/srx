@@ -254,14 +254,12 @@ rather than a second Lua copy.
   name and description. It also declares seven explicit keys for the shared
   Magic panel labels and headings. The field text catalog reads these menus
   from Lua and binds the ROM copy back to the typed presenter; script and
-  catalog QA check every ID, key, value, and source ordering. The runner's
-  spell table still filters available spells, and force, posture, and cursor
-  timing remain native state. Actor spell-effect timing and target fan-out live
+  catalog QA check every ID, key, value, and source ordering. The typed host spell catalog provides source facts, while Lua owns spell
+  selection, force/posture input, and the seven-frame cursor cadence. Actor spell-effect timing and target fan-out live
   in `actor/actions.lua` and `actor/heartbeat.lua`; C++ forwards scene/record facts and presents its phase
   output. The non-magic
-  `Magical Defense` fallback overlays its title and two bars on the shared
-  page; the host renderer clears the title's source-written leading blank
-  cell along with the title row so the parent glyph cannot show through.
+  `Magical Defense` fallback redraws the center content panel before its title and bars, so old
+  status and item details do not remain underneath.
 - `gameplay/scripts/hotel.lua` declares stable choice IDs for the Hotel
   Options and checkout cursor menus, including their explicit title and
   ordered choice-label keys. Its `text_keys()` map binds the separator,

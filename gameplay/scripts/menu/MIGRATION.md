@@ -7,9 +7,9 @@ Tests: `lua5.4 tests/menu_tests.lua` (27 checks).
 `field_init.lua` is the runtime registry. A script module counts as connected
 only when this profile registers it and the live Qt route exercises its host
 services. The Pocket Secretary root, Group Items, Dismiss Runner, Notebook,
-Tips & Clues, and Mr. Johnsons are Lua-owned. Cyberdeck, Save/Load, and Debug
-still use the C++ adapter. Unregistered Magic and deck-screen modules in this
-tree are drafts, not completed ports.
+Tips & Clues, Mr. Johnsons, and Magic/Force/Posture routes are Lua-owned.
+Cyberdeck, Save/Load, and Debug still use the C++ adapter. Matrix/deck-screen
+behavior is not yet connected to the live field route.
 
 ## Moved blocks
 | FSR / bridge location | what | new home | status |
@@ -17,11 +17,11 @@ tree are drafts, not completed ports.
 | FSR 10498-10509 | per-frame wait/latch/sample | C++ stays: sample, then `route.frame(events)` | skeleton |
 | FSR 10510-10571 | command-view Attributes/Skills child | `screens/attributes.lua` (`Attributes`, view-only); Qt presenter mirrors Lua cursor | **ported for command view** |
 | FSR 10572-10576 | clips branch (advance 6049) | legacy CLIPS | port queue |
-| FSR 10577-10581 | magic spell interface (advance 5914) | legacy MAGIC | port queue |
+| FSR 10577-10581 | magic spell interface (advance 5914) | `screens/magic.lua` + `rules/magic.lua`; typed spell table host binding | **ported for menu, metrics, force/posture, and equipment selection**; field casting remains separate |
 | FSR 10582-10598 | automatic_use 6581, first_aid 6597, inventory_trade 6400 | children of ITEM_ACTION (legacy) | port queue |
 | FSR 10599-10602 | selector-suppressed latch | dropped: the route stack makes it unnecessary [H, verify after ITEM_ACTION port] | removed |
 | FSR 10603-10612 | Cyberware full-screen wait/return | `screens/wait_any.lua` (`FULL`); Qt presenter builds the typed +0x90 rows | **ported** |
-| FSR 10613-10625 | magical_defense_wait | `wait_any` (MAGICAL_DEFENSE); MAGIC pushes it once ported | ported module |
+| FSR 10613-10625 | magical_defense_wait | `wait_any` (MAGICAL_DEFENSE); Magic pushes it on the class/resource fallback | **ported** |
 | FSR 10626-10692 | posture dialog | `screens/posture.lua` | **ported** (fix D4) |
 | FSR 10693-10938 | Pocket Secretary root and child loops | `screens/pocket_secretary.lua` owns root, Group Items, Dismiss Runner, Notebook, Tips & Clues, and Mr. Johnsons behavior; C++ projects typed source facts and draws the resulting state | those routes ported; other child loops remain queued |
 | FSR 10939-10945 | inventory_action (6471, discard 6333) | legacy ITEM_ACTION | port queue |
@@ -59,7 +59,7 @@ Sound sites for all of these: out/menu_sound_sites.txt (0x25 = move/toggle, 0x24
 - D20 Automatic-use items (0x13, 0x14, 0x16, 0x18..0x2B: fetish, passkey, smart goggles, foci, talisman, spell lock, totems) only print "This item is automatically used." (0xD202F) and wait (0x12168 -> 0x121C0). The menu applies no effect, so nothing is missing from the port [C]. The passive effects are read elsewhere by code; that's outside the menu scope.
 - D21 Pocket Secretary row 5 = the debug menu 0x599DA (docs/12). A `screens/debug_menu.lua` draft exists but is not registered in `field_init.lua`; FFF101 is also not connected to the active field context, so the hidden row is not reachable in the live route.
 
-- D22 Magic rule/screen drafts exist under `rules/magic.lua` and `screens/magic.lua`, but Magic is not registered in the active field route and still enters the C++ adapter.
+- D22 Magic rules and screens are registered in the active field route. Lua owns class/resource routing, spell selection, success/effect/defense values, force/posture input, equipment publication, and cursor cadence; C++ supplies typed ROM spell records and paints the resulting view. Field spell casting/target effects remain a separate gameplay route.
 - D23 Pick System return path still needs live route wiring and Qt verification; the Matrix route is not active in `field_init.lua`.
 
 ## Timing contract [C unless marked]
@@ -68,11 +68,11 @@ Sound sites for all of these: out/menu_sound_sites.txt (0x25 = move/toggle, 0x24
 - A full build = `blank(OFF)`, then FULL, then `blank(ON)`. That gives at least one black frame; the exact count is [H] (it depends on the build length, not measured).
 
 ## Port queue (next)
-Done in the active route: command/posture, item actions, Clips, Attributes/Skills, Pocket Secretary root, Group Items, Dismiss Runner, Notebook no-run flow, Tips & Clues, and Mr. Johnsons. Magic, Cyberdeck/Matrix, Save/Load, and Debug screens still use C++ adapters or are not active route ports.
+Done in the active route: command/posture, item actions, Clips, Attributes/Skills, Pocket Secretary root, Group Items, Dismiss Runner, Notebook no-run flow, Tips & Clues, Mr. Johnsons, and the Magic/Force/Posture menu route. Cyberdeck, Save/Load, and Debug screens still use C++ adapters; Matrix/deck behavior has Lua rules and screens but no complete live route wiring.
 Open source/behavior boundaries: the drain-damage tail at 0x1046E, FFF0B1 inside the Matrix, FFF101 cheat-state import, and child-loop migration.
 In-game wiring: host/menu_game_fsr.sketch.cpp (MenuGame/MenuHost over srx FieldSceneRuntime, file:line per service).
 
-Order: MAGIC (5914, 0xFBA6), then remaining POCKET_SECRETARY child routes (C376 widget/extended caller), Cyberdeck/Matrix, Save/Load, and Debug. Notebook's positive-current-run record path, Contacts, Shadowrunners, and restored-save fact import are explicit open boundaries.
+Order: remaining POCKET_SECRETARY child routes (C376 widget/extended caller), then Cyberdeck/Matrix, Save/Load, and Debug. Notebook's positive-current-run record path, Contacts, Shadowrunners, restored-save fact import, and spell cast/target resolution are explicit open boundaries.
 Each one replaces its `legacy(...)` line in menu/init.lua.
 
 - D24 A `screens/save_load.lua` draft exists but is not registered in the active profile; live Save/Load behavior is still behind the adapter.

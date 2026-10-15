@@ -765,28 +765,31 @@ longplay frames remain the independent appearance evidence.
 
 ### Applied review: Magical Defense fallback
 
-1. **Appearance:** before the change, page-5 A had no Qt subview. The ROM
-   branch writes a `Magical Defense` heading over the command/status page and
-   two numeric strips. Inspected `magic_tab.bmp`, `actual.bmp`, `held.bmp`,
-   and `return.bmp` under
-   `build/archive/build-qt-magic-qa/qt_runtime/field-magic-qa/`.
-   The current 320x224 output follows the traced overlay positions; its match
-   to an actual Genesis Magic screen remains unknown.
+1. **Appearance:** before the correction, page-5 A had a Qt subview but kept
+   the old model, weapon, and Atk/Def content visible behind the defense view.
+   ROM calls `0x11900` and `0x12C36` before drawing the title and two strips;
+   the latter rebuilds the center content grid. Qt now redraws the center from
+   the named background, retaining the outer frame, runner portrait, posture
+   panel, command tab, and right HUD. The current 320x224 output follows the
+   traced panel and strip positions; its match to an actual Genesis Magic
+   screen remains unknown.
 2. **Behavioral state:** page-5 A now dispatches into typed
    `CommandOverviewMagicState::magical_defense_wait`. ROM `0xFBA6` chooses the
    spell panel only when `+0x9B < 2` and `+0x7F != 0`; otherwise it chooses
-   this fallback. The QA fixture uses the Gator field composition and sets
-   typed `+0x7F` to zero to exercise the class-1 fallback. Both plans use the
+   this fallback. The Qt QA uses Samurai's unmodified startup record (class
+   2, `+0x7F=0`); a separate conversion case covers class 1 with zero resource.
+   Both plans use the
    three party records, the `+0x10` active flag, class, item-0x18 skill, and
    separate active-runner attributes `+0x77`/`+0x7C`. A new input edge exits;
    the runner's inventory, equipment, force, posture, and ammo stay unchanged.
-3. **Visual construction:** ROM `0xFBA6` sends `C89C0` to `C31C` at
-   `(112,48)`, then calls `0x106DA` with `D2=0` and `D2=-1` for the physical
-   and mana strips. The plans target `C51E`/`C69E`, use 13 tiles at stride
-   `0x1A`, and select 104x8 source rows from `0xCF610` at `(120,80)` and
-   `(120,104)`. The Qt capture matches the named strip assets at those spots
-   and retains the page shell, selected tab, and right HUD. This is a same-
-   source placement check, not proof of Genesis visual fidelity.
+3. **Visual construction:** ROM `0xFBA6` rebuilds the center content through
+   `0x12C36`, sends `C89C0` to `C31C` at `(112,48)`, then calls `0x106DA`
+   with `D2=0` and `D2=-1` for the physical and mana strips. The plans target
+   `C51E`/`C69E`, use 13 tiles at stride `0x1A`, and select 104x8 source rows
+   from `0xCF610` at `(120,80)` and `(120,104)`. The Qt capture now matches
+   the named strip assets at those spots without old status labels beneath
+   them. This is a same-source placement check, not proof of Genesis visual
+   fidelity.
 4. **Animation:** the fallback draws once, then calls `0x0D94` to service
    VBlank/input until a high-byte controller event and take its final sample.
    It does not enter the spell cursor/sprite loop or advance a Magic timer.
@@ -800,8 +803,9 @@ longplay frames remain the independent appearance evidence.
    issue no additional sound. The CTest checks event delivery, not audible
    playback on a speaker.
 6. **Related screen parts:** the full screenshot checks the command shell,
-   selected tab, page content, archetype face, and persistent right HUD. The
-   return image equals the same page-5 image and record fields are unchanged.
+   selected tab, cleared center panel, archetype face, posture panel, and
+   persistent right HUD. The return image equals the same page-5 image and
+   record fields are unchanged.
    The other `0xFBA6` branch remains open: it clears/loads a separate spell
    panel and needs spell cursor visuals, force selection, target/effect, and
    result/return behavior.
@@ -809,12 +813,14 @@ longplay frames remain the independent appearance evidence.
    these are Qt captures. Sections 01-07 of the independent longplay do not
    show this Magic panel. Keep the route `partial` and obtain multiple real-
    game Magic frames before making a visual-correctness claim.
-8. **Interface cleanup:** the fallback is a status-page overlay in the ROM,
-   not the spell-capable full-page Magic screen. Its 16-cell heading data
-   starts with a blank tile and replaces the `Mental 100%` row through its
-   final cell; the command frame is otherwise retained by design. The
+8. **Interface cleanup:** the fallback is not the spell-capable full-page
+   Magic screen, but it does replace the center content. The earlier Qt path
+   incorrectly retained model, weapon, and combat-detail text under the
+   defense strips. It now redraws the center panel before painting the
+   16-cell heading (whose first tile is blank) and bars. The runner frame,
+   portrait, posture control, selected command tab, and right HUD remain. The
    spell-capable path at `0xFC22` clears Plane A before drawing its separate
-   panel. Neither route requires drawing new buttons over old command buttons.
+   panel.
 
 ### Applied review: Cyberware shared command panel
 

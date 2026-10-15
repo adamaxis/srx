@@ -19962,6 +19962,7 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
+                field_audio_events.clear();
                 tap_qa_controller_button(field_scene, 0x40U);
                 if (!field_scene.magic_spell_panel_open() ||
                     !field_scene.magic_selected_spell().has_value() ||
@@ -19971,7 +19972,18 @@ int main(int argc, char** argv) {
                         std::vector<std::uint16_t>{0x24U}) {
                     std::cerr << "field Magic spell dump: A did not enter "
                                  "the typed spell panel or emit the parent "
-                                 "action event\n";
+                                 "action event (panel="
+                              << field_scene.magic_spell_panel_open()
+                              << ", force="
+                              << field_scene.magic_force_selection_open()
+                              << ", selected="
+                              << field_scene.magic_selected_spell().has_value()
+                              << ", route_failure=" << field_scene.failure()
+                              << ", sounds=";
+                    for (const auto sound : field_audio_events) {
+                        std::cerr << static_cast<unsigned>(sound) << ',';
+                    }
+                    std::cerr << ")\n";
                     return 3;
                 }
                 const auto spell_panel_scene = render_scene();
@@ -20222,24 +20234,32 @@ int main(int argc, char** argv) {
                     field_scene.magic_selected_spell().has_value() ||
                     !field_scene.command_overview_open() ||
                     field_scene.command_overview_view().source_state
-                            .primary_page != 5U ||
+                            .primary_page != 6U ||
                     field_scene.active_runner_record().magic_force !=
                         initial_record.magic_force ||
                     field_scene.active_runner_record().auxiliary !=
                         initial_record.auxiliary ||
                     field_audio_events !=
-                        std::vector<std::uint16_t>{0x24U}) {
+                        std::vector<std::uint16_t>{0x24U, 0x25U}) {
                     std::cerr << "field Magic spell dump: Start did not "
-                                 "return to page 5 without record changes\n";
+                                 "reinitialize to Pocket Secretary without "
+                                 "record changes\n";
                     return 3;
                 }
                 const auto return_scene = render_scene();
-                if (return_scene != page_scene ||
+                if (!field_command_shell_survives(return_scene, asset_root) ||
+                    !field_hud_chrome_survives(return_scene, asset_root) ||
                     !save_scene("return", return_scene)) {
-                    std::cerr << "field Magic spell dump: return did not "
-                                 "restore page 5\n";
+                    std::cerr << "field Magic spell dump: Pocket Secretary "
+                                 "return frame failed\n";
                     return 3;
                 }
+                if (!field_scene.seek_command_overview_page(5U)) {
+                    std::cerr << "field Magic spell dump: could not return "
+                                 "to the Magic command tab for re-entry\n";
+                    return 3;
+                }
+                field_audio_events.clear();
                 tap_qa_controller_button(field_scene, 0x40U);
                 if (!field_scene.magic_spell_panel_open() ||
                     field_scene.magic_spell_selection().column != 0U ||
@@ -20247,8 +20267,7 @@ int main(int argc, char** argv) {
                     !field_scene.magic_selected_spell().has_value() ||
                     field_scene.magic_selected_spell()->spell_code !=
                         first_spell ||
-                    field_audio_events !=
-                        std::vector<std::uint16_t>{0x24U, 0x24U}) {
+                    field_audio_events != std::vector<std::uint16_t>{0x24U}) {
                     std::cerr << "field Magic spell dump: re-entry did not "
                                  "reset the source cursor/table state\n";
                     return 3;
@@ -20284,7 +20303,7 @@ int main(int argc, char** argv) {
                     font_text_pixels_match(force_selection_scene, magic_font,
                                            32, 48, kManaZapDescription) ||
                     field_audio_events !=
-                        std::vector<std::uint16_t>{0x24U, 0x24U} ||
+                        std::vector<std::uint16_t>{0x24U} ||
                     !save_scene("force_selection", force_selection_scene)) {
                     std::cerr << "field Magic spell dump: A did not enter "
                                  "the source Set Force & Posture view, clear "
@@ -20310,7 +20329,7 @@ int main(int argc, char** argv) {
                         field_scene.magic_current_force() != 3U ||
                         force_cursor_scene == previous_force_cursor_scene ||
                         field_audio_events !=
-                            std::vector<std::uint16_t>{0x24U, 0x24U} ||
+                            std::vector<std::uint16_t>{0x24U} ||
                         !save_scene("force_cursor_phase_" +
                                         std::to_string(
                                             expected_force_cursor_phase),
@@ -20408,14 +20427,15 @@ int main(int argc, char** argv) {
                 if (field_scene.magic_spell_panel_open() ||
                     !field_scene.command_overview_open() ||
                     field_scene.command_overview_view().source_state
-                            .primary_page != 5U ||
+                            .primary_page != 6U ||
                     field_scene.active_runner_record().equipped_item_code !=
                         static_cast<std::uint8_t>(first_spell + 1U) ||
                     field_scene.active_runner_record().magic_force != 3U ||
                     field_audio_events !=
-                        std::vector<std::uint16_t>{0x24U, 0x24U}) {
+                        std::vector<std::uint16_t>{0x24U, 0x25U}) {
                     std::cerr << "field Magic spell dump: Start did not "
-                                 "return to page 5 with spell state intact\n";
+                                 "reinitialize to page 6 with spell state "
+                                 "intact\n";
                     return 3;
                 }
                 field_scene.set_controller_port_byte(0U);
@@ -20431,7 +20451,7 @@ int main(int argc, char** argv) {
                           << " spell=" << static_cast<int>(first_spell)
                           << "->" << static_cast<int>(moved_spell->spell_code)
                           << " cursor=4x7frames force=1..3 posture=0..4 "
-                             "equip=record+0x57/+0x9D return=page5\n";
+                             "equip=record+0x57/+0x9D return=page6\n";
                 return 0;
             }
             if (field_magic_dump_path.has_value()) {
@@ -20489,6 +20509,9 @@ int main(int argc, char** argv) {
                                left.ammo_clips == right.ammo_clips;
                     };
                 const auto region_matches = image_region_matches_rgb32_asset;
+                const QImage command_background(QString::fromStdWString(
+                    (asset_root / "menu" / "field" / "background.bmp")
+                        .wstring()));
 
                 const auto page_scene = render_scene();
                 if (!field_command_shell_survives(page_scene, asset_root) ||
@@ -20500,6 +20523,7 @@ int main(int argc, char** argv) {
                                  "portrait, or initial capture failed\n";
                     return 3;
                 }
+                field_audio_events.clear();
                 tap_qa_controller_button(field_scene, 0x40U);
                 if (!field_scene.magic_defense_open() ||
                     field_scene.magic_spell_interface_open() ||
@@ -20529,7 +20553,12 @@ int main(int argc, char** argv) {
                 if (field_audio_events !=
                     std::vector<std::uint16_t>{0x24U}) {
                     std::cerr << "field Magic dump: command-action sound "
-                                 "event 0x24 was not emitted exactly once\n";
+                                 "event 0x24 was not emitted exactly once; sounds=";
+                    for (const auto sound : field_audio_events) {
+                        std::cerr << static_cast<unsigned>(sound) << ',';
+                    }
+                    std::cerr << " route_failure=" << field_scene.failure()
+                              << '\n';
                     return 3;
                 }
                 const auto& physical =
@@ -20581,15 +20610,27 @@ int main(int argc, char** argv) {
                      ("defense-bar-" + std::to_string(mana.bar_row) + ".bmp"))
                         .wstring()));
                 const auto actual_scene = render_scene();
+                const auto panel_matches_background =
+                    [&](const int x, const int y, const int width,
+                        const int height) {
+                        return region_matches(
+                            actual_scene,
+                            command_background.copy(x, y, width, height),
+                            x, y);
+                    };
                 if (physical.value != expected_physical ||
                     mana.value != expected_mana ||
                     !valid_view(physical) || !valid_view(mana) ||
                     !region_matches(actual_scene, expected_physical_bar,
                                     120, 80) ||
                     !region_matches(actual_scene, expected_mana_bar,
-                                    120, 104)) {
+                                    120, 104) ||
+                    !panel_matches_background(128, 64, 120, 16) ||
+                    !panel_matches_background(112, 112, 8, 8) ||
+                    !panel_matches_background(128, 120, 120, 40)) {
                     std::cerr << "field Magic dump: physical/mana values, "
-                                 "source rows, or strip placement diverged\n";
+                                 "source rows, strip placement, or cleared "
+                                 "center panel diverged\n";
                     return 3;
                 }
                 int title_ink = 0;
@@ -20641,7 +20682,7 @@ int main(int argc, char** argv) {
                     !same_runner_action_state(
                         initial_record, field_scene.active_runner_record()) ||
                     field_audio_events !=
-                        std::vector<std::uint16_t>{0x24U}) {
+                        std::vector<std::uint16_t>{0x24U, 0x25U}) {
                     std::cerr << "field Magic dump: return edge escaped "
                                  "page 5 or mutated the runner record\n";
                     return 3;

@@ -572,6 +572,7 @@ struct GameScriptRuntime::Impl {
         leader_archetype,
         inventory_item,
         party,
+        spell_table,
         active_slot,
         magazine_capacity,
         set_runner_ammo,
@@ -758,7 +759,7 @@ struct GameScriptRuntime::Impl {
             lua_createtable(lua, static_cast<int>(party.size()), 0);
             for (std::size_t index = 0; index < party.size(); ++index) {
                 const auto& member = party[index];
-                lua_createtable(lua, 0, 14);
+                lua_createtable(lua, 0, 20);
                 const auto set_integer = [lua](const char* name,
                                                const lua_Integer value) {
                     lua_pushinteger(lua, value);
@@ -772,6 +773,11 @@ struct GameScriptRuntime::Impl {
                 set_integer("armor", member.armor);
                 set_integer("physical", member.physical);
                 set_integer("stun", member.stun);
+                set_integer("magic", member.magic_resource);
+                set_integer("archetype", member.archetype);
+                set_integer("force", member.magic_force);
+                set_integer("posture", member.posture);
+                set_integer("magic_table_index", member.magic_table_index);
                 set_integer("state_function", member.state_function);
                 const auto push_array = [lua](const char* name,
                                               const auto& values) {
@@ -790,6 +796,38 @@ struct GameScriptRuntime::Impl {
                 push_array("skills", member.skills);
                 lua_rawseti(lua, -2, static_cast<lua_Integer>(index));
             }
+            return 1;
+        }
+        case MenuBinding::spell_table: {
+            const auto table = self->menu_route_bindings.game.spell_table
+                                   ? self->menu_route_bindings.game.spell_table(
+                                         integer_argument(1))
+                                   : std::nullopt;
+            if (!table.has_value()) {
+                lua_pushnil(lua);
+                return 1;
+            }
+            lua_createtable(lua, 0, 2);
+            lua_pushinteger(lua, table->entry_count);
+            lua_setfield(lua, -2, "entry_count");
+            lua_createtable(lua, table->entry_count, 0);
+            for (std::size_t index = 0; index < table->entry_count;
+                 ++index) {
+                const auto& entry = table->entries[index];
+                lua_createtable(lua, 0, 5);
+                lua_pushinteger(lua, entry.code);
+                lua_setfield(lua, -2, "code");
+                lua_pushinteger(lua, entry.force_limit);
+                lua_setfield(lua, -2, "force_limit");
+                lua_pushinteger(lua, entry.availability);
+                lua_setfield(lua, -2, "availability");
+                lua_pushinteger(lua, entry.difficulty_modifier);
+                lua_setfield(lua, -2, "difficulty_modifier");
+                lua_pushinteger(lua, entry.base_effect);
+                lua_setfield(lua, -2, "base_effect");
+                lua_rawseti(lua, -2, static_cast<lua_Integer>(index + 1U));
+            }
+            lua_setfield(lua, -2, "entries");
             return 1;
         }
         case MenuBinding::active_slot:
@@ -886,6 +924,18 @@ struct GameScriptRuntime::Impl {
                     member.physical =
                         bounded_byte(member_index, "physical");
                     member.stun = bounded_byte(member_index, "stun");
+                    member.magic_resource =
+                        bounded_byte(member_index, "magic");
+                    member.archetype =
+                        bounded_byte(member_index, "archetype");
+                    member.magic_force =
+                        bounded_byte(member_index, "force");
+                    member.posture =
+                        bounded_byte(member_index, "posture");
+                    member.magic_table_index = static_cast<std::uint16_t>(
+                        std::clamp<lua_Integer>(
+                            read_integer(member_index, "magic_table_index", 0),
+                            0, 0xFFFF));
                     member.state_function = static_cast<std::uint32_t>(
                         std::clamp<lua_Integer>(
                             read_integer(member_index, "state_function", 0),
@@ -1047,6 +1097,8 @@ struct GameScriptRuntime::Impl {
         add_menu_binding(state, table_index, "inventory_item",
                          MenuBinding::inventory_item);
         add_menu_binding(state, table_index, "party", MenuBinding::party);
+        add_menu_binding(state, table_index, "spell_table",
+                         MenuBinding::spell_table);
         add_menu_binding(state, table_index, "active_slot",
                          MenuBinding::active_slot);
         add_menu_binding(state, table_index, "magazine_capacity",
@@ -1184,6 +1236,52 @@ struct GameScriptRuntime::Impl {
                     read_optional(screen_state_index, "target");
                 menu_route_state.top_grid_effect_frames =
                     read_optional(screen_state_index, "grid_effect_frames");
+                lua_getfield(state, screen_state_index, "magic_view");
+                if (lua_istable(state, -1)) {
+                    const auto view_index = lua_absindex(state, -1);
+                    ScriptMenuRouteSnapshot::MagicView view;
+                    view.present = true;
+                    view.row = read_optional(view_index, "row").value_or(0);
+                    view.column =
+                        read_optional(view_index, "column").value_or(0);
+                    view.table_entry_index =
+                        read_optional(view_index, "table_entry_index")
+                            .value_or(0);
+                    view.spell_code =
+                        read_optional(view_index, "spell_code").value_or(-1);
+                    view.force =
+                        read_optional(view_index, "force").value_or(1);
+                    view.maximum_force =
+                        read_optional(view_index, "maximum_force").value_or(1);
+                    view.success_value =
+                        read_optional(view_index, "success_value").value_or(0);
+                    view.success_row =
+                        read_optional(view_index, "success_row").value_or(-1);
+                    view.effect_value =
+                        read_optional(view_index, "effect_value").value_or(0);
+                    view.effect_row =
+                        read_optional(view_index, "effect_row").value_or(-1);
+                    view.availability =
+                        read_optional(view_index, "availability").value_or(-1);
+                    view.physical_defense_value =
+                        read_optional(view_index, "physical_defense_value")
+                            .value_or(0);
+                    view.physical_defense_row =
+                        read_optional(view_index, "physical_defense_row")
+                            .value_or(-1);
+                    view.mana_defense_value =
+                        read_optional(view_index, "mana_defense_value")
+                            .value_or(0);
+                    view.mana_defense_row =
+                        read_optional(view_index, "mana_defense_row")
+                            .value_or(-1);
+                    view.posture =
+                        read_optional(view_index, "posture").value_or(0);
+                    view.cursor_phase =
+                        read_optional(view_index, "cursor_phase").value_or(0);
+                    menu_route_state.magic_view = view;
+                }
+                lua_pop(state, 1);
                 lua_getfield(state, screen_state_index, "grid_cells");
                 if (lua_istable(state, -1)) {
                     menu_route_state.top_grid_cells_present = true;

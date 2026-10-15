@@ -691,15 +691,17 @@ Classes 0/1 enter the spell-panel branch only when resource/cap byte `+0x7F`
 is nonzero. That path uses `0x11900`/`0x12C36`, the `+0xA0` table selector,
 `FFF10E` spell-panel state, and later spell/force/target helpers. If the class
 is 2 or greater, or class 0/1 has `+0x7F == 0`, ROM takes the Magical Defense
-fallback instead. It prepares the command row, writes `C89C0` (`Magical
-Defense`) to `C31C`, then calls `0x106DA` twice with `D2=0` and `D2=-1`.
+fallback instead. It prepares the command row and clears/rebuilds the center
+content grid through `0x12C36`, then writes `C89C0` (`Magical Defense`) to
+`C31C` and calls `0x106DA` twice with `D2=0` and `D2=-1`.
 Those calls build independent physical and mana values from active-party
 `+0x10`/class/item-0x18 state and the active runner's `+0x77`/`+0x7C`, then
 write 13-tile rows at `C51E` and `C69E` from `0xCF610` (stride `0x1A`,
 palette `0x2000`). It waits through `0x0D94` for a fresh controller event
-before `0x11928` restores the command row. This fallback does not clear the
-whole menu plane. The Qt executable connects this static subpath and its
-parent `0x24` action event.
+before `0x11928` restores the command row. It replaces the center content but
+does not clear the whole menu plane, so the runner frame and right HUD remain.
+The Qt executable connects this static subpath and its parent `0x24` action
+event.
 
 For the spell-capable branch, `0x10260` builds the selected spell/force state;
 `0x10276` writes the selected spell's 3x3 glyph beside its title, text, and

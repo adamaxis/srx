@@ -61,6 +61,7 @@
 #include "field_menu_text_catalog.hpp"
 #include "shop_menu_runtime.hpp"
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
+#include "enums.hpp"
 
 #include <array>
 #include <cstddef>
@@ -729,32 +730,68 @@ public:
         return command_overview_cyberware_active_;
     }
     bool magic_defense_open() const noexcept {
+        if (menu_route_active_) {
+            return menu_route_screen_ == static_cast<std::uint16_t>(
+                                             srx::MenuScreen::MAGICAL_DEFENSE);
+        }
         return command_overview_magic_state_ ==
                CommandOverviewMagicState::magical_defense_wait;
     }
     bool magic_spell_panel_open() const noexcept {
+        if (menu_route_active_) {
+            return menu_route_screen_ == static_cast<std::uint16_t>(
+                                             srx::MenuScreen::MAGIC);
+        }
         return command_overview_magic_state_ ==
                CommandOverviewMagicState::spell_panel;
     }
     bool magic_force_selection_open() const noexcept {
+        if (menu_route_active_) {
+            return menu_route_screen_ == static_cast<std::uint16_t>(
+                                             srx::MenuScreen::MAGIC_FORCE);
+        }
         return command_overview_magic_state_ ==
                CommandOverviewMagicState::spell_force_selection;
     }
     bool magic_posture_selection_open() const noexcept {
+        if (menu_route_active_) {
+            return menu_route_screen_ == static_cast<std::uint16_t>(
+                                             srx::MenuScreen::MAGIC_POSTURE);
+        }
         return command_overview_magic_state_ ==
                CommandOverviewMagicState::spell_posture_selection;
     }
     bool magic_spell_interface_open() const noexcept {
+        if (menu_route_active_) {
+            return (magic_spell_panel_open() ||
+                    magic_force_selection_open() ||
+                    magic_posture_selection_open()) &&
+                   menu_route_magic_view_.has_value();
+        }
         return magic_spell_panel_open() || magic_force_selection_open() ||
                magic_posture_selection_open();
     }
     std::uint16_t magic_current_force() const noexcept {
+        if (menu_route_active_ && menu_route_magic_view_.has_value()) {
+            return static_cast<std::uint16_t>(std::clamp(
+                menu_route_magic_view_->force, 0, 0xFFFF));
+        }
         return command_overview_magic_force_.current_force;
     }
     std::uint16_t magic_maximum_force() const noexcept {
+        if (menu_route_active_ && menu_route_magic_view_.has_value()) {
+            return static_cast<std::uint16_t>(std::clamp(
+                menu_route_magic_view_->maximum_force, 0, 0xFFFF));
+        }
         return command_overview_magic_force_.maximum_force;
     }
     MagicMenuSelection magic_spell_selection() const noexcept {
+        if (menu_route_active_ && menu_route_magic_view_.has_value()) {
+            return {static_cast<std::uint8_t>(std::clamp(
+                        menu_route_magic_view_->column, 0, 0xFF)),
+                    static_cast<std::uint8_t>(std::clamp(
+                        menu_route_magic_view_->row, 0, 0xFF))};
+        }
         return command_overview_magic_loop_.selection;
     }
     const std::optional<MagicSpellSelection>& magic_selected_spell() const
@@ -762,12 +799,22 @@ public:
         return command_overview_magic_selected_spell_;
     }
     std::uint8_t magic_cursor_phase() const noexcept {
+        if (menu_route_active_ && menu_route_magic_view_.has_value()) {
+            return static_cast<std::uint8_t>(std::clamp(
+                menu_route_magic_view_->cursor_phase, 0, 0xFF));
+        }
         return command_overview_magic_cursor_phase_;
     }
     const MagicDefenseStripView& magic_physical_defense_view() const noexcept {
+        if (menu_route_active_ && menu_route_magic_view_.has_value()) {
+            return menu_route_magic_physical_defense_;
+        }
         return command_overview_magic_physical_defense_;
     }
     const MagicDefenseStripView& magic_mana_defense_view() const noexcept {
+        if (menu_route_active_ && menu_route_magic_view_.has_value()) {
+            return menu_route_magic_mana_defense_;
+        }
         return command_overview_magic_mana_defense_;
     }
     const CyberwareMenuModel& cyberware_menu_model() const noexcept {
@@ -1233,6 +1280,8 @@ private:
         const scripting::ScriptMenuRouteSnapshot& route_state);
     void synchronize_command_overview_inventory_from_route(
         const scripting::ScriptMenuRouteSnapshot& route_state);
+    void synchronize_command_overview_magic_from_route(
+        const scripting::ScriptMenuRouteSnapshot& route_state);
     void start_command_menu_legacy_screen(
         std::uint16_t screen,
         const scripting::ScriptMenuRouteArgs& args);
@@ -1462,6 +1511,8 @@ private:
     scripting::GameScriptRuntime game_scripts_;
     bool menu_route_active_ = false;
     std::uint16_t menu_route_screen_ = 0U;
+    std::optional<scripting::ScriptMenuRouteSnapshot::MagicView>
+        menu_route_magic_view_;
     std::optional<scripting::ScriptShopDefinition> field_shop_definition_;
     FieldDialogueRuntime field_dialogue_;
     HotelMenuRuntime hotel_menu_{};
@@ -1560,6 +1611,8 @@ private:
         CommandOverviewMagicState::inactive;
     MagicDefenseStripView command_overview_magic_physical_defense_{};
     MagicDefenseStripView command_overview_magic_mana_defense_{};
+    MagicDefenseStripView menu_route_magic_physical_defense_{};
+    MagicDefenseStripView menu_route_magic_mana_defense_{};
     MagicMenuLoopState command_overview_magic_loop_{};
     MagicForceState command_overview_magic_force_{};
     std::optional<MagicSpellSelection> command_overview_magic_selected_spell_;
