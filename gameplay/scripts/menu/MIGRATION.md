@@ -6,8 +6,8 @@ Tests: `lua5.4 tests/menu_tests.lua` (27 checks).
 ## Active profile status (2026-10-15)
 `field_init.lua` is the runtime registry. A script module counts as connected
 only when this profile registers it and the live Qt route exercises its host
-services. The Pocket Secretary root and Dismiss Runner input are Lua-owned.
-Notebook, Group Items, Cyberdeck, Save/Load, and Debug still use the C++ adapter.
+services. The Pocket Secretary root, Group Items, and Dismiss Runner input are
+Lua-owned. Notebook, Cyberdeck, Save/Load, and Debug still use the C++ adapter.
 Unregistered Magic and deck-screen modules in this tree are drafts, not
 completed ports.
 
@@ -48,7 +48,7 @@ completed ports.
 - D12 Item-action children REPLACE the action row, so their result returns straight to the Command page; no "return-to-row" flag.
 - D13 Attributes/Skills from the Command page is view-only (srx command_view_only); karma upgrades only when opened with args.karma (hotel). Previously one flag in FSR did both.
 - D14 `leader_spell_gate` renamed to `leader_archetype`: +0x9B is the archetype (< 2 = caster), not a gate.
-- D15 Pocket Secretary root: only A (bit 14) dispatches; B does nothing (FSR treated B like A) [C 0xC2A6]. Lua owns root input/row and Dismiss Runner selection/action; Notebook, Group Items, Cyberdeck, Save/Load, and Debug remain adapter boundaries.
+- D15 Pocket Secretary root: only A (bit 14) dispatches; B does nothing (FSR treated B like A) [C 0xC2A6]. Lua owns root input/row, Group Items bit-list construction and fresh-edge wait, and Dismiss Runner selection/action. Notebook, Cyberdeck, Save/Load, and Debug remain adapter boundaries.
 - D16 Magic: the force/posture loop is two stacked screens (MAGIC_FORCE, MAGIC_POSTURE) instead of a mode int.
 
 - D17 Clips is ONE-SHOT per ROM 0x11B58: every outcome prints its text, waits for any edge (0xD94, silent) and returns to the Command page; Cancel / trade-Start print "Function Aborted!" (0xD1ED8, new MenuMessage.FUNCTION_ABORTED=21). B and C act like A; the main loop has NO Start check. Reload prompt: default No (0x11D00 clr + 0x127B0 eori), A only, "No" exits silently. srx/FSR kept the menu open and closed on B/Start: replaced [C].
@@ -68,7 +68,7 @@ Sound sites for all of these: out/menu_sound_sites.txt (0x25 = move/toggle, 0x24
 - A full build = `blank(OFF)`, then FULL, then `blank(ON)`. That gives at least one black frame; the exact count is [H] (it depends on the build length, not measured).
 
 ## Port queue (next)
-Done in the active route: command/posture, item actions, Clips, Attributes/Skills, and Pocket Secretary root. Magic and Pocket Secretary child loops still use C++ adapters. Save/Load, Cyberdeck/Matrix, and Debug screens are not active route ports.
+Done in the active route: command/posture, item actions, Clips, Attributes/Skills, Pocket Secretary root, Group Items, and Dismiss Runner. Notebook, Magic, Cyberdeck/Matrix, Save/Load, and Debug screens still use C++ adapters or are not active route ports.
 Open source/behavior boundaries: the drain-damage tail at 0x1046E, FFF0B1 inside the Matrix, FFF101 cheat-state import, and child-loop migration.
 In-game wiring: host/menu_game_fsr.sketch.cpp (MenuGame/MenuHost over srx FieldSceneRuntime, file:line per service).
 

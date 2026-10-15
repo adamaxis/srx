@@ -42,6 +42,16 @@ void begin_pocket_secretary_group_items(
         state.cyberdeck_unavailable_wait = false;
         state.group_items_wait = true;
         state.group_item_flags = group_item_flags & 0x7FFFU;
+        state.group_item_display_order.fill(0U);
+        const auto order = pocket_secretary_group_item_display_order(
+            state.group_item_flags);
+        state.group_item_display_count = static_cast<std::uint8_t>(
+            std::min(order.size(), state.group_item_display_order.size()));
+        for (std::size_t index = 0;
+             index < state.group_item_display_count; ++index) {
+            state.group_item_display_order[index] =
+                static_cast<std::uint8_t>(order[index]);
+        }
     }
 }
 

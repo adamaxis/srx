@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -19,8 +20,9 @@ constexpr std::uint16_t kPosture = 2U;
 constexpr std::uint16_t kAttributes = 5U;
 constexpr std::uint16_t kCyberware = 6U;
 constexpr std::uint16_t kPocketSecretary = 9U;
-constexpr std::uint16_t kDismissRunner = 11U;
+constexpr std::uint16_t kNotebook = 10U;
 constexpr std::uint16_t kGroupItems = 17U;
+constexpr std::uint16_t kDismissRunner = 11U;
 constexpr std::uint16_t kClips = 4U;
 constexpr std::uint16_t kClipTrade = 22U;
 constexpr std::uint16_t kReloadConfirm = 23U;
@@ -160,6 +162,9 @@ int main() {
     bindings.game.dismiss_runner = [&dismissed_slot](const int slot) {
         dismissed_slot = slot;
     };
+    bindings.game.group_item_flags = [] {
+        return std::optional<std::uint32_t>{(1U << 14U) | (1U << 1U) | 1U};
+    };
     runtime.set_menu_route_bindings(std::move(bindings));
 
     const auto opened = runtime.open_menu_route(kCommand);
@@ -240,17 +245,31 @@ int main() {
           failures);
     runtime.advance_menu_route(0x4000U); // A dispatches Group Items.
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kGroupItems && !legacy_screens.empty() &&
-              legacy_screens.back() == kGroupItems && legacy_active,
-          "Lua Pocket Secretary dispatches its child through the host adapter",
+    check(route.top_screen == kGroupItems &&
+              route.top_visible_item_ids == std::vector<int>{14, 1, 0} &&
+              legacy_screens.size() == legacy_count_before_secretary,
+          "Lua Group Items derives the populated descending-bit rows without the legacy adapter",
           failures);
-    legacy_active = false;
-    runtime.advance_menu_route(0U);
+    runtime.advance_menu_route(0x1000U); // Any fresh button dismisses F312.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kPocketSecretary && route.top_row == 1 &&
               route.top_grid_effect_frames == 4 &&
               random_bounds.size() == 12U,
-          "legacy child returns to the Lua-selected row after its shared grid frame advances",
+          "Group Items returns to the Lua-selected row after its shared grid frame advances",
+          failures);
+    runtime.advance_menu_route(0x0100U); // Up to Notebook.
+    runtime.advance_menu_route(0x4000U); // Open the remaining legacy child.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kNotebook && legacy_active &&
+              legacy_screens.back() == kNotebook,
+          "Notebook remains an explicit legacy adapter boundary", failures);
+    legacy_active = false;
+    runtime.advance_menu_route(0U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kPocketSecretary && route.top_row == 0 &&
+              route.top_grid_effect_frames == 7 &&
+              random_bounds.size() == 21U,
+          "Lua-owned E660 cadence continues while Notebook is on the adapter",
           failures);
     runtime.advance_menu_route(0x8000U); // Start returns to Command.
     route = runtime.menu_route_snapshot();

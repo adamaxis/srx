@@ -8,7 +8,6 @@ local M = {}
 
 local secretary_grid_screens = {
     [E.MenuScreen.NOTEBOOK] = true,
-    [E.MenuScreen.GROUP_ITEMS] = true,
     [E.MenuScreen.CYBERDECK] = true,
     [E.MenuScreen.SAVE_LOAD] = true,
     [E.MenuScreen.DEBUG_MENU] = true,

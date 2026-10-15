@@ -104,6 +104,7 @@ struct ScriptMenuRouteGame {
     std::function<bool()> pocket_extra_row;
     std::function<int(int)> source_random_bound;
     std::function<void(int)> dismiss_runner;
+    std::function<std::optional<std::uint32_t>()> group_item_flags;
 };
 
 struct ScriptMenuRouteBindings {
@@ -135,6 +136,7 @@ struct ScriptMenuRouteSnapshot {
     bool top_grid_cells_present = false;
     std::array<std::int8_t, 12> top_grid_cells{};
     std::optional<int> top_grid_effect_frames;
+    std::vector<int> top_visible_item_ids;
 };
 
 using ScriptStringMap = std::unordered_map<std::string, std::string>;

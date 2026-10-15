@@ -235,18 +235,24 @@ Rejected (must not return):
 
 ## Pocket Secretary root route (2026-10-15)
 
-The `0xC2A6` root and `0xC448` Dismiss Runner screen are registered in the field
-Lua route. Lua owns root row wrap, A-only dispatch, silent Up/Down navigation,
-C-button leader reselect, and Start return. Dismiss Runner selection and stable
-party-slot dispatch are also Lua-owned. The shared E660 frame effect keeps its
-12-cell state and per-frame three-draw cadence in Lua; C++ supplies ROM RNG and
-projects the resulting cells into the Qt presenter. Notebook, Group Items,
+The `0xC2A6`, `0xC8C8` Group Items, and `0xC448` Dismiss Runner screens are
+registered in the field Lua route. Lua owns root row wrap, A-only dispatch,
+silent Up/Down navigation, C-button leader reselect, and Start return. Group
+Items reads the typed FFFC22 fact, builds visible item IDs from bits 14 down to
+0, and waits for a fresh controller edge. Dismiss Runner selection and
+stable-party-slot dispatch are also Lua-owned. The shared E660 frame effect
+keeps its 12-cell state and per-frame three-draw cadence in Lua; C++ supplies
+ROM RNG and projects the resulting state into the Qt presenter. Notebook,
 Cyberdeck, Save/Load, and Debug child behavior still uses the C++ adapter. The
-hidden row remains unavailable because the active field context does not import
-FFF101.
+hidden row remains unavailable because the active field context does not
+import FFF101. Group Items remains partial: normal FFFC22 acquisition and
+restored-save state are not wired, and there is no independent Genesis capture.
 
 The route CTest passes in Debug and Release. Field Secretary Qt QA passes in
 both configurations and writes 79 full-screen BMP captures. Route checks cover
-both E660 random branches and the Dismiss stable-slot action. This is internal
+both E660 random branches, Group Items descending-bit rows and fresh-edge
+dismissal, and the Dismiss stable-slot action. The complete Debug/Release
+capture sets have matching hashes; full-screen review confirms the child
+replaces the parent panel and the return redraws it cleanly. This is internal
 regression evidence; an independent Genesis capture is still unavailable, so
 the hill remains partial.

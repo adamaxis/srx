@@ -5449,6 +5449,21 @@ void FieldSceneRuntime::configure_field_menu_route() {
                    screen != static_cast<std::uint16_t>(
                                  srx::MenuScreen::DISMISS_RUNNER)) {
             dismiss_runner_ = DismissRunnerMenuState{};
+        } else if (screen == static_cast<std::uint16_t>(
+                                srx::MenuScreen::GROUP_ITEMS) &&
+                   menu_route_screen_ != screen) {
+            if (group_item_flags_.has_value()) {
+                begin_pocket_secretary_group_items(
+                    pocket_secretary_, *group_item_flags_);
+            } else {
+                source_boundary(
+                    "field.pocket_secretary.group_items_flags_unresolved");
+            }
+        } else if (menu_route_screen_ == static_cast<std::uint16_t>(
+                                           srx::MenuScreen::GROUP_ITEMS) &&
+                   screen != static_cast<std::uint16_t>(
+                                 srx::MenuScreen::GROUP_ITEMS)) {
+            pocket_secretary_.group_items_wait = false;
         } else if (is_secretary_tree_screen(menu_route_screen_) &&
                    !is_secretary_tree_screen(screen)) {
             pocket_secretary_.open = false;
@@ -5660,6 +5675,13 @@ void FieldSceneRuntime::configure_field_menu_route() {
                 static_cast<std::size_t>(slot));
         }
     };
+    bindings.game.group_item_flags = [this]()
+        -> std::optional<std::uint32_t> {
+        if (!group_item_flags_.has_value()) {
+            return std::nullopt;
+        }
+        return *group_item_flags_ & 0x7FFFU;
+    };
     game_scripts_.set_menu_route_bindings(std::move(bindings));
 }
 
@@ -5700,6 +5722,20 @@ void FieldSceneRuntime::advance_field_menu_route() {
         dismiss_runner_.selection = static_cast<std::uint8_t>(
             std::clamp(*route_state.top_row, 0,
                        static_cast<int>(dismiss_runner_.candidate_count)));
+    }
+    if (route_state.top_screen == static_cast<std::uint16_t>(
+                                      srx::MenuScreen::GROUP_ITEMS)) {
+        pocket_secretary_.group_item_display_order.fill(0U);
+        pocket_secretary_.group_item_display_count =
+            static_cast<std::uint8_t>(std::min<std::size_t>(
+                route_state.top_visible_item_ids.size(),
+                pocket_secretary_.group_item_display_order.size()));
+        for (std::size_t index = 0;
+             index < pocket_secretary_.group_item_display_count; ++index) {
+            pocket_secretary_.group_item_display_order[index] =
+                static_cast<std::uint8_t>(
+                    route_state.top_visible_item_ids[index]);
+        }
     }
     if (route_state.top_grid_cells_present) {
         dismiss_runner_random_grid_cells_ = route_state.top_grid_cells;
@@ -11448,8 +11484,6 @@ void FieldSceneRuntime::advance_frame() {
         const bool legacy_secretary_child_active =
             (secretary_screen == srx::MenuScreen::NOTEBOOK &&
              pocket_secretary_.notebook.open) ||
-            (secretary_screen == srx::MenuScreen::GROUP_ITEMS &&
-             pocket_secretary_.group_items_wait) ||
             (secretary_screen == srx::MenuScreen::CYBERDECK &&
              pocket_secretary_.cyberdeck_unavailable_wait);
         const bool dismiss_runner_was_open = dismiss_runner_.open;
@@ -14424,11 +14458,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                             .pocket_secretary_group_items_empty_lines[line]);
                 }
             } else {
-                const auto display_order =
-                    pocket_secretary_group_item_display_order(
-                        pocket_secretary_.group_item_flags);
-                for (std::size_t row = 0; row < display_order.size(); ++row) {
-                    const auto item_index = display_order[row];
+                for (std::size_t row = 0;
+                     row < pocket_secretary_.group_item_display_count; ++row) {
+                    const auto item_index =
+                        pocket_secretary_.group_item_display_order[row];
                     if (item_index >= field_menu_text_
                                           .pocket_secretary_group_item_names
                                           .size()) {

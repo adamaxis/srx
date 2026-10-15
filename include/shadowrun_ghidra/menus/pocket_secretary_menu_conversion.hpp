@@ -51,6 +51,8 @@ struct PocketSecretaryMenuState {
     bool cyberdeck_unavailable_wait = false;
     bool group_items_wait = false;
     std::uint32_t group_item_flags = 0;
+    std::array<std::uint8_t, 15> group_item_display_order{};
+    std::uint8_t group_item_display_count = 0U;
     NotebookMenuState notebook{};
 };
 

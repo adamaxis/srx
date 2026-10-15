@@ -1274,10 +1274,11 @@ new behavior is invented.
 
 ### Applied review: Pocket Secretary Group Items
 
-1. **Does it look correct?** Inspected `actual.bmp`,
-   `group-items-populated.bmp`, `group-items-empty.bmp`, both 30-frame held
-   captures, both return frames, and the adjacent Cyberdeck no-deck/return
-   frames under `build/archive/build-qt-magic-qa/qt_runtime/field-secretary-qa/`. The outer
+1. **Does it look correct?** Inspected the current Debug
+   `group-items-populated.bmp`, `group-items-empty.bmp`, and
+   `group-items-populated-return.bmp` under
+   `build/conversion/qt/debug/qt_runtime/field-secretary-qa/`; the complete
+   79-image Debug/Release sets have matching hashes. The outer
    Pocket Secretary frame remains around the black center. The child removes
    the parent title/options and shows only its current source rows. This is a
    same-source visual review; no independent Pocket Secretary frame is in the
@@ -1285,9 +1286,10 @@ new behavior is invented.
    lowercase `x` at x=136; its appearance against each row still needs an
    independent reference.
 2. **Does the look reflect the behavioral state?** The Group Items row is
-   selection 1. The typed `PocketSecretaryMenuState::group_items_wait` holds
-   the modal state, and `group_item_flags` selects either the empty message or
-   a descending-bit item list. Fresh New Game supplies FFFC22=0. The populated
+   selection 1. The Lua `GroupItems` route state holds the visible item IDs
+   and shared grid effect; its input handler waits for a fresh controller
+   edge. The typed `group_item_flags` host fact selects either the empty
+   message or a descending-bit item list. Fresh New Game supplies FFFC22=0. The populated
    QA frame uses diagnostic bits 14 and 1 to prove order (`Ork Armband`, then
    `Indian Lands Visa`); normal quest acquisition and restored-save FFFC22
    are not connected. Any controller event dismisses the child and preserves

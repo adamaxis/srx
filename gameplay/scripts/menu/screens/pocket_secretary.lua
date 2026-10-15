@@ -44,6 +44,29 @@ function M.child_returned(st, child, res, ctx)
     ctx.host.blank(E.DisplayBlank.OFF); ctx.redraw(R.FULL); ctx.host.blank(E.DisplayBlank.ON)  -- bra 0xC2AA rebuild [C]
 end
 
+-- Group Items 0xC8C8 reads FFFC22, displays set bits 14..0, then waits for a
+-- newly pressed controller edge at F312. The host presents these item IDs.
+local GroupItems = { window = E.WindowPlane.SIDEBAR }
+function GroupItems.new()
+    return { visible_item_ids = {}, grid_cells = Grid.cells,
+             grid_effect_frames = Grid.frames }
+end
+function GroupItems.enter(st, ctx)
+    local flags = ctx.game.group_item_flags()
+    if flags == nil then return { transition = T.POP } end
+    st.group_item_flags = flags & 0x7FFF
+    for item_id = 14, 0, -1 do
+        if (st.group_item_flags >> item_id) & 1 ~= 0 then
+            st.visible_item_ids[#st.visible_item_ids + 1] = item_id
+        end
+    end
+    ctx.redraw(R.SUBMENU)
+end
+function GroupItems.input(st, events, ctx)
+    st.grid_effect_frames = Grid.advance(ctx)
+    if events & P.EDGES ~= 0 then return { transition = T.POP } end
+end
+
 -- Notebook 0xF236 (srx pocket_secretary_menu_conversion): rows gated by story flags
 local Notebook = { window = E.WindowPlane.SIDEBAR }
 function Notebook.new() return { row = 0 } end
@@ -132,4 +155,4 @@ function Dismiss.input(st, events, ctx)
     if events & P.START ~= 0 then return { transition = T.POP } end
 end
 
-return { PocketSecretary = M, Notebook = Notebook, Tips = Tips, Johnsons = Johnsons, Dismiss = Dismiss, row_cursor = row_cursor }
+return { PocketSecretary = M, GroupItems = GroupItems, Notebook = Notebook, Tips = Tips, Johnsons = Johnsons, Dismiss = Dismiss, row_cursor = row_cursor }

@@ -22,6 +22,7 @@ Route.register(E.MenuScreen.INVENTORY_TRADE, inventory.Trade)
 Route.register(E.MenuScreen.FIRST_AID, inventory.FirstAid)
 local secretary = require("menu.screens.pocket_secretary")
 Route.register(E.MenuScreen.POCKET_SECRETARY, secretary.PocketSecretary)
+Route.register(E.MenuScreen.GROUP_ITEMS, secretary.GroupItems)
 Route.register(E.MenuScreen.DISMISS_RUNNER, secretary.Dismiss)
 
 local legacy = require("menu.screens.legacy")
@@ -37,6 +38,7 @@ for screen = E.MenuScreen.ITEM_ACTION, E.MenuScreen.DECK_MAP do
        screen ~= E.MenuScreen.FIRST_AID and
        screen ~= E.MenuScreen.MESSAGE and
        screen ~= E.MenuScreen.POCKET_SECRETARY and
+       screen ~= E.MenuScreen.GROUP_ITEMS and
        screen ~= E.MenuScreen.DISMISS_RUNNER then
         local window = E.WindowPlane.SIDEBAR
         if screen == E.MenuScreen.CYBERDECK then

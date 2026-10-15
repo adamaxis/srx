@@ -581,6 +581,7 @@ struct GameScriptRuntime::Impl {
         pocket_extra_row,
         source_random_bound,
         dismiss_runner,
+        group_item_flags,
     };
 
     lua_State* state = nullptr;
@@ -917,6 +918,18 @@ struct GameScriptRuntime::Impl {
                     integer_argument(1));
             }
             return 0;
+        case MenuBinding::group_item_flags: {
+            const auto flags = self->menu_route_bindings.game.group_item_flags
+                                   ? self->menu_route_bindings.game
+                                         .group_item_flags()
+                                   : std::nullopt;
+            if (flags.has_value()) {
+                lua_pushinteger(lua, static_cast<lua_Integer>(*flags));
+            } else {
+                lua_pushnil(lua);
+            }
+            return 1;
+        }
         }
         lua_pushnil(lua);
         return 1;
@@ -983,6 +996,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::source_random_bound);
         add_menu_binding(state, table_index, "dismiss_runner",
                          MenuBinding::dismiss_runner);
+        add_menu_binding(state, table_index, "group_item_flags",
+                         MenuBinding::group_item_flags);
     }
 
     bool refresh_menu_route_snapshot() {
@@ -1083,6 +1098,25 @@ struct GameScriptRuntime::Impl {
                         if (is_number && value >= -1 && value <= 0x7F) {
                             menu_route_state.top_grid_cells[cell] =
                                 static_cast<std::int8_t>(value);
+                        }
+                        lua_pop(state, 1);
+                    }
+                }
+                lua_pop(state, 1);
+                lua_getfield(state, screen_state_index, "visible_item_ids");
+                if (lua_istable(state, -1)) {
+                    const auto item_ids_index = lua_absindex(state, -1);
+                    const auto item_count = std::min<std::size_t>(
+                        static_cast<std::size_t>(lua_rawlen(state, item_ids_index)),
+                        15U);
+                    for (std::size_t index = 0; index < item_count; ++index) {
+                        lua_rawgeti(state, item_ids_index,
+                                    static_cast<lua_Integer>(index + 1U));
+                        int is_number = 0;
+                        const auto value = lua_tointegerx(state, -1, &is_number);
+                        if (is_number && value >= 0 && value <= 14) {
+                            menu_route_state.top_visible_item_ids.push_back(
+                                static_cast<int>(value));
                         }
                         lua_pop(state, 1);
                     }
