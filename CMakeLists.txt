@@ -127,7 +127,10 @@ if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
 
         set(test_target "shadowrun_ghidra_${test_name}_test")
         add_executable(${test_target} "${test_source}")
-        if(test_name STREQUAL "conversion_workbench" OR
+        if(test_name STREQUAL "gameplay_script_menu_route")
+            target_link_libraries(${test_target}
+                PRIVATE shadowrun_gameplay_script_runtime)
+        elseif(test_name STREQUAL "conversion_workbench" OR
            test_name STREQUAL "field_session_bootstrap" OR
            test_name STREQUAL "field_runtime_coordinator" OR
            test_name STREQUAL "field_session_source_assets" OR
@@ -144,6 +147,10 @@ if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
            test_name STREQUAL "field_session_source_assets")
             target_compile_definitions(${test_target} PRIVATE
                 SHADOWRUN_CONVERSION_ASSET_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/assets\")
+        endif()
+        if(test_name STREQUAL "gameplay_script_menu_route")
+            target_compile_definitions(${test_target} PRIVATE
+                SHADOWRUN_GAMEPLAY_SCRIPT_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/gameplay/scripts\")
         endif()
         add_test(NAME "shadowrun_ghidra_${test_name}"
                  COMMAND ${test_target})

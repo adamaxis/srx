@@ -13,9 +13,8 @@ inventory columns. The old `command.0` through `command.6` TSV rows are removed.
 
 `FieldSceneRuntime` validates the IDs and order, resolves each label through
 `GameScriptRuntime`, and binds the text to its existing typed command view.
-The native controller still owns selection, input cadence, page state,
-rendering, and command actions. This is a content migration; it does not claim
-that the command handlers or the whole interface are implemented in Lua.
+This review was first written for the label-only migration on 2026-10-09; the
+current route integration is recorded in the dated addendum below.
 
 ## Whole-screen review
 
@@ -85,3 +84,32 @@ is internal renderer evidence; independent Genesis command-page imagery and
 source-backed route audio remain open. Clips, Cyberware, Magic, and Pocket
 Secretary have separate handlers or child pages, and are not claimed as
 complete by this root-label migration.
+
+## 2026-10-14 Lua route integration
+
+`menu.route` now owns the field command route stack, and `screens.command.lua`
+owns the root page/row state, navigation priority, posture focus entry,
+inventory dispatch decision, and exit decisions. `screens.posture.lua` owns
+focus state and posture input. C++ samples the focused Qt controller once per
+field frame, exposes narrow live-runner services, mirrors the Lua-selected
+page/row into the existing typed presenter, and paints the full command panel.
+The other child screens are registered as explicit transitional adapters:
+their stack position is Lua-routed, but their behavior and input state still
+use the existing C++ screen implementation.
+
+The source trace for this slice is `0x10F50` (entry page 6, row 0), `0x114A0`
+(seven-page wrap), `0x11506` (inventory row and posture gate), `0x119CE`
+(posture focus loop), `0x11ABE`/`0x11AE4` (posture redraw and clamp), and
+`0x12CEE` (attack/defense recomputation). The posture helper's horizontal
+changes request `0x25`; closing focus itself is silent. Start sets `FFF0B1`,
+draws the final normal posture row and bars, then exits the complete command
+menu through `0x10D30`.
+
+The no-Qt route CTest exercises the embedded production Lua runtime and checks
+open/close, page setup, posture bounds, silent posture return, Start exit,
+legacy adapter stack behavior, Attributes window selection, and full
+re-initialization. Qt command/posture QA exercises the route through the live
+field runtime. Debug and Release captures are internal conversion evidence;
+they do not establish independent Genesis pixel fidelity. The remaining child
+screen adapters and independent Genesis command/posture sequence are still
+open.

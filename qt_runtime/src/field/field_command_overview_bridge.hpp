@@ -54,6 +54,9 @@ public:
     // run_command_overview(): d-pad edges occupy 0x0100..0x0800, A/B occupy
     // 0x1000/0x4000, mode action is 0x2000, and Genesis Start is 0x8000.
     void advance(std::uint16_t controller_events);
+    // Lua owns command page/row navigation. Keep this typed view synchronized
+    // for the existing Qt painter and source detail preparation only.
+    void sync_script_selection(std::uint8_t page, std::uint8_t row);
     void close() noexcept;
     bool open() const noexcept { return view_.open; }
     const FieldCommandOverviewView& view() const noexcept { return view_; }

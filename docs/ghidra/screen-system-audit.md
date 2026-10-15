@@ -281,9 +281,9 @@ focus image comes from the grid at `0xCA9E` (`120,168`); the separate five-state
 bar begins at `0xCAAC` (`176,168`). The focus image replaces the panel's static
 POSTURE label while preserving that bar. It is static while selected; only a
 Left/Right edge requests sound event `0x25` (`audio.effects.resource.037`,
-2.134 seconds). Down and Start close focus without a sound. A second Start
-returns from the command screen. Posture is gameplay state, not a decorative
-slider.
+2.134 seconds). Down closes focus without a sound. Start redraws the final
+posture and bars, sets `FFF0B1`, and exits the complete command menu on that
+input. Posture is gameplay state, not a decorative slider.
 
 Native status: the active posture focus, source five-state values, clamping,
 record persistence, rendering, and the normal `0x12CEE` attack/defense

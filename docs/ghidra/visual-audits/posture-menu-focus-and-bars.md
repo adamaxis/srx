@@ -70,20 +70,25 @@ implemented.
    matching selected-posture example.
 
 8. **Does the new UI replace the old UI cleanly? — Yes, internally.** Down
-   returns each page to a pixel-identical pre-focus frame. Start first clears
-   focus, then returns to a field frame pixel-identical to the pre-menu
-   capture. No old selector or command graphics remain over the returned
-   screen.
+   returns each page to a pixel-identical pre-focus frame without a sound
+   request. Start in focus draws the normal posture row and final combat bars,
+   then exits the complete command menu on that same input; the resulting
+   field frame is pixel-identical to the pre-menu capture. No old selector or
+   command graphics remain over the returned screen.
 
 ## Outcome
 
-- **Code changed:** no runtime code changed in this review; it records the
-  already-connected Qt route and its current evidence.
-- **Behavior implemented:** Up focuses posture on pages 2..6; Down deselects;
+- **Code changed:** Lua `menu.route`, `screens.command`, and `screens.posture`
+  now own command navigation and posture focus. C++ provides live record
+  access and paints the typed presenter state. Other child-screen behavior is
+  still behind the explicit legacy adapter.
+- **Behavior implemented:** Up focuses posture on pages 2..6; Down silently
+  deselects; a single Start from focus exits the full command menu;
   Left/Right update typed posture, source labels, attack/defense bars, and
   event `0x25`, with source clamping.
-- **Internally checked:** `shadowrun_ghidra_conversion_qt_field_posture_qa`
-  passed in Debug and Release and wrote the frames above. The shared audio
+- **Internally checked:** the production Lua route CTest and
+  `shadowrun_ghidra_conversion_qt_field_posture_qa` passed in Debug and
+  Release and wrote the frames above. The shared audio
   test separately verifies event `0x25` playback.
 - **Independently visually checked:** no matching Genesis selected-posture
   sequence found.

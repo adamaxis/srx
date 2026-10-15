@@ -556,10 +556,28 @@ bool parse_explicit_menu_text_keys(lua_State* state,
 } // namespace
 
 struct GameScriptRuntime::Impl {
+    enum class MenuBinding : lua_Integer {
+        play_sound = 1,
+        redraw,
+        blank,
+        set_window,
+        set_screen,
+        menu_closed,
+        legacy_open,
+        legacy_advance,
+        leader_incapacitated,
+        reselect_leader,
+        leader_posture,
+        set_leader_posture,
+        leader_archetype,
+        inventory_item,
+    };
+
     lua_State* state = nullptr;
     lua_State* task_state = nullptr;
     int modules_reference = LUA_NOREF;
     int task_reference = LUA_NOREF;
+    int menu_route_reference = LUA_NOREF;
     bool task_waiting = false;
     std::filesystem::path script_root;
     std::set<std::string> modules_loading;
@@ -576,12 +594,256 @@ struct GameScriptRuntime::Impl {
     std::string location_speaker_id;
     std::string location_event_id;
     ScriptFieldModeContext field_mode_context{};
+    ScriptMenuRouteBindings menu_route_bindings{};
+    ScriptMenuRouteSnapshot menu_route_state{};
     const ScriptActorBehaviorContext* active_actor_context = nullptr;
     std::string bridge_failure;
     std::string failure;
 
     static Impl* from_upvalue(lua_State* lua) {
         return static_cast<Impl*>(lua_touserdata(lua, lua_upvalueindex(1)));
+    }
+
+    static int menu_binding_dispatch(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        if (self == nullptr) {
+            lua_pushnil(lua);
+            return 1;
+        }
+        const auto binding = static_cast<MenuBinding>(
+            lua_tointeger(lua, lua_upvalueindex(2)));
+        const auto integer_argument = [lua](const int index) {
+            int is_number = 0;
+            const auto value = lua_tointegerx(lua, index, &is_number);
+            return is_number ? static_cast<int>(value) : 0;
+        };
+        switch (binding) {
+        case MenuBinding::play_sound:
+            if (self->menu_route_bindings.host.play_sound) {
+                self->menu_route_bindings.host.play_sound(
+                    static_cast<std::uint16_t>(integer_argument(1)));
+            }
+            return 0;
+        case MenuBinding::redraw:
+            if (self->menu_route_bindings.host.redraw) {
+                self->menu_route_bindings.host.redraw(
+                    static_cast<std::uint32_t>(integer_argument(1)));
+            }
+            return 0;
+        case MenuBinding::blank:
+            if (self->menu_route_bindings.host.blank) {
+                self->menu_route_bindings.host.blank(
+                    static_cast<std::uint16_t>(integer_argument(1)));
+            }
+            return 0;
+        case MenuBinding::set_window:
+            if (self->menu_route_bindings.host.set_window) {
+                self->menu_route_bindings.host.set_window(
+                    static_cast<std::uint16_t>(integer_argument(1)));
+            }
+            return 0;
+        case MenuBinding::set_screen:
+            if (self->menu_route_bindings.host.set_screen) {
+                self->menu_route_bindings.host.set_screen(
+                    static_cast<std::uint16_t>(integer_argument(1)));
+            }
+            return 0;
+        case MenuBinding::menu_closed:
+            if (self->menu_route_bindings.host.menu_closed) {
+                self->menu_route_bindings.host.menu_closed();
+            }
+            return 0;
+        case MenuBinding::legacy_open: {
+            ScriptMenuRouteArgs args;
+            if (lua_istable(lua, 2)) {
+                const auto read_optional = [lua](const char* name)
+                    -> std::optional<int> {
+                    lua_getfield(lua, 2, name);
+                    int is_number = 0;
+                    const auto value = lua_tointegerx(lua, -1, &is_number);
+                    lua_pop(lua, 1);
+                    return is_number ? std::optional<int>(
+                                           static_cast<int>(value))
+                                     : std::nullopt;
+                };
+                args.page = read_optional("page");
+                args.row = read_optional("row");
+                args.column = read_optional("column");
+            }
+            if (self->menu_route_bindings.host.legacy_open) {
+                self->menu_route_bindings.host.legacy_open(
+                    static_cast<std::uint16_t>(integer_argument(1)), args);
+            }
+            return 0;
+        }
+        case MenuBinding::legacy_advance: {
+            std::pair<bool, bool> result{false, false};
+            if (self->menu_route_bindings.host.legacy_advance) {
+                result = self->menu_route_bindings.host.legacy_advance(
+                    static_cast<std::uint16_t>(integer_argument(1)),
+                    static_cast<std::uint16_t>(integer_argument(2)));
+            }
+            lua_pushboolean(lua, result.first ? 1 : 0);
+            lua_pushboolean(lua, result.second ? 1 : 0);
+            return 2;
+        }
+        case MenuBinding::leader_incapacitated:
+            lua_pushboolean(
+                lua, self->menu_route_bindings.game.leader_incapacitated &&
+                             self->menu_route_bindings.game
+                                 .leader_incapacitated()
+                         ? 1
+                         : 0);
+            return 1;
+        case MenuBinding::reselect_leader:
+            if (self->menu_route_bindings.game.reselect_leader) {
+                self->menu_route_bindings.game.reselect_leader();
+            }
+            return 0;
+        case MenuBinding::leader_posture:
+            lua_pushinteger(
+                lua, self->menu_route_bindings.game.leader_posture
+                         ? self->menu_route_bindings.game.leader_posture()
+                         : 0);
+            return 1;
+        case MenuBinding::set_leader_posture:
+            if (self->menu_route_bindings.game.set_leader_posture) {
+                self->menu_route_bindings.game.set_leader_posture(
+                    integer_argument(1));
+            }
+            return 0;
+        case MenuBinding::leader_archetype:
+            lua_pushinteger(
+                lua, self->menu_route_bindings.game.leader_archetype
+                         ? self->menu_route_bindings.game.leader_archetype()
+                         : 0);
+            return 1;
+        case MenuBinding::inventory_item:
+            lua_pushboolean(
+                lua, self->menu_route_bindings.game.inventory_item &&
+                             self->menu_route_bindings.game.inventory_item(
+                                 integer_argument(1), integer_argument(2))
+                         ? 1
+                         : 0);
+            return 1;
+        }
+        lua_pushnil(lua);
+        return 1;
+    }
+
+    void add_menu_binding(lua_State* lua, const int table_index,
+                          const char* name, const MenuBinding binding) {
+        lua_pushlightuserdata(lua, this);
+        lua_pushinteger(lua, static_cast<lua_Integer>(binding));
+        lua_pushcclosure(lua, menu_binding_dispatch, 2);
+        lua_setfield(lua, table_index, name);
+    }
+
+    void push_menu_host() {
+        lua_newtable(state);
+        const auto table_index = lua_absindex(state, -1);
+        add_menu_binding(state, table_index, "play_sound",
+                         MenuBinding::play_sound);
+        add_menu_binding(state, table_index, "redraw", MenuBinding::redraw);
+        add_menu_binding(state, table_index, "blank", MenuBinding::blank);
+        add_menu_binding(state, table_index, "set_window",
+                         MenuBinding::set_window);
+        add_menu_binding(state, table_index, "set_screen",
+                         MenuBinding::set_screen);
+        add_menu_binding(state, table_index, "menu_closed",
+                         MenuBinding::menu_closed);
+        add_menu_binding(state, table_index, "legacy_open",
+                         MenuBinding::legacy_open);
+        add_menu_binding(state, table_index, "legacy_advance",
+                         MenuBinding::legacy_advance);
+    }
+
+    void push_menu_game() {
+        lua_newtable(state);
+        const auto table_index = lua_absindex(state, -1);
+        add_menu_binding(state, table_index, "leader_incapacitated",
+                         MenuBinding::leader_incapacitated);
+        add_menu_binding(state, table_index, "reselect_leader",
+                         MenuBinding::reselect_leader);
+        add_menu_binding(state, table_index, "leader_posture",
+                         MenuBinding::leader_posture);
+        add_menu_binding(state, table_index, "set_leader_posture",
+                         MenuBinding::set_leader_posture);
+        add_menu_binding(state, table_index, "leader_archetype",
+                         MenuBinding::leader_archetype);
+        add_menu_binding(state, table_index, "inventory_item",
+                         MenuBinding::inventory_item);
+    }
+
+    bool refresh_menu_route_snapshot() {
+        menu_route_state = ScriptMenuRouteSnapshot{};
+        if (state == nullptr || menu_route_reference == LUA_NOREF) {
+            return false;
+        }
+        const auto base = lua_gettop(state);
+        lua_rawgeti(state, LUA_REGISTRYINDEX, menu_route_reference);
+        const auto route_index = lua_absindex(state, -1);
+        lua_getfield(state, route_index, "is_open");
+        lua_pushvalue(state, route_index);
+        if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+            failure = "menu route state query failed: " + stack_error(state);
+            lua_settop(state, base);
+            return false;
+        }
+        menu_route_state.open = lua_toboolean(state, -1) != 0;
+        lua_pop(state, 1);
+        if (!menu_route_state.open) {
+            lua_settop(state, base);
+            return true;
+        }
+        lua_getfield(state, route_index, "top");
+        lua_pushvalue(state, route_index);
+        if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+            failure = "menu route top query failed: " + stack_error(state);
+            lua_settop(state, base);
+            menu_route_state = ScriptMenuRouteSnapshot{};
+            return false;
+        }
+        if (lua_istable(state, -1)) {
+            const auto entry_index = lua_absindex(state, -1);
+            lua_getfield(state, entry_index, "screen");
+            if (lua_isinteger(state, -1)) {
+                menu_route_state.top_screen = static_cast<std::uint16_t>(
+                    lua_tointeger(state, -1));
+            }
+            lua_pop(state, 1);
+        }
+        lua_pop(state, 1);
+        lua_getfield(state, route_index, "root");
+        lua_pushvalue(state, route_index);
+        if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+            failure = "menu route root query failed: " + stack_error(state);
+            lua_settop(state, base);
+            menu_route_state = ScriptMenuRouteSnapshot{};
+            return false;
+        }
+        if (lua_istable(state, -1)) {
+            lua_getfield(state, -1, "state");
+            if (lua_istable(state, -1)) {
+                const auto state_index = lua_absindex(state, -1);
+                auto* const lua = state;
+                const auto read_optional = [lua, state_index](
+                                              const char* name)
+                    -> std::optional<int> {
+                    lua_getfield(lua, state_index, name);
+                    int is_number = 0;
+                    const auto value = lua_tointegerx(lua, -1, &is_number);
+                    lua_pop(lua, 1);
+                    return is_number ? std::optional<int>(
+                                           static_cast<int>(value))
+                                     : std::nullopt;
+                };
+                menu_route_state.page = read_optional("page");
+                menu_route_state.row = read_optional("row");
+            }
+        }
+        lua_settop(state, base);
+        return true;
     }
 
     bool load_module(const std::string_view name, std::string& error) {
@@ -1399,6 +1661,7 @@ struct GameScriptRuntime::Impl {
         task_state = nullptr;
         modules_reference = LUA_NOREF;
         task_reference = LUA_NOREF;
+        menu_route_reference = LUA_NOREF;
         task_waiting = false;
         script_root.clear();
         modules_loading.clear();
@@ -1412,6 +1675,8 @@ struct GameScriptRuntime::Impl {
         location_text_profile.clear();
         location_speaker_id.clear();
         field_mode_context = ScriptFieldModeContext{};
+        menu_route_bindings = ScriptMenuRouteBindings{};
+        menu_route_state = ScriptMenuRouteSnapshot{};
         active_actor_context = nullptr;
         bridge_failure.clear();
         failure.clear();
@@ -6032,6 +6297,176 @@ std::optional<ScriptMenuDefinition> GameScriptRuntime::menu(
     lua_pop(state, 3);
     impl_->failure.clear();
     return definition;
+}
+
+void GameScriptRuntime::set_menu_route_bindings(
+    ScriptMenuRouteBindings bindings) {
+    impl_->menu_route_bindings = std::move(bindings);
+    impl_->failure.clear();
+}
+
+bool GameScriptRuntime::open_menu_route(const std::uint16_t root_screen) {
+    auto* state = impl_->state;
+    if (state == nullptr || impl_->modules_reference == LUA_NOREF) {
+        impl_->failure = "gameplay Lua package is not loaded for menu route";
+        return false;
+    }
+    if (impl_->menu_route_reference != LUA_NOREF &&
+        impl_->menu_route_state.open) {
+        impl_->failure = "menu route is already open";
+        return false;
+    }
+    if (impl_->menu_route_reference != LUA_NOREF) {
+        luaL_unref(state, LUA_REGISTRYINDEX, impl_->menu_route_reference);
+        impl_->menu_route_reference = LUA_NOREF;
+    }
+    impl_->failure.clear();
+
+    const auto base = lua_gettop(state);
+    std::string module_error;
+    if (!impl_->load_module("menu.field_init", module_error)) {
+        impl_->failure = "could not load field menu route: " + module_error;
+        lua_settop(state, base);
+        return false;
+    }
+    const auto module_index = lua_absindex(state, -1);
+    lua_getfield(state, module_index, "new");
+    if (!lua_isfunction(state, -1)) {
+        impl_->failure = "menu.field_init must return the route module";
+        lua_settop(state, base);
+        return false;
+    }
+    lua_remove(state, module_index);
+    impl_->push_menu_host();
+    impl_->push_menu_game();
+    {
+        ScopedInstructionBudget instruction_budget(state);
+        if (lua_pcall(state, 2, 1, 0) != LUA_OK) {
+            impl_->failure = "menu route construction failed: " +
+                             stack_error(state);
+            lua_settop(state, base);
+            return false;
+        }
+    }
+    if (!lua_istable(state, -1)) {
+        impl_->failure = "menu route constructor returned no route";
+        lua_settop(state, base);
+        return false;
+    }
+    impl_->menu_route_reference = luaL_ref(state, LUA_REGISTRYINDEX);
+
+    lua_rawgeti(state, LUA_REGISTRYINDEX, impl_->menu_route_reference);
+    const auto route_index = lua_absindex(state, -1);
+    lua_getfield(state, route_index, "open");
+    if (!lua_isfunction(state, -1)) {
+        impl_->failure = "menu route has no open function";
+        lua_settop(state, base);
+        luaL_unref(state, LUA_REGISTRYINDEX,
+                   impl_->menu_route_reference);
+        impl_->menu_route_reference = LUA_NOREF;
+        return false;
+    }
+    lua_pushvalue(state, route_index);
+    lua_pushinteger(state, static_cast<lua_Integer>(root_screen));
+    {
+        ScopedInstructionBudget instruction_budget(state);
+        if (lua_pcall(state, 2, 0, 0) != LUA_OK) {
+            impl_->failure = "menu route open failed: " + stack_error(state);
+            lua_settop(state, base);
+            luaL_unref(state, LUA_REGISTRYINDEX,
+                       impl_->menu_route_reference);
+            impl_->menu_route_reference = LUA_NOREF;
+            impl_->menu_route_state = ScriptMenuRouteSnapshot{};
+            return false;
+        }
+    }
+    lua_settop(state, base);
+    if (!impl_->refresh_menu_route_snapshot()) {
+        luaL_unref(state, LUA_REGISTRYINDEX, impl_->menu_route_reference);
+        impl_->menu_route_reference = LUA_NOREF;
+        impl_->menu_route_state = ScriptMenuRouteSnapshot{};
+        return false;
+    }
+    if (!impl_->menu_route_state.open) {
+        if (impl_->failure.empty()) {
+            impl_->failure = "menu route did not open its root screen";
+        }
+        return false;
+    }
+    impl_->failure.clear();
+    return true;
+}
+
+void GameScriptRuntime::advance_menu_route(const std::uint16_t events) {
+    auto* state = impl_->state;
+    if (state == nullptr || impl_->menu_route_reference == LUA_NOREF ||
+        !impl_->menu_route_state.open) {
+        return;
+    }
+    impl_->failure.clear();
+    const auto base = lua_gettop(state);
+    lua_rawgeti(state, LUA_REGISTRYINDEX, impl_->menu_route_reference);
+    const auto route_index = lua_absindex(state, -1);
+    lua_getfield(state, route_index, "frame");
+    if (!lua_isfunction(state, -1)) {
+        impl_->failure = "menu route has no frame function";
+        lua_settop(state, base);
+        return;
+    }
+    lua_pushvalue(state, route_index);
+    lua_pushinteger(state, static_cast<lua_Integer>(events));
+    {
+        ScopedInstructionBudget instruction_budget(state);
+        if (lua_pcall(state, 2, 0, 0) != LUA_OK) {
+            impl_->failure = "menu route frame failed: " + stack_error(state);
+            lua_settop(state, base);
+            return;
+        }
+    }
+    lua_settop(state, base);
+    if (!impl_->refresh_menu_route_snapshot()) {
+        return;
+    }
+    impl_->failure.clear();
+}
+
+void GameScriptRuntime::close_menu_route() {
+    auto* state = impl_->state;
+    if (state == nullptr || impl_->menu_route_reference == LUA_NOREF) {
+        impl_->menu_route_state = ScriptMenuRouteSnapshot{};
+        return;
+    }
+    if (!impl_->menu_route_state.open) {
+        return;
+    }
+    impl_->failure.clear();
+    const auto base = lua_gettop(state);
+    lua_rawgeti(state, LUA_REGISTRYINDEX, impl_->menu_route_reference);
+    const auto route_index = lua_absindex(state, -1);
+    lua_getfield(state, route_index, "close");
+    if (!lua_isfunction(state, -1)) {
+        impl_->failure = "menu route has no close function";
+        lua_settop(state, base);
+        return;
+    }
+    lua_pushvalue(state, route_index);
+    {
+        ScopedInstructionBudget instruction_budget(state);
+        if (lua_pcall(state, 1, 0, 0) != LUA_OK) {
+            impl_->failure = "menu route close failed: " + stack_error(state);
+            lua_settop(state, base);
+            return;
+        }
+    }
+    lua_settop(state, base);
+    if (!impl_->refresh_menu_route_snapshot()) {
+        return;
+    }
+    impl_->failure.clear();
+}
+
+ScriptMenuRouteSnapshot GameScriptRuntime::menu_route_snapshot() const noexcept {
+    return impl_->menu_route_state;
 }
 
 const std::string& GameScriptRuntime::failure() const noexcept {

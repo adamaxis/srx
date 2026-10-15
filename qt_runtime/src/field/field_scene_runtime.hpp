@@ -1208,6 +1208,11 @@ private:
         std::uint16_t controller_events);
     void advance_command_overview_inventory_trade(
         std::uint16_t controller_events);
+    void configure_field_menu_route();
+    void start_command_menu_legacy_screen(
+        std::uint16_t screen,
+        const scripting::ScriptMenuRouteArgs& args);
+    bool command_menu_legacy_screen_active(std::uint16_t screen) const;
     void open_command_overview();
     bool load_command_overview_assets(const ConversionAssetCatalog& catalog);
     bool load_field_hud_overlays(const ConversionAssetCatalog& catalog);
@@ -1431,6 +1436,8 @@ private:
     CommandMenuKarmaViewRuntime command_overview_attributes_skills_{};
     HotelKarmaUpgradeRuntime hotel_karma_skills_{};
     scripting::GameScriptRuntime game_scripts_;
+    bool menu_route_active_ = false;
+    std::uint16_t menu_route_screen_ = 0U;
     std::optional<scripting::ScriptShopDefinition> field_shop_definition_;
     FieldDialogueRuntime field_dialogue_;
     HotelMenuRuntime hotel_menu_{};

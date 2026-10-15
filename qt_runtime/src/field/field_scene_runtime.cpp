@@ -1,5 +1,6 @@
 #include "field_scene_runtime.hpp"
 
+#include "enums.hpp"
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
 
 #include "shadowrun_ghidra/audio/audio_command_batch_conversion.hpp"
@@ -5385,6 +5386,155 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
     };
 }
 
+void FieldSceneRuntime::configure_field_menu_route() {
+    scripting::ScriptMenuRouteBindings bindings;
+    bindings.host.play_sound = [this](const std::uint16_t sound) {
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(sound);
+        }
+    };
+    // FieldSceneRuntime repaints the complete authored Qt menu panel each
+    // frame. These callbacks are retained as presenter boundaries for the
+    // later screen ports; they do not execute source tile/VDP operations.
+    bindings.host.redraw = [](const std::uint32_t) {};
+    bindings.host.blank = [](const std::uint16_t) {};
+    bindings.host.set_window = [](const std::uint16_t) {};
+    bindings.host.set_screen = [this](const std::uint16_t screen) {
+        menu_route_screen_ = screen;
+        posture_dialog_active_ =
+            screen == static_cast<std::uint16_t>(srx::MenuScreen::POSTURE);
+    };
+    bindings.host.menu_closed = [this] {
+        menu_route_active_ = false;
+        menu_route_screen_ = 0U;
+        posture_dialog_active_ = false;
+        command_overview_.close();
+    };
+    bindings.host.legacy_open =
+        [this](const std::uint16_t screen,
+               const scripting::ScriptMenuRouteArgs& args) {
+            start_command_menu_legacy_screen(screen, args);
+        };
+    bindings.host.legacy_advance =
+        [this](const std::uint16_t screen, const std::uint16_t) {
+            return std::pair<bool, bool>{
+                command_menu_legacy_screen_active(screen), false};
+        };
+    bindings.game.leader_incapacitated = [this] {
+        constexpr auto incapacitated =
+            static_cast<std::uint16_t>(srx::RunnerStatus::DOWN) |
+            static_cast<std::uint16_t>(srx::RunnerStatus::DEAD);
+        return (active_runner_record().flags & incapacitated) != 0U;
+    };
+    bindings.game.reselect_leader = [this] {
+        handle_field_mode_action_event();
+        refresh_field_hud_runner_slot();
+        source_boundary("field.command_overview.lua_reselected_runner");
+    };
+    bindings.game.leader_posture = [this] {
+        return static_cast<int>(active_runner_record().posture);
+    };
+    bindings.game.set_leader_posture = [this](const int posture) {
+        const auto clamped = static_cast<std::uint8_t>(
+            std::clamp(posture, 0, 4));
+        const auto current = active_runner_record().posture;
+        const auto delta = static_cast<std::int8_t>(
+            static_cast<int>(clamped) - static_cast<int>(current));
+        if (delta != 0) {
+            (void)adjust_runner_posture(active_runner_record(), delta);
+            refresh_command_overview_combat_bars();
+            source_boundary("field.posture.lua_adjusted");
+        }
+    };
+    bindings.game.leader_archetype = [this] {
+        return static_cast<int>(active_runner_record().archetype_index);
+    };
+    bindings.game.inventory_item = [this](const int column, const int row) {
+        if (column < 0 || column >= 2 || row < 0 || row >= 4) {
+            return false;
+        }
+        const auto slot = static_cast<std::size_t>(row * 2 + column);
+        return slot < active_runner_record().inventory_item_codes.size() &&
+               active_runner_record().inventory_item_codes[slot] != 0U;
+    };
+    game_scripts_.set_menu_route_bindings(std::move(bindings));
+}
+
+void FieldSceneRuntime::start_command_menu_legacy_screen(
+    const std::uint16_t screen,
+    const scripting::ScriptMenuRouteArgs& args) {
+    auto page = static_cast<int>(
+        command_overview_.view().source_state.primary_page);
+    auto row = static_cast<int>(
+        command_overview_.view().source_state.secondary_page);
+    if (args.page.has_value()) {
+        page = *args.page;
+    }
+    if (args.column.has_value()) {
+        page = *args.column;
+    }
+    if (args.row.has_value()) {
+        row = *args.row;
+    }
+    if (page >= 0 && page < 7 && row >= 0 && row < 4) {
+        command_overview_.sync_script_selection(
+            static_cast<std::uint8_t>(page), static_cast<std::uint8_t>(row));
+    }
+
+    if (screen == static_cast<std::uint16_t>(srx::MenuScreen::ITEM_ACTION)) {
+        begin_command_overview_inventory_action();
+    } else if (screen == static_cast<std::uint16_t>(srx::MenuScreen::CLIPS)) {
+        begin_command_overview_clips();
+    } else if (screen == static_cast<std::uint16_t>(
+                            srx::MenuScreen::ATTRIBUTES_SKILLS)) {
+        begin_command_overview_attributes_skills();
+    } else if (screen == static_cast<std::uint16_t>(
+                            srx::MenuScreen::CYBERWARE)) {
+        begin_command_overview_cyberware();
+    } else if (screen == static_cast<std::uint16_t>(srx::MenuScreen::MAGIC)) {
+        begin_command_overview_magic();
+    } else if (screen == static_cast<std::uint16_t>(
+                            srx::MenuScreen::POCKET_SECRETARY)) {
+        begin_pocket_secretary();
+    } else {
+        source_boundary("field.command_overview.lua_legacy_route_unmapped");
+    }
+}
+
+bool FieldSceneRuntime::command_menu_legacy_screen_active(
+    const std::uint16_t screen) const {
+    if (screen == static_cast<std::uint16_t>(srx::MenuScreen::ITEM_ACTION)) {
+        return command_overview_inventory_action_active_ ||
+               command_overview_discard_confirmation_active_ ||
+               command_overview_inventory_trade_.open ||
+               command_overview_action_message_ !=
+                   CommandOverviewActionMessage::none ||
+               command_overview_first_aid_state_ !=
+                   CommandOverviewFirstAidState::inactive ||
+               command_overview_automatic_use_state_ !=
+                   CommandOverviewAutomaticUseState::inactive;
+    }
+    if (screen == static_cast<std::uint16_t>(srx::MenuScreen::CLIPS)) {
+        return command_overview_clips_.is_open();
+    }
+    if (screen == static_cast<std::uint16_t>(
+                      srx::MenuScreen::ATTRIBUTES_SKILLS)) {
+        return command_overview_attributes_skills_.is_open();
+    }
+    if (screen == static_cast<std::uint16_t>(srx::MenuScreen::CYBERWARE)) {
+        return command_overview_cyberware_active_;
+    }
+    if (screen == static_cast<std::uint16_t>(srx::MenuScreen::MAGIC)) {
+        return command_overview_magic_state_ !=
+               CommandOverviewMagicState::inactive;
+    }
+    if (screen == static_cast<std::uint16_t>(
+                      srx::MenuScreen::POCKET_SECRETARY)) {
+        return pocket_secretary_.open || dismiss_runner_.open;
+    }
+    return false;
+}
+
 void FieldSceneRuntime::open_command_overview() {
     if (!ready_ || command_overview_.open()) {
         return;
@@ -5435,6 +5585,23 @@ void FieldSceneRuntime::open_command_overview() {
          [](const CommandOverviewPreparationResult&) {},
          [](const CommandOverviewHudPanelPlan&) {},
          [](const CommandOverviewActionRefreshResult&) {}});
+    menu_route_active_ = game_scripts_.open_menu_route(
+        static_cast<std::uint16_t>(srx::MenuScreen::COMMAND));
+    if (!menu_route_active_) {
+        source_boundary("field.command_overview.lua_route_unavailable");
+        menu_route_screen_ = 0U;
+    } else {
+        const auto route_state = game_scripts_.menu_route_snapshot();
+        menu_route_screen_ = route_state.top_screen;
+        posture_dialog_active_ =
+            menu_route_screen_ ==
+            static_cast<std::uint16_t>(srx::MenuScreen::POSTURE);
+        if (route_state.page.has_value() && route_state.row.has_value()) {
+            command_overview_.sync_script_selection(
+                static_cast<std::uint8_t>(*route_state.page),
+                static_cast<std::uint8_t>(*route_state.row));
+        }
+    }
     refresh_command_overview_combat_bars();
     refresh_command_overview_item_detail();
 }
@@ -6853,6 +7020,7 @@ bool FieldSceneRuntime::bootstrap(
         source_boundary("field.bootstrap.gameplay_scripts_missing");
         return false;
     }
+    configure_field_menu_route();
     const auto map_rules = game_scripts_.map_event_rules();
     if (!map_rules.has_value()) {
         failure_ = game_scripts_.failure();
@@ -7070,6 +7238,9 @@ bool FieldSceneRuntime::bootstrap(
     field_pending_scene_profile_.reset();
     field_camera_follow_ = {};
     field_camera_alignment_ready_ = false;
+    game_scripts_.close_menu_route();
+    menu_route_active_ = false;
+    menu_route_screen_ = 0U;
     command_overview_.close();
     field_dialogue_.close();
     hotel_menu_.close();
@@ -10560,8 +10731,10 @@ void FieldSceneRuntime::advance_frame() {
                 // ROM 0x10E74 routes the Attributes return back through the
                 // 0x10D30 command initializer. Rebuild every shared panel and
                 // row here so partial page pixels cannot survive the return.
-                command_overview_.close();
-                open_command_overview();
+                if (!menu_route_active_) {
+                    command_overview_.close();
+                    open_command_overview();
+                }
                 source_boundary(
                     "field.command_overview.attributes_skills.returned_to_command");
                 break;
@@ -10622,13 +10795,13 @@ void FieldSceneRuntime::advance_frame() {
             }
             return;
         }
-        if (command_overview_.take_action_dialog()) {
+        if (!menu_route_active_ && command_overview_.take_action_dialog()) {
             // Up on command pages 2..6 arms FFF115 and enters the 0x119CE
             // posture focus. Keep the command page selected underneath it.
             posture_dialog_active_ = true;
             source_boundary("field.posture.dialog_opened");
         }
-        if (posture_dialog_active_) {
+        if (!menu_route_active_ && posture_dialog_active_) {
             const auto events = field_controller_sample_state_.events;
             bool check_increment = false;
             bool check_decrement = false;
@@ -10943,7 +11116,24 @@ void FieldSceneRuntime::advance_frame() {
             return;
         }
         const auto was_open = command_overview_.open();
-        command_overview_.advance(field_controller_sample_state_.events);
+        if (menu_route_active_) {
+            game_scripts_.advance_menu_route(
+                field_controller_sample_state_.events);
+            const auto route_state = game_scripts_.menu_route_snapshot();
+            if (route_state.page.has_value() && route_state.row.has_value()) {
+                command_overview_.sync_script_selection(
+                    static_cast<std::uint8_t>(*route_state.page),
+                    static_cast<std::uint8_t>(*route_state.row));
+            }
+            menu_route_screen_ = route_state.top_screen;
+            posture_dialog_active_ =
+                route_state.open &&
+                menu_route_screen_ == static_cast<std::uint16_t>(
+                                          srx::MenuScreen::POSTURE);
+        } else {
+            command_overview_.advance(
+                field_controller_sample_state_.events);
+        }
         if (was_open && !command_overview_.open()) {
             // The source command loop returns through the field coordinator's
             // display-service tail before the next field pass. The converted
@@ -10981,7 +11171,8 @@ void FieldSceneRuntime::advance_frame() {
             dismiss_runner_ = DismissRunnerMenuState{};
             posture_dialog_active_ = false;
             advance_field_scene_transition_after_modal();
-        } else if (command_overview_.take_action_dispatch_pending()) {
+        } else if (!menu_route_active_ &&
+                   command_overview_.take_action_dispatch_pending()) {
             // ROM 0x10E4E publishes audio command 0x24 before dispatching the
             // A/C action selected on the command overview. FBA6 itself has
             // no additional sound call in its Magical Defense fallback.

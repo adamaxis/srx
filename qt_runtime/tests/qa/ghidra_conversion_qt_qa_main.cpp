@@ -21036,7 +21036,8 @@ int main(int argc, char** argv) {
                         read_only_record.auxiliary ||
                     field_scene.active_runner_record().cyberware_flags !=
                         read_only_record.cyberware_flags ||
-                    !field_audio_events.empty() ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x25U} ||
                     !returned_scene_saved) {
                     std::cerr << "field Attributes/Skills dump: A did "
                                  "not restore a clean command shell (open="
@@ -21083,7 +21084,8 @@ int main(int argc, char** argv) {
                         read_only_record.auxiliary ||
                     field_scene.active_runner_record().cyberware_flags !=
                         read_only_record.cyberware_flags ||
-                    !field_audio_events.empty() ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x25U} ||
                     !save_scene("returned-command-page6-after-b",
                                 b_return_scene)) {
                     std::cerr << "field Attributes/Skills dump: B did not "
@@ -21119,7 +21121,8 @@ int main(int argc, char** argv) {
                         read_only_record.auxiliary ||
                     field_scene.active_runner_record().cyberware_flags !=
                         read_only_record.cyberware_flags ||
-                    !field_audio_events.empty() ||
+                    field_audio_events !=
+                        std::vector<std::uint16_t>{0x25U} ||
                     !save_scene("returned-command-page6-after-start",
                                 start_return_scene)) {
                     std::cerr << "field Attributes/Skills dump: Start did "
@@ -22954,22 +22957,19 @@ int main(int argc, char** argv) {
                         "could not save the real Up-selected posture frame");
                 }
 
-                press(0x80U); // Start leaves posture focus first.
-                if (field_scene.posture_dialog_open() ||
-                    !field_scene.command_overview_open()) {
-                    return posture_failure(
-                        "Start did not return from focus to the command row");
-                }
-                press(0x80U); // A second Start returns to the field.
+                field_audio_events.clear();
+                press(0x80U); // ROM FFF0B1 makes Start exit the whole menu.
                 const auto field_after_menu = capture();
-                if (field_scene.command_overview_open() ||
+                if (field_scene.posture_dialog_open() ||
+                    field_scene.command_overview_open() ||
+                    !field_audio_events.empty() ||
                     image_region_differs(field_before_menu, field_after_menu,
                                          0, 0, kSceneWidth, kSceneHeight) ||
                     !save_frame("field-after-start-return.bmp",
                                 field_after_menu)) {
                     return posture_failure(
-                        "command-menu graphics remained over the field after "
-                        "Start returned");
+                        "Start in posture focus did not return directly to "
+                        "the clean field frame");
                 }
                 if (!save_frame("field-before-command-menu.bmp",
                                 field_before_menu)) {

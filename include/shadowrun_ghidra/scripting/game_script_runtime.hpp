@@ -11,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion::scripting {
@@ -43,6 +44,49 @@ struct ScriptMenuDefinition {
     std::vector<ScriptMenuChoice> choices;
     ScriptMenuInputMode input_mode = ScriptMenuInputMode::button_choice;
     std::size_t selected_index = 0U;
+};
+
+// The live field-menu route is stored in the same Lua state as gameplay
+// scripts. These callbacks are narrow host services; page, row, posture focus,
+// and the active route stack remain Lua-owned.
+struct ScriptMenuRouteArgs {
+    std::optional<int> page;
+    std::optional<int> row;
+    std::optional<int> column;
+};
+
+struct ScriptMenuRouteHost {
+    std::function<void(std::uint16_t)> play_sound;
+    std::function<void(std::uint32_t)> redraw;
+    std::function<void(std::uint16_t)> blank;
+    std::function<void(std::uint16_t)> set_window;
+    std::function<void(std::uint16_t)> set_screen;
+    std::function<void()> menu_closed;
+    std::function<void(std::uint16_t, const ScriptMenuRouteArgs&)>
+        legacy_open;
+    std::function<std::pair<bool, bool>(std::uint16_t, std::uint16_t)>
+        legacy_advance;
+};
+
+struct ScriptMenuRouteGame {
+    std::function<bool()> leader_incapacitated;
+    std::function<void()> reselect_leader;
+    std::function<int()> leader_posture;
+    std::function<void(int)> set_leader_posture;
+    std::function<int()> leader_archetype;
+    std::function<bool(int, int)> inventory_item;
+};
+
+struct ScriptMenuRouteBindings {
+    ScriptMenuRouteHost host;
+    ScriptMenuRouteGame game;
+};
+
+struct ScriptMenuRouteSnapshot {
+    bool open = false;
+    std::uint16_t top_screen = 0U;
+    std::optional<int> page;
+    std::optional<int> row;
 };
 
 using ScriptStringMap = std::unordered_map<std::string, std::string>;
@@ -875,6 +919,12 @@ public:
         std::string_view module, std::string_view function,
         std::string_view text_profile,
         std::string_view menu_id = "manager");
+
+    void set_menu_route_bindings(ScriptMenuRouteBindings bindings);
+    bool open_menu_route(std::uint16_t root_screen);
+    void advance_menu_route(std::uint16_t events);
+    void close_menu_route();
+    ScriptMenuRouteSnapshot menu_route_snapshot() const noexcept;
 
     const std::string& failure() const noexcept;
 

@@ -236,6 +236,18 @@ void FieldCommandOverviewBridge::advance(
     }
 }
 
+void FieldCommandOverviewBridge::sync_script_selection(
+    const std::uint8_t page, const std::uint8_t row) {
+    if (!view_.open || page >= 7U || row >= 4U ||
+        (state_.primary_page == page && state_.secondary_page == row)) {
+        return;
+    }
+    state_.primary_page = page;
+    state_.secondary_page = row;
+    state_.action_dialog_gate = 0;
+    refresh_view();
+}
+
 void FieldCommandOverviewBridge::close() noexcept {
     view_.open = false;
     state_.action_marker = 0;
