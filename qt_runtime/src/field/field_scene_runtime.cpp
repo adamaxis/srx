@@ -58,6 +58,9 @@ namespace {
 // that scene reference with the saved row; both paths use the same typed scene
 // resource selection below.
 constexpr std::uint16_t kInitialFieldSceneReference = 2U;
+// Keep the ROM's FFF101 debug-menu branch exposed during development. Set to
+// false to return to the title-code-only unlock rule.
+constexpr bool kDebugMenuAlwaysUnlockedForTesting = true;
 
 // ROM 0x5A94/0x5ABE: +0x0C is the projected Y, cleared outside the window.
 bool caster_projection_active(const std::uint16_t world_x,
@@ -5618,6 +5621,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
             member.stun = record.behavior_meter;
             member.magic_resource = record.auxiliary[0];
             member.archetype = record.archetype_index;
+            member.karma = record.auxiliary[2];
             member.magic_force = record.magic_force;
             member.posture = record.posture;
             member.magic_table_index = record.magic_table_index;
@@ -5712,6 +5716,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
             record.delay_meter = member.physical;
             record.behavior_meter = member.stun;
             record.auxiliary[0] = member.magic_resource;
+            record.auxiliary[2] = member.karma;
             record.archetype_index = member.archetype;
             record.magic_force = member.magic_force;
             record.posture = member.posture;
@@ -5738,7 +5743,14 @@ void FieldSceneRuntime::configure_field_menu_route() {
             }));
     };
     bindings.game.pocket_extra_row = [this] {
-        return pocket_secretary_.maximum_selection > 4U;
+        return debug_menu_unlocked_ ||
+               pocket_secretary_.maximum_selection > 4U;
+    };
+    bindings.game.set_nuyen = [this](const std::uint32_t amount) {
+        field_funds_ = amount;
+    };
+    bindings.game.set_contact_flags = [this](const std::uint32_t flags) {
+        notebook_contacts_flags_ = flags & 0x1FFFU;
     };
     bindings.game.source_random_bound = [this](const int bound) {
         if (bound <= 0 || bound > 0xFFFF) {
@@ -6387,7 +6399,7 @@ void FieldSceneRuntime::start_command_menu_legacy_screen(
         source_boundary("field.pocket_secretary.save_load_pending");
     } else if (screen == static_cast<std::uint16_t>(
                             srx::MenuScreen::DEBUG_MENU)) {
-        source_boundary("field.pocket_secretary.debug_menu_pending");
+        source_boundary("field.pocket_secretary.debug_menu_route_missing");
     } else {
         source_boundary("field.command_overview.lua_legacy_route_unmapped");
     }
@@ -6660,11 +6672,10 @@ void FieldSceneRuntime::begin_pocket_secretary() {
     if (!command_overview_.open()) {
         return;
     }
-    // ROM 0xC2A6 with FFF101 selecting the five-entry field variant. The
-    // six-entry extended form is a different caller; the field command
-    // route uses this one until the video identifies the extended case.
+    // ROM 0xC2A6 normally uses FFF101 to choose four or five labeled rows.
+    // The temporary test override exposes its sixth, unlabeled debug row.
     initialize_pocket_secretary_menu(
-        pocket_secretary_, false,
+        pocket_secretary_, debug_menu_unlocked_,
         {[this] { source_boundary("field.pocket_secretary.transfer_menu_assets"); },
          [this] { source_boundary("field.pocket_secretary.render_menu_grid"); },
          [this] { source_boundary("field.pocket_secretary.render_menu_text"); },
@@ -7827,6 +7838,8 @@ bool FieldSceneRuntime::bootstrap(
     field_asset_catalog_.reset();
     world_frame_state_ = WorldFrameState{};
     viewport_state_ = FieldViewportState{};
+    debug_menu_unlocked_ = kDebugMenuAlwaysUnlockedForTesting ||
+                           startup_state.title_debug_menu_unlocked;
 
     if (!startup_state.field_session_source_assets.has_value()) {
         failure_ = "field-session source records are unavailable";
@@ -14608,6 +14621,31 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 dismiss_runner_random_grid_patterns_[
                     static_cast<std::size_t>(pattern)]);
         }
+        if (menu_route_screen_ == static_cast<std::uint16_t>(
+                                      srx::MenuScreen::DEBUG_MENU)) {
+            const auto debug_menu = game_scripts_.menu_route_snapshot();
+            if (!debug_menu.top_title.empty()) {
+                draw_command_overview_text(
+                    painter, 88, 32, debug_menu.top_title);
+                draw_command_overview_text(
+                    painter, 72, 40,
+                    pocket_secretary_menu_content_.separator);
+            }
+            for (std::size_t row = 0;
+                 row < debug_menu.top_option_labels.size(); ++row) {
+                draw_command_overview_text(
+                    painter, 88, 56 + static_cast<int>(row) * 16,
+                    debug_menu.top_option_labels[row]);
+            }
+            const auto selected_row = debug_menu.top_row.value_or(0);
+            if (selected_row >= 0 &&
+                static_cast<std::size_t>(selected_row) <
+                    debug_menu.top_option_labels.size()) {
+                draw_command_overview_text(
+                    painter, 72, 56 + selected_row * 16, "x");
+            }
+            return;
+        }
         if (pocket_secretary_.notebook.open) {
             const auto draw_notebook_record_page =
                 [this, &painter](
@@ -14923,8 +14961,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 painter, 88, 56 + static_cast<int>(row) * 16,
                 pocket_secretary_menu_content_.choices[row].label);
         }
-        if (pocket_secretary_.selection <
-            pocket_secretary_menu_content_.choices.size()) {
+        if (pocket_secretary_.selection <=
+            pocket_secretary_.maximum_selection) {
             // ROM 0xC376 writes the selector into plane-B column 9 (x=72),
             // in the gutter before the option labels begin at x=88.
             draw_command_overview_text(

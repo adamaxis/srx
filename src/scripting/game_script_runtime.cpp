@@ -586,6 +586,8 @@ struct GameScriptRuntime::Impl {
         notebook_facts,
         cyberdeck_available,
         notebook_boundary,
+        set_nuyen,
+        set_contact_flags,
     };
 
     lua_State* state = nullptr;
@@ -776,6 +778,7 @@ struct GameScriptRuntime::Impl {
                 set_integer("stun", member.stun);
                 set_integer("magic", member.magic_resource);
                 set_integer("archetype", member.archetype);
+                set_integer("karma", member.karma);
                 set_integer("force", member.magic_force);
                 set_integer("posture", member.posture);
                 set_integer("magic_table_index", member.magic_table_index);
@@ -929,6 +932,7 @@ struct GameScriptRuntime::Impl {
                         bounded_byte(member_index, "magic");
                     member.archetype =
                         bounded_byte(member_index, "archetype");
+                    member.karma = bounded_byte(member_index, "karma");
                     member.magic_force =
                         bounded_byte(member_index, "force");
                     member.posture =
@@ -1077,6 +1081,20 @@ struct GameScriptRuntime::Impl {
             }
             return 1;
         }
+        case MenuBinding::set_nuyen:
+            if (self->menu_route_bindings.game.set_nuyen) {
+                self->menu_route_bindings.game.set_nuyen(
+                    static_cast<std::uint32_t>(
+                        std::max(integer_argument(1), 0)));
+            }
+            return 0;
+        case MenuBinding::set_contact_flags:
+            if (self->menu_route_bindings.game.set_contact_flags) {
+                self->menu_route_bindings.game.set_contact_flags(
+                    static_cast<std::uint32_t>(
+                        std::max(integer_argument(1), 0)));
+            }
+            return 0;
         }
         lua_pushnil(lua);
         return 1;
@@ -1153,6 +1171,10 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::notebook_facts);
         add_menu_binding(state, table_index, "cyberdeck_available",
                          MenuBinding::cyberdeck_available);
+        add_menu_binding(state, table_index, "set_nuyen",
+                         MenuBinding::set_nuyen);
+        add_menu_binding(state, table_index, "set_contact_flags",
+                         MenuBinding::set_contact_flags);
     }
 
     bool refresh_menu_route_snapshot() {
@@ -1243,6 +1265,29 @@ struct GameScriptRuntime::Impl {
             lua_getfield(state, entry_index, "state");
             if (lua_istable(state, -1)) {
                 const auto screen_state_index = lua_absindex(state, -1);
+                lua_getfield(state, screen_state_index, "title");
+                (void)read_string(state, -1, menu_route_state.top_title);
+                lua_pop(state, 1);
+                lua_getfield(state, screen_state_index, "labels");
+                if (lua_istable(state, -1)) {
+                    const auto labels_index = lua_absindex(state, -1);
+                    const auto label_count = std::min<std::size_t>(
+                        static_cast<std::size_t>(
+                            lua_rawlen(state, labels_index)),
+                        8U);
+                    for (std::size_t index = 0; index < label_count;
+                         ++index) {
+                        lua_rawgeti(state, labels_index,
+                                    static_cast<lua_Integer>(index + 1U));
+                        std::string label;
+                        if (read_string(state, -1, label)) {
+                            menu_route_state.top_option_labels.push_back(
+                                std::move(label));
+                        }
+                        lua_pop(state, 1);
+                    }
+                }
+                lua_pop(state, 1);
                 menu_route_state.top_column =
                     read_optional_alias(screen_state_index, "col", "column");
                 menu_route_state.top_row =
@@ -1353,8 +1398,8 @@ struct GameScriptRuntime::Impl {
                 }
                 lua_pop(state, 1);
                 menu_route_state.top_visible_option_ids =
-                    read_integer_array(screen_state_index, "options", 5U,
-                                       0, 4);
+                    read_integer_array(screen_state_index, "options", 8U,
+                                       0, 7);
                 menu_route_state.top_visible_source_ids =
                     read_integer_array(screen_state_index, "visible", 96U,
                                        0, 95);

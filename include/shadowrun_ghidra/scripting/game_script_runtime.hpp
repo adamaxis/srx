@@ -93,6 +93,7 @@ struct ScriptMenuPartyMember {
     // +0x9D, +0x4D, and +0xA0 respectively.
     std::uint8_t magic_resource = 0U;
     std::uint8_t archetype = 0U;
+    std::uint8_t karma = 0U;
     std::uint8_t magic_force = 0U;
     std::uint8_t posture = 0U;
     std::uint16_t magic_table_index = 0U;
@@ -142,6 +143,8 @@ struct ScriptMenuRouteGame {
         commit_party;
     std::function<int(int, int)> roll_successes;
     std::function<bool()> pocket_extra_row;
+    std::function<void(std::uint32_t)> set_nuyen;
+    std::function<void(std::uint32_t)> set_contact_flags;
     std::function<int(int)> source_random_bound;
     std::function<void(int)> dismiss_runner;
     std::function<std::optional<std::uint32_t>()> group_item_flags;
@@ -157,6 +160,8 @@ struct ScriptMenuRouteBindings {
 struct ScriptMenuRouteSnapshot {
     bool open = false;
     std::uint16_t top_screen = 0U;
+    std::string top_title;
+    std::vector<std::string> top_option_labels;
     std::optional<int> page;
     std::optional<int> row;
     std::optional<int> top_column;

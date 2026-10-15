@@ -1689,6 +1689,9 @@ private:
     std::array<QImage, kFieldHudAmmoCounterCount> field_hud_ammo_counters_{};
     std::array<FieldHudSlotState, kFieldHudSlotCount> field_hud_slots_{};
     PocketSecretaryMenuState pocket_secretary_{};
+    // Temporary development override: expose the ROM's hidden sixth row so
+    // the debug screen remains reachable without entering the title code.
+    bool debug_menu_unlocked_ = true;
     // FF018F bit 0 is session state. Fresh New Game starts clear; restored
     // saves remain unknown until that global is included in the save adapter.
     std::optional<bool> cyberdeck_available_ = false;

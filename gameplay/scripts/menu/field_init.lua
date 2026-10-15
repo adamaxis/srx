@@ -35,6 +35,8 @@ Route.register(E.MenuScreen.NOTEBOOK_CONTACTS, secretary.Contacts)
 Route.register(E.MenuScreen.NOTEBOOK_SHADOWRUNNERS, secretary.Shadowrunners)
 Route.register(E.MenuScreen.GROUP_ITEMS, secretary.GroupItems)
 Route.register(E.MenuScreen.DISMISS_RUNNER, secretary.Dismiss)
+Route.register(E.MenuScreen.DEBUG_MENU,
+               require("menu.screens.debug_menu"))
 
 local legacy = require("menu.screens.legacy")
 for screen = E.MenuScreen.ITEM_ACTION, E.MenuScreen.DECK_MAP do
@@ -59,7 +61,8 @@ for screen = E.MenuScreen.ITEM_ACTION, E.MenuScreen.DECK_MAP do
         screen ~= E.MenuScreen.NOTEBOOK_CONTACTS and
         screen ~= E.MenuScreen.NOTEBOOK_SHADOWRUNNERS and
        screen ~= E.MenuScreen.GROUP_ITEMS and
-       screen ~= E.MenuScreen.DISMISS_RUNNER then
+       screen ~= E.MenuScreen.DISMISS_RUNNER and
+       screen ~= E.MenuScreen.DEBUG_MENU then
         local window = E.WindowPlane.SIDEBAR
         if screen == E.MenuScreen.CYBERDECK then
             window = E.WindowPlane.OFF
