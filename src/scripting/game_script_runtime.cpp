@@ -589,6 +589,7 @@ struct GameScriptRuntime::Impl {
         set_nuyen,
         set_contact_flags,
         set_walk_fast,
+        install_test_deck,
     };
 
     lua_State* state = nullptr;
@@ -1101,6 +1102,11 @@ struct GameScriptRuntime::Impl {
                 self->menu_route_bindings.game.set_walk_fast();
             }
             return 0;
+        case MenuBinding::install_test_deck:
+            if (self->menu_route_bindings.game.install_test_deck) {
+                self->menu_route_bindings.game.install_test_deck();
+            }
+            return 0;
         }
         lua_pushnil(lua);
         return 1;
@@ -1183,6 +1189,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::set_contact_flags);
         add_menu_binding(state, table_index, "set_walk_fast",
                          MenuBinding::set_walk_fast);
+        add_menu_binding(state, table_index, "install_test_deck",
+                         MenuBinding::install_test_deck);
     }
 
     bool refresh_menu_route_snapshot() {

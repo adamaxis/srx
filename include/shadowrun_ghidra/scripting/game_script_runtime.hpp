@@ -146,6 +146,7 @@ struct ScriptMenuRouteGame {
     std::function<void(std::uint32_t)> set_nuyen;
     std::function<void(std::uint32_t)> set_contact_flags;
     std::function<void()> set_walk_fast;
+    std::function<void()> install_test_deck;
     std::function<int(int)> source_random_bound;
     std::function<void(int)> dismiss_runner;
     std::function<std::optional<std::uint32_t>()> group_item_flags;

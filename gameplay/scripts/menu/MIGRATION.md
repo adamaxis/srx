@@ -16,9 +16,10 @@ capturing and checking each of 30 full-screen wait frames. An unknown
 restored-save flag still enters the explicit Cyberdeck
 adapter boundary. The Debug menu is now registered in the live route and is
 kept unlocked by a temporary Qt development override. Nuyen, Heal All, +10
-Karma, Contacts, and Walk Fast are connected; Spells, Test Deck, and Pick
-System remain visibly marked pending until their host state paths are ported.
-Deck-present Matrix entry and Save/Load remain unimplemented in the live route.
+Karma, Contacts, Walk Fast, and the ROM Test Deck setup are connected; Spells
+and Pick System remain pending. Test Deck writes typed deck state and enables
+the deck-present branch, while the live Matrix route and Save/Load remain
+unimplemented.
 
 The shared `0xC376` signed-byte row-wrap rule is in
 `rules/cursor.lua` and serves the active Pocket Secretary family selectors,
@@ -72,7 +73,7 @@ not connected to the live field route yet.
 Sound sites for all of these: out/menu_sound_sites.txt (0x25 = move/toggle, 0x24 = confirm; Start paths silent) [C].
 
 - D20 Automatic-use items (0x13, 0x14, 0x16, 0x18..0x2B: fetish, passkey, smart goggles, foci, talisman, spell lock, totems) only print "This item is automatically used." (0xD202F) and wait (0x12168 -> 0x121C0). The menu applies no effect, so nothing is missing from the port [C]. The passive effects are read elsewhere by code; that's outside the menu scope.
-- D21 Pocket Secretary row 5 = the debug menu 0x599DA (docs/12). A temporary Qt development override exposes the normally title-code-gated, unlabeled sixth row and remains enabled for field testing. `screens/debug_menu.lua` owns its eight-row cursor and labels; Nuyen, Heal All, +10 Karma, Contacts, and Walk Fast write through typed host services. Spells, Test Deck, and Pick System remain pending. The title result remains available as `StartupIntegrationState::title_debug_menu_unlocked`.
+- D21 Pocket Secretary row 5 = the debug menu 0x599DA (docs/12). A temporary Qt development override exposes the normally title-code-gated, unlabeled sixth row and remains enabled for field testing. `screens/debug_menu.lua` owns its eight-row cursor and labels; Nuyen, Heal All, +10 Karma, Contacts, Walk Fast, and Test Deck write through typed host services. Test Deck follows ROM 0x59B7E and seeds only the fields written by that routine. Spells and Pick System remain pending. The title result remains available as `StartupIntegrationState::title_debug_menu_unlocked`.
 
 - D22 Magic rules and screens are registered in the active field route. Lua owns class/resource routing, spell selection, success/effect/defense values, force/posture input, equipment publication, and cursor cadence; C++ supplies typed ROM spell records and paints the resulting view. Field spell casting/target effects remain a separate gameplay route.
 - D23 Pick System return path still needs live route wiring and Qt verification; the Matrix route is not active in `field_init.lua`.
@@ -83,11 +84,11 @@ Sound sites for all of these: out/menu_sound_sites.txt (0x25 = move/toggle, 0x24
 - A full build = `blank(OFF)`, then FULL, then `blank(ON)`. That gives at least one black frame; the exact count is [H] (it depends on the build length, not measured).
 
 ## Port queue (next)
-Done in the active route: command/posture, item actions, Clips, Attributes/Skills, Pocket Secretary root, Group Items, Dismiss Runner, Notebook no-run flow, Tips & Clues, Mr. Johnsons, the Magic/Force/Posture route, and the partial Debug menu. Cyberdeck, Save/Load, and the three pending Debug actions remain open; Matrix/deck behavior has Lua rules and screens but no complete live route wiring.
+Done in the active route: command/posture, item actions, Clips, Attributes/Skills, Pocket Secretary root, Group Items, Dismiss Runner, Notebook no-run flow, Tips & Clues, Mr. Johnsons, the Magic/Force/Posture route, and the connected Debug menu actions. Cyberdeck, Save/Load, and the two pending Debug actions remain open; Matrix/deck behavior has Lua rules and screens but no complete live route wiring.
 Open source/behavior boundaries: the drain-damage tail at 0x1046E, FFF0B1 inside the Matrix, FFF101 save-state import, and child-loop migration.
 In-game wiring: root `qt_runtime/src/field/field_scene_runtime.cpp` (`configure_field_menu_route()` supplies `ScriptMenuRouteBindings`); `host/menu_game_fsr.sketch.cpp` remains an unbuilt design sketch.
 
-Order: connect the remaining POCKET_SECRETARY extended caller, then Cyberdeck/Matrix and Save/Load, followed by the three pending Debug actions. Notebook's positive-current-run content, normal story acquisition/restored-save facts, and spell cast/target resolution are explicit open boundaries; Contacts and Shadowrunners list/detail screens are already registered and implemented.
+Order: connect the remaining POCKET_SECRETARY extended caller, then Cyberdeck/Matrix and Save/Load, followed by the two pending Debug actions. Notebook's positive-current-run content, normal story acquisition/restored-save facts, and spell cast/target resolution are explicit open boundaries; Contacts and Shadowrunners list/detail screens are already registered and implemented.
 Each one replaces its `legacy(...)` line in menu/init.lua.
 
 - D24 A `screens/save_load.lua` draft exists but is not registered in the active profile; live Save/Load behavior is still behind the adapter.

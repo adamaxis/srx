@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/core/controller_wait_conversion.hpp"
+#include "shadowrun_ghidra/cyberspace/cyberdeck_record.hpp"
 #include "shadowrun_ghidra/menus/pocket_secretary_menu_conversion.hpp"
 #include "shadowrun_ghidra/menus/magic_menu_conversion.hpp"
 #include "shadowrun_ghidra/menus/first_aid_conversion.hpp"
@@ -1695,6 +1696,10 @@ private:
     // FF018F bit 0 is session state. Fresh New Game starts clear; restored
     // saves remain unknown until that global is included in the save adapter.
     std::optional<bool> cyberdeck_available_ = false;
+    // FFFC28 and the known fields of FFFBBE. The save adapter does not yet
+    // restore these source values, so loaded sessions retain unknown state.
+    std::optional<std::uint16_t> field_matrix_passcode_flags_;
+    std::optional<CyberdeckRecord> field_matrix_deck_record_;
     // FFFC22 is not present in the current save adapter. New Game initializes
     // it to zero; restored saves remain an explicit source-state boundary.
     std::optional<std::uint32_t> group_item_flags_ = 0U;

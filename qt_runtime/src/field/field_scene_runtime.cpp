@@ -5756,6 +5756,28 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.game.set_walk_fast = [this] {
         field_walk_fast_enabled_ = true;
     };
+    bindings.game.install_test_deck = [this] {
+        // ROM 0x59B7E sets FF018F bit 0, FFFC28, and these FFFBBE fields.
+        cyberdeck_available_ = true;
+        if (field_runner_feature_flags_.has_value()) {
+            *field_runner_feature_flags_ |= 0x01U;
+        }
+        field_matrix_passcode_flags_ = 0x0FFEU;
+
+        auto deck = field_matrix_deck_record_.value_or(
+            CyberdeckRecord{});
+        deck.mpcp = 6U;
+        deck.hardening = 1U;
+        deck.memory_megapulses = 200U;
+        deck.storage_megapulses = 1000U;
+        deck.load_io_speed = 50U;
+        deck.response = 1U;
+        deck.model_index = static_cast<std::int8_t>(-1);
+        std::array<std::uint8_t, 12> program_ratings{};
+        program_ratings.fill(4U);
+        deck.program_ratings = program_ratings;
+        field_matrix_deck_record_ = std::move(deck);
+    };
     bindings.game.source_random_bound = [this](const int bound) {
         if (bound <= 0 || bound > 0xFFFF) {
             return 0;
@@ -7881,6 +7903,8 @@ bool FieldSceneRuntime::bootstrap(
     cyberdeck_available_ = restored_field_state == nullptr
                                ? std::optional<bool>{false}
                                : std::nullopt;
+    field_matrix_passcode_flags_.reset();
+    field_matrix_deck_record_.reset();
     group_item_flags_ = restored_field_state == nullptr
                             ? std::optional<std::uint32_t>{0U}
                             : std::nullopt;

@@ -1,6 +1,6 @@
 -- ROM 0x599DA: eight-row developer menu. The parent row is normally unlocked
 -- by the title input sequence at 0x1BAC; Qt currently keeps it exposed for
--- development. Five source effects are wired to typed host services below.
+-- development. Six source effects are wired to typed host services below.
 local E = require("enums")
 local Grid = require("menu.rules.random_grid")
 local P, D, R, T, St = E.Pad, E.DebugOption, E.MenuRegion,
@@ -12,7 +12,7 @@ local M = {
     labels = {
         "Nuyen",
         "Spells (pending)",
-        "Test Deck (pending)",
+        "Test Deck",
         "Pick System (pending)",
         "Heal All",
         "+10 Karma",
@@ -59,6 +59,9 @@ M.effects = {
     [D.CONTACTS] = function(ctx)
         ctx.game.set_contact_flags(M.contacts) -- ROM 0x59C48 writes FFFC2C.
     end,
+    [D.TEST_DECK] = function(ctx)
+        ctx.game.install_test_deck() -- ROM 0x59B7E seeds the deck and passcodes.
+    end,
     [D.WALK_FAST] = function(ctx)
         ctx.game.set_walk_fast() -- ROM 0x59C54 writes FFE168 = 0xFF.
     end,
@@ -98,8 +101,7 @@ function M.input(st, events, ctx)
             effect(ctx)
             return { transition = T.POP }
         end
-        -- These source handlers need the pending spell, deck, Matrix, and
-        -- movement-state host services before they can safely be enabled.
+        -- Spells and Pick System still need their source-backed host services.
         return
     end
     if events & P.C ~= 0 then
