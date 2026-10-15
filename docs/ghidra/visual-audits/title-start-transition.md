@@ -14,7 +14,9 @@ were used only as cross-checks.
   controller bits at `0x1BEA`, and calls `0x0BF2`. That latch marks general
   activity in `FFDDC0`; it sets the title exit latch `FFDDC2` only when
   controller bit 15 is pressed. The title loop checks `FFDDC2`, so A by itself
-  does not leave the screen.
+  does not leave the screen. The check is inside the `D7 < 0x0C6C` branch, so
+  Start is honored only once the prompt phase begins; a Start latched during
+  the earlier logo reveal waits until that branch is reached.
 - After a Start exit, `0x1A9E` takes one final sample and calls `0x131C` before
   returning. `0x131C` performs 17 palette passes. Each pass calls `0x1342`
   with a DBF count of one, so there are two VBlank waits and controller-event
@@ -125,12 +127,15 @@ and are excluded from the 134-image cross-configuration comparison.
   transition; `TitleModeEntryServiceState` models the six transaction/18
   VBlank caller service; `StartupIntegrationPhase::start_options_shell`
   models the shell-only checkpoint and reveal. Qt forwards Start to the ROM
-  Start latch and holds input during the source transition.
+  Start latch, the converted loop now checks that latch only when the prompt
+  schedule enters the ROM's `D7 < 0x0C6C` branch, and input stays held during
+  the source transition.
 - **Behavior implemented:** Start exits the title, runs all 34 transition
   VBlanks, holds black for the 18 caller-service VBlanks, shows the shell
   checkpoint, then opens Start Options with New Game selected. A alone does
-  not exit; a button held through the shell is sampled when the menu becomes
-  active. Empty Load return repeats the shell then reveals the menu.
+  not exit; Start latched before the title prompt waits until prompt-phase
+  input is accepted. A button held through the shell is sampled when the menu
+  becomes active. Empty Load return repeats the shell then reveals the menu.
 - **Internally checked:**
   `shadowrun_ghidra_conversion_qt_startup_qa` and
   `shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa`

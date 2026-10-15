@@ -422,7 +422,11 @@ TitleLoopFrameResult advance_title_loop_frame(
         state.exit_palette_fade.active = true;
     };
 
-    if (state.controller_events.start_latched) {
+    // ROM 0x1A9E checks FFDDC2 only inside its D7 < 0x0C6C prompt branch.
+    // An early Start remains latched, but it cannot leave during the logo
+    // reveal; the title loop takes the transition on the first prompt-phase
+    // update. `prompt` is present on exactly those source updates.
+    if (state.controller_events.start_latched && prompt.has_value()) {
         begin_title_exit_transition();
         return TitleLoopFrameResult::start_requested;
     }
