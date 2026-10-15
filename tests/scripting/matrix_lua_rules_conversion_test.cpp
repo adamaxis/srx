@@ -1,0 +1,251 @@
+extern "C" {
+#include <lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
+}
+
+#include <filesystem>
+#include <iostream>
+#include <string>
+
+namespace {
+
+std::filesystem::path g_script_root;
+
+int load_test_module(lua_State* state) {
+    const char* module_name = luaL_checkstring(state, 1);
+    const std::string name(module_name);
+
+    lua_getglobal(state, "__matrix_test_modules");
+    lua_getfield(state, -1, name.c_str());
+    if (!lua_isnil(state, -1)) {
+        lua_remove(state, -2);
+        return 1;
+    }
+    lua_pop(state, 2);
+
+    auto relative = name;
+    for (auto& character : relative) {
+        if (character == '.') {
+            character = '/';
+        }
+    }
+    const auto module_path = g_script_root / (relative + ".lua");
+    if (luaL_loadfilex(state, module_path.string().c_str(), "t") != LUA_OK ||
+        lua_pcall(state, 0, 1, 0) != LUA_OK) {
+        return lua_error(state);
+    }
+
+    lua_getglobal(state, "__matrix_test_modules");
+    lua_pushvalue(state, -2);
+    lua_setfield(state, -2, name.c_str());
+    lua_pop(state, 1);
+    return 1;
+}
+
+bool run_rules(lua_State* state) {
+    constexpr char kRules[] = R"lua(
+local E = require("enums")
+local MX = require("menu.rules.matrix")
+local C = require("menu.rules.matrix_combat")
+local D = require("menu.rules.deck")
+local Move = require("menu.rules.matrix_move")
+local Actions = require("menu.rules.node_actions")
+local Programs = require("menu.rules.matrix_programs")
+
+local checks = 0
+local function eq(actual, expected, label)
+    assert(actual == expected,
+        (label .. ": expected %s, got %s"):format(tostring(expected), tostring(actual)))
+    checks = checks + 1
+end
+
+-- Deck grid input uses newly pressed edges, with vertical priority and silent wrap.
+local col, row, moved = MX.step_deck_cursor(0, 0, true, true, true, true)
+eq(col, 0, "up priority column")
+eq(row, 3, "up wraps from first row")
+eq(moved, true, "direction moved")
+col, row, moved = MX.step_deck_cursor(2, 3, false, true, false, false)
+eq(row, 0, "down wraps from last row")
+eq(col, 2, "down keeps column")
+col, row = MX.step_deck_cursor(0, 1, false, false, true, false)
+eq(col, 3, "left wraps from first column")
+col, row = MX.step_deck_cursor(3, 1, false, false, false, true)
+eq(col, 0, "right wraps from last column")
+col, row, moved = MX.step_deck_cursor(2, 1, false, false, false, false)
+eq(col, 2, "no edge keeps column")
+eq(row, 1, "no edge keeps row")
+eq(moved, false, "no edge does not redraw")
+eq(E.MatrixDeckMode.ATTACK, 0xFF, "A selects attack pool")
+eq(E.MatrixDeckMode.BALANCED, 0, "B selects balanced pool")
+eq(E.MatrixDeckMode.DEFENSE, 1, "C selects defense pool")
+
+-- Exercise the actual deck-grid screen against a narrow fake host. This verifies
+-- the menu calls its heartbeat, moves the visible cursor, and submits the
+-- selected attack mode before opening the chosen child screen.
+local Cyberdeck = require("menu.screens.cyberdeck").Cyberdeck
+local deck_screen, grid = Cyberdeck.new(), { ticks = 0, mode = nil, redraw = nil }
+local grid_ctx = {
+    game = {
+        deck_tick = function() grid.ticks = grid.ticks + 1 end,
+        set_deck_mode = function(mode) grid.mode = mode end,
+    },
+    redraw = function(region) grid.redraw = region end,
+}
+Cyberdeck.input(deck_screen, E.Pad.UP, grid_ctx)
+eq(grid.ticks, 1, "deck screen services heartbeat")
+eq(deck_screen.col, 0, "deck screen up keeps first column")
+eq(deck_screen.row, 3, "deck screen up wraps to bottom row")
+eq(grid.redraw, E.MenuRegion.SUBMENU, "deck screen redraws moved grid")
+local child = Cyberdeck.input(deck_screen, E.Pad.A, grid_ctx)
+eq(grid.mode, E.MatrixDeckMode.ATTACK, "deck screen submits attack mode")
+eq(child.transition, E.MenuTransition.PUSH, "deck screen opens child route")
+eq(child.screen, E.MenuScreen.DECK_CYBERINFO, "bottom-left cell opens deck info")
+
+-- IC visibility, layered types, and alert bonuses follow the ROM tables.
+local node = { ic_condition = 10, ic_code = 7, ic_rating = 3, ic_rating2 = 5 }
+eq(MX.ic_type(node, 0, false, 0), MX.UNSEEN, "unseen node")
+eq(MX.ic_type(node, 0, true, 0), 0, "normal IC layer")
+eq(MX.ic_type(node, 1, true, 1), 6, "active IC layer")
+node.ic_condition = 0
+eq(MX.ic_type(node, 1, true, 1), MX.NO_IC, "crashed IC")
+node.ic_condition = 10
+eq(MX.ic_rating(node, -1), 3, "no-alert rating")
+eq(MX.ic_rating(node, 0), 4, "passive-alert rating")
+eq(MX.ic_rating(node, 1), 7, "active second-layer rating")
+local alert, overload = MX.raise_alert(-1, 1, false)
+eq(alert, 0, "raise no-alert to passive")
+eq(overload, false, "no overload below active")
+alert, overload = MX.raise_alert(1, 1, true)
+eq(alert, MX.ACTIVE, "active alert saturates")
+eq(overload, true, "armed overload returned")
+
+-- Deck pool splits, target floors, and source word-sized memory math.
+local deck = {
+    mpcp = 8, response = 2, ratings = { [0] = 3, [1] = 4, [2] = 2,
+        [3] = 1, [4] = 3, [5] = 1, [6] = 1, [7] = 1, [8] = 1,
+        [9] = 1, [10] = 1, [11] = 1 }, evasion = 3, masking = 4,
+    sensor = 5, bod = 6, hardening = 2, persona = 9, memory = 64,
+    storage = 100, load_io = 3, active = { [0] = 0, [1] = -1, [2] = -1,
+        [3] = -1, [4] = -1 }, files = {},
+}
+for i = 0, 4 do deck.files[i] = { id = -1, size = 0, value = 0 } end
+local decker = { d81c = 3, computer = 6, physical = 10, int = 6 }
+local st = { mode = -1, smoke = 0, mirrors = 0, alert = 0,
+    karma_counter = 1, passive = 0, trace_on = false, trace_left = 0 }
+eq(C.pool(deck, decker, -1, false), 9, "attack pool")
+eq(C.pool(deck, decker, -1, true), 4, "attack mode defense pool")
+eq(C.pool(deck, decker, 0, false), 6, "balanced attack pool")
+eq(C.pool(deck, decker, 0, true), 7, "balanced defense rounds upward")
+eq(C.pool(deck, decker, 1, true), 8, "defense pool clamps to MPCP")
+eq(C.tn_decker(1, { smoke = 0 }), 2, "decker target minimum")
+eq(C.tn_decker(3, { smoke = 2 }), 7, "smoke adds twice to target")
+eq(C.tn_ic(1, { mirrors = 1, smoke = 1 }), 4, "IC target adds mirrors and smoke")
+local roll_dice, roll_tn
+local successes = C.decker_test(deck, decker,
+    { colour = 2, security = 3 }, st, 0,
+    function(dice, tn) roll_dice, roll_tn = dice, tn; return 2 end)
+eq(roll_dice, 5, "decker dice include rating and colour penalty")
+eq(roll_tn, 3, "decker test uses node security")
+eq(successes, 2, "decker test returns successes")
+eq(D.index(3, 2), 11, "program grid index")
+eq(D.size(0, 3), 18, "program size")
+eq(D.free_memory(deck), 46, "free memory from loaded program")
+eq(D.fits(deck, 2), true, "program fits free memory")
+eq(D.load_steps(13, 3), 5, "load duration rounds up")
+eq(D.load_steps(100, 10), 6, "load duration cap")
+eq(D.free_slot(deck), 1, "first empty program slot")
+eq(D.loaded_slot(deck, 0), 0, "loaded program lookup")
+eq(D.run_info(0, 0, 0), "NONE", "no active run summary")
+local slots = { status = { [0] = 6, [1] = 6, [2] = 6, [3] = 6, [4] = 6 },
+    phase = { [0] = 0, [1] = 0, [2] = 0, [3] = 0, [4] = 0 },
+    timer = { [0] = 0, [1] = 0, [2] = 0, [3] = 0, [4] = 0 } }
+D.load(deck, slots, 1, 2, false)
+eq(deck.active[1], 2, "loading publishes selected program")
+eq(slots.timer[1], 60, "loading timer is ten frames per step")
+eq(slots.status[1], 0, "ready slot enters loading state")
+
+-- Node movement and action outcomes preserve table ordering and story gates.
+local links = { [0] = 5, [1] = -1, [2] = 7, [7] = 9 }
+eq(Move.link_right(links, 0), 0, "right wraps at missing link")
+eq(Move.link_left(links, 0), 7, "left scans down from last link")
+local nodes = {
+    [0] = { fn = 0, links = { [0] = 1 } },
+    [1] = { fn = 1, links = { [0] = 0 } },
+    [2] = { fn = -1, links = {} },
+}
+eq(Move.goto_right(nodes, 0, 0), 1, "CPU node navigation skips current")
+eq(Move.goto_commit(nodes, 0, 1), 1, "linked jump preserves previous node")
+eq(Move.goto_commit(nodes, 0, 0), 0, "unlinked jump has no retreat point")
+local cancelled = Actions.cancel_alert({ alert = 0 })
+eq(cancelled.text, Actions.TEXT.ALERT_CANCELLED, "cancel active alert text")
+local run = { state = -1, objective = 5, value = 0, size = 30,
+    fc28 = 1, fc1c = 0 }
+local found = Actions.search(run, { class = 5 }, {}, decker, deck, nil,
+    function() return 0 end)
+eq(found.file.objective, true, "objective search returns objective file")
+eq(found.file.size, 30, "objective file uses run size")
+local result = Actions.erase(run, { class = 5 })
+eq(result.text, Actions.TEXT.ERASE_OBJECTIVE, "objective erase text")
+eq(run.state, 1, "objective erase completes run")
+local gate_state = { attempts = 0 }
+eq(Actions.gate(3, 2, { colour = 1, security = 4 }, gate_state,
+    function(dice, tn) eq(dice, 4, "node action pool uses minimum"); eq(tn, 4, "node action uses security"); return 1 end),
+    true, "successful node action gate")
+eq(gate_state.attempts, 1, "node action gate counts attempt")
+
+-- Program effects and frame services return named outcomes for the presenter.
+local healed = Programs.medic(deck, function(dice, tn)
+    eq(dice, 3, "Medic uses program rating")
+    eq(tn, 4, "Medic target follows persona band")
+    return 2
+end)
+eq(healed.healed, 2, "Medic reports successes rolled")
+eq(deck.persona, 10, "Medic clamps persona at ten")
+local kind = C.ic_kind(7, 1)
+eq(kind, "trace", "active layered IC attacks as trace")
+eq(C.ic_kind(12, 0), "passive", "inactive layered IC remains passive")
+eq(C.ic_interval({ ic_reaction = 5 }, -1), 440, "IC interval includes source alert bonus")
+local value, timer, expired = C.tick_shroud(1, 0)
+eq(value, 0, "shroud decrements on timeout")
+eq(timer, C.SHROUD_PERIOD, "shroud reloads source period")
+eq(expired, true, "zero shroud expires")
+local x, y = Programs.dump_jitter(0x8185)
+eq(x, -5, "dump jitter signed x")
+eq(y, -1, "dump jitter signed y")
+
+print("matrix Lua rules: " .. checks .. " checks passed")
+)lua";
+
+    if (luaL_dostring(state, kRules) != LUA_OK) {
+        std::cerr << "Matrix Lua rules failed: "
+                  << lua_tostring(state, -1) << '\n';
+        return false;
+    }
+    return true;
+}
+
+} // namespace
+
+int main() {
+    lua_State* state = luaL_newstate();
+    if (state == nullptr) {
+        std::cerr << "Could not create Lua state for Matrix rule checks.\n";
+        return 1;
+    }
+    g_script_root = std::filesystem::path(SHADOWRUN_GAMEPLAY_SCRIPT_ROOT);
+    luaL_requiref(state, "_G", luaopen_base, 1);
+    lua_pop(state, 1);
+    luaL_requiref(state, LUA_MATHLIBNAME, luaopen_math, 1);
+    lua_pop(state, 1);
+    luaL_requiref(state, LUA_STRLIBNAME, luaopen_string, 1);
+    lua_pop(state, 1);
+    lua_newtable(state);
+    lua_setglobal(state, "__matrix_test_modules");
+    lua_pushcfunction(state, load_test_module);
+    lua_setglobal(state, "require");
+
+    const bool passed = run_rules(state);
+    lua_close(state);
+    return passed ? 0 : 1;
+}
