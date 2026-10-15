@@ -98,6 +98,9 @@ local function define_item(id, code, kind, has_detail_art, content)
                 ".detail.item." .. image_suffix,
         },
     }
+    if kind == "firearm" then
+        item.weapon = {}
+    end
     if content ~= nil then
         for key, value in pairs(content) do
             item[key] = value
@@ -107,95 +110,21 @@ local function define_item(id, code, kind, has_detail_art, content)
 end
 
 -- Every row resolves to named icon/detail assets and has source-backed buy
--- and resale bases. Firearm burst cost, firing family, actor-derived attack
--- timing, reload timing, Damage rows, Power labels, Uses, and armor modifiers
--- are bound to the item they describe. Other item details depend on live
--- actor/menu state.
+-- and resale bases. Weapon behavior and hit data come from the canonical
+-- weapon record; other item details depend on live actor/menu state.
 Items.catalog = {
-    define_item("streetline", 1, "firearm", true,
-        { weapon = { trigger_behavior = "repeat_while_held",
-                     source_action = { effect_table_index = 0,
-                                       effect_value = 1, difficulty = 4 },
-                     attack_cadence = "runner_attribute",
-                     attack_delay_scale = "half",
-                     reload_delay_scale = "normal" } }),
-    define_item("model_101t", 2, "firearm", true,
-        { weapon = { trigger_behavior = "repeat_while_held",
-                     source_action = { effect_table_index = 0,
-                                       effect_value = 1, difficulty = 6 },
-                     attack_cadence = "runner_attribute",
-                     attack_delay_scale = "half",
-                     reload_delay_scale = "normal" } }),
-    define_item("american_l36", 3, "firearm", true,
-        { weapon = { trigger_behavior = "repeat_while_held",
-                     source_action = { effect_table_index = 0,
-                                       effect_value = 1, difficulty = 6 },
-                     attack_cadence = "runner_attribute",
-                     attack_delay_scale = "half",
-                     reload_delay_scale = "normal" } }),
-    define_item("security_500", 4, "firearm", true,
-        { weapon = { trigger_behavior = "repeat_while_held",
-                     source_action = { effect_table_index = 0,
-                                       effect_value = 1, difficulty = 6 },
-                     attack_cadence = "runner_attribute",
-                     attack_delay_scale = "half",
-                     reload_delay_scale = "normal" } }),
-    define_item("warhawk", 5, "firearm", true,
-        { weapon = { trigger_behavior = "repeat_while_held",
-                     source_action = { effect_table_index = 1,
-                                       effect_value = 3, difficulty = 10 },
-                     attack_cadence = "runner_attribute",
-                     attack_delay_scale = "half",
-                     reload_delay_scale = "double" } }),
-    define_item("max_power", 6, "firearm", true,
-        { weapon = { trigger_behavior = "repeat_while_held",
-                     source_action = { effect_table_index = 1,
-                                       effect_value = 3, difficulty = 9 },
-                     attack_cadence = "runner_attribute",
-                     attack_delay_scale = "half",
-                     reload_delay_scale = "normal" } }),
-    define_item("predator", 7, "firearm", true,
-        { weapon = { trigger_behavior = "repeat_while_held",
-                     source_action = { effect_table_index = 1,
-                                       effect_value = 3, difficulty = 9 },
-                     attack_cadence = "runner_attribute",
-                     attack_delay_scale = "half",
-                     reload_delay_scale = "normal" } }),
-    define_item("ak_97", 8, "firearm", true,
-        { weapon = { trigger_behavior = "repeat_while_held",
-                     source_action = { effect_table_index = 1,
-                                       effect_value = 3, difficulty = 6 },
-                     attack_cadence = "runner_attribute",
-                     attack_delay_scale = "half",
-                     reload_delay_scale = "normal" } }),
-    define_item("hk227_s", 9, "firearm", true,
-        { weapon = { trigger_behavior = "repeat_while_held",
-                     source_action = { effect_table_index = 1,
-                                       effect_value = 3, difficulty = 7 },
-                     attack_cadence = "runner_attribute",
-                     attack_delay_scale = "half",
-                     reload_delay_scale = "normal" } }),
-    define_item("mach_22", 10, "firearm", true,
-        { weapon = { trigger_behavior = "repeat_while_held",
-                     source_action = { effect_table_index = 1,
-                                       effect_value = 3, difficulty = 6 },
-                     attack_cadence = "runner_attribute",
-                     attack_delay_scale = "half",
-                     reload_delay_scale = "normal" } }),
-    define_item("allegiance", 11, "firearm", true,
-        { weapon = { trigger_behavior = "repeat_while_held",
-                     source_action = { effect_table_index = 2,
-                                       effect_value = 6, difficulty = 10 },
-                     attack_cadence = "runner_attribute",
-                     attack_delay_scale = "normal",
-                     reload_delay_scale = "double" } }),
-    define_item("roomsweeper", 12, "firearm", true,
-        { weapon = { trigger_behavior = "repeat_while_held",
-                     source_action = { effect_table_index = 2,
-                                       effect_value = 6, difficulty = 9 },
-                     attack_cadence = "runner_attribute",
-                     attack_delay_scale = "normal",
-                     reload_delay_scale = "double" } }),
+    define_item("streetline", 1, "firearm", true),
+    define_item("model_101t", 2, "firearm", true),
+    define_item("american_l36", 3, "firearm", true),
+    define_item("security_500", 4, "firearm", true),
+    define_item("warhawk", 5, "firearm", true),
+    define_item("max_power", 6, "firearm", true),
+    define_item("predator", 7, "firearm", true),
+    define_item("ak_97", 8, "firearm", true),
+    define_item("hk227_s", 9, "firearm", true),
+    define_item("mach_22", 10, "firearm", true),
+    define_item("allegiance", 11, "firearm", true),
+    define_item("roomsweeper", 12, "firearm", true),
     define_item("frag", 13, "grenade", true,
         { detail = { kind = "uses", value = 6 } }),
     define_item("scatter", 14, "grenade", true,
@@ -275,17 +204,38 @@ for _, item in ipairs(Items.catalog) do
                "weapon template differs from ROM item record: " .. item.code)
         item.source_weapon_template = template
         if item.weapon ~= nil then
+            assert(template.fire_mode == "single_round" or
+                       template.fire_mode == "three_round_burst",
+                   "firearm has no source firing mode: " .. item.code)
+            assert(template.automatic ==
+                       (template.fire_mode == "three_round_burst") and
+                       template.rounds_per_shot ==
+                           (template.fire_mode == "three_round_burst" and 3 or 1),
+                   "weapon firing mode and round cost disagree: " .. item.code)
             local power_profile = power_profile_by_rom_value[template.power]
             assert(power_profile ~= nil,
                    "weapon power has no display profile: " .. item.code)
             item.weapon.template = template
+            item.weapon.source_action = template.source_action
             item.weapon.magazine_capacity = template.clip_size
             item.weapon.damage_bar_index = template.damage_class
             item.weapon.power_profile = power_profile
-            item.weapon.fire_mode = template.automatic and
-                "three_round_burst" or "single_round"
+            item.weapon.fire_mode = template.fire_mode
+            item.weapon.trigger_behavior = template.trigger_behavior
             item.weapon.rounds_per_action = template.rounds_per_shot
+            item.weapon.attack_cadence = template.attack_cadence
+            item.weapon.attack_delay_scale = template.attack_delay_scale
+            item.weapon.reload_delay_scale = template.reload_delay_scale
+            assert(type(item.weapon.source_action) == "table" and
+                       item.weapon.fire_mode ~= nil and
+                       item.weapon.trigger_behavior ~= nil and
+                       item.weapon.attack_cadence ~= nil and
+                       item.weapon.attack_delay_scale ~= nil and
+                       item.weapon.reload_delay_scale ~= nil,
+                   "firearm template is incomplete: " .. item.code)
         end
+    elseif item.kind == "firearm" then
+        error("firearm has no source weapon template: " .. item.code)
     elseif item.armor ~= nil then
         item.armor.primary_modifier = record.b25
         item.armor.secondary_modifier = record.b26
