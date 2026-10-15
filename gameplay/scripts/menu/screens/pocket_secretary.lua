@@ -79,6 +79,21 @@ end
 
 -- Notebook 0xF236 (srx pocket_secretary_menu_conversion): rows gated by story flags
 local Notebook = { window = E.WindowPlane.SIDEBAR }
+local function active_run_id()
+    -- The accepted run record lives in the Lua run registry. FFFBEC's active
+    -- run state is consumed by the ROM Current Run branch at 0xF2E2/0x1E72C;
+    -- the menu host's older boolean is not updated when Lua accepts an offer.
+    local runs = game.runs
+    local registry = type(runs) == "table" and runs.registry or nil
+    if type(registry) ~= "table" or
+       type(registry.active_run_id) ~= "function" then
+        return nil
+    end
+    local id = registry.active_run_id()
+    if type(id) ~= "string" or id == "none" then return nil end
+    return id
+end
+
 function Notebook.new()
     return { row = 0, grid_cells = Grid.cells,
              grid_effect_frames = Grid.frames }
@@ -93,7 +108,10 @@ function Notebook.enter(st, ctx)
     if nb.gates[1] then st.options[#st.options + 1] = N.CONTACTS end
     if nb.gates[2] then st.options[#st.options + 1] = N.MR_JOHNSONS end
     if nb.gates[3] then st.options[#st.options + 1] = N.SHADOWRUNNERS end
-    st.nb = nb; ctx.redraw(R.SUBMENU)
+    st.nb = nb
+    st.nb.active_run_id = active_run_id()
+    if st.nb.active_run_id ~= nil then st.nb.current_run = true end
+    ctx.redraw(R.SUBMENU)
 end
 function Notebook.input(st, events, ctx)
     st.grid_effect_frames = Grid.advance(ctx)
@@ -106,6 +124,8 @@ function Notebook.input(st, events, ctx)
     if events & P.A ~= 0 then
         local refreshed = ctx.game.notebook()
         if refreshed then st.nb = refreshed end
+        st.nb.active_run_id = active_run_id()
+        if st.nb.active_run_id ~= nil then st.nb.current_run = true end
         local opt = st.options[st.row + 1]
         if opt == N.CURRENT_RUN then
             if not st.nb.current_run then

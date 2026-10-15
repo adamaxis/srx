@@ -88,7 +88,7 @@ Done in the active route: command/posture, item actions, Clips, Attributes/Skill
 Open source/behavior boundaries: the drain-damage tail at 0x1046E, FFF0B1 inside the Matrix, FFF101 save-state import, and child-loop migration.
 In-game wiring: root `qt_runtime/src/field/field_scene_runtime.cpp` (`configure_field_menu_route()` supplies `ScriptMenuRouteBindings`); `host/menu_game_fsr.sketch.cpp` remains an unbuilt design sketch.
 
-Order: connect the remaining POCKET_SECRETARY extended caller, then Cyberdeck/Matrix and Save/Load, followed by the two pending Debug actions. Notebook's positive-current-run content, normal story acquisition/restored-save facts, and spell cast/target resolution are explicit open boundaries; Contacts and Shadowrunners list/detail screens are already registered and implemented.
+Order: connect the remaining POCKET_SECRETARY extended caller, then Cyberdeck/Matrix and Save/Load, followed by the two pending Debug actions. The Notebook now reads accepted-run availability from the Lua run registry (ROM 0xF2E2/0x1E72C); its positive-current-run detail page, restored-save facts, and spell cast/target resolution remain open. Contacts and Shadowrunners list/detail screens are already registered and implemented.
 Each one replaces its `legacy(...)` line in menu/init.lua.
 
 - D24 A `screens/save_load.lua` draft exists but is not registered in the active profile; live Save/Load behavior is still behind the adapter.
