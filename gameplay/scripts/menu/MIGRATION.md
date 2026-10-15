@@ -16,8 +16,8 @@ capturing and checking each of 30 full-screen wait frames. An unknown
 restored-save flag still enters the explicit Cyberdeck
 adapter boundary. The Debug menu is now registered in the live route and is
 kept unlocked by a temporary Qt development override. Nuyen, Heal All, +10
-Karma, and Contacts are connected; Spells, Test Deck, Pick System, and Walk
-Fast remain visibly marked pending until their host state paths are ported.
+Karma, Contacts, and Walk Fast are connected; Spells, Test Deck, and Pick
+System remain visibly marked pending until their host state paths are ported.
 Deck-present Matrix entry and Save/Load remain unimplemented in the live route.
 
 The shared `0xC376` signed-byte row-wrap rule is in
