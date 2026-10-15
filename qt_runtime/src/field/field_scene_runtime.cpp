@@ -5774,6 +5774,9 @@ void FieldSceneRuntime::configure_field_menu_route() {
         facts.shadowrunner_flags = notebook_shadowrunner_flags_;
         return facts;
     };
+    bindings.game.cyberdeck_available = [this] {
+        return cyberdeck_available_;
+    };
     game_scripts_.set_menu_route_bindings(std::move(bindings));
 }
 
@@ -5828,6 +5831,19 @@ void FieldSceneRuntime::advance_field_menu_route() {
             pocket_secretary_.group_item_display_order[index] =
                 static_cast<std::uint8_t>(
                     route_state.top_visible_item_ids[index]);
+        }
+    }
+    const bool no_cyberdeck_message =
+        route_state.top_screen == static_cast<std::uint16_t>(
+                                      srx::MenuScreen::MESSAGE) &&
+        route_state.top_message == static_cast<int>(
+                                       srx::MenuMessage::NO_CYBERDECK);
+    if (pocket_secretary_.open) {
+        if (no_cyberdeck_message) {
+            pocket_secretary_.cyberdeck_unavailable_wait = true;
+        } else if (route_state.top_screen != static_cast<std::uint16_t>(
+                                                srx::MenuScreen::CYBERDECK)) {
+            pocket_secretary_.cyberdeck_unavailable_wait = false;
         }
     }
     synchronize_pocket_secretary_notebook_from_route(route_state);

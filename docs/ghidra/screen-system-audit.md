@@ -495,9 +495,14 @@ Native status: the `0xC2A6` panel now uses the extracted C1418 option order,
 has a five-row cursor loop in ordinary field mode, returns through B/Start,
 and sends Save/Load to the existing two-slot `0x59172` screen. Group Items now
 uses the `0xC8C8` bitfield/catalog path and its source empty-catalog message.
-The Cyberdeck row now follows the first branch of `0x18150`: with the native
-new-game state equivalent to clear `FF018F` bit 0, it writes the exact three
-lines at `0xE43D1`, `0xE43E2`, and `0xE43F3` into the Pocket Secretary panel.
+The Cyberdeck row now follows the first branch of `0x18150`: Lua reads the
+typed `FF018F` bit-0 fact and, when clear, pushes the generic `MESSAGE` screen
+with `NO_CYBERDECK`. The Qt presenter writes the exact three lines at
+`0xE43D1`, `0xE43E2`, and `0xE43F3` into the Pocket Secretary panel. The
+message carries the shared `E660` effect, so the lower bezel keeps updating
+while the text waits; any fresh controller edge returns to the same row. The
+no-deck branch adds no separate sound request. A restored save with an unknown
+flag and the deck-present Matrix path remain explicit boundaries.
 Notebook now follows the base `0xF236`/`0xF33E` path: it extracts the title,
 Current Run, Tips & Clues, and the three event-gated labels. Its five
 potential rows keep ROM order in `gameplay/scripts/pocket_secretary.lua`; the

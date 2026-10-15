@@ -22,6 +22,7 @@ constexpr std::uint16_t kPosture = 2U;
 constexpr std::uint16_t kAttributes = 5U;
 constexpr std::uint16_t kCyberware = 6U;
 constexpr std::uint16_t kPocketSecretary = 9U;
+constexpr std::uint16_t kCyberdeck = 18U;
 constexpr std::uint16_t kNotebook = 10U;
 constexpr std::uint16_t kNotebookTips = 21U;
 constexpr std::uint16_t kMrJohnsons = 20U;
@@ -31,6 +32,7 @@ constexpr std::uint16_t kClips = 4U;
 constexpr std::uint16_t kClipTrade = 22U;
 constexpr std::uint16_t kReloadConfirm = 23U;
 constexpr std::uint16_t kMessage = 19U;
+constexpr int kNoCyberdeck = 17;
 constexpr std::uint16_t kItemAction = 3U;
 constexpr std::uint16_t kFirstAid = 12U;
 constexpr std::uint16_t kInventoryTrade = 14U;
@@ -183,6 +185,10 @@ int main() {
     bindings.game.notebook_facts = [&notebook_facts] {
         return std::optional<ScriptNotebookFacts>{notebook_facts};
     };
+    std::optional<bool> cyberdeck_available = false;
+    bindings.game.cyberdeck_available = [&cyberdeck_available] {
+        return cyberdeck_available;
+    };
     runtime.set_menu_route_bindings(std::move(bindings));
 
     const auto opened = runtime.open_menu_route(kCommand);
@@ -275,12 +281,53 @@ int main() {
               random_bounds.size() == 12U,
           "Group Items returns to the Lua-selected row after its shared grid frame advances",
           failures);
+    runtime.advance_menu_route(0x0200U); // Down to Cyberdeck.
+    runtime.advance_menu_route(0x4000U); // A: no-deck branch is a Lua message.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMessage &&
+              route.top_message == kNoCyberdeck &&
+              route.top_grid_cells_present &&
+              legacy_screens.size() == legacy_count_before_secretary,
+          "Pocket Secretary routes the source no-cyberdeck response through Lua MESSAGE",
+          failures);
+    const auto no_deck_message_frames = route.top_grid_effect_frames;
+    const auto no_deck_random_draws = random_bounds.size();
+    runtime.advance_menu_route(0U); // The 0xC2A6 wait still advances E660.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMessage &&
+              route.top_grid_effect_frames ==
+                  no_deck_message_frames.value_or(0) + 1 &&
+              random_bounds.size() == no_deck_random_draws + 3U,
+          "no-cyberdeck wait advances the shared bezel animation each frame",
+          failures);
+    runtime.advance_menu_route(0x1000U); // B: dismiss the response.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kPocketSecretary && route.top_row == 2,
+          "no-cyberdeck message returns to the selected Pocket Secretary row",
+          failures);
+    cyberdeck_available.reset();
+    runtime.advance_menu_route(0x4000U); // Unknown restored flag uses adapter.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kCyberdeck &&
+              legacy_screens.size() == legacy_count_before_secretary + 1U &&
+              legacy_screens.back() == kCyberdeck,
+          "unresolved saved cyberdeck state remains an explicit adapter boundary",
+          failures);
+    legacy_active = false;
+    runtime.advance_menu_route(0U); // Host reports the unresolved child closed.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kPocketSecretary && route.top_row == 2,
+          "legacy cyberdeck boundary returns to its selected parent row",
+          failures);
+    const auto legacy_count_after_cyberdeck_boundary = legacy_screens.size();
+    runtime.advance_menu_route(0x0100U); // Up to Group Items.
     runtime.advance_menu_route(0x0100U); // Up to Notebook.
     runtime.advance_menu_route(0x4000U); // Open Notebook through Lua.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kNotebook && route.top_row == 0 &&
               route.top_visible_option_ids == std::vector<int>{0, 1, 2, 3} &&
-              legacy_screens.size() == legacy_count_before_secretary,
+              legacy_screens.size() ==
+                  legacy_count_after_cyberdeck_boundary,
           "Lua Notebook builds the ROM-order rows from typed story gates",
           failures);
     const auto notebook_draw_count = random_bounds.size();
@@ -371,7 +418,8 @@ int main() {
     check(route.top_screen == kDismissRunner && route.top_row == 0 &&
               route.top_grid_effect_frames == 4 &&
               route.top_grid_cells_present && route.top_grid_cells[0] == 0 &&
-              legacy_screens.size() == legacy_count_before_secretary,
+              legacy_screens.size() ==
+                  legacy_count_after_cyberdeck_boundary,
           "Dismiss Runner keeps the parent's lower-bezel state on entry",
           failures);
     random_high_branch = true;

@@ -584,6 +584,7 @@ struct GameScriptRuntime::Impl {
         dismiss_runner,
         group_item_flags,
         notebook_facts,
+        cyberdeck_available,
         notebook_boundary,
     };
 
@@ -1064,6 +1065,18 @@ struct GameScriptRuntime::Impl {
             }
             return 1;
         }
+        case MenuBinding::cyberdeck_available: {
+            const auto available =
+                self->menu_route_bindings.game.cyberdeck_available
+                    ? self->menu_route_bindings.game.cyberdeck_available()
+                    : std::nullopt;
+            if (available.has_value()) {
+                lua_pushboolean(lua, *available ? 1 : 0);
+            } else {
+                lua_pushnil(lua);
+            }
+            return 1;
+        }
         }
         lua_pushnil(lua);
         return 1;
@@ -1138,6 +1151,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::group_item_flags);
         add_menu_binding(state, table_index, "notebook",
                          MenuBinding::notebook_facts);
+        add_menu_binding(state, table_index, "cyberdeck_available",
+                         MenuBinding::cyberdeck_available);
     }
 
     bool refresh_menu_route_snapshot() {

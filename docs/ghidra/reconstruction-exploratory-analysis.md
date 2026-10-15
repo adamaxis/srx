@@ -757,8 +757,12 @@ The Cyberdeck row dispatches to `0x18150`. The first instruction tests
 calls `0xC3E6`, passes `0xE43D1` to `0xC0DA` with destination `0xC40E`, and
 returns to the Pocket Secretary loop. The three fixed source strings are:
 `" You do not have"`, `"  a cyberdeck!!"`, and `" Keep looking."`. The native
-Qt extracts those lines and keeps the Pocket Secretary open while displaying
-them. The inline branch beginning at `0x1817E` is now source-traced as the
+Qt extracts those lines. The active Lua route reads the typed deck-present
+fact and pushes generic `MESSAGE` with `NO_CYBERDECK` when the bit is clear;
+the Qt presenter draws the extracted lines and returns to the same selected
+row on a fresh button edge. The deck-present path remains an explicit adapter
+boundary until Matrix entry is connected. The inline branch beginning at
+`0x1817E` is now source-traced as the
 deck-present entry shell: it prepares/copies the Matrix resource block at
 `0xE2E3A`, establishes ten menu slots, enters `0x1822C`, then refreshes the
 mode data/palette and restores field resources. The `0x1822C` deck/program loop

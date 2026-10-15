@@ -1,5 +1,7 @@
 #include "ghidra_conversion_qt_window.hpp"
 
+#include <string>
+
 namespace {
 
 bool source_menu_caption_matches(const QImage& scene, const QImage& font,
@@ -21906,12 +21908,15 @@ int main(int argc, char** argv) {
                                  "Cyberdeck\n";
                     return 3;
                 }
+                field_audio_events.clear();
                 press_secretary_button(0x40U); // A opens the source handler.
                 if (!field_scene.pocket_secretary_open() ||
                     !field_scene
-                         .pocket_secretary_cyberdeck_unavailable_waiting()) {
+                         .pocket_secretary_cyberdeck_unavailable_waiting() ||
+                    !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: new-game Cyberdeck "
-                                 "handler did not enter its no-deck response\n";
+                                 "handler did not enter its silent no-deck "
+                                 "response\n";
                     return 3;
                 }
                 auto cyberdeck_scene = render_secretary_scene();
@@ -21939,14 +21944,38 @@ int main(int argc, char** argv) {
                 const auto held_cyberdeck_scene = cyberdeck_scene;
                 for (int frame = 0; frame < 30; ++frame) {
                     field_scene.advance_frame();
+                    const auto waiting_frame = render_secretary_scene();
+                    const auto outside_bezel_changed =
+                        image_region_differs(held_cyberdeck_scene, waiting_frame,
+                                             0, 0, 320, 200) ||
+                        image_region_differs(held_cyberdeck_scene, waiting_frame,
+                                             0, 216, 320, 8) ||
+                        image_region_differs(held_cyberdeck_scene, waiting_frame,
+                                             0, 200, 32, 16) ||
+                        image_region_differs(held_cyberdeck_scene, waiting_frame,
+                                             256, 200, 64, 16);
+                    const auto frame_name =
+                        std::string("cyberdeck-wait-frame-") +
+                        (frame < 10 ? "0" : "") +
+                        std::to_string(frame);
+                    if (outside_bezel_changed ||
+                        image_region_differs(held_cyberdeck_scene,
+                                             waiting_frame, 56, 64, 240, 32) ||
+                        !save_secretary_scene(frame_name, waiting_frame)) {
+                        std::cerr << "field secretary dump: Cyberdeck wait "
+                                     "changed outside its E660 bezel region "
+                                     "at frame " << frame << '\n';
+                        return 3;
+                    }
+                    cyberdeck_scene = waiting_frame;
                 }
-                cyberdeck_scene = render_secretary_scene();
                 if (image_region_differs(held_cyberdeck_scene,
                                          cyberdeck_scene, 56, 64,
                                          240, 32) ||
                     !image_region_differs(held_cyberdeck_scene,
                                           cyberdeck_scene, 32, 200,
-                                          224, 16)) {
+                                          224, 16) ||
+                    !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: no-deck feedback "
                                  "content or E660 chrome cadence failed\n";
                     return 3;

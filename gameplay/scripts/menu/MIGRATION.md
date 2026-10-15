@@ -7,9 +7,15 @@ Tests: `lua5.4 tests/menu_tests.lua` (27 checks).
 `field_init.lua` is the runtime registry. A script module counts as connected
 only when this profile registers it and the live Qt route exercises its host
 services. The Pocket Secretary root, Group Items, Dismiss Runner, Notebook,
-Tips & Clues, Mr. Johnsons, and Magic/Force/Posture routes are Lua-owned.
-Cyberdeck, Save/Load, and Debug still use the C++ adapter. Matrix/deck-screen
-behavior is not yet connected to the live field route.
+Tips & Clues, Mr. Johnsons, Magic/Force/Posture routes, and the no-cyberdeck
+response are Lua-owned. When the source deck-present flag is clear, row 2
+pushes the generic `MESSAGE` screen with `NO_CYBERDECK`; Qt presents the
+extracted three-line text and returns to the same selected row on a fresh
+button edge. The message advances shared `E660` bezel animation, with QA
+capturing and checking each of 30 full-screen wait frames. An unknown
+restored-save flag still enters the explicit Cyberdeck
+adapter boundary. Deck-present Matrix entry, Save/Load, and Debug remain
+unimplemented in the live field route.
 
 ## Moved blocks
 | FSR / bridge location | what | new home | status |
@@ -48,7 +54,7 @@ behavior is not yet connected to the live field route.
 - D12 Item-action children REPLACE the action row, so their result returns straight to the Command page; no "return-to-row" flag.
 - D13 Attributes/Skills from the Command page is view-only (srx command_view_only); karma upgrades only when opened with args.karma (hotel). Previously one flag in FSR did both.
 - D14 `leader_spell_gate` renamed to `leader_archetype`: +0x9B is the archetype (< 2 = caster), not a gate.
-- D15 Pocket Secretary root: only A (bit 14) dispatches; B does nothing (FSR treated B like A) [C 0xC2A6]. Lua owns root input/row, Group Items bit-list construction and fresh-edge wait, Dismiss Runner selection/action, and Notebook/Tips/Mr. Johnsons input, filtering, waits, and return paths. C++ supplies typed ROM facts and projects route state for painting. Cyberdeck, Save/Load, and Debug remain adapter boundaries.
+- D15 Pocket Secretary root: only A (bit 14) dispatches; B does nothing (FSR treated B like A) [C 0xC2A6]. Lua owns root input/row, Group Items bit-list construction and fresh-edge wait, Dismiss Runner selection/action, Notebook/Tips/Mr. Johnsons input, filtering, waits, and return paths, plus the `0x18150` no-deck branch through generic `MESSAGE`. C++ supplies typed ROM facts and projects route state for painting. The deck-present Matrix branch, Save/Load, and Debug remain adapter boundaries.
 - D16 Magic: the force/posture loop is two stacked screens (MAGIC_FORCE, MAGIC_POSTURE) instead of a mode int.
 
 - D17 Clips is ONE-SHOT per ROM 0x11B58: every outcome prints its text, waits for any edge (0xD94, silent) and returns to the Command page; Cancel / trade-Start print "Function Aborted!" (0xD1ED8, new MenuMessage.FUNCTION_ABORTED=21). B and C act like A; the main loop has NO Start check. Reload prompt: default No (0x11D00 clr + 0x127B0 eori), A only, "No" exits silently. srx/FSR kept the menu open and closed on B/Start: replaced [C].

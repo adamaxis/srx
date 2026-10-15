@@ -146,6 +146,7 @@ struct ScriptMenuRouteGame {
     std::function<void(int)> dismiss_runner;
     std::function<std::optional<std::uint32_t>()> group_item_flags;
     std::function<std::optional<ScriptNotebookFacts>()> notebook_facts;
+    std::function<std::optional<bool>()> cyberdeck_available;
 };
 
 struct ScriptMenuRouteBindings {
