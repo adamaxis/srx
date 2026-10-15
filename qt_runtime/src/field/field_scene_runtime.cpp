@@ -5400,6 +5400,16 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.host.blank = [](const std::uint16_t) {};
     bindings.host.set_window = [](const std::uint16_t) {};
     bindings.host.set_screen = [this](const std::uint16_t screen) {
+        const auto attributes_screen = static_cast<std::uint16_t>(
+            srx::MenuScreen::ATTRIBUTES_SKILLS);
+        const auto was_attributes =
+            menu_route_screen_ == attributes_screen;
+        const auto is_attributes = screen == attributes_screen;
+        if (is_attributes && !was_attributes) {
+            begin_command_overview_attributes_skills();
+        } else if (was_attributes && !is_attributes) {
+            command_overview_attributes_skills_.close_to_parent();
+        }
         menu_route_screen_ = screen;
         posture_dialog_active_ =
             screen == static_cast<std::uint16_t>(srx::MenuScreen::POSTURE);
@@ -5408,6 +5418,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
         menu_route_active_ = false;
         menu_route_screen_ = 0U;
         posture_dialog_active_ = false;
+        command_overview_attributes_skills_.close_to_parent();
         command_overview_.close();
     };
     bindings.host.legacy_open =
@@ -10677,7 +10688,8 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_latch_state_);
         ::shadowrun::ghidra_conversion::sample_controller_input(
             field_controller_sample_state_, field_controller_port_byte_);
-        if (command_overview_attributes_skills_.is_open()) {
+        if (command_overview_attributes_skills_.is_open() &&
+            !menu_route_active_) {
             const auto menu_event =
                 command_overview_attributes_skills_.advance(
                     field_controller_sample_state_.events,
@@ -11130,6 +11142,14 @@ void FieldSceneRuntime::advance_frame() {
                 route_state.open &&
                 menu_route_screen_ == static_cast<std::uint16_t>(
                                           srx::MenuScreen::POSTURE);
+            if (menu_route_screen_ == static_cast<std::uint16_t>(
+                                          srx::MenuScreen::ATTRIBUTES_SKILLS) &&
+                route_state.top_column.has_value() &&
+                route_state.top_row.has_value()) {
+                command_overview_attributes_skills_.synchronize_cursor(
+                    *route_state.top_column, *route_state.top_row,
+                    active_runner_record());
+            }
         } else {
             command_overview_.advance(
                 field_controller_sample_state_.events);

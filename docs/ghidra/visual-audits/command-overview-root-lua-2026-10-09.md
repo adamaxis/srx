@@ -93,7 +93,9 @@ inventory dispatch decision, and exit decisions. `screens.posture.lua` owns
 focus state and posture input. C++ samples the focused Qt controller once per
 field frame, exposes narrow live-runner services, mirrors the Lua-selected
 page/row into the existing typed presenter, and paints the full command panel.
-The other child screens are registered as explicit transitional adapters:
+The Attributes/Skills command view is now a Lua screen; its full-screen Qt
+presenter mirrors the Lua column/row cursor and live runner facts. Other child
+screens are registered as explicit transitional adapters:
 their stack position is Lua-routed, but their behavior and input state still
 use the existing C++ screen implementation.
 
@@ -107,8 +109,8 @@ menu through `0x10D30`.
 
 The no-Qt route CTest exercises the embedded production Lua runtime and checks
 open/close, page setup, posture bounds, silent posture return, Start exit,
-legacy adapter stack behavior, Attributes window selection, and full
-re-initialization. Qt command/posture QA exercises the route through the live
+legacy adapter stack behavior, Attributes cursor moves, its view-only return,
+window selection, and full re-initialization. Qt command/Attributes/posture QA exercises the route through the live
 field runtime. Debug and Release captures are internal conversion evidence;
 they do not establish independent Genesis pixel fidelity. The remaining child
 screen adapters and independent Genesis command/posture sequence are still

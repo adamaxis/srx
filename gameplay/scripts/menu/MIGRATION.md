@@ -7,7 +7,7 @@ Tests: `lua5.4 tests/menu_tests.lua` (27 checks).
 | FSR / bridge location | what | new home | status |
 |---|---|---|---|
 | FSR 10498-10509 | per-frame wait/latch/sample | C++ stays: sample, then `route.frame(events)` | skeleton |
-| FSR 10510-10571 | attributes_skills child branch | `legacy(ATTRIBUTES_SKILLS, WindowPlane.OFF)` | port queue |
+| FSR 10510-10571 | command-view Attributes/Skills child | `screens/attributes.lua` (`Attributes`, view-only); Qt presenter mirrors Lua cursor | **ported for command view** |
 | FSR 10572-10576 | clips branch (advance 6049) | legacy CLIPS | port queue |
 | FSR 10577-10581 | magic spell interface (advance 5914) | legacy MAGIC | port queue |
 | FSR 10582-10598 | automatic_use 6581, first_aid 6597, inventory_trade 6400 | children of ITEM_ACTION (legacy) | port queue |

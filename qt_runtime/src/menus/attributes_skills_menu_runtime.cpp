@@ -2,6 +2,8 @@
 
 #include "shadowrun_ghidra/core/selection_conversion.hpp"
 
+#include <algorithm>
+
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
 void AttributesSkillsMenuController::open(
@@ -42,6 +44,19 @@ void AttributesSkillsMenuController::refresh(
     if (state_.open) {
         refresh_selection_state(active_record);
     }
+}
+
+void AttributesSkillsMenuController::synchronize_cursor(
+    const int column, const int row,
+    const RunnerRecordFields& active_record) {
+    if (!state_.open) {
+        return;
+    }
+    state_.cursor.column = static_cast<std::uint8_t>(std::clamp(
+        column, 0, static_cast<int>(kAttributesSkillsColumnCount) - 1));
+    state_.cursor.row = static_cast<std::uint8_t>(std::clamp(
+        row, 0, static_cast<int>(kAttributesSkillsRowCount) - 1));
+    refresh_selection_state(active_record);
 }
 
 void AttributesSkillsMenuController::refresh_selection_state(

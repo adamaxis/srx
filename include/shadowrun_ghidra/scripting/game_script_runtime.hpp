@@ -87,6 +87,8 @@ struct ScriptMenuRouteSnapshot {
     std::uint16_t top_screen = 0U;
     std::optional<int> page;
     std::optional<int> row;
+    std::optional<int> top_column;
+    std::optional<int> top_row;
 };
 
 using ScriptStringMap = std::unordered_map<std::string, std::string>;

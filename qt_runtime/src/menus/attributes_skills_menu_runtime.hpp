@@ -56,6 +56,8 @@ public:
     AttributeSkillUpgradePreview preview(
         const RunnerRecordFields& record) const;
     void refresh(const RunnerRecordFields& active_record);
+    void synchronize_cursor(int column, int row,
+                            const RunnerRecordFields& active_record);
 
     AttributesSkillsRuntimeEvent advance(
         std::uint16_t controller_events, RunnerRecordFields& active_record,
@@ -108,6 +110,10 @@ public:
     }
     void refresh(const RunnerRecordFields& active_record) {
         controller_.refresh(active_record);
+    }
+    void synchronize_cursor(int column, int row,
+                            const RunnerRecordFields& active_record) {
+        controller_.synchronize_cursor(column, row, active_record);
     }
     AttributesSkillsRuntimeEvent advance(
         std::uint16_t controller_events, RunnerRecordFields& active_record,

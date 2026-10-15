@@ -160,14 +160,29 @@ int main() {
     runtime.advance_menu_route(0x1000U);
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kAttributes && !windows.empty() &&
-              windows.back() == kHiddenWindow,
-          "Attributes/Skills adapter hides the sidebar window", failures);
-    legacy_active = false;
-    runtime.advance_menu_route(0U);
+              windows.back() == kHiddenWindow &&
+              route.top_column == 0 && route.top_row == 0,
+          "Lua Attributes/Skills opens with its first cell focused and "
+          "hides the sidebar window",
+          failures);
+    runtime.advance_menu_route(0x0200U); // Down moves its row.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kAttributes && route.top_column == 0 &&
+              route.top_row == 1,
+          "Lua Attributes/Skills owns its visible row selection", failures);
+    runtime.advance_menu_route(0x0800U); // Right moves its column.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kAttributes && route.top_column == 1 &&
+              route.top_row == 1,
+          "Lua Attributes/Skills owns its visible column selection", failures);
+    runtime.advance_menu_route(0x1000U); // View-only A leaves the page.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kCommand && route.page == 6 &&
-              windows.back() == kSidebarWindow,
-          "Attributes/Skills return fully reinitializes page six", failures);
+              windows.back() == kSidebarWindow && sounds.back() == kMoveSound &&
+              legacy_screens.back() == kPocketSecretary,
+          "view-only Attributes return fully reinitializes page six without "
+          "entering the C++ legacy adapter",
+          failures);
 
     runtime.advance_menu_route(0x2000U); // C: reselect and refresh.
     route = runtime.menu_route_snapshot();

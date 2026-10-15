@@ -40,8 +40,9 @@ give the command view a spending path it does not have.
   catalog test checks the same source order and values.
 - The command-view A action requests sound event `0x24`, mapped to
   `audio.menu.command-024` (2.484 seconds including the release tail). The
-  Attributes/Skills child is silent. Hotel selection and the Hotel Karma
-  child are also silent in the converted route and QA.
+  Attributes/Skills child is silent; returning to the command route runs the
+  full `0x10F50` rebuild and requests event `0x25` (2.134 seconds including
+  its release tail). Hotel selection and the Hotel Karma child are silent.
 
 ## Captures and tests
 
@@ -137,13 +138,14 @@ give the command view a spending path it does not have.
 
 ## Result
 
-- **Code changed:** the Qt presenter connects the existing typed `0xD5DC`
-  detail conversion to the command-view page. Lua now returns explicit keys
-  for all 20 labels and five upgrade messages. The presenter paints
+- **Code changed:** Lua now owns the command-view page's row/column cursor and
+  view-only exit; the Qt presenter mirrors that cursor while connecting the
+  existing typed `0xD5DC` detail conversion to the screen. Lua returns explicit
+  keys for all 20 labels and five upgrade messages. The presenter paints
   source-selected values, the Essence pair, Magic, and installed-cyberware
   markers and modifiers. Its base composition repaints the full screen before
   the page.
-- **Behavior verified:** d-pad input covers all 20 cells; focus does not open
+- **Behavior verified:** Lua route input covers all 20 cells; focus does not open
   the page; the view-only route preserves attributes, skills, Karma, and
   cyberware flags; A/B/Start return to a pixel-identical command shell. Hotel
   spending remains a separate typed route.
@@ -152,5 +154,6 @@ give the command view a spending path it does not have.
   CTests pass for script content, field text catalog, both Attributes/Skills
   routes, Hotel behavior, and screen distinction. The 30 command-view and 252
   Hotel frames match by SHA-256. The page holds static for 30 frames; only the
-  command A action requests event `0x24`.
+  command A action requests event `0x24`, the child input is silent, and the
+  full command rebuild on return requests event `0x25`.
 - **Independent Genesis verification:** unavailable for these exact pages.

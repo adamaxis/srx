@@ -796,6 +796,18 @@ struct GameScriptRuntime::Impl {
             lua_settop(state, base);
             return true;
         }
+        auto* const lua = state;
+        const auto read_optional = [lua](const int table_index,
+                                         const char* name)
+            -> std::optional<int> {
+            lua_getfield(lua, table_index, name);
+            int is_number = 0;
+            const auto value = lua_tointegerx(lua, -1, &is_number);
+            lua_pop(lua, 1);
+            return is_number
+                       ? std::optional<int>(static_cast<int>(value))
+                       : std::nullopt;
+        };
         lua_getfield(state, route_index, "top");
         lua_pushvalue(state, route_index);
         if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
@@ -812,6 +824,15 @@ struct GameScriptRuntime::Impl {
                     lua_tointeger(state, -1));
             }
             lua_pop(state, 1);
+            lua_getfield(state, entry_index, "state");
+            if (lua_istable(state, -1)) {
+                const auto screen_state_index = lua_absindex(state, -1);
+                menu_route_state.top_column =
+                    read_optional(screen_state_index, "col");
+                menu_route_state.top_row =
+                    read_optional(screen_state_index, "row");
+            }
+            lua_pop(state, 1);
         }
         lua_pop(state, 1);
         lua_getfield(state, route_index, "root");
@@ -826,20 +847,8 @@ struct GameScriptRuntime::Impl {
             lua_getfield(state, -1, "state");
             if (lua_istable(state, -1)) {
                 const auto state_index = lua_absindex(state, -1);
-                auto* const lua = state;
-                const auto read_optional = [lua, state_index](
-                                              const char* name)
-                    -> std::optional<int> {
-                    lua_getfield(lua, state_index, name);
-                    int is_number = 0;
-                    const auto value = lua_tointegerx(lua, -1, &is_number);
-                    lua_pop(lua, 1);
-                    return is_number ? std::optional<int>(
-                                           static_cast<int>(value))
-                                     : std::nullopt;
-                };
-                menu_route_state.page = read_optional("page");
-                menu_route_state.row = read_optional("row");
+                menu_route_state.page = read_optional(state_index, "page");
+                menu_route_state.row = read_optional(state_index, "row");
             }
         }
         lua_settop(state, base);
