@@ -973,15 +973,36 @@ int main() {
           "Matrix map redraw clears previous-screen graphics", failures);
     check(green_label_pixel,
           "Matrix map uses its source text palette", failures);
-    bool source_palette_label_pixel = false;
-    for (int y = 32; y < 40; ++y) {
-        for (int x = 16; x < 40; ++x) {
-            source_palette_label_pixel = source_palette_label_pixel ||
-                map_actual.pixelColor(x, y) == QColor(36, 219, 36);
+    constexpr std::array<int, 6> kMapLabelRows{32, 64, 96, 128, 160, 192};
+    bool source_palette_label_pixel = true;
+    for (const auto row : kMapLabelRows) {
+        bool label_at_source_row = false;
+        for (int y = row; y < row + 8; ++y) {
+            for (int x = 16; x < 48; ++x) {
+                const auto pixel = map_actual.pixelColor(x, y);
+                if (pixel == QColor(36, 219, 36) &&
+                    pixel != map_background.pixelColor(x, y)) {
+                    label_at_source_row = true;
+                }
+            }
         }
+        source_palette_label_pixel =
+            source_palette_label_pixel && label_at_source_row;
     }
     check(source_palette_label_pixel,
-          "Matrix labels use the ROM 0x2000 palette line", failures);
+          "all six Matrix labels use the ROM 0x2000 palette and 32-pixel row spacing",
+          failures);
+    bool labels_stacked_in_top_rows = false;
+    for (int y = 40; y < 64; ++y) {
+        for (int x = 16; x < 48; ++x) {
+            const auto pixel = map_actual.pixelColor(x, y);
+            labels_stacked_in_top_rows = labels_stacked_in_top_rows ||
+                (pixel == QColor(36, 219, 36) &&
+                 pixel != map_background.pixelColor(x, y));
+        }
+    }
+    check(!labels_stacked_in_top_rows,
+          "Matrix labels do not stack in the top rows", failures);
     check(map_actual.pixelColor(16, 32) ==
               map_background.pixelColor(16, 32),
           "transparent map glyph pixels preserve the backdrop", failures);

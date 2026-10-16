@@ -15,6 +15,8 @@ constexpr int kScreenHeight = 224;
 constexpr int kMapColumns = 14;
 constexpr int kCellOriginX = 64;
 constexpr int kCellOriginY = 24;
+constexpr int kMapLabelOriginY = 32;
+constexpr int kMapLabelStrideY = 32;
 constexpr std::size_t kCellCount = 140U;
 constexpr std::uint16_t kFirstMapPattern = 0x00BFU;
 constexpr std::uint16_t kLastMapPattern = 0x00D8U;
@@ -24,7 +26,12 @@ void draw_map_labels(QPainter& painter,
                      const std::array<std::string, 6>& labels) {
     for (std::size_t label = 0U; label < labels.size(); ++label) {
         auto x = 16;
-        const auto y = 32 + static_cast<int>(label) * 8;
+        // ROM 0x532BC starts at plane-A address 0xC204 (x=16, y=32).
+        // Each label in 0x15FD36 is followed by four 0x80 controls. In
+        // render_encoded_title_text (0xC0DA), each control advances A2 by
+        // 0x80 bytes, one 8-pixel tile row, so labels are 32 pixels apart.
+        const auto y = kMapLabelOriginY +
+                       static_cast<int>(label) * kMapLabelStrideY;
         for (const auto character : labels[label]) {
             const auto code = static_cast<unsigned char>(character);
             if (code < 0x20U || code > 0x7EU) {
