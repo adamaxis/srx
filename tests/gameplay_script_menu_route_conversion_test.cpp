@@ -5,6 +5,7 @@ extern "C" {
 #include <lua.h>
 }
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+#include "matrix_datastore_facts.hpp"
 #include "matrix_map_presenter.hpp"
 
 #include <QColor>
@@ -34,6 +35,10 @@ using shadowrun::ghidra_conversion::scripting::ScriptMatrixWorldState;
 using shadowrun::ghidra_conversion::scripting::CyberdeckMenuBinding;
 using shadowrun::ghidra_conversion::scripting::dispatch_cyberdeck_menu_binding;
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+using shadowrun::ghidra_conversion::qt_runtime::
+    apply_matrix_datastore_facts;
+using shadowrun::ghidra_conversion::qt_runtime::
+    make_matrix_datastore_facts;
 using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_system_map;
 using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_node_action_panel;
 #endif
@@ -130,6 +135,56 @@ void verify_cyberdeck_file_value_bridge(int& failures) {
     lua_close(lua);
 }
 
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+void verify_matrix_datastore_field_projection(int& failures) {
+    const std::array<std::uint32_t, 3> notebook_tips{
+        0x01020304U, 0x11223344U, 0x55667788U};
+    const auto facts = make_matrix_datastore_facts(
+        notebook_tips, true, 0x81234567U,
+        std::optional<std::uint32_t>{0x6023U},
+        std::optional<std::uint32_t>{0x12345678U},
+        std::optional<std::uint8_t>{0x08U});
+    check(facts.tips_page2_flags == 0x11223344U &&
+              facts.tips_page3_flags == 0x55667788U,
+          "Matrix datastore receives FFFC34/FFFC38 from Notebook tips",
+          failures);
+    check(facts.world_event_flags == 0x81234567U &&
+              facts.group_item_flags == 0x6023U &&
+              facts.nuyen == 0x12345678U &&
+              facts.mr_johnsons_met_flags == 0x08U,
+          "Matrix datastore receives the live world, item, wallet, and Johnson facts",
+          failures);
+
+    const auto unresolved = make_matrix_datastore_facts(
+        notebook_tips, false, 0U, std::nullopt, std::nullopt, std::nullopt);
+    check(!unresolved.tips_page2_flags.has_value() &&
+              !unresolved.tips_page3_flags.has_value(),
+          "unrestored Notebook flags remain unknown to Matrix story dispatch",
+          failures);
+
+    auto committed_tips = std::array<std::uint32_t, 3>{9U, 8U, 7U};
+    bool tips_resolved = false;
+    std::uint32_t committed_world_flags = 0U;
+    std::optional<std::uint32_t> committed_group_items;
+    std::optional<std::uint32_t> committed_nuyen;
+    std::optional<std::uint8_t> committed_johnsons;
+    apply_matrix_datastore_facts(
+        facts, committed_tips, tips_resolved, committed_world_flags,
+        committed_group_items, committed_nuyen, committed_johnsons);
+    check(tips_resolved && committed_tips[0] == 9U &&
+              committed_tips[1] == 0x11223344U &&
+              committed_tips[2] == 0x55667788U,
+          "Matrix story updates write back only the two source tip pages",
+          failures);
+    check(committed_world_flags == 0x81234567U &&
+              committed_group_items == 0x6023U &&
+              committed_nuyen == 0x12345678U &&
+              committed_johnsons == 0x08U,
+          "Matrix story updates preserve the typed field facts",
+          failures);
+}
+#endif
+
 } // namespace
 
 int main() {
@@ -139,6 +194,9 @@ int main() {
 
     int failures = 0;
     verify_cyberdeck_file_value_bridge(failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    verify_matrix_datastore_field_projection(failures);
+#endif
     GameScriptRuntime runtime;
     if (!runtime.load_package(
             std::filesystem::path(SHADOWRUN_GAMEPLAY_SCRIPT_ROOT))) {
@@ -163,7 +221,8 @@ int main() {
     ScriptMatrixWorldState matrix_world_state;
     matrix_world_state.run = ScriptMatrixRunState{-1, -1, 0, 0, 1, 0};
     matrix_world_state.datastore = ScriptMatrixDatastoreFacts{
-        0U, 0xA2345678U, 0xCDEF1234U, 0x81234567U, 0x6023U, 0x12345678U};
+        0U, 0xA2345678U, 0xCDEF1234U, 0x81234567U, 0x6023U,
+        0x12345678U, 0x08U};
     matrix_world_state.field.alarm = true;
     matrix_world_state.field.security_off = false;
     matrix_world_state.field.maglocks_off = false;
@@ -1926,7 +1985,9 @@ int main() {
               matrix_world_state.datastore->group_item_flags ==
                   std::optional<std::uint32_t>{0x6023U} &&
               matrix_world_state.datastore->nuyen ==
-                  std::optional<std::uint32_t>{0x12345678U},
+                  std::optional<std::uint32_t>{0x12345678U} &&
+              matrix_world_state.datastore->mr_johnsons_met_flags ==
+                  std::optional<std::uint8_t>{0x08U},
           "Matrix datastore flag words survive the Lua-to-host state transaction",
           failures);
     check(matrix_world_state.actors.size() == 2U &&

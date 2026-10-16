@@ -37,15 +37,20 @@ Primary source: `input/shadowrun_genesis_us.bin`.
   word before showing text at `0x166968`. System 21 class 3 can also read the
   Group Items word (FFFC22). System 16 class 1 adds 50,000 to the active wallet
   after setting its source flag. The field host passes these facts through
-  the typed Matrix world-state transaction; Lua gets the active system ID from
-  its Matrix session.
+  the typed Matrix world-state transaction. The host reads FFFC34/FFFC38 from
+  the actual three-word Notebook tip state, FFFC1E from world-progress state,
+  and FFFC27's known low bits from the Mr. Johnsons Notebook state. Lua gets
+  the active system ID from its Matrix session. Unrestored tip/Johnson facts
+  remain absent.
 - The adapter currently evaluates only paths whose required facts are
   available: systems/classes 7/10, 16/1, 17/0 and 9, 18/2, 3, 9 and 10,
- 19/12, 20/10, 21/2, 3 and 10, 22/2 and 4, 23/9, and 24/10. System 16
-  class 1 requires the live wallet because it grants 50,000 nuyen; System 21
-  class 3 requires FFFC22. Paths reading FFFBFA, FFFBFB, FFFC26, or FFFC27
-  remain gated, including System 19 class 0, System 21 class 4, and System
-  23 classes 12 and 13.
+  19/0 and 12, 20/10, 21/2, 3 and 10, 22/2 and 4, 23/9 and 12, and 24/10.
+  System 18 uses only FFFC34. System 16 class 1 requires the live wallet
+  because it grants 50,000 nuyen; System 21 class 3 requires FFFC22. Systems
+  19 class 0 and 23 class 12 run only on their FFFC27 bit-3 branch; the
+  alternate FFFC26 branch remains gated. Paths reading FFFBFA, FFFBFB, or
+  additional FFFC22 bits also remain gated, including System 21 class 4 and
+  System 23 class 13.
 - The dot loop and Yes/No branch contain no explicit sound call. A shared
   action/input sound outside those branches has not been independently
   established.

@@ -2,30 +2,35 @@
 -- Story datafiles: called by Transfer Data before the random file. Returns true when this datastore (system FFFBBC,
 -- node file class d0 = node +1) yields a story file: the bit in FFFC38 (or FFFC34 for system 0x12) is set (text 0x166968).
 -- r = { system_id, tips_page3_flags, tips_page2_flags, world_event_flags,
---       group_item_flags, fbfa, fbfb, fc26, fc27, nuyen }; r is updated in place.
+--       group_item_flags, fbfa, fbfb, fc26, mr_johnsons_met_flags, nuyen }.
+-- Available facts are updated in place; absent source facts remain gated.
 -- Quirk kept [C]: system 0x10 class 1 needs bits 0x1A..0x1E of FFFC38 and pays +50,000 nuyen (0xC350).
 local function s8(v) v = v & 0xFF; return v >= 0x80 and v - 0x100 or v end
 -- The host currently resolves these system/class pairs from typed facts.
--- Other branches also read FFFBFA/FB, FFFC26/27, or additional FFFC22 bits;
+-- Other branches also read FFFBFA/FB, FFFC26, or additional FFFC22 bits;
 -- leave those explicit until the host has the matching source facts.
 local SUPPORTED = {
     [7]  = { [10] = true },
     [16] = { [1] = true },
     [17] = { [0] = true, [9] = true },
     [18] = { [2] = true, [3] = true, [9] = true, [10] = true },
-    [19] = { [12] = true },
+    [19] = { [0] = true, [12] = true },
     [20] = { [10] = true },
     [21] = { [2] = true, [3] = true, [10] = true },
     [22] = { [2] = true, [4] = true },
-    [23] = { [9] = true },
+    [23] = { [9] = true, [12] = true },
     [24] = { [10] = true },
 }
 local function can_match(r, node_class)
     if not r or r.system_id == nil then return false end
     local system_id = s8(r.system_id)
+    local required_tip_flags = r.tips_page3_flags
+    if system_id == 18 then
+        required_tip_flags = r.tips_page2_flags
+    end
     if not SUPPORTED[system_id] or
        not SUPPORTED[system_id][node_class] or
-       r.tips_page3_flags == nil or r.tips_page2_flags == nil or
+       required_tip_flags == nil or
        r.world_event_flags == nil then
         return false
     end
@@ -35,6 +40,21 @@ local function can_match(r, node_class)
     end
     if system_id == 16 and node_class == 1 and
        r.nuyen == nil then
+        return false
+    end
+    if system_id == 19 and node_class == 0 then
+        -- The source tries the FFFC27 bit-3 branch before FFFC26 bit 0.
+        -- Only admit the first branch while its page-3 clue is still clear;
+        -- the fallback fact is not yet supplied by the host.
+        if r.mr_johnsons_met_flags == nil or
+           (r.mr_johnsons_met_flags & 0x08) == 0 or
+           ((r.tips_page3_flags >> 14) & 1) ~= 0 then
+            return false
+        end
+    end
+    if system_id == 23 and node_class == 12 and
+       (r.mr_johnsons_met_flags == nil or
+        (r.mr_johnsons_met_flags & 0x08) == 0) then
         return false
     end
     return true
@@ -179,7 +199,7 @@ local function matches(r, d0)
     ::L05529E:: goto L055578
     ::L0552A2:: cc = d0 - 12
     ::L0552A6:: if cc ~= 0 then goto L0552E2 end
-    ::L0552AA:: cc = (r.fc27 >> 3) & 1
+    ::L0552AA:: cc = (r.mr_johnsons_met_flags >> 3) & 1
     ::L0552B2:: if cc == 0 then goto L0552C6 end
     ::L0552B6:: cc = (d5 >> 9) & 1
     ::L0552BA:: if cc ~= 0 then goto L05559A end
@@ -227,7 +247,7 @@ local function matches(r, d0)
     ::L05536E:: goto L055578
     ::L055372:: cc = d0 - 0
     ::L055376:: if cc ~= 0 then goto L05559A end
-    ::L05537A:: cc = (r.fc27 >> 3) & 1
+    ::L05537A:: cc = (r.mr_johnsons_met_flags >> 3) & 1
     ::L055382:: if cc == 0 then goto L055396 end
     ::L055386:: cc = (d5 >> 14) & 1
     ::L05538A:: if cc ~= 0 then goto L055396 end

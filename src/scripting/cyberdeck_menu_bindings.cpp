@@ -174,6 +174,17 @@ void push_optional_boolean(lua_State* lua, const int table_index,
     lua_setfield(lua, table_index, name);
 }
 
+template <typename Integer>
+void push_optional_integer(lua_State* lua, const int table_index,
+                           const char* name,
+                           const std::optional<Integer>& value) {
+    if (!value.has_value()) {
+        return;
+    }
+    lua_pushinteger(lua, static_cast<lua_Integer>(*value));
+    lua_setfield(lua, table_index, name);
+}
+
 void push_matrix_world_state(lua_State* lua,
                              const ScriptMatrixWorldState& world) {
     lua_createtable(lua, 0, 4);
@@ -208,24 +219,21 @@ void push_matrix_world_state(lua_State* lua,
 
     if (world.datastore.has_value()) {
         const auto& facts = *world.datastore;
-        lua_createtable(lua, 0, 6);
+        lua_createtable(lua, 0, 7);
         const int datastore_index = lua_absindex(lua, -1);
         lua_pushinteger(lua, facts.system_id);
         lua_setfield(lua, datastore_index, "system_id");
-        lua_pushinteger(lua, facts.tips_page3_flags);
-        lua_setfield(lua, datastore_index, "tips_page3_flags");
-        lua_pushinteger(lua, facts.tips_page2_flags);
-        lua_setfield(lua, datastore_index, "tips_page2_flags");
+        push_optional_integer(lua, datastore_index, "tips_page3_flags",
+                              facts.tips_page3_flags);
+        push_optional_integer(lua, datastore_index, "tips_page2_flags",
+                              facts.tips_page2_flags);
         lua_pushinteger(lua, facts.world_event_flags);
         lua_setfield(lua, datastore_index, "world_event_flags");
-        if (facts.group_item_flags.has_value()) {
-            lua_pushinteger(lua, *facts.group_item_flags);
-            lua_setfield(lua, datastore_index, "group_item_flags");
-        }
-        if (facts.nuyen.has_value()) {
-            lua_pushinteger(lua, *facts.nuyen);
-            lua_setfield(lua, datastore_index, "nuyen");
-        }
+        push_optional_integer(lua, datastore_index, "group_item_flags",
+                              facts.group_item_flags);
+        push_optional_integer(lua, datastore_index, "nuyen", facts.nuyen);
+        push_optional_integer(lua, datastore_index, "mr_johnsons_met_flags",
+                              facts.mr_johnsons_met_flags);
         lua_setfield(lua, world_index, "datastore");
     }
 
@@ -288,27 +296,30 @@ ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
     lua_getfield(lua, world_index, "datastore");
     if (lua_istable(lua, -1)) {
         const int datastore_index = lua_absindex(lua, -1);
-        const auto read_u32 = [lua, datastore_index](const char* name) {
+        const auto read_optional_u32 = [lua, datastore_index](const char* name)
+            -> std::optional<std::uint32_t> {
             const auto value = read_optional_integer(lua, datastore_index,
                                                      name);
-            return static_cast<std::uint32_t>(std::clamp<lua_Integer>(
-                value.value_or(0), 0, 0xFFFFFFFFLL));
+            if (!value.has_value()) {
+                return std::nullopt;
+            }
+            return static_cast<std::uint32_t>(
+                std::clamp<lua_Integer>(*value, 0, 0xFFFFFFFFLL));
         };
         ScriptMatrixDatastoreFacts facts;
         facts.system_id = static_cast<std::uint8_t>(
             read_integer(lua, datastore_index, "system_id", 0, 0, 0xFF));
-        facts.tips_page3_flags = read_u32("tips_page3_flags");
-        facts.tips_page2_flags = read_u32("tips_page2_flags");
-        facts.world_event_flags = read_u32("world_event_flags");
+        facts.tips_page3_flags = read_optional_u32("tips_page3_flags");
+        facts.tips_page2_flags = read_optional_u32("tips_page2_flags");
+        facts.world_event_flags =
+            read_optional_u32("world_event_flags").value_or(0U);
+        facts.group_item_flags = read_optional_u32("group_item_flags");
+        facts.nuyen = read_optional_u32("nuyen");
         if (const auto value = read_optional_integer(
-                lua, datastore_index, "group_item_flags"); value.has_value()) {
-            facts.group_item_flags = static_cast<std::uint32_t>(
-                std::clamp<lua_Integer>(*value, 0, 0xFFFFFFFFLL));
-        }
-        if (const auto value = read_optional_integer(
-                lua, datastore_index, "nuyen"); value.has_value()) {
-            facts.nuyen = static_cast<std::uint32_t>(
-                std::clamp<lua_Integer>(*value, 0, 0xFFFFFFFFLL));
+                lua, datastore_index, "mr_johnsons_met_flags");
+            value.has_value()) {
+            facts.mr_johnsons_met_flags = static_cast<std::uint8_t>(
+                std::clamp<lua_Integer>(*value, 0, 0xFFLL));
         }
         world.datastore = facts;
     }

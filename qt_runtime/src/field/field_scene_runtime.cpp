@@ -38,6 +38,7 @@
 #include "numeric_visual_renderer.hpp"
 #include "field_map_composition.hpp"
 #include "matrix_map_presenter.hpp"
+#include "matrix_datastore_facts.hpp"
 
 #include <QPainter>
 #include <QColor>
@@ -6187,9 +6188,10 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.game.map_seen = [] { return 0; };
     bindings.game.matrix_world_state = [this] {
         auto world = field_matrix_world_state_;
-        world.datastore = scripting::ScriptMatrixDatastoreFacts{
-            0U, field_render_effect_flags_, field_mode_effect_flags_,
-            field_exit_world_flags_, group_item_flags_, field_funds_};
+        world.datastore = make_matrix_datastore_facts(
+            notebook_tip_flags_, notebook_tip_flags_resolved_,
+            field_exit_world_flags_, group_item_flags_, field_funds_,
+            notebook_referral_flags_);
         const auto scene_reference =
             state_.field_scene_buffers.scene_reference;
         for (const auto& actor : field_default_actors_) {
@@ -6219,12 +6221,10 @@ void FieldSceneRuntime::configure_field_menu_route() {
                 update.field.maglocks_off;
         }
         if (update.datastore.has_value()) {
-            field_render_effect_flags_ =
-                update.datastore->tips_page3_flags;
-            field_mode_effect_flags_ = update.datastore->tips_page2_flags;
-            field_exit_world_flags_ = update.datastore->world_event_flags;
-            group_item_flags_ = update.datastore->group_item_flags;
-            field_funds_ = update.datastore->nuyen;
+            apply_matrix_datastore_facts(
+                *update.datastore, notebook_tip_flags_,
+                notebook_tip_flags_resolved_, field_exit_world_flags_,
+                group_item_flags_, field_funds_, notebook_referral_flags_);
         }
         const auto scene_reference =
             state_.field_scene_buffers.scene_reference;

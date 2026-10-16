@@ -200,11 +200,12 @@ struct ScriptMatrixFieldActorState {
 // wallet are optional because either source fact may be unavailable.
 struct ScriptMatrixDatastoreFacts {
     std::uint8_t system_id = 0U;           // Current Matrix system, FFFBBC.
-    std::uint32_t tips_page3_flags = 0U;    // Story tips, FFFC38.
-    std::uint32_t tips_page2_flags = 0U;    // Story tips, FFFC34.
+    std::optional<std::uint32_t> tips_page3_flags; // Story tips, FFFC38.
+    std::optional<std::uint32_t> tips_page2_flags; // Story tips, FFFC34.
     std::uint32_t world_event_flags = 0U;   // World-event facts, FFFC1E.
     std::optional<std::uint32_t> group_item_flags; // Group items, FFFC22.
     std::optional<std::uint32_t> nuyen;
+    std::optional<std::uint8_t> mr_johnsons_met_flags; // FFFC27.
 };
 
 struct ScriptMatrixWorldState {
