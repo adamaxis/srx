@@ -33,6 +33,11 @@ boot/sega-strobe-5.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
 boot/sega-strobe-6.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
 boot/sega-strobe-7.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
 boot/fasa.bmp	sprite	96	80	127	40	ROM title/boot resource	extracted
+cyberspace/matrix/system-map-background.bmp	background	0	0	320	224	0x532BC/0x15C4DC name table; 0x15BEAC patterns; CRAM 0x15FCB6	extracted
+cyberspace/matrix/system-map-font.bmp	sprite	0	0	128	48	0x532BC/0xC0DA/0xC1320 glyphs; attribute 0x2000; CRAM 0x15FCB6 palette line 1	extracted
+cyberspace/matrix/map-tiles-palette-1.bmp	sprite	0	0	128	16	0x532BC/0x15BEAC patterns 0xBF-0xD8; map table 0x15FC0E/0x15FC6A; palette 0x15fcd6	extracted
+cyberspace/matrix/map-tiles-palette-2.bmp	sprite	0	0	128	16	0x532BC/0x15BEAC patterns 0xBF-0xD8; map table 0x15FC0E/0x15FC6A; palette 0x15fcf6	extracted
+cyberspace/matrix/map-tiles-palette-3.bmp	sprite	0	0	128	16	0x532BC/0x15BEAC patterns 0xBF-0xD8; map table 0x15FC0E/0x15FC6A; palette 0x15fd16	extracted
 title/animation-0.bmp	background	0	0	320	224	native title source composition[0]	extracted
 title/animation-1.bmp	background	0	0	320	224	native title source composition[1]	extracted
 title/animation-2.bmp	background	0	0	320	224	native title source composition[2]	extracted

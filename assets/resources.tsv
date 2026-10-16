@@ -389,6 +389,11 @@ boot.sega.strobe.5	boot/sega-strobe-5.bmp	image	104	80
 boot.sega.strobe.6	boot/sega-strobe-6.bmp	image	104	80
 boot.sega.strobe.7	boot/sega-strobe-7.bmp	image	104	80
 boot.fasa	boot/fasa.bmp	image	96	80
+cyberspace.matrix.system.map.background	cyberspace/matrix/system-map-background.bmp	image	0	0
+cyberspace.matrix.system.map.font	cyberspace/matrix/system-map-font.bmp	image	0	0
+cyberspace.matrix.map.tiles.palette.1	cyberspace/matrix/map-tiles-palette-1.bmp	image	0	0
+cyberspace.matrix.map.tiles.palette.2	cyberspace/matrix/map-tiles-palette-2.bmp	image	0	0
+cyberspace.matrix.map.tiles.palette.3	cyberspace/matrix/map-tiles-palette-3.bmp	image	0	0
 title.animation.0	title/animation-0.bmp	image	0	0
 title.animation.1	title/animation-1.bmp	image	0	0
 title.animation.2	title/animation-2.bmp	image	0	0

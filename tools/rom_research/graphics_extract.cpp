@@ -1860,6 +1860,102 @@ shadowrun::graphics::RgbaImage to_rgba_image(
     return {source.width, source.height, source.pixels};
 }
 
+shadowrun::graphics::RgbaImage compose_matrix_map_backdrop(
+    const std::vector<std::uint8_t>& rom,
+    const shadowrun::graphics::RgbaImage& patterns,
+    const std::size_t pattern_base,
+    const std::size_t pattern_count) {
+    constexpr std::size_t kColumns = 40U;
+    constexpr std::size_t kRows = 28U;
+    constexpr std::size_t kTable = 0x15C4DCU;
+    constexpr std::size_t kAtlasColumns = 16U;
+    if (patterns.width != kAtlasColumns * 8U ||
+        pattern_base > 0x7FFU || pattern_count == 0U) {
+        throw std::runtime_error("Matrix backdrop atlas has invalid dimensions");
+    }
+
+    shadowrun::graphics::RgbaImage image{
+        static_cast<std::uint16_t>(kColumns * 8U),
+        static_cast<std::uint16_t>(kRows * 8U),
+        std::vector<shadowrun::native::Rgba8>(
+            kColumns * kRows * 64U,
+            shadowrun::native::Rgba8{0U, 0U, 0U, 255U}),
+    };
+    for (std::size_t cell = 0U; cell < kColumns * kRows; ++cell) {
+        const auto word = read_big_endian_word(rom, kTable + cell * 2U);
+        const auto pattern = static_cast<std::size_t>(word & 0x07FFU);
+        if (pattern < pattern_base || pattern - pattern_base >= pattern_count ||
+            ((word >> 13U) & 0x03U) != 0U) {
+            throw std::runtime_error(
+                "Matrix backdrop name table references an unexpected pattern");
+        }
+        const auto pattern_index = pattern - pattern_base;
+        const auto source_x = (pattern_index % kAtlasColumns) * 8U;
+        const auto source_y = (pattern_index / kAtlasColumns) * 8U;
+        const auto target_x = (cell % kColumns) * 8U;
+        const auto target_y = (cell / kColumns) * 8U;
+        const bool flip_x = (word & 0x0800U) != 0U;
+        const bool flip_y = (word & 0x1000U) != 0U;
+        for (std::size_t y = 0U; y < 8U; ++y) {
+            for (std::size_t x = 0U; x < 8U; ++x) {
+                const auto from_x = source_x + (flip_x ? 7U - x : x);
+                const auto from_y = source_y + (flip_y ? 7U - y : y);
+                const auto& source = patterns.pixels[
+                    from_y * static_cast<std::size_t>(patterns.width) +
+                    from_x];
+                if (source.alpha == 0U) {
+                    continue;
+                }
+                image.pixels[(target_y + y) * kColumns * 8U + target_x + x] =
+                    source;
+            }
+        }
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage decode_matrix_map_font(
+    const std::vector<std::uint8_t>& rom,
+    const std::size_t matrix_palette_base) {
+    // 0xC0DA resolves glyphs through 0xC1320 and writes the caller's
+    // 0x2000 name-table attribute. Its glyph pixels therefore use palette
+    // line 1 from the Matrix screen's 0x15FCB6 CRAM block, not the startup
+    // palette used by the shared extracted font mask.
+    constexpr std::size_t kStartupPaletteBase = 0x01FF0U;
+    auto font = shadowrun::graphics::decode_genesis_startup_font(rom);
+    const auto startup_palette =
+        shadowrun::graphics::read_genesis_palette_set(
+            rom, kStartupPaletteBase);
+    const auto matrix_palette =
+        shadowrun::graphics::read_genesis_palette_set(
+            rom, matrix_palette_base);
+
+    for (auto& pixel : font.pixels) {
+        if (pixel.alpha == 0U) {
+            continue;
+        }
+        bool matched = false;
+        for (std::size_t color_index = 1U; color_index < 16U;
+             ++color_index) {
+            const auto& startup_color = startup_palette[16U + color_index];
+            if (pixel.red != startup_color.red ||
+                pixel.green != startup_color.green ||
+                pixel.blue != startup_color.blue) {
+                continue;
+            }
+            pixel = matrix_palette[16U + color_index];
+            pixel.alpha = 255U;
+            matched = true;
+            break;
+        }
+        if (!matched) {
+            throw std::runtime_error(
+                "Matrix text glyph does not map to the startup palette");
+        }
+    }
+    return font;
+}
+
 std::string format_resource_source(
     const shadowrun::graphics::GenesisGraphicsResource& resource) {
     std::ostringstream output;
@@ -2549,6 +2645,54 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 manifest, written, missing, blank);
         }
     };
+
+    // Matrix map visuals are imported as direct host images. 0x532BC draws
+    // the 40x28 background name table (0x15C4DC) from the patterns at
+    // 0x15BEAC; its four CRAM lines are copied from 0x15FCB6. The same tile
+    // upload supplies patterns 0xBF-0xD8 referenced by the 14x10 cell tables
+    // at 0x15FC0E/0x15FC6A.
+    constexpr std::size_t kMatrixMapPatternBase = 0x00BFU;
+    constexpr std::size_t kMatrixMapPatternCount = 0x29U;
+    constexpr std::size_t kMatrixMapPaletteBase = 0x15FCB6U;
+    const auto matrix_backdrop_patterns =
+        shadowrun::graphics::decode_tile_atlas(
+            rom, 0x15BEACU, kMatrixMapPatternCount,
+            shadowrun::graphics::read_genesis_palette(rom,
+                                                       kMatrixMapPaletteBase),
+            16U, 0);
+    const auto matrix_map_backdrop = compose_matrix_map_backdrop(
+        rom, matrix_backdrop_patterns, kMatrixMapPatternBase,
+        kMatrixMapPatternCount);
+    write_catalog_asset(
+        root, "cyberspace/matrix/system-map-background.bmp",
+        matrix_map_backdrop, "background",
+        "0x532BC/0x15C4DC name table; 0x15BEAC patterns; CRAM 0x15FCB6",
+        false, manifest, written, missing, blank);
+    write_catalog_asset(
+        root, "cyberspace/matrix/system-map-font.bmp",
+        decode_matrix_map_font(rom, kMatrixMapPaletteBase), "sprite",
+        "0x532BC/0xC0DA/0xC1320 glyphs; attribute 0x2000; "
+        "CRAM 0x15FCB6 palette line 1",
+        true, manifest, written, missing, blank);
+
+    for (std::size_t palette_line = 1U; palette_line <= 3U;
+         ++palette_line) {
+        const auto palette_offset =
+            kMatrixMapPaletteBase + palette_line * 0x20U;
+        const auto map_tiles = shadowrun::graphics::decode_tile_atlas(
+            rom, 0x15BEACU, 26U,
+            shadowrun::graphics::read_genesis_palette(rom, palette_offset),
+            16U, 0);
+        std::ostringstream provenance;
+        provenance << "0x532BC/0x15BEAC patterns 0xBF-0xD8; map table "
+                   << "0x15FC0E/0x15FC6A; palette 0x" << std::hex
+                   << palette_offset;
+        write_catalog_asset(
+            root, "cyberspace/matrix/map-tiles-palette-" +
+                      std::to_string(palette_line) + ".bmp",
+            map_tiles, "sprite", provenance.str(),
+            false, manifest, written, missing, blank);
+    }
 
     // Startup and opening source layers.
     write_array("title/animation-", assets.title_animation_frames, "background",

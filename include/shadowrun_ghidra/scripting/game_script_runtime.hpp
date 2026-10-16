@@ -225,6 +225,10 @@ struct ScriptMenuRouteBindings {
     ScriptMenuRouteGame game;
 };
 
+struct ScriptMatrixMapCellVisual {
+    std::array<std::uint16_t, 4> tile_words{};
+};
+
 struct ScriptMenuRouteSnapshot {
     bool open = false;
     std::uint16_t top_screen = 0U;
@@ -254,6 +258,10 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_matrix_node;
     std::optional<int> top_matrix_previous_node;
     std::optional<int> top_matrix_alert;
+    bool top_matrix_map_cells_present = false;
+    std::array<ScriptMatrixMapCellVisual, 140> top_matrix_map_cells{};
+    bool top_matrix_map_labels_present = false;
+    std::array<std::string, 6> top_matrix_map_labels{};
     std::vector<int> top_targets;
     std::optional<bool> top_recipient_full;
     std::optional<bool> top_yes;

@@ -226,13 +226,9 @@ function Map.input(st, events, ctx)
     if events & ABC ~= 0 then
         if st.row == 0 then
             st.title = "System Map"
-            st.text = MatrixSession.map_text(st.matrix_state)
-            if type(st.text) ~= "string" or st.text == "" then
-                st.text = "Matrix map unavailable (" ..
-                          type(st.text) .. "): " ..
-                          tostring(st.matrix_state and
-                                   st.matrix_state.system_id or "no session")
-            end
+            st.matrix_map_cells =
+                MatrixSession.map_visual_cells(st.matrix_state)
+            st.matrix_map_labels = MatrixSession.map_labels()
             st.labels = {}
             st.phase = "map"
             ctx.redraw(R.FULL)

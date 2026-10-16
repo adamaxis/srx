@@ -1627,6 +1627,9 @@ private:
     std::array<QImage, 4> command_overview_clips_focus_{};
     std::array<QImage, 4> command_overview_clips_trade_focus_{};
     QImage command_overview_magic_panel_background_;
+    QImage matrix_map_background_;
+    QImage matrix_map_font_;
+    std::array<QImage, 4> matrix_map_tile_atlases_{};
     std::array<QImage, kMagicSpellTextCount> command_overview_magic_spell_icons_{};
     std::array<QImage, 4> command_overview_magic_cursor_frames_{};
     std::array<QImage, 5> command_overview_magic_posture_bars_{};

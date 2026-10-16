@@ -1770,6 +1770,90 @@ struct GameScriptRuntime::Impl {
                     menu_route_state.magic_view = view;
                 }
                 lua_pop(state, 1);
+                lua_getfield(state, screen_state_index, "matrix_map_cells");
+                if (lua_istable(state, -1)) {
+                    const auto cells_index = lua_absindex(state, -1);
+                    constexpr std::size_t kMatrixMapCellCount = 140U;
+                    if (lua_rawlen(state, cells_index) >=
+                        kMatrixMapCellCount) {
+                        bool valid = true;
+                        for (std::size_t cell = 0U;
+                             cell < kMatrixMapCellCount; ++cell) {
+                            lua_rawgeti(
+                                state, cells_index,
+                                static_cast<lua_Integer>(cell + 1U));
+                            if (!lua_istable(state, -1)) {
+                                valid = false;
+                                lua_pop(state, 1);
+                                break;
+                            }
+                            const auto visual_index = lua_absindex(state, -1);
+                            lua_getfield(state, visual_index, "tiles");
+                            if (!lua_istable(state, -1) ||
+                                lua_rawlen(state, -1) < 4U) {
+                                valid = false;
+                                lua_pop(state, 2);
+                                break;
+                            }
+                            const auto tiles_index = lua_absindex(state, -1);
+                            for (std::size_t tile = 0U; tile < 4U; ++tile) {
+                                lua_rawgeti(
+                                    state, tiles_index,
+                                    static_cast<lua_Integer>(tile + 1U));
+                                int is_integer = 0;
+                                const auto value =
+                                    lua_tointegerx(state, -1, &is_integer);
+                                if (is_integer == 0 || value < 0 ||
+                                    value > 0xFFFF) {
+                                    valid = false;
+                                } else {
+                                    menu_route_state.top_matrix_map_cells[cell]
+                                        .tile_words[tile] =
+                                            static_cast<std::uint16_t>(value);
+                                }
+                                lua_pop(state, 1);
+                            }
+                            lua_pop(state, 2);
+                            if (!valid) {
+                                break;
+                            }
+                        }
+                        menu_route_state.top_matrix_map_cells_present = valid;
+                    }
+                }
+                lua_pop(state, 1);
+                lua_getfield(state, screen_state_index, "matrix_map_labels");
+                if (lua_istable(state, -1)) {
+                    const auto labels_index = lua_absindex(state, -1);
+                    constexpr std::size_t kMatrixMapLabelCount = 6U;
+                    if (lua_rawlen(state, labels_index) >=
+                        kMatrixMapLabelCount) {
+                        bool valid = true;
+                        for (std::size_t label = 0U;
+                             label < kMatrixMapLabelCount; ++label) {
+                            lua_rawgeti(
+                                state, labels_index,
+                                static_cast<lua_Integer>(label + 1U));
+                            std::size_t length = 0U;
+                            const auto* value =
+                                lua_type(state, -1) == LUA_TSTRING
+                                    ? lua_tolstring(state, -1, &length)
+                                    : nullptr;
+                            if (value == nullptr || length == 0U || length > 3U) {
+                                valid = false;
+                            } else {
+                                menu_route_state.top_matrix_map_labels[label]
+                                    .assign(value, length);
+                            }
+                            lua_pop(state, 1);
+                            if (!valid) {
+                                break;
+                            }
+                        }
+                        menu_route_state.top_matrix_map_labels_present = valid;
+                    }
+                }
+                lua_pop(state, 1);
                 lua_getfield(state, screen_state_index, "grid_cells");
                 if (lua_istable(state, -1)) {
                     menu_route_state.top_grid_cells_present = true;

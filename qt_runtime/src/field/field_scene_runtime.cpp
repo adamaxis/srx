@@ -37,6 +37,7 @@
 #include "genesis_image_compositor.hpp"
 #include "numeric_visual_renderer.hpp"
 #include "field_map_composition.hpp"
+#include "matrix_map_presenter.hpp"
 
 #include <QPainter>
 #include <QColor>
@@ -4608,6 +4609,29 @@ bool FieldSceneRuntime::load_command_overview_assets(
         !load_image(catalog, "menu.field.magic.panel.background",
                     command_overview_magic_panel_background_)) {
         return false;
+    }
+    if (!load_image(catalog,
+                    "cyberspace.matrix.system.map.background",
+                    matrix_map_background_) ||
+        matrix_map_background_.size() != QSize(320, 224) ||
+        !load_image(catalog,
+                    "cyberspace.matrix.system.map.font",
+                    matrix_map_font_) ||
+        matrix_map_font_.size() != QSize(128, 48)) {
+        failure_ = "Matrix source map background is unavailable";
+        return false;
+    }
+    for (std::size_t palette_line = 1U; palette_line <= 3U;
+         ++palette_line) {
+        const auto alias = "cyberspace.matrix.map.tiles.palette." +
+                           std::to_string(palette_line);
+        auto& atlas = matrix_map_tile_atlases_[palette_line];
+        if (!load_image(catalog, alias, atlas) ||
+            atlas.size() != QSize(128, 16)) {
+            failure_ = "Matrix source map tile palette is unavailable: " +
+                       std::to_string(palette_line);
+            return false;
+        }
     }
     constexpr std::string_view kRunnerPreviewAliasPrefix =
         "menu.field.runner.preview.table.";
@@ -15757,6 +15781,14 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     ? std::string_view("00")
                     : std::string_view(routed_menu.top_text));
             return;
+        }
+        if (routed_screen == srx::MenuScreen::DECK_MAP &&
+            routed_menu.top_matrix_map_cells_present) {
+            if (paint_matrix_system_map(
+                    painter, matrix_map_background_, matrix_map_font_,
+                    matrix_map_tile_atlases_, routed_menu)) {
+                return;
+            }
         }
         const bool cyberdeck_route =
             routed_screen == srx::MenuScreen::CYBERDECK ||

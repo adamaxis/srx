@@ -100,6 +100,28 @@ eq(first_session.current_node, 0, "Matrix session enters access node")
 eq(first_session.nodes[0].links[0], 4, "system zero access link")
 eq(first_session.map[139] ~= nil, true, "Matrix session copies cell 139")
 eq(first_session.map[140], nil, "Matrix session does not create cell 140")
+eq(table.concat(Session.map_labels(), ","), "CPU,SPU,IOP,SAN,SM,DS",
+    "Matrix map labels match ROM text table")
+for system_id = 0, 24 do
+    local ok, session = Session.begin(system_id)
+    assert(ok, "Matrix map visual state initializes for system " .. system_id)
+    local visuals = Session.map_visual_cells(session)
+    assert(#visuals == 140, "Matrix map visual cell count for system " .. system_id)
+    for cell = 1, 140 do
+        assert(#visuals[cell].tiles == 4,
+            "Matrix cell tile word count for system " .. system_id)
+        for _, word in ipairs(visuals[cell].tiles) do
+            local pattern = word & 0x07FF
+            local palette = word & 0x6000
+            assert(pattern >= 0x00BF and pattern <= 0x00D8,
+                "Matrix cell pattern range for system " .. system_id)
+            assert(palette == 0x2000 or palette == 0x4000 or
+                   palette == 0x6000,
+                "Matrix cell palette range for system " .. system_id)
+        end
+    end
+    Session.finish(session)
+end
 Session.finish(first_session)
 
 -- Exercise the actual deck-grid screen against a narrow fake host. This verifies
@@ -278,6 +300,8 @@ int main() {
     luaL_requiref(state, LUA_MATHLIBNAME, luaopen_math, 1);
     lua_pop(state, 1);
     luaL_requiref(state, LUA_STRLIBNAME, luaopen_string, 1);
+    lua_pop(state, 1);
+    luaL_requiref(state, LUA_TABLIBNAME, luaopen_table, 1);
     lua_pop(state, 1);
     lua_newtable(state);
     lua_setglobal(state, "__matrix_test_modules");

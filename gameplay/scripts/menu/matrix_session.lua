@@ -6,6 +6,14 @@ local Movement = require("menu.rules.matrix_move")
 
 local M = { active = nil }
 
+local function source_links(source)
+    local links = {}
+    for index, target in ipairs(source or {}) do
+        links[index - 1] = target
+    end
+    return links
+end
+
 local function typed_node(source)
     if not source then return nil end
     return {
@@ -16,13 +24,20 @@ local function typed_node(source)
         y = source.y,
         colour = source.security_color,
         security = source.security,
-        links = source.links,
+        links = source_links(source.links),
         ic_condition = source.ic_condition,
         ic_reaction = source.ic_reaction,
         ic_rating = source.ic_rating,
         ic_rating2 = source.ic_rating2,
         ic_code = source.ic_combo_id,
     }
+end
+
+local function remember_node_colour(state, node_id)
+    local node = state.nodes[node_id]
+    if node then
+        state.map_colours[node.y * Rules.W + node.x] = node.colour
+    end
 end
 
 function M.begin(system_id)
@@ -52,8 +67,10 @@ function M.begin(system_id)
         alert = Rules.NONE,
         in_alert = false,
         known = {},
+        map_colours = {},
     }
     state.known = Rules.reveal(map, state.known, entry_node.x, entry_node.y)
+    remember_node_colour(state, 0)
     M.active = state
     return true, state
 end
@@ -90,36 +107,40 @@ function M.retreat(state)
                                               state.current_node
     local node = state.nodes[state.current_node]
     Rules.reveal(state.map, state.known, node.x, node.y)
+    remember_node_colour(state, state.current_node)
     return true
 end
 
--- Transitional text presentation of the exact ROM 14x10 map. Extracted
--- Matrix tile art will replace this view without changing the Lua state.
-function M.map_text(state)
+-- Build the source 14x10 map's render records. Unknown cells use the ROM's
+-- blank tile; known cells select the exact 2x2 source table record. The low
+-- map colour byte only changes when a node is first entered, so revealed but
+-- unvisited nodes and all connectors retain the source grey/blue palette.
+function M.map_visual_cells(state)
     state = state or M.active
-    if not state then return "" end
-    local symbols = { [0] = "S", "C", "P", "I", "D", "L" }
-    local rows = {}
-    for y = 0, Rules.H - 1 do
-        local cells = {}
-        for x = 0, Rules.W - 1 do
-            local cell = y * Rules.W + x
-            local value = " "
-            if state.known[cell] then
-                local node_id = state.node_at[cell]
-                if node_id == state.current_node then
-                    value = "@"
-                elseif node_id ~= nil then
-                    value = symbols[state.nodes[node_id].function_id] or "?"
-                elseif state.map[cell] > 0x0B then
-                    value = "+"
-                end
-            end
-            cells[#cells + 1] = value
+    if not state then return {} end
+    local cells = {}
+    for cell = 0, Rules.W * Rules.H - 1 do
+        local known = state.known[cell] == true
+        local kind = known and state.map[cell] or 0
+        local colour = known and state.map_colours[cell] or 0
+        local palette_word = Rules.cell_style(colour)
+        local tile_table = colour >= 3 and Rules.TILE_B or Rules.TILE_A
+        local source_tiles = tile_table[kind] or tile_table[0]
+        local words = {}
+        for tile = 1, 4 do
+            words[tile] = palette_word | source_tiles[tile]
         end
-        rows[#rows + 1] = table.concat(cells)
+        cells[cell + 1] = { tiles = words }
     end
-    return table.concat(rows, "|")
+    return cells
+end
+
+function M.map_labels()
+    local labels = {}
+    for index, label in ipairs(Rules.MAP_LABELS) do
+        labels[index] = label
+    end
+    return labels
 end
 
 local FILE_CLASSES = {
@@ -194,6 +215,7 @@ function M.select_node_action(state, action_id)
         state.link_cursor = 0
         local next_node = state.nodes[target]
         Rules.reveal(state.map, state.known, next_node.x, next_node.y)
+        remember_node_colour(state, target)
         return true
     end
     if action_id == "go_to_node" then

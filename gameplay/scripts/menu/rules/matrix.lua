@@ -46,6 +46,9 @@ function M.initial_alert(ffe16f) return ffe16f ~= 0 and M.ACTIVE or M.NONE end
 -- "came from" block bit. Connector sets: CONNECT_DOWN 0x15FCAF, CONNECT_LEFT 0x15FC9A, CONNECT_UP 0x15FCA8,
 -- CONNECT_RIGHT 0x15FCA1. Quirk [C]: left/right moves do not stop at row edges (only 0 <= cell <= 0x8B is checked).
 M.W, M.H, M.LAST = 14, 10, 0x8B
+-- 0x532BC renders these six fixed row labels from 0x15FD36 at plane-A
+-- address 0xC204; the host presents the same text from the extracted font.
+M.MAP_LABELS = { "CPU", "SPU", "IOP", "SAN", "SM", "DS" }
 local function set(t) local s = {}; for _, v in ipairs(t) do s[v] = true end; return s end
 M.CONNECT_LEFT, M.CONNECT_RIGHT = set{12,14,15,18,19,21,22}, set{12,16,17,18,19,20,22}
 M.CONNECT_UP, M.CONNECT_DOWN = set{13,14,16,18,20,21,22}, set{13,15,17,19,20,21,22}

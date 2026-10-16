@@ -1,4 +1,11 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+#include "matrix_map_presenter.hpp"
+
+#include <QColor>
+#include <QImage>
+#include <QPainter>
+#endif
 
 #include <algorithm>
 #include <array>
@@ -14,6 +21,9 @@ using shadowrun::ghidra_conversion::scripting::ScriptNotebookBoundary;
 using shadowrun::ghidra_conversion::scripting::ScriptNotebookFacts;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuPartyMember;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteBindings;
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_system_map;
+#endif
 
 namespace {
 
@@ -900,9 +910,105 @@ int main() {
     runtime.advance_menu_route(0x4000U); // Show map.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kDeckMap &&
-              std::count(route.top_text.begin(), route.top_text.end(), '|') == 9 &&
-              route.top_text.find('@') != std::string::npos,
-          "Matrix map shows the source 14x10 grid and current node", failures);
+              route.top_matrix_map_cells_present &&
+              route.top_matrix_map_labels_present &&
+              route.top_matrix_map_labels ==
+                  std::array<std::string, 6>{"CPU", "SPU", "IOP", "SAN", "SM", "DS"} &&
+              std::all_of(
+                  route.top_matrix_map_cells.begin(),
+                  route.top_matrix_map_cells.end(), [](const auto& cell) {
+                      return std::all_of(
+                          cell.tile_words.begin(), cell.tile_words.end(),
+                          [](const auto word) {
+                              const auto pattern = word & 0x07FFU;
+                              const auto palette = word & 0x6000U;
+                              return pattern >= 0x00BFU &&
+                                     pattern <= 0x00D8U &&
+                                     palette >= 0x2000U &&
+                                     palette <= 0x6000U;
+                          });
+                  }),
+          "Matrix map exports all 140 source tiles and six source labels", failures);
+
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    const std::filesystem::path matrix_assets(SHADOWRUN_MATRIX_MAP_ASSET_ROOT);
+    const auto load_matrix_image = [&matrix_assets](const std::string& relative) {
+        return QImage(QString::fromStdString(
+            (matrix_assets / relative).string()));
+    };
+    const auto map_background = load_matrix_image(
+        "cyberspace/matrix/system-map-background.bmp");
+    const auto map_font = load_matrix_image(
+        "cyberspace/matrix/system-map-font.bmp");
+    std::array<QImage, 4> map_tile_atlases{};
+    for (std::size_t palette = 1U; palette <= 3U; ++palette) {
+        map_tile_atlases[palette] = load_matrix_image(
+            "cyberspace/matrix/map-tiles-palette-" +
+            std::to_string(palette) + ".bmp");
+    }
+    QImage map_actual(320, 224, QImage::Format_ARGB32);
+    map_actual.fill(QColor(255, 0, 255));
+    QPainter map_painter(&map_actual);
+    const bool map_painted = paint_matrix_system_map(
+        map_painter, map_background, map_font, map_tile_atlases, route);
+    map_painter.end();
+    check(map_painted,
+          "live Lua Matrix map snapshot reaches the Qt map presenter", failures);
+    bool stale_menu_pixel = false;
+    bool green_label_pixel = false;
+    for (int y = 0; y < map_actual.height(); ++y) {
+        for (int x = 0; x < map_actual.width(); ++x) {
+            if (map_actual.pixelColor(x, y) == QColor(255, 0, 255)) {
+                stale_menu_pixel = true;
+            }
+            if (y >= 32 && y < 40 && x >= 16 && x < 40) {
+                const auto pixel = map_actual.pixelColor(x, y);
+                green_label_pixel = green_label_pixel ||
+                    (pixel.green() > pixel.red() &&
+                     pixel.green() > pixel.blue());
+            }
+        }
+    }
+    check(!stale_menu_pixel,
+          "Matrix map redraw clears previous-screen graphics", failures);
+    check(green_label_pixel,
+          "Matrix map uses its source text palette", failures);
+    bool source_palette_label_pixel = false;
+    for (int y = 32; y < 40; ++y) {
+        for (int x = 16; x < 40; ++x) {
+            source_palette_label_pixel = source_palette_label_pixel ||
+                map_actual.pixelColor(x, y) == QColor(36, 219, 36);
+        }
+    }
+    check(source_palette_label_pixel,
+          "Matrix labels use the ROM 0x2000 palette line", failures);
+    check(map_actual.pixelColor(16, 32) ==
+              map_background.pixelColor(16, 32),
+          "transparent map glyph pixels preserve the backdrop", failures);
+    bool blank_cell_preserves_grid = false;
+    for (std::size_t cell = 0U;
+         cell < route.top_matrix_map_cells.size(); ++cell) {
+        const auto& visual = route.top_matrix_map_cells[cell];
+        const bool blank = std::all_of(
+            visual.tile_words.begin(), visual.tile_words.end(),
+            [](const auto word) { return (word & 0x07FFU) == 0x00BFU; });
+        if (!blank) {
+            continue;
+        }
+        const auto x = 64 + static_cast<int>(cell % 14U) * 16 + 3;
+        const auto y = 24 + static_cast<int>(cell / 14U) * 16 + 3;
+        blank_cell_preserves_grid = map_actual.pixelColor(x, y) ==
+                                    map_background.pixelColor(x, y);
+        break;
+    }
+    check(blank_cell_preserves_grid,
+          "unknown map cells leave the plane-B grid visible", failures);
+    const auto map_artifact = std::filesystem::path(
+        SHADOWRUN_MATRIX_MAP_ARTIFACT_DIR) / "actual.bmp";
+    std::filesystem::create_directories(map_artifact.parent_path());
+    check(map_actual.save(QString::fromStdString(map_artifact.string()), "BMP"),
+          "write live Matrix map actual.bmp artifact", failures);
+#endif
     runtime.advance_menu_route(0x8000U); // Return to Matrix grid.
     check(runtime.menu_route_snapshot().top_screen == kCyberdeck,
           "Matrix map returns to the active deck screen", failures);

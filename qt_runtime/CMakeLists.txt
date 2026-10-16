@@ -13,6 +13,7 @@ set(SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS
 set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/field/field_scene_runtime.cpp
     src/field/field_map_composition.cpp
+    src/field/matrix_map_presenter.cpp
     src/field/elevator_selector_runtime.cpp
     src/menus/attributes_skills_menu_runtime.cpp
     src/field/field_clips_menu_runtime.cpp
@@ -121,11 +122,23 @@ add_test(NAME shadowrun_gameplay_script_runtime_qa
          COMMAND shadowrun_gameplay_script_runtime_test)
 
 add_executable(shadowrun_gameplay_script_menu_route_test
-    ../tests/gameplay_script_menu_route_conversion_test.cpp)
+    ../tests/gameplay_script_menu_route_conversion_test.cpp
+    src/field/matrix_map_presenter.cpp)
+target_include_directories(shadowrun_gameplay_script_menu_route_test
+    PRIVATE
+        ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS}
+        "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+set_target_properties(shadowrun_gameplay_script_menu_route_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 target_link_libraries(shadowrun_gameplay_script_menu_route_test
-    PRIVATE shadowrun_gameplay_script_runtime)
+    PRIVATE shadowrun_gameplay_script_runtime Qt6::Gui)
 target_compile_definitions(shadowrun_gameplay_script_menu_route_test PRIVATE
-    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../gameplay/scripts")
+    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../gameplay/scripts"
+    SHADOWRUN_MATRIX_MAP_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../assets"
+    SHADOWRUN_MATRIX_MAP_ARTIFACT_DIR="${CMAKE_CURRENT_BINARY_DIR}/matrix-map-route-qa"
+    SHADOWRUN_MATRIX_MAP_QT_TEST=1)
 add_test(NAME shadowrun_ghidra_gameplay_script_menu_route
          COMMAND shadowrun_gameplay_script_menu_route_test)
 
