@@ -191,7 +191,7 @@ void push_matrix_world_state(lua_State* lua,
     const int world_index = lua_absindex(lua, -1);
     if (world.run.has_value()) {
         const auto& run = *world.run;
-        lua_createtable(lua, 0, 6);
+        lua_createtable(lua, 0, 7);
         const int run_index = lua_absindex(lua, -1);
         lua_pushinteger(lua, run.state);
         lua_setfield(lua, run_index, "state");
@@ -205,6 +205,8 @@ void push_matrix_world_state(lua_State* lua,
         lua_setfield(lua, run_index, "fc28");
         lua_pushinteger(lua, run.run_flags);
         lua_setfield(lua, run_index, "fc1c");
+        push_optional_integer(lua, run_index, "target_system_id",
+                              run.target_system_id);
         lua_setfield(lua, world_index, "run");
     }
 
@@ -278,6 +280,11 @@ ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
             read_byte("fc28", 0, 0, 0xFF));
         run.run_flags = static_cast<std::uint8_t>(
             read_byte("fc1c", 0, 0, 0xFF));
+        if (const auto target = read_optional_integer(
+                lua, run_index, "target_system_id");
+            target.has_value() && *target >= 0 && *target <= 24) {
+            run.target_system_id = static_cast<std::uint8_t>(*target);
+        }
         world.run = run;
     }
     lua_pop(lua, 1);

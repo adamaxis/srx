@@ -80,6 +80,30 @@ function M.begin(system_id)
     return true, state
 end
 
+-- ROM 0xE034 clears FFF0E3 before passcode selection. ROM 0xE110 sets it
+-- negative only when the selected system matches FFFBF0 and FFFC1C bit 7 is
+-- clear; all other entries remain outside the active run.
+function M.activate_run_for_system(system_id, run)
+    if type(system_id) ~= "number" or system_id % 1 ~= 0 or
+       system_id < 0 or system_id > 24 or type(run) ~= "table" or
+       type(run.target_system_id) ~= "number" or
+       run.target_system_id % 1 ~= 0 or run.target_system_id < 0 or
+       run.target_system_id > 24 then
+        return false
+    end
+
+    local next_state
+    if system_id == run.target_system_id and
+       (((run.fc1c or 0) & 0x80) == 0) then
+        next_state = -1
+    else
+        next_state = 0
+    end
+    if run.state == next_state then return false end
+    run.state = next_state
+    return true
+end
+
 function M.is_online(state)
     return state ~= nil or M.active ~= nil
 end

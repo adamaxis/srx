@@ -16,9 +16,16 @@ local function complete(run)                       -- shared "run complete" (0x5
     run.fc28 = run.fc28 & ~1; run.state = 1; run.fc1c = run.fc1c | 0x80
 end
 -- 0x54C6A / 0x555A? run check: FFF0E3 < 0 (run in progress) and node class byte == FFFBF2 byte [C].
-local function on_objective(run, node)
-    return run ~= nil and node ~= nil and run.state < 0 and
-           (node.class & 0xFF) == (run.objective & 0xFF)
+local function on_objective(run, node, current_system_id)
+    if run == nil or node == nil or run.state >= 0 or
+       (node.class & 0xFF) ~= (run.objective & 0xFF) then
+        return false
+    end
+    if run.target_system_id ~= nil and
+       run.target_system_id ~= current_system_id then
+        return false
+    end
+    return true
 end
 
 -- 0x54AEA Cancel Alert: no roll.
@@ -57,8 +64,8 @@ function M.turn_off_node(node, field, actors)
     return { text = M.TEXT.OFFLINE, stop_sfx = stop_sfx }
 end
 -- 0x5559E Erase: objective "erase" when class == FFFBF2 and FFFBF6 == 0.
-function M.erase(run, node)
-    if on_objective(run, node) and run.value == 0 then complete(run); return { text = M.TEXT.ERASE_OBJECTIVE } end
+function M.erase(run, node, current_system_id)
+    if on_objective(run, node, current_system_id) and run.value == 0 then complete(run); return { text = M.TEXT.ERASE_OBJECTIVE } end
     return { text = M.TEXT.ERASED }
 end
 -- 0x5561E Lockout: text only.
@@ -69,9 +76,9 @@ M.VALUE = { [0]=0, 1, 3, 0, 2, 0, 5, 4, 6, 8, 0, 0 }      -- 0x16668A
 -- The objective check precedes the browsing animation in the ROM. A negative
 -- objective value is uploaded immediately; a nonnegative value goes straight
 -- to the normal file preview with the run's value byte as the file ID.
-function M.begin_search(run, node, st)
+function M.begin_search(run, node, st, current_system_id)
     st.fff0ae = 0
-    if on_objective(run, node) then
+    if on_objective(run, node, current_system_id) then
         if run.value < 0 then complete(run); return { text = M.TEXT.UPLOAD_DONE } end
         st.fff0ae = 0xFF                               -- 0x54CDA: marker byte, stored as file +0x21
         st.fff096, st.fff098 = run.size, run.value & 0xFF
@@ -107,8 +114,9 @@ function M.finish_search(node, decker, deck, special, rand)
     end
     return { file = { id = node.class * 5 + rand(5), size = (rand(5) + 2) * 10 } }
 end
-function M.search(run, node, st, decker, deck, special, rand)
-    local immediate = M.begin_search(run, node, st)
+function M.search(run, node, st, decker, deck, special, rand,
+                  current_system_id)
+    local immediate = M.begin_search(run, node, st, current_system_id)
     if immediate then return immediate end
     return M.finish_search(node, decker, deck, special, rand)
 end

@@ -162,6 +162,11 @@ function Pick.input(st, events, ctx)
             st.wait_frames = nil
             local started, session = MatrixSession.begin(st.system)
             if not started then return end
+            local world = ctx.game.matrix_world_state()
+            if world.run and
+               MatrixSession.activate_run_for_system(st.system, world.run) then
+                ctx.game.commit_matrix_world_state(world)
+            end
             return { transition = T.REPLACE,
                      screen = E.MenuScreen.MATRIX_NODE_ACTION,
                      args = { system_id = st.system,

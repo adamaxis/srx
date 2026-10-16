@@ -105,6 +105,24 @@ eq(first_session.mode, E.MatrixModeResult.ATTACK,
 eq(first_session.nodes[0].links[0], 4, "system zero access link")
 eq(first_session.map[139] ~= nil, true, "Matrix session copies cell 139")
 eq(first_session.map[140], nil, "Matrix session does not create cell 140")
+local targeted_entry = { state = -1, target_system_id = 6, fc1c = 0 }
+eq(Session.activate_run_for_system(5, targeted_entry), true,
+    "entering another system deactivates a Matrix objective")
+eq(targeted_entry.state, 0,
+    "an unfinished Matrix objective is inactive outside its target system")
+eq(Session.activate_run_for_system(5, targeted_entry), false,
+    "re-entering the same non-target system leaves its state stable")
+eq(Session.activate_run_for_system(6, targeted_entry), true,
+    "entering the objective system activates the Matrix run")
+eq(targeted_entry.state, -1,
+    "the ROM target system restores the active Matrix run state")
+local completed_targeted_entry = {
+    state = 1, target_system_id = 6, fc1c = 0x80,
+}
+eq(Session.activate_run_for_system(5, completed_targeted_entry), true,
+    "fresh Matrix entry resets the prior completed-state display")
+eq(completed_targeted_entry.state, 0,
+    "completed-run flag prevents reactivation of the target system")
 eq(table.concat(Session.map_labels(), ","), "CPU,SPU,IOP,SAN,SM,DS",
     "Matrix map labels match ROM text table")
 for system_id = 0, 24 do
@@ -438,6 +456,24 @@ local found = Actions.search(run, { class = 5 }, {}, decker, deck, nil,
 eq(found.file.objective, true, "objective search returns objective file")
 eq(found.file.id, 0, "objective preview uses the ROM run value as file ID")
 eq(found.file.size, 30, "objective file uses run size")
+local targeted_run = { state = -1, objective = 5, value = 0, size = 30,
+    fc28 = 1, fc1c = 0, target_system_id = 6 }
+local wrong_system_search = Actions.begin_search(
+    targeted_run, { class = 5 }, {}, 5)
+eq(wrong_system_search, nil,
+    "matching node classes do not expose a run objective in another system")
+eq(targeted_run.state, -1,
+    "searching a same-class node outside the target leaves the run active")
+local wrong_system_erase = Actions.erase(
+    targeted_run, { class = 5 }, 5)
+eq(wrong_system_erase.text, Actions.TEXT.ERASED,
+    "Erase cannot complete a Matrix objective in another system")
+eq(targeted_run.state, -1,
+    "wrong-system Erase leaves the objective unfinished")
+local target_system_search = Actions.begin_search(
+    targeted_run, { class = 5 }, {}, 6)
+eq(target_system_search.file.objective, true,
+    "the assigned system exposes its matching datafile objective")
 local upload_run = { state = -1, objective = 5, value = -1, size = 30,
     fc28 = 1, fc1c = 0 }
 local upload = Actions.begin_search(upload_run, { class = 5 }, {})

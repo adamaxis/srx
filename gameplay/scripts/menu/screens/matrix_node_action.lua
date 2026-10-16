@@ -127,7 +127,8 @@ local function start_transfer(st, ctx)
     -- (Transfer Data) when returning from the prompt or its result message.
     st.transfer_return_row = st.row
     st.transfer_ram = st.transfer_ram or {}
-    local result = NodeActions.begin_search(world.run, node, st.transfer_ram)
+    local result = NodeActions.begin_search(
+        world.run, node, st.transfer_ram, st.system_id)
     st.matrix_message = nil
     if result then
         if result.text == NodeActions.TEXT.UPLOAD_DONE then
@@ -323,7 +324,8 @@ function M.input(st, events, ctx)
                     elseif not navigated and action.id == "erase" then
                         local world = game.matrix_world_state()
                         local result = NodeActions.erase(
-                            world.run, MatrixSession.current_node(state))
+                            world.run, MatrixSession.current_node(state),
+                            st.system_id)
                         game.commit_matrix_world_state(world)
                         st.matrix_message = MatrixText.from_rom(result.text)
                     elseif not navigated and action.id == "transfer_data" then

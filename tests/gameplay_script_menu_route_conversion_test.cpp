@@ -1081,6 +1081,8 @@ int main() {
     }
     check(runtime.menu_route_snapshot().top_text == "00",
           "Pick System returns to system zero", failures);
+    matrix_world_state.run = ScriptMatrixRunState{
+        -1, 5, 0, 30, 1, 0, std::uint8_t{1}};
     runtime.advance_menu_route(0x4000U); // Jack in.
     check(runtime.menu_route_snapshot().top_screen == kDebugPickSystem &&
               sounds.back() == 0x1AU && debug_unlock_consumptions == 1,
@@ -1097,8 +1099,12 @@ int main() {
               route.top_option_labels == std::vector<std::string>{"Enter System"} &&
               route.top_matrix_state_present &&
               route.top_matrix_system_id == 0 && route.top_matrix_node == 0 &&
+              matrix_world_state.run.has_value() &&
+              matrix_world_state.run->state == 0 &&
+              matrix_world_state.run->target_system_id ==
+                  std::optional<std::uint8_t>{1U} &&
               deck_enter_count == 0,
-          "jack-in opens the source node-action loop with the selected system",
+          "jack-in keeps a Matrix objective inactive outside its ROM target system",
           failures);
     runtime.advance_menu_route(0x4000U); // Select Enter System.
     route = runtime.menu_route_snapshot();
@@ -1611,7 +1617,8 @@ int main() {
           "returning from Transfer Data restores node action selection",
           failures);
 
-    matrix_world_state.run = ScriptMatrixRunState{-1, 9, 12, 30, 1, 0};
+    matrix_world_state.run = ScriptMatrixRunState{
+        -1, 9, 12, 30, 1, 0, std::uint8_t{0}};
     runtime.advance_menu_route(0x0200U);
     const auto objective_rng_count = random_bounds.size();
     runtime.advance_menu_route(0x4000U);
@@ -1633,7 +1640,9 @@ int main() {
               matrix_deck.files[1].size == 30 &&
               matrix_deck.files[1].value == -1 &&
               matrix_world_state.run.has_value() &&
-              matrix_world_state.run->state == 1,
+              matrix_world_state.run->state == 1 &&
+              matrix_world_state.run->target_system_id ==
+                  std::optional<std::uint8_t>{0U},
           "objective download stores the ROM marker and completes the run",
           failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
