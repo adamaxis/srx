@@ -1155,10 +1155,10 @@ int main() {
     check(node_labels_have_separate_rows,
           "Matrix node actions render on three distinct rows", failures);
     const auto node_artifact = std::filesystem::path(
-        SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) / "actual.bmp";
+        SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) / "node-entry-screen.bmp";
     std::filesystem::create_directories(node_artifact.parent_path());
     check(node_actual.save(QString::fromStdString(node_artifact.string()), "BMP"),
-          "write live Matrix node-action actual.bmp artifact", failures);
+          "write live Matrix node-entry-screen.bmp artifact", failures);
 #endif
     forced_roll_successes = 0;
     runtime.advance_menu_route(0x0200U); // Cancel Alert.
