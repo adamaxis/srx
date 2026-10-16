@@ -182,7 +182,7 @@ struct ScriptMatrixRunState {
     std::uint8_t size = 0U;
     std::uint8_t completion_flags = 0U;
     std::uint8_t run_flags = 0U;
-    // ROM FFFBF0: type-6/7 Matrix runs are active only in this system.
+    // ROM FFFBF0: the active type-6 Matrix objective's target system.
     std::optional<std::uint8_t> target_system_id;
 };
 

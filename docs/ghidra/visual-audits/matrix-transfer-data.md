@@ -17,14 +17,15 @@ Primary source: `input/shadowrun_genesis_us.bin`.
   branch skips the search. A negative `FFFBF6` uploads immediately and
   completes the run; otherwise the run's file ID and size go directly to the
   preview, and the stored file gets the objective marker `-1`.
-- The Matrix run's target system is stored at `FFFBF0`. Entry at `0xE034`
-  clears the active-run byte `FFF0E3`; the selected-system path at `0xE110`
-  sets it to `0xFF` only when the selected system matches `FFFBF0` and the
-  completion bit in `FFFC1C` is clear. Type-6/7 run initializer slots point to
-  `0x1ED18`, `0x1ED24`, and `0x1ED2C`. The Lua route now carries the target
-  system and applies this entry gate, so a same-class node in another system
-  cannot expose or complete that objective. The active Qt field runtime still
-  has no live type-6/7 run producer to populate this typed state.
+- The active type-6 Matrix objective's target system is stored at `FFFBF0`.
+  Entry at `0xE034` clears the active-run byte `FFF0E3`; the selected-system
+  path at `0xE110` checks `FFFBED == 6`, then sets `FFF0E3` to `0xFF` only when
+  the selected system matches `FFFBF0` and the completion bit in `FFFC1C` is
+  clear. Initializer table slots 6 and 7 point to `0x1ED18` and `0x1ED2C`;
+  their shared builder writes run type 6 at `0x1EDE8`. The Lua route now carries
+  the target system and applies this entry gate, so a same-class node in
+  another system cannot expose or complete that objective. The active Qt field
+  runtime still has no live producer for this type-6 contract.
 - The ordinary path prints `0x16674D`, adds four dots at 20-frame intervals,
   then waits 9 more frames. It checks the special story-file handler at
   `0x55058`, then compares `(Int + Computer + Sensor) / 3` with

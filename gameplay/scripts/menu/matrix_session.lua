@@ -80,9 +80,9 @@ function M.begin(system_id)
     return true, state
 end
 
--- ROM 0xE034 clears FFF0E3 before passcode selection. ROM 0xE110 sets it
--- negative only when the selected system matches FFFBF0 and FFFC1C bit 7 is
--- clear; all other entries remain outside the active run.
+-- ROM 0xE034 clears FFF0E3 before system selection. ROM 0xE110 checks run
+-- type 6, then sets it negative only when the selected system matches FFFBF0
+-- and FFFC1C bit 7 is clear; all other entries remain outside the active run.
 function M.activate_run_for_system(system_id, run)
     if type(system_id) ~= "number" or system_id % 1 ~= 0 or
        system_id < 0 or system_id > 24 or type(run) ~= "table" or
