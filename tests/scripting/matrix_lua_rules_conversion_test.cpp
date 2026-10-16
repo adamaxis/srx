@@ -278,6 +278,27 @@ eq(D.load_steps(13, 3), 5, "load duration rounds up")
 eq(D.load_steps(100, 10), 6, "load duration cap")
 eq(D.free_slot(deck), 1, "first empty program slot")
 eq(D.loaded_slot(deck, 0), 0, "loaded program lookup")
+local stored_files = { storage = 4096, files = {}, ratings = {} }
+for i = 0, 4 do stored_files.files[i] = { id = -1, size = 0, value = 0 } end
+for i = 0, 11 do stored_files.ratings[i] = 0 end
+local objective_run = { state = -1, objective = 4, value = 3,
+    fc28 = 1, fc1c = 0 }
+local objective_slot = Actions.store(stored_files, objective_run,
+    { class = 4, colour = 2 }, { fff0ae = 0xFF },
+    { objective = true, size = 30 }, function() return 0 end)
+eq(objective_slot, 0, "objective file fills the first free deck slot")
+eq(stored_files.files[0].value, -1,
+    "objective marker is represented as the signed ROM byte")
+eq(objective_run.state, 1, "storing the objective completes its run")
+local ordinary_slot = Actions.store(stored_files, objective_run,
+    { class = 4, colour = 3 }, {}, { id = 21, size = 20 },
+    function(bound) return bound == 7 and 1 or 0 end)
+eq(ordinary_slot, 1, "ordinary data file uses the next free slot")
+eq(stored_files.files[1].value, 2,
+    "ordinary file retains its positive sale multiplier")
+D.erase_file(stored_files, 0)
+eq(stored_files.files[0].value, 0,
+    "erasing a file clears its value byte with the size word")
 eq(D.run_info(0, 0, 0), "NONE", "no active run summary")
 local slots = { status = { [0] = 6, [1] = 6, [2] = 6, [3] = 6, [4] = 6 },
     phase = { [0] = 0, [1] = 0, [2] = 0, [3] = 0, [4] = 0 },

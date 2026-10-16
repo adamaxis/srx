@@ -56,11 +56,13 @@ void push_record(lua_State* lua, const ScriptCyberdeckRecord& record) {
     lua_createtable(lua, static_cast<int>(record.files.size()), 0);
     const auto files_index = lua_absindex(lua, -1);
     for (std::size_t index = 0; index < record.files.size(); ++index) {
-        lua_createtable(lua, 0, 2);
+        lua_createtable(lua, 0, 3);
         lua_pushinteger(lua, record.files[index].id);
         lua_setfield(lua, -2, "id");
         lua_pushinteger(lua, record.files[index].size);
         lua_setfield(lua, -2, "size");
+        lua_pushinteger(lua, record.files[index].value);
+        lua_setfield(lua, -2, "value");
         lua_rawseti(lua, files_index, static_cast<lua_Integer>(index));
     }
     lua_setfield(lua, record_index, "files");
@@ -130,6 +132,8 @@ ScriptCyberdeckRecord read_record(lua_State* lua, const int table_index) {
                     read_integer(lua, file_index, "id", -1, -1, 127));
                 record.files[index].size = static_cast<std::uint16_t>(
                     read_integer(lua, file_index, "size", 0, 0, 0xFFFF));
+                record.files[index].value = static_cast<std::int8_t>(
+                    read_integer(lua, file_index, "value", 0, -128, 127));
             }
             lua_pop(lua, 1);
         }

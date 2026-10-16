@@ -75,7 +75,13 @@ function M.store(rec, run, node, st, file, rand)
     local k; for i = 0, DECK.FILES - 1 do if rec.files[i].id < 0 then k = i; break end end
     if not k then return "FIVE_FILES" end
     local f = rec.files[k]; f.id, f.size = file.id or node.class * 5, file.size
-    if file.objective then f.value = st.fff0ae & 0xFF; complete(run); return k, M.TEXT.STORED_OBJECTIVE end
+    if file.objective then
+        -- The 0x54C5E objective branch stores FFF0AE's 0xFF marker at
+        -- data-file +0x21; expose it as the signed host value -1.
+        f.value = -1
+        complete(run)
+        return k, M.TEXT.STORED_OBJECTIVE
+    end
     local m = node.colour == 4 and 5 or node.colour - 1
     f.value = (M.VALUE[rand(7) + rand(6)] * m) & 0xFF
     return k, M.TEXT.STORED

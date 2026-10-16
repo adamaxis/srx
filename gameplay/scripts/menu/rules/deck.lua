@@ -1,7 +1,7 @@
 -- rules/deck.lua: cyberdeck memory/storage/load-time rules, ROM-traced [C unless marked].
 -- Deck record view (FFFBBE, docs/05 s3): rec.memory (+0x02 w, active memory), rec.storage (+0x04 w),
 --   rec.load_io (+0x06 b, "Load/IO Speed" label 0xE387E block), rec.ratings[0..11] (+0x0E+p),
---   rec.active[0..4] (+0x1A+slot, -1 = empty), rec.files[0..4] = {id (+0x1F+3k, <0 empty), size (+0x20+3k)}.
+--   rec.active[0..4] (+0x1A+slot, -1 = empty), rec.files[0..4] = {id (+0x1F+3k, <0 empty), size (+0x20+3k), signed value (+0x21+3k; -1 = run objective)}.
 -- Slot state: slots.status[0..4] = FFF0ED, slots.timer[0..4] = FFF0F2 (words), slots.phase[0..4] = FFF0E8.
 -- srx cross-check: src/cyberspace/matrix_storage_conversion.cpp, matrix_program_timing_conversion.cpp (same maths).
 local M = {}
@@ -54,7 +54,7 @@ function M.unload(rec, slots, slot) local p = rec.active[slot]; rec.active[slot]
 function M.next_file(rec, from)
     for i = 0, M.FILES - 1 do local k = (from - i) % M.FILES; if rec.files[k].id >= 0 then return k end end
 end
-function M.erase_file(rec, k) rec.files[k].id = -1; rec.files[k].size = 0 end      -- 0x18F2A
+function M.erase_file(rec, k) rec.files[k].id = -1; rec.files[k].size = 0; rec.files[k].value = 0 end -- 0x18F2A clears the size/value word
 function M.files(rec) local t = {}; for k = M.FILES - 1, 0, -1 do if rec.files[k].id >= 0 then t[#t + 1] = k end end; return t end  -- 0x18F7C order
 -- Run Info 0x18C28: FFF0E3 < 0 on a run, 0 none, > 0 complete. Action text 0xE44C8[i]: FFFBF6 < 0 -> 1, 0 -> 0, > 0 -> 3;
 -- FFFBF2 < 0 (CPU) -> index 2 [C 0x18C8C..0x18CD0]

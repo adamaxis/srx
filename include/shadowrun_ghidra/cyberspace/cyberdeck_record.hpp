@@ -9,6 +9,7 @@ namespace shadowrun::ghidra_conversion {
 struct CyberdeckDataFile {
     std::int8_t id = -1;
     std::uint16_t size = 0U;
+    std::int8_t value = 0; // +0x21 signed sale value; -1 marks a run objective
 };
 
 // Typed view of the US Genesis deck record at FFFBBE. Unknown fields remain
@@ -25,7 +26,7 @@ struct CyberdeckRecord {
     std::optional<std::int8_t> model_index;                  // +0x0D
     std::optional<std::array<std::uint8_t, 12>> program_ratings; // +0x0E..+0x19
     std::optional<std::array<std::int8_t, 5>> active_programs; // +0x1A..+0x1E
-    std::optional<std::array<CyberdeckDataFile, 5>> data_files; // +0x1F..+0x2D
+    std::optional<std::array<CyberdeckDataFile, 5>> data_files; // five 3-byte records at +0x1F..+0x2D
 };
 
 } // namespace shadowrun::ghidra_conversion

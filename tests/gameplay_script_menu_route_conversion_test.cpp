@@ -1,4 +1,9 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
+#include "shadowrun_ghidra/scripting/cyberdeck_menu_bindings.hpp"
+extern "C" {
+#include <lauxlib.h>
+#include <lua.h>
+}
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
 #include "matrix_map_presenter.hpp"
 
@@ -19,8 +24,12 @@
 using shadowrun::ghidra_conversion::scripting::GameScriptRuntime;
 using shadowrun::ghidra_conversion::scripting::ScriptNotebookBoundary;
 using shadowrun::ghidra_conversion::scripting::ScriptNotebookFacts;
+using shadowrun::ghidra_conversion::scripting::ScriptCyberdeckRecord;
+using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteGame;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuPartyMember;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteBindings;
+using shadowrun::ghidra_conversion::scripting::CyberdeckMenuBinding;
+using shadowrun::ghidra_conversion::scripting::dispatch_cyberdeck_menu_binding;
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
 using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_system_map;
 #endif
@@ -63,6 +72,59 @@ void check(const bool condition, const char* message, int& failures) {
     }
 }
 
+void verify_cyberdeck_file_value_bridge(int& failures) {
+    using namespace shadowrun::ghidra_conversion::scripting;
+    lua_State* const lua = luaL_newstate();
+    if (lua == nullptr) {
+        check(false, "create Lua state for Cyberdeck file-value bridge", failures);
+        return;
+    }
+
+    ScriptMenuRouteGame game;
+    ScriptCyberdeckRecord source;
+    source.files[0] = {4, 20, -1};
+    source.files[1] = {9, 30, 12};
+    game.deck_record = [&source] { return source; };
+    ScriptCyberdeckRecord committed;
+    bool did_commit = false;
+    game.deck_commit = [&committed, &did_commit](
+                           const ScriptCyberdeckRecord& record,
+                           const std::array<ScriptCyberdeckProgramSlot, 5>&) {
+        committed = record;
+        did_commit = true;
+    };
+
+    dispatch_cyberdeck_menu_binding(lua, game, CyberdeckMenuBinding::record);
+    lua_getfield(lua, -1, "files");
+    lua_rawgeti(lua, -1, 0);
+    lua_getfield(lua, -1, "value");
+    int is_integer = 0;
+    const auto objective_value = lua_tointegerx(lua, -1, &is_integer);
+    check(is_integer != 0 && objective_value == -1,
+          "Lua receives the signed objective marker from the Cyberdeck record",
+          failures);
+    lua_settop(lua, 0);
+
+    lua_createtable(lua, 0, 1); // record
+    lua_createtable(lua, 1, 0); // files
+    lua_createtable(lua, 0, 3); // file 0
+    lua_pushinteger(lua, 12);
+    lua_setfield(lua, -2, "id");
+    lua_pushinteger(lua, 40);
+    lua_setfield(lua, -2, "size");
+    lua_pushinteger(lua, -7);
+    lua_setfield(lua, -2, "value");
+    lua_rawseti(lua, -2, 0);
+    lua_setfield(lua, -2, "files");
+    lua_createtable(lua, 5, 0); // program slots
+    dispatch_cyberdeck_menu_binding(lua, game, CyberdeckMenuBinding::commit);
+    check(did_commit && committed.files[0].id == 12 &&
+              committed.files[0].size == 40 &&
+              committed.files[0].value == -7,
+          "Lua commit preserves the signed Cyberdeck file value", failures);
+    lua_close(lua);
+}
+
 } // namespace
 
 int main() {
@@ -71,6 +133,7 @@ int main() {
 #endif
 
     int failures = 0;
+    verify_cyberdeck_file_value_bridge(failures);
     GameScriptRuntime runtime;
     if (!runtime.load_package(
             std::filesystem::path(SHADOWRUN_GAMEPLAY_SCRIPT_ROOT))) {

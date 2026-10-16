@@ -141,6 +141,7 @@ struct ScriptNotebookFacts {
 struct ScriptCyberdeckFile {
     std::int8_t id = -1;
     std::uint16_t size = 0U;
+    std::int8_t value = 0;
 };
 
 struct ScriptCyberdeckRecord {

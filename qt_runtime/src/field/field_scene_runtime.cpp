@@ -241,6 +241,7 @@ QJsonObject cyberdeck_record_to_json(const CyberdeckRecord& record) {
             QJsonObject entry;
             entry.insert(QStringLiteral("id"), static_cast<int>(file.id));
             entry.insert(QStringLiteral("size"), static_cast<int>(file.size));
+            entry.insert(QStringLiteral("value"), static_cast<int>(file.value));
             files.append(entry);
         }
         object.insert(QStringLiteral("data_files"), files);
@@ -287,8 +288,15 @@ bool cyberdeck_record_from_json(const QJsonObject& object,
                                    error)) {
                 return false;
             }
+            std::int64_t value = 0;
+            if (file_object.contains(QStringLiteral("value")) &&
+                !read_save_integer(file_object, "value", -128, 127, value,
+                                   error)) {
+                return false;
+            }
             files[index] = {static_cast<std::int8_t>(id),
-                            static_cast<std::uint16_t>(size)};
+                            static_cast<std::uint16_t>(size),
+                            static_cast<std::int8_t>(value)};
         }
         parsed.data_files = files;
     } else {
@@ -6193,7 +6201,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
             for (std::size_t index = 0; index < record.files.size(); ++index) {
                 record.files[index] = {
                     (*source.data_files)[index].id,
-                    (*source.data_files)[index].size};
+                    (*source.data_files)[index].size,
+                    (*source.data_files)[index].value};
             }
         }
         return record;
@@ -6219,7 +6228,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
         record.active_programs = source.active_programs;
         std::array<CyberdeckDataFile, 5> files{};
         for (std::size_t index = 0; index < files.size(); ++index) {
-            files[index] = {source.files[index].id, source.files[index].size};
+            files[index] = {source.files[index].id, source.files[index].size,
+                            source.files[index].value};
         }
         record.data_files = files;
         field_matrix_deck_record_ = std::move(record);
