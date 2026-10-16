@@ -1241,7 +1241,8 @@ private:
                            int& origin_x,
                            int& origin_y);
     void paint_field_scene(QPainter& painter) const;
-    void paint_field_scene_entities(QPainter& painter) const;
+    void paint_field_scene_entities(QPainter& painter,
+                                    const QRect& clip_rect = QRect()) const;
     void paint_field_hud_overlays(QPainter& painter) const;
     FieldHudSlotState field_hud_slot_state(std::size_t slot) const;
     void paint_command_overview_magic(QPainter& painter) const;

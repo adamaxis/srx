@@ -13941,7 +13941,8 @@ bool FieldSceneRuntime::seek_command_overview_page(const std::uint8_t page) {
     return command_overview_.view().source_state.primary_page == page;
 }
 
-void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
+void FieldSceneRuntime::paint_field_scene_entities(
+    QPainter& painter, const QRect& clip_rect) const {
     struct SceneSprite {
         std::int16_t depth = 0;
         std::uint16_t source_order = 0;
@@ -14237,6 +14238,10 @@ void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
                          }
                          return left.source_order < right.source_order;
                      });
+    if (!clip_rect.isEmpty()) {
+        painter.save();
+        painter.setClipRect(clip_rect, Qt::IntersectClip);
+    }
     for (auto sprite = sprites.rbegin(); sprite != sprites.rend(); ++sprite) {
         if (sprite->image != nullptr) {
             painter.drawImage(
@@ -14244,6 +14249,9 @@ void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
                 sprite->mirrored_image.isNull() ? *sprite->image
                                                 : sprite->mirrored_image);
         }
+    }
+    if (!clip_rect.isEmpty()) {
+        painter.restore();
     }
 }
 
@@ -17620,6 +17628,11 @@ void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
     // cells. New-game keeps slots 1 and 2 inactive.
     painter.drawImage(0, 0, field_hud_);
     paint_field_hud_overlays(painter);
+    // VDP register $91 places the HUD in the low-priority window plane. ROM
+    // sprite priority therefore lets actors cover it where they extend into
+    // columns 34-39 (x=272..319). The map pass above already draws each actor
+    // against the playfield; redraw only the window area after its contents.
+    paint_field_scene_entities(painter, QRect(272, 0, 48, 224));
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime
