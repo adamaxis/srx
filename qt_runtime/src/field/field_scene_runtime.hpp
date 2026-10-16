@@ -1719,6 +1719,10 @@ private:
     std::array<scripting::ScriptCyberdeckProgramSlot, 5>
         field_matrix_program_slots_{};
     std::int8_t field_matrix_deck_mode_ = 0;
+    // Matrix node actions mutate these typed world facts through Lua. Missing
+    // run/field values remain unknown until a source-backed provider supplies
+    // them; the route does not create a fabricated no-run record.
+    scripting::ScriptMatrixWorldState field_matrix_world_state_{};
     // FFFC28 and the known fields of FFFBBE. The save adapter does not yet
     // restore these source values, so loaded sessions retain unknown state.
     std::optional<std::uint16_t> field_matrix_passcode_flags_;

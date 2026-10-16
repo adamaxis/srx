@@ -8,6 +8,7 @@ extern "C" {
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <type_traits>
 
 namespace shadowrun::ghidra_conversion::scripting {
@@ -142,6 +143,114 @@ ScriptCyberdeckRecord read_record(lua_State* lua, const int table_index) {
     return record;
 }
 
+std::optional<lua_Integer> read_optional_integer(
+    lua_State* lua, const int table_index, const char* name) {
+    lua_getfield(lua, table_index, name);
+    int is_number = 0;
+    const auto value = lua_tointegerx(lua, -1, &is_number);
+    lua_pop(lua, 1);
+    if (is_number == 0) {
+        return std::nullopt;
+    }
+    return value;
+}
+
+std::optional<bool> read_optional_boolean(
+    lua_State* lua, const int table_index, const char* name) {
+    lua_getfield(lua, table_index, name);
+    const bool is_boolean = lua_isboolean(lua, -1) != 0;
+    const bool value = lua_toboolean(lua, -1) != 0;
+    lua_pop(lua, 1);
+    return is_boolean ? std::optional<bool>{value} : std::nullopt;
+}
+
+void push_optional_boolean(lua_State* lua, const int table_index,
+                           const char* name,
+                           const std::optional<bool> value) {
+    if (!value.has_value()) {
+        return;
+    }
+    lua_pushboolean(lua, *value ? 1 : 0);
+    lua_setfield(lua, table_index, name);
+}
+
+void push_matrix_world_state(lua_State* lua,
+                             const ScriptMatrixWorldState& world) {
+    lua_createtable(lua, 0, 2);
+    const int world_index = lua_absindex(lua, -1);
+    if (world.run.has_value()) {
+        const auto& run = *world.run;
+        lua_createtable(lua, 0, 6);
+        const int run_index = lua_absindex(lua, -1);
+        lua_pushinteger(lua, run.state);
+        lua_setfield(lua, run_index, "state");
+        lua_pushinteger(lua, run.objective);
+        lua_setfield(lua, run_index, "objective");
+        lua_pushinteger(lua, run.value);
+        lua_setfield(lua, run_index, "value");
+        lua_pushinteger(lua, run.size);
+        lua_setfield(lua, run_index, "size");
+        lua_pushinteger(lua, run.completion_flags);
+        lua_setfield(lua, run_index, "fc28");
+        lua_pushinteger(lua, run.run_flags);
+        lua_setfield(lua, run_index, "fc1c");
+        lua_setfield(lua, world_index, "run");
+    }
+
+    lua_createtable(lua, 0, 3);
+    const int field_index = lua_absindex(lua, -1);
+    push_optional_boolean(lua, field_index, "alarm", world.field.alarm);
+    push_optional_boolean(lua, field_index, "security_off",
+                         world.field.security_off);
+    push_optional_boolean(lua, field_index, "maglocks_off",
+                         world.field.maglocks_off);
+    lua_setfield(lua, world_index, "field");
+}
+
+ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
+                                                const int world_index) {
+    ScriptMatrixWorldState world;
+    lua_getfield(lua, world_index, "run");
+    if (lua_istable(lua, -1)) {
+        const int run_index = lua_absindex(lua, -1);
+        ScriptMatrixRunState run;
+        const auto read_byte = [lua, run_index](const char* name,
+                                                const lua_Integer fallback,
+                                                const lua_Integer minimum,
+                                                const lua_Integer maximum) {
+            const auto value = read_optional_integer(lua, run_index, name);
+            return static_cast<int>(std::clamp<lua_Integer>(
+                value.value_or(fallback), minimum, maximum));
+        };
+        run.state = static_cast<std::int8_t>(
+            read_byte("state", 0, -128, 127));
+        run.objective = static_cast<std::int8_t>(
+            read_byte("objective", 0, -128, 127));
+        run.value = static_cast<std::int8_t>(
+            read_byte("value", 0, -128, 127));
+        run.size = static_cast<std::uint8_t>(
+            read_byte("size", 0, 0, 0xFF));
+        run.completion_flags = static_cast<std::uint8_t>(
+            read_byte("fc28", 0, 0, 0xFF));
+        run.run_flags = static_cast<std::uint8_t>(
+            read_byte("fc1c", 0, 0, 0xFF));
+        world.run = run;
+    }
+    lua_pop(lua, 1);
+
+    lua_getfield(lua, world_index, "field");
+    if (lua_istable(lua, -1)) {
+        const int field_index = lua_absindex(lua, -1);
+        world.field.alarm = read_optional_boolean(lua, field_index, "alarm");
+        world.field.security_off = read_optional_boolean(
+            lua, field_index, "security_off");
+        world.field.maglocks_off = read_optional_boolean(
+            lua, field_index, "maglocks_off");
+    }
+    lua_pop(lua, 1);
+    return world;
+}
+
 std::array<ScriptCyberdeckProgramSlot, 5> read_slots(
     lua_State* lua, const int table_index) {
     std::array<ScriptCyberdeckProgramSlot, 5> slots{};
@@ -216,6 +325,17 @@ int dispatch_cyberdeck_menu_binding(
     case CyberdeckMenuBinding::map_seen:
         lua_pushinteger(lua, game.map_seen ? game.map_seen() : 0);
         return 1;
+    case CyberdeckMenuBinding::matrix_world_state:
+        push_matrix_world_state(
+            lua, game.matrix_world_state ? game.matrix_world_state()
+                                         : ScriptMatrixWorldState{});
+        return 1;
+    case CyberdeckMenuBinding::commit_matrix_world_state:
+        if (game.commit_matrix_world_state && lua_istable(lua, 1)) {
+            game.commit_matrix_world_state(
+                read_matrix_world_state(lua, lua_absindex(lua, 1)));
+        }
+        return 0;
     case CyberdeckMenuBinding::record:
         push_record(lua, game.deck_record ? game.deck_record()
                                           : ScriptCyberdeckRecord{});

@@ -6178,6 +6178,26 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.game.alert = [] { return -1; };
     bindings.game.in_alert = [] { return false; };
     bindings.game.map_seen = [] { return 0; };
+    bindings.game.matrix_world_state = [this] {
+        return field_matrix_world_state_;
+    };
+    bindings.game.commit_matrix_world_state = [this](
+        const scripting::ScriptMatrixWorldState& update) {
+        if (update.run.has_value()) {
+            field_matrix_world_state_.run = update.run;
+        }
+        if (update.field.alarm.has_value()) {
+            field_matrix_world_state_.field.alarm = update.field.alarm;
+        }
+        if (update.field.security_off.has_value()) {
+            field_matrix_world_state_.field.security_off =
+                update.field.security_off;
+        }
+        if (update.field.maglocks_off.has_value()) {
+            field_matrix_world_state_.field.maglocks_off =
+                update.field.maglocks_off;
+        }
+    };
     bindings.game.deck_record = [this] {
         const auto source = field_matrix_deck_record_.value_or(
             CyberdeckRecord{});

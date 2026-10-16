@@ -789,6 +789,8 @@ struct GameScriptRuntime::Impl {
         alert,
         in_alert,
         map_seen,
+        matrix_world_state,
+        commit_matrix_world_state,
         deck_record,
         deck_slots,
         deck_commit,
@@ -1404,6 +1406,14 @@ struct GameScriptRuntime::Impl {
             return dispatch_cyberdeck_menu_binding(
                 lua, self->menu_route_bindings.game,
                 CyberdeckMenuBinding::map_seen);
+        case MenuBinding::matrix_world_state:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::matrix_world_state);
+        case MenuBinding::commit_matrix_world_state:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::commit_matrix_world_state);
         case MenuBinding::deck_record:
             return dispatch_cyberdeck_menu_binding(
                 lua, self->menu_route_bindings.game,
@@ -1562,6 +1572,10 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::in_alert);
         add_menu_binding(state, table_index, "map_seen",
                          MenuBinding::map_seen);
+        add_menu_binding(state, table_index, "matrix_world_state",
+                         MenuBinding::matrix_world_state);
+        add_menu_binding(state, table_index, "commit_matrix_world_state",
+                         MenuBinding::commit_matrix_world_state);
         add_menu_binding(state, table_index, "deck_record",
                          MenuBinding::deck_record);
         add_menu_binding(state, table_index, "deck_slots",

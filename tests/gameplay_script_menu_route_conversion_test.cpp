@@ -28,6 +28,8 @@ using shadowrun::ghidra_conversion::scripting::ScriptCyberdeckRecord;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteGame;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuPartyMember;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteBindings;
+using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunState;
+using shadowrun::ghidra_conversion::scripting::ScriptMatrixWorldState;
 using shadowrun::ghidra_conversion::scripting::CyberdeckMenuBinding;
 using shadowrun::ghidra_conversion::scripting::dispatch_cyberdeck_menu_binding;
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
@@ -156,6 +158,11 @@ int main() {
     int deck_leave_count = 0;
     int deck_tick_count = 0;
     int deck_mode = 0;
+    ScriptMatrixWorldState matrix_world_state;
+    matrix_world_state.run = ScriptMatrixRunState{-1, -1, 0, 0, 1, 0};
+    matrix_world_state.field.alarm = true;
+    matrix_world_state.field.security_off = false;
+    matrix_world_state.field.maglocks_off = false;
     bool pocket_extra_row = false;
     std::vector<int> random_bounds;
     bool random_high_branch = false;
@@ -290,6 +297,24 @@ int main() {
     bindings.game.deck_tick = [&deck_tick_count] { ++deck_tick_count; };
     bindings.game.set_deck_mode = [&deck_mode](const int value) {
         deck_mode = value;
+    };
+    bindings.game.matrix_world_state = [&matrix_world_state] {
+        return matrix_world_state;
+    };
+    bindings.game.commit_matrix_world_state = [&matrix_world_state](
+        const ScriptMatrixWorldState& update) {
+        if (update.run.has_value()) {
+            matrix_world_state.run = update.run;
+        }
+        if (update.field.alarm.has_value()) {
+            matrix_world_state.field.alarm = update.field.alarm;
+        }
+        if (update.field.security_off.has_value()) {
+            matrix_world_state.field.security_off = update.field.security_off;
+        }
+        if (update.field.maglocks_off.has_value()) {
+            matrix_world_state.field.maglocks_off = update.field.maglocks_off;
+        }
     };
     runtime.set_menu_route_bindings(std::move(bindings));
 
@@ -1422,6 +1447,16 @@ int main() {
               route.top_matrix_countdown == 3 &&
               route.top_option_labels.empty(),
           "Crash System shows its ROM message and starts at three", failures);
+    check(matrix_world_state.run.has_value() &&
+              matrix_world_state.run->state == 1 &&
+              matrix_world_state.run->completion_flags == 0 &&
+              matrix_world_state.run->run_flags == 0x80U &&
+              matrix_world_state.field.alarm == std::optional<bool>{false} &&
+              matrix_world_state.field.security_off ==
+                  std::optional<bool>{true} &&
+              matrix_world_state.field.maglocks_off ==
+                  std::optional<bool>{true},
+          "Crash System commits its source run-completion and field flags through the host", failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     const auto capture_shutdown_frame = [&](const int expected_countdown) {
         const auto frame = runtime.menu_route_snapshot();

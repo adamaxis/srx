@@ -47,9 +47,13 @@ internal Qt route artifacts, not independent Genesis captures.
 
 ## Remaining integration
 
-The current debug route supplies an explicit no-active-run context because the
-live Matrix game state is not yet connected to this menu route. The route
-therefore verifies the message, timing, and return path, but does not exercise
-an active run's completion conditions or persist the alarm/security/maglock
-flags into the field world. The native fade service and source Matrix logout
-presentation also remain open. The Crash System hill remains `partial`.
+The route now reads and commits `ScriptMatrixWorldState` through typed Lua host
+bindings. Its test supplies a known active run (`state=-1`, `objective=-1`,
+completion bit 0 set) and verifies that the route marks it complete, clears the
+bit, sets the run flag, and writes alarm/security/maglock state. This verifies
+the bridge and Lua rule against that test input; it does not supply production
+run data. The field runtime's current run provider is still absent, and the
+committed field flags are not yet consumed by door/guard behavior or included
+in save data. Alarm actor reactions and sound-stop behavior, native fade, and
+source Matrix logout presentation remain open. The Crash System hill remains
+`partial`.

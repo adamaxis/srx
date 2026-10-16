@@ -23,7 +23,7 @@ function M.cancel_alert(st)
 end
 -- 0x54B34 Crash System: countdown 3..0 at 60 frames, fade 0x18776, logout 0x26A00.
 function M.crash_system(run, field)
-    if run.state < 0 and run.objective < 0 then complete(run) end
+    if run and run.state < 0 and run.objective < 0 then complete(run) end
     field.alarm = false                                -- 0x1E09A (see M.alarm_off)
     field.security_off, field.maglocks_off = true, true
     return { text = M.TEXT.SHUTDOWN, countdown = { 3, 2, 1, 0 }, step = M.SHUTDOWN_STEP_FRAMES, logout = true }

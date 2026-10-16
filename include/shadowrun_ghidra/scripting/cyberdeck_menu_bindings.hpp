@@ -16,6 +16,8 @@ enum class CyberdeckMenuBinding {
     alert,
     in_alert,
     map_seen,
+    matrix_world_state,
+    commit_matrix_world_state,
     record,
     slots,
     commit,

@@ -172,6 +172,28 @@ struct ScriptMatrixNodeFacts {
     std::uint8_t ic_rating2 = 0U;
 };
 
+// Mutable world facts touched by Matrix node actions. Missing values mean the
+// active host state has not been recovered (for example, a restored run).
+struct ScriptMatrixRunState {
+    std::int8_t state = 0;
+    std::int8_t objective = 0;
+    std::int8_t value = 0;
+    std::uint8_t size = 0U;
+    std::uint8_t completion_flags = 0U;
+    std::uint8_t run_flags = 0U;
+};
+
+struct ScriptMatrixFieldState {
+    std::optional<bool> alarm;
+    std::optional<bool> security_off;
+    std::optional<bool> maglocks_off;
+};
+
+struct ScriptMatrixWorldState {
+    std::optional<ScriptMatrixRunState> run;
+    ScriptMatrixFieldState field;
+};
+
 struct ScriptMenuRouteGame {
     std::function<bool()> leader_incapacitated;
     std::function<void()> reselect_leader;
@@ -213,6 +235,9 @@ struct ScriptMenuRouteGame {
     std::function<int()> alert;
     std::function<bool()> in_alert;
     std::function<int()> map_seen;
+    std::function<ScriptMatrixWorldState()> matrix_world_state;
+    std::function<void(const ScriptMatrixWorldState&)>
+        commit_matrix_world_state;
     std::function<ScriptCyberdeckRecord()> deck_record;
     std::function<std::array<ScriptCyberdeckProgramSlot, 5>()> deck_slots;
     std::function<void(const ScriptCyberdeckRecord&,

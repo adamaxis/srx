@@ -51,8 +51,7 @@ end
 
 function M.new(args)
     return { matrix_state = args.matrix_state, system_id = args.system_id,
-             row = 0, title = "Matrix", text = "", labels = {},
-             matrix_world = args.matrix_world }
+             row = 0, title = "Matrix", text = "", labels = {} }
 end
 
 function M.enter(st, ctx)
@@ -87,6 +86,7 @@ end
 
 function M.input(st, events, ctx)
     local state = st.matrix_state
+    local game = ctx.game
     if not MatrixSession.is_online(state) then
         return { transition = T.POP, result = {} }
     end
@@ -145,17 +145,13 @@ function M.input(st, events, ctx)
                         st.matrix_message = MatrixText.from_rom(
                             NodeActions.lockout().text)
                     elseif not navigated and action.id == "crash_system" then
-                        -- The current debug Matrix route has no bound live run
-                        -- record yet. Preserve an explicitly supplied world
-                        -- state; the default accurately represents no run.
-                        local world = st.matrix_world or {
-                            run = { state = 0, objective = 0, value = 0,
-                                    size = 0, fc28 = 0, fc1c = 0 },
-                            field = { alarm = false },
-                        }
-                        st.matrix_world = world
+                        -- The host supplies the run/field facts it knows and
+                        -- commits the mutated typed state to the live world.
+                        local world = game.matrix_world_state()
+                        world.field = world.field or {}
                         local result = NodeActions.crash_system(
                             world.run, world.field)
+                        game.commit_matrix_world_state(world)
                         st.matrix_message = MatrixText.from_rom(result.text)
                         st.shutdown = {
                             values = result.countdown,

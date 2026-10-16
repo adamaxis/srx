@@ -169,6 +169,23 @@ eq(MatrixText.from_rom(Actions.TEXT.LOCKOUT), MatrixText.LOCKOUT,
 eq(MatrixText.from_rom(Actions.TEXT.SHUTDOWN),
     "  INITIATING||SYSTEM  SHUTDOWN|| IN - - SECONDS",
     "ROM Crash System text address resolves to the decoded message")
+local crash_run = { state = -1, objective = -1, value = 0, size = 0,
+    fc28 = 1, fc1c = 0 }
+local crash_field = { alarm = true, security_off = false, maglocks_off = false }
+local crash_result = Actions.crash_system(crash_run, crash_field)
+eq(crash_run.state, 1, "Crash System completes a negative state and objective")
+eq(crash_run.fc28, 0, "Crash System clears the completion bit")
+eq(crash_run.fc1c, 0x80, "Crash System sets the run-complete flag")
+eq(crash_field.alarm, false, "Crash System turns the alarm off")
+eq(crash_field.security_off, true, "Crash System disables security")
+eq(crash_field.maglocks_off, true, "Crash System disengages maglocks")
+eq(crash_result.step, 60, "Crash System waits one source second per count")
+local partial_run = { state = -1, objective = 0, fc28 = 1, fc1c = 0 }
+Actions.crash_system(partial_run, {})
+eq(partial_run.state, -1, "Crash System leaves a nonnegative objective incomplete")
+eq(partial_run.fc28, 1, "incomplete Crash System preserves the completion bit")
+local absent_run_result = Actions.crash_system(nil, {})
+eq(absent_run_result.logout, true, "Crash System handles an unknown run without inventing one")
 
 local linked_session_ok, linked_session = Session.begin(0)
 eq(linked_session_ok, true, "node navigation session starts")
