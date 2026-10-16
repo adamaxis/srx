@@ -180,6 +180,7 @@ struct ScriptMenuRouteGame {
     std::function<bool(int, int)> inventory_item;
     std::function<std::array<ScriptMenuPartyMember, 3>()> party;
     std::function<std::optional<ScriptMenuSpellTable>(int)> spell_table;
+    std::function<void(int, const ScriptMenuSpellTable&)> set_spell_table;
     std::function<int()> active_slot;
     std::function<int(int)> magazine_capacity;
     std::function<void(int, int, int)> set_runner_ammo;
@@ -193,6 +194,7 @@ struct ScriptMenuRouteGame {
     std::function<bool(int)> load_game;
     std::function<int(int)> save_status;
     std::function<void(std::uint32_t)> set_nuyen;
+    std::function<void()> consume_debug_unlock;
     std::function<void(std::uint32_t)> set_contact_flags;
     std::function<void()> set_walk_fast;
     std::function<void()> install_test_deck;

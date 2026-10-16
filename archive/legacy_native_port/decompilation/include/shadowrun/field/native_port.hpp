@@ -58,7 +58,7 @@ constexpr std::int32_t kFieldHudAmmoCounterY = 72;
 constexpr std::uint16_t kTitleCircuitLightTicks = 3;
 constexpr std::size_t kNativeInventorySlotCount = 8;
 constexpr std::size_t kNativeInventoryItemCount = 50;
-constexpr std::size_t kNativeMagicSpellCount = 13;
+constexpr std::size_t kNativeMagicSpellCount = 14;
 constexpr std::size_t kNativeTitleAnimationFrameCount = 6;
 // ROM 0x5D996 ping-pongs six SAT lists from 0x5DA20/0x5DA38.
 constexpr std::size_t kNativeBootSegaPhaseCount = 6;

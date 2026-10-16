@@ -581,6 +581,8 @@ return {
         ["magic.spells.description.heal_wounds"] = "Cures damage to characters.",
         ["magic.spells.option.confusion"] = "Confusion",
         ["magic.spells.description.confusion"] = "An area effect spell which\\ndistracts all enemies with\\nsensory overload.",
+        ["magic.spells.option.barrier"] = "Barrier",
+        ["magic.spells.description.barrier"] = "Creates a magical wall which\\ninhibits movement only.",
         ["archetype.0"] = "Samurai",
         ["archetype.1"] = "Decker",
         ["archetype.2"] = "Gator",

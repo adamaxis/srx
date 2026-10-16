@@ -79,4 +79,6 @@ Release runs write `force_selection.bmp`, `force_cursor_phase_*.bmp`,
 `qt_runtime/field-magic-spell-qa/`. Debug and Release `shadowrun_graphics`
 tests check all 13 extracted spell rows in both palette variants, transparency,
 dimensions, and asset-file round-trip. These are conversion regression
-artifacts, not independent Genesis goldens.
+artifacts, not independent Genesis goldens. Barrier (spell code 13) and its
+two HUD palette variants were added after those QA captures and have not been
+reviewed in a full-screen frame or compared with an independent Genesis image.

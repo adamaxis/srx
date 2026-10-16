@@ -757,6 +757,7 @@ struct GameScriptRuntime::Impl {
         inventory_item,
         party,
         spell_table,
+        set_spell_table,
         active_slot,
         magazine_capacity,
         set_runner_ammo,
@@ -774,6 +775,7 @@ struct GameScriptRuntime::Impl {
         notebook_facts,
         cyberdeck_available,
         notebook_boundary,
+        consume_debug_unlock,
         set_nuyen,
         set_contact_flags,
         set_walk_fast,
@@ -1036,6 +1038,58 @@ struct GameScriptRuntime::Impl {
             }
             lua_setfield(lua, -2, "entries");
             return 1;
+        }
+        case MenuBinding::set_spell_table: {
+            const auto callback = self->menu_route_bindings.game.set_spell_table;
+            if (!callback || !lua_istable(lua, 2)) {
+                return 0;
+            }
+            const auto read_integer = [lua](const int table_index,
+                                            const char* name,
+                                            const lua_Integer fallback) {
+                lua_getfield(lua, table_index, name);
+                int is_number = 0;
+                const auto value = lua_tointegerx(lua, -1, &is_number);
+                lua_pop(lua, 1);
+                return is_number ? value : fallback;
+            };
+            const auto table_index = std::clamp<lua_Integer>(
+                integer_argument(1), 0, 0xFFFF);
+            const auto input_index = lua_absindex(lua, 2);
+            const auto entry_count = read_integer(input_index, "entry_count", -1);
+            if (entry_count < 0 || entry_count > 14) {
+                return 0;
+            }
+            lua_getfield(lua, input_index, "entries");
+            const auto entries_index = lua_absindex(lua, -1);
+            if (!lua_istable(lua, entries_index)) {
+                lua_pop(lua, 1);
+                return 0;
+            }
+            ScriptMenuSpellTable parsed;
+            parsed.entry_count = static_cast<std::uint8_t>(entry_count);
+            for (std::size_t index = 0; index < parsed.entry_count; ++index) {
+                lua_rawgeti(lua, entries_index,
+                            static_cast<lua_Integer>(index + 1U));
+                if (!lua_istable(lua, -1)) {
+                    lua_pop(lua, 2);
+                    return 0;
+                }
+                const auto entry_index = lua_absindex(lua, -1);
+                const auto code = read_integer(entry_index, "code", -1);
+                const auto force = read_integer(entry_index, "force_limit", -1);
+                lua_pop(lua, 1);
+                if (code < 0 || code > 13 || force < 0 || force > 0xFF) {
+                    lua_pop(lua, 1);
+                    return 0;
+                }
+                parsed.entries[index].code = static_cast<std::uint8_t>(code);
+                parsed.entries[index].force_limit =
+                    static_cast<std::uint8_t>(force);
+            }
+            lua_pop(lua, 1);
+            callback(static_cast<int>(table_index), parsed);
+            return 0;
         }
         case MenuBinding::active_slot:
             lua_pushinteger(
@@ -1373,6 +1427,11 @@ struct GameScriptRuntime::Impl {
                         std::max(integer_argument(1), 0)));
             }
             return 0;
+        case MenuBinding::consume_debug_unlock:
+            if (self->menu_route_bindings.game.consume_debug_unlock) {
+                self->menu_route_bindings.game.consume_debug_unlock();
+            }
+            return 0;
         case MenuBinding::set_contact_flags:
             if (self->menu_route_bindings.game.set_contact_flags) {
                 self->menu_route_bindings.game.set_contact_flags(
@@ -1442,6 +1501,8 @@ struct GameScriptRuntime::Impl {
         add_menu_binding(state, table_index, "party", MenuBinding::party);
         add_menu_binding(state, table_index, "spell_table",
                          MenuBinding::spell_table);
+        add_menu_binding(state, table_index, "set_spell_table",
+                         MenuBinding::set_spell_table);
         add_menu_binding(state, table_index, "active_slot",
                          MenuBinding::active_slot);
         add_menu_binding(state, table_index, "magazine_capacity",
@@ -1476,6 +1537,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::cyberdeck_available);
         add_menu_binding(state, table_index, "set_nuyen",
                          MenuBinding::set_nuyen);
+        add_menu_binding(state, table_index, "consume_debug_unlock",
+                         MenuBinding::consume_debug_unlock);
         add_menu_binding(state, table_index, "set_contact_flags",
                          MenuBinding::set_contact_flags);
         add_menu_binding(state, table_index, "set_walk_fast",

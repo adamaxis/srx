@@ -8460,14 +8460,14 @@ decode_genesis_field_magic_metric_bars(
     return result;
 }
 
-std::array<RgbaImage, 13> decode_genesis_field_magic_spell_icons(
+std::array<RgbaImage, 14> decode_genesis_field_magic_spell_icons(
     const std::vector<std::uint8_t>& rom) {
     constexpr std::size_t kSpellTable = 0xD4EA0U;
     constexpr std::size_t kSpellRecordStride = 0x30U;
     constexpr std::size_t kGlyphPointerOffset = 0x1AU;
     constexpr std::uint16_t kRelativeGlyphBase = 0x03E9U;
     const auto scene = decode_genesis_field_magic_graphics(rom);
-    std::array<RgbaImage, 13> result{};
+    std::array<RgbaImage, 14> result{};
     for (std::size_t spell = 0; spell < result.size(); ++spell) {
         const auto glyph_stream = static_cast<std::size_t>(read_rom_u32(
             rom, kSpellTable + spell * kSpellRecordStride +

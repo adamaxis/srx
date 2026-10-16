@@ -107,9 +107,11 @@ unmodified record.
 - **Code changed:** Lua now owns the live Magic, force, and posture route and
   its typed metrics. Qt redraws the ROM-cleared center panel before painting
   Magical Defense. `magic.lua` supplies explicit ordered Lua keys for all
-  13 spell names, all 13 descriptions, and seven panel text entries. The
+  14 spell names, all 14 descriptions, and seven panel text entries. The
   field text catalog resolves descriptions from those script bindings and
-  retains the exact ROM copy. Runtime source-title drawing now clears the
+  retains the exact ROM copy. Barrier is the new 14th row; its ROM text,
+  spell-page icon, and two equipped HUD palette variants are extracted, but
+  it has not had independent screenshot review. Runtime source-title drawing now clears the
   16-cell title row before painting, matching the ROM's blank-cell overwrite.
   Magic fallback QA uses the genuine Samurai startup record and asserts class
   2, `+0x7F=0`, fallback state, two source values/bar assets, cleared old

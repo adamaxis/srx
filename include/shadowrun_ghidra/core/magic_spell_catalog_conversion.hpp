@@ -7,7 +7,7 @@
 
 namespace shadowrun::ghidra_conversion {
 
-constexpr std::size_t kUsMagicSpellCount = 13U;
+constexpr std::size_t kUsMagicSpellCount = 14U;
 constexpr std::size_t kUsMagicSpellTableCount = 5U;
 constexpr std::size_t kMagicSpellTableEntryCapacity = 14U;
 constexpr std::size_t kUsActionEffectCount = 16U;
@@ -58,7 +58,7 @@ struct MagicSpellTable {
 using UsMagicSpellTableCatalog =
     std::array<MagicSpellTable, kUsMagicSpellTableCount>;
 
-// The catalog is source data, not a runtime ROM lookup. It covers all 13 US
+// The catalog is source data, not a runtime ROM lookup. It covers all 14 US
 // spell rows in D4EA0, including unavailable spells such as Invisibility,
 // Stink, Super Barrier, Rockskin, Heal Wounds, and Confusion.
 const UsMagicSpellCatalog& us_magic_spell_catalog();

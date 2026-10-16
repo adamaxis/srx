@@ -17,6 +17,8 @@ const UsMagicSpellCatalog kUsMagicSpells{
     MagicSpellDefinition{10U, "Rockskin", -1, 2U, 1U, 3, 0},
     MagicSpellDefinition{11U, "Heal Wounds", -1, 0U, 1U, 3, 0},
     MagicSpellDefinition{12U, "Confusion", -1, 0U, 2U, 6, -1},
+    // D4EA0 row 13 is Barrier (item record 0x40, ROM 0xD5110).
+    MagicSpellDefinition{13U, "Barrier", -1, 2U, 1U, 3, 0},
 };
 
 const UsActionEffectCatalog kUsActionEffects = [] {

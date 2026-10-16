@@ -5892,12 +5892,12 @@ void FieldSceneRuntime::configure_field_menu_route() {
         }
         return party;
     };
-    bindings.game.spell_table = [](const int table_index)
+    bindings.game.spell_table = [this](const int table_index)
         -> std::optional<scripting::ScriptMenuSpellTable> {
         if (table_index < 0 || table_index > 0xFFFF) {
             return std::nullopt;
         }
-        const auto* source_table = find_us_magic_spell_table(
+        const auto* source_table = field_magic_spell_table(
             static_cast<std::uint16_t>(table_index));
         if (source_table == nullptr ||
             source_table->entry_count >
@@ -5920,6 +5920,27 @@ void FieldSceneRuntime::configure_field_menu_route() {
                 spell->base_effect};
         }
         return result;
+    };
+    bindings.game.set_spell_table = [this](
+        const int table_index,
+        const scripting::ScriptMenuSpellTable& script_table) {
+        if (table_index < 0 ||
+            static_cast<std::size_t>(table_index) >=
+                field_magic_spell_table_overrides_.size() ||
+            script_table.entry_count > kMagicSpellTableEntryCapacity) {
+            return;
+        }
+        MagicSpellTable updated{};
+        updated.entry_count = script_table.entry_count;
+        for (std::size_t index = 0; index < updated.entry_count; ++index) {
+            const auto& source = script_table.entries[index];
+            if (find_us_magic_spell(source.code) == nullptr) {
+                return;
+            }
+            updated.entries[index] = {source.code, source.force_limit};
+        }
+        field_magic_spell_table_overrides_[
+            static_cast<std::size_t>(table_index)] = updated;
     };
     bindings.game.active_slot = [this] {
         return static_cast<int>(field_party_roster_.active_slot());
@@ -6019,6 +6040,12 @@ void FieldSceneRuntime::configure_field_menu_route() {
     };
     bindings.game.set_nuyen = [this](const std::uint32_t amount) {
         field_funds_ = amount;
+    };
+    bindings.game.consume_debug_unlock = [this] {
+        title_debug_menu_unlocked_ = false;
+        debug_menu_unlocked_ = kDebugMenuAlwaysUnlockedForTesting;
+        pocket_secretary_.maximum_selection =
+            debug_menu_unlocked_ ? 5U : 4U;
     };
     bindings.game.set_contact_flags = [this](const std::uint32_t flags) {
         notebook_contacts_flags_ = flags & 0x1FFFU;
@@ -6361,6 +6388,28 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
                           field_party_roster_.records()[slot]));
         members.append(member);
     }
+    QJsonArray spell_tables;
+    for (const auto& override_table : field_magic_spell_table_overrides_) {
+        if (!override_table.has_value()) {
+            spell_tables.append(QJsonValue(QJsonValue::Null));
+            continue;
+        }
+        QJsonObject table;
+        table.insert(QStringLiteral("entry_count"),
+                     override_table->entry_count);
+        QJsonArray entries;
+        for (std::size_t index = 0; index < override_table->entry_count;
+             ++index) {
+            QJsonObject entry;
+            entry.insert(QStringLiteral("code"),
+                         override_table->entries[index].spell_code);
+            entry.insert(QStringLiteral("force_limit"),
+                         override_table->entries[index].force_limit);
+            entries.append(entry);
+        }
+        table.insert(QStringLiteral("entries"), entries);
+        spell_tables.append(table);
+    }
     QJsonObject party;
     party.insert(QStringLiteral("active_slot"),
                  static_cast<int>(field_party_roster_.active_slot()));
@@ -6455,6 +6504,7 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
     snapshot.insert(QStringLiteral("kind"), QStringLiteral("field_session"));
     snapshot.insert(QStringLiteral("scene"), scene);
     snapshot.insert(QStringLiteral("party"), party);
+    snapshot.insert(QStringLiteral("spell_tables"), spell_tables);
     snapshot.insert(QStringLiteral("funds_available"),
                     field_funds_.has_value());
     snapshot.insert(QStringLiteral("funds"),
@@ -6479,6 +6529,8 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         std::uint16_t target_heading = 0U;
         std::array<RunnerRecordFields, FieldPartyRosterRuntime::kSlotCount>
             records{};
+        std::array<std::optional<MagicSpellTable>, kUsMagicSpellTableCount>
+            spell_table_overrides{};
         std::array<std::string, FieldPartyRosterRuntime::kSlotCount> names{};
         std::array<bool, FieldPartyRosterRuntime::kSlotCount> active{};
         std::array<std::uint8_t, FieldPartyRosterRuntime::kSlotCount>
@@ -6582,6 +6634,65 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     }
     if (!restored.active[0] || !restored.active[restored.active_slot]) {
         return fail(QStringLiteral("The save does not have an active party leader."));
+    }
+    const auto spell_tables_value = snapshot.value(QStringLiteral("spell_tables"));
+    if (!spell_tables_value.isUndefined()) {
+        if (!spell_tables_value.isArray() ||
+            spell_tables_value.toArray().size() !=
+                static_cast<qsizetype>(kUsMagicSpellTableCount)) {
+            return fail(QStringLiteral("The save has invalid spell-table state."));
+        }
+        const auto spell_tables = spell_tables_value.toArray();
+        for (std::size_t table_index = 0;
+             table_index < kUsMagicSpellTableCount; ++table_index) {
+            const auto value = spell_tables.at(static_cast<qsizetype>(table_index));
+            if (value.isNull()) {
+                continue;
+            }
+            if (!value.isObject()) {
+                return fail(QStringLiteral("The save has invalid spell-table state."));
+            }
+            const auto table_object = value.toObject();
+            if (!read_save_integer(table_object, "entry_count", 0,
+                                   static_cast<std::int64_t>(
+                                       kMagicSpellTableEntryCapacity),
+                                   numeric, error)) {
+                return false;
+            }
+            MagicSpellTable table{};
+            table.entry_count = static_cast<std::uint8_t>(numeric);
+            const auto entries_value = table_object.value(QStringLiteral("entries"));
+            if (!entries_value.isArray() ||
+                entries_value.toArray().size() !=
+                    static_cast<qsizetype>(table.entry_count)) {
+                return fail(QStringLiteral("The save has invalid spell-table entries."));
+            }
+            const auto entries = entries_value.toArray();
+            for (std::size_t entry_index = 0;
+                 entry_index < table.entry_count; ++entry_index) {
+                const auto entry_value = entries.at(
+                    static_cast<qsizetype>(entry_index));
+                if (!entry_value.isObject()) {
+                    return fail(QStringLiteral("The save has an invalid spell-table entry."));
+                }
+                const auto entry_object = entry_value.toObject();
+                if (!read_save_integer(entry_object, "code", 0,
+                                       static_cast<std::int64_t>(
+                                           kUsMagicSpellCount - 1U),
+                                       numeric, error)) {
+                    return false;
+                }
+                table.entries[entry_index].spell_code =
+                    static_cast<std::uint8_t>(numeric);
+                if (!read_save_integer(entry_object, "force_limit", 0,
+                                       0xFF, numeric, error)) {
+                    return false;
+                }
+                table.entries[entry_index].force_limit =
+                    static_cast<std::uint8_t>(numeric);
+            }
+            restored.spell_table_overrides[table_index] = table;
+        }
     }
     if (!read_save_boolean(snapshot, "funds_available",
                            restored.funds_available, error)) return false;
@@ -6757,6 +6868,7 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
             restored.portrait_families, restored.active_slot)) {
         return fail(QStringLiteral("The saved party roster is invalid."));
     }
+    field_magic_spell_table_overrides_ = restored.spell_table_overrides;
     field_funds_ = restored.funds_available
                        ? std::optional<std::uint32_t>(restored.funds)
                        : std::nullopt;
@@ -7826,7 +7938,7 @@ void FieldSceneRuntime::begin_command_overview_magic() {
 
     const auto path = select_magic_menu_path(active_runner_record());
     if (path == MagicMenuPath::spell_panel) {
-        const auto* table = find_us_magic_spell_table(
+        const auto* table = field_magic_spell_table(
             active_runner_record().magic_table_index);
         if (table == nullptr || table->entry_count == 0U) {
             source_boundary(
@@ -7997,7 +8109,7 @@ void FieldSceneRuntime::advance_command_overview_magic(
         --command_overview_magic_cursor_timer_;
     }
 
-    const auto* table = find_us_magic_spell_table(
+    const auto* table = field_magic_spell_table(
         active_runner_record().magic_table_index);
     if (table == nullptr) {
         source_boundary("field.command_overview.magic.spell_table_unavailable");
@@ -8810,6 +8922,7 @@ bool FieldSceneRuntime::bootstrap(
     viewport_state_ = FieldViewportState{};
     debug_menu_unlocked_ = kDebugMenuAlwaysUnlockedForTesting ||
                            startup_state.title_debug_menu_unlocked;
+    title_debug_menu_unlocked_ = startup_state.title_debug_menu_unlocked;
 
     if (!startup_state.field_session_source_assets.has_value()) {
         failure_ = "field-session source records are unavailable";
@@ -15239,6 +15352,18 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
     }
 }
 
+const MagicSpellTable* FieldSceneRuntime::field_magic_spell_table(
+    const std::uint16_t table_index) const noexcept {
+    if (table_index >= field_magic_spell_table_overrides_.size()) {
+        return nullptr;
+    }
+    const auto& override_table =
+        field_magic_spell_table_overrides_[table_index];
+    return override_table.has_value()
+               ? &*override_table
+               : find_us_magic_spell_table(table_index);
+}
+
 void FieldSceneRuntime::paint_command_overview_magic(
     QPainter& painter) const {
     // FBA6 clears Plane A before installing this 34x28 layer. The command
@@ -15249,7 +15374,7 @@ void FieldSceneRuntime::paint_command_overview_magic(
         menu_route_active_ && menu_route_magic_view_.has_value()
             ? &*menu_route_magic_view_
             : nullptr;
-    const auto* table = find_us_magic_spell_table(
+    const auto* table = field_magic_spell_table(
         active_runner_record().magic_table_index);
     if (table != nullptr) {
         for (std::size_t index = 0;
@@ -15340,7 +15465,7 @@ void FieldSceneRuntime::paint_command_overview_magic(
     success_callbacks.resolve_menu_metric =
         [this, &runner, &success_input](
         const std::uint16_t value) -> std::optional<std::uint16_t> {
-        const auto* spell_table = find_us_magic_spell_table(
+        const auto* spell_table = field_magic_spell_table(
             runner.magic_table_index);
         if (spell_table == nullptr ||
             !command_overview_magic_selected_spell_.has_value()) {

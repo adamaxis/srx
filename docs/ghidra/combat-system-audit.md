@@ -49,7 +49,7 @@ The coverage is selective. The target-pool scan and automatic target-service pat
 
 The magic menu has typed spell definitions and selection/force UI. Finishing selection stores a negative equipped slot and the selected spell code on the runner, which is the right kind of state for the ROM's overlapping spell/item code spaces. The current field input gate, however, declares an action available only when the equipped action classifies as `weapon_ammo`. The Lua player heartbeat consequently cannot request a spell action. If a request somehow reaches `service_player_weapon_action()`, it explicitly returns for `magic_spell` before casting. The active Lua calls to `resolve_spell_action()` are in the dynamic encounter actor behavior path, not a player field-cast path.
 
-There is partial NPC spell/effect infrastructure and named effect presentation for a subset of spell codes. It does not complete all 13 spell effects, and it does not make the player's selected spell castable. Non-firearm effect items 13–15 have source classification and some action policy, but the connected player route does not execute the ROM `0x15646`/`0x36FC` effect path. No player melee/unarmed action route is apparent in the current field gate either.
+There is partial NPC spell/effect infrastructure and named effect presentation for a subset of spell codes. It does not complete all 14 spell effects, and it does not make the player's selected spell castable. Non-firearm effect items 13–15 have source classification and some action policy, but the connected player route does not execute the ROM `0x15646`/`0x36FC` effect path. No player melee/unarmed action route is apparent in the current field gate either.
 
 ## Confirmed gaps and high-risk areas
 

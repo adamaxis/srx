@@ -108,10 +108,10 @@ write_field_service_routes(
     const std::vector<std::uint8_t>& rom,
     const std::filesystem::path& root,
     const shadowrun::native::NativePortAssets& assets) {
-    constexpr std::array<std::string_view, 13> kMagicSpellIds{{
+    constexpr std::array<std::string_view, 14> kMagicSpellIds{{
         "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
         "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
-        "rockskin", "heal_wounds", "confusion"}};
+        "rockskin", "heal_wounds", "confusion", "barrier"}};
     const auto path = root / "menu" / "field" / "service-routes.tsv";
     std::filesystem::create_directories(path.parent_path());
     std::ofstream output(path, std::ios::binary | std::ios::trunc);

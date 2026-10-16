@@ -860,6 +860,8 @@ field.hud.magic.item.11.palette.0	field/hud/magic-item-11-palette-0.bmp	image	0	
 field.hud.magic.item.11.palette.1	field/hud/magic-item-11-palette-1.bmp	image	0	0
 field.hud.magic.item.12.palette.0	field/hud/magic-item-12-palette-0.bmp	image	0	0
 field.hud.magic.item.12.palette.1	field/hud/magic-item-12-palette-1.bmp	image	0	0
+field.hud.magic.item.13.palette.0	field/hud/magic-item-13-palette-0.bmp	image	0	0
+field.hud.magic.item.13.palette.1	field/hud/magic-item-13-palette-1.bmp	image	0	0
 field.hud.delay.meter.0	field/hud/delay-meter-0.bmp	image	0	0
 field.hud.delay.meter.1	field/hud/delay-meter-1.bmp	image	0	0
 field.hud.delay.meter.2	field/hud/delay-meter-2.bmp	image	0	0
@@ -1632,6 +1634,7 @@ menu.field.magic.spell.icon.9	menu/field/magic-spell-icon-9.bmp	image	0	0
 menu.field.magic.spell.icon.10	menu/field/magic-spell-icon-10.bmp	image	0	0
 menu.field.magic.spell.icon.11	menu/field/magic-spell-icon-11.bmp	image	0	0
 menu.field.magic.spell.icon.12	menu/field/magic-spell-icon-12.bmp	image	0	0
+menu.field.magic.spell.icon.13	menu/field/magic-spell-icon-13.bmp	image	0	0
 menu.field.magic.cursor.frame.0	menu/field/magic-cursor-frame-0.bmp	image	0	0
 menu.field.magic.cursor.frame.1	menu/field/magic-cursor-frame-1.bmp	image	0	0
 menu.field.magic.cursor.frame.2	menu/field/magic-cursor-frame-2.bmp	image	0	0

@@ -11,7 +11,7 @@ local M = {
     title = "Use at your own risk!!",
     labels = {
         "Nuyen",
-        "Spells (pending)",
+        "Spells",
         "Test Deck",
         "Pick System (pending)",
         "Heal All",
@@ -30,6 +30,24 @@ end
 M.effects = {
     [D.NUYEN] = function(ctx)
         ctx.game.set_nuyen(M.nuyen) -- ROM 0x59B28 writes 250,000.
+    end,
+    [D.SPELLS] = function(ctx)
+        -- ROM 0x59B34 is a no-op for non-magic archetypes. For a caster it
+        -- replaces that runner's editable spell row with IDs 13..0 at force 4.
+        if ctx.game.leader_archetype() >= E.Archetype.CASTER_LIMIT then
+            return
+        end
+        local party = ctx.game.party()
+        local runner = party[ctx.game.active_slot()]
+        if not runner then return end
+        local entries = {}
+        for code = 13, 0, -1 do
+            entries[#entries + 1] = { code = code, force_limit = 4 }
+        end
+        ctx.game.set_spell_table(runner.magic_table_index, {
+            entry_count = #entries,
+            entries = entries,
+        })
     end,
     [D.HEAL_ALL] = function(ctx)
         local party = ctx.game.party()
@@ -98,6 +116,7 @@ function M.input(st, events, ctx)
     if events & P.A ~= 0 then
         local effect = M.effects[st.row]
         if effect then
+            ctx.game.consume_debug_unlock() -- ROM 0x59A64 clears FFF101.
             effect(ctx)
             return { transition = T.POP }
         end

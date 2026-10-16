@@ -45,7 +45,7 @@ inline constexpr std::size_t kCyberwareTextCount =
     kCyberwareTitleLineCount + 1U + kCyberwareEntryCount;
 inline constexpr std::size_t kCyberdeckUnavailableLineCount = 3U;
 inline constexpr std::size_t kDismissRunnerLabelCount = 3U;
-inline constexpr std::size_t kMagicSpellTextCount = 13U;
+inline constexpr std::size_t kMagicSpellTextCount = 14U;
 inline constexpr std::size_t kMagicPanelTextCount = 7U;
 inline constexpr std::size_t kFieldServiceTitleCount = 12U;
 inline constexpr std::size_t kFieldServiceActionTitleCount = 32U;

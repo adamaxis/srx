@@ -7,17 +7,17 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = (Resolve-Path -LiteralPath (Join-Path $scriptRoot '..\..')).Path
 if ([string]::IsNullOrWhiteSpace($RomPath)) {
-    $RomPath = Join-Path $scriptRoot '..\input\shadowrun_genesis_us.bin'
+    $RomPath = Join-Path $repoRoot 'input\shadowrun_genesis_us.bin'
 }
 if ([string]::IsNullOrWhiteSpace($BuildDir)) {
-    $BuildDir = Join-Path $scriptRoot '..\..\build\native\debug'
+    $BuildDir = Join-Path $repoRoot 'build\conversion\qt\release'
 }
 if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
-    $OutputRoot = Join-Path $scriptRoot '..\assets'
+    $OutputRoot = Join-Path $repoRoot 'assets'
 }
 
-$repoRoot = (Resolve-Path -LiteralPath (Join-Path $scriptRoot '..')).Path
 $rom = (Resolve-Path -LiteralPath $RomPath).Path
 $extractor = Join-Path (Resolve-Path -LiteralPath $BuildDir).Path 'shadowrun_graphics_extract.exe'
 

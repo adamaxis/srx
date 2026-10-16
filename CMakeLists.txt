@@ -107,6 +107,49 @@ add_executable(shadowrun_ghidra_startup_record_extract
     tools/extract_startup_record_assets.cpp
 )
 
+# The complete asset importer is an explicit offline step. Its decoder support
+# is compiled from the archived extraction implementation, and none of these
+# targets are linked into the Qt game executable.
+find_package(ZLIB REQUIRED)
+set(SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT
+    "${CMAKE_CURRENT_SOURCE_DIR}/archive/legacy_native_port/decompilation")
+add_library(shadowrun_ghidra_asset_import_support STATIC
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/title_intro/boot.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/core/compression.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/entities/entity_projection.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/entities/entity_state.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/rendering/graphics_runtime.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/title_intro/intro_scene.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/core/memory_bus.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/core/native_input.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/field/native_port.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/entities/object_mask.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/entities/object_list.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/entities/object_update.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/rendering/palette.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/session/resource_setup.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/core/runtime.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/session/session.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/field/terrain.cpp"
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/audio/z80_transport.cpp"
+)
+target_include_directories(shadowrun_ghidra_asset_import_support PUBLIC
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/include")
+target_link_libraries(shadowrun_ghidra_asset_import_support PRIVATE ZLIB::ZLIB)
+
+add_library(shadowrun_ghidra_asset_import STATIC
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/src/rendering/graphics_import.cpp")
+target_include_directories(shadowrun_ghidra_asset_import PUBLIC
+    "${SHADOWRUN_ARCHIVED_ASSET_SOURCE_ROOT}/include")
+target_link_libraries(shadowrun_ghidra_asset_import
+    PUBLIC shadowrun_ghidra_asset_import_support ZLIB::ZLIB)
+
+add_executable(shadowrun_graphics_extract
+    tools/rom_research/graphics_extract.cpp)
+target_link_libraries(shadowrun_graphics_extract PRIVATE
+    shadowrun_ghidra_asset_import shadowrun_ghidra_asset_import_support
+    ZLIB::ZLIB)
+
 # Qt presets exist to link the host binary. The workbench presets own the
 # per-contract test executables; building those 280 targets here makes a
 # "Rebuild All" look finished while shadowrun_ghidra_conversion_qt.exe stays

@@ -249,7 +249,7 @@ rather than a second Lua copy.
   names. Script and field-catalog QA check each ID/key/value in source order;
   native field state controls which implants are owned and how that page is
   presented.
-- `gameplay/scripts/magic.lua` declares the 13 spell IDs in the ROM
+- `gameplay/scripts/magic.lua` declares the 14 spell IDs in the ROM
   `D4EA0` name-table order, with explicit ordered Lua keys for every spell
   name and description. It also declares seven explicit keys for the shared
   Magic panel labels and headings. The field text catalog reads these menus

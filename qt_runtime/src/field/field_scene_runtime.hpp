@@ -1245,6 +1245,8 @@ private:
     void paint_field_hud_overlays(QPainter& painter) const;
     FieldHudSlotState field_hud_slot_state(std::size_t slot) const;
     void paint_command_overview_magic(QPainter& painter) const;
+    const MagicSpellTable* field_magic_spell_table(
+        std::uint16_t table_index) const noexcept;
     void paint_attributes_skills_menu(
         QPainter& painter,
         const AttributesSkillsMenuController& menu) const;
@@ -1583,6 +1585,8 @@ private:
     FieldDialogueEventResolver field_dialogue_event_resolver_;
     StokerMotelStoryState stoker_motel_story_state_{};
     FieldPartyRosterRuntime field_party_roster_{};
+    std::array<std::optional<MagicSpellTable>, kUsMagicSpellTableCount>
+        field_magic_spell_table_overrides_{};
     DismissRunnerMenuState dismiss_runner_{};
     RandomGridEffectState dismiss_runner_random_grid_effect_{};
     std::uint32_t dismiss_runner_effect_frames_ = 0U;
@@ -1702,6 +1706,7 @@ private:
     // Temporary development override: expose the ROM's hidden sixth row so
     // the debug screen remains reachable without entering the title code.
     bool debug_menu_unlocked_ = true;
+    bool title_debug_menu_unlocked_ = false;
     // FF018F bit 0 is the deck-present fact; application snapshots preserve
     // it along with the typed deck record. A Matrix session is not persisted.
     std::optional<bool> cyberdeck_available_ = false;

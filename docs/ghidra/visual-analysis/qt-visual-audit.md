@@ -1976,8 +1976,9 @@ independent reload/audio captures remain open.
    +0x56 to D4EA0 spell art, and D1860/D186C/D1878 to unarmed art. The
     extracted catalog contains all 13 runner families in +0x2C palette lines
     1/2/3, 50 ordinary item codes and three unarmed tables in lines 1/2/3, and
-    13 spell rows in both 0x3602-selected lines. The party QA checks each live
-    face/item asset at its slot. The separate player-action QA compares the
+    all 14 spell rows in both 0x3602-selected lines. Existing party/action QA
+    reviews 13; Barrier is newly extracted and has not been visually reviewed.
+    The party QA checks each live face/item asset at its slot. The separate player-action QA compares the
     starter item block with the same item row at the 0x3602-selected palette.
 4. **Is it animated, and should it be?** Portraits and item icons remain
    static between record refreshes. Source `0x3674`, `0x37EC`, and `0x36FC`

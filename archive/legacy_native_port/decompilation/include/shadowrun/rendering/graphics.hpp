@@ -981,8 +981,8 @@ struct GenesisMagicMenuText {
     // ROM 0x102EC passes C8A3A as one two-column label block: Force, a blank
     // row, then Posture.
     std::string force_posture_labels;
-    std::array<std::string, 13> spell_names{};
-    std::array<std::string, 13> spell_descriptions{};
+    std::array<std::string, 14> spell_names{};
+    std::array<std::string, 14> spell_descriptions{};
 };
 
 // ROM 0x11950: the Cyberware page title at 0xD2054 (including its 0x80
@@ -1037,7 +1037,7 @@ std::array<RgbaImage, 3> decode_genesis_field_dialogue_option_markers(
 // extraction; the Qt runtime consumes this transparent RGBA layer directly.
 RgbaImage decode_genesis_field_magic_panel_background(
     const std::vector<std::uint8_t>& rom);
-std::array<RgbaImage, 13> decode_genesis_field_magic_spell_icons(
+std::array<RgbaImage, 14> decode_genesis_field_magic_spell_icons(
     const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, 4> decode_genesis_field_magic_cursor_frames(
     const std::vector<std::uint8_t>& rom);

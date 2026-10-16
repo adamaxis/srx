@@ -504,6 +504,8 @@ field/hud/magic-item-11-palette-0.bmp	sprite	0	0	24	16	0x3404/0xD4EA0/0x3602	ext
 field/hud/magic-item-11-palette-1.bmp	sprite	0	0	24	16	0x3404/0xD4EA0/0x3602	extracted
 field/hud/magic-item-12-palette-0.bmp	sprite	0	0	24	16	0x3404/0xD4EA0/0x3602	extracted
 field/hud/magic-item-12-palette-1.bmp	sprite	0	0	24	16	0x3404/0xD4EA0/0x3602	extracted
+field/hud/magic-item-13-palette-0.bmp	sprite	0	0	24	16	0x3404/0xD4EA0/0x3602	extracted
+field/hud/magic-item-13-palette-1.bmp	sprite	0	0	24	16	0x3404/0xD4EA0/0x3602	extracted
 field/hud/delay-meter-0.bmp	sprite	0	0	8	32	0x3674/0x6AB3E[0]	extracted
 field/hud/delay-meter-1.bmp	sprite	0	0	8	32	0x3674/0x6AB3E[1]	extracted
 field/hud/delay-meter-2.bmp	sprite	0	0	8	32	0x3674/0x6AB3E[2]	extracted
@@ -1276,6 +1278,7 @@ menu/field/magic-spell-icon-9.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[9]	extr
 menu/field/magic-spell-icon-10.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[10]	extracted
 menu/field/magic-spell-icon-11.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[11]	extracted
 menu/field/magic-spell-icon-12.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[12]	extracted
+menu/field/magic-spell-icon-13.bmp	sprite	0	0	24	24	0xFBA6/0xFCB4/0x11190[13]	extracted
 menu/field/magic-cursor-frame-0.bmp	sprite	0	0	320	224	0xFDFE/0xC8B3E/0x1378[0]	extracted
 menu/field/magic-cursor-frame-1.bmp	sprite	0	0	320	224	0xFDFE/0xC8B3E/0x1378[1]	extracted
 menu/field/magic-cursor-frame-2.bmp	sprite	0	0	320	224	0xFDFE/0xC8B3E/0x1378[2]	extracted
