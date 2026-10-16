@@ -38,6 +38,7 @@ int main(int argc, char** argv) {
     int queued_key = 0;
     bool queued_pressed = false;
     std::uint64_t current_frame = 88U;
+    QStringList frame_events;
     QJsonObject state;
     state.insert(QStringLiteral("app.phase"), QStringLiteral("field_ready"));
     QJsonObject actor;
@@ -51,6 +52,11 @@ int main(int argc, char** argv) {
         [&queued_key, &queued_pressed](const int key, const bool pressed) {
             queued_key = key;
             queued_pressed = pressed;
+        },
+        [&frame_events] {
+            auto events = frame_events;
+            frame_events.clear();
+            return events;
         });
     if (server.port() == 0U) {
         std::cerr << "debug server did not bind an ephemeral localhost port\n";
@@ -102,7 +108,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     result = response(server.handle_line(
-        R"({"cmd":"break","kind":"frame","frame":90})"));
+        R"({"cmd":"break","kind":"frame","frame":91})"));
     const auto breakpoint_id = result.value(QStringLiteral("id")).toInt();
     if (!result.value(QStringLiteral("ok")).toBool() || breakpoint_id <= 0 ||
         server.check_source_frame_breakpoints()) {
@@ -116,16 +122,43 @@ int main(int argc, char** argv) {
         std::cerr << "watchpoint did not register for an inspected field\n";
         return 1;
     }
+    result = response(server.handle_line(
+        R"({"cmd":"break","kind":"event","pattern":"field\\.world\\.encounter"})"));
+    const auto event_breakpoint_id = result.value(QStringLiteral("id")).toInt();
+    if (!result.value(QStringLiteral("ok")).toBool() ||
+        event_breakpoint_id <= 0) {
+        std::cerr << "event breakpoint did not register for a source boundary\n";
+        return 1;
+    }
     result = response(server.handle_line(R"({"cmd":"list"})"));
     const auto listed = result.value(QStringLiteral("breakpoints")).toArray();
-    if (!result.value(QStringLiteral("ok")).toBool() || listed.size() != 2 ||
-        listed.at(0).toObject().value(QStringLiteral("frame")).toInt() != 90) {
+    if (!result.value(QStringLiteral("ok")).toBool() || listed.size() != 3 ||
+        listed.at(0).toObject().value(QStringLiteral("frame")).toInt() != 91) {
         std::cerr << "list command did not return the registered breakpoints\n";
+        return 1;
+    }
+    frame_events.push_back(QStringLiteral("field.world.encounter.hellhound"));
+    current_frame = 89U;
+    if (!server.check_source_frame_breakpoints() || !stepper.paused()) {
+        std::cerr << "event breakpoint did not stop on a matching source boundary\n";
+        return 1;
+    }
+    result = response(server.handle_line(R"({"cmd":"status"})"));
+    if (result.value(QStringLiteral("breakpoint")).toInt() !=
+            event_breakpoint_id ||
+        result.value(QStringLiteral("detail")).toString() !=
+            QStringLiteral("field.world.encounter.hellhound")) {
+        std::cerr << "event breakpoint stop did not report its source boundary\n";
+        return 1;
+    }
+    result = response(server.handle_line(R"({"cmd":"resume"})"));
+    if (!result.value(QStringLiteral("ok")).toBool() || stepper.paused()) {
+        std::cerr << "resume command did not continue after an event breakpoint\n";
         return 1;
     }
     actor.insert(QStringLiteral("x"), 322);
     state.insert(QStringLiteral("actor.test"), actor);
-    current_frame = 89U;
+    current_frame = 90U;
     if (!server.check_source_frame_breakpoints() || !stepper.paused()) {
         std::cerr << "watchpoint did not stop after its field changed\n";
         return 1;
@@ -142,7 +175,7 @@ int main(int argc, char** argv) {
         std::cerr << "resume command did not continue after a watchpoint\n";
         return 1;
     }
-    current_frame = 90U;
+    current_frame = 91U;
     if (!server.check_source_frame_breakpoints() || !stepper.paused()) {
         std::cerr << "frame breakpoint did not pause on its source frame\n";
         return 1;
@@ -156,7 +189,7 @@ int main(int argc, char** argv) {
             QStringLiteral("breakpoint") ||
         result.value(QStringLiteral("breakpoint")).toInt() != breakpoint_id ||
         result.value(QStringLiteral("detail")).toString() !=
-            QStringLiteral("90")) {
+            QStringLiteral("91")) {
         std::cerr << "status did not report the breakpoint stop details\n";
         return 1;
     }
@@ -169,6 +202,13 @@ int main(int argc, char** argv) {
     }
     result = response(server.handle_line(
         QByteArray("{\"cmd\":\"delete\",\"id\":") +
+        QByteArray::number(event_breakpoint_id) + "}"));
+    if (!result.value(QStringLiteral("ok")).toBool()) {
+        std::cerr << "delete command did not remove the event breakpoint\n";
+        return 1;
+    }
+    result = response(server.handle_line(
+        QByteArray("{\"cmd\":\"delete\",\"id\":") +
         QByteArray::number(watchpoint_id) + "}"));
     if (!result.value(QStringLiteral("ok")).toBool() ||
         !response(server.handle_line(R"({"cmd":"list"})"))
@@ -176,7 +216,7 @@ int main(int argc, char** argv) {
         std::cerr << "delete command did not remove the frame breakpoint\n";
         return 1;
     }
-    current_frame = 91U;
+    current_frame = 92U;
     if (server.check_source_frame_breakpoints()) {
         std::cerr << "deleted frame breakpoint still stopped execution\n";
         return 1;

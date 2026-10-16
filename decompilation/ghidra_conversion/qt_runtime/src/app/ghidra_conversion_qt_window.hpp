@@ -173,6 +173,7 @@ public:
                                                    : record->absolute_path;
                                     })),
           field_scene_runtime_([this](const std::string_view boundary) {
+              pending_debug_events_.push_back(std::string(boundary));
           }, [this](const std::uint16_t event) {
               if (audio_playback_) {
                   audio_playback_->play_event(event);
@@ -225,6 +226,16 @@ public:
                 },
                 [this](const int key, const bool pressed) {
                     pending_remote_keys_.push_back({key, pressed});
+                },
+                [this] {
+                    QStringList events;
+                    events.reserve(static_cast<qsizetype>(
+                        pending_debug_events_.size()));
+                    for (const auto& name : pending_debug_events_) {
+                        events.push_back(QString::fromStdString(name));
+                    }
+                    pending_debug_events_.clear();
+                    return events;
                 });
         }
 
@@ -1070,6 +1081,7 @@ private:
             };
         startup_callbacks_.opening_intro.source_boundary =
             [this](const std::string_view boundary) {
+                pending_debug_events_.push_back(std::string(boundary));
             };
         startup_callbacks_.opening_intro.stop_requested = [this] {
             return opening_start_event_latched_;
@@ -2188,6 +2200,7 @@ private:
     std::optional<scripting::ScriptMenuDefinition> startup_archetypes_menu_;
     scripting::ScriptStringMap startup_archetype_portraits_;
     std::unique_ptr<AudioPlaybackService> audio_playback_;
+    std::vector<std::string> pending_debug_events_;
     qt_runtime::FieldSceneRuntime field_scene_runtime_;
     TitleLoopState title_loop_;
     TitleLoopCallbacks title_loop_callbacks_;

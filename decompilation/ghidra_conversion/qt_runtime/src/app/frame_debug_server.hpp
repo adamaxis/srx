@@ -7,9 +7,11 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRegularExpression>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QString>
+#include <QStringList>
 
 #include <algorithm>
 #include <cmath>
@@ -31,18 +33,21 @@ namespace shadowrun::ghidra_conversion::qt_runtime {
 class FrameDebugServer final {
 public:
     using StateProvider = std::function<QJsonObject()>;
+    using EventProvider = std::function<QStringList()>;
     using FrameProvider = std::function<std::uint64_t()>;
     using PhaseProvider = std::function<QString()>;
     using KeyQueue = std::function<void(int, bool)>;
 
     FrameDebugServer(const std::uint16_t port, debug::FrameStepper& stepper,
                      StateProvider state, FrameProvider frame,
-                     PhaseProvider phase, KeyQueue queue_key)
+                     PhaseProvider phase, KeyQueue queue_key,
+                     EventProvider events = {})
         : stepper_(stepper),
           state_(std::move(state)),
           frame_(std::move(frame)),
           phase_(std::move(phase)),
-          queue_key_(std::move(queue_key)) {
+          queue_key_(std::move(queue_key)),
+          events_(std::move(events)) {
         if (!server_.listen(QHostAddress::LocalHost, port)) {
             throw std::runtime_error(
                 "could not listen for local debugger: " +
@@ -141,10 +146,36 @@ public:
                 result.insert(QStringLiteral("field"), field);
                 return encode(result);
             }
+            if (kind == QStringLiteral("event")) {
+                const auto pattern = request.value(QStringLiteral("pattern"))
+                                         .toString();
+                const QRegularExpression expression(pattern);
+                if (pattern.isEmpty() || !expression.isValid()) {
+                    --next_breakpoint_id_;
+                    return encode_error(QStringLiteral(
+                        "event breakpoint requires a valid regular expression"));
+                }
+                if (std::any_of(event_breakpoints_.begin(),
+                                event_breakpoints_.end(),
+                                [&pattern](const EventBreakpoint& breakpoint) {
+                                    return breakpoint.pattern == pattern;
+                                })) {
+                    --next_breakpoint_id_;
+                    return encode_error(QStringLiteral(
+                        "an event breakpoint already exists for that pattern"));
+                }
+                event_breakpoints_.push_back({id, pattern, expression});
+                QJsonObject result;
+                result.insert(QStringLiteral("ok"), true);
+                result.insert(QStringLiteral("id"), id);
+                result.insert(QStringLiteral("kind"), QStringLiteral("event"));
+                result.insert(QStringLiteral("pattern"), pattern);
+                return encode(result);
+            }
             if (kind != QStringLiteral("frame")) {
                 --next_breakpoint_id_;
                 return encode_error(
-                    QStringLiteral("supported breakpoint kinds are frame and watch"));
+                    QStringLiteral("supported breakpoint kinds are frame, watch, and event"));
             }
             const auto value = request.value(QStringLiteral("frame"));
             const auto target = value.toDouble(-1.0);
@@ -198,7 +229,16 @@ public:
                     return breakpoint.id == id;
                 });
             if (watch == watchpoints_.end()) {
-                return encode_error(QStringLiteral("no such breakpoint"));
+                const auto event = std::find_if(
+                    event_breakpoints_.begin(), event_breakpoints_.end(),
+                    [id](const EventBreakpoint& breakpoint) {
+                        return breakpoint.id == id;
+                    });
+                if (event == event_breakpoints_.end()) {
+                    return encode_error(QStringLiteral("no such breakpoint"));
+                }
+                event_breakpoints_.erase(event);
+                return encode(status_object());
             }
             watchpoints_.erase(watch);
             return encode(status_object());
@@ -218,6 +258,13 @@ public:
                 entry.insert(QStringLiteral("id"), watchpoint.id);
                 entry.insert(QStringLiteral("kind"), QStringLiteral("watch"));
                 entry.insert(QStringLiteral("field"), watchpoint.field);
+                entries.append(entry);
+            }
+            for (const auto& breakpoint : event_breakpoints_) {
+                QJsonObject entry;
+                entry.insert(QStringLiteral("id"), breakpoint.id);
+                entry.insert(QStringLiteral("kind"), QStringLiteral("event"));
+                entry.insert(QStringLiteral("pattern"), breakpoint.pattern);
                 entries.append(entry);
             }
             QJsonObject result;
@@ -304,7 +351,7 @@ public:
             QJsonObject result;
             result.insert(QStringLiteral("ok"), true);
             result.insert(QStringLiteral("commands"),
-                          QStringLiteral("status pause resume step key press inspect break(frame|watch) delete list help"));
+                          QStringLiteral("status pause resume step key press inspect break(frame|watch|event) delete list help"));
             return encode(result);
         }
         return encode_error(QStringLiteral("unknown command"));
@@ -332,6 +379,25 @@ public:
             [current](const FrameBreakpoint& breakpoint) {
                 return breakpoint.frame == current;
             });
+        int stop_id = found != breakpoints_.end() ? found->id : 0;
+        QString stop_detail = found != breakpoints_.end()
+                                  ? QString::number(current)
+                                  : QString{};
+        const auto source_events = events_ ? events_() : QStringList{};
+        for (const auto& breakpoint : event_breakpoints_) {
+            if (stop_id != 0) {
+                break;
+            }
+            const auto event = std::find_if(
+                source_events.begin(), source_events.end(),
+                [&breakpoint](const QString& name) {
+                    return breakpoint.expression.match(name).hasMatch();
+                });
+            if (event != source_events.end()) {
+                stop_id = breakpoint.id;
+                stop_detail = *event;
+            }
+        }
         int watch_hit_id = 0;
         QString watch_detail;
         if (!watchpoints_.empty()) {
@@ -342,7 +408,7 @@ public:
                 if (value != fields.constEnd()) {
                     current_value = *value;
                 }
-                if (watch_hit_id == 0 &&
+                if (watch_hit_id == 0 && stop_id == 0 &&
                     current_value != watchpoint.last_value) {
                     watch_hit_id = watchpoint.id;
                     watch_detail = watchpoint.field + QStringLiteral(": ") +
@@ -353,17 +419,16 @@ public:
                 watchpoint.last_value = current_value;
             }
         }
-        if (found == breakpoints_.end() && watch_hit_id == 0) {
+        if (stop_id == 0) {
+            stop_id = watch_hit_id;
+            stop_detail = watch_detail;
+        }
+        if (stop_id == 0) {
             return false;
         }
         stop_reason_ = QStringLiteral("breakpoint");
-        if (found != breakpoints_.end()) {
-            stop_breakpoint_ = found->id;
-            stop_detail_ = QString::number(current);
-        } else {
-            stop_breakpoint_ = watch_hit_id;
-            stop_detail_ = watch_detail;
-        }
+        stop_breakpoint_ = stop_id;
+        stop_detail_ = stop_detail;
         stepper_.pause();
         return true;
     }
@@ -389,6 +454,12 @@ private:
         int id = 0;
         QString field;
         std::optional<QJsonValue> last_value;
+    };
+
+    struct EventBreakpoint {
+        int id = 0;
+        QString pattern;
+        QRegularExpression expression;
     };
 
     struct ScheduledRelease {
@@ -523,10 +594,12 @@ private:
     FrameProvider frame_;
     PhaseProvider phase_;
     KeyQueue queue_key_;
+    EventProvider events_;
     QTcpServer server_;
     std::map<QTcpSocket*, QByteArray> buffers_;
     std::vector<FrameBreakpoint> breakpoints_;
     std::vector<WatchBreakpoint> watchpoints_;
+    std::vector<EventBreakpoint> event_breakpoints_;
     std::vector<ScheduledRelease> scheduled_releases_;
     int next_breakpoint_id_ = 0;
     QString stop_reason_ = QStringLiteral("none");
