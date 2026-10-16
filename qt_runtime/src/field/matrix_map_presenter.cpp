@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 namespace {
@@ -169,6 +170,28 @@ bool paint_matrix_node_action_panel(
             current_x += 8;
         }
     };
+
+    if (state.top_matrix_countdown.has_value()) {
+        // ROM 0x54B84 prints the 0x166A44 stream at VRAM $C518. Its 0x80
+        // breaks advance one 64-cell name-table row each; C216 writes the
+        // countdown digit at $C722, the gap between the two hyphens.
+        std::size_t start = 0U;
+        int y = 80;
+        while (start <= state.top_text.size() && y < 144) {
+            const auto end = state.top_text.find('|', start);
+            const auto value = state.top_text.substr(
+                start, end == std::string::npos ? std::string::npos
+                                                : end - start);
+            draw_text(96, y, value);
+            y += 8;
+            if (end == std::string::npos) break;
+            start = end + 1U;
+        }
+        draw_text(136, 112, std::to_string(*state.top_matrix_countdown));
+        painter.restore();
+        return true;
+    }
+
     draw_text(24, 20, state.top_title);
     painter.fillRect(QRect(20, 40, 280, 1), edge);
 

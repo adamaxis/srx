@@ -166,6 +166,9 @@ eq(Actions.lockout().text, Actions.TEXT.LOCKOUT,
     "Lockout selects its ROM text address")
 eq(MatrixText.from_rom(Actions.TEXT.LOCKOUT), MatrixText.LOCKOUT,
     "ROM Lockout text address resolves to the decoded message")
+eq(MatrixText.from_rom(Actions.TEXT.SHUTDOWN),
+    "  INITIATING||SYSTEM  SHUTDOWN|| IN - - SECONDS",
+    "ROM Crash System text address resolves to the decoded message")
 
 local linked_session_ok, linked_session = Session.begin(0)
 eq(linked_session_ok, true, "node navigation session starts")

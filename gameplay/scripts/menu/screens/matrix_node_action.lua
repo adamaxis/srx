@@ -10,6 +10,10 @@ local M = { window = E.WindowPlane.OFF }
 local CONFIRM = P.A | P.B | P.C
 
 local function refresh(st)
+    if st.shutdown then
+        st.title, st.text, st.labels = "Matrix Message", MatrixText.SHUTDOWN, {}
+        return
+    end
     if st.matrix_message then
         st.title, st.text, st.labels = "Matrix Message", st.matrix_message, {}
         return
@@ -47,7 +51,8 @@ end
 
 function M.new(args)
     return { matrix_state = args.matrix_state, system_id = args.system_id,
-             row = 0, title = "Matrix", text = "", labels = {} }
+             row = 0, title = "Matrix", text = "", labels = {},
+             matrix_world = args.matrix_world }
 end
 
 function M.enter(st, ctx)
@@ -85,6 +90,20 @@ function M.input(st, events, ctx)
     if not MatrixSession.is_online(state) then
         return { transition = T.POP, result = {} }
     end
+    if st.shutdown then
+        st.shutdown.frames = st.shutdown.frames - 1
+        if st.shutdown.frames > 0 then return end
+        st.shutdown.index = st.shutdown.index + 1
+        local next_value = st.shutdown.values[st.shutdown.index]
+        if next_value == nil then
+            return { transition = T.EXIT, result = { matrix_crash = true } }
+        end
+        st.shutdown.frames = st.shutdown.step
+        st.matrix_countdown = next_value
+        refresh(st)
+        ctx.redraw(R.FULL)
+        return
+    end
     if st.matrix_message then
         if events & P.EDGES ~= 0 then
             st.matrix_message = nil
@@ -112,6 +131,7 @@ function M.input(st, events, ctx)
                            action.id == "leave_node" or
                            action.id == "go_to_node" or
                            action.id == "cancel_alert" or
+                           action.id == "crash_system" or
                            action.id == "lockout") then
                 -- 0x548A0 performs the shared 0x55F44/0xDBA runner gate
                 -- before dispatch; Cancel Alert itself adds no second roll.
@@ -124,6 +144,26 @@ function M.input(st, events, ctx)
                     elseif not navigated and action.id == "lockout" then
                         st.matrix_message = MatrixText.from_rom(
                             NodeActions.lockout().text)
+                    elseif not navigated and action.id == "crash_system" then
+                        -- The current debug Matrix route has no bound live run
+                        -- record yet. Preserve an explicitly supplied world
+                        -- state; the default accurately represents no run.
+                        local world = st.matrix_world or {
+                            run = { state = 0, objective = 0, value = 0,
+                                    size = 0, fc28 = 0, fc1c = 0 },
+                            field = { alarm = false },
+                        }
+                        st.matrix_world = world
+                        local result = NodeActions.crash_system(
+                            world.run, world.field)
+                        st.matrix_message = MatrixText.from_rom(result.text)
+                        st.shutdown = {
+                            values = result.countdown,
+                            step = result.step,
+                            frames = result.step,
+                            index = 1,
+                        }
+                        st.matrix_countdown = result.countdown[1]
                     end
                 else
                     st.matrix_message = MatrixText.from_rom(

@@ -1402,8 +1402,115 @@ int main() {
     check(runtime.menu_route_snapshot().top_screen == kDebugMenu,
           "debug menu remains unlocked after the Matrix return",
           failures);
-    runtime.close_menu_route();
+
+    // Crash System is an automatic source countdown, not a dismissible
+    // message: 3, 2, 1, 0 each remain for 60 VBlank frames before logout.
+    for (int row = 0; row < 3; ++row) runtime.advance_menu_route(0x0200U);
+    runtime.advance_menu_route(0x4000U); // Pick System.
+    runtime.advance_menu_route(0x4000U); // Jack in to system zero.
+    for (int frame = 0; frame < 20; ++frame) runtime.advance_menu_route(0U);
+    runtime.advance_menu_route(0x4000U); // Enter System.
+    runtime.advance_menu_route(0x4000U); // First link enters CPU.
+    runtime.advance_menu_route(0x0200U);
+    runtime.advance_menu_route(0x0200U); // Crash System row.
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.open && route.top_screen == kMatrixNodeAction &&
+              route.top_title == "Matrix Message" &&
+              route.top_text ==
+                  "  INITIATING||SYSTEM  SHUTDOWN|| IN - - SECONDS" &&
+              route.top_matrix_countdown == 3 &&
+              route.top_option_labels.empty(),
+          "Crash System shows its ROM message and starts at three", failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    const auto capture_shutdown_frame = [&](const int expected_countdown) {
+        const auto frame = runtime.menu_route_snapshot();
+        QImage image(320, 224, QImage::Format_ARGB32);
+        image.fill(QColor(255, 0, 255));
+        QPainter painter(&image);
+        const bool painted = paint_matrix_node_action_panel(
+            painter, node_font, frame);
+        painter.end();
+        bool rows_visible = true;
+        for (const int row_y : {80, 96, 112}) {
+            bool visible = false;
+            for (int y = row_y; y < row_y + 8; ++y) {
+                for (int x = 96; x < 240; ++x) {
+                    visible = visible || image.pixelColor(x, y) ==
+                                             QColor(36, 219, 36);
+                }
+            }
+            rows_visible = rows_visible && visible;
+        }
+        bool digit_visible = false;
+        bool stale_button_visible = false;
+        bool selector_visible = false;
+        for (int y = 112; y < 120; ++y) {
+            for (int x = 136; x < 144; ++x) {
+                digit_visible = digit_visible || image.pixelColor(x, y) ==
+                                                    QColor(36, 219, 36);
+            }
+        }
+        for (int y = 48; y < 160; ++y) {
+            for (int x = 24; x < 88; ++x) {
+                stale_button_visible = stale_button_visible ||
+                    image.pixelColor(x, y) == QColor(36, 219, 36);
+            }
+        }
+        for (int y = 40; y < 200; ++y) {
+            for (int x = 20; x < 300; ++x) {
+                selector_visible = selector_visible ||
+                    image.pixelColor(x, y) == QColor(196, 190, 39);
+            }
+        }
+        check(painted && frame.top_matrix_countdown == expected_countdown &&
+                  rows_visible && digit_visible,
+              "Crash System countdown frame has its ROM rows and digit",
+              failures);
+        check(!stale_button_visible && !selector_visible,
+              "Crash System redraw removes old buttons and selector", failures);
+        const auto artifact = std::filesystem::path(
+            SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) /
+            ("shutdown-countdown-" + std::to_string(expected_countdown) +
+             ".bmp");
+        check(image.save(QString::fromStdString(artifact.string()), "BMP"),
+              "write Crash System countdown image artifact", failures);
+    };
+    capture_shutdown_frame(3);
+#endif
+    for (int frame = 0; frame < 59; ++frame) runtime.advance_menu_route(0U);
+    check(runtime.menu_route_snapshot().top_matrix_countdown == 3,
+          "Crash System holds each count for 60 frames", failures);
+    runtime.advance_menu_route(0U);
+    check(runtime.menu_route_snapshot().top_matrix_countdown == 2,
+          "Crash System changes from three to two after 60 frames", failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    capture_shutdown_frame(2);
+#endif
+    for (const int expected : {2, 1, 0}) {
+        for (int frame = 0; frame < 60; ++frame) {
+            runtime.advance_menu_route(0U);
+        }
+        if (expected > 0) {
+            check(runtime.menu_route_snapshot().top_matrix_countdown ==
+                      expected - 1,
+                  "Crash System follows its source countdown sequence", failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+            capture_shutdown_frame(expected - 1);
+#endif
+        }
+    }
     check(!runtime.menu_route_snapshot().open && closed_count == 4,
+          "Crash System logs out after the final 60-frame zero", failures);
+    check(runtime.open_menu_route(kCommand),
+          "reopen command after Matrix Crash System logout", failures);
+    runtime.advance_menu_route(0x4000U); // Pocket Secretary.
+    for (int row = 0; row < 5; ++row) runtime.advance_menu_route(0x0200U);
+    runtime.advance_menu_route(0x4000U); // Debug menu remains unlocked.
+    check(runtime.menu_route_snapshot().top_screen == kDebugMenu,
+          "Crash System logout preserves the unlocked debug menu", failures);
+    runtime.close_menu_route();
+    check(!runtime.menu_route_snapshot().open && closed_count == 5,
           "close rebuilt command route after the Matrix QA path", failures);
 
     if (failures != 0) {
