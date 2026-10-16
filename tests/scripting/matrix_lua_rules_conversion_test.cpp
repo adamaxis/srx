@@ -128,6 +128,17 @@ Session.finish(first_session)
 
 -- Matrix node actions only select a movement mode. The ROM keeps movement in
 -- its own input loop, then commits the highlighted link or CPU destination.
+local no_alert_state = { alert = -1 }
+local no_alert_result = Actions.cancel_alert(no_alert_state)
+eq(no_alert_state.alert, -1, "Cancel Alert leaves the none state unchanged")
+eq(no_alert_result.text, Actions.TEXT.NO_ALERTS,
+    "Cancel Alert selects the ROM no-alert message")
+local active_alert_state = { alert = 1 }
+local cancelled_alert_result = Actions.cancel_alert(active_alert_state)
+eq(active_alert_state.alert, -1, "Cancel Alert clears an active alert")
+eq(cancelled_alert_result.text, Actions.TEXT.ALERT_CANCELLED,
+    "Cancel Alert selects the ROM cancellation message")
+
 local linked_session_ok, linked_session = Session.begin(0)
 eq(linked_session_ok, true, "node navigation session starts")
 eq(Session.select_node_action(linked_session, "go_to_node"), false,

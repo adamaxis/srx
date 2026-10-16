@@ -65,7 +65,7 @@ function M.search(run, node, st, decker, deck, special, rand)
         st.fff096, st.fff098 = run.size, run.value & 0xFF
         return { text = M.TEXT.OBJECTIVE_FOUND, file = { objective = true, size = run.size, value = run.value } }
     end
-    if special and SPECIAL(special, node.class) then return { story = true } end
+    if special and SPECIAL.matches(special, node.class) then return { story = true } end
     if (decker.int + decker.computer + deck.sensor) // 3 < rand(10) + 1 then return { text = M.TEXT.NOTHING } end
     return { file = { id = node.class * 5 + rand(5), size = (rand(5) + 2) * 10 } }
 end

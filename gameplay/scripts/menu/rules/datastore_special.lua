@@ -4,7 +4,7 @@
 -- r = { system, fc38, fc34, fc1e, fc22, fbfa, fbfb, fc26, fc27, nuyen }; r is updated in place.
 -- Quirk kept [C]: system 0x10 class 1 needs bits 0x1A..0x1E of FFFC38 and pays +50,000 nuyen (0xC350).
 local function s8(v) v = v & 0xFF; return v >= 0x80 and v - 0x100 or v end
-return function(r, d0)
+local function matches(r, d0)
     local d5, d1, cc = 0, 0, 0
     ::L055058:: -- clr.l d0
     ::L05505A:: -- clr.l d1
@@ -320,3 +320,4 @@ return function(r, d0)
     ::L055598:: -- rts
     ::L05559A:: do return false end
 end
+return { matches = matches }

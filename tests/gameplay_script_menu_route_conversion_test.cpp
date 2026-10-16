@@ -1012,6 +1012,62 @@ int main() {
     check(node_actual.save(QString::fromStdString(node_artifact.string()), "BMP"),
           "write live Matrix node-action actual.bmp artifact", failures);
 #endif
+    runtime.advance_menu_route(0x0200U); // Cancel Alert.
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMatrixNodeAction &&
+              route.top_title == "Matrix Message" &&
+              route.top_text.find("NO ALERTS ARE") != std::string::npos &&
+              route.top_matrix_alert == -1,
+          "Cancel Alert preserves no-alert state and shows ROM text", failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    QImage alert_message_actual(320, 224, QImage::Format_ARGB32);
+    alert_message_actual.fill(QColor(255, 0, 255));
+    QPainter alert_message_painter(&alert_message_actual);
+    const QImage alert_message_font = QImage(QString::fromStdString(
+        (node_assets / "cyberspace/matrix/system-map-font.bmp").string()));
+    const bool alert_message_painted = paint_matrix_node_action_panel(
+        alert_message_painter, alert_message_font, route);
+    alert_message_painter.end();
+    check(alert_message_painted,
+          "Cancel Alert message reaches the Qt panel presenter", failures);
+    bool alert_message_rows_spaced = true;
+    constexpr std::array<int, 4> kAlertMessageRows{50, 74, 110, 134};
+    for (const auto y0 : kAlertMessageRows) {
+        bool row_has_text = false;
+        for (int y = y0; y < y0 + 10; ++y) {
+            for (int x = 24; x < 280; ++x) {
+                row_has_text = row_has_text ||
+                    alert_message_actual.pixelColor(x, y) ==
+                        QColor(36, 219, 36);
+            }
+        }
+        alert_message_rows_spaced = alert_message_rows_spaced && row_has_text;
+    }
+    bool old_action_row_visible = false;
+    for (int y = 86; y < 94; ++y) {
+        for (int x = 24; x < 280; ++x) {
+            old_action_row_visible = old_action_row_visible ||
+                alert_message_actual.pixelColor(x, y) == QColor(36, 219, 36);
+        }
+    }
+    check(alert_message_rows_spaced,
+          "Cancel Alert ROM message rows render at distinct positions", failures);
+    check(!old_action_row_visible && route.top_option_labels.empty(),
+          "Cancel Alert redraw removes the prior node action buttons", failures);
+    const auto alert_message_artifact = std::filesystem::path(
+        SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) / "cancel-alert-message.bmp";
+    std::filesystem::create_directories(alert_message_artifact.parent_path());
+    check(alert_message_actual.save(
+              QString::fromStdString(alert_message_artifact.string()), "BMP"),
+          "write Cancel Alert message image artifact", failures);
+#endif
+    runtime.advance_menu_route(0x4000U); // ROM D94 any-edge wait.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMatrixNodeAction && route.top_title == "CPU" &&
+              route.top_option_labels.size() == 3U,
+          "Cancel Alert message returns to the same node action list", failures);
+    runtime.advance_menu_route(0x0100U); // Select Go To Node.
     runtime.advance_menu_route(0x4000U); // Go To Node.
     check(runtime.menu_route_snapshot().top_title == "Go To Node",
           "CPU Go To Node enters destination selection", failures);

@@ -172,14 +172,15 @@ bool paint_matrix_node_action_panel(
     draw_text(24, 20, state.top_title);
     painter.fillRect(QRect(20, 40, 280, 1), edge);
 
+    const bool message_view = state.top_title == "Matrix Message";
     std::size_t start = 0U;
     int line = 0;
-    while (start <= state.top_text.size() && line < 3) {
+    while (start <= state.top_text.size() && line < (message_view ? 8 : 3)) {
         const auto end = state.top_text.find('|', start);
         const auto value = state.top_text.substr(
             start, end == std::string::npos ? std::string::npos
                                             : end - start);
-        draw_text(24, 50 + line * 14, value);
+        draw_text(24, 50 + line * (message_view ? 12 : 14), value);
         ++line;
         if (end == std::string::npos) break;
         start = end + 1U;

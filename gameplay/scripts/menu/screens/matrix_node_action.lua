@@ -3,11 +3,17 @@
 local E = require("enums")
 local P, R, T = E.Pad, E.MenuRegion, E.MenuTransition
 local MatrixSession = require("menu.matrix_session")
+local NodeActions = require("menu.rules.node_actions")
+local MatrixText = require("menu.rules.matrix_text")
 
 local M = { window = E.WindowPlane.OFF }
 local CONFIRM = P.A | P.B | P.C
 
 local function refresh(st)
+    if st.matrix_message then
+        st.title, st.text, st.labels = "Matrix Message", st.matrix_message, {}
+        return
+    end
     local state = st.matrix_state
     local node = MatrixSession.current_node(state)
     if not node then
@@ -64,6 +70,14 @@ function M.input(st, events, ctx)
     if not MatrixSession.is_online(state) then
         return { transition = T.POP, result = {} }
     end
+    if st.matrix_message then
+        if events & P.EDGES ~= 0 then
+            st.matrix_message = nil
+            refresh(st)
+            ctx.redraw(R.FULL)
+        end
+        return
+    end
     if events & P.START ~= 0 then return open_deck(st) end
 
     if state.phase == "node" then
@@ -80,6 +94,12 @@ function M.input(st, events, ctx)
         if events & CONFIRM ~= 0 then
             local action = MatrixSession.node_actions(state)[st.row + 1]
             if action and MatrixSession.select_node_action(state, action.id) then
+                refresh(st)
+                ctx.redraw(R.FULL)
+            elseif action and action.id == "cancel_alert" then
+                local result = NodeActions.cancel_alert(state)
+                st.matrix_message = result.text == NodeActions.TEXT.ALERT_CANCELLED
+                    and MatrixText.ALERT_CANCELLED or MatrixText.NO_ALERTS
                 refresh(st)
                 ctx.redraw(R.FULL)
             end
