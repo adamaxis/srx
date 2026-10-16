@@ -133,6 +133,7 @@ function M.input(st, events, ctx)
                            action.id == "cancel_alert" or
                            action.id == "crash_system" or
                            action.id == "turn_off_node" or
+                           action.id == "erase" or
                            action.id == "lockout") then
                 -- 0x548A0 performs the shared 0x55F44/0xDBA runner gate
                 -- before dispatch; Cancel Alert itself adds no second roll.
@@ -175,6 +176,12 @@ function M.input(st, events, ctx)
                         if result.stop_sfx then
                             ctx.host.stop_sound(result.stop_sfx)
                         end
+                        st.matrix_message = MatrixText.from_rom(result.text)
+                    elseif not navigated and action.id == "erase" then
+                        local world = game.matrix_world_state()
+                        local result = NodeActions.erase(
+                            world.run, MatrixSession.current_node(state))
+                        game.commit_matrix_world_state(world)
                         st.matrix_message = MatrixText.from_rom(result.text)
                     end
                 else

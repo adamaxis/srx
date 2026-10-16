@@ -1306,6 +1306,116 @@ int main() {
                   std::vector<std::string>{"Leave Node", "Turn Off Node"},
           "Turn Off Node message returns to the same slave-module node",
           failures);
+
+    runtime.advance_menu_route(0x0100U); // Select Leave Node.
+    runtime.advance_menu_route(0x4000U); // Open its ROM links.
+    runtime.advance_menu_route(0x4000U); // Enter the first linked datastore.
+    route = runtime.menu_route_snapshot();
+    check(route.top_matrix_node == 2 && route.top_title == "Datastore" &&
+              route.top_option_labels == std::vector<std::string>{
+                  "Leave Node", "Transfer Data", "Erase"},
+          "ROM node navigation exposes Erase on a datastore",
+          failures);
+    matrix_world_state.run = ScriptMatrixRunState{-1, 9, 0, 30, 1, 0};
+    forced_roll_successes = 2;
+    runtime.advance_menu_route(0x0200U); // Transfer Data.
+    runtime.advance_menu_route(0x0200U); // Erase.
+    const auto erase_gate_count = action_rolls.size();
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Matrix Message" &&
+              route.top_text ==
+                  "  The recog-code| rapidly finds the|data and zaps it to| electron heaven!!|| Run accomplished!" &&
+              route.top_option_labels.empty() &&
+              matrix_world_state.run.has_value() &&
+              matrix_world_state.run->state == 1 &&
+              matrix_world_state.run->completion_flags == 0 &&
+              matrix_world_state.run->run_flags == 0x80U &&
+              action_rolls.size() == erase_gate_count + 1U,
+          "objective Erase uses the shared gate, ROM class/value checks, and completes the run",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    const auto save_erase_message = [&](const std::string& filename) {
+        QImage image(320, 224, QImage::Format_ARGB32);
+        image.fill(QColor(255, 0, 255));
+        QPainter painter(&image);
+        const QImage font = QImage(QString::fromStdString(
+            (node_assets / "cyberspace/matrix/system-map-font.bmp").string()));
+        const bool painted = paint_matrix_node_action_panel(painter, font, route);
+        painter.end();
+        bool stale_pixels = false;
+        for (int y = 0; y < image.height(); ++y) {
+            for (int x = 0; x < image.width(); ++x) {
+                stale_pixels = stale_pixels ||
+                    image.pixelColor(x, y) == QColor(255, 0, 255);
+            }
+        }
+        check(painted && !stale_pixels && route.top_option_labels.empty(),
+              "Erase message replaces the prior datastore buttons cleanly",
+              failures);
+        const auto artifact = std::filesystem::path(
+            SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) / filename;
+        std::filesystem::create_directories(artifact.parent_path());
+        check(image.save(QString::fromStdString(artifact.string()), "BMP"),
+              "write Erase ROM message image artifact", failures);
+    };
+    save_erase_message("erase-objective-message.bmp");
+#endif
+    runtime.advance_menu_route(0x4000U); // ROM D94 wait returns to datastore.
+    runtime.advance_menu_route(0x0100U); // Leave Node.
+    runtime.advance_menu_route(0x0100U);
+    runtime.advance_menu_route(0x4000U); // Open Leave Node links.
+    runtime.advance_menu_route(0x0800U); // Choose the second link to Slave Module.
+    runtime.advance_menu_route(0x4000U);
+    check(runtime.menu_route_snapshot().top_matrix_node == 1,
+          "datastore link navigation returns to the slave module",
+          failures);
+
+    runtime.advance_menu_route(0x4000U); // Leave Node from the slave module.
+    runtime.advance_menu_route(0x4000U); // First link returns to datastore.
+    route = runtime.menu_route_snapshot();
+    matrix_world_state.run = ScriptMatrixRunState{-1, 5, 0, 30, 1, 0};
+    forced_roll_successes = 2;
+    runtime.advance_menu_route(0x0200U); // Transfer Data.
+    runtime.advance_menu_route(0x0200U); // Erase.
+    const auto ordinary_erase_gate_count = action_rolls.size();
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Matrix Message" &&
+              route.top_text ==
+                  "You find a file that| appears important| and obliterate it|  from memory!!!|| Score one for the|downtrodden hacker!" &&
+              route.top_option_labels.empty() &&
+              matrix_world_state.run.has_value() &&
+              matrix_world_state.run->state == -1 &&
+              action_rolls.size() == ordinary_erase_gate_count + 1U,
+          "ordinary Erase uses the shared gate without completing another run",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    save_erase_message("erase-file-message.bmp");
+#endif
+    runtime.advance_menu_route(0x4000U); // ROM D94 wait returns to datastore.
+    runtime.advance_menu_route(0x0100U); // Leave Node.
+    runtime.advance_menu_route(0x0100U);
+    runtime.advance_menu_route(0x4000U); // Open Leave Node links.
+    runtime.advance_menu_route(0x0800U); // Choose Slave Module.
+    runtime.advance_menu_route(0x4000U);
+    check(runtime.menu_route_snapshot().top_matrix_node == 1,
+          "ordinary Erase returns to the original slave module",
+          failures);
+    runtime.advance_menu_route(0x4000U); // Leave Node from the Slave Module.
+    runtime.advance_menu_route(0x0800U); // Choose its CPU link.
+    runtime.advance_menu_route(0x4000U);
+    check(runtime.menu_route_snapshot().top_matrix_node == 4,
+          "the erase route can return through the ROM CPU node", failures);
+    runtime.advance_menu_route(0x4000U); // CPU Go To Node.
+    runtime.advance_menu_route(0x0800U); // Select Slave Module.
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_matrix_node == 1 &&
+              route.top_matrix_previous_node == 4,
+          "erase route restores the prior-node relationship used by Retreat",
+          failures);
+    matrix_world_state.run = ScriptMatrixRunState{-1, -1, 0, 0, 1, 0};
     runtime.advance_menu_route(0x8000U); // Start enters the deck loop.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kCyberdeck &&

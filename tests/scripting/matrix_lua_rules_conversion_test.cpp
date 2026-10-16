@@ -171,6 +171,12 @@ eq(MatrixText.from_rom(Actions.TEXT.SHUTDOWN),
     "ROM Crash System text address resolves to the decoded message")
 eq(MatrixText.from_rom(Actions.TEXT.OFFLINE), "NODE IS OFFLINE",
     "ROM Turn Off Node text address resolves to its decoded message")
+eq(MatrixText.from_rom(Actions.TEXT.ERASE_OBJECTIVE),
+    "  The recog-code| rapidly finds the|data and zaps it to| electron heaven!!|| Run accomplished!",
+    "ROM objective Erase text preserves source line breaks")
+eq(MatrixText.from_rom(Actions.TEXT.ERASED),
+    "You find a file that| appears important| and obliterate it|  from memory!!!|| Score one for the|downtrodden hacker!",
+    "ROM ordinary Erase text preserves source line breaks")
 local crash_run = { state = -1, objective = -1, value = 0, size = 0,
     fc28 = 1, fc1c = 0 }
 local crash_field = { alarm = true, security_off = false, maglocks_off = false }
@@ -420,6 +426,24 @@ eq(found.file.size, 30, "objective file uses run size")
 local result = Actions.erase(run, { class = 5 })
 eq(result.text, Actions.TEXT.ERASE_OBJECTIVE, "objective erase text")
 eq(run.state, 1, "objective erase completes run")
+local ordinary_erase_run = { state = -1, objective = 9, value = 0,
+    size = 30, fc28 = 1, fc1c = 0 }
+local ordinary_erase = Actions.erase(ordinary_erase_run, { class = 5 })
+eq(ordinary_erase.text, Actions.TEXT.ERASED,
+    "non-objective Erase uses the ordinary ROM message")
+eq(ordinary_erase_run.state, -1,
+    "non-objective Erase leaves the active run incomplete")
+local erase_nonzero_value_run = { state = -1, objective = 5, value = 1,
+    size = 30, fc28 = 1, fc1c = 0 }
+local erase_nonzero_value = Actions.erase(erase_nonzero_value_run,
+    { class = 5 })
+eq(erase_nonzero_value.text, Actions.TEXT.ERASED,
+    "objective-class Erase requires a zero objective value")
+eq(erase_nonzero_value_run.state, -1,
+    "nonzero objective value does not complete the run")
+local no_run_erase = Actions.erase(nil, { class = 5 })
+eq(no_run_erase.text, Actions.TEXT.ERASED,
+    "Erase without an imported active run remains a normal file erase")
 local gate_state = { attempts = 0 }
 eq(Actions.gate(3, 2, { colour = 1, security = 4 }, gate_state,
     function(dice, tn) eq(dice, 4, "node action pool uses minimum"); eq(tn, 4, "node action uses security"); return 1 end),

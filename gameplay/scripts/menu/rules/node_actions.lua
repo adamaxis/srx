@@ -14,7 +14,10 @@ local function complete(run)                       -- shared "run complete" (0x5
     run.fc28 = run.fc28 & ~1; run.state = 1; run.fc1c = run.fc1c | 0x80
 end
 -- 0x54C6A / 0x555A? run check: FFF0E3 < 0 (run in progress) and node class byte == FFFBF2 byte [C].
-local function on_objective(run, node) return run.state < 0 and (node.class & 0xFF) == (run.objective & 0xFF) end
+local function on_objective(run, node)
+    return run ~= nil and run.state < 0 and
+           (node.class & 0xFF) == (run.objective & 0xFF)
+end
 
 -- 0x54AEA Cancel Alert: no roll.
 function M.cancel_alert(st)
