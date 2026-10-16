@@ -11,14 +11,17 @@
 #include <QTcpSocket>
 #include <QString>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <map>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
@@ -75,10 +78,16 @@ public:
         }
         if (command == QStringLiteral("pause")) {
             stepper_.pause();
+            stop_reason_ = QStringLiteral("pause");
+            stop_breakpoint_ = 0;
+            stop_detail_.clear();
             return encode(status_object());
         }
         if (command == QStringLiteral("resume")) {
             stepper_.resume();
+            stop_reason_ = QStringLiteral("none");
+            stop_breakpoint_ = 0;
+            stop_detail_.clear();
             return encode(status_object());
         }
         if (command == QStringLiteral("step")) {
@@ -93,7 +102,78 @@ public:
                 stepper_.pause();
             }
             stepper_.queue_step(static_cast<std::uint32_t>(count));
+            stop_reason_ = QStringLiteral("step");
+            stop_breakpoint_ = 0;
+            stop_detail_.clear();
             return encode(status_object());
+        }
+        if (command == QStringLiteral("break")) {
+            if (request.value(QStringLiteral("kind")).toString(
+                    QStringLiteral("frame")) != QStringLiteral("frame")) {
+                return encode_error(
+                    QStringLiteral("only frame breakpoints are supported"));
+            }
+            const auto value = request.value(QStringLiteral("frame"));
+            const auto target = value.toDouble(-1.0);
+            const auto current = frame_ ? frame_() : 0U;
+            if (!std::isfinite(target) || target < 0.0 ||
+                target > 9007199254740991.0 || std::floor(target) != target ||
+                target <= static_cast<double>(current)) {
+                return encode_error(QStringLiteral(
+                    "frame breakpoint must be an integer after the current frame"));
+            }
+            if (std::any_of(breakpoints_.begin(), breakpoints_.end(),
+                            [target](const FrameBreakpoint& breakpoint) {
+                                return static_cast<double>(breakpoint.frame) ==
+                                       target;
+                            })) {
+                return encode_error(QStringLiteral(
+                    "a breakpoint already exists at that frame"));
+            }
+            const auto id = ++next_breakpoint_id_;
+            breakpoints_.push_back(
+                {id, static_cast<std::uint64_t>(target)});
+            QJsonObject result;
+            result.insert(QStringLiteral("ok"), true);
+            result.insert(QStringLiteral("id"), id);
+            result.insert(QStringLiteral("kind"), QStringLiteral("frame"));
+            result.insert(QStringLiteral("frame"), target);
+            return encode(result);
+        }
+        if (command == QStringLiteral("delete")) {
+            const auto value = request.value(QStringLiteral("id"));
+            const auto numeric_id = value.toDouble(-1.0);
+            if (!std::isfinite(numeric_id) || numeric_id < 1.0 ||
+                std::floor(numeric_id) != numeric_id ||
+                numeric_id > static_cast<double>(std::numeric_limits<int>::max())) {
+                return encode_error(QStringLiteral("delete requires a breakpoint id"));
+            }
+            const auto id = static_cast<int>(numeric_id);
+            const auto found = std::find_if(
+                breakpoints_.begin(), breakpoints_.end(),
+                [id](const FrameBreakpoint& breakpoint) {
+                    return breakpoint.id == id;
+                });
+            if (found == breakpoints_.end()) {
+                return encode_error(QStringLiteral("no such breakpoint"));
+            }
+            breakpoints_.erase(found);
+            return encode(status_object());
+        }
+        if (command == QStringLiteral("list")) {
+            QJsonArray entries;
+            for (const auto& breakpoint : breakpoints_) {
+                QJsonObject entry;
+                entry.insert(QStringLiteral("id"), breakpoint.id);
+                entry.insert(QStringLiteral("kind"), QStringLiteral("frame"));
+                entry.insert(QStringLiteral("frame"),
+                             static_cast<double>(breakpoint.frame));
+                entries.append(entry);
+            }
+            QJsonObject result;
+            result.insert(QStringLiteral("ok"), true);
+            result.insert(QStringLiteral("breakpoints"), entries);
+            return encode(result);
         }
         if (command == QStringLiteral("key")) {
             const auto name = request.value(QStringLiteral("key")).toString();
@@ -136,10 +216,29 @@ public:
             QJsonObject result;
             result.insert(QStringLiteral("ok"), true);
             result.insert(QStringLiteral("commands"),
-                          QStringLiteral("status pause resume step key inspect help"));
+                          QStringLiteral("status pause resume step key inspect break delete list help"));
             return encode(result);
         }
         return encode_error(QStringLiteral("unknown command"));
+    }
+
+    // Called after the host completes and numbers each source frame. Returning
+    // true tells the frame pump to stop its current batch at the breakpoint.
+    bool check_source_frame_breakpoints() {
+        const auto current = frame_ ? frame_() : 0U;
+        const auto found = std::find_if(
+            breakpoints_.begin(), breakpoints_.end(),
+            [current](const FrameBreakpoint& breakpoint) {
+                return breakpoint.frame == current;
+            });
+        if (found == breakpoints_.end()) {
+            return false;
+        }
+        stop_reason_ = QStringLiteral("breakpoint");
+        stop_breakpoint_ = found->id;
+        stop_detail_ = QString::number(current);
+        stepper_.pause();
+        return true;
     }
 
 private:
@@ -153,6 +252,11 @@ private:
         object.insert(QStringLiteral("error"), message);
         return encode(object);
     }
+
+    struct FrameBreakpoint {
+        int id = 0;
+        std::uint64_t frame = 0;
+    };
 
     static void flatten(const QString& prefix, const QJsonValue& value,
                         QJsonObject& output) {
@@ -205,6 +309,9 @@ private:
                                         : QStringLiteral("running"));
         result.insert(QStringLiteral("pending_steps"),
                       static_cast<double>(stepper_.pending_steps()));
+        result.insert(QStringLiteral("stop"), stop_reason_);
+        result.insert(QStringLiteral("breakpoint"), stop_breakpoint_);
+        result.insert(QStringLiteral("detail"), stop_detail_);
         result.insert(QStringLiteral("port"),
                       static_cast<int>(server_.serverPort()));
         return result;
@@ -255,6 +362,11 @@ private:
     KeyQueue queue_key_;
     QTcpServer server_;
     std::map<QTcpSocket*, QByteArray> buffers_;
+    std::vector<FrameBreakpoint> breakpoints_;
+    int next_breakpoint_id_ = 0;
+    QString stop_reason_ = QStringLiteral("none");
+    int stop_breakpoint_ = 0;
+    QString stop_detail_;
 };
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

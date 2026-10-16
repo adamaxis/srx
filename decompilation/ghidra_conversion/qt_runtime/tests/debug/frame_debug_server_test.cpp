@@ -37,6 +37,7 @@ int main(int argc, char** argv) {
     shadowrun::ghidra_conversion::debug::FrameStepper stepper(true);
     int queued_key = 0;
     bool queued_pressed = false;
+    std::uint64_t current_frame = 88U;
     QJsonObject state;
     state.insert(QStringLiteral("app.phase"), QStringLiteral("field_ready"));
     QJsonObject actor;
@@ -45,7 +46,7 @@ int main(int argc, char** argv) {
     state.insert(QStringLiteral("actor.test"), actor);
 
     FrameDebugServer server(
-        0U, stepper, [state] { return state; }, [] { return 88U; },
+        0U, stepper, [state] { return state; }, [&current_frame] { return current_frame; },
         [] { return QStringLiteral("field_ready"); },
         [&queued_key, &queued_pressed](const int key, const bool pressed) {
             queued_key = key;
@@ -82,6 +83,49 @@ int main(int argc, char** argv) {
         !result.value(QStringLiteral("queued")).toBool() ||
         queued_key != Qt::Key_Z || !queued_pressed) {
         std::cerr << "key command did not queue the mapped Qt key transition\n";
+        return 1;
+    }
+    result = response(server.handle_line(
+        R"({"cmd":"break","kind":"frame","frame":90})"));
+    const auto breakpoint_id = result.value(QStringLiteral("id")).toInt();
+    if (!result.value(QStringLiteral("ok")).toBool() || breakpoint_id <= 0 ||
+        server.check_source_frame_breakpoints()) {
+        std::cerr << "frame breakpoint did not register for a future frame\n";
+        return 1;
+    }
+    result = response(server.handle_line(R"({"cmd":"list"})"));
+    const auto listed = result.value(QStringLiteral("breakpoints")).toArray();
+    if (!result.value(QStringLiteral("ok")).toBool() || listed.size() != 1 ||
+        listed.at(0).toObject().value(QStringLiteral("frame")).toInt() != 90) {
+        std::cerr << "list command did not return the registered frame breakpoint\n";
+        return 1;
+    }
+    current_frame = 90U;
+    if (!server.check_source_frame_breakpoints() || !stepper.paused()) {
+        std::cerr << "frame breakpoint did not pause on its source frame\n";
+        return 1;
+    }
+    result = response(server.handle_line(R"({"cmd":"status"})"));
+    if (result.value(QStringLiteral("stop")).toString() !=
+            QStringLiteral("breakpoint") ||
+        result.value(QStringLiteral("breakpoint")).toInt() != breakpoint_id ||
+        result.value(QStringLiteral("detail")).toString() !=
+            QStringLiteral("90")) {
+        std::cerr << "status did not report the breakpoint stop details\n";
+        return 1;
+    }
+    result = response(server.handle_line(
+        QByteArray("{\"cmd\":\"delete\",\"id\":") +
+        QByteArray::number(breakpoint_id) + "}"));
+    if (!result.value(QStringLiteral("ok")).toBool() ||
+        !response(server.handle_line(R"({"cmd":"list"})"))
+             .value(QStringLiteral("breakpoints")).toArray().isEmpty()) {
+        std::cerr << "delete command did not remove the frame breakpoint\n";
+        return 1;
+    }
+    current_frame = 91U;
+    if (server.check_source_frame_breakpoints()) {
+        std::cerr << "deleted frame breakpoint still stopped execution\n";
         return 1;
     }
     result = response(server.handle_line(

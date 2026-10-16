@@ -1217,6 +1217,10 @@ private:
             }
             ++source_frame_index_;
             ++advanced_frames;
+            if (debug_server_ &&
+                debug_server_->check_source_frame_breakpoints()) {
+                break;
+            }
             if (replay_diverged_) {
                 break;
             }
