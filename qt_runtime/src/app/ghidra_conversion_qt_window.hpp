@@ -153,6 +153,8 @@ public:
           field_scene_runtime_([this](const std::string_view boundary) {
           }, [this](const std::uint16_t event) {
               audio_playback_.play_event(event);
+          }, [this](const std::uint16_t sound) {
+              audio_playback_.stop_resource(sound);
           }),
           audio_playback_(
               [this](const std::string_view alias) -> std::filesystem::path {

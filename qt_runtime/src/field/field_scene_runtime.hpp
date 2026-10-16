@@ -255,7 +255,8 @@ class FieldSceneRuntime final {
 public:
     explicit FieldSceneRuntime(
         std::function<void(std::string_view)> source_boundary,
-        std::function<void(std::uint16_t)> source_audio_event = {});
+        std::function<void(std::uint16_t)> source_audio_event = {},
+        std::function<void(std::uint16_t)> source_audio_stop = {});
 
     bool bootstrap(
         const integration::StartupIntegrationState& startup_state);
@@ -1545,6 +1546,7 @@ private:
 
     std::function<void(std::string_view)> source_boundary_callback_;
     std::function<void(std::uint16_t)> source_audio_event_callback_;
+    std::function<void(std::uint16_t)> source_audio_stop_callback_;
     integration::FieldSessionBootstrapInput input_;
     integration::FieldSessionBootstrapState state_;
     std::unique_ptr<integration::FieldSessionSourceAssets>

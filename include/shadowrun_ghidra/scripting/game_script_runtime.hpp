@@ -78,6 +78,7 @@ enum class ScriptNotebookBoundary : std::uint8_t {
 
 struct ScriptMenuRouteHost {
     std::function<void(std::uint16_t)> play_sound;
+    std::function<void(std::uint16_t)> stop_sound;
     std::function<void(std::uint32_t)> redraw;
     std::function<void(std::uint16_t)> blank;
     std::function<void(std::uint16_t)> set_window;
@@ -189,9 +190,15 @@ struct ScriptMatrixFieldState {
     std::optional<bool> maglocks_off;
 };
 
+struct ScriptMatrixFieldActorState {
+    std::string actor_id;
+    std::uint8_t flags_9e = 0U;
+};
+
 struct ScriptMatrixWorldState {
     std::optional<ScriptMatrixRunState> run;
     ScriptMatrixFieldState field;
+    std::vector<ScriptMatrixFieldActorState> actors;
 };
 
 struct ScriptMenuRouteGame {

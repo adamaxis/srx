@@ -25,6 +25,29 @@ or pixel `(136,112)`. The latter lands in the gap between the two hyphens in
 `IN - - SECONDS`. The two `0x80` breaks in the text stream preserve one blank
 row between its three text lines.
 
+## Turn Off Node source trace
+
+Primary source: `input/shadowrun_genesis_us.bin`, entry `0x54BD2`.
+
+- It redraws the node-action grid, reads the current node record from
+  `FF1100 + FFF118 * 0x14`, and dispatches on that record's `+1` class byte.
+- Class `0x27` calls alarm-off and sets `FFE170`; `0x28` sets `FFE170`;
+  `0x29` sets `FFE17F`; `0x2A` calls alarm-off.
+- All four branches print the ROM text at `0x16684A` (`NODE IS OFFLINE`) at
+  `$C61A`, then enter the any-button wait at `0xD94`.
+- Alarm-off `0x1E09A` clears `FFE16F` only when set. In that branch it visits
+  the seven actor records from `FF0400` in `0x100` steps, setting `+0x9E` bit 2
+  for each record whose bit 1 is set. It always sends sound `0x30` through
+  stop-resource service `0x530D2`.
+
+The Lua route now reads the node class, applies these class-specific changes,
+commits field and actor facts through the typed host bridge, and uses a
+separate stop-resource callback. Route QA reaches ROM system 0's class `0x29`
+Slave Module and checks the maglock flag and clean `NODE IS OFFLINE` panel.
+Rules QA covers all four classes and the conditional actor-flag update. The
+field host currently exposes only its active typed actor records; unrecovered
+raw records remain a boundary.
+
 ## Qt route check
 
 The live debug-menu route enters system 0, follows its first link to CPU, runs
@@ -49,11 +72,9 @@ internal Qt route artifacts, not independent Genesis captures.
 
 The route now reads and commits `ScriptMatrixWorldState` through typed Lua host
 bindings. Its test supplies a known active run (`state=-1`, `objective=-1`,
-completion bit 0 set) and verifies that the route marks it complete, clears the
-bit, sets the run flag, and writes alarm/security/maglock state. This verifies
-the bridge and Lua rule against that test input; it does not supply production
-run data. The field runtime's current run provider is still absent, and the
-committed field flags are not yet consumed by door/guard behavior or included
-in save data. Alarm actor reactions and sound-stop behavior, native fade, and
-source Matrix logout presentation remain open. The Crash System hill remains
-`partial`.
+completion bit 0 set) and verifies the completion writes. The production
+runtime still has no active-run provider. The field runtime stores the
+committed flags, but security/maglock writes are not yet consumed by guard or
+door behavior or included in save data; only alarm-off actor `+0x9E` updates
+are currently connected. Native fade and source Matrix logout presentation
+remain open. The Crash System hill remains `partial`.

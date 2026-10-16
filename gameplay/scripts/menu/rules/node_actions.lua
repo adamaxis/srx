@@ -22,11 +22,11 @@ function M.cancel_alert(st)
     return { text = M.TEXT.NO_ALERTS }
 end
 -- 0x54B34 Crash System: countdown 3..0 at 60 frames, fade 0x18776, logout 0x26A00.
-function M.crash_system(run, field)
+function M.crash_system(run, field, actors)
     if run and run.state < 0 and run.objective < 0 then complete(run) end
-    field.alarm = false                                -- 0x1E09A (see M.alarm_off)
+    M.alarm_off(field, actors)                          -- 0x1E09A
     field.security_off, field.maglocks_off = true, true
-    return { text = M.TEXT.SHUTDOWN, countdown = { 3, 2, 1, 0 }, step = M.SHUTDOWN_STEP_FRAMES, logout = true }
+    return { text = M.TEXT.SHUTDOWN, countdown = { 3, 2, 1, 0 }, step = M.SHUTDOWN_STEP_FRAMES, logout = true, stop_sfx = 0x30 }
 end
 -- 0x1E09A alarm off: if FFE16F set -> clear; actors FF0400..FF0A00 with +0x9E bit1 get bit2; stop sfx 0x30.
 function M.alarm_off(field, actors)
@@ -40,12 +40,16 @@ M.TURN_OFF = { [0x27] = { alarm = true, security = true }, [0x28] = { security =
                [0x29] = { maglocks = true }, [0x2A] = { alarm = true } }
 function M.turn_off_node(node, field, actors)
     local e = M.TURN_OFF[node.class]
+    local stop_sfx
     if e then
-        if e.alarm then M.alarm_off(field, actors) end
+        if e.alarm then
+            M.alarm_off(field, actors)
+            stop_sfx = 0x30
+        end
         if e.security then field.security_off = true end   -- FFE170 [H: suppresses guard spawns 0x163DA/0x1DFD8]
         if e.maglocks then field.maglocks_off = true end   -- FFE17F maglocks disengaged
     end
-    return { text = M.TEXT.OFFLINE }
+    return { text = M.TEXT.OFFLINE, stop_sfx = stop_sfx }
 end
 -- 0x5559E Erase: objective "erase" when class == FFFBF2 and FFFBF6 == 0.
 function M.erase(run, node)

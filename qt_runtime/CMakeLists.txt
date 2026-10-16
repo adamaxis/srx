@@ -1038,6 +1038,7 @@ set_target_properties(shadowrun_ghidra_field_interaction_runtime_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 target_compile_definitions(shadowrun_ghidra_field_interaction_runtime_test PRIVATE
+    SHADOWRUN_QT_QA_DRIVER=1
     SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../assets"
     SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../gameplay/scripts")
 target_link_libraries(shadowrun_ghidra_field_interaction_runtime_test

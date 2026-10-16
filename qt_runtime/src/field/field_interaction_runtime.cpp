@@ -75,9 +75,11 @@ enum class FieldInteractionRuntime::TextKey : std::uint32_t {
 
 FieldInteractionRuntime::FieldInteractionRuntime(
     std::function<void(std::string_view)> source_boundary,
-    std::function<void(std::uint16_t)> source_audio_event)
+    std::function<void(std::uint16_t)> source_audio_event,
+    std::function<void(std::uint16_t)> source_audio_stop)
     : source_boundary_callback_(std::move(source_boundary)),
       source_audio_event_callback_(std::move(source_audio_event)),
+      source_audio_stop_callback_(std::move(source_audio_stop)),
       alert_transition_state_(
           std::make_unique<WorldEffectTransitionState>()),
       owned_alert_timeout_state_(
@@ -565,10 +567,12 @@ void FieldInteractionRuntime::begin_security_alert() {
 void FieldInteractionRuntime::finish_security_alert() {
     alert_latched_ = false;
     alert_transition_state_->transition_latched = false;
-    if (source_audio_event_callback_) {
-        // ROM 0x1E09A sends the same sound through 0x530D2, whose audio-enable
-        // gate is distinct from the 0x530DE path.
-        source_audio_event_callback_(0x30U);
+    if (source_audio_stop_callback_) {
+        // ROM 0x1E09A sends sound 0x30 through 0x530D2's stop-resource path.
+        source_audio_stop_callback_(0x30U);
+    } else if (source_boundary_callback_) {
+        source_boundary_callback_(
+            "field.interaction.alert.stop_sound_unavailable");
     }
 }
 

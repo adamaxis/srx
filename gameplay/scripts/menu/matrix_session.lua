@@ -21,6 +21,9 @@ local function typed_node(source)
         function_id = source.function_id,
         fn = source.function_id,
         file_class_id = source.file_class_id,
+        -- The ROM's node +1 byte is also the class consumed by node actions
+        -- (including 0x27..0x2A Turn Off Node dispatch).
+        class = source.file_class_id,
         x = source.x,
         y = source.y,
         colour = source.security_color,

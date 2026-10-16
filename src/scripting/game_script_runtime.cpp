@@ -742,6 +742,7 @@ bool push_persistent_value(lua_State* state,
 struct GameScriptRuntime::Impl {
     enum class MenuBinding : lua_Integer {
         play_sound = 1,
+        stop_sound,
         redraw,
         blank,
         set_window,
@@ -845,6 +846,12 @@ struct GameScriptRuntime::Impl {
         case MenuBinding::play_sound:
             if (self->menu_route_bindings.host.play_sound) {
                 self->menu_route_bindings.host.play_sound(
+                    static_cast<std::uint16_t>(integer_argument(1)));
+            }
+            return 0;
+        case MenuBinding::stop_sound:
+            if (self->menu_route_bindings.host.stop_sound) {
+                self->menu_route_bindings.host.stop_sound(
                     static_cast<std::uint16_t>(integer_argument(1)));
             }
             return 0;
@@ -1477,6 +1484,8 @@ struct GameScriptRuntime::Impl {
         const auto table_index = lua_absindex(state, -1);
         add_menu_binding(state, table_index, "play_sound",
                          MenuBinding::play_sound);
+        add_menu_binding(state, table_index, "stop_sound",
+                         MenuBinding::stop_sound);
         add_menu_binding(state, table_index, "redraw", MenuBinding::redraw);
         add_menu_binding(state, table_index, "blank", MenuBinding::blank);
         add_menu_binding(state, table_index, "set_window",

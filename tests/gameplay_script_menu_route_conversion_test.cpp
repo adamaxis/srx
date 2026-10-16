@@ -147,6 +147,7 @@ int main() {
     }
 
     std::vector<std::uint16_t> sounds;
+    std::vector<std::uint16_t> stopped_sounds;
     std::vector<std::uint16_t> windows;
     std::vector<std::uint16_t> legacy_screens;
     std::vector<std::uint16_t> blank_modes;
@@ -163,6 +164,8 @@ int main() {
     matrix_world_state.field.alarm = true;
     matrix_world_state.field.security_off = false;
     matrix_world_state.field.maglocks_off = false;
+    matrix_world_state.actors = {{"fixture-armed", 0x02U},
+                                 {"fixture-other", 0x04U}};
     bool pocket_extra_row = false;
     std::vector<int> random_bounds;
     bool random_high_branch = false;
@@ -184,6 +187,9 @@ int main() {
     ScriptMenuRouteBindings bindings;
     bindings.host.play_sound = [&sounds](const std::uint16_t sound) {
         sounds.push_back(sound);
+    };
+    bindings.host.stop_sound = [&stopped_sounds](const std::uint16_t sound) {
+        stopped_sounds.push_back(sound);
     };
     bindings.host.redraw = [](std::uint32_t) {};
     bindings.host.blank = [&blank_modes](const std::uint16_t mode) {
@@ -314,6 +320,17 @@ int main() {
         }
         if (update.field.maglocks_off.has_value()) {
             matrix_world_state.field.maglocks_off = update.field.maglocks_off;
+        }
+        for (const auto& actor : update.actors) {
+            const auto current = std::find_if(
+                matrix_world_state.actors.begin(),
+                matrix_world_state.actors.end(),
+                [&actor](const auto& candidate) {
+                    return candidate.actor_id == actor.actor_id;
+                });
+            if (current != matrix_world_state.actors.end()) {
+                current->flags_9e = actor.flags_9e;
+            }
         }
     };
     runtime.set_menu_route_bindings(std::move(bindings));
@@ -1241,6 +1258,54 @@ int main() {
     route = runtime.menu_route_snapshot();
     check(route.top_matrix_node == 1,
           "Go To Node commits the highlighted catalog node", failures);
+    check(route.top_option_labels ==
+              std::vector<std::string>{"Leave Node", "Turn Off Node"},
+          "ROM node class 0x29 selects the Turn Off Node action row", failures);
+    runtime.advance_menu_route(0x0200U); // Turn Off Node.
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Matrix Message" &&
+              route.top_text == "NODE IS OFFLINE" &&
+              route.top_option_labels.empty() &&
+              matrix_world_state.field.maglocks_off ==
+                  std::optional<bool>{true} && stopped_sounds.empty(),
+          "Turn Off Node class 0x29 commits maglocks and displays ROM text",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    QImage offline_actual(320, 224, QImage::Format_ARGB32);
+    offline_actual.fill(QColor(255, 0, 255));
+    QPainter offline_painter(&offline_actual);
+    const QImage offline_font = QImage(QString::fromStdString(
+        (node_assets / "cyberspace/matrix/system-map-font.bmp").string()));
+    const bool offline_painted = paint_matrix_node_action_panel(
+        offline_painter, offline_font, route);
+    offline_painter.end();
+    bool old_node_action_pixels = false;
+    for (const int row_y : {85, 107, 129}) {
+        for (int y = row_y; y < row_y + 10; ++y) {
+            for (int x = 24; x < 200; ++x) {
+                old_node_action_pixels = old_node_action_pixels ||
+                    offline_actual.pixelColor(x, y) == QColor(36, 219, 36);
+            }
+        }
+    }
+    check(offline_painted && !old_node_action_pixels,
+          "Turn Off Node message redraw clears prior menu labels", failures);
+    const auto offline_artifact = std::filesystem::path(
+        SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) /
+        "turn-off-node-message.bmp";
+    std::filesystem::create_directories(offline_artifact.parent_path());
+    check(offline_actual.save(QString::fromStdString(offline_artifact.string()),
+                              "BMP"),
+          "write Turn Off Node ROM message artifact", failures);
+#endif
+    runtime.advance_menu_route(0x4000U); // ROM D94 wait returns to node.
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Slave Module" &&
+              route.top_option_labels ==
+                  std::vector<std::string>{"Leave Node", "Turn Off Node"},
+          "Turn Off Node message returns to the same slave-module node",
+          failures);
     runtime.advance_menu_route(0x8000U); // Start enters the deck loop.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kCyberdeck &&
@@ -1457,6 +1522,12 @@ int main() {
               matrix_world_state.field.maglocks_off ==
                   std::optional<bool>{true},
           "Crash System commits its source run-completion and field flags through the host", failures);
+    check(matrix_world_state.actors.size() == 2U &&
+              matrix_world_state.actors[0].flags_9e == 0x06U &&
+              matrix_world_state.actors[1].flags_9e == 0x04U &&
+              stopped_sounds == std::vector<std::uint16_t>{0x30U},
+          "alarm-off applies the ROM actor flag change and stops sound 0x30",
+          failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     const auto capture_shutdown_frame = [&](const int expected_countdown) {
         const auto frame = runtime.menu_route_snapshot();

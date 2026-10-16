@@ -169,23 +169,53 @@ eq(MatrixText.from_rom(Actions.TEXT.LOCKOUT), MatrixText.LOCKOUT,
 eq(MatrixText.from_rom(Actions.TEXT.SHUTDOWN),
     "  INITIATING||SYSTEM  SHUTDOWN|| IN - - SECONDS",
     "ROM Crash System text address resolves to the decoded message")
+eq(MatrixText.from_rom(Actions.TEXT.OFFLINE), "NODE IS OFFLINE",
+    "ROM Turn Off Node text address resolves to its decoded message")
 local crash_run = { state = -1, objective = -1, value = 0, size = 0,
     fc28 = 1, fc1c = 0 }
 local crash_field = { alarm = true, security_off = false, maglocks_off = false }
-local crash_result = Actions.crash_system(crash_run, crash_field)
+local alarm_actors = { { flags9e = 0x02 }, { flags9e = 0x04 } }
+local crash_result = Actions.crash_system(crash_run, crash_field, alarm_actors)
 eq(crash_run.state, 1, "Crash System completes a negative state and objective")
 eq(crash_run.fc28, 0, "Crash System clears the completion bit")
 eq(crash_run.fc1c, 0x80, "Crash System sets the run-complete flag")
 eq(crash_field.alarm, false, "Crash System turns the alarm off")
 eq(crash_field.security_off, true, "Crash System disables security")
 eq(crash_field.maglocks_off, true, "Crash System disengages maglocks")
+eq(alarm_actors[1].flags9e, 0x06, "alarm-off arms actors whose +0x9E bit 1 was set")
+eq(alarm_actors[2].flags9e, 0x04, "alarm-off preserves unrelated actor flags")
 eq(crash_result.step, 60, "Crash System waits one source second per count")
+eq(crash_result.stop_sfx, 0x30, "Crash System stops the source alarm effect")
 local partial_run = { state = -1, objective = 0, fc28 = 1, fc1c = 0 }
 Actions.crash_system(partial_run, {})
 eq(partial_run.state, -1, "Crash System leaves a nonnegative objective incomplete")
 eq(partial_run.fc28, 1, "incomplete Crash System preserves the completion bit")
 local absent_run_result = Actions.crash_system(nil, {})
 eq(absent_run_result.logout, true, "Crash System handles an unknown run without inventing one")
+
+local class_27_field = { alarm = true }
+local class_27_actors = { { flags9e = 0x02 } }
+local class_27_result = Actions.turn_off_node(
+    { class = 0x27 }, class_27_field, class_27_actors)
+eq(class_27_field.alarm, false, "class 0x27 turns off the alarm")
+eq(class_27_field.security_off, true, "class 0x27 disables building security")
+eq(class_27_actors[1].flags9e, 0x06, "class 0x27 applies alarm actor flags")
+eq(class_27_result.stop_sfx, 0x30, "class 0x27 stops the alarm sound")
+eq(class_27_result.text, Actions.TEXT.OFFLINE, "class 0x27 uses ROM offline text")
+local class_28_field = { alarm = true }
+local class_28_result = Actions.turn_off_node({ class = 0x28 }, class_28_field)
+eq(class_28_field.security_off, true, "class 0x28 disables security")
+eq(class_28_field.alarm, true, "class 0x28 leaves the alarm unchanged")
+eq(class_28_result.stop_sfx, nil, "class 0x28 does not stop alarm audio")
+local class_29_field = { alarm = true }
+Actions.turn_off_node({ class = 0x29 }, class_29_field)
+eq(class_29_field.maglocks_off, true, "class 0x29 disengages maglocks")
+eq(class_29_field.alarm, true, "class 0x29 leaves the alarm unchanged")
+local class_2a_field = { alarm = true }
+local class_2a_result = Actions.turn_off_node({ class = 0x2A }, class_2a_field)
+eq(class_2a_field.alarm, false, "class 0x2A turns off the alarm")
+eq(class_2a_field.security_off, nil, "class 0x2A leaves security unchanged")
+eq(class_2a_result.stop_sfx, 0x30, "class 0x2A stops the alarm sound")
 
 local linked_session_ok, linked_session = Session.begin(0)
 eq(linked_session_ok, true, "node navigation session starts")

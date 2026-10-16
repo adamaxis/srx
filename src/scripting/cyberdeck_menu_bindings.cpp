@@ -176,7 +176,7 @@ void push_optional_boolean(lua_State* lua, const int table_index,
 
 void push_matrix_world_state(lua_State* lua,
                              const ScriptMatrixWorldState& world) {
-    lua_createtable(lua, 0, 2);
+    lua_createtable(lua, 0, 3);
     const int world_index = lua_absindex(lua, -1);
     if (world.run.has_value()) {
         const auto& run = *world.run;
@@ -205,6 +205,19 @@ void push_matrix_world_state(lua_State* lua,
     push_optional_boolean(lua, field_index, "maglocks_off",
                          world.field.maglocks_off);
     lua_setfield(lua, world_index, "field");
+
+    lua_createtable(lua, static_cast<int>(world.actors.size()), 0);
+    const int actors_index = lua_absindex(lua, -1);
+    for (std::size_t index = 0; index < world.actors.size(); ++index) {
+        const auto& actor = world.actors[index];
+        lua_createtable(lua, 0, 2);
+        lua_pushlstring(lua, actor.actor_id.data(), actor.actor_id.size());
+        lua_setfield(lua, -2, "id");
+        lua_pushinteger(lua, actor.flags_9e);
+        lua_setfield(lua, -2, "flags9e");
+        lua_rawseti(lua, actors_index, static_cast<lua_Integer>(index + 1U));
+    }
+    lua_setfield(lua, world_index, "actors");
 }
 
 ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
@@ -246,6 +259,35 @@ ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
             lua, field_index, "security_off");
         world.field.maglocks_off = read_optional_boolean(
             lua, field_index, "maglocks_off");
+    }
+    lua_pop(lua, 1);
+
+    lua_getfield(lua, world_index, "actors");
+    if (lua_istable(lua, -1)) {
+        const int actors_index = lua_absindex(lua, -1);
+        const auto count = lua_rawlen(lua, actors_index);
+        world.actors.reserve(count);
+        for (std::size_t index = 0; index < count; ++index) {
+            lua_rawgeti(lua, actors_index,
+                        static_cast<lua_Integer>(index + 1U));
+            if (lua_istable(lua, -1)) {
+                const int actor_index = lua_absindex(lua, -1);
+                lua_getfield(lua, actor_index, "id");
+                std::size_t id_size = 0U;
+                const char* const id = lua_tolstring(lua, -1, &id_size);
+                if (id != nullptr) {
+                    const std::string actor_id(id, id_size);
+                    lua_pop(lua, 1);
+                    world.actors.push_back(ScriptMatrixFieldActorState{
+                        actor_id,
+                        static_cast<std::uint8_t>(read_integer(
+                            lua, actor_index, "flags9e", 0, 0, 0xFF))});
+                } else {
+                    lua_pop(lua, 1);
+                }
+            }
+            lua_pop(lua, 1);
+        }
     }
     lua_pop(lua, 1);
     return world;

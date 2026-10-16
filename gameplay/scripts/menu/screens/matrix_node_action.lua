@@ -132,6 +132,7 @@ function M.input(st, events, ctx)
                            action.id == "go_to_node" or
                            action.id == "cancel_alert" or
                            action.id == "crash_system" or
+                           action.id == "turn_off_node" or
                            action.id == "lockout") then
                 -- 0x548A0 performs the shared 0x55F44/0xDBA runner gate
                 -- before dispatch; Cancel Alert itself adds no second roll.
@@ -150,8 +151,11 @@ function M.input(st, events, ctx)
                         local world = game.matrix_world_state()
                         world.field = world.field or {}
                         local result = NodeActions.crash_system(
-                            world.run, world.field)
+                            world.run, world.field, world.actors)
                         game.commit_matrix_world_state(world)
+                        if result.stop_sfx then
+                            ctx.host.stop_sound(result.stop_sfx)
+                        end
                         st.matrix_message = MatrixText.from_rom(result.text)
                         st.shutdown = {
                             values = result.countdown,
@@ -160,6 +164,18 @@ function M.input(st, events, ctx)
                             index = 1,
                         }
                         st.matrix_countdown = result.countdown[1]
+                    elseif not navigated and action.id == "turn_off_node" then
+                        local world = game.matrix_world_state()
+                        world.field = world.field or {}
+                        world.actors = world.actors or {}
+                        local result = NodeActions.turn_off_node(
+                            MatrixSession.current_node(state), world.field,
+                            world.actors)
+                        game.commit_matrix_world_state(world)
+                        if result.stop_sfx then
+                            ctx.host.stop_sound(result.stop_sfx)
+                        end
+                        st.matrix_message = MatrixText.from_rom(result.text)
                     end
                 else
                     st.matrix_message = MatrixText.from_rom(

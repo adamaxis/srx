@@ -745,9 +745,11 @@ EntityActionRecord magic_action_record_from_runner(
 
 FieldSceneRuntime::FieldSceneRuntime(
     std::function<void(std::string_view)> source_boundary,
-    std::function<void(std::uint16_t)> source_audio_event)
+    std::function<void(std::uint16_t)> source_audio_event,
+    std::function<void(std::uint16_t)> source_audio_stop)
     : source_boundary_callback_(std::move(source_boundary)),
       source_audio_event_callback_(std::move(source_audio_event)),
+      source_audio_stop_callback_(std::move(source_audio_stop)),
       field_dialogue_([this](const std::string_view boundary) {
           this->source_boundary(boundary);
       }, StokerMotelArrivalCommandCallbacks{
@@ -768,7 +770,7 @@ FieldSceneRuntime::FieldSceneRuntime(
           [this](const std::string_view boundary) {
               this->source_boundary(boundary);
           },
-          source_audio_event_callback_) {
+          source_audio_event_callback_, source_audio_stop_callback_) {
     field_dialogue_.set_script_runtime(&game_scripts_);
     field_interaction_.set_script_runtime(&game_scripts_);
     field_dialogue_.set_room_payment_callback([this]()
@@ -5707,6 +5709,11 @@ void FieldSceneRuntime::configure_field_menu_route() {
             source_audio_event_callback_(sound);
         }
     };
+    bindings.host.stop_sound = [this](const std::uint16_t sound) {
+        if (source_audio_stop_callback_) {
+            source_audio_stop_callback_(sound);
+        }
+    };
     // FieldSceneRuntime repaints the complete authored Qt menu panel each
     // frame. These callbacks are retained as presenter boundaries for the
     // later screen ports; they do not execute source tile/VDP operations.
@@ -6179,7 +6186,18 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.game.in_alert = [] { return false; };
     bindings.game.map_seen = [] { return 0; };
     bindings.game.matrix_world_state = [this] {
-        return field_matrix_world_state_;
+        auto world = field_matrix_world_state_;
+        const auto scene_reference =
+            state_.field_scene_buffers.scene_reference;
+        for (const auto& actor : field_default_actors_) {
+            if (!actor.active || actor.scene_reference != scene_reference ||
+                !actor.source_record_slot.has_value()) {
+                continue;
+            }
+            world.actors.push_back(scripting::ScriptMatrixFieldActorState{
+                actor.actor_instance_id, actor.source_interaction_flags});
+        }
+        return world;
     };
     bindings.game.commit_matrix_world_state = [this](
         const scripting::ScriptMatrixWorldState& update) {
@@ -6196,6 +6214,21 @@ void FieldSceneRuntime::configure_field_menu_route() {
         if (update.field.maglocks_off.has_value()) {
             field_matrix_world_state_.field.maglocks_off =
                 update.field.maglocks_off;
+        }
+        const auto scene_reference =
+            state_.field_scene_buffers.scene_reference;
+        for (const auto& source : update.actors) {
+            const auto actor = std::find_if(
+                field_default_actors_.begin(), field_default_actors_.end(),
+                [scene_reference, &source](const auto& candidate) {
+                    return candidate.active &&
+                        candidate.scene_reference == scene_reference &&
+                        candidate.source_record_slot.has_value() &&
+                        candidate.actor_instance_id == source.actor_id;
+                });
+            if (actor != field_default_actors_.end()) {
+                actor->source_interaction_flags = source.flags_9e;
+            }
         }
     };
     bindings.game.deck_record = [this] {

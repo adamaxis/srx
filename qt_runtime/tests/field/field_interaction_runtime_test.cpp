@@ -104,6 +104,7 @@ int main() {
     }
 
     std::vector<std::uint16_t> audio_events;
+    std::vector<std::uint16_t> stopped_audio_resources;
     std::vector<std::string_view> boundaries;
     FieldInteractionRuntime runtime(
         [&boundaries](const std::string_view reason) {
@@ -111,6 +112,9 @@ int main() {
         },
         [&audio_events](const std::uint16_t id) {
             audio_events.push_back(id);
+        },
+        [&stopped_audio_resources](const std::uint16_t id) {
+            stopped_audio_resources.push_back(id);
         });
     runtime.set_script_runtime(&gameplay_scripts);
     if (!runtime.load_assets(assets.catalog)) {
@@ -274,6 +278,8 @@ int main() {
         return 15;
     }
     runtime.reset_session();
+    audio_events.clear();
+    stopped_audio_resources.clear();
     selection = 2U;
     seed = successful_seed;
     if (!runtime.open_prompt_for_dump(
@@ -291,6 +297,8 @@ int main() {
     }
 
     runtime.reset_session();
+    audio_events.clear();
+    stopped_audio_resources.clear();
     selection = 2U;
     seed = successful_seed;
     if (!runtime.open_prompt_for_dump(
@@ -313,9 +321,13 @@ int main() {
         }
         return 19;
     }
+    if (stopped_audio_resources != std::vector<std::uint16_t>{0x30U}) {
+        std::cerr << "security-terminal success did not stop resource 0x30\n";
+        return 23;
+    }
 
-    // Grenade use consumes one stored charge, requests the explosion and
-    // alert sounds, then waits on a result page before returning to field.
+    // Grenade use consumes one stored charge and starts the explosion/alarm
+    // sounds; the alarm stays active while the result page is displayed.
     runtime.reset_session();
     party[0].inventory_item_codes.fill(0U);
     party[0].inventory_phase_bytes.fill(0U);
@@ -324,6 +336,7 @@ int main() {
     selection = 3U;
     seed = 0x2345U;
     audio_events.clear();
+    stopped_audio_resources.clear();
     if (!runtime.open_prompt_for_dump(
             FieldInteractionPrompt::electromagnetic_lock_door, selection)) {
         return 20;
@@ -339,7 +352,15 @@ int main() {
         std::find(audio_events.begin(), audio_events.end(), 0x2CU) ==
             audio_events.end() ||
         std::find(audio_events.begin(), audio_events.end(), 0x30U) ==
-            audio_events.end()) {
+            audio_events.end() || !stopped_audio_resources.empty()) {
+        std::cerr << "grenade audio/state mismatch: item="
+                  << static_cast<int>(party[0].inventory_phase_bytes[2])
+                  << " selection=" << static_cast<int>(selection)
+                  << " panel_open=" << runtime.open() << " events=";
+        for (const auto id : audio_events) std::cerr << id << ',';
+        std::cerr << " stopped=";
+        for (const auto id : stopped_audio_resources) std::cerr << id << ',';
+        std::cerr << '\n';
         return 21;
     }
     return 0;
