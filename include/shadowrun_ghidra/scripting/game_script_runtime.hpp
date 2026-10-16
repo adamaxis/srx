@@ -245,6 +245,9 @@ struct ScriptMenuRouteGame {
     std::function<void()> set_walk_fast;
     std::function<void()> install_test_deck;
     std::function<int(int)> source_random_bound;
+    // Matrix 0x54A8E uses the same source RNG stream; this purpose-specific
+    // binding keeps route QA able to script alert draws independently.
+    std::function<int(int)> matrix_alert_random_bound;
     std::function<void(int)> dismiss_runner;
     std::function<std::optional<std::uint32_t>()> group_item_flags;
     std::function<std::optional<ScriptNotebookFacts>()> notebook_facts;

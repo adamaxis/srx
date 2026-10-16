@@ -6130,6 +6130,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
         return static_cast<int>(sample_source_random_bound(
             field_random_seed_, static_cast<std::uint16_t>(bound)));
     };
+    bindings.game.matrix_alert_random_bound =
+        bindings.game.source_random_bound;
     bindings.game.dismiss_runner = [this](const int slot) {
         if (slot >= 0 && slot <
                              static_cast<int>(FieldPartyRosterRuntime::kSlotCount)) {

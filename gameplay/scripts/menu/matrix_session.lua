@@ -45,7 +45,7 @@ local function remember_node_colour(state, node_id)
     end
 end
 
-function M.begin(system_id)
+function M.begin(system_id, field_alarm)
     local source = Systems[system_id]
     if type(source) ~= "table" then return false end
 
@@ -70,7 +70,9 @@ function M.begin(system_id)
         link_cursor = 0,
         phase = "node",
         mode = E.MatrixModeResult.ATTACK,
-        alert = Rules.NONE,
+        alert = Rules.initial_alert(field_alarm),
+        attempts = 0,
+        overload_armed = true,
         in_alert = false,
         known = {},
         map_colours = {},

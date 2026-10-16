@@ -771,6 +771,7 @@ struct GameScriptRuntime::Impl {
         load_game,
         save_status,
         source_random_bound,
+        matrix_alert_random_bound,
         dismiss_runner,
         group_item_flags,
         notebook_facts,
@@ -1277,6 +1278,16 @@ struct GameScriptRuntime::Impl {
             lua_pushinteger(lua, std::clamp(value, 0, 0xFFFF));
             return 1;
         }
+        case MenuBinding::matrix_alert_random_bound: {
+            const auto bound = std::clamp(integer_argument(1), 0, 0xFFFF);
+            const auto value =
+                self->menu_route_bindings.game.matrix_alert_random_bound
+                    ? self->menu_route_bindings.game.matrix_alert_random_bound(
+                          bound)
+                    : 0;
+            lua_pushinteger(lua, std::clamp(value, 0, 0xFFFF));
+            return 1;
+        }
         case MenuBinding::dismiss_runner:
             if (self->menu_route_bindings.game.dismiss_runner) {
                 self->menu_route_bindings.game.dismiss_runner(
@@ -1546,6 +1557,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::save_status);
         add_menu_binding(state, table_index, "source_random_bound",
                          MenuBinding::source_random_bound);
+        add_menu_binding(state, table_index, "matrix_alert_random_bound",
+                         MenuBinding::matrix_alert_random_bound);
         add_menu_binding(state, table_index, "dismiss_runner",
                          MenuBinding::dismiss_runner);
         add_menu_binding(state, table_index, "group_item_flags",

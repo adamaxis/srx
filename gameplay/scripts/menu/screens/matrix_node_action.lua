@@ -5,6 +5,7 @@ local P, R, T = E.Pad, E.MenuRegion, E.MenuTransition
 local MatrixSession = require("menu.matrix_session")
 local NodeActions = require("menu.rules.node_actions")
 local MatrixText = require("menu.rules.matrix_text")
+local MatrixRules = require("menu.rules.matrix")
 
 local M = { window = E.WindowPlane.OFF }
 local CONFIRM = P.A | P.B | P.C
@@ -66,6 +67,51 @@ local function refresh(st)
     end
 end
 
+local function show_random_alert(st, ctx)
+    local state = st.matrix_state
+    local random_bound = ctx.game.matrix_alert_random_bound or
+                         ctx.game.source_random_bound
+    if not random_bound then return false end
+    if not NodeActions.random_alert(state, function(bound)
+        return random_bound(bound)
+    end) then
+        return false
+    end
+
+    local previous = state.alert
+    local alert, overload = MatrixRules.raise_alert(
+        previous, 1, state.overload_armed)
+    state.alert = alert
+    if not overload and alert ~= previous then
+        local sound = alert < 0 and E.SoundId.MATRIX_NO_ALERT or
+                      alert == 0 and E.SoundId.MATRIX_PASSIVE_ALERT or
+                      E.SoundId.MATRIX_ACTIVE_ALERT
+        ctx.sound(sound)
+    end
+
+    if overload then
+        st.matrix_message_kind = "system_overload"
+        st.matrix_message = MatrixText.SYSTEM_OVERLOAD
+        st.message_delay_frames = 30
+    else
+        st.matrix_message_kind = "system_alert"
+        st.matrix_message = MatrixText.SYSTEM_ALERT
+        st.message_delay_frames = 25
+    end
+    refresh(st)
+    ctx.redraw(R.FULL)
+    return true
+end
+
+-- ROM 0x546CC rebuilds the node-action view before 0x54A8E consumes one RNG
+-- value. Keep the same order: draw the current node, then let the event
+-- replace it with its notice if FFF0A8 crosses the random threshold.
+local function rebuild_node_view(st, ctx)
+    refresh(st)
+    ctx.redraw(R.FULL)
+    show_random_alert(st, ctx)
+end
+
 function M.new(args)
     return { matrix_state = args.matrix_state, system_id = args.system_id,
              row = 0, title = "Matrix", text = "", labels = {} }
@@ -75,8 +121,7 @@ function M.enter(st, ctx)
     if not MatrixSession.is_online(st.matrix_state) then
         return { transition = T.POP, result = {} }
     end
-    refresh(st)
-    ctx.redraw(R.FULL)
+    rebuild_node_view(st, ctx)
 end
 
 local function open_deck(st)
@@ -248,10 +293,27 @@ function M.input(st, events, ctx)
         return
     end
     if st.matrix_message then
+        if st.message_delay_frames and st.message_delay_frames > 0 then
+            st.message_delay_frames = st.message_delay_frames - 1
+            return
+        end
         if events & P.EDGES ~= 0 then
+            local message_kind = st.matrix_message_kind
             st.matrix_message = nil
-            refresh(st)
-            ctx.redraw(R.FULL)
+            st.matrix_message_kind = nil
+            st.message_delay_frames = nil
+            if message_kind == "system_overload" then
+                MatrixSession.finish(state)
+                return { transition = T.EXIT,
+                         result = { matrix_overload = true } }
+            elseif message_kind == "system_alert" then
+                -- 0x54A8E returns to the already-built node screen after the
+                -- notice; it does not consume a second random draw.
+                refresh(st)
+                ctx.redraw(R.FULL)
+            else
+                rebuild_node_view(st, ctx)
+            end
         end
         return
     end
@@ -371,16 +433,14 @@ function M.input(st, events, ctx)
     if events & CONFIRM ~= 0 and
        MatrixSession.commit_node_selection(state) then
         st.row = 0
-        refresh(st)
-        ctx.redraw(R.FULL)
+        rebuild_node_view(st, ctx)
     end
 end
 
 function M.child_returned(st, child, result, ctx)
     if result and result.matrix_resumed then
         st.row = 0
-        refresh(st)
-        ctx.redraw(R.FULL)
+        rebuild_node_view(st, ctx)
     end
 end
 

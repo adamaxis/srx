@@ -21,6 +21,8 @@ local M = {
     NO_ALERTS = " NO ALERTS ARE||   ACTIVATED|||RUN DIAGNOSTICS||FOR CONFIRMATION",
     OFFLINE = "NODE IS OFFLINE",
     SHUTDOWN = "  INITIATING||SYSTEM  SHUTDOWN|| IN - - SECONDS",
+    SYSTEM_ALERT = " Your actions have|been noticed by the|      system!||All precautions are|  now enforced!!!",
+    SYSTEM_OVERLOAD = "SYSTEM OVERLOAD!!||   LOGGING OUT|    ALL USERS",
 }
 M.BY_ADDRESS = {
     [0x16674D] = M.SEARCHING,
@@ -45,6 +47,8 @@ M.BY_ADDRESS = {
     [0x1666A8] = M.ALERT_CANCELLED,
     [0x1666DD] = M.NO_ALERTS,
     [0x166A44] = M.SHUTDOWN,
+    [0x1669E8] = M.SYSTEM_ALERT,
+    [0x166A75] = M.SYSTEM_OVERLOAD,
 }
 function M.from_rom(address) return M.BY_ADDRESS[address] end
 return M

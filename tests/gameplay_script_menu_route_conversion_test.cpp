@@ -218,6 +218,10 @@ int main() {
     int deck_leave_count = 0;
     int deck_tick_count = 0;
     int deck_mode = 0;
+    // Out-of-range sentinel suppresses alerts during this broad route test;
+    // the dedicated alert path below switches to valid ROM rolls.
+    int matrix_alert_roll_value = 0xFFFF;
+    std::vector<int> matrix_alert_roll_bounds;
     ScriptMatrixWorldState matrix_world_state;
     matrix_world_state.run = ScriptMatrixRunState{-1, -1, 0, 0, 1, 0};
     matrix_world_state.datastore = ScriptMatrixDatastoreFacts{
@@ -365,6 +369,12 @@ int main() {
         }
         return 0;
     };
+    bindings.game.matrix_alert_random_bound =
+        [&matrix_alert_roll_value, &matrix_alert_roll_bounds](
+            const int bound) {
+            matrix_alert_roll_bounds.push_back(bound);
+            return matrix_alert_roll_value;
+        };
     bindings.game.dismiss_runner = [&dismissed_slot](const int slot) {
         dismissed_slot = slot;
     };
@@ -1047,6 +1057,7 @@ int main() {
     party[0].attributes[1] = 12U;
     party[0].attributes[4] = 12U;
     party[0].skills[7] = 12U;
+    matrix_world_state.field.alarm = false;
     action_rolls.clear();
     forced_roll_successes = 2;
     pocket_extra_row = true;
@@ -1955,14 +1966,75 @@ int main() {
           "debug menu remains unlocked after the Matrix return",
           failures);
 
-    // Crash System is an automatic source countdown, not a dismissible
-    // message: 3, 2, 1, 0 each remain for 60 VBlank frames before logout.
+    // A rebuilt Matrix action view performs the source random-alert check.
+    // Two action attempts raise passive then active alert, each notice waits
+    // 25 frames, and the active transition uses its own source sound.
+    matrix_world_state.field.alarm = false;
     for (int row = 0; row < 3; ++row) runtime.advance_menu_route(0x0200U);
     runtime.advance_menu_route(0x4000U); // Pick System.
     runtime.advance_menu_route(0x4000U); // Jack in to system zero.
     for (int frame = 0; frame < 20; ++frame) runtime.advance_menu_route(0U);
     runtime.advance_menu_route(0x4000U); // Enter System.
     runtime.advance_menu_route(0x4000U); // First link enters CPU.
+    check(runtime.menu_route_snapshot().top_matrix_alert == -1,
+          "quiet field starts a Matrix session with no alert", failures);
+    check(matrix_alert_roll_bounds.size() >= 2U &&
+              matrix_alert_roll_bounds[0] == 10 &&
+              matrix_alert_roll_bounds[1] == 10,
+          "each rebuilt Matrix action view consumes a rand(10) alert draw",
+          failures);
+
+    matrix_alert_roll_value = 0;
+    runtime.advance_menu_route(0x4000U); // Go To Node.
+    for (int node = 0; node < 5; ++node) runtime.advance_menu_route(0x0800U);
+    runtime.advance_menu_route(0x4000U); // Enter I/O Port.
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Matrix Message" &&
+              route.top_text ==
+                  " Your actions have|been noticed by the|      system!||All precautions are|  now enforced!!!" &&
+              route.top_matrix_alert == 0 && sounds.back() == 0x53U,
+          "first random alert shows its ROM notice and passive-alert sound",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    save_transfer_frame("system-alert-message.bmp", route);
+#endif
+    runtime.advance_menu_route(0x4000U);
+    check(runtime.menu_route_snapshot().top_title == "Matrix Message",
+          "system alert ignores input during its 25-frame wait", failures);
+    for (int frame = 0; frame < 24; ++frame) runtime.advance_menu_route(0U);
+    check(runtime.menu_route_snapshot().top_title == "Matrix Message",
+          "system alert remains visible for the full source wait", failures);
+    runtime.advance_menu_route(0U); // Complete frame 25 of the notice delay.
+    runtime.advance_menu_route(0x4000U); // D94 any-edge wait.
+    check(runtime.menu_route_snapshot().top_title == "I/O Port" &&
+              runtime.menu_route_snapshot().top_matrix_alert == 0,
+          "dismissing the passive alert restores the node screen", failures);
+
+    runtime.advance_menu_route(0x0200U); // Select Lockout.
+    runtime.advance_menu_route(0x4000U);
+    check(runtime.menu_route_snapshot().top_title == "Matrix Message" &&
+              runtime.menu_route_snapshot().top_text.find("NODE ACCESS LOCKED") !=
+                  std::string::npos,
+          "second Matrix action returns through its ordinary ROM message",
+          failures);
+    runtime.advance_menu_route(0x4000U); // Dismiss Lockout; random event follows.
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Matrix Message" &&
+              route.top_matrix_alert == 1 && sounds.back() == 0x52U,
+          "second random alert raises active status and plays its sound",
+          failures);
+    for (int frame = 0; frame < 25; ++frame) runtime.advance_menu_route(0U);
+    runtime.advance_menu_route(0x4000U); // Dismiss active-alert notice.
+    matrix_alert_roll_value = 0xFFFF;
+    runtime.advance_menu_route(0x0100U); // Select Leave Node.
+    runtime.advance_menu_route(0x4000U); // Open the ROM link list.
+    runtime.advance_menu_route(0x4000U); // Return to CPU.
+    check(runtime.menu_route_snapshot().top_title == "CPU",
+          "Matrix link traversal resumes after the alert notice", failures);
+
+    // Crash System is an automatic source countdown, not a dismissible
+    // message: 3, 2, 1, 0 each remain for 60 VBlank frames before logout.
+    matrix_world_state.field.alarm = true;
     runtime.advance_menu_route(0x0200U);
     runtime.advance_menu_route(0x0200U); // Crash System row.
     runtime.advance_menu_route(0x4000U);

@@ -31,7 +31,8 @@ function M.ic_rating(node, alert)
     return r + (alert < 0 and 0 or alert == 0 and 1 or 2)
 end
 -- 0x1989A: raise/lower alert by d. Result 0/1 kept; < 0 -> NONE; > 1 -> ACTIVE and, if FFF0A6 is set,
--- SYSTEM OVERLOAD (0x18776 fade + 0x26A00 logout + text 0x166A75, 30-frame wait, 0xD94). Sound 0x54 on change.
+-- SYSTEM OVERLOAD (0x18776 fade + 0x26A00 logout + text 0x166A75, 30-frame wait, 0xD94). If FFE189 changes,
+-- sound 0x54 = none, 0x53 = passive, 0x52 = active.
 function M.raise_alert(alert, d, overload_armed)
     local a = (alert + d + 128) % 256 - 128            -- add.b
     if a == 0 or a == 1 then return a, false end
@@ -39,7 +40,11 @@ function M.raise_alert(alert, d, overload_armed)
     return M.NONE, false
 end
 -- 0x173F2: initial alert = FFE16F != 0 -> ACTIVE else NONE. After the session: if FFDF40 == 2 and alert == ACTIVE -> FFE191 = 1.
-function M.initial_alert(ffe16f) return ffe16f ~= 0 and M.ACTIVE or M.NONE end
+function M.initial_alert(ffe16f)
+    local alarm = ffe16f == true or
+                  (type(ffe16f) == "number" and ffe16f ~= 0)
+    return alarm and M.ACTIVE or M.NONE
+end
 
 -- Map 0x532BC: 14x10 cells. map[cell] = system map byte (0x15DB48[sys].map); <= 0x0B node cells, >= 0x0C connectors.
 -- 0x533EE reveal: cur = y*14+x of the current node (FFF102), known[cur] = FF, then flood 0x53434 in 4 directions with a

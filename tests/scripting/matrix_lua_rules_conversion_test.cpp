@@ -105,6 +105,15 @@ eq(first_session.mode, E.MatrixModeResult.ATTACK,
 eq(first_session.nodes[0].links[0], 4, "system zero access link")
 eq(first_session.map[139] ~= nil, true, "Matrix session copies cell 139")
 eq(first_session.map[140], nil, "Matrix session does not create cell 140")
+local alarm_started, alarm_session = Session.begin(0, true)
+eq(alarm_started, true, "alarm-backed Matrix session starts")
+eq(alarm_session.alert, MX.ACTIVE,
+   "FFE16F seeds an active Matrix alert on entry")
+eq(alarm_session.attempts, 0,
+   "Matrix action-attempt counter starts at zero")
+eq(alarm_session.overload_armed, true,
+   "node-action entry arms the ROM overload response")
+Session.finish(alarm_session)
 local targeted_entry = { state = -1, target_system_id = 6, fc1c = 0 }
 eq(Session.activate_run_for_system(5, targeted_entry), true,
     "entering another system deactivates a Matrix objective")
@@ -338,6 +347,27 @@ eq(overload, false, "no overload below active")
 alert, overload = MX.raise_alert(1, 1, true)
 eq(alert, MX.ACTIVE, "active alert saturates")
 eq(overload, true, "armed overload returned")
+eq(MX.initial_alert(true), MX.ACTIVE,
+   "field alarm initializes Matrix alert status")
+eq(MX.initial_alert(false), MX.NONE,
+   "quiet field initializes no Matrix alert")
+
+local NodeActions = require("menu.rules.node_actions")
+local attempts = { attempts = 3 }
+local random_bound_seen
+eq(NodeActions.random_alert(attempts, function(bound)
+    random_bound_seen = bound
+    return 2
+end), true, "random alert fires below the accumulated attempt count")
+eq(random_bound_seen, 10, "random alert always rolls against ten")
+eq(attempts.attempts, 0, "triggered random alert clears its counter")
+attempts.attempts = 0
+eq(NodeActions.random_alert(attempts, function(bound)
+    random_bound_seen = bound
+    return 0
+end), false, "zero attempts cannot raise an alert")
+eq(random_bound_seen, 10,
+   "zero attempts still consume the ROM's random draw")
 
 -- A connected map region may contain a loop of connector cells. Reveal must
 -- mark every reachable cell once and terminate while preserving the ROM's

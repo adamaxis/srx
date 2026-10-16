@@ -160,9 +160,10 @@ function Pick.input(st, events, ctx)
         st.wait_frames = st.wait_frames - 1
         if st.wait_frames <= 0 then
             st.wait_frames = nil
-            local started, session = MatrixSession.begin(st.system)
-            if not started then return end
             local world = MatrixSession.world_state(ctx.game)
+            local started, session = MatrixSession.begin(
+                st.system, world.field and world.field.alarm)
+            if not started then return end
             if world.run and
                MatrixSession.activate_run_for_system(st.system, world.run) then
                 MatrixSession.commit_world_state(ctx.game, world)

@@ -73,6 +73,8 @@ E.SoundId = {   -- played through 0x530DE (doc 10) [C]
     SHOT_LIGHT_PISTOL = 0x1C, SHOT_HEAVY_PISTOL = 0x51, SHOT_SMG_OR_THROWN = 0x1E, SHOT_SHOTGUN = 0x1D,  -- 0x15318
     SHOT_SILENCED = 0x3F, SHOT_SILENCED_SMG_OR_THROWN = 0x4A,                                            -- 0x15336
     RELOAD_OR_EMPTY = 0x4B, ALARM = 0x30, PICKUP = 0x24,
+    MATRIX_NO_ALERT = 0x54, MATRIX_PASSIVE_ALERT = 0x53,
+    MATRIX_ACTIVE_ALERT = 0x52, -- 0x19904 change-gated Matrix alert status sound
     -- [H] repo-named (pre-module actor_ai.lua), not yet traced to a ROM table:
     TARGET_HEADING = 0x4D, TARGET_HEADING_ALT = 0x4E, PROJECTILE_IMPACT = 0x3C,
 }
