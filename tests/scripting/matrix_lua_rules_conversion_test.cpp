@@ -56,6 +56,7 @@ local Systems = require("data.matrix_systems")
 local Session = require("menu.matrix_session")
 local Cyberdeck = require("menu.screens.cyberdeck")
 local MatrixText = require("menu.rules.matrix_text")
+local SpecialDatastore = require("menu.rules.datastore_special")
 
 local checks = 0
 local function eq(actual, expected, label)
@@ -461,8 +462,54 @@ local missed_search = Actions.finish_search(
     function(bound) return bound - 1 end)
 eq(missed_search.text, Actions.TEXT.NOTHING,
     "detection failure uses Int, Computer, and Sensor from typed records")
-local special_facts = { system = 18, fc38 = 0, fc34 = 0, fc1e = 0,
-    fc22 = 0, fbfa = 0, fbfb = 0, fc26 = 0, fc27 = 0, nuyen = 0 }
+local special_facts = { system_id = 18, tips_page3_flags = 0,
+    tips_page2_flags = 0, world_event_flags = 0 }
+eq(SpecialDatastore.can_match(nil, 3), false,
+    "special datastore handler rejects missing typed facts")
+eq(SpecialDatastore.can_match(special_facts, 3), true,
+    "system 18 class 3 uses only the supplied typed flag words")
+eq(SpecialDatastore.can_match(
+    { system_id = 21, tips_page3_flags = 0, tips_page2_flags = 0,
+      world_event_flags = 0 }, 3), false,
+    "system 21 class 3 waits for its group-item fact")
+eq(SpecialDatastore.can_match(
+    { system_id = 21, tips_page3_flags = 0, tips_page2_flags = 0,
+      world_event_flags = 0, group_item_flags = 0 }, 3), true,
+    "system 21 class 3 is enabled when its group-item fact exists")
+eq(SpecialDatastore.can_match(
+    { system_id = 19, tips_page3_flags = 0, tips_page2_flags = 0,
+      world_event_flags = 0 }, 12), true,
+    "system 19 class 12 uses the source FFFC1E and FFFC38 facts")
+eq(SpecialDatastore.can_match(
+    { system_id = 19, tips_page3_flags = 0, tips_page2_flags = 0,
+      world_event_flags = 0 }, 2), false,
+    "system 19 class 2 has no special-handler branch")
+eq(SpecialDatastore.can_match(
+    { system_id = 19, tips_page3_flags = 0, tips_page2_flags = 0,
+      world_event_flags = 0 }, 0), false,
+    "system 19 class 0 stays gated while its FFFC27 and FFFC26 facts are absent")
+eq(SpecialDatastore.can_match(
+    { system_id = 16, tips_page3_flags = 0, tips_page2_flags = 0,
+      world_event_flags = 0 }, 1), false,
+    "system 16 class 1 waits for the wallet balance it awards")
+eq(SpecialDatastore.can_match(
+    { system_id = 16, tips_page3_flags = 0, tips_page2_flags = 0,
+      world_event_flags = 0, nuyen = 0 }, 1), true,
+    "system 16 class 1 is enabled when the wallet is available")
+eq(SpecialDatastore.can_match(
+    { system_id = 23, tips_page3_flags = 0, tips_page2_flags = 0,
+      world_event_flags = 0 }, 9), true,
+    "system 23 class 9 uses the supplied FFFC38 and FFFC1E facts")
+local system_23_facts = { system_id = 23, tips_page3_flags = 0,
+    tips_page2_flags = 0, world_event_flags = 0 }
+eq(SpecialDatastore.matches(system_23_facts, 9), true,
+    "system 23 class 9 returns its special datafile")
+eq(system_23_facts.tips_page3_flags, 1 << 11,
+    "system 23 class 9 commits source Tips & Clues page 3 bit 11")
+eq(SpecialDatastore.can_match(
+    { system_id = 23, tips_page3_flags = 0, tips_page2_flags = 0,
+      world_event_flags = 0 }, 13), false,
+    "unavailable story facts leave system 23 class 13 unresolved")
 local story_search = Actions.finish_search(
     { class = 3 }, source_decker, source_deck, special_facts,
     function() error("story datastores do not roll for random data") end)
@@ -470,8 +517,16 @@ eq(story_search.story, true,
     "source special datastore can return its notebook file before detection")
 eq(story_search.text, Actions.TEXT.STORY_FILE,
     "special datastore selects the ROM notebook message")
-eq((special_facts.fc34 >> 28) & 1, 1,
+eq((special_facts.tips_page2_flags >> 28) & 1, 1,
     "special datastore commits its source event bit in Lua state")
+local virology_facts = { system_id = 16, tips_page3_flags = 0x7C000000,
+    tips_page2_flags = 0, world_event_flags = 0, nuyen = 0xFFFFFFFF }
+eq(SpecialDatastore.matches(virology_facts, 1), true,
+    "system 16 class 1 completes when source flag bits 26 through 30 are set")
+eq(virology_facts.tips_page3_flags, 0xFC000000,
+    "system 16 class 1 sets source flag bit 31")
+eq(virology_facts.nuyen, 49999,
+    "system 16 class 1 applies the 32-bit ROM wallet addition")
 local low_storage = { storage = 0, files = {}, ratings = {} }
 for i = 0, 4 do low_storage.files[i] = { id = -1, size = 0, value = 0 } end
 for i = 0, 11 do low_storage.ratings[i] = 0 end

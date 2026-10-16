@@ -195,10 +195,23 @@ struct ScriptMatrixFieldActorState {
     std::uint8_t flags_9e = 0U;
 };
 
+// Typed subset read by the ROM special-datastore handler at 0x55058. Lua
+// supplies the active system ID from its Matrix session; FFFC22 and the
+// wallet are optional because either source fact may be unavailable.
+struct ScriptMatrixDatastoreFacts {
+    std::uint8_t system_id = 0U;           // Current Matrix system, FFFBBC.
+    std::uint32_t tips_page3_flags = 0U;    // Story tips, FFFC38.
+    std::uint32_t tips_page2_flags = 0U;    // Story tips, FFFC34.
+    std::uint32_t world_event_flags = 0U;   // World-event facts, FFFC1E.
+    std::optional<std::uint32_t> group_item_flags; // Group items, FFFC22.
+    std::optional<std::uint32_t> nuyen;
+};
+
 struct ScriptMatrixWorldState {
     std::optional<ScriptMatrixRunState> run;
     ScriptMatrixFieldState field;
     std::vector<ScriptMatrixFieldActorState> actors;
+    std::optional<ScriptMatrixDatastoreFacts> datastore;
 };
 
 struct ScriptMenuRouteGame {

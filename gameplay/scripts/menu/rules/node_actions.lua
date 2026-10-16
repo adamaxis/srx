@@ -98,7 +98,8 @@ local function detection_score(decker, deck)
 end
 
 function M.finish_search(node, decker, deck, special, rand)
-    if special and SPECIAL.matches(special, node.class) then
+    if special and SPECIAL.can_match(special, node.class) and
+       SPECIAL.matches(special, node.class) then
         return { story = true, text = M.TEXT.STORY_FILE }
     end
     if detection_score(decker, deck) < rand(10) + 1 then

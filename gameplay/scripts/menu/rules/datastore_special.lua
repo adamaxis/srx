@@ -1,9 +1,44 @@
 -- rules/datastore_special.lua: AUTO-TRANSLATED from ROM 0x55058..0x5559C (tools/translate_55058.py logic, 2026-10-15) [C].
 -- Story datafiles: called by Transfer Data before the random file. Returns true when this datastore (system FFFBBC,
 -- node file class d0 = node +1) yields a story file: the bit in FFFC38 (or FFFC34 for system 0x12) is set (text 0x166968).
--- r = { system, fc38, fc34, fc1e, fc22, fbfa, fbfb, fc26, fc27, nuyen }; r is updated in place.
+-- r = { system_id, tips_page3_flags, tips_page2_flags, world_event_flags,
+--       group_item_flags, fbfa, fbfb, fc26, fc27, nuyen }; r is updated in place.
 -- Quirk kept [C]: system 0x10 class 1 needs bits 0x1A..0x1E of FFFC38 and pays +50,000 nuyen (0xC350).
 local function s8(v) v = v & 0xFF; return v >= 0x80 and v - 0x100 or v end
+-- The host currently resolves these system/class pairs from typed facts.
+-- Other branches also read FFFBFA/FB, FFFC26/27, or additional FFFC22 bits;
+-- leave those explicit until the host has the matching source facts.
+local SUPPORTED = {
+    [7]  = { [10] = true },
+    [16] = { [1] = true },
+    [17] = { [0] = true, [9] = true },
+    [18] = { [2] = true, [3] = true, [9] = true, [10] = true },
+    [19] = { [12] = true },
+    [20] = { [10] = true },
+    [21] = { [2] = true, [3] = true, [10] = true },
+    [22] = { [2] = true, [4] = true },
+    [23] = { [9] = true },
+    [24] = { [10] = true },
+}
+local function can_match(r, node_class)
+    if not r or r.system_id == nil then return false end
+    local system_id = s8(r.system_id)
+    if not SUPPORTED[system_id] or
+       not SUPPORTED[system_id][node_class] or
+       r.tips_page3_flags == nil or r.tips_page2_flags == nil or
+       r.world_event_flags == nil then
+        return false
+    end
+    if system_id == 21 and node_class == 3 and
+       r.group_item_flags == nil then
+        return false
+    end
+    if system_id == 16 and node_class == 1 and
+       r.nuyen == nil then
+        return false
+    end
+    return true
+end
 local function matches(r, d0)
     local d5, d1, cc = 0, 0, 0
     ::L055058:: -- clr.l d0
@@ -12,11 +47,11 @@ local function matches(r, d0)
     ::L055062:: -- mulu.w #$14, d1
     ::L055066:: -- lea.l $ff1100.l, a1
     ::L05506C:: -- move.b $1(a1, d1.w), d0
-    ::L055070:: d5 = r.fc38
-    ::L055076:: d1 = r.fc1e
-    ::L05507C:: cc = s8(r.system) - 18
+    ::L055070:: d5 = r.tips_page3_flags
+    ::L055076:: d1 = r.world_event_flags
+    ::L05507C:: cc = s8(r.system_id) - 18
     ::L055084:: if cc ~= 0 then goto L0550F4 end
-    ::L055088:: d5 = r.fc34
+    ::L055088:: d5 = r.tips_page2_flags
     ::L05508E:: cc = d0 - 3
     ::L055092:: if cc ~= 0 then goto L0550A6 end
     ::L055096:: cc = (d5 >> 28) & 1
@@ -40,9 +75,9 @@ local function matches(r, d0)
     ::L0550DE:: cc = (d5 >> 31) & 1
     ::L0550E2:: if cc ~= 0 then goto L05559A end
     ::L0550E6:: d5 = d5 | (1 << 31)
-    ::L0550EA:: r.fc34 = d5
+    ::L0550EA:: r.tips_page2_flags = d5
     ::L0550F0:: goto L05557E
-    ::L0550F4:: cc = s8(r.system) - 17
+    ::L0550F4:: cc = s8(r.system_id) - 17
     ::L0550FC:: if cc ~= 0 then goto L055138 end
     ::L055100:: cc = d0 - 9
     ::L055104:: if cc ~= 0 then goto L05559A end
@@ -58,7 +93,7 @@ local function matches(r, d0)
     ::L05512C:: if cc ~= 0 then goto L05559A end
     ::L055130:: d5 = d5 | (1 << 1)
     ::L055134:: goto L055578
-    ::L055138:: cc = s8(r.system) - 7
+    ::L055138:: cc = s8(r.system_id) - 7
     ::L055140:: if cc ~= 0 then goto L05515C end
     ::L055144:: cc = d0 - 10
     ::L055148:: if cc ~= 0 then goto L05559A end
@@ -66,7 +101,7 @@ local function matches(r, d0)
     ::L055150:: if cc ~= 0 then goto L05559A end
     ::L055154:: d5 = d5 | (1 << 26)
     ::L055158:: goto L055578
-    ::L05515C:: cc = s8(r.system) - 22
+    ::L05515C:: cc = s8(r.system_id) - 22
     ::L055164:: if cc ~= 0 then goto L0551C0 end
     ::L055168:: cc = d0 - 2
     ::L05516C:: if cc ~= 0 then goto L055188 end
@@ -90,7 +125,7 @@ local function matches(r, d0)
     ::L0551B4:: if cc ~= 0 then goto L05559A end
     ::L0551B8:: d5 = d5 | (1 << 27)
     ::L0551BC:: goto L055578
-    ::L0551C0:: cc = s8(r.system) - 20
+    ::L0551C0:: cc = s8(r.system_id) - 20
     ::L0551C8:: if cc ~= 0 then goto L055224 end
     ::L0551CC:: cc = d0 - 10
     ::L0551D0:: if cc ~= 0 then goto L0551E4 end
@@ -114,7 +149,7 @@ local function matches(r, d0)
     ::L055218:: if cc ~= 0 then goto L05559A end
     ::L05521C:: d5 = d5 | (1 << 4)
     ::L055220:: goto L055578
-    ::L055224:: cc = s8(r.system) - 23
+    ::L055224:: cc = s8(r.system_id) - 23
     ::L05522C:: if cc ~= 0 then goto L055302 end
     ::L055230:: cc = d0 - 13
     ::L055234:: if cc ~= 0 then goto L0552A2 end
@@ -164,7 +199,7 @@ local function matches(r, d0)
     ::L0552F6:: if cc ~= 0 then goto L05559A end
     ::L0552FA:: d5 = d5 | (1 << 11)
     ::L0552FE:: goto L055578
-    ::L055302:: cc = s8(r.system) - 24
+    ::L055302:: cc = s8(r.system_id) - 24
     ::L05530A:: if cc ~= 0 then goto L055346 end
     ::L05530E:: cc = d0 - 10
     ::L055312:: if cc ~= 0 then goto L05559A end
@@ -180,7 +215,7 @@ local function matches(r, d0)
     ::L05533A:: if cc ~= 0 then goto L05559A end
     ::L05533E:: d5 = d5 | (1 << 12)
     ::L055342:: goto L055578
-    ::L055346:: cc = s8(r.system) - 19
+    ::L055346:: cc = s8(r.system_id) - 19
     ::L05534E:: if cc ~= 0 then goto L0553B2 end
     ::L055352:: cc = d0 - 12
     ::L055356:: if cc ~= 0 then goto L055372 end
@@ -204,7 +239,7 @@ local function matches(r, d0)
     ::L0553A6:: if cc ~= 0 then goto L05559A end
     ::L0553AA:: d5 = d5 | (1 << 15)
     ::L0553AE:: goto L055578
-    ::L0553B2:: cc = s8(r.system) - 21
+    ::L0553B2:: cc = s8(r.system_id) - 21
     ::L0553BA:: if cc ~= 0 then goto L055526 end
     ::L0553BE:: cc = d0 - 10
     ::L0553C2:: if cc ~= 0 then goto L0553F6 end
@@ -244,7 +279,7 @@ local function matches(r, d0)
     ::L05544A:: if cc ~= 0 then goto L055456 end
     ::L05544E:: d5 = d5 | (1 << 24)
     ::L055452:: goto L055578
-    ::L055456:: d1 = r.fc22
+    ::L055456:: d1 = r.group_item_flags
     ::L05545C:: cc = (d1 >> 8) & 1
     ::L055460:: if cc == 0 then goto L05559A end
     ::L055464:: cc = (d5 >> 25) & 1
@@ -293,7 +328,7 @@ local function matches(r, d0)
     ::L05551A:: d5 = d5 & ~(1 << 21)
     ::L05551E:: d5 = d5 & ~(1 << 22)
     ::L055522:: goto L055578
-    ::L055526:: cc = s8(r.system) - 16
+    ::L055526:: cc = s8(r.system_id) - 16
     ::L05552E:: if cc ~= 0 then goto L05559A end
     ::L055532:: cc = d0 - 1
     ::L055536:: if cc ~= 0 then goto L05559A end
@@ -310,8 +345,8 @@ local function matches(r, d0)
     ::L055562:: cc = (d5 >> 31) & 1
     ::L055566:: if cc ~= 0 then goto L05559A end
     ::L05556A:: d5 = d5 | (1 << 31)
-    ::L05556E:: r.nuyen = r.nuyen + 0xC350
-    ::L055578:: r.fc38 = d5
+    ::L05556E:: r.nuyen = (r.nuyen + 0xC350) & 0xFFFFFFFF
+    ::L055578:: r.tips_page3_flags = d5
     ::L05557E:: -- lea.l $166968.l, a1
     ::L055584:: -- movea.l #$c616, a2
     ::L05558A:: -- move.w #$0, d1
@@ -320,4 +355,4 @@ local function matches(r, d0)
     ::L055598:: -- rts
     ::L05559A:: do return false end
 end
-return { matches = matches }
+return { can_match = can_match, matches = matches }

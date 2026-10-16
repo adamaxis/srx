@@ -150,15 +150,19 @@ end
 local function finish_transfer_search(st, ctx)
     local game = ctx.game
     local node = MatrixSession.current_node(st.matrix_state)
+    local world = game.matrix_world_state()
+    local special = world.datastore
+    if special then special.system_id = st.system_id end
     local party = game.party()
     local runner = party[game.active_slot()]
     local deck = game.deck_record()
     local result = NodeActions.finish_search(
-        node, runner, deck, nil,
+        node, runner, deck, special,
         function(bound) return game.source_random_bound(bound) end)
     if result.file then
         show_file_prompt(st, result.file, ctx)
     else
+        if result.story then game.commit_matrix_world_state(world) end
         show_message(st, result.text or NodeActions.TEXT.NOTHING, ctx)
     end
 end

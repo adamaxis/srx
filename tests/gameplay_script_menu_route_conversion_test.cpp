@@ -29,6 +29,7 @@ using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteGame;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuPartyMember;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteBindings;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunState;
+using shadowrun::ghidra_conversion::scripting::ScriptMatrixDatastoreFacts;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixWorldState;
 using shadowrun::ghidra_conversion::scripting::CyberdeckMenuBinding;
 using shadowrun::ghidra_conversion::scripting::dispatch_cyberdeck_menu_binding;
@@ -161,6 +162,8 @@ int main() {
     int deck_mode = 0;
     ScriptMatrixWorldState matrix_world_state;
     matrix_world_state.run = ScriptMatrixRunState{-1, -1, 0, 0, 1, 0};
+    matrix_world_state.datastore = ScriptMatrixDatastoreFacts{
+        0U, 0xA2345678U, 0xCDEF1234U, 0x81234567U, 0x6023U, 0x12345678U};
     matrix_world_state.field.alarm = true;
     matrix_world_state.field.security_off = false;
     matrix_world_state.field.maglocks_off = false;
@@ -346,6 +349,9 @@ int main() {
         }
         if (update.field.maglocks_off.has_value()) {
             matrix_world_state.field.maglocks_off = update.field.maglocks_off;
+        }
+        if (update.datastore.has_value()) {
+            matrix_world_state.datastore = update.datastore;
         }
         for (const auto& actor : update.actors) {
             const auto current = std::find_if(
@@ -1910,6 +1916,19 @@ int main() {
               matrix_world_state.field.maglocks_off ==
                   std::optional<bool>{true},
           "Crash System commits its source run-completion and field flags through the host", failures);
+    check(matrix_world_state.datastore.has_value() &&
+              matrix_world_state.datastore->tips_page3_flags ==
+                  0xA2345678U &&
+              matrix_world_state.datastore->tips_page2_flags ==
+                  0xCDEF1234U &&
+              matrix_world_state.datastore->world_event_flags ==
+                  0x81234567U &&
+              matrix_world_state.datastore->group_item_flags ==
+                  std::optional<std::uint32_t>{0x6023U} &&
+              matrix_world_state.datastore->nuyen ==
+                  std::optional<std::uint32_t>{0x12345678U},
+          "Matrix datastore flag words survive the Lua-to-host state transaction",
+          failures);
     check(matrix_world_state.actors.size() == 2U &&
               matrix_world_state.actors[0].flags_9e == 0x06U &&
               matrix_world_state.actors[1].flags_9e == 0x04U &&

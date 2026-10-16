@@ -176,7 +176,7 @@ void push_optional_boolean(lua_State* lua, const int table_index,
 
 void push_matrix_world_state(lua_State* lua,
                              const ScriptMatrixWorldState& world) {
-    lua_createtable(lua, 0, 3);
+    lua_createtable(lua, 0, 4);
     const int world_index = lua_absindex(lua, -1);
     if (world.run.has_value()) {
         const auto& run = *world.run;
@@ -205,6 +205,29 @@ void push_matrix_world_state(lua_State* lua,
     push_optional_boolean(lua, field_index, "maglocks_off",
                          world.field.maglocks_off);
     lua_setfield(lua, world_index, "field");
+
+    if (world.datastore.has_value()) {
+        const auto& facts = *world.datastore;
+        lua_createtable(lua, 0, 6);
+        const int datastore_index = lua_absindex(lua, -1);
+        lua_pushinteger(lua, facts.system_id);
+        lua_setfield(lua, datastore_index, "system_id");
+        lua_pushinteger(lua, facts.tips_page3_flags);
+        lua_setfield(lua, datastore_index, "tips_page3_flags");
+        lua_pushinteger(lua, facts.tips_page2_flags);
+        lua_setfield(lua, datastore_index, "tips_page2_flags");
+        lua_pushinteger(lua, facts.world_event_flags);
+        lua_setfield(lua, datastore_index, "world_event_flags");
+        if (facts.group_item_flags.has_value()) {
+            lua_pushinteger(lua, *facts.group_item_flags);
+            lua_setfield(lua, datastore_index, "group_item_flags");
+        }
+        if (facts.nuyen.has_value()) {
+            lua_pushinteger(lua, *facts.nuyen);
+            lua_setfield(lua, datastore_index, "nuyen");
+        }
+        lua_setfield(lua, world_index, "datastore");
+    }
 
     lua_createtable(lua, static_cast<int>(world.actors.size()), 0);
     const int actors_index = lua_absindex(lua, -1);
@@ -259,6 +282,35 @@ ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
             lua, field_index, "security_off");
         world.field.maglocks_off = read_optional_boolean(
             lua, field_index, "maglocks_off");
+    }
+    lua_pop(lua, 1);
+
+    lua_getfield(lua, world_index, "datastore");
+    if (lua_istable(lua, -1)) {
+        const int datastore_index = lua_absindex(lua, -1);
+        const auto read_u32 = [lua, datastore_index](const char* name) {
+            const auto value = read_optional_integer(lua, datastore_index,
+                                                     name);
+            return static_cast<std::uint32_t>(std::clamp<lua_Integer>(
+                value.value_or(0), 0, 0xFFFFFFFFLL));
+        };
+        ScriptMatrixDatastoreFacts facts;
+        facts.system_id = static_cast<std::uint8_t>(
+            read_integer(lua, datastore_index, "system_id", 0, 0, 0xFF));
+        facts.tips_page3_flags = read_u32("tips_page3_flags");
+        facts.tips_page2_flags = read_u32("tips_page2_flags");
+        facts.world_event_flags = read_u32("world_event_flags");
+        if (const auto value = read_optional_integer(
+                lua, datastore_index, "group_item_flags"); value.has_value()) {
+            facts.group_item_flags = static_cast<std::uint32_t>(
+                std::clamp<lua_Integer>(*value, 0, 0xFFFFFFFFLL));
+        }
+        if (const auto value = read_optional_integer(
+                lua, datastore_index, "nuyen"); value.has_value()) {
+            facts.nuyen = static_cast<std::uint32_t>(
+                std::clamp<lua_Integer>(*value, 0, 0xFFFFFFFFLL));
+        }
+        world.datastore = facts;
     }
     lua_pop(lua, 1);
 

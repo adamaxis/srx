@@ -1,10 +1,11 @@
 # Matrix datastore Transfer Data
 
-**Status:** partial. The ordinary search, download prompt, storage checks, and
-run-objective branches are connected to the Lua node-action route. The live
-host does not yet supply the story facts consumed by the ROM's special
-datastore handler, and no independent Genesis capture of this screen has been
-identified.
+**Status:** partial. The ordinary search, download prompt, storage checks,
+run-objective branches, and source paths of the special story-file handler
+whose inputs are available in the field runtime are connected to the Lua
+node-action route. Other special-handler paths remain gated until their
+source facts are available. No independent Genesis capture of this screen has
+been identified.
 
 ## ROM trace
 
@@ -30,6 +31,21 @@ Primary source: `input/shadowrun_genesis_us.bin`.
   The insufficient-storage message uses `0xE383D` and `0x166812`; a full file
   list uses `0x16681B`. Ordinary downloads use the value table at `0x16668A`
   and the node-colour multiplier (Red uses 5).
+- The special handler at `0x55058` selects story data by current system and
+  node class. Its flag words are Tips & Clues page 3 (FFFC38), Tips & Clues
+  page 2 (FFFC34), and world progress (FFFC1E); it writes the changed flag
+  word before showing text at `0x166968`. System 21 class 3 can also read the
+  Group Items word (FFFC22). System 16 class 1 adds 50,000 to the active wallet
+  after setting its source flag. The field host passes these facts through
+  the typed Matrix world-state transaction; Lua gets the active system ID from
+  its Matrix session.
+- The adapter currently evaluates only paths whose required facts are
+  available: systems/classes 7/10, 16/1, 17/0 and 9, 18/2, 3, 9 and 10,
+ 19/12, 20/10, 21/2, 3 and 10, 22/2 and 4, 23/9, and 24/10. System 16
+  class 1 requires the live wallet because it grants 50,000 nuyen; System 21
+  class 3 requires FFFC22. Paths reading FFFBFA, FFFBFB, FFFC26, or FFFC27
+  remain gated, including System 19 class 0, System 21 class 4, and System
+  23 classes 12 and 13.
 - The dot loop and Yes/No branch contain no explicit sound call. A shared
   action/input sound outside those branches has not been independently
   established.
@@ -86,7 +102,11 @@ captures under `build/conversion/qt/{debug,release}/qt_runtime/`
 - `transfer-objective-complete.bmp`
 - `transfer-upload-complete.bmp`
 
-The captures were reviewed as full frames. They establish clean host redraws
-and expected text/state placement only. Special story-file facts still need a
-typed live host provider, and independent Genesis frames are still needed for
-visual fidelity claims.
+The system-map route writes `actual.bmp` in the sibling
+`matrix-map-route-qa/` directory.
+
+The captures were reviewed as full frames. The system-map capture shows the
+six fixed ROM labels at separate 32-pixel rows. These captures establish host
+redraw and state placement only; independent Genesis frames are still needed
+for visual fidelity claims. Special-handler paths outside the supported fact
+set remain incomplete.

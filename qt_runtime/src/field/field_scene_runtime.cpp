@@ -6187,6 +6187,9 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.game.map_seen = [] { return 0; };
     bindings.game.matrix_world_state = [this] {
         auto world = field_matrix_world_state_;
+        world.datastore = scripting::ScriptMatrixDatastoreFacts{
+            0U, field_render_effect_flags_, field_mode_effect_flags_,
+            field_exit_world_flags_, group_item_flags_, field_funds_};
         const auto scene_reference =
             state_.field_scene_buffers.scene_reference;
         for (const auto& actor : field_default_actors_) {
@@ -6214,6 +6217,14 @@ void FieldSceneRuntime::configure_field_menu_route() {
         if (update.field.maglocks_off.has_value()) {
             field_matrix_world_state_.field.maglocks_off =
                 update.field.maglocks_off;
+        }
+        if (update.datastore.has_value()) {
+            field_render_effect_flags_ =
+                update.datastore->tips_page3_flags;
+            field_mode_effect_flags_ = update.datastore->tips_page2_flags;
+            field_exit_world_flags_ = update.datastore->world_event_flags;
+            group_item_flags_ = update.datastore->group_item_flags;
+            field_funds_ = update.datastore->nuyen;
         }
         const auto scene_reference =
             state_.field_scene_buffers.scene_reference;
