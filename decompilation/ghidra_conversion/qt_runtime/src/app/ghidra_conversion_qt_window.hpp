@@ -31,6 +31,7 @@
 #include <QPainter>
 #include <QPaintEvent>
 #include <QPoint>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QString>
 #include <QTimer>
@@ -255,17 +256,19 @@ public:
         host_frame_timer_.stop();
         while (source_frame_index_ < input_log_.recorded_frame_count()) {
             apply_recorded_key_inputs();
+            const auto completed_frame = source_frame_index_;
             advance_one_source_frame();
+            ++source_frame_index_;
             if (input_log_.has_seed_history()) {
                 const auto expected =
-                    input_log_.expected_seed_after_frame(source_frame_index_);
+                    input_log_.expected_seed_after_frame(completed_frame);
                 if (!expected.has_value() ||
                     *expected != source_random_seed()) {
                     replay_diverged_ = true;
                     if (error != nullptr) {
                         std::ostringstream message;
                         message << "replay diverged after source frame "
-                                << (source_frame_index_ + 1U)
+                                << (completed_frame + 1U)
                                 << ": expected shared ROM seed 0x" << std::hex
                                 << expected.value_or(0U) << ", got 0x"
                                 << source_random_seed();
@@ -274,7 +277,23 @@ public:
                     return false;
                 }
             }
-            ++source_frame_index_;
+            if (input_log_.has_fingerprint_history()) {
+                const auto expected = input_log_.expected_fingerprint_after_frame(
+                    completed_frame);
+                const auto actual = current_debug_inspection_fingerprint();
+                if (!expected.has_value() || *expected != actual) {
+                    replay_diverged_ = true;
+                    if (error != nullptr) {
+                        std::ostringstream message;
+                        message << "replay inspection fingerprint diverged after source frame "
+                                << (completed_frame + 1U) << ": expected 0x"
+                                << std::hex << expected.value_or(0U)
+                                << ", got 0x" << actual;
+                        *error = message.str();
+                    }
+                    return false;
+                }
+            }
         }
 
         // Key-up events can be recorded on the frame boundary after the final
@@ -507,6 +526,10 @@ private:
         fields.insert(QStringLiteral("app.replay_diverged"),
                       replay_diverged_);
         return fields;
+    }
+
+    std::uint64_t current_debug_inspection_fingerprint() const {
+        return debug_inspection_fingerprint(debug_inspection_fields());
     }
 
     void apply_pending_remote_keys() {
@@ -1210,24 +1233,41 @@ private:
                 source_frame_index_ >= input_log_.recorded_frame_count()) {
                 break;
             }
+            const auto completed_frame = source_frame_index_;
             advance_one_source_frame();
+            ++source_frame_index_;
             if (input_log_.replaying() && input_log_.has_seed_history()) {
                 const auto expected =
-                    input_log_.expected_seed_after_frame(source_frame_index_);
+                    input_log_.expected_seed_after_frame(completed_frame);
                 if (!expected.has_value() ||
                     *expected != source_random_seed()) {
                     std::cerr << "input replay diverged after source frame "
-                              << source_frame_index_
+                              << (completed_frame + 1U)
                               << ": expected shared ROM seed 0x" << std::hex
                               << expected.value_or(0U) << ", got 0x"
                               << source_random_seed() << std::dec << '\n';
                     replay_diverged_ = true;
                     update_window_title();
                 }
-            } else {
-                input_log_.record_completed_frame(source_random_seed());
             }
-            ++source_frame_index_;
+            if (input_log_.replaying() &&
+                input_log_.has_fingerprint_history() && !replay_diverged_) {
+                const auto expected = input_log_.expected_fingerprint_after_frame(
+                    completed_frame);
+                const auto actual = current_debug_inspection_fingerprint();
+                if (!expected.has_value() || *expected != actual) {
+                    std::cerr << "input replay inspection fingerprint diverged after source frame "
+                              << (completed_frame + 1U) << ": expected 0x"
+                              << std::hex << expected.value_or(0U)
+                              << ", got 0x" << actual << std::dec << '\n';
+                    replay_diverged_ = true;
+                    update_window_title();
+                }
+            } else if (input_log_.recording()) {
+                input_log_.record_completed_frame(
+                    source_random_seed(),
+                    current_debug_inspection_fingerprint());
+            }
             ++advanced_frames;
             if (debug_server_ &&
                 debug_server_->check_source_frame_breakpoints()) {

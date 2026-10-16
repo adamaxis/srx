@@ -27,6 +27,20 @@
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
+inline std::uint64_t debug_inspection_fingerprint(QJsonObject fields) {
+    // These two values describe the host/debugger, not game state. Leaving
+    // them out lets a record made under --debug-port replay in the normal app.
+    fields.remove(QStringLiteral("app.paused"));
+    fields.remove(QStringLiteral("app.replay_diverged"));
+    const auto bytes = QJsonDocument(fields).toJson(QJsonDocument::Compact);
+    std::uint64_t hash = 14695981039346656037ULL;
+    for (const auto byte : bytes) {
+        hash ^= static_cast<unsigned char>(byte);
+        hash *= 1099511628211ULL;
+    }
+    return hash;
+}
+
 // Local-only newline-delimited JSON control for the converted frame loop.
 // It has no game-state logic of its own: the window supplies typed inspection
 // data and queues keyboard transitions for the next source-frame boundary.
@@ -347,11 +361,25 @@ public:
             result.insert(QStringLiteral("fields"), selected);
             return encode(result);
         }
+        if (command == QStringLiteral("hash")) {
+            const auto fingerprint = debug_inspection_fingerprint(
+                state_ ? state_() : QJsonObject{});
+            QJsonObject result;
+            result.insert(QStringLiteral("ok"), true);
+            result.insert(QStringLiteral("frame"),
+                          static_cast<double>(frame_ ? frame_() : 0U));
+            result.insert(QStringLiteral("scope"),
+                          QStringLiteral("debug_inspection_fields"));
+            result.insert(QStringLiteral("fingerprint"),
+                          QString::number(fingerprint, 16).rightJustified(16,
+                                                                          QLatin1Char('0')));
+            return encode(result);
+        }
         if (command == QStringLiteral("help")) {
             QJsonObject result;
             result.insert(QStringLiteral("ok"), true);
             result.insert(QStringLiteral("commands"),
-                          QStringLiteral("status pause resume step key press inspect break(frame|watch|event) delete list help"));
+                          QStringLiteral("status pause resume step key press inspect hash break(frame|watch|event) delete list help"));
             return encode(result);
         }
         return encode_error(QStringLiteral("unknown command"));

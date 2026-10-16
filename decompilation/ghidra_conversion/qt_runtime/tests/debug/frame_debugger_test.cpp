@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -17,9 +18,9 @@ int main() {
         KeyboardInputLog recorder(
             {InputLogConfig::Mode::record, path.string()});
         recorder.record_event(0U, 90, 0U, true);
-        recorder.record_completed_frame(0x1234U);
+        recorder.record_completed_frame(0x1234U, 0x0123456789ABCDEFULL);
         recorder.record_event(1U, 90, 0U, false);
-        recorder.record_completed_frame(0xABCDU);
+        recorder.record_completed_frame(0xABCDU, 0xFEDCBA9876543210ULL);
         std::string error;
         if (!recorder.finish(&error)) {
             std::cerr << error << '\n';
@@ -30,9 +31,41 @@ int main() {
     KeyboardInputLog replay(
         {InputLogConfig::Mode::replay, path.string()});
     if (replay.recorded_frame_count() != 2U || !replay.has_seed_history() ||
+        !replay.has_fingerprint_history() ||
         replay.expected_seed_after_frame(0U) != 0x1234U ||
-        replay.expected_seed_after_frame(1U) != 0xABCDU) {
-        std::cerr << "frame count or random-seed history did not round-trip\n";
+        replay.expected_seed_after_frame(1U) != 0xABCDU ||
+        replay.expected_fingerprint_after_frame(0U) !=
+            0x0123456789ABCDEFULL ||
+        replay.expected_fingerprint_after_frame(1U) !=
+            0xFEDCBA9876543210ULL) {
+        std::cerr << "frame count, seed, or inspection fingerprint history did not round-trip\n";
+        return 1;
+    }
+
+    const auto legacy_v1_path = std::filesystem::temp_directory_path() /
+                                "shadowrun-frame-debugger-v1.srxkey";
+    const auto legacy_v2_path = std::filesystem::temp_directory_path() /
+                                "shadowrun-frame-debugger-v2.srxkey";
+    for (const auto& [legacy_path, magic] :
+         {std::pair{legacy_v1_path, std::string("SRXKEY1\0", 8)},
+          std::pair{legacy_v2_path, std::string("SRXKEY2\0", 8)}}) {
+        std::ofstream legacy(legacy_path, std::ios::binary | std::ios::trunc);
+        legacy.write(magic.data(), static_cast<std::streamsize>(magic.size()));
+        const std::uint64_t empty_count = 0U;
+        for (int word = 0; word < 2; ++word) {
+            for (unsigned shift = 0; shift < 64; shift += 8) {
+                legacy.put(static_cast<char>((empty_count >> shift) & 0xFFU));
+            }
+        }
+    }
+    KeyboardInputLog legacy_v1(
+        {InputLogConfig::Mode::replay, legacy_v1_path.string()});
+    KeyboardInputLog legacy_v2(
+        {InputLogConfig::Mode::replay, legacy_v2_path.string()});
+    if (legacy_v1.has_seed_history() || legacy_v1.has_fingerprint_history() ||
+        !legacy_v2.has_seed_history() ||
+        legacy_v2.has_fingerprint_history()) {
+        std::cerr << "legacy input-log versions did not retain their capabilities\n";
         return 1;
     }
     const auto first = replay.take_events_for_frame(0U);
@@ -59,5 +92,7 @@ int main() {
     }
 
     std::filesystem::remove(path, ignored);
+    std::filesystem::remove(legacy_v1_path, ignored);
+    std::filesystem::remove(legacy_v2_path, ignored);
     return 0;
 }

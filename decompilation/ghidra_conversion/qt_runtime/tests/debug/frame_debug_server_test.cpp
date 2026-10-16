@@ -41,6 +41,7 @@ int main(int argc, char** argv) {
     QStringList frame_events;
     QJsonObject state;
     state.insert(QStringLiteral("app.phase"), QStringLiteral("field_ready"));
+    state.insert(QStringLiteral("app.paused"), true);
     QJsonObject actor;
     actor.insert(QStringLiteral("x"), 321);
     actor.insert(QStringLiteral("y"), 456);
@@ -63,7 +64,25 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    auto result = response(server.handle_line(R"({"cmd":"status"})"));
+    auto result = response(server.handle_line(R"({"cmd":"hash"})"));
+    const auto initial_fingerprint =
+        result.value(QStringLiteral("fingerprint")).toString();
+    if (!result.value(QStringLiteral("ok")).toBool() ||
+        initial_fingerprint.isEmpty() ||
+        result.value(QStringLiteral("scope")).toString() !=
+            QStringLiteral("debug_inspection_fields")) {
+        std::cerr << "hash command did not return a scoped inspector fingerprint\n";
+        return 1;
+    }
+    state.insert(QStringLiteral("app.paused"), false);
+    result = response(server.handle_line(R"({"cmd":"hash"})"));
+    if (result.value(QStringLiteral("fingerprint")).toString() !=
+        initial_fingerprint) {
+        std::cerr << "host pause state incorrectly changed the inspector fingerprint\n";
+        return 1;
+    }
+
+    result = response(server.handle_line(R"({"cmd":"status"})"));
     if (!result.value(QStringLiteral("ok")).toBool() ||
         result.value(QStringLiteral("frame")).toInt() != 88 ||
         result.value(QStringLiteral("mode")).toString() !=

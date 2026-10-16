@@ -26,9 +26,9 @@ struct InputLogConfig {
 };
 
 // Records accepted Qt key transitions against the number of completed source
-// frames. Replay injects them at the same source-frame boundary. This keeps
-// the log independent of Qt's wall-clock timer jitter while preserving the
-// existing game input path.
+// frames. Replay injects them at the same source-frame boundary. Each completed
+// frame also stores the shared ROM seed and, in the current format, a
+// fingerprint of the fields exported by the debugger inspector.
 class KeyboardInputLog final {
 public:
     KeyboardInputLog() = default;
@@ -59,6 +59,9 @@ public:
     }
 
     bool has_seed_history() const noexcept { return has_seed_history_; }
+    bool has_fingerprint_history() const noexcept {
+        return has_fingerprint_history_;
+    }
 
     void record_event(const std::uint64_t frame, const std::int32_t key,
                       const std::uint32_t modifiers, const bool pressed) {
@@ -71,9 +74,11 @@ public:
         events_.push_back({frame, key, modifiers, pressed});
     }
 
-    void record_completed_frame(const std::uint16_t source_seed) {
+    void record_completed_frame(const std::uint16_t source_seed,
+                                const std::uint64_t inspection_fingerprint = 0U) {
         if (recording() && frame_count_ != std::numeric_limits<std::uint64_t>::max()) {
             frame_seeds_.push_back(source_seed);
+            frame_fingerprints_.push_back(inspection_fingerprint);
             ++frame_count_;
         }
     }
@@ -84,6 +89,15 @@ public:
             return std::nullopt;
         }
         return frame_seeds_[static_cast<std::size_t>(frame)];
+    }
+
+    std::optional<std::uint64_t> expected_fingerprint_after_frame(
+        const std::uint64_t frame) const noexcept {
+        if (!has_fingerprint_history_ || !replaying() ||
+            frame >= frame_fingerprints_.size()) {
+            return std::nullopt;
+        }
+        return frame_fingerprints_[static_cast<std::size_t>(frame)];
     }
 
     std::vector<KeyboardInputEvent> take_events_for_frame(
@@ -109,11 +123,14 @@ public:
             set_error(error, "could not open input log for writing: " + config_.path);
             return false;
         }
-        stream.write(kMagic, sizeof(kMagic));
+        stream.write(kMagicV3, sizeof(kMagicV3));
         write_u64(stream, frame_count_);
         write_u64(stream, static_cast<std::uint64_t>(events_.size()));
         for (const auto seed : frame_seeds_) {
             write_u32(stream, seed);
+        }
+        for (const auto fingerprint : frame_fingerprints_) {
+            write_u64(stream, fingerprint);
         }
         for (const auto& event : events_) {
             write_u64(stream, event.frame);
@@ -130,7 +147,8 @@ public:
     }
 
 private:
-    static constexpr char kMagic[8] = {'S', 'R', 'X', 'K', 'E', 'Y', '2', '\0'};
+    static constexpr char kMagicV2[8] = {'S', 'R', 'X', 'K', 'E', 'Y', '2', '\0'};
+    static constexpr char kMagicV3[8] = {'S', 'R', 'X', 'K', 'E', 'Y', '3', '\0'};
     static constexpr std::uint64_t kMaximumEvents = 10'000'000;
     static constexpr std::uint64_t kMaximumFrames = 10'000'000;
 
@@ -185,18 +203,21 @@ private:
         if (!stream) {
             throw std::runtime_error("could not open input log: " + config_.path);
         }
-        char magic[sizeof(kMagic)]{};
+        char magic[sizeof(kMagicV3)]{};
         stream.read(magic, sizeof(magic));
-        const bool version_two =
-            std::equal(std::begin(kMagic), std::end(kMagic), magic);
+        const bool version_three = std::equal(
+            std::begin(kMagicV3), std::end(kMagicV3), magic);
+        const bool version_two = std::equal(
+            std::begin(kMagicV2), std::end(kMagicV2), magic);
         const bool version_one =
             magic[0] == 'S' && magic[1] == 'R' && magic[2] == 'X' &&
             magic[3] == 'K' && magic[4] == 'E' && magic[5] == 'Y' &&
             magic[6] == '1' && magic[7] == '\0';
-        if (!stream || (!version_one && !version_two)) {
+        if (!stream || (!version_one && !version_two && !version_three)) {
             throw std::runtime_error("input log has an unsupported header: " + config_.path);
         }
-        has_seed_history_ = version_two;
+        has_seed_history_ = version_two || version_three;
+        has_fingerprint_history_ = version_three;
         frame_count_ = read_u64(stream);
         const auto count = read_u64(stream);
         if (frame_count_ > kMaximumFrames || count > kMaximumEvents ||
@@ -211,6 +232,12 @@ private:
                     throw std::runtime_error("input log contains an invalid random seed");
                 }
                 frame_seeds_.push_back(static_cast<std::uint16_t>(seed));
+            }
+        }
+        if (has_fingerprint_history_) {
+            frame_fingerprints_.reserve(static_cast<std::size_t>(frame_count_));
+            for (std::uint64_t frame = 0; frame < frame_count_; ++frame) {
+                frame_fingerprints_.push_back(read_u64(stream));
             }
         }
         events_.reserve(static_cast<std::size_t>(count));
@@ -238,10 +265,12 @@ private:
     InputLogConfig config_;
     std::vector<KeyboardInputEvent> events_;
     std::vector<std::uint16_t> frame_seeds_;
+    std::vector<std::uint64_t> frame_fingerprints_;
     std::uint64_t frame_count_ = 0;
     std::size_t next_event_ = 0;
     bool finished_ = false;
     bool has_seed_history_ = false;
+    bool has_fingerprint_history_ = false;
 };
 
 class FrameStepper final {
