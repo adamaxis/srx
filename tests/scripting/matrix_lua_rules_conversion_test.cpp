@@ -55,6 +55,7 @@ local Programs = require("menu.rules.matrix_programs")
 local Systems = require("data.matrix_systems")
 local Session = require("menu.matrix_session")
 local Cyberdeck = require("menu.screens.cyberdeck")
+local MatrixText = require("menu.rules.matrix_text")
 
 local checks = 0
 local function eq(actual, expected, label)
@@ -161,6 +162,10 @@ local cancelled_alert_result = Actions.cancel_alert(active_alert_state)
 eq(active_alert_state.alert, -1, "Cancel Alert clears an active alert")
 eq(cancelled_alert_result.text, Actions.TEXT.ALERT_CANCELLED,
     "Cancel Alert selects the ROM cancellation message")
+eq(Actions.lockout().text, Actions.TEXT.LOCKOUT,
+    "Lockout selects its ROM text address")
+eq(MatrixText.from_rom(Actions.TEXT.LOCKOUT), MatrixText.LOCKOUT,
+    "ROM Lockout text address resolves to the decoded message")
 
 local linked_session_ok, linked_session = Session.begin(0)
 eq(linked_session_ok, true, "node navigation session starts")

@@ -1134,11 +1134,82 @@ int main() {
               route.top_option_labels.size() == 3U,
           "Cancel Alert message returns to the same node action list", failures);
     runtime.advance_menu_route(0x0100U); // Select Go To Node.
-    runtime.advance_menu_route(0x4000U); // Go To Node.
+    runtime.advance_menu_route(0x4000U); // Go To Node, with shared action gate.
     check(runtime.menu_route_snapshot().top_title == "Go To Node",
           "CPU Go To Node enters destination selection", failures);
-    check(action_rolls.size() == 4U,
-          "Enter System, failed and successful Cancel Alert, and Go To Node each use the ROM action gate",
+    for (int node = 0; node < 5; ++node) {
+        runtime.advance_menu_route(0x0800U);
+    }
+    runtime.advance_menu_route(0x4000U); // I/O Port, node 6.
+    route = runtime.menu_route_snapshot();
+    check(route.top_matrix_node == 6 && route.top_title == "I/O Port" &&
+              route.top_option_labels ==
+                  std::vector<std::string>{"Leave Node", "Lockout"},
+          "Go To Node reaches ROM I/O Port node and its Lockout action", failures);
+    runtime.advance_menu_route(0x0200U); // Select Lockout.
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMatrixNodeAction &&
+              route.top_title == "Matrix Message" &&
+              route.top_text.find("NODE ACCESS LOCKED") != std::string::npos &&
+              route.top_text.find("DISABLED") != std::string::npos &&
+              route.top_option_labels.empty(),
+          "Lockout displays all ROM message lines and clears action buttons",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    QImage lockout_actual(320, 224, QImage::Format_ARGB32);
+    lockout_actual.fill(QColor(255, 0, 255));
+    QPainter lockout_painter(&lockout_actual);
+    const QImage lockout_font = QImage(QString::fromStdString(
+        (node_assets / "cyberspace/matrix/system-map-font.bmp").string()));
+    const bool lockout_painted = paint_matrix_node_action_panel(
+        lockout_painter, lockout_font, route);
+    lockout_painter.end();
+    check(lockout_painted,
+          "Lockout message reaches the Qt panel presenter", failures);
+    bool lockout_rows_spaced = true;
+    constexpr std::array<int, 4> kLockoutRows{50, 86, 122, 146};
+    for (const auto y0 : kLockoutRows) {
+        bool row_has_text = false;
+        for (int y = y0; y < y0 + 10; ++y) {
+            for (int x = 24; x < 280; ++x) {
+                row_has_text = row_has_text ||
+                    lockout_actual.pixelColor(x, y) == QColor(36, 219, 36);
+            }
+        }
+        lockout_rows_spaced = lockout_rows_spaced && row_has_text;
+    }
+    bool old_lockout_action_visible = false;
+    for (int y = 107; y < 118; ++y) {
+        for (int x = 24; x < 280; ++x) {
+            old_lockout_action_visible = old_lockout_action_visible ||
+                lockout_actual.pixelColor(x, y) == QColor(36, 219, 36);
+        }
+    }
+    check(lockout_rows_spaced,
+          "Lockout's four text groups render on separated rows", failures);
+    check(!old_lockout_action_visible,
+          "Lockout redraw does not leave its old action label underneath",
+          failures);
+    const auto lockout_artifact = std::filesystem::path(
+        SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) / "lockout-message.bmp";
+    std::filesystem::create_directories(lockout_artifact.parent_path());
+    check(lockout_actual.save(QString::fromStdString(lockout_artifact.string()),
+                              "BMP"),
+          "write Lockout message image artifact", failures);
+#endif
+    runtime.advance_menu_route(0x4000U); // ROM D94 any-edge wait.
+    runtime.advance_menu_route(0x0100U); // Leave Node from the I/O Port.
+    runtime.advance_menu_route(0x4000U);
+    runtime.advance_menu_route(0x4000U); // Follow the first link back to CPU.
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "CPU" && route.top_matrix_node == 4,
+          "I/O Port Leave Node follows its ROM link back to CPU", failures);
+    runtime.advance_menu_route(0x4000U); // CPU Go To Node again.
+    check(runtime.menu_route_snapshot().top_title == "Go To Node",
+          "CPU action gate remains usable after Lockout returns", failures);
+    check(action_rolls.size() == 7U,
+          "all seven wired Matrix action attempts use the shared ROM gate",
           failures);
     runtime.advance_menu_route(0x0800U); // Next node.
     runtime.advance_menu_route(0x4000U); // Confirm destination.

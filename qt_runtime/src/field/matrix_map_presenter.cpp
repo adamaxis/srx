@@ -175,7 +175,7 @@ bool paint_matrix_node_action_panel(
     const bool message_view = state.top_title == "Matrix Message";
     std::size_t start = 0U;
     int line = 0;
-    while (start <= state.top_text.size() && line < (message_view ? 8 : 3)) {
+    while (start <= state.top_text.size() && line < (message_view ? 12 : 3)) {
         const auto end = state.top_text.find('|', start);
         const auto value = state.top_text.substr(
             start, end == std::string::npos ? std::string::npos

@@ -111,19 +111,23 @@ function M.input(st, events, ctx)
             if action and (action.id == "enter_system" or
                            action.id == "leave_node" or
                            action.id == "go_to_node" or
-                           action.id == "cancel_alert") then
+                           action.id == "cancel_alert" or
+                           action.id == "lockout") then
                 -- 0x548A0 performs the shared 0x55F44/0xDBA runner gate
                 -- before dispatch; Cancel Alert itself adds no second roll.
                 if action_succeeds(st, ctx) then
-                    if not MatrixSession.select_node_action(state, action.id) and
-                       action.id == "cancel_alert" then
-                        local result = NodeActions.cancel_alert(state)
-                        st.matrix_message = result.text ==
-                            NodeActions.TEXT.ALERT_CANCELLED and
-                            MatrixText.ALERT_CANCELLED or MatrixText.NO_ALERTS
+                    local navigated = MatrixSession.select_node_action(
+                        state, action.id)
+                    if not navigated and action.id == "cancel_alert" then
+                        st.matrix_message = MatrixText.from_rom(
+                            NodeActions.cancel_alert(state).text)
+                    elseif not navigated and action.id == "lockout" then
+                        st.matrix_message = MatrixText.from_rom(
+                            NodeActions.lockout().text)
                     end
                 else
-                    st.matrix_message = MatrixText.ACTION_FAILED
+                    st.matrix_message = MatrixText.from_rom(
+                        NodeActions.TEXT.ACTION_FAILED)
                 end
                 refresh(st)
                 ctx.redraw(R.FULL)
