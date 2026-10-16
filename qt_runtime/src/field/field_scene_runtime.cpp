@@ -16862,21 +16862,63 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     }
 }
 
-void FieldSceneRuntime::paint(QPainter& painter) const {
-    painter.fillRect(0, 0, 320, 224, Qt::black);
+void FieldSceneRuntime::paint(QPainter& target_painter) const {
     if (!ready_ || field_map_.isNull()) {
+        target_painter.fillRect(0, 0, 320, 224, Qt::black);
         return;
     }
-    const auto apply_palette_fade = [this, &painter] {
-        const auto transition_alpha = static_cast<int>(
-            field_elevator_scene_transition_.black_overlay_alpha());
-        const auto alpha = std::max(
-            transition_alpha,
-            std::min(255, static_cast<int>(field_palette_fade_steps_) * 32));
-        if (alpha == 0) {
-            return;
+
+    QImage scene(320, 224, QImage::Format_ARGB32_Premultiplied);
+    scene.fill(Qt::black);
+    QPainter scene_painter(&scene);
+    auto& painter = scene_painter;
+    const auto apply_palette_fade = [this, &scene, &scene_painter,
+                                     &target_painter] {
+        std::uint8_t palette_passes = 0U;
+        bool toward_black = true;
+        bool transition_active = false;
+        switch (field_elevator_scene_transition_.phase()) {
+        case ElevatorSceneTransitionPhase::fading_to_black:
+            palette_passes = std::min<std::uint8_t>(
+                field_elevator_scene_transition_.palette_step(), 7U);
+            transition_active = true;
+            break;
+        case ElevatorSceneTransitionPhase::destination_handoff:
+            palette_passes = 7U;
+            transition_active = true;
+            break;
+        case ElevatorSceneTransitionPhase::fading_from_black:
+            palette_passes = std::min<std::uint8_t>(
+                field_elevator_scene_transition_.palette_step(), 7U);
+            toward_black = false;
+            transition_active = true;
+            break;
+        case ElevatorSceneTransitionPhase::idle:
+            if (field_palette_fade_steps_ != 0U) {
+                // 0x16396 uses 0x1088 for the interaction fade. The modal
+                // return counter runs in the opposite direction; preserve
+                // its existing host duration while applying one CRAM level
+                // per source palette step and saturating after seven levels.
+                const auto completed_steps =
+                    field_modal_return_transition_frames_remaining_ != 0U
+                        ? static_cast<std::uint8_t>(
+                              9U - std::min<std::uint8_t>(
+                                       field_palette_fade_steps_, 9U))
+                        : field_palette_fade_steps_;
+                palette_passes = std::min<std::uint8_t>(completed_steps, 7U);
+                toward_black =
+                    field_modal_return_transition_frames_remaining_ == 0U;
+                transition_active = true;
+            }
+            break;
         }
-        painter.fillRect(0, 0, 320, 224, QColor(0, 0, 0, alpha));
+
+        scene_painter.end();
+        if (transition_active) {
+            scene = transition_genesis_cram_image(
+                scene, palette_passes, toward_black);
+        }
+        target_painter.drawImage(0, 0, scene);
     };
     if (field_elevator_selector_.is_open()) {
         const auto animation_frame = static_cast<std::size_t>(
