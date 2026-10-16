@@ -163,7 +163,7 @@ function Pick.input(st, events, ctx)
             local started, session = MatrixSession.begin(st.system)
             if not started then return end
             return { transition = T.REPLACE,
-                     screen = E.MenuScreen.CYBERDECK,
+                     screen = E.MenuScreen.MATRIX_NODE_ACTION,
                      args = { system_id = st.system,
                               matrix_session = true,
                               matrix_state = session } }

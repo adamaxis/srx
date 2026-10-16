@@ -16,4 +16,9 @@ bool paint_matrix_system_map(
     const std::array<QImage, 4>& tile_atlases,
     const scripting::ScriptMenuRouteSnapshot& state);
 
+bool paint_matrix_node_action_panel(
+    QPainter& painter,
+    const QImage& font,
+    const scripting::ScriptMenuRouteSnapshot& state);
+
 } // namespace shadowrun::ghidra_conversion::qt_runtime

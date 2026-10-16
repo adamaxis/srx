@@ -138,6 +138,7 @@ target_compile_definitions(shadowrun_gameplay_script_menu_route_test PRIVATE
     SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../gameplay/scripts"
     SHADOWRUN_MATRIX_MAP_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../assets"
     SHADOWRUN_MATRIX_MAP_ARTIFACT_DIR="${CMAKE_CURRENT_BINARY_DIR}/matrix-map-route-qa"
+    SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR="${CMAKE_CURRENT_BINARY_DIR}/matrix-node-action-route-qa"
     SHADOWRUN_MATRIX_MAP_QT_TEST=1)
 add_test(NAME shadowrun_ghidra_gameplay_script_menu_route
          COMMAND shadowrun_gameplay_script_menu_route_test)

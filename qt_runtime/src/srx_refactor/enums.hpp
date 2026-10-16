@@ -361,6 +361,7 @@ enum class MenuScreen : std::int64_t {
     DECK_MAP = 0x22,
     NOTEBOOK_CONTACTS = 0x23,
     NOTEBOOK_SHADOWRUNNERS = 0x24,
+    MATRIX_NODE_ACTION = 0x25,
 };
 enum class MenuSound : std::int64_t {
     DAMAGE = 0x18,

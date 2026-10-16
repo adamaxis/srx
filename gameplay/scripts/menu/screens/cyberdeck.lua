@@ -44,6 +44,7 @@ function M.new(args)
         title = "Cyberdeck",
         labels = M.GRID_LABELS,
         matrix_session = args.matrix_session == true,
+        return_to_node_action = args.return_to_node_action == true,
         system_id = args.system_id,
         matrix_state = args.matrix_state,
     }
@@ -63,6 +64,10 @@ local function online(st, ctx)
 end
 local function leave(st, ctx, res)
     ctx.game.deck_leave(st.saved)
+    if st.return_to_node_action and
+       not (res and res.exit_secretary) then
+        return { transition = T.POP, result = { matrix_resumed = true } }
+    end
     if st.matrix_session then
         MatrixSession.finish(st.matrix_state)
         -- ROM 0xE47A returns through field resume and rebuilds the Command
@@ -113,8 +118,8 @@ end
 function M.child_returned(st, child, res, ctx)
     if res.logged_out then return leave(st, ctx, { exit_secretary = true }) end          -- FFF0DC = FF
     if res.exit_deck then
-        return leave(st, ctx, st.matrix_session and
-            { exit_secretary = true } or {})                                            -- FFF0AD -> clr, d7 = 0, exit
+        return leave(st, ctx, st.return_to_node_action and {} or
+            (st.matrix_session and { exit_secretary = true } or {}))                    -- 0x549C0 resumes 0x54662
     end
     st.text = type(res.text) == "string" and res.text or nil                           -- plain-rts text remains until redraw
     st.list = res.list

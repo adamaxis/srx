@@ -15792,6 +15792,11 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     : std::string_view(routed_menu.top_text));
             return;
         }
+        if (routed_screen == srx::MenuScreen::MATRIX_NODE_ACTION &&
+            paint_matrix_node_action_panel(painter, matrix_map_font_,
+                                           routed_menu)) {
+            return;
+        }
         if (routed_screen == srx::MenuScreen::DECK_MAP &&
             routed_menu.top_matrix_map_cells_present) {
             if (paint_matrix_system_map(

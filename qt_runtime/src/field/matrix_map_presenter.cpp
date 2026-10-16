@@ -1,5 +1,7 @@
 #include "matrix_map_presenter.hpp"
 
+#include "enums.hpp"
+
 #include <QPoint>
 #include <QRect>
 #include <QSize>
@@ -124,6 +126,75 @@ bool paint_matrix_system_map(
         draw_map_labels(painter, font, state.top_matrix_map_labels);
     }
     draw_map_cells(painter, tile_atlases, state.top_matrix_map_cells);
+    painter.restore();
+    return true;
+}
+
+bool paint_matrix_node_action_panel(
+    QPainter& painter,
+    const QImage& font,
+    const scripting::ScriptMenuRouteSnapshot& state) {
+    if (state.top_screen != static_cast<std::uint16_t>(
+                                srx::MenuScreen::MATRIX_NODE_ACTION) ||
+        font.size() != QSize(128, 48)) {
+        return false;
+    }
+
+    // This is the debug route's clean panel presentation. ROM-derived node
+    // state and choices arrive from Lua; it deliberately clears the prior
+    // screen before painting so Pocket Secretary controls cannot show through.
+    const QColor background(3, 12, 22);
+    const QColor panel(7, 27, 39);
+    const QColor edge(28, 117, 137);
+    const QColor selector(196, 190, 39);
+    painter.save();
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
+    painter.fillRect(QRect(0, 0, 320, 224), background);
+    painter.fillRect(QRect(12, 12, 296, 200), panel);
+    painter.setPen(edge);
+    painter.drawRect(QRect(12, 12, 295, 199));
+    const auto draw_text = [&painter, &font](const int x, const int y,
+                                             const std::string& value) {
+        auto current_x = x;
+        for (const auto character : value) {
+            const auto code = static_cast<unsigned char>(character);
+            if (code < 0x20U || code > 0x7EU) {
+                current_x += 8;
+                continue;
+            }
+            const auto glyph = static_cast<int>(code - 0x20U);
+            painter.drawImage(QPoint(current_x, y), font,
+                              QRect((glyph % 16) * 8,
+                                    (glyph / 16) * 8, 8, 8));
+            current_x += 8;
+        }
+    };
+    draw_text(24, 20, state.top_title);
+    painter.fillRect(QRect(20, 40, 280, 1), edge);
+
+    std::size_t start = 0U;
+    int line = 0;
+    while (start <= state.top_text.size() && line < 3) {
+        const auto end = state.top_text.find('|', start);
+        const auto value = state.top_text.substr(
+            start, end == std::string::npos ? std::string::npos
+                                            : end - start);
+        draw_text(24, 50 + line * 14, value);
+        ++line;
+        if (end == std::string::npos) break;
+        start = end + 1U;
+    }
+
+    for (std::size_t row = 0U;
+         row < state.top_option_labels.size() && row < 5U; ++row) {
+        const auto y = 94 + static_cast<int>(row) * 22;
+        if (state.top_row == static_cast<int>(row)) {
+            painter.fillRect(QRect(20, y - 13, 280, 18),
+                             QColor(12, 43, 51));
+            painter.fillRect(QRect(20, y - 13, 2, 18), selector);
+        }
+        draw_text(28, y - 8, state.top_option_labels[row]);
+    }
     painter.restore();
     return true;
 }

@@ -38,6 +38,8 @@ Route.register(E.MenuScreen.DISMISS_RUNNER, secretary.Dismiss)
 local debug_menu = require("menu.screens.debug_menu")
 Route.register(E.MenuScreen.DEBUG_MENU, debug_menu.Debug)
 Route.register(E.MenuScreen.DEBUG_PICK_SYSTEM, debug_menu.Pick)
+Route.register(E.MenuScreen.MATRIX_NODE_ACTION,
+               require("menu.screens.matrix_node_action"))
 local save_load = require("menu.screens.save_load")
 Route.register(E.MenuScreen.SAVE_LOAD, save_load.SaveLoad)
 Route.register(E.MenuScreen.SAVE_SLOT, save_load.Slot)

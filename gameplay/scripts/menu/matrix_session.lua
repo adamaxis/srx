@@ -188,6 +188,37 @@ function M.node_actions(state)
     return node and ACTIONS[node.function_id] or {}
 end
 
+function M.node_name(state, node_id)
+    state = state or M.active
+    local node = state and state.nodes[node_id]
+    if not node then return "Unknown Node" end
+    return table.concat(NODE_NAMES[node.function_id] or { "Unknown Node" }, " ")
+end
+
+function M.node_summary(state)
+    local node = M.current_node(state)
+    if not node then return "" end
+    local file_class = FILE_CLASSES[node.file_class_id] or "Unknown"
+    local colour = COLOURS[node.colour] or "Unknown"
+    return file_class .. "|" .. colour .. "-" .. tostring(node.security)
+end
+
+function M.node_cursor_text(state)
+    if not state then return "" end
+    local target
+    if state.phase == "link_select" then
+        local node = M.current_node(state)
+        target = node and node.links[state.link_cursor]
+        return "Link " .. tostring(state.link_cursor + 1) .. "|" ..
+               "Destination: " .. M.node_name(state, target)
+    end
+    if state.phase == "goto" then
+        target = state.goto_cursor
+        return "Go To Node|Destination: " .. M.node_name(state, target)
+    end
+    return M.node_summary(state)
+end
+
 function M.node_text(state, selected_row)
     local node = M.current_node(state)
     if not node then return "" end

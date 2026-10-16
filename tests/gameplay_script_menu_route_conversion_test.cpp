@@ -32,6 +32,7 @@ using shadowrun::ghidra_conversion::scripting::CyberdeckMenuBinding;
 using shadowrun::ghidra_conversion::scripting::dispatch_cyberdeck_menu_binding;
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
 using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_system_map;
+using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_node_action_panel;
 #endif
 
 namespace {
@@ -45,6 +46,7 @@ constexpr std::uint16_t kCyberdeck = 18U;
 constexpr std::uint16_t kDebugMenu = 27U;
 constexpr std::uint16_t kDebugPickSystem = 28U;
 constexpr std::uint16_t kDeckMap = 34U;
+constexpr std::uint16_t kMatrixNodeAction = 37U;
 constexpr std::uint16_t kCommandPagePocketSecretary = 6U;
 constexpr std::uint16_t kNotebook = 10U;
 constexpr std::uint16_t kNotebookTips = 21U;
@@ -903,9 +905,8 @@ int main() {
 
     // Exercise the debug-only Matrix entry as a live route, not as an
     // isolated Lua function. The picker clamps 0..24, waits 20 frames, then
-    // enters the online Cyberdeck route. The selected system stays attached
-    // through Map, and Start rebuilds Command. The 3D Matrix loop is still a
-    // separate unfinished integration hill.
+    // enters the Lua node-action loop. Start opens the deck loop and returns
+    // here; the 3D Matrix actor/service loop remains a separate integration hill.
     pocket_extra_row = true;
     check(runtime.open_menu_route(kCommand),
           "open command for Matrix debug route", failures);
@@ -950,11 +951,82 @@ int main() {
           "Matrix entry keeps the source 20-frame transition", failures);
     runtime.advance_menu_route(0U);
     route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMatrixNodeAction &&
+              route.top_option_labels == std::vector<std::string>{"Enter System"} &&
+              route.top_matrix_state_present &&
+              route.top_matrix_system_id == 0 && route.top_matrix_node == 0 &&
+              deck_enter_count == 0,
+          "jack-in opens the source node-action loop with the selected system",
+          failures);
+    runtime.advance_menu_route(0x4000U); // Select Enter System.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMatrixNodeAction && route.top_title == "Enter System",
+          "Enter System selects links without moving immediately", failures);
+    runtime.advance_menu_route(0x4000U); // Confirm first ROM link.
+    route = runtime.menu_route_snapshot();
+    check(route.top_matrix_node == 4 && route.top_title == "CPU" &&
+              route.top_option_labels == std::vector<std::string>{
+                  "Go To Node", "Cancel Alert", "Crash System"},
+          "link confirmation enters the source CPU node and its action list",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    QImage node_actual(320, 224, QImage::Format_ARGB32);
+    node_actual.fill(QColor(255, 0, 255));
+    QPainter node_painter(&node_actual);
+    const std::filesystem::path node_assets(SHADOWRUN_MATRIX_MAP_ASSET_ROOT);
+    const QImage node_font = QImage(QString::fromStdString(
+        (node_assets / "cyberspace/matrix/system-map-font.bmp").string()));
+    const bool node_painted = paint_matrix_node_action_panel(
+        node_painter, node_font, route);
+    node_painter.end();
+    check(node_painted,
+          "live Lua node-action state reaches the Qt panel presenter", failures);
+    bool node_stale_pixel = false;
+    for (int y = 0; y < node_actual.height(); ++y) {
+        for (int x = 0; x < node_actual.width(); ++x) {
+            node_stale_pixel = node_stale_pixel ||
+                node_actual.pixelColor(x, y) == QColor(255, 0, 255);
+        }
+    }
+    check(!node_stale_pixel,
+          "node-action redraw clears all graphics from the previous screen",
+          failures);
+    bool node_labels_have_separate_rows = true;
+    constexpr std::array<int, 3> kNodeActionRows{85, 107, 129};
+    for (const auto y0 : kNodeActionRows) {
+        bool row_has_text = false;
+        for (int y = y0; y < y0 + 10; ++y) {
+            for (int x = 28; x < 180; ++x) {
+                row_has_text = row_has_text ||
+                    node_actual.pixelColor(x, y) == QColor(36, 219, 36);
+            }
+        }
+        node_labels_have_separate_rows = node_labels_have_separate_rows &&
+                                         row_has_text;
+    }
+    check(node_labels_have_separate_rows,
+          "Matrix node actions render on three distinct rows", failures);
+    const auto node_artifact = std::filesystem::path(
+        SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) / "actual.bmp";
+    std::filesystem::create_directories(node_artifact.parent_path());
+    check(node_actual.save(QString::fromStdString(node_artifact.string()), "BMP"),
+          "write live Matrix node-action actual.bmp artifact", failures);
+#endif
+    runtime.advance_menu_route(0x4000U); // Go To Node.
+    check(runtime.menu_route_snapshot().top_title == "Go To Node",
+          "CPU Go To Node enters destination selection", failures);
+    runtime.advance_menu_route(0x0800U); // Next node.
+    runtime.advance_menu_route(0x4000U); // Confirm destination.
+    route = runtime.menu_route_snapshot();
+    check(route.top_matrix_node == 1,
+          "Go To Node commits the highlighted catalog node", failures);
+    runtime.advance_menu_route(0x8000U); // Start enters the deck loop.
+    route = runtime.menu_route_snapshot();
     check(route.top_screen == kCyberdeck &&
               route.top_option_labels.size() == 16U &&
-              route.top_matrix_state_present &&
-              route.top_matrix_system_id == 0 && deck_enter_count == 1,
-          "jack-in opens the online deck route with the selected system",
+              route.top_matrix_state_present && route.top_matrix_node == 1 &&
+              deck_enter_count == 1,
+          "Start enters the Cyberdeck loop while preserving the selected node",
           failures);
     runtime.advance_menu_route(0x0100U); // Up wraps to Map row 3.
     runtime.advance_menu_route(0x0800U);
@@ -1093,14 +1165,37 @@ int main() {
     check(map_actual.save(QString::fromStdString(map_artifact.string()), "BMP"),
           "write live Matrix map actual.bmp artifact", failures);
 #endif
-    runtime.advance_menu_route(0x8000U); // Return to Matrix grid.
+    runtime.advance_menu_route(0x8000U); // Return to deck grid.
     check(runtime.menu_route_snapshot().top_screen == kCyberdeck,
           "Matrix map returns to the active deck screen", failures);
-    runtime.advance_menu_route(0x8000U); // Leave the Matrix session.
+    runtime.advance_menu_route(0x8000U); // Return to node-action loop.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMatrixNodeAction && route.top_matrix_node == 1 &&
+              deck_leave_count == 1,
+          "deck return resumes the same Lua Matrix node", failures);
+    runtime.advance_menu_route(0x8000U); // Re-enter the deck loop.
+    runtime.advance_menu_route(0x0100U); // Up wraps to row 3.
+    runtime.advance_menu_route(0x0800U);
+    runtime.advance_menu_route(0x0800U); // Select Map.
+    runtime.advance_menu_route(0x4000U); // Open Map/Retreat.
+    runtime.advance_menu_route(0x0200U); // Select Retreat.
+    runtime.advance_menu_route(0x4000U); // Confirm source retreat action.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMatrixNodeAction && route.top_matrix_node == 4 &&
+              route.top_matrix_previous_node == 1 && deck_leave_count == 2,
+          "confirmed retreat returns to the prior node-action loop", failures);
+    runtime.advance_menu_route(0x8000U); // Re-enter deck to pull the plug.
+    for (int row = 0; row < 3; ++row) runtime.advance_menu_route(0x0200U);
+    for (int column = 0; column < 3; ++column) runtime.advance_menu_route(0x0800U);
+    runtime.advance_menu_route(0x4000U); // Pull Plug prompt.
+    check(runtime.menu_route_snapshot().top_screen == 30U,
+          "Matrix logout reaches the ROM Pull Plug confirmation", failures);
+    runtime.advance_menu_route(0x0100U); // Change from No to Yes.
+    runtime.advance_menu_route(0x4000U); // Confirm logout.
     route = runtime.menu_route_snapshot();
     check(route.open && route.top_screen == kCommand &&
               route.page == kCommandPagePocketSecretary &&
-              deck_leave_count == 1 && closed_count == 3,
+              deck_leave_count == 3 && closed_count == 3,
           "Matrix exit clears hidden children and rebuilds Command on page 6",
           failures);
     runtime.advance_menu_route(0x4000U); // Reopen Pocket Secretary.

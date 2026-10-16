@@ -111,7 +111,8 @@ E.MenuScreen = { COMMAND = 1, POSTURE = 2, ITEM_ACTION = 3, CLIPS = 4, ATTRIBUTE
                  RELOAD_CONFIRM = 23, UPGRADE_PROMPT = 24, MAGIC_FORCE = 25, MAGIC_POSTURE = 26,
                  DEBUG_MENU = 27, DEBUG_PICK_SYSTEM = 28, SAVE_SLOT = 29, PULL_PLUG = 30,
                  DECK_PROGRAM = 31, DECK_CYBERINFO = 32, DECK_STORAGE = 33, DECK_MAP = 34,
-                 NOTEBOOK_CONTACTS = 35, NOTEBOOK_SHADOWRUNNERS = 36 }   -- Notebook records share ROM 0xF5F4 paging [C]
+                 NOTEBOOK_CONTACTS = 35, NOTEBOOK_SHADOWRUNNERS = 36,
+                 MATRIX_NODE_ACTION = 37 }   -- Lua route for ROM node loop 0x54662
 -- Presenter regions (docs/09 section 10.1 coordinates) [C positions]
 E.MenuRegion = { ITEM_PICTURE = 0x0001, ITEM_HEADER = 0x0002, RATING = 0x0004, DAMAGE_POWER = 0x0008, COMBAT_BARS = 0x0010,
                  WEAPON_BARS = 0x0020, ARMOR = 0x0040, POSTURE_BLOCK = 0x0080, BUTTON_STRIP = 0x0100,
