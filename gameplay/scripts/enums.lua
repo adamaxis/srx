@@ -97,8 +97,29 @@ E.MenuSound = { MOVE = 0x25, SELECT = 0x24, JACK_IN = 0x1A, DAMAGE = 0x18 }   --
 E.MatrixDeckMode = { ATTACK = 0xFF, BALANCED = 0x00, DEFENSE = 0x01 }      -- FFF0B7: A/B/C split the Matrix pool [C]
 -- Signed view used by ROM branches after FFF0B7 is loaded into a signed word.
 E.MatrixModeResult = { ATTACK = -1, BALANCED = 0, DEFENSE = 1 }
--- FFFBED type 6 uses the Matrix-objective initializer at 0x1EDE8 [C].
-E.RunType = { MATRIX_OBJECTIVE = 6 }
+-- Canonical FFFBED run-handler IDs from the table at F3E56 [C].
+E.RunType = {
+    GHOUL_BOUNTY = 0, BODYGUARD_ESCORT = 1, PACKAGE_DELIVERY = 2,
+    GANG_CONTRACT = 3, PACKAGE_RECOVERY = 4,
+    EMPLOYEE_RECRUITMENT = 5, MATRIX_OBJECTIVE = 6,
+}
+-- Source initializer IDs in F3DC6. Several source variants share one
+-- canonical run handler and differ only in how their route is selected [C].
+E.RunOfferInitializer = {
+    GHOUL_BOUNTY = 0, BODYGUARD_ESCORT = 1, PACKAGE_DELIVERY = 2,
+    GANG_CONTRACT = 3, PACKAGE_RECOVERY = 4,
+    EMPLOYEE_RECRUITMENT = 5, MATRIX_SIMPLE = 6,
+    MATRIX_MODERATE = 7, MATRIX_EXPERT = 8,
+    PACKAGE_RECOVERY_TWO_SITE_POOL = 9,
+    PACKAGE_RECOVERY_RENRAKU = 10,
+    EMPLOYEE_RECRUITMENT_TWO_SITE_POOL = 11,
+    EMPLOYEE_RECRUITMENT_RENRAKU = 12,
+}
+-- The Johnson event handler at 0x20990 selects FFF0AE from its active scene.
+E.RunOfferContext = {
+    JUMP_HOUSE = 0, SCENE_18 = 1, BIG_RHINO = 2,
+    WANDERER = 3, ICARUS_DESCENDING = 4,
+}
 -- FFF0D0 primary page; pages 0/1 are the two inventory columns, 2..6 dispatch through table 0xD2A0A [C]
 E.MenuPage = { INVENTORY_LEFT = 0, INVENTORY_RIGHT = 1, CLIPS = 2, ATTRIBUTES_SKILLS = 3, CYBERWARE = 4, MAGIC = 5,
                POCKET_SECRETARY = 6, COUNT = 7 }

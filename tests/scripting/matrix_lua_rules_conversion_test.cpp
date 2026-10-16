@@ -723,6 +723,211 @@ local invalid_runs = Registry.validate_saved_state(saved_runs)
 eq(invalid_runs, false,
     "saved Matrix objective rejects a target outside the ROM system catalog")
 
+-- All five ROM offer contexts contain eight records at F3EBC. The typed Lua
+-- table retains initializer, progress, payment, and negotiation fields.
+local OfferData = require("data.johnson_run_offers")
+local Dialogue = require("dialogue")
+local expected_context_rows = {
+    [0] = {
+        {0,1,10,3}, {1,1,45,1}, {2,1,35,1}, {1,1,50,1},
+        {2,1,40,1}, {1,1,55,1}, {2,1,45,1}, {0,1,20,2},
+    },
+    [1] = {
+        {7,3,2600,4}, {1,1,200,2}, {5,2,500,5}, {4,2,600,5},
+        {11,4,900,5}, {9,4,1000,5}, {2,1,180,2}, {3,2,160,3},
+    },
+    [2] = {
+        {6,2,425,1}, {3,2,190,2}, {2,1,180,1}, {0,1,40,1},
+        {4,2,550,4}, {5,2,450,4}, {1,1,200,1}, {2,1,190,1},
+    },
+    [3] = {
+        {3,1,230,1}, {7,2,3000,2}, {8,4,6350,5}, {2,0,250,1},
+        {9,3,1700,4}, {10,5,4500,10}, {12,5,4000,10}, {6,1,500,1},
+    },
+    [4] = {
+        {7,3,2550,5}, {8,5,6000,10}, {11,4,1200,5}, {9,4,1400,5},
+        {12,6,3500,15}, {10,6,3850,15}, {8,5,6100,10}, {7,4,2750,5},
+    },
+}
+for context = 0, 4 do
+    local rows = OfferData.contexts[context]
+    eq(#rows, 8, "ROM offer row count for context " .. context)
+    for index = 1, 8 do
+        local row = rows[index]
+        local expected = expected_context_rows[context][index]
+        eq(row.source_initializer, expected[1], "source initializer row")
+        eq(row.runner_progress_delta, expected[2], "progress row")
+        eq(row.base_payment, expected[3], "base payment row")
+        eq(row.negotiation_scale, expected[4], "negotiation scale row")
+    end
+end
+eq(Dialogue.johnson_interaction_profiles["wanderer.vigore_jarl"].run_offer_context,
+    E.RunOfferContext.WANDERER, "Wanderer routes work to context three")
+
+-- Wanderer context 3, slot 7 selects source initializer 6. Its simple
+-- Matrix objective follows the ROM objective -> system -> size RNG sequence.
+local Support = require("run_support")
+local MatrixRun = require("run_matrix_objective")
+local random_call = 0
+local random_rolls = { 7 }
+game = {
+    modules = { run_support = Support },
+    runs = { registry = Registry, matrix_objective = MatrixRun },
+    services = {
+        call = function(service, operation)
+            if service == "runner" and operation == "negotiation_skill" then
+                return "skill_0"
+            end
+            assert(service == "random", "unexpected test service " .. service)
+            random_call = random_call + 1
+            return "roll_" .. tostring(random_rolls[random_call] or 0)
+        end,
+    },
+    matrix_world_state = function()
+        return { run = { fc28 = 5 } }
+    end,
+}
+local selected_run = Registry.prepare_offer_for_context(E.RunOfferContext.WANDERER)
+local matrix_offer = Registry.current_offer
+eq(selected_run, "matrix_objective", "context selects Matrix Lua module")
+eq(matrix_offer.source_offer_type, E.RunOfferInitializer.MATRIX_SIMPLE,
+    "offer retains its source initializer variant")
+eq(matrix_offer.source_run_type, E.RunType.MATRIX_OBJECTIVE,
+    "offer retains the canonical run type")
+eq(matrix_offer.source_offer_context, E.RunOfferContext.WANDERER,
+    "offer retains its ROM Johnson context")
+eq(matrix_offer.matrix_run_state.state, -1,
+    "simple Matrix initializer selects the negative band")
+eq(matrix_offer.matrix_run_state.objective, 4,
+    "Matrix objective class comes from the source candidate")
+eq(matrix_offer.matrix_run_state.value, 20,
+    "Matrix objective value comes from the source candidate")
+eq(matrix_offer.matrix_run_state.size, 10,
+    "Matrix file size follows the source one-to-three roll")
+eq(matrix_offer.matrix_run_state.fc28, 5,
+    "Matrix initializer preserves the typed completion flags")
+eq(matrix_offer.matrix_run_state.fc1c, 0,
+    "common source initializer clears the run flags")
+eq(matrix_offer.matrix_run_state.target_system_id, 2,
+    "Matrix candidate uses an allowed simple-band system")
+assert(matrix_offer.objective_text:find("A small R&D firm", 1, true),
+    "Matrix offer prefixes its target system for source rows 0 through 16")
+checks = checks + 1
+assert(matrix_offer.objective_text:find("||", 1, true) and
+       not matrix_offer.objective_text:find("\n", 1, true),
+    "Matrix offer uses the shared dialogue paragraph separators")
+checks = checks + 1
+eq(Registry.resolve_current_offer("yes"), "accepted",
+    "context-generated offer uses the shared decision path")
+local generated_offer_save = Registry.save_state()
+local generated_save_valid = Registry.validate_saved_state(generated_offer_save)
+eq(generated_save_valid, true,
+    "source context and Matrix state survive run-save validation")
+Registry.active_offer = nil
+
+game.runs.gang_contract = require("run_gang_contract")
+game.runs.package_recovery = require("run_package_recovery")
+game.runs.employee_recruitment = require("run_employee_recruitment")
+local function prepare_context_row(context, rolls)
+    random_call = 0
+    random_rolls = rolls
+    return Registry.prepare_offer_for_context(context), Registry.current_offer
+end
+
+local gang_id, gang_offer = prepare_context_row(1, { 7, 0, 0, 0 })
+eq(gang_id, "gang_contract", "gang source initializer loads its own module")
+eq(gang_offer.source_offer_type, E.RunOfferInitializer.GANG_CONTRACT,
+    "gang offer retains source initializer")
+eq(gang_offer.route.target.area_id, 1,
+    "gang target is selected from the ROM three-site list")
+eq(gang_offer.route.target.location_id, 9,
+    "gang target retains its source event ID")
+eq(gang_offer.variant, 0, "gang copy uses the source four-variant roll")
+assert(Support.gang_contract_texts[1]:find("||", 1, true) and
+       not Support.gang_contract_texts[1]:find("\n", 1, true),
+    "gang copy uses the shared dialogue paragraph separators")
+checks = checks + 1
+Registry.resolve_current_offer("no")
+
+local recovery_id, recovery_offer = prepare_context_row(3, { 4, 0, 0, 0 })
+eq(recovery_id, "package_recovery",
+    "two-site package recovery loads its own module")
+eq(recovery_offer.source_offer_type,
+    E.RunOfferInitializer.PACKAGE_RECOVERY_TWO_SITE_POOL,
+    "recovery preserves its two-site initializer variant")
+eq(recovery_offer.route.target.area_id, 1,
+    "recovery target uses the ROM two-site pool")
+eq(recovery_offer.route.target.location_id, 2,
+    "recovery target retains the selected event ID")
+Registry.resolve_current_offer("no")
+
+local employee_id, employee_offer = prepare_context_row(3, { 6, 0, 0 })
+eq(employee_id, "employee_recruitment",
+    "Renraku employee recovery loads its own module")
+eq(employee_offer.source_offer_type,
+    E.RunOfferInitializer.EMPLOYEE_RECRUITMENT_RENRAKU,
+    "employee offer preserves its fixed-site initializer")
+eq(employee_offer.route.target.area_id, 5,
+    "employee offer uses the ROM fixed Renraku area")
+eq(employee_offer.route.target.location_id, 6,
+    "employee offer uses the ROM fixed Renraku event")
+eq(employee_offer.employee_name, "Mike Nana",
+    "employee name comes from the twelve-name source table")
+Registry.resolve_current_offer("no")
+
+local moderate_id, moderate_offer = prepare_context_row(3, { 1, 0, 14, 0, 0 })
+eq(moderate_id, "matrix_objective",
+    "moderate Matrix initializer reaches the Matrix module")
+eq(moderate_offer.matrix_run_state.state, 0,
+    "moderate Matrix initializer selects the zero band")
+eq(moderate_offer.matrix_run_state.target_system_id, 10,
+    "moderate candidate retries until its system is in the source band")
+Registry.resolve_current_offer("no")
+
+local expert_id, expert_offer = prepare_context_row(3, { 2, 0, 4, 0, 0 })
+eq(expert_id, "matrix_objective",
+    "expert Matrix initializer reaches the Matrix module")
+eq(expert_offer.matrix_run_state.state, 1,
+    "expert Matrix initializer selects the positive band")
+eq(expert_offer.matrix_run_state.target_system_id, 7,
+    "expert candidate retains an allowed source system")
+Registry.resolve_current_offer("no")
+
+-- Exercise the live shared Johnson script, not just the registry helper. The
+-- Wanderer selects its profile context and has no invented generic work page.
+local Johnson = require("johnson")
+game.modules.dialogue = Dialogue
+game.location = { text_profile = "wanderer.vigore_jarl" }
+game.state = { wanderer_vigore_jarl_intro_seen = false }
+random_call = 0
+random_rolls = { 7, 0, 0, 0, 0 }
+local johnson_menu_calls = 0
+local johnson_intro_events = {}
+local accepted_offer_context
+game.ui = {
+    say = function(event_id) johnson_intro_events[#johnson_intro_events + 1] = event_id end,
+    say_text = function() end,
+    menu = function()
+        johnson_menu_calls = johnson_menu_calls + 1
+        return johnson_menu_calls == 1 and "work" or "leave"
+    end,
+    prompt_text = function()
+        accepted_offer_context = Registry.current_offer.source_offer_context
+        return "no"
+    end,
+}
+eq(Johnson.interaction(), "leave", "shared Johnson interaction returns to field")
+eq(accepted_offer_context, E.RunOfferContext.WANDERER,
+    "work choice passes the live Wanderer context into offer selection")
+eq(#johnson_intro_events, 2,
+    "Wanderer first-visit introduction shows its two source pages")
+eq(game.state.wanderer_vigore_jarl_intro_seen, true,
+    "Wanderer introduction fact is set after its pages")
+eq(johnson_intro_events[1], "first_impression",
+    "first Wanderer page uses its location profile")
+eq(johnson_intro_events[2], "first_meeting",
+    "second Wanderer page uses its location profile")
+
 print("matrix Lua rules: " .. checks .. " checks passed")
 )lua";
 

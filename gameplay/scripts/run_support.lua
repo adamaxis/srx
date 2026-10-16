@@ -1,5 +1,6 @@
 -- Shared source data and helpers for independently-authored run modules.
 local Support = {}
+local E = require("enums")
 
 Support.area_suffixes = {
     -- ROM F1E58 strings used by the contract location formatter.
@@ -93,6 +94,38 @@ Support.client_names = {
     "Nero Manser", "Alan Turing", "Chris Stout", "Jorge Kish",
 }
 
+-- ROM 0xF36FA contains the four gang-contract variations shown after the
+-- selected target location. These strings are kept as content, separate from
+-- route selection and shared payment rules.
+Support.gang_contract_texts = {
+    "They have been defacing and damaging buildings in that area. I find this appalling!||Show them how I feel about vandals and return to me for your payment.",
+    "They have been feeding Renraku a lot of information.||Renraku has been using this info to find and eliminate Johnsons. Needless to say, this makes me uneasy.||\"Discuss\" this matter with them and return here to collect your fee.",
+    "Their recent antics have been most heinous!||I want you to tell them to quit terrorizing the locals. And make it stick!||Payment will be rendered when the gang is no longer a problem.",
+    "Their payments are late on an insurance policy they have with me.||You will be payed when you return with their premiums.",
+}
+
+Support.gang_contract_targets = {
+    { area_id = 1, location_id = 9 },
+    { area_id = 2, location_id = 9 },
+    { area_id = 3, location_id = 4 },
+}
+
+-- ROM F3E6E (four-site pool), F3E76 (two-site pool), and the fixed 5/6
+-- Renraku tuple used by initializers 10 and 12.
+Support.run_target_pools = {
+    four_site = {
+        { area_id = 0, location_id = 5 },
+        { area_id = 0, location_id = 4 },
+        { area_id = 3, location_id = 2 },
+        { area_id = 3, location_id = 3 },
+    },
+    two_site = {
+        { area_id = 1, location_id = 2 },
+        { area_id = 3, location_id = 6 },
+    },
+    renraku = { area_id = 5, location_id = 6 },
+}
+
 function Support.bounded_random(bound)
     local result = game.services.call(
         "random", "bounded_" .. tostring(bound))
@@ -152,7 +185,7 @@ function Support.choose_contract_route(context)
     -- area/location. The opening context fixes both areas to Redmond and
     -- retries the destination location until it differs from the origin.
     local origin_area
-    if context == 0 then
+    if context == E.RunOfferContext.JUMP_HOUSE then
         origin_area = 2
     else
         origin_area = Support.bounded_random(6)
@@ -163,7 +196,7 @@ function Support.choose_contract_route(context)
     local client_name = Support.client_names[client_index + 1]
 
     local destination_area
-    if context == 0 then
+    if context == E.RunOfferContext.JUMP_HOUSE then
         destination_area = 2
     else
         repeat
@@ -172,7 +205,8 @@ function Support.choose_contract_route(context)
     end
 
     local destination_index, destination_name = choose_location(destination_area)
-    while context == 0 and destination_index == origin_index do
+    while context == E.RunOfferContext.JUMP_HOUSE and
+          destination_index == origin_index do
         destination_index, destination_name = choose_location(destination_area)
     end
 
@@ -192,6 +226,61 @@ function Support.choose_contract_route(context)
         client_id = client_index,
         client_name = client_name,
     }
+end
+
+function Support.choose_ghoul_area(context)
+    -- ROM 0x1E744 fixes the opening contract to area 2; other contexts use
+    -- the four-area random pool from that initializer.
+    if context == E.RunOfferContext.JUMP_HOUSE then return 2 end
+    return Support.bounded_random(4)
+end
+
+local function named_target(target)
+    local name = Support.location_names[target.area_id] and
+        Support.location_names[target.area_id][target.location_id]
+    assert(name ~= nil, "source run target has no imported location name")
+    return {
+        area_id = target.area_id,
+        area_suffix = Support.area_suffixes[target.area_id],
+        location_id = target.location_id,
+        location_name = name,
+    }
+end
+
+function Support.choose_gang_contract_target()
+    local index = Support.bounded_random(#Support.gang_contract_targets)
+    return named_target(Support.gang_contract_targets[index + 1])
+end
+
+local function choose_target(pool)
+    local index = Support.bounded_random(#pool)
+    return named_target(pool[index + 1])
+end
+
+function Support.choose_facility_target(source_initializer)
+    local I = E.RunOfferInitializer
+    if source_initializer == I.PACKAGE_RECOVERY_RENRAKU or
+       source_initializer == I.EMPLOYEE_RECRUITMENT_RENRAKU then
+        return named_target(Support.run_target_pools.renraku)
+    elseif source_initializer == I.PACKAGE_RECOVERY_TWO_SITE_POOL or
+           source_initializer == I.EMPLOYEE_RECRUITMENT_TWO_SITE_POOL then
+        return choose_target(Support.run_target_pools.two_site)
+    end
+    return choose_target(Support.run_target_pools.four_site)
+end
+
+function Support.present_run_acceptance(offer, label)
+    local payment = offer.payment
+    local prompt =
+        "<You are offered" ..
+        Support.amount_in_reserved_field(payment.base_amount, 6) ..
+        "$|" .. label .. "|After negotiations, you|come to an agreement.>|" ..
+        "Payment for this run is|" ..
+        Support.amount_in_reserved_field(payment.negotiated_amount, 5) ..
+        "$|Whatta' you say, friend?"
+    local choice = game.ui.prompt_text(
+        "run_acceptance", prompt, { "yes", "no" })
+    return Support.resolve_offer_decision(choice)
 end
 
 function Support.new_offer(id, category, objective, completion_condition,

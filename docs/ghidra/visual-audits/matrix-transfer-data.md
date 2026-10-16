@@ -28,8 +28,14 @@ Primary source: `input/shadowrun_genesis_us.bin`.
   Once produced, the accepted type-6 record now lives in the Lua run registry:
   Matrix actions read and commit a typed copy there, and the existing run save
   state persists it. The native field runtime no longer keeps a second run
-  record. The source-backed type-6 offer producer and Johnson entry path are
-  still missing, so normal gameplay cannot create this contract yet.
+  record. The type-6 producer now selects an objective and target system from
+  the ROM candidate tables, retries when the system is outside the selected
+  initializer's difficulty band, chooses the 10/20/30 size, and stores the
+  result in the Lua offer registry. New Game selects context 0, and the
+  connected Wanderer interaction selects context 3. The other location-specific
+  Johnson routes, scene 18's context-1 speaker, and Matrix field
+  return-settlement path remain incomplete, so a complete accepted-run-to-payout
+  route is not yet connected.
 - The ordinary path prints `0x16674D`, adds four dots at 20-frame intervals,
   then waits 9 more frames. It checks the special story-file handler at
   `0x55058`, then compares `(Int + Computer + Sensor) / 3` with

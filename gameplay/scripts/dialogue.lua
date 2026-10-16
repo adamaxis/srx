@@ -1,6 +1,7 @@
 -- Speaker properties are supplied by gameplay content and resolved from the
 -- speaker id carried by the active map/location context.
 local Dialogue = {}
+local E = require("enums")
 
 local speakers = {
     field_narrator = {
@@ -637,6 +638,7 @@ Dialogue.runner_text_keys = runner_text_keys
 -- content record supplies this first-visit introduction and source fact.
 Dialogue.johnson_interaction_profiles = {
     ["wanderer.vigore_jarl"] = {
+        run_offer_context = E.RunOfferContext.WANDERER,
         first_visit_fact = "wanderer_vigore_jarl_intro_seen",
         first_visit_events = { "first_impression", "first_meeting" },
     },

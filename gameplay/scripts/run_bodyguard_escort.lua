@@ -34,7 +34,16 @@ function BodyguardEscort.present_offer()
     -- returns its text-only descriptor; the ghoul and courier branches instead
     -- enter the shared 0x214F6 payment/confirmation screen.
     game.ui.say_text(terms, false)
-    return game.runs.registry.resolve_current_offer("yes")
+    return game.modules.run_support.present_run_acceptance(
+        offer, "for escorting my client safely to the destination.")
+end
+
+function BodyguardEscort.resolve_field_event()
+    -- The ROM spawns the escort client at the selected origin and evaluates
+    -- their actor state at the destination. Actor spawn/death facts are not
+    -- yet part of the field-event Lua contract, so no event is treated as
+    -- completion here.
+    return { action = "no_action" }
 end
 
 return BodyguardEscort

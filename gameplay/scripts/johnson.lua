@@ -6,7 +6,8 @@ local Johnson = {}
 local function present_location_intro()
     local profile = game.modules.dialogue.johnson_interaction_profiles[
         game.location.text_profile]
-    if profile == nil or game.state[profile.first_visit_fact] ~= false then
+    if profile == nil or profile.first_visit_fact == nil or
+       game.state[profile.first_visit_fact] ~= false then
         return
     end
     for _, event_id in ipairs(profile.first_visit_events) do
@@ -16,8 +17,15 @@ local function present_location_intro()
 end
 
 local function present_work_offer()
-    game.ui.say("work-opening")
-    return game.runs.registry.present_new_game_offer()
+    local profile = game.modules.dialogue.johnson_interaction_profiles[
+        game.location.text_profile]
+    assert(profile ~= nil and profile.run_offer_context ~= nil,
+        "this Johnson location has no ROM-derived offer context")
+    if profile.work_opening_event ~= nil then
+        game.ui.say(profile.work_opening_event)
+    end
+    return game.runs.registry.present_offer_for_context(
+        profile.run_offer_context)
 end
 
 local function question_choices()

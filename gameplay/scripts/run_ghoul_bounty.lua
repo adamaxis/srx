@@ -13,7 +13,7 @@ function GhoulBounty.prepare_offer(context, source_record)
         payment,
         source_record.runner_progress_delta)
     offer.context = context
-    offer.area_id = 2
+    offer.area_id = support.choose_ghoul_area(context)
     game.runs.registry.current_offer = offer
     return offer.id
 end

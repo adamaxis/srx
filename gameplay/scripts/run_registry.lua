@@ -3,6 +3,7 @@
 -- selects a run and dispatches to its separate implementation.
 local Registry = {}
 local E = require("enums")
+local OfferData = require("data.johnson_run_offers")
 
 local function valid_matrix_run_state(state)
     if type(state) ~= "table" then return false end
@@ -74,42 +75,8 @@ function Registry.commit_active_matrix_run_state(state)
     return set_matrix_run_state(Registry.active_offer, state)
 end
 
-local new_game_selection = {
-    -- ROM 0x1E69C source rows in F3EBC, context zero. The handler selects the
-    -- Lua run module; payment and negotiation values are typed content data.
-    {
-        run_id = "ghoul_bounty", base_payment = 10, negotiation_scale = 3,
-        runner_progress_delta = 1,
-    },
-    {
-        run_id = "bodyguard_escort", base_payment = 45,
-        negotiation_scale = 1, runner_progress_delta = 1,
-    },
-    {
-        run_id = "package_delivery", base_payment = 35,
-        negotiation_scale = 1, runner_progress_delta = 1,
-    },
-    {
-        run_id = "bodyguard_escort", base_payment = 50,
-        negotiation_scale = 1, runner_progress_delta = 1,
-    },
-    {
-        run_id = "package_delivery", base_payment = 40,
-        negotiation_scale = 1, runner_progress_delta = 1,
-    },
-    {
-        run_id = "bodyguard_escort", base_payment = 55,
-        negotiation_scale = 1, runner_progress_delta = 1,
-    },
-    {
-        run_id = "package_delivery", base_payment = 45,
-        negotiation_scale = 1, runner_progress_delta = 1,
-    },
-    {
-        run_id = "ghoul_bounty", base_payment = 20, negotiation_scale = 2,
-        runner_progress_delta = 1,
-    },
-}
+local new_game_selection =
+    OfferData.contexts[E.RunOfferContext.JUMP_HOUSE]
 
 function Registry.available_run_ids()
     local ids = {}
@@ -148,31 +115,60 @@ local function extension_offer_slots()
     return slots
 end
 
+local function prepare_source_offer(context, source_record)
+    local source_type = source_record.source_initializer
+    local resolved = OfferData.run_by_initializer[source_type]
+    assert(resolved ~= nil,
+        "ROM offer row has an unknown initializer: " .. tostring(source_type))
+    local run = game.runs[resolved.id]
+    assert(type(run) == "table" and type(run.prepare_offer) == "function",
+        "ROM offer initializer has no Lua implementation: " .. resolved.id)
+    Registry.current_offer = nil
+    Registry._last_offer_result = nil
+    local run_id = run.prepare_offer(context, source_record)
+    local offer = Registry.current_offer
+    assert(run_id == resolved.id and type(offer) == "table" and
+           offer.id == resolved.id,
+        "run initializer failed to publish its Lua offer state")
+    offer.context = context
+    offer.source_initializer = source_type
+    offer.source_offer_type = source_type
+    offer.source_offer_context = context
+    offer.source_run_type = resolved.type
+    return run_id
+end
+
+function Registry.prepare_offer_for_context(context)
+    local rows = OfferData.contexts[context]
+    assert(rows ~= nil,
+        "ROM Johnson offer context is not present: " .. tostring(context))
+    local slot = game.modules.run_support.bounded_random(#rows)
+    return prepare_source_offer(context, rows[slot + 1])
+end
+
+function Registry.present_offer_for_context(context)
+    local run_id = Registry.prepare_offer_for_context(context)
+    return game.runs[run_id].present_offer()
+end
+
 function Registry.prepare_new_game_offer()
-    -- This entry point is the first-contract pool for a newly created game.
-    -- Keep the ROM's eight source slots first and in order. New Lua modules
-    -- can opt into an appended extension pool with new_game_weight, without
-    -- changing native registration or the source-derived base selection.
-    local context = 0
+    -- New Game uses ROM context zero. Keep the original eight source rows
+    -- first; explicitly weighted extensions may be appended after that pool.
+    local context = E.RunOfferContext.JUMP_HOUSE
     local extension_slots = extension_offer_slots()
     local slot = game.modules.run_support.bounded_random(
         #new_game_selection + #extension_slots)
-    local run_id
-    local payment_record
     if slot < #new_game_selection then
-        payment_record = new_game_selection[slot + 1]
-        run_id = payment_record.run_id
-    else
-        local extension = extension_slots[slot - #new_game_selection + 1]
-        run_id = extension.run_id
-        payment_record = extension.payment
+        return prepare_source_offer(context, new_game_selection[slot + 1])
     end
-    local run = game.runs[run_id]
+
+    local extension = extension_slots[slot - #new_game_selection + 1]
+    local run = game.runs[extension.run_id]
     assert(type(run) == "table" and type(run.prepare_offer) == "function",
-        "weighted run slot has no Lua implementation: " .. run_id)
+        "weighted run slot has no Lua implementation: " .. extension.run_id)
     Registry.current_offer = nil
     Registry._last_offer_result = nil
-    return run.prepare_offer(context, payment_record)
+    return run.prepare_offer(context, extension.payment)
 end
 
 function Registry.present_new_game_offer()
@@ -292,13 +288,23 @@ local function route_ids(offer)
             destination_area = "none",
         }
     end
+    local function pair_ids(pair)
+        if type(pair) ~= "table" then return "none", "none" end
+        return "location_" .. tostring(pair.location_id),
+               "area_" .. tostring(pair.area_id)
+    end
+    local origin_location, origin_area = pair_ids(route.origin)
+    local destination_location, destination_area = pair_ids(route.destination)
+    local target_location, target_area = pair_ids(route.target)
     return {
-        origin_location = "location_" .. route.origin.location_id,
-        origin_area = "area_" .. route.origin.area_id,
-        client = "client_" .. route.client_id,
-        destination_location =
-            "location_" .. route.destination.location_id,
-        destination_area = "area_" .. route.destination.area_id,
+        origin_location = origin_location,
+        origin_area = origin_area,
+        client = route.client_id ~= nil and
+            "client_" .. tostring(route.client_id) or "none",
+        destination_location = destination_location,
+        destination_area = destination_area,
+        target_location = target_location,
+        target_area = target_area,
     }
 end
 
@@ -368,6 +374,17 @@ function Registry.validate_saved_state(state)
             offer.source_run_type % 1 ~= 0 or
             offer.source_run_type < 0 or offer.source_run_type > 255) then
             return false
+        end
+        if offer.source_offer_type ~= nil then
+            local initializer = offer.source_offer_type
+            local context = offer.source_offer_context
+            local resolved = type(initializer) == "number" and
+                OfferData.run_by_initializer[initializer] or nil
+            if resolved == nil or type(context) ~= "number" or
+               context % 1 ~= 0 or OfferData.contexts[context] == nil or
+               offer.source_run_type ~= resolved.type then
+                return false
+            end
         end
         if offer.source_run_type == E.RunType.MATRIX_OBJECTIVE then
             if not valid_matrix_run_state(offer.matrix_run_state) then
