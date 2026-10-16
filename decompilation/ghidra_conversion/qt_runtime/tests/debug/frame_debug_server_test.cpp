@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
     state.insert(QStringLiteral("actor.test"), actor);
 
     FrameDebugServer server(
-        0U, stepper, [state] { return state; }, [&current_frame] { return current_frame; },
+        0U, stepper, [&state] { return state; }, [&current_frame] { return current_frame; },
         [] { return QStringLiteral("field_ready"); },
         [&queued_key, &queued_pressed](const int key, const bool pressed) {
             queued_key = key;
@@ -109,11 +109,37 @@ int main(int argc, char** argv) {
         std::cerr << "frame breakpoint did not register for a future frame\n";
         return 1;
     }
+    result = response(server.handle_line(
+        R"({"cmd":"break","kind":"watch","field":"actor.test.x"})"));
+    const auto watchpoint_id = result.value(QStringLiteral("id")).toInt();
+    if (!result.value(QStringLiteral("ok")).toBool() || watchpoint_id <= 0) {
+        std::cerr << "watchpoint did not register for an inspected field\n";
+        return 1;
+    }
     result = response(server.handle_line(R"({"cmd":"list"})"));
     const auto listed = result.value(QStringLiteral("breakpoints")).toArray();
-    if (!result.value(QStringLiteral("ok")).toBool() || listed.size() != 1 ||
+    if (!result.value(QStringLiteral("ok")).toBool() || listed.size() != 2 ||
         listed.at(0).toObject().value(QStringLiteral("frame")).toInt() != 90) {
-        std::cerr << "list command did not return the registered frame breakpoint\n";
+        std::cerr << "list command did not return the registered breakpoints\n";
+        return 1;
+    }
+    actor.insert(QStringLiteral("x"), 322);
+    state.insert(QStringLiteral("actor.test"), actor);
+    current_frame = 89U;
+    if (!server.check_source_frame_breakpoints() || !stepper.paused()) {
+        std::cerr << "watchpoint did not stop after its field changed\n";
+        return 1;
+    }
+    result = response(server.handle_line(R"({"cmd":"status"})"));
+    if (result.value(QStringLiteral("breakpoint")).toInt() != watchpoint_id ||
+        result.value(QStringLiteral("detail")).toString() !=
+            QStringLiteral("actor.test.x: 321 -> 322")) {
+        std::cerr << "watchpoint stop did not identify the changed field and values\n";
+        return 1;
+    }
+    result = response(server.handle_line(R"({"cmd":"resume"})"));
+    if (!result.value(QStringLiteral("ok")).toBool() || stepper.paused()) {
+        std::cerr << "resume command did not continue after a watchpoint\n";
         return 1;
     }
     current_frame = 90U;
@@ -137,6 +163,13 @@ int main(int argc, char** argv) {
     result = response(server.handle_line(
         QByteArray("{\"cmd\":\"delete\",\"id\":") +
         QByteArray::number(breakpoint_id) + "}"));
+    if (!result.value(QStringLiteral("ok")).toBool()) {
+        std::cerr << "delete command did not remove the frame breakpoint\n";
+        return 1;
+    }
+    result = response(server.handle_line(
+        QByteArray("{\"cmd\":\"delete\",\"id\":") +
+        QByteArray::number(watchpoint_id) + "}"));
     if (!result.value(QStringLiteral("ok")).toBool() ||
         !response(server.handle_line(R"({"cmd":"list"})"))
              .value(QStringLiteral("breakpoints")).toArray().isEmpty()) {
@@ -153,7 +186,7 @@ int main(int argc, char** argv) {
     const auto inspected = result.value(QStringLiteral("fields")).toObject();
     if (!result.value(QStringLiteral("ok")).toBool() ||
         inspected.size() != 2 ||
-        inspected.value(QStringLiteral("actor.test.x")).toInt() != 321 ||
+        inspected.value(QStringLiteral("actor.test.x")).toInt() != 322 ||
         inspected.value(QStringLiteral("actor.test.y")).toInt() != 456) {
         std::cerr << "inspect prefix did not flatten the requested state fields\n";
         return 1;

@@ -108,10 +108,43 @@ public:
             return encode(status_object());
         }
         if (command == QStringLiteral("break")) {
-            if (request.value(QStringLiteral("kind")).toString(
-                    QStringLiteral("frame")) != QStringLiteral("frame")) {
+            const auto kind = request.value(QStringLiteral("kind")).toString(
+                QStringLiteral("frame"));
+            const auto id = ++next_breakpoint_id_;
+            if (kind == QStringLiteral("watch")) {
+                const auto field = request.value(QStringLiteral("field"))
+                                       .toString();
+                if (field.isEmpty()) {
+                    --next_breakpoint_id_;
+                    return encode_error(
+                        QStringLiteral("watch breakpoint requires a field name"));
+                }
+                if (std::any_of(watchpoints_.begin(), watchpoints_.end(),
+                                [&field](const WatchBreakpoint& watchpoint) {
+                                    return watchpoint.field == field;
+                                })) {
+                    --next_breakpoint_id_;
+                    return encode_error(QStringLiteral(
+                        "a watchpoint already exists for that field"));
+                }
+                const auto fields = flattened_state_fields();
+                const auto found = fields.constFind(field);
+                std::optional<QJsonValue> initial;
+                if (found != fields.constEnd()) {
+                    initial = *found;
+                }
+                watchpoints_.push_back({id, field, initial});
+                QJsonObject result;
+                result.insert(QStringLiteral("ok"), true);
+                result.insert(QStringLiteral("id"), id);
+                result.insert(QStringLiteral("kind"), QStringLiteral("watch"));
+                result.insert(QStringLiteral("field"), field);
+                return encode(result);
+            }
+            if (kind != QStringLiteral("frame")) {
+                --next_breakpoint_id_;
                 return encode_error(
-                    QStringLiteral("only frame breakpoints are supported"));
+                    QStringLiteral("supported breakpoint kinds are frame and watch"));
             }
             const auto value = request.value(QStringLiteral("frame"));
             const auto target = value.toDouble(-1.0);
@@ -119,6 +152,7 @@ public:
             if (!std::isfinite(target) || target < 0.0 ||
                 target > 9007199254740991.0 || std::floor(target) != target ||
                 target <= static_cast<double>(current)) {
+                --next_breakpoint_id_;
                 return encode_error(QStringLiteral(
                     "frame breakpoint must be an integer after the current frame"));
             }
@@ -127,10 +161,10 @@ public:
                                 return static_cast<double>(breakpoint.frame) ==
                                        target;
                             })) {
+                --next_breakpoint_id_;
                 return encode_error(QStringLiteral(
                     "a breakpoint already exists at that frame"));
             }
-            const auto id = ++next_breakpoint_id_;
             breakpoints_.push_back(
                 {id, static_cast<std::uint64_t>(target)});
             QJsonObject result;
@@ -154,10 +188,19 @@ public:
                 [id](const FrameBreakpoint& breakpoint) {
                     return breakpoint.id == id;
                 });
-            if (found == breakpoints_.end()) {
+            if (found != breakpoints_.end()) {
+                breakpoints_.erase(found);
+                return encode(status_object());
+            }
+            const auto watch = std::find_if(
+                watchpoints_.begin(), watchpoints_.end(),
+                [id](const WatchBreakpoint& breakpoint) {
+                    return breakpoint.id == id;
+                });
+            if (watch == watchpoints_.end()) {
                 return encode_error(QStringLiteral("no such breakpoint"));
             }
-            breakpoints_.erase(found);
+            watchpoints_.erase(watch);
             return encode(status_object());
         }
         if (command == QStringLiteral("list")) {
@@ -168,6 +211,13 @@ public:
                 entry.insert(QStringLiteral("kind"), QStringLiteral("frame"));
                 entry.insert(QStringLiteral("frame"),
                              static_cast<double>(breakpoint.frame));
+                entries.append(entry);
+            }
+            for (const auto& watchpoint : watchpoints_) {
+                QJsonObject entry;
+                entry.insert(QStringLiteral("id"), watchpoint.id);
+                entry.insert(QStringLiteral("kind"), QStringLiteral("watch"));
+                entry.insert(QStringLiteral("field"), watchpoint.field);
                 entries.append(entry);
             }
             QJsonObject result;
@@ -235,10 +285,7 @@ public:
             return encode(result);
         }
         if (command == QStringLiteral("inspect")) {
-            QJsonObject flattened;
-            if (state_) {
-                flatten({}, state_(), flattened);
-            }
+            const auto flattened = flattened_state_fields();
             const auto prefix = request.value(QStringLiteral("prefix")).toString();
             QJsonObject selected;
             for (auto it = flattened.begin(); it != flattened.end(); ++it) {
@@ -257,7 +304,7 @@ public:
             QJsonObject result;
             result.insert(QStringLiteral("ok"), true);
             result.insert(QStringLiteral("commands"),
-                          QStringLiteral("status pause resume step key press inspect break delete list help"));
+                          QStringLiteral("status pause resume step key press inspect break(frame|watch) delete list help"));
             return encode(result);
         }
         return encode_error(QStringLiteral("unknown command"));
@@ -285,12 +332,38 @@ public:
             [current](const FrameBreakpoint& breakpoint) {
                 return breakpoint.frame == current;
             });
-        if (found == breakpoints_.end()) {
+        int watch_hit_id = 0;
+        QString watch_detail;
+        if (!watchpoints_.empty()) {
+            const auto fields = flattened_state_fields();
+            for (auto& watchpoint : watchpoints_) {
+                const auto value = fields.constFind(watchpoint.field);
+                std::optional<QJsonValue> current_value;
+                if (value != fields.constEnd()) {
+                    current_value = *value;
+                }
+                if (watch_hit_id == 0 &&
+                    current_value != watchpoint.last_value) {
+                    watch_hit_id = watchpoint.id;
+                    watch_detail = watchpoint.field + QStringLiteral(": ") +
+                                   json_value_text(watchpoint.last_value) +
+                                   QStringLiteral(" -> ") +
+                                   json_value_text(current_value);
+                }
+                watchpoint.last_value = current_value;
+            }
+        }
+        if (found == breakpoints_.end() && watch_hit_id == 0) {
             return false;
         }
         stop_reason_ = QStringLiteral("breakpoint");
-        stop_breakpoint_ = found->id;
-        stop_detail_ = QString::number(current);
+        if (found != breakpoints_.end()) {
+            stop_breakpoint_ = found->id;
+            stop_detail_ = QString::number(current);
+        } else {
+            stop_breakpoint_ = watch_hit_id;
+            stop_detail_ = watch_detail;
+        }
         stepper_.pause();
         return true;
     }
@@ -312,6 +385,12 @@ private:
         std::uint64_t frame = 0;
     };
 
+    struct WatchBreakpoint {
+        int id = 0;
+        QString field;
+        std::optional<QJsonValue> last_value;
+    };
+
     struct ScheduledRelease {
         int key = 0;
         std::uint64_t frame = 0;
@@ -320,6 +399,26 @@ private:
     static bool valid_frame_count(const double value) noexcept {
         return std::isfinite(value) && value >= 1.0 && value <= 60000.0 &&
                std::floor(value) == value;
+    }
+
+    QJsonObject flattened_state_fields() const {
+        QJsonObject fields;
+        if (state_) {
+            flatten({}, state_(), fields);
+        }
+        return fields;
+    }
+
+    static QString json_value_text(
+        const std::optional<QJsonValue>& value) {
+        if (!value.has_value()) {
+            return QStringLiteral("<missing>");
+        }
+        QJsonArray wrapper;
+        wrapper.append(*value);
+        const auto encoded = QJsonDocument(wrapper).toJson(
+            QJsonDocument::Compact);
+        return QString::fromUtf8(encoded).mid(1, encoded.size() - 2);
     }
 
     static void flatten(const QString& prefix, const QJsonValue& value,
@@ -427,6 +526,7 @@ private:
     QTcpServer server_;
     std::map<QTcpSocket*, QByteArray> buffers_;
     std::vector<FrameBreakpoint> breakpoints_;
+    std::vector<WatchBreakpoint> watchpoints_;
     std::vector<ScheduledRelease> scheduled_releases_;
     int next_breakpoint_id_ = 0;
     QString stop_reason_ = QStringLiteral("none");
