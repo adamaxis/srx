@@ -14226,7 +14226,9 @@ void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
     }
 
     // ROM 0x5B1E stably sorts by descending effective depth, then 0x4658
-    // draws records in that order. Flags 0x10/0x40 force depth to zero.
+    // emits that order into the SAT. The Genesis VDP gives lower SAT indices
+    // priority, while QPainter gives later draws priority, so paint backwards.
+    // Flags 0x10/0x40 force depth to zero.
     std::stable_sort(sprites.begin(), sprites.end(),
                      [](const SceneSprite& left,
                         const SceneSprite& right) {
@@ -14235,12 +14237,12 @@ void FieldSceneRuntime::paint_field_scene_entities(QPainter& painter) const {
                          }
                          return left.source_order < right.source_order;
                      });
-    for (const auto& sprite : sprites) {
-        if (sprite.image != nullptr) {
+    for (auto sprite = sprites.rbegin(); sprite != sprites.rend(); ++sprite) {
+        if (sprite->image != nullptr) {
             painter.drawImage(
-                sprite.x, sprite.y,
-                sprite.mirrored_image.isNull() ? *sprite.image
-                                               : sprite.mirrored_image);
+                sprite->x, sprite->y,
+                sprite->mirrored_image.isNull() ? *sprite->image
+                                                : sprite->mirrored_image);
         }
     }
 }
