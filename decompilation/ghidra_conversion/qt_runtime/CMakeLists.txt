@@ -121,6 +121,16 @@ target_compile_definitions(shadowrun_gameplay_script_runtime_test PRIVATE
 add_test(NAME shadowrun_gameplay_script_runtime_qa
          COMMAND shadowrun_gameplay_script_runtime_test)
 
+add_executable(shadowrun_vid_phone_script_test
+    tests/scripting/vid_phone_script_test.cpp)
+target_link_libraries(shadowrun_vid_phone_script_test
+    PRIVATE shadowrun_gameplay_script_runtime)
+target_compile_definitions(shadowrun_vid_phone_script_test PRIVATE
+    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts"
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+add_test(NAME shadowrun_vid_phone_script_qa
+         COMMAND shadowrun_vid_phone_script_test)
+
 add_executable(shadowrun_matrix_field_state_save_test
     tests/persistence/matrix_field_state_save_test.cpp
     src/persistence/game_save_snapshot.cpp)
@@ -1031,6 +1041,28 @@ target_link_libraries(shadowrun_ghidra_field_dialogue_runtime_test
             shadowrun_ghidra_conversion_runtime Qt6::Gui)
 add_test(NAME shadowrun_ghidra_field_dialogue_runtime
          COMMAND shadowrun_ghidra_field_dialogue_runtime_test)
+
+add_executable(shadowrun_vid_phone_visual_test
+    tests/dialogue/vid_phone_visual_test.cpp
+    src/dialogue/field_dialogue_runtime.cpp
+    src/dialogue/dialogue_panel_presenter.cpp
+    src/dialogue/dialogue_panel.cpp
+    src/rendering/genesis_image_compositor.cpp)
+target_include_directories(shadowrun_vid_phone_visual_test
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
+set_target_properties(shadowrun_vid_phone_visual_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+target_compile_definitions(shadowrun_vid_phone_visual_test PRIVATE
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts")
+target_link_libraries(shadowrun_vid_phone_visual_test
+    PRIVATE shadowrun_gameplay_script_runtime
+            shadowrun_ghidra_conversion_runtime Qt6::Gui)
+add_test(NAME shadowrun_vid_phone_visual_qa
+         COMMAND shadowrun_vid_phone_visual_test
+                 "${CMAKE_CURRENT_BINARY_DIR}/vid-phone-visual-qa")
 
 add_executable(shadowrun_ghidra_field_mode_text_runtime_test
     tests/field/field_mode_text_runtime_test.cpp

@@ -601,7 +601,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         output << '"';
     };
 
-    const std::array<std::pair<const char*, std::size_t>, 119> records{{
+    const std::array<std::pair<const char*, std::size_t>, 149> records{{
         // Stoker prompt pointers consumed by the source event/profile path.
         {"stoker.motel.arrival.title", 0x1167EBU},
         {"stoker.motel.arrival.more", 0x0FE5BFU},
@@ -743,6 +743,39 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         // narrative pointer. The remaining pointer slots are not presented
         // because the first choice pointer is the ROM's negative sentinel.
         {"jackals-lantern.old-man.opening", 0x0F3FBCU},
+        // Vid-Phone choices and labels selected by 0xE4C8 through the
+        // 13-entry contact-record pointer table at 0x109682. Each pointed-to
+        // 12-byte record stores first/repeat stream pointers at +2/+6.
+        {"vid_phone.option.services", 0x104862U},
+        {"vid_phone.option.goodbye", 0x104889U},
+        {"vid_phone.contact.page_next", 0x0C661DU},
+        {"vid_phone.contact.page_previous", 0x0C662BU},
+        {"vid_phone.contact.capt_quinton_jaymes.first_call", 0x1097FCU},
+        {"vid_phone.contact.capt_quinton_jaymes.repeat_call", 0x1098A3U},
+        {"vid_phone.contact.alesandro_hobbs.first_call", 0x10A15CU},
+        {"vid_phone.contact.alesandro_hobbs.repeat_call", 0x10A1B9U},
+        {"vid_phone.contact.sharkey.first_call", 0x10A8A8U},
+        {"vid_phone.contact.sharkey.repeat_call", 0x10A8A8U},
+        {"vid_phone.contact.kipp_david.first_call", 0x10AEE4U},
+        {"vid_phone.contact.kipp_david.repeat_call", 0x10AF69U},
+        {"vid_phone.contact.wilma_temmenhoff.first_call", 0x10B864U},
+        {"vid_phone.contact.wilma_temmenhoff.repeat_call", 0x10B8CCU},
+        {"vid_phone.contact.macklemann.first_call", 0x10C09EU},
+        {"vid_phone.contact.macklemann.repeat_call", 0x10C09EU},
+        {"vid_phone.contact.gregory_wilns.first_call", 0x10C928U},
+        {"vid_phone.contact.gregory_wilns.repeat_call", 0x10C998U},
+        {"vid_phone.contact.mr_faradouchi.first_call", 0x10D106U},
+        {"vid_phone.contact.mr_faradouchi.repeat_call", 0x10D170U},
+        {"vid_phone.contact.agira_tetsumi.first_call", 0x10D748U},
+        {"vid_phone.contact.agira_tetsumi.repeat_call", 0x10D7B7U},
+        {"vid_phone.contact.henry_j_culver.first_call", 0x10DF12U},
+        {"vid_phone.contact.henry_j_culver.repeat_call", 0x10DF92U},
+        {"vid_phone.contact.max.first_call", 0x10E54EU},
+        {"vid_phone.contact.max.repeat_call", 0x10E5C8U},
+        {"vid_phone.contact.chillicut.first_call", 0x10EAF8U},
+        {"vid_phone.contact.chillicut.repeat_call", 0x10EC09U},
+        {"vid_phone.contact.professor_jefferson.first_call", 0x10F1EAU},
+        {"vid_phone.contact.professor_jefferson.repeat_call", 0x10F257U},
     }};
 
     output << "-- Generated from the US ROM dialogue and menu text records.\n"
@@ -2824,6 +2857,37 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             rom, 0x121EBCU),
         "sprite", "0x20484/0x121EBC/0x110D1E", false, manifest, written,
         missing, blank);
+    struct VidPhonePortraitRecord {
+        std::string_view file_name;
+        std::size_t profile_offset;
+        std::size_t contact_index;
+    };
+    constexpr std::array<VidPhonePortraitRecord, 13> kVidPhonePortraits{{
+        {"capt-quinton-jaymes", 0x121E50U, 0U},
+        {"alesandro-hobbs", 0x121F34U, 1U},
+        {"sharkey", 0x121EE0U, 2U},
+        {"kipp-david", 0x121FF4U, 3U},
+        {"wilma-temmenhoff", 0x121E20U, 4U},
+        {"macklemann", 0x122060U, 5U},
+        {"gregory-wilns", 0x12203CU, 6U},
+        {"mr-faradouchi", 0x121E20U, 7U},
+        {"agira-tetsumi", 0x121E20U, 8U},
+        {"henry-j-culver", 0x121E8CU, 9U},
+        {"max", 0x121F40U, 10U},
+        {"chillicut", 0x121E20U, 11U},
+        {"professor-jefferson", 0x121F34U, 12U},
+    }};
+    for (const auto& portrait : kVidPhonePortraits) {
+        write_catalog_asset(
+            root, "dialogue/portraits/vid-phone-" +
+                      std::string(portrait.file_name) + ".bmp",
+            shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+                rom, portrait.profile_offset),
+            "sprite", "0x109682/contact-record-pointer-" +
+                          std::to_string(portrait.contact_index) +
+                          "/record+0x0A/0x1F246",
+            false, manifest, written, missing, blank);
+    }
     write_catalog_asset(
         root, "dialogue/panel/frame.bmp",
         shadowrun::graphics::decode_genesis_field_dialogue_panel_background(

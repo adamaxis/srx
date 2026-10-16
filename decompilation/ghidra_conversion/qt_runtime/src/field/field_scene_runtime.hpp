@@ -415,7 +415,7 @@ public:
             return std::nullopt;
         }
         return std::array<bool, 3>{
-            *notebook_contacts_flags_ != 0U,
+            (*notebook_contacts_flags_ & 0x1FFFU) != 0U,
             *notebook_referral_flags_ != 0U,
             *notebook_shadowrunner_flags_ != 0U};
     }
@@ -960,8 +960,11 @@ public:
     }
     bool set_notebook_contact_flags_for_dump(std::uint32_t flags) noexcept {
         if (!notebook_contacts_flags_.has_value()) return false;
-        notebook_contacts_flags_ = flags & 0x1FFFU;
+        notebook_contacts_flags_ = flags & 0x03FFFFFFU;
         return true;
+    }
+    std::optional<std::uint32_t> notebook_contact_flags_for_dump() const noexcept {
+        return notebook_contacts_flags_;
     }
     bool set_notebook_shadowrunner_flags_for_dump(std::uint16_t flags) noexcept {
         if (!notebook_shadowrunner_flags_.has_value()) return false;
@@ -1736,9 +1739,10 @@ private:
     bool notebook_current_run_available_ = false;
     std::array<std::uint32_t, 3> notebook_tip_flags_{{1U, 0U, 0U}};
     bool notebook_tip_flags_resolved_ = true;
-    // FFFC2C, FFFC27, and FFFC2A independently gate Contacts, Mr. Johnsons,
-    // and Shadowrunners in F33E. Fresh New Game seeds Contacts to 0x1C7F at
-    // 0x59C48 and clears the other two; a loaded save does not restore them.
+    // FFFC2C's low 13 bits gate the Contacts page, while its next 13 bits
+    // record Vid-Phone calls. FFFC27 and FFFC2A gate Mr. Johnsons and
+    // Shadowrunners. Fresh New Game seeds Contacts to 0x1C7F at 0x59C48;
+    // a loaded save restores the full FFFC2C longword when available.
     std::optional<std::uint32_t> notebook_contacts_flags_ = 0x1C7FU;
     std::optional<std::uint8_t> notebook_referral_flags_ = 0U;
     std::optional<std::uint16_t> notebook_shadowrunner_flags_ = 0U;

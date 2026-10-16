@@ -460,7 +460,8 @@ bool FieldDialogueRuntime::present_script_operation(
             panel_ = make_script_menu_panel_view(
                 speaker, menu.title_key, choices, resolver,
                 menu.input_mode == scripting::ScriptMenuInputMode::cursor,
-                menu.selected_index);
+                menu.selected_index,
+                menu.layout == scripting::ScriptMenuLayout::compact_list);
         } else {
             panel_ = make_script_menu_prompt_panel_view(
                 speaker, menu.inline_text, choices, resolver,
@@ -674,10 +675,32 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
 
     if (cursor_menu) {
         std::string_view input_id;
+        const bool vid_phone_contact_menu =
+            active_script_menu_->id == "contacts" &&
+            active_script_menu_->text_profile == "field.vid_phone";
         if ((event_word & kControllerUpEvent) != 0U) {
             input_id = "up";
         } else if ((event_word & kControllerDownEvent) != 0U) {
             input_id = "down";
+        } else if (vid_phone_contact_menu &&
+                   (event_word & (kControllerAEvent | kControllerBEvent)) !=
+                       0U) {
+            // ROM 0xF90C/0xF972: A or B activates the selected contact row,
+            // including the explicit Next/Prior Screen rows.
+            input_id = "confirm";
+        } else if (vid_phone_contact_menu &&
+                   (event_word & kControllerStartEvent) != 0U) {
+            input_id = "cancel";
+        } else if (vid_phone_contact_menu &&
+                   (event_word & kControllerCEvent) != 0U) {
+            // ROM 0xF980 routes C through the field action service; it does
+            // not change pages. Leave the phone list open here rather than
+            // treating C as an undocumented page shortcut.
+            return FieldDialogueAdvanceResult::waiting_for_controller;
+        } else if ((event_word & kControllerCEvent) != 0U) {
+            input_id = "page";
+        } else if ((event_word & kControllerBEvent) != 0U) {
+            input_id = "back";
         } else if ((event_word & kControllerAEvent) != 0U) {
             input_id = "confirm";
         } else if ((event_word & kControllerStartEvent) != 0U) {
@@ -716,6 +739,10 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         const bool unsupported_cyberspace =
             task.result_id ==
             std::optional<std::string>{"cyberspace_not_converted"};
+        const bool unsupported_taxi =
+            task.result_id == std::optional<std::string>{"taxi_not_converted"};
+        const bool unresolved_phone_flags = task.result_id ==
+            std::optional<std::string>{"phone_contacts_flags_unresolved"};
         close();
         if (returned_from_activity) {
             return FieldDialogueAdvanceResult::returned_from_world_activity;
@@ -723,6 +750,16 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         if (unsupported_cyberspace) {
             open_source_boundary(
                 "Cyberspace entry from this field menu is not converted yet");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        if (unsupported_taxi) {
+            open_source_boundary(
+                "Taxi destinations and fare effects are not converted yet");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        if (unresolved_phone_flags) {
+            open_source_boundary(
+                "Vid-Phone contact flags are unresolved for this save");
             return FieldDialogueAdvanceResult::source_boundary;
         }
         return FieldDialogueAdvanceResult::returned_to_field;
@@ -789,7 +826,14 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         active_script_menu_.reset();
         const bool hotel_options_requested =
             task.result_id == std::optional<std::string>{"hotel-options"};
+        const bool phone_services_unconverted = task.result_id ==
+            std::optional<std::string>{"phone_services_not_converted"};
         close();
+        if (phone_services_unconverted) {
+            open_source_boundary(
+                "This contact's service transactions are not converted yet");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
         return hotel_options_requested
                    ? FieldDialogueAdvanceResult::hotel_options_requested
                    : FieldDialogueAdvanceResult::returned_to_field;

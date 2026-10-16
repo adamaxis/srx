@@ -557,12 +557,14 @@ DialoguePanelView make_script_menu_panel_view(
     const std::vector<std::pair<std::string, std::string>>& choices,
     const DialogueTextResolver& resolve_text,
     const bool cursor_selection,
-    const std::size_t selected_option) {
+    const std::size_t selected_option,
+    const bool compact_cursor_list) {
     DialoguePanelView view{};
     view.open = true;
     view.actor_kind = DialoguePanelActorKind::none;
     view.kind = DialoguePanelKind::field_npc_prompt;
     view.cursor_selection = cursor_selection;
+    view.compact_cursor_list = compact_cursor_list;
     view.selected_option = selected_option;
     if (speaker.has_value()) {
         if (speaker->id.empty() || speaker->name.empty() ||
@@ -574,14 +576,17 @@ DialoguePanelView make_script_menu_panel_view(
         }
     }
 
-    if (title_key.empty()) {
+    if (title_key.empty() && !compact_cursor_list) {
         mark_missing_text(view, title_key);
         view.kind = DialoguePanelKind::source_boundary;
         return view;
     }
-    copy_text_alias_stream(view, title_key, resolve_text);
+    if (!title_key.empty()) {
+        copy_text_alias_stream(view, title_key, resolve_text);
+    }
 
-    if (choices.size() > view.options.size()) {
+    const auto maximum_choices = cursor_selection ? view.options.size() : 3U;
+    if (choices.size() > maximum_choices) {
         view.source_complete = false;
         view.source_boundary_reason = "script menu exceeds the panel choice limit";
     }

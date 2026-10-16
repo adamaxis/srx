@@ -5457,7 +5457,26 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         }
         if (continuation ==
             MovementModeTransitionContinuation::event_31_world_activity) {
-            if (state_.field_scene_buffers.scene_reference != 26U) {
+            const auto scene_reference =
+                state_.field_scene_buffers.scene_reference;
+            // ROM 0x0DB26 sends FFDF40==0 to the ordinary four-choice field
+            // terminal menu. Nonzero resource-scene mode takes the separate
+            // scene-specific branch at 0x0DBF8; scene 26 is currently the
+            // converted two-choice case.
+            if (field_movement_transition_state_.world_mode == 0U) {
+                game_scripts_.set_location_context(
+                    "activity", "field_terminal", "field.main_menu");
+                if (!field_dialogue_.open_gameplay_task(
+                        "field_activities", "ordinary_field_terminal")) {
+                    source_boundary(
+                        "field.activity.ordinary_terminal_open_failed");
+                } else {
+                    source_boundary(
+                        "field.activity.ordinary_terminal_opened");
+                }
+                return integration::PendingFieldSceneHandlerResult::resumed_field;
+            }
+            if (scene_reference != 26U) {
                 source_boundary(
                     "field.activity.event31_scene_route_unresolved");
                 return integration::PendingFieldSceneHandlerResult::resumed_field;
@@ -6089,7 +6108,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
             debug_menu_unlocked_ ? 5U : 4U;
     };
     bindings.game.set_contact_flags = [this](const std::uint32_t flags) {
-        notebook_contacts_flags_ = flags & 0x1FFFU;
+        notebook_contacts_flags_ = flags & 0x03FFFFFFU;
     };
     bindings.game.set_walk_fast = [this] {
         field_walk_fast_enabled_ = true;
@@ -9205,6 +9224,46 @@ bool FieldSceneRuntime::bootstrap(
     stoker_motel_story_state_ = StokerMotelStoryState{};
     game_scripts_.set_story_fact_accessors(
         [this](const std::string_view name) -> std::optional<bool> {
+            if (name == "vid_phone_contacts_resolved") {
+                return notebook_contacts_flags_.has_value();
+            }
+            constexpr std::string_view kPhoneContactPrefix =
+                "vid_phone_contact_";
+            constexpr std::string_view kPhoneCalledPrefix =
+                "vid_phone_called_";
+            const auto phone_fact_index = [name](
+                const std::string_view prefix) -> std::optional<unsigned> {
+                if (name.size() <= prefix.size() ||
+                    name.substr(0U, prefix.size()) != prefix) {
+                    return std::nullopt;
+                }
+                unsigned index = 0U;
+                const auto suffix = name.substr(prefix.size());
+                const auto parsed = std::from_chars(
+                    suffix.data(), suffix.data() + suffix.size(), index);
+                if (parsed.ec != std::errc{} ||
+                    parsed.ptr != suffix.data() + suffix.size() ||
+                    index >= 13U) {
+                    return std::nullopt;
+                }
+                return index;
+            };
+            if (const auto contact_index =
+                    phone_fact_index(kPhoneContactPrefix)) {
+                if (!notebook_contacts_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                return (*notebook_contacts_flags_ &
+                        (1U << *contact_index)) != 0U;
+            }
+            if (const auto contact_index =
+                    phone_fact_index(kPhoneCalledPrefix)) {
+                if (!notebook_contacts_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                return (*notebook_contacts_flags_ &
+                        (1U << (*contact_index + 13U))) != 0U;
+            }
             if (name == "opening_dialogue_seen") {
                 return stoker_motel_story_state_.opening_dialogue_seen;
             }
@@ -9252,6 +9311,27 @@ bool FieldSceneRuntime::bootstrap(
             return std::nullopt;
         },
         [this](const std::string_view name, const bool value) {
+            constexpr std::string_view kPhoneCalledPrefix =
+                "vid_phone_called_";
+            if (name.size() > kPhoneCalledPrefix.size() &&
+                name.substr(0U, kPhoneCalledPrefix.size()) ==
+                    kPhoneCalledPrefix) {
+                unsigned index = 0U;
+                const auto suffix = name.substr(kPhoneCalledPrefix.size());
+                const auto parsed = std::from_chars(
+                    suffix.data(), suffix.data() + suffix.size(), index);
+                if (parsed.ec != std::errc{} ||
+                    parsed.ptr != suffix.data() + suffix.size() ||
+                    index >= 13U || !notebook_contacts_flags_.has_value()) {
+                    return false;
+                }
+                const auto mask = static_cast<std::uint32_t>(
+                    1U << (index + 13U));
+                *notebook_contacts_flags_ = value
+                    ? *notebook_contacts_flags_ | mask
+                    : *notebook_contacts_flags_ & ~mask;
+                return true;
+            }
             if (name == "opening_dialogue_seen") {
                 stoker_motel_story_state_.opening_dialogue_seen = value;
                 return true;

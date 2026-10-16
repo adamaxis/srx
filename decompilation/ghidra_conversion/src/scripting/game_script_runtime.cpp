@@ -28,7 +28,7 @@ constexpr std::size_t kMaximumMapEventRules = 512U;
 // The command overview has seven source rows; Pocket Secretary's extended
 // caller can expose six. Keep the generic script-menu bound at the larger
 // source-defined menu size.
-constexpr std::size_t kMaximumMenuChoices = 7U;
+constexpr std::size_t kMaximumMenuChoices = 8U;
 // Static script catalogs may describe source tables such as all 13 Magic
 // spells or 32 shop headings; live dialogue menus keep the seven-row cap.
 constexpr std::size_t kMaximumMenuCatalogChoices = 32U;
@@ -84,6 +84,20 @@ bool read_string(lua_State* state, const int index, std::string& value) {
     const auto* text = lua_tolstring(state, index, &length);
     if (text == nullptr || length == 0U ||
         length > kMaximumIdentifierLength) {
+        return false;
+    }
+    value.assign(text, length);
+    return true;
+}
+
+bool read_string_allow_empty(lua_State* state, const int index,
+                             std::string& value) {
+    if (lua_type(state, index) != LUA_TSTRING) {
+        return false;
+    }
+    std::size_t length = 0U;
+    const auto* text = lua_tolstring(state, index, &length);
+    if (text == nullptr || length > kMaximumIdentifierLength) {
         return false;
     }
     value.assign(text, length);
@@ -2635,20 +2649,36 @@ struct GameScriptRuntime::Impl {
         }
 
         std::string menu_id;
+        std::string speaker_id = self->location_speaker_id;
+        std::string text_profile = self->location_text_profile;
         ScriptMenuDefinition menu{};
+        if (lua_gettop(lua) >= 3 &&
+            (!read_string_allow_empty(lua, 3, speaker_id) ||
+             (!speaker_id.empty() && !valid_identifier(speaker_id)))) {
+            self->bridge_failure =
+                "game.ui.menu optional speaker id must be an identifier";
+            lua_pushnil(lua);
+            return 1;
+        }
+        if (lua_gettop(lua) >= 4 &&
+            (!read_string(lua, 4, text_profile) ||
+             !valid_identifier(text_profile))) {
+            self->bridge_failure =
+                "game.ui.menu optional text profile must be an identifier";
+            lua_pushnil(lua);
+            return 1;
+        }
         if (!read_string(lua, 1, menu_id) ||
             !valid_identifier(menu_id) ||
-            !valid_identifier(self->location_text_profile) ||
-            !parse_menu_choices(lua, 2, menu_id,
-                                self->location_text_profile,
-                                self->location_speaker_id, menu,
+            !valid_identifier(text_profile) ||
+            !parse_menu_choices(lua, 2, menu_id, text_profile, speaker_id,
+                                menu,
                                 kMaximumMenuChoices)) {
             self->bridge_failure =
                 "game.ui.menu expects a menu name and unique stable choice ids in a profiled location";
             lua_pushnil(lua);
             return 1;
         }
-
         ScriptNativeOperation operation{};
         operation.type = ScriptNativeOperation::Type::ui_menu;
         operation.menu = std::move(menu);
@@ -2714,17 +2744,25 @@ struct GameScriptRuntime::Impl {
         }
 
         std::string menu_id;
+        std::string speaker_id = self->location_speaker_id;
+        std::string text_profile = self->location_text_profile;
         ScriptMenuDefinition menu{};
         const bool valid_selection = lua_isinteger(lua, 3) != 0 &&
             lua_tointeger(lua, 3) >= 1 &&
             lua_tointeger(lua, 3) <=
                 static_cast<lua_Integer>(kMaximumMenuChoices);
+        const bool valid_speaker = lua_gettop(lua) < 4 ||
+            (read_string_allow_empty(lua, 4, speaker_id) &&
+             (speaker_id.empty() || valid_identifier(speaker_id)));
+        const bool valid_profile = lua_gettop(lua) < 5 ||
+            (read_string(lua, 5, text_profile) &&
+             valid_identifier(text_profile));
         if (!read_string(lua, 1, menu_id) ||
             !valid_identifier(menu_id) || !valid_selection ||
-            !valid_identifier(self->location_text_profile) ||
-            !parse_menu_choices(lua, 2, menu_id,
-                                self->location_text_profile,
-                                self->location_speaker_id, menu,
+            !valid_speaker || !valid_profile ||
+            !valid_identifier(text_profile) ||
+            !parse_menu_choices(lua, 2, menu_id, text_profile, speaker_id,
+                                menu,
                                 kMaximumMenuChoices) ||
             lua_tointeger(lua, 3) >
                 static_cast<lua_Integer>(menu.choices.size())) {
@@ -2759,12 +2797,19 @@ struct GameScriptRuntime::Impl {
         }
 
         std::string event_id;
+        std::string speaker_id = self->location_speaker_id;
+        std::string text_profile = self->location_text_profile;
+        const bool valid_speaker = lua_gettop(lua) < 2 ||
+            (read_string(lua, 2, speaker_id) &&
+             valid_identifier(speaker_id));
+        const bool valid_profile = lua_gettop(lua) < 3 ||
+            (read_string(lua, 3, text_profile) &&
+             valid_identifier(text_profile));
         if (!read_string(lua, 1, event_id) ||
-            !valid_identifier(event_id) ||
-            !valid_identifier(self->location_text_profile) ||
-            !valid_identifier(self->location_speaker_id)) {
+            !valid_identifier(event_id) || !valid_speaker ||
+            !valid_profile || !valid_identifier(text_profile)) {
             self->bridge_failure =
-                "game.ui.say expects an event in a location with a speaker and text profile";
+                "game.ui.say expects an event and optional speaker/profile in a profiled location";
             lua_pushboolean(lua, 0);
             return 1;
         }
@@ -2772,7 +2817,7 @@ struct GameScriptRuntime::Impl {
         ScriptNativeOperation operation{};
         operation.type = ScriptNativeOperation::Type::ui_say;
         operation.dialogue = ScriptDialogueRequest{
-            self->location_speaker_id, self->location_text_profile,
+            std::move(speaker_id), std::move(text_profile),
             std::move(event_id)};
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
@@ -7487,9 +7532,9 @@ ScriptTaskStep GameScriptRuntime::complete_native_menu_input(
     auto* state = impl_->state;
     auto* task = impl_->task_state;
     const auto& operation = impl_->active_native_operation;
-    const bool recognized_input = input_id == "up" || input_id == "down" ||
-                                  input_id == "confirm" ||
-                                  input_id == "cancel";
+    const bool recognized_input =
+        input_id == "up" || input_id == "down" || input_id == "confirm" ||
+        input_id == "cancel" || input_id == "back" || input_id == "page";
     if (state == nullptr || task == nullptr || !impl_->task_waiting ||
         impl_->pending_task_operation.has_value() || !operation.has_value() ||
         operation->type != ScriptNativeOperation::Type::ui_menu ||
@@ -7793,11 +7838,33 @@ std::optional<ScriptMenuDefinition> GameScriptRuntime::resolve_dialogue_menu(
     }
 
     const auto table_index = lua_absindex(state, -1);
+    lua_getfield(state, table_index, "layout");
+    bool layout_valid = true;
+    if (lua_isnil(state, -1)) {
+        menu.layout = ScriptMenuLayout::standard;
+    } else {
+        std::string layout;
+        layout_valid = read_string(state, -1, layout);
+        if (layout_valid && layout == "standard") {
+            menu.layout = ScriptMenuLayout::standard;
+        } else if (layout_valid && layout == "compact_list") {
+            menu.layout = ScriptMenuLayout::compact_list;
+        } else {
+            layout_valid = false;
+        }
+    }
+    lua_pop(state, 1);
     lua_getfield(state, table_index, "title_key");
     bool title_valid = false;
     if (!menu.inline_prompt) {
-        title_valid = read_string(state, -1, menu.title_key) &&
-                      valid_identifier(menu.title_key);
+        const bool read_title =
+            menu.layout == ScriptMenuLayout::compact_list
+                ? read_string_allow_empty(state, -1, menu.title_key)
+                : read_string(state, -1, menu.title_key);
+        title_valid = read_title &&
+                      (valid_identifier(menu.title_key) ||
+                       (menu.layout == ScriptMenuLayout::compact_list &&
+                        menu.title_key.empty()));
     } else {
         title_valid = lua_isnil(state, -1) != 0;
     }
@@ -7820,7 +7887,7 @@ std::optional<ScriptMenuDefinition> GameScriptRuntime::resolve_dialogue_menu(
         }
     }
     lua_pop(state, 2);
-    if (!title_valid || !labels_valid) {
+    if (!layout_valid || !title_valid || !labels_valid) {
         impl_->failure = "Lua dialogue menu keys do not match its choices: " +
                          std::string(menu.speaker_id) + "." + menu.id;
         return std::nullopt;

@@ -21,6 +21,10 @@ local speakers = {
                 title_key = "redmond.vigore-search.page-2",
                 continuation_key = "",
             },
+            phone_no_contacts = {
+                title_key = "field.main_menu.vid_phone.no_contacts",
+                continuation_key = "",
+            },
         },
     },
     jump_house_entry = {
@@ -209,6 +213,46 @@ local speakers = {
         },
     },
 }
+
+-- The Vid-Phone list uses the ROM's 13-entry name table at 0xC66AC and the
+-- pointer table at 0x109682. Each pointer leads to that contact's call
+-- descriptors and portrait profile. Contact access and call history live in
+-- FFFC2C; these rows provide readable content metadata.
+local vid_phone_contacts = {
+    { source_index = 0, id = "capt_quinton_jaymes", name = "Capt Quinton Jaymes", name_key = "pocket_secretary.notebook.contact.name.option.record_0", portrait_alias = "dialogue.portraits.vid.phone.capt.quinton.jaymes" },
+    { source_index = 1, id = "alesandro_hobbs", name = "Alesandro Hobbs", name_key = "pocket_secretary.notebook.contact.name.option.record_1", portrait_alias = "dialogue.portraits.vid.phone.alesandro.hobbs" },
+    { source_index = 2, id = "sharkey", name = "Sharkey", name_key = "pocket_secretary.notebook.contact.name.option.record_2", portrait_alias = "dialogue.portraits.vid.phone.sharkey" },
+    { source_index = 3, id = "kipp_david", name = "Kipp David", name_key = "pocket_secretary.notebook.contact.name.option.record_3", portrait_alias = "dialogue.portraits.vid.phone.kipp.david" },
+    { source_index = 4, id = "wilma_temmenhoff", name = "Wilma Temmenhoff", name_key = "pocket_secretary.notebook.contact.name.option.record_4", portrait_alias = "dialogue.portraits.vid.phone.wilma.temmenhoff" },
+    { source_index = 5, id = "macklemann", name = "Sgt. Macklemann", name_key = "pocket_secretary.notebook.contact.name.option.record_5", portrait_alias = "dialogue.portraits.vid.phone.macklemann" },
+    { source_index = 6, id = "gregory_wilns", name = "Gregory Wilns", name_key = "pocket_secretary.notebook.contact.name.option.record_6", portrait_alias = "dialogue.portraits.vid.phone.gregory.wilns" },
+    { source_index = 7, id = "mr_faradouchi", name = "Mr. Faradouchi", name_key = "pocket_secretary.notebook.contact.name.option.record_7", portrait_alias = "dialogue.portraits.vid.phone.mr.faradouchi", always_first = true, first_continuation = true, repeat_continuation = true },
+    { source_index = 8, id = "agira_tetsumi", name = "Agira Tetsumi", name_key = "pocket_secretary.notebook.contact.name.option.record_8", portrait_alias = "dialogue.portraits.vid.phone.agira.tetsumi", always_first = true, first_continuation = true, repeat_continuation = true },
+    { source_index = 9, id = "henry_j_culver", name = "Henry J. Culver", name_key = "pocket_secretary.notebook.contact.name.option.record_9", portrait_alias = "dialogue.portraits.vid.phone.henry.j.culver" },
+    { source_index = 10, id = "max", name = "Max", name_key = "pocket_secretary.notebook.contact.name.option.record_10", portrait_alias = "dialogue.portraits.vid.phone.max" },
+    { source_index = 11, id = "chillicut", name = "Sgt. Chillicut", name_key = "pocket_secretary.notebook.contact.name.option.record_11", portrait_alias = "dialogue.portraits.vid.phone.chillicut", first_continuation = true },
+    { source_index = 12, id = "professor_jefferson", name = "Prof. Jefferson", name_key = "pocket_secretary.notebook.contact.name.option.record_12", portrait_alias = "dialogue.portraits.vid.phone.professor.jefferson" },
+}
+
+for _, contact in ipairs(vid_phone_contacts) do
+    local speaker_id = "vid_phone_" .. contact.id
+    contact.speaker_id = speaker_id
+    speakers[speaker_id] = {
+        name = contact.name,
+        text_profile = "field.vid_phone",
+        portrait_alias = contact.portrait_alias,
+        events = {
+            first_call = {
+                title_key = "vid_phone.contact." .. contact.id .. ".first_call",
+                continuation_key = contact.first_continuation and "shared.more" or "",
+            },
+            repeat_call = {
+                title_key = "vid_phone.contact." .. contact.id .. ".repeat_call",
+                continuation_key = contact.repeat_continuation and "shared.more" or "",
+            },
+        },
+    }
+end
 
 -- Menu copy belongs to the location's content profile. A shared building
 -- menu can therefore be shown with or without a named speaker portrait.
@@ -437,6 +481,30 @@ local menu_profiles = {
     },
 }
 
+local phone_profile = {
+    contacts = {
+        title_key = "",
+        layout = "compact_list",
+        choice_label_keys = {
+            next_screen = "vid_phone.contact.page_next",
+            prior_screen = "vid_phone.contact.page_previous",
+        },
+    },
+}
+for _, contact in ipairs(vid_phone_contacts) do
+    phone_profile.contacts.choice_label_keys[contact.id] = contact.name_key
+    for _, call_kind in ipairs({ "first_call", "repeat_call" }) do
+        phone_profile["call_" .. contact.id .. "_" .. call_kind] = {
+            title_key = "vid_phone.contact." .. contact.id .. "." .. call_kind,
+            choice_label_keys = {
+                services = "vid_phone.option.services",
+                goodbye = "vid_phone.option.goodbye",
+            },
+        }
+    end
+end
+menu_profiles["field.vid_phone"] = phone_profile
+
 -- Content is grouped by speaker and topic. The controller supplies only the
 -- semantic runner/page ID; this table connects that ID to the imported copy.
 local runner_dialogue = {
@@ -636,10 +704,12 @@ function Dialogue.menu_text_keys(speaker_id, text_profile, menu_id, choice_ids)
     return {
         title_key = menu.title_key,
         choice_label_keys = choice_label_keys,
+        layout = menu.layout or "standard",
     }
 end
 
 Dialogue.runner_text_keys = runner_text_keys
+Dialogue.vid_phone_contacts = vid_phone_contacts
 
 -- The shared Johnson conversation module reads this policy by the active
 -- location's text profile. Building scripts remain generic; ROM-backed

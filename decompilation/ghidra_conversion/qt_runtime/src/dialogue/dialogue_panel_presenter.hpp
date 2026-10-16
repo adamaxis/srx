@@ -34,6 +34,7 @@ private:
 
     std::array<QImage, 2> panel_frames_{};
     std::array<QImage, 3> option_markers_{};
+    QImage cursor_marker_;
     std::unordered_map<std::string, QImage> portraits_;
     QImage font_;
     std::string failure_;

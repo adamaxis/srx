@@ -63,6 +63,20 @@ bool DialoguePanelPresenter::load_assets(
         }
     }
 
+    const auto* cursor_record = assets.find("menu.field.hotel.cursor");
+    if (cursor_record == nullptr || cursor_record->kind != "image") {
+        failure_ = "source menu cursor asset is unavailable";
+        return false;
+    }
+    cursor_marker_ = QImage(QString::fromStdWString(
+        cursor_record->absolute_path.wstring()))
+                            .convertToFormat(
+                                QImage::Format_ARGB32_Premultiplied);
+    if (cursor_marker_.isNull() || cursor_marker_.size() != QSize(7, 8)) {
+        failure_ = "source menu cursor asset is unreadable";
+        return false;
+    }
+
     const auto* font_record = assets.find("menu.field.font");
     if (font_record == nullptr || font_record->kind != "image") {
         failure_ = "shared dialogue font asset is unavailable";
@@ -237,22 +251,28 @@ void DialoguePanelPresenter::paint(QPainter& painter,
         return;
     }
 
-    for (std::size_t index = 0U; index < panel.option_count && index < 3U;
+    for (std::size_t index = 0U; index < panel.option_count &&
+                                  index < panel.options.size();
          ++index) {
-        const auto row_y = 152 + static_cast<int>(index * 24U);
+        const auto row_y = panel.compact_cursor_list
+            ? 16 + static_cast<int>(index * 16U)
+            : 152 + static_cast<int>(index *
+                (panel.cursor_selection && panel.option_count > 3U
+                     ? 16U : 24U));
+        const auto cursor_x = panel.compact_cursor_list ? 80 : 24;
+        const auto label_x = panel.compact_cursor_list ? 96 : 48;
         if (panel.cursor_selection) {
             if (index == panel.selected_option) {
-                // ROM 0xC376 rewrites the menu-row cursor as a separate tile
-                // pair; represent that state with the extracted UI font
-                // until the source cursor glyph is added to the asset set.
-                draw_pixel_text(painter, 24, row_y, ">", 1, 1,
-                                dialogue_green);
+                // ROM 0xC376 writes the selected-row cursor tile. Use its
+                // extracted 0x5FF sprite instead of drawing a text glyph.
+                painter.drawImage(cursor_x, row_y, cursor_marker_);
             }
         } else {
             painter.drawImage(16, row_y, option_markers_[index]);
         }
-        draw_wrapped_segment(painter, 48, row_y,
-                             panel.options[index].source_label, 32, 2,
+        draw_wrapped_segment(painter, label_x, row_y,
+                             panel.options[index].source_label,
+                             panel.compact_cursor_list ? 26U : 32U, 2,
                              dialogue_green);
     }
 }

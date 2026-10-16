@@ -2617,10 +2617,10 @@ RgbaImage decode_genesis_field_mode_profile_sprite(
             delta = static_cast<std::uint16_t>(delta + step);
         }
     }
-    if (tile_count != tile_words.size()) {
-        throw std::runtime_error(
-            "field mode sprite stream did not fill its 7x9 writer");
-    }
+    // ROM 0x1728 returns as soon as it reads a zero descriptor. Several
+    // Vid-Phone profiles intentionally stop before all 63 tile cells have
+    // been supplied; the host leaves those cells transparent over the
+    // freshly-cleared dialogue panel.
 
     RgbaImage image{
         static_cast<std::uint16_t>(kSpriteColumns * 8U),

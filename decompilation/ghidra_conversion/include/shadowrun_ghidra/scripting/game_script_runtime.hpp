@@ -44,6 +44,11 @@ enum class ScriptMenuInputMode : std::uint8_t {
     cursor,
 };
 
+enum class ScriptMenuLayout : std::uint8_t {
+    standard,
+    compact_list,
+};
+
 struct ScriptMenuDefinition {
     std::string id;
     std::string text_profile;
@@ -55,6 +60,7 @@ struct ScriptMenuDefinition {
     bool inline_prompt = false;
     std::vector<ScriptMenuChoice> choices;
     ScriptMenuInputMode input_mode = ScriptMenuInputMode::button_choice;
+    ScriptMenuLayout layout = ScriptMenuLayout::standard;
     std::size_t selected_index = 0U;
 };
 

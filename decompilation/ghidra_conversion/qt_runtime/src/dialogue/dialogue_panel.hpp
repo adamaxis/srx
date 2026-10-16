@@ -128,10 +128,11 @@ struct DialoguePanelView {
     // segments for complete dialogue text, including those blank rows.
     std::array<std::string_view, 16> text_segments{};
     std::size_t text_segment_count = 0;
-    std::array<DialoguePanelOption, 3> options{};
+    std::array<DialoguePanelOption, 8> options{};
     std::size_t option_count = 0;
     std::size_t selected_option = 0;
     bool cursor_selection = false;
+    bool compact_cursor_list = false;
 
     bool has_more = false;
     bool returns_to_conversation = false;
@@ -212,7 +213,8 @@ DialoguePanelView make_script_menu_panel_view(
     const std::vector<std::pair<std::string, std::string>>& choices,
     const DialogueTextResolver& resolve_text,
     bool cursor_selection = false,
-    std::size_t selected_option = 0U);
+    std::size_t selected_option = 0U,
+    bool compact_cursor_list = false);
 
 // A dynamic prompt and its choices share one full redraw of the dialogue
 // panel, so no old title or button art can remain underneath the new page.
