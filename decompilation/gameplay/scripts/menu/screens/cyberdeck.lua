@@ -50,6 +50,7 @@ function M.new(args)
         labels = M.GRID_LABELS,
         matrix_session = args.matrix_session == true,
         return_to_node_action = args.return_to_node_action == true,
+        return_to_field = args.return_to_field == true,
         system_id = args.system_id,
         matrix_state = args.matrix_state,
     }
@@ -76,6 +77,10 @@ local function leave(st, ctx, res)
     if st.return_to_node_action and
        not (res and res.exit_secretary) then
         return { transition = T.POP, result = { matrix_resumed = true } }
+    end
+    if st.return_to_field then
+        MatrixSession.finish(st.matrix_state)
+        return { transition = T.EXIT, result = res }
     end
     if st.matrix_session then
         MatrixSession.finish(st.matrix_state)

@@ -79,6 +79,7 @@
 #include <utility>
 
 class QPainter;
+class QColor;
 
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 
@@ -321,6 +322,7 @@ public:
         std::uint16_t source_order, std::uint8_t physical_meter) noexcept;
     bool open_command_overview_for_dump();
 #ifdef SHADOWRUN_QT_QA_DRIVER
+    bool open_taxi_selector_for_dump(std::uint8_t current_region);
     // Injects the stale parent action-row condition for a visual overlap probe.
     void set_inventory_action_overlay_probe_for_dump(bool active) noexcept;
 #endif
@@ -1276,16 +1278,21 @@ private:
     bool load_item_menu_content();
     bool load_field_elevator_selector_assets(
         const ConversionAssetCatalog& catalog);
+    bool load_field_taxi_selector_assets(
+        const ConversionAssetCatalog& catalog);
     bool open_field_elevator_selector(
         FieldCollisionEventCode event_code);
     void advance_field_elevator_selector();
     void advance_field_elevator_scene_transition();
-    bool transition_to_elevator_destination(std::uint16_t scene_reference);
+    bool transition_to_field_destination(std::uint16_t scene_reference,
+                                         bool taxi_route = false);
     HotelMenuEvent process_hotel_menu_events(std::uint16_t events);
     AttributesSkillsRuntimeEvent process_hotel_karma_screen_events(
         std::uint16_t events);
     void draw_command_overview_text(QPainter& painter, int x, int y,
                                     std::string_view text) const;
+    void draw_tinted_field_text(QPainter& painter, int x, int y,
+                                std::string_view text, QColor color) const;
     void draw_field_menu_font_text(QPainter& painter, int x, int y,
                                    std::string_view text,
                                    const QImage& font) const;
@@ -1345,7 +1352,10 @@ private:
         std::uint16_t screen,
         const scripting::ScriptMenuRouteArgs& args);
     bool command_menu_legacy_screen_active(std::uint16_t screen) const;
-    void open_command_overview();
+    void open_command_overview(
+        std::uint16_t root_screen = static_cast<std::uint16_t>(
+            srx::MenuScreen::COMMAND),
+        scripting::ScriptMenuRouteStartArguments start_arguments = {});
     bool load_command_overview_assets(const ConversionAssetCatalog& catalog);
     bool load_field_hud_overlays(const ConversionAssetCatalog& catalog);
 
@@ -1603,6 +1613,8 @@ private:
     QImage field_map_priority_overlay_;
     QImage field_hud_;
     QImage field_service_background_;
+    QImage field_taxi_map_;
+    std::array<QImage, 8> field_taxi_cursor_tiles_{};
     std::array<QImage, kElevatorSelectorAnimationFrameCount>
         field_elevator_selector_backgrounds_{};
     std::array<QImage, kElevatorSelectorMaximumFloors>
@@ -1833,6 +1845,12 @@ private:
     // its scene-entry tail only after the player dismisses the entry page.
     bool jump_house_entry_transition_pending_ = false;
     bool field_mode_entry_transition_pending_ = false;
+    bool field_matrix_route_active_ = false;
+    bool field_taxi_route_active_ = false;
+    bool matrix_return_to_field_on_close_ = false;
+    bool matrix_field_return_transition_pending_ = false;
+    bool field_taxi_transition_active_ = false;
+    std::optional<std::uint16_t> field_taxi_pending_destination_;
     std::optional<std::uint16_t> field_mode_entry_destination_scene_;
     std::int8_t field_indexed_title_service_result_ = 0;
     std::uint8_t field_palette_fade_steps_ = 0U;

@@ -2,6 +2,7 @@
 -- selected by the player; the Qt panel only presents each yielded menu frame.
 local FieldActivities = {}
 local Dialogue = require("dialogue")
+local MatrixPasscodes = require("data.matrix_passcodes")
 
 local function run_cursor_menu(menu_id, choices, initial_selection,
                                speaker_id, text_profile)
@@ -50,7 +51,7 @@ end
 
 local function call_contact(contact)
     local called_fact = "vid_phone_called_" .. contact.source_index
-    local first_call = contact.always_first or game.state[called_fact] ~= true
+    local first_call = game.state[called_fact] ~= true
     if first_call and not contact.always_first then
         -- ROM 0xE5E2 sets the contact's call-history bit before opening its
         -- first-call dialogue. Mr. Faradouchi and Agira have the source's
@@ -129,6 +130,109 @@ function FieldActivities.vid_phone()
     end
 end
 
+local function matrix_passcode_choices(page)
+    local available = {}
+    for _, passcode in ipairs(MatrixPasscodes.passcodes) do
+        if game.state["matrix_passcode_bit_" .. passcode.flag_bit] == true and
+           (not passcode.current_target or
+            game.state.matrix_current_passcode_available == true) then
+            available[#available + 1] = passcode
+        end
+    end
+
+    local choices = {}
+    if page == 0 then
+        local visible = math.min(#available, 7)
+        for index = 1, visible do
+            choices[#choices + 1] = available[index].id
+        end
+        if #available > visible then
+            choices[#choices + 1] = "next_screen"
+        end
+    else
+        for index = 8, #available do
+            choices[#choices + 1] = available[index].id
+        end
+        choices[#choices + 1] = "prior_screen"
+    end
+    return available, choices
+end
+
+function FieldActivities.enter_passcode()
+    if game.state.matrix_passcode_flags_resolved ~= true then
+        return "matrix_passcode_flags_unresolved"
+    end
+    local available = matrix_passcode_choices(0)
+    if #available == 0 then
+        -- The ROM builds an empty list when no FFFC28 entry is known. Return
+        -- to Cyberspace so the player can choose System Search instead.
+        return nil
+    end
+
+    local page, selected = 0, 1
+    while true do
+        local _, choices = matrix_passcode_choices(page)
+        local choice
+        choice, selected = run_cursor_menu(
+            "passcodes", choices, selected, "", "field.main_menu")
+        if choice == "exit" then
+            return nil
+        elseif choice == "next_screen" then
+            page, selected = 1, 1
+        elseif choice == "prior_screen" then
+            page, selected = 0, 1
+        else
+            for _, passcode in ipairs(MatrixPasscodes.passcodes) do
+                if passcode.id == choice then
+                    if passcode.current_target then
+                        return "matrix_entry_current"
+                    end
+                    return "matrix_entry_" .. passcode.system_id
+                end
+            end
+        end
+    end
+end
+
+function FieldActivities.enter_cyberspace()
+    local deck_present = game.state.cyberspace_deck_present
+    if deck_present == nil then
+        return "cyberspace_access_facts_unresolved"
+    end
+    if not deck_present then
+        game.ui.say("cyberspace_no_deck", "field_narrator", "field.main_menu")
+        return nil
+    end
+
+    local mpcp_functional = game.state.cyberspace_mpcp_functional
+    if mpcp_functional == nil then
+        return "cyberspace_access_facts_unresolved"
+    end
+    if not mpcp_functional then
+        game.ui.say("cyberspace_no_mpcp", "field_narrator", "field.main_menu")
+        return nil
+    end
+
+    local datajack_present = game.state.cyberspace_datajack_present
+    if datajack_present == nil then
+        return "cyberspace_access_facts_unresolved"
+    end
+    if not datajack_present then
+        game.ui.say("cyberspace_no_datajack", "field_narrator", "field.main_menu")
+        return nil
+    end
+
+    local choice = run_cursor_menu("cyberspace", {
+        "enter_passcode", "system_search", "exit",
+    }, 1, "", "field.main_menu")
+    if choice == "enter_passcode" then
+        return FieldActivities.enter_passcode()
+    elseif choice == "system_search" then
+        return "matrix_system_search_requested"
+    end
+    return nil
+end
+
 function FieldActivities.ordinary_field_terminal()
     while true do
         local choice = run_cursor_menu("ordinary", {
@@ -145,29 +249,27 @@ function FieldActivities.ordinary_field_terminal()
                 return result
             end
         elseif choice == "call_taxi" then
-            return "taxi_not_converted"
+            return "taxi_selector_requested"
         elseif choice == "cyberspace" then
-            return "cyberspace_not_converted"
+            local result = FieldActivities.enter_cyberspace()
+            if result ~= nil then return result end
         end
     end
 end
 
 function FieldActivities.resource_scene_main_menu()
-    local choice = run_cursor_menu("resource_main", {
-        "cyberspace",
-        "exit",
-    })
-
-    if choice == "exit" then
-        return "return_from_world_activity"
+    while true do
+        local choice = run_cursor_menu("resource_main", {
+            "cyberspace",
+            "exit",
+        })
+        if choice == "exit" then
+            return "return_from_world_activity"
+        elseif choice == "cyberspace" then
+            local result = FieldActivities.enter_cyberspace()
+            if result ~= nil then return result end
+        end
     end
-    if choice == "cyberspace" then
-        -- The ROM has a separate prerequisite and Matrix-entry route. Keep
-        -- the source choice visible while that independent screen remains a
-        -- boundary; do not turn it into a false field return.
-        return "cyberspace_not_converted"
-    end
-    return nil
 end
 
 return FieldActivities

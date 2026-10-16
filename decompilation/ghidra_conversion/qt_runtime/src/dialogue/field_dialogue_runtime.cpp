@@ -3,6 +3,7 @@
 #include <QPainter>
 
 #include <array>
+#include <charconv>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -739,11 +740,50 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         const bool unsupported_cyberspace =
             task.result_id ==
             std::optional<std::string>{"cyberspace_not_converted"};
-        const bool unsupported_taxi =
-            task.result_id == std::optional<std::string>{"taxi_not_converted"};
+        const bool taxi_selector_requested = task.result_id ==
+            std::optional<std::string>{"taxi_selector_requested"};
         const bool unresolved_phone_flags = task.result_id ==
             std::optional<std::string>{"phone_contacts_flags_unresolved"};
+        const bool unresolved_cyberspace_facts = task.result_id ==
+            std::optional<std::string>{"cyberspace_access_facts_unresolved"};
+        const bool unresolved_passcode_flags = task.result_id ==
+            std::optional<std::string>{"matrix_passcode_flags_unresolved"};
+        const bool matrix_search_requested = task.result_id ==
+            std::optional<std::string>{"matrix_system_search_requested"};
+        std::optional<std::uint8_t> matrix_entry_system_id;
+        if (task.result_id.has_value()) {
+            constexpr std::string_view kMatrixEntryPrefix = "matrix_entry_";
+            const auto& result_id = *task.result_id;
+            if (result_id == "matrix_entry_current") {
+                // 0xFFFBBC is the current passcode target in the ROM.
+                matrix_entry_system_id = 0xFFU;
+            } else if (result_id.size() > kMatrixEntryPrefix.size() &&
+                       result_id.compare(0U, kMatrixEntryPrefix.size(),
+                                         kMatrixEntryPrefix) == 0) {
+                unsigned system_id = 0U;
+                const auto suffix = std::string_view(result_id).substr(
+                    kMatrixEntryPrefix.size());
+                const auto parsed = std::from_chars(
+                    suffix.data(), suffix.data() + suffix.size(), system_id);
+                if (parsed.ec == std::errc{} &&
+                    parsed.ptr == suffix.data() + suffix.size() &&
+                    system_id < 25U) {
+                    matrix_entry_system_id =
+                        static_cast<std::uint8_t>(system_id);
+                }
+            }
+        }
         close();
+        pending_matrix_entry_system_id_ = matrix_entry_system_id;
+        if (matrix_search_requested) {
+            return FieldDialogueAdvanceResult::matrix_search_requested;
+        }
+        if (taxi_selector_requested) {
+            return FieldDialogueAdvanceResult::taxi_selector_requested;
+        }
+        if (matrix_entry_system_id.has_value()) {
+            return FieldDialogueAdvanceResult::matrix_entry_requested;
+        }
         if (returned_from_activity) {
             return FieldDialogueAdvanceResult::returned_from_world_activity;
         }
@@ -752,14 +792,19 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
                 "Cyberspace entry from this field menu is not converted yet");
             return FieldDialogueAdvanceResult::source_boundary;
         }
-        if (unsupported_taxi) {
-            open_source_boundary(
-                "Taxi destinations and fare effects are not converted yet");
-            return FieldDialogueAdvanceResult::source_boundary;
-        }
         if (unresolved_phone_flags) {
             open_source_boundary(
                 "Vid-Phone contact flags are unresolved for this save");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        if (unresolved_cyberspace_facts) {
+            open_source_boundary(
+                "Cyberspace prerequisite facts are unresolved for this save");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        if (unresolved_passcode_flags) {
+            open_source_boundary(
+                "Matrix passcode flags are unresolved for this save");
             return FieldDialogueAdvanceResult::source_boundary;
         }
         return FieldDialogueAdvanceResult::returned_to_field;
@@ -1005,8 +1050,16 @@ void FieldDialogueRuntime::close() noexcept {
     active_script_operation_.reset();
     active_script_menu_.reset();
     script_task_waiting_ = false;
+    pending_matrix_entry_system_id_.reset();
     boundary_reason_.clear();
     hotel_options_menu_follows_ = false;
+}
+
+std::optional<std::uint8_t>
+FieldDialogueRuntime::take_matrix_entry_system_id() noexcept {
+    auto requested = pending_matrix_entry_system_id_;
+    pending_matrix_entry_system_id_.reset();
+    return requested;
 }
 
 void FieldDialogueRuntime::paint(QPainter& painter) const {

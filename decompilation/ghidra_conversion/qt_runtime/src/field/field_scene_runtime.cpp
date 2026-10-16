@@ -11,6 +11,7 @@
 #include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_service_conversion.hpp"
 #include "shadowrun_ghidra/field/field_resource_sequence_conversion.hpp"
+#include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 #include "shadowrun_ghidra/field/field_action_detail_text_conversion.hpp"
 #include "shadowrun_ghidra/field/field_scene_entry_conversion.hpp"
 #include "shadowrun_ghidra/field/field_script_route_conversion.hpp"
@@ -1564,6 +1565,29 @@ bool FieldSceneRuntime::load_field_elevator_selector_assets(
     return true;
 }
 
+bool FieldSceneRuntime::load_field_taxi_selector_assets(
+    const ConversionAssetCatalog& catalog) {
+    if (!load_image(catalog, "intro.cab.map", field_taxi_map_) ||
+        field_taxi_map_.size() != QSize(208, 136)) {
+        source_boundary("field.taxi.map_asset_missing");
+        return false;
+    }
+
+    constexpr std::array<std::string_view, 8> kCursorTileNames{{
+        "top.left", "top.middle", "top.right", "left", "right",
+        "bottom.left", "bottom.middle", "bottom.right"}};
+    for (std::size_t index = 0U; index < kCursorTileNames.size(); ++index) {
+        const auto alias = std::string("intro.cab.cursor.") +
+                           std::string(kCursorTileNames[index]);
+        if (!load_image(catalog, alias, field_taxi_cursor_tiles_[index]) ||
+            field_taxi_cursor_tiles_[index].size() != QSize(8, 8)) {
+            source_boundary("field.taxi.cursor_asset_missing");
+            return false;
+        }
+    }
+    return true;
+}
+
 bool FieldSceneRuntime::open_field_elevator_selector(
     const FieldCollisionEventCode event_code) {
     if (!field_session_source_assets_ || field_elevator_selector_.is_open()) {
@@ -1628,29 +1652,29 @@ bool FieldSceneRuntime::open_field_elevator_selector(
     return true;
 }
 
-bool FieldSceneRuntime::transition_to_elevator_destination(
-    const std::uint16_t scene_reference) {
+bool FieldSceneRuntime::transition_to_field_destination(
+    const std::uint16_t scene_reference, const bool taxi_route) {
+    const auto source_prefix = taxi_route ? "field.taxi." : "field.elevator.";
     if (!field_session_source_assets_ ||
         scene_reference >=
             field_session_source_assets_->field_scene_resources.size() ||
         !prepare_runtime_field_scene(scene_reference)) {
-        source_boundary("field.elevator.destination_prepare_unresolved");
+        source_boundary(std::string(source_prefix) +
+                        "destination_prepare_unresolved");
         return false;
     }
 
-    // ROM 0x58D94 hands off only after FFF0C8 changes; 0x16A8E selects the
-    // destination scene and reloads its profile through 0x03074/0x03084.
-    // For this event-29 group the destination profile's runner record is the
-    // lift landing. Coordinates from another floor are map-local and must not
-    // be carried across the scene change.
-    const auto elevator_landing = state_.field_scene_buffers.source_metadata
-                                      .initial_field_records[0U];
-    field_entity_.world_position = elevator_landing;
+    // ROM 0x16A8E reloads the destination field profile through 0x03074/0x03084.
+    // The first profile record is the arrival point for both cab travel and
+    // elevator floor changes; coordinates from another map are map-local.
+    const auto arrival =
+        state_.field_scene_buffers.source_metadata.initial_field_records[0U];
+    field_entity_.world_position = arrival;
     field_entity_.projection = EntityProjectionState{};
     field_entity_.visible = false;
     field_entity_.direction = 0U;
-    field_movement_state_.position_x = elevator_landing.x;
-    field_movement_state_.position_y = elevator_landing.y;
+    field_movement_state_.position_x = arrival.x;
+    field_movement_state_.position_y = arrival.y;
     field_movement_state_.heading = 0U;
     field_movement_state_.movement_substate = 0U;
     field_target_heading_ = 0U;
@@ -1701,7 +1725,7 @@ bool FieldSceneRuntime::transition_to_elevator_destination(
     update_entity_render_pass(state_.render_entities,
                               callbacks_.entity_render_pass);
     dispatch_field_map_scene_entry(scene_reference);
-    source_boundary("field.elevator.destination_loaded");
+    source_boundary(std::string(source_prefix) + "destination_loaded");
     return true;
 }
 
@@ -1796,29 +1820,46 @@ void FieldSceneRuntime::advance_field_elevator_selector() {
 
 void FieldSceneRuntime::advance_field_elevator_scene_transition() {
     const auto update = field_elevator_scene_transition_.advance();
+    const bool taxi_route = field_taxi_transition_active_;
+    const auto source_prefix = taxi_route ? "field.taxi." : "field.elevator.";
     if (update.palette_step_changed) {
-        source_boundary("field.elevator.destination_fade.palette_step");
+        source_boundary(std::string(source_prefix) +
+                        "destination_fade.palette_step");
     }
     if (update.destination_load_requested) {
-        if (!field_elevator_pending_destination_.has_value() ||
-            !transition_to_elevator_destination(
-                *field_elevator_pending_destination_)) {
+        const auto destination = taxi_route
+                                     ? field_taxi_pending_destination_
+                                     : field_elevator_pending_destination_;
+        if (!destination.has_value() ||
+            !transition_to_field_destination(*destination, taxi_route)) {
             field_elevator_scene_transition_.cancel();
             field_elevator_pending_destination_.reset();
-            source_boundary("field.elevator.destination_transition_reopened");
+            field_taxi_pending_destination_.reset();
+            field_taxi_transition_active_ = false;
+            source_boundary(std::string(source_prefix) +
+                            "destination_transition_reopened");
             return;
         }
-        field_elevator_selector_.close();
-        field_elevator_floor_group_.reset();
-        field_elevator_pending_destination_.reset();
+        if (taxi_route) {
+            field_taxi_pending_destination_.reset();
+        } else {
+            field_elevator_selector_.close();
+            field_elevator_floor_group_.reset();
+            field_elevator_pending_destination_.reset();
+        }
         if (!field_elevator_scene_transition_.begin_fade_in()) {
             field_elevator_scene_transition_.cancel();
-            source_boundary("field.elevator.destination_fade_in_unresolved");
+            field_taxi_transition_active_ = false;
+            source_boundary(std::string(source_prefix) +
+                            "destination_fade_in_unresolved");
             return;
         }
-        source_boundary("field.elevator.destination_fade_in_started");
+        source_boundary(std::string(source_prefix) +
+                        "destination_fade_in_started");
     } else if (update.completed) {
-        source_boundary("field.elevator.destination_fade_finished");
+        source_boundary(std::string(source_prefix) +
+                        "destination_fade_finished");
+        field_taxi_transition_active_ = false;
     }
 }
 
@@ -5826,6 +5867,26 @@ void FieldSceneRuntime::configure_field_menu_route() {
             screen == static_cast<std::uint16_t>(srx::MenuScreen::POSTURE);
     };
     bindings.host.menu_closed = [this] {
+        matrix_field_return_transition_pending_ =
+            matrix_return_to_field_on_close_;
+        matrix_return_to_field_on_close_ = false;
+        field_matrix_route_active_ = false;
+        if (field_taxi_route_active_) {
+            field_taxi_route_active_ = false;
+            if (field_taxi_pending_destination_.has_value()) {
+                if (*field_taxi_pending_destination_ ==
+                    state_.field_scene_buffers.scene_reference) {
+                    field_taxi_pending_destination_.reset();
+                    source_boundary("field.taxi.returned_to_current_region");
+                } else if (field_elevator_scene_transition_.begin_fade_out()) {
+                    field_taxi_transition_active_ = true;
+                    source_boundary("field.taxi.destination_fade_out_started");
+                } else {
+                    field_taxi_pending_destination_.reset();
+                    source_boundary("field.taxi.destination_transition_busy");
+                }
+            }
+        }
         menu_route_active_ = false;
         menu_route_screen_ = 0U;
         posture_dialog_active_ = false;
@@ -6100,6 +6161,19 @@ void FieldSceneRuntime::configure_field_menu_route() {
     };
     bindings.game.set_nuyen = [this](const std::uint32_t amount) {
         field_funds_ = amount;
+    };
+    bindings.game.request_taxi_destination = [this](const int destination) {
+        if (!field_taxi_route_active_ || destination < 0 || destination > 6 ||
+            field_taxi_pending_destination_.has_value() ||
+            !field_session_source_assets_ ||
+            static_cast<std::size_t>(destination) >=
+                field_session_source_assets_->field_scene_resources.size()) {
+            return false;
+        }
+        field_taxi_pending_destination_ =
+            static_cast<std::uint16_t>(destination);
+        source_boundary("field.taxi.destination_requested");
+        return true;
     };
     bindings.game.consume_debug_unlock = [this] {
         title_debug_menu_unlocked_ = false;
@@ -7668,7 +7742,9 @@ bool FieldSceneRuntime::command_menu_legacy_screen_active(
     return false;
 }
 
-void FieldSceneRuntime::open_command_overview() {
+void FieldSceneRuntime::open_command_overview(
+    const std::uint16_t root_screen,
+    scripting::ScriptMenuRouteStartArguments start_arguments) {
     if (!ready_ || command_overview_.open()) {
         return;
     }
@@ -7719,9 +7795,23 @@ void FieldSceneRuntime::open_command_overview() {
          [](const CommandOverviewPreparationResult&) {},
          [](const CommandOverviewHudPanelPlan&) {},
          [](const CommandOverviewActionRefreshResult&) {}});
+    field_matrix_route_active_ =
+        root_screen == static_cast<std::uint16_t>(
+                           srx::MenuScreen::MATRIX_ENTRY) ||
+        root_screen == static_cast<std::uint16_t>(
+                           srx::MenuScreen::MATRIX_SEARCH);
+    field_taxi_route_active_ =
+        root_screen == static_cast<std::uint16_t>(
+                           srx::MenuScreen::TAXI_SELECTOR);
+    matrix_return_to_field_on_close_ =
+        field_matrix_route_active_ && start_arguments.return_to_field;
+    matrix_field_return_transition_pending_ = false;
     menu_route_active_ = game_scripts_.open_menu_route(
-        static_cast<std::uint16_t>(srx::MenuScreen::COMMAND));
+        root_screen, std::move(start_arguments));
     if (!menu_route_active_) {
+        field_matrix_route_active_ = false;
+        field_taxi_route_active_ = false;
+        matrix_return_to_field_on_close_ = false;
         source_boundary("field.command_overview.lua_route_unavailable");
         menu_route_screen_ = 0U;
     } else {
@@ -7891,6 +7981,9 @@ void FieldSceneRuntime::begin_pocket_secretary() {
     dismiss_runner_random_grid_effect_ = RandomGridEffectState{};
     dismiss_runner_effect_frames_ = 0U;
     dismiss_runner_random_grid_cells_.fill(-1);
+    field_matrix_route_active_ = false;
+    matrix_return_to_field_on_close_ = false;
+    matrix_field_return_transition_pending_ = false;
     source_boundary("field.pocket_secretary.opened");
 }
 
@@ -9090,7 +9183,7 @@ bool FieldSceneRuntime::bootstrap(
     if (restored_field_state == nullptr) {
         field_matrix_field_state_.maglocks_off = false;
     }
-    field_matrix_passcode_flags_.reset();
+    field_matrix_passcode_flags_ = 0U;
     field_matrix_deck_record_.reset();
     group_item_flags_ = restored_field_state == nullptr
                             ? std::optional<std::uint32_t>{0U}
@@ -9224,6 +9317,46 @@ bool FieldSceneRuntime::bootstrap(
     stoker_motel_story_state_ = StokerMotelStoryState{};
     game_scripts_.set_story_fact_accessors(
         [this](const std::string_view name) -> std::optional<bool> {
+            if (name == "cyberspace_deck_present") {
+                return cyberdeck_available_;
+            }
+            if (name == "cyberspace_mpcp_functional") {
+                if (!field_matrix_deck_record_.has_value()) {
+                    return std::nullopt;
+                }
+                return field_matrix_deck_record_->mpcp != 0U;
+            }
+            if (name == "cyberspace_datajack_present") {
+                return (active_runner_record().cyberware_flags & 0x0001U) !=
+                       0U;
+            }
+            if (name == "matrix_passcode_flags_resolved") {
+                return field_matrix_passcode_flags_.has_value();
+            }
+            if (name == "matrix_current_passcode_available") {
+                if (!field_matrix_passcode_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                return (*field_matrix_passcode_flags_ & 0x0001U) != 0U;
+            }
+            constexpr std::string_view kMatrixPasscodePrefix =
+                "matrix_passcode_bit_";
+            if (name.size() > kMatrixPasscodePrefix.size() &&
+                name.substr(0U, kMatrixPasscodePrefix.size()) ==
+                    kMatrixPasscodePrefix) {
+                unsigned bit = 0U;
+                const auto suffix = name.substr(kMatrixPasscodePrefix.size());
+                const auto parsed = std::from_chars(
+                    suffix.data(), suffix.data() + suffix.size(), bit);
+                if (parsed.ec != std::errc{} ||
+                    parsed.ptr != suffix.data() + suffix.size() || bit > 11U) {
+                    return std::nullopt;
+                }
+                if (!field_matrix_passcode_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                return (*field_matrix_passcode_flags_ & (1U << bit)) != 0U;
+            }
             if (name == "vid_phone_contacts_resolved") {
                 return notebook_contacts_flags_.has_value();
             }
@@ -9472,6 +9605,9 @@ bool FieldSceneRuntime::bootstrap(
     field_elevator_floor_group_.reset();
     field_elevator_script_destination_.reset();
     field_elevator_pending_destination_.reset();
+    field_taxi_route_active_ = false;
+    field_taxi_transition_active_ = false;
+    field_taxi_pending_destination_.reset();
     field_party_roster_.clear();
     field_menu_text_ = FieldMenuTextCatalog{};
     command_overview_resource_variant_ = ResourceVariantState{};
@@ -9604,6 +9740,8 @@ bool FieldSceneRuntime::bootstrap(
         !load_field_weapon_spawn_assets(
             startup_state.asset_catalog.catalog) ||
         !load_field_elevator_selector_assets(
+            startup_state.asset_catalog.catalog) ||
+        !load_field_taxi_selector_assets(
             startup_state.asset_catalog.catalog)) {
         source_boundary("field.bootstrap.direct_assets_missing");
         return false;
@@ -12737,6 +12875,46 @@ void FieldSceneRuntime::advance_frame() {
         } else if (result ==
                    FieldDialogueAdvanceResult::hotel_options_requested) {
             begin_hotel_menu();
+        } else if (result ==
+                   FieldDialogueAdvanceResult::matrix_entry_requested) {
+            const auto system_id =
+                field_dialogue_.take_matrix_entry_system_id();
+            if (!system_id.has_value()) {
+                source_boundary("field.matrix.entry_target_missing");
+            } else {
+                scripting::ScriptMenuRouteStartArguments arguments{};
+                arguments.matrix_system_id = *system_id;
+                arguments.return_to_field = true;
+                open_command_overview(
+                    static_cast<std::uint16_t>(
+                        srx::MenuScreen::MATRIX_ENTRY),
+                    std::move(arguments));
+                source_boundary("field.matrix.entry_requested");
+            }
+        } else if (result ==
+                   FieldDialogueAdvanceResult::matrix_search_requested) {
+            scripting::ScriptMenuRouteStartArguments arguments{};
+            arguments.return_to_field = true;
+            open_command_overview(
+                static_cast<std::uint16_t>(srx::MenuScreen::MATRIX_SEARCH),
+                std::move(arguments));
+            source_boundary("field.matrix.search_requested");
+        } else if (result ==
+                   FieldDialogueAdvanceResult::taxi_selector_requested) {
+            const auto current_region =
+                state_.field_scene_buffers.scene_reference;
+            if (current_region > 6U) {
+                source_boundary("field.taxi.current_region_unresolved");
+            } else {
+                scripting::ScriptMenuRouteStartArguments arguments{};
+                arguments.taxi_current_region =
+                    static_cast<std::uint8_t>(current_region);
+                open_command_overview(
+                    static_cast<std::uint16_t>(
+                        srx::MenuScreen::TAXI_SELECTOR),
+                    std::move(arguments));
+                source_boundary("field.taxi.selector_requested");
+            }
         }
         return;
     }
@@ -13418,7 +13596,12 @@ void FieldSceneRuntime::advance_frame() {
             pocket_secretary_.open = false;
             dismiss_runner_ = DismissRunnerMenuState{};
             posture_dialog_active_ = false;
-            advance_field_scene_transition_after_modal();
+            if (matrix_field_return_transition_pending_) {
+                matrix_field_return_transition_pending_ = false;
+                begin_field_modal_return_transition();
+            } else if (!field_taxi_transition_active_) {
+                advance_field_scene_transition_after_modal();
+            }
         } else if (!menu_route_active_ &&
                    command_overview_.take_action_dispatch_pending()) {
             // ROM 0x10E4E publishes audio command 0x24 before dispatching the
@@ -13497,6 +13680,21 @@ bool FieldSceneRuntime::open_command_overview_for_dump() {
     set_controller_port_byte(static_cast<std::uint8_t>(
         field_controller_port_byte_ & static_cast<std::uint8_t>(~0x80U)));
     return command_overview_.open();
+}
+
+bool FieldSceneRuntime::open_taxi_selector_for_dump(
+    const std::uint8_t current_region) {
+    if (!ready_ || current_region > 6U) {
+        return false;
+    }
+    scripting::ScriptMenuRouteStartArguments arguments{};
+    arguments.taxi_current_region = current_region;
+    open_command_overview(
+        static_cast<std::uint16_t>(srx::MenuScreen::TAXI_SELECTOR),
+        std::move(arguments));
+    return command_overview_.open() && field_taxi_route_active_ &&
+           menu_route_screen_ == static_cast<std::uint16_t>(
+                                    srx::MenuScreen::TAXI_SELECTOR);
 }
 
 void FieldSceneRuntime::set_inventory_action_overlay_probe_for_dump(
@@ -14981,6 +15179,12 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
 void FieldSceneRuntime::draw_command_overview_text(
     QPainter& painter, const int x, const int y,
     const std::string_view text) const {
+    draw_tinted_field_text(painter, x, y, text, QColor(0, 255, 0));
+}
+
+void FieldSceneRuntime::draw_tinted_field_text(
+    QPainter& painter, const int x, const int y,
+    const std::string_view text, const QColor color) const {
     if (command_overview_font_.isNull() || command_overview_font_.width() < 8 ||
         command_overview_font_.height() < 8) {
         return;
@@ -15021,8 +15225,10 @@ void FieldSceneRuntime::draw_command_overview_text(
                     (static_cast<std::uint32_t>(source_pixel.alpha()) *
                      static_cast<std::uint32_t>(coverage)) /
                     255U);
-                tinted_glyph.setPixelColor(
-                    glyph_x, glyph_y, QColor(0, 255, 0, alpha));
+                auto tinted_color = color;
+                tinted_color.setAlpha(alpha);
+                tinted_glyph.setPixelColor(glyph_x, glyph_y,
+                                           tinted_color);
             }
         }
         painter.drawImage(cursor, cursor_y, tinted_glyph);
@@ -15942,7 +16148,57 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             painter, command_overview_attributes_skills_.controller());
         return;
     }
-    if (pocket_secretary_.open) {
+    if (field_taxi_route_active_ &&
+        menu_route_screen_ == static_cast<std::uint16_t>(
+                                 srx::MenuScreen::TAXI_SELECTOR)) {
+        painter.fillRect(QRect(0, 0, 320, 224), Qt::black);
+        if (field_taxi_map_.isNull()) {
+            return;
+        }
+        painter.drawImage(46, 14, field_taxi_map_);
+        const auto routed_menu = game_scripts_.menu_route_snapshot();
+        const auto region = routed_menu.top_selection;
+        const auto phase = routed_menu.top_page;
+        if (!region.has_value() || *region < 0 || *region > 6 ||
+            !phase.has_value() || *phase < 0 || *phase > 4) {
+            source_boundary("field.taxi.selection_unresolved");
+            return;
+        }
+        const auto plan = cab_mode_selection_plan(
+            static_cast<std::uint8_t>(*region),
+            static_cast<std::uint8_t>(*phase));
+        constexpr int kTile = 8;
+        const auto x = plan.cursor_x;
+        const auto y = plan.cursor_y;
+        const auto width = plan.cursor_width;
+        const auto height = plan.cursor_height;
+        painter.drawImage(x, y, field_taxi_cursor_tiles_[0]);
+        painter.drawImage(x + width - kTile, y,
+                          field_taxi_cursor_tiles_[2]);
+        painter.drawImage(x, y + height - kTile,
+                          field_taxi_cursor_tiles_[5]);
+        painter.drawImage(x + width - kTile, y + height - kTile,
+                          field_taxi_cursor_tiles_[7]);
+        for (int edge = x + kTile; edge <= x + width - 2 * kTile;
+             edge += kTile) {
+            painter.drawImage(edge, y, field_taxi_cursor_tiles_[1]);
+            painter.drawImage(edge, y + height - kTile,
+                              field_taxi_cursor_tiles_[6]);
+        }
+        for (int edge = y + kTile; edge <= y + height - 2 * kTile;
+             edge += kTile) {
+            painter.drawImage(x, edge, field_taxi_cursor_tiles_[3]);
+            painter.drawImage(x + width - kTile, edge,
+                              field_taxi_cursor_tiles_[4]);
+        }
+        if (routed_menu.top_caption_visible.value_or(false)) {
+            draw_tinted_field_text(painter, plan.caption_x,
+                                   plan.caption_y, plan.caption,
+                                   QColor(Qt::white));
+        }
+        return;
+    }
+    if (pocket_secretary_.open || field_matrix_route_active_) {
         // ROM 0xC2A6 writes C1418 at C216 with C0DA. The embedded 0x80
         // markers advance eight pixels per row, leaving one blank row
         // between options. C376 writes its right cursor tile at C3A2, x=136;
@@ -15977,6 +16233,44 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         const auto routed_menu = game_scripts_.menu_route_snapshot();
         const auto routed_screen = static_cast<srx::MenuScreen>(
             menu_route_screen_);
+        if (field_matrix_route_active_ &&
+            routed_screen == srx::MenuScreen::MATRIX_ENTRY) {
+            // 0xE47A leaves the shared interface while it plays the jack-in
+            // cue and waits 20 VBlanks. Clear the whole frame so field/menu
+            // controls cannot remain visible beneath the transition.
+            painter.fillRect(QRect(0, 0, 320, 224), Qt::black);
+            return;
+        }
+        if (field_matrix_route_active_ &&
+            routed_screen == srx::MenuScreen::MATRIX_SEARCH) {
+            // The source search loop writes two text rows and repeatedly
+            // replaces its changing decimal permutation while it runs.
+            painter.fillRect(QRect(0, 0, 320, 224), Qt::black);
+            std::array<std::string_view, 3> lines{};
+            std::size_t line_count = 0U;
+            std::size_t start = 0U;
+            while (start <= routed_menu.top_text.size() && line_count < 3U) {
+                const auto end = routed_menu.top_text.find('|', start);
+                lines[line_count++] = std::string_view(routed_menu.top_text)
+                                          .substr(
+                                              start,
+                                              end == std::string::npos
+                                                  ? std::string::npos
+                                                  : end - start);
+                if (end == std::string::npos) break;
+                start = end + 1U;
+            }
+            if (line_count > 0U) {
+                draw_command_overview_text(painter, 56, 88, lines[0]);
+            }
+            if (line_count > 1U) {
+                draw_command_overview_text(painter, 64, 104, lines[1]);
+            }
+            if (line_count > 2U) {
+                draw_command_overview_text(painter, 104, 120, lines[2]);
+            }
+            return;
+        }
         if (routed_screen == srx::MenuScreen::DEBUG_PICK_SYSTEM) {
             const QColor background(3, 12, 22);
             const QColor panel(7, 27, 39);
@@ -17304,7 +17598,8 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
         // the field's right-hand HUD plane. Preserve the current runner face,
         // item, and counters above the command panel. Pocket Secretary is a
         // separate full-screen composition and owns its own backdrop.
-        if (!pocket_secretary_.open) {
+        if (!pocket_secretary_.open && !field_taxi_route_active_ &&
+            !field_matrix_route_active_) {
             painter.drawImage(0, 0, field_hud_);
             paint_field_hud_overlays(painter);
         }

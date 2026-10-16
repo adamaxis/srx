@@ -26,6 +26,9 @@ enum class FieldDialogueAdvanceResult {
     prompt_advanced,
     returned_to_field,
     returned_from_world_activity,
+    taxi_selector_requested,
+    matrix_entry_requested,
+    matrix_search_requested,
     hotel_options_requested,
     source_boundary,
 };
@@ -97,6 +100,7 @@ public:
 
     FieldDialogueAdvanceResult advance_controller_events(
         std::uint16_t event_word);
+    std::optional<std::uint8_t> take_matrix_entry_system_id() noexcept;
 
     void close() noexcept;
     bool open() const noexcept { return panel_.open; }
@@ -132,6 +136,7 @@ private:
         active_script_operation_;
     std::optional<scripting::ScriptMenuDefinition> active_script_menu_;
     bool script_task_waiting_ = false;
+    std::optional<std::uint8_t> pending_matrix_entry_system_id_;
     StokerMotelArrivalCommandCallbacks arrival_command_callbacks_;
     std::function<std::optional<StokerMotelRoomPaymentOutcome>()>
         room_payment_callback_;

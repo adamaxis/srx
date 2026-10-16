@@ -246,6 +246,7 @@ struct ScriptMenuRouteGame {
     std::function<bool(int)> load_game;
     std::function<int(int)> save_status;
     std::function<void(std::uint32_t)> set_nuyen;
+    std::function<bool(int)> request_taxi_destination;
     std::function<void()> consume_debug_unlock;
     std::function<void(std::uint32_t)> set_contact_flags;
     std::function<void()> set_walk_fast;
@@ -283,6 +284,12 @@ struct ScriptMenuRouteBindings {
     ScriptMenuRouteGame game;
 };
 
+struct ScriptMenuRouteStartArguments {
+    std::optional<std::uint8_t> matrix_system_id;
+    std::optional<std::uint8_t> taxi_current_region;
+    bool return_to_field = false;
+};
+
 struct ScriptMatrixMapCellVisual {
     std::array<std::uint16_t, 4> tile_words{};
 };
@@ -304,6 +311,7 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_column;
     std::optional<int> top_row;
     std::optional<int> top_selection;
+    std::optional<bool> top_caption_visible;
     std::optional<int> top_command;
     std::optional<int> top_quantity;
     std::optional<int> top_recipient;
@@ -1231,7 +1239,9 @@ public:
         std::string_view menu_id = "manager");
 
     void set_menu_route_bindings(ScriptMenuRouteBindings bindings);
-    bool open_menu_route(std::uint16_t root_screen);
+    bool open_menu_route(
+        std::uint16_t root_screen,
+        ScriptMenuRouteStartArguments start_arguments = {});
     void advance_menu_route(std::uint16_t events);
     void close_menu_route();
     ScriptMenuRouteSnapshot menu_route_snapshot() const noexcept;

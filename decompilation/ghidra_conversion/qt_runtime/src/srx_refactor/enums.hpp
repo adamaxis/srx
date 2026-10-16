@@ -378,6 +378,9 @@ enum class MenuScreen : std::int64_t {
     NOTEBOOK_CONTACTS = 0x23,
     NOTEBOOK_SHADOWRUNNERS = 0x24,
     MATRIX_NODE_ACTION = 0x25,
+    MATRIX_ENTRY = 0x26,
+    MATRIX_SEARCH = 0x27,
+    TAXI_SELECTOR = 0x28,
 };
 enum class MenuSound : std::int64_t {
     DAMAGE = 0x18,
@@ -548,6 +551,7 @@ enum class SoundId : std::int64_t {
     SHOT_SMG_OR_THROWN = 0x1E,
     PICKUP = 0x24,
     ALARM = 0x30,
+    MATRIX_SYSTEM_SEARCH = 0x36,
     PROJECTILE_IMPACT = 0x3C,
     SHOT_SILENCED = 0x3F,
     SHOT_SILENCED_SMG_OR_THROWN = 0x4A,
@@ -555,6 +559,9 @@ enum class SoundId : std::int64_t {
     TARGET_HEADING = 0x4D,
     TARGET_HEADING_ALT = 0x4E,
     SHOT_HEAVY_PISTOL = 0x51,
+    MATRIX_ACTIVE_ALERT = 0x52,
+    MATRIX_PASSIVE_ALERT = 0x53,
+    MATRIX_NO_ALERT = 0x54,
 };
 enum class SpellType : std::int64_t {
     FLAME_DART = 0x0,

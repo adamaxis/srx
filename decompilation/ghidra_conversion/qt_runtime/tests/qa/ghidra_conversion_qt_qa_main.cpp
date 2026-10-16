@@ -1,4 +1,5 @@
 #include "ghidra_conversion_qt_window.hpp"
+#include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 
 #include <string>
 
@@ -14307,6 +14308,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_hotel_qa_path;
         std::optional<std::filesystem::path> field_command_dump_path;
+        std::optional<std::filesystem::path> field_taxi_dump_path;
         std::optional<std::uint8_t> field_command_page;
         std::optional<std::filesystem::path> field_cyberware_dump_path;
         std::optional<std::filesystem::path> field_secretary_dump_path;
@@ -14386,6 +14388,7 @@ int main(int argc, char** argv) {
                        " [--field-stoker-collision-qa <output-dir>]"
                        " [--field-scene2-motel-street-collision-qa <output-dir>]"
                        " [--field-command-dump <file>]"
+                       " [--field-taxi-dump <file>]"
                        " [--field-command-page <0..6>]"
                        " [--field-cyberware-dump <file>]"
                        " [--field-cyberware-empty-qa]"
@@ -14689,6 +14692,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_command_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-taxi-dump" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_taxi_dump_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-action-dump" &&
@@ -20765,6 +20774,278 @@ int main(int argc, char** argv) {
                           << " mana=" << mana.value << ":"
                           << static_cast<int>(mana.bar_row)
                           << " held_frames=30 return=reopen=return=page5\n";
+                return 0;
+            }
+            if (field_taxi_dump_path.has_value()) {
+                const auto capture_field_scene = [&field_scene] {
+                    return render_qa_field(field_scene);
+                };
+                constexpr std::uint8_t kRedmondRegion = 2U;
+                if (field_scene.field_scene_reference_for_dump() !=
+                    kRedmondRegion) {
+                    std::cerr << "field taxi dump: route fixture did not "
+                                 "start in the expected Redmond scene\n";
+                    return 3;
+                }
+                const auto field_before_taxi = capture_field_scene();
+                if (!field_scene.open_taxi_selector_for_dump(
+                        kRedmondRegion)) {
+                    std::cerr << "field taxi dump: Lua taxi selector did not open\n";
+                    return 3;
+                }
+                const auto taxi_animation_start = capture_field_scene();
+                field_scene.advance_frame();
+                if (capture_field_scene() != taxi_animation_start) {
+                    std::cerr << "field taxi dump: cab outline advanced before "
+                                 "two source VBlanks\n";
+                    return 3;
+                }
+                field_scene.advance_frame();
+                if (capture_field_scene() == taxi_animation_start) {
+                    std::cerr << "field taxi dump: cab outline failed to advance "
+                                 "after two source VBlanks\n";
+                    return 3;
+                }
+                for (int frame = 2; frame < 10; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto taxi_scene = capture_field_scene();
+                const bool taxi_unchanged = taxi_scene == field_before_taxi;
+                bool taxi_has_sidebar_pixels = false;
+                for (int y = 0; y < taxi_scene.height(); ++y) {
+                    for (int x = 272; x < taxi_scene.width(); ++x) {
+                        if (taxi_scene.pixelColor(x, y) != QColor(Qt::black)) {
+                            taxi_has_sidebar_pixels = true;
+                            break;
+                        }
+                    }
+                    if (taxi_has_sidebar_pixels) break;
+                }
+                if (taxi_unchanged || taxi_has_sidebar_pixels) {
+                    (void)taxi_scene.save(QString::fromStdWString(
+                        field_taxi_dump_path->wstring()));
+                    std::cerr << "field taxi dump: cab screen failed to replace "
+                                 "the field and shared HUD cleanly (unchanged="
+                              << taxi_unchanged << ", sidebar_pixels="
+                              << taxi_has_sidebar_pixels << ")\n";
+                    return 3;
+                }
+                const auto cab_map = QImage(QString::fromStdWString(
+                    (asset_root / "intro" / "cab-map.bmp").wstring()));
+                if (cab_map.isNull() || cab_map.size() != QSize(208, 136)) {
+                    std::cerr << "field taxi dump: direct ROM cab map asset "
+                                 "is unavailable\n";
+                    return 3;
+                }
+                const auto selection_plan = cab_mode_selection_plan(
+                    kRedmondRegion, 4U);
+                constexpr std::array<std::array<std::string_view, 2>, 4>
+                    kFinalCursorTiles{{
+                        {{"top.left", "cursor-top-left.bmp"}},
+                        {{"top.right", "cursor-top-right.bmp"}},
+                        {{"bottom.left", "cursor-bottom-left.bmp"}},
+                        {{"bottom.right", "cursor-bottom-right.bmp"}},
+                    }};
+                const std::array<QPoint, 4> cursor_origins{{
+                    QPoint(selection_plan.cursor_x,
+                           selection_plan.cursor_y),
+                    QPoint(selection_plan.cursor_x +
+                               selection_plan.cursor_width - 8,
+                           selection_plan.cursor_y),
+                    QPoint(selection_plan.cursor_x,
+                           selection_plan.cursor_y +
+                               selection_plan.cursor_height - 8),
+                    QPoint(selection_plan.cursor_x +
+                               selection_plan.cursor_width - 8,
+                           selection_plan.cursor_y +
+                               selection_plan.cursor_height - 8),
+                }};
+                for (std::size_t tile_index = 0U;
+                     tile_index < kFinalCursorTiles.size(); ++tile_index) {
+                    const auto tile = QImage(QString::fromStdWString(
+                        (asset_root / "intro" / "cab" /
+                         std::string(kFinalCursorTiles[tile_index][1]))
+                            .wstring()));
+                    if (tile.isNull() || tile.size() != QSize(8, 8)) {
+                        std::cerr << "field taxi dump: final outline tile is "
+                                     "missing or the wrong size\n";
+                        return 3;
+                    }
+                    int tile_pixels = 0;
+                    for (int tile_y = 0; tile_y < 8; ++tile_y) {
+                        for (int tile_x = 0; tile_x < 8; ++tile_x) {
+                            const auto source =
+                                tile.pixelColor(tile_x, tile_y);
+                            if (source.alpha() == 0) continue;
+                            if (taxi_scene.pixelColor(
+                                    cursor_origins[tile_index].x() + tile_x,
+                                    cursor_origins[tile_index].y() + tile_y) !=
+                                source) {
+                                std::cerr << "field taxi dump: ROM outline tile "
+                                             "was not drawn at its selected "
+                                             "destination\n";
+                                return 3;
+                            }
+                            ++tile_pixels;
+                        }
+                    }
+                    if (tile_pixels == 0) {
+                        std::cerr << "field taxi dump: source outline tile is "
+                                     "empty\n";
+                        return 3;
+                    }
+                }
+                bool white_caption_ink = false;
+                bool green_caption_ink = false;
+                for (int y = selection_plan.caption_y;
+                     y < selection_plan.caption_y + 8; ++y) {
+                    for (int x = selection_plan.caption_x;
+                         x < selection_plan.caption_x +
+                                 static_cast<int>(
+                                     selection_plan.caption.size() * 8U);
+                         ++x) {
+                        const auto pixel = taxi_scene.pixelColor(x, y);
+                        white_caption_ink = white_caption_ink ||
+                            (pixel.red() > 180 && pixel.green() > 180 &&
+                             pixel.blue() > 180);
+                        green_caption_ink = green_caption_ink ||
+                            (pixel.green() > 180 && pixel.red() < 80 &&
+                             pixel.blue() < 80);
+                    }
+                }
+                if (!white_caption_ink || green_caption_ink) {
+                    std::cerr << "field taxi dump: settled cab caption was not "
+                                 "drawn in the ROM's white text color\n";
+                    return 3;
+                }
+                for (int y = 0; y < cab_map.height(); ++y) {
+                    for (int x = 0; x < cab_map.width(); ++x) {
+                        const auto screen_x = 46 + x;
+                        const auto screen_y = 14 + y;
+                        const bool covered_by_selector =
+                            screen_x >= selection_plan.cursor_x &&
+                            screen_x < selection_plan.cursor_x +
+                                           selection_plan.cursor_width &&
+                            screen_y >= selection_plan.cursor_y &&
+                            screen_y < selection_plan.cursor_y +
+                                           selection_plan.cursor_height;
+                        const bool covered_by_caption =
+                            screen_x >= selection_plan.caption_x &&
+                            screen_x < selection_plan.caption_x +
+                                           static_cast<int>(
+                                               selection_plan.caption.size() *
+                                               8U) &&
+                            screen_y >= selection_plan.caption_y &&
+                            screen_y < selection_plan.caption_y + 8;
+                        if (covered_by_selector || covered_by_caption) {
+                            continue;
+                        }
+                        if (taxi_scene.pixelColor(46 + x, 14 + y) !=
+                            cab_map.pixelColor(x, y)) {
+                            std::cerr << "field taxi dump: cab map did not "
+                                         "occupy the ROM source coordinates\n";
+                            return 3;
+                        }
+                    }
+                }
+                for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
+                    field_scene.advance_frame();
+                }
+                if (capture_field_scene() != taxi_scene) {
+                    std::cerr << "field taxi dump: neutral frames changed "
+                                 "the static destination selector\n";
+                    return 3;
+                }
+                if (!taxi_scene.save(QString::fromStdWString(
+                        field_taxi_dump_path->wstring()))) {
+                    std::cerr << "field taxi dump: could not write "
+                              << field_taxi_dump_path->string() << '\n';
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x80U);
+                field_scene.advance_frame();
+                if (field_scene.command_overview_open() ||
+                    capture_field_scene() != field_before_taxi) {
+                    std::cerr << "field taxi dump: cancel left a stale screen "
+                                 "or failed to return to the field\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0U);
+
+                // Re-enter the selector, choose Downtown through its ROM
+                // cursor order, and confirm. This exercises the live Lua
+                // request callback and the field-scene fade/load route rather
+                // than treating a valid selector screenshot as proof of
+                // travel.
+                if (!field_scene.open_taxi_selector_for_dump(
+                        kRedmondRegion)) {
+                    std::cerr << "field taxi dump: selector did not reopen "
+                                 "for the destination route\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 12; ++frame) {
+                    field_scene.advance_frame();
+                }
+                tap_qa_controller_button(field_scene, 0x08U); // Right: row 3.
+                for (int frame = 0; frame < 12; ++frame) {
+                    field_scene.advance_frame();
+                }
+                tap_qa_controller_button(field_scene, 0x08U); // Right: Downtown.
+                for (int frame = 0; frame < 12; ++frame) {
+                    field_scene.advance_frame();
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // A: travel.
+                for (int frame = 0;
+                     frame < 120U &&
+                     field_scene.field_scene_reference_for_dump() != 0U;
+                     ++frame) {
+                    field_scene.advance_frame();
+                }
+                // Scene reference changes at the black handoff between the
+                // source fade-out and fade-in. Let that presentation finish
+                // before accepting the destination as visually loaded.
+                for (int frame = 0; frame < 90; ++frame) {
+                    field_scene.advance_frame();
+                }
+                if (field_scene.command_overview_open() ||
+                    field_scene.field_scene_reference_for_dump() != 0U) {
+                    std::cerr << "field taxi dump: confirming Downtown did "
+                                 "not complete the fade and load scene 0\n";
+                    return 3;
+                }
+                const auto downtown_arrival = capture_field_scene();
+                std::size_t visible_destination_pixels = 0U;
+                for (int y = 0; y < downtown_arrival.height(); ++y) {
+                    for (int x = 0; x < downtown_arrival.width(); ++x) {
+                        if (downtown_arrival.pixelColor(x, y) !=
+                            QColor(Qt::black)) {
+                            ++visible_destination_pixels;
+                        }
+                    }
+                }
+                if (visible_destination_pixels < 1000U ||
+                    downtown_arrival == taxi_scene) {
+                    std::cerr << "field taxi dump: scene 0 remained black or "
+                                 "kept the selector after travel (visible="
+                              << visible_destination_pixels << ")\n";
+                    return 3;
+                }
+                auto arrival_path = *field_taxi_dump_path;
+                arrival_path.replace_filename("field-taxi-downtown-arrival.bmp");
+                if (!downtown_arrival.save(QString::fromStdWString(
+                        arrival_path.wstring()))) {
+                    std::cerr << "field taxi dump: could not save the "
+                                 "Downtown arrival frame\n";
+                    return 3;
+                }
+                std::cout << "field_taxi_dump=written path="
+                          << field_taxi_dump_path->string()
+                          << " selected_region=" << static_cast<int>(
+                                 selection_plan.mode)
+                          << " neutral_frames=30 clean_cancel=1 "
+                          << "confirmed_destination=0 arrival_scene="
+                          << field_scene.field_scene_reference_for_dump()
+                          << '\n';
                 return 0;
             }
             if (field_command_dump_path.has_value()) {

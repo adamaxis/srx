@@ -75,6 +75,7 @@ E.SoundId = {   -- played through 0x530DE (doc 10) [C]
     RELOAD_OR_EMPTY = 0x4B, ALARM = 0x30, PICKUP = 0x24,
     MATRIX_NO_ALERT = 0x54, MATRIX_PASSIVE_ALERT = 0x53,
     MATRIX_ACTIVE_ALERT = 0x52, -- 0x19904 change-gated Matrix alert status sound
+    MATRIX_SYSTEM_SEARCH = 0x36, -- 0xE204 System Search feedback
     -- [H] repo-named (pre-module actor_ai.lua), not yet traced to a ROM table:
     TARGET_HEADING = 0x4D, TARGET_HEADING_ALT = 0x4E, PROJECTILE_IMPACT = 0x3C,
 }
@@ -141,7 +142,8 @@ E.MenuScreen = { COMMAND = 1, POSTURE = 2, ITEM_ACTION = 3, CLIPS = 4, ATTRIBUTE
                  DEBUG_MENU = 27, DEBUG_PICK_SYSTEM = 28, SAVE_SLOT = 29, PULL_PLUG = 30,
                  DECK_PROGRAM = 31, DECK_CYBERINFO = 32, DECK_STORAGE = 33, DECK_MAP = 34,
                  NOTEBOOK_CONTACTS = 35, NOTEBOOK_SHADOWRUNNERS = 36,
-                 MATRIX_NODE_ACTION = 37 }   -- Lua route for ROM node loop 0x54662
+                 MATRIX_NODE_ACTION = 37, MATRIX_ENTRY = 38,
+                 MATRIX_SEARCH = 39, TAXI_SELECTOR = 40 }   -- Taxi destinations follow ROM 0x134D2/0xD4456/0xD445D
 -- Presenter regions (docs/09 section 10.1 coordinates) [C positions]
 E.MenuRegion = { ITEM_PICTURE = 0x0001, ITEM_HEADER = 0x0002, RATING = 0x0004, DAMAGE_POWER = 0x0008, COMBAT_BARS = 0x0010,
                  WEAPON_BARS = 0x0020, ARMOR = 0x0040, POSTURE_BLOCK = 0x0080, BUTTON_STRIP = 0x0100,

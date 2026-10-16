@@ -40,6 +40,12 @@ Route.register(E.MenuScreen.DEBUG_MENU, debug_menu.Debug)
 Route.register(E.MenuScreen.DEBUG_PICK_SYSTEM, debug_menu.Pick)
 Route.register(E.MenuScreen.MATRIX_NODE_ACTION,
                require("menu.screens.matrix_node_action"))
+Route.register(E.MenuScreen.MATRIX_ENTRY,
+               require("menu.screens.matrix_entry"))
+Route.register(E.MenuScreen.MATRIX_SEARCH,
+               require("menu.screens.matrix_search"))
+Route.register(E.MenuScreen.TAXI_SELECTOR,
+               require("menu.screens.taxi_selector"))
 local save_load = require("menu.screens.save_load")
 Route.register(E.MenuScreen.SAVE_LOAD, save_load.SaveLoad)
 Route.register(E.MenuScreen.SAVE_SLOT, save_load.Slot)

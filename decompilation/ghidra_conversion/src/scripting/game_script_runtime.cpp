@@ -793,6 +793,7 @@ struct GameScriptRuntime::Impl {
         notebook_boundary,
         consume_debug_unlock,
         set_nuyen,
+        request_taxi_destination,
         set_contact_flags,
         set_walk_fast,
         install_test_deck,
@@ -1469,6 +1470,14 @@ struct GameScriptRuntime::Impl {
                         std::max(integer_argument(1), 0)));
             }
             return 0;
+        case MenuBinding::request_taxi_destination: {
+            const bool accepted =
+                self->menu_route_bindings.game.request_taxi_destination &&
+                self->menu_route_bindings.game.request_taxi_destination(
+                    integer_argument(1));
+            lua_pushboolean(lua, accepted ? 1 : 0);
+            return 1;
+        }
         case MenuBinding::consume_debug_unlock:
             if (self->menu_route_bindings.game.consume_debug_unlock) {
                 self->menu_route_bindings.game.consume_debug_unlock();
@@ -1583,6 +1592,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::cyberdeck_available);
         add_menu_binding(state, table_index, "set_nuyen",
                          MenuBinding::set_nuyen);
+        add_menu_binding(state, table_index, "request_taxi_destination",
+                         MenuBinding::request_taxi_destination);
         add_menu_binding(state, table_index, "consume_debug_unlock",
                          MenuBinding::consume_debug_unlock);
         add_menu_binding(state, table_index, "set_contact_flags",
@@ -1744,6 +1755,12 @@ struct GameScriptRuntime::Impl {
                 menu_route_state.top_selection =
                     read_optional_alias(screen_state_index, "selection",
                                         "selector");
+                lua_getfield(state, screen_state_index, "caption_visible");
+                if (lua_isboolean(state, -1)) {
+                    menu_route_state.top_caption_visible =
+                        lua_toboolean(state, -1) != 0;
+                }
+                lua_pop(state, 1);
                 menu_route_state.top_command =
                     read_optional(screen_state_index, "command");
                 menu_route_state.top_quantity =
@@ -3828,7 +3845,7 @@ GameScriptRuntime::resolve_field_location_entry(
         return fail("building.lua location-entry function is missing");
     }
 
-    lua_createtable(state, 0, 3);
+    lua_createtable(state, 0, 2);
     const auto input_index = lua_absindex(state, -1);
     lua_pushinteger(state, scene_id);
     lua_setfield(state, input_index, "scene_id");
@@ -3944,7 +3961,7 @@ std::optional<std::uint16_t> GameScriptRuntime::resolve_elevator_destination(
         return fail("building.lua elevator-destination function is missing");
     }
 
-    lua_createtable(state, 0, 2);
+    lua_createtable(state, 0, 3);
     const auto input_index = lua_absindex(state, -1);
     lua_createtable(state, static_cast<int>(group.scene_ids.size()), 0);
     const auto floors_index = lua_absindex(state, -1);
@@ -7953,7 +7970,9 @@ void GameScriptRuntime::set_menu_route_bindings(
     impl_->failure.clear();
 }
 
-bool GameScriptRuntime::open_menu_route(const std::uint16_t root_screen) {
+bool GameScriptRuntime::open_menu_route(
+    const std::uint16_t root_screen,
+    const ScriptMenuRouteStartArguments start_arguments) {
     auto* state = impl_->state;
     if (state == nullptr || impl_->modules_reference == LUA_NOREF) {
         impl_->failure = "gameplay Lua package is not loaded for menu route";
@@ -8016,9 +8035,20 @@ bool GameScriptRuntime::open_menu_route(const std::uint16_t root_screen) {
     }
     lua_pushvalue(state, route_index);
     lua_pushinteger(state, static_cast<lua_Integer>(root_screen));
+    lua_createtable(state, 0, 3);
+    if (start_arguments.matrix_system_id.has_value()) {
+        lua_pushinteger(state, *start_arguments.matrix_system_id);
+        lua_setfield(state, -2, "system_id");
+    }
+    if (start_arguments.taxi_current_region.has_value()) {
+        lua_pushinteger(state, *start_arguments.taxi_current_region);
+        lua_setfield(state, -2, "current_region");
+    }
+    lua_pushboolean(state, start_arguments.return_to_field ? 1 : 0);
+    lua_setfield(state, -2, "return_to_field");
     {
         ScopedInstructionBudget instruction_budget(state);
-        if (lua_pcall(state, 2, 0, 0) != LUA_OK) {
+        if (lua_pcall(state, 3, 0, 0) != LUA_OK) {
             impl_->failure = "menu route open failed: " + stack_error(state);
             lua_settop(state, base);
             luaL_unref(state, LUA_REGISTRYINDEX,

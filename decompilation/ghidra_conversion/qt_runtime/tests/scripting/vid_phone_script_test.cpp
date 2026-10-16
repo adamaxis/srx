@@ -56,6 +56,16 @@ bool is_cursor_menu(const ScriptTaskStep& step) {
                                  ScriptMenuInputMode::cursor;
 }
 
+bool is_say(const ScriptTaskStep& step, const std::string_view event_id,
+            const std::string_view speaker_id) {
+    return step.status == ScriptTaskStep::Status::awaiting_native_operation &&
+           step.operation.has_value() &&
+           step.operation->type == ScriptNativeOperation::Type::ui_say &&
+           step.operation->dialogue.has_value() &&
+           step.operation->dialogue->event_id == event_id &&
+           step.operation->dialogue->speaker_id == speaker_id;
+}
+
 } // namespace
 
 int main() {
@@ -90,9 +100,28 @@ int main() {
     }
 
     std::uint32_t contact_flags = 0U;
+    std::uint16_t matrix_passcode_flags = 0U;
+    bool cyberdeck_present = false;
+    bool mpcp_functional = false;
+    bool datajack_present = false;
     scripts.set_story_fact_accessors(
-        [&contact_flags](const std::string_view name)
+        [&contact_flags, &matrix_passcode_flags, &cyberdeck_present,
+         &mpcp_functional, &datajack_present](const std::string_view name)
             -> std::optional<bool> {
+            if (name == "cyberspace_deck_present") return cyberdeck_present;
+            if (name == "cyberspace_mpcp_functional") {
+                return mpcp_functional;
+            }
+            if (name == "cyberspace_datajack_present") {
+                return datajack_present;
+            }
+            if (name == "matrix_passcode_flags_resolved") return true;
+            if (name == "matrix_current_passcode_available") {
+                return (matrix_passcode_flags & 1U) != 0U;
+            }
+            if (const auto index = parse_index(name, "matrix_passcode_bit_")) {
+                return (matrix_passcode_flags & (1U << *index)) != 0U;
+            }
             if (name == "vid_phone_contacts_resolved") {
                 return true;
             }
@@ -303,6 +332,95 @@ int main() {
                 "eight-contact page two did not retain its Prior Screen row")) {
         std::cerr << scripts.failure() << '\n';
         return 15;
+    }
+    task = scripts.complete_native_menu_input("cancel");
+
+    contact_flags |= 1U << 20U;
+    task = scripts.start_task("field_activities", "vid_phone");
+    for (unsigned row = 0U; row < 7U; ++row) {
+        task = scripts.complete_native_menu_input("down");
+    }
+    task = scripts.complete_native_menu_input("confirm");
+    task = scripts.complete_native_menu_input("confirm");
+    if (!expect(is_say(task, "repeat_call", "vid_phone_mr_faradouchi"),
+                "ROM call-history bit 20 did not select Faradouchi's repeat record")) {
+        std::cerr << scripts.failure() << '\n';
+        return 21;
+    }
+    task = scripts.complete_native_operation(true);
+    task = scripts.complete_native_menu_input("cancel");
+
+    const auto open_cyberspace_menu = [&scripts]() {
+        auto current = scripts.start_task(
+            "field_activities", "ordinary_field_terminal");
+        current = scripts.complete_native_menu_input("down");
+        current = scripts.complete_native_menu_input("down");
+        return scripts.complete_native_menu_input("confirm");
+    };
+    auto cyberspace = open_cyberspace_menu();
+    if (!expect(is_say(cyberspace, "cyberspace_no_deck", "field_narrator"),
+                "Cyberspace without a deck did not show its ROM denial")) {
+        return 22;
+    }
+    scripts.complete_native_operation(true);
+    scripts.complete_native_menu_input("cancel");
+
+    cyberdeck_present = true;
+    // The no-MPCP message is the next prerequisite in ROM order.
+    cyberspace = open_cyberspace_menu();
+    if (!expect(is_say(cyberspace, "cyberspace_no_mpcp", "field_narrator"),
+                "a deck with fried MPCP chips did not show its ROM denial")) {
+        return 23;
+    }
+    scripts.complete_native_operation(true);
+    scripts.complete_native_menu_input("cancel");
+
+    mpcp_functional = true;
+    cyberspace = open_cyberspace_menu();
+    if (!expect(is_say(cyberspace, "cyberspace_no_datajack", "field_narrator"),
+                "a deck without a datajack did not show its ROM denial")) {
+        return 24;
+    }
+    scripts.complete_native_operation(true);
+    scripts.complete_native_menu_input("cancel");
+
+    datajack_present = true;
+    matrix_passcode_flags = 0x0002U;
+    cyberspace = open_cyberspace_menu();
+    if (!expect(is_cursor_menu(cyberspace) &&
+                    cyberspace.operation->menu->id == "cyberspace" &&
+                    cyberspace.operation->menu->choices.size() == 3U,
+                "the complete access gate did not open the Cyberspace choices")) {
+        std::cerr << scripts.failure() << '\n';
+        return 25;
+    }
+    cyberspace = scripts.complete_native_menu_input("confirm");
+    if (!expect(is_cursor_menu(cyberspace) &&
+                    cyberspace.operation->menu->id == "passcodes" &&
+                    cyberspace.operation->menu->choices.size() == 1U,
+                "Enter Passcode did not list known ROM passcodes")) {
+        std::cerr << scripts.failure() << '\n';
+        return 26;
+    }
+    cyberspace = scripts.complete_native_menu_input("confirm");
+    if (!expect(cyberspace.status == ScriptTaskStep::Status::completed &&
+                    cyberspace.result_id ==
+                        std::optional<std::string>{"matrix_entry_7"},
+                "Aztechnology passcode did not request its ROM system")) {
+        std::cerr << scripts.failure() << '\n';
+        return 27;
+    }
+
+    cyberspace = open_cyberspace_menu();
+    cyberspace = scripts.complete_native_menu_input("down");
+    cyberspace = scripts.complete_native_menu_input("confirm");
+    if (!expect(cyberspace.status == ScriptTaskStep::Status::completed &&
+                    cyberspace.result_id ==
+                        std::optional<std::string>{
+                            "matrix_system_search_requested"},
+                "System Search did not return its route request")) {
+        std::cerr << scripts.failure() << '\n';
+        return 28;
     }
     return 0;
 }

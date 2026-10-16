@@ -6,6 +6,20 @@ composites do not count. Apply the question-by-question evidence process in
 [`visual-verification-checklist.md`](visual-verification-checklist.md) to each
 screen change.
 
+The ordinary field terminal now routes through Lua for taxi, Vid-Phone, and
+Cyberspace. Taxi uses the ROM's seven-region cursor tables and animation, then
+loads the confirmed field scene through the existing fade path. Vid-Phone
+filters the 13 source contacts, pages the list, and displays each call's
+first/repeat text and portrait. Cyberspace checks deck/MPCP/datajack facts,
+offers passcodes or System Search, then enters the existing Matrix session and
+node-action route. Debug/Release CTests cover these script routes, the phone
+pages/calls, the cab selector, and a completed Redmond-to-Downtown map load;
+the taxi selector and arrival full-screen dumps are byte-identical across
+builds. This hill remains partial: the ordinary map-to-terminal physical route,
+contact-specific `Services`, full Matrix presentation/actions, and the ROM's
+mode-exit dialogue are still open. See
+[`field-map-trigger-profile.md`](field-map-trigger-profile.md).
+
 The motel-street collision report is now covered by a dedicated Scene-2 route
 from the New Game spawn. It targets the ROM-recorded Stoker frontage, keeps
 the C2 doorway event out of the collision check, and logs held wall contact,

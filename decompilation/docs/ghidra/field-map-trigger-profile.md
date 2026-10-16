@@ -342,17 +342,28 @@ and sets the direct continuation at `0x0DB26`. In ordinary field mode
 `0xC16A5` and dispatches its four choices through `0xC1668`: Call Taxi
 (`0x134D2`), Vid-Phone (`0xE4C8`), Cyberspace (`0xDEE8`), and Exit (`0xE65A`).
 Vid-Phone checks the contact bitfield and shows the ROM's no-contacts message
-when empty. Cyberspace checks cyberdeck availability, MPCP condition, and the
-datajack bit before showing Enter Passcode / System Search / Exit. When
-`FFDF40` is nonzero, `0x0DB26` follows a separate scene-specific branch; the
-ordinary four-choice menu is not a description of those mode-specific paths.
-The shared ordinary-mode path is displayed in the map viewer for every
-event-31 rectangle. **What happens** shows the separate Main Menu and
-Cyberspace submenu pages from the `field.main_menu` Lua content profile,
-including the no-contact Vid-Phone message. This is a readable content and
-ordering preview; it does not claim the original menu's exact pixel layout or
-current selection. The normal-mode menu and its choice handlers are not yet
-connected to the playable Qt runtime.
+when empty. The Lua call list filters all 13 contact records from the ROM
+contact bitfield, pages the rows, resolves each first/repeat dialogue and
+portrait, and retains per-contact call-history state. Its `Services` action
+still has no source-backed transaction handler. Cyberspace checks deck,
+MPCP, and datajack facts before showing Enter Passcode / System Search / Exit;
+known passcodes enter their selected system, while System Search follows the
+ROM's eleven permutation rounds and random system choice. The Matrix entry
+script waits 20 frames, builds the typed session, and replaces itself with the
+Matrix node-action route. `FFDF40` nonzero still follows the separate
+scene-specific branch.
+
+`FieldSceneRuntime` now connects the normal event-31 continuation to the Lua
+four-choice task. Call Taxi uses `0xD4456` / `0xD445D` for the seven region and
+cursor mappings, draws the extracted cab-map/cursor assets, and fades into the
+selected field scene after confirmation. The taxi route QA checks the settled
+screen, clean return on the current region, and a completed Downtown scene-0
+arrival after fade-in. Vid-Phone page/call screens and Matrix script screens
+have focused route tests and 320x224 dumps. These checks start at the
+converted event result or menu route; physical movement into a terminal is
+not yet covered by a joined event-31 route test. They do not certify the full
+Matrix visual system or contact-specific service transactions. The map-viewer
+preview remains a readable content and ordering aid, not pixel-fidelity proof.
 The scene-6 default actor list is empty. The guide's named people therefore
 remain site cross-references until their actor service and gated placements
 are source-traced; they are not populated as scenery residents. See the
@@ -429,15 +440,17 @@ enums rather than ROM address interpretation.
   coverage. The remaining coordinates are profiled, but their physical
   reachability is not thereby proven.
 - `FieldSceneRuntime::record_field_activity_start` connects maglock,
-  Security Terminal, event 29, and the Scene-26 event-31 resource main menu.
+  Security Terminal, event 29, the ordinary event-31 terminal, and the
+  Scene-26 event-31 resource main menu.
   Scene 26 record 126 (`0x1D9E5A`, x/y `0x0200..0x021F`, event `0x1F`) has a
   physical-input QA route: Up from the adjacent cell opens Lua's resource
   `Main Menu`; Down selects `Exit`; A restores the captured Scene-2 field
-  state. This verifies only the Scene-26 special-mode path. The ordinary
-  four-choice field menu is ROM-profiled and visible in the viewer, but its
-  normal-mode runtime dispatch, taxi/phone/Matrix choice handlers, other
-  scene-specific event-31 paths, events 26-28 and 30, context-dependent event
-  25, and source-derived cursor graphic remain unresolved.
+  state. This verifies only the Scene-26 special-mode path. The normal-mode
+  four-choice task and taxi/phone/Matrix handlers are connected in Qt, but a
+  physical-input route from a map's event-31 trigger through the ordinary menu
+  remains untested. Other scene-specific event-31 paths, events 26-28 and 30,
+  context-dependent event 25, and the ordinary terminal cursor graphic remain
+  unresolved.
 - Scene 2 event 0 and event 1 have numeric targets `0x14` and `0x1A` in the
   event table. `0x1A` is resource activity according to `0x167AE`; it is not a
   ROM place-name, so this profile does not label it “office.” The source route

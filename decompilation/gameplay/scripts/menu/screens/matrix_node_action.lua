@@ -123,6 +123,7 @@ end
 
 function M.new(args)
     return { matrix_state = args.matrix_state, system_id = args.system_id,
+             return_to_field = args.return_to_field == true,
              row = 0, title = "Matrix", text = "", labels = {} }
 end
 
@@ -137,6 +138,7 @@ local function open_deck(st)
     return { transition = T.PUSH, screen = E.MenuScreen.CYBERDECK,
              args = { system_id = st.system_id, matrix_session = true,
                       return_to_node_action = true,
+                      return_to_field = st.return_to_field,
                       matrix_state = st.matrix_state } }
 end
 

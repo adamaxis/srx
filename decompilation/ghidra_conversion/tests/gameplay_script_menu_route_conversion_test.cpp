@@ -29,6 +29,7 @@ using shadowrun::ghidra_conversion::scripting::ScriptCyberdeckRecord;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteGame;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuPartyMember;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteBindings;
+using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteStartArguments;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunState;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixDatastoreFacts;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixWorldState;
@@ -55,6 +56,9 @@ constexpr std::uint16_t kDebugMenu = 27U;
 constexpr std::uint16_t kDebugPickSystem = 28U;
 constexpr std::uint16_t kDeckMap = 34U;
 constexpr std::uint16_t kMatrixNodeAction = 37U;
+constexpr std::uint16_t kMatrixEntry = 38U;
+constexpr std::uint16_t kMatrixSearch = 39U;
+constexpr std::uint16_t kTaxiSelector = 40U;
 constexpr std::uint16_t kCommandPagePocketSecretary = 6U;
 constexpr std::uint16_t kNotebook = 10U;
 constexpr std::uint16_t kNotebookTips = 21U;
@@ -240,6 +244,7 @@ int main() {
     matrix_deck.response = 2U;
     matrix_deck.persona = {2U, 2U, 2U, 5U};
     int matrix_deck_commits = 0;
+    std::optional<int> taxi_destination;
     bool pocket_extra_row = false;
     std::vector<int> random_bounds;
     bool random_high_branch = false;
@@ -297,6 +302,12 @@ int main() {
     bindings.game.set_leader_posture = [&posture](const int value) {
         posture = value;
     };
+    bindings.game.request_taxi_destination =
+        [&taxi_destination](const int destination) {
+            if (destination < 0 || destination > 6) return false;
+            taxi_destination = destination;
+            return true;
+        };
     bindings.game.leader_archetype = [] { return 3; };
     bindings.game.inventory_item = [&party](const int column, const int row) {
         if (column < 0 || column > 1 || row < 0 || row > 3) return false;
@@ -2373,6 +2384,110 @@ int main() {
     runtime.close_menu_route();
     check(!runtime.menu_route_snapshot().open && closed_count == 5,
           "Matrix overload leaves the debug route closed", failures);
+
+    // Production event-31 System Search runs the ROM permutation cadence,
+    // selects from its 14-system table, then shares the same 20-frame entry.
+    matrix_search_miss = false;
+    random_high_branch = false;
+    ScriptMenuRouteStartArguments field_matrix_arguments{};
+    field_matrix_arguments.return_to_field = true;
+    check(runtime.open_menu_route(kMatrixSearch, field_matrix_arguments),
+          "field Cyberspace opens the Lua System Search screen", failures);
+    route = runtime.menu_route_snapshot();
+    check(route.open && route.top_screen == kMatrixSearch &&
+              route.top_text.find("SYSTEM SEARCH IN PROGRESS...") == 0U &&
+              route.top_text.find("RUNNING PERMUTATIONS") != std::string::npos &&
+              sounds.back() == 0x36U,
+          "System Search shows its ROM text and feedback sound", failures);
+    for (int frame = 0; frame < 219; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    check(runtime.menu_route_snapshot().top_screen == kMatrixSearch,
+          "System Search does not skip the 11-round permutation wait", failures);
+    runtime.advance_menu_route(0U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMatrixEntry,
+          "System Search selects a system and enters the shared jack-in phase",
+          failures);
+    check(sounds.back() == 0x1AU,
+          "System Search plays the source jack-in sound after selection", failures);
+    for (int frame = 0; frame < 19; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    check(runtime.menu_route_snapshot().top_screen == kMatrixEntry,
+          "field Matrix entry waits 20 VBlanks before building a session", failures);
+    runtime.advance_menu_route(0U);
+    route = runtime.menu_route_snapshot();
+    check(route.open && route.top_screen == kMatrixNodeAction &&
+              route.top_matrix_state_present && route.top_matrix_system_id == 0,
+          "the field route reaches the native Matrix node screen", failures);
+
+    runtime.advance_menu_route(0x8000U); // Open the deck from the node.
+    check(runtime.menu_route_snapshot().top_screen == kCyberdeck,
+          "field Matrix node opens its Lua Cyberdeck", failures);
+    for (int step = 0; step < 3; ++step) runtime.advance_menu_route(0x0200U);
+    for (int step = 0; step < 3; ++step) runtime.advance_menu_route(0x0800U);
+    runtime.advance_menu_route(0x4000U); // Pull Plug.
+    check(runtime.menu_route_snapshot().top_title.find("pull the plug") !=
+              std::string::npos,
+          "the field Matrix exposes the source Pull Plug confirmation", failures);
+    runtime.advance_menu_route(0x0100U); // Yes.
+    runtime.advance_menu_route(0x4000U);
+    check(!runtime.menu_route_snapshot().open && closed_count == 6,
+          "normal field Matrix logout exits to the field caller", failures);
+
+    // Taxi's Lua menu uses the same seven ROM destinations and cab outline
+    // records as the opening selector. The current Redmond map begins at its
+    // source cursor position, right selects Renraku, and A commits that mode.
+    ScriptMenuRouteStartArguments taxi_arguments{};
+    taxi_arguments.taxi_current_region = 2U;
+    check(runtime.open_menu_route(kTaxiSelector, taxi_arguments),
+          "field terminal opens the Lua taxi selector", failures);
+    route = runtime.menu_route_snapshot();
+    check(route.open && route.top_screen == kTaxiSelector &&
+              route.row == 2 && route.top_selection == 2 &&
+              route.top_page == 0 &&
+              route.top_caption_visible == std::optional<bool>{false},
+          "taxi selector starts from the current ROM region", failures);
+    for (int frame = 0; frame < 9; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    route = runtime.menu_route_snapshot();
+    check(route.top_page == 4 &&
+              route.top_caption_visible == std::optional<bool>{false},
+          "taxi outline advances through five two-VBlank sizes before text",
+          failures);
+    runtime.advance_menu_route(0U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_caption_visible == std::optional<bool>{true},
+          "taxi destination caption appears after the full ten-frame outline",
+          failures);
+    runtime.advance_menu_route(0x0800U); // Right: mode 5, Renraku Arcology.
+    route = runtime.menu_route_snapshot();
+    check(route.row == 3 && route.top_selection == 5 &&
+              route.top_page == 0 &&
+              route.top_caption_visible == std::optional<bool>{false},
+          "taxi cursor maps through the ROM's cursor-to-region table",
+          failures);
+    for (int frame = 0; frame < 10; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    runtime.advance_menu_route(0x4000U); // A: request travel.
+    check(!runtime.menu_route_snapshot().open && taxi_destination == 5 &&
+              closed_count == 7,
+          "taxi confirm requests the selected scene and exits the route",
+          failures);
+    check(runtime.open_menu_route(kTaxiSelector, taxi_arguments),
+          "taxi selector can be reopened after a completed selection",
+          failures);
+    for (int frame = 0; frame < 10; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    runtime.advance_menu_route(0x8000U); // Start: commit current mode.
+    check(!runtime.menu_route_snapshot().open && taxi_destination == 2 &&
+              closed_count == 8,
+          "taxi Start commits the current region through the source route",
+          failures);
 
     if (failures != 0) {
         std::cerr << "menu route failures: " << failures << '\n';
