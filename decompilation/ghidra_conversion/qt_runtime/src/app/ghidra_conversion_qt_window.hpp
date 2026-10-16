@@ -150,24 +150,34 @@ public:
     explicit GhidraConversionWindow(std::filesystem::path asset_root,
                                     debug::InputLogConfig input_log = {},
                                     const bool frame_debug_controls = false,
+                                    const bool headless_replay = false,
                                     QWidget* parent = nullptr)
         : QWidget(parent),
           asset_root_(std::move(asset_root)),
           input_log_(std::move(input_log)),
           frame_stepper_(frame_debug_controls),
+          audio_playback_(headless_replay
+                              ? nullptr
+                              : std::make_unique<AudioPlaybackService>(
+                                    [this](const std::string_view alias)
+                                        -> std::filesystem::path {
+                                        const auto* record =
+                                            state_.asset_catalog.catalog.find(
+                                                std::string(alias));
+                                        return record == nullptr
+                                                   ? std::filesystem::path{}
+                                                   : record->absolute_path;
+                                    })),
           field_scene_runtime_([this](const std::string_view boundary) {
           }, [this](const std::uint16_t event) {
-              audio_playback_.play_event(event);
+              if (audio_playback_) {
+                  audio_playback_->play_event(event);
+              }
           }, [this](const std::uint16_t sound) {
-              audio_playback_.stop_resource(sound);
-          }),
-          audio_playback_(
-              [this](const std::string_view alias) -> std::filesystem::path {
-                  const auto* record =
-                      state_.asset_catalog.catalog.find(std::string(alias));
-                  return record == nullptr ? std::filesystem::path{}
-                                           : record->absolute_path;
-              }) {
+              if (audio_playback_) {
+                  audio_playback_->stop_resource(sound);
+              }
+          }) {
         setWindowTitle(QStringLiteral("Shadowrun - Ghidra Conversion Qt"));
         setFixedSize(kSceneWidth * kSceneScale, kSceneHeight * kSceneScale);
         setFocusPolicy(Qt::StrongFocus);
@@ -200,6 +210,63 @@ public:
         host_frame_timer_.start();
         update_window_title();
 
+    }
+
+    // Runs a recorded session without presenting a widget or opening the host
+    // audio device. The same source-frame and input handlers are used as live
+    // replay; only the wall-clock pump and presentation are skipped.
+    bool run_headless_replay(const std::filesystem::path& frame_dump,
+                             std::string* error = nullptr) {
+        if (!input_log_.replaying()) {
+            if (error != nullptr) {
+                *error = "headless replay requires --replay-input";
+            }
+            return false;
+        }
+        host_frame_timer_.stop();
+        while (source_frame_index_ < input_log_.recorded_frame_count()) {
+            apply_recorded_key_inputs();
+            advance_one_source_frame();
+            if (input_log_.has_seed_history()) {
+                const auto expected =
+                    input_log_.expected_seed_after_frame(source_frame_index_);
+                if (!expected.has_value() ||
+                    *expected != source_random_seed()) {
+                    replay_diverged_ = true;
+                    if (error != nullptr) {
+                        std::ostringstream message;
+                        message << "replay diverged after source frame "
+                                << (source_frame_index_ + 1U)
+                                << ": expected shared ROM seed 0x" << std::hex
+                                << expected.value_or(0U) << ", got 0x"
+                                << source_random_seed();
+                        *error = message.str();
+                    }
+                    return false;
+                }
+            }
+            ++source_frame_index_;
+        }
+
+        // Key-up events can be recorded on the frame boundary after the final
+        // completed source frame. Preserve that boundary just as the live
+        // timer path does.
+        apply_recorded_key_inputs();
+        if (!frame_dump.empty()) {
+            const auto frame = render_scene();
+            if (!frame.save(QString::fromStdWString(frame_dump.wstring()))) {
+                if (error != nullptr) {
+                    *error = "could not save replay frame: " +
+                             frame_dump.string();
+                }
+                return false;
+            }
+        }
+        return true;
+    }
+
+    std::uint64_t source_frame_count_for_debug() const noexcept {
+        return source_frame_index_;
     }
 
     ~GhidraConversionWindow() override {
@@ -633,7 +700,9 @@ private:
     }
 
     void reset_startup_presentation_state() {
-        audio_playback_.begin_source_sequence();
+        if (audio_playback_) {
+            audio_playback_->begin_source_sequence();
+        }
         title_loop_ = TitleLoopState{};
         title_mode_entry_service_ = TitleModeEntryServiceState{};
         title_idle_restart_fade_ = TitleIdleRestartFadeState{};
@@ -735,10 +804,14 @@ private:
                 // this callback must honor the direct FF 12 operation.
                 if (request.service_path ==
                     PreTitleAudioServicePath::enabled_variant_transaction) {
-                    audio_playback_.stop_resource(request.command);
+                    if (audio_playback_) {
+                        audio_playback_->stop_resource(request.command);
+                    }
                 } else if (request.command == 0x005CU) {
-                    audio_playback_.play_event_once_in_sequence(
-                        request.command);
+                    if (audio_playback_) {
+                        audio_playback_->play_event_once_in_sequence(
+                            request.command);
+                    }
                 }
             };
         startup_callbacks_.pre_title.sample_controller = no_op;
@@ -824,11 +897,15 @@ private:
         startup_callbacks_.opening_intro.prepare_mode_entry = [this] {
             // ROM 0x53126 sends FF 16 here; its Z80 handler clears all active
             // sound channels before the next opening-stage command.
-            audio_playback_.stop_all_channels();
+            if (audio_playback_) {
+                audio_playback_->stop_all_channels();
+            }
         };
         startup_callbacks_.opening_intro.service_audio_command =
             [this](const std::uint16_t command) {
-                audio_playback_.play_event(command);
+                if (audio_playback_) {
+                    audio_playback_->play_event(command);
+                }
             };
         startup_callbacks_.opening_intro.service_audio = no_op;
         startup_callbacks_.opening_intro.fade_palette_to_black = no_op;
@@ -993,12 +1070,16 @@ private:
                     // The sequence asset represents all 19 source starts at
                     // their ROM cadence. Play that composite once instead of
                     // layering 19 copies of the complete render.
-                    audio_playback_.play_event_once_in_sequence(event);
+                    if (audio_playback_) {
+                        audio_playback_->play_event_once_in_sequence(event);
+                    }
                 } else if (command == TitleAudioCommand::ThemeStart) {
                     // The ROM's command-0 wrapper stops then starts this same
                     // music resource before drawing the copyright text.
-                    audio_playback_.stop_resource(event);
-                    audio_playback_.play_event(event);
+                    if (audio_playback_) {
+                        audio_playback_->stop_resource(event);
+                        audio_playback_->play_event(event);
+                    }
                 }
             };
         title_loop_callbacks_.publish_circuit_light_phase =
@@ -1040,7 +1121,9 @@ private:
         title_mode_entry_callbacks_.run_audio_transaction = no_op;
         title_mode_entry_callbacks_.flush_audio_bus = [this] {
             // ROM 0x52FA0 sends FF 16, clearing the source sound channels.
-            audio_playback_.stop_all_channels();
+            if (audio_playback_) {
+                audio_playback_->stop_all_channels();
+            }
         };
         title_mode_entry_callbacks_.service_audio_tick = no_op;
     }
@@ -2046,6 +2129,7 @@ private:
     std::optional<scripting::ScriptMenuDefinition> startup_save_slots_menu_;
     std::optional<scripting::ScriptMenuDefinition> startup_archetypes_menu_;
     scripting::ScriptStringMap startup_archetype_portraits_;
+    std::unique_ptr<AudioPlaybackService> audio_playback_;
     qt_runtime::FieldSceneRuntime field_scene_runtime_;
     TitleLoopState title_loop_;
     TitleLoopCallbacks title_loop_callbacks_;
@@ -2071,8 +2155,6 @@ private:
     std::optional<OpeningIntroSpriteRequest>
         opening_wilderness_final_overlay_;
     std::vector<OpeningIntroTextRequest> opening_text_;
-    AudioPlaybackService audio_playback_;
-
     std::uint8_t logo_strobe_phase_ = 0;
     std::array<std::uint16_t, 8> logo_strobe_palette_{};
     std::vector<BuiltSpriteRecord> pre_title_sprite_records_;

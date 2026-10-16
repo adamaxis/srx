@@ -33,6 +33,13 @@ set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/field/field_interaction_runtime.cpp
     src/audio/audio_playback.cpp)
 
+add_executable(shadowrun_frame_debugger_test
+    tests/debug/frame_debugger_test.cpp)
+target_include_directories(shadowrun_frame_debugger_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+add_test(NAME shadowrun_frame_debugger
+         COMMAND shadowrun_frame_debugger_test)
+
 # This is the runnable Qt host for the converted source contracts. It is a
 # child of the root Ghidra project, not the archived native-port project.
 # It deliberately does not link shadowrun_port, shadowrun_native,
@@ -1147,6 +1154,16 @@ if (WIN32)
                         "$<TARGET_FILE:${SHADOWRUN_GHIDRA_QT_DEPLOY_TARGET}>"
                 COMMENT "Deploying Qt 6 ${CMAKE_BUILD_TYPE} runtime beside ${SHADOWRUN_GHIDRA_QT_DEPLOY_TARGET}"
                 VERBATIM)
+            set(SHADOWRUN_GHIDRA_QT_OFFSCREEN_PLUGIN
+                "${CMAKE_PREFIX_PATH}/plugins/platforms/qoffscreen.dll")
+            if (EXISTS "${SHADOWRUN_GHIDRA_QT_OFFSCREEN_PLUGIN}")
+                add_custom_command(TARGET ${SHADOWRUN_GHIDRA_QT_DEPLOY_TARGET} POST_BUILD
+                    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                            "${SHADOWRUN_GHIDRA_QT_OFFSCREEN_PLUGIN}"
+                            "$<TARGET_FILE_DIR:${SHADOWRUN_GHIDRA_QT_DEPLOY_TARGET}>/platforms/qoffscreen.dll"
+                    COMMENT "Deploying Qt offscreen platform for headless replay"
+                    VERBATIM)
+            endif()
         endforeach()
     endif()
 
