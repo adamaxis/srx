@@ -4,6 +4,7 @@
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/random_conversion.hpp"
+#include "shadowrun_ghidra/debug/frame_debugger.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_delay_conversion.hpp"
 #include "shadowrun_ghidra/menus/clips_menu_conversion.hpp"
@@ -147,9 +148,13 @@ QString phase_title(const StartupIntegrationPhase phase) {
 class GhidraConversionWindow : public QWidget {
 public:
     explicit GhidraConversionWindow(std::filesystem::path asset_root,
+                                    debug::InputLogConfig input_log = {},
+                                    const bool frame_debug_controls = false,
                                     QWidget* parent = nullptr)
         : QWidget(parent),
           asset_root_(std::move(asset_root)),
+          input_log_(std::move(input_log)),
+          frame_stepper_(frame_debug_controls),
           field_scene_runtime_([this](const std::string_view boundary) {
           }, [this](const std::uint16_t event) {
               audio_playback_.play_event(event);
@@ -193,8 +198,15 @@ public:
             on_host_frame_timeout();
         });
         host_frame_timer_.start();
-        setWindowTitle(phase_title(state_.phase));
+        update_window_title();
 
+    }
+
+    ~GhidraConversionWindow() override {
+        std::string error;
+        if (!input_log_.finish(&error)) {
+            std::cerr << "input session log: " << error << '\n';
+        }
     }
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
@@ -211,6 +223,28 @@ protected:
     }
 
     void keyPressEvent(QKeyEvent* event) override {
+        if (!event->isAutoRepeat() && frame_stepper_.enabled()) {
+            if (event->key() == Qt::Key_Pause) {
+                frame_stepper_.toggle_pause();
+                update_window_title();
+                update();
+                event->accept();
+                return;
+            }
+            if (frame_stepper_.paused()) {
+                if (event->key() == Qt::Key_Period) {
+                    frame_stepper_.queue_step(
+                        (event->modifiers() & Qt::ShiftModifier) != 0
+                            ? 60U
+                            : 1U);
+                }
+                event->accept();
+                return;
+            }
+        } else if (frame_stepper_.paused()) {
+            event->accept();
+            return;
+        }
         if (state_.phase == StartupIntegrationPhase::title_ready &&
             (title_loop_.exit_palette_fade.active ||
              title_loop_.exit_palette_fade.complete ||
@@ -239,6 +273,7 @@ protected:
                     field_controller_nibble_);
                 field_scene_runtime_.set_controller_port_byte(
                     field_controller_port_byte_);
+                record_key_input(*event, true);
                 update();
                 event->accept();
                 return;
@@ -251,6 +286,7 @@ protected:
                     field_controller_port_byte_ | button_bits);
                 field_scene_runtime_.set_controller_port_byte(
                     field_controller_port_byte_);
+                record_key_input(*event, true);
                 update();
                 event->accept();
                 return;
@@ -295,12 +331,17 @@ protected:
             advance_startup_integration(state_, sample, startup_callbacks_);
         }
 
-        setWindowTitle(phase_title(state_.phase));
+        update_window_title();
+        record_key_input(*event, true);
         update();
         event->accept();
     }
 
     void keyReleaseEvent(QKeyEvent* event) override {
+        if (frame_stepper_.paused()) {
+            event->accept();
+            return;
+        }
         if (state_.phase == StartupIntegrationPhase::start_options_shell &&
             !event->isAutoRepeat()) {
             const auto released = sampled_menu_byte(event->key());
@@ -309,6 +350,7 @@ protected:
                     static_cast<std::uint8_t>(
                         pending_start_options_controller_byte_ &
                         static_cast<std::uint8_t>(~released));
+                record_key_input(*event, false);
                 event->accept();
                 return;
             }
@@ -326,6 +368,7 @@ protected:
                     field_controller_nibble_);
                 field_scene_runtime_.set_controller_port_byte(
                     field_controller_port_byte_);
+                record_key_input(*event, false);
                 update();
                 event->accept();
                 return;
@@ -348,6 +391,38 @@ protected:
     }
 
 private:
+    void update_window_title() {
+        auto title = phase_title(state_.phase);
+        if (frame_stepper_.paused()) {
+            title += QStringLiteral(" [PAUSED]");
+        }
+        setWindowTitle(title);
+    }
+
+    void record_key_input(const QKeyEvent& event, const bool pressed) {
+        if (!replaying_input_) {
+            input_log_.record_event(
+                source_frame_index_, event.key(),
+                static_cast<std::uint32_t>(event.modifiers()), pressed);
+        }
+    }
+
+    bool apply_recorded_key_inputs() {
+        if (!input_log_.replaying()) {
+            return false;
+        }
+        const auto events = input_log_.take_events_for_frame(source_frame_index_);
+        for (const auto& input : events) {
+            QKeyEvent event(input.pressed ? QEvent::KeyPress : QEvent::KeyRelease,
+                            input.key,
+                            static_cast<Qt::KeyboardModifiers>(input.modifiers));
+            replaying_input_ = true;
+            QApplication::sendEvent(this, &event);
+            replaying_input_ = false;
+        }
+        return !events.empty();
+    }
+
     void load_startup_script_content() {
         const auto script_directory =
             asset_root_.parent_path() / "gameplay" / "scripts";
@@ -968,12 +1043,29 @@ private:
     }
 
     void on_host_frame_timeout() {
-        const auto frames = consume_host_frames(
+        const auto due_frames = consume_host_frames(
             host_frame_deadline_ns_, host_clock_.nsecsElapsed());
-        for (int frame = 0; frame < frames; ++frame) {
+        const auto frames = frame_stepper_.frames_to_advance(due_frames);
+        bool replay_input_applied = false;
+        int advanced_frames = 0;
+        for (std::uint32_t frame = 0; frame < frames; ++frame) {
+            replay_input_applied = apply_recorded_key_inputs() ||
+                                   replay_input_applied;
+            if (input_log_.replaying() &&
+                source_frame_index_ >= input_log_.recorded_frame_count()) {
+                break;
+            }
             advance_one_source_frame();
+            input_log_.record_completed_frame();
+            ++source_frame_index_;
+            ++advanced_frames;
         }
-        if (frames > 0) {
+        if (input_log_.replaying() &&
+            source_frame_index_ >= input_log_.recorded_frame_count()) {
+            replay_input_applied = apply_recorded_key_inputs() ||
+                                   replay_input_applied;
+        }
+        if (advanced_frames > 0 || replay_input_applied) {
             update();
         }
     }
@@ -1916,6 +2008,10 @@ private:
     }
 
     std::filesystem::path asset_root_;
+    debug::KeyboardInputLog input_log_;
+    debug::FrameStepper frame_stepper_;
+    std::uint64_t source_frame_index_ = 0;
+    bool replaying_input_ = false;
     StartupIntegrationState state_;
     StartupIntegrationCallbacks startup_callbacks_;
     scripting::GameScriptRuntime startup_scripts_;
