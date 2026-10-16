@@ -6545,6 +6545,8 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
                  field_matrix_passcode_flags_.has_value()
                      ? QJsonValue(*field_matrix_passcode_flags_)
                      : QJsonValue(QJsonValue::Null));
+    story.insert(QStringLiteral("matrix_field_state"),
+                 matrix_field_state_to_json(field_matrix_field_state_));
     story.insert(QStringLiteral("cyberdeck_record"),
                  field_matrix_deck_record_.has_value()
                      ? QJsonValue(cyberdeck_record_to_json(
@@ -6647,6 +6649,7 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         std::optional<bool> cyberdeck_available;
         std::optional<CyberdeckRecord> cyberdeck_record;
         std::optional<std::uint16_t> matrix_passcode_flags;
+        scripting::ScriptMatrixFieldState matrix_field_state;
         std::optional<std::uint8_t> runner_feature_flags;
         bool walk_fast = false;
         bool current_run_available = false;
@@ -6842,7 +6845,10 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
             output = static_cast<std::decay_t<decltype(output.value())>>(parsed);
             return true;
         };
-    if (!read_optional_unsigned("dialogue_register", 0xFF,
+    if (!matrix_field_state_from_json(
+            story.value(QStringLiteral("matrix_field_state")),
+            restored.matrix_field_state, error) ||
+        !read_optional_unsigned("dialogue_register", 0xFF,
                                 restored.dialogue_register) ||
         !read_optional_unsigned("group_item_flags", 0xFFFFFFFFLL,
                                 restored.group_item_flags) ||
@@ -6981,6 +6987,7 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     cyberdeck_available_ = restored.cyberdeck_available;
     field_matrix_deck_record_ = restored.cyberdeck_record;
     field_matrix_passcode_flags_ = restored.matrix_passcode_flags;
+    field_matrix_field_state_ = restored.matrix_field_state;
     field_runner_feature_flags_ = restored.runner_feature_flags;
     field_walk_fast_enabled_ = restored.walk_fast;
     notebook_current_run_available_ = restored.current_run_available;

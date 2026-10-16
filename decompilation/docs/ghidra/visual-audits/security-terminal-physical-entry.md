@@ -86,11 +86,11 @@ the Matrix host state. ROM `0xB7B8` selects the shared `0x20E48` lock prompt
 for events 2 through 5 only while `FFE17F` is clear. When the flag is set, the
 special prompt branch is skipped and the handler continues through the
 ordinary world-interaction path. Lua now makes that same branch choice. A
-fresh New Game supplies the known clear value; a loaded host save leaves it
-unknown because Matrix field flags are not yet part of its save snapshot. The
-runtime test covers true and absent values. This does not yet prove that a
-scene-26 door becomes traversable after the prompt is bypassed, and no Matrix
-turn-off-to-door gameplay route has been captured.
+fresh New Game supplies the known clear value; new host JSON saves preserve
+the Matrix field flags, while older snapshots without this field keep it
+unknown. Tests cover true, false, absent, and malformed save values. This does
+not yet prove that a scene-26 door becomes traversable after the prompt is
+bypassed, and no Matrix turn-off-to-door gameplay route has been captured.
 
 Debug and Release each write 500 sequential 320x224 frames, 22 named BMPs,
 and seven route, collision-map, source-boundary, and audio files. All 529

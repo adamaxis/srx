@@ -121,6 +121,22 @@ target_compile_definitions(shadowrun_gameplay_script_runtime_test PRIVATE
 add_test(NAME shadowrun_gameplay_script_runtime_qa
          COMMAND shadowrun_gameplay_script_runtime_test)
 
+add_executable(shadowrun_matrix_field_state_save_test
+    tests/persistence/matrix_field_state_save_test.cpp
+    src/persistence/game_save_snapshot.cpp)
+target_include_directories(shadowrun_matrix_field_state_save_test
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
+set_target_properties(shadowrun_matrix_field_state_save_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+target_link_libraries(shadowrun_matrix_field_state_save_test
+    PRIVATE shadowrun_ghidra_conversion_runtime Qt6::Core)
+add_test(NAME shadowrun_matrix_field_state_save_qa
+         COMMAND shadowrun_matrix_field_state_save_test)
+set_tests_properties(shadowrun_matrix_field_state_save_qa PROPERTIES
+    ENVIRONMENT "SRX_HEADLESS=1;QT_QPA_PLATFORM=offscreen")
+
 add_executable(shadowrun_run_actor_defeat_test
     tests/scripting/run_actor_defeat_test.cpp)
 target_include_directories(shadowrun_run_actor_defeat_test

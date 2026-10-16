@@ -374,6 +374,65 @@ bool runner_record_from_json(const QJsonObject& object,
     return true;
 }
 
+QJsonObject matrix_field_state_to_json(
+    const scripting::ScriptMatrixFieldState& state) {
+    const auto optional_boolean = [](const std::optional<bool> value) {
+        return value.has_value() ? QJsonValue(*value)
+                                 : QJsonValue(QJsonValue::Null);
+    };
+    QJsonObject object;
+    object.insert(QStringLiteral("alarm"), optional_boolean(state.alarm));
+    object.insert(QStringLiteral("security_off"),
+                  optional_boolean(state.security_off));
+    object.insert(QStringLiteral("maglocks_off"),
+                  optional_boolean(state.maglocks_off));
+    return object;
+}
+
+bool matrix_field_state_from_json(
+    const QJsonValue& value, scripting::ScriptMatrixFieldState& state,
+    QString* const error) {
+    if (value.isUndefined() || value.isNull()) {
+        state = scripting::ScriptMatrixFieldState{};
+        if (error != nullptr) error->clear();
+        return true;
+    }
+    if (!value.isObject()) {
+        if (error != nullptr) {
+            *error = QStringLiteral("Save field 'matrix_field_state' is invalid.");
+        }
+        return false;
+    }
+
+    const auto object = value.toObject();
+    scripting::ScriptMatrixFieldState parsed;
+    const auto read_optional_boolean =
+        [&object, &error](const char* key, std::optional<bool>& output) {
+            const auto field = object.value(QLatin1String(key));
+            if (field.isUndefined() || field.isNull()) {
+                output.reset();
+                return true;
+            }
+            if (!field.isBool()) {
+                if (error != nullptr) {
+                    *error = QStringLiteral("Save field 'matrix_field_state.%1' is invalid.")
+                                 .arg(QLatin1String(key));
+                }
+                return false;
+            }
+            output = field.toBool();
+            return true;
+        };
+    if (!read_optional_boolean("alarm", parsed.alarm) ||
+        !read_optional_boolean("security_off", parsed.security_off) ||
+        !read_optional_boolean("maglocks_off", parsed.maglocks_off)) {
+        return false;
+    }
+    state = std::move(parsed);
+    if (error != nullptr) error->clear();
+    return true;
+}
+
 bool script_persistent_value_to_json(
     const scripting::ScriptPersistentValue& value, QJsonValue& output,
     QString* const error) {
