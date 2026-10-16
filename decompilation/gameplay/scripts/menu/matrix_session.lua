@@ -69,7 +69,10 @@ function M.begin(system_id, field_alarm)
         previous_node = -1,
         link_cursor = 0,
         phase = "node",
-        mode = E.MatrixModeResult.ATTACK,
+        -- ROM 0x1817E clears FFF0B7 before entering the Matrix loop. This
+        -- byte is the signed attack/balanced/defense mode consumed by the
+        -- Matrix pool rules, so a newly opened system starts balanced.
+        mode = E.MatrixModeResult.BALANCED,
         alert = Rules.initial_alert(field_alarm),
         attempts = 0,
         overload_armed = true,

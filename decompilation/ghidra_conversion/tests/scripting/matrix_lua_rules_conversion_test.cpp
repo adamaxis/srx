@@ -100,8 +100,8 @@ eq(node_count, 406, "ROM Matrix node catalog count")
 local started, first_session = Session.begin(0)
 eq(started, true, "Matrix session starts from system zero")
 eq(first_session.current_node, 0, "Matrix session enters access node")
-eq(first_session.mode, E.MatrixModeResult.ATTACK,
-    "node action loop resets Matrix mode to attack")
+eq(first_session.mode, E.MatrixModeResult.BALANCED,
+    "ROM Matrix entry clears the deck mode to balanced")
 eq(first_session.nodes[0].links[0], 4, "system zero access link")
 eq(first_session.map[139] ~= nil, true, "Matrix session copies cell 139")
 eq(first_session.map[140], nil, "Matrix session does not create cell 140")
