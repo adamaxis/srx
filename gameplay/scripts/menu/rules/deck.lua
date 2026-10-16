@@ -8,6 +8,14 @@ local M = {}
 M.FOOTPRINT = { [0] = 2, 4, 4, 3, 4, 4, 2, 3, 3, 2, 2, 3 }   -- 0xE2DF2 [C bytes]
 M.PROGRAMS, M.SLOTS, M.FILES, M.MAX_LOAD_STEPS, M.READY = 12, 5, 5, 6, 6
 M.FILE_NAME = 0xE3A85                                        -- + id*0x14 (Back-up Files, Archived Files, ...) [C]
+M.FILE_NAMES = {
+    [0] = "Back-up Files", "Archived Files", "Cancelled Accounts",
+    "History Data", "Cancelled Passwords", "System Usage Report",
+} -- 0xE3A85, source file-name table [C]
+M.PROGRAM_NAMES = {
+    [0] = "Attack", "Slow", "Degrade", "Rebound", "Medic", "Shield",
+    "Smoke", "Mirrors", "Sleaze", "Deception", "Relocate", "Analyze",
+} -- 0xE2F68, source program-name table [C]
 
 function M.index(col, row) return row * 4 + col end                              -- 0x18A92
 function M.size(p, rating) return rating * rating * M.FOOTPRINT[p] end          -- 0x1952C

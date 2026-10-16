@@ -8,9 +8,16 @@
 --     row 3 col 0..2 -> table 0xE2DFE (0x18AA6, 0x18D1A, 0x19018; col 2 only online); FFF0AD set -> loop exits.
 --   Start -> exit (d7 = -1).
 local E = require("enums")
+local D = require("menu.rules.deck")
 local MX = require("menu.rules.matrix")
 local P, R, T, MM, S = E.Pad, E.MenuRegion, E.MenuTransition, E.MenuMessage, E.MenuSound
 local M = { window = E.WindowPlane.OFF, PLUG_ROW = 3, PLUG_COL = 3, BLACK_IC = 8, BODY_TN = 5, STUN_LOSS = 3 }
+M.GRID_LABELS = {
+    D.PROGRAM_NAMES[0], D.PROGRAM_NAMES[1], D.PROGRAM_NAMES[2], D.PROGRAM_NAMES[3],
+    D.PROGRAM_NAMES[4], D.PROGRAM_NAMES[5], D.PROGRAM_NAMES[6], D.PROGRAM_NAMES[7],
+    D.PROGRAM_NAMES[8], D.PROGRAM_NAMES[9], D.PROGRAM_NAMES[10], D.PROGRAM_NAMES[11],
+    "CyberInfo", "Storage", "Map", "Pull Plug",
+}
 local MODE = {
     [P.A] = E.MatrixDeckMode.ATTACK,
     [P.B] = E.MatrixDeckMode.BALANCED,
@@ -20,7 +27,9 @@ local MODE = {
 M.FUNCTION = { [0] = E.MenuScreen.DECK_CYBERINFO, E.MenuScreen.DECK_STORAGE, E.MenuScreen.DECK_MAP }   -- 0x18AA6, 0x18D1A, 0x19018
 function M.cursor_xy(col, row) return col * 0x20 + 0x8C, row * 0x28 + 0x94 end
 
-function M.new() return { col = 0, row = 0 } end
+function M.new()
+    return { col = 0, row = 0, title = "Cyberdeck", labels = M.GRID_LABELS }
+end
 function M.enter(st, ctx) st.saved = ctx.game.deck_enter(); ctx.redraw(R.FULL) end
 local function leave(st, ctx, res) ctx.game.deck_leave(st.saved); return { transition = T.POP, result = res } end
 function M.input(st, events, ctx)
@@ -30,7 +39,7 @@ function M.input(st, events, ctx)
         st.col, st.row,
         events & P.UP ~= 0, events & P.DOWN ~= 0,
         events & P.LEFT ~= 0, events & P.RIGHT ~= 0)
-    if moved then st.col, st.row = col, row; ctx.redraw(R.SUBMENU); return end
+    if moved then st.col, st.row = col, row; st.text = nil; ctx.redraw(R.SUBMENU); return end
     if events & P.START ~= 0 then return leave(st, ctx) end
     local btn = events & P.A ~= 0 and P.A or events & P.B ~= 0 and P.B or events & P.C ~= 0 and P.C
     if not btn then return end
@@ -48,7 +57,8 @@ end
 function M.child_returned(st, child, res, ctx)
     if res.logged_out then return leave(st, ctx, { exit_secretary = true }) end          -- FFF0DC = FF
     if res.exit_deck then return leave(st, ctx) end                                      -- FFF0AD -> clr, d7 = 0, exit
-    st.text, st.list = res.text, res.list                                                -- left on screen (rts, no wait)
+    st.text = type(res.text) == "string" and res.text or nil                           -- plain-rts text remains until redraw
+    st.list = res.list
     ctx.redraw(R.FULL)                                                                   -- 0x1882E grid redraw
 end
 
@@ -58,7 +68,17 @@ end
 --   else Body (+0x77) dice vs 5; 0 successes -> stun -3 (min 1), sfx 0x18. Then logout.
 -- Logout: FFF0DC = FF, 0x18776, 0x26A00 (sfx 0x29, FFF0B1 = FF).
 local Plug = { window = E.WindowPlane.OFF }
-function Plug.new(a) return { black_ic = a.black_ic, yes = false } end
+function Plug.new(a)
+    return {
+        black_ic = a.black_ic,
+        yes = false,
+        row = 1,
+        title = a.black_ic
+            and "WARNING:|Black IC present!|Do you really want|to pull the plug?"
+            or "Do you really want|to pull the plug?",
+        labels = { "Yes", "No" },
+    }
+end
 function Plug.enter(st, ctx) ctx.redraw(R.MESSAGE) end
 function M.dumpshock(ctx)
     local g = ctx.game; local r = g.party()[g.active_slot()]
@@ -73,7 +93,12 @@ function M.dumpshock(ctx)
     return true
 end
 function Plug.input(st, events, ctx)
-    if events & (P.UP | P.DOWN) ~= 0 then st.yes = not st.yes; ctx.redraw(R.MESSAGE); return end  -- [H toggle on 2 rows]
+    if events & (P.UP | P.DOWN) ~= 0 then
+        st.yes = not st.yes
+        st.row = st.yes and 0 or 1
+        ctx.redraw(R.MESSAGE)
+        return
+    end  -- [H toggle on 2 rows]
     if events & (P.A | P.B | P.C) == 0 then return end
     if not st.yes then return { transition = T.POP, result = {} } end
     if st.black_ic and not M.dumpshock(ctx) then return { transition = T.POP, result = {} } end

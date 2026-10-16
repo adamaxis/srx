@@ -12,9 +12,15 @@ response are Lua-owned. When the source deck-present flag is clear, row 2
 pushes the generic `MESSAGE` screen with `NO_CYBERDECK`; Qt presents the
 extracted three-line text and returns to the same selected row on a fresh
 button edge. The message advances shared `E660` bezel animation, with QA
-capturing and checking each of 30 full-screen wait frames. An unknown
-restored-save flag still enters the explicit Cyberdeck
-adapter boundary. The Debug menu is now registered in the live route and is
+capturing and checking each of 30 full-screen wait frames. Application save
+snapshots preserve the deck-present flag and typed deck record. The
+Cyberdeck grid and program, info, and storage child routes are registered in
+the active profile. The field entry is offline, as the ROM sets FFF0B0 clear
+outside a Matrix session; live map/retreat, IC, and jack-in flows remain open.
+The active Qt panel clears the prior menu before drawing, but its text labels
+and cell art are interim; source-icon extraction and independent visual
+comparison are still pending.
+The Debug menu is now registered in the live route and is
 kept unlocked by a temporary Qt development override. Nuyen, Heal All, +10
 Karma, Contacts, Walk Fast, and the ROM Test Deck setup are connected; Spells
 and Pick System remain pending. Test Deck writes typed deck state and enables
@@ -83,18 +89,18 @@ Sound sites for all of these: out/menu_sound_sites.txt (0x25 = move/toggle, 0x24
 - A full build = `blank(OFF)`, then FULL, then `blank(ON)`. That gives at least one black frame; the exact count is [H] (it depends on the build length, not measured).
 
 ## Port queue (next)
-Done in the active route: command/posture, item actions, Clips, Attributes/Skills, Pocket Secretary root, Group Items, Dismiss Runner, Notebook no-run flow, Tips & Clues, Mr. Johnsons, Magic/Force/Posture, Save/Load, and the connected Debug menu actions. Cyberdeck/Matrix and the two pending Debug actions remain open; Matrix/deck behavior has Lua rules and screens but no complete live route wiring.
+Done in the active route: command/posture, item actions, Clips, Attributes/Skills, Pocket Secretary root, Group Items, Dismiss Runner, Notebook no-run flow, Tips & Clues, Mr. Johnsons, Magic/Force/Posture, Save/Load, and the connected Debug menu actions. The field Cyberdeck grid and offline program/info/storage paths are now registered. The Matrix session entry and live Matrix path, plus the two pending Debug actions, remain open.
 Open source/behavior boundaries: the drain-damage tail at 0x1046E, FFF0B1 inside the Matrix, FFF101 save-state import, and child-loop migration.
 In-game wiring: root `qt_runtime/src/field/field_scene_runtime.cpp` (`configure_field_menu_route()` supplies `ScriptMenuRouteBindings`); `host/menu_game_fsr.sketch.cpp` remains an unbuilt design sketch.
 
-Order: connect the remaining POCKET_SECRETARY extended caller, then Cyberdeck/Matrix, followed by the two pending Debug actions. The Notebook now reads accepted-run availability from the Lua run registry (ROM 0xF2E2/0x1E72C); its positive-current-run detail page and spell cast/target resolution remain open. Contacts and Shadowrunners list/detail screens are already registered and implemented.
+Order: finish Cyberdeck's source passcode entry and active Matrix session, then the two pending Debug actions. The Notebook now reads accepted-run availability from the Lua run registry (ROM 0xF2E2/0x1E72C); its positive-current-run detail page and spell cast/target resolution remain open. Contacts and Shadowrunners list/detail screens are already registered and implemented.
 Each one replaces its `legacy(...)` line in menu/init.lua.
 
 - D24 Save/Load is registered in the active profile. Lua owns Save/Load and slot selection; the host stores two versioned JSON snapshots in the app data directory using atomic file replacement. Snapshots cover field location/player/camera, all three runner records and roster membership, funds, the typed cyberdeck record, story/map/notebook flags, script story facts, RNG/tick counters, and the Lua run registry including its active offer and per-run progress. Loading rebuilds the saved map resources before restoring state. This is application game-state persistence, not cartridge SRAM emulation. Dynamic field actor states and an active Matrix session are not yet included.
-- D25 A `screens/cyberdeck.lua` draft exists but is not registered in the active profile; live Cyberdeck/Matrix behavior remains pending.
+- D25 The 4x4 Cyberdeck grid and mode input are registered in `field_init.lua`. The host publishes the typed Cyberdeck record and five program slots; opening from the field saves/restores the mode and reports Matrix offline, matching the ROM's clear FFF0B0 state outside jack-in. The active Matrix session and visual comparison remain pending.
 
-- D26 The program slot screen 0x19238 and the 0xE2DFE functions (CyberInfo, Storage, Map/Retreat) are now Lua (screens/deck_screens.lua, rules/deck.lua). The host services deck_program_slots/deck_function are gone. C++ keeps only RAM proxies (deck_record/deck_slots + deck_commit), painting, and the map/retreat VDP work.
-- D27 Texts the ROM prints with a plain rts (no slots/memory, not on a run, run complete, no datafiles, no retreat node) return {text=} to the grid instead of a MESSAGE wait, matching the ROM. Storage only acts on A and its erase prompt defaults to Yes; both are ROM quirks, kept.
+- D26 Program load/erase, deck info, and storage view/erase run through Lua and typed deck snapshots. Map/Retreat remain unreachable until the active Matrix session exists; their source map and return path are not wired.
+- D27 The implemented no-slots, no-memory, not-on-run, and no-datafiles plain-rts text returns to the grid without a wait. Run-complete and no-retreat-node are still pending. Storage acts on A only and its erase choice defaults to Yes.
 - D28 Free-memory compares use 16-bit signed words (cmp.w/bpl) as the ROM does. srx's prepare_matrix_program_slot uses int32 (differs only on wrap) [C ROM; srx difference noted, not fixed there].
 
 - D29 Save repair fix: the ROM repairs slot 0's copies whatever slot is loaded (doc 07 §7). rules/save.lua repairs the loaded slot. Set ROM_REPAIR_QUIRK = true for byte-exact SRAM behaviour.

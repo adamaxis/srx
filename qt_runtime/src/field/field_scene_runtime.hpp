@@ -1702,9 +1702,14 @@ private:
     // Temporary development override: expose the ROM's hidden sixth row so
     // the debug screen remains reachable without entering the title code.
     bool debug_menu_unlocked_ = true;
-    // FF018F bit 0 is session state. Fresh New Game starts clear; restored
-    // saves remain unknown until that global is included in the save adapter.
+    // FF018F bit 0 is the deck-present fact; application snapshots preserve
+    // it along with the typed deck record. A Matrix session is not persisted.
     std::optional<bool> cyberdeck_available_ = false;
+    // Five live slot-animation records. The deck record itself is persisted;
+    // active Matrix session and per-slot animation timers are not yet saved.
+    std::array<scripting::ScriptCyberdeckProgramSlot, 5>
+        field_matrix_program_slots_{};
+    std::int8_t field_matrix_deck_mode_ = 0;
     // FFFC28 and the known fields of FFFBBE. The save adapter does not yet
     // restore these source values, so loaded sessions retain unknown state.
     std::optional<std::uint16_t> field_matrix_passcode_flags_;

@@ -40,6 +40,14 @@ Route.register(E.MenuScreen.DEBUG_MENU,
 local save_load = require("menu.screens.save_load")
 Route.register(E.MenuScreen.SAVE_LOAD, save_load.SaveLoad)
 Route.register(E.MenuScreen.SAVE_SLOT, save_load.Slot)
+local cyberdeck = require("menu.screens.cyberdeck")
+Route.register(E.MenuScreen.CYBERDECK, cyberdeck.Cyberdeck)
+Route.register(E.MenuScreen.PULL_PLUG, cyberdeck.PullPlug)
+local deck_screens = require("menu.screens.deck_screens")
+Route.register(E.MenuScreen.DECK_PROGRAM, deck_screens.Program)
+Route.register(E.MenuScreen.DECK_CYBERINFO, deck_screens.CyberInfo)
+Route.register(E.MenuScreen.DECK_STORAGE, deck_screens.Storage)
+Route.register(E.MenuScreen.DECK_MAP, deck_screens.Map)
 
 local legacy = require("menu.screens.legacy")
 for screen = E.MenuScreen.ITEM_ACTION, E.MenuScreen.DECK_MAP do
@@ -67,12 +75,14 @@ for screen = E.MenuScreen.ITEM_ACTION, E.MenuScreen.DECK_MAP do
        screen ~= E.MenuScreen.DISMISS_RUNNER and
        screen ~= E.MenuScreen.DEBUG_MENU and
        screen ~= E.MenuScreen.SAVE_LOAD and
-       screen ~= E.MenuScreen.SAVE_SLOT then
-        local window = E.WindowPlane.SIDEBAR
-        if screen == E.MenuScreen.CYBERDECK then
-            window = E.WindowPlane.OFF
-        end
-        Route.register(screen, legacy.make(screen, window))
+       screen ~= E.MenuScreen.SAVE_SLOT and
+       screen ~= E.MenuScreen.CYBERDECK and
+       screen ~= E.MenuScreen.PULL_PLUG and
+       screen ~= E.MenuScreen.DECK_PROGRAM and
+       screen ~= E.MenuScreen.DECK_CYBERINFO and
+       screen ~= E.MenuScreen.DECK_STORAGE and
+       screen ~= E.MenuScreen.DECK_MAP then
+        Route.register(screen, legacy.make(screen, E.WindowPlane.SIDEBAR))
     end
 end
 

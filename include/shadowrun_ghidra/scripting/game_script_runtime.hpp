@@ -138,6 +138,39 @@ struct ScriptNotebookFacts {
     std::optional<std::uint16_t> shadowrunner_flags;
 };
 
+struct ScriptCyberdeckFile {
+    std::int8_t id = -1;
+    std::uint16_t size = 0U;
+};
+
+struct ScriptCyberdeckRecord {
+    std::uint8_t mpcp = 0U;
+    std::uint8_t hardening = 0U;
+    std::uint16_t memory = 0U;
+    std::uint16_t storage = 0U;
+    std::uint8_t load_io = 0U;
+    std::uint8_t response = 0U;
+    std::array<std::uint8_t, 4> persona{};
+    std::uint8_t persona_condition = 0U;
+    std::int8_t model = -1;
+    std::array<std::uint8_t, 12> ratings{};
+    std::array<std::int8_t, 5> active_programs{{-1, -1, -1, -1, -1}};
+    std::array<ScriptCyberdeckFile, 5> files{};
+};
+
+struct ScriptCyberdeckProgramSlot {
+    std::uint8_t status = 0U;
+    std::uint16_t timer = 0U;
+    std::uint8_t phase = 0U;
+};
+
+struct ScriptMatrixNodeFacts {
+    std::uint8_t ic_condition = 0U;
+    std::uint8_t ic_code = 0U;
+    std::uint8_t ic_rating = 0U;
+    std::uint8_t ic_rating2 = 0U;
+};
+
 struct ScriptMenuRouteGame {
     std::function<bool()> leader_incapacitated;
     std::function<void()> reselect_leader;
@@ -168,6 +201,21 @@ struct ScriptMenuRouteGame {
     std::function<std::optional<std::uint32_t>()> group_item_flags;
     std::function<std::optional<ScriptNotebookFacts>()> notebook_facts;
     std::function<std::optional<bool>()> cyberdeck_available;
+    std::function<int()> deck_enter;
+    std::function<void(int)> deck_leave;
+    std::function<void()> deck_tick;
+    std::function<void(int)> set_deck_mode;
+    std::function<bool()> matrix_online;
+    std::function<std::optional<ScriptMatrixNodeFacts>()> matrix_node;
+    std::function<int()> alert;
+    std::function<bool()> in_alert;
+    std::function<int()> map_seen;
+    std::function<ScriptCyberdeckRecord()> deck_record;
+    std::function<std::array<ScriptCyberdeckProgramSlot, 5>()> deck_slots;
+    std::function<void(const ScriptCyberdeckRecord&,
+                       const std::array<ScriptCyberdeckProgramSlot, 5>&)>
+        deck_commit;
+    std::function<void(int)> program_unloaded;
 };
 
 struct ScriptMenuRouteBindings {
@@ -179,6 +227,7 @@ struct ScriptMenuRouteSnapshot {
     bool open = false;
     std::uint16_t top_screen = 0U;
     std::string top_title;
+    std::string top_text;
     std::vector<std::string> top_option_labels;
     std::optional<int> page;
     std::optional<int> row;

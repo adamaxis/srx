@@ -5696,6 +5696,11 @@ void FieldSceneRuntime::configure_field_menu_route() {
             case srx::MenuScreen::SAVE_SLOT:
             case srx::MenuScreen::GROUP_ITEMS:
             case srx::MenuScreen::CYBERDECK:
+            case srx::MenuScreen::PULL_PLUG:
+            case srx::MenuScreen::DECK_PROGRAM:
+            case srx::MenuScreen::DECK_CYBERINFO:
+            case srx::MenuScreen::DECK_STORAGE:
+            case srx::MenuScreen::DECK_MAP:
             case srx::MenuScreen::DEBUG_MENU:
                 return true;
             default:
@@ -6041,6 +6046,13 @@ void FieldSceneRuntime::configure_field_menu_route() {
         std::array<std::uint8_t, 12> program_ratings{};
         program_ratings.fill(4U);
         deck.program_ratings = program_ratings;
+        deck.active_programs = std::array<std::int8_t, 5>{{-1, -1, -1, -1, -1}};
+        std::array<CyberdeckDataFile, 5> data_files{};
+        for (auto& file : data_files) {
+            file.id = -1;
+            file.size = 0U;
+        }
+        deck.data_files = data_files;
         field_matrix_deck_record_ = std::move(deck);
     };
     bindings.game.source_random_bound = [this](const int bound) {
@@ -6079,6 +6091,91 @@ void FieldSceneRuntime::configure_field_menu_route() {
     };
     bindings.game.cyberdeck_available = [this] {
         return cyberdeck_available_;
+    };
+    bindings.game.deck_enter = [this] {
+        const auto saved_mode = static_cast<int>(field_matrix_deck_mode_);
+        field_matrix_deck_mode_ = 0;
+        return saved_mode;
+    };
+    bindings.game.deck_leave = [this](const int saved_mode) {
+        field_matrix_deck_mode_ = static_cast<std::int8_t>(
+            std::clamp(saved_mode, -1, 1));
+    };
+    bindings.game.deck_tick = [] {
+        // The field Cyberdeck route has no active Matrix session. The Matrix
+        // frame service is wired when the source passcode entry path opens a
+        // session; the offline deck grid has no timer state to advance.
+    };
+    bindings.game.set_deck_mode = [this](const int mode) {
+        field_matrix_deck_mode_ = static_cast<std::int8_t>(
+            std::clamp(mode, -1, 1));
+    };
+    bindings.game.matrix_online = [] { return false; };
+    bindings.game.matrix_node = []()
+        -> std::optional<scripting::ScriptMatrixNodeFacts> {
+        return std::nullopt;
+    };
+    bindings.game.alert = [] { return -1; };
+    bindings.game.in_alert = [] { return false; };
+    bindings.game.map_seen = [] { return 0; };
+    bindings.game.deck_record = [this] {
+        const auto source = field_matrix_deck_record_.value_or(
+            CyberdeckRecord{});
+        scripting::ScriptCyberdeckRecord record;
+        record.mpcp = source.mpcp.value_or(0U);
+        record.hardening = source.hardening.value_or(0U);
+        record.memory = source.memory_megapulses.value_or(0U);
+        record.storage = source.storage_megapulses.value_or(0U);
+        record.load_io = source.load_io_speed.value_or(0U);
+        record.response = source.response.value_or(0U);
+        record.persona = source.persona.value_or(
+            std::array<std::uint8_t, 4>{});
+        record.persona_condition = source.persona_condition.value_or(0U);
+        record.model = source.model_index.value_or(-1);
+        record.ratings = source.program_ratings.value_or(
+            std::array<std::uint8_t, 12>{});
+        if (source.active_programs.has_value()) {
+            record.active_programs = *source.active_programs;
+        }
+        if (source.data_files.has_value()) {
+            for (std::size_t index = 0; index < record.files.size(); ++index) {
+                record.files[index] = {
+                    (*source.data_files)[index].id,
+                    (*source.data_files)[index].size};
+            }
+        }
+        return record;
+    };
+    bindings.game.deck_slots = [this] {
+        return field_matrix_program_slots_;
+    };
+    bindings.game.deck_commit = [this](
+        const scripting::ScriptCyberdeckRecord& source,
+        const std::array<scripting::ScriptCyberdeckProgramSlot, 5>&
+            program_slots) {
+        CyberdeckRecord record;
+        record.mpcp = source.mpcp;
+        record.hardening = source.hardening;
+        record.memory_megapulses = source.memory;
+        record.storage_megapulses = source.storage;
+        record.load_io_speed = source.load_io;
+        record.response = source.response;
+        record.persona = source.persona;
+        record.persona_condition = source.persona_condition;
+        record.model_index = source.model;
+        record.program_ratings = source.ratings;
+        record.active_programs = source.active_programs;
+        std::array<CyberdeckDataFile, 5> files{};
+        for (std::size_t index = 0; index < files.size(); ++index) {
+            files[index] = {source.files[index].id, source.files[index].size};
+        }
+        record.data_files = files;
+        field_matrix_deck_record_ = std::move(record);
+        field_matrix_program_slots_ = program_slots;
+    };
+    bindings.game.program_unloaded = [](const int) {
+        // Program effects are owned by the active Matrix session. The field
+        // Cyberdeck editor has no session effects to clear.
     };
     game_scripts_.set_menu_route_bindings(std::move(bindings));
 }
@@ -15498,6 +15595,108 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     static_cast<std::size_t>(pattern)]);
         }
         const auto routed_menu = game_scripts_.menu_route_snapshot();
+        const auto routed_screen = static_cast<srx::MenuScreen>(
+            menu_route_screen_);
+        const bool cyberdeck_route =
+            routed_screen == srx::MenuScreen::CYBERDECK ||
+            routed_screen == srx::MenuScreen::PULL_PLUG ||
+            routed_screen == srx::MenuScreen::DECK_PROGRAM ||
+            routed_screen == srx::MenuScreen::DECK_CYBERINFO ||
+            routed_screen == srx::MenuScreen::DECK_STORAGE ||
+            routed_screen == srx::MenuScreen::DECK_MAP;
+        if (cyberdeck_route) {
+            // Rebuild the full child panel before drawing its controls. This
+            // prevents the Pocket Secretary buttons from showing through.
+            const QColor background(3, 12, 22);
+            const QColor panel(7, 27, 39);
+            const QColor edge(28, 117, 137);
+            const QColor selector(196, 190, 39);
+            painter.fillRect(QRect(0, 0, 320, 224), background);
+            painter.fillRect(QRect(12, 12, 296, 200), panel);
+            painter.setPen(edge);
+            painter.drawRect(QRect(12, 12, 295, 199));
+            draw_command_overview_text(
+                painter, 24, 24,
+                routed_menu.top_title.empty()
+                    ? std::string_view("Cyberdeck")
+                    : std::string_view(routed_menu.top_title));
+            painter.fillRect(QRect(20, 40, 280, 1), edge);
+
+            const auto draw_text_lines = [this, &painter](
+                                             const int x, const int y,
+                                             const std::string& text,
+                                             const int max_lines) {
+                std::size_t start = 0U;
+                int line = 0;
+                while (start <= text.size() && line < max_lines) {
+                    const auto end = text.find('|', start);
+                    const auto value = text.substr(
+                        start, end == std::string::npos
+                                   ? std::string::npos
+                                   : end - start);
+                    draw_command_overview_text(
+                        painter, x, y + line * 16, value);
+                    ++line;
+                    if (end == std::string::npos) break;
+                    start = end + 1U;
+                }
+            };
+
+            if (!routed_menu.top_text.empty()) {
+                // Plain-rts ROM messages remain until another redraw. Clear
+                // the control area so the text never overlaps stale buttons.
+                painter.fillRect(QRect(20, 44, 280, 156), panel);
+                draw_text_lines(28, 56, routed_menu.top_text, 8);
+                return;
+            }
+
+            if (routed_screen == srx::MenuScreen::CYBERDECK) {
+                constexpr int cell_width = 68;
+                constexpr int cell_height = 34;
+                for (std::size_t index = 0;
+                     index < routed_menu.top_option_labels.size() &&
+                     index < 16U;
+                     ++index) {
+                    const auto column = static_cast<int>(index % 4U);
+                    const auto row = static_cast<int>(index / 4U);
+                    const auto x = 18 + column * 72;
+                    const auto y = 48 + row * 38;
+                    const bool selected =
+                        routed_menu.top_column.value_or(0) == column &&
+                        routed_menu.top_row.value_or(0) == row;
+                    painter.fillRect(QRect(x, y, cell_width, cell_height),
+                                     QColor(5, 18, 29));
+                    painter.setPen(selected ? selector : edge);
+                    painter.drawRect(QRect(x, y, cell_width - 1,
+                                           cell_height - 1));
+                    draw_command_overview_text(
+                        painter, x + 4, y + 13,
+                        routed_menu.top_option_labels[index]);
+                }
+                const char* const mode = field_matrix_deck_mode_ < 0
+                                             ? "Attack mode"
+                                         : field_matrix_deck_mode_ > 0
+                                             ? "Defense mode"
+                                             : "Balanced mode";
+                draw_command_overview_text(painter, 24, 202, mode);
+                return;
+            }
+
+            for (std::size_t row = 0;
+                 row < routed_menu.top_option_labels.size() && row < 8U;
+                 ++row) {
+                const auto y = 56 + static_cast<int>(row) * 18;
+                if (routed_menu.top_row == static_cast<int>(row)) {
+                    painter.fillRect(QRect(20, y - 3, 280, 17),
+                                     QColor(12, 43, 51));
+                    painter.fillRect(QRect(20, y - 3, 1, 17), selector);
+                }
+                draw_command_overview_text(
+                    painter, 28, y,
+                    routed_menu.top_option_labels[row]);
+            }
+            return;
+        }
         const bool save_load_screen =
             menu_route_screen_ == static_cast<std::uint16_t>(
                                       srx::MenuScreen::SAVE_LOAD) ||

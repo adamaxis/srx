@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
+#include "shadowrun_ghidra/scripting/cyberdeck_menu_bindings.hpp"
 #include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
 #include "world_content_tsv_loader.hpp"
 
@@ -16,7 +17,6 @@ extern "C" {
 #include <set>
 #include <string>
 #include <system_error>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -778,6 +778,19 @@ struct GameScriptRuntime::Impl {
         set_contact_flags,
         set_walk_fast,
         install_test_deck,
+        deck_enter,
+        deck_leave,
+        deck_tick,
+        set_deck_mode,
+        matrix_online,
+        matrix_node,
+        alert,
+        in_alert,
+        map_seen,
+        deck_record,
+        deck_slots,
+        deck_commit,
+        program_unloaded,
     };
 
     lua_State* state = nullptr;
@@ -1301,6 +1314,58 @@ struct GameScriptRuntime::Impl {
             }
             return 1;
         }
+        case MenuBinding::deck_enter:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::enter);
+        case MenuBinding::deck_leave:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::leave);
+        case MenuBinding::deck_tick:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::tick);
+        case MenuBinding::set_deck_mode:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::set_mode);
+        case MenuBinding::matrix_online:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::matrix_online);
+        case MenuBinding::matrix_node:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::matrix_node);
+        case MenuBinding::alert:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::alert);
+        case MenuBinding::in_alert:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::in_alert);
+        case MenuBinding::map_seen:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::map_seen);
+        case MenuBinding::deck_record:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::record);
+        case MenuBinding::deck_slots:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::slots);
+        case MenuBinding::deck_commit:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::commit);
+        case MenuBinding::program_unloaded:
+            return dispatch_cyberdeck_menu_binding(
+                lua, self->menu_route_bindings.game,
+                CyberdeckMenuBinding::program_unloaded);
         case MenuBinding::set_nuyen:
             if (self->menu_route_bindings.game.set_nuyen) {
                 self->menu_route_bindings.game.set_nuyen(
@@ -1417,6 +1482,31 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::set_walk_fast);
         add_menu_binding(state, table_index, "install_test_deck",
                          MenuBinding::install_test_deck);
+        add_menu_binding(state, table_index, "deck_enter",
+                         MenuBinding::deck_enter);
+        add_menu_binding(state, table_index, "deck_leave",
+                         MenuBinding::deck_leave);
+        add_menu_binding(state, table_index, "deck_tick",
+                         MenuBinding::deck_tick);
+        add_menu_binding(state, table_index, "set_deck_mode",
+                         MenuBinding::set_deck_mode);
+        add_menu_binding(state, table_index, "matrix_online",
+                         MenuBinding::matrix_online);
+        add_menu_binding(state, table_index, "matrix_node",
+                         MenuBinding::matrix_node);
+        add_menu_binding(state, table_index, "alert", MenuBinding::alert);
+        add_menu_binding(state, table_index, "in_alert",
+                         MenuBinding::in_alert);
+        add_menu_binding(state, table_index, "map_seen",
+                         MenuBinding::map_seen);
+        add_menu_binding(state, table_index, "deck_record",
+                         MenuBinding::deck_record);
+        add_menu_binding(state, table_index, "deck_slots",
+                         MenuBinding::deck_slots);
+        add_menu_binding(state, table_index, "deck_commit",
+                         MenuBinding::deck_commit);
+        add_menu_binding(state, table_index, "program_unloaded",
+                         MenuBinding::program_unloaded);
     }
 
     bool refresh_menu_route_snapshot() {
@@ -1510,13 +1600,16 @@ struct GameScriptRuntime::Impl {
                 lua_getfield(state, screen_state_index, "title");
                 (void)read_string(state, -1, menu_route_state.top_title);
                 lua_pop(state, 1);
+                lua_getfield(state, screen_state_index, "text");
+                (void)read_string(state, -1, menu_route_state.top_text);
+                lua_pop(state, 1);
                 lua_getfield(state, screen_state_index, "labels");
                 if (lua_istable(state, -1)) {
                     const auto labels_index = lua_absindex(state, -1);
                     const auto label_count = std::min<std::size_t>(
                         static_cast<std::size_t>(
                             lua_rawlen(state, labels_index)),
-                        8U);
+                        16U);
                     for (std::size_t index = 0; index < label_count;
                          ++index) {
                         lua_rawgeti(state, labels_index,
