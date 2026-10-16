@@ -193,6 +193,47 @@ public:
                           static_cast<double>(frame_ ? frame_() : 0U));
             return encode(result);
         }
+        if (command == QStringLiteral("press")) {
+            const auto key = key_code(
+                request.value(QStringLiteral("key")).toString());
+            const auto hold = request.value(QStringLiteral("frames"))
+                                  .toDouble(1.0);
+            const auto release = request.value(QStringLiteral("release"))
+                                     .toDouble(1.0);
+            if (!key.has_value() || !valid_frame_count(hold) ||
+                !valid_frame_count(release) || hold + release > 60000.0) {
+                return encode_error(QStringLiteral(
+                    "press requires a supported key and positive frame counts totaling at most 60000"));
+            }
+            if (!stepper_.paused() || stepper_.pending_steps() != 0U) {
+                return encode_error(QStringLiteral(
+                    "press requires a paused debugger with no pending steps"));
+            }
+            const auto current = frame_ ? frame_() : 0U;
+            const auto hold_frames = static_cast<std::uint32_t>(hold);
+            if (current > std::numeric_limits<std::uint64_t>::max() -
+                              hold_frames) {
+                return encode_error(QStringLiteral("press target frame overflow"));
+            }
+            if (queue_key_) {
+                queue_key_(*key, true);
+            }
+            scheduled_releases_.push_back(
+                {*key, current + hold_frames});
+            stepper_.queue_step(static_cast<std::uint32_t>(hold + release));
+            stop_reason_ = QStringLiteral("press");
+            stop_breakpoint_ = 0;
+            stop_detail_.clear();
+            QJsonObject result;
+            result.insert(QStringLiteral("ok"), true);
+            result.insert(QStringLiteral("queued"), true);
+            result.insert(QStringLiteral("frame"), static_cast<double>(current));
+            result.insert(QStringLiteral("release_at"),
+                          static_cast<double>(current + hold_frames));
+            result.insert(QStringLiteral("pending_steps"),
+                          static_cast<double>(stepper_.pending_steps()));
+            return encode(result);
+        }
         if (command == QStringLiteral("inspect")) {
             QJsonObject flattened;
             if (state_) {
@@ -216,7 +257,7 @@ public:
             QJsonObject result;
             result.insert(QStringLiteral("ok"), true);
             result.insert(QStringLiteral("commands"),
-                          QStringLiteral("status pause resume step key inspect break delete list help"));
+                          QStringLiteral("status pause resume step key press inspect break delete list help"));
             return encode(result);
         }
         return encode_error(QStringLiteral("unknown command"));
@@ -226,6 +267,19 @@ public:
     // true tells the frame pump to stop its current batch at the breakpoint.
     bool check_source_frame_breakpoints() {
         const auto current = frame_ ? frame_() : 0U;
+        scheduled_releases_.erase(
+            std::remove_if(
+                scheduled_releases_.begin(), scheduled_releases_.end(),
+                [this, current](const ScheduledRelease& release) {
+                    if (release.frame > current) {
+                        return false;
+                    }
+                    if (queue_key_) {
+                        queue_key_(release.key, false);
+                    }
+                    return true;
+                }),
+            scheduled_releases_.end());
         const auto found = std::find_if(
             breakpoints_.begin(), breakpoints_.end(),
             [current](const FrameBreakpoint& breakpoint) {
@@ -257,6 +311,16 @@ private:
         int id = 0;
         std::uint64_t frame = 0;
     };
+
+    struct ScheduledRelease {
+        int key = 0;
+        std::uint64_t frame = 0;
+    };
+
+    static bool valid_frame_count(const double value) noexcept {
+        return std::isfinite(value) && value >= 1.0 && value <= 60000.0 &&
+               std::floor(value) == value;
+    }
 
     static void flatten(const QString& prefix, const QJsonValue& value,
                         QJsonObject& output) {
@@ -363,6 +427,7 @@ private:
     QTcpServer server_;
     std::map<QTcpSocket*, QByteArray> buffers_;
     std::vector<FrameBreakpoint> breakpoints_;
+    std::vector<ScheduledRelease> scheduled_releases_;
     int next_breakpoint_id_ = 0;
     QString stop_reason_ = QStringLiteral("none");
     int stop_breakpoint_ = 0;

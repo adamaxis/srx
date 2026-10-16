@@ -86,6 +86,22 @@ int main(int argc, char** argv) {
         return 1;
     }
     result = response(server.handle_line(
+        R"({"cmd":"press","key":"b","frames":2,"release":1})"));
+    if (!result.value(QStringLiteral("ok")).toBool() ||
+        !result.value(QStringLiteral("queued")).toBool() ||
+        result.value(QStringLiteral("release_at")).toInt() != 90 ||
+        result.value(QStringLiteral("pending_steps")).toInt() != 3 ||
+        queued_key != Qt::Key_X || !queued_pressed) {
+        std::cerr << "press command did not queue a source-frame-held button\n";
+        return 1;
+    }
+    if (response(server.handle_line(
+            R"({"cmd":"press","key":"c","frames":0})"))
+            .value(QStringLiteral("ok")).toBool()) {
+        std::cerr << "press command accepted a zero-frame hold\n";
+        return 1;
+    }
+    result = response(server.handle_line(
         R"({"cmd":"break","kind":"frame","frame":90})"));
     const auto breakpoint_id = result.value(QStringLiteral("id")).toInt();
     if (!result.value(QStringLiteral("ok")).toBool() || breakpoint_id <= 0 ||
@@ -103,6 +119,10 @@ int main(int argc, char** argv) {
     current_frame = 90U;
     if (!server.check_source_frame_breakpoints() || !stepper.paused()) {
         std::cerr << "frame breakpoint did not pause on its source frame\n";
+        return 1;
+    }
+    if (queued_key != Qt::Key_X || queued_pressed) {
+        std::cerr << "press command did not queue release at the requested frame\n";
         return 1;
     }
     result = response(server.handle_line(R"({"cmd":"status"})"));
