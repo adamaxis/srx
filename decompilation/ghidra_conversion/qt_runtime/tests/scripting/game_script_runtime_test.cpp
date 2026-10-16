@@ -1103,13 +1103,22 @@ int main() {
     };
     for (const auto event_code : maglock_events) {
         collision_input = collision(event_code, 20U);
+        collision_input.maglocks_disabled = false;
         if (!expect(resolves_as(
                         collision_input,
                         FieldMapEventAction::begin_maglock_interaction),
-                    "Lua must route each scene-20 lock code to the maglock handler")) {
+                    "Lua must route each enabled scene-20 lock code to the maglock handler")) {
             std::cerr << scripts.failure() << '\n';
             return 12;
         }
+    }
+    collision_input = collision(FieldCollisionEventCode::event_2, 20U);
+    if (!expect(resolves_as(
+                    collision_input,
+                    FieldMapEventAction::begin_maglock_interaction),
+                "Lua must preserve the maglock prompt when restored FFE17F is unknown")) {
+        std::cerr << scripts.failure() << '\n';
+        return 20;
     }
     collision_input = collision(FieldCollisionEventCode::event_4, 20U);
     collision_input.terrain_event_suppressed = true;
@@ -1119,6 +1128,20 @@ int main() {
                 "Lua must honor terrain suppression before maglock dispatch")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
+    }
+    for (const auto event_code : maglock_events) {
+        collision_input = collision(event_code, 20U);
+        collision_input.maglocks_disabled = true;
+        collision_decision =
+            scripts.resolve_field_collision_event(collision_input);
+        if (!expect(collision_decision.has_value() &&
+                        collision_decision->action ==
+                            FieldMapEventAction::project_world_interaction &&
+                        collision_decision->mode_event_code_published,
+                    "FFE17F must bypass each event-2-through-5 maglock prompt")) {
+            std::cerr << scripts.failure() << '\n';
+            return 19;
+        }
     }
     collision_input = collision(FieldCollisionEventCode::event_24);
     if (!expect(resolves_as(

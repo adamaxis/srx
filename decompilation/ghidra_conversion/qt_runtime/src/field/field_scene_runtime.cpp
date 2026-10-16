@@ -9011,6 +9011,7 @@ bool FieldSceneRuntime::bootstrap(
     field_shop_route_pending_ = false;
     field_funds_.reset();
     field_walk_fast_enabled_ = false;
+    field_matrix_field_state_ = scripting::ScriptMatrixFieldState{};
     command_overview_magic_state_ = CommandOverviewMagicState::inactive;
     command_overview_magic_physical_defense_ = MagicDefenseStripView{};
     command_overview_magic_mana_defense_ = MagicDefenseStripView{};
@@ -9058,6 +9059,11 @@ bool FieldSceneRuntime::bootstrap(
     cyberdeck_available_ = restored_field_state == nullptr
                                ? std::optional<bool>{false}
                                : std::nullopt;
+    // The ROM starts a fresh run with FFE17F clear. A restored host save does
+    // not yet carry this field fact, so leave it unknown in that path.
+    if (restored_field_state == nullptr) {
+        field_matrix_field_state_.maglocks_off = false;
+    }
     field_matrix_passcode_flags_.reset();
     field_matrix_deck_record_.reset();
     group_item_flags_ = restored_field_state == nullptr
@@ -9990,15 +9996,19 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
         };
     transition_callbacks.dispatch_field_map_event =
         [this](const FieldMapCollisionEventInput& input) {
+            auto collision_input = input;
+            collision_input.maglocks_disabled =
+                field_matrix_field_state_.maglocks_off;
             const auto decision =
-                game_scripts_.resolve_field_collision_event(input);
+                game_scripts_.resolve_field_collision_event(collision_input);
             if (!decision) {
                 failure_ = game_scripts_.failure();
                 source_boundary("field.map_event.lua_policy_failed");
                 return std::optional<FieldMapEventPolicyDecision>{};
             }
             const auto dispatch =
-                field_map_event_system_.record_collision(input, *decision);
+                field_map_event_system_.record_collision(collision_input,
+                                                        *decision);
             source_boundary("field.map_event.collision_dispatched");
             return std::optional<FieldMapEventPolicyDecision>{
                 dispatch.decision};

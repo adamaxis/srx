@@ -55,7 +55,9 @@ function Events.resolve_collision(context)
        type(context.interaction_gate_active) ~= "boolean" or
        type(context.activity_sequence_active) ~= "boolean" or
        type(context.terrain_event_suppressed) ~= "boolean" or
-       type(context.world_effect_control_bit) ~= "boolean" then
+       type(context.world_effect_control_bit) ~= "boolean" or
+       (context.maglocks_disabled ~= nil and
+        type(context.maglocks_disabled) ~= "boolean") then
         return nil
     end
 
@@ -88,8 +90,12 @@ function Events.resolve_collision(context)
     local is_maglock_selection =
         code == event_code[2] or code == event_code[3] or
         code == event_code[4] or code == event_code[5]
+    -- ROM 0xB7B8 selects the shared 0x20E48 lock prompt for events 2..5
+    -- only while FFE17F is clear. When maglocks are disabled, fall through
+    -- to the ordinary world-interaction path below.
     if (context.scene_20 or context.interaction_mode) and
-       is_maglock_selection and not context.terrain_event_suppressed then
+       is_maglock_selection and not context.terrain_event_suppressed and
+       context.maglocks_disabled ~= true then
         return decision(context, action.begin_maglock_interaction)
     end
 

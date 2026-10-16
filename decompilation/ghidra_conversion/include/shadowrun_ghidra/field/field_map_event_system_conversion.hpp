@@ -57,6 +57,9 @@ struct FieldMapCollisionEventInput {
     bool activity_sequence_active = false;
     bool terrain_event_suppressed = false;
     bool world_effect_control_bit = false;
+    // FFE17F suppresses the ROM 0x20E48 lock prompt for event codes 2..5.
+    // Unknown restored state stays absent until the save contract preserves it.
+    std::optional<bool> maglocks_disabled;
 };
 
 struct FieldMapEventPolicyDecision {

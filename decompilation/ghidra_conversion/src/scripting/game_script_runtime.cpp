@@ -3922,7 +3922,7 @@ GameScriptRuntime::resolve_field_collision_event(
         return fail("field_events.resolve_collision is missing");
     }
 
-    lua_createtable(state, 0, 11);
+    lua_createtable(state, 0, 12);
     const auto input_index = lua_absindex(state, -1);
     const auto source_event_code =
         field_collision_event_code(input.raw_collision_code);
@@ -3957,6 +3957,12 @@ GameScriptRuntime::resolve_field_collision_event(
     lua_setfield(state, input_index, "terrain_event_suppressed");
     lua_pushboolean(state, input.world_effect_control_bit);
     lua_setfield(state, input_index, "world_effect_control_bit");
+    if (input.maglocks_disabled.has_value()) {
+        lua_pushboolean(state, *input.maglocks_disabled);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, input_index, "maglocks_disabled");
 
     ScopedInstructionBudget instruction_budget(state);
     if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
