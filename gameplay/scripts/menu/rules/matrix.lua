@@ -5,16 +5,16 @@
 --   from the Pocket Secretary see 0 (Pull the plug and Show Map/Retreat are inert) [C].
 local M = {}
 M.NONE, M.PASSIVE, M.ACTIVE = -1, 0, 1
--- ROM 0x1989A calls 0x18776 (five palette steps, two VBlanks each) and then
--- 0x26A00 (14 + 6 sweep/settle ticks and 34 timed restore ticks) before it
--- prints the overload text. The host presents those 64 frames as a fade to
--- black plus a clean display handoff; the original transition artwork remains
--- a separate asset/presentation task.
-M.OVERLOAD_FADE_FRAMES = 10
-M.OVERLOAD_DISPLAY_TRANSITION_FRAMES = 54
-M.OVERLOAD_TRANSITION_FRAMES =
-    M.OVERLOAD_FADE_FRAMES + M.OVERLOAD_DISPLAY_TRANSITION_FRAMES
-M.OVERLOAD_FADE_STEPS = 5
+-- The Matrix exit used by overload (0x1989A) and Crash System (0x54B34)
+-- calls 0x18776 (five palette steps, two VBlanks each), then 0x26A00
+-- (14 + 6 sweep/settle ticks and 34 timed restore ticks). The host presents
+-- those 64 frames as a fade to black plus a clean display handoff; the source
+-- transition artwork remains a separate asset/presentation task.
+M.EXIT_FADE_FRAMES = 10
+M.EXIT_DISPLAY_TRANSITION_FRAMES = 54
+M.EXIT_TRANSITION_FRAMES =
+    M.EXIT_FADE_FRAMES + M.EXIT_DISPLAY_TRANSITION_FRAMES
+M.EXIT_FADE_STEPS = 5
 M.NO_IC, M.UNSEEN = 0x45, -1
 -- 0x1833C..0x18418: the visible deck grid is four columns by four rows.
 -- Direction priority is up, down, left, right; movement wraps silently.

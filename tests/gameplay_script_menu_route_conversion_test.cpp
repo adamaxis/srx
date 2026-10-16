@@ -2155,8 +2155,58 @@ int main() {
 #endif
         }
     }
+    route = runtime.menu_route_snapshot();
+    check(route.open && route.top_matrix_countdown == 0 &&
+              route.top_matrix_transition_fade_step == 0,
+          "Crash System starts its logout transition after the final zero", failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    save_transfer_frame("shutdown-logout-fade-start.bmp", route);
+#endif
+    for (int fade_step = 1; fade_step <= 5; ++fade_step) {
+        runtime.advance_menu_route(0U);
+        check(runtime.menu_route_snapshot().top_matrix_transition_fade_step ==
+                  fade_step - 1,
+              "Crash System fade advances only after two VBlanks", failures);
+        runtime.advance_menu_route(0U);
+        route = runtime.menu_route_snapshot();
+        check(route.top_matrix_transition_fade_step == fade_step &&
+                  route.top_matrix_countdown == 0,
+              "Crash System completes each two-VBlank fade step", failures);
+    }
+    check(route.open && route.top_matrix_transition_fade_step == 5,
+          "Crash System holds the final countdown under full fade", failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    save_transfer_frame("shutdown-logout-fade-black.bmp", route);
+    {
+        QImage image(320, 224, QImage::Format_ARGB32);
+        image.fill(QColor(255, 0, 255));
+        QPainter painter(&image);
+        const bool painted = paint_matrix_node_action_panel(
+            painter, node_font, route);
+        painter.end();
+        bool full_black = painted;
+        for (int y = 0; y < image.height() && full_black; ++y) {
+            for (int x = 0; x < image.width(); ++x) {
+                if (image.pixelColor(x, y) != QColor(0, 0, 0)) {
+                    full_black = false;
+                    break;
+                }
+            }
+        }
+        check(full_black,
+              "Crash System fade covers the countdown and old panel", failures);
+    }
+#endif
+    for (int frame = 0; frame < 53; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    check(runtime.menu_route_snapshot().open &&
+              runtime.menu_route_snapshot().top_matrix_transition_fade_step == 5,
+          "Crash System keeps the logout handoff for 54 total frames", failures);
+    runtime.advance_menu_route(0U);
     check(!runtime.menu_route_snapshot().open && closed_count == 4,
-          "Crash System logs out after the final 60-frame zero", failures);
+          "Crash System exits after the 10-frame fade and 54-frame handoff",
+          failures);
     check(runtime.open_menu_route(kCommand),
           "reopen command after Matrix Crash System logout", failures);
     runtime.advance_menu_route(0x4000U); // Pocket Secretary.

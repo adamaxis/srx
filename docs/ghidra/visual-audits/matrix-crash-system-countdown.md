@@ -52,9 +52,12 @@ raw records remain a boundary.
 
 The live debug-menu route enters system 0, follows its first link to CPU, runs
 Crash System through the shared action gate, and advances the countdown once
-per VBlank. It returns from the menu after the final 60-frame zero. The panel
+per VBlank. After the final 60-frame zero, it runs the five-step fade at two
+VBlanks per step, then holds the black transition for the remaining 54 frames
+before logging out. The host uses a full-black frame during that final display
+handoff because the original transition artwork is not ported. The panel
 rebuild clears the previous actions and selector before drawing the shutdown
-screen.
+screen, and the fade overlay also covers the special countdown renderer.
 
 Debug and Release `shadowrun_ghidra_gameplay_script_menu_route` CTests check
 that each value remains visible for 60 frames and save:
@@ -63,10 +66,14 @@ that each value remains visible for 60 frames and save:
 - `matrix-node-action-route-qa/shutdown-countdown-2.bmp`
 - `matrix-node-action-route-qa/shutdown-countdown-1.bmp`
 - `matrix-node-action-route-qa/shutdown-countdown-0.bmp`
+- `matrix-node-action-route-qa/shutdown-logout-fade-start.bmp`
+- `matrix-node-action-route-qa/shutdown-logout-fade-black.bmp`
 
-All four Release frames were reviewed. The message rows and panel remain fixed;
-only the digit changes. No old button or selector pixels remain. These are
-internal Qt route artifacts, not independent Genesis captures.
+The four countdown frames and both transition frames were reviewed. The
+message rows remain fixed while the digit changes; the final fade covers the
+countdown and leaves the frame fully black. No old button or selector pixels
+remain. These are internal Qt route artifacts, not independent Genesis
+captures.
 
 ## Remaining integration
 
@@ -76,5 +83,6 @@ completion bit 0 set) and verifies the completion writes. The production
 runtime still has no active-run provider. The field runtime stores the
 committed flags, but security/maglock writes are not yet consumed by guard or
 door behavior or included in save data; only alarm-off actor `+0x9E` updates
-are currently connected. Native fade and source Matrix logout presentation
-remain open. The Crash System hill remains `partial`.
+are currently connected. Countdown, fade, and logout timing are connected;
+the host’s black hold is a presentation substitute and the source Matrix
+logout artwork remains open. The Crash System hill remains `partial`.

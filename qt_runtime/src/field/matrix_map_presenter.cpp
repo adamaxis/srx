@@ -171,6 +171,14 @@ bool paint_matrix_node_action_panel(
             current_x += 8;
         }
     };
+    const auto paint_transition_overlay = [&painter, &state]() {
+        if (!state.top_matrix_transition_fade_step.has_value()) return;
+        const auto fade_step = std::clamp(
+            *state.top_matrix_transition_fade_step, 0, 5);
+        const auto alpha = static_cast<int>(fade_step) * 51;
+        painter.fillRect(QRect(0, 0, kScreenWidth, kScreenHeight),
+                         QColor(0, 0, 0, alpha));
+    };
 
     if (state.top_matrix_countdown.has_value()) {
         // ROM 0x54B84 prints the 0x166A44 stream at VRAM $C518. Its 0x80
@@ -189,6 +197,7 @@ bool paint_matrix_node_action_panel(
             start = end + 1U;
         }
         draw_text(136, 112, std::to_string(*state.top_matrix_countdown));
+        paint_transition_overlay();
         painter.restore();
         return true;
     }
@@ -220,13 +229,7 @@ bool paint_matrix_node_action_panel(
         }
         draw_text(28, y - 8, state.top_option_labels[row]);
     }
-    if (state.top_matrix_transition_fade_step.has_value()) {
-        const auto fade_step = std::clamp(
-            *state.top_matrix_transition_fade_step, 0, 5);
-        const auto alpha = static_cast<int>(fade_step) * 51;
-        painter.fillRect(QRect(0, 0, kScreenWidth, kScreenHeight),
-                         QColor(0, 0, 0, alpha));
-    }
+    paint_transition_overlay();
     painter.restore();
     return true;
 }

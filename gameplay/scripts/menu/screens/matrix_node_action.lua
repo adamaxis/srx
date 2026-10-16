@@ -96,7 +96,7 @@ local function show_random_alert(st, ctx)
         st.matrix_message = nil
         st.message_delay_frames = nil
         st.matrix_transition = {
-            frames_remaining = MatrixRules.OVERLOAD_TRANSITION_FRAMES,
+            frames_remaining = MatrixRules.EXIT_TRANSITION_FRAMES,
             elapsed_frames = 0,
             fade_step = 0,
         }
@@ -275,22 +275,28 @@ local function advance_transfer(st, events, ctx)
     return true
 end
 
-local function advance_overload_transition(st, ctx)
+local function advance_matrix_transition(st, ctx)
     local transition = st.matrix_transition
     transition.frames_remaining = transition.frames_remaining - 1
     transition.elapsed_frames = transition.elapsed_frames + 1
     transition.fade_step = math.min(
-        MatrixRules.OVERLOAD_FADE_STEPS,
+        MatrixRules.EXIT_FADE_STEPS,
         transition.elapsed_frames // 2)
 
     if transition.frames_remaining <= 0 then
         st.matrix_transition = nil
+        if transition.exit_when_complete then
+            MatrixSession.finish(st.matrix_state)
+            return { transition = T.EXIT,
+                     result = { matrix_crash = true } }
+        end
         st.matrix_message_kind = "system_overload"
         st.matrix_message = MatrixText.SYSTEM_OVERLOAD
         st.message_delay_frames = 30
         refresh(st)
     end
     ctx.redraw(R.FULL)
+    return nil
 end
 
 function M.input(st, events, ctx)
@@ -300,8 +306,7 @@ function M.input(st, events, ctx)
         return { transition = T.POP, result = {} }
     end
     if st.matrix_transition then
-        advance_overload_transition(st, ctx)
-        return
+        return advance_matrix_transition(st, ctx)
     end
     if st.transfer then
         advance_transfer(st, events, ctx)
@@ -313,7 +318,18 @@ function M.input(st, events, ctx)
         st.shutdown.index = st.shutdown.index + 1
         local next_value = st.shutdown.values[st.shutdown.index]
         if next_value == nil then
-            return { transition = T.EXIT, result = { matrix_crash = true } }
+            -- ROM 0x54B34 calls 0x18776, then 0x26A00, after the 60-frame
+            -- zero. Share the 10-frame fade + 54-frame display handoff used
+            -- by overload; the source handoff artwork remains unported.
+            st.shutdown = nil
+            st.matrix_transition = {
+                frames_remaining = MatrixRules.EXIT_TRANSITION_FRAMES,
+                elapsed_frames = 0,
+                fade_step = 0,
+                exit_when_complete = true,
+            }
+            ctx.redraw(R.FULL)
+            return
         end
         st.shutdown.frames = st.shutdown.step
         st.matrix_countdown = next_value
