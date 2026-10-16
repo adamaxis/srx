@@ -6,9 +6,11 @@
 #include <QTcpSocket>
 
 #include <chrono>
+#include <filesystem>
 #include <iostream>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 using namespace shadowrun::ghidra_conversion::qt_runtime;
@@ -28,6 +30,18 @@ bool wait_for_response(QCoreApplication& app, QTcpSocket& socket) {
         socket.waitForReadyRead(5);
     }
     return socket.bytesAvailable() != 0;
+}
+
+bool write_recording(
+    const std::filesystem::path& path,
+    const std::vector<std::pair<std::uint16_t, std::uint64_t>>& frames) {
+    shadowrun::ghidra_conversion::debug::KeyboardInputLog log(
+        {shadowrun::ghidra_conversion::debug::InputLogConfig::Mode::record,
+         path.string()});
+    for (const auto& [seed, fingerprint] : frames) {
+        log.record_completed_frame(seed, fingerprint);
+    }
+    return log.finish();
 }
 
 } // namespace
@@ -240,6 +254,63 @@ int main(int argc, char** argv) {
         std::cerr << "deleted frame breakpoint still stopped execution\n";
         return 1;
     }
+
+    const auto temp = std::filesystem::temp_directory_path();
+    const auto first_log = temp / "shadowrun-debug-divergence-first.srxkey";
+    const auto changed_log = temp / "shadowrun-debug-divergence-changed.srxkey";
+    const auto changed_seed_log =
+        temp / "shadowrun-debug-divergence-seed.srxkey";
+    const std::vector<std::pair<std::uint16_t, std::uint64_t>> first_frames{
+        {0x100U, 0x1111U}, {0x200U, 0x2222U}, {0x300U, 0x3333U}};
+    const std::vector<std::pair<std::uint16_t, std::uint64_t>> changed_frames{
+        {0x100U, 0x1111U}, {0x200U, 0x9999U}, {0x300U, 0x3333U}};
+    const std::vector<std::pair<std::uint16_t, std::uint64_t>> changed_seed_frames{
+        {0x100U, 0x1111U}, {0x201U, 0x2222U}, {0x300U, 0x3333U}};
+    if (!write_recording(first_log, first_frames) ||
+        !write_recording(changed_log, changed_frames) ||
+        !write_recording(changed_seed_log, changed_seed_frames)) {
+        std::cerr << "could not prepare the debugger divergence recordings\n";
+        return 1;
+    }
+    const auto divergence_request = [](const std::filesystem::path& a,
+                                       const std::filesystem::path& b) {
+        QJsonObject request;
+        request.insert(QStringLiteral("cmd"), QStringLiteral("diverge"));
+        request.insert(QStringLiteral("a"), QString::fromStdString(a.string()));
+        request.insert(QStringLiteral("b"), QString::fromStdString(b.string()));
+        return QJsonDocument(request).toJson(QJsonDocument::Compact);
+    };
+    result = response(server.handle_line(
+        divergence_request(first_log, changed_log)));
+    if (!result.value(QStringLiteral("ok")).toBool() ||
+        !result.value(QStringLiteral("found")).toBool() ||
+        result.value(QStringLiteral("frame")).toInt() != 2 ||
+        result.value(QStringLiteral("reason")).toString() !=
+            QStringLiteral("inspection_fingerprint")) {
+        std::cerr << "diverge did not locate the first differing inspector fingerprint\n";
+        return 1;
+    }
+    result = response(server.handle_line(
+        divergence_request(first_log, changed_seed_log)));
+    if (!result.value(QStringLiteral("found")).toBool() ||
+        result.value(QStringLiteral("frame")).toInt() != 2 ||
+        result.value(QStringLiteral("reason")).toString() !=
+            QStringLiteral("rom_seed")) {
+        std::cerr << "diverge did not locate the first differing ROM seed\n";
+        return 1;
+    }
+    result = response(server.handle_line(
+        divergence_request(first_log, first_log)));
+    if (!result.value(QStringLiteral("ok")).toBool() ||
+        result.value(QStringLiteral("found")).toBool() ||
+        result.value(QStringLiteral("frames_compared")).toInt() != 3) {
+        std::cerr << "diverge reported a mismatch for identical recordings\n";
+        return 1;
+    }
+    std::error_code ignored;
+    std::filesystem::remove(first_log, ignored);
+    std::filesystem::remove(changed_log, ignored);
+    std::filesystem::remove(changed_seed_log, ignored);
     result = response(server.handle_line(
         R"({"cmd":"inspect","prefix":"actor.test"})"));
     const auto inspected = result.value(QStringLiteral("fields")).toObject();

@@ -375,11 +375,75 @@ public:
                                                                           QLatin1Char('0')));
             return encode(result);
         }
+        if (command == QStringLiteral("diverge")) {
+            const auto first_path =
+                request.value(QStringLiteral("a")).toString().toStdString();
+            const auto second_path =
+                request.value(QStringLiteral("b")).toString().toStdString();
+            if (first_path.empty() || second_path.empty()) {
+                return encode_error(
+                    QStringLiteral("diverge requires recording paths a and b"));
+            }
+            try {
+                const debug::KeyboardInputLog first(
+                    {debug::InputLogConfig::Mode::replay, first_path});
+                const debug::KeyboardInputLog second(
+                    {debug::InputLogConfig::Mode::replay, second_path});
+                const bool compare_seed = first.has_seed_history() &&
+                                          second.has_seed_history();
+                const bool compare_fingerprint =
+                    first.has_fingerprint_history() &&
+                    second.has_fingerprint_history();
+                if (!compare_seed && !compare_fingerprint) {
+                    return encode_error(QStringLiteral(
+                        "recordings share no comparable seed or inspection-fingerprint history"));
+                }
+                const auto common_frames = std::min(
+                    first.recorded_frame_count(), second.recorded_frame_count());
+                for (std::uint64_t frame = 0; frame < common_frames; ++frame) {
+                    if (compare_seed &&
+                        first.expected_seed_after_frame(frame) !=
+                            second.expected_seed_after_frame(frame)) {
+                        return encode_divergence(frame + 1U,
+                                                 QStringLiteral("rom_seed"),
+                                                 compare_seed,
+                                                 compare_fingerprint);
+                    }
+                    if (compare_fingerprint &&
+                        first.expected_fingerprint_after_frame(frame) !=
+                            second.expected_fingerprint_after_frame(frame)) {
+                        return encode_divergence(
+                            frame + 1U,
+                            QStringLiteral("inspection_fingerprint"),
+                            compare_seed, compare_fingerprint);
+                    }
+                }
+                if (first.recorded_frame_count() !=
+                    second.recorded_frame_count()) {
+                    return encode_divergence(
+                        common_frames + 1U, QStringLiteral("frame_count"),
+                        compare_seed, compare_fingerprint);
+                }
+                QJsonObject result;
+                result.insert(QStringLiteral("ok"), true);
+                result.insert(QStringLiteral("found"), false);
+                result.insert(QStringLiteral("frames_compared"),
+                              static_cast<double>(common_frames));
+                result.insert(QStringLiteral("compared_rom_seeds"),
+                              compare_seed);
+                result.insert(QStringLiteral("compared_fingerprints"),
+                              compare_fingerprint);
+                return encode(result);
+            } catch (const std::exception& error) {
+                return encode_error(QStringLiteral("could not compare recordings: %1")
+                                        .arg(QString::fromUtf8(error.what())));
+            }
+        }
         if (command == QStringLiteral("help")) {
             QJsonObject result;
             result.insert(QStringLiteral("ok"), true);
             result.insert(QStringLiteral("commands"),
-                          QStringLiteral("status pause resume step key press inspect hash break(frame|watch|event) delete list help"));
+                          QStringLiteral("status pause resume step key press inspect hash diverge break(frame|watch|event) delete list help"));
             return encode(result);
         }
         return encode_error(QStringLiteral("unknown command"));
@@ -471,6 +535,21 @@ private:
         object.insert(QStringLiteral("ok"), false);
         object.insert(QStringLiteral("error"), message);
         return encode(object);
+    }
+
+    static QByteArray encode_divergence(const std::uint64_t frame,
+                                        const QString& reason,
+                                        const bool compared_seed,
+                                        const bool compared_fingerprint) {
+        QJsonObject result;
+        result.insert(QStringLiteral("ok"), true);
+        result.insert(QStringLiteral("found"), true);
+        result.insert(QStringLiteral("frame"), static_cast<double>(frame));
+        result.insert(QStringLiteral("reason"), reason);
+        result.insert(QStringLiteral("compared_rom_seeds"), compared_seed);
+        result.insert(QStringLiteral("compared_fingerprints"),
+                      compared_fingerprint);
+        return encode(result);
     }
 
     struct FrameBreakpoint {
