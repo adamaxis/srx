@@ -2,6 +2,7 @@
 -- their known text endings are kept here; the Qt layer only presents state.
 local E = require("enums")
 local D = require("menu.rules.deck")
+local MatrixSession = require("menu.matrix_session")
 local P, R, T, MM = E.Pad, E.MenuRegion, E.MenuTransition, E.MenuMessage
 local ABC = P.A | P.B | P.C
 
@@ -184,11 +185,14 @@ function Storage.input(st, events, ctx)
 end
 
 local Map = { window = E.WindowPlane.OFF }
-function Map.new() return { row = 0 } end
+function Map.new(args)
+    return { row = 0, matrix_state = args.matrix_state }
+end
 function Map.enter(st, ctx)
     -- The source only dispatches this screen from the active Matrix session.
     -- Keep a malformed/direct route from calling Matrix-only host services.
-    if not ctx.game.matrix_online() then
+    if not MatrixSession.is_online(st.matrix_state) and
+       not ctx.game.matrix_online() then
         return { transition = T.POP, result = {} }
     end
     st.title = "System Map"
@@ -199,7 +203,6 @@ function Map.input(st, events, ctx)
     local g = ctx.game
     if st.phase == "map" then
         if events & P.START ~= 0 then
-            g.deck_restore_screen()
             return { transition = T.POP, result = { reenter = true } }
         end
         return
@@ -222,8 +225,17 @@ function Map.input(st, events, ctx)
     end
     if events & ABC ~= 0 then
         if st.row == 0 then
-            g.show_map()
+            st.title = "System Map"
+            st.text = MatrixSession.map_text(st.matrix_state)
+            if type(st.text) ~= "string" or st.text == "" then
+                st.text = "Matrix map unavailable (" ..
+                          type(st.text) .. "): " ..
+                          tostring(st.matrix_state and
+                                   st.matrix_state.system_id or "no session")
+            end
+            st.labels = {}
             st.phase = "map"
+            ctx.redraw(R.FULL)
             return
         end
         if g.in_combat() then
@@ -232,9 +244,16 @@ function Map.input(st, events, ctx)
                               text = "Retreat not possible during combat!",
                               mask = P.EDGES } }
         end
-        if g.previous_node() < 0 then
+        local previous = MatrixSession.is_online(st.matrix_state)
+                           and MatrixSession.previous_node(st.matrix_state)
+                           or g.previous_node()
+        if previous < 0 then
             return { transition = T.POP,
                      result = { text = "Retreat is not possible from this node!" } }
+        end
+        if MatrixSession.is_online(st.matrix_state) then
+            MatrixSession.retreat(st.matrix_state)
+            return { transition = T.POP, result = { exit_deck = true } }
         end
         g.show_retreat()
         st.phase = "retreat"

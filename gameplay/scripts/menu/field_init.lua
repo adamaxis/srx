@@ -35,8 +35,9 @@ Route.register(E.MenuScreen.NOTEBOOK_CONTACTS, secretary.Contacts)
 Route.register(E.MenuScreen.NOTEBOOK_SHADOWRUNNERS, secretary.Shadowrunners)
 Route.register(E.MenuScreen.GROUP_ITEMS, secretary.GroupItems)
 Route.register(E.MenuScreen.DISMISS_RUNNER, secretary.Dismiss)
-Route.register(E.MenuScreen.DEBUG_MENU,
-               require("menu.screens.debug_menu"))
+local debug_menu = require("menu.screens.debug_menu")
+Route.register(E.MenuScreen.DEBUG_MENU, debug_menu.Debug)
+Route.register(E.MenuScreen.DEBUG_PICK_SYSTEM, debug_menu.Pick)
 local save_load = require("menu.screens.save_load")
 Route.register(E.MenuScreen.SAVE_LOAD, save_load.SaveLoad)
 Route.register(E.MenuScreen.SAVE_SLOT, save_load.Slot)
@@ -74,6 +75,7 @@ for screen = E.MenuScreen.ITEM_ACTION, E.MenuScreen.DECK_MAP do
        screen ~= E.MenuScreen.GROUP_ITEMS and
        screen ~= E.MenuScreen.DISMISS_RUNNER and
        screen ~= E.MenuScreen.DEBUG_MENU and
+       screen ~= E.MenuScreen.DEBUG_PICK_SYSTEM and
        screen ~= E.MenuScreen.SAVE_LOAD and
        screen ~= E.MenuScreen.SAVE_SLOT and
        screen ~= E.MenuScreen.CYBERDECK and

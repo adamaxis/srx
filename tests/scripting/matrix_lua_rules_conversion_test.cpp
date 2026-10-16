@@ -52,6 +52,8 @@ local D = require("menu.rules.deck")
 local Move = require("menu.rules.matrix_move")
 local Actions = require("menu.rules.node_actions")
 local Programs = require("menu.rules.matrix_programs")
+local Systems = require("data.matrix_systems")
+local Session = require("menu.matrix_session")
 
 local checks = 0
 local function eq(actual, expected, label)
@@ -79,6 +81,26 @@ eq(moved, false, "no edge does not redraw")
 eq(E.MatrixDeckMode.ATTACK, 0xFF, "A selects attack pool")
 eq(E.MatrixDeckMode.BALANCED, 0, "B selects balanced pool")
 eq(E.MatrixDeckMode.DEFENSE, 1, "C selects defense pool")
+
+-- The offline importer writes the complete ROM graph as named Lua records.
+-- Every debug-selectable system must initialize from that catalog without
+-- keeping ROM addresses in the active runtime.
+local node_count = 0
+for system_id = 0, 24 do
+    local system = Systems[system_id]
+    assert(system and system.id == system_id, "missing Matrix system " .. system_id)
+    eq(#system.map, 140, "Matrix map cell count " .. system_id)
+    assert(system.nodes[0], "Matrix system lacks its access node " .. system_id)
+    for _ in pairs(system.nodes) do node_count = node_count + 1 end
+end
+eq(node_count, 406, "ROM Matrix node catalog count")
+local started, first_session = Session.begin(0)
+eq(started, true, "Matrix session starts from system zero")
+eq(first_session.current_node, 0, "Matrix session enters access node")
+eq(first_session.nodes[0].links[0], 4, "system zero access link")
+eq(first_session.map[139] ~= nil, true, "Matrix session copies cell 139")
+eq(first_session.map[140], nil, "Matrix session does not create cell 140")
+Session.finish(first_session)
 
 -- Exercise the actual deck-grid screen against a narrow fake host. This verifies
 -- the menu calls its heartbeat, moves the visible cursor, and submits the

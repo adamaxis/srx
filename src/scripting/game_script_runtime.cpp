@@ -1663,9 +1663,8 @@ struct GameScriptRuntime::Impl {
                 lua_getfield(state, screen_state_index, "title");
                 (void)read_string(state, -1, menu_route_state.top_title);
                 lua_pop(state, 1);
-                lua_getfield(state, screen_state_index, "text");
-                (void)read_string(state, -1, menu_route_state.top_text);
-                lua_pop(state, 1);
+                (void)read_field_text(state, screen_state_index, "text",
+                                      menu_route_state.top_text);
                 lua_getfield(state, screen_state_index, "labels");
                 if (lua_istable(state, -1)) {
                     const auto labels_index = lua_absindex(state, -1);
@@ -1711,6 +1710,20 @@ struct GameScriptRuntime::Impl {
                     read_optional(screen_state_index, "target");
                 menu_route_state.top_grid_effect_frames =
                     read_optional(screen_state_index, "grid_effect_frames");
+                lua_getfield(state, screen_state_index, "matrix_state");
+                if (lua_istable(state, -1)) {
+                    const auto matrix_state_index = lua_absindex(state, -1);
+                    menu_route_state.top_matrix_state_present = true;
+                    menu_route_state.top_matrix_system_id =
+                        read_optional(matrix_state_index, "system_id");
+                    menu_route_state.top_matrix_node =
+                        read_optional(matrix_state_index, "current_node");
+                    menu_route_state.top_matrix_previous_node =
+                        read_optional(matrix_state_index, "previous_node");
+                    menu_route_state.top_matrix_alert =
+                        read_optional(matrix_state_index, "alert");
+                }
+                lua_pop(state, 1);
                 lua_getfield(state, screen_state_index, "magic_view");
                 if (lua_istable(state, -1)) {
                     const auto view_index = lua_absindex(state, -1);

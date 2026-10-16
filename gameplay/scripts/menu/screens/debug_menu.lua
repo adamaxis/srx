@@ -3,6 +3,7 @@
 -- development. Six source effects are wired to typed host services below.
 local E = require("enums")
 local Grid = require("menu.rules.random_grid")
+local MatrixSession = require("menu.matrix_session")
 local P, D, R, T, St = E.Pad, E.DebugOption, E.MenuRegion,
                          E.MenuTransition, E.RunnerStatus
 
@@ -13,7 +14,7 @@ local M = {
         "Nuyen",
         "Spells",
         "Test Deck",
-        "Pick System (pending)",
+        "Pick System",
         "Heal All",
         "+10 Karma",
         "Contacts",
@@ -120,7 +121,11 @@ function M.input(st, events, ctx)
             effect(ctx)
             return { transition = T.POP }
         end
-        -- Spells and Pick System still need their source-backed host services.
+        if st.row == D.PICK_SYSTEM then
+            ctx.game.consume_debug_unlock() -- ROM 0x59A64 clears FFF101.
+            return { transition = T.REPLACE,
+                     screen = E.MenuScreen.DEBUG_PICK_SYSTEM }
+        end
         return
     end
     if events & P.C ~= 0 then
@@ -131,4 +136,59 @@ function M.input(st, events, ctx)
     if events & P.START ~= 0 then return { transition = T.POP } end
 end
 
-return M
+-- ROM 0x59A9A: Up and Down change the system number within 0..24; Start
+-- returns to the debug menu. A plays the jack-in sound and waits 20 VBlanks.
+-- The current host route seeds that system's Lua data and opens the online
+-- Cyberdeck model; the ROM's 0x181F8/0x1822C world loop remains unported.
+local Pick = { window = E.WindowPlane.SIDEBAR, MAX_SYSTEM = 0x18 }
+
+local function show_system(st)
+    st.text = string.format("%02d", st.system)
+end
+
+function Pick.new()
+    return { system = 0, title = "Pick System", labels = {}, text = "00" }
+end
+
+function Pick.enter(st, ctx)
+    show_system(st)
+    ctx.redraw(R.SUBMENU)
+end
+
+function Pick.input(st, events, ctx)
+    if st.wait_frames then
+        st.wait_frames = st.wait_frames - 1
+        if st.wait_frames <= 0 then
+            st.wait_frames = nil
+            local started, session = MatrixSession.begin(st.system)
+            if not started then return end
+            return { transition = T.REPLACE,
+                     screen = E.MenuScreen.CYBERDECK,
+                     args = { system_id = st.system,
+                              matrix_session = true,
+                              matrix_state = session } }
+        end
+        return
+    end
+
+    if events & P.UP ~= 0 then
+        if st.system > 0 then st.system = st.system - 1 end
+        show_system(st)
+        ctx.redraw(R.SUBMENU)
+        return
+    end
+    if events & P.DOWN ~= 0 then
+        if st.system < Pick.MAX_SYSTEM then st.system = st.system + 1 end
+        show_system(st)
+        ctx.redraw(R.SUBMENU)
+        return
+    end
+    if events & P.A ~= 0 then
+        ctx.sound(E.MenuSound.JACK_IN)
+        st.wait_frames = 20
+        return
+    end
+    if events & P.START ~= 0 then return { transition = T.POP } end
+end
+
+return { Debug = M, Pick = Pick }

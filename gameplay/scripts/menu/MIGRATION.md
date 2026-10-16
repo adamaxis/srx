@@ -15,17 +15,25 @@ button edge. The message advances shared `E660` bezel animation, with QA
 capturing and checking each of 30 full-screen wait frames. Application save
 snapshots preserve the deck-present flag and typed deck record. The
 Cyberdeck grid and program, info, and storage child routes are registered in
-the active profile. The field entry is offline, as the ROM sets FFF0B0 clear
-outside a Matrix session; live map/retreat, IC, and jack-in flows remain open.
-The active Qt panel clears the prior menu before drawing, but its text labels
-and cell art are interim; source-icon extraction and independent visual
-comparison are still pending.
-The Debug menu is now registered in the live route and is
-kept unlocked by a temporary Qt development override. Nuyen, Heal All, +10
-Karma, Contacts, Walk Fast, and the ROM Test Deck setup are connected; Spells
-and Pick System remain pending. Test Deck writes typed deck state and enables
-the deck-present branch. Save/Load is registered in the live route and writes
-versioned JSON game-state snapshots through the host persistence service.
+the active profile. Ordinary Pocket Secretary entry remains offline, as the
+ROM sets FFF0B0 clear outside a Matrix session. Debug Pick System can start an
+online Lua session and reach the Cyberdeck route, but the Matrix world
+renderer, actor/IC heartbeat, and node-action handoff are not connected. The
+active Qt panel clears the previous menu before drawing; its Cyberdeck text
+and cell art are interim and have not passed an independent visual comparison.
+The Debug menu is registered in the live route and remains unlocked by the Qt
+development override. Nuyen, Spells, Test Deck, Heal All, +10 Karma, Contacts,
+Walk Fast, and Pick System have live route behavior. Pick System clamps to the
+25 ROM system records, plays the jack-in sound, waits 20 frames, starts the
+selected Lua Matrix session, and enters the online Cyberdeck route. Start
+returns to a rebuilt Command page, and the debug row remains accessible. The
+ROM system maps and node records are generated offline by
+`tools/matrix_systems_extract.py`; runtime Lua consumes named records. This is
+still a partial Matrix port: the active 3D world, actor/IC service heartbeat,
+node-action loop, and matching Matrix presentation are open. Test Deck writes
+typed deck state and enables the deck-present branch. Save/Load is registered
+in the live route and writes versioned JSON game-state snapshots through the
+host persistence service.
 
 The shared `0xC376` signed-byte row-wrap rule is in
 `rules/cursor.lua` and serves the active Pocket Secretary family selectors,
@@ -78,10 +86,10 @@ cursor-cell erase/draw operation.
 Sound sites for all of these: out/menu_sound_sites.txt (0x25 = move/toggle, 0x24 = confirm; Start paths silent) [C].
 
 - D20 Automatic-use items (0x13, 0x14, 0x16, 0x18..0x2B: fetish, passkey, smart goggles, foci, talisman, spell lock, totems) only print "This item is automatically used." (0xD202F) and wait (0x12168 -> 0x121C0). The menu applies no effect, so nothing is missing from the port [C]. The passive effects are read elsewhere by code; that's outside the menu scope.
-- D21 Pocket Secretary row 5 = the debug menu 0x599DA (docs/12). A temporary Qt development override exposes the normally title-code-gated, unlabeled sixth row and remains enabled for field testing. `screens/debug_menu.lua` owns its eight-row cursor, labels, and choices. Nuyen, Spells, Test Deck, Heal All, +10 Karma, Contacts, and Walk Fast now use typed host services; Spells writes the ROM's 14-entry spell row for caster archetypes and the Magic screen reads that row. Test Deck follows ROM 0x59B7E and seeds only the fields written by that routine. Pick System remains pending. Selecting a wired action consumes the title unlock as ROM 0x59A64 does; the development override keeps the row available. The title result remains available as `StartupIntegrationState::title_debug_menu_unlocked`.
+- D21 Pocket Secretary row 5 = the debug menu 0x599DA (docs/12). A temporary Qt development override exposes the normally title-code-gated, unlabeled sixth row and remains enabled for field testing. `screens/debug_menu.lua` owns its eight-row cursor, labels, and choices. Nuyen, Spells, Test Deck, Heal All, +10 Karma, Contacts, Walk Fast, and the Pick System route now use typed host services or Lua state. Spells writes the ROM's 14-entry spell row for caster archetypes and the Magic screen reads that row. Test Deck follows ROM 0x59B7E and seeds only the fields written by that routine. Selecting a wired action consumes the title unlock as ROM 0x59A64 does; the development override keeps the row available. The title result remains available as `StartupIntegrationState::title_debug_menu_unlocked`.
 
 - D22 Magic rules and screens are registered in the active field route. Lua owns class/resource routing, spell selection, success/effect/defense values, force/posture input, equipment publication, and cursor cadence; C++ supplies all 14 typed ROM spell records and paints the resulting view. Field spell casting/target effects remain a separate gameplay route. Barrier's spell record, menu icon, equipped HUD art, and Lua text are now extracted from the ROM.
-- D23 Pick System return path still needs live route wiring and Qt verification; the Matrix route is not active in `field_init.lua`.
+- D23 **partial:** Pick System runs through the live route, retains the chosen system, waits 20 frames, and opens the online Cyberdeck route. The route test covers system bounds, ROM entry sound/delay, selected-system map, clean return to Command page 6, and the development unlock. The ROM's Matrix 3D world/actor loop, node-action handoff, and field-resume/death path are not yet connected.
 
 ## Timing contract [C unless marked]
 - One `route.frame` per VBlank sample.
@@ -89,17 +97,17 @@ Sound sites for all of these: out/menu_sound_sites.txt (0x25 = move/toggle, 0x24
 - A full build = `blank(OFF)`, then FULL, then `blank(ON)`. That gives at least one black frame; the exact count is [H] (it depends on the build length, not measured).
 
 ## Port queue (next)
-Done in the active route: command/posture, item actions, Clips, Attributes/Skills, Pocket Secretary root, Group Items, Dismiss Runner, Notebook no-run flow, Tips & Clues, Mr. Johnsons, Magic/Force/Posture, Save/Load, and the connected Debug menu actions. The field Cyberdeck grid and offline program/info/storage paths are now registered. The Matrix session entry and live Matrix path, plus Debug Pick System, remain open.
-Open source/behavior boundaries: the drain-damage tail at 0x1046E, FFF0B1 inside the Matrix, FFF101 save-state import, and child-loop migration.
-In-game wiring: root `qt_runtime/src/field/field_scene_runtime.cpp` (`configure_field_menu_route()` supplies `ScriptMenuRouteBindings`); `host/menu_game_fsr.sketch.cpp` remains an unbuilt design sketch.
+Done in the active route: command/posture, item actions, Clips, Attributes/Skills, Pocket Secretary root, Group Items, Dismiss Runner, Notebook no-run flow, Tips & Clues, Mr. Johnsons, Magic/Force/Posture, Save/Load, and the connected Debug menu actions. The offline Cyberdeck grid and program/info/storage views are registered. Debug Pick System now clamps to the 25 imported ROM systems, preserves the selected system in Lua session state, waits the source 20 frames, and enters the online deck route. Its Matrix map is still a text diagnostic view, not the game presentation.
+Open source/behavior boundaries: the ROM's `0x181F8`/`0x1822C` online entry and Matrix actor/IC loop, action dispatch and return-to-field path; Cyberdeck passcode entry; the drain-damage tail at `0x1046E`; `FFF0B1` inside the Matrix; `FFF101` save-state import; and child-loop migration.
+In-game wiring: root `qt_runtime/src/field/field_scene_runtime.cpp` (`configure_field_menu_route()` supplies `ScriptMenuRouteBindings`). Matrix host services are not wired yet; `host/menu_game_fsr.sketch.cpp` remains an unbuilt design sketch.
 
-Order: finish Cyberdeck's source passcode entry and active Matrix session, then Debug Pick System. The Notebook now reads accepted-run availability from the Lua run registry (ROM 0xF2E2/0x1E72C); its positive-current-run detail page and spell cast/target resolution remain open. Contacts and Shadowrunners list/detail screens are already registered and implemented.
+Next: trace and connect the ROM Matrix session loop, then implement its world presentation and per-actor service cadence through the Lua state model. After that, connect the ordinary passcode entry and source return paths. The Notebook reads accepted-run availability from the Lua run registry (ROM `0xF2E2`/`0x1E72C`); its positive-current-run detail page and spell cast/target resolution remain open. Contacts and Shadowrunners list/detail screens are already registered and implemented.
 Each one replaces its `legacy(...)` line in menu/init.lua.
 
 - D24 Save/Load is registered in the active profile. Lua owns Save/Load and slot selection; the host stores two versioned JSON snapshots in the app data directory using atomic file replacement. Snapshots cover field location/player/camera, all three runner records and roster membership, funds, typed cyberdeck and spell-table state, story/map/notebook flags, script story facts, RNG/tick counters, and the Lua run registry including its active offer and per-run progress. Loading rebuilds the saved map resources before restoring state. This is application game-state persistence, not cartridge SRAM emulation. Dynamic field actor states and an active Matrix session are not yet included.
-- D25 The 4x4 Cyberdeck grid and mode input are registered in `field_init.lua`. The host publishes the typed Cyberdeck record and five program slots; opening from the field saves/restores the mode and reports Matrix offline, matching the ROM's clear FFF0B0 state outside jack-in. The active Matrix session and visual comparison remain pending.
+- D25 **partial:** the 4x4 Cyberdeck grid and mode input are registered in `field_init.lua`; debug jack-in passes the selected Lua Matrix state into it, while ordinary Pocket Secretary entry remains offline. The host publishes the typed Cyberdeck record and five program slots. The active Matrix viewport, ROM asset presentation, and independent visual comparison remain pending.
 
-- D26 Program load/erase, deck info, and storage view/erase run through Lua and typed deck snapshots. Map/Retreat remain unreachable until the active Matrix session exists; their source map and return path are not wired.
+- D26 **partial:** Program load/erase, deck info, and storage view/erase run through Lua and typed deck snapshots. Map/Retreat now run from the debug Matrix session using the selected system's Lua map and node records. Map presentation is still an interim text view; full source-tile layout and the Matrix world return path remain open.
 - D27 The implemented no-slots, no-memory, not-on-run, and no-datafiles plain-rts text returns to the grid without a wait. Run-complete and no-retreat-node are still pending. Storage acts on A only and its erase choice defaults to Yes.
 - D28 Free-memory compares use 16-bit signed words (cmp.w/bpl) as the ROM does. srx's prepare_matrix_program_slot uses int32 (differs only on wrap) [C ROM; srx difference noted, not fixed there].
 

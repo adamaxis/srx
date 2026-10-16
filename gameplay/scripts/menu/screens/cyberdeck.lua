@@ -10,6 +10,9 @@
 local E = require("enums")
 local D = require("menu.rules.deck")
 local MX = require("menu.rules.matrix")
+local MatrixSession = require("menu.matrix_session")
+local LegacyCyberdeck = require("menu.screens.legacy").make(
+    E.MenuScreen.CYBERDECK, E.WindowPlane.OFF)
 local P, R, T, MM, S = E.Pad, E.MenuRegion, E.MenuTransition, E.MenuMessage, E.MenuSound
 local M = { window = E.WindowPlane.OFF, PLUG_ROW = 3, PLUG_COL = 3, BLACK_IC = 8, BODY_TN = 5, STUN_LOSS = 3 }
 M.GRID_LABELS = {
@@ -27,12 +30,53 @@ local MODE = {
 M.FUNCTION = { [0] = E.MenuScreen.DECK_CYBERINFO, E.MenuScreen.DECK_STORAGE, E.MenuScreen.DECK_MAP }   -- 0x18AA6, 0x18D1A, 0x19018
 function M.cursor_xy(col, row) return col * 0x20 + 0x8C, row * 0x28 + 0x94 end
 
-function M.new()
-    return { col = 0, row = 0, title = "Cyberdeck", labels = M.GRID_LABELS }
+function M.new(args)
+    args = args or {}
+    if args.legacy_adapter then
+        return {
+            legacy_adapter = true,
+            legacy_state = LegacyCyberdeck.new(args),
+        }
+    end
+    return {
+        col = 0,
+        row = 0,
+        title = "Cyberdeck",
+        labels = M.GRID_LABELS,
+        matrix_session = args.matrix_session == true,
+        system_id = args.system_id,
+        matrix_state = args.matrix_state,
+    }
 end
-function M.enter(st, ctx) st.saved = ctx.game.deck_enter(); ctx.redraw(R.FULL) end
-local function leave(st, ctx, res) ctx.game.deck_leave(st.saved); return { transition = T.POP, result = res } end
+function M.enter(st, ctx)
+    if st.legacy_adapter then
+        LegacyCyberdeck.enter(st.legacy_state, ctx)
+        return
+    end
+    st.saved = ctx.game.deck_enter()
+    ctx.redraw(R.FULL)
+end
+local function online(st, ctx)
+    return st.matrix_session and st.matrix_state ~= nil or
+           MatrixSession.is_online(st.matrix_state) or
+           ctx.game.matrix_online()
+end
+local function leave(st, ctx, res)
+    ctx.game.deck_leave(st.saved)
+    if st.matrix_session then
+        MatrixSession.finish(st.matrix_state)
+        -- ROM 0xE47A returns through field resume and rebuilds the Command
+        -- page after a normal Matrix exit. Drop hidden Pocket Secretary and
+        -- debug children as part of that rebuild.
+        return { transition = T.REBUILD,
+                 screen = E.MenuScreen.COMMAND }
+    end
+    return { transition = T.POP, result = res }
+end
 function M.input(st, events, ctx)
+    if st.legacy_adapter then
+        return LegacyCyberdeck.input(st.legacy_state, events, ctx)
+    end
     local g = ctx.game
     g.deck_tick()                                                                        -- 0x196F2
     local col, row, moved = MX.step_deck_cursor(
@@ -47,16 +91,31 @@ function M.input(st, events, ctx)
     st.text = nil
     if st.row ~= M.PLUG_ROW then return { transition = T.PUSH, screen = E.MenuScreen.DECK_PROGRAM, args = { col = st.col, row = st.row } } end
     if st.col == M.PLUG_COL then
-        if not g.matrix_online() then return end
-        local black = MX.ic_type(g.matrix_node(), g.alert(), g.in_alert(), g.map_seen()) == M.BLACK_IC and g.in_combat()   -- 0x19B40 == 8 && FFDF84
-        return { transition = T.PUSH, screen = E.MenuScreen.PULL_PLUG, args = { black_ic = black } }
+        if not online(st, ctx) then return end
+        local node = MatrixSession.current_node(st.matrix_state) or g.matrix_node()
+        local alert = MatrixSession.is_online(st.matrix_state) and
+                      MatrixSession.alert(st.matrix_state) or
+                      g.alert()
+        local black = MX.ic_type(node, alert,
+                                 MatrixSession.is_online(st.matrix_state) or
+                                     g.in_alert(),
+                                 MatrixSession.is_online(st.matrix_state) and 1 or
+                                     g.map_seen()) == M.BLACK_IC and
+                      g.in_combat() -- 0x19B40 == 8 && FFDF84
+        return { transition = T.PUSH, screen = E.MenuScreen.PULL_PLUG,
+                 args = { black_ic = black,
+                          matrix_state = st.matrix_state } }
     end
-    if st.col == 2 and not g.matrix_online() then return end
-    return { transition = T.PUSH, screen = M.FUNCTION[st.col] }                         -- 0xE2DFE[col]
+    if st.col == 2 and not online(st, ctx) then return end
+    return { transition = T.PUSH, screen = M.FUNCTION[st.col],
+             args = { matrix_state = st.matrix_state } }                              -- 0xE2DFE[col]
 end
 function M.child_returned(st, child, res, ctx)
     if res.logged_out then return leave(st, ctx, { exit_secretary = true }) end          -- FFF0DC = FF
-    if res.exit_deck then return leave(st, ctx) end                                      -- FFF0AD -> clr, d7 = 0, exit
+    if res.exit_deck then
+        return leave(st, ctx, st.matrix_session and
+            { exit_secretary = true } or {})                                            -- FFF0AD -> clr, d7 = 0, exit
+    end
     st.text = type(res.text) == "string" and res.text or nil                           -- plain-rts text remains until redraw
     st.list = res.list
     ctx.redraw(R.FULL)                                                                   -- 0x1882E grid redraw
@@ -71,6 +130,7 @@ local Plug = { window = E.WindowPlane.OFF }
 function Plug.new(a)
     return {
         black_ic = a.black_ic,
+        matrix_state = a.matrix_state,
         yes = false,
         row = 1,
         title = a.black_ic
@@ -80,15 +140,26 @@ function Plug.new(a)
     }
 end
 function Plug.enter(st, ctx) ctx.redraw(R.MESSAGE) end
-function M.dumpshock(ctx)
-    local g = ctx.game; local r = g.party()[g.active_slot()]
-    local tn = MX.ic_rating(g.matrix_node(), g.alert())                 -- 0x19BF6
+function M.dumpshock(ctx, matrix_state)
+    local g = ctx.game
+    local party = g.party()
+    local r = party[g.active_slot()]
+    local node = MatrixSession.current_node(matrix_state) or g.matrix_node()
+    local alert = MatrixSession.is_online(matrix_state) and
+                  MatrixSession.alert(matrix_state) or
+                  g.alert()
+    local tn = MX.ic_rating(node, alert)                                -- 0x19BF6
     if g.roll_successes(r.attributes[5], tn) == 0 then
-        g.apply_physical(-(tn >> 1)); ctx.sound(S.DAMAGE)
+        r.physical = math.max(0, r.physical - (tn >> 1))
+        g.commit_party(party)
+        ctx.sound(S.DAMAGE)
         return r.physical == 0
     end
     if g.roll_successes(r.attributes[0], M.BODY_TN) == 0 then
-        r.stun = r.stun - M.STUN_LOSS; if r.stun < 1 then r.stun = 1 end; ctx.sound(S.DAMAGE)
+        r.stun = r.stun - M.STUN_LOSS
+        if r.stun < 1 then r.stun = 1 end
+        g.commit_party(party)
+        ctx.sound(S.DAMAGE)
     end
     return true
 end
@@ -101,8 +172,11 @@ function Plug.input(st, events, ctx)
     end  -- [H toggle on 2 rows]
     if events & (P.A | P.B | P.C) == 0 then return end
     if not st.yes then return { transition = T.POP, result = {} } end
-    if st.black_ic and not M.dumpshock(ctx) then return { transition = T.POP, result = {} } end
-    ctx.game.matrix_logout()
+    if st.black_ic and not M.dumpshock(ctx, st.matrix_state) then
+        return { transition = T.POP, result = {} }
+    end
+    MatrixSession.finish(st.matrix_state)
+    ctx.sound(MX.LOGOUT_SOUND)
     return { transition = T.POP, result = { logged_out = true } }
 end
 

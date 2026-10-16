@@ -31,6 +31,11 @@ function M.input(st, events, ctx)
                          args = { message = MM.NO_CYBERDECK,
                                   grid_effect = true } }
             end
+            if available == nil then
+                return { transition = T.PUSH,
+                         screen = E.MenuScreen.CYBERDECK,
+                         args = { legacy_adapter = true } }
+            end
             return { transition = T.PUSH, screen = E.MenuScreen.CYBERDECK }
         end
         if st.row == O.DISMISS_RUNNER then return { transition = T.PUSH, screen = E.MenuScreen.DISMISS_RUNNER } end

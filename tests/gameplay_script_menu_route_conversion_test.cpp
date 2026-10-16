@@ -23,6 +23,10 @@ constexpr std::uint16_t kAttributes = 5U;
 constexpr std::uint16_t kCyberware = 6U;
 constexpr std::uint16_t kPocketSecretary = 9U;
 constexpr std::uint16_t kCyberdeck = 18U;
+constexpr std::uint16_t kDebugMenu = 27U;
+constexpr std::uint16_t kDebugPickSystem = 28U;
+constexpr std::uint16_t kDeckMap = 34U;
+constexpr std::uint16_t kCommandPagePocketSecretary = 6U;
 constexpr std::uint16_t kNotebook = 10U;
 constexpr std::uint16_t kNotebookTips = 21U;
 constexpr std::uint16_t kMrJohnsons = 20U;
@@ -72,6 +76,11 @@ int main() {
     int posture = 2;
     int reselect_count = 0;
     int closed_count = 0;
+    int debug_unlock_consumptions = 0;
+    int deck_enter_count = 0;
+    int deck_leave_count = 0;
+    int deck_tick_count = 0;
+    int deck_mode = 0;
     bool pocket_extra_row = false;
     std::vector<int> random_bounds;
     bool random_high_branch = false;
@@ -188,6 +197,20 @@ int main() {
     std::optional<bool> cyberdeck_available = false;
     bindings.game.cyberdeck_available = [&cyberdeck_available] {
         return cyberdeck_available;
+    };
+    bindings.game.consume_debug_unlock = [&debug_unlock_consumptions] {
+        ++debug_unlock_consumptions;
+    };
+    bindings.game.deck_enter = [&deck_enter_count] {
+        ++deck_enter_count;
+        return 0;
+    };
+    bindings.game.deck_leave = [&deck_leave_count](int) {
+        ++deck_leave_count;
+    };
+    bindings.game.deck_tick = [&deck_tick_count] { ++deck_tick_count; };
+    bindings.game.set_deck_mode = [&deck_mode](const int value) {
+        deck_mode = value;
     };
     runtime.set_menu_route_bindings(std::move(bindings));
 
@@ -804,6 +827,103 @@ int main() {
     runtime.close_menu_route();
     check(!runtime.menu_route_snapshot().open && closed_count == 3,
           "host scene transition closes the complete route", failures);
+
+    // Exercise the debug-only Matrix entry as a live route, not as an
+    // isolated Lua function. The picker clamps 0..24, waits 20 frames, then
+    // enters the online Cyberdeck route. The selected system stays attached
+    // through Map, and Start rebuilds Command. The 3D Matrix loop is still a
+    // separate unfinished integration hill.
+    pocket_extra_row = true;
+    check(runtime.open_menu_route(kCommand),
+          "open command for Matrix debug route", failures);
+    runtime.advance_menu_route(0x4000U); // Pocket Secretary.
+    for (int row = 0; row < 5; ++row) {
+        runtime.advance_menu_route(0x0200U);
+    }
+    runtime.advance_menu_route(0x4000U); // Debug menu.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kDebugMenu,
+          "development debug menu remains reachable", failures);
+    for (int row = 0; row < 3; ++row) {
+        runtime.advance_menu_route(0x0200U);
+    }
+    runtime.advance_menu_route(0x4000U); // Pick System.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kDebugPickSystem && route.top_text == "00",
+          "Pick System opens at ROM system zero", failures);
+    for (int system = 0; system < 25; ++system) {
+        runtime.advance_menu_route(0x0200U);
+    }
+    route = runtime.menu_route_snapshot();
+    check(route.top_text == "24",
+          "Pick System clamps at the 25th ROM system", failures);
+    runtime.advance_menu_route(0x0200U);
+    check(runtime.menu_route_snapshot().top_text == "24",
+          "Pick System does not step past the last ROM system", failures);
+    for (int system = 0; system < 24; ++system) {
+        runtime.advance_menu_route(0x0100U);
+    }
+    check(runtime.menu_route_snapshot().top_text == "00",
+          "Pick System returns to system zero", failures);
+    runtime.advance_menu_route(0x4000U); // Jack in.
+    check(runtime.menu_route_snapshot().top_screen == kDebugPickSystem &&
+              sounds.back() == 0x1AU && debug_unlock_consumptions == 1,
+          "Matrix entry plays the ROM jack-in effect and consumes the title unlock",
+          failures);
+    for (int frame = 0; frame < 19; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    check(runtime.menu_route_snapshot().top_screen == kDebugPickSystem,
+          "Matrix entry keeps the source 20-frame transition", failures);
+    runtime.advance_menu_route(0U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kCyberdeck &&
+              route.top_option_labels.size() == 16U &&
+              route.top_matrix_state_present &&
+              route.top_matrix_system_id == 0 && deck_enter_count == 1,
+          "jack-in opens the online deck route with the selected system",
+          failures);
+    runtime.advance_menu_route(0x0100U); // Up wraps to Map row 3.
+    runtime.advance_menu_route(0x0800U);
+    runtime.advance_menu_route(0x0800U); // Column 2: Map.
+    runtime.advance_menu_route(0x4000U); // Map utility.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kDeckMap && route.top_option_labels.size() == 2U &&
+              route.top_matrix_state_present && route.top_matrix_system_id == 0,
+          "online Matrix session opens the Map and Retreat utility",
+          failures);
+    check(deck_tick_count == 4,
+          "online deck frame reaches Lua heartbeat callback", failures);
+    check(deck_mode == -1,
+          "A selects the signed host attack mode before opening the Map utility",
+          failures);
+    runtime.advance_menu_route(0x4000U); // Show map.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kDeckMap &&
+              std::count(route.top_text.begin(), route.top_text.end(), '|') == 9 &&
+              route.top_text.find('@') != std::string::npos,
+          "Matrix map shows the source 14x10 grid and current node", failures);
+    runtime.advance_menu_route(0x8000U); // Return to Matrix grid.
+    check(runtime.menu_route_snapshot().top_screen == kCyberdeck,
+          "Matrix map returns to the active deck screen", failures);
+    runtime.advance_menu_route(0x8000U); // Leave the Matrix session.
+    route = runtime.menu_route_snapshot();
+    check(route.open && route.top_screen == kCommand &&
+              route.page == kCommandPagePocketSecretary &&
+              deck_leave_count == 1 && closed_count == 3,
+          "Matrix exit clears hidden children and rebuilds Command on page 6",
+          failures);
+    runtime.advance_menu_route(0x4000U); // Reopen Pocket Secretary.
+    for (int row = 0; row < 5; ++row) {
+        runtime.advance_menu_route(0x0200U);
+    }
+    runtime.advance_menu_route(0x4000U); // Debug row is still unlocked.
+    check(runtime.menu_route_snapshot().top_screen == kDebugMenu,
+          "debug menu remains unlocked after the Matrix return",
+          failures);
+    runtime.close_menu_route();
+    check(!runtime.menu_route_snapshot().open && closed_count == 4,
+          "close rebuilt command route after the Matrix QA path", failures);
 
     if (failures != 0) {
         std::cerr << "menu route failures: " << failures << '\n';

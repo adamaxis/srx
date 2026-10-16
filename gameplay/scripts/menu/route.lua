@@ -64,6 +64,11 @@ function Route:apply(entry, res)
     elseif t == T.REPLACE then
         self.stack[#self.stack] = nil
         push(self, res.screen, res.args)
+    elseif t == T.REBUILD then
+        local screen = res.screen or (self.stack[1] and self.stack[1].screen)
+        assert(screen ~= nil, "rebuild requires a root screen")
+        self.stack = {}
+        push(self, screen, res.args)
     elseif t == T.EXIT then        -- leave the whole menu tree (Start, FFF0B1, FFF0CD)
         self.stack = {}
         apply_presentation(self)

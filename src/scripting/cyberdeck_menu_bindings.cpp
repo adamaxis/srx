@@ -174,7 +174,13 @@ int dispatch_cyberdeck_menu_binding(
         return 0;
     case CyberdeckMenuBinding::set_mode:
         if (game.set_deck_mode) {
-            game.set_deck_mode(std::clamp(integer_argument(lua, 1), -1, 1));
+            const int source_mode = integer_argument(lua, 1);
+            // FFF0B7 is a byte in the ROM: attack is 0xFF, balanced is 0,
+            // and defense is 1. The host API uses signed -1/0/1 values.
+            const int host_mode = source_mode == 0xFF
+                                      ? -1
+                                      : std::clamp(source_mode, 0, 1);
+            game.set_deck_mode(host_mode);
         }
         return 0;
     case CyberdeckMenuBinding::matrix_online:

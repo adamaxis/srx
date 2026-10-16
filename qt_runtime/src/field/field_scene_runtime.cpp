@@ -5702,6 +5702,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
             case srx::MenuScreen::DECK_STORAGE:
             case srx::MenuScreen::DECK_MAP:
             case srx::MenuScreen::DEBUG_MENU:
+            case srx::MenuScreen::DEBUG_PICK_SYSTEM:
                 return true;
             default:
                 return false;
@@ -15732,6 +15733,31 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         const auto routed_menu = game_scripts_.menu_route_snapshot();
         const auto routed_screen = static_cast<srx::MenuScreen>(
             menu_route_screen_);
+        if (routed_screen == srx::MenuScreen::DEBUG_PICK_SYSTEM) {
+            const QColor background(3, 12, 22);
+            const QColor panel(7, 27, 39);
+            const QColor edge(28, 117, 137);
+            const QColor selector(196, 190, 39);
+            painter.fillRect(QRect(0, 0, 320, 224), background);
+            painter.fillRect(QRect(12, 12, 296, 200), panel);
+            painter.setPen(edge);
+            painter.drawRect(QRect(12, 12, 295, 199));
+            draw_command_overview_text(
+                painter, 24, 24,
+                routed_menu.top_title.empty()
+                    ? std::string_view("Pick System")
+                    : std::string_view(routed_menu.top_title));
+            painter.fillRect(QRect(20, 40, 280, 1), edge);
+            draw_command_overview_text(painter, 96, 84, "System");
+            painter.setPen(selector);
+            painter.drawRect(QRect(148, 72, 41, 19));
+            draw_command_overview_text(
+                painter, 160, 84,
+                routed_menu.top_text.empty()
+                    ? std::string_view("00")
+                    : std::string_view(routed_menu.top_text));
+            return;
+        }
         const bool cyberdeck_route =
             routed_screen == srx::MenuScreen::CYBERDECK ||
             routed_screen == srx::MenuScreen::PULL_PLUG ||
@@ -15760,7 +15786,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             const auto draw_text_lines = [this, &painter](
                                              const int x, const int y,
                                              const std::string& text,
-                                             const int max_lines) {
+                                             const int max_lines,
+                                             const int line_height = 16) {
                 std::size_t start = 0U;
                 int line = 0;
                 while (start <= text.size() && line < max_lines) {
@@ -15770,7 +15797,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                                    ? std::string::npos
                                    : end - start);
                     draw_command_overview_text(
-                        painter, x, y + line * 16, value);
+                        painter, x, y + line * line_height, value);
                     ++line;
                     if (end == std::string::npos) break;
                     start = end + 1U;
@@ -15781,7 +15808,16 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 // Plain-rts ROM messages remain until another redraw. Clear
                 // the control area so the text never overlaps stale buttons.
                 painter.fillRect(QRect(20, 44, 280, 156), panel);
-                draw_text_lines(28, 56, routed_menu.top_text, 8);
+                const auto map_lines = routed_screen ==
+                                           srx::MenuScreen::DECK_MAP &&
+                                       std::count(routed_menu.top_text.begin(),
+                                                  routed_menu.top_text.end(),
+                                                  '|') == 9;
+                if (map_lines) {
+                    draw_text_lines(104, 52, routed_menu.top_text, 10, 12);
+                } else {
+                    draw_text_lines(28, 56, routed_menu.top_text, 8);
+                }
                 return;
             }
 

@@ -249,6 +249,11 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_page;
     std::optional<int> top_detail_index;
     std::optional<int> top_detail_row;
+    bool top_matrix_state_present = false;
+    std::optional<int> top_matrix_system_id;
+    std::optional<int> top_matrix_node;
+    std::optional<int> top_matrix_previous_node;
+    std::optional<int> top_matrix_alert;
     std::vector<int> top_targets;
     std::optional<bool> top_recipient_full;
     std::optional<bool> top_yes;
