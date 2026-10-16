@@ -487,6 +487,22 @@ struct ScriptRunFieldEventDecision {
     std::uint8_t runner_progress_delta = 0;
 };
 
+struct ScriptActorDefeatFacts {
+    std::int8_t race_or_state = 0; // live actor record +0x9B
+};
+
+enum class ScriptRunActorDefeatAction : std::uint8_t {
+    no_action,
+    objective_advanced,
+};
+
+struct ScriptRunActorDefeatDecision {
+    ScriptRunActorDefeatAction action =
+        ScriptRunActorDefeatAction::no_action;
+    std::string run_id;
+    std::uint8_t objective_progress = 0;
+};
+
 enum class ScriptLocationEntryAction {
     no_action,
     open_elevator_selector,
@@ -1116,6 +1132,8 @@ public:
         const FieldScriptRouteContext& context);
     std::optional<ScriptRunFieldEventDecision> resolve_active_run_field_event(
         std::uint8_t map_id, std::uint8_t event_id);
+    std::optional<ScriptRunActorDefeatDecision>
+    resolve_active_run_actor_defeat(const ScriptActorDefeatFacts& facts);
     std::optional<ScriptPersistentValue> save_run_registry_state();
     bool validate_run_registry_state(const ScriptPersistentValue& state);
     bool restore_run_registry_state(const ScriptPersistentValue& state);

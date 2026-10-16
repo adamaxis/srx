@@ -15,6 +15,10 @@ E.ActorField = {
     ACTION_DELAY = 0xDC, WAYPOINTS = 0xE0, WP_INDEX = 0xE4,
 }
 E.ActorPool = { STRIDE = 0x100, PARTY = 3, OTHERS = 7, PROJECTILES = 6 }   -- FF0100.., FF0400.., FF0B00.. [C]
+-- Run-kill classification uses actor record +0x9B, not the rendered sprite
+-- type at +0x0E. The ghoul bounty checks this byte against 0x42 (0x559BC).
+E.ActorRaceOrState = { GHOUL_BOUNTY_TARGET = 0x42 }
+E.GhoulBounty = { MAX_DEFEATS = 20 } -- FFFBF0 is capped at twenty (0x559BC) [C]
 
 E.ActorStatus   = { ACTIVE = 0x01, THINK = 0x02, AI_RUNNER = 0x08, DOWN = 0x10, GROUP_LEADER = 0x20, DEAD = 0x40 }  -- +0x10 [C]
 E.ActorStatusEx = { PROJECTILE = 0x01, BREATH_OUT = 0x40, UNSEEN = 0x80 }                                        -- +0x11 [C]

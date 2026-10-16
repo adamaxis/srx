@@ -1,5 +1,6 @@
 -- Gunderson's ghoul contract has its own run behavior and success condition.
 local GhoulBounty = {}
+local E = require("enums")
 
 function GhoulBounty.prepare_offer(context, source_record)
     local support = game.modules.run_support
@@ -14,8 +15,21 @@ function GhoulBounty.prepare_offer(context, source_record)
         source_record.runner_progress_delta)
     offer.context = context
     offer.area_id = support.choose_ghoul_area(context)
+    offer.ghoul_kill_count = 0
     game.runs.registry.current_offer = offer
     return offer.id
+end
+
+function GhoulBounty.resolve_actor_defeat(offer, facts)
+    local count = offer.ghoul_kill_count or 0
+    if facts.race_or_state ~= E.ActorRaceOrState.GHOUL_BOUNTY_TARGET or
+       count >= E.GhoulBounty.MAX_DEFEATS then
+        return { action = "no_action", objective_progress = count }
+    end
+
+    count = count + 1
+    offer.ghoul_kill_count = count
+    return { action = "objective_advanced", objective_progress = count }
 end
 
 function GhoulBounty.resolve_field_event(offer, map_id, event_id)

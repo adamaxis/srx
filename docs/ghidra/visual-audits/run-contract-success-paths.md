@@ -95,21 +95,22 @@ both the source initializer and canonical handler ID.
 
 `run_package_delivery.lua` handles the origin and destination tuples, and the
 field-exit dispatcher applies its typed result, funds, and runner progress.
-The ghoul, escort, gang, package-recovery, employee-recruitment, and Matrix
-modules now create and present source-backed offers, but their field results
-intentionally do not claim completion. Ghoul bounty still needs actor-defeat
-input and matching-context settlement; escort needs its source client spawn
-and actor state; gang needs live encounter results; recovery/recruitment need
-item/contact callbacks; Matrix needs a field return-settlement path. The
-weapon-projectile path in `FieldSceneRuntime` still stops at
-`hit_resolution_pending`, so it does not publish actor-defeat events.
+`run_ghoul_bounty.lua` receives a typed defeat fact when a live world actor's
+physical meter changes from positive to zero. Lua checks actor `+0x9B == 0x42`,
+increments the active offer's count up to the ROM cap of 20, and retains that
+count in the ordinary run-registry save state. The projectile resolver already
+publishes typed meter updates to this host path. The bounty's matching-context
+return and payout are still open, as are escort's source client spawn and actor
+state, gang's live encounter results, recovery/recruitment item/contact
+callbacks, and Matrix field return-settlement.
 
 ## Visual evidence checklist
 
 1. **Does it look correct?** Unknown for the result page at `0x105934`.
 2. **Does visible state match behavior?** The Lua offer retains its ROM row,
-   context, initializer, and canonical run type. Only package-delivery field
-   completion is connected end to end.
+   context, initializer, and canonical run type. Package delivery completes in
+   the field; Ghoul defeat counting is connected, but its return and settlement
+   state is not.
 3. **Are the visuals correct?** No run-result full-screen capture has been
    reviewed.
 4. **Should it animate?** The package pickup/delivery branches request no
@@ -127,6 +128,11 @@ weapon-projectile path in `FieldSceneRuntime` still stops at
    replacement check.
 9. **Was the affected time window reviewed continuously?** No. The result
    descriptor and complete return sequence still need full-screen capture.
+
+The actor-defeat counter adds no panel, button, icon, animation, or sound call;
+it only updates saved run state after the physical meter reaches zero. That
+does not verify the actor's death animation or combat audio, which remain on
+their separate actor/combat paths.
 
 A new gameplay video is not needed to recover these state predicates from the
 ROM. It would help verify the completion page's appearance, animation/sound

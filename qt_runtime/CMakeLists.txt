@@ -121,6 +121,18 @@ target_compile_definitions(shadowrun_gameplay_script_runtime_test PRIVATE
 add_test(NAME shadowrun_gameplay_script_runtime_qa
          COMMAND shadowrun_gameplay_script_runtime_test)
 
+add_executable(shadowrun_run_actor_defeat_test
+    tests/scripting/run_actor_defeat_test.cpp)
+target_include_directories(shadowrun_run_actor_defeat_test
+    PRIVATE src/srx_refactor)
+target_link_libraries(shadowrun_run_actor_defeat_test
+    PRIVATE shadowrun_gameplay_script_runtime)
+target_compile_definitions(shadowrun_run_actor_defeat_test PRIVATE
+    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../gameplay/scripts"
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../assets")
+add_test(NAME shadowrun_ghidra_run_actor_defeat
+         COMMAND shadowrun_run_actor_defeat_test)
+
 add_executable(shadowrun_gameplay_script_menu_route_test
     ../tests/gameplay_script_menu_route_conversion_test.cpp
     src/field/matrix_map_presenter.cpp)

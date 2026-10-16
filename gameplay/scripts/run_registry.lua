@@ -250,6 +250,48 @@ function Registry.resolve_field_event(map_id, event_id)
     return decision
 end
 
+function Registry.resolve_actor_defeat(facts)
+    assert(type(facts) == "table" and
+           type(facts.race_or_state) == "number" and
+           facts.race_or_state % 1 == 0 and
+           facts.race_or_state >= -128 and facts.race_or_state <= 127,
+        "actor-defeat facts have an invalid race/state byte")
+
+    local offer = Registry.active_offer
+    if offer == nil then
+        return {
+            action = "no_action",
+            run_id = "none",
+            objective_progress = 0,
+        }
+    end
+
+    local run = game.runs[offer.id]
+    local handler = type(run) == "table" and run.resolve_actor_defeat or nil
+    if type(handler) ~= "function" then
+        return {
+            action = "no_action",
+            run_id = offer.id,
+            objective_progress = 0,
+        }
+    end
+
+    local result = handler(offer, facts)
+    assert(type(result) == "table" and
+           (result.action == "no_action" or
+            result.action == "objective_advanced"),
+        "run actor-defeat handler returned an invalid action")
+    local progress = result.objective_progress or 0
+    assert(type(progress) == "number" and progress >= 0 and
+           progress <= 255 and progress % 1 == 0,
+        "run actor-defeat handler returned invalid objective progress")
+    return {
+        action = result.action,
+        run_id = offer.id,
+        objective_progress = progress,
+    }
+end
+
 function Registry.active_run_id()
     return Registry.active_offer and Registry.active_offer.id or "none"
 end
@@ -391,6 +433,16 @@ function Registry.validate_saved_state(state)
                 return false
             end
         elseif offer.matrix_run_state ~= nil then
+            return false
+        end
+        if offer.id == "ghoul_bounty" then
+            local count = offer.ghoul_kill_count
+            if count ~= nil and
+               (type(count) ~= "number" or count % 1 ~= 0 or
+                count < 0 or count > E.GhoulBounty.MAX_DEFEATS) then
+                return false
+            end
+        elseif offer.ghoul_kill_count ~= nil then
             return false
         end
         local run = game.runs[offer.id]

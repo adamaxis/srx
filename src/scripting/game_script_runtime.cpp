@@ -3442,6 +3442,73 @@ GameScriptRuntime::resolve_active_run_field_event(
     return decision;
 }
 
+std::optional<ScriptRunActorDefeatDecision>
+GameScriptRuntime::resolve_active_run_actor_defeat(
+    const ScriptActorDefeatFacts& facts) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for run actor defeats";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptRunActorDefeatDecision> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("run_registry")) {
+        return fail("run_registry.lua module is missing");
+    }
+    lua_getfield(state, -1, "resolve_actor_defeat");
+    if (!lua_isfunction(state, -1)) {
+        return fail("run_registry actor-defeat resolver is missing");
+    }
+    lua_remove(state, -2);
+    lua_createtable(state, 0, 1);
+    lua_pushinteger(state, facts.race_or_state);
+    lua_setfield(state, -2, "race_or_state");
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("run_registry actor-defeat resolver failed: " +
+                    stack_error(state));
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("run_registry actor-defeat resolver returned no decision");
+    }
+
+    const auto result_index = lua_absindex(state, -1);
+    std::string action_name;
+    std::string run_id;
+    std::uint32_t objective_progress = 0U;
+    if (!read_field_string(state, result_index, "action", action_name) ||
+        !read_field_string(state, result_index, "run_id", run_id) ||
+        !valid_identifier(run_id) ||
+        !read_field_integer(state, result_index, "objective_progress",
+                            0xFFU, objective_progress)) {
+        return fail("run actor-defeat decision has invalid fields");
+    }
+
+    ScriptRunActorDefeatDecision decision{};
+    if (action_name == "no_action") {
+        decision.action = ScriptRunActorDefeatAction::no_action;
+    } else if (action_name == "objective_advanced") {
+        decision.action = ScriptRunActorDefeatAction::objective_advanced;
+    } else {
+        return fail("run actor-defeat decision has an unknown action");
+    }
+    if (decision.action == ScriptRunActorDefeatAction::objective_advanced &&
+        run_id == "none") {
+        return fail("advanced actor-defeat decision has no run id");
+    }
+    decision.run_id = std::move(run_id);
+    decision.objective_progress =
+        static_cast<std::uint8_t>(objective_progress);
+
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return decision;
+}
+
 std::optional<ScriptPersistentValue>
 GameScriptRuntime::save_run_registry_state() {
     auto* state = impl_->state;

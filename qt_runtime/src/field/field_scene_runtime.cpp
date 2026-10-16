@@ -11454,6 +11454,12 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
         return false;
     }
 
+    const bool physically_defeated = update.physical &&
+        target->combatant.physical_meter != 0U &&
+        update.physical_meter == 0U;
+    const scripting::ScriptActorDefeatFacts defeat_facts{
+        target->combatant.race_or_state};
+
     target->combatant.physical_meter = update.physical_meter;
     target->combatant.mental_meter = update.mental_meter;
     if (update.source_record_flags_updated) {
@@ -11464,6 +11470,19 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
     // that record as well as in the Lua-owned combat facts so later movement,
     // collision, and drawing passes see one current actor state.
     target->physical_meter = update.physical_meter;
+    if (physically_defeated) {
+        const auto decision =
+            game_scripts_.resolve_active_run_actor_defeat(defeat_facts);
+        if (!decision.has_value()) {
+            failure_ = game_scripts_.failure();
+            report("run_actor_defeat_failed");
+            return false;
+        }
+        if (decision->action ==
+            scripting::ScriptRunActorDefeatAction::objective_advanced) {
+            report("run_actor_objective_advanced");
+        }
+    }
     report(update.physical ? "world_physical_meter_changed"
                            : "world_mental_meter_changed");
     return true;
