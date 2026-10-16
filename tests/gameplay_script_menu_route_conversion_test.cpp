@@ -244,10 +244,14 @@ int main() {
         ++inventory_commits;
     };
     std::array<int, 2> first_aid_roll{};
-    bindings.game.roll_successes = [&first_aid_roll](const int count,
-                                                     const int threshold) {
+    int forced_roll_successes = 2;
+    std::vector<std::array<int, 2>> action_rolls;
+    bindings.game.roll_successes = [&first_aid_roll, &forced_roll_successes,
+                                    &action_rolls](const int count,
+                                                   const int threshold) {
         first_aid_roll = {count, threshold};
-        return 2;
+        action_rolls.push_back({count, threshold});
+        return forced_roll_successes;
     };
     bindings.game.pocket_extra_row = [&pocket_extra_row] {
         return pocket_extra_row;
@@ -907,6 +911,11 @@ int main() {
     // isolated Lua function. The picker clamps 0..24, waits 20 frames, then
     // enters the Lua node-action loop. Start opens the deck loop and returns
     // here; the 3D Matrix actor/service loop remains a separate integration hill.
+    party[0].attributes[1] = 12U;
+    party[0].attributes[4] = 12U;
+    party[0].skills[7] = 12U;
+    action_rolls.clear();
+    forced_roll_successes = 2;
     pocket_extra_row = true;
     check(runtime.open_menu_route(kCommand),
           "open command for Matrix debug route", failures);
@@ -1012,14 +1021,71 @@ int main() {
     check(node_actual.save(QString::fromStdString(node_artifact.string()), "BMP"),
           "write live Matrix node-action actual.bmp artifact", failures);
 #endif
+    forced_roll_successes = 0;
     runtime.advance_menu_route(0x0200U); // Cancel Alert.
     runtime.advance_menu_route(0x4000U);
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kMatrixNodeAction &&
               route.top_title == "Matrix Message" &&
+              route.top_text.find("You fail to") != std::string::npos &&
+              route.top_matrix_alert == -1,
+          "failed Matrix action shows ROM text without changing alert state",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    QImage action_failed_actual(320, 224, QImage::Format_ARGB32);
+    action_failed_actual.fill(QColor(255, 0, 255));
+    QPainter action_failed_painter(&action_failed_actual);
+    const QImage action_failed_font = QImage(QString::fromStdString(
+        (node_assets / "cyberspace/matrix/system-map-font.bmp").string()));
+    const bool action_failed_painted = paint_matrix_node_action_panel(
+        action_failed_painter, action_failed_font, route);
+    action_failed_painter.end();
+    check(action_failed_painted,
+          "failed Matrix action message reaches the Qt panel presenter",
+          failures);
+    bool action_failed_rows_spaced = true;
+    constexpr std::array<int, 3> kActionFailedRows{50, 62, 74};
+    for (const auto y0 : kActionFailedRows) {
+        bool row_has_text = false;
+        for (int y = y0; y < y0 + 10; ++y) {
+            for (int x = 24; x < 280; ++x) {
+                row_has_text = row_has_text ||
+                    action_failed_actual.pixelColor(x, y) ==
+                        QColor(36, 219, 36);
+            }
+        }
+        action_failed_rows_spaced = action_failed_rows_spaced && row_has_text;
+    }
+    bool action_row_leaked = false;
+    for (int y = 107; y < 118; ++y) {
+        for (int x = 24; x < 280; ++x) {
+            action_row_leaked = action_row_leaked ||
+                action_failed_actual.pixelColor(x, y) == QColor(36, 219, 36);
+        }
+    }
+    check(action_failed_rows_spaced,
+          "failed Matrix action message uses separate source text rows",
+          failures);
+    check(!action_row_leaked && route.top_option_labels.empty(),
+          "failed Matrix action message clears the previous action row", failures);
+    const auto action_failed_artifact = std::filesystem::path(
+        SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) /
+        "action-failed-message.bmp";
+    std::filesystem::create_directories(action_failed_artifact.parent_path());
+    check(action_failed_actual.save(
+              QString::fromStdString(action_failed_artifact.string()), "BMP"),
+          "write failed Matrix action message image artifact", failures);
+#endif
+    runtime.advance_menu_route(0x4000U); // ROM D94 any-edge wait.
+    forced_roll_successes = 2;
+    runtime.advance_menu_route(0x4000U); // Retry Cancel Alert successfully.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMatrixNodeAction &&
+              route.top_title == "Matrix Message" &&
               route.top_text.find("NO ALERTS ARE") != std::string::npos &&
               route.top_matrix_alert == -1,
-          "Cancel Alert preserves no-alert state and shows ROM text", failures);
+          "successful Cancel Alert preserves no-alert state and shows ROM text",
+          failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     QImage alert_message_actual(320, 224, QImage::Format_ARGB32);
     alert_message_actual.fill(QColor(255, 0, 255));
@@ -1071,6 +1137,9 @@ int main() {
     runtime.advance_menu_route(0x4000U); // Go To Node.
     check(runtime.menu_route_snapshot().top_title == "Go To Node",
           "CPU Go To Node enters destination selection", failures);
+    check(action_rolls.size() == 4U,
+          "Enter System, failed and successful Cancel Alert, and Go To Node each use the ROM action gate",
+          failures);
     runtime.advance_menu_route(0x0800U); // Next node.
     runtime.advance_menu_route(0x4000U); // Confirm destination.
     route = runtime.menu_route_snapshot();

@@ -65,6 +65,21 @@ local function open_deck(st)
                       matrix_state = st.matrix_state } }
 end
 
+local function action_succeeds(st, ctx)
+    local state = st.matrix_state
+    local node = MatrixSession.current_node(state)
+    local game = ctx.game
+    local party = game.party()
+    local runner = party[game.active_slot()]
+    if not node or not runner then return false end
+    local deck = game.deck_record()
+    return NodeActions.gate_runner_action(
+        runner, deck, state.mode, node, state,
+        function(dice, target)
+            return game.roll_successes(dice, target)
+        end)
+end
+
 function M.input(st, events, ctx)
     local state = st.matrix_state
     if not MatrixSession.is_online(state) then
@@ -93,13 +108,23 @@ function M.input(st, events, ctx)
         end
         if events & CONFIRM ~= 0 then
             local action = MatrixSession.node_actions(state)[st.row + 1]
-            if action and MatrixSession.select_node_action(state, action.id) then
-                refresh(st)
-                ctx.redraw(R.FULL)
-            elseif action and action.id == "cancel_alert" then
-                local result = NodeActions.cancel_alert(state)
-                st.matrix_message = result.text == NodeActions.TEXT.ALERT_CANCELLED
-                    and MatrixText.ALERT_CANCELLED or MatrixText.NO_ALERTS
+            if action and (action.id == "enter_system" or
+                           action.id == "leave_node" or
+                           action.id == "go_to_node" or
+                           action.id == "cancel_alert") then
+                -- 0x548A0 performs the shared 0x55F44/0xDBA runner gate
+                -- before dispatch; Cancel Alert itself adds no second roll.
+                if action_succeeds(st, ctx) then
+                    if not MatrixSession.select_node_action(state, action.id) and
+                       action.id == "cancel_alert" then
+                        local result = NodeActions.cancel_alert(state)
+                        st.matrix_message = result.text ==
+                            NodeActions.TEXT.ALERT_CANCELLED and
+                            MatrixText.ALERT_CANCELLED or MatrixText.NO_ALERTS
+                    end
+                else
+                    st.matrix_message = MatrixText.ACTION_FAILED
+                end
                 refresh(st)
                 ctx.redraw(R.FULL)
             end

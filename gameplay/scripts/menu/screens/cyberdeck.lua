@@ -26,6 +26,11 @@ local MODE = {
     [P.B] = E.MatrixDeckMode.BALANCED,
     [P.C] = E.MatrixDeckMode.DEFENSE,
 } -- FFF0B7 (read by the 0x55F6C pool step, docs/18)
+local RESULT_MODE = {
+    [P.A] = E.MatrixModeResult.ATTACK,
+    [P.B] = E.MatrixModeResult.BALANCED,
+    [P.C] = E.MatrixModeResult.DEFENSE,
+}
 
 M.FUNCTION = { [0] = E.MenuScreen.DECK_CYBERINFO, E.MenuScreen.DECK_STORAGE, E.MenuScreen.DECK_MAP }   -- 0x18AA6, 0x18D1A, 0x19018
 function M.cursor_xy(col, row) return col * 0x20 + 0x8C, row * 0x28 + 0x94 end
@@ -55,6 +60,9 @@ function M.enter(st, ctx)
         return
     end
     st.saved = ctx.game.deck_enter()
+    if st.matrix_state then
+        st.matrix_state.mode = E.MatrixModeResult.BALANCED
+    end
     ctx.redraw(R.FULL)
 end
 local function online(st, ctx)
@@ -64,6 +72,7 @@ local function online(st, ctx)
 end
 local function leave(st, ctx, res)
     ctx.game.deck_leave(st.saved)
+    if st.matrix_state then st.matrix_state.mode = st.saved end
     if st.return_to_node_action and
        not (res and res.exit_secretary) then
         return { transition = T.POP, result = { matrix_resumed = true } }
@@ -93,6 +102,7 @@ function M.input(st, events, ctx)
     local btn = events & P.A ~= 0 and P.A or events & P.B ~= 0 and P.B or events & P.C ~= 0 and P.C
     if not btn then return end
     g.set_deck_mode(MODE[btn])
+    if st.matrix_state then st.matrix_state.mode = RESULT_MODE[btn] end
     st.text = nil
     if st.row ~= M.PLUG_ROW then return { transition = T.PUSH, screen = E.MenuScreen.DECK_PROGRAM, args = { col = st.col, row = st.row } } end
     if st.col == M.PLUG_COL then

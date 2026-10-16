@@ -54,6 +54,7 @@ local Actions = require("menu.rules.node_actions")
 local Programs = require("menu.rules.matrix_programs")
 local Systems = require("data.matrix_systems")
 local Session = require("menu.matrix_session")
+local Cyberdeck = require("menu.screens.cyberdeck")
 
 local checks = 0
 local function eq(actual, expected, label)
@@ -125,6 +126,28 @@ for system_id = 0, 24 do
     Session.finish(session)
 end
 Session.finish(first_session)
+
+local mode_state = { mode = E.MatrixModeResult.ATTACK }
+local restored_deck_mode
+local deck_screen = Cyberdeck.Cyberdeck.new({ matrix_state = mode_state,
+    matrix_session = true, return_to_node_action = true })
+local deck_context = { redraw = function() end, game = {
+    deck_enter = function() return E.MatrixModeResult.ATTACK end,
+    deck_leave = function(mode) restored_deck_mode = mode end,
+    set_deck_mode = function() end,
+    deck_tick = function() end,
+} }
+Cyberdeck.Cyberdeck.enter(deck_screen, deck_context)
+eq(mode_state.mode, E.MatrixModeResult.BALANCED,
+    "Cyberdeck entry mirrors the source temporary balanced mode")
+Cyberdeck.Cyberdeck.input(deck_screen, E.Pad.C, deck_context)
+eq(mode_state.mode, E.MatrixModeResult.DEFENSE,
+    "Cyberdeck C input mirrors the signed defense mode into Lua")
+Cyberdeck.Cyberdeck.input(deck_screen, E.Pad.START, deck_context)
+eq(mode_state.mode, E.MatrixModeResult.ATTACK,
+    "Cyberdeck exit restores the saved Matrix action mode")
+eq(restored_deck_mode, E.MatrixModeResult.ATTACK,
+    "host deck mode receives the same saved mode on exit")
 
 -- Matrix node actions only select a movement mode. The ROM keeps movement in
 -- its own input loop, then commits the highlighted link or CPU destination.
