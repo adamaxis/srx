@@ -128,8 +128,23 @@ local function present_information(root_menu)
 end
 
 function Johnson.interaction()
-    present_location_intro()
-    local root_menu = "opening"
+    local profile = game.modules.dialogue.johnson_interaction_profiles[
+        game.location.text_profile]
+    local returned_run = profile ~= nil and profile.run_offer_context ~= nil
+        and game.runs.registry.take_pending_johnson_return() or nil
+    if returned_run ~= nil then
+        assert(returned_run.context == profile.run_offer_context,
+            "pending run return belongs to another Johnson context")
+        local run = game.runs[returned_run.run_id]
+        assert(type(run) == "table" and
+               type(run.present_completion) == "function",
+            "completed run has no Johnson-return presentation")
+        run.present_completion(returned_run)
+    else
+        present_location_intro()
+    end
+    local root_menu = returned_run ~= nil
+        and "opening_after_run_return" or "opening"
     while true do
         local choice = game.ui.menu(root_menu,
             { "information", "work", "leave" })

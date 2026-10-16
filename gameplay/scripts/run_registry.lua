@@ -292,6 +292,82 @@ function Registry.resolve_actor_defeat(facts)
     }
 end
 
+function Registry.resolve_johnson_return(context)
+    assert(type(context) == "number" and context % 1 == 0 and
+           context >= 0 and context <= 0xFF,
+        "Johnson-return context is invalid")
+
+    Registry._pending_johnson_return = nil
+    local offer = Registry.active_offer
+    if offer == nil then
+        return {
+            action = "no_action",
+            run_id = "none",
+            reward_nuyen = 0,
+            runner_progress_delta = 0,
+            objective_progress = 0,
+        }
+    end
+
+    local run = game.runs[offer.id]
+    local handler = type(run) == "table" and
+        run.resolve_johnson_return or nil
+    if type(handler) ~= "function" then
+        return {
+            action = "no_action",
+            run_id = offer.id,
+            reward_nuyen = 0,
+            runner_progress_delta = 0,
+            objective_progress = 0,
+        }
+    end
+
+    local result = handler(offer, context)
+    assert(type(result) == "table" and
+           (result.action == "no_action" or result.action == "completed"),
+        "run Johnson-return handler returned an invalid action")
+    local reward = result.reward_nuyen or 0
+    local progress = result.objective_progress or 0
+    assert(type(reward) == "number" and reward >= 0 and
+           reward <= 0xFFFFFFFF and reward % 1 == 0,
+        "run Johnson-return handler returned an invalid reward")
+    assert(type(progress) == "number" and progress >= 0 and
+           progress <= 0xFF and progress % 1 == 0,
+        "run Johnson-return handler returned invalid objective progress")
+    local progress_delta = offer.runner_progress_delta or 0
+    assert(type(progress_delta) == "number" and progress_delta >= 0 and
+           progress_delta <= 0xFF and progress_delta % 1 == 0,
+        "run offer has an invalid runner progress delta")
+
+    if result.action == "completed" then
+        Registry.last_completed_offer = offer
+        Registry.active_offer = nil
+        Registry._pending_johnson_return = {
+            run_id = offer.id,
+            context = context,
+            objective_progress = progress,
+        }
+    end
+    return {
+        action = result.action,
+        run_id = offer.id,
+        reward_nuyen = reward,
+        runner_progress_delta = progress_delta,
+        objective_progress = progress,
+    }
+end
+
+function Registry.take_pending_johnson_return()
+    local pending = Registry._pending_johnson_return
+    Registry._pending_johnson_return = nil
+    if pending == nil then return nil end
+    return {
+        run_id = pending.run_id,
+        context = pending.context,
+        objective_progress = pending.objective_progress,
+    }
+end
+
 function Registry.active_run_id()
     return Registry.active_offer and Registry.active_offer.id or "none"
 end

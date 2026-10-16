@@ -273,6 +273,14 @@ local menu_profiles = {
                 leave = "gunderson.option.leave",
             },
         },
+        opening_after_run_return = {
+            title_key = "gunderson.greeting.after_run_return",
+            choice_label_keys = {
+                information = "gunderson.option.information",
+                work = "gunderson.option.work",
+                leave = "gunderson.option.leave",
+            },
+        },
         information = {
             title_key = "gunderson.information.contacts",
             choice_label_keys = {
@@ -634,9 +642,12 @@ end
 Dialogue.runner_text_keys = runner_text_keys
 
 -- The shared Johnson conversation module reads this policy by the active
--- location's text profile. Building scripts remain generic; the ROM-backed
--- content record supplies this first-visit introduction and source fact.
+-- location's text profile. Building scripts remain generic; ROM-backed
+-- records supply the return context and optional first-visit facts.
 Dialogue.johnson_interaction_profiles = {
+    ["gunderson.jump_house"] = {
+        run_offer_context = E.RunOfferContext.JUMP_HOUSE,
+    },
     ["wanderer.vigore_jarl"] = {
         run_offer_context = E.RunOfferContext.WANDERER,
         first_visit_fact = "wanderer_vigore_jarl_intro_seen",

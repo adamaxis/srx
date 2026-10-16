@@ -3509,6 +3509,80 @@ GameScriptRuntime::resolve_active_run_actor_defeat(
     return decision;
 }
 
+std::optional<ScriptRunJohnsonReturnDecision>
+GameScriptRuntime::resolve_active_run_johnson_return(
+    const std::uint8_t context) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for Johnson run returns";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptRunJohnsonReturnDecision> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("run_registry")) {
+        return fail("run_registry.lua module is missing");
+    }
+    lua_getfield(state, -1, "resolve_johnson_return");
+    if (!lua_isfunction(state, -1)) {
+        return fail("run_registry Johnson-return resolver is missing");
+    }
+    lua_remove(state, -2);
+    lua_pushinteger(state, context);
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("run_registry Johnson-return resolver failed: " +
+                    stack_error(state));
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("run_registry Johnson-return resolver returned no decision");
+    }
+
+    const auto result_index = lua_absindex(state, -1);
+    std::string action_name;
+    std::string run_id;
+    std::uint32_t reward_nuyen = 0U;
+    std::uint32_t progress_delta = 0U;
+    std::uint32_t objective_progress = 0U;
+    if (!read_field_string(state, result_index, "action", action_name) ||
+        !read_field_string(state, result_index, "run_id", run_id) ||
+        !valid_identifier(run_id) ||
+        !read_field_integer(state, result_index, "reward_nuyen",
+                            0xFFFFFFFFU, reward_nuyen) ||
+        !read_field_integer(state, result_index, "runner_progress_delta",
+                            0xFFU, progress_delta) ||
+        !read_field_integer(state, result_index, "objective_progress",
+                            0xFFU, objective_progress)) {
+        return fail("Johnson-return decision has invalid fields");
+    }
+
+    ScriptRunJohnsonReturnDecision decision{};
+    if (action_name == "no_action") {
+        decision.action = ScriptRunJohnsonReturnAction::no_action;
+    } else if (action_name == "completed") {
+        decision.action = ScriptRunJohnsonReturnAction::completed;
+    } else {
+        return fail("Johnson-return decision has an unknown action");
+    }
+    if (decision.action == ScriptRunJohnsonReturnAction::completed &&
+        run_id == "none") {
+        return fail("completed Johnson-return decision has no run id");
+    }
+    decision.run_id = std::move(run_id);
+    decision.reward_nuyen = reward_nuyen;
+    decision.runner_progress_delta =
+        static_cast<std::uint8_t>(progress_delta);
+    decision.objective_progress =
+        static_cast<std::uint8_t>(objective_progress);
+
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return decision;
+}
+
 std::optional<ScriptPersistentValue>
 GameScriptRuntime::save_run_registry_state() {
     auto* state = impl_->state;

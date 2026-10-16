@@ -503,6 +503,20 @@ struct ScriptRunActorDefeatDecision {
     std::uint8_t objective_progress = 0;
 };
 
+enum class ScriptRunJohnsonReturnAction : std::uint8_t {
+    no_action,
+    completed,
+};
+
+struct ScriptRunJohnsonReturnDecision {
+    ScriptRunJohnsonReturnAction action =
+        ScriptRunJohnsonReturnAction::no_action;
+    std::string run_id;
+    std::uint32_t reward_nuyen = 0;
+    std::uint8_t runner_progress_delta = 0;
+    std::uint8_t objective_progress = 0;
+};
+
 enum class ScriptLocationEntryAction {
     no_action,
     open_elevator_selector,
@@ -1134,6 +1148,8 @@ public:
         std::uint8_t map_id, std::uint8_t event_id);
     std::optional<ScriptRunActorDefeatDecision>
     resolve_active_run_actor_defeat(const ScriptActorDefeatFacts& facts);
+    std::optional<ScriptRunJohnsonReturnDecision>
+    resolve_active_run_johnson_return(std::uint8_t context);
     std::optional<ScriptPersistentValue> save_run_registry_state();
     bool validate_run_registry_state(const ScriptPersistentValue& state);
     bool restore_run_registry_state(const ScriptPersistentValue& state);

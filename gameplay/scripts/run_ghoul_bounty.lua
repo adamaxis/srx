@@ -32,6 +32,28 @@ function GhoulBounty.resolve_actor_defeat(offer, facts)
     return { action = "objective_advanced", objective_progress = count }
 end
 
+function GhoulBounty.resolve_johnson_return(offer, context)
+    local count = offer.ghoul_kill_count or 0
+    if context ~= offer.context or count <= 0 then
+        return {
+            action = "no_action",
+            objective_progress = count,
+        }
+    end
+
+    local payment = offer.payment
+    assert(type(payment) == "table" and
+           type(payment.negotiated_amount) == "number" and
+           payment.negotiated_amount >= 0 and
+           payment.negotiated_amount % 1 == 0,
+        "ghoul bounty has invalid negotiated payment")
+    return {
+        action = "completed",
+        reward_nuyen = payment.negotiated_amount * count,
+        objective_progress = count,
+    }
+end
+
 function GhoulBounty.resolve_field_event(offer, map_id, event_id)
     -- The ROM counts eligible ghoul deaths in its actor/combat path. Its
     -- event-return and payout branch has not been connected to Lua yet, so
@@ -59,6 +81,14 @@ function GhoulBounty.present_offer()
     local choice = game.ui.prompt_text(
         "run_acceptance", prompt, { "yes", "no" })
     return game.modules.run_support.resolve_offer_decision(choice)
+end
+
+function GhoulBounty.present_completion()
+    -- ROM 0x105AB7..0x105B79 is the successful Jump House return text.
+    game.ui.say_text(
+        "Looks like you made it through that run.  Let me get this out of the way." ..
+        "||<Creds and information are exchanged and Julius smugly reclines in the booth.>" ..
+        "||Anything else we can do for each other?", false)
 end
 
 return GhoulBounty

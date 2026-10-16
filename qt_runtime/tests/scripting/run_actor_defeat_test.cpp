@@ -13,6 +13,7 @@ using shadowrun::ghidra_conversion::scripting::GameScriptRuntime;
 using shadowrun::ghidra_conversion::scripting::ScriptActorDefeatFacts;
 using shadowrun::ghidra_conversion::scripting::ScriptNativeOperation;
 using shadowrun::ghidra_conversion::scripting::ScriptRunActorDefeatAction;
+using shadowrun::ghidra_conversion::scripting::ScriptRunJohnsonReturnAction;
 using shadowrun::ghidra_conversion::scripting::ScriptTaskStep;
 
 bool expect(const bool condition, const char* message) {
@@ -94,6 +95,18 @@ int main() {
         srx::v(srx::ActorRaceOrState::GHOUL_BOUNTY_TARGET));
     constexpr auto other_race_or_state = static_cast<std::int8_t>(
         srx::v(srx::ActorRaceOrState::GHOUL_BOUNTY_TARGET) - 1);
+    const auto no_kills = scripts.resolve_active_run_johnson_return(
+        static_cast<std::uint8_t>(srx::v(srx::RunOfferContext::JUMP_HOUSE)));
+    if (!expect(no_kills.has_value() &&
+                    no_kills->action ==
+                        ScriptRunJohnsonReturnAction::no_action &&
+                    scripts.call_string(
+                        "run_registry", "active_run_id") ==
+                        std::optional<std::string>{"ghoul_bounty"},
+                "the bounty settled without an eligible defeat")) {
+        std::cerr << scripts.failure() << '\n';
+        return 10;
+    }
     const auto other = scripts.resolve_active_run_actor_defeat(
         ScriptActorDefeatFacts{other_race_or_state});
     const auto first_ghoul = scripts.resolve_active_run_actor_defeat(
@@ -145,6 +158,108 @@ int main() {
         return 13;
     }
 
-    std::cout << "ghoul bounty actor defeat test passed\n";
+    const auto wrong_johnson = scripts.resolve_active_run_johnson_return(
+        static_cast<std::uint8_t>(srx::v(srx::RunOfferContext::WANDERER)));
+    if (!expect(wrong_johnson.has_value() &&
+                    wrong_johnson->action ==
+                        ScriptRunJohnsonReturnAction::no_action &&
+                    wrong_johnson->reward_nuyen == 0U &&
+                    scripts.call_string(
+                        "run_registry", "active_run_id") ==
+                        std::optional<std::string>{"ghoul_bounty"},
+                "a nonmatching Johnson context settled the bounty")) {
+        std::cerr << scripts.failure() << '\n';
+        return 14;
+    }
+
+    const auto completed = scripts.resolve_active_run_johnson_return(
+        static_cast<std::uint8_t>(srx::v(srx::RunOfferContext::JUMP_HOUSE)));
+    if (!expect(completed.has_value() &&
+                    completed->action ==
+                        ScriptRunJohnsonReturnAction::completed &&
+                    completed->run_id == "ghoul_bounty" &&
+                    completed->objective_progress == max_defeats &&
+                    completed->reward_nuyen == 400U &&
+                    completed->runner_progress_delta == 1U &&
+                    scripts.call_string(
+                        "run_registry", "active_run_id") ==
+                        std::optional<std::string>{"none"},
+                "matching Johnson return did not settle the bounty once")) {
+        std::cerr << scripts.failure() << '\n';
+        return 15;
+    }
+
+    auto return_dialogue = scripts.start_task("johnson", "interaction");
+    if (!expect(return_dialogue.operation.has_value() &&
+                    return_dialogue.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    return_dialogue.operation->dialogue.has_value() &&
+                    return_dialogue.operation->dialogue->inline_text.find(
+                        "Looks like you made it through that run.") !=
+                        std::string::npos,
+                "Johnson return skipped the source result dialogue")) {
+        std::cerr << scripts.failure() << '\n';
+        return 16;
+    }
+    return_dialogue = scripts.complete_native_operation(true);
+    const auto return_menu = return_dialogue.operation.has_value() &&
+                                     return_dialogue.operation->menu.has_value()
+                                 ? scripts.resolve_dialogue_menu(
+                                       *return_dialogue.operation->menu)
+                                 : std::nullopt;
+    if (!expect(return_dialogue.operation.has_value() &&
+                    return_dialogue.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    return_menu.has_value() &&
+                    return_menu->title_key ==
+                        "gunderson.greeting.after_run_return",
+                "Johnson return did not transition to the follow-up menu")) {
+        std::cerr << scripts.failure() << '\n';
+        std::cerr << "status=" << static_cast<int>(return_dialogue.status);
+        if (return_dialogue.operation.has_value()) {
+            std::cerr << " operation="
+                      << static_cast<int>(return_dialogue.operation->type);
+            if (return_dialogue.operation->menu.has_value()) {
+                std::cerr << " menu=" << return_dialogue.operation->menu->id
+                          << " title="
+                          << return_dialogue.operation->menu->title_key;
+            }
+            if (return_dialogue.operation->dialogue.has_value()) {
+                std::cerr << " event="
+                          << return_dialogue.operation->dialogue->event_id
+                          << " text_profile="
+                          << return_dialogue.operation->dialogue->text_profile;
+            }
+        }
+        std::cerr << '\n';
+        return 17;
+    }
+    return_dialogue = scripts.complete_native_menu_choice("leave");
+    if (!expect(return_dialogue.status == ScriptTaskStep::Status::completed &&
+                    return_dialogue.result_id ==
+                        std::optional<std::string>{"leave"},
+                "Johnson return follow-up did not return to the field")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    const auto no_repeat_dialogue =
+        scripts.start_task("johnson", "interaction");
+    const auto normal_menu = no_repeat_dialogue.operation.has_value() &&
+                                     no_repeat_dialogue.operation->menu.has_value()
+                                 ? scripts.resolve_dialogue_menu(
+                                       *no_repeat_dialogue.operation->menu)
+                                 : std::nullopt;
+    if (!expect(no_repeat_dialogue.operation.has_value() &&
+                    no_repeat_dialogue.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    normal_menu.has_value() &&
+                    normal_menu->title_key == "gunderson.greeting",
+                "completed Johnson-return dialogue replayed on re-entry")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+
+    std::cout << "ghoul bounty actor defeat and Johnson-return test passed\n";
     return 0;
 }

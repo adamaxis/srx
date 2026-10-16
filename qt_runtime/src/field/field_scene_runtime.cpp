@@ -13465,14 +13465,44 @@ bool FieldSceneRuntime::open_field_johnson_interaction() {
         return false;
     }
     const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    std::uint8_t run_offer_context = 0U;
     if (scene_reference == 13U) {
+        run_offer_context = static_cast<std::uint8_t>(
+            srx::v(srx::RunOfferContext::JUMP_HOUSE));
         game_scripts_.set_location_context(
             "building", "jump_house", "gunderson.jump_house", "gunderson");
     } else if (scene_reference == 14U) {
+        run_offer_context = static_cast<std::uint8_t>(
+            srx::v(srx::RunOfferContext::WANDERER));
         game_scripts_.set_location_context(
             "building", "wanderer", "wanderer.vigore_jarl", "vigore_jarl");
     } else {
         return false;
+    }
+
+    const auto run_return = game_scripts_.resolve_active_run_johnson_return(
+        run_offer_context);
+    if (!run_return.has_value()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.run.johnson_return_script_failed");
+        return false;
+    }
+    if (run_return->action ==
+        scripting::ScriptRunJohnsonReturnAction::completed) {
+        if (!field_funds_.has_value() || !field_party_roster_.available()) {
+            failure_ = "completed run return has no field wallet or runner roster";
+            source_boundary("field.run.johnson_return_host_state_unresolved");
+            return false;
+        }
+        *field_funds_ += run_return->reward_nuyen;
+        for (auto& runner : field_party_roster_.records()) {
+            runner.auxiliary[2] = static_cast<std::uint8_t>(
+                runner.auxiliary[2] + run_return->runner_progress_delta);
+        }
+        field_exit_world_flags_ &= ~field_flag_mask(
+            FieldWorldFactFlag::run_objective_active);
+        refresh_field_hud_runner_slot();
+        source_boundary("field.run.johnson_return_completed");
     }
     return field_dialogue_.open_gameplay_task("johnson", "interaction");
 }

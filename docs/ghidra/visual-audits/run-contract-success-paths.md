@@ -65,6 +65,19 @@ both the source initializer and canonical handler ID.
   current context `FFF0AE`. It then calls `0x1F00A` and selects the result
   descriptor from the current context's row in `0x12CC50`. Context zero uses
   descriptor `0x105934` (`0x12CC50 + 8`).
+- The active Qt field path calls the Lua run resolver when a wired Johnson
+  interaction opens. Scene 13 uses the named Jump House context enum (0), and
+  scene 14 uses Wanderer (3). The Ghoul handler completes only when the
+  accepted offer's own context matches and at least one eligible Ghoul was
+  counted. It returns negotiated payment times the kill count and the source
+  progress delta; the field host applies those values to funds and all three
+  runner records, then clears the active-run field flag. An ordinary door or
+  unrelated field event cannot settle the bounty.
+- On completion, Lua consumes a one-shot return result and asks the completed
+  run module to present it. The Jump House text at ROM `0x105AB7..0x105B79`
+  feeds the shared dialogue panel, followed by a Lua-defined follow-up menu.
+  Completed-run history remains in the save registry, while this presentation
+  cue is transient so a later Johnson visit does not replay it.
 - The existing map/contact audit identifies scene `0x0D` as Jump House and
   Gunderson. The ROM therefore defines bounty success as at least one eligible
   ghoul defeated, followed by reaching the matching Johnson context. This
@@ -99,35 +112,38 @@ field-exit dispatcher applies its typed result, funds, and runner progress.
 physical meter changes from positive to zero. Lua checks actor `+0x9B == 0x42`,
 increments the active offer's count up to the ROM cap of 20, and retains that
 count in the ordinary run-registry save state. The projectile resolver already
-publishes typed meter updates to this host path. The bounty's matching-context
-return and payout are still open, as are escort's source client spawn and actor
-state, gang's live encounter results, recovery/recruitment item/contact
-callbacks, and Matrix field return-settlement.
+publishes typed meter updates to this host path. Matching-context return,
+one-time payout, and the source result dialogue now pass through the active
+Jump House interaction path. The source-context mismatch and zero-kill cases
+remain active and unpaid. The result screen has not received a CLI frame dump
+or full-screen visual review, so this route remains partial. Escort's source
+client spawn and actor state, gang's live encounter results,
+recovery/recruitment item/contact callbacks, and Matrix field return-settlement
+remain open.
 
 ## Visual evidence checklist
 
-1. **Does it look correct?** Unknown for the result page at `0x105934`.
-2. **Does visible state match behavior?** The Lua offer retains its ROM row,
-   context, initializer, and canonical run type. Package delivery completes in
-   the field; Ghoul defeat counting is connected, but its return and settlement
-   state is not.
-3. **Are the visuals correct?** No run-result full-screen capture has been
-   reviewed.
-4. **Should it animate?** The package pickup/delivery branches request no
-   animation. Ghoul and bodyguard completion visuals need full source/runtime
-   review before calling them settled.
-5. **Is there sound?** The package handler has no sound request. The other
-   contract presentation and actor paths need separate audio tracing.
-6. **Are adjacent screen elements clean?** The added text uses shared dialogue
-   and prompt presenters, but offer captures have not checked replacement or
-   overdraw across each new page.
-7. **Do multiple frames support it?** Longplay frames cover the package offer,
-   but not every offer variant or its full field route.
-8. **Are new controls drawn over old content?** The offers use the existing
-   shared Yes/No prompt; each new offer transition still needs a full-screen
-   replacement check.
-9. **Was the affected time window reviewed continuously?** No. The result
-   descriptor and complete return sequence still need full-screen capture.
+1. **Does it look correct?** Text and follow-up choice are transcribed from
+   the context-zero return descriptor; no rendered result capture has been
+   reviewed yet.
+2. **Does visible state match behavior?** Lua requires a matching offer
+   context and a positive eligible-kill count before completing. The host then
+   applies the multiplied negotiated payment and source progress delta.
+3. **Are the visuals correct?** Still unverified; the focused test checks the
+   dialogue key and sequence, not pixels.
+4. **Should it animate?** No animation was added. The result route's full ROM
+   draw/timing path has not yet been independently reviewed.
+5. **Is there sound?** No sound was added; the result route's audio calls and
+   duration remain to be traced.
+6. **Are adjacent screen elements clean?** The shared dialogue presenter
+   replaces its current page, but the full-screen result capture is still open.
+7. **Do multiple frames support it?** No independent longplay return frames
+   have been linked to this completion sequence.
+8. **Are new controls drawn over old content?** The existing shared dialogue
+   and menu presenters are used, but clean panel replacement has not been
+   checked in a frame dump.
+9. **Was the affected time window reviewed continuously?** Not yet; a
+   continuous Johnson return capture remains open.
 
 The actor-defeat counter adds no panel, button, icon, animation, or sound call;
 it only updates saved run state after the physical meter reaches zero. That

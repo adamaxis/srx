@@ -77,6 +77,7 @@ return {
         ["gunderson.greeting"] = "Hoi, friend, don't be so obvious!||Ol' Stoker likes to toss my name around, but if you wanna' stay healthy in the shadows you'd do well to just refer to me as \"Mr. Johnson\".",
         ["gunderson.greeting.continuation"] = "Ol' Stoker likes to toss my name around, but if you wanna' stay healthy in the shadows you'd do well to just refer to me as \"Mr. Johnson\".",
         ["gunderson.greeting.after_information"] = "You just tell me what you need, chum.||I'll do what I can for ya'.",
+        ["gunderson.greeting.after_run_return"] = "Anything else we can do for each other?",
         ["gunderson.option.information"] = "I'm looking for some information.",
         ["gunderson.option.work"] = "I'm lookin' for some work.",
         ["gunderson.option.leave"] = "I'll talk to you later, chum.",
