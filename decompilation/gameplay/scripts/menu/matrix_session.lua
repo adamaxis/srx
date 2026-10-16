@@ -201,16 +201,20 @@ function M.map_labels()
 end
 
 local FILE_CLASSES = {
-    [0] = "Outdated", "System", "Mngmnt", "Project", "Security",
-    "Dead Projects", "Competition", "Marketing", "Simsense", "Financial",
-    "Confidntl", "Legal", "Prisoner", "Case Files", "Unlisted",
+    [0] = "Outdated Files", " System Files ", " Mngmnt Files ",
+    "Project Files ", "Security Files", "Dead Projects ",
+    " Competition  ", "Marketing Data", "Simsense Files",
+    "Financial Data", "Confidntl Data", "  Legal Files ",
+    "Prisoner Files", "  Case Files  ", "   Unlisted   ",
 }
 local NODE_NAMES = {
     [0] = { "System Access", "Node" }, { "CPU" },
     { "Sub-Processor", "Unit" }, { "I/O Port" },
     { "Datastore" }, { "Slave", "Module" },
 }
-local COLOURS = { [1] = "Blue", "Green", "Orange", "Red" }
+local ALERT_BANDS = {
+    [0] = "  ???  ", "  Blue-", " Green-", "Orange-", "   Red-",
+}
 local ACTIONS = {
     [0] = { { id = "enter_system", label = "Enter System" } },
     [1] = {
@@ -247,11 +251,20 @@ function M.node_name(state, node_id)
 end
 
 function M.node_summary(state)
+    local status = M.node_status(state)
+    if not status then return "" end
+    return status.file_class_label .. "|" .. status.alert_band_label ..
+           tostring(status.action_difficulty)
+end
+
+function M.node_status(state)
     local node = M.current_node(state)
-    if not node then return "" end
-    local file_class = FILE_CLASSES[node.file_class_id] or "Unknown"
-    local colour = COLOURS[node.colour] or "Unknown"
-    return file_class .. "|" .. colour .. "-" .. tostring(node.security)
+    if not node then return nil end
+    return {
+        file_class_label = FILE_CLASSES[node.file_class_id] or "Unknown",
+        alert_band_label = ALERT_BANDS[node.colour] or "Unknown-",
+        action_difficulty = node.security,
+    }
 end
 
 function M.node_cursor_text(state)
@@ -279,8 +292,9 @@ function M.node_text(state, selected_row)
     for _, line in ipairs(NODE_NAMES[node.function_id] or { "Unknown Node" }) do
         lines[#lines + 1] = line
     end
-    local colour = COLOURS[node.colour] or "Unknown"
-    lines[#lines + 1] = colour .. "-" .. tostring(node.security)
+    local status = M.node_status(state)
+    lines[#lines + 1] = status.alert_band_label ..
+                         tostring(status.action_difficulty)
     lines[#lines + 1] = ""
     for index, action in ipairs(M.node_actions(state)) do
         lines[#lines + 1] =

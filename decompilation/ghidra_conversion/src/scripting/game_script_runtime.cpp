@@ -1760,6 +1760,31 @@ struct GameScriptRuntime::Impl {
                         read_optional(matrix_state_index, "alert");
                 }
                 lua_pop(state, 1);
+                lua_getfield(state, screen_state_index,
+                             "matrix_node_status");
+                if (lua_istable(state, -1)) {
+                    const auto status_index = lua_absindex(state, -1);
+                    ScriptMatrixNodeStatusView status;
+                    lua_getfield(state, status_index, "file_class_label");
+                    const bool has_file_class =
+                        read_string(state, -1, status.file_class_label);
+                    lua_pop(state, 1);
+                    lua_getfield(state, status_index, "alert_band_label");
+                    const bool has_alert_band =
+                        read_string(state, -1, status.alert_band_label);
+                    lua_pop(state, 1);
+                    const auto action_difficulty =
+                        read_optional(status_index, "action_difficulty");
+                    if (has_file_class && has_alert_band &&
+                        action_difficulty.has_value() &&
+                        *action_difficulty >= 0 &&
+                        *action_difficulty <= 255) {
+                        status.action_difficulty = *action_difficulty;
+                        menu_route_state.top_matrix_node_status =
+                            std::move(status);
+                    }
+                }
+                lua_pop(state, 1);
                 menu_route_state.top_matrix_countdown =
                     read_optional(screen_state_index, "matrix_countdown");
                 lua_getfield(state, screen_state_index, "matrix_transition");

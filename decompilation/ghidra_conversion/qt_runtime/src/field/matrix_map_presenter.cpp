@@ -202,26 +202,43 @@ bool paint_matrix_node_action_panel(
         return true;
     }
 
-    draw_text(24, 20, state.top_title);
-    painter.fillRect(QRect(20, 40, 280, 1), edge);
-
-    const bool message_view = state.top_title == "Matrix Message";
-    std::size_t start = 0U;
-    int line = 0;
-    while (start <= state.top_text.size() && line < (message_view ? 12 : 3)) {
-        const auto end = state.top_text.find('|', start);
-        const auto value = state.top_text.substr(
-            start, end == std::string::npos ? std::string::npos
-                                            : end - start);
-        draw_text(24, 50 + line * (message_view ? 12 : 14), value);
-        ++line;
-        if (end == std::string::npos) break;
-        start = end + 1U;
+    if (state.top_matrix_node_status.has_value()) {
+        // ROM 0x54802 writes the node-function title at $C418. The status
+        // fields are separate writes from 0x54A28: file class at $C39A,
+        // alert-band label at $C51E, and action difficulty at $C52C. On a
+        // 64-cell plane each tile row is 0x80 bytes (8 screen pixels).
+        const auto& status = *state.top_matrix_node_status;
+        draw_text(96, 64, state.top_title);
+        draw_text(104, 56, status.file_class_label);
+        draw_text(120, 80, status.alert_band_label);
+        draw_text(176, 80, std::to_string(status.action_difficulty));
+    } else {
+        draw_text(24, 20, state.top_title);
+        painter.fillRect(QRect(20, 40, 280, 1), edge);
     }
 
+    const bool message_view = state.top_title == "Matrix Message";
+    if (!state.top_matrix_node_status.has_value()) {
+        std::size_t start = 0U;
+        int line = 0;
+        while (start <= state.top_text.size() &&
+               line < (message_view ? 12 : 3)) {
+            const auto end = state.top_text.find('|', start);
+            const auto value = state.top_text.substr(
+                start, end == std::string::npos ? std::string::npos
+                                                : end - start);
+            draw_text(24, 50 + line * (message_view ? 12 : 14), value);
+            ++line;
+            if (end == std::string::npos) break;
+            start = end + 1U;
+        }
+    }
+
+    const auto option_origin_y =
+        state.top_matrix_node_status.has_value() ? 122 : 94;
     for (std::size_t row = 0U;
          row < state.top_option_labels.size() && row < 5U; ++row) {
-        const auto y = 94 + static_cast<int>(row) * 22;
+        const auto y = option_origin_y + static_cast<int>(row) * 22;
         if (state.top_row == static_cast<int>(row)) {
             painter.fillRect(QRect(20, y - 13, 280, 18),
                              QColor(12, 43, 51));

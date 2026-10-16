@@ -1128,6 +1128,14 @@ int main() {
                   "Go To Node", "Cancel Alert", "Crash System"},
           "link confirmation enters the source CPU node and its action list",
           failures);
+    check(route.top_matrix_node_status.has_value() &&
+              route.top_matrix_node_status->file_class_label.find(
+                  "Unlisted") != std::string::npos &&
+              route.top_matrix_node_status->alert_band_label.size() == 7U &&
+              route.top_matrix_node_status->alert_band_label.back() == '-' &&
+              route.top_matrix_node_status->action_difficulty == 4,
+          "Lua publishes the source node class, alert label, and difficulty as separate values",
+          failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     QImage node_actual(320, 224, QImage::Format_ARGB32);
     node_actual.fill(QColor(255, 0, 255));
@@ -1150,8 +1158,39 @@ int main() {
     check(!node_stale_pixel,
           "node-action redraw clears all graphics from the previous screen",
           failures);
+    const auto has_green_text = [&node_actual](const int left,
+                                               const int top,
+                                               const int right,
+                                               const int bottom) {
+        for (int y = top; y < bottom; ++y) {
+            for (int x = left; x < right; ++x) {
+                if (node_actual.pixelColor(x, y) == QColor(36, 219, 36)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+    const bool node_status_matches_rom_rows =
+        has_green_text(96, 64, 120, 72) &&
+        has_green_text(104, 56, 232, 64) &&
+        has_green_text(120, 80, 176, 88) &&
+        has_green_text(176, 80, 184, 88);
+    check(node_status_matches_rom_rows,
+          "Matrix node title, class, alert band, and difficulty use ROM name-table positions",
+          failures);
+    bool no_labels_at_panel_header = true;
+    for (int y = 20; y < 72; ++y) {
+        for (int x = 24; x < 88; ++x) {
+            no_labels_at_panel_header = no_labels_at_panel_header &&
+                node_actual.pixelColor(x, y) != QColor(36, 219, 36);
+        }
+    }
+    check(no_labels_at_panel_header,
+          "Matrix node status no longer stacks under the panel header",
+          failures);
     bool node_labels_have_separate_rows = true;
-    constexpr std::array<int, 3> kNodeActionRows{85, 107, 129};
+    constexpr std::array<int, 3> kNodeActionRows{114, 136, 158};
     for (const auto y0 : kNodeActionRows) {
         bool row_has_text = false;
         for (int y = y0; y < y0 + 10; ++y) {
@@ -1164,7 +1203,8 @@ int main() {
                                          row_has_text;
     }
     check(node_labels_have_separate_rows,
-          "Matrix node actions render on three distinct rows", failures);
+          "Matrix node actions render below status fields on three distinct rows",
+          failures);
     const auto node_artifact = std::filesystem::path(
         SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) / "node-entry-screen.bmp";
     std::filesystem::create_directories(node_artifact.parent_path());

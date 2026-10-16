@@ -281,6 +281,12 @@ struct ScriptMatrixMapCellVisual {
     std::array<std::uint16_t, 4> tile_words{};
 };
 
+struct ScriptMatrixNodeStatusView {
+    std::string file_class_label;
+    std::string alert_band_label;
+    int action_difficulty = 0;
+};
+
 struct ScriptMenuRouteSnapshot {
     bool open = false;
     std::uint16_t top_screen = 0U;
@@ -310,6 +316,7 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_matrix_node;
     std::optional<int> top_matrix_previous_node;
     std::optional<int> top_matrix_alert;
+    std::optional<ScriptMatrixNodeStatusView> top_matrix_node_status;
     std::optional<int> top_matrix_countdown;
     std::optional<int> top_matrix_transition_fade_step;
     bool top_matrix_map_cells_present = false;

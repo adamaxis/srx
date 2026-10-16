@@ -86,6 +86,15 @@ Debug/Release fallback QA now uses the unmodified Samurai class-2 record;
 the independent longplay supports the Shaman spell page but has no matching
 non-magic Defense capture. See the [Magic split audit](visual-audits/magic-user-screen-split.md).
 
+Matrix node-entry status text is separated and positioned by the ROM draw
+addresses: node title at `$C418`, file class at `$C39A`, alert band at `$C51E`,
+and difficulty at `$C52C`. Lua publishes the three status values independently;
+the Debug route capture is
+`decompilation/ghidra_conversion/build/conversion/qt/debug/qt_runtime/matrix-node-action-route-qa/node-entry-screen.bmp`.
+The screenshot was reviewed after the change. No independent Matrix frame is
+available in the supplied longplay, so this visual hill remains partial. See
+the [Matrix node status layout audit](visual-audits/matrix-node-status-layout.md).
+
 | Cluster | Hill | ROM | Status | Defending test | Dump |
 |---|---|---|---|---|---|
 | 0 Process | Visual dump CLI | — | partial | Archived legacy-native CLI; no active Ghidra CTest for this general capability | No root-project-wide dump is retained; the Release Qt executable dumps only supported scenes |

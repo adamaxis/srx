@@ -11,6 +11,7 @@ local M = { window = E.WindowPlane.OFF }
 local CONFIRM = P.A | P.B | P.C
 
 local function refresh(st)
+    st.matrix_node_status = nil
     if st.shutdown then
         st.title, st.text, st.labels = "Matrix Message", MatrixText.SHUTDOWN, {}
         return
@@ -55,6 +56,7 @@ local function refresh(st)
 
     st.title = MatrixSession.node_name(state, state.current_node)
     st.text = MatrixSession.node_summary(state)
+    st.matrix_node_status = MatrixSession.node_status(state)
     st.labels = {}
     local actions = MatrixSession.node_actions(state)
     for index, action in ipairs(actions) do
