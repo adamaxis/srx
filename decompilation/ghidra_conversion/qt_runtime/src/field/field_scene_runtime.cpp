@@ -921,6 +921,137 @@ void FieldSceneRuntime::source_boundary(
     }
 }
 
+QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
+    QJsonObject fields;
+    const auto scene = state_.field_scene_buffers.scene_reference;
+    fields.insert(QStringLiteral("field.scene"), scene);
+    fields.insert(QStringLiteral("field.mode"),
+                  field_movement_transition_state_.world_mode);
+    fields.insert(QStringLiteral("field.player.x"),
+                  field_entity_.world_position.x);
+    fields.insert(QStringLiteral("field.player.y"),
+                  field_entity_.world_position.y);
+    fields.insert(QStringLiteral("field.player.heading"),
+                  field_movement_state_.heading);
+    fields.insert(QStringLiteral("field.player.direction"),
+                  field_entity_.direction);
+    fields.insert(QStringLiteral("field.player.target_heading"),
+                  field_target_heading_);
+    fields.insert(QStringLiteral("field.camera.x"),
+                  state_.field_scene_buffers.camera_x);
+    fields.insert(QStringLiteral("field.camera.y"),
+                  state_.field_scene_buffers.camera_y);
+    fields.insert(QStringLiteral("field.world.frame"),
+                  field_world_frame_counter_);
+    fields.insert(QStringLiteral("field.world.encounter_sequence"),
+                  static_cast<double>(field_world_encounter_sequence_));
+    fields.insert(QStringLiteral("field.world.random_seed"),
+                  field_random_seed_);
+    fields.insert(QStringLiteral("field.ui.command_overview"),
+                  command_overview_.open());
+    fields.insert(QStringLiteral("field.ui.dialogue"),
+                  field_dialogue_.open());
+    fields.insert(QStringLiteral("field.ui.interaction"),
+                  field_interaction_.open());
+    fields.insert(QStringLiteral("field.ui.hotel"), hotel_menu_.open());
+    fields.insert(QStringLiteral("field.ui.hotel_karma"),
+                  hotel_karma_skills_.is_open());
+    fields.insert(QStringLiteral("field.ui.debug_menu_unlocked"),
+                  debug_menu_unlocked_);
+
+    std::size_t actor_count = 0U;
+    for (const auto& actor : field_default_actors_) {
+        if (!actor.active || actor.scene_reference != scene) {
+            continue;
+        }
+        ++actor_count;
+        const auto actor_id = actor.actor_instance_id.empty()
+                                  ? std::to_string(actor.source_order)
+                                  : actor.actor_instance_id;
+        const auto prefix =
+            QStringLiteral("actor.%1.").arg(QString::fromStdString(actor_id));
+        fields.insert(prefix + QStringLiteral("profile"),
+                      QString::fromStdString(actor.script_profile_id));
+        fields.insert(prefix + QStringLiteral("kind"), actor.entity_kind);
+        fields.insert(prefix + QStringLiteral("source_order"),
+                      actor.source_order);
+        fields.insert(prefix + QStringLiteral("x"), actor.world_position.x);
+        fields.insert(prefix + QStringLiteral("y"), actor.world_position.y);
+        fields.insert(prefix + QStringLiteral("action"),
+                      static_cast<int>(actor.action_kind));
+        fields.insert(prefix + QStringLiteral("animation"),
+                      QString::fromStdString(actor.animation_id));
+        fields.insert(prefix + QStringLiteral("animation_direction"),
+                      actor.animation_direction);
+        fields.insert(prefix + QStringLiteral("animation_frame"),
+                      actor.animation_frame);
+        fields.insert(prefix + QStringLiteral("physical_meter"),
+                      actor.physical_meter);
+        fields.insert(prefix + QStringLiteral("target_valid"),
+                      actor.ai_target_valid);
+        fields.insert(prefix + QStringLiteral("target_id"),
+                      QString::fromStdString(actor.ai_target_id));
+        fields.insert(prefix + QStringLiteral("target_heading"),
+                      actor.ai_target_heading);
+        fields.insert(prefix + QStringLiteral("target_distance"),
+                      actor.ai_target_distance);
+        fields.insert(prefix + QStringLiteral("ai_package"),
+                      QString::fromStdString(actor.ai_package_id));
+        fields.insert(prefix + QStringLiteral("transition_complete"),
+                      actor.transition_complete);
+        if (actor.ai_weapon_item_id.has_value()) {
+            fields.insert(prefix + QStringLiteral("weapon_item"),
+                          *actor.ai_weapon_item_id);
+        }
+    }
+    fields.insert(QStringLiteral("field.actor_count"),
+                  static_cast<double>(actor_count));
+
+    fields.insert(QStringLiteral("party.active_slot"),
+                  static_cast<int>(field_party_roster_.active_slot()));
+    for (std::size_t slot = 0; slot < FieldPartyRosterRuntime::kSlotCount;
+         ++slot) {
+        const auto prefix =
+            QStringLiteral("party.runner.%1.").arg(static_cast<qulonglong>(slot));
+        fields.insert(prefix + QStringLiteral("active"),
+                      field_party_roster_.slot_active(slot));
+        const auto& name = field_party_roster_.name(slot);
+        fields.insert(prefix + QStringLiteral("name"),
+                      QString::fromUtf8(name.data(),
+                                        static_cast<qsizetype>(name.size())));
+    }
+
+    const auto route = game_scripts_.menu_route_snapshot();
+    fields.insert(QStringLiteral("menu.route.open"), route.open);
+    fields.insert(QStringLiteral("menu.route.screen"), route.top_screen);
+    fields.insert(QStringLiteral("menu.route.title"),
+                  QString::fromStdString(route.top_title));
+    fields.insert(QStringLiteral("menu.route.text"),
+                  QString::fromStdString(route.top_text));
+    const auto insert_optional = [&fields](const QString& key,
+                                           const std::optional<int> value) {
+        if (value.has_value()) {
+            fields.insert(key, *value);
+        }
+    };
+    insert_optional(QStringLiteral("menu.route.page"), route.page);
+    insert_optional(QStringLiteral("menu.route.row"), route.row);
+    insert_optional(QStringLiteral("menu.route.selection"),
+                    route.top_selection);
+    for (std::size_t index = 0; index < route.top_option_labels.size();
+         ++index) {
+        fields.insert(
+            QStringLiteral("menu.route.option.%1")
+                .arg(static_cast<qulonglong>(index)),
+            QString::fromStdString(route.top_option_labels[index]));
+    }
+    for (const auto& [name, value] : game_scripts_.story_state()) {
+        fields.insert(QStringLiteral("flag.%1").arg(QString::fromStdString(name)),
+                      value);
+    }
+    return fields;
+}
+
 void FieldSceneRuntime::initialize_field_entity_selection_state() {
     // ROM 0x42B0 publishes the three field-record types in slot order. Seed
     // their selection flags from the same typed records used by the field HUD

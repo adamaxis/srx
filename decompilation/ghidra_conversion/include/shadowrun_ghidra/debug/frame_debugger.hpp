@@ -250,14 +250,30 @@ public:
 
     bool enabled() const noexcept { return enabled_; }
     bool paused() const noexcept { return enabled_ && paused_; }
+    std::uint32_t pending_steps() const noexcept { return pending_steps_; }
+
+    void pause() noexcept {
+        if (enabled_) {
+            paused_ = true;
+            pending_steps_ = 0;
+        }
+    }
+
+    void resume() noexcept {
+        if (enabled_) {
+            paused_ = false;
+            pending_steps_ = 0;
+        }
+    }
 
     void toggle_pause() noexcept {
         if (!enabled_) {
             return;
         }
-        paused_ = !paused_;
-        if (!paused_) {
-            pending_steps_ = 0;
+        if (paused_) {
+            resume();
+        } else {
+            pause();
         }
     }
 

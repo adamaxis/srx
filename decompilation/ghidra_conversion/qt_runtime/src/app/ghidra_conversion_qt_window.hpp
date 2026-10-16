@@ -18,6 +18,7 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 #include "field_scene_runtime.hpp"
 #include "audio_playback.hpp"
+#include "frame_debug_server.hpp"
 #include "genesis_image_compositor.hpp"
 
 #include <QApplication>
@@ -30,6 +31,7 @@
 #include <QPainter>
 #include <QPaintEvent>
 #include <QPoint>
+#include <QJsonObject>
 #include <QString>
 #include <QTimer>
 #include <QWidget>
@@ -151,6 +153,8 @@ public:
                                     debug::InputLogConfig input_log = {},
                                     const bool frame_debug_controls = false,
                                     const bool headless_replay = false,
+                                    const std::optional<std::uint16_t> debug_port =
+                                        std::nullopt,
                                     QWidget* parent = nullptr)
         : QWidget(parent),
           asset_root_(std::move(asset_root)),
@@ -209,6 +213,20 @@ public:
         });
         host_frame_timer_.start();
         update_window_title();
+        if (debug_port.has_value()) {
+            frame_stepper_.pause();
+            debug_server_ = std::make_unique<FrameDebugServer>(
+                *debug_port, frame_stepper_,
+                [this] { return debug_inspection_fields(); },
+                [this] { return source_frame_index_; },
+                [this] {
+                    return QString::fromLatin1(
+                        startup_integration_phase_name(state_.phase));
+                },
+                [this](const int key, const bool pressed) {
+                    pending_remote_keys_.push_back({key, pressed});
+                });
+        }
 
     }
 
@@ -290,7 +308,8 @@ protected:
     }
 
     void keyPressEvent(QKeyEvent* event) override {
-        if (!event->isAutoRepeat() && frame_stepper_.enabled()) {
+        if (!applying_remote_key_ && !event->isAutoRepeat() &&
+            frame_stepper_.enabled()) {
             if (event->key() == Qt::Key_Pause) {
                 frame_stepper_.toggle_pause();
                 update_window_title();
@@ -308,7 +327,8 @@ protected:
                 event->accept();
                 return;
             }
-        } else if (frame_stepper_.paused()) {
+        }
+        if (frame_stepper_.paused() && !applying_remote_key_) {
             event->accept();
             return;
         }
@@ -405,7 +425,7 @@ protected:
     }
 
     void keyReleaseEvent(QKeyEvent* event) override {
-        if (frame_stepper_.paused()) {
+        if (frame_stepper_.paused() && !applying_remote_key_) {
             event->accept();
             return;
         }
@@ -458,6 +478,39 @@ protected:
     }
 
 private:
+    struct PendingRemoteKey {
+        int key = 0;
+        bool pressed = false;
+    };
+
+    QJsonObject debug_inspection_fields() const {
+        auto fields = field_scene_runtime_.debug_inspection_fields();
+        const auto phase = startup_integration_phase_name(state_.phase);
+        fields.insert(QStringLiteral("app.phase"),
+                      QString::fromLatin1(phase));
+        fields.insert(QStringLiteral("app.source_frame"),
+                      static_cast<double>(source_frame_index_));
+        fields.insert(QStringLiteral("app.random_seed"),
+                      source_random_seed());
+        fields.insert(QStringLiteral("app.paused"), frame_stepper_.paused());
+        fields.insert(QStringLiteral("app.replay_diverged"),
+                      replay_diverged_);
+        return fields;
+    }
+
+    void apply_pending_remote_keys() {
+        auto pending = std::move(pending_remote_keys_);
+        pending_remote_keys_.clear();
+        for (const auto& input : pending) {
+            QKeyEvent event(input.pressed ? QEvent::KeyPress
+                                          : QEvent::KeyRelease,
+                            input.key, Qt::NoModifier);
+            applying_remote_key_ = true;
+            QApplication::sendEvent(this, &event);
+            applying_remote_key_ = false;
+        }
+    }
+
     void update_window_title() {
         auto title = phase_title(state_.phase);
         if (frame_stepper_.paused()) {
@@ -1138,6 +1191,7 @@ private:
         bool replay_input_applied = false;
         int advanced_frames = 0;
         for (std::uint32_t frame = 0; frame < frames; ++frame) {
+            apply_pending_remote_keys();
             replay_input_applied = apply_recorded_key_inputs() ||
                                    replay_input_applied;
             if (input_log_.replaying() &&
@@ -2138,6 +2192,9 @@ private:
     TitleIdleRestartFadeState title_idle_restart_fade_;
     QTimer host_frame_timer_;
     QElapsedTimer host_clock_;
+    std::unique_ptr<FrameDebugServer> debug_server_;
+    std::vector<PendingRemoteKey> pending_remote_keys_;
+    bool applying_remote_key_ = false;
     std::int64_t host_frame_deadline_ns_ = 0;
     std::map<std::string, QImage> draw_asset_cache_;
     std::array<std::array<QImage,

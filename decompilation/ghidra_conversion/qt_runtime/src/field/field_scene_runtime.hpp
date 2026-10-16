@@ -49,6 +49,7 @@
 #include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
 
 #include <QImage>
+#include <QJsonObject>
 
 #include "attributes_skills_menu_runtime.hpp"
 #include "field_command_overview_bridge.hpp"
@@ -268,6 +269,7 @@ public:
     void set_controller_nibble(std::uint8_t dpad_nibble) noexcept;
     void set_controller_port_byte(std::uint8_t port_byte) noexcept;
     void paint(QPainter& painter) const;
+    QJsonObject debug_inspection_fields() const;
     void paint_field_scene_for_dump(QPainter& painter) const;
     std::size_t default_actor_count_for_dump() const noexcept;
     std::size_t visible_default_actor_count_for_dump() const;

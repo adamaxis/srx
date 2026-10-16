@@ -6,6 +6,7 @@ int main(int argc, char** argv) {
     try {
         std::optional<std::filesystem::path> explicit_assets;
         std::optional<std::filesystem::path> frame_dump;
+        std::optional<std::uint16_t> debug_port;
         debug::InputLogConfig input_log;
         bool frame_debug_controls = false;
         bool headless_replay = false;
@@ -14,12 +15,13 @@ int main(int argc, char** argv) {
             if (argument == "--help") {
                 std::cout << "usage: shadowrun_ghidra_conversion_qt [--assets <asset-directory>] "
                              "[--debug-frames] [--record-input <file> | --replay-input <file>]\n"
-                             "                             [--headless-replay] [--dump-frame <file>]\n"
+                             "                             [--headless-replay] [--dump-frame <file>] [--debug-port <port>]\n"
                              "  --debug-frames  Enable Pause, . (step), and Shift+. (step 60) controls.\n"
                              "  --record-input  Record accepted keyboard input for replay from a fresh launch.\n"
                              "  --replay-input  Replay a recorded keyboard session from a fresh launch.\n"
                              "  --headless-replay Run the replay to completion without a window or audio output.\n"
-                             "  --dump-frame    Save the final replay frame as an image.\n";
+                             "  --dump-frame    Save the final replay frame as an image.\n"
+                             "  --debug-port    Start the paused, headless local debugger on 127.0.0.1.\n";
                 return 0;
             }
             if (argument == "--assets" && index + 1 < argc) {
@@ -39,6 +41,20 @@ int main(int argc, char** argv) {
                     throw std::invalid_argument("--dump-frame requires a file path");
                 }
                 frame_dump = std::filesystem::path(argv[++index]);
+                continue;
+            }
+            if (argument == "--debug-port") {
+                if (index + 1 >= argc) {
+                    throw std::invalid_argument("--debug-port requires a port number");
+                }
+                const std::string value(argv[++index]);
+                std::size_t consumed = 0U;
+                const auto port = std::stoul(value, &consumed, 10);
+                if (consumed != value.size() || port == 0U || port > 65535U) {
+                    throw std::invalid_argument(
+                        "--debug-port must be an integer from 1 to 65535");
+                }
+                debug_port = static_cast<std::uint16_t>(port);
                 continue;
             }
             if (argument == "--record-input" || argument == "--replay-input") {
@@ -66,6 +82,15 @@ int main(int argc, char** argv) {
         if (frame_dump.has_value() && !headless_replay) {
             throw std::invalid_argument(
                 "--dump-frame is only available with --headless-replay");
+        }
+        if (debug_port.has_value() &&
+            input_log.mode == debug::InputLogConfig::Mode::replay) {
+            throw std::invalid_argument(
+                "--debug-port cannot be combined with --replay-input");
+        }
+        if (debug_port.has_value() && headless_replay) {
+            throw std::invalid_argument(
+                "--debug-port cannot be combined with --headless-replay");
         }
 
         const auto executable = std::filesystem::absolute(argv[0]);
@@ -115,6 +140,10 @@ int main(int argc, char** argv) {
                 qt_argument_index += 2;
                 continue;
             }
+            if (argument == "--debug-port") {
+                qt_argument_index += 2;
+                continue;
+            }
             qt_arguments.push_back(argv[qt_argument_index++]);
         }
         int qt_argument_count = static_cast<int>(qt_arguments.size());
@@ -122,12 +151,13 @@ int main(int argc, char** argv) {
         QCoreApplication::setOrganizationName(QStringLiteral("Shadowrun"));
         QCoreApplication::setApplicationName(
             QStringLiteral("Shadowrun Ghidra Conversion"));
-        if (headless_replay) {
+        const bool headless_mode = headless_replay || debug_port.has_value();
+        if (headless_mode) {
             const auto offscreen_plugin =
                 executable_directory / "platforms" / "qoffscreen.dll";
             if (!std::filesystem::is_regular_file(offscreen_plugin)) {
                 throw std::runtime_error(
-                    "headless replay requires the deployed Qt platforms/qoffscreen.dll plugin");
+                    "headless mode requires the deployed Qt platforms/qoffscreen.dll plugin");
             }
             // Qt reads its platform plugin setting during application
             // construction. No widget is shown in this path.
@@ -135,7 +165,9 @@ int main(int argc, char** argv) {
         }
         QApplication application(qt_argument_count, qt_arguments.data());
         GhidraConversionWindow window(asset_root, std::move(input_log),
-                                      frame_debug_controls, headless_replay);
+                                      frame_debug_controls ||
+                                          debug_port.has_value(),
+                                      headless_mode, debug_port);
         if (headless_replay) {
             std::string error;
             if (!window.run_headless_replay(
@@ -151,6 +183,11 @@ int main(int argc, char** argv) {
             }
             std::cout << '\n';
             return 0;
+        }
+        if (debug_port.has_value()) {
+            std::cout << "local debugger listening on 127.0.0.1:"
+                      << *debug_port << " (paused)\n";
+            return application.exec();
         }
         window.show();
         return application.exec();

@@ -1,4 +1,4 @@
-find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia Network)
 
 set(SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/app"
@@ -40,6 +40,17 @@ target_include_directories(shadowrun_frame_debugger_test
 add_test(NAME shadowrun_frame_debugger
          COMMAND shadowrun_frame_debugger_test)
 
+add_executable(shadowrun_frame_debug_server_test
+    tests/debug/frame_debug_server_test.cpp)
+target_include_directories(shadowrun_frame_debug_server_test
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/app"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+target_link_libraries(shadowrun_frame_debug_server_test
+    PRIVATE Qt6::Core Qt6::Network)
+add_test(NAME shadowrun_frame_debug_server
+         COMMAND shadowrun_frame_debug_server_test)
+
 # This is the runnable Qt host for the converted source contracts. It is a
 # child of the root Ghidra project, not the archived native-port project.
 # It deliberately does not link shadowrun_port, shadowrun_native,
@@ -68,6 +79,7 @@ target_link_libraries(shadowrun_ghidra_conversion_qt_qa
         shadowrun_ghidra_conversion_runtime
         Qt6::Widgets
         Qt6::Multimedia
+        Qt6::Network
 )
 target_compile_definitions(shadowrun_ghidra_conversion_qt_qa
     PRIVATE SHADOWRUN_QT_QA_DRIVER=1)
@@ -99,6 +111,7 @@ target_link_libraries(shadowrun_ghidra_conversion_qt
         shadowrun_ghidra_conversion_runtime
         Qt6::Widgets
         Qt6::Multimedia
+        Qt6::Network
 )
 
 add_executable(shadowrun_field_map_composition_test
@@ -1146,7 +1159,8 @@ if (WIN32)
         set(SHADOWRUN_GHIDRA_QT_DEPLOY_CONFIGURATION --release)
         foreach(SHADOWRUN_GHIDRA_QT_DEPLOY_TARGET IN ITEMS
                 shadowrun_ghidra_conversion_qt
-                shadowrun_ghidra_conversion_qt_qa)
+                shadowrun_ghidra_conversion_qt_qa
+                shadowrun_frame_debug_server_test)
             add_custom_command(TARGET ${SHADOWRUN_GHIDRA_QT_DEPLOY_TARGET} POST_BUILD
                 COMMAND "${SHADOWRUN_GHIDRA_QT_WINDEPLOYQT}"
                         ${SHADOWRUN_GHIDRA_QT_DEPLOY_CONFIGURATION}
@@ -1173,7 +1187,8 @@ if (WIN32)
             libstdc++-6.dll libgcc_s_seh-1.dll libwinpthread-1.dll)
         foreach(SHADOWRUN_GHIDRA_QT_DEPLOY_TARGET IN ITEMS
                 shadowrun_ghidra_conversion_qt
-                shadowrun_ghidra_conversion_qt_qa)
+                shadowrun_ghidra_conversion_qt_qa
+                shadowrun_frame_debug_server_test)
             add_custom_command(TARGET ${SHADOWRUN_GHIDRA_QT_DEPLOY_TARGET} POST_BUILD
                 COMMAND "${CMAKE_COMMAND}" -E copy_if_different
                         "${SHADOWRUN_GHIDRA_QT_COMPILER_BIN}/${SHADOWRUN_GHIDRA_QT_RUNTIME_DLL}"
