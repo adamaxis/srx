@@ -311,6 +311,7 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_matrix_previous_node;
     std::optional<int> top_matrix_alert;
     std::optional<int> top_matrix_countdown;
+    std::optional<int> top_matrix_transition_fade_step;
     bool top_matrix_map_cells_present = false;
     std::array<ScriptMatrixMapCellVisual, 140> top_matrix_map_cells{};
     bool top_matrix_map_labels_present = false;

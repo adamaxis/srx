@@ -6,6 +6,7 @@
 #include <QRect>
 #include <QSize>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -218,6 +219,13 @@ bool paint_matrix_node_action_panel(
             painter.fillRect(QRect(20, y - 13, 2, 18), selector);
         }
         draw_text(28, y - 8, state.top_option_labels[row]);
+    }
+    if (state.top_matrix_transition_fade_step.has_value()) {
+        const auto fade_step = std::clamp(
+            *state.top_matrix_transition_fade_step, 0, 5);
+        const auto alpha = static_cast<int>(fade_step) * 51;
+        painter.fillRect(QRect(0, 0, kScreenWidth, kScreenHeight),
+                         QColor(0, 0, 0, alpha));
     }
     painter.restore();
     return true;

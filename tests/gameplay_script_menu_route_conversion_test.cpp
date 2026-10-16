@@ -2164,9 +2164,125 @@ int main() {
     runtime.advance_menu_route(0x4000U); // Debug menu remains unlocked.
     check(runtime.menu_route_snapshot().top_screen == kDebugMenu,
           "Crash System logout preserves the unlocked debug menu", failures);
+
+    // ROM 0x1989A must complete the 10-frame 0x18776 fade and 54-frame
+    // 0x26A00 display transition before it draws the overload message.
+    // Recreate two alerts, then perform one more successful action while the
+    // active alert is set to take the armed-overload path.
+    matrix_alert_roll_value = 0xFFFF;
+    for (int row = 0; row < 3; ++row) runtime.advance_menu_route(0x0200U);
+    runtime.advance_menu_route(0x4000U); // Pick System.
+    runtime.advance_menu_route(0x4000U); // Jack in to system zero.
+    for (int frame = 0; frame < 20; ++frame) runtime.advance_menu_route(0U);
+    runtime.advance_menu_route(0x4000U); // Enter System.
+    runtime.advance_menu_route(0x4000U); // First link enters CPU.
+    matrix_alert_roll_value = 0;
+    runtime.advance_menu_route(0x4000U); // Go To Node.
+    for (int node = 0; node < 5; ++node) runtime.advance_menu_route(0x0800U);
+    runtime.advance_menu_route(0x4000U); // Enter I/O Port.
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Matrix Message" &&
+              route.top_matrix_alert == 0,
+          "overload QA first reaches the passive alert state", failures);
+    for (int frame = 0; frame < 25; ++frame) runtime.advance_menu_route(0U);
+    runtime.advance_menu_route(0x4000U); // Dismiss passive alert.
+    runtime.advance_menu_route(0x0200U); // Select Lockout.
+    runtime.advance_menu_route(0x4000U); // Run Lockout.
+    check(runtime.menu_route_snapshot().top_text.find(
+              "NODE ACCESS LOCKED") != std::string::npos,
+          "overload QA completes a second action at I/O Port", failures);
+    runtime.advance_menu_route(0x4000U); // Dismiss: alert rises to active.
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Matrix Message" &&
+              route.top_matrix_alert == 1,
+          "overload QA reaches the active alert state", failures);
+    for (int frame = 0; frame < 25; ++frame) runtime.advance_menu_route(0U);
+    runtime.advance_menu_route(0x4000U); // Dismiss active alert.
+    // The selected Lockout row is preserved across the alert message.
+    const auto sounds_before_overload = sounds.size();
+    runtime.advance_menu_route(0x4000U); // Successful action increments attempts.
+    runtime.advance_menu_route(0x4000U); // Dismiss: this roll overloads.
+    route = runtime.menu_route_snapshot();
+    check(route.open &&
+              route.top_matrix_transition_fade_step == 0 &&
+              route.top_text.find("SYSTEM OVERLOAD") == std::string::npos &&
+              route.top_matrix_alert == 1 &&
+              sounds.size() == sounds_before_overload,
+          "armed overload starts transition before the overload text", failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    save_transfer_frame("system-overload-fade-start.bmp", route);
+#endif
+    for (int fade_step = 1; fade_step <= 5; ++fade_step) {
+        runtime.advance_menu_route(0U);
+        check(runtime.menu_route_snapshot().top_matrix_transition_fade_step ==
+                  fade_step - 1,
+              "Matrix overload fade advances only after two VBlanks", failures);
+        runtime.advance_menu_route(0U);
+        check(runtime.menu_route_snapshot().top_matrix_transition_fade_step ==
+                  fade_step,
+              "Matrix overload completes each two-VBlank fade step", failures);
+    }
+    route = runtime.menu_route_snapshot();
+    check(route.top_matrix_transition_fade_step == 5 &&
+              route.top_text.find("SYSTEM OVERLOAD") == std::string::npos,
+          "five fade steps each follow two source VBlanks", failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    save_transfer_frame("system-overload-fade-black.bmp", route);
+    {
+        QImage image(320, 224, QImage::Format_ARGB32);
+        image.fill(QColor(255, 0, 255));
+        QPainter painter(&image);
+        const QImage font(QImage(QString::fromStdString(
+            (std::filesystem::path(SHADOWRUN_MATRIX_MAP_ASSET_ROOT) /
+             "cyberspace/matrix/system-map-font.bmp")
+                .string())));
+        const bool painted = paint_matrix_node_action_panel(
+            painter, font, route);
+        painter.end();
+        bool full_black = painted;
+        for (int y = 0; y < image.height() && full_black; ++y) {
+            for (int x = 0; x < image.width(); ++x) {
+                if (image.pixelColor(x, y) != QColor(0, 0, 0)) {
+                    full_black = false;
+                    break;
+                }
+            }
+        }
+        check(full_black,
+              "completed Matrix fade clears every old panel pixel", failures);
+    }
+#endif
+    for (int frame = 0; frame < 53; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    check(runtime.menu_route_snapshot().top_matrix_transition_fade_step == 5 &&
+              runtime.menu_route_snapshot().top_text.find("SYSTEM OVERLOAD") ==
+                  std::string::npos,
+          "Matrix display transition lasts 54 VBlanks after the fade",
+          failures);
+    runtime.advance_menu_route(0U);
+    route = runtime.menu_route_snapshot();
+    check(!route.top_matrix_transition_fade_step.has_value() &&
+              route.top_title == "Matrix Message" &&
+              route.top_text == "SYSTEM OVERLOAD!!||   LOGGING OUT|    ALL USERS",
+          "overload text appears after the full source transition", failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    save_transfer_frame("system-overload-message.bmp", route);
+#endif
+    for (int frame = 0; frame < 29; ++frame) runtime.advance_menu_route(0U);
+    runtime.advance_menu_route(0x4000U); // Input during the 30-frame wait.
+    check(runtime.menu_route_snapshot().open &&
+              runtime.menu_route_snapshot().top_title == "Matrix Message",
+          "overload message cannot be dismissed before its 30-frame wait",
+          failures);
+    runtime.advance_menu_route(0x4000U); // 0xD94 any-edge wait after 30 frames.
+    check(!runtime.menu_route_snapshot().open && closed_count == 5,
+          "overload exits the Matrix route after message and input waits",
+          failures);
+
     runtime.close_menu_route();
     check(!runtime.menu_route_snapshot().open && closed_count == 5,
-          "close rebuilt command route after the Matrix QA path", failures);
+          "Matrix overload leaves the debug route closed", failures);
 
     if (failures != 0) {
         std::cerr << "menu route failures: " << failures << '\n';

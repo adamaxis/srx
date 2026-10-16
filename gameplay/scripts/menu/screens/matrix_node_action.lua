@@ -82,6 +82,8 @@ local function show_random_alert(st, ctx)
     local alert, overload = MatrixRules.raise_alert(
         previous, 1, state.overload_armed)
     state.alert = alert
+    -- 0x1989A returns from its overload branch before the FFE189 sound-latch
+    -- check; the overload path has no separate alert SFX.
     if not overload and alert ~= previous then
         local sound = alert < 0 and E.SoundId.MATRIX_NO_ALERT or
                       alert == 0 and E.SoundId.MATRIX_PASSIVE_ALERT or
@@ -90,9 +92,14 @@ local function show_random_alert(st, ctx)
     end
 
     if overload then
-        st.matrix_message_kind = "system_overload"
-        st.matrix_message = MatrixText.SYSTEM_OVERLOAD
-        st.message_delay_frames = 30
+        st.matrix_message_kind = nil
+        st.matrix_message = nil
+        st.message_delay_frames = nil
+        st.matrix_transition = {
+            frames_remaining = MatrixRules.OVERLOAD_TRANSITION_FRAMES,
+            elapsed_frames = 0,
+            fade_step = 0,
+        }
     else
         st.matrix_message_kind = "system_alert"
         st.matrix_message = MatrixText.SYSTEM_ALERT
@@ -268,11 +275,33 @@ local function advance_transfer(st, events, ctx)
     return true
 end
 
+local function advance_overload_transition(st, ctx)
+    local transition = st.matrix_transition
+    transition.frames_remaining = transition.frames_remaining - 1
+    transition.elapsed_frames = transition.elapsed_frames + 1
+    transition.fade_step = math.min(
+        MatrixRules.OVERLOAD_FADE_STEPS,
+        transition.elapsed_frames // 2)
+
+    if transition.frames_remaining <= 0 then
+        st.matrix_transition = nil
+        st.matrix_message_kind = "system_overload"
+        st.matrix_message = MatrixText.SYSTEM_OVERLOAD
+        st.message_delay_frames = 30
+        refresh(st)
+    end
+    ctx.redraw(R.FULL)
+end
+
 function M.input(st, events, ctx)
     local state = st.matrix_state
     local game = ctx.game
     if not MatrixSession.is_online(state) then
         return { transition = T.POP, result = {} }
+    end
+    if st.matrix_transition then
+        advance_overload_transition(st, ctx)
+        return
     end
     if st.transfer then
         advance_transfer(st, events, ctx)

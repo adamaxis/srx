@@ -1762,6 +1762,18 @@ struct GameScriptRuntime::Impl {
                 lua_pop(state, 1);
                 menu_route_state.top_matrix_countdown =
                     read_optional(screen_state_index, "matrix_countdown");
+                lua_getfield(state, screen_state_index, "matrix_transition");
+                if (lua_istable(state, -1)) {
+                    const auto transition_index = lua_absindex(state, -1);
+                    const auto fade_step =
+                        read_optional(transition_index, "fade_step");
+                    if (fade_step.has_value() && *fade_step >= 0 &&
+                        *fade_step <= 5) {
+                        menu_route_state.top_matrix_transition_fade_step =
+                            *fade_step;
+                    }
+                }
+                lua_pop(state, 1);
                 lua_getfield(state, screen_state_index, "magic_view");
                 if (lua_istable(state, -1)) {
                     const auto view_index = lua_absindex(state, -1);
