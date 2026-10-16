@@ -373,6 +373,16 @@ eq(D.load_steps(13, 3), 5, "load duration rounds up")
 eq(D.load_steps(100, 10), 6, "load duration cap")
 eq(D.free_slot(deck), 1, "first empty program slot")
 eq(D.loaded_slot(deck, 0), 0, "loaded program lookup")
+local file_name_count = 0
+for id = 0, 69 do
+    if D.FILE_NAMES[id] ~= nil then file_name_count = file_name_count + 1 end
+end
+eq(file_name_count, 70, "deck contains all 70 ROM datafile names")
+eq(D.FILE_NAMES[32], "Competitor Markting",
+    "datafile names retain the source ROM spelling")
+eq(D.FILE_NAMES[69], "Unsolved Cases",
+    "datafile name table includes its final catalog entry")
+eq(D.FILE_NAMES[70], nil, "text following the datafile table is not a file name")
 local stored_files = { storage = 4096, files = {}, ratings = {} }
 for i = 0, 4 do stored_files.files[i] = { id = -1, size = 0, value = 0 } end
 for i = 0, 11 do stored_files.ratings[i] = 0 end
@@ -380,8 +390,11 @@ local objective_run = { state = -1, objective = 4, value = 3,
     fc28 = 1, fc1c = 0 }
 local objective_slot = Actions.store(stored_files, objective_run,
     { class = 4, colour = 2 }, { fff0ae = 0xFF },
-    { objective = true, size = 30 }, function() return 0 end)
+    { objective = true, id = 3, value = 3, size = 30 },
+    function() return 0 end)
 eq(objective_slot, 0, "objective file fills the first free deck slot")
+eq(stored_files.files[0].id, 3,
+    "objective download uses the ROM run value as its datafile ID")
 eq(stored_files.files[0].value, -1,
     "objective marker is represented as the signed ROM byte")
 eq(objective_run.state, 1, "storing the objective completes its run")
@@ -422,7 +435,59 @@ local run = { state = -1, objective = 5, value = 0, size = 30,
 local found = Actions.search(run, { class = 5 }, {}, decker, deck, nil,
     function() return 0 end)
 eq(found.file.objective, true, "objective search returns objective file")
+eq(found.file.id, 0, "objective preview uses the ROM run value as file ID")
 eq(found.file.size, 30, "objective file uses run size")
+local upload_run = { state = -1, objective = 5, value = -1, size = 30,
+    fc28 = 1, fc1c = 0 }
+local upload = Actions.begin_search(upload_run, { class = 5 }, {})
+eq(upload.text, Actions.TEXT.UPLOAD_DONE,
+    "negative objective value uploads immediately without a download prompt")
+eq(upload_run.state, 1, "immediate objective upload completes the run")
+local source_decker = { attributes = { [4] = 6 }, skills = { [7] = 6 } }
+local source_deck = { persona = { [3] = 5 } }
+local search_bounds = {}
+local ordinary_search = Actions.finish_search(
+    { class = 9 }, source_decker, source_deck, nil,
+    function(bound) search_bounds[#search_bounds + 1] = bound; return 0 end)
+eq(ordinary_search.file.id, 45,
+    "ordinary search reads class and source RNG for file ID")
+eq(ordinary_search.file.size, 20,
+    "ordinary search reads the source size roll")
+eq(table.concat(search_bounds, ","), "10,5,5",
+    "ordinary search draws detection, file ID, and size in ROM order")
+local missed_search = Actions.finish_search(
+    { class = 9 }, { attributes = { [4] = 0 }, skills = { [7] = 0 } },
+    { persona = { [3] = 0 } }, nil,
+    function(bound) return bound - 1 end)
+eq(missed_search.text, Actions.TEXT.NOTHING,
+    "detection failure uses Int, Computer, and Sensor from typed records")
+local special_facts = { system = 18, fc38 = 0, fc34 = 0, fc1e = 0,
+    fc22 = 0, fbfa = 0, fbfb = 0, fc26 = 0, fc27 = 0, nuyen = 0 }
+local story_search = Actions.finish_search(
+    { class = 3 }, source_decker, source_deck, special_facts,
+    function() error("story datastores do not roll for random data") end)
+eq(story_search.story, true,
+    "source special datastore can return its notebook file before detection")
+eq(story_search.text, Actions.TEXT.STORY_FILE,
+    "special datastore selects the ROM notebook message")
+eq((special_facts.fc34 >> 28) & 1, 1,
+    "special datastore commits its source event bit in Lua state")
+local low_storage = { storage = 0, files = {}, ratings = {} }
+for i = 0, 4 do low_storage.files[i] = { id = -1, size = 0, value = 0 } end
+for i = 0, 11 do low_storage.ratings[i] = 0 end
+local _, low_storage_text = Actions.store(
+    low_storage, nil, { class = 9, colour = 1 }, {},
+    { id = 45, size = 20 }, function() return 0 end)
+eq(low_storage_text, Actions.TEXT.NO_STORAGE,
+    "insufficient deck storage uses the ROM two-part message")
+local full_file_slots = { storage = 100, files = {}, ratings = {} }
+for i = 0, 4 do full_file_slots.files[i] = { id = i, size = 0, value = 0 } end
+for i = 0, 11 do full_file_slots.ratings[i] = 0 end
+local _, full_file_text = Actions.store(
+    full_file_slots, nil, { class = 9, colour = 1 }, {},
+    { id = 45, size = 20 }, function() return 0 end)
+eq(full_file_text, Actions.TEXT.FIVE_FILES,
+    "five occupied file slots use the ROM capacity message")
 local result = Actions.erase(run, { class = 5 })
 eq(result.text, Actions.TEXT.ERASE_OBJECTIVE, "objective erase text")
 eq(run.state, 1, "objective erase completes run")

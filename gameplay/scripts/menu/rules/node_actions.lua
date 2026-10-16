@@ -7,7 +7,9 @@ local SPECIAL = require("menu.rules.datastore_special")
 local M = {}
 M.TEXT = { ALERT_CANCELLED = 0x1666A8, NO_ALERTS = 0x1666DD, SHUTDOWN = 0x166A44, OFFLINE = 0x16684A,
     ERASE_OBJECTIVE = 0x1668CE, ERASED = 0x16685A, LOCKOUT = 0x1669A2, SEARCHING = 0x16674D, NOTHING = 0x1667A5,
-    OBJECTIVE_FOUND = 0x166770, UPLOAD_DONE = 0x16692D, STORED_OBJECTIVE = 0x1667DD, STORED = 0x1667F8 }
+    OBJECTIVE_FOUND = 0x166770, UPLOAD_DONE = 0x16692D, STORED_OBJECTIVE = 0x1667DD, STORED = 0x1667F8,
+    SEARCH_DOT = 0x166848, STORY_FILE = 0x166968, DOWNLOAD_FILE = 0x1667CE,
+    DOWNLOAD_CANCELLED = 0x1667BA, FIVE_FILES = 0x16681B, NO_STORAGE = 0xE383D }
 M.SEARCH_DOT_FRAMES, M.SHUTDOWN_STEP_FRAMES = 20, 60
 
 local function complete(run)                       -- shared "run complete" (0x54B34 / 0x54F72 / 0x5559E)
@@ -15,7 +17,7 @@ local function complete(run)                       -- shared "run complete" (0x5
 end
 -- 0x54C6A / 0x555A? run check: FFF0E3 < 0 (run in progress) and node class byte == FFFBF2 byte [C].
 local function on_objective(run, node)
-    return run ~= nil and run.state < 0 and
+    return run ~= nil and node ~= nil and run.state < 0 and
            (node.class & 0xFF) == (run.objective & 0xFF)
 end
 
@@ -64,24 +66,63 @@ function M.lockout() return { text = M.TEXT.LOCKOUT } end
 
 -- 0x54C5E Transfer Data, phase 1 (search). r = datastore_special record (system, flags, nuyen ...).
 M.VALUE = { [0]=0, 1, 3, 0, 2, 0, 5, 4, 6, 8, 0, 0 }      -- 0x16668A
-function M.search(run, node, st, decker, deck, special, rand)
+-- The objective check precedes the browsing animation in the ROM. A negative
+-- objective value is uploaded immediately; a nonnegative value goes straight
+-- to the normal file preview with the run's value byte as the file ID.
+function M.begin_search(run, node, st)
     st.fff0ae = 0
     if on_objective(run, node) then
         if run.value < 0 then complete(run); return { text = M.TEXT.UPLOAD_DONE } end
         st.fff0ae = 0xFF                               -- 0x54CDA: marker byte, stored as file +0x21
         st.fff096, st.fff098 = run.size, run.value & 0xFF
-        return { text = M.TEXT.OBJECTIVE_FOUND, file = { objective = true, size = run.size, value = run.value } }
+        return { text = M.TEXT.OBJECTIVE_FOUND,
+                 file = { objective = true, id = run.value & 0xFF,
+                          size = run.size, value = run.value } }
     end
-    if special and SPECIAL.matches(special, node.class) then return { story = true } end
-    if (decker.int + decker.computer + deck.sensor) // 3 < rand(10) + 1 then return { text = M.TEXT.NOTHING } end
+    return nil
+end
+
+-- Called after the ROM's four 20-frame dots and final 9-frame pause. The deck
+-- search reads runner +0x7B/+0x88 and deck +0x0B, then uses rand(10)+1.
+local function detection_score(decker, deck)
+    decker, deck = decker or {}, deck or {}
+    local attributes = decker.attributes or {}
+    local skills = decker.skills or {}
+    local intelligence = decker.int
+    if intelligence == nil then intelligence = attributes[4] or 0 end
+    local computer = decker.computer
+    if computer == nil then computer = skills[7] or 0 end
+    local sensor = deck.sensor
+    if sensor == nil then sensor = (deck.persona or {})[3] or 0 end
+    return (intelligence + computer + sensor) // 3
+end
+
+function M.finish_search(node, decker, deck, special, rand)
+    if special and SPECIAL.matches(special, node.class) then
+        return { story = true, text = M.TEXT.STORY_FILE }
+    end
+    if detection_score(decker, deck) < rand(10) + 1 then
+        return { text = M.TEXT.NOTHING }
+    end
     return { file = { id = node.class * 5 + rand(5), size = (rand(5) + 2) * 10 } }
 end
+function M.search(run, node, st, decker, deck, special, rand)
+    local immediate = M.begin_search(run, node, st)
+    if immediate then return immediate end
+    return M.finish_search(node, decker, deck, special, rand)
+end
+function M.file_name(id) return DECK.FILE_NAMES[id] end
 -- Phase 2 (after "Download File?" A = yes). Returns message key or stored slot.
 function M.store(rec, run, node, st, file, rand)
-    if DECK.free_storage(rec) < file.size then return "NO_STORAGE" end
+    if DECK.free_storage(rec) < file.size then return nil, M.TEXT.NO_STORAGE end
     local k; for i = 0, DECK.FILES - 1 do if rec.files[i].id < 0 then k = i; break end end
-    if not k then return "FIVE_FILES" end
-    local f = rec.files[k]; f.id, f.size = file.id or node.class * 5, file.size
+    if not k then return nil, M.TEXT.FIVE_FILES end
+    local id = file.id
+    if id == nil and file.objective and file.value ~= nil then
+        id = file.value & 0xFF
+    end
+    if id == nil then id = node.class * 5 end
+    local f = rec.files[k]; f.id, f.size = id, file.size
     if file.objective then
         -- The 0x54C5E objective branch stores FFF0AE's 0xFF marker at
         -- data-file +0x21; expose it as the signed host value -1.

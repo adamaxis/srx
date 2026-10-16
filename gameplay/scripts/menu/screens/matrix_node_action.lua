@@ -14,6 +14,23 @@ local function refresh(st)
         st.title, st.text, st.labels = "Matrix Message", MatrixText.SHUTDOWN, {}
         return
     end
+    if st.transfer and st.transfer.phase == "search" then
+        st.title = "Matrix Message"
+        st.text = MatrixText.SEARCHING .. "|" ..
+                  string.rep(".", st.transfer.dots)
+        st.labels = {}
+        return
+    elseif st.transfer and st.transfer.phase == "confirm" then
+        local file = st.transfer.file
+        local name = NodeActions.file_name(file.id) or
+                     ("File " .. tostring(file.id))
+        st.title = MatrixText.DOWNLOAD_FILE
+        st.text = name .. "|" .. MatrixText.FILE_METER .. " " ..
+                  tostring(file.size)
+        st.labels = { "Yes", "No" }
+        st.row = st.transfer.choice
+        return
+    end
     if st.matrix_message then
         st.title, st.text, st.labels = "Matrix Message", st.matrix_message, {}
         return
@@ -84,11 +101,132 @@ local function action_succeeds(st, ctx)
         end)
 end
 
+local function show_message(st, text, ctx)
+    if st.transfer_return_row ~= nil then
+        st.row = st.transfer_return_row
+        st.transfer_return_row = nil
+    end
+    st.transfer = nil
+    st.matrix_message = MatrixText.from_rom(text)
+    refresh(st)
+    ctx.redraw(R.FULL)
+end
+
+local function show_file_prompt(st, file, ctx)
+    st.matrix_message = nil
+    st.transfer = { phase = "confirm", file = file, choice = 0 }
+    refresh(st)
+    ctx.redraw(R.FULL)
+end
+
+local function start_transfer(st, ctx)
+    local game = ctx.game
+    local node = MatrixSession.current_node(st.matrix_state)
+    local world = game.matrix_world_state()
+    -- The Yes/No prompt has its own cursor. Keep the selected node action
+    -- (Transfer Data) when returning from the prompt or its result message.
+    st.transfer_return_row = st.row
+    st.transfer_ram = st.transfer_ram or {}
+    local result = NodeActions.begin_search(world.run, node, st.transfer_ram)
+    st.matrix_message = nil
+    if result then
+        if result.text == NodeActions.TEXT.UPLOAD_DONE then
+            game.commit_matrix_world_state(world)
+            show_message(st, result.text, ctx)
+        else
+            show_file_prompt(st, result.file, ctx)
+        end
+        return
+    end
+
+    -- 0x54D3A prints a dot every 20 frames; after the fourth dot the ROM
+    -- waits 9 more frames before checking story files and running detection.
+    st.transfer = { phase = "search", frames = NodeActions.SEARCH_DOT_FRAMES,
+                    dots = 0, return_row = st.transfer_return_row }
+    refresh(st)
+    ctx.redraw(R.FULL)
+end
+
+local function finish_transfer_search(st, ctx)
+    local game = ctx.game
+    local node = MatrixSession.current_node(st.matrix_state)
+    local party = game.party()
+    local runner = party[game.active_slot()]
+    local deck = game.deck_record()
+    local result = NodeActions.finish_search(
+        node, runner, deck, nil,
+        function(bound) return game.source_random_bound(bound) end)
+    if result.file then
+        show_file_prompt(st, result.file, ctx)
+    else
+        show_message(st, result.text or NodeActions.TEXT.NOTHING, ctx)
+    end
+end
+
+local function advance_transfer_search(st, ctx)
+    local transfer = st.transfer
+    transfer.frames = transfer.frames - 1
+    if transfer.frames > 0 then return end
+    if transfer.dots < 4 then
+        transfer.dots = transfer.dots + 1
+        transfer.frames = transfer.dots < 4 and
+                          NodeActions.SEARCH_DOT_FRAMES or 9
+        refresh(st)
+        ctx.redraw(R.FULL)
+        return
+    end
+    finish_transfer_search(st, ctx)
+end
+
+local function store_transfer_file(st, ctx)
+    local game = ctx.game
+    local transfer = st.transfer
+    local world = game.matrix_world_state()
+    local record = game.deck_record()
+    local slots = game.deck_slots()
+    local slot, text = NodeActions.store(
+        record, world.run, MatrixSession.current_node(st.matrix_state),
+        st.transfer_ram, transfer.file,
+        function(bound) return game.source_random_bound(bound) end)
+    if slot ~= nil then
+        game.deck_commit(record, slots)
+        if transfer.file.objective then
+            game.commit_matrix_world_state(world)
+        end
+    end
+    show_message(st, text, ctx)
+end
+
+local function advance_transfer(st, events, ctx)
+    local transfer = st.transfer
+    if transfer.phase == "search" then
+        advance_transfer_search(st, ctx)
+        return true
+    end
+    if events & (P.UP | P.DOWN) ~= 0 then
+        transfer.choice = 1 - transfer.choice
+        st.row = transfer.choice
+        refresh(st)
+        ctx.redraw(R.FULL)
+    elseif events & P.A ~= 0 then
+        if transfer.choice == 1 then
+            show_message(st, NodeActions.TEXT.DOWNLOAD_CANCELLED, ctx)
+        else
+            store_transfer_file(st, ctx)
+        end
+    end
+    return true
+end
+
 function M.input(st, events, ctx)
     local state = st.matrix_state
     local game = ctx.game
     if not MatrixSession.is_online(state) then
         return { transition = T.POP, result = {} }
+    end
+    if st.transfer then
+        advance_transfer(st, events, ctx)
+        return
     end
     if st.shutdown then
         st.shutdown.frames = st.shutdown.frames - 1
@@ -134,7 +272,8 @@ function M.input(st, events, ctx)
                            action.id == "crash_system" or
                            action.id == "turn_off_node" or
                            action.id == "erase" or
-                           action.id == "lockout") then
+                           action.id == "lockout" or
+                           action.id == "transfer_data") then
                 -- 0x548A0 performs the shared 0x55F44/0xDBA runner gate
                 -- before dispatch; Cancel Alert itself adds no second roll.
                 if action_succeeds(st, ctx) then
@@ -183,6 +322,8 @@ function M.input(st, events, ctx)
                             world.run, MatrixSession.current_node(state))
                         game.commit_matrix_world_state(world)
                         st.matrix_message = MatrixText.from_rom(result.text)
+                    elseif not navigated and action.id == "transfer_data" then
+                        start_transfer(st, ctx)
                     end
                 else
                     st.matrix_message = MatrixText.from_rom(

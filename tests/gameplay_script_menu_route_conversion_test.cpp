@@ -166,9 +166,18 @@ int main() {
     matrix_world_state.field.maglocks_off = false;
     matrix_world_state.actors = {{"fixture-armed", 0x02U},
                                  {"fixture-other", 0x04U}};
+    ScriptCyberdeckRecord matrix_deck;
+    matrix_deck.mpcp = 6U;
+    matrix_deck.storage = 1000U;
+    matrix_deck.memory = 128U;
+    matrix_deck.load_io = 2U;
+    matrix_deck.response = 2U;
+    matrix_deck.persona = {2U, 2U, 2U, 5U};
+    int matrix_deck_commits = 0;
     bool pocket_extra_row = false;
     std::vector<int> random_bounds;
     bool random_high_branch = false;
+    bool matrix_search_miss = false;
     int dismissed_slot = -1;
     bool legacy_active = false;
     std::vector<ScriptNotebookBoundary> notebook_boundaries;
@@ -229,6 +238,21 @@ int main() {
         return party[0].inventory[slot] != 0U;
     };
     bindings.game.party = [&party] { return party; };
+    bindings.game.deck_record = [&matrix_deck] { return matrix_deck; };
+    bindings.game.deck_slots = [] {
+        return std::array<shadowrun::ghidra_conversion::scripting::
+                              ScriptCyberdeckProgramSlot,
+                          5>{};
+    };
+    bindings.game.deck_commit = [&matrix_deck, &matrix_deck_commits](
+                                    const ScriptCyberdeckRecord& record,
+                                    const std::array<shadowrun::ghidra_conversion::
+                                                         scripting::
+                                                             ScriptCyberdeckProgramSlot,
+                                                     5>&) {
+        matrix_deck = record;
+        ++matrix_deck_commits;
+    };
     bindings.game.active_slot = [] { return 0; };
     bindings.game.magazine_capacity = [](int code) {
         return code == 2 ? 30 : (code == 3 ? 12 : 0);
@@ -270,8 +294,10 @@ int main() {
         return pocket_extra_row;
     };
     bindings.game.source_random_bound = [&random_bounds,
-                                         &random_high_branch](const int bound) {
+                                         &random_high_branch,
+                                         &matrix_search_miss](const int bound) {
         random_bounds.push_back(bound);
+        if (matrix_search_miss && bound == 10) return bound - 1;
         if (random_high_branch) {
             return bound == 2 ? 1 : (bound == 4 ? 3 : 0);
         }
@@ -1316,6 +1342,258 @@ int main() {
                   "Leave Node", "Transfer Data", "Erase"},
           "ROM node navigation exposes Erase on a datastore",
           failures);
+
+    // Transfer Data runs the source search cadence before presenting the ROM
+    // file name and Yes/No choice. The typed runner/deck fields here are the
+    // same +0x7B, +0x88, and deck +0x0B inputs read by 0x54D6A.
+    party[0].attributes[1] = 6U;
+    party[0].attributes[4] = 6U;
+    party[0].skills[7] = 6U;
+    forced_roll_successes = 2;
+    runtime.advance_menu_route(0x0200U); // Select Transfer Data.
+    const auto transfer_gate_count = action_rolls.size();
+    const auto transfer_rng_count = random_bounds.size();
+    runtime.advance_menu_route(0x4000U); // A passes the shared node gate.
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Matrix Message" &&
+              route.top_text == "   Browsing the|datastore you find|" &&
+              route.top_option_labels.empty() &&
+              action_rolls.size() == transfer_gate_count + 1U &&
+              random_bounds.size() == transfer_rng_count,
+          "Transfer Data begins the ROM search without rolling before its first wait",
+          failures);
+    for (int frame = 0; frame < 19; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    check(runtime.menu_route_snapshot().top_text ==
+              "   Browsing the|datastore you find|",
+          "the first search dot waits a full 20 frames", failures);
+    runtime.advance_menu_route(0U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_text == "   Browsing the|datastore you find|.",
+          "the first source dot appears on frame 20", failures);
+
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    const auto save_transfer_frame = [&failures](
+                                         const std::string& filename,
+                                         const auto& snapshot) {
+        QImage image(320, 224, QImage::Format_ARGB32);
+        image.fill(QColor(255, 0, 255));
+        QPainter painter(&image);
+        const QImage font(QImage(QString::fromStdString(
+            (std::filesystem::path(SHADOWRUN_MATRIX_MAP_ASSET_ROOT) /
+             "cyberspace/matrix/system-map-font.bmp")
+                .string())));
+        const bool painted = paint_matrix_node_action_panel(
+            painter, font, snapshot);
+        painter.end();
+        bool stale_pixels = false;
+        for (int y = 0; y < image.height(); ++y) {
+            for (int x = 0; x < image.width(); ++x) {
+                stale_pixels = stale_pixels ||
+                    image.pixelColor(x, y) == QColor(255, 0, 255);
+            }
+        }
+        check(painted && !stale_pixels,
+              "Transfer Data frame fully redraws without old-menu pixels",
+              failures);
+        const auto artifact = std::filesystem::path(
+            SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) / filename;
+        std::filesystem::create_directories(artifact.parent_path());
+        check(image.save(QString::fromStdString(artifact.string()), "BMP"),
+              "write Transfer Data route frame", failures);
+    };
+    const auto replaces_previous_frame = [&node_assets](
+                                             const auto& previous,
+                                             const auto& current) {
+        const QImage font(QImage(QString::fromStdString(
+            (node_assets / "cyberspace/matrix/system-map-font.bmp")
+                .string())));
+        QImage reused(320, 224, QImage::Format_ARGB32);
+        reused.fill(QColor(255, 0, 255));
+        {
+            QPainter painter(&reused);
+            const bool previous_painted =
+                paint_matrix_node_action_panel(painter, font, previous);
+            const bool current_painted =
+                paint_matrix_node_action_panel(painter, font, current);
+            if (!previous_painted || !current_painted) return false;
+        }
+        QImage fresh(320, 224, QImage::Format_ARGB32);
+        fresh.fill(QColor(255, 0, 255));
+        {
+            QPainter painter(&fresh);
+            if (!paint_matrix_node_action_panel(painter, font, current)) {
+                return false;
+            }
+        }
+        return reused == fresh;
+    };
+    save_transfer_frame("transfer-search-first-dot.bmp", route);
+#endif
+
+    for (int dot = 2; dot <= 4; ++dot) {
+        for (int frame = 0; frame < 20; ++frame) {
+            runtime.advance_menu_route(0U);
+        }
+        route = runtime.menu_route_snapshot();
+        check(route.top_text ==
+                  "   Browsing the|datastore you find|" +
+                      std::string(static_cast<std::size_t>(dot), '.'),
+              "search dots retain the ROM's 20-frame cadence", failures);
+    }
+    for (int frame = 0; frame < 9; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Download File?" &&
+              route.top_text ==
+                  "Bank Acct. Numbers|     . . . . . . Mp 20" &&
+              route.top_option_labels ==
+                  std::vector<std::string>{"Yes", "No"} &&
+              route.top_row == 0 &&
+              random_bounds.size() == transfer_rng_count + 3U,
+          "successful search previews the ROM file after the final 9-frame pause",
+          failures);
+    const auto transfer_file_prompt = route;
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    save_transfer_frame("actual.bmp", route);
+#endif
+    runtime.advance_menu_route(0x0200U); // Down selects No.
+    route = runtime.menu_route_snapshot();
+    check(route.top_row == 1 && route.top_option_labels ==
+              std::vector<std::string>{"Yes", "No"},
+          "Transfer Data selection moves between Yes and No", failures);
+    runtime.advance_menu_route(0x2000U); // B is ignored by the ROM prompt.
+    check(runtime.menu_route_snapshot().top_title == "Download File?" &&
+              matrix_deck_commits == 0,
+          "download confirmation accepts A only", failures);
+    runtime.advance_menu_route(0x4000U); // A cancels.
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Matrix Message" &&
+              route.top_text == "Download Cancelled." &&
+              matrix_deck_commits == 0,
+          "No prints the ROM cancellation text without changing the deck",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    check(replaces_previous_frame(transfer_file_prompt, route),
+          "Transfer Data message redraw removes the prior Yes/No panel",
+          failures);
+    save_transfer_frame("transfer-download-cancelled.bmp", route);
+#endif
+    runtime.advance_menu_route(0x2000U); // Any edge dismisses the message.
+    check(runtime.menu_route_snapshot().top_title == "Datastore",
+          "canceled download returns to the same datastore", failures);
+
+    runtime.advance_menu_route(0x4000U); // Retry Transfer Data; Yes is default.
+    for (int frame = 0; frame < 89; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Download File?" && route.top_row == 0,
+          "a new transfer resets the prompt to Yes", failures);
+    runtime.advance_menu_route(0x4000U); // A downloads the file.
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Matrix Message" &&
+              route.top_text == "File Download|  Complete." &&
+              matrix_deck_commits == 1 && matrix_deck.files[0].id == 45 &&
+              matrix_deck.files[0].size == 20 &&
+              random_bounds.size() == transfer_rng_count + 8U,
+          "Yes writes the discovered file through the typed deck commit",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    save_transfer_frame("transfer-download-complete.bmp", route);
+#endif
+    runtime.advance_menu_route(0x2000U);
+
+    matrix_world_state.run = ScriptMatrixRunState{0, 0, 0, 0, 1, 0};
+    matrix_search_miss = true;
+    runtime.advance_menu_route(0x4000U); // Search again with a forced miss.
+    for (int frame = 0; frame < 89; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    matrix_search_miss = false;
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Matrix Message" &&
+              route.top_text == "nothing of interest." &&
+              matrix_deck_commits == 1,
+          "failed detection prints the ROM no-interest text without a write",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    save_transfer_frame("transfer-no-result.bmp", route);
+#endif
+    runtime.advance_menu_route(0x2000U);
+
+    matrix_deck.storage = 20U; // The first 20 Mp file consumes all storage.
+    runtime.advance_menu_route(0x4000U);
+    for (int frame = 0; frame < 89; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    runtime.advance_menu_route(0x4000U); // Yes reaches the storage check.
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Matrix Message" &&
+              route.top_text == "No available|storage!" &&
+              matrix_deck_commits == 1,
+          "insufficient storage uses the ROM two-line message without a write",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    save_transfer_frame("transfer-no-storage.bmp", route);
+#endif
+    matrix_deck.storage = 1000U;
+    runtime.advance_menu_route(0x2000U);
+    runtime.advance_menu_route(0x0100U); // Restore the Leave Node row.
+    check(runtime.menu_route_snapshot().top_row == 0,
+          "returning from Transfer Data restores node action selection",
+          failures);
+
+    matrix_world_state.run = ScriptMatrixRunState{-1, 9, 12, 30, 1, 0};
+    runtime.advance_menu_route(0x0200U);
+    const auto objective_rng_count = random_bounds.size();
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Download File?" &&
+              route.top_text ==
+                  "Personnel Dossiers|     . . . . . . Mp 30" &&
+              random_bounds.size() == objective_rng_count,
+          "matching run objective skips search dots and uses its value as file ID",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    save_transfer_frame("transfer-objective-preview.bmp", route);
+#endif
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_text ==
+              "  Shadowrun|Accomplished!||File Download|  Complete." &&
+              matrix_deck_commits == 2 && matrix_deck.files[1].id == 12 &&
+              matrix_deck.files[1].size == 30 &&
+              matrix_deck.files[1].value == -1 &&
+              matrix_world_state.run.has_value() &&
+              matrix_world_state.run->state == 1,
+          "objective download stores the ROM marker and completes the run",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    save_transfer_frame("transfer-objective-complete.bmp", route);
+#endif
+    runtime.advance_menu_route(0x2000U);
+
+    matrix_world_state.run = ScriptMatrixRunState{-1, 9, -1, 30, 1, 0};
+    const auto upload_rng_count = random_bounds.size();
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "Matrix Message" &&
+              route.top_text ==
+                  "You upload the file| to the datastore.|| Run accomplished!" &&
+              matrix_world_state.run->state == 1 &&
+              matrix_deck_commits == 2 &&
+              random_bounds.size() == upload_rng_count,
+          "negative objective value uploads immediately without a datafile",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    save_transfer_frame("transfer-upload-complete.bmp", route);
+#endif
+    runtime.advance_menu_route(0x2000U);
+    runtime.advance_menu_route(0x0100U); // Restore the Leave Node row.
+
     matrix_world_state.run = ScriptMatrixRunState{-1, 9, 0, 30, 1, 0};
     forced_roll_successes = 2;
     runtime.advance_menu_route(0x0200U); // Transfer Data.
