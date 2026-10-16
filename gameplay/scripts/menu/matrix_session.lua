@@ -2,6 +2,7 @@
 -- imported offline from the ROM into data/matrix_systems.lua.
 local Systems = require("data.matrix_systems")
 local E = require("enums")
+local RunRegistry = require("run_registry")
 local Rules = require("menu.rules.matrix")
 local Movement = require("menu.rules.matrix_move")
 
@@ -102,6 +103,27 @@ function M.activate_run_for_system(system_id, run)
     if run.state == next_state then return false end
     run.state = next_state
     return true
+end
+
+-- Matrix objective RAM belongs to the accepted Lua run offer and is included
+-- in run_registry.save_state(). The host supplies only field/world facts; this
+-- projection keeps run state in one Lua-owned place while node rules operate
+-- on a temporary typed view.
+function M.world_state(game)
+    local world = game.matrix_world_state()
+    local run = RunRegistry.active_matrix_run_state()
+    if run ~= nil then world.run = run end
+    return world
+end
+
+function M.commit_world_state(game, world)
+    if world.run ~= nil and
+       RunRegistry.active_matrix_run_state() ~= nil then
+        assert(RunRegistry.commit_active_matrix_run_state(world.run),
+            "active Matrix objective state failed validation")
+        world.run = nil
+    end
+    game.commit_matrix_world_state(world)
 end
 
 function M.is_online(state)

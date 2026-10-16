@@ -25,8 +25,11 @@ Primary source: `input/shadowrun_genesis_us.bin`.
   and `0x1ED24`; their shared path writes run type 6 at `0x1EDE8`. The Lua
   route now carries the target system and applies this entry gate, so a
   same-class node in another system cannot expose or complete that objective.
-  The active Qt field runtime still has no live producer for this type-6
-  contract.
+  Once produced, the accepted type-6 record now lives in the Lua run registry:
+  Matrix actions read and commit a typed copy there, and the existing run save
+  state persists it. The native field runtime no longer keeps a second run
+  record. The source-backed type-6 offer producer and Johnson entry path are
+  still missing, so normal gameplay cannot create this contract yet.
 - The ordinary path prints `0x16674D`, adds four dots at 20-frame intervals,
   then waits 9 more frames. It checks the special story-file handler at
   `0x55058`, then compares `(Int + Computer + Sensor) / 3` with

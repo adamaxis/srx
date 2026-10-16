@@ -671,6 +671,58 @@ local x, y = Programs.dump_jitter(0x8185)
 eq(x, -5, "dump jitter signed x")
 eq(y, -1, "dump jitter signed y")
 
+-- A type-six objective is projected from the Lua run registry into the
+-- Matrix action transaction, then saved with that active offer.
+local Registry = require("run_registry")
+local run_probe = {
+    prepare_offer = function() end,
+    resolve_field_event = function() return { action = "no_action" } end,
+}
+local committed_world
+game = {
+    runs = { registry = Registry, matrix_objective_probe = run_probe },
+    matrix_world_state = function()
+        return { run = { state = 9 }, field = {}, actors = {} }
+    end,
+    commit_matrix_world_state = function(world)
+        committed_world = world
+    end,
+}
+Registry.active_offer = {
+    id = "matrix_objective_probe",
+    category = "matrix",
+    objective = "retrieve_matrix_data",
+    completion_condition = "source_matrix_objective_satisfied",
+    runner_progress_delta = 1,
+    source_run_type = E.RunType.MATRIX_OBJECTIVE,
+    matrix_run_state = {
+        state = -1, objective = 5, value = 0, size = 30,
+        fc28 = 1, fc1c = 0, target_system_id = 6,
+    },
+}
+local world = Session.world_state(game)
+eq(world.run.state, -1,
+    "Matrix world projection uses the accepted Lua objective")
+world.run.state = 1
+eq(Registry.active_matrix_run_state().state, -1,
+    "Matrix projection is a copy until committed")
+Session.commit_world_state(game, world)
+eq(Registry.active_matrix_run_state().state, 1,
+    "Matrix objective commit updates the Lua run registry")
+eq(committed_world.run, nil,
+    "native world commit does not retain a second Matrix run state")
+local saved_runs = Registry.save_state()
+local valid_runs = Registry.validate_saved_state(saved_runs)
+eq(valid_runs, true, "saved Matrix objective state passes Lua validation")
+Registry.active_offer = nil
+Registry.restore_saved_state(saved_runs)
+eq(Registry.active_matrix_run_state().target_system_id, 6,
+    "save restore retains the Matrix objective's target system")
+saved_runs.active_offer.matrix_run_state.target_system_id = 25
+local invalid_runs = Registry.validate_saved_state(saved_runs)
+eq(invalid_runs, false,
+    "saved Matrix objective rejects a target outside the ROM system catalog")
+
 print("matrix Lua rules: " .. checks .. " checks passed")
 )lua";
 

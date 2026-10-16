@@ -2,6 +2,77 @@
 -- handler sequence below is expressed as Lua run IDs; the registry only
 -- selects a run and dispatches to its separate implementation.
 local Registry = {}
+local E = require("enums")
+
+local function valid_matrix_run_state(state)
+    if type(state) ~= "table" then return false end
+    local function signed_byte(value)
+        return type(value) == "number" and value % 1 == 0 and
+               value >= -128 and value <= 127
+    end
+    local function byte(value)
+        return type(value) == "number" and value % 1 == 0 and
+               value >= 0 and value <= 0xFF
+    end
+    if not signed_byte(state.state) or
+       not signed_byte(state.objective) or
+       not signed_byte(state.value) or not byte(state.size) or
+       not byte(state.fc28) or not byte(state.fc1c) then
+        return false
+    end
+    return state.target_system_id == nil or
+        (type(state.target_system_id) == "number" and
+         state.target_system_id % 1 == 0 and
+         state.target_system_id >= 0 and state.target_system_id <= 24)
+end
+
+local function copy_matrix_run_state(state)
+    if state == nil then return nil end
+    return {
+        state = state.state,
+        objective = state.objective,
+        value = state.value,
+        size = state.size,
+        fc28 = state.fc28,
+        fc1c = state.fc1c,
+        target_system_id = state.target_system_id,
+    }
+end
+
+local function matrix_run_state_for(offer)
+    if type(offer) ~= "table" or
+       offer.source_run_type ~= E.RunType.MATRIX_OBJECTIVE or
+       not valid_matrix_run_state(offer.matrix_run_state) then
+        return nil
+    end
+    return copy_matrix_run_state(offer.matrix_run_state)
+end
+
+local function set_matrix_run_state(offer, state)
+    if type(offer) ~= "table" or
+       offer.source_run_type ~= E.RunType.MATRIX_OBJECTIVE or
+       not valid_matrix_run_state(state) then
+        return false
+    end
+    offer.matrix_run_state = copy_matrix_run_state(state)
+    return true
+end
+
+function Registry.current_matrix_run_state()
+    return matrix_run_state_for(Registry.current_offer)
+end
+
+function Registry.active_matrix_run_state()
+    return matrix_run_state_for(Registry.active_offer)
+end
+
+function Registry.commit_current_matrix_run_state(state)
+    return set_matrix_run_state(Registry.current_offer, state)
+end
+
+function Registry.commit_active_matrix_run_state(state)
+    return set_matrix_run_state(Registry.active_offer, state)
+end
 
 local new_game_selection = {
     -- ROM 0x1E69C source rows in F3EBC, context zero. The handler selects the
@@ -290,6 +361,19 @@ function Registry.validate_saved_state(state)
            offer.runner_progress_delta < 0 or
            offer.runner_progress_delta > 255 or
            offer.runner_progress_delta % 1 ~= 0 then
+            return false
+        end
+        if offer.source_run_type ~= nil and
+           (type(offer.source_run_type) ~= "number" or
+            offer.source_run_type % 1 ~= 0 or
+            offer.source_run_type < 0 or offer.source_run_type > 255) then
+            return false
+        end
+        if offer.source_run_type == E.RunType.MATRIX_OBJECTIVE then
+            if not valid_matrix_run_state(offer.matrix_run_state) then
+                return false
+            end
+        elseif offer.matrix_run_state ~= nil then
             return false
         end
         local run = game.runs[offer.id]

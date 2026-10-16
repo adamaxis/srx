@@ -97,6 +97,8 @@ E.MenuSound = { MOVE = 0x25, SELECT = 0x24, JACK_IN = 0x1A, DAMAGE = 0x18 }   --
 E.MatrixDeckMode = { ATTACK = 0xFF, BALANCED = 0x00, DEFENSE = 0x01 }      -- FFF0B7: A/B/C split the Matrix pool [C]
 -- Signed view used by ROM branches after FFF0B7 is loaded into a signed word.
 E.MatrixModeResult = { ATTACK = -1, BALANCED = 0, DEFENSE = 1 }
+-- FFFBED type 6 uses the Matrix-objective initializer at 0x1EDE8 [C].
+E.RunType = { MATRIX_OBJECTIVE = 6 }
 -- FFF0D0 primary page; pages 0/1 are the two inventory columns, 2..6 dispatch through table 0xD2A0A [C]
 E.MenuPage = { INVENTORY_LEFT = 0, INVENTORY_RIGHT = 1, CLIPS = 2, ATTRIBUTES_SKILLS = 3, CYBERWARE = 4, MAGIC = 5,
                POCKET_SECRETARY = 6, COUNT = 7 }

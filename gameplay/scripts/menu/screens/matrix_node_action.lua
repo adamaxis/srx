@@ -122,7 +122,7 @@ end
 local function start_transfer(st, ctx)
     local game = ctx.game
     local node = MatrixSession.current_node(st.matrix_state)
-    local world = game.matrix_world_state()
+    local world = MatrixSession.world_state(game)
     -- The Yes/No prompt has its own cursor. Keep the selected node action
     -- (Transfer Data) when returning from the prompt or its result message.
     st.transfer_return_row = st.row
@@ -132,7 +132,7 @@ local function start_transfer(st, ctx)
     st.matrix_message = nil
     if result then
         if result.text == NodeActions.TEXT.UPLOAD_DONE then
-            game.commit_matrix_world_state(world)
+            MatrixSession.commit_world_state(game, world)
             show_message(st, result.text, ctx)
         else
             show_file_prompt(st, result.file, ctx)
@@ -151,7 +151,7 @@ end
 local function finish_transfer_search(st, ctx)
     local game = ctx.game
     local node = MatrixSession.current_node(st.matrix_state)
-    local world = game.matrix_world_state()
+    local world = MatrixSession.world_state(game)
     local special = world.datastore
     if special then special.system_id = st.system_id end
     local party = game.party()
@@ -163,7 +163,7 @@ local function finish_transfer_search(st, ctx)
     if result.file then
         show_file_prompt(st, result.file, ctx)
     else
-        if result.story then game.commit_matrix_world_state(world) end
+        if result.story then MatrixSession.commit_world_state(game, world) end
         show_message(st, result.text or NodeActions.TEXT.NOTHING, ctx)
     end
 end
@@ -186,7 +186,7 @@ end
 local function store_transfer_file(st, ctx)
     local game = ctx.game
     local transfer = st.transfer
-    local world = game.matrix_world_state()
+    local world = MatrixSession.world_state(game)
     local record = game.deck_record()
     local slots = game.deck_slots()
     local slot, text = NodeActions.store(
@@ -196,7 +196,7 @@ local function store_transfer_file(st, ctx)
     if slot ~= nil then
         game.deck_commit(record, slots)
         if transfer.file.objective then
-            game.commit_matrix_world_state(world)
+            MatrixSession.commit_world_state(game, world)
         end
     end
     show_message(st, text, ctx)
@@ -293,11 +293,11 @@ function M.input(st, events, ctx)
                     elseif not navigated and action.id == "crash_system" then
                         -- The host supplies the run/field facts it knows and
                         -- commits the mutated typed state to the live world.
-                        local world = game.matrix_world_state()
+                        local world = MatrixSession.world_state(game)
                         world.field = world.field or {}
                         local result = NodeActions.crash_system(
                             world.run, world.field, world.actors)
-                        game.commit_matrix_world_state(world)
+                        MatrixSession.commit_world_state(game, world)
                         if result.stop_sfx then
                             ctx.host.stop_sound(result.stop_sfx)
                         end
@@ -310,23 +310,23 @@ function M.input(st, events, ctx)
                         }
                         st.matrix_countdown = result.countdown[1]
                     elseif not navigated and action.id == "turn_off_node" then
-                        local world = game.matrix_world_state()
+                        local world = MatrixSession.world_state(game)
                         world.field = world.field or {}
                         world.actors = world.actors or {}
                         local result = NodeActions.turn_off_node(
                             MatrixSession.current_node(state), world.field,
                             world.actors)
-                        game.commit_matrix_world_state(world)
+                        MatrixSession.commit_world_state(game, world)
                         if result.stop_sfx then
                             ctx.host.stop_sound(result.stop_sfx)
                         end
                         st.matrix_message = MatrixText.from_rom(result.text)
                     elseif not navigated and action.id == "erase" then
-                        local world = game.matrix_world_state()
+                        local world = MatrixSession.world_state(game)
                         local result = NodeActions.erase(
                             world.run, MatrixSession.current_node(state),
                             st.system_id)
-                        game.commit_matrix_world_state(world)
+                        MatrixSession.commit_world_state(game, world)
                         st.matrix_message = MatrixText.from_rom(result.text)
                     elseif not navigated and action.id == "transfer_data" then
                         start_transfer(st, ctx)

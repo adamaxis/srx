@@ -252,6 +252,16 @@ enum class ItemKind : std::int64_t {
     TOTEM = 0xF,
     ARMOR = 0x10,
 };
+enum class MatrixDeckMode : std::int64_t {
+    BALANCED = 0x0,
+    DEFENSE = 0x1,
+    ATTACK = 0xFF,
+};
+enum class MatrixModeResult : std::int64_t {
+    ATTACK = -0x1,
+    BALANCED = 0x0,
+    DEFENSE = 0x1,
+};
 enum class MenuMessage : std::int64_t {
     OUT_OF_AMMO = 0x1,
     ITEM_NO_CLIPS = 0x2,
@@ -377,6 +387,14 @@ enum class MenuTransition : std::int64_t {
     REBUILD = 0x4,
     EXIT = 0x5,
 };
+enum class NotebookBoundary : std::int64_t {
+    EVENT_GATES_UNRESOLVED = 0x0,
+    TIPS_FLAGS_UNRESOLVED = 0x1,
+    CURRENT_RUN_UNRESOLVED = 0x2,
+    CONTACTS_FLAGS_UNRESOLVED = 0x3,
+    SHADOWRUNNERS_FLAGS_UNRESOLVED = 0x4,
+    MR_JOHNSON_FLAGS_UNRESOLVED = 0x5,
+};
 enum class NotebookOption : std::int64_t {
     CURRENT_RUN = 0x0,
     TIPS_AND_CLUES = 0x1,
@@ -420,6 +438,9 @@ enum class Posture : std::int64_t {
     NEUTRAL = 0x2,
     MEDIUM_OFFENSE = 0x3,
     FULL_OFFENSE = 0x4,
+};
+enum class RunType : std::int64_t {
+    MATRIX_OBJECTIVE = 0x6,
 };
 enum class RunnerField : std::int64_t {
     STATUS = 0x10,

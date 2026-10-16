@@ -6187,7 +6187,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.game.in_alert = [] { return false; };
     bindings.game.map_seen = [] { return 0; };
     bindings.game.matrix_world_state = [this] {
-        auto world = field_matrix_world_state_;
+        scripting::ScriptMatrixWorldState world;
+        world.field = field_matrix_field_state_;
         world.datastore = make_matrix_datastore_facts(
             notebook_tip_flags_, notebook_tip_flags_resolved_,
             field_exit_world_flags_, group_item_flags_, field_funds_,
@@ -6206,18 +6207,15 @@ void FieldSceneRuntime::configure_field_menu_route() {
     };
     bindings.game.commit_matrix_world_state = [this](
         const scripting::ScriptMatrixWorldState& update) {
-        if (update.run.has_value()) {
-            field_matrix_world_state_.run = update.run;
-        }
         if (update.field.alarm.has_value()) {
-            field_matrix_world_state_.field.alarm = update.field.alarm;
+            field_matrix_field_state_.alarm = update.field.alarm;
         }
         if (update.field.security_off.has_value()) {
-            field_matrix_world_state_.field.security_off =
+            field_matrix_field_state_.security_off =
                 update.field.security_off;
         }
         if (update.field.maglocks_off.has_value()) {
-            field_matrix_world_state_.field.maglocks_off =
+            field_matrix_field_state_.maglocks_off =
                 update.field.maglocks_off;
         }
         if (update.datastore.has_value()) {
