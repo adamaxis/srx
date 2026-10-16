@@ -1,7 +1,7 @@
 {
   "cmake.useCMakePresets": "always",
   "cmake.sourceDirectory": [
-    "${workspaceFolder}"
+    "${workspaceFolder}/decompilation/ghidra_conversion"
   ],
   "cmake.defaultConfigurePreset": "ghidra-conversion-qt-release",
   "cmake.defaultBuildPreset": "ghidra-conversion-qt-release",
@@ -43,9 +43,9 @@
     "program": "${command:cmake.launchTargetPath}",
     "args": [
       "--assets",
-      "${workspaceFolder}/assets"
+      "${workspaceFolder}/decompilation/assets"
     ],
-    "cwd": "${workspaceFolder}",
+    "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
     "MIMode": "gdb",
     "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
     "environment": [

@@ -6,7 +6,7 @@ Read this whole file before you touch anything. Do the phases **in order**. Don'
 1. **Lua holds every game rule; C++ is the skeleton.** The skeleton covers presenter, input sampling, sound output, SRAM byte I/O, VDP model and bindings. If you're about to write an `if` that decides game behaviour in C++, stop and put it in Lua.
 2. **Named enums, no raw hex.** Every constant comes from `enums.lua` (Lua) or `enums.hpp` (C++). Style: `PascalCase.UPPER`. Never hand-edit `enums.hpp`. Edit `enums.lua` and regenerate it:
    `cd refactor && lua5.4 gen_enums_hpp.lua > enums.hpp`
-3. **No `QRandomGenerator` anywhere.** There is one ROM RNG word (FFF9F8), reached through `source_random_seed()` (patch 0001). `rg QRandomGenerator qt_runtime/src` must return nothing in game code when you're done.
+3. **No `QRandomGenerator` anywhere.** There is one ROM RNG word (FFF9F8), reached through `source_random_seed()` (patch 0001). `rg QRandomGenerator decompilation/ghidra_conversion/qt_runtime/src` must return nothing in game code when you're done.
 4. **Always headless** for any automated or debugger run:
    `SRX_HEADLESS=1 QT_QPA_PLATFORM=offscreen nice -n 10 <exe> --headless`
    No windows, no focus stealing, no audio device. See docs/23 §9.
@@ -28,13 +28,14 @@ Read this whole file before you touch anything. Do the phases **in order**. Don'
 
 ## 2. Paths used in this guide
 - `SR` = `grok_bot/`, the imported plan and reference material.
-- `SRX` = the current repository root (`C:\Github\shadowrun`). Do not check out the historical upstream commit or replace the current branch.
-- `QT` = `SRX/qt_runtime`, the active Qt runtime under the root Ghidra conversion project.
-- `FSR` = `QT/src/field/field_scene_runtime.cpp`.
-- `SCRIPTS` = `SRX/gameplay/scripts`, the active Lua content directory.
-- `ROM` = `SRX/input/shadowrun_genesis_us.bin`; Ghidra source exports are under `SRX/export/`.
+- `SRX` = the repository root (`C:\Github\shadowrun`). Do not check out the historical upstream commit or replace the current branch.
+- `DECOMP` = `SRX/decompilation`, the shared ROM, evidence, asset, script, and documentation root.
+- `QT` = `DECOMP/ghidra_conversion`, the active typed C++/Qt project.
+- `FSR` = `QT/qt_runtime/src/field/field_scene_runtime.cpp`.
+- `SCRIPTS` = `DECOMP/gameplay/scripts`, the active Lua content directory.
+- `ROM` = `DECOMP/input/shadowrun_genesis_us.bin`; Ghidra source exports are under `DECOMP/export/`.
 - `SR/refactor`, `SR/tests`, and `SR/tools` are plan/reference copies. Before copying a file, inspect the active destination and merge only behavior that is still missing.
-- **C++ include dir:** `QT/src/srx_refactor/`. The runtime include list is in `QT/CMakeLists.txt` (`SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS`).
+- **C++ include dir:** `QT/qt_runtime/src/srx_refactor/`. The runtime include list is in `QT/qt_runtime/CMakeLists.txt` (`SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS`).
 
 ## Phase dependency graph
 ```
@@ -63,7 +64,7 @@ Read this whole file before you touch anything. Do the phases **in order**. Don'
 4. Build and test: configure with the repo's CMakePresets, build, then run ctest **headless**: `SRX_HEADLESS=1 QT_QPA_PLATFORM=offscreen ctest --output-on-failure`.
    Expected: the same pass/fail set as unpatched bfa3908, with 3 tests that pre-existingly don't build and 1 that aborts in both builds. The title_loop and matrix-gate tests are changed by the patches and must pass.
 5. Acceptance:
-   - `rg -n QRandomGenerator QT/src` → no hits in game code.
+   - `rg -n QRandomGenerator QT/qt_runtime/src` → no hits in game code.
    - A cold boot from zero RAM gives seed 0xFFFF.
    - At the title, after the boot intro, the seed is **0xD29F** (the intro 0x5D746 draws 224 values per frame for 0x151 frames; docs 24/25).
 6. Pitfalls:
@@ -74,7 +75,7 @@ Read this whole file before you touch anything. Do the phases **in order**. Don'
 ## Phase 2: enums (`enums.lua` → `enums.hpp`)
 1. Copy `SR/refactor/enums.lua` to `SCRIPTS/enums.lua`, and `SR/refactor/gen_enums_hpp.lua` to `SCRIPTS/gen_enums_hpp.lua`.
 2. Copy `SR/refactor/lib/int68k.lua` to `SCRIPTS/lib/int68k.lua`. It holds the signed-byte/word helpers; don't write your own `& 0xff` sign hacks.
-3. Generate the header: `cd SCRIPTS && lua5.4 gen_enums_hpp.lua > ../../qt_runtime/src/srx_refactor/enums.hpp`.
+3. Generate the header: `cd SCRIPTS && lua5.4 gen_enums_hpp.lua > ../../ghidra_conversion/qt_runtime/src/srx_refactor/enums.hpp`.
 4. Acceptance:
    - `echo 'int main(){}' > /tmp/t.cpp && g++ -std=c++20 -Wall -Werror -include enums.hpp -fsyntax-only /tmp/t.cpp` passes.
    - The generated file matches `SR/refactor/enums.hpp` byte for byte.
@@ -114,7 +115,7 @@ Read this whole file before you touch anything. Do the phases **in order**. Don'
 
 ## Phase 5: menu route stack, Lua screens/rules, bindings, host wiring
 **Source:** `SR/refactor/menu/` (`init.lua`, `route.lua`, `screens/*.lua`, `rules/*.lua`, `menu_binding.hpp`, `host/*.sketch.cpp`, `MIGRATION.md`).
-1. Copy `SR/refactor/menu/{init,route}.lua`, `screens/` and `rules/` to `SCRIPTS/menu/`. Copy `menu_binding.hpp` to `QT/src/srx_refactor/menu/`.
+1. Copy `SR/refactor/menu/{init,route}.lua`, `screens/` and `rules/` to `SCRIPTS/menu/`. Copy `menu_binding.hpp` to `QT/qt_runtime/src/srx_refactor/menu/`.
 2. Use `refactor/menu/MIGRATION.md` "Moved blocks" as the edit list. Each FSR/bridge range there is replaced by `route.frame(events)` plus the named Lua screen. The ranges:
    - FSR 10498-11020
    - FSR 5389-5420
@@ -170,14 +171,14 @@ Do them in this order. Each is its own commit with a capture diff.
 - **R10 is already correct; don't change it.** R8 and R11 are **[H]; don't touch them.**
 
 ## Phase 9: debugger, headless mode, heartbeat recorder
-1. Copy `SR/refactor/debugger/srxdbg/*.hpp` (core, debugger, headless, server, source_rng, vdp) to `QT/src/srx_refactor/srxdbg/`. Copy `cli/srxdbg.py` to `SRX/tools/`.
+1. Copy `SR/refactor/debugger/srxdbg/*.hpp` (core, debugger, headless, server, source_rng, vdp) to `QT/qt_runtime/src/srx_refactor/srxdbg/`. Copy `cli/srxdbg.py` to `QT/tools/`.
 2. Host startup: call `srxdbg::headless::parse/apply` **before** constructing `QGuiApplication`. When headless, skip `MainWindow::show()` and the audio device open.
 3. Replace `on_host_frame_timeout`/`advance_one_source_frame` (window.hpp:968/979) with `Debugger::tick`, following the docs/23 §7 table.
    - Remove the 25 `set_source_random_seed_for_dump` seed sites in qa_main.cpp in favour of the SeedSet header.
    - Follow the doc 22 §6 order.
 4. Heartbeat recorder:
    - Integrate `SR/refactor/tools/heartbeat_recorder.lua` under `SCRIPTS/tools/` only if the active project does not already provide the recorder.
-   - Integrate `SR/out/heartbeat_record_hook.hpp` under `QT/src/field/` only if still needed; map the historical patch paths to current files before use. **Not compiled.**
+   - Integrate `SR/out/heartbeat_record_hook.hpp` under `QT/qt_runtime/src/field/` only if still needed; map the historical patch paths to current files before use. **Not compiled.**
    - Run with `SRX_HEARTBEAT_RECORD=/tmp/play.rec`, then `LUA_PATH="SR/refactor/?.lua;SR/refactor/tools/?.lua;;" lua5.4 SR/tests/replay_heartbeat.lua /tmp/play.rec` and expect 0 mismatches and 0 divergence. Without a .rec argument the script errors; that is expected.
 5. No-Qt tests:
    - `g++ -std=c++17 -Wall -Wextra -Werror -pthread SR/refactor/debugger/tests/mock_game_test.cpp` should report 30/30.

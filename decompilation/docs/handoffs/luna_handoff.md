@@ -1,0 +1,410 @@
+# Luna handoff
+
+Long-running defect review and polish for the root Qt conversion project. The
+game roadmap lives in the Grok plan.
+This file is the queue for visual and collision bugs a player can already
+hit, plus the tests that currently cannot see them.
+
+ROM is primary. The longplay under `video analysis/` is the independent
+picture. Ghidra C is a hint. Do not invent screens, collision, or menu layout.
+
+## Rules
+
+A previous pass reported visual fixes that only changed tests. That does not
+count.
+
+- Reproduce the bug on the Release exe
+  `decompilation/ghidra_conversion/build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe` before
+  editing. Save the full 320x224 frame.
+- Name the ROM routine and the longplay frame. If no longplay frame shows
+  that screen, say so. Debug/Release BMP hashes are not Genesis proof. Two
+  builds can share the same wrong picture.
+- Add a test that fails on the current code, then make the change, then
+  re-run it. A new test that only asserts the code you just wrote is not
+  evidence.
+- Do not mark a `visual-defect-goals.md` row resolved from a same-source
+  composite.
+- If the ROM rectangle really covers the shadow, report that and stop. Do
+  not shrink collision to the pretty pixels.
+- Do not take Matrix, hire, save files, new maps, spell dice, `0x15830`, or
+  the item-action retarget. Those are the other queue.
+- Commit one job at a time. Leave these dirty paths alone:
+  `docs/ghidra/visual-audits/world-activity-security-terminal-floor.md`,
+  `gameplay/world/entities/ares_weapon_emporium/entity.tsv`,
+  `decompilation/ghidra_conversion/tools/rom_research/longplay_contact_sheets.py`,
+  `grok_handoff.md`.
+
+Each finished job needs: reproduction steps, ROM address, longplay frame or
+"no frame", before/after full-screen paths, the test that failed first, and
+what is still open.
+
+## Why the tests miss this
+
+`HILLS.md` defends hills with a CTest plus a framebuffer dump. Most dumps are
+compared to themselves across Debug and Release. That catches a build skew. It
+does not catch a shared wrong stop cell or a shared wrong menu.
+
+Movement QA covers the Stoker wall and one diagonal fallback. It never walks
+the runner into a table. The scene-26 priority work fixed draw order only.
+`field-map-priority-composition.md` says the table draws over the actor and
+the shadow stays on the base map, and it says object bounds were not proven.
+That is the bug below.
+
+## L1. Table body versus table shadow
+
+Player walks into the table art and is stopped at the shadow.
+
+Draw and collision are different data:
+
+- Draw: ROM `0x3D80` priority bit, actor sprites at `0x481E`. The host paints
+  map, actors, then the sparse priority overlay. Scene 26 keeps the black
+  shadow on the base map and the teal table in the overlay. An actor can
+  stand "inside" the table picture.
+- Collision: `0xE7C8` samples terrain. Values `1..0x1F` go through `0xE9EE`
+  to an object-bounds record. `0x7E` is always blocked. `0xEE10` rasterizes
+  those records on a 32-unit grid. The host must stop on that record, not on
+  the shadow's dark pixels and not on the priority PNG.
+
+Do this on the scene the player used (scene-26 terminal/table is the known
+report). For the contact that stops them, record:
+
+- runner world position when the step is rejected
+- the four probe corners and the terrain byte each returns
+- the ROM record address, raw value, and rectangle
+- which pixels of that rectangle are table body, which are shadow, which are
+  floor
+
+Then compare the host stop to a one-step ROM trace of `0xBABC` / `0xE7C8`.
+Fix the host only where it rejects earlier, later, or on a different cell
+than that trace. Add a test that walks into this object from the clear side
+and asserts the committed position and the rejecting terrain byte. The test
+must fail before the fix.
+
+Scene 19 is the second case, already measured. Visible table pixels start at
+map Y 120. Collision records 8 and 9 at `0x1D5F28` and `0x1D5F32` are `0x7E`
+over `(64,128)..(127,159)` and `(160,128)..(223,159)`. Longplay section 09
+frames `006990` and `007035` show the tables. Determine whether the host stop
+matches those rectangles. The 8-pixel gap above Y 128 is the thing to explain,
+not to paint over.
+
+## L2. Object-bounds census
+
+After L1's method works, walk every `1..0x1F` object-bounds record whose
+rectangle overlaps a recognizable prop (tables, counters, desks, machines).
+`field-map-geometry-classification.md` already counts 5,163 records. Do not
+reclassify all of them. Report only rows where the host stop disagrees with
+the ROM rectangle, or where the runner's on-screen feet are inside solid art
+while the step is still accepted.
+
+Output one TSV: scene, record address, rectangle, terrain byte, host stop,
+ROM stop, longplay frame if one exists. Fix the host probe. Do not move ROM
+rectangles onto artwork.
+
+## L3. Four-corner probe tests
+
+`0xBABC` / `0xBADE` / `0xB77E` probe four corners. Current movement tests do
+not pin those corners.
+
+Add cases, each with the expected rejected candidate and the position that
+`0xBBE4` would keep:
+
+- straight into a `0x7E` block from each of the four directions
+- straight into one object-bounds record from each direction
+- one corner blocked, the other clear (the Stoker diagonal fallback is the
+  pattern; repeat it on a furniture edge)
+- standing still against the block does not creep
+
+Assert numbers from the ROM sample, not a bitmap hash.
+
+## L4. Doorway exit retriggers
+
+`FIELD-EXIT-01`. Entry routes exist. Leaving drops the runner on the trigger,
+so the building opens again.
+
+For Stoker, Ares, and the scene-20 door: trace the ROM return coordinate,
+facing, and input latch. Reproduce leave, then held direction, then a fresh
+direction. The runner must clear the trigger once and stay on the field.
+Independent longplay of that exit may not exist. The ROM coordinate is the
+oracle. A test that only checks "dialogue closed" is not done.
+
+## L5. Menus, one screen at a time
+
+Use the contact sheets in
+`video analysis/longplay_review_contact_sheets/targeted_menu_evidence/`
+and section 06 / section 08. For each row, capture the ordinary Release
+route at 320x224, blink or hold through the source cadence, and write the
+pixel difference against the named longplay frame. Fix the presenter only
+where the ROM draw/clear order and the longplay agree.
+
+| Job | Defect | What is wrong | Compare |
+| --- | --- | --- | --- |
+| L5a | `SHOP-01` | Ares category focus and side panel do not follow the ROM cursor sequence | Ares frames around the shop entry the longplay shows; do not restyle |
+| L5b | `SHOP-02` | Unaffordable feedback leaves too fast | ROM wait at the rejected-purchase branch, full interval captured |
+| L5c | `MENU-KARMA-01` | Attributes, Skills, selection color, Magic, Essence disagree with the live runner | Section 06 near 09:55 and section 08 near 14:40, Gator Shaman record |
+| L5d | `MENU-POSTURE-01` | Highlight sits on the label and misses the selected attack/defense bar | Ordinary Start-menu posture route, Up/Down across all five values |
+| L5e | `MENU-CLIPS-01` | Child selector misses the four buttons and leaves a black panel | Parent, Clips, reload, trade, confirm, decline, return |
+| L5f | `MENU-REDRAW-01` | Defense bars and child pages draw over controls the ROM clears | Entry and return of each child. No leftover buttons, portraits, or bars |
+| L5g | `MENU-CANCEL-01` | B is not mapped as cancel on every screen that has it. Start is not a substitute | Inventory of B and Start per root, child, confirm, and field menu. Test them separately |
+| L5h | `MENU-BLINK-01` | Notebook lower buttons use the wrong frame, color, and black flashes | One full ROM blink cycle, consecutive frames, text must stay put |
+| L5i | `HUD-CURRENCY-01` | Nuyen is missing where the ROM draws the balance | Pocket Secretary and shop, before and after a buy |
+| L5j | `DIALOGUE-01-RECHECK` | `< MORE >` brackets, manager expression, and punctuation still look wrong | Section 03 Stoker and manager panels. The earlier HFlip audit is not the closer |
+| L5k | `COMBAT-STATE-01` | Unarmed and Spurs lack the attack pose. A sold gun shows `00`, which is not the swing | Equip, sell, unequip, then attack, full frames |
+
+`INVENTORY-01` Trade stays open until a second runner exists. Do not fake one.
+
+## L6. Runner under the HUD
+
+Scene-2 event 1 draws the runner under the opaque HUD column. Section 03
+shows the street and the HUD together. Find a frame where the runner passes
+that column and compare feet, portrait, and ammo. Fix clip or punch only to
+match the ROM layer order. Do not move the HUD to a new place.
+
+## L7. Tests that can fail
+
+For L1 through L6, the new tests are part of the job, not a follow-up.
+
+- Position and terrain-byte asserts, not "BMP exists".
+- A menu test names the ROM cursor coordinate and the string id. A full-frame
+  hash against a previous dump of ourselves is extra, not the assert.
+- Keep one Debug/Release hash check so a build skew still fails. Do not treat
+  it as the behavior check.
+- Prefer extending `shadowrun_ghidra_conversion_qt_field_movement_qa` and the
+  existing menu QA executables. Do not add a new harness.
+
+## L8. Timing rechecks, after the pictures are honest
+
+These routes already run. The complaint is cadence.
+
+- `OPEN-SKIP-TIMING-01`. Start-skip into the Stoker auto-walk. Compare the
+  black hold and the per-update step to consecutive section 03 frames. Do
+  not change the speed to taste.
+- `TITLE-LOOP-01`. Run the ordinary window with no input through the idle
+  restart. The internal 3,601-update test is not a substitute for that window.
+- `AUDIO-RECHECK-02`. Inventory intro-stage sound requests and stops. One
+  cue per stage boundary, loopback duration written down. No new music.
+
+## Completion condition
+
+The user asked to finish this handoff, so work through every queued item
+below. Close an item only with the source evidence and review its entry asks
+for; where the current implementation already matches the ROM, record a
+source-confirmed no-fix result instead of manufacturing a code change. Commit
+each completed slice before moving to the next one.
+
+## Progress log
+
+### L1 Scene 26 table collision: source stop condition reached
+
+Release reproduction follows the ordinary Scene 2 event-1 route into Scene
+26, then captures the first blocked Down step from a visible clear approach.
+The trace and full-screen frames are documented in
+`docs/ghidra/visual-audits/scene26-table-collision.md`. No independent
+longplay frame of this table was found. ROM record 70 at `0x1D9C2A` is
+`(96..191, 224..255, 0x7E)`; its lower edge overlaps the visible shadow. The
+host and ROM terrain sampler both classify the candidate as blocked. Per the
+stop rule above, collision was not changed. The QA now asserts the sampled
+coordinates, bytes, candidate, and retained position; it passed before and
+after adding those assertions, so this is a source-confirmed report, not a
+failing-then-passing behavior fix. The Scene 19 table contact was measured
+later in this log; the broader object-bounds census remains open.
+
+### L5a Ares category and offers panel: initial sequence reviewed
+
+The ordinary Release route now captures Weapons, Right to Equipment, and
+Down into Universal Gun Clips. Longplay section 25 frames `004950`, `004980`,
+and `005010` support the sequence: the Equipment tab/heading changes while
+the Weapons stock row remains visible; the row/detail changes when the
+offers panel opens. ROM `0x58C54` refreshes the category title/tab without
+calling `0x57C7A`; entering the offers panel through `0x58CDE` reaches
+`0x58D32`, which calls `0x57C7A` for the selected offer.
+
+Before the presenter change, the Release Ares QA failed its stock-row
+assertion and preserved the 320x224 frame at
+`decompilation/ghidra_conversion/build/conversion/qt/release/qt_runtime/l5-ares-category-review/before/ares-shop-other-items-category.bmp`.
+After the fix, the full route frames are under
+`decompilation/ghidra_conversion/build/conversion/qt/release/qt_runtime/field-ares-collision-shop-qa/`; both
+the Ares route and shop-menu runtime CTests pass in Debug and Release. The
+eight-question review is
+`docs/ghidra/visual-audits/ares-category-longplay-review.md`. This
+closes the handoff's minimum one-screen longplay review and the reported
+initial category-row mismatch. The complete six-category, item-cursor, and
+cancel traversal remains open, along with L2-L4, L5b-L5k, L6, and L8.
+
+### L1 Scene 19 pool-table contact: source stop confirmed
+
+Release and Debug `shadowrun_ghidra_conversion_qt_field_movement_qa` now run
+the Scene 19 table route against records 8 and 9. ROM bytes at `0x1D5F28` and
+`0x1D5F32` confirm the inclusive `0x7E` rectangles `(64..127,128..159)` and
+`(160..223,128..159)`. Five clear-side approaches capture all four corners,
+the blocked candidate, the returned `0x7F`, and the committed position. The
+movement fallback can advance along or away from the rectangle, so QA checks
+that the final position stays on its approach side; it does not incorrectly
+require the whole runner position to freeze when the source fallback moved
+the other coordinate.
+
+The first test spawn was inside a different ROM `0x7F` border rectangle
+`(0..31,96..255)` and never reached the table. The first contact assertion
+also treated any accepted fallback movement as a committed blocked step.
+Those were test setup/assertion errors, not host collision defects. Clear
+coordinates and the source fallback rule now pass in Debug and Release. No
+game collision code or ROM rectangle changed. The complete audit, including
+full-screen before/after paths, the nine visual questions, and longplay limits
+is `docs/ghidra/visual-audits/scene19-table-collision.md`. Longplay
+section 09 frames `006990` and `007035` show the tables and player at different
+positions, but do not show the exact contact inputs. This is a source-confirmed
+no-fix result; L2's object-bounds census and L3's isolated probe coverage remain
+open.
+
+### Revalidation and L1 disposition — 2026-10-14
+
+The focused Scene 26 table and Ares category QA tests were rerun in Debug and
+Release; all four runs pass. The Scene 26 full-screen contact pair was
+reopened at original size. ROM record 70 at `0x1D9C2A` covers the reported
+table-shadow stop, so the handoff's explicit stop rule applies: no collision
+change is warranted. The position test asserts the sampled ROM cell and
+retained position, but it did not fail before the assertion was added because
+the host already matched the source. I am not manufacturing a failure or a
+collision fix to satisfy a failing-then-passing requirement when the source
+evidence says the existing behavior is correct.
+
+L1 is therefore closed as a source-confirmed no-fix review, not as a resolved
+behavior defect. L5a is the reviewed longplay-backed screen. L2-L4, L5b-L5k,
+L6, and L8 remain queued as stated above; no broader defect-closure claim is
+made.
+
+### L2 visible low-code object-bounds census — source-matched
+
+The eight visually recognizable collision regions previously identified in
+Scenes 2, 7, 8, 31, and 34 now run through the existing field movement QA. The
+primary ROM bytes are recorded in
+`docs/ghidra/visual-audits/low-code-object-bounds-census.md`. Six
+low-code rows reject the expected four-corner candidate and retain the source
+position. Scene 31/34 record 102 (`0x04`) resolves to record 4 at `0x1DB620`,
+which does not contain the workstation; movement enters that region, then
+stops at neighboring `0x7F` record 20 at `0x1DB6C0`. This follows the source
+record lookup, so no host collision or map rectangle was changed.
+
+Release and Debug movement CTest now assert exact candidate and committed
+coordinates, all four terrain bytes, and the separate code-4 lookup / adjacent
+boundary result. The first Scene 2 record-3 approach started inside a
+different `0x7F` record; the first Scene 31/34 expectation tried to cross a
+neighboring wall. Both QA routes were corrected from ROM evidence. The eight
+routes' full-screen entry, before-contact, after-contact, and settled outputs
+are under each build's `qt_runtime/field-movement-qa/object-bounds-census/`
+folder. Each `actual.bmp` equals its `contact-after.bmp`. The full visual
+review found no host/source collision mismatch. No exact longplay contact
+frame exists for these routes; host screenshots do not prove Genesis pixels.
+
+L2 is closed as a source-matched no-fix census of the identified visible
+candidates, not as a general reclassification of the 5,163 terrain records.
+The handoff's review objective is complete: L1 received its source-backed
+table contact review, and L5a received one longplay-backed menu review. The
+L1 stop rule applies because its table collision matches the ROM, so no
+behavioral failing-then-passing change was warranted. Remaining queue items
+are L3-L4, L5b-L5k, L6, and L8.
+
+### L3 four-corner probes — source-matched, no movement fix warranted
+
+The Release and Debug `shadowrun_ghidra_conversion_qt_field_movement_qa`
+asserts exact Scene 19 `0x7E` contacts from all four cardinal directions and
+Scene 2 record 1 (`0x172DB4`, value `0x01`) from its in-bounds west, east, and
+north approaches. Each case pins candidate and post-fallback fixed-point
+positions, four terrain bytes, and `0x7F`. The south-side Scene 2 lookup was
+tested separately because its candidate is below the map's exclusive Y bound;
+the trace labels it `inside_scene_bounds=0` and does not claim a playable
+approach.
+
+Scene 26 table record 70 (`0x1D9C2A`) now has a diagonal Down+Right QA route.
+At candidate `(1420,3500)`, the corner bytes are `00,00,00,7E`; the ROM-style
+axis fallback keeps `(1420,3470)`. Thirty neutral updates confirm no position
+creep. Full 320x224 entry, contact, settled, and 30 consecutive neutral BMPs
+were inspected. HUD and priority layering stay present, the runner remains
+visible, the idle sprite continues animating, and the route adds no audio
+request. No exact longplay contact frame exists for Scene 26, and none of
+these internal captures are represented as an independent Genesis visual.
+
+Release and Debug movement and Scene 26 entry CTests pass after the exact
+assertions were pinned; the selected Release/Debug full-frame SHA-256 values
+also match. This is a test-coverage completion
+and source-matched no-fix review, not a failing-then-passing behavior fix;
+the existing host collision path already matched these ROM contacts.
+
+L3 is now closed with that scope. Remaining handoff work is L4, L5b-L5k,
+L6, and L8; L5a and the minimum longplay-backed menu review are complete.
+
+### L4 Stoker, Ares, and Scene 20 doorway return/latch review
+
+The Release and Debug route CTests now exercise the post-interaction exit
+sequence for Stoker, Ares, and Scene 20 record 110. The ordinary Stoker/Ares
+routes return to their Scene 2 contact positions and headings; holding Down
+for 16 updates clears the `0x20` retry bit, and a released then fresh Right
+input stays in Scene 2 without another collision dispatch. Their full-screen
+frames were inspected in the prior pass and the tests still pass in both
+configurations.
+
+Scene 20 record 110 is ROM `0x1D96DE`, raw `0x00C0`, bounds
+`x=0x0580..0x059F`, `y=0x0020..0x003F`; profile pointer `0x1D91C8` has no
+event table. ROM `0xB7B8` sends its event 0 through `0x1651E`, whose zero-event
+path returns carry and lets `0xB7B8` begin the 16-update transition. The
+world-context snapshot at `0x16E30`, actor-anchor copy at `0x2FA4`, and field
+restore at `0x2F32` support returning to the prior Scene 2 field context; the
+route table does not name a destination for record 110. The test enters Scene
+20 through Scene 2's physical C0 route and uses only ordinary input to reach
+record 110. Eight Left updates move around adjacent record 109's `0x7F` wall;
+held Up then approaches record 110 from the south. The first raw C0 sample at
+`(1421, 69)` is published one update before the zero-event dispatch, so the QA
+keeps Up held until that next service update. The host returns to the saved
+Scene 2 contact `(3944, 10350)` at heading 0. `0x2FA4` explicitly saves X/Y;
+the transition reuses the live player record and does not run the initial
+entity reset at `0xA7B4`, so heading 0 persists on this route. Other approach
+headings remain untested.
+After the return, held Down clears the retry bit at update 15, release plus
+fresh Right stays on Scene 2, and the collision dispatch count remains 2.
+
+The CTest `shadowrun_ghidra_conversion_qt_field_scene20_c0_exit_qa` passes in
+Debug and Release. All 45 Release BMPs in the route directory were inspected
+at original size; all 45 Debug/Release file hashes match. The reviewed frames
+keep the complete HUD and field redraw, show the expected black fade at
+updates 16-17, and contain no stale interaction/shop controls. The two visible
+Scene 20 guards match default actor records 3/4 at `0x1D9266` and `0x1D926C`
+from the ROM actor list at `0x1D91DA`; they are not gameplay corpses. Player
+movement is animated, the map has no observed animation in this sequence, and
+the collision adds no sound request (audio count remains 7). There is no
+identified independent longplay frame of this Scene 20 doorway exit, so these
+captures validate host consistency and complete-screen redraw only.
+
+This is a source-matched no-fix QA expansion: the host already clears the
+one-shot latch and does not redispatch after departure. It is not a
+failing-then-passing gameplay change. L4's held-input regression and physical
+path to Scene 20 record 110 are covered; exact ROM-facing restoration remains
+open.
+
+### L5b Ares unaffordable-purchase feedback wait
+
+The Release QA first reproduced the defect: after a purchase attempt with 20
+nuyen, the insufficient-funds feedback was replaced by the Predator detail
+screen on the next update while the purchase A remained held. ROM `0x5794E`
+renders the rejection through `0xC0DA` and enters the controller wait at
+`0xD94`; that wait loops until `FFDD22` has a fresh-press high-byte event. It
+has no timeout. The old host accepted A's still-held low-byte state as a new
+event. `ShopMenuController::advance_transaction` now checks the high byte.
+
+The passing QA preserves 60 held frames, a release without a new press, and a
+fresh A press. Feedback persists through the hold and release and clears only
+on the fresh press; funds remain 20, cursor remains 2, inventory does not
+change, and the audio-request count stays at 4 after the initial `0x24` cue.
+No extra sound request is made during the wait. The before-fix full-screen
+captures are under
+`decompilation/ghidra_conversion/build/conversion/qt/release/qt_runtime/l5b-shop-feedback/before/`; after-fix
+full-screen artifacts and `timeline.tsv` are under
+`decompilation/ghidra_conversion/build/conversion/qt/{debug,release}/qt_runtime/field-shop-ares-template-qa/shop-insufficient-feedback/`.
+All 64 artifact hashes match across builds and the 60 held frames are
+pixel-identical. The actual longplay shows a successful purchase at about
+00:25:37–00:25:39 but no failed-purchase frame, so exact rejection-text pixels
+and audible duration remain unverified. The full eight-question review and
+source trace are recorded in
+`docs/ghidra/visual-audits/shop-insufficient-feedback.md`.
+
+The shop runtime and field-shop QA tests pass in Debug and Release. L5b is
+complete for the held-input timing defect; continue with L5c, the runner karma
+menu comparison.

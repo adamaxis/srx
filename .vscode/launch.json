@@ -5,13 +5,13 @@
       "name": "Shadowrun Ghidra Conversion Qt (Release)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe",
+      "program": "${workspaceFolder}/decompilation/ghidra_conversion/build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe",
       "args": [
         "--assets",
-        "${workspaceFolder}/assets"
+        "${workspaceFolder}/decompilation/assets"
       ],
       "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
       "externalConsole": false,
       "MIMode": "gdb",
       "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
@@ -34,13 +34,13 @@
       "name": "Shadowrun Ghidra Conversion Workbench (Release)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/conversion/workbench/release/shadowrun_ghidra_conversion_runner.exe",
+      "program": "${workspaceFolder}/decompilation/ghidra_conversion/build/conversion/workbench/release/shadowrun_ghidra_conversion_runner.exe",
       "args": [
         "--assets",
-        "${workspaceFolder}/assets"
+        "${workspaceFolder}/decompilation/assets"
       ],
       "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
       "externalConsole": false,
       "MIMode": "gdb",
       "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
@@ -63,13 +63,13 @@
       "name": "Shadowrun Ghidra Conversion Workbench (Debug)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/conversion/workbench/debug/shadowrun_ghidra_conversion_runner.exe",
+      "program": "${workspaceFolder}/decompilation/ghidra_conversion/build/conversion/workbench/debug/shadowrun_ghidra_conversion_runner.exe",
       "args": [
         "--assets",
-        "${workspaceFolder}/assets"
+        "${workspaceFolder}/decompilation/assets"
       ],
       "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
       "externalConsole": false,
       "MIMode": "gdb",
       "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
@@ -92,13 +92,13 @@
       "name": "Shadowrun Ghidra Conversion Qt (Debug)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/conversion/qt/debug/shadowrun_ghidra_conversion_qt.exe",
+      "program": "${workspaceFolder}/decompilation/ghidra_conversion/build/conversion/qt/debug/shadowrun_ghidra_conversion_qt.exe",
       "args": [
         "--assets",
-        "${workspaceFolder}/assets"
+        "${workspaceFolder}/decompilation/assets"
       ],
       "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
       "externalConsole": false,
       "MIMode": "gdb",
       "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",

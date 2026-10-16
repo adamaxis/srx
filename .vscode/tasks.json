@@ -10,7 +10,7 @@
         "ghidra-conversion-release"
       ],
       "options": {
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion"
       },
       "problemMatcher": "$gcc"
     },
@@ -24,7 +24,7 @@
         "ghidra-conversion-release"
       ],
       "options": {
-        "cwd": "${workspaceFolder}",
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
         }
@@ -42,13 +42,13 @@
     {
       "label": "Shadowrun Conversion: Run (Release)",
       "type": "process",
-      "command": "${workspaceFolder}/build/conversion/workbench/release/shadowrun_ghidra_conversion_runner.exe",
+      "command": "${workspaceFolder}/decompilation/ghidra_conversion/build/conversion/workbench/release/shadowrun_ghidra_conversion_runner.exe",
       "args": [
         "--assets",
-        "${workspaceFolder}/assets"
+        "${workspaceFolder}/decompilation/assets"
       ],
       "options": {
-        "cwd": "${workspaceFolder}",
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
         }
@@ -71,7 +71,7 @@
         "ghidra-conversion-debug"
       ],
       "options": {
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion"
       },
       "problemMatcher": "$gcc"
     },
@@ -85,7 +85,7 @@
         "ghidra-conversion-debug"
       ],
       "options": {
-        "cwd": "${workspaceFolder}",
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
         }
@@ -109,7 +109,7 @@
         "ghidra-conversion-qt-debug"
       ],
       "options": {
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion"
       },
       "problemMatcher": "$gcc"
     },
@@ -123,7 +123,7 @@
         "ghidra-conversion-qt-debug"
       ],
       "options": {
-        "cwd": "${workspaceFolder}",
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
         }
@@ -147,7 +147,7 @@
         "ghidra-conversion-qt-release"
       ],
       "options": {
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion"
       },
       "problemMatcher": "$gcc"
     },
@@ -161,7 +161,7 @@
         "ghidra-conversion-qt-release"
       ],
       "options": {
-        "cwd": "${workspaceFolder}",
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
         }
@@ -182,13 +182,13 @@
     {
       "label": "Shadowrun Conversion Qt: Run (Release)",
       "type": "process",
-      "command": "${workspaceFolder}/build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe",
+      "command": "${workspaceFolder}/decompilation/ghidra_conversion/build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe",
       "args": [
         "--assets",
-        "${workspaceFolder}/assets"
+        "${workspaceFolder}/decompilation/assets"
       ],
       "options": {
-        "cwd": "${workspaceFolder}",
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
         }
@@ -205,13 +205,13 @@
     {
       "label": "Shadowrun Conversion Qt: Run (Debug)",
       "type": "process",
-      "command": "${workspaceFolder}/build/conversion/qt/debug/shadowrun_ghidra_conversion_qt.exe",
+      "command": "${workspaceFolder}/decompilation/ghidra_conversion/build/conversion/qt/debug/shadowrun_ghidra_conversion_qt.exe",
       "args": [
         "--assets",
-        "${workspaceFolder}/assets"
+        "${workspaceFolder}/decompilation/assets"
       ],
       "options": {
-        "cwd": "${workspaceFolder}",
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;C:\\Qt\\6.9.1\\mingw_64\\bin;${env:PATH}"
         }
@@ -235,7 +235,7 @@
         "ghidra-conversion-debug-all"
       ],
       "options": {
-        "cwd": "${workspaceFolder}",
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
         }
@@ -259,7 +259,7 @@
         "ghidra-conversion-debug"
       ],
       "options": {
-        "cwd": "${workspaceFolder}",
+        "cwd": "${workspaceFolder}/decompilation/ghidra_conversion",
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
         }

@@ -2,20 +2,22 @@
 
 ## Current project focus
 
-Current development is exclusively in the repository-root Ghidra conversion
-project. Its root `CMakeLists.txt` and `CMakePresets.json` build the typed
-C++/Qt application from the Ghidra source analysis. The retired native-port
-source is preserved under `archive/legacy_native_port/`; do not extend or build
-it unless the user explicitly reactivates it. The Ghidra database is archived
-under `archive/ghidra_analysis_project/`.
+Current development is exclusively in `decompilation/ghidra_conversion/`.
+Its `CMakeLists.txt` and `CMakePresets.json` build the typed C++/Qt project from
+the Ghidra source analysis. The retired native-port source is preserved under
+`archive/legacy_native_port/`; do not extend or build it unless the user
+explicitly reactivates it. The Ghidra database is archived under
+`archive/ghidra_analysis_project/`.
 
-The active project consumes `input/`, `export/`, `assets/`,
-`gameplay/scripts/`, `gameplay/world/`, and `docs/ghidra/`. Gameplay video and
-numbered frame analysis remain under `video analysis/`.
+The active project consumes shared files from `decompilation/input/`,
+`decompilation/export/`, `decompilation/assets/`,
+`decompilation/gameplay/scripts/`, `decompilation/gameplay/world/`, and
+`decompilation/docs/ghidra/`. Gameplay video and numbered frame analysis remain
+under `video analysis/`.
 
 ## Objective
 
-Reconstruct the US Genesis game in the root Ghidra conversion project. The Qt
+Reconstruct the US Genesis game in `decompilation/ghidra_conversion/`. The Qt
 executable is the host application; the C++ conversion model and Lua content
 should express recovered behavior through readable, typed systems. Archived
 native-port files are historical and are not a migration target.
@@ -46,9 +48,9 @@ runtime machinery with explicit native state, assets, layouts, and systems.
 ## Sources of truth
 
 1. **Primary:** the US ROM (`Shadow Run (U) [!].bin` /
-   `input/shadowrun_genesis_us.bin`). Jump to the screen entry, follow tables,
+   `decompilation/input/shadowrun_genesis_us.bin`). Jump to the screen entry, follow tables,
    RAM, and callees.
-2. **Secondary:** Ghidra C under `export/`. Cross-check only. Use it to
+2. **Secondary:** Ghidra C under `decompilation/export/`. Cross-check only. Use it to
    understand behavior and validate the ROM trace; never copy it in as the
    native implementation.
 3. **Tertiary:** real-game visuals. The current visual sanity check and timing
@@ -82,19 +84,20 @@ A hill is **defended** only when all of these exist:
 `pending` = entry known, not reconstructed.  
 `partial` = subpath native, not fully defended.  
 `defended` = named test + dump. Record this in
-`docs/ghidra/decompiled-function-status.tsv` (one ROM entry per row).
+`decompilation/docs/ghidra/decompiled-function-status.tsv` (one ROM entry per row).
 
 If a test only re-encodes the same assets the renderer uses, it does not defend
 the hill. Leftover-clear tests (return to a screen, pixels match a fresh
 instance) defend the garbled-text class without goldens.
 
-Progress index: `docs/ghidra/HILLS.md`.
-Screen map: `docs/ghidra/screen-system-audit.md` and
-`docs/ghidra/reconstruction-exploratory-analysis.md`.
+Progress index: `decompilation/docs/ghidra/HILLS.md`.
+Screen map: `decompilation/docs/ghidra/screen-system-audit.md` and
+`decompilation/docs/ghidra/reconstruction-exploratory-analysis.md`.
 
 ## Runtime shape
 
-- The Ghidra Qt executable consumes individually named files under `assets/`
+- The Ghidra Qt executable consumes individually named files under
+  `decompilation/assets/`
   directly. Do not create or depend on an aggregate serializer or pack.
 - `shadowrun_graphics_extract --all-assets` is the explicit offline import
   step. Do not attach extraction to CTest or ordinary executable builds.
@@ -146,12 +149,12 @@ with the Genesis.
 
 ## Build
 
-C++17. Run CMake preset commands from the repository root using
-`CMakePresets.json`; Release Qt is the normal executable. Debug + Release CTest
+C++17. Run CMake preset commands from `decompilation/ghidra_conversion/` using
+its `CMakePresets.json`; Release Qt is the normal executable. Debug + Release CTest
 applies to each completed hill. Visual dump:
 
 ```text
-build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe --startup-dump start_options 2 500 frame.bmp --assets assets
+build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe --startup-dump start_options 2 500 frame.bmp --assets ../assets
 ```
 
 Do not describe the project as playable until the Ghidra Qt executable accepts
