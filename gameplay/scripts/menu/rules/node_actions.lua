@@ -83,6 +83,33 @@ end
 -- Node-action loop 0x54662 gate (A edge, 0x548A0): dice = min(pool, Computer +0x88) + Computer (0 -> 1) - (colour - 1);
 -- <= 0 or roll(dice, security +6) <= 0 -> text 0x166AA5; else dispatch 0x1664D8[function].+6[cursor]. FFF0A8 += 1 either way.
 M.TEXT.ACTION_FAILED, M.TEXT.SYSTEM_ALERT = 0x166AA5, 0x1669E8
+
+-- ROM 0x54662 calls 0x55F44 with request D1=0, then combines that result
+-- with runner +0x88. The typed menu record maps +0x78/+0x7B to attributes[1]
+-- and [4], +0x88 to skills[7], and deck +0/+7 to MPCP/Response. The node loop
+-- enters with Matrix mode -1 (FFF0B7); keep the byte additions and divide
+-- rounding from the source routine before handing the result to gate().
+function M.runner_action_inputs(runner, deck, mode)
+    local attributes = runner.attributes or {}
+    local skills = runner.skills or {}
+    local computer = skills[7] or 0
+    local delay = (((attributes[1] or 0) + (attributes[4] or 0)) & 0xFF) >> 1
+    delay = (delay + computer + 2 * (deck.response or 0)) & 0xFF
+    if mode > 0 then
+        delay = delay // 3
+    elseif mode < 0 then
+        delay = delay - delay // 3
+    else
+        delay = delay >> 1
+    end
+    return delay, computer
+end
+
+function M.gate_runner_action(runner, deck, mode, node, st, roll)
+    local delay, computer = M.runner_action_inputs(runner, deck, mode)
+    return M.gate(delay, computer, node, st, roll)
+end
+
 function M.gate(pool, computer, node, st, roll)
     local d = math.min(pool, computer) + computer; if d == 0 then d = 1 end
     d = d - (node.colour - 1)

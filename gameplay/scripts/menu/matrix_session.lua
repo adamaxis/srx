@@ -1,6 +1,7 @@
 -- Matrix session state is Lua-owned. The source map and node records are
 -- imported offline from the ROM into data/matrix_systems.lua.
 local Systems = require("data.matrix_systems")
+local E = require("enums")
 local Rules = require("menu.rules.matrix")
 local Movement = require("menu.rules.matrix_move")
 
@@ -64,6 +65,7 @@ function M.begin(system_id)
         previous_node = -1,
         link_cursor = 0,
         phase = "node",
+        mode = E.MatrixModeResult.ATTACK,
         alert = Rules.NONE,
         in_alert = false,
         known = {},
@@ -102,12 +104,16 @@ end
 
 function M.retreat(state)
     state = state or M.active
-    if not state or state.previous_node < 0 then return false end
+    if not state or state.phase ~= "node" or state.previous_node < 0 then
+        return false
+    end
     state.current_node, state.previous_node = state.previous_node,
                                               state.current_node
     local node = state.nodes[state.current_node]
     Rules.reveal(state.map, state.known, node.x, node.y)
     remember_node_colour(state, state.current_node)
+    state.phase = "node"
+    state.pending_action = nil
     return true
 end
 
@@ -203,35 +209,88 @@ end
 
 function M.select_node_action(state, action_id)
     local node = M.current_node(state)
-    if not node then return false end
+    if not node or state.phase ~= "node" then return false end
+    local available = false
+    for _, action in ipairs(M.node_actions(state)) do
+        if action.id == action_id then available = true; break end
+    end
+    if not available then return false end
     if action_id == "enter_system" or action_id == "leave_node" then
-        local target, previous = Movement.follow(
-            state.current_node, node.links, state.link_cursor)
-        if target == nil or target < 0 or state.nodes[target] == nil then
-            return false
-        end
-        state.current_node, state.previous_node = target, previous
-        state.phase = "node"
+        state.phase = "link_select"
+        state.pending_action = action_id
         state.link_cursor = 0
-        local next_node = state.nodes[target]
-        Rules.reveal(state.map, state.known, next_node.x, next_node.y)
-        remember_node_colour(state, target)
         return true
     end
     if action_id == "go_to_node" then
         state.phase = "goto"
         state.goto_cursor = 0
+        state.pending_action = action_id
         return true
     end
     return false
 end
 
 function M.step_link(state, right)
+    if not state or state.phase ~= "link_select" then return false end
     local node = M.current_node(state)
     if not node then return false end
     state.link_cursor = right
                          and Movement.link_right(node.links, state.link_cursor)
                          or Movement.link_left(node.links, state.link_cursor)
+    return true
+end
+
+function M.step_goto(state, right)
+    if not state or state.phase ~= "goto" then return false end
+    state.goto_cursor = right
+        and Movement.goto_right(state.nodes, state.current_node,
+                                state.goto_cursor)
+        or Movement.goto_left(state.nodes, state.current_node,
+                              state.goto_cursor)
+    return true
+end
+
+local function enter_node(state, target, previous)
+    local next_node = state.nodes[target]
+    if not next_node then return false end
+    state.current_node, state.previous_node = target, previous
+    state.phase = "node"
+    state.pending_action = nil
+    state.link_cursor, state.goto_cursor = 0, nil
+    Rules.reveal(state.map, state.known, next_node.x, next_node.y)
+    remember_node_colour(state, target)
+    return true
+end
+
+-- ROM 0x53704 confirms a highlighted link; 0x53864 confirms a CPU Go To
+-- Node target. Keep cursor movement and confirmation separate so input can
+-- be routed through the Lua screen without an implicit move on menu choice.
+function M.commit_node_selection(state)
+    if not state then return false end
+    if state.phase == "link_select" then
+        local node = M.current_node(state)
+        if not node then return false end
+        local target, previous = Movement.follow(
+            state.current_node, node.links, state.link_cursor)
+        if target == nil or target < 0 then return false end
+        return enter_node(state, target, previous)
+    end
+    if state.phase == "goto" then
+        local target, previous = Movement.goto_commit(
+            state.nodes, state.current_node, state.goto_cursor)
+        return enter_node(state, target, previous)
+    end
+    return false
+end
+
+function M.cancel_node_selection(state)
+    if not state or (state.phase ~= "link_select" and
+                     state.phase ~= "goto") then
+        return false
+    end
+    state.phase = "node"
+    state.pending_action = nil
+    state.link_cursor, state.goto_cursor = 0, nil
     return true
 end
 

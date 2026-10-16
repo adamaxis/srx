@@ -97,6 +97,8 @@ eq(node_count, 406, "ROM Matrix node catalog count")
 local started, first_session = Session.begin(0)
 eq(started, true, "Matrix session starts from system zero")
 eq(first_session.current_node, 0, "Matrix session enters access node")
+eq(first_session.mode, E.MatrixModeResult.ATTACK,
+    "node action loop resets Matrix mode to attack")
 eq(first_session.nodes[0].links[0], 4, "system zero access link")
 eq(first_session.map[139] ~= nil, true, "Matrix session copies cell 139")
 eq(first_session.map[140], nil, "Matrix session does not create cell 140")
@@ -123,6 +125,65 @@ for system_id = 0, 24 do
     Session.finish(session)
 end
 Session.finish(first_session)
+
+-- Matrix node actions only select a movement mode. The ROM keeps movement in
+-- its own input loop, then commits the highlighted link or CPU destination.
+local linked_session_ok, linked_session = Session.begin(0)
+eq(linked_session_ok, true, "node navigation session starts")
+eq(Session.select_node_action(linked_session, "go_to_node"), false,
+    "non-CPU nodes do not expose Go To Node")
+eq(Session.select_node_action(linked_session, "enter_system"), true,
+    "system access action opens link navigation")
+eq(linked_session.phase, "link_select",
+    "choosing Enter System does not move immediately")
+eq(linked_session.current_node, 0,
+    "link navigation preserves the current node until confirm")
+eq(Session.retreat(linked_session), false,
+    "retreat is unavailable during link selection")
+eq(Session.step_link(linked_session, true), true,
+    "link navigation accepts a right edge")
+eq(linked_session.link_cursor, 1,
+    "link cursor advances across the source link array")
+eq(Session.commit_node_selection(linked_session), true,
+    "confirm enters the selected linked node")
+eq(linked_session.current_node, 6,
+    "link confirmation uses the selected link target")
+eq(linked_session.previous_node, 0,
+    "link confirmation records the source node for retreat")
+eq(linked_session.phase, "node",
+    "link confirmation returns to node actions")
+eq(Session.retreat(linked_session), true,
+    "retreat returns to the previous Matrix node")
+eq(linked_session.current_node, 0,
+    "retreat restores the previous node")
+eq(linked_session.previous_node, 6,
+    "retreat keeps the node just left as the new previous node")
+
+local cpu_session_ok, cpu_session = Session.begin(0)
+eq(cpu_session_ok, true, "CPU navigation session starts")
+eq(Session.select_node_action(cpu_session, "enter_system"), true,
+    "system access opens link navigation for CPU path")
+eq(Session.commit_node_selection(cpu_session), true,
+    "confirm selects the first system access link")
+eq(cpu_session.current_node, 4,
+    "first system access link reaches the CPU")
+eq(Session.select_node_action(cpu_session, "go_to_node"), true,
+    "CPU Go To Node action opens whole-system navigation")
+eq(cpu_session.phase, "goto", "CPU navigation has its own input phase")
+eq(cpu_session.goto_cursor, 0,
+    "Go To Node cursor starts at node zero, including when not at zero")
+eq(Session.step_goto(cpu_session, true), true,
+    "Go To Node accepts a right edge")
+eq(cpu_session.goto_cursor, 1,
+    "Go To Node cursor advances through the node catalog")
+eq(Session.commit_node_selection(cpu_session), true,
+    "Go To Node confirm commits the selected destination")
+eq(cpu_session.current_node, 1,
+    "Go To Node enters the selected node")
+eq(cpu_session.previous_node, 4,
+    "linked Go To Node destination preserves retreat")
+eq(Session.cancel_node_selection(cpu_session), false,
+    "node phase rejects a stale navigation cancel")
 
 -- Exercise the actual deck-grid screen against a narrow fake host. This verifies
 -- the menu calls its heartbeat, moves the visible cursor, and submits the
@@ -254,6 +315,31 @@ eq(Actions.gate(3, 2, { colour = 1, security = 4 }, gate_state,
     function(dice, tn) eq(dice, 4, "node action pool uses minimum"); eq(tn, 4, "node action uses security"); return 1 end),
     true, "successful node action gate")
 eq(gate_state.attempts, 1, "node action gate counts attempt")
+local action_runner = {
+    attributes = { [1] = 8, [4] = 4 },
+    skills = { [7] = 7 },
+}
+local action_delay, action_computer = Actions.runner_action_inputs(
+    action_runner, { response = 2 }, E.MatrixModeResult.ATTACK)
+eq(action_delay, 12,
+    "ROM action delay uses two-thirds mode and wrapped response inputs")
+eq(action_computer, 7, "node action gate reads Computer at runner +0x88")
+action_delay = Actions.runner_action_inputs(
+    action_runner, { response = 2 }, E.MatrixDeckMode.BALANCED)
+eq(action_delay, 8, "balanced action delay halves the wrapped total")
+action_delay = Actions.runner_action_inputs(
+    action_runner, { response = 2 }, E.MatrixDeckMode.DEFENSE)
+eq(action_delay, 5, "defense action delay uses the one-third branch")
+local runner_gate_state = { attempts = 0 }
+eq(Actions.gate_runner_action(action_runner, { response = 2 },
+    E.MatrixModeResult.ATTACK, { colour = 3, security = 4 }, runner_gate_state,
+    function(dice, tn)
+        eq(dice, 12, "ROM runner action dice use min plus Computer")
+        eq(tn, 4, "runner action roll uses node security")
+        return 1
+    end), true, "runner source fields enter the node-action gate")
+eq(runner_gate_state.attempts, 1,
+    "runner action gate increments the alert-event counter")
 
 -- Program effects and frame services return named outcomes for the presenter.
 local healed = Programs.medic(deck, function(dice, tn)
