@@ -153,9 +153,10 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
                   "       (item.armor.primary_modifier ~= records[code].b25 or\n"
                   "        item.armor.secondary_modifier ~= records[code].b26) then return 'armor ROM fields mismatch' end\n"
                   "  end\n"
-                  "  for code = 1, 13 do\n"
+                  "  for code = 1, 14 do\n"
                   "    local definition = magic.spell_action_definition(code)\n"
                   "    if definition == nil or definition.source_record ~= spells[code - 1] then return 'spell record mismatch' end\n"
+                  "    if code == 14 and (definition.spell_id ~= 'barrier' or definition.availability ~= -1 or definition.effect_table_index ~= 1 or definition.difficulty_modifier ~= 2 or definition.base_effect ~= 3 or definition.target_effect ~= 0 or definition.attribute_selector ~= 0) then return 'Barrier ROM action profile mismatch' end\n"
                   "  end\n"
                   "  for id = 0, 5 do\n"
                   "    local accessory = accessories[id]\n"
@@ -185,8 +186,9 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
     const auto run_ids =
         extensible_scripts.string_list("run_registry", "available_run_ids");
     const std::vector<std::string> expected_run_ids{
-        "bodyguard_escort", "dynamic_probe", "ghoul_bounty",
-        "package_delivery"};
+        "bodyguard_escort", "dynamic_probe", "employee_recruitment",
+        "gang_contract", "ghoul_bounty", "matrix_objective",
+        "package_delivery", "package_recovery"};
     if (!expect(run_ids.has_value() && *run_ids == expected_run_ids,
                 "new run module was not discovered from the Lua package")) {
         return false;
@@ -507,7 +509,9 @@ int main() {
     const auto run_ids =
         scripts.string_list("run_registry", "available_run_ids");
     const std::vector<std::string> expected_run_ids{
-        "bodyguard_escort", "ghoul_bounty", "package_delivery"};
+        "bodyguard_escort", "employee_recruitment", "gang_contract",
+        "ghoul_bounty", "matrix_objective", "package_delivery",
+        "package_recovery"};
     if (!expect(run_ids.has_value() && *run_ids == expected_run_ids,
                 "separate Lua run modules were not auto-registered")) {
         std::cerr << scripts.failure() << '\n';
@@ -5984,15 +5988,15 @@ int main() {
 
     const auto magic_spells =
         scripts.menu("magic", "spells", "magic.spells", "catalog");
-    constexpr std::array<std::string_view, 13> kMagicSpellIds{{
+    constexpr std::array<std::string_view, 14> kMagicSpellIds{{
         "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
         "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
-        "rockskin", "heal_wounds", "confusion"}};
-    constexpr std::array<std::string_view, 13> kMagicSpellNames{{
+        "rockskin", "heal_wounds", "confusion", "barrier"}};
+    constexpr std::array<std::string_view, 14> kMagicSpellNames{{
         "Flame Dart", "Flame Bolt", "Hellblast", "Invisibility", "Sleep",
         "Stink", "Super Barrier", "Mana Zap", "Mana Blast", "Mana Storm",
-        "Rockskin", "Heal Wounds", "Confusion"}};
-    constexpr std::array<std::string_view, 13> kMagicSpellDescriptions{{
+        "Rockskin", "Heal Wounds", "Confusion", "Barrier"}};
+    constexpr std::array<std::string_view, 14> kMagicSpellDescriptions{{
         "A small burst of fire that\\ndelivers a nasty burn.",
         "A large ball of fire which\\ncauses a vicious burn.",
         "Creates fire to incinerate\\nall in its area of effect!",
@@ -6005,7 +6009,8 @@ int main() {
         "A magical conflagration\\nengulfing all within its\\narea of effect!",
         "Hardens flesh to resist\\nthe effects of damage.",
         "Cures damage to characters.",
-        "An area effect spell which\\ndistracts all enemies with\\nsensory overload."}};
+        "An area effect spell which\\ndistracts all enemies with\\nsensory overload.",
+        "Creates a magical wall which\\ninhibits movement only."}};
     bool magic_spell_rows_match = magic_spells.has_value() &&
         magic_spells->choices.size() == kMagicSpellIds.size();
     if (magic_spell_rows_match) {

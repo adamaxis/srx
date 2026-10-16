@@ -323,11 +323,33 @@ int main() {
     RunnerRecordFields missing_spell_record{};
     MagicForceState missing_spell_force{};
     const auto missing_spell = run_magic_equipment_selection(
-        missing_spell_record, missing_spell_force, 13U);
+        missing_spell_record, missing_spell_force, 14U);
     if (!expect(missing_spell.magic_spell_missing &&
                 !missing_spell.detail_preparation_called &&
                 !missing_spell.finalized)) {
         return 33;
+    }
+
+    RunnerRecordFields barrier_record{};
+    MagicForceState barrier_force{2U, 6U};
+    bool barrier_details_match = false;
+    MagicEquipmentSelectionCallbacks barrier_callbacks{};
+    barrier_callbacks.prepare_magic_action_details =
+        [&](const MagicSpellDefinition& spell) {
+            barrier_details_match = spell.spell_code == 13U &&
+                                    spell.display_name == "Barrier";
+        };
+    barrier_callbacks.run_magic_force_selection_loop = []() {
+        return static_cast<std::uint16_t>(0x4000U);
+    };
+    const auto barrier_result = run_magic_equipment_selection(
+        barrier_record, barrier_force, 13U, barrier_callbacks);
+    if (!expect(!barrier_result.magic_spell_missing &&
+                barrier_details_match && barrier_result.finalized &&
+                barrier_record.equipped_item_code == 14U &&
+                barrier_record.equipped_inventory_slot == -1 &&
+                barrier_record.magic_force == 2U)) {
+        return 40;
     }
 
     RunnerRecordFields posture_record{};

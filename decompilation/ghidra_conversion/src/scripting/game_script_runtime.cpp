@@ -3107,6 +3107,7 @@ bool GameScriptRuntime::load_package(
     }
 
     auto* state = impl_->state;
+    bool has_run_modules = false;
     for (const auto& file : files) {
         const auto module = file.stem().string();
         if (!valid_identifier(module)) {
@@ -3131,7 +3132,19 @@ bool GameScriptRuntime::load_package(
         // no native per-run switch or registration edit is needed.
         constexpr std::string_view kRunModulePrefix = "run_";
         if (module.rfind(kRunModulePrefix, 0U) == 0U &&
-            module.size() > kRunModulePrefix.size()) {
+            module.size() > kRunModulePrefix.size() &&
+            lua_istable(state, definition_index)) {
+            lua_getfield(state, definition_index, "prepare_offer");
+            const bool has_prepare_offer = lua_isfunction(state, -1);
+            lua_pop(state, 1);
+            lua_getfield(state, definition_index, "present_offer");
+            const bool has_present_offer = lua_isfunction(state, -1);
+            lua_pop(state, 1);
+            if (!has_prepare_offer || !has_present_offer) {
+                lua_pop(state, 1);
+                continue;
+            }
+
             const auto run_id = std::string_view(module).substr(
                 kRunModulePrefix.size());
             if (!valid_identifier(run_id)) {
@@ -3146,6 +3159,7 @@ bool GameScriptRuntime::load_package(
             lua_pushvalue(state, definition_index);
             lua_settable(state, -3);
             lua_pop(state, 2);
+            has_run_modules = true;
         }
         lua_pop(state, 1);
     }
@@ -3153,7 +3167,7 @@ bool GameScriptRuntime::load_package(
     // Run modules are registered above as game.runs[run_id]. Publish the
     // shared registry alongside them so gameplay scripts can read and update
     // the active offer through the same Lua-owned game facade.
-    {
+    if (has_run_modules) {
         const auto stack_base = lua_gettop(state);
         if (!impl_->push_module("run_registry") || !lua_istable(state, -1)) {
             lua_settop(state, stack_base);

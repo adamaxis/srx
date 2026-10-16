@@ -148,11 +148,11 @@ int main() {
     const std::array<std::string, kMagicSpellTextCount> expected_magic_spell_ids{{
         "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
         "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
-        "rockskin", "heal_wounds", "confusion"}};
+        "rockskin", "heal_wounds", "confusion", "barrier"}};
     const std::array<std::string, kMagicSpellTextCount> expected_magic_spell_names{{
         "Flame Dart", "Flame Bolt", "Hellblast", "Invisibility", "Sleep",
         "Stink", "Super Barrier", "Mana Zap", "Mana Blast", "Mana Storm",
-        "Rockskin", "Heal Wounds", "Confusion"}};
+        "Rockskin", "Heal Wounds", "Confusion", "Barrier"}};
     const std::array<std::string, kMagicSpellTextCount>
         expected_magic_spell_descriptions{{
             "A small burst of fire that\ndelivers a nasty burn.",
@@ -170,7 +170,8 @@ int main() {
             "Hardens flesh to resist\nthe effects of damage.",
             "Cures damage to characters.",
             "An area effect spell which\ndistracts all enemies with\n"
-            "sensory overload."}};
+            "sensory overload.",
+            "Creates a magical wall which\ninhibits movement only."}};
     const std::array<std::string, kMagicPanelTextCount> expected_magic_panel_text_ids{{
         "defense_title", "force_posture_heading", "success_label",
         "force_label", "availability_label", "panel_metric_labels",

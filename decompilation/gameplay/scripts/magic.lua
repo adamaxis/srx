@@ -17,6 +17,7 @@ local spell_ids = {
     "rockskin",
     "heal_wounds",
     "confusion",
+    "barrier",
 }
 
 -- D4EA0 action rows in one-based live-record action-code order. The row
@@ -51,6 +52,8 @@ local spell_action_by_code = {
       base_effect = 3, target_effect = 0, attribute_selector = 0 },
     { availability = -1, effect_table_index = 2, difficulty_modifier = 0,
       base_effect = 6, target_effect = 0, attribute_selector = -1 },
+    { availability = -1, effect_table_index = 1, difficulty_modifier = 2,
+      base_effect = 3, target_effect = 0, attribute_selector = 0 },
 }
 
 -- ROM 0x4946. Zero entries are silent at the 0x15830 action-effect handoff.
