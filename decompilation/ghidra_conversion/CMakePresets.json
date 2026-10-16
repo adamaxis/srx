@@ -11,7 +11,7 @@
       "displayName": "Ghidra Conversion Workbench (Debug, MSYS2 UCRT64)",
       "description": "Debug build of the standalone ROM-to-readable-C++ conversion workbench.",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/conversion/workbench/debug",
+      "binaryDir": "${sourceDir}/build/conversion/root-workbench/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
@@ -22,7 +22,7 @@
       "displayName": "Ghidra Conversion Workbench (Release, MSYS2 UCRT64)",
       "description": "Release build of the standalone ROM-to-readable-C++ conversion workbench.",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/conversion/workbench/release",
+      "binaryDir": "${sourceDir}/build/conversion/root-workbench/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"

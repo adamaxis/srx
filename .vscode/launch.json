@@ -34,7 +34,7 @@
       "name": "Shadowrun Ghidra Conversion Workbench (Release)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/decompilation/ghidra_conversion/build/conversion/workbench/release/shadowrun_ghidra_conversion_runner.exe",
+      "program": "${workspaceFolder}/decompilation/ghidra_conversion/build/conversion/root-workbench/release/shadowrun_ghidra_conversion_runner.exe",
       "args": [
         "--assets",
         "${workspaceFolder}/decompilation/assets"
@@ -63,7 +63,7 @@
       "name": "Shadowrun Ghidra Conversion Workbench (Debug)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/decompilation/ghidra_conversion/build/conversion/workbench/debug/shadowrun_ghidra_conversion_runner.exe",
+      "program": "${workspaceFolder}/decompilation/ghidra_conversion/build/conversion/root-workbench/debug/shadowrun_ghidra_conversion_runner.exe",
       "args": [
         "--assets",
         "${workspaceFolder}/decompilation/assets"

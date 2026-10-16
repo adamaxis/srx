@@ -38,7 +38,7 @@ The canonical Release output is
 `decompilation/ghidra_conversion/build/conversion/qt/release/shadowrun_ghidra_conversion_qt.exe`.
 Debug output is under
 `decompilation/ghidra_conversion/build/conversion/qt/debug/`; workbench output
-is under `decompilation/ghidra_conversion/build/conversion/workbench/`.
+is under `decompilation/ghidra_conversion/build/conversion/root-workbench/`.
 VS Code and `shadowrun.code-workspace` point at this project's CMake presets.
 Run the matching Debug and Release CTest presets for each completed behavior
 hill.

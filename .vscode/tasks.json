@@ -42,7 +42,7 @@
     {
       "label": "Shadowrun Conversion: Run (Release)",
       "type": "process",
-      "command": "${workspaceFolder}/decompilation/ghidra_conversion/build/conversion/workbench/release/shadowrun_ghidra_conversion_runner.exe",
+      "command": "${workspaceFolder}/decompilation/ghidra_conversion/build/conversion/root-workbench/release/shadowrun_ghidra_conversion_runner.exe",
       "args": [
         "--assets",
         "${workspaceFolder}/decompilation/assets"
