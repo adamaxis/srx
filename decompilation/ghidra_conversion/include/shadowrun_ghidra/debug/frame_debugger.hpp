@@ -58,6 +58,8 @@ public:
         return frame_count_;
     }
 
+    bool has_seed_history() const noexcept { return has_seed_history_; }
+
     void record_event(const std::uint64_t frame, const std::int32_t key,
                       const std::uint32_t modifiers, const bool pressed) {
         if (!recording()) {
@@ -69,10 +71,19 @@ public:
         events_.push_back({frame, key, modifiers, pressed});
     }
 
-    void record_completed_frame() noexcept {
+    void record_completed_frame(const std::uint16_t source_seed) {
         if (recording() && frame_count_ != std::numeric_limits<std::uint64_t>::max()) {
+            frame_seeds_.push_back(source_seed);
             ++frame_count_;
         }
+    }
+
+    std::optional<std::uint16_t> expected_seed_after_frame(
+        const std::uint64_t frame) const noexcept {
+        if (!has_seed_history_ || !replaying() || frame >= frame_seeds_.size()) {
+            return std::nullopt;
+        }
+        return frame_seeds_[static_cast<std::size_t>(frame)];
     }
 
     std::vector<KeyboardInputEvent> take_events_for_frame(
@@ -101,6 +112,9 @@ public:
         stream.write(kMagic, sizeof(kMagic));
         write_u64(stream, frame_count_);
         write_u64(stream, static_cast<std::uint64_t>(events_.size()));
+        for (const auto seed : frame_seeds_) {
+            write_u32(stream, seed);
+        }
         for (const auto& event : events_) {
             write_u64(stream, event.frame);
             write_u32(stream, static_cast<std::uint32_t>(event.key));
@@ -116,8 +130,9 @@ public:
     }
 
 private:
-    static constexpr char kMagic[8] = {'S', 'R', 'X', 'K', 'E', 'Y', '1', '\0'};
+    static constexpr char kMagic[8] = {'S', 'R', 'X', 'K', 'E', 'Y', '2', '\0'};
     static constexpr std::uint64_t kMaximumEvents = 10'000'000;
+    static constexpr std::uint64_t kMaximumFrames = 10'000'000;
 
     static void set_error(std::string* error, std::string message) {
         if (error != nullptr) {
@@ -172,14 +187,31 @@ private:
         }
         char magic[sizeof(kMagic)]{};
         stream.read(magic, sizeof(magic));
-        if (!stream || !std::equal(std::begin(kMagic), std::end(kMagic), magic)) {
+        const bool version_two =
+            std::equal(std::begin(kMagic), std::end(kMagic), magic);
+        const bool version_one =
+            magic[0] == 'S' && magic[1] == 'R' && magic[2] == 'X' &&
+            magic[3] == 'K' && magic[4] == 'E' && magic[5] == 'Y' &&
+            magic[6] == '1' && magic[7] == '\0';
+        if (!stream || (!version_one && !version_two)) {
             throw std::runtime_error("input log has an unsupported header: " + config_.path);
         }
+        has_seed_history_ = version_two;
         frame_count_ = read_u64(stream);
         const auto count = read_u64(stream);
-        if (count > kMaximumEvents ||
+        if (frame_count_ > kMaximumFrames || count > kMaximumEvents ||
             count > static_cast<std::uint64_t>(events_.max_size())) {
-            throw std::runtime_error("input log event count is unreasonable");
+            throw std::runtime_error("input log size is unreasonable");
+        }
+        if (has_seed_history_) {
+            frame_seeds_.reserve(static_cast<std::size_t>(frame_count_));
+            for (std::uint64_t frame = 0; frame < frame_count_; ++frame) {
+                const auto seed = read_u32(stream);
+                if (seed > 0xFFFFU) {
+                    throw std::runtime_error("input log contains an invalid random seed");
+                }
+                frame_seeds_.push_back(static_cast<std::uint16_t>(seed));
+            }
         }
         events_.reserve(static_cast<std::size_t>(count));
         for (std::uint64_t index = 0; index < count; ++index) {
@@ -205,9 +237,11 @@ private:
 
     InputLogConfig config_;
     std::vector<KeyboardInputEvent> events_;
+    std::vector<std::uint16_t> frame_seeds_;
     std::uint64_t frame_count_ = 0;
     std::size_t next_event_ = 0;
     bool finished_ = false;
+    bool has_seed_history_ = false;
 };
 
 class FrameStepper final {

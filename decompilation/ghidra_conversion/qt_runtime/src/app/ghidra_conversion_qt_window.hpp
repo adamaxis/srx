@@ -396,6 +396,9 @@ private:
         if (frame_stepper_.paused()) {
             title += QStringLiteral(" [PAUSED]");
         }
+        if (replay_diverged_) {
+            title += QStringLiteral(" [REPLAY DIVERGED]");
+        }
         setWindowTitle(title);
     }
 
@@ -1043,6 +1046,9 @@ private:
     }
 
     void on_host_frame_timeout() {
+        if (replay_diverged_) {
+            return;
+        }
         const auto due_frames = consume_host_frames(
             host_frame_deadline_ns_, host_clock_.nsecsElapsed());
         const auto frames = frame_stepper_.frames_to_advance(due_frames);
@@ -1056,9 +1062,27 @@ private:
                 break;
             }
             advance_one_source_frame();
-            input_log_.record_completed_frame();
+            if (input_log_.replaying() && input_log_.has_seed_history()) {
+                const auto expected =
+                    input_log_.expected_seed_after_frame(source_frame_index_);
+                if (!expected.has_value() ||
+                    *expected != source_random_seed()) {
+                    std::cerr << "input replay diverged after source frame "
+                              << source_frame_index_
+                              << ": expected shared ROM seed 0x" << std::hex
+                              << expected.value_or(0U) << ", got 0x"
+                              << source_random_seed() << std::dec << '\n';
+                    replay_diverged_ = true;
+                    update_window_title();
+                }
+            } else {
+                input_log_.record_completed_frame(source_random_seed());
+            }
             ++source_frame_index_;
             ++advanced_frames;
+            if (replay_diverged_) {
+                break;
+            }
         }
         if (input_log_.replaying() &&
             source_frame_index_ >= input_log_.recorded_frame_count()) {
@@ -2012,6 +2036,7 @@ private:
     debug::FrameStepper frame_stepper_;
     std::uint64_t source_frame_index_ = 0;
     bool replaying_input_ = false;
+    bool replay_diverged_ = false;
     StartupIntegrationState state_;
     StartupIntegrationCallbacks startup_callbacks_;
     scripting::GameScriptRuntime startup_scripts_;
