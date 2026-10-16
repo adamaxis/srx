@@ -10,9 +10,20 @@ The ordinary field terminal now routes through Lua for taxi, Vid-Phone, and
 Cyberspace. Taxi uses the ROM's seven-region cursor tables and animation, then
 loads the confirmed field scene through the existing fade path. Vid-Phone
 filters the 13 source contacts, pages the list, and displays each call's
-first/repeat text and portrait. Cyberspace checks deck/MPCP/datajack facts,
-offers passcodes or System Search, then enters the existing Matrix session and
-node-action route. Debug/Release CTests cover these script routes, the phone
+first/repeat text and portrait. Portrait extraction now follows the live
+contact pointer table at `0x109682` through each record's `+0x0A` profile
+pointer, and the offline importer reads every per-tile delta in the upper
+`0x1728` descriptor branch. Six distinct contact portraits match independent
+longplay dialogue crops at the source `(16,32)` placement; the odd purple
+Gregory portrait is present in its source frame as well. Four contacts point
+to the same ROM blank profile at `0x121E20`, and Alesandro and Professor
+Jefferson share `0x121F34`. Capt. Quinton and Sharkey have no matching visual
+frame in the reviewed longplay. The Vid-Phone visual CTest checks Henry's
+portrait pixels and verifies that the image clears when the call returns to
+the field menu. No matching independent longplay frame of a Vid-Phone call has
+been identified, so the visual hill remains partial. Cyberspace checks
+deck/MPCP/datajack facts, offers passcodes or System Search, then enters the
+existing Matrix session and node-action route. Debug/Release CTests cover these script routes, the phone
 pages/calls, the cab selector, and a completed Redmond-to-Downtown map load;
 the taxi selector and arrival full-screen dumps are byte-identical across
 builds. This hill remains partial: the ordinary map-to-terminal physical route,
@@ -203,11 +214,13 @@ messages consumed by their existing typed presenters. This is a content
 migration only: it does not claim that all title, inventory, or field menu
 behavior is script-driven.
 
-The Stoker 7x9 portrait stream now follows the separate `BGT` repeated-tile
-and `BGE` stepped-tile counts from ROM `0x1728`; Debug/Release graphics tests
-guard the formerly duplicated tile, and the corrected image was reviewed
-against independent section 03 frames 000082, 000301, and 000601. The first
-arrival and three-choice package offer now run through the indexed title
+The 7x9 portrait stream follows the separate `BGT` repeated-tile and `BGE`
+stepped-tile counts from ROM `0x1728`; the upper branch reads a fresh delta
+for each emitted tile. A source-format CTest guards those counts and deltas,
+and the Vid-Phone visual CTest checks the full Henry call panel and portrait
+cleanup. The Stoker portrait remains matched to independent section 03 frames
+000082, 000301, and 000601. The first arrival and three-choice package offer
+now run through the indexed title
 service and typed map-event route; the C debt question and B Jump House
 referral are connected. Typed state resolves unpaid repeat visits to the
 offer and both completed flags to ordinary motel service. The live New Game

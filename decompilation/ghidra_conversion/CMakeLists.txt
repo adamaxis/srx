@@ -145,10 +145,19 @@ target_link_libraries(shadowrun_ghidra_asset_import
     PUBLIC shadowrun_ghidra_asset_import_support ZLIB::ZLIB)
 
 add_executable(shadowrun_graphics_extract
-    tools/rom_research/graphics_extract.cpp)
+    tools/rom_research/graphics_extract.cpp
+    tools/rom_research/field_mode_profile_import.cpp)
 target_link_libraries(shadowrun_graphics_extract PRIVATE
     shadowrun_ghidra_asset_import shadowrun_ghidra_asset_import_support
     ZLIB::ZLIB)
+
+add_executable(shadowrun_genesis_1728_sprite_test
+    tools/rom_research/tests/field_mode_profile_import_test.cpp
+    tools/rom_research/field_mode_profile_import.cpp)
+target_link_libraries(shadowrun_genesis_1728_sprite_test PRIVATE
+    shadowrun_ghidra_asset_import)
+add_test(NAME shadowrun_genesis_1728_sprite
+         COMMAND shadowrun_genesis_1728_sprite_test)
 
 # Qt presets exist to link the host binary. The workbench presets own the
 # per-contract test executables; building those 280 targets here makes a

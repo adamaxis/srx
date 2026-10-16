@@ -2,6 +2,7 @@
 #include "shadowrun/core/rom_layout.hpp"
 #include "shadowrun/rendering/asset_taxonomy.hpp"
 #include "shadowrun/rendering/resource_manifest.hpp"
+#include "field_mode_profile_import.hpp"
 
 #include <algorithm>
 #include <array>
@@ -561,6 +562,18 @@ void remove_obsolete_menu_text_assets(const std::filesystem::path& root) {
                             "notebook-tips.tsv");
 }
 
+std::string lua_text_entry_key(const std::string_view line) {
+    const auto begin = line.find("[\"");
+    if (begin == std::string_view::npos) {
+        return {};
+    }
+    const auto end = line.find("\"] = ", begin + 2U);
+    if (end == std::string_view::npos) {
+        return {};
+    }
+    return std::string(line.substr(begin + 2U, end - begin - 2U));
+}
+
 void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
                                 const std::filesystem::path& root,
                                 const shadowrun::native::NativePortAssets& assets,
@@ -569,11 +582,25 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
                                     field_text) {
     const auto path = root / "dialogue" / "script-text.lua";
     std::filesystem::create_directories(path.parent_path());
-    std::ofstream output(path, std::ios::binary | std::ios::trunc);
-    if (!output) {
-        throw std::runtime_error("cannot create Lua dialogue content: " +
-                                 path.string());
+    std::string existing_script;
+    {
+        std::ifstream existing(path, std::ios::binary);
+        if (existing) {
+            std::ostringstream contents;
+            contents << existing.rdbuf();
+            if (existing.bad()) {
+                throw std::runtime_error(
+                    "cannot read existing Lua dialogue content: " +
+                    path.string());
+            }
+            existing_script = contents.str();
+        } else if (std::filesystem::exists(path)) {
+            throw std::runtime_error(
+                "cannot read existing Lua dialogue content: " +
+                path.string());
+        }
     }
+    std::ostringstream output;
 
     const auto write_lua_string = [&output](const std::string_view text) {
         output << '"';
@@ -1268,6 +1295,84 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
     }
     output << "    },\n}\n";
     if (!output) {
+        throw std::runtime_error("cannot write Lua dialogue content: " +
+                                 path.string());
+    }
+
+    // The tracked Lua table also contains text added by specialized importers
+    // and authored content that this broad asset pass does not know about.
+    // Replace keys generated here, while keeping every other existing entry
+    // and the Notebook extractor's managed block intact.
+    auto generated_script = output.str();
+    std::unordered_set<std::string> generated_keys;
+    std::istringstream generated_lines(generated_script);
+    for (std::string line; std::getline(generated_lines, line);) {
+        const auto key = lua_text_entry_key(line);
+        if (!key.empty()) {
+            generated_keys.insert(key);
+        }
+    }
+
+    std::vector<std::string> preserved_lines;
+    std::unordered_set<std::string> preserved_keys;
+    constexpr std::string_view kNotebookBlockBegin =
+        "    -- BEGIN ROM-extracted Notebook Contacts and Shadowrunners";
+    constexpr std::string_view kNotebookBlockEnd =
+        "    -- END ROM-extracted Notebook Contacts and Shadowrunners";
+    bool in_notebook_block = false;
+    std::istringstream existing_lines(existing_script);
+    for (std::string line; std::getline(existing_lines, line);) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        const auto is_begin = line == kNotebookBlockBegin;
+        const auto is_end = line == kNotebookBlockEnd;
+        if (is_begin) {
+            in_notebook_block = true;
+            preserved_lines.push_back(line);
+            continue;
+        }
+        if (is_end) {
+            preserved_lines.push_back(line);
+            in_notebook_block = false;
+            continue;
+        }
+
+        const auto key = lua_text_entry_key(line);
+        if (!key.empty()) {
+            if (generated_keys.find(key) == generated_keys.end() &&
+                preserved_keys.insert(key).second) {
+                preserved_lines.push_back(line);
+            }
+        } else if (in_notebook_block ||
+                   line.find("-- ROM ") != std::string::npos) {
+            preserved_lines.push_back(line);
+        }
+    }
+
+    constexpr std::string_view kClosingTable = "    },\n}\n";
+    const auto closing = generated_script.rfind(kClosingTable);
+    if (closing == std::string::npos) {
+        throw std::runtime_error(
+            "generated Lua dialogue content has no closing table: " +
+            path.string());
+    }
+    if (!preserved_lines.empty()) {
+        auto insertion = closing;
+        for (const auto& line : preserved_lines) {
+            generated_script.insert(insertion, line + "\n");
+            insertion += line.size() + 1U;
+        }
+    }
+
+    std::ofstream merged_output(path, std::ios::binary | std::ios::trunc);
+    if (!merged_output) {
+        throw std::runtime_error("cannot create Lua dialogue content: " +
+                                 path.string());
+    }
+    merged_output.write(generated_script.data(),
+                        static_cast<std::streamsize>(generated_script.size()));
+    if (!merged_output) {
         throw std::runtime_error("cannot write Lua dialogue content: " +
                                  path.string());
     }
@@ -2802,7 +2907,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     // sprite asset; the Qt conversion owns only its screen placement.
     write_catalog_asset(
         root, "dialogue/portraits/stoker-motel.bmp",
-        shadowrun::graphics::decode_genesis_field_dialogue_portrait(rom, 0U),
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121FA0U),
         "sprite", "0x1F65A/0x121FA0/0x1287C6/0x122420", false, manifest,
         written, missing, blank);
     // Scene 13's mode-0 entry in 0x12CC50 selects the 0x121E80 speaker
@@ -2810,7 +2916,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     // from Stoker's field-exit profile: it is Gunderson's distinct ROM art.
     write_catalog_asset(
         root, "dialogue/portraits/gunderson-jump-house.bmp",
-        shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
             rom, 0x121E80U),
         "sprite", "0x12CC50/0x121E80/0x20990", false, manifest, written,
         missing, blank);
@@ -2819,7 +2925,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     // dialogue portrait art; neither is a default field actor on map 14.
     write_catalog_asset(
         root, "dialogue/portraits/vigore-jarl.bmp",
-        shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
             rom, 0x121F28U),
         "sprite", "0x12CC80/0x121F28/0x20990", false, manifest, written,
         missing, blank);
@@ -2827,7 +2933,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     // booth dialogue. This is portrait art, not a field actor sprite.
     write_catalog_asset(
         root, "dialogue/portraits/mortimer-reed.bmp",
-        shadowrun::graphics::decode_genesis_field_dialogue_portrait(rom, 7U),
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121FF4U),
         "sprite", "0x12CC70/0x121FF4/0x20990", false, manifest, written,
         missing, blank);
     // Scene 12's mode-0 entry in the 0x12CC90 dialogue row points to Caleb
@@ -2835,7 +2942,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     // standing map actor.
     write_catalog_asset(
         root, "dialogue/portraits/caleb-brightmore.bmp",
-        shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
             rom, 0x121E98U),
         "sprite", "0x12CC90/0x121E98/0x20990", false, manifest, written,
         missing, blank);
@@ -2844,7 +2951,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     // an old man but does not give him a name.
     write_catalog_asset(
         root, "dialogue/portraits/jackals-lantern-old-man.bmp",
-        shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
             rom, 0x121E5CU),
         "sprite", "0x20990/0x20C78/0x121E5C/0xF3FAC", false, manifest,
         written, missing, blank);
@@ -2853,36 +2960,51 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     // it is not the later booth-conversation portrait.
     write_catalog_asset(
         root, "dialogue/portraits/jump-house-entry.bmp",
-        shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
             rom, 0x121EBCU),
         "sprite", "0x20484/0x121EBC/0x110D1E", false, manifest, written,
         missing, blank);
     struct VidPhonePortraitRecord {
         std::string_view file_name;
-        std::size_t profile_offset;
         std::size_t contact_index;
     };
     constexpr std::array<VidPhonePortraitRecord, 13> kVidPhonePortraits{{
-        {"capt-quinton-jaymes", 0x121E50U, 0U},
-        {"alesandro-hobbs", 0x121F34U, 1U},
-        {"sharkey", 0x121EE0U, 2U},
-        {"kipp-david", 0x121FF4U, 3U},
-        {"wilma-temmenhoff", 0x121E20U, 4U},
-        {"macklemann", 0x122060U, 5U},
-        {"gregory-wilns", 0x12203CU, 6U},
-        {"mr-faradouchi", 0x121E20U, 7U},
-        {"agira-tetsumi", 0x121E20U, 8U},
-        {"henry-j-culver", 0x121E8CU, 9U},
-        {"max", 0x121F40U, 10U},
-        {"chillicut", 0x121E20U, 11U},
-        {"professor-jefferson", 0x121F34U, 12U},
+        {"capt-quinton-jaymes", 0U},
+        {"alesandro-hobbs", 1U},
+        {"sharkey", 2U},
+        {"kipp-david", 3U},
+        {"wilma-temmenhoff", 4U},
+        {"macklemann", 5U},
+        {"gregory-wilns", 6U},
+        {"mr-faradouchi", 7U},
+        {"agira-tetsumi", 8U},
+        {"henry-j-culver", 9U},
+        {"max", 10U},
+        {"chillicut", 11U},
+        {"professor-jefferson", 12U},
     }};
+    constexpr std::size_t kVidPhoneContactPointerTable = 0x109682U;
+    constexpr std::size_t kVidPhoneProfilePointerInRecord = 10U;
+    constexpr std::size_t kVidPhoneProfilePointerSize = 4U;
+    constexpr std::size_t kVidPhoneProfilePointerEnd =
+        kVidPhoneProfilePointerInRecord + kVidPhoneProfilePointerSize;
     for (const auto& portrait : kVidPhonePortraits) {
+        const auto record_offset = static_cast<std::size_t>(
+            read_big_endian_long(
+                rom, kVidPhoneContactPointerTable + portrait.contact_index * 4U));
+        if (record_offset > rom.size() ||
+            rom.size() - record_offset < kVidPhoneProfilePointerEnd) {
+            throw std::runtime_error(
+                "Vid-Phone contact record exceeds the ROM image");
+        }
+        const auto profile_offset = static_cast<std::size_t>(
+            read_big_endian_long(
+                rom, record_offset + kVidPhoneProfilePointerInRecord));
         write_catalog_asset(
             root, "dialogue/portraits/vid-phone-" +
                       std::string(portrait.file_name) + ".bmp",
-            shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
-                rom, portrait.profile_offset),
+            shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+                rom, profile_offset),
             "sprite", "0x109682/contact-record-pointer-" +
                           std::to_string(portrait.contact_index) +
                           "/record+0x0A/0x1F246",
@@ -2919,7 +3041,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     write("field/hud/background.bmp", assets.field_hud, "background",
           "0x334C/0x39F2", false);
     const auto ares_mode_sprite =
-        shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
             rom, 0x1220C0U);
     write("field/mode-entry/ares-sprite.bmp",
           shadowrun::native::NativeImage{ares_mode_sprite.width,
@@ -2927,7 +3049,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                                          ares_mode_sprite.pixels},
           "sprite", "0x1FA78/0x1F246/0x1F292/0x1220C0", true);
     const auto little_chiba_mode_sprite =
-        shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
             rom, 0x12200CU);
     write("field/mode-entry/little-chiba-sprite.bmp",
           shadowrun::native::NativeImage{little_chiba_mode_sprite.width,
@@ -5842,7 +5964,7 @@ int main(int argc, char** argv) {
             const auto profile = static_cast<std::size_t>(
                 parse_number(argv[4]));
             const auto image =
-                shadowrun::graphics::decode_genesis_field_mode_profile_sprite(
+                shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
                     rom, profile);
             shadowrun::graphics::write_bmp32(argv[2], image);
             std::cout << "field mode profile sprite " << profile << ": "

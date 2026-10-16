@@ -268,6 +268,19 @@ dialogue/portraits/mortimer-reed.bmp	sprite	0	0	56	72	0x12CC70/0x121FF4/0x20990	
 dialogue/portraits/caleb-brightmore.bmp	sprite	0	0	56	72	0x12CC90/0x121E98/0x20990	extracted
 dialogue/portraits/jackals-lantern-old-man.bmp	sprite	0	0	56	72	0x20990/0x20C78/0x121E5C/0xF3FAC	extracted
 dialogue/portraits/jump-house-entry.bmp	sprite	0	0	56	72	0x20484/0x121EBC/0x110D1E	extracted
+dialogue/portraits/vid-phone-capt-quinton-jaymes.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-0/record+0x0A/0x1F246	extracted
+dialogue/portraits/vid-phone-alesandro-hobbs.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-1/record+0x0A/0x1F246	extracted
+dialogue/portraits/vid-phone-sharkey.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-2/record+0x0A/0x1F246	extracted
+dialogue/portraits/vid-phone-kipp-david.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-3/record+0x0A/0x1F246	extracted
+dialogue/portraits/vid-phone-wilma-temmenhoff.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-4/record+0x0A/0x1F246	extracted
+dialogue/portraits/vid-phone-macklemann.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-5/record+0x0A/0x1F246	extracted
+dialogue/portraits/vid-phone-gregory-wilns.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-6/record+0x0A/0x1F246	extracted
+dialogue/portraits/vid-phone-mr-faradouchi.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-7/record+0x0A/0x1F246	extracted
+dialogue/portraits/vid-phone-agira-tetsumi.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-8/record+0x0A/0x1F246	extracted
+dialogue/portraits/vid-phone-henry-j-culver.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-9/record+0x0A/0x1F246	extracted
+dialogue/portraits/vid-phone-max.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-10/record+0x0A/0x1F246	extracted
+dialogue/portraits/vid-phone-chillicut.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-11/record+0x0A/0x1F246	extracted
+dialogue/portraits/vid-phone-professor-jefferson.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-12/record+0x0A/0x1F246	extracted
 dialogue/panel/frame.bmp	background	0	0	320	224	0x10984/0x10918/0xCAB0C/0xCECD8-0xCEFA4	extracted
 dialogue/panel/frame-alternate-left-panel.bmp	background	0	0	320	224	0x10984/0x10918/0xCAB0C/0xCEFF0 (FFF0AF)	extracted
 dialogue/panel/button-a.bmp	sprite	0	0	16	16	0x1F3C4/0x1232/0xCF11C-0xCF12C	extracted
@@ -7161,16 +7174,3 @@ field/entities/effects/spell/heal-wounds/scene-55-phase-12.bmp	sprite	-16	-27	32
 field/entities/effects/spell/heal-wounds/scene-55-phase-13.bmp	sprite	-16	-27	32	32	ROM 0x490A action=12 handler=0x56DE phase=13 descriptor=0x57F0 pattern=0x82992 bytes=512; palette line=3 scene=55	extracted
 field/entities/effects/spell/heal-wounds/scene-55-phase-14.bmp	sprite	-11	-20	22	20	ROM 0x490A action=12 handler=0x56DE phase=14 descriptor=0x57A8 pattern=0x82872 bytes=288; palette line=3 scene=55	extracted
 field/entities/effects/spell/heal-wounds/scene-55-phase-15.bmp	sprite	-4	-15	9	7	ROM 0x490A action=12 handler=0x56DE phase=15 descriptor=0x5796 pattern=0x82832 bytes=64; palette line=3 scene=55	extracted
-dialogue/portraits/vid-phone-capt-quinton-jaymes.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-0/record+0x0A/0x1F246	extracted
-dialogue/portraits/vid-phone-alesandro-hobbs.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-1/record+0x0A/0x1F246	extracted
-dialogue/portraits/vid-phone-sharkey.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-2/record+0x0A/0x1F246	extracted
-dialogue/portraits/vid-phone-kipp-david.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-3/record+0x0A/0x1F246	extracted
-dialogue/portraits/vid-phone-wilma-temmenhoff.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-4/record+0x0A/0x1F246	extracted
-dialogue/portraits/vid-phone-macklemann.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-5/record+0x0A/0x1F246	extracted
-dialogue/portraits/vid-phone-gregory-wilns.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-6/record+0x0A/0x1F246	extracted
-dialogue/portraits/vid-phone-mr-faradouchi.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-7/record+0x0A/0x1F246	extracted
-dialogue/portraits/vid-phone-agira-tetsumi.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-8/record+0x0A/0x1F246	extracted
-dialogue/portraits/vid-phone-henry-j-culver.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-9/record+0x0A/0x1F246	extracted
-dialogue/portraits/vid-phone-max.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-10/record+0x0A/0x1F246	extracted
-dialogue/portraits/vid-phone-chillicut.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-11/record+0x0A/0x1F246	extracted
-dialogue/portraits/vid-phone-professor-jefferson.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-12/record+0x0A/0x1F246	extracted

@@ -47,6 +47,15 @@ bool save_panel(FieldDialogueRuntime& runtime,
                       "BMP");
 }
 
+QImage render_panel(FieldDialogueRuntime& runtime) {
+    QImage image(320, 224, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::black);
+    QPainter painter(&image);
+    runtime.paint(painter);
+    painter.end();
+    return image;
+}
+
 bool contact_cursor_is_visible(FieldDialogueRuntime& runtime) {
     QImage image(320, 224, QImage::Format_ARGB32_Premultiplied);
     image.fill(Qt::black);
@@ -81,6 +90,8 @@ int main(int argc, char** argv) {
         return 64;
     }
     const std::filesystem::path output_root(argv[1]);
+    std::filesystem::remove_all(output_root);
+    std::filesystem::create_directories(output_root);
 
     const auto assets = load_conversion_asset_catalog(
         std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT));
@@ -220,54 +231,38 @@ int main(int argc, char** argv) {
         std::cerr << runtime.failure() << '\n';
         return 7;
     }
+    const auto henry_call_screen = render_panel(runtime);
+    const auto henry_portrait_sample = henry_call_screen.pixelColor(40, 56);
+    if (!expect(henry_portrait_sample.red() > 80 &&
+                    henry_portrait_sample.green() < 60 &&
+                    henry_portrait_sample.blue() < 40,
+                "Henry's recovered portrait pixels are absent from the call screen")) {
+        return 7;
+    }
 
     if (!advance(runtime, 0x1000U,
-                 "B did not exit Henry's call to the contact list") ||
-        !advance(runtime, 0x0200U,
-                 "Down did not select the third contact row") ||
-        !advance(runtime, 0x0200U,
-                 "Down did not select the fourth contact row") ||
-        !advance(runtime, 0x0200U,
-                 "Down did not select the fifth contact row") ||
-        !advance(runtime, 0x0200U,
-                 "Down did not select the sixth contact row") ||
-        !advance(runtime, 0x1000U,
-                 "B did not activate Prior Screen") ||
-        !advance(runtime, 0x4000U,
-                 "A did not call Captain Quinton") ||
-        !expect(runtime.panel().portrait_alias ==
-                    "dialogue.portraits.vid.phone.capt.quinton.jaymes",
-                "Captain Quinton call did not draw his portrait") ||
-        !expect(save_panel(runtime, output_root, "07-captain-first-call"),
-                "could not save first Captain Quinton call")) {
-        std::cerr << runtime.failure() << '\n';
-        return 8;
-    }
-    if (!advance(runtime, 0x1000U,
-                 "B did not return from the first Captain Quinton call") ||
-        !advance(runtime, 0x4000U,
-                 "A did not repeat the Captain Quinton call") ||
-        !expect(runtime.panel().portrait_alias ==
-                    "dialogue.portraits.vid.phone.capt.quinton.jaymes",
-                "repeat call lost Captain Quinton's portrait") ||
-        !expect(save_panel(runtime, output_root, "08-captain-repeat-call"),
-                "could not save repeat Captain Quinton call")) {
-        std::cerr << runtime.failure() << '\n';
-        return 9;
-    }
-    if (!advance(runtime, 0x1000U,
-                 "B did not return from the repeat call") ||
-        !advance(runtime, 0x8000U,
-                 "Start did not return from contacts to the field menu") ||
+                 "B did not return from Henry's call to the field terminal") ||
+        !expect(runtime.panel().option_count == 4U,
+                "ending the call did not restore the four field choices") ||
+        !expect(save_panel(runtime, output_root, "07-return-to-field-menu"),
+                "could not save the field terminal after the call") ||
         !expect(runtime.advance_controller_events(0x8000U) ==
                     FieldDialogueAdvanceResult::returned_to_field,
-                "Start did not leave the ordinary field terminal") ||
+                "Start did not leave the field terminal after the phone call") ||
         !expect(!runtime.open(), "Vid-Phone panel did not clear on exit")) {
         std::cerr << runtime.failure() << '\n';
         if (!source_boundary.empty()) {
             std::cerr << source_boundary << '\n';
         }
-        return 10;
+        return 8;
+    }
+    const auto returned_screen = render_panel(runtime);
+    const auto stale_portrait_sample = returned_screen.pixelColor(40, 56);
+    if (!expect(stale_portrait_sample.red() == 0 &&
+                    stale_portrait_sample.green() == 0 &&
+                    stale_portrait_sample.blue() == 0,
+                "the old phone portrait remained over the field menu")) {
+        return 8;
     }
     return 0;
 }
