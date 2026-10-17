@@ -30,10 +30,17 @@ enum class StartupIntegrationPhase {
     start_options,
     save_load,
     joshua_archetype,
+    // ROM 0x07DA: after 0x59092 returns with an archetype, 0x131C fades the
+    // menu to black (17 CRAM passes, two VBlanks each) before 0x59C5E starts
+    // the opening and its 0x10 music.
+    joshua_archetype_exit_fade,
     opening_intro,
     field_ready,
     failed,
 };
+
+inline constexpr std::uint8_t kArchetypeExitPalettePasses = 17U;
+inline constexpr std::uint8_t kArchetypeExitVblanksPerPalettePass = 2U;
 
 enum class StartupIntegrationStartResult {
     assets_missing,
@@ -50,6 +57,8 @@ enum class StartupIntegrationEvent {
     start_options_menu_revealed,
     entered_save_load,
     entered_joshua_archetype,
+    joshua_archetype_exit_fade_started,
+    joshua_archetype_exit_fade_advanced,
     opening_started,
     opening_frame_advanced,
     waiting,
@@ -125,6 +134,9 @@ struct StartupIntegrationState {
 
     StartupIntegrationPhase phase = StartupIntegrationPhase::not_started;
     bool pre_title_complete = false;
+    // 0x131C progress for the archetype-to-opening fade.
+    std::uint8_t archetype_exit_fade_passes = 0U;
+    std::uint8_t archetype_exit_fade_vblank = 0U;
     // The 0x59C5E New Game opening leaves the source FFE18B activity marker
     // set for the initial field route. This fact is handed to the field
     // runtime when the opening completes or exits on Start and returns to the
@@ -173,6 +185,13 @@ StartupIntegrationEvent advance_startup_boot_frame(
 // New Game enters this phase after the archetype record is initialized; it
 // does not jump directly to a synthetic field screen.
 StartupIntegrationEvent advance_startup_opening_frame(
+    StartupIntegrationState& state,
+    const StartupIntegrationCallbacks& callbacks);
+
+// Advances the 0x07DA -> 0x131C archetype exit fade by one VBlank. After the
+// 17th pass it enters 0x59C5E (begin_opening_intro) and returns
+// opening_started; no controller input is sampled during the fade.
+StartupIntegrationEvent advance_startup_archetype_exit_fade_frame(
     StartupIntegrationState& state,
     const StartupIntegrationCallbacks& callbacks);
 

@@ -829,7 +829,9 @@ private:
             draw_alias(scene_painter, "menu.startup.background");
         } else if (state_.phase == StartupIntegrationPhase::start_options ||
                    state_.phase == StartupIntegrationPhase::save_load ||
-                   state_.phase == StartupIntegrationPhase::joshua_archetype) {
+                   state_.phase == StartupIntegrationPhase::joshua_archetype ||
+                   state_.phase ==
+                       StartupIntegrationPhase::joshua_archetype_exit_fade) {
             draw_alias(scene_painter, "menu.startup.background");
             draw_menu_overlay(scene_painter);
         } else if (state_.phase == StartupIntegrationPhase::opening_intro) {
@@ -870,6 +872,11 @@ private:
             title_loop_.exit_palette_fade.passes_completed != 0U) {
             return transition_genesis_cram_image(
                 scene, title_loop_.exit_palette_fade.passes_completed, true);
+        }
+        if (state_.phase ==
+            StartupIntegrationPhase::joshua_archetype_exit_fade) {
+            return transition_genesis_cram_image(
+                scene, state_.archetype_exit_fade_passes, true);
         }
         if (state_.phase == StartupIntegrationPhase::opening_intro &&
             state_.opening_intro.scene_palette_weight != 255U) {
@@ -1409,6 +1416,12 @@ private:
             pending_start_options_controller_byte_ = 0U;
             advance_startup_integration(state_, sampled,
                                         startup_callbacks_);
+            return;
+        }
+        if (state_.phase ==
+            StartupIntegrationPhase::joshua_archetype_exit_fade) {
+            advance_startup_archetype_exit_fade_frame(state_,
+                                                      startup_callbacks_);
             return;
         }
         if (state_.phase == StartupIntegrationPhase::opening_intro) {

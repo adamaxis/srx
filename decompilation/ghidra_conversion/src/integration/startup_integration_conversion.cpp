@@ -154,6 +154,8 @@ const char* startup_integration_phase_name(
         return "save_load";
     case StartupIntegrationPhase::joshua_archetype:
         return "joshua_archetype";
+    case StartupIntegrationPhase::joshua_archetype_exit_fade:
+        return "joshua_archetype_exit_fade";
     case StartupIntegrationPhase::opening_intro:
         return "opening_intro";
     case StartupIntegrationPhase::field_ready:
@@ -258,6 +260,32 @@ StartupIntegrationEvent advance_startup_boot_frame(
     enter_boot_stage(state, BootStartupStage::title_ready);
     set_phase(state, callbacks, StartupIntegrationPhase::title_ready);
     return StartupIntegrationEvent::title_ready;
+}
+
+StartupIntegrationEvent advance_startup_archetype_exit_fade_frame(
+    StartupIntegrationState& state,
+    const StartupIntegrationCallbacks& callbacks) {
+    if (state.phase != StartupIntegrationPhase::joshua_archetype_exit_fade) {
+        return StartupIntegrationEvent::invalid_phase;
+    }
+    ++state.archetype_exit_fade_vblank;
+    if (state.archetype_exit_fade_vblank >=
+        kArchetypeExitVblanksPerPalettePass) {
+        state.archetype_exit_fade_vblank = 0U;
+        ++state.archetype_exit_fade_passes;
+    }
+    if (state.archetype_exit_fade_passes < kArchetypeExitPalettePasses) {
+        return StartupIntegrationEvent::joshua_archetype_exit_fade_advanced;
+    }
+    if (begin_opening_intro(state.opening_intro, callbacks.opening_intro) !=
+        OpeningIntroStartResult::started) {
+        append_event(state, "opening_intro.unresolved");
+        set_phase(state, callbacks, StartupIntegrationPhase::failed);
+        return StartupIntegrationEvent::callback_unresolved;
+    }
+    append_event(state, "opening_intro.started");
+    set_phase(state, callbacks, StartupIntegrationPhase::opening_intro);
+    return StartupIntegrationEvent::opening_started;
 }
 
 StartupIntegrationEvent advance_startup_opening_frame(
@@ -453,16 +481,12 @@ StartupIntegrationEvent advance_startup_integration(
                 return StartupIntegrationEvent::callback_unresolved;
             }
             state.event_log.emplace_back("joshua_archetype.initialized");
-            if (begin_opening_intro(state.opening_intro,
-                                    callbacks.opening_intro) !=
-                OpeningIntroStartResult::started) {
-                append_event(state, "opening_intro.unresolved");
-                set_phase(state, callbacks, StartupIntegrationPhase::failed);
-                return StartupIntegrationEvent::callback_unresolved;
-            }
-            append_event(state, "opening_intro.started");
-            set_phase(state, callbacks, StartupIntegrationPhase::opening_intro);
-            return StartupIntegrationEvent::opening_started;
+            state.archetype_exit_fade_passes = 0U;
+            state.archetype_exit_fade_vblank = 0U;
+            append_event(state, "joshua_archetype.exit_fade");
+            set_phase(state, callbacks,
+                      StartupIntegrationPhase::joshua_archetype_exit_fade);
+            return StartupIntegrationEvent::joshua_archetype_exit_fade_started;
         case JoshuaArchetypeMenuEvent::callback_unresolved:
             set_phase(state, callbacks, StartupIntegrationPhase::failed);
             return StartupIntegrationEvent::callback_unresolved;
@@ -472,6 +496,10 @@ StartupIntegrationEvent advance_startup_integration(
     case StartupIntegrationPhase::not_started:
     case StartupIntegrationPhase::pre_title:
     case StartupIntegrationPhase::title_ready:
+    case StartupIntegrationPhase::joshua_archetype_exit_fade:
+        // 0x131C runs without sampling menu input; the frame pump advances
+        // it through advance_startup_archetype_exit_fade_frame().
+        return StartupIntegrationEvent::waiting;
     case StartupIntegrationPhase::opening_intro:
     case StartupIntegrationPhase::field_ready:
     case StartupIntegrationPhase::failed:

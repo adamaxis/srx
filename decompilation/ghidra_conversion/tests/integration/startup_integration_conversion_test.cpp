@@ -20,6 +20,26 @@ using namespace shadowrun::ghidra_conversion::integration;
 
 constexpr std::uint16_t kControllerStartEventMask = 0x8000U;
 
+// ROM 0x07DA: the archetype confirm runs the 0x131C fade (17 passes x 2
+// VBlanks) before 0x59C5E; pump those frames and return the final event.
+StartupIntegrationEvent confirm_archetype_through_exit_fade(
+    StartupIntegrationState& state,
+    const StartupIntegrationCallbacks& callbacks) {
+    auto event = advance_startup_integration(state, kStartupMenuA, callbacks);
+    if (event != StartupIntegrationEvent::joshua_archetype_exit_fade_started) {
+        return event;
+    }
+    for (int frame = 0; frame < kArchetypeExitPalettePasses *
+                                    kArchetypeExitVblanksPerPalettePass;
+         ++frame) {
+        event = advance_startup_archetype_exit_fade_frame(state, callbacks);
+        if (event != StartupIntegrationEvent::joshua_archetype_exit_fade_advanced) {
+            return event;
+        }
+    }
+    return event;
+}
+
 struct Observations {
     struct OpeningTextTimelineEntry {
         OpeningIntroTextRequest request;
@@ -599,8 +619,7 @@ int main() {
             JoshuaArchetypeChoice::decker) {
         return 7;
     }
-    if (advance_startup_integration(
-            new_game_state, kStartupMenuA, new_game_callbacks) !=
+    if (confirm_archetype_through_exit_fade(new_game_state, new_game_callbacks) !=
             StartupIntegrationEvent::opening_started ||
         new_game_state.phase != StartupIntegrationPhase::opening_intro ||
         new_game_observations.initialized_archetype !=
@@ -639,8 +658,7 @@ int main() {
             StartupIntegrationEvent::selection_moved ||
         shaman_state.joshua_archetype.selected !=
             JoshuaArchetypeChoice::gator_shaman ||
-        advance_startup_integration(
-            shaman_state, kStartupMenuA, shaman_callbacks) !=
+        confirm_archetype_through_exit_fade(shaman_state, shaman_callbacks) !=
             StartupIntegrationEvent::opening_started ||
         shaman_observations.initialized_archetype !=
             JoshuaArchetypeChoice::gator_shaman ||
@@ -1056,8 +1074,7 @@ int main() {
         advance_startup_integration(
             *skipped_state, kStartupMenuA, skipped_callbacks) !=
             StartupIntegrationEvent::entered_joshua_archetype ||
-        advance_startup_integration(
-            *skipped_state, kStartupMenuA, skipped_callbacks) !=
+        confirm_archetype_through_exit_fade(*skipped_state, skipped_callbacks) !=
             StartupIntegrationEvent::opening_started ||
         skipped_state->phase != StartupIntegrationPhase::opening_intro) {
         return 31;
@@ -1131,8 +1148,7 @@ int main() {
         advance_startup_integration(
             *stage2_state, kStartupMenuA, stage2_callbacks) !=
             StartupIntegrationEvent::entered_joshua_archetype ||
-        advance_startup_integration(
-            *stage2_state, kStartupMenuA, stage2_callbacks) !=
+        confirm_archetype_through_exit_fade(*stage2_state, stage2_callbacks) !=
             StartupIntegrationEvent::opening_started) {
         return 37;
     }
@@ -1167,8 +1183,7 @@ int main() {
         advance_startup_integration(
             *fade_state, kStartupMenuA, fade_callbacks) !=
             StartupIntegrationEvent::entered_joshua_archetype ||
-        advance_startup_integration(
-            *fade_state, kStartupMenuA, fade_callbacks) !=
+        confirm_archetype_through_exit_fade(*fade_state, fade_callbacks) !=
             StartupIntegrationEvent::opening_started) {
         return 40;
     }
@@ -1216,8 +1231,7 @@ int main() {
         advance_startup_integration(
             *airport_state, kStartupMenuA, airport_callbacks) !=
             StartupIntegrationEvent::entered_joshua_archetype ||
-        advance_startup_integration(
-            *airport_state, kStartupMenuA, airport_callbacks) !=
+        confirm_archetype_through_exit_fade(*airport_state, airport_callbacks) !=
             StartupIntegrationEvent::opening_started) {
         return 43;
     }

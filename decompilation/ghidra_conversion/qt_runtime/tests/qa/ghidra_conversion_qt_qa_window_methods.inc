@@ -1,3 +1,14 @@
+    // ROM 0x07DA runs the 0x131C archetype fade before 0x59C5E. QA drivers
+    // that jump straight to the opening pump those source frames here so
+    // their opening-relative frame anchors stay unchanged.
+    void qa_finish_archetype_exit_fade() {
+        while (state_.phase ==
+               StartupIntegrationPhase::joshua_archetype_exit_fade) {
+            advance_startup_archetype_exit_fade_frame(state_,
+                                                      startup_callbacks_);
+        }
+    }
+
     bool startup_shell_survives(const QImage& scene) const {
         const auto shell = draw_asset_cache_.find("menu.startup.background");
         if (shell == draw_asset_cache_.end()) {
@@ -764,6 +775,7 @@
                 state_, kStartupMenuDown, startup_callbacks_);
         }
         advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        qa_finish_archetype_exit_fade();
         if (state_.phase != StartupIntegrationPhase::opening_intro) {
             std::cerr << "startup dump: archetype did not start opening\n";
             return 3;
@@ -1061,6 +1073,7 @@
             }
         }
         advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        qa_finish_archetype_exit_fade();
         if (state_.phase != StartupIntegrationPhase::opening_intro) {
             return fail("selected archetype did not start the opening");
         }
@@ -2451,6 +2464,7 @@
         }
         advance_startup_integration(
             state_, kStartupMenuA, startup_callbacks_);
+        qa_finish_archetype_exit_fade();
         if (state_.phase != StartupIntegrationPhase::opening_intro) {
             std::cerr << "intro-to-field: Joshua did not start opening\n";
             return 3;
@@ -3835,6 +3849,7 @@
             return 3;
         }
         advance_startup_integration(state_, kStartupMenuA, startup_callbacks_);
+        qa_finish_archetype_exit_fade();
         if (state_.phase != StartupIntegrationPhase::opening_intro) {
             return fail("Gator Shaman did not start opening intro");
         }
