@@ -8802,8 +8802,11 @@ RgbaImage decode_genesis_cab_map(const std::vector<std::uint8_t>& rom) {
     // separate name-table border (0xD4446 tile list) composed per selected
     // destination by 0x13726; it is extracted as eight named cursor tiles
     // and never baked into this background.
-    constexpr std::int32_t kPlateX = 16;
-    constexpr std::int32_t kPlateY = 16;
+    // $2208 - $2000 = 0x208 bytes = row 4, column 4 of a 64-cell plane, so
+    // the plate's first cell is plane pixel (32,32). A (16,16) crop kept 16
+    // black pixels on the left/top and dropped the last two tile columns/rows.
+    constexpr std::int32_t kPlateX = 32;
+    constexpr std::int32_t kPlateY = 32;
     constexpr std::uint16_t kPlateWidth = 26U * 8U;
     constexpr std::uint16_t kPlateHeight = 17U * 8U;
     RgbaImage image{

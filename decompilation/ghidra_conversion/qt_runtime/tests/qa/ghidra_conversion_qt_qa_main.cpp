@@ -21844,8 +21844,8 @@ int main(int argc, char** argv) {
                 }
                 for (int y = 0; y < cab_map.height(); ++y) {
                     for (int x = 0; x < cab_map.width(); ++x) {
-                        const auto screen_x = 46 + x;
-                        const auto screen_y = 14 + y;
+                        const auto screen_x = kCabMapPlateScreenX + x;
+                        const auto screen_y = kCabMapPlateScreenY + y;
                         const bool covered_by_selector =
                             screen_x >= selection_plan.cursor_x &&
                             screen_x < selection_plan.cursor_x +
@@ -21864,7 +21864,7 @@ int main(int argc, char** argv) {
                         if (covered_by_selector || covered_by_caption) {
                             continue;
                         }
-                        if (taxi_scene.pixelColor(46 + x, 14 + y) !=
+                        if (taxi_scene.pixelColor(screen_x, screen_y) !=
                             cab_map.pixelColor(x, y)) {
                             std::cerr << "field taxi dump: cab map did not "
                                          "occupy the ROM source coordinates\n";

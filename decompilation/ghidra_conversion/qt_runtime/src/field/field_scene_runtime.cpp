@@ -16694,7 +16694,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         if (field_taxi_map_.isNull()) {
             return;
         }
-        painter.drawImage(46, 14, field_taxi_map_);
+        painter.drawImage(kCabMapPlateScreenX, kCabMapPlateScreenY,
+                          field_taxi_map_);
         const auto routed_menu = game_scripts_.menu_route_snapshot();
         const auto region = routed_menu.top_selection;
         const auto phase = routed_menu.top_page;

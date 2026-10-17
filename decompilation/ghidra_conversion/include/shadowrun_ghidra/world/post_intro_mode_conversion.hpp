@@ -81,6 +81,13 @@ struct PostIntroCabTimeline {
     bool caption_visible = false;
 };
 
+// ROM 0x134D2 writes the 26x17 cab-map name table at VRAM $2208 of the
+// $2000 plane (64-cell rows): row 4, column 4, i.e. plane pixel (32,32), with
+// zero scroll. The longplay capture shows the 208x136 plate at screen
+// (31..240, 32..168), so the host blits the full plate at (32,32).
+inline constexpr int kCabMapPlateScreenX = 32;
+inline constexpr int kCabMapPlateScreenY = 32;
+
 CabModeSelectionPlan cab_mode_selection_plan(std::uint8_t mode,
                                              std::uint8_t phase);
 PostIntroCabTimeline post_intro_cab_timeline(std::uint16_t frame);

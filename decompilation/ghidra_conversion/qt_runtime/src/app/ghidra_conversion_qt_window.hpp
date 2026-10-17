@@ -1713,13 +1713,13 @@ private:
                                   opening.stage_loop.scroll.fade_counter));
             break;
         case OpeningIntroScene::cab_map: {
-            // The 26x17 map plate's plane origin is (16,16); the source
-            // window (32,32) lands at the video's (62,30), so the plate
-            // draws at screen (46,14) one-to-one. No selection outline is
+            // The 26x17 map plate sits at plane pixel (32,32) with zero
+            // scroll (see kCabMapPlateScreenX). No selection outline is
             // baked into this background.
             const auto map = draw_asset_cache_.find("intro.cab.map");
             if (map != draw_asset_cache_.end()) {
-                painter.drawImage(46, 14, map->second);
+                painter.drawImage(kCabMapPlateScreenX, kCabMapPlateScreenY,
+                                  map->second);
             }
             draw_cab_mode_selection(painter);
             break;
