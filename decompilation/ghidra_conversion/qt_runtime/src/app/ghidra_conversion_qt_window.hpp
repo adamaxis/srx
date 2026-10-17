@@ -2389,7 +2389,19 @@ private:
         // palette-bank visibility is handled by draw_opening_text rather than
         // recreating CRAM or a Genesis palette service in the runtime.
         (void)palette_flags;
-        return QColor(0x00, 0xFF, 0x00);
+        // ROM text CRAM word 0x02C2 = (R1, G6, B1) in every startup and
+        // opening scene [C: emulator FFD87E entries 27/11/59, pixels
+        // 32,206,32]. The font mask stores level 6 as 219, which
+        // draw_startup_text turns into alpha, so tint with the level
+        // expansion scaled by 255/219 to land on the CRAM level.
+        constexpr std::uint16_t kStartupTextCramWord = 0x02C2U;
+        const auto channel = [](const unsigned shift) {
+            const auto level = (kStartupTextCramWord >> (shift + 1U)) & 7U;
+            const auto expanded = (level << 5U) | (level << 2U) | (level >> 1U);
+            return static_cast<int>(
+                std::min(255U, (expanded * 255U + 109U) / 219U));
+        };
+        return QColor(channel(0U), channel(4U), channel(8U));
     }
 
     void draw_startup_text(QPainter& painter, const int x, const int y,
