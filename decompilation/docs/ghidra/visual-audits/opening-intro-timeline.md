@@ -45,9 +45,9 @@ holds keyed by `source_boundary` names, values in Lua
 | song 0x11 onset | 704 | 704 |
 | wilderness black | 716-770 | 716-770 |
 | song 0x12 onset / tri-vid black | 1478 / 1478-1500 | 1478 / 1479-1501 |
-| airport -> cab black | 1758-1869 | 1758-1869 |
-| cab-map fade/black | 3202-3301 | 3202-3302 |
-| black before field | 3494-3627 | 3494-3627 |
+| tri-vid -> airport black | 1758-1869 | 1758-1869 |
+| airport -> cab map black | 3202-3301 | 3202-3302 |
+| cab map -> field black | 3494-3627 | 3494-3627 |
 
 Internal scene events (frame-diff matched) have median offset 0..-1, max 4,
 except the wilderness projectile sweep (emu events 1284-1326 unmatched [H]).
