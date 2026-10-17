@@ -36,6 +36,16 @@ holds keyed by `source_boundary` names, values in Lua
 | 0x5AD1A.prepare_airport_resources | black 23 | 0x1406 decode lag |
 | 0x59D12.enter_post_intro_mode | black 78 (34+1+34+9) | 0x1406 + 0x12F6 + 0x134D2 setup |
 | 0x59CFE.prepare_mode_entry | black 109 (18+91) | 0x53126 + 0x07F0 setup |
+| field.opening_auto_walk.armed | fade_in 30 | 0x12F6 field fade-in before the walk |
+| field.opening_auto_walk.consumed | black 38 (18+20) | 0x53126 + dialogue load |
+| boot.title_setup | black 103 (34+35+34) | 0x1D7A: 0x1406 (0x131C + decode) + 0x12F6 |
+
+`Startup.opening_audio_waits()` (same file) holds later audio commands:
+`field.opening_auto_walk.scene_music` = 8 frames after the preceding 0x53126
+(0x07F0 setup before 0x2900 play_music).
+
+The Start exit (0x59CFE) is logic, not a hold: 0x131C fades the interrupted
+scene for 34 VBlanks with the music still playing, then 0x53126.
 
 ## Result (emulator vs port, frames after the 0x10 onset)
 
@@ -48,6 +58,14 @@ holds keyed by `source_boundary` names, values in Lua
 | tri-vid -> airport black | 1758-1869 | 1758-1869 |
 | airport -> cab map black | 3202-3301 | 3202-3302 |
 | cab map -> field black | 3494-3627 | 3494-3627 |
+| field song 0x0F onset | 3562 | 3562 |
+| field fade-in luma +3628/+3630/+3632 | 20.8/30.0/32.3 | 22.7/32.5/34.8 |
+| Jake's walk starts | 3659 | ~3659 |
+| motel-sign fade / audio fade end | ~3680 / 3715 | ~3680 / 3714 |
+| dialogue panel / text | 3733 / 3737 | 3735 / 3735 |
+| Start at +300: song 0x0F / field visible | 378 / 444 | 378 / 444 |
+
+Boot (no anchor): FASA first frame -> title logo reveal 378 frames, both.
 
 Internal scene events (frame-diff matched) have median offset 0..-1, max 4,
 except the wilderness projectile sweep (emu events 1284-1326 unmatched [H]).
@@ -55,6 +73,6 @@ The grok-fixes-3 "18-frame music-vs-visual offset" was the missing 0x53126
 blocking fade; with the holds 0x11/0x12 onsets match exactly.
 
 Open: the archetype exit fade shows its first dark frame ~5 frames later in
-the port relative to the press/music (generic fade, not flagged); the Start
-skip path is still immediate; the field view after the intro differs (see
-longplay_analysis.md).
+the port relative to the press/music (generic fade, not flagged); the
+wilderness projectile sweep shows fewer tracers in the port [H]; the dialogue
+panel frame/text reveal differ by about 2 frames.
