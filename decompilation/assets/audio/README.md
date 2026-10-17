@@ -114,3 +114,31 @@ They are therefore retained as 120-second observation captures with no
 `loop-points.tsv` entry. Native playback must stop them by gameplay lifetime
 until their complete source lifecycle is traced; it must not infer a loop from
 the first restart seen in one channel.
+
+## Full regeneration (Timer-A extractor)
+
+Every FLAC in this tree plus `loop-points.tsv` comes from one script (run from
+`decompilation/`, ~10 minutes with 7 jobs):
+
+```sh
+python ghidra_conversion/tools/rom_research/audio/regen_audio_assets.py \
+  input/shadowrun_genesis_us.bin assets build/audio-vgm --jobs 8
+(cd gameplay/scripts && lua5.4 tools/gen_audio_manifest.lua ../../assets \
+  > ../../assets/audio/audio_manifest.tsv)
+```
+
+`--only alias1,alias2` rebuilds a subset without rewriting the loop table.
+The resource table and capture policy (looped music, observation renders,
+one-shots, the 0x5C/0x5D sequences) live in `regen_audio_assets.py`.
+
+The extractor models the YM2612 Timer A/B (A: 144*7/15 Z80 cycles per count,
+B: 16x that). The GEMS DAC/stream path (Z80 0x02B9) busy-waits on Timer A
+overflow with interrupts disabled; without the timers song 0x0A, the stage-2
+title song 0x11 and 28 DAC sample slots never progressed. All 94 table ids now
+render (0 dropped VBlanks). Loop points: `loop_start` is the first stream
+restart in absolute ticks (origin includes 4 setup frames), `loop_end` the next
+restart at least 60 frames later. Song 0x06: loop start 95763808 ticks =
+1603.12 frames.
+
+`0x12` (title stage 3) is a 60 s observation render; DAC one-shots now keep
+their real release tail. The regenerated tree is ~193 MB (was ~132 MB).
