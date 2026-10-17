@@ -394,6 +394,22 @@ StartupIntegrationCallbacks make_callbacks(
     return callbacks;
 }
 
+// ROM 0x59CFE: after Start, 0x131C fades the scene (34 VBlanks) before the
+// field handoff. Returns the event that ended the fade and its frame count.
+StartupIntegrationEvent advance_through_start_exit_fade(
+    StartupIntegrationState& state,
+    const StartupIntegrationCallbacks& callbacks,
+    std::size_t& frames) {
+    frames = 0U;
+    auto event = StartupIntegrationEvent::opening_frame_advanced;
+    while (event == StartupIntegrationEvent::opening_frame_advanced &&
+           frames < 64U) {
+        event = advance_startup_integration(state, 0U, callbacks);
+        ++frames;
+    }
+    return event;
+}
+
 bool has_event(const StartupIntegrationState& state, const char* event) {
     return std::find(state.event_log.begin(), state.event_log.end(), event) !=
            state.event_log.end();
@@ -1123,9 +1139,11 @@ int main() {
         skipped_observations->callbacks.size();
     skipped_observations->pending_opening_controller_word =
         kControllerStartEventMask;
-    if (advance_startup_integration(
-            *skipped_state, 0U, skipped_callbacks) !=
+    std::size_t skip_frames = 0U;
+    if (advance_through_start_exit_fade(
+            *skipped_state, skipped_callbacks, skip_frames) !=
             StartupIntegrationEvent::field_ready ||
+        skip_frames != 35U ||
         skipped_state->phase != StartupIntegrationPhase::field_ready ||
         skipped_state->opening_intro.stage != OpeningIntroStage::interrupted ||
         !skipped_state->new_game_opening_completed ||
@@ -1188,9 +1206,11 @@ int main() {
         !stage2_observations->opening_start_event_latched) {
         return 38;
     }
-    if (advance_startup_integration(
-            *stage2_state, 0U, stage2_callbacks) !=
+    std::size_t stage2_skip_frames = 0U;
+    if (advance_through_start_exit_fade(
+            *stage2_state, stage2_callbacks, stage2_skip_frames) !=
             StartupIntegrationEvent::field_ready ||
+        stage2_skip_frames != 35U ||
         stage2_state->opening_intro.stage != OpeningIntroStage::interrupted ||
         !has_event(*stage2_state, "opening_intro.skipped_by_start")) {
         return 39;
@@ -1227,6 +1247,7 @@ int main() {
             return 41;
         }
     }
+    std::size_t fade_skip_frames = 0U;
     if (fade_state->opening_intro.stage != OpeningIntroStage::stage2_first_loop ||
         advance_startup_integration(
             *fade_state, 0U, fade_callbacks) !=
@@ -1234,9 +1255,10 @@ int main() {
         fade_state->opening_intro.stage !=
             OpeningIntroStage::stage2_second_loop ||
         !fade_observations->opening_start_event_latched ||
-        advance_startup_integration(
-            *fade_state, 0U, fade_callbacks) !=
+        advance_through_start_exit_fade(
+            *fade_state, fade_callbacks, fade_skip_frames) !=
             StartupIntegrationEvent::field_ready ||
+        fade_skip_frames != 35U ||
         !has_event(*fade_state, "opening_intro.skipped_by_start")) {
         return 42;
     }

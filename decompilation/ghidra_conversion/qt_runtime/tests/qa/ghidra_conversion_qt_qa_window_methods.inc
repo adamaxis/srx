@@ -2552,7 +2552,18 @@
                               Qt::NoModifier);
         const auto boundary_start = presentation_boundaries_.size();
         keyPressEvent(&start_press);
-        advance_one_source_frame();
+        // 0x59CFE's 0x131C fades the scene for 34 VBlanks before the field.
+        std::uint32_t skip_frames = 0U;
+        do {
+            advance_one_source_frame();
+            ++skip_frames;
+        } while (state_.phase == StartupIntegrationPhase::opening_intro &&
+                 skip_frames < 64U);
+        if (skip_frames != 35U) {
+            std::cerr << "opening Start-skip QA: 0x131C exit fade took "
+                      << skip_frames << " frames\n";
+            return 3;
+        }
         if (state_.phase != StartupIntegrationPhase::field_ready ||
             state_.opening_intro.stage != OpeningIntroStage::interrupted ||
             !state_.new_game_opening_completed ||

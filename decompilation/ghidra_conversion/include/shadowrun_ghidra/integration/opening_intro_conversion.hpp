@@ -298,6 +298,9 @@ struct OpeningIntroState {
     bool seattle_plane_cleared = false;
     // 0x5AF62 schedule exit reported to the host one frame before stage 2.
     bool seattle_schedule_exit_reported = false;
+    // ROM 0x59CFE after a Start exit: 0x131C fades the current scene
+    // (17 x two VBlanks) before 0x53126; the stage itself is left as is.
+    bool start_exit_fade_active = false;
     std::uint16_t seattle_outline_frame = 0;
     std::uint16_t scene_palette_fade_vblank = 0;
     std::uint8_t scene_palette_fade_step = 7;

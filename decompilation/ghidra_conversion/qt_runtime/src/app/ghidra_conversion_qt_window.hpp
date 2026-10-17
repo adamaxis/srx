@@ -868,8 +868,11 @@ private:
         if (state_.phase == StartupIntegrationPhase::opening_intro &&
             opening_scene_ == OpeningIntroScene::trivid &&
             state_.opening_intro.trivid_color_steps != 0U) {
-            return transition_genesis_cram_image(
+            scene = transition_genesis_cram_image(
                 scene, state_.opening_intro.trivid_color_steps, true);
+            if (!state_.opening_intro.start_exit_fade_active) {
+                return scene;
+            }
         }
         if (state_.phase == StartupIntegrationPhase::pre_title) {
             using PresentationStage =
@@ -910,7 +913,8 @@ private:
                 stage == OpeningIntroStage::orchestrator_palette_fade_out ||
                 stage == OpeningIntroStage::stage_loop_palette_fade_out ||
                 stage == OpeningIntroStage::post_intro_palette_fade_out ||
-                stage == OpeningIntroStage::exit_palette_fade_out;
+                stage == OpeningIntroStage::exit_palette_fade_out ||
+                state_.opening_intro.start_exit_fade_active;
             const auto level = state_.opening_intro.scene_palette_fade_step;
             const auto passes = static_cast<std::uint8_t>(
                 toward_black ? kGenesisCramLevels - level : level);

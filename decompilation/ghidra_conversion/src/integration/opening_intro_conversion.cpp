@@ -1188,6 +1188,20 @@ OpeningIntroAdvanceResult finish_opening_start_exit(
     invoke(callbacks.sample_controller);
     source_boundary(callbacks, "0x59CFE.sample_controller_input");
     invoke(callbacks.fade_palette_to_black);
+    // 0x59D04 jsr 0x131C: a visible fade of the interrupted scene, music
+    // still playing; 0x53126 follows [C: emulator Start at +300].
+    state.start_exit_fade_active = true;
+    state.scene_palette_fade_vblank = 0U;
+    return OpeningIntroAdvanceResult::frame_advanced;
+}
+
+OpeningIntroAdvanceResult advance_start_exit_fade(
+    OpeningIntroState& state, const OpeningIntroCallbacks& callbacks) {
+    begin_held_source_frame(state, callbacks);
+    if (!advance_scene_palette_fade(state, true)) {
+        return OpeningIntroAdvanceResult::frame_advanced;
+    }
+    state.start_exit_fade_active = false;
     source_boundary(callbacks, "0x59CFE.step_palette_transition");
     invoke(callbacks.prepare_mode_entry);
     source_boundary(callbacks, "0x59CFE.prepare_mode_entry");
@@ -1265,6 +1279,9 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
     }
     if (state.stage == OpeningIntroStage::interrupted) {
         return OpeningIntroAdvanceResult::interrupted;
+    }
+    if (state.start_exit_fade_active) {
+        return advance_start_exit_fade(state, callbacks);
     }
     const auto& plan = opening_intro_source_plan();
     switch (state.stage) {
