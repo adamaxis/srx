@@ -78,6 +78,44 @@ E.SoundId = {   -- played through 0x530DE (doc 10) [C]
     MATRIX_SYSTEM_SEARCH = 0x36, -- 0xE204 System Search feedback
     -- [H] repo-named (pre-module actor_ai.lua), not yet traced to a ROM table:
     TARGET_HEADING = 0x4D, TARGET_HEADING_ALT = 0x4E, PROJECTILE_IMPACT = 0x3C,
+    -- Remaining rendered sequence ids (doc 10 §5). Names follow the caller;
+    -- [H] where only the caller region is known.
+    FIELD_EFFECT_16 = 0x16,          -- boot intro stops it via 0x530D2 at 0x5D7F6/0x5D80E [C]; ordinary FF 10 start [H role]
+    MATRIX_NODE_14 = 0x14, MATRIX_NODE_15 = 0x15, MATRIX_NODE_17 = 0x17,   -- 0x1B5BC-0x1CB90 node actions [H per id]
+    MATRIX_18 = 0x18,                -- 0x18584/0x185C8/0x1A482/0x1A674 [C sites]
+    DECK_TICK_1F = 0x1F, DECK_TICK_20 = 0x20, DECK_TICK_21 = 0x21,         -- table 0x17D62 via 0x17CC8 [C]
+    DECK_TICK_22 = 0x22, DECK_TICK_23 = 0x23,
+    MATRIX_PROGRAM_26 = 0x26, MATRIX_PROGRAM_27 = 0x27, MATRIX_PROGRAM_28 = 0x28,   -- 0x1B5BC-0x1CB90 [H per id]
+    MATRIX_PROGRAM_2A = 0x2A, MATRIX_PROGRAM_2B = 0x2B,
+    MENU_COMMAND_29 = 0x29,          -- 0x26A0C [C site, role unknown]
+    SPELL_EFFECT_31 = 0x31, SPELL_EFFECT_32 = 0x32, SPELL_EFFECT_33 = 0x33,  -- spell table 0x4946 [C]
+    SPELL_EFFECT_34 = 0x34, SPELL_EFFECT_35 = 0x35, SPELL_EFFECT_37 = 0x37,
+    SPELL_EFFECT_38 = 0x38, SPELL_EFFECT_39 = 0x39, SPELL_EFFECT_3A = 0x3A,
+    FIELD_3B = 0x3B,                 -- 0x4AA4 [C site, role unknown]
+    UNUSED_3D = 0x3D, UNUSED_3E = 0x3E, UNUSED_50 = 0x50,                   -- no caller found (doc 10 §5 re-scan) [H]
+    MELEE_SWING = 0x4C, MELEE_SWING_ALT = 0x55,   -- 0xB1DC: 0x4C, or 0x55 when actor +0x0E == 0x0C [C mechanism]
+    DECK_JINGLE = 0x5B,              -- 0x1763A deck-screen jingle; stopped at 0x1764C [C]
+    SEGA_LOGO_SHOCK = 0x5C,          -- 0x5D832 [C]
+    SHADOWRUN_LOGO_REVEAL = 0x5D,    -- 0x1E60 [C]
+}
+-- Music sequence ids, same GEMS id space as E.SoundId; started through
+-- play_music 0x530EA (stop same id, then start; gated by FFFC08) [C].
+E.MusicId = {
+    TITLE_THEME = 0x00,              -- title ThemeStart (srx title loop) [C]; doc 10: also reset 0x1C5E [H role]
+    FIELD_01 = 0x01, FIELD_02 = 0x02, -- scene profile +0x40 (0x2900) [C]
+    MATRIX = 0x03,                   -- 0x17656 / 0x1B1A4 [C sites, name H]
+    DECK_MENU = 0x04,                -- 0x1B15A [C site, name H]
+    NODE_MENU = 0x05,                -- 0x1AEF8 [C site, name H]
+    FIELD_06 = 0x06, FIELD_07 = 0x07, FIELD_08 = 0x08, FIELD_09 = 0x09, FIELD_0A = 0x0A,
+    FIELD_0B = 0x0B, FIELD_0C = 0x0C, FIELD_0D = 0x0D, FIELD_0E = 0x0E, FIELD_0F = 0x0F,
+    INTRO_PAGE_1 = 0x10, INTRO_PAGE_2 = 0x11, INTRO_PAGE_3 = 0x12,         -- 0x59C76/96/BC [C]
+    ENDING = 0x13,                   -- 0x5BB4E [C]
+}
+-- GEMS command ops sent as FF op args (0x52E96) [C]; the host mixer logs the same ops.
+E.AudioOp = { START = 0x10, STOP = 0x12, STOP_ALL = 0x16, ATTENUATE = 0x20 }
+E.AudioTuning = {
+    FADE_STEP = 0x14, FADE_STEPS = 6, FADE_STEP_FRAMES = 3,   -- 0x53126; 0xC24 waits d5+1 = 3 VBlanks [C]
+    START_MENU_DUCK = 8,                                      -- 0xB62 -> 0x5315E(8) [C]; level meaning [H]
 }
 E.SceneId = { ALARM_COMBAT = 0x14, FINAL = 0x37 }                                    -- 0x1E04A, 0xA38 [C]
 E.EventFn = { GUARD_SPOTS_YOU = 0x20FEC }                                            -- scheduled via 0x1E2E0 [C]
