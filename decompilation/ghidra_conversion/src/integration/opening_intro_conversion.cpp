@@ -1364,6 +1364,13 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
             // and enters its second do-while, whose body runs once before the
             // shared stop marker is checked again.
             reset_stage2_animation(state, callbacks);
+            // 0x59F14 runs the eight animation services (0x5A1EA) once
+            // before the second loop's first VBlank wait. Its SAT replaces
+            // the first loop's last one, and every service starts one step
+            // ahead [C: disassembly 0x59ECE-0x59F24, emulator sweep and
+            // muzzle positions vs FFDD08/CRAM timing].
+            invoke(callbacks.begin_frame);
+            advance_animation_services(state, plan, callbacks);
             callbacks.sample_controller();
             state.stage2_second_loop_frame = 0;
             set_stage(state, callbacks, OpeningIntroStage::stage2_second_loop);
