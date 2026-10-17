@@ -305,7 +305,6 @@ struct OpeningIntroState {
     std::uint16_t scene_palette_fade_vblank = 0;
     std::uint8_t scene_palette_fade_step = 7;
     std::uint8_t scene_palette_weight = 255;
-    std::uint16_t scroll_accumulator = 0;
     bool source_stop_marker = false;
     // ROM 0x5AB96 -> 0x5B2E2 darkens the tri-vid one colour level per step
     // (elapsed >= 0xB4 and (elapsed & 0xB) == 0). Counted for presentation.

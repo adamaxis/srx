@@ -884,7 +884,10 @@ void advance_animation_services(OpeningIntroState& state,
     };
     animation_callbacks.advance_motion = [&] {
         advance_title_intro_motion(
-            state.motion, plan.motion_phases, state.scroll_accumulator,
+            state.motion, plan.motion_phases,
+            // 0x5A45C adds FFF124 >> 8, the 0x59FFC pan accumulator that
+            // 0x59FB0 does not clear [C: emulator +1311..+1337 muzzle shot].
+            state.overlay.schedule.scroll_accumulator,
             {[&callbacks](const auto& request) {
                  emit_positioned_sprite(callbacks, request);
              }});
