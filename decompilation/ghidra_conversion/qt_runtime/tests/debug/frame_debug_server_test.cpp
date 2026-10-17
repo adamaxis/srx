@@ -53,6 +53,7 @@ int main(int argc, char** argv) {
     bool queued_pressed = false;
     std::uint64_t current_frame = 88U;
     QStringList frame_events;
+    QString dumped_path;
     QJsonObject state;
     state.insert(QStringLiteral("app.phase"), QStringLiteral("field_ready"));
     state.insert(QStringLiteral("app.paused"), true);
@@ -72,6 +73,16 @@ int main(int argc, char** argv) {
             auto events = frame_events;
             frame_events.clear();
             return events;
+        },
+        [&dumped_path](const QString& path, QString* error) {
+            if (path == QStringLiteral("fail.bmp")) {
+                if (error != nullptr) {
+                    *error = QStringLiteral("simulated image write failure");
+                }
+                return false;
+            }
+            dumped_path = path;
+            return true;
         });
     if (server.port() == 0U) {
         std::cerr << "debug server did not bind an ephemeral localhost port\n";
@@ -93,6 +104,22 @@ int main(int argc, char** argv) {
     if (result.value(QStringLiteral("fingerprint")).toString() !=
         initial_fingerprint) {
         std::cerr << "host pause state incorrectly changed the inspector fingerprint\n";
+        return 1;
+    }
+    result = response(server.handle_line(
+        R"({"cmd":"dump","path":"frame.bmp"})"));
+    if (!result.value(QStringLiteral("ok")).toBool() ||
+        dumped_path != QStringLiteral("frame.bmp") ||
+        result.value(QStringLiteral("frame")).toInt() != 88) {
+        std::cerr << "dump command did not route the current frame to the image provider\n";
+        return 1;
+    }
+    result = response(server.handle_line(
+        R"({"cmd":"dump","path":"fail.bmp"})"));
+    if (result.value(QStringLiteral("ok")).toBool() ||
+        result.value(QStringLiteral("error")).toString() !=
+            QStringLiteral("simulated image write failure")) {
+        std::cerr << "dump command did not report image write failures\n";
         return 1;
     }
 

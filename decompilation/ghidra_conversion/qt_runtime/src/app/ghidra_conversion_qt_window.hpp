@@ -237,6 +237,18 @@ public:
                     }
                     pending_debug_events_.clear();
                     return events;
+                },
+                [this](const QString& path, QString* error) {
+                    const auto frame = render_scene();
+                    if (!frame.save(path)) {
+                        if (error != nullptr) {
+                            *error = QStringLiteral(
+                                "could not save the rendered frame to %1")
+                                         .arg(path);
+                        }
+                        return false;
+                    }
+                    return true;
                 });
         }
 

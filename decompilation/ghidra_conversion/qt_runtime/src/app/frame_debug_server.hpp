@@ -51,17 +51,19 @@ public:
     using FrameProvider = std::function<std::uint64_t()>;
     using PhaseProvider = std::function<QString()>;
     using KeyQueue = std::function<void(int, bool)>;
+    using ImageDumper = std::function<bool(const QString&, QString*)>;
 
     FrameDebugServer(const std::uint16_t port, debug::FrameStepper& stepper,
                      StateProvider state, FrameProvider frame,
                      PhaseProvider phase, KeyQueue queue_key,
-                     EventProvider events = {})
+                     EventProvider events = {}, ImageDumper dump_image = {})
         : stepper_(stepper),
           state_(std::move(state)),
           frame_(std::move(frame)),
           phase_(std::move(phase)),
           queue_key_(std::move(queue_key)),
-          events_(std::move(events)) {
+          events_(std::move(events)),
+          dump_image_(std::move(dump_image)) {
         if (!server_.listen(QHostAddress::LocalHost, port)) {
             throw std::runtime_error(
                 "could not listen for local debugger: " +
@@ -439,11 +441,30 @@ public:
                                         .arg(QString::fromUtf8(error.what())));
             }
         }
+        if (command == QStringLiteral("dump")) {
+            const auto path = request.value(QStringLiteral("path")).toString();
+            if (path.isEmpty() || !dump_image_) {
+                return encode_error(QStringLiteral(
+                    "dump requires a path and a live image provider"));
+            }
+            QString error;
+            if (!dump_image_(path, &error)) {
+                return encode_error(error.isEmpty()
+                                        ? QStringLiteral("could not dump the current frame")
+                                        : error);
+            }
+            QJsonObject result;
+            result.insert(QStringLiteral("ok"), true);
+            result.insert(QStringLiteral("frame"),
+                          static_cast<double>(frame_ ? frame_() : 0U));
+            result.insert(QStringLiteral("path"), path);
+            return encode(result);
+        }
         if (command == QStringLiteral("help")) {
             QJsonObject result;
             result.insert(QStringLiteral("ok"), true);
             result.insert(QStringLiteral("commands"),
-                          QStringLiteral("status pause resume step key press inspect hash diverge break(frame|watch|event) delete list help"));
+                          QStringLiteral("status pause resume step key press inspect hash dump diverge break(frame|watch|event) delete list help"));
             return encode(result);
         }
         return encode_error(QStringLiteral("unknown command"));
@@ -702,6 +723,7 @@ private:
     PhaseProvider phase_;
     KeyQueue queue_key_;
     EventProvider events_;
+    ImageDumper dump_image_;
     QTcpServer server_;
     std::map<QTcpSocket*, QByteArray> buffers_;
     std::vector<FrameBreakpoint> breakpoints_;
