@@ -2441,8 +2441,8 @@ private:
         opening_presentation_hold_table_;
     std::deque<OpeningPresentationHold> opening_presentation_holds_;
     // Frame-indexed QA counts conversion logic frames, so it turns the
-    // host-only holds off; the timeline itself is checked by
-    // run_opening_timeline_qa().
+    // host-only holds off; the timeline itself is verified against the
+    // emulator trace (docs/ghidra/visual-audits/opening-intro-timeline.md).
     bool opening_presentation_holds_enabled_ = true;
 
     void load_opening_presentation_holds(

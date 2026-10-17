@@ -1926,9 +1926,11 @@
         const std::filesystem::path& output_directory) {
         constexpr std::uint32_t kSelection = 2U;
         constexpr std::uint32_t kDeathOverlayFrame = 1209U;
-        constexpr std::array<std::uint16_t, 12> kCheckpoints{{
+        // 0x5AA96 has no fade-out, so the tri-vid replaces the wilderness
+        // right after the ambush loop (no checkpoints inside a fade).
+        constexpr std::array<std::uint16_t, 10> kCheckpoints{{
             688U, 752U, 850U, 1021U, 1093U, 1208U,
-            1209U, 1210U, 1211U, 1266U, 1354U, 1366U}};
+            1209U, 1210U, 1211U, 1266U}};
 
         if (prepare_opening_dump(kSelection) != 0) {
             return 3;
@@ -2329,7 +2331,17 @@
                 return fail("renderer did not produce a full 320x224 screen");
             }
             const auto pixel_counts = audit_priority_pixels(scene);
-            if (pixel_counts[0] < 8U || pixel_counts[1] < 8U ||
+            // 0x5AB96 darkens palette lines 0-3 one CRAM level per step after
+            // loop frame 0xB4; by the pre-exit sample the ROM screen is black,
+            // so priority is only auditable before full darkening.
+            const bool darkened_to_black =
+                opening.trivid_color_steps >= kTrividColorStepsToBlack;
+            if (darkened_to_black) {
+                if (pixel_counts[0] != 0U || pixel_counts[1] != 0U ||
+                    pixel_counts[2] != 0U) {
+                    return fail("tri-vid stayed lit after the ROM darkened it to black");
+                }
+            } else if (pixel_counts[0] < 8U || pixel_counts[1] < 8U ||
                 pixel_counts[2] < 8U) {
                 std::cerr << "opening trivid layer QA: sample=" << sample
                           << " low-plane pixels=" << pixel_counts[0]
