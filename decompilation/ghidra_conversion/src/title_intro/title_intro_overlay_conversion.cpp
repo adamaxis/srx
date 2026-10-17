@@ -16,6 +16,7 @@ TitleIntroOverlayAdvanceResult advance_title_intro_overlay(
     const TitleIntroOverlayCallbacks& callbacks) {
     const auto elapsed = static_cast<std::uint16_t>(
         state.current_frame - state.animation_start_frame);
+    state.horizontal_scroll_written = false;
     if (elapsed > 0x0168U) {
         return TitleIntroOverlayAdvanceResult::no_op;
     }
@@ -24,7 +25,8 @@ TitleIntroOverlayAdvanceResult advance_title_intro_overlay(
         if (callbacks.play_audio_event) {
             callbacks.play_audio_event(0x2EU);
         }
-        state.vertical_scroll = 0;
+        state.horizontal_scroll = 0;
+        state.horizontal_scroll_written = true;
         if (callbacks.write_transfer_header) {
             callbacks.write_transfer_header();
         }
@@ -44,8 +46,9 @@ TitleIntroOverlayAdvanceResult advance_title_intro_overlay(
     if (elapsed >= 0x0120U) {
         state.schedule.scroll_accumulator = static_cast<std::uint16_t>(
             state.schedule.scroll_accumulator + 0x00AAU);
-        state.vertical_scroll = static_cast<std::uint16_t>(
+        state.horizontal_scroll = static_cast<std::uint16_t>(
             state.schedule.scroll_accumulator >> 8U);
+        state.horizontal_scroll_written = true;
         state.dirty_flags = static_cast<std::uint8_t>(
             state.dirty_flags | 0x04U);
     }

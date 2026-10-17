@@ -1393,6 +1393,13 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
              [&callbacks](const auto& request) {
                  emit_overlay_stream(callbacks, request);
              }});
+        // 0x59FFC-0x5A00C pans Plane A right (0xAA/256 px per frame) from
+        // elapsed 0x120, and 0x59FB0 resets it at 0x168 [C: emulator
+        // FFDD08 +1252..+1323].
+            if (state.overlay.horizontal_scroll_written) {
+            state.stage2.x_offset =
+                static_cast<std::int16_t>(state.overlay.horizontal_scroll);
+        }
         state.sequence.current_frame = static_cast<std::uint16_t>(state.source_frame);
         advance_title_intro_sequence(
             state.sequence, plan.sequence_phases,

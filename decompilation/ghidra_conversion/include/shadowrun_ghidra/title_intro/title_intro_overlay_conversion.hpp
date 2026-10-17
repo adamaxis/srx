@@ -18,7 +18,10 @@ struct TitleIntroOverlaySchedule {
 struct TitleIntroOverlayState {
     std::uint16_t current_frame = 0;
     std::uint16_t animation_start_frame = 0;
-    std::uint16_t vertical_scroll = 0;
+    // FFDD08, the Plane A horizontal scroll word (0x0F26 writes it first to
+    // the HSCROLL table). Valid when horizontal_scroll_written is set.
+    std::uint16_t horizontal_scroll = 0;
+    bool horizontal_scroll_written = false;
     std::uint8_t dirty_flags = 0;
     TitleIntroOverlaySchedule schedule{};
 };

@@ -47,7 +47,7 @@ int main() {
 
     if (advance_title_intro_overlay(state, phases, 0x9000U, callbacks) !=
             TitleIntroOverlayAdvanceResult::phase_rendered ||
-        state.vertical_scroll != 0U ||
+        state.horizontal_scroll != 0U || !state.horizontal_scroll_written ||
         state.schedule.next_sprite_frame != 0x0122U ||
         state.schedule.phase_index != 1U || state.dirty_flags != 0x04U ||
         streams.size() != 1U || streams.front().sprite_descriptor != 0x1000U) {
@@ -64,7 +64,7 @@ int main() {
         streams.size() != 2U ||
         streams.back().sprite_descriptor != 0x9000U ||
         streams.back().destination_word != 0x0786U ||
-        state.vertical_scroll != 0U) {
+        state.horizontal_scroll != 0U || !state.horizontal_scroll_written) {
         return 3;
     }
 
