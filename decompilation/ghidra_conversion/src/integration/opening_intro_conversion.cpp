@@ -955,7 +955,12 @@ void advance_stage2_scene_frame(OpeningIntroState& state,
             ++state.stage2.x_phase;
         }
     }
-    if (state.stage2.y_offset != 0 && (state.source_frame & 1U) == 0U) {
+    // 0x59E64 steps FFDD0A only on even FFDF88. The host frame counter is
+    // not the ROM's global FFDF88, so use the boot-path phase: the first
+    // pass is even [C: emulator FFDF88 4552 at +802, FFDD0A -0x1F]; other
+    // entry paths keep the same phase [H].
+    if (state.stage2.y_offset != 0 &&
+        (state.stage2_first_loop_frame & 1U) == 0U) {
         ++state.stage2.y_offset;
         if (state.stage2.y_phase != 0x00D1U) {
             --state.stage2.y_phase;
