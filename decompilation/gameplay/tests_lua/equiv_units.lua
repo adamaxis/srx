@@ -27,7 +27,14 @@ end
 walk(A.heartbeat)
 
 local fields = {}
-for w in io.open("/tmp/statefields.txt"):read("a"):gmatch("%S+") do fields[#fields + 1] = w end
+-- Every `state.<field>` the original reads or writes (was a /tmp scratch file).
+do
+  local src, seen_field = assert(io.open(H.ORIG)):read("a"), {}
+  for w in src:gmatch("%f[%w_]state%.([%a_][%w_]*)") do
+    if not seen_field[w] then seen_field[w] = true; fields[#fields + 1] = w end
+  end
+  table.sort(fields)
+end
 local R = math.random
 local function pick(t) return t[R(#t)] end
 local ANIM = { "action", "attack", "down", "entry", "hurt", "idle", "projectile", "spell", "walk", "weapon" }
