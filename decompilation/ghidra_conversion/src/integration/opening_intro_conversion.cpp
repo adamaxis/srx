@@ -585,15 +585,19 @@ const OpeningIntroSourcePlan& opening_intro_source_plan() {
              0x003CU, 0x0040U},
         }};
 
+        // ROM tables 0x5A7AA (A) and 0x5A888 (B): {descriptor.l, y.w,
+        // delay.w}. The y words keep bit 8 (0x116, 0x12A, 0x120, 0x10C);
+        // A's delays are 0x30/0x3C, B's 0x36/0x48 [C: ROM bytes, emulator
+        // FFF16A/FFF176 deadlines].
         const std::array<std::uint16_t, kTitleIntroLinearSweepPhaseCount>
-            linear_a_y{{0x00ACU, 0x00E6U, 0x00BBU, 0x0016U, 0x00B1U,
-                       0x002AU, 0x00ACU, 0x0016U}};
+            linear_a_y{{0x00ACU, 0x00E6U, 0x00BBU, 0x0116U, 0x00B1U,
+                       0x012AU, 0x00ACU, 0x0116U}};
         const std::array<std::uint16_t, kTitleIntroLinearSweepPhaseCount>
-            linear_b_y{{0x0020U, 0x00D7U, 0x0094U, 0x00A6U, 0x000CU,
+            linear_b_y{{0x0120U, 0x00D7U, 0x0094U, 0x00A6U, 0x010CU,
                        0x00E2U, 0x00C4U, 0x00F8U}};
         const std::array<std::uint16_t, kTitleIntroLinearSweepPhaseCount>
-            linear_a_delays{{0x0036U, 0x0048U, 0x0036U, 0x0048U, 0x0036U,
-                             0x0048U, 0x0036U, 0x0048U}};
+            linear_a_delays{{0x0030U, 0x003CU, 0x0030U, 0x003CU, 0x0030U,
+                             0x003CU, 0x0030U, 0x003CU}};
         const std::array<std::uint16_t, kTitleIntroLinearSweepPhaseCount>
             linear_b_delays{{0x0036U, 0x0048U, 0x0036U, 0x0048U, 0x0036U,
                              0x0048U, 0x0036U, 0x0048U}};
