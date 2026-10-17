@@ -4,6 +4,8 @@
 Examples:
   python frame_debugger.py status
   python frame_debugger.py --port 47800 press a 2 1
+  python frame_debugger.py --port 47800 seek --exe game.exe --session run.srxkey --frame 500
+  python frame_debugger.py --port 47800 back --exe game.exe --session run.srxkey --frames 1
   python frame_debugger.py quit
   python frame_debugger.py break rng 'bounded\\.bound=6'
   python frame_debugger.py replay-to --exe shadowrun_ghidra_conversion_qt.exe --session run.srxkey --frame 500 --dump frame.bmp
@@ -22,6 +24,7 @@ import shlex
 import socket
 import subprocess
 import sys
+import time
 from typing import Any
 
 
@@ -155,6 +158,122 @@ def replay_to(words: list[str]) -> int:
         return 2
 
 
+def debug_at(words: list[str], port: int, backwards: bool = False) -> int:
+    """Restart the local debugger at a frame reconstructed from a recording.
+
+    The active Qt runtime does not serialize its full C++ and Lua state yet.
+    Replaying from the launch state gives the same seek behavior without
+    pretending an incomplete snapshot is safe to restore.
+    """
+    parser = argparse.ArgumentParser(
+        prog="frame_debugger.py back" if backwards else "frame_debugger.py seek",
+        description=(
+            "Restart the headless debugger at a prior recorded frame."
+            if backwards
+            else "Restart the headless debugger at a recorded frame."
+        ),
+    )
+    parser.add_argument("--exe", required=True, help="Qt game executable")
+    parser.add_argument("--session", required=True, help=".srxkey input recording")
+    if backwards:
+        parser.add_argument("--frames", type=int, default=1,
+                            help="number of source frames to move backward")
+        parser.add_argument("--from-frame", type=int,
+                            help="use this frame if no debugger is running")
+    else:
+        parser.add_argument("--frame", required=True, type=int,
+                            help="completed source frame")
+    parser.add_argument("--assets", help="asset directory, if not auto-detected")
+    options = parser.parse_args(words)
+    if not 1 <= port <= 65535:
+        parser.error("--port must be from 1 to 65535")
+    if backwards:
+        if options.frames < 1:
+            parser.error("--frames must be positive")
+        if options.from_frame is not None:
+            target_frame = max(0, options.from_frame - options.frames)
+        else:
+            try:
+                status = json.loads(send_to_port(port, {"cmd": "status"}))
+                if not status.get("ok") or not isinstance(status.get("frame"), int):
+                    raise ValueError("debugger status did not include a source frame")
+                target_frame = max(0, status["frame"] - options.frames)
+            except (OSError, ConnectionError, TimeoutError, ValueError,
+                    json.JSONDecodeError) as error:
+                print(f"frame debugger back: {error}", file=sys.stderr)
+                return 2
+    else:
+        target_frame = options.frame
+    if target_frame < 0:
+        parser.error("frame must be nonnegative")
+
+    # Close an existing host cleanly so an active recording flushes its final
+    # frame before the same file is reopened for deterministic replay.
+    try:
+        response = json.loads(send_to_port(port, {"cmd": "status"}))
+        if response.get("ok"):
+            send_to_port(port, {"cmd": "quit"})
+            deadline = time.monotonic() + 10.0
+            while time.monotonic() < deadline:
+                try:
+                    with socket.create_connection(("127.0.0.1", port), timeout=0.2):
+                        time.sleep(0.05)
+                except OSError:
+                    break
+            else:
+                print("frame debugger: existing host did not release its port",
+                      file=sys.stderr)
+                return 2
+    except (OSError, ConnectionError, TimeoutError, json.JSONDecodeError):
+        pass  # No debugger is running; start a new replay host below.
+
+    command = [
+        options.exe,
+        "--replay-input",
+        options.session,
+        "--debug-port",
+        str(port),
+        "--replay-to-frame",
+        str(target_frame),
+    ]
+    if options.assets:
+        command.extend(["--assets", options.assets])
+    try:
+        process = subprocess.Popen(command)
+    except OSError as error:
+        print(f"frame debugger {parser.prog.rsplit(' ', 1)[-1]}: {error}",
+              file=sys.stderr)
+        return 2
+
+    deadline = time.monotonic() + 60.0
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            print(f"frame debugger: replay host exited with code {process.returncode}",
+                  file=sys.stderr)
+            return process.returncode or 2
+        try:
+            response = json.loads(send_to_port(port, {"cmd": "status"}))
+            if response.get("ok"):
+                print(f"debugger restarted paused at source frame {target_frame} "
+                      f"on 127.0.0.1:{port}")
+                return 0
+        except (OSError, ConnectionError, TimeoutError, json.JSONDecodeError):
+            time.sleep(0.05)
+    process.terminate()
+    try:
+        process.wait(timeout=5.0)
+    except subprocess.TimeoutExpired:
+        process.kill()
+    print("frame debugger: replay host did not become ready", file=sys.stderr)
+    return 2
+
+
+def send_to_port(port: int, request: dict[str, Any]) -> str:
+    with socket.create_connection(("127.0.0.1", port), timeout=1.0) as connection:
+        connection.settimeout(1.0)
+        return send_request(connection, request)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -173,6 +292,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if words[0] == "replay-to":
         return replay_to(words[1:])
+    if words[0] in {"seek", "back"}:
+        try:
+            return debug_at(words[1:], arguments.port, words[0] == "back")
+        except (OSError, ConnectionError, TimeoutError, ValueError,
+                json.JSONDecodeError) as error:
+            print(f"frame debugger {words[0]}: {error}", file=sys.stderr)
+            return 2
 
     try:
         request = None if words == ["repl"] else build_request(words)
