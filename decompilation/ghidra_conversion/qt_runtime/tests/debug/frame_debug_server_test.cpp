@@ -34,12 +34,16 @@ bool wait_for_response(QCoreApplication& app, QTcpSocket& socket) {
 
 bool write_recording(
     const std::filesystem::path& path,
-    const std::vector<std::pair<std::uint16_t, std::uint64_t>>& frames) {
+    const std::vector<std::pair<std::uint16_t, std::uint64_t>>& frames,
+    const std::vector<std::pair<std::uint64_t, std::string>>& source_events = {}) {
     shadowrun::ghidra_conversion::debug::KeyboardInputLog log(
         {shadowrun::ghidra_conversion::debug::InputLogConfig::Mode::record,
          path.string()});
     for (const auto& [seed, fingerprint] : frames) {
         log.record_completed_frame(seed, fingerprint);
+    }
+    for (const auto& [frame, name] : source_events) {
+        log.record_source_event(frame, name);
     }
     return log.finish();
 }
@@ -293,7 +297,9 @@ int main(int argc, char** argv) {
         {0x100U, 0x1111U}, {0x200U, 0x9999U}, {0x300U, 0x3333U}};
     const std::vector<std::pair<std::uint16_t, std::uint64_t>> changed_seed_frames{
         {0x100U, 0x1111U}, {0x201U, 0x2222U}, {0x300U, 0x3333U}};
-    if (!write_recording(first_log, first_frames) ||
+    if (!write_recording(first_log, first_frames,
+                         {{0U, "0x5AEC6.render_time_record"},
+                          {1U, "field.world.encounter.hellhound"}}) ||
         !write_recording(changed_log, changed_frames) ||
         !write_recording(changed_seed_log, changed_seed_frames)) {
         std::cerr << "could not prepare the debugger divergence recordings\n";
@@ -324,6 +330,25 @@ int main(int argc, char** argv) {
         result.value(QStringLiteral("reason")).toString() !=
             QStringLiteral("rom_seed")) {
         std::cerr << "diverge did not locate the first differing ROM seed\n";
+        return 1;
+    }
+    QJsonObject event_request;
+    event_request.insert(QStringLiteral("cmd"), QStringLiteral("events"));
+    event_request.insert(QStringLiteral("path"),
+                         QString::fromStdString(first_log.string()));
+    event_request.insert(QStringLiteral("from"), 2);
+    event_request.insert(QStringLiteral("to"), 2);
+    event_request.insert(QStringLiteral("pattern"),
+                         QStringLiteral("field\\.world\\.encounter"));
+    result = response(server.handle_line(
+        QJsonDocument(event_request).toJson(QJsonDocument::Compact)));
+    const auto event_entries = result.value(QStringLiteral("events")).toArray();
+    if (!result.value(QStringLiteral("ok")).toBool() ||
+        event_entries.size() != 1 ||
+        event_entries.at(0).toObject().value(QStringLiteral("frame")).toInt() != 2 ||
+        event_entries.at(0).toObject().value(QStringLiteral("name")).toString() !=
+            QStringLiteral("field.world.encounter.hellhound")) {
+        std::cerr << "events query did not filter the recorded source boundary\n";
         return 1;
     }
     result = response(server.handle_line(

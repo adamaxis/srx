@@ -174,7 +174,10 @@ public:
                                                    : record->absolute_path;
                                     })),
           field_scene_runtime_([this](const std::string_view boundary) {
-              pending_debug_events_.push_back(std::string(boundary));
+              input_log_.record_source_event(source_frame_index_, boundary);
+              if (debug_event_queue_enabled_) {
+                  pending_debug_events_.push_back(std::string(boundary));
+              }
           }, [this](const std::uint16_t event) {
               if (audio_playback_) {
                   audio_playback_->play_event(event);
@@ -184,6 +187,7 @@ public:
                   audio_playback_->stop_resource(sound);
               }
           }) {
+        debug_event_queue_enabled_ = debug_port.has_value();
         setWindowTitle(QStringLiteral("Shadowrun - Ghidra Conversion Qt"));
         setFixedSize(kSceneWidth * kSceneScale, kSceneHeight * kSceneScale);
         setFocusPolicy(Qt::StrongFocus);
@@ -1116,7 +1120,10 @@ private:
             };
         startup_callbacks_.opening_intro.source_boundary =
             [this](const std::string_view boundary) {
-                pending_debug_events_.push_back(std::string(boundary));
+                input_log_.record_source_event(source_frame_index_, boundary);
+                if (debug_event_queue_enabled_) {
+                    pending_debug_events_.push_back(std::string(boundary));
+                }
             };
         startup_callbacks_.opening_intro.stop_requested = [this] {
             return opening_start_event_latched_;
@@ -2253,6 +2260,7 @@ private:
     scripting::ScriptStringMap startup_archetype_portraits_;
     std::unique_ptr<AudioPlaybackService> audio_playback_;
     std::vector<std::string> pending_debug_events_;
+    bool debug_event_queue_enabled_ = false;
     qt_runtime::FieldSceneRuntime field_scene_runtime_;
     TitleLoopState title_loop_;
     TitleLoopCallbacks title_loop_callbacks_;

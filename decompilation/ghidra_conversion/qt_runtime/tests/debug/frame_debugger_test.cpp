@@ -18,8 +18,10 @@ int main() {
         KeyboardInputLog recorder(
             {InputLogConfig::Mode::record, path.string()});
         recorder.record_event(0U, 90, 0U, true);
+        recorder.record_source_event(0U, "0x5AEC6.render_time_record");
         recorder.record_completed_frame(0x1234U, 0x0123456789ABCDEFULL);
         recorder.record_event(1U, 90, 0U, false);
+        recorder.record_source_event(1U, "field.world.encounter.dispatch");
         recorder.record_completed_frame(0xABCDU, 0xFEDCBA9876543210ULL);
         std::string error;
         if (!recorder.finish(&error)) {
@@ -32,6 +34,14 @@ int main() {
         {InputLogConfig::Mode::replay, path.string()});
     if (replay.recorded_frame_count() != 2U || !replay.has_seed_history() ||
         !replay.has_fingerprint_history() ||
+        !replay.has_source_event_history() ||
+        replay.source_boundary_events().size() != 2U ||
+        replay.source_boundary_events()[0].frame != 0U ||
+        replay.source_boundary_events()[0].name !=
+            "0x5AEC6.render_time_record" ||
+        replay.source_boundary_events()[1].frame != 1U ||
+        replay.source_boundary_events()[1].name !=
+            "field.world.encounter.dispatch" ||
         replay.expected_seed_after_frame(0U) != 0x1234U ||
         replay.expected_seed_after_frame(1U) != 0xABCDU ||
         replay.expected_fingerprint_after_frame(0U) !=
@@ -46,9 +56,12 @@ int main() {
                                 "shadowrun-frame-debugger-v1.srxkey";
     const auto legacy_v2_path = std::filesystem::temp_directory_path() /
                                 "shadowrun-frame-debugger-v2.srxkey";
+    const auto legacy_v3_path = std::filesystem::temp_directory_path() /
+                                "shadowrun-frame-debugger-v3.srxkey";
     for (const auto& [legacy_path, magic] :
          {std::pair{legacy_v1_path, std::string("SRXKEY1\0", 8)},
-          std::pair{legacy_v2_path, std::string("SRXKEY2\0", 8)}}) {
+          std::pair{legacy_v2_path, std::string("SRXKEY2\0", 8)},
+          std::pair{legacy_v3_path, std::string("SRXKEY3\0", 8)}}) {
         std::ofstream legacy(legacy_path, std::ios::binary | std::ios::trunc);
         legacy.write(magic.data(), static_cast<std::streamsize>(magic.size()));
         const std::uint64_t empty_count = 0U;
@@ -62,9 +75,14 @@ int main() {
         {InputLogConfig::Mode::replay, legacy_v1_path.string()});
     KeyboardInputLog legacy_v2(
         {InputLogConfig::Mode::replay, legacy_v2_path.string()});
+    KeyboardInputLog legacy_v3(
+        {InputLogConfig::Mode::replay, legacy_v3_path.string()});
     if (legacy_v1.has_seed_history() || legacy_v1.has_fingerprint_history() ||
         !legacy_v2.has_seed_history() ||
-        legacy_v2.has_fingerprint_history()) {
+        legacy_v2.has_fingerprint_history() ||
+        !legacy_v3.has_seed_history() ||
+        !legacy_v3.has_fingerprint_history() ||
+        legacy_v3.has_source_event_history()) {
         std::cerr << "legacy input-log versions did not retain their capabilities\n";
         return 1;
     }
@@ -94,5 +112,6 @@ int main() {
     std::filesystem::remove(path, ignored);
     std::filesystem::remove(legacy_v1_path, ignored);
     std::filesystem::remove(legacy_v2_path, ignored);
+    std::filesystem::remove(legacy_v3_path, ignored);
     return 0;
 }

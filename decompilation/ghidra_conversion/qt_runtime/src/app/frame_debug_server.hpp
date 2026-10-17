@@ -441,6 +441,70 @@ public:
                                         .arg(QString::fromUtf8(error.what())));
             }
         }
+        if (command == QStringLiteral("events")) {
+            const auto path =
+                request.value(QStringLiteral("path")).toString().toStdString();
+            if (path.empty()) {
+                return encode_error(
+                    QStringLiteral("events requires a recorded session path"));
+            }
+            const auto from_value =
+                request.value(QStringLiteral("from")).toDouble(0.0);
+            const auto to_value = request.value(QStringLiteral("to"))
+                                      .toDouble(9007199254740991.0);
+            if (!std::isfinite(from_value) || !std::isfinite(to_value) ||
+                from_value < 0.0 || to_value < from_value ||
+                std::floor(from_value) != from_value ||
+                std::floor(to_value) != to_value) {
+                return encode_error(QStringLiteral(
+                    "events frame range must be nonnegative integers with from <= to"));
+            }
+            const auto pattern =
+                request.value(QStringLiteral("pattern")).toString();
+            const QRegularExpression expression(pattern);
+            if (!pattern.isEmpty() && !expression.isValid()) {
+                return encode_error(QStringLiteral(
+                    "events pattern must be a valid regular expression"));
+            }
+            try {
+                const debug::KeyboardInputLog log(
+                    {debug::InputLogConfig::Mode::replay, path});
+                if (!log.has_source_event_history()) {
+                    return encode_error(QStringLiteral(
+                        "recording has no source-boundary event history"));
+                }
+                QJsonArray entries;
+                bool truncated = false;
+                for (const auto& event : log.source_boundary_events()) {
+                    const auto frame = event.frame + 1U;
+                    if (frame < static_cast<std::uint64_t>(from_value) ||
+                        frame > static_cast<std::uint64_t>(to_value) ||
+                        (!pattern.isEmpty() &&
+                         !expression.match(
+                              QString::fromStdString(event.name)).hasMatch())) {
+                        continue;
+                    }
+                    if (entries.size() >= 1000) {
+                        truncated = true;
+                        break;
+                    }
+                    QJsonObject item;
+                    item.insert(QStringLiteral("frame"),
+                                static_cast<double>(frame));
+                    item.insert(QStringLiteral("name"),
+                                QString::fromStdString(event.name));
+                    entries.append(item);
+                }
+                QJsonObject result;
+                result.insert(QStringLiteral("ok"), true);
+                result.insert(QStringLiteral("events"), entries);
+                result.insert(QStringLiteral("truncated"), truncated);
+                return encode(result);
+            } catch (const std::exception& error) {
+                return encode_error(QStringLiteral("could not read events: %1")
+                                        .arg(QString::fromUtf8(error.what())));
+            }
+        }
         if (command == QStringLiteral("dump")) {
             const auto path = request.value(QStringLiteral("path")).toString();
             if (path.isEmpty() || !dump_image_) {
@@ -464,7 +528,7 @@ public:
             QJsonObject result;
             result.insert(QStringLiteral("ok"), true);
             result.insert(QStringLiteral("commands"),
-                          QStringLiteral("status pause resume step key press inspect hash dump diverge break(frame|watch|event) delete list help"));
+                          QStringLiteral("status pause resume step key press inspect hash dump events diverge break(frame|watch|event) delete list help"));
             return encode(result);
         }
         return encode_error(QStringLiteral("unknown command"));
