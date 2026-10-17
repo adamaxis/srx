@@ -106,6 +106,24 @@ bool palette_fade_matches_source_steps(
     return count == kStage2PaletteTransitionVblanks;
 }
 
+bool palette_cut_holds_full_weight(
+    const std::vector<PaletteFadeSnapshot>& snapshots,
+    const OpeningIntroStage stage, const OpeningIntroScene scene,
+    const std::size_t expected_count) {
+    std::size_t count = 0U;
+    for (const auto& snapshot : snapshots) {
+        if (snapshot.stage != stage) {
+            continue;
+        }
+        if (snapshot.scene != scene || snapshot.step != 7U ||
+            snapshot.weight != 255U) {
+            return false;
+        }
+        ++count;
+    }
+    return count == expected_count;
+}
+
 void record(Observations& observations, const char* callback) {
     observations.callbacks.emplace_back(callback);
 }
@@ -842,10 +860,11 @@ int main() {
         std::cerr << '\n';
         return 27;
     }
+    // 0x59CFE ends the opening with 0x131C to black before the field.
     if (new_game_state.opening_intro.scene_palette_fade_vblank !=
             kStage2PaletteTransitionVblanks ||
-        new_game_state.opening_intro.scene_palette_fade_step != 7U ||
-        new_game_state.opening_intro.scene_palette_weight != 255U ||
+        new_game_state.opening_intro.scene_palette_fade_step != 0U ||
+        new_game_state.opening_intro.scene_palette_weight != 0U ||
         count_callback(new_game_observations,
                        "0x49A0.seattle_focus_hold_complete") != 1U) {
         return 26;
@@ -854,8 +873,11 @@ int main() {
     // changes fade the previous scene to black, while only the initial
     // wilderness and tri-vid reveals advance toward a new target palette.
     // This must not regress into one transition callback on every frame.
+    // Five visible 0x131C fades: 0x5AF62, 0x59D7C, 0x5AD1A, 0x59CEA and
+    // 0x59CFE. 0x5AA96 has none (plane clears), and 0x59D12's 0x1406 runs
+    // over black (a host presentation hold).
     if (count_callback(new_game_observations,
-                       "opening_fade_palette_to_black") != 6U ||
+                       "opening_fade_palette_to_black") != 5U ||
         count_callback(new_game_observations,
                        "opening_advance_palette_fade") != 2U) {
         return 19;
@@ -868,14 +890,17 @@ int main() {
             palette_fade_snapshots,
             OpeningIntroStage::stage2_palette_fade_in,
             OpeningIntroScene::wilderness, false) ||
-        !palette_fade_matches_source_steps(
+        // 0x5AA96 has no 0x131C (one frame, already complete) and its 0x12F6
+        // starts from the installed wilderness palette, so the tri-vid cuts in
+        // at full weight while the 34 VBlanks elapse.
+        !palette_cut_holds_full_weight(
             palette_fade_snapshots,
             OpeningIntroStage::orchestrator_palette_fade_out,
-            OpeningIntroScene::wilderness, true) ||
-        !palette_fade_matches_source_steps(
+            OpeningIntroScene::wilderness, 1U) ||
+        !palette_cut_holds_full_weight(
             palette_fade_snapshots,
             OpeningIntroStage::orchestrator_palette_fade_in,
-            OpeningIntroScene::trivid, false) ||
+            OpeningIntroScene::trivid, kStage2PaletteTransitionVblanks) ||
         !palette_fade_matches_source_steps(
             palette_fade_snapshots,
             OpeningIntroStage::stage_loop_palette_fade_out,
@@ -1241,7 +1266,24 @@ int main() {
     if (advance_startup_integration(
             *airport_state, 0U, airport_callbacks) !=
             StartupIntegrationEvent::opening_frame_advanced ||
-        airport_state->phase != StartupIntegrationPhase::opening_intro ||
+        airport_state->opening_intro.stage !=
+            OpeningIntroStage::post_intro_palette_fade_out) {
+        return 44;
+    }
+    // 0x59CEA's visible 0x131C (17 x 2 VBlanks) precedes 0x59D12.
+    for (std::uint32_t frame = 0U;
+         frame < kStage2PaletteTransitionVblanks &&
+         airport_state->opening_intro.stage ==
+             OpeningIntroStage::post_intro_palette_fade_out;
+         ++frame) {
+        airport_observations->pending_opening_controller_word = 0U;
+        if (advance_startup_integration(
+                *airport_state, 0U, airport_callbacks) !=
+            StartupIntegrationEvent::opening_frame_advanced) {
+            return 44;
+        }
+    }
+    if (airport_state->phase != StartupIntegrationPhase::opening_intro ||
         airport_state->opening_intro.stage != OpeningIntroStage::post_intro ||
         airport_observations->opening_start_event_latched ||
         airport_observations->field_ready_count != 0U ||
@@ -1251,7 +1293,10 @@ int main() {
     }
     bool airport_route_completed = false;
     for (std::size_t frame = 0U;
-         frame < kPostIntroCabTotalFrames + 2U; ++frame) {
+         // + the 0x59CFE exit 0x131C (17 x 2 VBlanks) before mode entry.
+         frame < kPostIntroCabTotalFrames + kStage2PaletteTransitionVblanks +
+                     2U;
+         ++frame) {
         const auto event = advance_startup_integration(
             *airport_state, 0U, airport_callbacks);
         if (event == StartupIntegrationEvent::field_ready) {
