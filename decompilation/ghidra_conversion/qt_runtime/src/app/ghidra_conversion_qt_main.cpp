@@ -164,6 +164,12 @@ int main(int argc, char** argv) {
             qputenv("QT_QPA_PLATFORM", QByteArrayLiteral("offscreen"));
         }
         QApplication application(qt_argument_count, qt_arguments.data());
+        if (debug_port.has_value()) {
+            // The debugger owns an offscreen window and a localhost server.
+            // Keep its event loop alive without a visible window to trigger
+            // QApplication's default quit-on-last-window-closed behavior.
+            application.setQuitOnLastWindowClosed(false);
+        }
         GhidraConversionWindow window(asset_root, std::move(input_log),
                                       frame_debug_controls ||
                                           debug_port.has_value(),
