@@ -325,6 +325,28 @@ constexpr std::uint16_t kInitialFieldSceneReference = 2U;
 
 // Qt 6.9 added QImage::flipped(Qt::Orientations); 6.8 (Debian/Ubuntu packages)
 // only has mirrored(bool, bool). Same pixels either way.
+// game.state facts for the FFFC1E long (story_flag_bit_<n>) and the FFDD64
+// trigger index (story_trigger_active_<n>); see gameplay/scripts/story_flags.lua.
+constexpr std::string_view kStoryFlagBitPrefix = "story_flag_bit_";
+constexpr std::string_view kStoryTriggerActivePrefix = "story_trigger_active_";
+
+std::optional<std::uint8_t> story_fact_bit_index(
+    const std::string_view name, const std::string_view prefix) {
+    if (name.size() <= prefix.size() ||
+        name.substr(0U, prefix.size()) != prefix) {
+        return std::nullopt;
+    }
+    unsigned index = 0U;
+    const auto suffix = name.substr(prefix.size());
+    const auto parsed = std::from_chars(
+        suffix.data(), suffix.data() + suffix.size(), index);
+    if (parsed.ec != std::errc{} ||
+        parsed.ptr != suffix.data() + suffix.size() || index >= 32U) {
+        return std::nullopt;
+    }
+    return static_cast<std::uint8_t>(index);
+}
+
 QImage flipped_image(const QImage& image, const Qt::Orientations orientations) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
     return image.flipped(orientations);
@@ -820,8 +842,15 @@ FieldSceneRuntime::FieldSceneRuntime(
         payment_state.funds = *field_funds_;
         payment_state.world_flags = field_exit_world_flags_;
         // The live Stoker branch is title-service table entry zero at ROM
-        // 0x53AB6; 0x53A78 publishes that index in FFDD64 before dispatch.
-        payment_state.effect_marker = 0U;
+        // 0x53AB6; 0x53A78 publishes that index in FFDD64 before dispatch,
+        // and the paid branch's 0x2196C marks whatever FFDD64 holds. The
+        // short-funds branch (0x213E2) never reads FFDD64.
+        if (paid_branch && !field_active_story_trigger_.has_value()) {
+            this->source_boundary("field.dialogue.stoker_debt_without_trigger");
+            return std::nullopt;
+        }
+        payment_state.effect_marker =
+            field_active_story_trigger_.value_or(0U);
         payment_state.runner_feature_flags =
             field_runner_feature_flags_.value_or(0U);
         payment_state.followup_state.story_flags = notebook_tip_flags_[0];
@@ -1386,6 +1415,8 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     return true;
                 }
                 if (*decision == "run") {
+                    field_active_story_trigger_ = static_cast<std::uint8_t>(
+                        srx::StoryFlag::LANDMARK_MAP_TAKEN);  // service 22
                     if (!field_dialogue_.open_gameplay_task(
                             "redmond_barrens", "run_vigore_search")) {
                         source_boundary(
@@ -1419,6 +1450,8 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
 
             game_scripts_.set_location_context(
                 "motel", "stoker_motel", "stoker.motel", "stoker");
+            field_active_story_trigger_ = static_cast<std::uint8_t>(
+                srx::StoryFlag::MOTEL_BILL_PAID);  // service 0
             if (!field_dialogue_.open_stoker_interaction()) {
                 source_boundary("field.dialogue.stoker_story_script_failed");
                 state.caller_exit_status = -1;
@@ -9501,6 +9534,7 @@ bool FieldSceneRuntime::bootstrap(
     field_mode_entry_transition_pending_ = false;
     field_mode_entry_destination_scene_.reset();
     field_indexed_title_service_result_ = 0;
+    field_active_story_trigger_.reset();
     field_controller_sample_state_ = ControllerSampleState{};
     field_controller_latch_state_ = ControllerLatchState{};
     field_target_heading_ = 0U;
@@ -9647,6 +9681,17 @@ bool FieldSceneRuntime::bootstrap(
                 return (*notebook_contacts_flags_ &
                         (1U << (*contact_index + 13U))) != 0U;
             }
+            if (const auto bit = story_fact_bit_index(
+                    name, kStoryFlagBitPrefix)) {
+                return (field_exit_world_flags_ & (1U << *bit)) != 0U;
+            }
+            if (const auto trigger = story_fact_bit_index(
+                    name, kStoryTriggerActivePrefix)) {
+                if (!field_active_story_trigger_.has_value()) {
+                    return std::nullopt;
+                }
+                return *field_active_story_trigger_ == *trigger;
+            }
             if (name == "opening_dialogue_seen") {
                 return stoker_motel_story_state_.opening_dialogue_seen;
             }
@@ -9713,6 +9758,24 @@ bool FieldSceneRuntime::bootstrap(
                 *notebook_contacts_flags_ = value
                     ? *notebook_contacts_flags_ | mask
                     : *notebook_contacts_flags_ & ~mask;
+                return true;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kStoryFlagBitPrefix)) {
+                const auto mask = std::uint32_t{1U} << *bit;
+                field_exit_world_flags_ = value
+                    ? field_exit_world_flags_ | mask
+                    : field_exit_world_flags_ & ~mask;
+                return true;
+            }
+            if (const auto trigger = story_fact_bit_index(
+                    name, kStoryTriggerActivePrefix)) {
+                // Fixed-index commands write FFDD64 before 0x2196C. There is
+                // no source operation that clears it, so only true is valid.
+                if (!value) {
+                    return false;
+                }
+                field_active_story_trigger_ = *trigger;
                 return true;
             }
             if (name == "opening_dialogue_seen") {
@@ -10151,6 +10214,7 @@ bool FieldSceneRuntime::bootstrap(
     field_mode_entry_transition_pending_ = false;
     field_mode_entry_destination_scene_.reset();
     field_indexed_title_service_result_ = 0;
+    field_active_story_trigger_.reset();
     field_runtime_state_ = integration::FieldRuntimeCoordinatorState{};
     field_runtime_state_.scene_id =
         state_.field_scene_buffers.scene_reference;
