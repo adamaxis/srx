@@ -1,6 +1,6 @@
--- lua5.4 grok_bot/tests/submenu_tests.lua (run from the repository root): ported submenus (item action, clips,
+-- lua5.4 decompilation/gameplay/tests_lua/submenu_tests.lua (run from the repository root): ported submenus (item action, clips,
 -- attributes/skills, magic, pocket secretary). Each check cites its source: [C ROM] or [srx].
-package.path = "refactor/?.lua;refactor/?/init.lua;" .. package.path
+package.path = "decompilation/gameplay/scripts/?.lua;decompilation/gameplay/scripts/?/init.lua;decompilation/gameplay/parked/?.lua;" .. package.path
 local E = require("enums"); local Route = require("menu")
 local P, S, MM = E.Pad, E.MenuScreen, E.MenuMessage
 local fails, n = 0, 0
@@ -62,6 +62,12 @@ local function mk(o)
         matrix_logout = function() g.logout = true end,
 
         spell_table = function() return o.spells end,
+        -- sr-refactor game API (record copies are committed back explicitly)
+        commit_party = function(p) for k, v in pairs(p) do g.party[k] = v end end,
+        set_runner_ammo = function(slot, clips, rounds) local r = g.party[slot]; r.clips, r.rounds = clips, rounds end,
+        consume_debug_unlock = function() g.unlock = false end,
+        set_contact_flags = function(m) g.contacts = m end, set_spell_table = function(t) g.spells = t end,
+        source_random_bound = function(n) return 0 end, matrix_alert_random_bound = function(n) return 0 end,
     }
     g.rec = o.rec or { memory = 40, storage = 500, load_io = 3, ratings = zeros(12), active = { [0] = -1, -1, -1, -1, -1 },
         files = { [0] = { id = -1, size = 0 }, { id = -1, size = 0 }, { id = -1, size = 0 }, { id = -1, size = 0 }, { id = -1, size = 0 } } }
@@ -72,7 +78,9 @@ local function top(r) return r:top().screen end
 local function st(r) return r:top().state end
 local function page(r, p) while r.stack[1].state.page ~= p do r:frame(P.LEFT) end end
 
+local function section(name, fn) local ok, err = pcall(fn); if not ok then fails = fails + 1; n = n + 1; print('STALE section [' .. name .. ']: ' .. tostring(err)) end end
 -- ---- clips (ROM 0x11B58: one-shot, out/menu_sound_sites.txt) ------------------------------------------
+section('clips (ROM 0x11B58: one-shot, ou', function()
 local function clips(o) local r, l, g = mk(o); page(r, E.MenuPage.CLIPS); r:frame(P.A); return r, l, g end
 local r, log, g = clips(); check(top(r) == S.CLIPS, "clips open")
 r:frame(P.LEFT); check(st(r).selection == E.ClipsCommand.CANCEL and log.sounds[#log.sounds] == 0x25, "L 0x25 wrap [C 0x11BE8]")
@@ -99,7 +107,9 @@ r2:frame(P.A); check(top(r2) == S.COMMAND, "trade result exits clips [C 0x11CB6]
 local r2b = mk({ party = { [0] = runner({ clips = 3 }), [1] = runner() } }); page(r2b, E.MenuPage.CLIPS); r2b:frame(P.A); r2b:frame(P.RIGHT); r2b:frame(P.A)
 local l2n = #r2b.stack; r2b:frame(P.START); check(st(r2b).message == MM.FUNCTION_ABORTED, "trade Start aborts [C 0x11F7A]")
 
+end)
 -- ---- item action ----------------------------------------------------------------------------------------
+section('item action', function()
 local inv = zeros(8); inv[0] = 0x20
 local r3 = mk({ leader = { inventory = inv } }); page(r3, 0); r3:frame(P.A)
 check(top(r3) == S.ITEM_ACTION, "item action open")
@@ -109,7 +119,9 @@ r3:frame(P.A); r3:frame(P.C); check(top(r3) == S.ITEM_ACTION, "item row: C no-op
 r3:frame(P.START); check(top(r3) == S.COMMAND, "item row: Start exits [C 0x118A4]")
 r3:frame(P.A); r3:frame(P.LEFT); r3:frame(P.B); check(top(r3) == S.COMMAND, "item row: B confirms like A [C 0x1188A]")
 
+end)
 -- ---- attributes ------------------------------------------------------------------------------------------
+section('attributes', function()
 local r4, l4, g4 = mk(); page(r4, E.MenuPage.ATTRIBUTES_SKILLS); r4:frame(P.A)
 check(top(r4) == S.ATTRIBUTES_SKILLS and l4.windows[#l4.windows] == E.WindowPlane.OFF, "attr window off [C 0xD024]")
 r4:frame(P.UP); check(st(r4).row == 0, "row clamp")
@@ -128,7 +140,9 @@ local r4b, _, g4b = mk({ leader = { karma = 5 } }); r4b:apply(r4b:top(), { trans
 r4b:frame(P.A); check(top(r4b) == S.UPGRADE_PROMPT, "karma prompt")
 r4b:frame(P.B); check(top(r4b) == S.ATTRIBUTES_SKILLS and g4b.party[0].attributes[0] == 1 and g4b.party[0].karma == 4, "upgrade applied")
 
+end)
 -- ---- magic -----------------------------------------------------------------------------------------------
+section('magic', function()
 local r5 = mk(); page(r5, E.MenuPage.MAGIC); r5:frame(P.A); check(top(r5) == S.MAGICAL_DEFENSE, "non-caster -> defense [srx]")
 local spells = { entries = { { code = 0, force_limit = 4 }, { code = 1, force_limit = 2 }, { code = 2, force_limit = 6 } } }
 local r6, _, g6 = mk({ leader = { archetype = 0, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
@@ -141,7 +155,9 @@ r6:frame(P.DOWN); check(top(r6) == S.MAGIC_POSTURE, "down -> posture"); r6:frame
 r6:frame(P.DOWN); r6:frame(P.A)
 check(top(r6) == S.MAGIC and g6.party[0].weapon_code == 3 and g6.party[0].force == 5 and g6.party[0].weapon_slot == -1, "spell equipped")
 
+end)
 -- ---- pocket secretary --------------------------------------------------------------------------------------
+section('pocket secretary', function()
 local r7, l7, g7 = mk(); r7:frame(P.A); local s0 = #l7.sounds; r7:frame(P.DOWN); r7:frame(P.UP); check(top(r7) == S.POCKET_SECRETARY and #l7.sounds == s0, "PS nav silent [C]")
 r7:frame(P.UP); check(st(r7).row == 4, "PS wrap to 4 [C 0xC376]")
 local r7x = mk({ extra = true }); r7x:frame(P.A); r7x:frame(P.UP); check(st(r7x).row == 5, "FFF101 extra row [C]")
@@ -157,7 +173,9 @@ r7:frame(P.A); r7:frame(P.START); check(top(r7) == S.COMMAND and r7:is_open(), "
 local r8, l8 = mk({ party = { [0] = runner(), [1] = runner() } }); r8:frame(P.A); for _ = 1, 3 do r8:frame(P.DOWN) end
 r8:frame(P.A); check(top(r8) == S.DISMISS_RUNNER, "dismiss open"); r8:frame(P.DOWN); r8:frame(P.A)
 check(l8.dismissed == 1 and top(r8) == S.POCKET_SECRETARY, "dismiss runner 1")
+end)
 -- save/load 0xEFB4 [C]
+section('save/load 0xEFB4 [C]', function()
 local function sl(o) local r, l, g = mk(o); r:frame(P.A); r:frame(P.UP); r:frame(P.A); return r, l, g end
 local r9, l9, g9 = sl({ scene = 1 }); check(top(r9) == S.MESSAGE and st(r9).message == MM.SAVE_OUTSIDE_ONLY, "gate FFDF40")
 r9:frame(P.A); check(top(r9) == S.POCKET_SECRETARY, "gate -> PS rebuild")
@@ -172,7 +190,9 @@ r9, l9, g9 = sl(); r9:frame(P.DOWN); r9:frame(P.A); r9:frame(P.A); check(g9.load
 r9:frame(P.A); check(not r9:is_open(), "load empty still exits [C 0xF124]")
 r9 = sl({ load_ok = true }); r9:frame(P.DOWN); r9:frame(P.A); r9:frame(P.A); check(st(r9).message == MM.LOAD_OK, "load ok")
 r9:frame(P.START); check(r9:is_open() == false or top(r9) == S.MESSAGE, "any edge dismisses")
+end)
 -- cyberdeck 0x1822C [C]
+section('cyberdeck 0x1822C [C]', function()
 local CDm = require("menu.screens.cyberdeck").Cyberdeck
 check(select(1, CDm.cursor_xy(3, 3)) == 0xEC and select(2, CDm.cursor_xy(3, 3)) == 0x10C, "deck cursor FFD986 maths")
 local function deck(o) o = o or {}; o.deck = true; local r, l, g = mk(o); r:frame(P.A); r:frame(P.DOWN); r:frame(P.DOWN); r:frame(P.A); return r, l, g end
@@ -194,7 +214,9 @@ check(gc.party[0].stun == 1 and gc.logout, "Body fail: stun -3 min 1, logout")
 rc, lc, gc = deck({ online = true, ic = 8, combat = true, rolls = { 0 }, leader = { physical = 2 } }); rc:frame(P.UP); rc:frame(P.LEFT); rc:frame(P.A); rc:frame(P.UP); rc:frame(P.A)
 check(gc.party[0].physical == 0 and gc.logout, "Black IC kills -> logout")
 
+end)
 -- debug menu (hidden row 5, docs/12) [C]
+section('debug menu (hidden row 5, docs/12) [C', function()
 local rd, ld, gd = mk({ extra = true, party = { [0] = runner({ karma = 250, status = E.RunnerStatus.ACTIVE | E.RunnerStatus.DOWN, archetype = 0 }), [1] = runner({ karma = 1 }) } })
 rd:frame(P.A); rd:frame(P.UP); rd:frame(P.A); check(top(rd) == S.DEBUG_MENU, "row 5 -> debug menu")
 rd:frame(P.UP); check(st(rd).row == 7, "debug cursor wraps to 7")
@@ -208,12 +230,16 @@ rd:frame(P.A); for _ = 1, 3 do rd:frame(P.DOWN) end; rd:frame(P.A); check(top(rd
 rd:frame(P.UP); check(st(rd).system == 0, "pick clamp lo"); for _ = 1, 30 do rd:frame(P.DOWN) end; check(st(rd).system == 0x18, "pick clamp hi")
 rd:frame(P.A); check(gd.jack == 0x18 and gd.resumed and top(rd) == S.COMMAND and rd:is_open() and (ld.sounds[#ld.sounds] == 0x1A or ld.sounds[#ld.sounds - 1] == 0x1A),
     "jack-in: 0x1A, field resume, PS exits, Command rebuilds [C 0xE47A]")
+end)
 -- automatic-use item: message only, no effect [C 0x121C0]
+section('automatic-use item: message only, no', function()
 local inv2 = zeros(8); inv2[0] = 0x19
 local ra = mk({ leader = { inventory = inv2 } }); page(ra, 0); ra:frame(P.A); ra:frame(P.A)
 check(top(ra) == S.MESSAGE and st(ra).message == MM.AUTOMATIC_USE and ra.stack[1].state and true, "auto-use message")
 ra:frame(P.B); check(top(ra) == S.COMMAND, "auto-use returns")
+end)
 -- magic value maths (rules/magic.lua) [C ROM 0x55F02/0x55F20/0x10660/0x1047E]
+section('magic value maths (rules/magic.lua) [', function()
 local MR = require("menu.rules.magic")
 local mage = runner({ archetype = 0, magic = 6, posture = 2 }); mage.skills[0] = 5; mage.attributes[5] = 4; mage.attributes[0] = 3
 mage.inventory[6] = MR.ITEM.POWER_FOCUS; mage.phase[6] = 3
@@ -234,7 +260,9 @@ local df = MR.defense({ [0] = mage, [1] = runner() }, { [0] = true, [1] = true }
 check(df.pool == 2 and df.physical == 5 and df.mana == 6, "defense pool 8//4 = 2")
 local m7 = runner({ archetype = 1 }); m7.skills[0] = 7
 check(MR.defense({ [0] = m7 }, { [0] = true }, m7).pool == 2, "7/4 rem 3 -> +1")
+end)
 -- species max table equals ROM 0xC22A6 [C]
+section('species max table equals ROM 0xC22A6', function()
 do local f = io.open("rom.bin", "rb"); if f then local d = f:read("a"); f:close()
     local ok = true; for sp = 0, 4 do for i = 1, 6 do if AT.MAX[sp][i] ~= d:byte(0xC22A6 + sp * 6 + i) then ok = false end end end
     check(ok, "species max table == ROM 0xC22A6")
@@ -245,7 +273,9 @@ do local f = io.open("rom.bin", "rb"); if f then local d = f:read("a"); f:close(
     check(okt, "totem modifiers == ROM")
     local oks = true; for i = 0, 13 do local o = 0xD4EA0 + i * 0x30 + 1; if MR.SPELL[i][1] ~= d:byte(o + 0x24) or MR.SPELL[i][2] ~= d:byte(o + 0x26) then oks = false end end
     check(oks, "spell drain level/mod == ROM 0xD4EA0") end end
+end)
 -- deck rules + sub-screens (0x19238, 0xE2DFE) [C]
+section('deck rules + sub-screens (0x19238, 0x', function()
 local DR = require("menu.rules.deck")
 do local d = io.open("rom.bin", "rb"); if d then d = d:read("a"); local ok = true
     for i = 0, 11 do if DR.FOOTPRINT[i] ~= d:byte(0xE2DF2 + i + 1) then ok = false end end; check(ok, "footprints == ROM 0xE2DF2") end end
@@ -277,7 +307,9 @@ rm = deck({ online = true, combat = true }); rm:frame(P.UP); rm:frame(P.LEFT); r
 check(st(rm).message == MM.RETREAT_COMBAT, "retreat in combat"); rm:frame(P.A); check(top(rm) == S.CYBERDECK, "-> grid")
 rm = deck({ online = true }); rm:frame(P.UP); rm:frame(P.LEFT); rm:frame(P.LEFT); rm:frame(P.A); rm:frame(P.DOWN); rm:frame(P.A)
 check(top(rm) == S.CYBERDECK and st(rm).text == MM.RETREAT_NO_NODE, "no previous node: text, no wait")
+end)
 -- matrix + save rules (2026-10-15) [C]
+section('matrix + save rules (2026-10-15) [C]', function()
 local MXr, SV = require("menu.rules.matrix"), require("menu.rules.save")
 do local d = io.open("rom.bin", "rb"); if d then d = d:read("a"); local ok = true
     for c = 0, 17 do if MXr.IC_TABLE[c][1] ~= d:byte(0xE31A7 + 2 * c + 1) or MXr.IC_TABLE[c][2] ~= d:byte(0xE31A7 + 2 * c + 2) then ok = false end end
@@ -306,7 +338,9 @@ SV.ROM_REPAIR_QUIRK = true; ok, from, rep = SV.load_plan(1, false, true); check(
 check(SV.load_plan(0, false, false) == false, "both bad -> carry")
 local sz = 0; for _, f in ipairs(SV.RECORD_FIELDS) do sz = sz + (f[2] == "l" and 4 or f[2] == "w" and 2 or 1) end
 check(sz == SV.RECORD and SV.ROSTER + SV.ROSTER_N * SV.RECORD == SV.GLOBALS and SV.GLOBALS + SV.GLOBALS_LEN + 18 == SV.SUM_AT, "save layout adds up")
+end)
 -- matrix combat + movement (2026-10-15) [C]
+section('matrix combat + movement (2026-10-15)', function()
 local MC, MV = require("menu.rules.matrix_combat"), require("menu.rules.matrix_move")
 do local d = io.open("rom.bin", "rb"); if d then d = d:read("a")
     local ok = MXr.TILE_A[0][1] == (d:byte(0x15C3CC + 1) << 8 | d:byte(0x15C3CC + 2)) and MXr.TILE_A[22][4] == 0x18C7 and MXr.TILE_B[11][1] == 0x00D8
@@ -351,4 +385,5 @@ local nodes = { [0] = { fn = 0, links = { [0] = 1, -1, -1, -1, -1, -1, -1, -1 } 
 check(MV.goto_right(nodes, 1, 0) == 2 and MV.goto_right(nodes, 1, 2) == 0 and MV.goto_left(nodes, 0, 0) == 2, "go-to-node cursor skips current")
 local c, pv = MV.goto_commit(nodes, 1, 2); local c2, pv2 = MV.goto_commit(nodes, 0, 2)
 check(c == 2 and pv == 1 and c2 == 2 and pv2 == -1, "jump: retreat only via a link")
+end)
 print(string.format("submenu tests: %d/%d passed", n - fails, n)); os.exit(fails == 0 and 0 or 1)

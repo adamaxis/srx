@@ -1,11 +1,12 @@
 -- Replays recorded heartbeat traffic (refactor/tools/heartbeat_recorder.lua) through the original actor_ai.lua
 -- and the refactored actor.init, and checks both against the recording.
 -- Run from the repository root; set SHADOWRUN_ROOT if the working directory differs.
--- Usage: LUA_PATH="grok_bot/refactor/?.lua;grok_bot/refactor/tools/?.lua;;" lua5.4 grok_bot/tests/replay_heartbeat.lua file.rec
+-- Usage: LUA_PATH="decompilation/gameplay/scripts/?.lua;decompilation/gameplay/scripts/?/init.lua;decompilation/gameplay/scripts/tools/?.lua;;" lua5.4 decompilation/gameplay/tests_lua/replay_heartbeat.lua file.rec
 local Rec = require("heartbeat_recorder")
 local ser, deepcopy = Rec.serialize, Rec.deepcopy
 local ROOT = os.getenv("SHADOWRUN_ROOT") or "."
-local ORIG = ROOT .. "/gameplay/scripts/actor_ai.lua"
+-- The original monolith is the pre-split reference (bfa3908); the live actor_ai.lua is a shim to actor.init.
+local ORIG = os.getenv("SHADOWRUN_ORIG_ACTOR_AI") or (ROOT .. "/decompilation/gameplay/tests_lua/reference/actor_ai_bfa3908.lua")
 local recs = Rec.load(assert(arg[1], "record file"))
 
 local function canon(v)   -- order-independent serialization for comparison

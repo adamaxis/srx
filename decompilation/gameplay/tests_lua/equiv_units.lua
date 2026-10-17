@@ -3,7 +3,7 @@
 -- state/context/arguments, and compares returns, state, context, actor table and service log.
 -- Usage: LUA_PATH=... lua5.4 equiv_units.lua [trials_per_function] [seed]
 local ROOT = os.getenv("SHADOWRUN_ROOT") or "."
-local H = dofile(ROOT .. "/grok_bot/tests/harness.lua")
+local H = dofile(ROOT .. "/decompilation/gameplay/tests_lua/harness.lua")
 local TRIALS, SEED = tonumber(arg[1]) or 300, tonumber(arg[2]) or 1
 local ser, deepcopy = H.ser, H.deepcopy
 

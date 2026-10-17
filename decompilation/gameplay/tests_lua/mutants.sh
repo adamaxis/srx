@@ -1,8 +1,8 @@
 #!/bin/bash
 # Mutation sanity check: each mutant must be caught (mismatches > 0) by equiv_heartbeat.lua.
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-REF="$ROOT/grok_bot/refactor"
-TESTS="$ROOT/grok_bot/tests"
+REF="$ROOT/decompilation/gameplay/scripts"
+TESTS="$ROOT/decompilation/gameplay/tests_lua"
 cd "$REF/actor"
 run() { (cd "$TESTS" && SHADOWRUN_ROOT="$ROOT" LUA_PATH="$REF/?.lua;$REF/tools/?.lua;;" lua5.4 equiv_heartbeat.lua 30 11 2>/dev/null | tail -1; SHADOWRUN_ROOT="$ROOT" LUA_PATH="$REF/?.lua;$REF/tools/?.lua;;" lua5.4 equiv_units.lua 80 2 2>/dev/null | head -1); }
 mut() { f=$1; a=$2; b=$3; cp $f /tmp/mut.bak; python3 -c "import sys;p='$f';s=open(p).read();assert sys.argv[1] in s,sys.argv[1];open(p,'w').write(s.replace(sys.argv[1],sys.argv[2],1))" "$a" "$b" && echo "$f: $a -> $b :: $(run)"; cp /tmp/mut.bak $f; }

@@ -1,6 +1,12 @@
--- harness.lua: shared serializer, typed service mocks and context generator (extracted from equiv_heartbeat.lua)
+-- Differential test: original repo actor_ai.lua vs refactor/actor/* (split + enum renames).
+-- Run from the repository root; set SHADOWRUN_ROOT if the working directory differs.
+-- Usage: LUA_PATH="decompilation/gameplay/scripts/?.lua;decompilation/gameplay/scripts/?/init.lua;;" lua5.4 decompilation/gameplay/tests_lua/equiv_heartbeat.lua [trials] [seed]
 local ROOT = os.getenv("SHADOWRUN_ROOT") or "."
-local ORIG = ROOT .. "/gameplay/scripts/actor_ai.lua"
+-- The original monolith is the pre-split reference (bfa3908); the live actor_ai.lua is a shim to actor.init.
+local ORIG = os.getenv("SHADOWRUN_ORIG_ACTOR_AI") or (ROOT .. "/decompilation/gameplay/tests_lua/reference/actor_ai_bfa3908.lua")
+local TRIALS = tonumber(arg[1]) or 2000
+local SEED = tonumber(arg[2]) or 1
+
 local function ser(v, seen, depth)
   seen = seen or {}; depth = depth or 0
   local t = type(v)
@@ -74,8 +80,15 @@ local function make_game(log)
                        items = svc("items"), magic = svc("magic") } }
 end
 
-local R = math.random
-local function pick(t) return t[R(#t)] end
+-- load implementations, each with its own game
+local logA, logB = {}, {}
+local gameA, gameB = make_game(logA), make_game(logB)
+_G.game = gameA
+local A = dofile(ORIG)
+if os.getenv("SRX_HEARTBEAT_RECORD") then A = require("heartbeat_recorder").wrap(A, os.getenv("SRX_HEARTBEAT_RECORD")) end
+_G.game = gameB
+local B = require("actor.init")
+
 -- profile ids from the source
 local src = io.open(ORIG):read("a")
 local pids = {}
@@ -83,6 +96,9 @@ for id in src:gmatch('%["([%w_]+)"%] = {') do pids[#pids + 1] = id end
 local kinds = {}
 for id in src:gmatch('"([%w_]+_k%x%x_[a-z]+%x%x)"') do kinds[id] = true end
 
+math.randomseed(SEED)
+local R = math.random
+local function pick(t) return t[R(#t)] end
 local function num()
   local k = R(6)
   if k == 1 then return 0 elseif k == 2 then return R(0, 15) elseif k == 3 then return R(0, 0xff)
@@ -156,8 +172,51 @@ local function deepcopy(v, seen)
   for k, x in pairs(v) do c[deepcopy(k, seen)] = deepcopy(x, seen) end
   return c
 end
-local function norm_err(e)
-  -- strip file:line and local-variable names (lib.int68k helpers name their parameter differently)
-  return (tostring(e):gsub("[^%s:]+%.lua:%d+:", "<src>:"):gsub(" %(local '[%w_]+'%)", ""):gsub(" %(upvalue '[%w_]+'%)", ""))
+local function norm_err(e) return (tostring(e):gsub("[^%s:]+%.lua:%d+:", "<src>:")) end
+
+local calls, nonnil, errs, mism = 0, 0, 0, 0
+local FRAMES = tonumber(arg[3]) or 120
+for trial = 1, TRIALS do
+  for k in pairs(gameA.actors) do gameA.actors[k] = nil end
+  for k in pairs(gameB.actors) do gameB.actors[k] = nil end
+  -- a few persistent actors per trial; each keeps its identity fields and re-rolls volatile ones
+  local bases = {}
+  for i, id in ipairs({ "field_player_runner", "a1", "a2" }) do
+    local b = context(id); b.spawn = true; bases[i] = b
+  end
+  for frame = 1, FRAMES do
+    local bi = R(#bases)
+    local base = bases[bi]
+    local fresh = context(base.actor_id)
+    local ctx = {}
+    for k, v in pairs(base) do ctx[k] = v end
+    local fk = {} for k in pairs(fresh) do fk[#fk + 1] = k end table.sort(fk)
+    for _, k in ipairs(fk) do local v = fresh[k]
+      if k ~= "profile_id" and k ~= "entity_kind" and k ~= "action_kind" and k ~= "action_code" and
+         k ~= "dynamic_world_encounter_actor" and k ~= "actor_id" and R(100) <= 25 then ctx[k] = v end
+    end
+    ctx.spawn = base.spawn or R(200) == 1
+    base.spawn = false
+    ctx.phase = (frame % 2 == 0) and "render" or "behavior"
+    if R(10) == 1 then ctx.phase = fresh.phase end
+    local cA, cB = deepcopy(ctx), deepcopy(ctx)
+    cB.ai_random_bound, cA.ai_random_bound = ctx.ai_random_bound, ctx.ai_random_bound
+    for i = #logA, 1, -1 do logA[i] = nil end
+    for i = #logB, 1, -1 do logB[i] = nil end
+    _G.game = gameA; local okA, rA = pcall(A.heartbeat, cA)
+    _G.game = gameB; local okB, rB = pcall(B.heartbeat, cB)
+    calls = calls + 1
+    if okA and rA ~= nil then nonnil = nonnil + 1 end
+    if not okA then errs = errs + 1 end
+    local sA = table.concat({ tostring(okA), okA and ser(rA) or norm_err(rA), ser(cA), ser(gameA.actors), table.concat(logA, ";") }, "|")
+    local sB = table.concat({ tostring(okB), okB and ser(rB) or norm_err(rB), ser(cB), ser(gameB.actors), table.concat(logB, ";") }, "|")
+    if sA ~= sB then
+      mism = mism + 1
+      if mism <= 3 then
+        io.stderr:write(("MISMATCH trial %d frame %d\n A: %s\n B: %s\n"):format(trial, frame, sA:sub(1, 600), sB:sub(1, 600)))
+      end
+    end
+  end
 end
-return { ORIG = ORIG, ser = ser, make_game = make_game, context = context, cand = cand, mstate = mstate, num = num, bool = bool, list = list, deepcopy = deepcopy, norm_err = norm_err, pids = pids }
+print(("calls=%d non_nil_results=%d errors(both)=%d mismatches=%d"):format(calls, nonnil, errs, mism))
+if not COVERAGE then os.exit(mism == 0 and 0 or 1) end

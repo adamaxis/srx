@@ -1,5 +1,5 @@
--- lua5.4 grok_bot/tests/menu_tests.lua (run from the repository root)
-package.path = "refactor/?.lua;refactor/?/init.lua;" .. package.path
+-- lua5.4 decompilation/gameplay/tests_lua/menu_tests.lua (run from the repository root)
+package.path = "decompilation/gameplay/scripts/?.lua;decompilation/gameplay/scripts/?/init.lua;" .. package.path
 local E = require("enums"); local Route = require("menu")
 local P, S, T, Pg = E.Pad, E.MenuScreen, E.MenuTransition, E.MenuPage
 local fails, n = 0, 0
@@ -28,8 +28,14 @@ local function mk(o)
         party = function() return g.party end, active_slot = function() return 0 end,
         pocket_extra_row = function() return false end, secretary_effect_tick = function() end,
  spell_table = function() return { entries = {} } end,
+        -- sr-refactor game API (record copies are committed back explicitly)
+        commit_party = function(p) for k, v in pairs(p) do g.party[k] = v end end,
+        set_runner_ammo = function(slot, clips, rounds) local r = g.party[slot]; r.clips, r.rounds = clips, rounds end,
+        consume_debug_unlock = function() g.unlock = false end,
+        set_contact_flags = function(m) g.contacts = m end, set_spell_table = function(t) g.spells = t end,
+        source_random_bound = function(n) return 0 end, matrix_alert_random_bound = function(n) return 0 end,
     }
-    g.party = { [0] = { status = 1, archetype = 3, magic = 0, species = 0, karma = 0, attributes = {}, skills = {} } }
+    g.party = { [0] = { status = 1, archetype = 3, magic = 0, species = 0, karma = 0, attributes = {}, skills = {}, inventory = { [0] = 0, 0, 0, 0, 0, 0, 0, 0 }, phase = { [0] = 0, 0, 0, 0, 0, 0, 0, 0 } } }
     local r = Route.new(host, game); r:open(S.COMMAND); return r, log, g
 end
 local function st(r) return r.stack[1].state end
