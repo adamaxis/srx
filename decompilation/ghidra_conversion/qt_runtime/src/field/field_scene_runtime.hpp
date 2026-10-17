@@ -508,6 +508,26 @@ public:
                                             std::uint16_t random_seed);
     bool return_from_world_activity_for_dump();
     bool dispatch_selected_security_terminal_for_dump();
+    // R3: apply the 0x16760 terrain mark to an explicit FF2700 cell.
+    bool mark_field_terrain_cell_for_dump(std::size_t cell) {
+        return mark_field_terrain_cell(cell);
+    }
+    const QImage& field_map_for_dump() const noexcept { return field_map_; }
+    std::pair<std::uint16_t, std::uint16_t> field_map_cell_words_for_dump(
+        const std::size_t cell) const {
+        return cell < field_map_cell_words_.size()
+            ? field_map_cell_words_[cell]
+            : std::pair<std::uint16_t, std::uint16_t>{};
+    }
+    std::size_t field_map_columns_for_dump() const noexcept {
+        return field_map_cell_columns_;
+    }
+    const std::vector<std::uint16_t>& field_layer_a_for_dump() const noexcept {
+        return state_.field_scene_buffers.layer_a;
+    }
+    std::uint16_t field_normal_render_pending_for_dump() const noexcept {
+        return viewport_state_.normal_render_pending;
+    }
     std::uint16_t field_scene_reference_for_dump() const noexcept {
         return state_.field_scene_buffers.scene_reference;
     }
@@ -1217,6 +1237,9 @@ private:
     bool prepare_runtime_field_scene(std::uint16_t scene_reference);
     void dispatch_field_map_scene_entry(std::uint16_t scene_id);
     std::optional<std::size_t> projected_terrain_cell() const;
+    bool mark_field_terrain_cell(std::size_t cell);
+    void reset_field_map_cell_words();
+    bool repaint_field_map_cell(std::size_t cell);
     void record_field_activity_start(
         MovementModeTransitionContinuation continuation);
     std::int16_t evaluate_field_collision(std::uint16_t candidate_x,
@@ -1629,6 +1652,12 @@ private:
     std::size_t field_joshua_archetype_selection_ = 0U;
     QImage field_map_;
     QImage field_map_priority_overlay_;
+    // The extracted map image is a pure function of the (FF2700, FF4700)
+    // word pair of each 32x32 cell (checked on every extracted scene). Keep
+    // the pair each image cell currently shows, so a changed FF2700 word can
+    // be repainted from another cell that shows the same pair.
+    std::vector<std::pair<std::uint16_t, std::uint16_t>> field_map_cell_words_;
+    std::size_t field_map_cell_columns_ = 0U;
     QImage field_hud_;
     QImage field_service_background_;
     QImage field_taxi_map_;
@@ -1894,7 +1923,6 @@ private:
     // branch. It is sampled by the live world-activity dispatcher.
     std::optional<std::uint8_t> field_security_floor_index_;
     std::uint8_t field_projected_terrain_mark_count_ = 0;
-    bool field_terrain_render_dirty_ = false;
     std::array<std::uint8_t, 4> field_terrain_sample_state_{};
     bool field_terrain_probe_trace_enabled_ = false;
     std::vector<FieldTerrainProbeTrace> field_terrain_probe_trace_;

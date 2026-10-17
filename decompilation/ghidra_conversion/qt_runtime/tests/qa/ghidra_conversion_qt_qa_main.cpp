@@ -98,6 +98,79 @@ std::string centered_source_menu_caption(const std::string_view label) {
     return caption;
 }
 
+// R3: ROM 0x16760 stores 0x000B in one FF2700 cell and sets FFE100. The
+// pre-rendered Qt map must show that cell exactly as any other cell with the
+// same (FF2700, FF4700) pair, and nothing else may change.
+int run_field_terrain_mark_qa(qt_runtime::FieldSceneRuntime& field_scene,
+                              const std::filesystem::path& output) {
+    constexpr int kCell = 32;
+    constexpr std::uint16_t kMarked = 0x000BU;
+    std::filesystem::create_directories(output);
+    const auto columns = field_scene.field_map_columns_for_dump();
+    const auto& layer = field_scene.field_layer_a_for_dump();
+    const QImage before = field_scene.field_map_for_dump().convertToFormat(
+        QImage::Format_RGB32);
+    if (columns == 0U || before.isNull()) {
+        std::cerr << "field terrain-mark QA: map cell geometry unavailable\n";
+        return 3;
+    }
+    const auto cells = columns * static_cast<std::size_t>(before.height() / kCell);
+    const auto rect = [columns](const std::size_t index) {
+        return QRect(static_cast<int>(index % columns) * kCell,
+                     static_cast<int>(index / columns) * kCell, kCell, kCell);
+    };
+    // Pick a cell whose new pair already appears elsewhere; the donor is the
+    // first cell that already holds 0x000B (any FF4700 word may differ, so
+    // match the image instead of assuming).
+    std::optional<std::size_t> target;
+    std::optional<std::size_t> donor;
+    for (std::size_t index = 0U; index < cells && !target; ++index) {
+        if (layer[index] == kMarked) {
+            continue;
+        }
+        for (std::size_t other = 0U; other < cells; ++other) {
+            if (layer[other] == kMarked &&
+                field_scene.field_map_cell_words_for_dump(other).second ==
+                    field_scene.field_map_cell_words_for_dump(index).second) {
+                target = index;
+                donor = other;
+                break;
+            }
+        }
+    }
+    if (!target) {
+        std::cerr << "field terrain-mark QA: no cell has a 0x000B donor\n";
+        return 3;
+    }
+    if (!field_scene.mark_field_terrain_cell_for_dump(*target) ||
+        field_scene.field_layer_a_for_dump()[*target] != kMarked ||
+        field_scene.field_normal_render_pending_for_dump() != 1U ||
+        field_scene.mark_field_terrain_cell_for_dump(*target)) {
+        std::cerr << "field terrain-mark QA: 0x16760 word, FFE100, or repeat "
+                     "guard diverged\n";
+        return 3;
+    }
+    const QImage after = field_scene.field_map_for_dump().convertToFormat(
+        QImage::Format_RGB32);
+    QImage expected = before;
+    {
+        QPainter painter(&expected);
+        painter.setCompositionMode(QPainter::CompositionMode_Source);
+        painter.drawImage(rect(*target).topLeft(), before.copy(rect(*donor)));
+    }
+    const bool changed = before.copy(rect(*target)) != after.copy(rect(*target));
+    if (after != expected || !changed ||
+        !after.save(QString::fromStdString((output / "actual.bmp").string()))) {
+        std::cerr << "field terrain-mark QA: repainted map is not the donor "
+                     "cell over the unchanged map (target=" << *target
+                  << " donor=" << *donor << " changed=" << changed << ")\n";
+        return 3;
+    }
+    std::cout << "field_terrain_mark_qa=passed target=" << *target
+              << " donor=" << *donor << '\n';
+    return 0;
+}
+
 int run_field_world_activity_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -14265,6 +14338,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_movement_qa_path;
         std::optional<std::filesystem::path> field_transition_qa_path;
         std::optional<std::filesystem::path> field_world_activity_qa_path;
+        std::optional<std::filesystem::path> field_terrain_mark_qa_path;
         std::optional<std::filesystem::path>
             field_random_encounter_spawn_qa_path;
         std::optional<std::filesystem::path>
@@ -14458,6 +14532,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_transition_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-terrain-mark-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_terrain_mark_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-world-activity-qa" &&
@@ -15815,6 +15895,10 @@ int main(int argc, char** argv) {
                 }
                 field_scene.set_field_interaction_mode_for_dump(
                     *interaction_mode);
+            }
+            if (field_terrain_mark_qa_path.has_value()) {
+                return run_field_terrain_mark_qa(
+                    field_scene, *field_terrain_mark_qa_path);
             }
             if (field_world_activity_qa_path.has_value()) {
                 return run_field_world_activity_qa(

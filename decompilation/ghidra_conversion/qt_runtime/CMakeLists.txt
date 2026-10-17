@@ -400,6 +400,10 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_transition_qa
 # bound into a typed floor index, and carries that state through the existing
 # Security Terminal result prompt. Captures also verify full-scene replacement
 # and clearing the modal before returning to the field.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_terrain_mark_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-terrain-mark-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-terrain-mark-qa")
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_world_activity_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-world-activity-qa

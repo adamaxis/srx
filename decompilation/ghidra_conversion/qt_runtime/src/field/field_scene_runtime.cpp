@@ -9585,7 +9585,6 @@ bool FieldSceneRuntime::bootstrap(
     field_security_floor_index_.reset();
     field_activity_continuation_ = MovementModeTransitionContinuation::none;
     field_projected_terrain_mark_count_ = 0U;
-    field_terrain_render_dirty_ = false;
     field_terrain_sample_state_ = {};
     field_terrain_boundary_active_ = false;
     field_terrain_outside_bounds_marker_ = false;
@@ -10232,6 +10231,9 @@ bool FieldSceneRuntime::bootstrap(
         field_map_event_state_flags_ |= field_map_event_flag(
             FieldMapEventStateFlag::new_game_opening_completed);
     }
+    // The map image was loaded from the source layers; record them before
+    // scene-entry effects can rewrite either layer.
+    reset_field_map_cell_words();
     dispatch_field_map_scene_entry(scene_reference);
 
     ready_ = true;
@@ -10306,6 +10308,101 @@ std::optional<std::size_t> FieldSceneRuntime::projected_terrain_cell() const {
         return std::nullopt;
     }
     return word_index;
+}
+
+bool FieldSceneRuntime::mark_field_terrain_cell(const std::size_t cell) {
+    // ROM 0x16760: when the FF2700 word is not already 0x000B, increment
+    // FFE179[FFF0C8], store 0x000B and set FFE100 so the next VBlank redraws
+    // the normal viewport [C].
+    constexpr std::uint16_t kMarkedTerrainWord = 0x000BU;
+    auto& layer = state_.field_scene_buffers.layer_a;
+    if (cell >= layer.size() || layer[cell] == kMarkedTerrainWord) {
+        return false;
+    }
+    ++field_projected_terrain_mark_count_;
+    layer[cell] = kMarkedTerrainWord;
+    viewport_state_.normal_render_pending = 1U;
+    // The Qt map is pre-rendered, so redraw the one 32x32 cell here.
+    if (!repaint_field_map_cell(cell)) {
+        source_boundary("field.terrain.mark_cell_without_donor");
+    }
+    return true;
+}
+
+void FieldSceneRuntime::reset_field_map_cell_words() {
+    constexpr int kCellPixels = 32;
+    field_map_cell_words_.clear();
+    field_map_cell_columns_ = 0U;
+    const auto& layer_a = state_.field_scene_buffers.layer_a;
+    const auto& layer_b = state_.field_scene_buffers.layer_b;
+    if (field_map_.isNull() || field_map_.width() % kCellPixels != 0 ||
+        field_map_.height() % kCellPixels != 0) {
+        return;
+    }
+    const auto columns =
+        static_cast<std::size_t>(field_map_.width() / kCellPixels);
+    const auto cells =
+        columns * static_cast<std::size_t>(field_map_.height() / kCellPixels);
+    const auto& profile = state_.field_scene_buffers.profile;
+    const auto row_stride_bytes = profile.size() > 18U ? profile[18U] : 0U;
+    if (cells > layer_a.size() || cells > layer_b.size() ||
+        (row_stride_bytes != 0U && row_stride_bytes != columns * 2U)) {
+        source_boundary("field.terrain.map_cell_geometry_mismatch");
+        return;
+    }
+    field_map_cell_columns_ = columns;
+    field_map_cell_words_.reserve(cells);
+    for (std::size_t index = 0U; index < cells; ++index) {
+        field_map_cell_words_.emplace_back(layer_a[index], layer_b[index]);
+    }
+}
+
+bool FieldSceneRuntime::repaint_field_map_cell(const std::size_t cell) {
+    constexpr int kCellPixels = 32;
+    if (field_map_cell_columns_ == 0U || cell >= field_map_cell_words_.size()) {
+        return false;
+    }
+    const std::pair<std::uint16_t, std::uint16_t> wanted{
+        state_.field_scene_buffers.layer_a[cell],
+        field_map_cell_words_[cell].second};
+    std::optional<std::size_t> donor;
+    for (std::size_t index = 0U; index < field_map_cell_words_.size();
+         ++index) {
+        if (index != cell && field_map_cell_words_[index] == wanted) {
+            donor = index;
+            break;
+        }
+    }
+    if (!donor.has_value()) {
+        return false;
+    }
+    const auto cell_rect = [this](const std::size_t index) {
+        return QRect(
+            static_cast<int>(index % field_map_cell_columns_) * kCellPixels,
+            static_cast<int>(index / field_map_cell_columns_) * kCellPixels,
+            kCellPixels, kCellPixels);
+    };
+    const auto source = cell_rect(*donor);
+    const auto target = cell_rect(cell);
+    for (QImage* image : {&field_map_, &field_map_priority_overlay_}) {
+        if (image->isNull()) {
+            continue;
+        }
+        if (image->format() == QImage::Format_Indexed8 ||
+            image->format() == QImage::Format_Mono ||
+            image->format() == QImage::Format_MonoLSB) {
+            // QPainter cannot target palette images; keep the pixels.
+            *image = image->convertToFormat(image->hasAlphaChannel()
+                                                ? QImage::Format_ARGB32
+                                                : QImage::Format_RGB32);
+        }
+        const auto block = image->copy(source);
+        QPainter painter(image);
+        painter.setCompositionMode(QPainter::CompositionMode_Source);
+        painter.drawImage(target.topLeft(), block);
+    }
+    field_map_cell_words_[cell] = wanted;
+    return true;
 }
 
 void FieldSceneRuntime::record_field_activity_start(
@@ -10579,15 +10676,7 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
         // header owns a legacy TerrainWorkEntry name that is unrelated to
         // this runtime's source-backed field scene state.
         const auto cell = projected_terrain_cell();
-        if (!cell.has_value() ||
-            *cell >= state_.field_scene_buffers.layer_a.size() ||
-            state_.field_scene_buffers.layer_a[*cell] == 0x000BU) {
-            return false;
-        }
-        ++field_projected_terrain_mark_count_;
-        state_.field_scene_buffers.layer_a[*cell] = 0x000BU;
-        field_terrain_render_dirty_ = true;
-        return true;
+        return cell.has_value() && mark_field_terrain_cell(*cell);
     };
     transition_callbacks.project_entity_world_interaction = [this] {
         return project_field_world_interaction();
@@ -12599,6 +12688,7 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     field_map_ = std::move(next_field_map);
     field_map_priority_overlay_ =
         std::move(next_field_map_priority_overlay);
+    reset_field_map_cell_words();
     if (!same_scene) {
         initialize_default_field_actors(scene_reference);
         field_weapon_projectiles_.clear();
