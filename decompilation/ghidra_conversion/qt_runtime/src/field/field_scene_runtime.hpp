@@ -1001,6 +1001,11 @@ public:
     std::uint32_t field_render_effect_flags_for_dump() const noexcept {
         return field_render_effect_flags_;
     }
+    // FFF101 rule, or the kDebugMenuAlwaysUnlockedForTesting override: the
+    // hidden sixth (unlabelled) Pocket Secretary row is selectable.
+    bool pocket_secretary_debug_row_visible() const noexcept {
+        return debug_menu_unlocked_;
+    }
     std::uint8_t pocket_secretary_selection() const noexcept {
         return pocket_secretary_.selection;
     }

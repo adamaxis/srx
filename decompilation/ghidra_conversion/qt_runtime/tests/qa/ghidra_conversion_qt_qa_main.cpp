@@ -22621,20 +22621,36 @@ int main(int argc, char** argv) {
                     }
                     previous_secretary_scene = secretary_scene;
                 }
+                // ROM 0xC2A6: the maximum row is 4, or 5 when FFF101 (or the
+                // kDebugMenuAlwaysUnlockedForTesting override) exposes the
+                // hidden, unlabelled debug row. Visit it silently before the wrap.
+                int last_row_y = 120;
+                if (field_scene.pocket_secretary_debug_row_visible()) {
+                    tap_qa_controller_button(field_scene, 0x02U); // Down.
+                    if (field_scene.pocket_secretary_selection() != 5U ||
+                        !field_audio_events.empty()) {
+                        std::cerr << "field secretary dump: Down did not "
+                                     "select the hidden debug row silently\n";
+                        return 3;
+                    }
+                    secretary_scene = render_secretary_scene();
+                    previous_secretary_scene = secretary_scene;
+                    last_row_y = 136;
+                }
                 tap_qa_controller_button(field_scene, 0x02U); // Down wraps.
                 if (field_scene.pocket_secretary_selection() != 0U ||
                     !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: Down did not wrap "
-                                 "silently from the fifth option to the first\n";
+                                 "silently from the last option to the first\n";
                     return 3;
                 }
                 secretary_scene = render_secretary_scene();
                 if (!image_region_differs(previous_secretary_scene,
                                           secretary_scene, 72, 56, 8, 8) ||
                     !image_region_differs(previous_secretary_scene,
-                                          secretary_scene, 72, 120, 8, 8) ||
+                                          secretary_scene, 72, last_row_y, 8, 8) ||
                     !image_has_green_ink(secretary_scene, 72, 56, 8, 8) ||
-                    image_has_green_ink(secretary_scene, 72, 120, 8, 8) ||
+                    image_has_green_ink(secretary_scene, 72, last_row_y, 8, 8) ||
                     !save_secretary_scene("wrap_to_0", secretary_scene)) {
                     std::cerr << "field secretary dump: wraparound cursor "
                                  "frame failed\n";
