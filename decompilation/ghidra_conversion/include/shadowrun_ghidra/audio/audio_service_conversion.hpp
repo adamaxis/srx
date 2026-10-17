@@ -22,17 +22,17 @@ bool advance_audio_service_tick(
     bool audio_enabled,
     const AudioServiceCallbacks& callbacks);
 
-// ROM 0x52F3C: service the audio command queue in its source order. The
-// queue contents and Z80 bus are host-owned boundaries rather than emulated
-// memory or processor state.
-bool service_audio_command_queue(const AudioServiceCallbacks& callbacks);
+// ROM 0x52F3C: GEMS startsong (FF 10 id, doc 10 §2) [C]. Formerly named
+// "service_audio_command_queue". The Z80 bus and FIFO are host-owned
+// boundaries rather than emulated memory or processor state.
+bool gems_start_song(const AudioServiceCallbacks& callbacks);
 
-// ROM 0x530DE: perform the queue service only when the source audio-enable
-// flag is set.
-bool service_audio_if_enabled(bool audio_enabled,
+// ROM 0x530DE: play_sfx, startsong gated on the SFX enable FFFC0A [C].
+// Formerly "service_audio_if_enabled".
+bool play_sfx_if_enabled(bool audio_enabled,
                               const AudioServiceCallbacks& callbacks);
 
-struct EntityAudioState {
+struct ThrownProjectileState {
     std::uint8_t flags = 0;
     std::uint8_t behavior_variant = 0;
     std::uint8_t update_marker = 0;
@@ -44,13 +44,14 @@ struct EntityAudioState {
     std::uint16_t effect_word = 0;
 };
 
-// ROM 0x15354: arm an entity's audio/action record and invoke the audio
-// service boundary after copying its current position.
-void activate_entity_audio_state(
-    EntityAudioState& state,
+// ROM 0x15354: thrown-projectile (grenade) launch, doc 10 §5 id 0x2C [C].
+// Formerly "EntityAudioState"/"activate_entity_audio_state": the record is
+// an entity, not audio; the callback is the launch sound request.
+void launch_thrown_projectile(
+    ThrownProjectileState& state,
     const std::function<void()>& service_audio);
 
-struct EntityAudioEffectRecord {
+struct ThrownProjectileRecord {
     std::uint8_t flags = 0;          // +0x10
     std::uint8_t flags2 = 0;         // +0x11
     std::int16_t timer = 0;          // +0x16
@@ -71,7 +72,7 @@ struct EntityAudioEffectRecord {
     std::int16_t heading_y = 0;      // +0x4E
 };
 
-enum class EntityAudioEffectResult {
+enum class ThrownProjectileResult {
     waiting,
     jittered,
     retriggered,
@@ -79,11 +80,12 @@ enum class EntityAudioEffectResult {
     expired,
 };
 
-// ROM 0x15390: +0x10 bit 7 selects the jitter/expire path; the clear path
+// ROM 0x15390 (thrown-projectile flight; formerly
+// "advance_entity_audio_effect"): +0x10 bit 7 selects the jitter/expire path; the clear path
 // counts +0x46 then +0x40 and either retriggers 0x15354 or continues at
 // 0x15426.
-EntityAudioEffectResult advance_entity_audio_effect(
-    EntityAudioEffectRecord& state,
+ThrownProjectileResult advance_thrown_projectile(
+    ThrownProjectileRecord& state,
     std::uint16_t random_word,
     const std::function<void()>& expire,
     const std::function<void()>& retrigger,
@@ -91,7 +93,7 @@ EntityAudioEffectResult advance_entity_audio_effect(
 
 // ROM 0x15426: ADD 0x20 into +0x36, fold into +0x34, ASR#8 → +0x8. Negative
 // height skips the apex. +0x36>=0x40 halves lift and heading; else park.
-void apply_spawned_effect_bounce(EntityAudioEffectRecord& state);
+void apply_spawned_effect_bounce(ThrownProjectileRecord& state);
 
 enum class SpawnedEffectTerrainResult {
     committed,
@@ -116,7 +118,7 @@ using SpawnedEffectTerrainProbe =
 // ROM 0x15488: 0x14F26-style heading<<8 add, height<<4 into D6 low before
 // 0xE7C8, then commit / expire / 0x1550E heading deflect.
 SpawnedEffectTerrainResult probe_spawned_effect_terrain(
-    EntityAudioEffectRecord& state,
+    ThrownProjectileRecord& state,
     const SpawnedEffectTerrainWorld& world,
     const SpawnedEffectTerrainProbe& probe,
     const std::function<void()>& expire);

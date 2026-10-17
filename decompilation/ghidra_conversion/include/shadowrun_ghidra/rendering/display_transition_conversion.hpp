@@ -54,7 +54,7 @@ struct DisplayTransitionState {
 };
 
 struct DisplayTransitionCallbacks {
-    std::function<void(std::uint8_t)> service_audio_if_enabled;
+    std::function<void(std::uint8_t)> play_sfx_if_enabled;
     std::function<void()> upload_initial_asset;
     std::function<void()> reset_mode_display_buffers;
     std::function<void()> copy_transition_asset;

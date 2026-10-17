@@ -149,7 +149,7 @@ int main() {
         };
     spawn_callbacks.dispatch_player_action_if_ready =
         [&](EntityBehaviorFrameRecord&) { return false; };
-    spawn_callbacks.service_audio_if_enabled = [&](std::uint16_t) {};
+    spawn_callbacks.play_sfx_if_enabled = [&](std::uint16_t) {};
     spawn_callbacks.update_entity_animation_delay =
         [&](EntityBehaviorFrameRecord&, std::uint16_t) {};
     const auto spawn_result = advance_entity_behavior_action(
@@ -173,7 +173,7 @@ int main() {
         };
     action_callbacks.dispatch_player_action_if_ready =
         [&](EntityBehaviorFrameRecord&) { return true; };
-    action_callbacks.service_audio_if_enabled =
+    action_callbacks.play_sfx_if_enabled =
         [&](const std::uint16_t event) { audio_event = event; };
     action_callbacks.update_entity_animation_delay =
         [&](EntityBehaviorFrameRecord&, const std::uint16_t mode) {

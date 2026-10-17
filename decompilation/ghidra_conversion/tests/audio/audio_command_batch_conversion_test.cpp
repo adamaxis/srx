@@ -101,7 +101,7 @@ int main() {
          },
          [&] { ++flushes; },
          [&] { ++service_ticks; }});
-    if (commands != std::vector<std::uint32_t>(6U, 0x14U) ||
+    if (commands != std::vector<std::uint32_t>{0x14U, 0x28U, 0x3CU, 0x50U, 0x64U, 0x78U} ||
         wait_counters != std::vector<std::uint16_t>(6U, 2U) ||
         flushes != 1 || service_ticks != 1) {
         return 11;

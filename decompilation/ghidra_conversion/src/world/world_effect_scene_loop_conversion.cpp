@@ -117,7 +117,7 @@ WorldEffectSceneLoopResult run_world_effect_scene_loop(
                 state.audio_countdown = static_cast<std::uint8_t>(
                     state.audio_countdown - 1U);
                 if (state.audio_countdown == 0U) {
-                    call_if_present(callbacks.service_audio_if_enabled,
+                    call_if_present(callbacks.play_sfx_if_enabled,
                                     state.alternate_audio ? 0x001BU : 0x001AU);
                 }
             }

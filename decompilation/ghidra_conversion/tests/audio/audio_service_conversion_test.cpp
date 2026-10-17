@@ -33,21 +33,21 @@ int main() {
         [&order] { order.push_back(3); },
         [&order] { order.push_back(4); },
     };
-    if (!expect(!service_audio_if_enabled(false, callbacks) &&
-                order.empty() && service_audio_if_enabled(true, callbacks) &&
+    if (!expect(!play_sfx_if_enabled(false, callbacks) &&
+                order.empty() && play_sfx_if_enabled(true, callbacks) &&
                 order == std::vector<int>{1, 2, 3, 4})) {
         return 2;
     }
 
-    if (!expect(!service_audio_command_queue({}) &&
-                !service_audio_if_enabled(true, {}))) {
+    if (!expect(!gems_start_song({}) &&
+                !play_sfx_if_enabled(true, {}))) {
         return 3;
     }
 
-    EntityAudioState entity{0x01U, 0x0EU, 9U, 0U, 0x1234U, 0x5678U,
+    ThrownProjectileState entity{0x01U, 0x0EU, 9U, 0U, 0x1234U, 0x5678U,
                             0U, 0U, 0xFFFFU};
     bool serviced = false;
-    activate_entity_audio_state(entity,
+    launch_thrown_projectile(entity,
                                 [&serviced] { serviced = true; });
     if (entity.flags != 0x81U || entity.behavior_timer != 0x10U ||
         entity.update_marker != 0U || entity.destination_x != 0x1234U ||
@@ -56,18 +56,18 @@ int main() {
         return 4;
     }
 
-    EntityAudioEffectRecord jitter{0x80U, 0U, -1, 0x1111U, 0x2222U,
+    ThrownProjectileRecord jitter{0x80U, 0U, -1, 0x1111U, 0x2222U,
                                    0U, 0U, 0x0100U, 0x0200U, 2U, 0U, 0, 0};
     int expire_count = 0;
     int retrigger_count = 0;
     int motion_count = 0;
-    const auto jittered = advance_entity_audio_effect(
+    const auto jittered = advance_thrown_projectile(
         jitter, 0x0011U,
         [&expire_count] { ++expire_count; },
         [&retrigger_count] { ++retrigger_count; },
         [&motion_count] { ++motion_count; });
     // 0x11 bit 0 set → NEG 0x11 = -0x11. LSR#4 of 0x11 is 1, bit 0 set → -1.
-    if (jittered != EntityAudioEffectResult::jittered ||
+    if (jittered != ThrownProjectileResult::jittered ||
         jitter.x != static_cast<std::uint16_t>(0x0100U - 0x11U) ||
         jitter.y != static_cast<std::uint16_t>(0x0200U - 1U) ||
         jitter.phase != 1U || jitter.aux != 0U || jitter.rate != 0U ||
@@ -76,41 +76,41 @@ int main() {
         return 5;
     }
 
-    EntityAudioEffectRecord dying{0x81U, 0U, -1, 0U, 0U, 0U, 0U, 0U, 0U,
+    ThrownProjectileRecord dying{0x81U, 0U, -1, 0U, 0U, 0U, 0U, 0U, 0U,
                                   0U, 0U, 0, 0};
-    if (advance_entity_audio_effect(
+    if (advance_thrown_projectile(
             dying, 0U, [&expire_count] { ++expire_count; }, {}, {}) !=
-            EntityAudioEffectResult::expired ||
+            ThrownProjectileResult::expired ||
         (dying.flags & 0x01U) != 0U || expire_count != 1) {
         return 6;
     }
 
-    EntityAudioEffectRecord hold{0U, 0U, 0, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
+    ThrownProjectileRecord hold{0U, 0U, 0, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
                                  1, 0};
-    if (advance_entity_audio_effect(hold, 0U, {}, {}, {}) !=
-            EntityAudioEffectResult::waiting ||
+    if (advance_thrown_projectile(hold, 0U, {}, {}, {}) !=
+            ThrownProjectileResult::waiting ||
         hold.lifetime != 0) {
         return 7;
     }
-    EntityAudioEffectRecord bounce{0U, 0U, 0, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
+    ThrownProjectileRecord bounce{0U, 0U, 0, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
                                    0, 1};
-    if (advance_entity_audio_effect(
+    if (advance_thrown_projectile(
             bounce, 0U, {}, {}, [&motion_count] { ++motion_count; }) !=
-            EntityAudioEffectResult::motion ||
+            ThrownProjectileResult::motion ||
         motion_count != 1) {
         return 8;
     }
-    EntityAudioEffectRecord retrigger{0U, 0U, 0, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
+    ThrownProjectileRecord retrigger{0U, 0U, 0, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
                                       0U, 0, 0};
-    if (advance_entity_audio_effect(
+    if (advance_thrown_projectile(
             retrigger, 0U, {},
             [&retrigger_count] { ++retrigger_count; }, {}) !=
-            EntityAudioEffectResult::retriggered ||
+            ThrownProjectileResult::retriggered ||
         retrigger_count != 1) {
         return 9;
     }
 
-    EntityAudioEffectRecord rising{};
+    ThrownProjectileRecord rising{};
     rising.lift = 0x10;
     rising.lift_sum = 0x1000;
     apply_spawned_effect_bounce(rising);
@@ -118,7 +118,7 @@ int main() {
         rising.timer != 4) {
         return 10;
     }
-    EntityAudioEffectRecord apex{};
+    ThrownProjectileRecord apex{};
     apex.lift = 0x40;
     apex.lift_sum = 0;
     apex.heading_x = -8;
@@ -128,7 +128,7 @@ int main() {
         apex.heading_x != -4 || apex.heading_y != 3 || apex.lift_sum != 0) {
         return 11;
     }
-    EntityAudioEffectRecord falling{};
+    ThrownProjectileRecord falling{};
     falling.lift = -0x40;
     falling.lift_sum = -0x200;
     apply_spawned_effect_bounce(falling);
@@ -137,7 +137,7 @@ int main() {
         return 12;
     }
 
-    EntityAudioEffectRecord open{};
+    ThrownProjectileRecord open{};
     open.x = 0x10;
     open.dest_x = 0x20;
     open.heading_x = 2;
@@ -158,7 +158,7 @@ int main() {
         open.x != 0x10 || open.dest_x != 0x0220 || terrain_expire != 0) {
         return 13;
     }
-    EntityAudioEffectRecord height_probe{};
+    ThrownProjectileRecord height_probe{};
     height_probe.height = 2;
     height_probe.x = 0x10;
     height_probe.dest_x = 0x20;
@@ -175,7 +175,7 @@ int main() {
         (probed_y & 0xFFFF) != 0x0060U) {
         return 14;
     }
-    EntityAudioEffectRecord expire{};
+    ThrownProjectileRecord expire{};
     expire.flags = 0x01;
     expire.lift_sum = 0;
     if (probe_spawned_effect_terrain(
@@ -187,7 +187,7 @@ int main() {
         (expire.flags & 0x01U) != 0U || terrain_expire != 1) {
         return 15;
     }
-    EntityAudioEffectRecord locked_commit{};
+    ThrownProjectileRecord locked_commit{};
     locked_commit.lift_sum = 1;
     locked_commit.x = 1;
     if (probe_spawned_effect_terrain(
@@ -198,7 +198,7 @@ int main() {
             {}) != SpawnedEffectTerrainResult::committed) {
         return 16;
     }
-    EntityAudioEffectRecord deflect{};
+    ThrownProjectileRecord deflect{};
     deflect.heading_x = -8;
     deflect.heading_y = 6;
     deflect.x = 0;

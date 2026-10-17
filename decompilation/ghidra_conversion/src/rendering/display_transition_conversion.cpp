@@ -41,8 +41,8 @@ void run_display_transition(
     DisplayTransitionState& state,
     const DisplayTransitionCallbacks& callbacks) {
     state.audio_marker = -1;
-    if (callbacks.service_audio_if_enabled) {
-        callbacks.service_audio_if_enabled(0x29U);
+    if (callbacks.play_sfx_if_enabled) {
+        callbacks.play_sfx_if_enabled(0x29U);
     }
     if (callbacks.upload_initial_asset) {
         callbacks.upload_initial_asset();

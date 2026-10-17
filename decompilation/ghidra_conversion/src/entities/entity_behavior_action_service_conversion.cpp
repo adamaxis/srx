@@ -86,7 +86,7 @@ bool entity_behavior_action_callbacks_complete(
         return callbacks.process_entity_spawn_cycle &&
                callbacks.set_entity_heading_with_field_animation &&
                callbacks.dispatch_player_action_if_ready &&
-               callbacks.service_audio_if_enabled &&
+               callbacks.play_sfx_if_enabled &&
                callbacks.update_entity_animation_delay;
     }
     return true;
@@ -213,7 +213,7 @@ EntityBehaviorActionResult advance_entity_behavior_action(
     }
 
     result.audio_event = 0x004BU;
-    callbacks.service_audio_if_enabled(result.audio_event);
+    callbacks.play_sfx_if_enabled(result.audio_event);
     callbacks.update_entity_animation_delay(record, 0U);
     result.kind = finish_with_controller_action(record, world).kind;
     return result;

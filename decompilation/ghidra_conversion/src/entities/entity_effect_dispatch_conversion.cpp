@@ -16,7 +16,7 @@ std::uint16_t source_word_delta(
 
 std::uint16_t audio_event_for_behavior(const std::uint8_t behavior_type) {
     // ROM 0x4946: the source checks this table before calling
-    // service_audio_if_enabled. Zero means that the behavior has no sound
+    // play_sfx_if_enabled. Zero means that the behavior has no sound
     // event at this dispatch point.
     static constexpr std::array<std::uint16_t, 16> kAudioEvents{
         0x0000U, 0x0032U, 0x0034U, 0x0034U,

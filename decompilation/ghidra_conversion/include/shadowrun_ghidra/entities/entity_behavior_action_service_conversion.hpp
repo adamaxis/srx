@@ -49,7 +49,7 @@ struct EntityBehaviorActionCallbacks {
         process_entity_spawn_cycle;
     std::function<bool(EntityBehaviorFrameRecord&)>
         dispatch_player_action_if_ready;
-    std::function<void(std::uint16_t)> service_audio_if_enabled;
+    std::function<void(std::uint16_t)> play_sfx_if_enabled;
     std::function<void(EntityBehaviorFrameRecord&)>
         configure_entity_target_transition;
     std::function<void(EntityBehaviorFrameRecord&, std::uint16_t)>

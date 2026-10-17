@@ -116,8 +116,8 @@ struct AudioModeEntryCallbacks {
     std::function<void()> service_audio_tick;
 };
 
-// ROM 0x53126: run six 0x14 audio transactions, each followed by a three-
-// vblank wait, then flush the bus and service the zero-command audio tick.
+// ROM 0x53126: run six op-0x20 transactions with levels 0x14, 0x28 .. 0x78
+// (0x53130 accumulates d0), each followed by a three-vblank wait, then flush the bus and service the zero-command audio tick.
 // The host owns the actual audio backend and timing source.
 void prepare_audio_mode_entry(const AudioModeEntryCallbacks& callbacks);
 

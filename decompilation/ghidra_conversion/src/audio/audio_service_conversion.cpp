@@ -7,10 +7,10 @@ bool advance_audio_service_tick(
     const bool audio_enabled,
     const AudioServiceCallbacks& callbacks) {
     state.phase = static_cast<std::uint8_t>(state.phase + 1U);
-    return service_audio_if_enabled(audio_enabled, callbacks);
+    return play_sfx_if_enabled(audio_enabled, callbacks);
 }
 
-bool service_audio_command_queue(const AudioServiceCallbacks& callbacks) {
+bool gems_start_song(const AudioServiceCallbacks& callbacks) {
     if (!callbacks.begin_bus_access || !callbacks.flush_audio_command ||
         !callbacks.append_audio_command || !callbacks.end_bus_access) {
         return false;
@@ -23,14 +23,14 @@ bool service_audio_command_queue(const AudioServiceCallbacks& callbacks) {
     return true;
 }
 
-bool service_audio_if_enabled(
+bool play_sfx_if_enabled(
     const bool audio_enabled,
     const AudioServiceCallbacks& callbacks) {
-    return audio_enabled && service_audio_command_queue(callbacks);
+    return audio_enabled && gems_start_song(callbacks);
 }
 
-void activate_entity_audio_state(
-    EntityAudioState& state,
+void launch_thrown_projectile(
+    ThrownProjectileState& state,
     const std::function<void()>& service_audio) {
     state.flags = static_cast<std::uint8_t>(state.flags | 0x80U);
     state.behavior_timer =
@@ -56,8 +56,8 @@ std::uint16_t signed_jitter(const std::uint16_t magnitude) {
 
 } // namespace
 
-EntityAudioEffectResult advance_entity_audio_effect(
-    EntityAudioEffectRecord& state,
+ThrownProjectileResult advance_thrown_projectile(
+    ThrownProjectileRecord& state,
     const std::uint16_t random_word,
     const std::function<void()>& expire,
     const std::function<void()>& retrigger,
@@ -65,24 +65,24 @@ EntityAudioEffectResult advance_entity_audio_effect(
     if ((state.flags & 0x80U) == 0U) {
         --state.lifetime;
         if (state.lifetime >= 0) {
-            return EntityAudioEffectResult::waiting;
+            return ThrownProjectileResult::waiting;
         }
         --state.bounce;
         if (state.bounce >= 0) {
             if (motion) {
                 motion();
             }
-            return EntityAudioEffectResult::motion;
+            return ThrownProjectileResult::motion;
         }
         if (retrigger) {
             retrigger();
         }
-        return EntityAudioEffectResult::retriggered;
+        return ThrownProjectileResult::retriggered;
     }
 
     ++state.jitter_count;
     if (state.timer >= 0) {
-        return EntityAudioEffectResult::waiting;
+        return ThrownProjectileResult::waiting;
     }
     --state.phase;
     if (static_cast<std::int8_t>(state.phase) < 0) {
@@ -90,7 +90,7 @@ EntityAudioEffectResult advance_entity_audio_effect(
         if (expire) {
             expire();
         }
-        return EntityAudioEffectResult::expired;
+        return ThrownProjectileResult::expired;
     }
 
     state.x = static_cast<std::uint16_t>(
@@ -102,10 +102,10 @@ EntityAudioEffectResult advance_entity_audio_effect(
         static_cast<std::uint16_t>(state.timer) & 0x7FFFU);
     state.rate = 0U;
     state.flags2 = static_cast<std::uint8_t>(state.flags2 | 0x01U);
-    return EntityAudioEffectResult::jittered;
+    return ThrownProjectileResult::jittered;
 }
 
-void apply_spawned_effect_bounce(EntityAudioEffectRecord& state) {
+void apply_spawned_effect_bounce(ThrownProjectileRecord& state) {
     state.lift = static_cast<std::int16_t>(state.lift + 0x20);
     state.lift_sum = static_cast<std::int16_t>(state.lift_sum + state.lift);
     state.height = static_cast<std::int16_t>(state.lift_sum >> 8);
@@ -145,7 +145,7 @@ void commit_packed_axis(const std::int32_t packed, std::uint16_t& high,
 } // namespace
 
 SpawnedEffectTerrainResult probe_spawned_effect_terrain(
-    EntityAudioEffectRecord& state,
+    ThrownProjectileRecord& state,
     const SpawnedEffectTerrainWorld& world,
     const SpawnedEffectTerrainProbe& probe,
     const std::function<void()>& expire) {

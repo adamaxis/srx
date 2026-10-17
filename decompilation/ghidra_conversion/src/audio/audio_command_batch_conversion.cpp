@@ -188,9 +188,13 @@ void prepare_audio_mode_entry(const AudioModeEntryCallbacks& callbacks) {
     constexpr std::uint32_t kModeEntryCommand = 0x14U;
     constexpr std::uint16_t kModeEntryVblankCounter = 2U;
     constexpr std::size_t kModeEntryPassCount = 6U;
+    // 0x53130 addi.b #$14, d0 accumulates: the six op-0x20 levels are
+    // 0x14, 0x28, 0x3C, 0x50, 0x64, 0x78 [C], not six copies of 0x14.
+    std::uint32_t level = 0U;
     for (std::size_t pass = 0; pass < kModeEntryPassCount; ++pass) {
+        level += kModeEntryCommand;
         if (callbacks.run_fixed_audio_transaction) {
-            callbacks.run_fixed_audio_transaction(kModeEntryCommand);
+            callbacks.run_fixed_audio_transaction(level);
         }
         if (callbacks.wait_for_vblank_frames) {
             callbacks.wait_for_vblank_frames(kModeEntryVblankCounter);

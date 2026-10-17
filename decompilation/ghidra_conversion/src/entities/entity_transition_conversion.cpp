@@ -43,7 +43,7 @@ bool signature_changed(
 }
 
 // ROM 0x15318 / 0x15336. 0x15238 submits the selected word to
-// service_audio_if_enabled; these are event IDs, not graphics resources.
+// play_sfx_if_enabled; these are event IDs, not graphics resources.
 constexpr std::array<std::uint16_t, 15> kRegularSpawnAudioEvents{
     0x001CU, 0x001CU, 0x001CU, 0x001CU, 0x0051U,
     0x0051U, 0x0051U, 0x001EU, 0x001EU, 0x001EU,
