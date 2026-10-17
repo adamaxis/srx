@@ -237,7 +237,10 @@ function(add_shadowrun_qt_qa_case test_name)
     add_test(NAME "${test_name}"
         COMMAND shadowrun_ghidra_conversion_qt_qa ${ARGN})
     set_tests_properties("${test_name}" PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=windows")
+        # Headless rule: QA never shows a window or takes focus. Windows
+        # builds deploy platforms/qoffscreen.dll beside the QA executable
+        # (windeployqt block below); Linux/macOS use the Qt install's plugin.
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1")
 endfunction()
 
 # One end-to-end startup/field QA walk. The executable writes its visual

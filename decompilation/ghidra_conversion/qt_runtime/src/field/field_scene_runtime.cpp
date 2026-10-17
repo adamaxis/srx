@@ -322,6 +322,17 @@ std::optional<GameSaveSlot> game_save_slot_from_index(const int slot) {
 // that scene reference with the saved row; both paths use the same typed scene
 // resource selection below.
 constexpr std::uint16_t kInitialFieldSceneReference = 2U;
+
+// Qt 6.9 added QImage::flipped(Qt::Orientations); 6.8 (Debian/Ubuntu packages)
+// only has mirrored(bool, bool). Same pixels either way.
+QImage flipped_image(const QImage& image, const Qt::Orientations orientations) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+    return image.flipped(orientations);
+#else
+    return image.mirrored(orientations.testFlag(Qt::Horizontal),
+                          orientations.testFlag(Qt::Vertical));
+#endif
+}
 // Keep the ROM's FFF101 debug-menu branch exposed during development. Set to
 // false to return to the title-code-only unlock rule.
 constexpr bool kDebugMenuAlwaysUnlockedForTesting = true;
@@ -10029,8 +10040,7 @@ bool FieldSceneRuntime::bootstrap(
                 static_cast<std::uint8_t>(direction));
         if (horizontal_flip) {
             field_entity_idle_images_[direction] =
-                field_entity_idle_images_[direction].flipped(
-                    Qt::Horizontal);
+                flipped_image(field_entity_idle_images_[direction], Qt::Horizontal);
         }
         const auto attack_alias = std::string(kFieldEntityAttackAliasPrefix) +
                                   std::to_string(direction);
@@ -10044,8 +10054,7 @@ bool FieldSceneRuntime::bootstrap(
         }
         if (horizontal_flip) {
             field_entity_attack_images_[direction] =
-                field_entity_attack_images_[direction].flipped(
-                    Qt::Horizontal);
+                flipped_image(field_entity_attack_images_[direction], Qt::Horizontal);
         }
         // The ordinary movement poses come from the C062 positive-marker
         // list, extracted as separate host files. C0B2 is a different finite
@@ -10072,7 +10081,7 @@ bool FieldSceneRuntime::bootstrap(
                 return false;
             }
             if (horizontal_flip) {
-                walk_image = walk_image.flipped(Qt::Horizontal);
+                walk_image = flipped_image(walk_image, Qt::Horizontal);
             }
             field_entity_walk_images_[direction].push_back(
                 std::move(walk_image));
@@ -14869,7 +14878,7 @@ void FieldSceneRuntime::paint_field_scene_entities(
                 if (corner.flip_y) {
                     flips |= Qt::Vertical;
                 }
-                marker.mirrored_image = marker_image.flipped(flips);
+                marker.mirrored_image = flipped_image(marker_image, flips);
                 sprites.push_back(std::move(marker));
             }
         }

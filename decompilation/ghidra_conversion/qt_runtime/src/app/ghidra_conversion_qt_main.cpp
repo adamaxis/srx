@@ -182,13 +182,21 @@ int main(int argc, char** argv) {
         QCoreApplication::setApplicationName(
             QStringLiteral("Shadowrun Ghidra Conversion"));
         const bool headless_mode = headless_replay || debug_port.has_value();
-        if (headless_mode) {
+        // SRX_HEADLESS=1 (docs/23 s9) forces the offscreen platform for any
+        // launch, so an automated run can never open a window or take focus.
+        const bool headless_platform =
+            headless_mode || qEnvironmentVariableIntValue("SRX_HEADLESS") != 0;
+        if (headless_platform) {
+#ifdef _WIN32
+            // windeployqt copies plugins beside the executable on Windows.
+            // Elsewhere Qt loads qoffscreen from its own plugin directory.
             const auto offscreen_plugin =
                 executable_directory / "platforms" / "qoffscreen.dll";
             if (!std::filesystem::is_regular_file(offscreen_plugin)) {
                 throw std::runtime_error(
                     "headless mode requires the deployed Qt platforms/qoffscreen.dll plugin");
             }
+#endif
             // Qt reads its platform plugin setting during application
             // construction. No widget is shown in this path.
             qputenv("QT_QPA_PLATFORM", QByteArrayLiteral("offscreen"));
