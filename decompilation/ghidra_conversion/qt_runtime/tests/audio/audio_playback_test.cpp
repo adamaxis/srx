@@ -1,291 +1,56 @@
+// Headless AudioPlaybackService test (formerly device-only, skipped without
+// an output). Runs the null and WAV sinks against the real asset catalog.
 #include "audio_playback.hpp"
+#include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
 
-#include <QAudioDevice>
 #include <QCoreApplication>
-#include <QEventLoop>
-#include <QMediaDevices>
-#include <QThread>
 
-#include <chrono>
 #include <array>
+#include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <string>
 #include <string_view>
-#include <utility>
+
+namespace {
+
+using shadowrun::ghidra_conversion::load_conversion_asset_catalog;
+using shadowrun::ghidra_conversion::qt_runtime::AudioEvent;
+using shadowrun::ghidra_conversion::qt_runtime::AudioOp;
+using shadowrun::ghidra_conversion::qt_runtime::AudioPlaybackService;
+using shadowrun::ghidra_conversion::qt_runtime::kAudioSamplesPerFrame;
+
+int failures = 0;
+void check(const bool condition, const std::string& what) {
+    if (!condition) {
+        ++failures;
+        std::cerr << "FAIL: " << what << '\n';
+    }
+}
+
+} // namespace
 
 int main(int argc, char** argv) {
     QCoreApplication application(argc, argv);
+    const auto loaded = load_conversion_asset_catalog(
+        std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT));
+    check(loaded.complete(), "asset catalog loads (audio rows present)");
+    const auto resolver = [&loaded](const std::string_view alias) {
+        const auto* record = loaded.catalog.find(std::string(alias));
+        return record == nullptr ? std::filesystem::path{} : record->absolute_path;
+    };
 
-    using shadowrun::ghidra_conversion::qt_runtime::AudioPlaybackService;
-    const auto menu_024 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_MENU_RESOURCE_PATH);
-    const auto field_effect_016 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_FIELD_EFFECT_016_PATH);
-    const auto resource_037 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_RESOURCE_PATH);
-    const auto spell_event_32 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_32_PATH);
-    const auto spell_event_34 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_34_PATH);
-    const auto spell_event_35 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_35_PATH);
-    const auto spell_event_37 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_37_PATH);
-    const auto spell_event_3a = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_SPELL_EVENT_3A_PATH);
-    const auto resource_075 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_PASSKEY_RESOURCE_PATH);
-    const auto resource_076 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_ACTION_RESOURCE_076_PATH);
-    const auto resource_077 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_TARGET_RESOURCE_077_PATH);
-    const auto resource_078 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_TARGET_RESOURCE_078_PATH);
-    const auto spawn_resource_028 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_028_PATH);
-    const auto spawn_resource_029 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_029_PATH);
-    const auto spawn_resource_030 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_030_PATH);
-    const auto spawn_resource_063 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_063_PATH);
-    const auto spawn_resource_074 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_074_PATH);
-    const auto spawn_resource_081 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_SPAWN_RESOURCE_081_PATH);
-    const auto boot_shock_sequence = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_BOOT_SHOCK_SEQUENCE_PATH);
-    const auto title_logo_sequence = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_TITLE_LOGO_SEQUENCE_PATH);
-    const auto title_theme_resource = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_TITLE_THEME_RESOURCE_PATH);
-    const auto intro_stage_1 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_INTRO_STAGE_1_PATH);
-    const auto intro_stage_3 = std::filesystem::path(
-        SHADOWRUN_GHIDRA_AUDIO_INTRO_STAGE_3_PATH);
-    std::string resolved_alias;
-    std::size_t resolver_calls = 0U;
-    AudioPlaybackService playback([&](const std::string_view alias) {
-        resolved_alias.assign(alias);
-        ++resolver_calls;
-        if (alias == "audio.menu.command-024") {
-            return menu_024;
-        }
-        if (alias == "audio.field.effect-016") {
-            return field_effect_016;
-        }
-        if (alias == "audio.effects.resource.037") {
-            return resource_037;
-        }
-        if (alias == "audio.effects.resource.050") {
-            return spell_event_32;
-        }
-        if (alias == "audio.effects.resource.052") {
-            return spell_event_34;
-        }
-        if (alias == "audio.effects.resource.053") {
-            return spell_event_35;
-        }
-        if (alias == "audio.effects.resource.055") {
-            return spell_event_37;
-        }
-        if (alias == "audio.effects.resource.058") {
-            return spell_event_3a;
-        }
-        if (alias == "audio.effects.resource.075") {
-            return resource_075;
-        }
-        if (alias == "audio.effects.resource.076") {
-            return resource_076;
-        }
-        if (alias == "audio.effects.resource.077") {
-            return resource_077;
-        }
-        if (alias == "audio.effects.resource.078") {
-            return resource_078;
-        }
-        if (alias == "audio.effects.resource.028") {
-            return spawn_resource_028;
-        }
-        if (alias == "audio.effects.resource.029") {
-            return spawn_resource_029;
-        }
-        if (alias == "audio.effects.resource.030") {
-            return spawn_resource_030;
-        }
-        if (alias == "audio.effects.resource.063") {
-            return spawn_resource_063;
-        }
-        if (alias == "audio.effects.resource.074") {
-            return spawn_resource_074;
-        }
-        if (alias == "audio.effects.resource.081") {
-            return spawn_resource_081;
-        }
-        if (alias == "audio.intro.sega-logo-shock-sequence") {
-            return boot_shock_sequence;
-        }
-        if (alias == "audio.intro.shadowrun-logo-reveal-sequence") {
-            return title_logo_sequence;
-        }
-        if (alias == "audio.music.resource.000") {
-            return title_theme_resource;
-        }
-        if (alias == "audio.intro.title.stage-1") {
-            return intro_stage_1;
-        }
-        if (alias == "audio.intro.title.stage-3") {
-            return intro_stage_3;
-        }
-        return std::filesystem::path{};
-    });
+    AudioPlaybackService playback(resolver, AudioPlaybackService::Output::null);
+    check(playback.manifest_error().empty(), "manifest: " + playback.manifest_error());
 
-    const auto expected_alias = "audio.effects.resource.037";
-    if (playback.alias_for_event(0x25U) != expected_alias) {
-        std::cerr << "event 0x25 did not select table-2 resource 37\n";
-        return 1;
-    }
-    if (playback.alias_for_event(0x24U) != "audio.menu.command-024") {
-        std::cerr << "event 0x24 did not select its command sound\n";
-        return 1;
-    }
-    const std::array<std::pair<std::uint16_t, std::string_view>, 5>
-        spell_event_aliases{{
-            {0x32U, "audio.effects.resource.050"},
-            {0x34U, "audio.effects.resource.052"},
-            {0x35U, "audio.effects.resource.053"},
-            {0x37U, "audio.effects.resource.055"},
-            {0x3AU, "audio.effects.resource.058"},
-        }};
-    for (const auto& [event, expected_alias] : spell_event_aliases) {
-        if (playback.alias_for_event(event) != expected_alias) {
-            std::cerr << "spell event 0x" << std::hex << event << std::dec
-                      << " did not select its decimal-numbered table-2 sound\n";
-            return 1;
-        }
-    }
-    if (!std::filesystem::is_regular_file(spell_event_3a)) {
-        std::cerr << "the extracted heal-wounds resource-058 FLAC is missing\n";
-        return 1;
-    }
-    if (!std::filesystem::is_regular_file(menu_024)) {
-        std::cerr << "the extracted menu command-024 FLAC is missing\n";
-        return 1;
-    }
-    if (!std::filesystem::is_regular_file(resource_037)) {
-        std::cerr << "the extracted resource-037 FLAC is missing\n";
-        return 1;
-    }
-    if (playback.alias_for_event(0x4BU) !=
-        "audio.effects.resource.075") {
-        std::cerr << "event 0x4B did not select table-2 resource 75\n";
-        return 1;
-    }
-    if (!std::filesystem::is_regular_file(resource_075)) {
-        std::cerr << "the extracted resource-075 FLAC is missing\n";
-        return 1;
-    }
-    if (playback.alias_for_event(0x4CU) !=
-            "audio.effects.resource.076" ||
-        !std::filesystem::is_regular_file(resource_076)) {
-        std::cerr << "ordinary actor cue 0x4C did not select resource 76\n";
-        return 1;
-    }
-    if (!playback.alias_for_event(0x55U).empty()) {
-        std::cerr << "Hell Hound cue 0x55 was assigned an unverified sound\n";
-        return 1;
-    }
-    if (playback.alias_for_event(0x4DU) !=
-            "audio.effects.resource.077" ||
-        !std::filesystem::is_regular_file(resource_077) ||
-        playback.alias_for_event(0x4EU) !=
-            "audio.effects.resource.078" ||
-        !std::filesystem::is_regular_file(resource_078)) {
-        std::cerr << "target-heading cues 0x4D/0x4E did not select resources 77/78\n";
-        return 1;
-    }
-    const std::array<std::pair<std::uint16_t, std::filesystem::path>, 5>
-        spawn_sound_files{{
-            {0x1CU, spawn_resource_028}, {0x1DU, spawn_resource_029},
-            {0x3FU, spawn_resource_063}, {0x51U, spawn_resource_081},
-            {0x1EU, spawn_resource_030}}};
-    constexpr std::array<std::string_view, 5> kSpawnSoundAliases{{
-        "audio.effects.resource.028", "audio.effects.resource.029",
-        "audio.effects.resource.063", "audio.effects.resource.081",
-        "audio.effects.resource.030"}};
-    for (std::size_t index = 0; index < spawn_sound_files.size(); ++index) {
-        const auto [event, path] = spawn_sound_files[index];
-        if (playback.alias_for_event(event) != kSpawnSoundAliases[index] ||
-            !std::filesystem::is_regular_file(path)) {
-            std::cerr << "spawn action event " << event
-                      << " did not select its extracted source resource\n";
-            return 1;
-        }
-    }
-    if (playback.alias_for_event(0x1EU) !=
-            "audio.effects.resource.030" ||
-        !std::filesystem::is_regular_file(spawn_resource_030)) {
-        std::cerr << "spawn event 0x1E did not select resource 30\n";
-        return 1;
-    }
-    if (playback.alias_for_event(0x4AU) !=
-            "audio.effects.resource.074" ||
-        !std::filesystem::is_regular_file(spawn_resource_074)) {
-        std::cerr << "spawn event 0x4A did not select resource 74\n";
-        return 1;
-    }
-    if (playback.alias_for_event(0x10U) != "audio.intro.title.stage-1" ||
-        !std::filesystem::is_regular_file(intro_stage_1)) {
-        std::cerr << "opening command 0x10 did not select the stage-1 track\n";
-        return 1;
-    }
-    if (playback.alias_for_event(0x12U) != "audio.intro.title.stage-3" ||
-        !std::filesystem::is_regular_file(intro_stage_3)) {
-        std::cerr << "opening command 0x12 did not select the stage-3 track\n";
-        return 1;
-    }
-    if (!playback.alias_for_event(0x11U).empty()) {
-        std::cerr << "silent stage-2 source pair 0x11 was assigned a track\n";
-        return 1;
-    }
-    if (playback.alias_for_event(0x5CU) !=
-            "audio.intro.sega-logo-shock-sequence" ||
-        !std::filesystem::is_regular_file(boot_shock_sequence)) {
-        std::cerr << "pre-title command 0x5C did not select its complete "
-                     "source-cadenced render\n";
-        return 1;
-    }
-    if (playback.alias_for_event(0x5DU) !=
-            "audio.intro.shadowrun-logo-reveal-sequence" ||
-        !std::filesystem::is_regular_file(title_logo_sequence)) {
-        std::cerr << "title logo command 0x5D did not select its complete "
-                     "source-cadenced render\n";
-        return 1;
-    }
-    if (playback.alias_for_event(0x00U) != "audio.music.resource.000" ||
-        !std::filesystem::is_regular_file(title_theme_resource)) {
-        std::cerr << "title theme command 0x00 did not select resource 0\n";
-        return 1;
-    }
-    if (playback.alias_for_event(0x16U) != "audio.field.effect-016" ||
-        !std::filesystem::is_regular_file(field_effect_016)) {
-        std::cerr << "FF 10 command 0x16 did not select resource 22\n";
-        return 1;
-    }
-
-    if (QMediaDevices::defaultAudioOutput().isNull()) {
-        std::cerr << "no default audio output is available for playback\n";
-        return 77;
-    }
-
-    struct PlaybackExpectation {
+    struct Expectation {
         std::uint16_t event;
         std::string_view alias;
-        std::int64_t min_duration_ms;
-        std::int64_t max_duration_ms;
+        std::int64_t min_ms;
+        std::int64_t max_ms;
     };
-    constexpr std::array<PlaybackExpectation, 23> kMappedEvents{{
+    // Durations carried over from the device-only test.
+    constexpr std::array<Expectation, 23> kMapped{{
         {0x00U, "audio.music.resource.000", 119900, 120100},
         {0x10U, "audio.intro.title.stage-1", 14800, 14900},
         {0x16U, "audio.field.effect-016", 2700, 2800},
@@ -310,172 +75,76 @@ int main(int argc, char** argv) {
         {0x5DU, "audio.intro.shadowrun-logo-reveal-sequence", 2680, 2720},
         {0x12U, "audio.intro.title.stage-3", 20900, 21200},
     }};
-    for (const auto& expected : kMappedEvents) {
-        const auto calls_before = resolver_calls;
-        const auto event_started_at = std::chrono::steady_clock::now();
-        if (expected.event == 0x5CU || expected.event == 0x5DU) {
-            playback.begin_source_sequence();
-            playback.play_event_once_in_sequence(expected.event);
-        } else {
-            playback.play_event(expected.event);
-        }
-        if (resolver_calls != calls_before + 1U ||
-            resolved_alias != expected.alias) {
-            std::cerr << "event " << expected.event
-                      << " did not reach its mapped asset alias\n";
-            return 1;
-        }
-
-        const auto deadline = std::chrono::steady_clock::now() +
-                              std::chrono::seconds(3);
-        auto status = playback.playback_status_for_event(expected.event);
-        while (std::chrono::steady_clock::now() < deadline &&
-               !status.error &&
-               !(status.source_ready && status.audio_available &&
-                 status.playing)) {
-            application.processEvents(QEventLoop::AllEvents, 20);
-            QThread::msleep(5U);
-            status = playback.playback_status_for_event(expected.event);
-        }
-        if (!status.mapped || !status.source_ready ||
-            !status.audio_available || !status.playing || status.error ||
-            status.duration_ms < expected.min_duration_ms ||
-            status.duration_ms > expected.max_duration_ms) {
-            std::cerr << "event " << expected.event
-                      << " failed to decode/play on the default output; "
-                         "duration_ms="
-                      << status.duration_ms
-                      << " loaded=" << status.source_ready
-                      << " audio=" << status.audio_available
-                      << " playing=" << status.playing
-                      << " error=" << status.error << '\n';
-            return 1;
-        }
-        const auto start_latency_ms = std::chrono::duration_cast<
-            std::chrono::milliseconds>(std::chrono::steady_clock::now() -
-                                       event_started_at)
-                                          .count();
-        std::cout << "event=" << expected.event
-                  << " start_latency_ms=" << start_latency_ms
-                  << " duration_ms=" << status.duration_ms << '\n';
-
-        if (expected.event == 0x5CU || expected.event == 0x5DU) {
-            if (playback.playing_channel_count_for_event(expected.event) !=
-                1U) {
-                std::cerr << "first one-shot source request did not start one channel\n";
-                return 1;
-            }
-            // The mapped asset already contains the ROM-timed repeated chip
-            // stream: 60 starts for 0x5C, 19 starts for 0x5D. Verify that
-            // each source callback does not restart the full composite file.
-            const std::size_t request_count = expected.event == 0x5CU
-                ? 60U
-                : 19U;
-            const auto request_interval = expected.event == 0x5CU
-                ? std::chrono::milliseconds(33)
-                : std::chrono::milliseconds(67);
-            auto next_request_at = std::chrono::steady_clock::now();
-            for (std::size_t request = 1U; request < request_count; ++request) {
-                next_request_at += request_interval;
-                while (std::chrono::steady_clock::now() < next_request_at) {
-                    application.processEvents(QEventLoop::AllEvents, 5);
-                    QThread::msleep(1U);
-                }
-                playback.play_event_once_in_sequence(expected.event);
-            }
-            status = playback.playback_status_for_event(expected.event);
-            if (!status.audio_available || !status.playing || status.error ||
-                playback.playing_channel_count_for_event(expected.event) !=
-                    1U) {
-                std::cerr << "repeated source callbacks restarted the "
-                             "sequence render; count="
-                          << playback.playing_channel_count_for_event(
-                                 expected.event)
-                          << " loaded=" << status.source_ready
-                          << " audio=" << status.audio_available
-                          << " playing=" << status.playing
-                          << " error=" << status.error << '\n';
-                return 1;
-            }
-            playback.stop_resource(expected.event);
-            application.processEvents(QEventLoop::AllEvents, 20);
-            if (playback.playback_status_for_event(expected.event).playing ||
-                playback.playing_channel_count_for_event(expected.event) !=
-                    0U) {
-                std::cerr << "one-shot stop left a channel playing\n";
-                return 1;
-            }
-            playback.begin_source_sequence();
-            playback.play_event_once_in_sequence(expected.event);
-            const auto replay_deadline = std::chrono::steady_clock::now() +
-                                         std::chrono::seconds(3);
-            status = playback.playback_status_for_event(expected.event);
-            while (std::chrono::steady_clock::now() < replay_deadline &&
-                   !status.error &&
-                   !(status.source_ready && status.audio_available &&
-                     status.playing)) {
-                application.processEvents(QEventLoop::AllEvents, 20);
-                QThread::msleep(5U);
-                status = playback.playback_status_for_event(expected.event);
-            }
-            if (!status.source_ready || !status.audio_available ||
-                !status.playing || status.error ||
-                playback.playing_channel_count_for_event(expected.event) !=
-                    1U) {
-                std::cerr << "new source sequence did not replay one cue\n";
-                return 1;
-            }
-            playback.stop_resource(expected.event);
-        } else if (expected.event == 0x16U) {
-            if (playback.playing_channel_count_for_event(expected.event) !=
-                1U) {
-                std::cerr << "FF 10 command 0x16 did not start resource 22\n";
-                return 1;
-            }
-            playback.stop_resource(expected.event);
-            application.processEvents(QEventLoop::AllEvents, 20);
-            if (playback.playing_channel_count_for_event(expected.event) !=
-                0U) {
-                std::cerr << "FF 12 command 0x16 did not stop resource 22\n";
-                return 1;
-            }
-        }
-
-        if (expected.event == 0x10U) {
-            playback.stop_all_channels();
-            application.processEvents(QEventLoop::AllEvents, 20);
-            const auto calls_before_silent_stage = resolver_calls;
-            playback.play_event(0x11U);
-            if (resolver_calls != calls_before_silent_stage ||
-                playback.playback_status_for_event(0x10U).playing ||
-                playback.playing_channel_count_for_event(0x10U) != 0U) {
-                std::cerr << "FF 16 stage handoff left opening audio active\n";
-                return 1;
-            }
-        }
-
-        playback.stop_all_channels();
-        application.processEvents(QEventLoop::AllEvents, 20);
-        if (playback.playback_status_for_event(expected.event).playing) {
-            std::cerr << "stop_all_channels left event " << expected.event
-                      << " playing\n";
-            return 1;
-        }
+    for (const auto& expected : kMapped) {
+        const auto status = playback.playback_status_for_event(expected.event);
+        check(playback.alias_for_event(expected.event) == expected.alias,
+              "alias for " + std::to_string(expected.event));
+        check(status.mapped && status.source_ready && !status.error &&
+                  status.duration_ms >= expected.min_ms &&
+                  status.duration_ms <= expected.max_ms,
+              "duration for " + std::to_string(expected.event) + " = " +
+                  std::to_string(status.duration_ms));
+    }
+    // The 41 rendered ids that had no alias before (doc 26 §2.3).
+    constexpr std::array<std::uint16_t, 41> kNewlyMapped{{
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B,
+        0x0C, 0x0D, 0x0E, 0x0F, 0x13, 0x14, 0x15, 0x17, 0x18, 0x1F, 0x20,
+        0x21, 0x22, 0x23, 0x26, 0x27, 0x28, 0x2A, 0x2B, 0x30, 0x31, 0x33,
+        0x36, 0x38, 0x39, 0x3B, 0x3D, 0x3E, 0x50, 0x5B}};
+    for (const auto id : kNewlyMapped) {
+        check(playback.playback_status_for_event(id).source_ready,
+              "newly mapped id " + std::to_string(id));
     }
 
-    const auto calls_before_unknown = resolver_calls;
-    playback.play_event(0x11U);
-    playback.play_event(0x2EU);
-    playback.play_event(0x2AU);
-    playback.play_event(0x2CU);
-    playback.play_event(0x30U);
-    if (resolver_calls != calls_before_unknown ||
-        !playback.alias_for_event(0x2CU).empty() ||
-        !playback.alias_for_event(0x2EU).empty() ||
-        !playback.alias_for_event(0x30U).empty()) {
-        std::cerr << "an unresolved event reached an audio asset\n";
+    // Starts, stops, one-shot composites and unmapped ids, all logged.
+    playback.play_sfx(0x24U);
+    playback.advance_frame();
+    check(playback.playing_channel_count_for_event(0x24U) == 1U, "0x24 started");
+    playback.stop_resource(0x24U);
+    playback.advance_frame();
+    playback.advance_frame();
+    check(playback.playing_channel_count_for_event(0x24U) == 0U, "0x24 stopped after release");
+    playback.begin_source_sequence();
+    for (int i = 0; i < 60; ++i) {
+        playback.play_event_once_in_sequence(0x5CU);
+        playback.advance_frame();
+        playback.advance_frame();
+    }
+    std::size_t sega_starts = 0U;
+    for (const auto& event : playback.events())
+        sega_starts += event.op == AudioOp::start && event.id == 0x5CU ? 1U : 0U;
+    check(sega_starts == 1U && playback.playing_channel_count_for_event(0x5CU) == 1U,
+          "60 source requests start the composite once");
+    playback.play_sfx(0x2CU);
+    check(playback.alias_for_event(0x2CU).empty() &&
+              playback.playing_channel_count_for_event(0x2CU) == 0U &&
+              playback.events().back() == AudioEvent{playback.mixer().frame(), AudioOp::start, 0x2CU},
+          "silent slot 0x2C is logged but plays nothing");
+    playback.play_music(0x06U);
+    check(playback.mixer().music_id() == 0x06U, "field music 0x06 plays");
+    playback.fade_out();
+    // 18 fade frames, then the 1323-sample key-off release (two frames).
+    for (int i = 0; i < 21; ++i) playback.advance_frame();
+    check(!playback.mixer().music_id().has_value() && playback.mixer().attenuation() == 0U,
+          "0x53126 fade stops everything and restores level 0");
+
+    // WAV render.
+    const auto wav = std::filesystem::temp_directory_path() / "srx_audio_playback_test.wav";
+    {
+        AudioPlaybackService render(resolver, AudioPlaybackService::Output::wav, wav);
+        render.play_music(0x06U);
+        render.play_sfx(0x25U);
+        for (int i = 0; i < 30; ++i) render.advance_frame();
+        render.finish_output();
+    }
+    check(std::filesystem::file_size(wav) == 44U + 30U * kAudioSamplesPerFrame * 4U,
+          "WAV render size");
+    std::filesystem::remove(wav);
+
+    if (failures != 0) {
+        std::cerr << failures << " audio playback check(s) failed\n";
         return 1;
     }
-
+    std::cout << "audio playback tests passed\n";
     return 0;
 }

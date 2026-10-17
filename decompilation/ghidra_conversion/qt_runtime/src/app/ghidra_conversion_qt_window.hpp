@@ -161,18 +161,12 @@ public:
           asset_root_(std::move(asset_root)),
           input_log_(std::move(input_log)),
           frame_stepper_(frame_debug_controls),
-          audio_playback_(headless_replay
-                              ? nullptr
-                              : std::make_unique<AudioPlaybackService>(
-                                    [this](const std::string_view alias)
-                                        -> std::filesystem::path {
-                                        const auto* record =
-                                            state_.asset_catalog.catalog.find(
-                                                std::string(alias));
-                                        return record == nullptr
-                                                   ? std::filesystem::path{}
-                                                   : record->absolute_path;
-                                    })),
+          // Headless runs keep the mixer: a null sink still advances voices
+          // frame by frame and logs every (frame, op, id).
+          audio_playback_(std::make_unique<AudioPlaybackService>(
+              audio_alias_resolver(),
+              headless_replay ? AudioPlaybackService::Output::null
+                              : AudioPlaybackService::Output::device)),
           field_scene_runtime_([this](const std::string_view boundary) {
               record_debug_source_event(boundary);
           }, [this](const std::uint16_t event) {
@@ -190,6 +184,22 @@ public:
         setFocusPolicy(Qt::StrongFocus);
         setAttribute(Qt::WA_OpaquePaintEvent);
 
+        field_scene_runtime_.set_audio_host_callbacks(
+            [this](const std::uint16_t music) {
+                if (audio_playback_) {
+                    audio_playback_->play_music(music);
+                }
+            },
+            [this](const std::uint8_t level) {
+                if (audio_playback_) {
+                    audio_playback_->attenuate(level);
+                }
+            },
+            [this] {
+                if (audio_playback_) {
+                    audio_playback_->fade_out();
+                }
+            });
         configure_startup_callbacks();
 #ifdef SHADOWRUN_QT_QA_DRIVER
         install_qa_startup_observers();
@@ -286,6 +296,14 @@ public:
             source_random_observer_installed_ = true;
         }
     }
+
+    // Replace the audio output with a WAV render (headless golden runs).
+    void set_audio_wav_output(const std::filesystem::path& path) {
+        audio_playback_ = std::make_unique<AudioPlaybackService>(
+            audio_alias_resolver(), AudioPlaybackService::Output::wav, path);
+    }
+
+    AudioPlaybackService* audio_playback() { return audio_playback_.get(); }
 
     // Runs a recorded session without presenting a widget or opening the host
     // audio device. The same source-frame and input handlers are used as live
@@ -1057,16 +1075,18 @@ private:
             sampled_opening_controller_word_ = 0U;
         };
         startup_callbacks_.opening_intro.prepare_mode_entry = [this] {
-            // ROM 0x53126 sends FF 16 here; its Z80 handler clears all active
-            // sound channels before the next opening-stage command.
+            // ROM 0x53126: six op-0x20 steps three frames apart, FF 16, then
+            // level 0. The next opening-stage command is queued until the
+            // fade completes, as the ROM blocks inside it.
             if (audio_playback_) {
-                audio_playback_->stop_all_channels();
+                audio_playback_->fade_out();
             }
         };
         startup_callbacks_.opening_intro.service_audio_command =
             [this](const std::uint16_t command) {
+                // 0x59C72/0x59C92/0x59CB8 use play_music 0x530EA [C].
                 if (audio_playback_) {
-                    audio_playback_->play_event(command);
+                    audio_playback_->play_music(command);
                 }
             };
         startup_callbacks_.opening_intro.service_audio = no_op;
@@ -1240,8 +1260,7 @@ private:
                     // The ROM's command-0 wrapper stops then starts this same
                     // music resource before drawing the copyright text.
                     if (audio_playback_) {
-                        audio_playback_->stop_resource(event);
-                        audio_playback_->play_event(event);
+                        audio_playback_->play_music(event);
                     }
                 }
             };
@@ -1362,7 +1381,25 @@ private:
         }
     }
 
+    // Render this frame's audio, then the game logic for the next frame
+    // queues its commands; one mixer frame per source frame.
     void advance_one_source_frame() {
+        advance_source_frame_logic();
+        if (audio_playback_) {
+            audio_playback_->advance_frame();
+        }
+    }
+
+    AudioPlaybackService::PathResolver audio_alias_resolver() {
+        return [this](const std::string_view alias) -> std::filesystem::path {
+            const auto* record =
+                state_.asset_catalog.catalog.find(std::string(alias));
+            return record == nullptr ? std::filesystem::path{}
+                                     : record->absolute_path;
+        };
+    }
+
+    void advance_source_frame_logic() {
         if (state_.phase == StartupIntegrationPhase::pre_title) {
             advance_startup_boot_frame(state_, startup_callbacks_);
             return;

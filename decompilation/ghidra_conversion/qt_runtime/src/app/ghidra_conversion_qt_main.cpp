@@ -6,6 +6,7 @@ int main(int argc, char** argv) {
     try {
         std::optional<std::filesystem::path> explicit_assets;
         std::optional<std::filesystem::path> frame_dump;
+        std::optional<std::filesystem::path> audio_wav;
         std::optional<std::uint16_t> debug_port;
         std::optional<std::uint64_t> replay_to_frame;
         debug::InputLogConfig input_log;
@@ -23,6 +24,7 @@ int main(int argc, char** argv) {
                              "  --headless-replay Run replay without a window or audio output.\n"
                              "  --replay-to-frame Seek to N completed frames; pair with --debug-port for paused inspection.\n"
                              "  --dump-frame    Save the final replay frame as an image.\n"
+                             "  --audio-wav     With --headless-replay: render the session's audio to a 44.1 kHz WAV.\n"
                              "  --debug-port    Start the paused, headless local debugger on 127.0.0.1.\n";
                 return 0;
             }
@@ -36,6 +38,13 @@ int main(int argc, char** argv) {
             }
             if (argument == "--headless-replay") {
                 headless_replay = true;
+                continue;
+            }
+            if (argument == "--audio-wav") {
+                if (index + 1 >= argc) {
+                    throw std::invalid_argument("--audio-wav requires a file path");
+                }
+                audio_wav = std::filesystem::path(argv[++index]);
                 continue;
             }
             if (argument == "--dump-frame") {
@@ -100,6 +109,10 @@ int main(int argc, char** argv) {
             throw std::invalid_argument(
                 "--headless-replay requires --replay-input <file>");
         }
+        if (audio_wav.has_value() && !headless_replay) {
+            throw std::invalid_argument(
+                "--audio-wav is only available with --headless-replay");
+        }
         if (frame_dump.has_value() && !headless_replay) {
             throw std::invalid_argument(
                 "--dump-frame is only available with --headless-replay");
@@ -162,7 +175,7 @@ int main(int argc, char** argv) {
                 ++qt_argument_index;
                 continue;
             }
-            if (argument == "--dump-frame") {
+            if (argument == "--dump-frame" || argument == "--audio-wav") {
                 qt_argument_index += 2;
                 continue;
             }
@@ -212,6 +225,9 @@ int main(int argc, char** argv) {
                                       frame_debug_controls ||
                                           debug_port.has_value(),
                                       headless_mode, debug_port);
+        if (audio_wav.has_value()) {
+            window.set_audio_wav_output(*audio_wav);
+        }
         if (headless_replay ||
             (debug_port.has_value() && replay_to_frame.has_value())) {
             std::string error;
@@ -224,6 +240,9 @@ int main(int argc, char** argv) {
             if (debug_port.has_value()) {
                 window.resume_debugger_after_replay_seek();
             } else {
+                if (auto* audio = window.audio_playback()) {
+                    audio->finish_output();
+                }
                 std::cout << "headless replay reached source frame "
                           << window.source_frame_count_for_debug();
                 if (frame_dump.has_value()) {

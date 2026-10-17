@@ -1,5 +1,16 @@
 #pragma once
 
+// Host audio service: the window/FSR boundary over the resource pipeline
+// (doc 26 §4). Ids resolve through assets/audio/audio_manifest.tsv (generated
+// from enums.lua); the GemsCommandLayer applies the ROM entry-point
+// semantics; the AudioMixer renders exactly one game frame per
+// advance_frame() into the selected sink. Unknown ids are logged as
+// operations but play nothing (no invented sound).
+
+#include "audio_mixer.hpp"
+#include "audio_resources.hpp"
+#include "gems_commands.hpp"
+
 #include <QObject>
 
 #include <cstddef>
@@ -7,21 +18,13 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
-#include <optional>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
-// Host playback for extracted Windows audio assets. The converted service
-// boundaries map source event ids to named FLAC resources. QMediaPlayer is
-// used because the runtime assets are lossless FLAC; QSoundEffect rejects
-// these files on the supported Qt Windows build. Unknown events stay
-// observable through the presentation boundary log instead of receiving an
-// invented sound.
 class AudioPlaybackService final : public QObject {
 public:
     struct PlaybackStatus {
@@ -33,53 +36,68 @@ public:
         std::int64_t duration_ms = 0;
     };
 
-    // The resolver turns a catalog alias into an absolute file path (the
-    // conversion catalog owns the audio rows); a null result is a no-op.
-    using PathResolver =
-        std::function<std::filesystem::path(std::string_view alias)>;
+    enum class Output : std::uint8_t {
+        device, // QAudioSink; falls back to null when no device exists
+        null,   // headless: no decode, deterministic voice state + event log
+        wav,    // headless render to wav_path
+    };
 
-    AudioPlaybackService(PathResolver resolver, QObject* parent = nullptr);
+    // The resolver turns a catalog alias into an absolute file path. The
+    // manifest itself is catalog alias "audio.manifest".
+    using PathResolver = AudioResourceBank::PathResolver;
+
+    explicit AudioPlaybackService(PathResolver resolver,
+                                  Output output = Output::device,
+                                  std::filesystem::path wav_path = {},
+                                  QObject* parent = nullptr);
     ~AudioPlaybackService() override;
 
-    // Play the extracted resource for a source audio event id. No-op (with
-    // a logged boundary by the caller) when the event has no verified alias.
-    void play_event(std::uint16_t event);
+    // ROM entry points (gems_commands.hpp).
+    void play_sfx(std::uint16_t id);    // 0x530DE
+    void play_music(std::uint16_t id);  // 0x530EA
+    void stop_sfx(std::uint16_t id);    // 0x530D2
+    void stop_all();                    // 0x52FA0 (op 0x16)
+    void fade_out();                    // 0x53126
+    void attenuate(std::uint8_t level); // 0x5315E (0x53156 = level 0)
+    void set_music_enabled(bool enabled);  // FFFC08
+    void set_sfx_enabled(bool enabled);    // FFFC0A
 
-    // Clear one-shot event latches when a source audio sequence starts.
-    void begin_source_sequence();
-
-    // Publish a cue once during the current source sequence. This is for
-    // callers whose extracted asset already contains the complete rendered
-    // sound and which issue repeated source requests while that cue is active.
-    void play_event_once_in_sequence(std::uint16_t event);
-
-    // Stop every channel playing this source resource. This is distinct from
-    // the numeric command id: a ROM command may start or stop the same id
-    // depending on whether it uses the FF 10 or FF 12 service path.
-    void stop_resource(std::uint16_t resource_id);
-
-    // Play a catalog alias directly (audio.menu.command-024 and friends).
+    // Compatibility names used by the existing host callbacks.
+    void play_event(std::uint16_t event) { play_sfx(event); }
+    void stop_resource(std::uint16_t resource_id) { stop_sfx(resource_id); }
+    void stop_all_channels() { stop_all(); }
     void play_alias(std::string_view alias);
 
-    // ROM 0x53126 ends with FF 16; the Z80 handler clears every active sound
-    // channel. Mirror that source handoff in the host playback pool.
-    void stop_all_channels();
+    // One-shot latch for the two composite intro renders (0x5C/0x5D): the
+    // asset already contains every ROM-cadenced start.
+    void begin_source_sequence();
+    void play_event_once_in_sequence(std::uint16_t event);
 
-    std::string_view alias_for_event(std::uint16_t event) const;
-    PlaybackStatus playback_status_for_event(std::uint16_t event) const;
-    std::size_t playing_channel_count_for_event(std::uint16_t event) const;
+    // Render one game frame. Call exactly once per source frame.
+    void advance_frame();
+
+    std::string_view alias_for_event(std::uint16_t event);
+    PlaybackStatus playback_status_for_event(std::uint16_t event);
+    std::size_t playing_channel_count_for_event(std::uint16_t event);
+
+    const std::vector<AudioEvent>& events();
+    AudioMixer& mixer();
+    GemsCommandLayer& commands();
+    const std::string& manifest_error();
+    void finish_output(); // flush the WAV header
 
 private:
-    struct PlaybackChannel;
-    PlaybackChannel& acquire_channel();
-    void start_alias(std::string_view alias,
-                     std::optional<std::uint16_t> event);
+    void ensure_loaded();
 
     PathResolver resolver_;
-    std::vector<std::unique_ptr<PlaybackChannel>> channels_;
-    std::size_t next_channel_ = 0U;
-    std::uint64_t request_sequence_ = 0U;
-    std::unordered_map<std::uint16_t, std::string> event_aliases_;
+    Output output_;
+    std::filesystem::path wav_path_;
+    bool loaded_ = false;
+    std::string manifest_error_;
+    std::unique_ptr<AudioResourceBank> bank_;
+    std::unique_ptr<AudioMixer> mixer_;
+    std::unique_ptr<GemsCommandLayer> commands_;
+    std::unique_ptr<AudioSink> sink_;
     std::unordered_set<std::uint16_t> sequence_one_shot_events_;
 };
 

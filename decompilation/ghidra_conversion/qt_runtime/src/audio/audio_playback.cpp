@@ -1,119 +1,98 @@
 #include "audio_playback.hpp"
 
-#include <QAudioOutput>
-#include <QMediaPlayer>
-#include <QString>
-#include <QUrl>
+#include "qt_audio_sink.hpp"
 
-#include <algorithm>
-#include <filesystem>
-#include <optional>
 #include <utility>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
-struct AudioPlaybackService::PlaybackChannel {
-    QAudioOutput output;
-    QMediaPlayer player;
-    std::filesystem::path source_path;
-    std::uint16_t event = 0U;
-    std::uint16_t resource_id = 0U;
-    std::uint64_t request_sequence = 0U;
-    bool has_event = false;
-    bool has_resource = false;
-
-    PlaybackChannel() {
-        output.setVolume(0.6f);
-        player.setAudioOutput(&output);
-    }
-};
-
-AudioPlaybackService::~AudioPlaybackService() = default;
+AudioPlaybackService::~AudioPlaybackService() { finish_output(); }
 
 AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
+                                           const Output output,
+                                           std::filesystem::path wav_path,
                                            QObject* parent)
-    : QObject(parent), resolver_(std::move(resolver)) {
-    // Six host channels support overlapping independent effects. Repeated
-    // ROM starts for the pre-title and logo cues are rendered offline as one
-    // source-cadenced stereo sequence each; the first request starts that
-    // sequence asset rather than layering complete sequence renders.
-    constexpr std::size_t kChannelCount = 6U;
-    channels_.reserve(kChannelCount);
-    for (std::size_t index = 0; index < kChannelCount; ++index) {
-        channels_.push_back(std::make_unique<PlaybackChannel>());
-    }
+    : QObject(parent), resolver_(std::move(resolver)), output_(output),
+      wav_path_(std::move(wav_path)) {}
 
-    // ROM 0x59C72/0x59C92/0x59CB8 send stage ids 0x10/0x11/0x12 through the
-    // gated 0x530EA command pair: FF 12 <id>, then FF 10 <id>. Independent
-    // audio matches the extracted 0x10 and 0x12 tracks. A ROM-driven probe of
-    // the exact 0x11 pair has no YM key-on, so it remains intentionally
-    // unmapped; source track-stop/lifetime behavior is still open.
-    event_aliases_ = {
-        {0x00U, "audio.music.resource.000"},
-        {0x10U, "audio.intro.title.stage-1"},
-        {0x12U, "audio.intro.title.stage-3"},
-        // Event 0x16 starts table-2 resource 22 on ordinary FF 10 paths.
-        // The pre-title caller uses FF 12 with the same id to stop it.
-        {0x16U, "audio.field.effect-016"},
-        // ROM 0x1514E selects spawn sounds from 0x15318/0x15336 and submits
-        // the selected event to 0x530DE. The regular action table selects
-        // resources 28, 81, 30, and 29; its alternate table selects 63 or 74.
-        {0x1CU, "audio.effects.resource.028"},
-        {0x1DU, "audio.effects.resource.029"},
-        {0x1EU, "audio.effects.resource.030"},
-        // ROM 0x15830 indexes 0x4946 with the hex action code after an effect
-        // slot is accepted. The table-2 resource suffix is decimal: 0x32 ->
-        // 50, 0x34 -> 52, 0x35 -> 53, 0x37 -> 55, and 0x3A -> 58.
-        {0x32U, "audio.effects.resource.050"},
-        {0x34U, "audio.effects.resource.052"},
-        {0x35U, "audio.effects.resource.053"},
-        {0x37U, "audio.effects.resource.055"},
-        {0x3AU, "audio.effects.resource.058"},
-        {0x3FU, "audio.effects.resource.063"},
-        {0x51U, "audio.effects.resource.081"},
-        // ROM 0xB1DC requests 0x4C when an ordinary linked-target action
-        // begins; the matching table-2 resource 76 is a decoded sound effect.
-        {0x4CU, "audio.effects.resource.076"},
-        // After target-heading acceptance, ROM 0xB1DC sends 0x4D or 0x4E
-        // according to FFF9F8 bit 7; the adjacent table-2 resources are 77/78.
-        {0x4DU, "audio.effects.resource.077"},
-        {0x4EU, "audio.effects.resource.078"},
-        {0x24U, "audio.menu.command-024"},
-        // ROM command 0x25 is table-2 index 37. The importer emits that
-        // zero-based entry as audio.effects.resource.037.
-        {0x25U, "audio.effects.resource.037"},
-        {0x29U, "audio.menu.command-029"},
-        {0x4AU, "audio.effects.resource.074"},
-        // At the SEGA logo, queued command 0x5C starts table-2 resource 92.
-        // The mapped asset contains all 60 starts at the ROM's two-frame
-        // cadence, rendered together through the Z80 driver and Genesis chips.
-        // The adjacent pre-title command 0x16 is FF 12 (stop resource 22),
-        // despite that id's valid FF 10 start alias above.
-        {0x5CU, "audio.intro.sega-logo-shock-sequence"},
-        // ROM 0x1E4E submits 0x5D on alternating logo columns. The asset
-        // contains all 19 resource-93 starts at the four-frame cadence.
-        {0x5DU, "audio.intro.shadowrun-logo-reveal-sequence"},
-        // The maglock unlock routine sends command 0x4B (table-2 resource 75).
-        {0x4BU, "audio.effects.resource.075"},
-        // 0x2C/resource 44 is a verified silent table slot and has no asset.
-        // 0x30/resource 48 remains unmapped until its source stop lifetime is
-        // understood.
-    };
-}
-
-std::string_view AudioPlaybackService::alias_for_event(
-    const std::uint16_t event) const {
-    const auto found = event_aliases_.find(event);
-    return found == event_aliases_.end() ? std::string_view{}
-                                         : std::string_view(found->second);
-}
-
-void AudioPlaybackService::play_event(const std::uint16_t event) {
-    const auto alias = alias_for_event(event);
-    if (alias.empty()) {
+void AudioPlaybackService::ensure_loaded() {
+    if (loaded_) {
         return;
     }
-    start_alias(alias, event);
+    loaded_ = true;
+    bank_ = std::make_unique<AudioResourceBank>(resolver_);
+    const auto manifest = resolver_ ? resolver_("audio.manifest")
+                                    : std::filesystem::path{};
+    if (manifest.empty() || !bank_->load_manifest(manifest)) {
+        manifest_error_ = manifest.empty() ? "audio.manifest alias is missing"
+                                           : bank_->error();
+        bank_->load_manifest_text("id\tenum_name\tkind\talias\tloop_start\tloop_end\tpersistent\n");
+    }
+    if (output_ == Output::device) {
+        auto device = std::make_unique<QtAudioSink>();
+        if (device->ok()) {
+            sink_ = std::move(device);
+        } else {
+            output_ = Output::null;
+        }
+    }
+    if (output_ == Output::wav) {
+        sink_ = std::make_unique<WavAudioSink>(wav_path_);
+    } else if (output_ == Output::null) {
+        sink_ = std::make_unique<NullAudioSink>();
+    }
+    mixer_ = std::make_unique<AudioMixer>(*bank_, output_ != Output::null);
+    commands_ = std::make_unique<GemsCommandLayer>(*mixer_);
+}
+
+void AudioPlaybackService::play_sfx(const std::uint16_t id) {
+    ensure_loaded();
+    commands_->play_sfx(id);
+}
+
+void AudioPlaybackService::play_music(const std::uint16_t id) {
+    ensure_loaded();
+    commands_->play_music(id);
+}
+
+void AudioPlaybackService::stop_sfx(const std::uint16_t id) {
+    ensure_loaded();
+    commands_->stop_sfx(id);
+}
+
+void AudioPlaybackService::stop_all() {
+    ensure_loaded();
+    commands_->stop_all();
+}
+
+void AudioPlaybackService::fade_out() {
+    ensure_loaded();
+    commands_->fade_out();
+}
+
+void AudioPlaybackService::attenuate(const std::uint8_t level) {
+    ensure_loaded();
+    commands_->attenuate(level);
+}
+
+void AudioPlaybackService::set_music_enabled(const bool enabled) {
+    ensure_loaded();
+    commands_->set_music_enabled(enabled);
+}
+
+void AudioPlaybackService::set_sfx_enabled(const bool enabled) {
+    ensure_loaded();
+    commands_->set_sfx_enabled(enabled);
+}
+
+void AudioPlaybackService::play_alias(const std::string_view alias) {
+    ensure_loaded();
+    for (const auto& [id, row] : bank_->rows()) {
+        if (row.alias == alias) {
+            commands_->play_sfx(id);
+            return;
+        }
+    }
 }
 
 void AudioPlaybackService::begin_source_sequence() {
@@ -123,106 +102,71 @@ void AudioPlaybackService::begin_source_sequence() {
 void AudioPlaybackService::play_event_once_in_sequence(
     const std::uint16_t event) {
     if (sequence_one_shot_events_.insert(event).second) {
-        play_event(event);
+        play_sfx(event);
     }
 }
 
-void AudioPlaybackService::stop_resource(const std::uint16_t resource_id) {
-    for (const auto& channel : channels_) {
-        if (channel->has_resource && channel->resource_id == resource_id) {
-            channel->player.stop();
-        }
-    }
+void AudioPlaybackService::advance_frame() {
+    ensure_loaded();
+    commands_->advance_frame(sink_.get());
 }
 
-void AudioPlaybackService::play_alias(const std::string_view alias) {
-    start_alias(alias, std::nullopt);
-}
-
-void AudioPlaybackService::start_alias(
-    const std::string_view alias,
-    const std::optional<std::uint16_t> event) {
-    if (!resolver_) {
-        return;
-    }
-    const auto path = resolver_(alias);
-    if (path.empty() || !std::filesystem::is_regular_file(path)) {
-        return;
-    }
-
-    auto& channel = acquire_channel();
-    channel.player.stop();
-    if (channel.source_path != path ||
-        channel.player.error() != QMediaPlayer::NoError) {
-        channel.source_path = path;
-        channel.player.setSource(
-            QUrl::fromLocalFile(QString::fromStdWString(path.wstring())));
-    }
-    channel.player.setPosition(0);
-    channel.event = event.value_or(0U);
-    channel.has_event = event.has_value();
-    channel.resource_id = event.value_or(0U);
-    channel.has_resource = event.has_value();
-    channel.request_sequence = ++request_sequence_;
-    channel.player.play();
-}
-
-AudioPlaybackService::PlaybackChannel&
-AudioPlaybackService::acquire_channel() {
-    auto& channel = channels_[next_channel_];
-    next_channel_ = (next_channel_ + 1U) % channels_.size();
-    return *channel;
-}
-
-void AudioPlaybackService::stop_all_channels() {
-    for (const auto& channel : channels_) {
-        channel->player.stop();
-    }
+std::string_view AudioPlaybackService::alias_for_event(
+    const std::uint16_t event) {
+    ensure_loaded();
+    const auto* row = bank_->row(event);
+    return row == nullptr ? std::string_view{} : std::string_view(row->alias);
 }
 
 AudioPlaybackService::PlaybackStatus
-AudioPlaybackService::playback_status_for_event(
-    const std::uint16_t event) const {
-    const auto latest = std::max_element(
-        channels_.cbegin(), channels_.cend(),
-        [event](const auto& left, const auto& right) {
-            const bool left_matches = left->has_event && left->event == event;
-            const bool right_matches = right->has_event && right->event == event;
-            if (left_matches != right_matches) {
-                return !left_matches;
-            }
-            return left->request_sequence < right->request_sequence;
-        });
-    if (latest == channels_.cend() || !(*latest)->has_event ||
-        (*latest)->event != event) {
-        return {};
+AudioPlaybackService::playback_status_for_event(const std::uint16_t event) {
+    ensure_loaded();
+    PlaybackStatus status{};
+    if (bank_->row(event) == nullptr) {
+        return status;
     }
-
-    const auto& player = (*latest)->player;
-    const auto status = player.mediaStatus();
-    const bool source_ready =
-        status == QMediaPlayer::LoadedMedia ||
-        status == QMediaPlayer::BufferedMedia ||
-        status == QMediaPlayer::StalledMedia ||
-        status == QMediaPlayer::EndOfMedia;
-    return PlaybackStatus{
-        true,
-        source_ready,
-        player.hasAudio(),
-        player.playbackState() == QMediaPlayer::PlayingState,
-        player.error() != QMediaPlayer::NoError ||
-            status == QMediaPlayer::InvalidMedia,
-        static_cast<std::int64_t>(player.duration())};
+    status.mapped = true;
+    const auto frames = bank_->frame_count(event);
+    status.source_ready = frames.has_value();
+    status.audio_available = frames.has_value() && *frames != 0U;
+    status.error = !frames.has_value();
+    status.playing = mixer_->playing(event);
+    status.duration_ms = frames.has_value()
+        ? static_cast<std::int64_t>(*frames * 1000U / kAudioSampleRate)
+        : 0;
+    return status;
 }
 
 std::size_t AudioPlaybackService::playing_channel_count_for_event(
-    const std::uint16_t event) const {
-    return static_cast<std::size_t>(std::count_if(
-        channels_.cbegin(), channels_.cend(), [event](const auto& channel) {
-            return channel->has_event && channel->event == event &&
-                   channel->player.playbackState() ==
-                       QMediaPlayer::PlayingState;
-        }));
+    const std::uint16_t event) {
+    ensure_loaded();
+    return mixer_->playing_voice_count(event);
+}
+
+const std::vector<AudioEvent>& AudioPlaybackService::events() {
+    ensure_loaded();
+    return mixer_->events();
+}
+
+AudioMixer& AudioPlaybackService::mixer() {
+    ensure_loaded();
+    return *mixer_;
+}
+
+GemsCommandLayer& AudioPlaybackService::commands() {
+    ensure_loaded();
+    return *commands_;
+}
+
+const std::string& AudioPlaybackService::manifest_error() {
+    ensure_loaded();
+    return manifest_error_;
+}
+
+void AudioPlaybackService::finish_output() {
+    if (auto* wav = dynamic_cast<WavAudioSink*>(sink_.get())) {
+        wav->finish();
+    }
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

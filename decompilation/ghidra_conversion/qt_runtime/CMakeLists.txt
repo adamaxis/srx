@@ -8,7 +8,15 @@ set(SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/menus"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/persistence"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/srx_refactor")
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/srx_refactor"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/dr_libs")
+
+# Qt-free audio core: id-keyed resources (dr_flac), frame-locked mixer with
+# null/WAV sinks, and the GEMS command layer (doc 26 phases 0-3).
+set(SHADOWRUN_GHIDRA_AUDIO_CORE_SOURCES
+    src/audio/audio_resources.cpp
+    src/audio/audio_mixer.cpp
+    src/audio/gems_commands.cpp)
 
 set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/field/field_scene_runtime.cpp
@@ -31,7 +39,9 @@ set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/persistence/game_save_store.cpp
     src/field/field_mode_text_runtime.cpp
     src/field/field_interaction_runtime.cpp
-    src/audio/audio_playback.cpp)
+    src/audio/audio_playback.cpp
+    src/audio/qt_audio_sink.cpp
+    ${SHADOWRUN_GHIDRA_AUDIO_CORE_SOURCES})
 
 add_executable(shadowrun_frame_debugger_test
     tests/debug/frame_debugger_test.cpp)
@@ -422,6 +432,12 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_world_effect_repai
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-world-effect-repaint-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-world-effect-repaint-qa")
+# Field audio rules: scene-init music (profile +0x40 via audio.lua), the
+# Start-menu op-0x20 duck and its restore, music on a scene change.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_audio_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-audio-qa)
+
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_world_activity_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-world-activity-qa
@@ -1292,6 +1308,8 @@ add_test(NAME shadowrun_ghidra_movement_mode_transition
 add_executable(shadowrun_ghidra_audio_playback_test
     tests/audio/audio_playback_test.cpp
     src/audio/audio_playback.cpp
+    src/audio/qt_audio_sink.cpp
+    ${SHADOWRUN_GHIDRA_AUDIO_CORE_SOURCES}
 )
 target_include_directories(shadowrun_ghidra_audio_playback_test
     PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
@@ -1323,12 +1341,29 @@ target_compile_definitions(shadowrun_ghidra_audio_playback_test PRIVATE
     SHADOWRUN_GHIDRA_AUDIO_TITLE_THEME_RESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/music/resource-000.flac"
     SHADOWRUN_GHIDRA_AUDIO_INTRO_STAGE_1_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/intro/title-stage-1.flac"
     SHADOWRUN_GHIDRA_AUDIO_INTRO_STAGE_3_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/audio/intro/title-stage-3.flac")
+target_compile_definitions(shadowrun_ghidra_audio_playback_test PRIVATE
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
 target_link_libraries(shadowrun_ghidra_audio_playback_test
-    PRIVATE Qt6::Core Qt6::Multimedia)
+    PRIVATE shadowrun_ghidra_conversion_runtime Qt6::Core Qt6::Multimedia)
+# Runs headless through the null and WAV sinks; no audio device needed.
 add_test(NAME shadowrun_ghidra_audio_playback
          COMMAND shadowrun_ghidra_audio_playback_test)
-set_tests_properties(shadowrun_ghidra_audio_playback PROPERTIES
-    SKIP_RETURN_CODE 77)
+
+# Mixer / GEMS-layer unit tests: determinism, 735-sample frames, loop points,
+# release ramp, voice stealing, 0x53126 fade timeline, gates.
+add_executable(shadowrun_ghidra_audio_mixer_test
+    tests/audio/audio_mixer_test.cpp
+    ${SHADOWRUN_GHIDRA_AUDIO_CORE_SOURCES})
+target_include_directories(shadowrun_ghidra_audio_mixer_test
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
+set_target_properties(shadowrun_ghidra_audio_mixer_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+target_compile_definitions(shadowrun_ghidra_audio_mixer_test PRIVATE
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+add_test(NAME shadowrun_ghidra_audio_mixer
+         COMMAND shadowrun_ghidra_audio_mixer_test)
 
 # QA-seed FFFC34 bit 13, which the source E7 dialogue action normally writes,
 # then enter scene-2/event-7 with ordinary controller movement. This verifies
