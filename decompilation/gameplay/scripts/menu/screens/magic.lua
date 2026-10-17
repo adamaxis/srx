@@ -83,7 +83,7 @@ end
 function M.enter(st, ctx)
     local record = active_record(ctx)
     if not (record.archetype < E.Archetype.CASTER_LIMIT and
-            record.magic_resource ~= 0) then
+            record.magic ~= 0) then
         local defense = Rules.defense(
             ctx.game.party(), ctx.game.slot_active_set(), record)
         return {

@@ -88,7 +88,8 @@ local function active_run_id()
     -- The accepted run record lives in the Lua run registry. FFFBEC's active
     -- run state is consumed by the ROM Current Run branch at 0xF2E2/0x1E72C;
     -- the menu host's older boolean is not updated when Lua accepts an offer.
-    local runs = game.runs
+    local live = rawget(_G, "game")   -- gameplay global; absent in unit hosts
+    local runs = type(live) == "table" and live.runs or nil
     local registry = type(runs) == "table" and runs.registry or nil
     if type(registry) ~= "table" or
        type(registry.active_run_id) ~= "function" then

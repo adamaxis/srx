@@ -5,8 +5,9 @@ local Route = require("menu.route")
 
 Route.register(E.MenuScreen.COMMAND, require("menu.screens.command"))
 Route.register(E.MenuScreen.POSTURE, require("menu.screens.posture"))
-Route.register(E.MenuScreen.ATTRIBUTES_SKILLS,
-               require("menu.screens.attributes").Attributes)
+local attributes = require("menu.screens.attributes")
+Route.register(E.MenuScreen.ATTRIBUTES_SKILLS, attributes.Attributes)
+Route.register(E.MenuScreen.UPGRADE_PROMPT, attributes.Prompt)
 local wait_any = require("menu.screens.wait_any")
 Route.register(E.MenuScreen.CYBERWARE,
                wait_any.make(E.MenuRegion.FULL))
@@ -61,6 +62,7 @@ Route.register(E.MenuScreen.DECK_MAP, deck_screens.Map)
 local legacy = require("menu.screens.legacy")
 for screen = E.MenuScreen.ITEM_ACTION, E.MenuScreen.DECK_MAP do
     if screen ~= E.MenuScreen.ATTRIBUTES_SKILLS and
+       screen ~= E.MenuScreen.UPGRADE_PROMPT and
        screen ~= E.MenuScreen.CYBERWARE and
        screen ~= E.MenuScreen.MAGIC and
        screen ~= E.MenuScreen.MAGICAL_DEFENSE and

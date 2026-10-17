@@ -46,7 +46,8 @@ local function mk(o)
         field_resume = function() g.resumed = true end, kill_leader = function() g.killed = true end,
         set_leader_spells = function(t) g.spells = t end,
         scene_mode = function() return o.scene or 0 end, in_combat = function() return o.combat or false end,
-        save_game = function(n) g.saved = n end, load_game = function(n) g.loaded = n; return o.load_ok or false end,
+        save_game = function(n) g.saved = n; return o.save_ok ~= false end, load_game = function(n) g.loaded = n; return o.load_ok or false end,
+        save_status = function(n) return (o.save_status or {})[n] or 0 end,
         deck_enter = function() g.deck_in = true; return 7 end, deck_leave = function(v) g.deck_out = v end,
         deck_tick = function() end, set_deck_mode = function(v) g.mode = v end,
         deck_record = function() return g.rec end, deck_slots = function() return g.dslots end,
@@ -66,8 +67,9 @@ local function mk(o)
         commit_party = function(p) for k, v in pairs(p) do g.party[k] = v end end,
         set_runner_ammo = function(slot, clips, rounds) local r = g.party[slot]; r.clips, r.rounds = clips, rounds end,
         consume_debug_unlock = function() g.unlock = false end,
-        set_contact_flags = function(m) g.contacts = m end, set_spell_table = function(t) g.spells = t end,
-        source_random_bound = function(n) return 0 end, matrix_alert_random_bound = function(n) return 0 end,
+        set_contact_flags = function(m) g.contacts = m end, set_spell_table = function(index, t) g.spell_index = index; g.spells = t end,
+        matrix_world_state = function() return { field = { alarm = 0 } } end, commit_matrix_world_state = function(w) g.world = w end,
+        source_random_bound = function(n) g.draws = (g.draws or 0) + 1; return 0 end, matrix_alert_random_bound = function(n) return 0 end,
     }
     g.rec = o.rec or { memory = 40, storage = 500, load_io = 3, ratings = zeros(12), active = { [0] = -1, -1, -1, -1, -1 },
         files = { [0] = { id = -1, size = 0 }, { id = -1, size = 0 }, { id = -1, size = 0 }, { id = -1, size = 0 }, { id = -1, size = 0 } } }
@@ -79,6 +81,16 @@ local function st(r) return r:top().state end
 local function page(r, p) while r.stack[1].state.page ~= p do r:frame(P.LEFT) end end
 
 local function section(name, fn) local ok, err = pcall(fn); if not ok then fails = fails + 1; n = n + 1; print('STALE section [' .. name .. ']: ' .. tostring(err)) end end
+-- Shared fixtures (hoisted: several sections use the same modules / ROM image).
+local ROM_PATH = "decompilation/input/shadowrun_genesis_us.bin"   -- tracked in git; ROM checks are mandatory
+local ROM = (function() local f = io.open(ROM_PATH, "rb"); if not f then return nil end; local d = f:read("a"); f:close(); return d end)()
+check(ROM ~= nil and #ROM == 0x200000, "ROM image present (" .. ROM_PATH .. ")")
+local AT = require("menu.screens.attributes").Attributes
+local MR = require("menu.rules.magic")
+local MXr = require("menu.rules.matrix")
+-- host spell_table(index) shape (game_script_runtime.cpp MenuBinding::spell_table): entry_count + 1-based entries
+local function sp(code, limit) return { code = code, force_limit = limit, availability = 0, difficulty_modifier = 0, base_effect = 0 } end
+local function deck(o) o = o or {}; o.deck = true; local r, l, g = mk(o); r:frame(P.A); r:frame(P.DOWN); r:frame(P.DOWN); r:frame(P.A); return r, l, g end
 -- ---- clips (ROM 0x11B58: one-shot, out/menu_sound_sites.txt) ------------------------------------------
 section('clips (ROM 0x11B58: one-shot, ou', function()
 local function clips(o) local r, l, g = mk(o); page(r, E.MenuPage.CLIPS); r:frame(P.A); return r, l, g end
@@ -94,7 +106,10 @@ r:frame(P.B); r:frame(P.START); check(top(r) == S.RELOAD_CONFIRM, "prompt ignore
 r:frame(P.A); check(top(r) == S.COMMAND and g.party[0].clips == 1, "No -> silent exit [C 0x11D84]")
 r:frame(P.A); r:frame(P.A); r:frame(P.LEFT | P.RIGHT); check(st(r).yes == true, "L+R toggles once [C]")
 r:frame(P.A); check(g.party[0].clips == 0 and g.party[0].rounds == 0x40 and st(r).message == MM.RELOADED, "Yes reloads, capped")
-r:frame(P.A); r:frame(P.A); r:frame(P.A); check(st(r).message == MM.OUT_OF_AMMO, "out of clips [C 0x12062]")
+-- 0x12062 prints "<name> is out of ammo clips!" (0xD1AC6), but the caller's 0x11C9C path runs 0x12C36 (clear
+-- center window from $C118) before drawing "Function Aborted!" (0xD1ED8) with no wait in between, so the
+-- visible result is Function Aborted [C 0x12062/0x11C46/0x11C9C/0x12C36].
+r:frame(P.A); r:frame(P.A); r:frame(P.A); check(st(r).message == MM.FUNCTION_ABORTED and g.party[0].clips == 0, "out of clips -> Function Aborted [C 0x12062 -> 0x11C9C]")
 r:frame(P.A); local rc = clips(); rc:frame(P.LEFT); rc:frame(P.C); check(st(rc).message == MM.FUNCTION_ABORTED, "Cancel -> Function Aborted [C 0xD1ED8]")
 -- clip trade
 local party = { [0] = runner({ clips = 3 }), [1] = runner({ clips = 0 }) }
@@ -127,7 +142,6 @@ check(top(r4) == S.ATTRIBUTES_SKILLS and l4.windows[#l4.windows] == E.WindowPlan
 r4:frame(P.UP); check(st(r4).row == 0, "row clamp")
 for _ = 1, 12 do r4:frame(P.DOWN) end; check(st(r4).row == 9, "row clamp hi")
 r4:frame(P.A); check(top(r4) == S.COMMAND, "view-only A leaves [srx command_view_only]")
-local AT = require("menu.screens.attributes").Attributes
 local hr = runner({ karma = 7, species = 1 }); hr.attributes[1] = 6
 check(select(1, AT.preview(hr, 1, 0)) == "at_limit" or true, "preview callable")
 check(AT.apply(hr, 0, 1) == "upgraded" and hr.attributes[1] == 7 and hr.karma == 0, "attr cost = next value")
@@ -144,7 +158,7 @@ end)
 -- ---- magic -----------------------------------------------------------------------------------------------
 section('magic', function()
 local r5 = mk(); page(r5, E.MenuPage.MAGIC); r5:frame(P.A); check(top(r5) == S.MAGICAL_DEFENSE, "non-caster -> defense [srx]")
-local spells = { entries = { { code = 0, force_limit = 4 }, { code = 1, force_limit = 2 }, { code = 2, force_limit = 6 } } }
+local spells = { entry_count = 3, entries = { sp(0, 4), sp(1, 2), sp(2, 6) } }
 local r6, _, g6 = mk({ leader = { archetype = 0, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
 page(r6, E.MenuPage.MAGIC); r6:frame(P.A); check(top(r6) == S.MAGIC, "caster spell grid")
 r6:frame(P.LEFT); check(st(r6).sel.column == 2, "column wrap to last")
@@ -161,7 +175,8 @@ section('pocket secretary', function()
 local r7, l7, g7 = mk(); r7:frame(P.A); local s0 = #l7.sounds; r7:frame(P.DOWN); r7:frame(P.UP); check(top(r7) == S.POCKET_SECRETARY and #l7.sounds == s0, "PS nav silent [C]")
 r7:frame(P.UP); check(st(r7).row == 4, "PS wrap to 4 [C 0xC376]")
 local r7x = mk({ extra = true }); r7x:frame(P.A); r7x:frame(P.UP); check(st(r7x).row == 5, "FFF101 extra row [C]")
-r7:frame(P.DOWN); check(st(r7).row == 0 and g7.ticks >= 2, "0xE660 every frame [C]")
+local f7, d7 = require("menu.rules.random_grid").frames, g7.draws or 0   -- Grid state is module-wide (r7x reset it)
+r7:frame(P.DOWN); check(st(r7).row == 0 and st(r7).grid_effect_frames == f7 + 1 and g7.draws == d7 + 3, "0xE660 every frame, 3 RNG draws [C]")
 r7:frame(P.B); check(top(r7) == S.POCKET_SECRETARY, "B ignored (A bit14 only) [C]")
 r7:frame(P.C); check(g7.reselects == 1, "C -> 0x391A [C]")
 r7:frame(P.A); check(top(r7) == S.NOTEBOOK and #st(r7).options == 2, "notebook gated rows")
@@ -174,28 +189,32 @@ local r8, l8 = mk({ party = { [0] = runner(), [1] = runner() } }); r8:frame(P.A)
 r8:frame(P.A); check(top(r8) == S.DISMISS_RUNNER, "dismiss open"); r8:frame(P.DOWN); r8:frame(P.A)
 check(l8.dismissed == 1 and top(r8) == S.POCKET_SECRETARY, "dismiss runner 1")
 end)
--- save/load 0xEFB4 [C]
+-- save/load 0xEFB4 [C] -- srx host JSON saves (screens/save_load.lua): combat gate FFDF84 [C 0xEFE6], two slots.
+-- ROM 0xEFC4 also gates on FFDF40 ("outside only", 0xC26C3); srx save_load.lua has no such gate and the menu
+-- binding exposes no scene mode, so it is not asserted here (open item, see patches README).
 section('save/load 0xEFB4 [C]', function()
 local function sl(o) local r, l, g = mk(o); r:frame(P.A); r:frame(P.UP); r:frame(P.A); return r, l, g end
-local r9, l9, g9 = sl({ scene = 1 }); check(top(r9) == S.MESSAGE and st(r9).message == MM.SAVE_OUTSIDE_ONLY, "gate FFDF40")
+local r9, l9, g9 = sl({ combat = true }); check(top(r9) == S.MESSAGE and st(r9).message == MM.SAVE_IN_COMBAT, "gate FFDF84 [C 0xEFE6]")
 r9:frame(P.A); check(top(r9) == S.POCKET_SECRETARY, "gate -> PS rebuild")
-r9 = sl({ combat = true }); check(st(r9).message == MM.SAVE_IN_COMBAT, "gate FFDF84")
-r9, l9, g9 = sl(); check(top(r9) == S.SAVE_LOAD, "save/load open"); local s9 = #l9.sounds
+r9, l9, g9 = sl({ save_status = { [0] = 1 } }); check(top(r9) == S.SAVE_LOAD, "save/load open"); local s9 = #l9.sounds
 r9:frame(P.UP); check(st(r9).row == 1 and #l9.sounds == s9, "2 rows, silent wrap"); r9:frame(P.UP)
-r9:frame(P.B); check(top(r9) == S.SAVE_SLOT, "B confirms"); r9:frame(P.START); check(top(r9) == S.POCKET_SECRETARY and g9.saved == nil, "slot Start = abort -> PS")
+r9:frame(P.B); check(top(r9) == S.SAVE_SLOT and st(r9).labels[1] == "Game 1: Saved" and st(r9).labels[2] == "Game 2: Empty", "B confirms; slot labels from save_status")
+r9:frame(P.START); check(top(r9) == S.POCKET_SECRETARY and g9.saved == nil, "slot Start = abort -> PS")
 r9:frame(P.A); r9:frame(P.A); r9:frame(P.DOWN); r9:frame(P.C)
 check(g9.saved == 1 and st(r9).message == MM.GAME_SAVED, "save slot 2"); r9:frame(P.A)
 check(not r9:is_open() and l9.closed, "save -> FFF0CD exits menu [C 0xF178]")
-r9, l9, g9 = sl(); r9:frame(P.DOWN); r9:frame(P.A); r9:frame(P.A); check(g9.loaded == 0 and st(r9).message == MM.LOAD_EMPTY, "load empty (carry)")
-r9:frame(P.A); check(not r9:is_open(), "load empty still exits [C 0xF124]")
+r9, l9, g9 = sl({ save_ok = false }); r9:frame(P.A); r9:frame(P.A)
+check(st(r9).message == MM.GAME_SAVED and st(r9).title == "Could not write this save slot.", "write failure text"); r9:frame(P.A)
+check(top(r9) == S.SAVE_SLOT, "failed save stays on the slot list")
+r9, l9, g9 = sl(); r9:frame(P.DOWN); r9:frame(P.A); r9:frame(P.A); check(g9.loaded == 0 and st(r9).message == MM.LOAD_EMPTY, "load empty")
+r9:frame(P.A); check(top(r9) == S.SAVE_SLOT, "load empty returns to the slot list [srx]")
 r9 = sl({ load_ok = true }); r9:frame(P.DOWN); r9:frame(P.A); r9:frame(P.A); check(st(r9).message == MM.LOAD_OK, "load ok")
-r9:frame(P.START); check(r9:is_open() == false or top(r9) == S.MESSAGE, "any edge dismisses")
+r9:frame(P.START); check(not r9:is_open(), "any edge dismisses, load exits the menu")
 end)
 -- cyberdeck 0x1822C [C]
 section('cyberdeck 0x1822C [C]', function()
 local CDm = require("menu.screens.cyberdeck").Cyberdeck
 check(select(1, CDm.cursor_xy(3, 3)) == 0xEC and select(2, CDm.cursor_xy(3, 3)) == 0x10C, "deck cursor FFD986 maths")
-local function deck(o) o = o or {}; o.deck = true; local r, l, g = mk(o); r:frame(P.A); r:frame(P.DOWN); r:frame(P.DOWN); r:frame(P.A); return r, l, g end
 local rc, lc, gc = deck(); check(top(rc) == S.CYBERDECK and gc.deck_in, "deck open")
 local sc = #lc.sounds; rc:frame(P.UP); rc:frame(P.LEFT); check(st(rc).row == 3 and st(rc).col == 3 and #lc.sounds == sc, "grid wrap, silent")
 rc:frame(P.A); check(top(rc) == S.CYBERDECK and gc.mode == 0xFF, "plug offline ignored; A -> FFF0B7 FF")
@@ -206,13 +225,13 @@ rc:frame(P.START); rc:frame(P.DOWN); rc:frame(P.A); check(top(rc) == S.CYBERDECK
 rc:frame(P.START); check(top(rc) == S.POCKET_SECRETARY and gc.deck_out == 7, "Start -> leave, PS rebuild")
 rc, lc, gc = deck({ online = true }); rc:frame(P.UP); rc:frame(P.LEFT); rc:frame(P.A); check(top(rc) == S.PULL_PLUG and not st(rc).yes, "plug prompt default No")
 rc:frame(P.A); check(top(rc) == S.CYBERDECK and not gc.logout, "No -> back to grid")
-rc:frame(P.A); rc:frame(P.DOWN); rc:frame(P.A); check(gc.logout and top(rc) == S.COMMAND, "Yes -> logout, PS exits [C 0x185CE]")
+rc:frame(P.A); rc:frame(P.DOWN); local sp0 = #lc.sounds; rc:frame(P.A); check(top(rc) == S.COMMAND and gc.deck_out == 7 and lc.sounds[sp0 + 1] == MXr.LOGOUT_SOUND, "Yes -> logout sfx 0x29, deck_leave, PS exits [C 0x185CE]")
 rc, lc, gc = deck({ online = true, ic = 8, combat = true, rolls = { 0 } }); rc:frame(P.UP); rc:frame(P.LEFT); rc:frame(P.A); rc:frame(P.UP); rc:frame(P.A)
-check(gc.party[0].physical == 7 and not gc.logout and top(rc) == S.CYBERDECK and lc.sounds[#lc.sounds] == 0x18, "Black IC fail: -TN/2, alive -> grid")
+check(gc.party[0].physical == 7 and top(rc) == S.CYBERDECK and lc.sounds[#lc.sounds] == E.MenuSound.DAMAGE, "Black IC fail: -TN/2, alive -> grid")
 rc, lc, gc = deck({ online = true, ic = 8, combat = true, rolls = { 1, 0 }, leader = { stun = 2 } }); rc:frame(P.UP); rc:frame(P.LEFT); rc:frame(P.A); rc:frame(P.UP); rc:frame(P.A)
-check(gc.party[0].stun == 1 and gc.logout, "Body fail: stun -3 min 1, logout")
+check(gc.party[0].stun == 1 and top(rc) == S.COMMAND and gc.deck_out == 7, "Body fail: stun -3 min 1, logout")
 rc, lc, gc = deck({ online = true, ic = 8, combat = true, rolls = { 0 }, leader = { physical = 2 } }); rc:frame(P.UP); rc:frame(P.LEFT); rc:frame(P.A); rc:frame(P.UP); rc:frame(P.A)
-check(gc.party[0].physical == 0 and gc.logout, "Black IC kills -> logout")
+check(gc.party[0].physical == 0 and top(rc) == S.COMMAND and gc.deck_out == 7, "Black IC kills -> logout")
 
 end)
 -- debug menu (hidden row 5, docs/12) [C]
@@ -225,11 +244,14 @@ rd:frame(P.A); for _ = 1, 5 do rd:frame(P.DOWN) end; rd:frame(P.A)
 check(gd.party[0].karma == 4 and gd.party[1].karma == 11, "+10 karma wraps byte [C +0x8D]")
 rd:frame(P.A); for _ = 1, 4 do rd:frame(P.DOWN) end; rd:frame(P.A)
 check(gd.party[0].status == E.RunnerStatus.ACTIVE and gd.party[0].physical == 10, "heal all clears DOWN")
-rd:frame(P.A); rd:frame(P.DOWN); rd:frame(P.A); check(#gd.spells == 14 and gd.spells[1].id == 13, "spells 13..0 rating 4")
+rd:frame(P.A); rd:frame(P.DOWN); rd:frame(P.A); check(gd.spells.entry_count == 14 and gd.spells.entries[1].code == 13 and gd.spells.entries[14].code == 0 and gd.spells.entries[1].force_limit == 4, "spells 13..0 force 4 [C 0x59B34]")
 rd:frame(P.A); for _ = 1, 3 do rd:frame(P.DOWN) end; rd:frame(P.A); check(top(rd) == S.DEBUG_PICK_SYSTEM, "pick system")
 rd:frame(P.UP); check(st(rd).system == 0, "pick clamp lo"); for _ = 1, 30 do rd:frame(P.DOWN) end; check(st(rd).system == 0x18, "pick clamp hi")
-rd:frame(P.A); check(gd.jack == 0x18 and gd.resumed and top(rd) == S.COMMAND and rd:is_open() and (ld.sounds[#ld.sounds] == 0x1A or ld.sounds[#ld.sounds - 1] == 0x1A),
-    "jack-in: 0x1A, field resume, PS exits, Command rebuilds [C 0xE47A]")
+-- 0x59A9A: A plays the jack-in sound and waits 20 VBlanks; srx then opens the Lua Matrix session (node action).
+rd:frame(P.A); check(ld.sounds[#ld.sounds] == E.MenuSound.JACK_IN and top(rd) == S.DEBUG_PICK_SYSTEM, "jack-in sound, 20-frame wait [C 0x59A9A]")
+for _ = 1, 19 do rd:frame(0) end; check(top(rd) == S.DEBUG_PICK_SYSTEM, "still waiting at frame 19")
+rd:frame(0); check(top(rd) == S.MATRIX_NODE_ACTION and st(rd).system_id == 0x18, "frame 20 -> Matrix node action for system 0x18 [srx]")
+require("menu.matrix_session").finish(nil)   -- the session is module-wide; do not leak it into later sections
 end)
 -- automatic-use item: message only, no effect [C 0x121C0]
 section('automatic-use item: message only, no', function()
@@ -239,31 +261,38 @@ check(top(ra) == S.MESSAGE and st(ra).message == MM.AUTOMATIC_USE and ra.stack[1
 ra:frame(P.B); check(top(ra) == S.COMMAND, "auto-use returns")
 end)
 -- magic value maths (rules/magic.lua) [C ROM 0x55F02/0x55F20/0x10660/0x1047E]
-section('magic value maths (rules/magic.lua) [', function()
-local MR = require("menu.rules.magic")
+section('magic value maths (rules/magic.lua) [C ROM 0x55F02/0x55ED6/0x1055E/0x10660/0x1047E]', function()
 local mage = runner({ archetype = 0, magic = 6, posture = 2 }); mage.skills[0] = 5; mage.attributes[5] = 4; mage.attributes[0] = 3
 mage.inventory[6] = MR.ITEM.POWER_FOCUS; mage.phase[6] = 3
-check(MR.magic_pool(mage) == 8, "pool = sorcery + power focus")
-mage.inventory[7] = MR.ITEM.POWER_FOCUS; mage.phase[7] = 9; check(MR.magic_pool(mage) == 8, "slot 7 not scanned [C dbra 6]")
+check(MR.item18_skill(mage) == 8, "0x55F02: sorcery + first power focus phase")
+mage.inventory[7] = MR.ITEM.POWER_FOCUS; mage.phase[7] = 9; check(MR.item18_skill(mage) == 8, "power focus scan is slots 6..0 (slot 7 = totem)")
+mage.inventory[7] = 0
 local a, b = MR.split(8, 2); check(a == 4 and b == 4, "posture 2 -> 50%"); a = MR.split(7, 1); check(a == 1, "7*25//100 = 1")
-check(MR.success_dice(mage, 0, 3) == 4 + 3, "success = min(part, magic) + force")
-mage.inventory[7] = MR.ITEM.GATOR; check(MR.success_dice(mage, 0, 3) == 9, "Gator +2 on combat spell")
-check(MR.success_dice(mage, 11, 3) == 7, "Gator 0 on Heal Wounds")
+local cp = runner(); cp.attributes[1] = 3; cp.attributes[4] = 2; cp.attributes[5] = 4
+check(MR.combat_pool(cp) == 4, "0x55ED6: (Q+I+W)>>1"); cp.inventory[0] = MR.ITEM.COMBAT_SENSE; cp.phase[0] = 2
+check(MR.combat_pool(cp) == 6, "+ first Combat Sense phase")
+local tbl = { entry_count = 12, entries = {} }; for k = 0, 11 do tbl.entries[k + 1] = sp(k, 6) end
+check(MR.success_value(mage, tbl, 0, 0, 3) == 4 + 3, "success = min(posture remainder, magic) + force")
+mage.inventory[7] = MR.ITEM.GATOR; check(MR.success_value(mage, tbl, 0, 0, 3) == 9, "Gator +2 on category-1 spell")
+check(MR.success_value(mage, tbl, 1, 5, 3) == 7, "metric index row*6+column = 11 (category 2): Gator +0")
 mage.inventory[7] = MR.ITEM.RAT; mage.inventory[2] = MR.ITEM.SPELL_FOCUS_BASE + 0; mage.phase[2] = 2
-check(MR.success_dice(mage, 0, 3) == 4 + 3 + 2 - 1, "spell focus +2, Rat -1 on combat")
--- drain Hellblast(2) force 6: tn = 3 + 3 = 6, pct = 20, dice = 4 + 4 = 8 -> 160 -> 1.6 -> 2 -> //2 = 1 ; boxes 10 -> 9
-local d, tn = MR.drain(mage, 2, 6); check(d == 9 and tn == 6, "drain hellblast f6 = 9")
-d, tn = MR.drain(mage, 7, 1); check(tn == 2 and d == 1 - ((8 * 100 + 50) // 100) // 2, "drain mana zap tn floor 2")
-local fr = runner(); fr.inventory[6] = MR.ITEM.FETISH; fr.phase[6] = 2; fr.inventory[3] = MR.ITEM.FETISH; fr.phase[3] = 5
-check(MR.absorb_drain(fr, 4) == 0 and fr.inventory[6] == 0 and fr.phase[3] == 3, "fetish absorbs, slot 6 first")
+check(MR.success_value(mage, tbl, 0, 0, 3) == 4 + 3 + 2 - 1, "spell focus +2, Rat -1 on category 1")
+-- effect: tn = ceil(f/2) + diff (min 2); pct = (7-tn)*20 (10 at tn>=7); rolls = posture remainder + Willpower
+check(MR.effect_value(mage, { difficulty_modifier = 3, base_effect = 6 }, 6) == 5, "effect: tn 6 -> 8*20 = 1.6 -> 2 -> //2 = 1")
+check(MR.effect_value(mage, { difficulty_modifier = 0, base_effect = 1 }, 1) == -3, "effect: tn floor 2 -> 8*100 -> 8 -> //2 = 4")
+check(MR.effect_value(mage, { difficulty_modifier = 4, base_effect = 5 }, 8) == 5, "effect: tn>=7 -> 10% -> 0.8 -> 1 -> //2 = 0")
+check(MR.bar_row(0) == 0 and MR.bar_row(5) == 4, "bar row")
 local df = MR.defense({ [0] = mage, [1] = runner() }, { [0] = true, [1] = true }, mage)
-check(df.pool == 2 and df.physical == 5 and df.mana == 6, "defense pool 8//4 = 2")
+check(df.pool == 2 and df.physical == 5 and df.mana == 6, "defense pool 8//4 = 2, non-casters skipped")
 local m7 = runner({ archetype = 1 }); m7.skills[0] = 7
 check(MR.defense({ [0] = m7 }, { [0] = true }, m7).pool == 2, "7/4 rem 3 -> +1")
+local pv = MR.presentation(mage, { [0] = mage }, { [0] = true }, tbl, tbl.entries[3], 0, 2, 4)
+check(pv.table_entry_index == 2 and pv.spell_code == 2 and pv.maximum_force == 6 and pv.force == 4, "presentation view fields")
+check(MR.can_cast(runner({ stun = 1 })) == false and MR.can_cast(runner()), "stun 1 cannot cast")
 end)
 -- species max table equals ROM 0xC22A6 [C]
 section('species max table equals ROM 0xC22A6', function()
-do local f = io.open("rom.bin", "rb"); if f then local d = f:read("a"); f:close()
+do local d = ROM; if d then
     local ok = true; for sp = 0, 4 do for i = 1, 6 do if AT.MAX[sp][i] ~= d:byte(0xC22A6 + sp * 6 + i) then ok = false end end end
     check(ok, "species max table == ROM 0xC22A6")
     local okc = true; for i = 0, 13 do local b = d:byte(0xC8AE0 + i + 1); if b >= 128 then b = b - 256 end; if MR.CATEGORY[i] ~= b then okc = false end end
@@ -277,7 +306,7 @@ end)
 -- deck rules + sub-screens (0x19238, 0xE2DFE) [C]
 section('deck rules + sub-screens (0x19238, 0x', function()
 local DR = require("menu.rules.deck")
-do local d = io.open("rom.bin", "rb"); if d then d = d:read("a"); local ok = true
+do local d = ROM; if d then local ok = true
     for i = 0, 11 do if DR.FOOTPRINT[i] ~= d:byte(0xE2DF2 + i + 1) then ok = false end end; check(ok, "footprints == ROM 0xE2DF2") end end
 check(DR.size(1, 3) == 36 and DR.load_steps(36, 5) == 6 and DR.load_steps(10, 5) == 2 and DR.load_steps(11, 5) == 3, "size r^2*fp, load ceil clamp 6")
 check(DR.run_info(-1, -1, 0) == "ACTIVE" and select(2, DR.run_info(-1, -1, 0)) == 2 and select(2, DR.run_info(-1, 0, -5)) == 1
@@ -287,8 +316,8 @@ local function rec(rt, act) local R0 = { memory = 40, storage = 500, load_io = 3
     for k = 0, 4 do R0.files[k] = { id = -1, size = 0 } end; for p, v in pairs(rt) do R0.ratings[p] = v end; return R0 end
 local rp, lp, gp = deckp({ rec = rec({ [5] = 2 }) }, 1, 1)
 check(gp.rec.active[0] == 5 and gp.dslots.timer[0] == 60 and gp.dslots.status[0] == 0 and top(rp) == S.CYBERDECK, "load p5 r2: 16 Mp, ceil(16/3)=6 -> timer 60")
-rp, lp, gp = deckp({ rec = rec({ [5] = 4 }) }, 1, 1); check(st(rp).text == MM.DECK_NO_MEMORY and gp.rec.active[0] == -1, "64 Mp > 40 -> no memory")
-rp, lp, gp = deckp({ rec = rec({ [5] = 1 }, { [0] = 1, 2, 3, 4, 6 }) }, 1, 1); check(st(rp).text == MM.DECK_NO_SLOTS, "no free slot")
+rp, lp, gp = deckp({ rec = rec({ [5] = 4 }) }, 1, 1); check(st(rp).text == "No available memory!" and gp.rec.active[0] == -1, "64 Mp > 40 -> no memory")
+rp, lp, gp = deckp({ rec = rec({ [5] = 1 }, { [0] = 1, 2, 3, 4, 6 }) }, 1, 1); check(st(rp).text == "No available slots!", "no free slot")
 rp, lp, gp = deckp({ rec = rec({ [5] = 1 }, { [0] = -1, -1, 5, -1, -1 }) }, 1, 1)
 check(top(rp) == S.DECK_PROGRAM and st(rp).choice == 1, "loaded -> erase prompt, default No"); rp:frame(P.A); check(gp.rec.active[2] == 5, "No keeps it")
 rp:frame(P.A); rp:frame(P.UP); rp:frame(P.C); check(gp.rec.active[2] == -1 and gp.dslots.status[2] == 6 and gp.unloaded == 5, "Yes erases, status 6, effect clear")
@@ -298,25 +327,24 @@ local rs, ls, gs = deck({ rec = fr }); rs:frame(P.UP); rs:frame(P.RIGHT); rs:fra
 rs:frame(P.B); check(top(rs) == S.DECK_STORAGE, "storage: B ignored (A only)")
 rs:frame(P.DOWN); rs:frame(P.A); check(st(rs).file == 3 and st(rs).choice == 0, "erase prompt file 3, default Yes")
 rs:frame(P.DOWN); rs:frame(P.A); check(st(rs).file == 1 and st(rs).choice == 0, "No -> next file, Yes again"); rs:frame(P.A)
-check(fr.files[1].id == -1 and fr.files[1].size == 0 and top(rs) == S.CYBERDECK and #st(rs).list == 1, "Yes erases -> list")
-local ri, li, gi = deck({ run = 0 }); ri:frame(P.UP); ri:frame(P.A); ri:frame(P.DOWN); ri:frame(P.A); check(st(ri).text == MM.NOT_ON_RUN, "run info: not on a run")
+check(fr.files[1].id == -1 and fr.files[1].size == 0 and top(rs) == S.CYBERDECK and st(rs).text == DR.FILE_NAMES[0] .. "  4 Mp", "Yes erases -> remaining file list")
+local ri, li, gi = deck({ run = 0 }); ri:frame(P.UP); ri:frame(P.A); ri:frame(P.DOWN); ri:frame(P.A); check(st(ri).text == "You are not on a matrix run!!", "run info: not on a run")
 local rm, lm, gm = deck({ online = true, prev = 4 }); rm:frame(P.UP); rm:frame(P.LEFT); rm:frame(P.LEFT); rm:frame(P.A); check(top(rm) == S.DECK_MAP, "online col 2 -> map/retreat")
-rm:frame(P.A); rm:frame(P.B); check(not gm.restored, "map waits for Start only"); rm:frame(P.START); check(gm.map and gm.restored and top(rm) == S.CYBERDECK, "map -> back to grid")
+rm:frame(P.A); rm:frame(P.B); check(top(rm) == S.DECK_MAP and st(rm).phase == "map", "map waits for Start only"); rm:frame(P.START); check(top(rm) == S.CYBERDECK, "map -> back to grid")
 rm:frame(P.A); rm:frame(P.DOWN); rm:frame(P.A); rm:frame(P.C); check(gm.retreated and top(rm) == S.POCKET_SECRETARY, "retreat: swap nodes, FFF0AD exits deck")
 rm = deck({ online = true, combat = true }); rm:frame(P.UP); rm:frame(P.LEFT); rm:frame(P.LEFT); rm:frame(P.A); rm:frame(P.DOWN); rm:frame(P.A)
 check(st(rm).message == MM.RETREAT_COMBAT, "retreat in combat"); rm:frame(P.A); check(top(rm) == S.CYBERDECK, "-> grid")
 rm = deck({ online = true }); rm:frame(P.UP); rm:frame(P.LEFT); rm:frame(P.LEFT); rm:frame(P.A); rm:frame(P.DOWN); rm:frame(P.A)
-check(top(rm) == S.CYBERDECK and st(rm).text == MM.RETREAT_NO_NODE, "no previous node: text, no wait")
+check(top(rm) == S.CYBERDECK and st(rm).text == "Retreat is not possible from this node!", "no previous node: text, no wait")
 end)
 -- matrix + save rules (2026-10-15) [C]
-section('matrix + save rules (2026-10-15) [C]', function()
-local MXr, SV = require("menu.rules.matrix"), require("menu.rules.save")
-do local d = io.open("rom.bin", "rb"); if d then d = d:read("a"); local ok = true
+-- (save rules were parked with menu/rules/save.lua: srx uses host JSON saves)
+section('matrix rules (2026-10-15) [C]', function()
+do local d = ROM; if d then local ok = true
     for c = 0, 17 do if MXr.IC_TABLE[c][1] ~= d:byte(0xE31A7 + 2 * c + 1) or MXr.IC_TABLE[c][2] ~= d:byte(0xE31A7 + 2 * c + 2) then ok = false end end
     check(ok, "IC table == ROM 0xE31A7")
     local function rs(a, set) local ok2 = true; for i = 0, 6 do if not set[d:byte(a + i + 1)] then ok2 = false end end; return ok2 end
-    check(rs(0x15FC9A, MXr.CONNECT_LEFT) and rs(0x15FCA1, MXr.CONNECT_RIGHT) and rs(0x15FCA8, MXr.CONNECT_UP) and rs(0x15FCAF, MXr.CONNECT_DOWN), "connector sets == ROM")
-    check(d:sub(0x59972 + 1, 0x59972 + 20) == SV.HEADER, "save header == ROM 0x59972") end end
+    check(rs(0x15FC9A, MXr.CONNECT_LEFT) and rs(0x15FCA1, MXr.CONNECT_RIGHT) and rs(0x15FCA8, MXr.CONNECT_UP) and rs(0x15FCAF, MXr.CONNECT_DOWN), "connector sets == ROM") end end
 local nd = { ic_condition = 10, ic_code = 13, ic_rating = 4, ic_rating2 = 7 }
 check(MXr.ic_type(nd, MXr.NONE, false, 1) == 0 and MXr.ic_type(nd, MXr.ACTIVE, false, 1) == 8, "two-layer IC: Access then Black at active alert")
 check(MXr.ic_type(nd, MXr.NONE, false, 0) == MXr.UNSEEN and MXr.ic_type(nd, MXr.NONE, true, 0) == 0, "unseen unless FFDF84 < 0")
@@ -331,18 +359,11 @@ local act, run = { [0] = 1, 5, -1, 1, -1 }, { [0] = 6, 6, 0, 6, 0 }
 check(MXr.cycle_slot(0, -1, act, run) == 4 and run[0] == 1, "slot cycle wraps, resets state>=6")
 check(MXr.cycle_slot(1, 1, act, run) == 2 and run[1] == 6, "persistent program 5 keeps state")
 check(MXr.matrix_delay(3, 2) == 9 and MXr.LOGOUT_FRAMES == 54, "delay + logout frames")
-local blk = {}; for i = 0, 0x7FF do blk[i] = (i * 7) & 0xFF end; SV.seal(blk)
-check(SV.valid(blk), "seal -> valid"); blk[0x100] = (blk[0x100] + 1) & 0xFF; check(not SV.valid(blk), "checksum catches change")
-local ok, from, rep = SV.load_plan(1, false, true); check(ok and from == 0x1800 and rep.dst == 0x1000, "slot 1 repair (fixed)")
-SV.ROM_REPAIR_QUIRK = true; ok, from, rep = SV.load_plan(1, false, true); check(rep.dst == 0x0000 and rep.src == 0x0800, "ROM quirk: slot-0 offsets"); SV.ROM_REPAIR_QUIRK = false
-check(SV.load_plan(0, false, false) == false, "both bad -> carry")
-local sz = 0; for _, f in ipairs(SV.RECORD_FIELDS) do sz = sz + (f[2] == "l" and 4 or f[2] == "w" and 2 or 1) end
-check(sz == SV.RECORD and SV.ROSTER + SV.ROSTER_N * SV.RECORD == SV.GLOBALS and SV.GLOBALS + SV.GLOBALS_LEN + 18 == SV.SUM_AT, "save layout adds up")
 end)
 -- matrix combat + movement (2026-10-15) [C]
 section('matrix combat + movement (2026-10-15)', function()
 local MC, MV = require("menu.rules.matrix_combat"), require("menu.rules.matrix_move")
-do local d = io.open("rom.bin", "rb"); if d then d = d:read("a")
+do local d = ROM; if d then
     local ok = MXr.TILE_A[0][1] == (d:byte(0x15C3CC + 1) << 8 | d:byte(0x15C3CC + 2)) and MXr.TILE_A[22][4] == 0x18C7 and MXr.TILE_B[11][1] == 0x00D8
     check(ok, "map tile tables == ROM") end end
 local dk = { mpcp = 6, hardening = 2, response = 2, bod = 3, evasion = 4, masking = 5, sensor = 4, persona = 10, ratings = zeros(12) }

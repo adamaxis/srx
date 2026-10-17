@@ -79,7 +79,13 @@ function Prompt.enter(st, ctx) ctx.redraw(R.SUBMENU) end
 function Prompt.input(st, events, ctx)
     if events & (P.UP | P.DOWN) ~= 0 then st.option = 1 - st.option; ctx.redraw(R.SUBMENU); return end
     if events & (P.A | P.B | P.C) == 0 then return end
-    local res = st.option == 0 and M.apply(rec(ctx), st.col, st.row) or "declined"
+    local res = "declined"
+    if st.option == 0 then
+        -- game.party() hands out record copies; write the upgraded record back explicitly.
+        local party = ctx.game.party()
+        res = M.apply(party[ctx.game.active_slot()], st.col, st.row)
+        if res == "upgraded" then ctx.game.commit_party(party) end
+    end
     if res == "insufficient_karma" then return { transition = T.REPLACE, screen = E.MenuScreen.MESSAGE, args = { message = MM.INSUFFICIENT_KARMA } } end
     return { transition = T.POP, result = { upgrade = res } }
 end
