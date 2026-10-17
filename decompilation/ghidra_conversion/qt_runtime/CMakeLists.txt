@@ -260,11 +260,23 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_title_idle_restart_qa
 # Launch from the runtime build directory without --assets. The installed
 # executable must locate the checked-in named assets from its own path rather
 # than depending on the shell's working directory.
-add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_asset_autodiscovery_qa
-                 --startup-dump start_options 0 0
-                 "${CMAKE_CURRENT_BINARY_DIR}/asset-autodiscovery-start-options.bmp")
-set_tests_properties(shadowrun_ghidra_conversion_qt_asset_autodiscovery_qa
-    PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+# Discovery walks up from the executable's directory for assets/resources.tsv,
+# so it can only succeed when the build tree sits inside the source checkout.
+# An out-of-tree build dir (e.g. /tmp/build) skips the case instead of failing.
+get_filename_component(_shadowrun_assets_root
+    "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+file(RELATIVE_PATH _shadowrun_binary_from_assets_root
+    "${_shadowrun_assets_root}" "${CMAKE_BINARY_DIR}")
+if(_shadowrun_binary_from_assets_root MATCHES "^\\.\\.")
+    message(STATUS
+        "asset_autodiscovery_qa skipped: build dir is outside ${_shadowrun_assets_root}")
+else()
+    add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_asset_autodiscovery_qa
+                     --startup-dump start_options 0 0
+                     "${CMAKE_CURRENT_BINARY_DIR}/asset-autodiscovery-start-options.bmp")
+    set_tests_properties(shadowrun_ghidra_conversion_qt_asset_autodiscovery_qa
+        PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+endif()
 
 # The six airport rotor descriptors advance every six source frames. Capture
 # all six whole screens plus the 36-frame repeat and check the animated strip

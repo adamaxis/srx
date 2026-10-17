@@ -5984,6 +5984,9 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         source_boundary("field.world_logic.begin_world_activity");
     };
     world_frame_logic_callbacks_.select_entity_service_target = [this] {
+        // Keep the observation boundary: QA (scene-20 Electronics alert)
+        // counts it to prove the world pass requested a target selection.
+        source_boundary("field.world_logic.select_entity_service_target");
         refresh_world_entity_service_targets();
         const auto action = select_world_entity_service_target(
             field_entity_target_owner_, field_entity_target_records_, false);

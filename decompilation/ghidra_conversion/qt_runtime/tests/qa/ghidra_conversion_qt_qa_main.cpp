@@ -1,4 +1,5 @@
 #include "ghidra_conversion_qt_window.hpp"
+#include "enums.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
@@ -3844,6 +3845,7 @@ int run_field_scene26_event1_terminal_qa(
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::uint16_t>& field_audio_stops,
     const std::vector<std::string>& source_boundaries) {
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
@@ -4066,6 +4068,7 @@ int run_field_scene26_event1_terminal_qa(
     field_scene.active_runner_record().skills[9U] = 10U;
     field_scene.set_source_random_seed_for_dump(0x1234U);
     const auto audio_before_access = field_audio_events.size();
+    const auto audio_stops_before_access = field_audio_stops.size();
     for (std::uint8_t wait = 1U; wait <= 10U; ++wait) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
@@ -4097,8 +4100,12 @@ int run_field_scene26_event1_terminal_qa(
         result_panel.kind != DialoguePanelKind::information_page ||
         result_panel.actor_kind != DialoguePanelActorKind::none ||
         result_panel.option_count != 0U || !first_floor_visible ||
-        field_audio_events.size() != audio_before_access + 1U ||
-        field_audio_events.back() != 0x30U ||
+        // ROM 0x1E09A sends 0x30 through 0x530D2, the stop-resource path
+        // (e0020abc), so it lands on the stop callback, not the start list.
+        field_audio_events.size() != audio_before_access ||
+        field_audio_stops.size() != audio_stops_before_access + 1U ||
+        field_audio_stops.back() !=
+            static_cast<std::uint16_t>(srx::SoundId::ALARM) ||
         floor_result == terminal_prompt ||
         field_hud_chrome_survives(floor_result, asset_root) ||
         !save("security-terminal-first-floor-result", floor_result) ||
@@ -4107,7 +4114,16 @@ int run_field_scene26_event1_terminal_qa(
                      "the selected floor in its successful result (floor="
                   << static_cast<unsigned>(*selected_floor) << ", audio="
                   << audio_before_access << "->" << field_audio_events.size()
-                  << ")\n";
+                  << ", stops=" << audio_stops_before_access << "->"
+                  << field_audio_stops.size()
+                  << ", open=" << field_scene.field_interaction_open()
+                  << ", kind=" << static_cast<int>(result_panel.kind)
+                  << ", options=" << result_panel.option_count << ", text=";
+        for (std::size_t segment = 0U;
+             segment < result_panel.text_segment_count; ++segment) {
+            std::cerr << '[' << result_panel.text_segments[segment] << ']';
+        }
+        std::cerr << ")\n";
         return 3;
     }
 
@@ -8064,6 +8080,12 @@ int run_field_scene26_event1_physical_entry_qa(
         return 3;
     }
     write_state("scene2-event1-contact");
+    // The scene-26 resource floor is rolled on the transition below. Re-pin
+    // the PRNG at the contact so the variant does not depend on how many
+    // walk frames (and draws) the approach took; that count changed when
+    // the runner step became 30 units (f6b950a9). Fixture only.
+    constexpr std::uint16_t kScene26FloorVariantSeed = 0U;
+    field_scene.set_source_random_seed_for_dump(kScene26FloorVariantSeed);
 
     const auto contact_frame = frame;
     for (const auto checkpoint :
@@ -11285,7 +11307,22 @@ int run_field_elevator_group_route_qa(
             return 3;
         }
     }
-    if (render() != destination ||
+    // Live field actors may walk during the hold (creature movement port,
+    // 13c18334..f6b950a9), so the held frame is not compared with the first
+    // destination frame. Instead the full screen must equal a field-only
+    // redraw (no selector or lift overlay left), and the player and camera
+    // must not move.
+    const auto held = render();
+    const auto held_field_only = render_qa_field(
+        field_scene, true, QImage::Format_ARGB32);
+    if (held != held_field_only || !no_modal_screen() ||
+        field_scene.field_scene_reference_for_dump() != destination_scene ||
+        field_scene.field_entity_world_position().x !=
+            destination_landing_position.x ||
+        field_scene.field_entity_world_position().y !=
+            destination_landing_position.y ||
+        field_scene.state().field_scene_buffers.camera_x != camera_x ||
+        field_scene.state().field_scene_buffers.camera_y != camera_y ||
         !save("scene" + std::to_string(destination_scene) + "-held-30")) {
         std::cerr << "Elevator group route QA: destination retained stale "
                      "selector graphics or changed during idle\n";
@@ -16230,7 +16267,8 @@ int main(int argc, char** argv) {
                 return run_field_scene26_event1_terminal_qa(
                     field_scene, asset_root,
                     *field_scene26_event1_terminal_qa_path,
-                    field_audio_events, field_source_boundaries);
+                    field_audio_events, field_audio_stops,
+                    field_source_boundaries);
             }
             if (field_scene26_maglock_descriptor_route_qa_path.has_value()) {
                 return run_field_scene26_maglock_descriptor_route_qa(
@@ -19448,7 +19486,13 @@ int main(int argc, char** argv) {
                 field_scene.paint_field_scene_for_dump(
                     field_only_frame_30_painter);
                 field_only_frame_30_painter.end();
-                if (route_frame != 222U || returned_field_frame_30.isNull() ||
+                // The route after the doorway contact is input-driven and
+                // fixed at 205 frames. The walk before it depends on the
+                // runner step (30 units since f6b950a9, ROM 0xBEC2), so the
+                // hold is checked relative to the contact frame.
+                constexpr std::uint32_t kHotelFramesAfterContact = 205U;
+                if (route_frame != collision_frame + kHotelFramesAfterContact ||
+                    returned_field_frame_30.isNull() ||
                     returned_field_frame_30 != field_only_frame_30) {
                     std::cerr << "field Hotel QA: returned field did not stay clean through the 30-frame destination hold\n";
                     return 3;
