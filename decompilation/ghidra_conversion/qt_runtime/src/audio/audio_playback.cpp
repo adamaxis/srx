@@ -87,6 +87,11 @@ void AudioPlaybackService::fade_out() {
     commands_->fade_out();
 }
 
+void AudioPlaybackService::wait_frames(const std::uint16_t frames) {
+    ensure_loaded();
+    commands_->wait_frames(frames);
+}
+
 void AudioPlaybackService::attenuate(const std::uint8_t level) {
     ensure_loaded();
     commands_->attenuate(level);

@@ -7,7 +7,7 @@ namespace shadowrun::ghidra_conversion::qt_runtime {
 GemsCommandLayer::GemsCommandLayer(AudioMixer& mixer) : mixer_(mixer) {}
 
 void GemsCommandLayer::run(std::function<void()> operation) {
-    if (fading()) {
+    if (blocked()) {
         deferred_.push_back(std::move(operation));
         return;
     }
@@ -71,7 +71,15 @@ void GemsCommandLayer::step_fade() {
     mixer_.stop_all();
     mixer_.attenuate(0U);
     fade_frame_.reset();
-    while (!deferred_.empty() && !fading()) {
+    drain_deferred();
+}
+
+void GemsCommandLayer::wait_frames(const std::uint16_t frames) {
+    run([this, frames] { wait_frames_ = frames; });
+}
+
+void GemsCommandLayer::drain_deferred() {
+    while (!deferred_.empty() && !blocked()) {
         auto operation = std::move(deferred_.front());
         deferred_.pop_front();
         operation();
@@ -83,6 +91,8 @@ void GemsCommandLayer::advance_frame(AudioSink* sink) {
     if (fade_frame_) {
         ++*fade_frame_;
         step_fade();
+    } else if (wait_frames_ != 0U && --wait_frames_ == 0U) {
+        drain_deferred();
     }
 }
 

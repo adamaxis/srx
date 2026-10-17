@@ -241,6 +241,22 @@ int main() {
               "queued song starts at full volume after the fade");
     }
 
+    // wait_frames queued behind a fade delays later commands by N frames
+    // after the fade completes (host stand-in for ROM setup time).
+    {
+        AudioMixer mixer(bank, false);
+        GemsCommandLayer gems(mixer);
+        NullAudioSink sink;
+        gems.fade_out();                      // frame 0
+        gems.wait_frames(8U);
+        gems.play_music(kMatrix);
+        for (int i = 0; i < 30; ++i) gems.advance_frame(&sink);
+        const auto& events = mixer.events();
+        check(!events.empty() && events.back().op == AudioOp::start &&
+                  events.back().id == kMatrix && events.back().frame == 18U + 8U,
+              "wait_frames delays the queued song 8 frames past the fade");
+    }
+
     // Enable gates FFFC08 (music) / FFFC0A (SFX); stop_all and attenuate are ungated.
     {
         AudioMixer mixer(bank, false);

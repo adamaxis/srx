@@ -109,6 +109,17 @@ function Startup.opening_intro_timeline()
     }
 end
 
+-- Audio setup gaps the host runs in one frame: boundary -> frames between
+-- the end of the preceding 0x53126 and the next audio command.
+function Startup.opening_audio_waits()
+    return {
+        -- New Game 0x07F0 field setup runs 8 frames after its 0x53126
+        -- before 0x2900 play_music (emulator: fade end 3554, song 0x0F
+        -- 3562). [C]
+        ["field.opening_auto_walk.scene_music"] = "8",
+    }
+end
+
 -- Opening-story copy is source text; the native cutscene owns when and where
 -- each typed story record is drawn.
 function Startup.opening_text_keys()

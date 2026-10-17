@@ -10298,6 +10298,10 @@ bool FieldSceneRuntime::bootstrap(
 
     ready_ = true;
     scene_music_latch_ = true;   // 0x2830 on the New Game / load entry
+    if (field_opening_auto_walk_.active) {
+        // Lets the host delay 0x2900's song by the 0x07F0 setup time.
+        source_boundary("field.opening_auto_walk.scene_music");
+    }
     service_scene_music_latch();
     if (field_opening_auto_walk_.active) {
         source_boundary("field.opening_auto_walk.armed");

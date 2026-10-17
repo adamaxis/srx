@@ -702,6 +702,8 @@ private:
             startup_scripts_.string_map("startup", "opening_text_keys");
         load_opening_presentation_holds(
             startup_scripts_.string_map("startup", "opening_intro_timeline"));
+        load_opening_audio_waits(
+            startup_scripts_.string_map("startup", "opening_audio_waits"));
         const auto fixed_text_count = [](const auto& lines) {
             std::size_t count = 0U;
             for (const auto& line : lines) {
@@ -2470,6 +2472,9 @@ private:
     std::unordered_map<std::string, OpeningPresentationHold>
         opening_presentation_hold_table_;
     std::deque<OpeningPresentationHold> opening_presentation_holds_;
+    // Startup.opening_audio_waits(): frames between a fade and the next
+    // audio command, standing in for ROM setup time.
+    std::unordered_map<std::string, std::uint16_t> opening_audio_wait_table_;
     // Frame-indexed QA counts conversion logic frames, so it turns the
     // host-only holds off; the timeline itself is verified against the
     // emulator trace (docs/ghidra/visual-audits/opening-intro-timeline.md).
@@ -2500,9 +2505,27 @@ private:
         }
     }
 
+    void load_opening_audio_waits(
+        const std::optional<scripting::ScriptStringMap>& table) {
+        opening_audio_wait_table_.clear();
+        if (!table.has_value()) {
+            throw std::runtime_error(
+                "startup Lua opening_audio_waits is unresolved");
+        }
+        for (const auto& [boundary, value] : *table) {
+            opening_audio_wait_table_[boundary] =
+                static_cast<std::uint16_t>(std::stoul(value));
+        }
+    }
+
     void queue_opening_presentation_hold(const std::string_view boundary) {
         if (!opening_presentation_holds_enabled_) {
             return;
+        }
+        const auto wait =
+            opening_audio_wait_table_.find(std::string(boundary));
+        if (wait != opening_audio_wait_table_.end() && audio_playback_) {
+            audio_playback_->wait_frames(wait->second);
         }
         const auto found =
             opening_presentation_hold_table_.find(std::string(boundary));

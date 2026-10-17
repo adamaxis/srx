@@ -58,6 +58,7 @@ public:
     void stop_sfx(std::uint16_t id);    // 0x530D2
     void stop_all();                    // 0x52FA0 (op 0x16)
     void fade_out();                    // 0x53126
+    void wait_frames(std::uint16_t frames);
     void attenuate(std::uint8_t level); // 0x5315E (0x53156 = level 0)
     void set_music_enabled(bool enabled);  // FFFC08
     void set_sfx_enabled(bool enabled);    // FFFC0A

@@ -44,6 +44,9 @@ public:
     void attenuate(std::uint8_t level);
     void restore_volume() { attenuate(0U); }
     void fade_out();
+    // Host stand-in for ROM setup time between commands: later commands
+    // queue until this many frames have advanced.
+    void wait_frames(std::uint16_t frames);
 
     bool fading() const { return fade_frame_.has_value(); }
 
@@ -53,12 +56,15 @@ public:
 private:
     void run(std::function<void()> operation);
     void step_fade();
+    bool blocked() const { return fading() || wait_frames_ != 0U; }
+    void drain_deferred();
 
     AudioMixer& mixer_;
     bool music_enabled_ = true;
     bool sfx_enabled_ = true;
     std::optional<std::uint32_t> fade_frame_; // frames since the fade began
     std::deque<std::function<void()>> deferred_;
+    std::uint16_t wait_frames_ = 0U;
 };
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime
