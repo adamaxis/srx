@@ -168,6 +168,15 @@ E.ClipTradeCommand = { INCREASE = 2, DECREASE = 3, TRADE = 4, CHANGE_RECIPIENT =
 E.DebugOption = { NUYEN = 0, SPELLS = 1, TEST_DECK = 2, PICK_SYSTEM = 3, HEAL_ALL = 4, KARMA = 5, CONTACTS = 6, WALK_FAST = 7 }  -- table 0x1D90C0 [C]
 E.SaveLoadOption = { SAVE = 0, LOAD = 1 }   -- 0xC2600 rows [C]
 E.PocketOption = { NOTEBOOK = 0, GROUP_ITEMS = 1, CYBERDECK = 2, DISMISS_RUNNER = 3, SAVE_LOAD = 4, DEBUG = 5 } -- table 0xC1400; 5 = debug menu 0x599DA (FFF101) [C]
+-- FFFC2C contact long: bit n unlocks Vid-Phone contact n. 0xE506 loads FFFC2C and
+-- 0xF5F4 walks name table 0xC66AC / pointer table 0x109682 with BTST.L D1,D0 for
+-- D1 = 0..12 [C]. Names follow dialogue.lua vid_phone_contacts (source_index).
+E.VidPhoneContact = {
+    CAPT_QUINTON_JAYMES = 0, ALESANDRO_HOBBS = 1, SHARKEY = 2, KIPP_DAVID = 3,
+    WILMA_TEMMENHOFF = 4, MACKLEMANN = 5, GREGORY_WILNS = 6, MR_FARADOUCHI = 7,
+    AGIRA_TETSUMI = 8, HENRY_J_CULVER = 9, MAX = 10, CHILLICUT = 11,
+    PROFESSOR_JEFFERSON = 12,
+}
 E.NotebookOption = { CURRENT_RUN = 0, TIPS_AND_CLUES = 1, CONTACTS = 2, MR_JOHNSONS = 3, SHADOWRUNNERS = 4 }
 E.NotebookBoundary = { EVENT_GATES_UNRESOLVED = 0, TIPS_FLAGS_UNRESOLVED = 1,
                        CURRENT_RUN_UNRESOLVED = 2, CONTACTS_FLAGS_UNRESOLVED = 3,

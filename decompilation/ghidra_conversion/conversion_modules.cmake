@@ -268,6 +268,10 @@ foreach(module_id IN LISTS SHADOWRUN_CONVERSION_MODULE_IDS)
     add_library(shadowrun_ghidra_module_${module_id} OBJECT ${module_sources})
     target_include_directories(shadowrun_ghidra_module_${module_id} PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    # enums.hpp is generated from gameplay/scripts/enums.lua and depends only
+    # on <cstdint>, so conversion modules share the same named ROM enums.
+    target_include_directories(shadowrun_ghidra_module_${module_id} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/qt_runtime/src/srx_refactor")
     list(APPEND SHADOWRUN_CONVERSION_MODULE_OBJECTS
         $<TARGET_OBJECTS:shadowrun_ghidra_module_${module_id}>)
 endforeach()

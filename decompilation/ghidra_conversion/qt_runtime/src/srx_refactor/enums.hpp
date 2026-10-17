@@ -264,7 +264,7 @@ enum class MatrixDeckMode : std::int64_t {
     ATTACK = 0xFF,
 };
 enum class MatrixModeResult : std::int64_t {
-    ATTACK = -1,
+    ATTACK = -0x1,
     BALANCED = 0x0,
     DEFENSE = 0x1,
 };
@@ -633,6 +633,21 @@ enum class StoryFlag : std::int64_t {
     HEART_DELIVERED = 0x1D,
     FROSTY_MET = 0x1E,
     UNUSED_31 = 0x1F,
+};
+enum class VidPhoneContact : std::int64_t {
+    CAPT_QUINTON_JAYMES = 0x0,
+    ALESANDRO_HOBBS = 0x1,
+    SHARKEY = 0x2,
+    KIPP_DAVID = 0x3,
+    WILMA_TEMMENHOFF = 0x4,
+    MACKLEMANN = 0x5,
+    GREGORY_WILNS = 0x6,
+    MR_FARADOUCHI = 0x7,
+    AGIRA_TETSUMI = 0x8,
+    HENRY_J_CULVER = 0x9,
+    MAX = 0xA,
+    CHILLICUT = 0xB,
+    PROFESSOR_JEFFERSON = 0xC,
 };
 enum class WeaponClass : std::int64_t {
     LIGHT_PISTOL = 0x0,

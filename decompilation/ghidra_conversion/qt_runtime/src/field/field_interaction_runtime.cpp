@@ -1,4 +1,5 @@
 #include "field_interaction_runtime.hpp"
+#include "enums.hpp"
 
 #include "shadowrun_ghidra/world/world_effect_conversion.hpp"
 
@@ -569,7 +570,8 @@ void FieldInteractionRuntime::finish_security_alert() {
     alert_transition_state_->transition_latched = false;
     if (source_audio_stop_callback_) {
         // ROM 0x1E09A sends sound 0x30 through 0x530D2's stop-resource path.
-        source_audio_stop_callback_(0x30U);
+        source_audio_stop_callback_(
+            static_cast<std::uint16_t>(srx::SoundId::ALARM));
     } else if (source_boundary_callback_) {
         source_boundary_callback_(
             "field.interaction.alert.stop_sound_unavailable");

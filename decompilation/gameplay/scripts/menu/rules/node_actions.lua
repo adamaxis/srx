@@ -2,6 +2,7 @@
 -- node = FF1100 record view (class +1, colour +5, ic_condition +0x0F); st = Matrix RAM (alert FFF0A0);
 -- run = {state FFF0E3, objective FFFBF2, value FFFBF6 (signed), size FFFBF7, fc28, fc1c};
 -- field = {alarm FFE16F, security_off FFE170, maglocks_off FFE17F}. rand(n) = 0xD3A -> 0..n-1. Texts are ROM addresses.
+local E = require("enums")
 local DECK = require("menu.rules.deck")
 local SPECIAL = require("menu.rules.datastore_special")
 local M = {}
@@ -38,14 +39,15 @@ function M.crash_system(run, field, actors)
     if run and run.state < 0 and run.objective < 0 then complete(run) end
     M.alarm_off(field, actors)                          -- 0x1E09A
     field.security_off, field.maglocks_off = true, true
-    return { text = M.TEXT.SHUTDOWN, countdown = { 3, 2, 1, 0 }, step = M.SHUTDOWN_STEP_FRAMES, logout = true, stop_sfx = 0x30 }
+    return { text = M.TEXT.SHUTDOWN, countdown = { 3, 2, 1, 0 }, step = M.SHUTDOWN_STEP_FRAMES, logout = true, stop_sfx = E.SoundId.ALARM }
 end
--- 0x1E09A alarm off: if FFE16F set -> clear; actors FF0400..FF0A00 with +0x9E bit1 get bit2; stop sfx 0x30.
+-- 0x1E09A alarm off: if FFE16F set -> clear; actors FF0400..FF0A00 with +0x9E bit1 get bit2;
+-- always stops E.SoundId.ALARM (0x30) through 0x530D2 (FF 12 30).
 function M.alarm_off(field, actors)
     if not field.alarm then return false end
     field.alarm = false
     for _, a in ipairs(actors or {}) do if a.flags9e & 2 ~= 0 then a.flags9e = a.flags9e | 4 end end
-    return true                                        -- caller stops sfx 0x30
+    return true                                        -- caller stops E.SoundId.ALARM
 end
 -- 0x54BD2 Turn Off Node by class (+1).
 M.TURN_OFF = { [0x27] = { alarm = true, security = true }, [0x28] = { security = true },
@@ -56,7 +58,7 @@ function M.turn_off_node(node, field, actors)
     if e then
         if e.alarm then
             M.alarm_off(field, actors)
-            stop_sfx = 0x30
+            stop_sfx = E.SoundId.ALARM
         end
         if e.security then field.security_off = true end   -- FFE170 [H: suppresses guard spawns 0x163DA/0x1DFD8]
         if e.maglocks then field.maglocks_off = true end   -- FFE17F maglocks disengaged

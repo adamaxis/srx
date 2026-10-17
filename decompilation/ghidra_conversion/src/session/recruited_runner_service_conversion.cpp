@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/session/recruited_runner_service_conversion.hpp"
+#include "enums.hpp"  // srx::VidPhoneContact (generated from enums.lua)
 
 #include <array>
 #include <cstddef>
@@ -225,8 +226,11 @@ constexpr RecruitedRunnerInformationTextStream kTrentJeffersonContactPage{
 constexpr RecruitedRunnerInformationTextStream kTrentJohnsonPage{
     "subject.johnsons.page_0", 3U};
 
-constexpr std::uint32_t kTrentJeffersonContactStoryFlag =
-    std::uint32_t{1U} << 12U;
+// FFFC2C is the Vid-Phone contact long, not the FFFC1E story-flag long:
+// bit n unlocks contact n (0xF5F4), and contact 12 is Prof. Jefferson.
+constexpr std::uint32_t kTrentJeffersonContactFlag =
+    std::uint32_t{1U}
+    << static_cast<std::uint32_t>(srx::VidPhoneContact::PROFESSOR_JEFFERSON);
 
 bool service_slot_is_active(const LiveRunnerRecord& record) {
     // BTST #0,FF0210/FF0310 reads the first byte of each record's +0x10
@@ -511,12 +515,12 @@ TrentInformationResponse select_trent_information_response(
         result.page_count = 2U;
         return result;
     case TrentInformationSubject::contacts:
-        // ROM 0x24964: MOVE.W FFFC2C,D1; BSET #12,D1; MOVE.W D1,FFFC2C;
+        // ROM 0x24964: MOVE.L FFFC2C,D1; BSET #12,D1; MOVE.L D1,FFFC2C;
         // LEA 0xFECC4,A0; RTS. The text at 0x100DBE describes the
         // Jefferson contact. The source later exposes the name through the
         // Pocket Secretary path; this function converts the proven flag
         // mutation and leaves that downstream record consumer explicit.
-        state.story_flags |= kTrentJeffersonContactStoryFlag;
+        state.story_flags |= kTrentJeffersonContactFlag;
         result.action = TrentInformationResponseAction::selected;
         result.pages = {kTrentJeffersonContactPage, {}};
         result.more_after_page = {false, false};
