@@ -923,6 +923,16 @@ FieldSceneRuntime::FieldSceneRuntime(
                                  std::string(*script_result)}
                            : std::nullopt;
             }
+            const auto deck_action = vid_phone_deck_action_for_id(service_id);
+            if (deck_action.has_value()) {
+                const auto result = apply_vid_phone_deck_service(
+                    *deck_action, field_funds_, field_matrix_deck_record_);
+                const auto script_result = vid_phone_deck_script_result(result);
+                return script_result.has_value()
+                           ? std::optional<std::string>{
+                                 std::string(*script_result)}
+                           : std::nullopt;
+            }
             const auto vid_phone_action =
                 vid_phone_service_action_for_id(service_id);
             if (vid_phone_action.has_value()) {

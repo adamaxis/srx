@@ -607,6 +607,16 @@ sharkey.events.smart_goggles_inventory_full = {
     continuation_key = "",
 }
 
+local kipp = speakers.vid_phone_kipp_david
+kipp.events.insufficient_funds = {
+    title_key = "vid_phone.kipp_david.insufficient_funds",
+    continuation_key = "",
+}
+kipp.events.disconnected = {
+    title_key = "vid_phone.kipp_david.disconnected",
+    continuation_key = "",
+}
+
 local quinton_prefix = "vid_phone.capt_quinton_jaymes."
 local function define_quinton_menu(id, text_id, option_keys)
     phone_profile[id] = {
@@ -726,6 +736,56 @@ define_sharkey_menu(
         return_to_services = sharkey_prefix .. "option.return_to_services",
         other_subject = sharkey_prefix .. "option.other_subject",
     })
+
+local kipp_prefix = "vid_phone.kipp_david."
+local function define_kipp_menu(id, text_id, option_keys)
+    phone_profile[id] = {
+        title_key = kipp_prefix .. text_id,
+        choice_label_keys = option_keys,
+    }
+end
+
+define_kipp_menu("kipp_intro", "intro", {
+    more = "vid_phone.option.more",
+})
+define_kipp_menu("kipp_services", "services", {
+    matrix = kipp_prefix .. "option.matrix",
+    programs = kipp_prefix .. "option.programs",
+    cyberdeck = kipp_prefix .. "option.cyberdeck",
+})
+define_kipp_menu("kipp_matrix_intro", "matrix_intro", {
+    more = "vid_phone.option.more",
+})
+define_kipp_menu("kipp_matrix_corps", "matrix_corps", {
+    more = "vid_phone.option.more",
+})
+define_kipp_menu("kipp_matrix_result", "matrix_result", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+define_kipp_menu("kipp_program_intro", "program_intro", {
+    more = "vid_phone.option.more",
+})
+define_kipp_menu("kipp_program_details", "program_details", {
+    more = "vid_phone.option.more",
+})
+define_kipp_menu("kipp_program_offer", "program_offer", {
+    buy_rebound = kipp_prefix .. "option.buy_rebound",
+    buy_degrade = kipp_prefix .. "option.buy_degrade",
+    different_subject = kipp_prefix .. "option.different_subject",
+})
+define_kipp_menu("kipp_deck_offer", "deck_offer", {
+    pay_for_deck = kipp_prefix .. "option.pay_for_deck",
+    different_subject = kipp_prefix .. "option.different_subject",
+})
+define_kipp_menu("kipp_storage_full", "storage_full", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+define_kipp_menu("kipp_program_result", "program_result", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
 
 -- Content is grouped by speaker and topic. The controller supplies only the
 -- semantic runner/page ID; this table connects that ID to the imported copy.

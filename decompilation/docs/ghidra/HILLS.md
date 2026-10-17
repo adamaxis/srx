@@ -49,7 +49,12 @@ acknowledges each result, and captures both fade/load routes into Scenes 6 and
 frame at camera `(0x0A00, 0x0280)`; the host runs ROM `0x08C0`'s 31 camera
 passes before `0x12F6`, and the QA requires that runner anchor on the field.
 It also exercises the Smart Goggles success/full-inventory branches and
-checks clean terminal redraws. Its full-screen captures are source/runtime regression
+checks clean terminal redraws. Kipp David's record at `0x10AD8A` now follows
+commands `0x71`-`0x73`: 185,000 nuyen writes the Fairlight Excalibur bytes at
+`FFFBBE` (model 4, MPCP 12, Hardening 5, memory 500, storage 1000, load 100,
+response 3) and does not set `FF018F`; Rebound and Degrade cost 30,000, pass
+the rating-4 storage check at `0x19538`, and store rating 6. The panel QA
+captures his service menu, the deck offer, and the disconnect. Its full-screen captures are source/runtime regression
 evidence, not an independent Genesis comparison. The QA opens the field
 terminal through a controlled entry seam, so the physical map route into
 event 31 remains open. There is no independent longplay call frame; this hill

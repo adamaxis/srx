@@ -147,13 +147,24 @@ int main(int argc, char** argv) {
     std::optional<std::uint32_t> phone_funds = 3200U;
     std::optional<std::uint32_t> phone_contacts_flags = 0U;
     std::optional<std::uint16_t> phone_pending_destination;
+    std::optional<CyberdeckRecord> phone_deck;
     std::array<std::uint8_t, 8> phone_item_codes{};
     std::array<std::uint8_t, 8> phone_item_phases{};
     runtime.set_native_script_service_callback(
         [&phone_funds, &phone_contacts_flags, &phone_item_codes,
-         &phone_item_phases, &phone_pending_destination](
+         &phone_item_phases, &phone_pending_destination, &phone_deck](
             const std::string_view service_id)
             -> std::optional<std::string> {
+            const auto deck_action = vid_phone_deck_action_for_id(service_id);
+            if (deck_action.has_value()) {
+                const auto result = apply_vid_phone_deck_service(
+                    *deck_action, phone_funds, phone_deck);
+                const auto script_result = vid_phone_deck_script_result(result);
+                return script_result.has_value()
+                           ? std::optional<std::string>{
+                                 std::string(*script_result)}
+                           : std::nullopt;
+            }
             const auto passage_action =
                 vid_phone_passage_action_for_id(service_id);
             if (passage_action.has_value()) {
@@ -792,6 +803,57 @@ int main(int argc, char** argv) {
             std::cerr << source_boundary << '\n';
         }
         return 23;
+    }
+
+    phone_funds = 185000U;
+    if (!expect(select_phone_option(runtime),
+                "Vid-Phone row was not selected for Kipp") ||
+        !advance(runtime, 0x4000U, "A did not reopen the phonebook for Kipp") ||
+        !advance(runtime, 0x0200U, "Down did not pass Quinton") ||
+        !advance(runtime, 0x0200U, "Down did not pass Alesandro") ||
+        !advance(runtime, 0x0200U, "Down did not select Kipp") ||
+        !advance(runtime, 0x4000U, "A did not open Kipp's call") ||
+        !expect(runtime.panel().actor_name == "Kipp David" &&
+                    runtime.panel().option_count == 2U &&
+                    runtime.panel().portrait_alias ==
+                        "dialogue.portraits.vid.phone.kipp.david",
+                "Kipp call did not use his contact name and portrait") ||
+        !save_panel(runtime, output_root, "43-kipp-first-call") ||
+        !advance(runtime, 0x4000U, "A did not open Kipp's sigh page") ||
+        !advance(runtime, 0x4000U, "A did not pass Kipp's sigh page") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    panel_contains_text(runtime, "cyberdeck"),
+                "Kipp's service menu did not show the cyberdeck choice") ||
+        !save_panel(runtime, output_root, "44-kipp-services") ||
+        !advance(runtime, 0x2000U, "C did not select Kipp's cyberdeck") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    panel_contains_text(runtime, "185,000"),
+                "Excalibur offer did not show its ROM price and two choices") ||
+        !save_panel(runtime, output_root, "45-kipp-deck-offer") ||
+        !advance(runtime, 0x4000U, "A did not pay for the Excalibur") ||
+        !expect(runtime.panel().option_count == 0U &&
+                    panel_contains_text(runtime, "disconnected") &&
+                    phone_funds == 0U && phone_deck.has_value() &&
+                    phone_deck->model_index == 4 &&
+                    phone_deck->mpcp == 12U &&
+                    phone_deck->hardening == 5U &&
+                    phone_deck->memory_megapulses == 500U &&
+                    phone_deck->storage_megapulses == 1000U &&
+                    phone_deck->load_io_speed == 100U &&
+                    phone_deck->response == 3U &&
+                    !phone_deck->program_ratings.has_value(),
+                "Excalibur payment did not install ROM 0x22A74's deck bytes") ||
+        !save_panel(runtime, output_root, "46-kipp-deck-disconnect") ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                    FieldDialogueAdvanceResult::prompt_advanced &&
+                    runtime.panel().option_count == 4U &&
+                    runtime.panel().portrait_alias.empty(),
+                "Excalibur disconnect did not return to the field menu")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 24;
     }
 
     const auto returned_screen = render_panel(runtime);

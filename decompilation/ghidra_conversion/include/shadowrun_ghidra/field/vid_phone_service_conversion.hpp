@@ -2,6 +2,8 @@
 
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/weapon_accessory_conversion.hpp"
+#include "shadowrun_ghidra/cyberspace/cyberdeck_record.hpp"
+#include "shadowrun_ghidra/cyberspace/matrix_storage_conversion.hpp"
 
 #include <array>
 #include <cstddef>
@@ -240,6 +242,109 @@ inline VidPhoneServiceResult apply_vid_phone_service(
     inventory_item_codes[free_slot] = item->item_code;
     inventory_phase_bytes[free_slot] = offer->item_phase;
     return VidPhoneServiceResult::purchased;
+}
+
+// Kipp David, contact record 0x10AD8A. Commands 0x71-0x73 are handlers
+// 0x22A54, 0x22A9E, and 0x22AF4. 0x71 does not set FF018F.
+enum class VidPhoneDeckAction : std::uint8_t {
+    purchase_excalibur,
+    purchase_rebound,
+    purchase_degrade,
+};
+
+enum class VidPhoneDeckResult : std::uint8_t {
+    deck_installed,
+    program_installed,
+    insufficient_funds,
+    insufficient_storage,
+    unavailable,
+};
+
+inline std::optional<VidPhoneDeckAction> vid_phone_deck_action_for_id(
+    const std::string_view service_id) noexcept {
+    if (service_id == "vid_phone.purchase_excalibur") {
+        return VidPhoneDeckAction::purchase_excalibur;
+    }
+    if (service_id == "vid_phone.purchase_rebound") {
+        return VidPhoneDeckAction::purchase_rebound;
+    }
+    if (service_id == "vid_phone.purchase_degrade") {
+        return VidPhoneDeckAction::purchase_degrade;
+    }
+    return std::nullopt;
+}
+
+inline std::optional<std::string_view> vid_phone_deck_script_result(
+    const VidPhoneDeckResult result) noexcept {
+    switch (result) {
+    case VidPhoneDeckResult::deck_installed: return "deck_installed";
+    case VidPhoneDeckResult::program_installed: return "program_installed";
+    case VidPhoneDeckResult::insufficient_funds: return "insufficient";
+    case VidPhoneDeckResult::insufficient_storage: return "storage_full";
+    case VidPhoneDeckResult::unavailable: return std::nullopt;
+    }
+    return std::nullopt;
+}
+
+inline VidPhoneDeckResult apply_vid_phone_deck_service(
+    const VidPhoneDeckAction action,
+    std::optional<std::uint32_t>& funds,
+    std::optional<CyberdeckRecord>& deck) noexcept {
+    if (!funds.has_value()) {
+        return VidPhoneDeckResult::unavailable;
+    }
+    if (action == VidPhoneDeckAction::purchase_excalibur) {
+        constexpr std::uint32_t kExcaliburPrice = 0x2D2A8U;
+        if (*funds < kExcaliburPrice) {
+            return VidPhoneDeckResult::insufficient_funds;
+        }
+        *funds -= kExcaliburPrice;
+        auto record = deck.value_or(CyberdeckRecord{});
+        record.mpcp = 0x0CU;
+        record.hardening = 5U;
+        record.memory_megapulses = 0x1F4U;
+        record.storage_megapulses = 0x3E8U;
+        record.load_io_speed = 0x64U;
+        record.response = 3U;
+        record.model_index = 4;
+        deck = std::move(record);
+        return VidPhoneDeckResult::deck_installed;
+    }
+
+    constexpr std::uint32_t kProgramPrice = 0x7530U;
+    if (*funds < kProgramPrice) {
+        return VidPhoneDeckResult::insufficient_funds;
+    }
+    const auto program = static_cast<std::uint8_t>(
+        action == VidPhoneDeckAction::purchase_rebound ? 3U : 2U);
+    auto record = deck.value_or(CyberdeckRecord{});
+    MatrixStorageUsage usage{};
+    usage.total_memory = record.storage_megapulses.value_or(0U);
+    usage.availability_flags =
+        record.program_ratings.value_or(std::array<std::uint8_t, 12>{});
+    if (record.data_files.has_value()) {
+        for (std::size_t index = 0; index < usage.loaded_slot_usage.size();
+             ++index) {
+            usage.loaded_slot_usage[index] = static_cast<std::uint8_t>(
+                (*record.data_files)[index].size);
+        }
+    }
+    // 0x22A9E/0x22AF4 size the download as rating 4, then store rating 6.
+    // 0x19558's free-storage word is compared with signed BPL.
+    const auto available = static_cast<std::int16_t>(
+        calculate_matrix_storage_capacity(usage).available_memory);
+    const auto required = static_cast<std::int16_t>(
+        matrix_program_storage_weight(program, 4U));
+    if (available < required) {
+        return VidPhoneDeckResult::insufficient_storage;
+    }
+    *funds -= kProgramPrice;
+    auto ratings =
+        record.program_ratings.value_or(std::array<std::uint8_t, 12>{});
+    ratings[program] = 6U;
+    record.program_ratings = ratings;
+    deck = std::move(record);
+    return VidPhoneDeckResult::program_installed;
 }
 
 } // namespace shadowrun::ghidra_conversion

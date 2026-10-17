@@ -1,3 +1,4 @@
+#include "shadowrun_ghidra/cyberspace/cyberdeck_record.hpp"
 #include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
 
 #include <array>
@@ -330,6 +331,109 @@ int main() {
                     !vid_phone_passage_script_result(passage_result).has_value(),
                 "unresolved wallet did not block passage without a script result")) {
         return 20;
+    }
+
+    if (!expect(vid_phone_deck_action_for_id(
+                    "vid_phone.purchase_excalibur") ==
+                    VidPhoneDeckAction::purchase_excalibur &&
+                    vid_phone_deck_action_for_id(
+                        "vid_phone.purchase_rebound") ==
+                    VidPhoneDeckAction::purchase_rebound &&
+                    vid_phone_deck_action_for_id(
+                        "vid_phone.purchase_degrade") ==
+                    VidPhoneDeckAction::purchase_degrade &&
+                    !vid_phone_deck_action_for_id(
+                        "vid_phone.unknown_deck").has_value(),
+                "Kipp deck service ids did not map to commands 0x71-0x73")) {
+        return 21;
+    }
+
+    std::optional<CyberdeckRecord> deck;
+    funds = 184999U;
+    auto deck_result = apply_vid_phone_deck_service(
+        VidPhoneDeckAction::purchase_excalibur, funds, deck);
+    if (!expect(deck_result == VidPhoneDeckResult::insufficient_funds &&
+                    funds == 184999U && !deck.has_value() &&
+                    vid_phone_deck_script_result(deck_result) == "insufficient",
+                "short Excalibur funds were charged or installed a deck")) {
+        return 22;
+    }
+    deck = CyberdeckRecord{};
+    deck->program_ratings = std::array<std::uint8_t, 12>{};
+    (*deck->program_ratings)[0] = 1U;
+    funds = 185000U;
+    deck_result = apply_vid_phone_deck_service(
+        VidPhoneDeckAction::purchase_excalibur, funds, deck);
+    if (!expect(deck_result == VidPhoneDeckResult::deck_installed &&
+                    funds == 0U && deck.has_value() &&
+                    deck->mpcp == 12U && deck->hardening == 5U &&
+                    deck->memory_megapulses == 500U &&
+                    deck->storage_megapulses == 1000U &&
+                    deck->load_io_speed == 100U && deck->response == 3U &&
+                    deck->model_index == 4 &&
+                    deck->program_ratings.has_value() &&
+                    (*deck->program_ratings)[0] == 1U &&
+                    vid_phone_deck_script_result(deck_result) ==
+                        "deck_installed",
+                "Excalibur purchase did not write ROM 0x22A74's deck bytes")) {
+        return 23;
+    }
+
+    funds = 29999U;
+    deck_result = apply_vid_phone_deck_service(
+        VidPhoneDeckAction::purchase_rebound, funds, deck);
+    if (!expect(deck_result == VidPhoneDeckResult::insufficient_funds &&
+                    funds == 29999U &&
+                    (*deck->program_ratings)[3] == 0U,
+                "short Rebound funds changed the wallet or program rating")) {
+        return 24;
+    }
+    deck->storage_megapulses = 47U;
+    funds = 30000U;
+    deck_result = apply_vid_phone_deck_service(
+        VidPhoneDeckAction::purchase_rebound, funds, deck);
+    if (!expect(deck_result == VidPhoneDeckResult::insufficient_storage &&
+                    funds == 30000U &&
+                    (*deck->program_ratings)[3] == 0U &&
+                    vid_phone_deck_script_result(deck_result) == "storage_full",
+                "47 Mp rejected Rebound after charging, or stored rating 6")) {
+        return 25;
+    }
+    (*deck->program_ratings)[0] = 0U;
+    deck->storage_megapulses = 48U;
+    deck_result = apply_vid_phone_deck_service(
+        VidPhoneDeckAction::purchase_rebound, funds, deck);
+    if (!expect(deck_result == VidPhoneDeckResult::program_installed &&
+                    funds == 0U && (*deck->program_ratings)[3] == 6U &&
+                    (*deck->program_ratings)[0] == 0U,
+                "48 Mp did not accept the rating-4 size check and store 6")) {
+        return 26;
+    }
+    funds = 30000U;
+    deck_result = apply_vid_phone_deck_service(
+        VidPhoneDeckAction::purchase_degrade, funds, deck);
+    if (!expect(deck_result == VidPhoneDeckResult::insufficient_storage &&
+                    funds == 30000U &&
+                    (*deck->program_ratings)[2] == 0U,
+                "stored Rebound rating 6 still left room for Degrade")) {
+        return 27;
+    }
+    deck->storage_megapulses = 1000U;
+    deck_result = apply_vid_phone_deck_service(
+        VidPhoneDeckAction::purchase_degrade, funds, deck);
+    if (!expect(deck_result == VidPhoneDeckResult::program_installed &&
+                    funds == 0U && (*deck->program_ratings)[2] == 6U &&
+                    (*deck->program_ratings)[3] == 6U,
+                "Degrade did not store rating 6 at program index 2")) {
+        return 28;
+    }
+    funds.reset();
+    deck_result = apply_vid_phone_deck_service(
+        VidPhoneDeckAction::purchase_excalibur, funds, deck);
+    if (!expect(deck_result == VidPhoneDeckResult::unavailable &&
+                    !vid_phone_deck_script_result(deck_result).has_value(),
+                "missing wallet still produced a Kipp script result")) {
+        return 29;
     }
 
     return 0;

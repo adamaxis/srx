@@ -361,6 +361,171 @@ bool test_sharkey_service_tree(GameScriptRuntime& scripts,
                   "Sharkey's Other Subject option did not end the call");
 }
 
+bool test_kipp_service_tree(GameScriptRuntime& scripts,
+                            std::uint32_t& contact_flags) {
+    contact_flags = 1U << 3U;
+    auto task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "call_kipp_david_first_call" &&
+                    task.operation->menu->speaker_id == "vid_phone_kipp_david",
+                "Kipp call did not select his ROM contact profile")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("services");
+    if (!expect(is_menu(task) && task.operation->menu->id == "kipp_intro",
+                "Kipp Services did not open the ROM sigh page")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("more");
+    if (!expect(is_menu(task) && task.operation->menu->id == "kipp_services",
+                "Kipp's service menu did not follow the sigh page")) {
+        return false;
+    }
+    auto profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() && profile->choices.size() == 3U &&
+                    scripts.dialogue_text(profile->title_key) != nullptr &&
+                    scripts.dialogue_text(profile->title_key)->find(
+                        "cyberdeck") != std::string::npos,
+                "Kipp's service menu did not resolve its three ROM choices")) {
+        return false;
+    }
+
+    task = scripts.complete_native_menu_choice("matrix");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("more");
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "kipp_matrix_result",
+                "Matrix pages did not reach the Black Ice result")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() &&
+                    scripts.dialogue_text(profile->title_key) != nullptr &&
+                    scripts.dialogue_text(profile->title_key)->find(
+                        "Black Ice") != std::string::npos,
+                "Matrix result is missing the ROM Black Ice copy")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("services");
+    if (!expect(is_menu(task) && task.operation->menu->id == "kipp_intro",
+                "Matrix Services did not return to Kipp's sigh page")) {
+        return false;
+    }
+
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("programs");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("more");
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "kipp_program_offer",
+                "program pages did not reach the 30,000 nuyen offer")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() && profile->choices.size() == 3U &&
+                    scripts.dialogue_text(profile->title_key)->find(
+                        "30,000") != std::string::npos,
+                "program offer is missing its ROM price")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("buy_rebound");
+    if (!expect(is_service_call(task, "vid_phone.purchase_rebound"),
+                "Rebound did not call ROM command 0x72")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("insufficient");
+    if (!expect(is_say(task, "insufficient_funds", "vid_phone_kipp_david"),
+                "short program funds did not show Kipp's ROM refusal")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "Kipp's insufficient-funds page did not end the call")) {
+        return false;
+    }
+
+    task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    task = scripts.complete_native_menu_choice("services");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("programs");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("buy_degrade");
+    if (!expect(is_service_call(task, "vid_phone.purchase_degrade"),
+                "Degrade did not call ROM command 0x73")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("storage_full");
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "kipp_storage_full",
+                "full deck storage did not show the ROM cyberjock page")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() &&
+                    scripts.dialogue_text(profile->title_key)->find(
+                        "storage") != std::string::npos,
+                "storage page is missing the ROM copy")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("services");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("programs");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("buy_rebound");
+    task = scripts.complete_native_service_result("program_installed");
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "kipp_program_result",
+                "program download did not show its ROM transfer page")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("goodbye");
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "program result Goodbye did not finish Kipp's call")) {
+        return false;
+    }
+
+    task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    task = scripts.complete_native_menu_choice("services");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("cyberdeck");
+    if (!expect(is_menu(task) && task.operation->menu->id == "kipp_deck_offer",
+                "cyberdeck choice did not open the Excalibur offer")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() && profile->choices.size() == 2U &&
+                    scripts.dialogue_text(profile->title_key)->find(
+                        "185,000") != std::string::npos,
+                "Excalibur offer is missing its ROM price or two choices")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("different_subject");
+    if (!expect(is_menu(task) && task.operation->menu->id == "kipp_intro",
+                "deck Other Subject did not return to Kipp's sigh page")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("cyberdeck");
+    task = scripts.complete_native_menu_choice("pay_for_deck");
+    if (!expect(is_service_call(task, "vid_phone.purchase_excalibur"),
+                "Excalibur payment did not call ROM command 0x71")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("deck_installed");
+    if (!expect(is_say(task, "disconnected", "vid_phone_kipp_david"),
+                "deck purchase did not disconnect with the ROM line")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    return expect(task.status == ScriptTaskStep::Status::completed,
+                  "Excalibur disconnect did not end Kipp's call");
+}
+
 } // namespace
 
 int main() {
@@ -826,6 +991,10 @@ int main() {
     if (!test_sharkey_service_tree(scripts, contact_flags)) {
         std::cerr << scripts.failure() << '\n';
         return 59;
+    }
+    if (!test_kipp_service_tree(scripts, contact_flags)) {
+        std::cerr << scripts.failure() << '\n';
+        return 60;
     }
 
     contact_flags = 0x00FFU;

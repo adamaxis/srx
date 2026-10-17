@@ -875,6 +875,30 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"vid_phone.sharkey.option.return_to_services", 0x104817U},
         {"vid_phone.sharkey.option.confirm_purchase", 0x103A0EU},
         {"vid_phone.sharkey.option.other_subject", 0x104FEBU},
+        // Kipp David record 0x10AD8A. Commands 0x71-0x73 are 0x22A54,
+        // 0x22A9E, and 0x22AF4. 0x71 writes the Excalibur bytes at FFFBBE
+        // and does not set FF018F. Program buys check storage as rating 4
+        // and store rating 6.
+        {"vid_phone.kipp_david.intro", 0x10AFACU},
+        {"vid_phone.kipp_david.services", 0x10B033U},
+        {"vid_phone.kipp_david.matrix_intro", 0x10B236U},
+        {"vid_phone.kipp_david.matrix_corps", 0x10B278U},
+        {"vid_phone.kipp_david.matrix_result", 0x10B379U},
+        {"vid_phone.kipp_david.program_intro", 0x10B468U},
+        {"vid_phone.kipp_david.program_details", 0x10B540U},
+        {"vid_phone.kipp_david.program_offer", 0x10B614U},
+        {"vid_phone.kipp_david.deck_offer", 0x10B635U},
+        {"vid_phone.kipp_david.insufficient_funds", 0x10B0F5U},
+        {"vid_phone.kipp_david.disconnected", 0x10A7C4U},
+        {"vid_phone.kipp_david.storage_full", 0x10BF30U},
+        {"vid_phone.kipp_david.program_result", 0x10BEE3U},
+        {"vid_phone.kipp_david.option.matrix", 0x104924U},
+        {"vid_phone.kipp_david.option.programs", 0x10493EU},
+        {"vid_phone.kipp_david.option.cyberdeck", 0x104200U},
+        {"vid_phone.kipp_david.option.buy_rebound", 0x104969U},
+        {"vid_phone.kipp_david.option.buy_degrade", 0x104982U},
+        {"vid_phone.kipp_david.option.different_subject", 0x104817U},
+        {"vid_phone.kipp_david.option.pay_for_deck", 0x103A7AU},
     };
 
     output << "-- Generated from the US ROM dialogue and menu text records.\n"
