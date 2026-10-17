@@ -344,8 +344,12 @@ and sets the direct continuation at `0x0DB26`. In ordinary field mode
 Vid-Phone checks the contact bitfield and shows the ROM's no-contacts message
 when empty. The Lua call list filters all 13 contact records from the ROM
 contact bitfield, pages the rows, resolves each first/repeat dialogue and
-portrait, and retains per-contact call-history state. Its `Services` action
-still has no source-backed transaction handler. Cyberspace checks deck,
+portrait, and retains per-contact call-history state. The ROM-rooted service
+menu now covers Capt. Quinton's Hollywood/Weller information, Firepower, and
+contact-offer tree; native purchase effects use the live runner wallet,
+inventory, and contact flags. The menu is rooted at `0x1096F4`, with Firepower
+and Contacts nodes at `0x109750` and `0x109780`. Services for the other twelve
+contacts remain unresolved. Cyberspace checks deck,
 MPCP, and datajack facts before showing Enter Passcode / System Search / Exit;
 known passcodes enter their selected system, while System Search follows the
 ROM's eleven permutation rounds and random system choice. The Matrix entry

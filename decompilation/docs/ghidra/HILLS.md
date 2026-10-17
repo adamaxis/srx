@@ -21,13 +21,25 @@ Jefferson share `0x121F34`. Capt. Quinton and Sharkey have no matching visual
 frame in the reviewed longplay. The Vid-Phone visual CTest checks Henry's
 portrait pixels and verifies that the image clears when the call returns to
 the field menu. No matching independent longplay frame of a Vid-Phone call has
-been identified, so the visual hill remains partial. Cyberspace checks
+been identified, so the visual hill remains partial. Capt. Quinton's service
+tree is now connected: the ROM menu rooted at `0x1096F4` reaches Firepower
+(`0x109750`) and Contacts (`0x109780`); command IDs `0x68`-`0x6A` dispatch
+through `0x12CCB4` to handlers `0x22898`, `0x228D0`, and `0x22908`. Lua
+contains his Hollywood/Weller information, weapon offers, and Rigger offer.
+The typed host applies the 400-nuyen grenade purchase, 1,000-nuyen HK227-S
+purchase, and 2,800-nuyen Sharkey introduction against the live runner wallet,
+inventory, and contact flags. The HK phase byte is the Laser Sight and Gas
+Vent II attachment mask (`0x18`), separate from the item's 28-round catalog
+capacity. Debug/Release script, transaction, and panel-route CTests cover
+success, insufficient funds, full inventory, and clean return. Their images
+render the dialogue panel over black, so they do not prove cleanup over a live
+map background. Services for the other 12 contacts remain open. Cyberspace checks
 deck/MPCP/datajack facts, offers passcodes or System Search, then enters the
 existing Matrix session and node-action route. Debug/Release CTests cover these script routes, the phone
 pages/calls, the cab selector, and a completed Redmond-to-Downtown map load;
 the taxi selector and arrival full-screen dumps are byte-identical across
 builds. This hill remains partial: the ordinary map-to-terminal physical route,
-contact-specific `Services`, full Matrix presentation/actions, and the ROM's
+Services for the other 12 contacts, full Matrix presentation/actions, and the ROM's
 mode-exit dialogue are still open. See
 [`field-map-trigger-profile.md`](field-map-trigger-profile.md).
 
@@ -217,8 +229,9 @@ behavior is script-driven.
 The 7x9 portrait stream follows the separate `BGT` repeated-tile and `BGE`
 stepped-tile counts from ROM `0x1728`; the upper branch reads a fresh delta
 for each emitted tile. A source-format CTest guards those counts and deltas,
-and the Vid-Phone visual CTest checks the full Henry call panel and portrait
-cleanup. The Stoker portrait remains matched to independent section 03 frames
+and the Vid-Phone visual CTest checks the dialogue panel and portrait cleanup
+for Henry and Quinton's service route. These captures use a black panel canvas;
+they do not verify panel cleanup over a live map. The Stoker portrait remains matched to independent section 03 frames
 000082, 000301, and 000601. The first arrival and three-choice package offer
 now run through the indexed title
 service and typed map-event route; the C debt question and B Jump House
