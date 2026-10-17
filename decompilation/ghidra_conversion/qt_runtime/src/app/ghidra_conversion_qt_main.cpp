@@ -20,8 +20,8 @@ int main(int argc, char** argv) {
                              "  --debug-frames  Enable Pause, . (step), and Shift+. (step 60) controls.\n"
                              "  --record-input  Record accepted keyboard input for replay from a fresh launch.\n"
                              "  --replay-input  Replay a recorded keyboard session from a fresh launch.\n"
-                             "  --headless-replay Run the replay to completion without a window or audio output.\n"
-                             "  --replay-to-frame Stop replay after N completed source frames (deterministic seek from launch).\n"
+                             "  --headless-replay Run replay without a window or audio output.\n"
+                             "  --replay-to-frame Seek to N completed frames; pair with --debug-port for paused inspection.\n"
                              "  --dump-frame    Save the final replay frame as an image.\n"
                              "  --debug-port    Start the paused, headless local debugger on 127.0.0.1.\n";
                 return 0;
@@ -51,6 +51,10 @@ int main(int argc, char** argv) {
                         "--replay-to-frame requires a nonnegative frame number");
                 }
                 const std::string value(argv[++index]);
+                if (value.empty() || value.front() == '-') {
+                    throw std::invalid_argument(
+                        "--replay-to-frame requires a nonnegative frame number");
+                }
                 std::size_t consumed = 0U;
                 const auto frame = std::stoull(value, &consumed, 10);
                 if (consumed != value.size()) {
@@ -100,14 +104,15 @@ int main(int argc, char** argv) {
             throw std::invalid_argument(
                 "--dump-frame is only available with --headless-replay");
         }
-        if (replay_to_frame.has_value() && !headless_replay) {
+        if (replay_to_frame.has_value() && !headless_replay &&
+            !debug_port.has_value()) {
             throw std::invalid_argument(
-                "--replay-to-frame requires --headless-replay");
+                "--replay-to-frame requires --headless-replay or --debug-port");
         }
-        if (debug_port.has_value() &&
-            input_log.mode == debug::InputLogConfig::Mode::replay) {
+        if (replay_to_frame.has_value() &&
+            input_log.mode != debug::InputLogConfig::Mode::replay) {
             throw std::invalid_argument(
-                "--debug-port cannot be combined with --replay-input");
+                "--replay-to-frame requires --replay-input <file>");
         }
         if (debug_port.has_value() && headless_replay) {
             throw std::invalid_argument(
@@ -199,7 +204,8 @@ int main(int argc, char** argv) {
                                       frame_debug_controls ||
                                           debug_port.has_value(),
                                       headless_mode, debug_port);
-        if (headless_replay) {
+        if (headless_replay ||
+            (debug_port.has_value() && replay_to_frame.has_value())) {
             std::string error;
             if (!window.run_headless_replay(
                     frame_dump.value_or(std::filesystem::path{}),
@@ -207,14 +213,18 @@ int main(int argc, char** argv) {
                 std::cerr << "headless replay: " << error << '\n';
                 return 2;
             }
-            std::cout << "headless replay reached source frame "
-                      << window.source_frame_count_for_debug();
-            if (frame_dump.has_value()) {
-                std::cout << "; final frame saved to "
-                          << frame_dump->string();
+            if (debug_port.has_value()) {
+                window.resume_debugger_after_replay_seek();
+            } else {
+                std::cout << "headless replay reached source frame "
+                          << window.source_frame_count_for_debug();
+                if (frame_dump.has_value()) {
+                    std::cout << "; final frame saved to "
+                              << frame_dump->string();
+                }
+                std::cout << '\n';
+                return 0;
             }
-            std::cout << '\n';
-            return 0;
         }
         if (debug_port.has_value()) {
             std::cout << "local debugger listening on 127.0.0.1:"

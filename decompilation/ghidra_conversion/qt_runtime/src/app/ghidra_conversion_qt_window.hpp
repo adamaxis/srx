@@ -374,6 +374,14 @@ public:
         return source_frame_index_;
     }
 
+    void resume_debugger_after_replay_seek() {
+        pending_debug_events_.clear();
+        host_clock_.restart();
+        host_frame_deadline_ns_ = 0;
+        host_frame_timer_.start();
+        update();
+    }
+
     ~GhidraConversionWindow() override {
         if (source_random_observer_installed_) {
             set_source_random_observer({});

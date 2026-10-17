@@ -61,10 +61,10 @@ int main() {
         recorder.record_event(0U, 90, 0U, true);
         recorder.record_source_event(0U, "field.actor.2.heartbeat");
         recorder.record_completed_frame(0x3344U, 0x1122334455667788ULL);
-        if (std::filesystem::file_size(interrupted_path) <= 8U) {
-            std::cerr << "recorded frame was not flushed during the session\n";
-            return 1;
-        }
+    }
+    if (std::filesystem::file_size(interrupted_path) <= 8U) {
+        std::cerr << "recorded frame was not drained when the writer stopped\n";
+        return 1;
     }
     KeyboardInputLog interrupted_replay(
         {InputLogConfig::Mode::replay, interrupted_path.string()});

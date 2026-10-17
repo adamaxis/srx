@@ -2,14 +2,18 @@
 
 #include <algorithm>
 #include <array>
+#include <condition_variable>
 #include <cstdint>
+#include <deque>
 #include <fstream>
 #include <iterator>
 #include <limits>
+#include <mutex>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -32,6 +36,140 @@ struct InputLogConfig {
     std::string path;
 };
 
+class AsyncInputLogWriter final {
+public:
+    AsyncInputLogWriter(std::string path, const std::array<char, 8>& header)
+        : worker_([this, path = std::move(path), header] {
+              write_loop(path, header);
+          }) {
+        std::unique_lock lock(mutex_);
+        changed_.wait(lock, [this] { return ready_; });
+        if (!error_.empty()) {
+            const auto message = error_;
+            lock.unlock();
+            worker_.join();
+            throw std::runtime_error(message);
+        }
+    }
+
+    AsyncInputLogWriter(const AsyncInputLogWriter&) = delete;
+    AsyncInputLogWriter& operator=(const AsyncInputLogWriter&) = delete;
+
+    ~AsyncInputLogWriter() { finish(nullptr); }
+
+    bool enqueue(std::string bytes, const bool flush_after_write) {
+        if (bytes.size() > kMaximumQueuedBytes) {
+            return false;
+        }
+        std::unique_lock lock(mutex_);
+        changed_.wait(lock, [this, &bytes] {
+            return stopping_ || !error_.empty() ||
+                   queued_bytes_ + bytes.size() <= kMaximumQueuedBytes;
+        });
+        if (stopping_ || !error_.empty()) {
+            return false;
+        }
+        queued_bytes_ += bytes.size();
+        queue_.push_back({std::move(bytes), flush_after_write});
+        changed_.notify_all();
+        return true;
+    }
+
+    bool finish(std::string* error) {
+        {
+            std::lock_guard lock(mutex_);
+            stopping_ = true;
+            changed_.notify_all();
+        }
+        if (worker_.joinable()) {
+            worker_.join();
+        }
+        std::lock_guard lock(mutex_);
+        if (!error_.empty()) {
+            if (error != nullptr) {
+                *error = error_;
+            }
+            return false;
+        }
+        return true;
+    }
+
+private:
+    struct Entry {
+        std::string bytes;
+        bool flush_after_write = false;
+    };
+
+    static constexpr std::size_t kMaximumQueuedBytes = 8U * 1024U * 1024U;
+
+    void write_loop(const std::string& path,
+                    const std::array<char, 8>& header) {
+        std::ofstream stream(path, std::ios::binary | std::ios::trunc);
+        if (stream) {
+            stream.write(header.data(),
+                         static_cast<std::streamsize>(header.size()));
+            stream.flush();
+        }
+        {
+            std::lock_guard lock(mutex_);
+            if (!stream) {
+                error_ = "could not start input log: " + path;
+            }
+            ready_ = true;
+            changed_.notify_all();
+        }
+        if (!stream) {
+            return;
+        }
+
+        while (true) {
+            Entry entry;
+            {
+                std::unique_lock lock(mutex_);
+                changed_.wait(lock, [this] {
+                    return stopping_ || !queue_.empty();
+                });
+                if (queue_.empty() && stopping_) {
+                    break;
+                }
+                entry = std::move(queue_.front());
+                queue_.pop_front();
+                queued_bytes_ -= entry.bytes.size();
+                changed_.notify_all();
+            }
+            stream.write(entry.bytes.data(),
+                         static_cast<std::streamsize>(entry.bytes.size()));
+            if (entry.flush_after_write) {
+                stream.flush();
+            }
+            if (!stream) {
+                std::lock_guard lock(mutex_);
+                error_ = "failed while writing input log: " + path;
+                queue_.clear();
+                queued_bytes_ = 0U;
+                stopping_ = true;
+                changed_.notify_all();
+                return;
+            }
+        }
+        stream.flush();
+        if (!stream) {
+            std::lock_guard lock(mutex_);
+            error_ = "failed while flushing input log: " + path;
+            changed_.notify_all();
+        }
+    }
+
+    std::mutex mutex_;
+    std::condition_variable changed_;
+    std::deque<Entry> queue_;
+    std::size_t queued_bytes_ = 0U;
+    bool ready_ = false;
+    bool stopping_ = false;
+    std::string error_;
+    std::thread worker_;
+};
+
 // Records accepted Qt key transitions against source-frame boundaries. Version
 // 5 appends input, frame, and event chunks while the game runs; each completed
 // frame flushes its seed and inspector fingerprint. A missing final marker
@@ -51,17 +189,11 @@ public:
         if (config_.mode == InputLogConfig::Mode::replay) {
             load();
         } else {
-            output_.open(config_.path, std::ios::binary | std::ios::trunc);
-            if (!output_) {
-                throw std::runtime_error("could not open input log for writing: " +
-                                         config_.path);
-            }
-            output_.write(kMagicV5, sizeof(kMagicV5));
-            output_.flush();
-            if (!output_) {
-                throw std::runtime_error("failed while starting input log: " +
-                                         config_.path);
-            }
+            std::array<char, sizeof(kMagicV5)> header{};
+            std::copy(std::begin(kMagicV5), std::end(kMagicV5),
+                      header.begin());
+            writer_ = std::make_unique<AsyncInputLogWriter>(
+                config_.path, header);
         }
     }
 
@@ -138,12 +270,9 @@ public:
             std::array<char, 10> payload{};
             encode_u16(payload.data(), source_seed);
             encode_u64(payload.data() + 2, inspection_fingerprint);
-            append_chunk(kFrameChunk, frame_count_, payload.data(), payload.size());
+            append_chunk(kFrameChunk, frame_count_, payload.data(), payload.size(),
+                         true);
             ++frame_count_;
-            if (!write_failed_) {
-                output_.flush();
-                write_failed_ = !output_;
-            }
         }
     }
 
@@ -186,16 +315,18 @@ public:
             return true;
         }
         finished_ = true;
-        append_chunk(kEndChunk, frame_count_, nullptr, 0U);
-        output_.flush();
-        if (!output_ || write_failed_) {
+        append_chunk(kEndChunk, frame_count_, nullptr, 0U, true);
+        std::string writer_error;
+        if (writer_ == nullptr || !writer_->finish(&writer_error) ||
+            write_failed_) {
             write_failed_ = true;
-            output_.close();
             set_error(error, "failed while writing input log: " + config_.path);
+            if (!writer_error.empty()) {
+                set_error(error, writer_error);
+            }
             return false;
         }
         complete_recording_ = true;
-        output_.close();
         return true;
     }
 
@@ -276,21 +407,24 @@ private:
     }
 
     void append_chunk(const char type, const std::uint64_t frame,
-                      const char* const payload, const std::size_t size) {
-        if (write_failed_ || !output_.is_open()) {
+                      const char* const payload, const std::size_t size,
+                      const bool flush_after_write = false) {
+        if (write_failed_ || writer_ == nullptr) {
             return;
         }
         if (size > std::numeric_limits<std::uint32_t>::max()) {
             write_failed_ = true;
             return;
         }
-        output_.put(type);
-        write_u64(output_, frame);
-        write_u32(output_, static_cast<std::uint32_t>(size));
+        std::string chunk(13U + size, '\0');
+        chunk[0] = type;
+        encode_u64(chunk.data() + 1, frame);
+        encode_u32(chunk.data() + 9,
+                   static_cast<std::uint32_t>(size));
         if (size != 0U) {
-            output_.write(payload, static_cast<std::streamsize>(size));
+            std::copy_n(payload, size, chunk.data() + 13);
         }
-        write_failed_ = !output_;
+        write_failed_ = !writer_->enqueue(std::move(chunk), flush_after_write);
     }
 
     static std::uint32_t read_u32(std::istream& stream) {
@@ -502,7 +636,7 @@ private:
     }
 
     InputLogConfig config_;
-    std::ofstream output_;
+    std::unique_ptr<AsyncInputLogWriter> writer_;
     std::vector<KeyboardInputEvent> events_;
     std::vector<std::uint16_t> frame_seeds_;
     std::vector<std::uint64_t> frame_fingerprints_;
