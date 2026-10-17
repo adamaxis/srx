@@ -1,6 +1,7 @@
 -- command.lua: the Start/Command overview, ROM 0x10D30..0x10F4E plus page helpers 0x114A0/0x11506/0x11740.
 -- State mirrors the ROM bytes: page = FFF0D0, row = FFF0D1, posture_gate = FFF115, panel_dirty = FFF112.
 local E = require("enums")
+local Inv = require("menu.rules.inventory")
 local P, Page, R, T, S = E.Pad, E.MenuPage, E.MenuRegion, E.MenuTransition, E.MenuSound
 
 local M = { window = E.WindowPlane.SIDEBAR }   -- [C] 0x10D30 never writes VDP reg 0x11 (docs/09 s11)
@@ -17,8 +18,14 @@ local CHILD = {   -- 0xD2A0A jump table, indexed page-2 [C]
 
 function M.new() return { page = Page.POCKET_SECRETARY, row = 0, posture_gate = false, panel_dirty = false } end
 
-local function reselect_if_incapacitated(ctx)   -- leader +0x10 bit6|bit4 -> 0x391A [C]
-    if ctx.game.leader_incapacitated() then ctx.game.reselect_leader() end
+local function leader(ctx) return ctx.game.party()[ctx.game.active_slot()] end
+
+-- 0x10D36/0x10D40: btst #6 / #4 on leader +0x10 (DEAD / DOWN), then 0x391A [C].
+-- party().status is the +0x10 byte. The old C++ binding tested the +0x11 byte.
+local function reselect_if_incapacitated(ctx)
+    local r = leader(ctx)
+    local down = E.RunnerStatus.DEAD | E.RunnerStatus.DOWN
+    if r and r.status & down ~= 0 then ctx.game.reselect_leader() end
 end
 
 -- Full build: 0x10D30 (display off ... on) then 0x10E2E. [C]
@@ -84,7 +91,7 @@ function M.input(st, events, ctx)
         ctx.sound(S.SELECT)                                  -- 0x10E4E [C]
         local child = CHILD[st.page]
         if child then return { transition = T.PUSH, screen = child, args = { page = st.page } } end
-        if ctx.game.inventory_item(st.page, st.row) then     -- 0x11740 -> 0x12148 [C]
+        if Inv.selected(leader(ctx), st.page, st.row) then   -- 0x11740 -> 0x12148 [C]
             return { transition = T.PUSH, screen = E.MenuScreen.ITEM_ACTION,
                      args = { column = st.page, row = st.row } }
         end

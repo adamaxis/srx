@@ -1784,7 +1784,6 @@ private:
     // Temporary development override: expose the ROM's hidden sixth row so
     // the debug screen remains reachable without entering the title code.
     bool debug_menu_unlocked_ = true;
-    bool title_debug_menu_unlocked_ = false;
     // FF018F bit 0 is the deck-present fact; application snapshots preserve
     // it along with the typed deck record. A Matrix session is not persisted.
     std::optional<bool> cyberdeck_available_ = false;

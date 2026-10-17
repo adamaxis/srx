@@ -296,7 +296,6 @@ int main() {
         [&notebook_boundaries](const ScriptNotebookBoundary boundary) {
             notebook_boundaries.push_back(boundary);
         };
-    bindings.game.leader_incapacitated = [] { return false; };
     bindings.game.reselect_leader = [&reselect_count] { ++reselect_count; };
     bindings.game.leader_posture = [&posture] { return posture; };
     bindings.game.set_leader_posture = [&posture](const int value) {
@@ -309,11 +308,6 @@ int main() {
             return true;
         };
     bindings.game.leader_archetype = [] { return 3; };
-    bindings.game.inventory_item = [&party](const int column, const int row) {
-        if (column < 0 || column > 1 || row < 0 || row > 3) return false;
-        const auto slot = static_cast<std::size_t>(row * 2 + column);
-        return party[0].inventory[slot] != 0U;
-    };
     bindings.game.party = [&party] { return party; };
     bindings.game.deck_record = [&matrix_deck] { return matrix_deck; };
     bindings.game.deck_slots = [] {

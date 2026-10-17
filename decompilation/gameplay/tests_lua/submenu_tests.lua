@@ -27,11 +27,9 @@ local function mk(o)
         notebook_page = function() end,
     }
     local game = {
-        leader_incapacitated = function() return false end,
         reselect_leader = function() g.reselects = g.reselects + 1 end,
         leader_posture = function() return 2 end, set_leader_posture = function() end,
         leader_archetype = function() return g.party[0].archetype end,
-        inventory_item = function(c, r) local x = g.party[0].inventory[r * 2 + c]; return x ~= 0 and x or nil end,
         party = function() return g.party end, active_slot = function() return 0 end,
         slot_active_set = function() local t = {}; for i = 0, 2 do t[i] = g.party[i] ~= nil end; return t end,
         magazine_capacity = function() return o.cap or 0x40 end, roll_successes = function(d, t) g.rolls = (g.rolls or 0) + 1; local q = o.rolls; return q and table.remove(q, 1) or 1 end,

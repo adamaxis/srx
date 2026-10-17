@@ -7,7 +7,7 @@ local function check(c, msg) n = n + 1; if not c then fails = fails + 1; print("
 local function mk(o)
     o = o or {}
     local log = { sounds = {}, redraws = 0, blanks = {}, windows = {}, closed = false, legacy = {} }
-    local g = { posture = o.posture or 2, gate = o.gate or 0, inc = o.inc or false, items = o.items or {}, reselects = 0 }
+    local g = { posture = o.posture or 2, gate = o.gate or 0, reselects = 0 }
     local host = {
         play_sound = function(id) log.sounds[#log.sounds + 1] = id end,
         redraw = function() log.redraws = log.redraws + 1 end,
@@ -20,11 +20,9 @@ local function mk(o)
     }
     local game = {
         scene_mode = function() return 0 end, in_combat = function() return false end,
-        leader_incapacitated = function() return g.inc end,
         reselect_leader = function() g.reselects = g.reselects + 1 end,
         leader_posture = function() return g.posture end, set_leader_posture = function(v) g.posture = v end,
         leader_archetype = function() return g.gate end,
-        inventory_item = function(c, r) return g.items[c * 4 + r] end,
         party = function() return g.party end, active_slot = function() return 0 end,
         pocket_extra_row = function() return false end, secretary_effect_tick = function() end,
  spell_table = function() return { entries = {} } end,
@@ -36,6 +34,8 @@ local function mk(o)
         source_random_bound = function(n) return 0 end, matrix_alert_random_bound = function(n) return 0 end,
     }
     g.party = { [0] = { status = 1, archetype = 3, magic = 0, species = 0, karma = 0, attributes = {}, skills = {}, inventory = { [0] = 0, 0, 0, 0, 0, 0, 0, 0 }, phase = { [0] = 0, 0, 0, 0, 0, 0, 0, 0 } } }
+    for slot, code in pairs(o.items or {}) do g.party[0].inventory[slot] = code end
+    if o.inc then g.party[0].status = g.party[0].status | E.RunnerStatus.DOWN end
     local r = Route.new(host, game); r:open(S.COMMAND); return r, log, g
 end
 local function st(r) return r.stack[1].state end
@@ -68,7 +68,8 @@ local r3, l3 = mk(); r3:frame(P.UP); r3:frame(P.START); check(not r3:is_open() a
 local r4, _, g4 = mk(); r4:frame(P.LEFT); r4:frame(P.C)
 check(st(r4).page == 6 and r4:top().screen == S.COMMAND and g4.reselects == 1, "C path")
 -- A on empty inventory slot: 0x24, no push; on item: push ITEM_ACTION
-local r5, l5 = mk({ items = { [0] = true } }); r5:frame(P.RIGHT); clear(l5)
+-- slot 0 = column 0, row 0 (0x12148 row*2+column); any nonzero code
+local r5, l5 = mk({ items = { [0] = 0x01 } }); r5:frame(P.RIGHT); clear(l5)
 r5:frame(P.DOWN); r5:frame(P.A); check(r5:top().screen == S.COMMAND and l5.sounds[2] == 0x24, "empty slot")
 r5:frame(P.UP); r5:frame(P.B); check(r5:top().screen == S.ITEM_ACTION, "item action")
 -- attributes return rebuilds and resets page to 6; window OFF while open
@@ -84,5 +85,9 @@ local r8 = mk(); r8:frame(P.A); r8:frame(P.START); check(r8:is_open() and r8:top
 local r9, l9 = mk(); r9:frame(P.LEFT); r9:frame(P.LEFT); r9:frame(P.A); check(r9:top().screen == S.CYBERWARE, "cyber")
 clear(l9); r9:frame(P.B); check(r9:top().screen == S.COMMAND and l9.sounds[1] == 0x25 and #l9.blanks == 2, "cyber return")
 -- Start exits; incapacitated leader reselected on exit
-local ra, la, ga = mk(); ga.inc = true; ra:frame(P.START); check(not ra:is_open() and ga.reselects == 1, "start exit")
+local ra, la, ga = mk(); ga.party[0].status = ga.party[0].status | E.RunnerStatus.DEAD
+ra:frame(P.START); check(not ra:is_open() and ga.reselects == 1, "start exit")
+-- the incapacity test reads the +0x10 status byte (DOWN = bit 4) [C 0x10D40]
+local rb, _, gb = mk({ inc = true }); check(gb.reselects == 1, "DOWN leader reselected on open")
+local rc, _, gc = mk(); check(gc.reselects == 0, "active leader kept on open")
 print(string.format("menu tests: %d/%d passed", n - fails, n)); os.exit(fails == 0 and 0 or 1)

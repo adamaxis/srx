@@ -224,12 +224,10 @@ struct ScriptMatrixWorldState {
 };
 
 struct ScriptMenuRouteGame {
-    std::function<bool()> leader_incapacitated;
     std::function<void()> reselect_leader;
     std::function<int()> leader_posture;
     std::function<void(int)> set_leader_posture;
     std::function<int()> leader_archetype;
-    std::function<bool(int, int)> inventory_item;
     std::function<std::array<ScriptMenuPartyMember, 3>()> party;
     std::function<std::optional<ScriptMenuSpellTable>(int)> spell_table;
     std::function<void(int, const ScriptMenuSpellTable&)> set_spell_table;

@@ -6220,12 +6220,6 @@ void FieldSceneRuntime::configure_field_menu_route() {
                 break;
             }
         };
-    bindings.game.leader_incapacitated = [this] {
-        constexpr auto incapacitated =
-            static_cast<std::uint16_t>(srx::RunnerStatus::DOWN) |
-            static_cast<std::uint16_t>(srx::RunnerStatus::DEAD);
-        return (active_runner_record().flags & incapacitated) != 0U;
-    };
     bindings.game.reselect_leader = [this] {
         handle_field_mode_action_event();
         refresh_field_hud_runner_slot();
@@ -6248,14 +6242,6 @@ void FieldSceneRuntime::configure_field_menu_route() {
     };
     bindings.game.leader_archetype = [this] {
         return static_cast<int>(active_runner_record().archetype_index);
-    };
-    bindings.game.inventory_item = [this](const int column, const int row) {
-        if (column < 0 || column >= 2 || row < 0 || row >= 4) {
-            return false;
-        }
-        const auto slot = static_cast<std::size_t>(row * 2 + column);
-        return slot < active_runner_record().inventory_item_codes.size() &&
-               active_runner_record().inventory_item_codes[slot] != 0U;
     };
     bindings.game.party = [this] {
         std::array<scripting::ScriptMenuPartyMember,
@@ -6449,7 +6435,6 @@ void FieldSceneRuntime::configure_field_menu_route() {
         return true;
     };
     bindings.game.consume_debug_unlock = [this] {
-        title_debug_menu_unlocked_ = false;
         debug_menu_unlocked_ = kDebugMenuAlwaysUnlockedForTesting;
         pocket_secretary_.maximum_selection =
             debug_menu_unlocked_ ? 5U : 4U;
@@ -7620,7 +7605,7 @@ void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
 
 void FieldSceneRuntime::synchronize_command_overview_clips_from_route(
     const scripting::ScriptMenuRouteSnapshot& route_state) {
-    constexpr int kClipsPage = 2;
+    constexpr int kClipsPage = static_cast<int>(srx::MenuPage::CLIPS);
     constexpr std::uint16_t kClips =
         static_cast<std::uint16_t>(srx::MenuScreen::CLIPS);
     constexpr std::uint16_t kReloadConfirm =
@@ -7648,13 +7633,20 @@ void FieldSceneRuntime::synchronize_command_overview_clips_from_route(
     auto message = ClipsMenuMessage::none;
     if (route_state.top_screen == kMessage &&
         route_state.top_message.has_value()) {
-        switch (*route_state.top_message) {
-        case 1: message = ClipsMenuMessage::out_of_ammo; break;
-        case 2: message = ClipsMenuMessage::item_does_not_use_clips; break;
-        case 3: message = ClipsMenuMessage::no_party_members; break;
-        case 4: message = ClipsMenuMessage::reload_success; break;
-        case 5: message = ClipsMenuMessage::exchange_complete; break;
-        case 21: message = ClipsMenuMessage::function_aborted; break;
+        using srx::MenuMessage;
+        switch (static_cast<MenuMessage>(*route_state.top_message)) {
+        case MenuMessage::OUT_OF_AMMO:
+            message = ClipsMenuMessage::out_of_ammo; break;
+        case MenuMessage::ITEM_NO_CLIPS:
+            message = ClipsMenuMessage::item_does_not_use_clips; break;
+        case MenuMessage::NO_PARTY:
+            message = ClipsMenuMessage::no_party_members; break;
+        case MenuMessage::RELOADED:
+            message = ClipsMenuMessage::reload_success; break;
+        case MenuMessage::EXCHANGE_COMPLETE:
+            message = ClipsMenuMessage::exchange_complete; break;
+        case MenuMessage::FUNCTION_ABORTED:
+            message = ClipsMenuMessage::function_aborted; break;
         default: break;
         }
     }
@@ -9414,7 +9406,6 @@ bool FieldSceneRuntime::bootstrap(
     viewport_state_ = FieldViewportState{};
     debug_menu_unlocked_ = kDebugMenuAlwaysUnlockedForTesting ||
                            startup_state.title_debug_menu_unlocked;
-    title_debug_menu_unlocked_ = startup_state.title_debug_menu_unlocked;
 
     if (!startup_state.field_session_source_assets.has_value()) {
         failure_ = "field-session source records are unavailable";

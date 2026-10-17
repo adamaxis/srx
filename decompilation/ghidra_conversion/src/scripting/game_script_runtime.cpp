@@ -764,12 +764,10 @@ struct GameScriptRuntime::Impl {
         menu_closed,
         legacy_open,
         legacy_advance,
-        leader_incapacitated,
         reselect_leader,
         leader_posture,
         set_leader_posture,
         leader_archetype,
-        inventory_item,
         party,
         spell_table,
         set_spell_table,
@@ -947,14 +945,6 @@ struct GameScriptRuntime::Impl {
             }
             return 0;
         }
-        case MenuBinding::leader_incapacitated:
-            lua_pushboolean(
-                lua, self->menu_route_bindings.game.leader_incapacitated &&
-                             self->menu_route_bindings.game
-                                 .leader_incapacitated()
-                         ? 1
-                         : 0);
-            return 1;
         case MenuBinding::reselect_leader:
             if (self->menu_route_bindings.game.reselect_leader) {
                 self->menu_route_bindings.game.reselect_leader();
@@ -976,14 +966,6 @@ struct GameScriptRuntime::Impl {
             lua_pushinteger(
                 lua, self->menu_route_bindings.game.leader_archetype
                          ? self->menu_route_bindings.game.leader_archetype()
-                         : 0);
-            return 1;
-        case MenuBinding::inventory_item:
-            lua_pushboolean(
-                lua, self->menu_route_bindings.game.inventory_item &&
-                             self->menu_route_bindings.game.inventory_item(
-                                 integer_argument(1), integer_argument(2))
-                         ? 1
                          : 0);
             return 1;
         case MenuBinding::party: {
@@ -1540,8 +1522,6 @@ struct GameScriptRuntime::Impl {
     void push_menu_game() {
         lua_newtable(state);
         const auto table_index = lua_absindex(state, -1);
-        add_menu_binding(state, table_index, "leader_incapacitated",
-                         MenuBinding::leader_incapacitated);
         add_menu_binding(state, table_index, "reselect_leader",
                          MenuBinding::reselect_leader);
         add_menu_binding(state, table_index, "leader_posture",
@@ -1550,8 +1530,6 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::set_leader_posture);
         add_menu_binding(state, table_index, "leader_archetype",
                          MenuBinding::leader_archetype);
-        add_menu_binding(state, table_index, "inventory_item",
-                         MenuBinding::inventory_item);
         add_menu_binding(state, table_index, "party", MenuBinding::party);
         add_menu_binding(state, table_index, "spell_table",
                          MenuBinding::spell_table);
