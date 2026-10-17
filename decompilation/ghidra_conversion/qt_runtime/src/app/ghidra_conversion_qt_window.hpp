@@ -255,7 +255,30 @@ public:
                     return true;
                 });
         }
-
+        if (debug_event_queue_enabled_ || input_log_.recording()) {
+            set_source_random_observer(
+                [this](const int kind, const std::uint16_t bound,
+                       const std::int32_t result, const std::uint16_t seed) {
+                    static constexpr const char* kRandomKindNames[] = {
+                        "raw", "bounded", "dice"};
+                    std::ostringstream event;
+                    event << "rng.";
+                    if (kind >= 0 && kind < 3) {
+                        event << kRandomKindNames[kind];
+                    } else {
+                        event << "kind" << kind;
+                    }
+                    event << ".bound=" << bound << ".result=" << result
+                          << ".seed=0x" << std::hex << std::setw(4)
+                          << std::setfill('0') << seed;
+                    const auto name = event.str();
+                    input_log_.record_source_event(source_frame_index_, name);
+                    if (debug_event_queue_enabled_) {
+                        pending_debug_events_.push_back(name);
+                    }
+                });
+            source_random_observer_installed_ = true;
+        }
     }
 
     // Runs a recorded session without presenting a widget or opening the host
@@ -334,6 +357,9 @@ public:
     }
 
     ~GhidraConversionWindow() override {
+        if (source_random_observer_installed_) {
+            set_source_random_observer({});
+        }
         std::string error;
         if (!input_log_.finish(&error)) {
             std::cerr << "input session log: " << error << '\n';
@@ -2261,6 +2287,7 @@ private:
     std::unique_ptr<AudioPlaybackService> audio_playback_;
     std::vector<std::string> pending_debug_events_;
     bool debug_event_queue_enabled_ = false;
+    bool source_random_observer_installed_ = false;
     qt_runtime::FieldSceneRuntime field_scene_runtime_;
     TitleLoopState title_loop_;
     TitleLoopCallbacks title_loop_callbacks_;

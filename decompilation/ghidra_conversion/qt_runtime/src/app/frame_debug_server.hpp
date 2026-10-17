@@ -188,6 +188,34 @@ public:
                 result.insert(QStringLiteral("pattern"), pattern);
                 return encode(result);
             }
+            if (kind == QStringLiteral("rng")) {
+                const auto pattern = request.value(QStringLiteral("pattern"))
+                                         .toString();
+                const QRegularExpression expression(pattern);
+                if (!pattern.isEmpty() && !expression.isValid()) {
+                    --next_breakpoint_id_;
+                    return encode_error(QStringLiteral(
+                        "RNG breakpoint pattern must be a valid regular expression"));
+                }
+                if (std::any_of(rng_breakpoints_.begin(),
+                                rng_breakpoints_.end(),
+                                [&pattern](const RngBreakpoint& breakpoint) {
+                                    return breakpoint.pattern == pattern;
+                                })) {
+                    --next_breakpoint_id_;
+                    return encode_error(QStringLiteral(
+                        "an RNG breakpoint already exists for that pattern"));
+                }
+                rng_breakpoints_.push_back({id, pattern, expression});
+                QJsonObject result;
+                result.insert(QStringLiteral("ok"), true);
+                result.insert(QStringLiteral("id"), id);
+                result.insert(QStringLiteral("kind"), QStringLiteral("rng"));
+                if (!pattern.isEmpty()) {
+                    result.insert(QStringLiteral("pattern"), pattern);
+                }
+                return encode(result);
+            }
             if (kind == QStringLiteral("scene")) {
                 const auto requested_scene =
                     request.value(QStringLiteral("scene"));
@@ -232,7 +260,7 @@ public:
             if (kind != QStringLiteral("frame")) {
                 --next_breakpoint_id_;
                 return encode_error(
-                    QStringLiteral("supported breakpoint kinds are frame, watch, event, and scene"));
+                    QStringLiteral("supported breakpoint kinds are frame, watch, event, rng, and scene"));
             }
             const auto value = request.value(QStringLiteral("frame"));
             const auto target = value.toDouble(-1.0);
@@ -300,10 +328,19 @@ public:
                     [id](const SceneBreakpoint& breakpoint) {
                         return breakpoint.id == id;
                     });
-                if (scene == scene_breakpoints_.end()) {
+                if (scene != scene_breakpoints_.end()) {
+                    scene_breakpoints_.erase(scene);
+                    return encode(status_object());
+                }
+                const auto rng = std::find_if(
+                    rng_breakpoints_.begin(), rng_breakpoints_.end(),
+                    [id](const RngBreakpoint& breakpoint) {
+                        return breakpoint.id == id;
+                    });
+                if (rng == rng_breakpoints_.end()) {
                     return encode_error(QStringLiteral("no such breakpoint"));
                 }
-                scene_breakpoints_.erase(scene);
+                rng_breakpoints_.erase(rng);
                 return encode(status_object());
             }
             watchpoints_.erase(watch);
@@ -340,6 +377,15 @@ public:
                 if (breakpoint.target_scene.has_value()) {
                     entry.insert(QStringLiteral("scene"),
                                  *breakpoint.target_scene);
+                }
+                entries.append(entry);
+            }
+            for (const auto& breakpoint : rng_breakpoints_) {
+                QJsonObject entry;
+                entry.insert(QStringLiteral("id"), breakpoint.id);
+                entry.insert(QStringLiteral("kind"), QStringLiteral("rng"));
+                if (!breakpoint.pattern.isEmpty()) {
+                    entry.insert(QStringLiteral("pattern"), breakpoint.pattern);
                 }
                 entries.append(entry);
             }
@@ -588,7 +634,7 @@ public:
             QJsonObject result;
             result.insert(QStringLiteral("ok"), true);
             result.insert(QStringLiteral("commands"),
-                          QStringLiteral("status pause resume step key press inspect hash dump events diverge break(frame|watch|event|scene) delete list help"));
+                          QStringLiteral("status pause resume step key press inspect hash dump events diverge break(frame|watch|event|rng|scene) delete list help"));
             return encode(result);
         }
         return encode_error(QStringLiteral("unknown command"));
@@ -629,6 +675,22 @@ public:
                 source_events.begin(), source_events.end(),
                 [&breakpoint](const QString& name) {
                     return breakpoint.expression.match(name).hasMatch();
+                });
+            if (event != source_events.end()) {
+                stop_id = breakpoint.id;
+                stop_detail = *event;
+            }
+        }
+        for (const auto& breakpoint : rng_breakpoints_) {
+            if (stop_id != 0) {
+                break;
+            }
+            const auto event = std::find_if(
+                source_events.begin(), source_events.end(),
+                [&breakpoint](const QString& name) {
+                    return name.startsWith(QStringLiteral("rng.")) &&
+                           (breakpoint.pattern.isEmpty() ||
+                            breakpoint.expression.match(name).hasMatch());
                 });
             if (event != source_events.end()) {
                 stop_id = breakpoint.id;
@@ -739,6 +801,12 @@ private:
         int id = 0;
         std::optional<QJsonValue> target_scene;
         std::optional<QJsonValue> last_scene;
+    };
+
+    struct RngBreakpoint {
+        int id = 0;
+        QString pattern;
+        QRegularExpression expression;
     };
 
     struct ScheduledRelease {
@@ -881,6 +949,7 @@ private:
     std::vector<WatchBreakpoint> watchpoints_;
     std::vector<EventBreakpoint> event_breakpoints_;
     std::vector<SceneBreakpoint> scene_breakpoints_;
+    std::vector<RngBreakpoint> rng_breakpoints_;
     std::vector<ScheduledRelease> scheduled_releases_;
     int next_breakpoint_id_ = 0;
     QString stop_reason_ = QStringLiteral("none");

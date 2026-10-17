@@ -210,9 +210,19 @@ int main(int argc, char** argv) {
         std::cerr << "scene breakpoint accepted an out-of-range map id\n";
         return 1;
     }
+    result = response(server.handle_line(
+        R"({"cmd":"break","kind":"rng","pattern":"bounded\\.bound=6"})"));
+    const auto rng_breakpoint_id = result.value(QStringLiteral("id")).toInt();
+    if (!result.value(QStringLiteral("ok")).toBool() ||
+        rng_breakpoint_id <= 0 ||
+        result.value(QStringLiteral("pattern")).toString() !=
+            QStringLiteral("bounded\\.bound=6")) {
+        std::cerr << "RNG breakpoint did not register its event filter\n";
+        return 1;
+    }
     result = response(server.handle_line(R"({"cmd":"list"})"));
     const auto listed = result.value(QStringLiteral("breakpoints")).toArray();
-    if (!result.value(QStringLiteral("ok")).toBool() || listed.size() != 4 ||
+    if (!result.value(QStringLiteral("ok")).toBool() || listed.size() != 5 ||
         listed.at(0).toObject().value(QStringLiteral("frame")).toInt() != 91) {
         std::cerr << "list command did not return the registered breakpoints\n";
         return 1;
@@ -295,13 +305,30 @@ int main(int argc, char** argv) {
                                           .value(QStringLiteral("breakpoints"))
                                           .toArray();
     if (!result.value(QStringLiteral("ok")).toBool() ||
-        remaining_breakpoints.size() != 1) {
+        remaining_breakpoints.size() != 2) {
         std::cerr << "delete command did not remove the frame breakpoint\n";
         return 1;
     }
+    frame_events.push_back(
+        QStringLiteral("rng.bounded.bound=6.result=4.seed=0x1234"));
     current_frame = 92U;
-    if (server.check_source_frame_breakpoints()) {
-        std::cerr << "deleted frame breakpoint still stopped execution\n";
+    if (!server.check_source_frame_breakpoints()) {
+        std::cerr << "RNG breakpoint did not stop on a matching source random call\n";
+        return 1;
+    }
+    result = response(server.handle_line(R"({"cmd":"status"})"));
+    if (result.value(QStringLiteral("breakpoint")).toInt() !=
+            rng_breakpoint_id ||
+        result.value(QStringLiteral("detail")).toString() !=
+            QStringLiteral("rng.bounded.bound=6.result=4.seed=0x1234")) {
+        std::cerr << "RNG breakpoint did not report the observed source call\n";
+        return 1;
+    }
+    if (!response(server.handle_line(
+             QByteArray("{\"cmd\":\"delete\",\"id\":") +
+             QByteArray::number(rng_breakpoint_id) + "}"))
+             .value(QStringLiteral("ok")).toBool()) {
+        std::cerr << "delete command did not remove the RNG breakpoint\n";
         return 1;
     }
     state.insert(QStringLiteral("field.scene"), 3);
@@ -339,7 +366,8 @@ int main(int argc, char** argv) {
         {0x100U, 0x1111U}, {0x201U, 0x2222U}, {0x300U, 0x3333U}};
     if (!write_recording(first_log, first_frames,
                          {{0U, "0x5AEC6.render_time_record"},
-                          {1U, "field.world.encounter.hellhound"}}) ||
+                          {1U, "field.world.encounter.hellhound"},
+                          {2U, "rng.bounded.bound=6.result=4.seed=0x1234"}}) ||
         !write_recording(changed_log, changed_frames) ||
         !write_recording(changed_seed_log, changed_seed_frames)) {
         std::cerr << "could not prepare the debugger divergence recordings\n";
@@ -389,6 +417,19 @@ int main(int argc, char** argv) {
         event_entries.at(0).toObject().value(QStringLiteral("name")).toString() !=
             QStringLiteral("field.world.encounter.hellhound")) {
         std::cerr << "events query did not filter the recorded source boundary\n";
+        return 1;
+    }
+    event_request.insert(QStringLiteral("from"), 3);
+    event_request.insert(QStringLiteral("to"), 3);
+    event_request.insert(QStringLiteral("pattern"), QStringLiteral("^rng\\."));
+    result = response(server.handle_line(
+        QJsonDocument(event_request).toJson(QJsonDocument::Compact)));
+    const auto rng_entries = result.value(QStringLiteral("events")).toArray();
+    if (!result.value(QStringLiteral("ok")).toBool() ||
+        rng_entries.size() != 1 ||
+        rng_entries.at(0).toObject().value(QStringLiteral("name")).toString() !=
+            QStringLiteral("rng.bounded.bound=6.result=4.seed=0x1234")) {
+        std::cerr << "events query did not expose recorded RNG call details\n";
         return 1;
     }
     result = response(server.handle_line(
