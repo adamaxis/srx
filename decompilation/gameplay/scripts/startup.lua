@@ -77,6 +77,12 @@ function Startup.opening_intro_timeline()
         -- frames before the Seattle plate (emulator: song 0x10 onset ->
         -- plate = 56 frames). [C emulator trace]
         ["0x5AF62.load_title_font"] = "black." .. (H.PALETTE_PASSES_0x131C + 22),
+        -- 0x7BA -> 0x1A9E -> 0x1D7A after the FASA 0x131C: 0x1406 (another
+        -- 0x131C on black, then 35 frames of decode, 34 of them lag) and
+        -- 0x12F6 over the still-hidden logo, before 0x1AC6's FFDD2C delay
+        -- (emulator: lag 720..754, FASA black 659 -> reveal 880). [C]
+        ["boot.title_setup"] =
+            "black." .. (H.PALETTE_PASSES_0x131C + 35 + H.PALETTE_PASSES_0x131C),
         -- The Seattle schedule's still tail before 0x53126 starts (emulator:
         -- last visual change -> song 0x10 still at full level for 10 more
         -- frames). Includes the one deferral frame. [H: tail record timing]

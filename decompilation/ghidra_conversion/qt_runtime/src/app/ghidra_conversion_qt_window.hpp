@@ -1261,6 +1261,10 @@ private:
                     opening_start_event_latched_ = false;
                 } else if (phase == StartupIntegrationPhase::field_ready) {
                     opening_start_event_latched_ = false;
+                } else if (phase == StartupIntegrationPhase::title_ready) {
+                    // The host runs 0x1D7A in one frame; the Lua timeline
+                    // holds its 0x1406/0x12F6 VBlanks.
+                    queue_opening_presentation_hold("boot.title_setup");
                 }
                 setWindowTitle(phase_title(phase));
             };

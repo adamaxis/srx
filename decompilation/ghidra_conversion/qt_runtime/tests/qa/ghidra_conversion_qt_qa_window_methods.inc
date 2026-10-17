@@ -344,6 +344,8 @@
 
     int run_boot_fasa_qa(const std::filesystem::path& output_directory) {
         host_frame_timer_.stop();
+        // Frame-indexed: the Lua presentation holds are verified separately.
+        opening_presentation_holds_enabled_ = false;
         std::filesystem::create_directories(output_directory);
         std::ofstream trace(output_directory / "boot-fasa-qa.tsv");
         if (!trace) {
@@ -4057,6 +4059,8 @@
     int run_title_idle_restart_qa(
         const std::filesystem::path& output_directory) {
         host_frame_timer_.stop();
+        // Frame-indexed: the Lua presentation holds are verified separately.
+        opening_presentation_holds_enabled_ = false;
         std::filesystem::create_directories(output_directory);
         const auto save = [&output_directory](const std::string_view name,
                                               const QImage& image) {
