@@ -19266,6 +19266,18 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 mark_route("hotel-status", "A");
+                // Lua Hotel.presentation(): the frame and sidebar show first;
+                // the status text follows the 0xC0C2 font decode [C].
+                auto status_frame_only =
+                    capture(output / "status-frame-only" / "actual.bmp");
+                if (status_frame_only.isNull() ||
+                    image_has_green_ink(status_frame_only, 32, 40, 240, 48)) {
+                    std::cerr << "field Hotel QA: status text appeared before the source font decode\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 3; ++frame) {
+                    advance_field_frame();
+                }
                 auto status = capture(output / "status" / "actual.bmp");
                 if (status.isNull() ||
                     !image_has_green_ink(status, 88, 40, 48, 8) ||
@@ -19281,9 +19293,13 @@ int main(int argc, char** argv) {
                 QImage black_reference(kSceneWidth, kSceneHeight,
                                        QImage::Format_RGB32);
                 black_reference.fill(Qt::black);
-                if (image_region_differs(status, black_reference,
-                                         272, 0, 48, 224)) {
-                    std::cerr << "field Hotel QA: stale field HUD remains over Hotel screen\n";
+                // 0x10952 clears Planes A/B and the SAT only; the window
+                // plane keeps the field HUD column [C: emulator].
+                if (!image_region_differs(status, black_reference,
+                                          272, 0, 48, 224) ||
+                    !image_region_differs(status, black_reference,
+                                          0, 0, 24, 224)) {
+                    std::cerr << "field Hotel QA: Hotel screen lacks the source frame or field HUD column\n";
                     return 3;
                 }
                 const auto status_animation_at_entry =
@@ -19312,11 +19328,16 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 mark_route("hotel-options", "A");
+                // 0xCF4E redraws through 0xCFFE; the status page stays for
+                // the Lua options_redraw_frames before Options shows [C].
+                for (int frame = 0; frame < 3; ++frame) {
+                    advance_field_frame();
+                }
                 const auto options_default =
                     capture(output / "options" / "actual.bmp");
                 if (options_default.isNull() ||
                     !image_has_green_ink(options_default, 88, 72, 160, 8) ||
-                    !image_has_green_ink(options_default, 88, 80, 160, 8) ||
+                    !image_has_green_ink(options_default, 88, 88, 160, 8) ||
                     !image_region_has_color(options_default, 88, 72, 160, 8,
                                             QColor(36, 219, 36)) ||
                     image_has_green_ink(options_default, 32, 40, 240, 8)) {
@@ -19459,8 +19480,8 @@ int main(int argc, char** argv) {
                     capture(output / "options-checkout-selected" / "actual.bmp");
                 if (options_checkout.isNull() ||
                     !image_region_differs(options_default, options_checkout,
-                                          72, 72, 8, 16) ||
-                    !image_region_has_color(options_checkout, 72, 80, 8, 8,
+                                          72, 72, 8, 24) ||
+                    !image_region_has_color(options_checkout, 72, 88, 8, 8,
                                             QColor(36, 219, 36))) {
                     std::cerr << "field Hotel QA: source's 8x8 selection arrow did not move between options\n";
                     return 3;
@@ -19476,16 +19497,15 @@ int main(int argc, char** argv) {
                     capture(output / "checkout-no" / "actual.bmp");
                 if (checkout_no.isNull() ||
                     !image_region_has_color(checkout_no, 80, 72, 160, 16,
-                                            QColor(109, 73, 146)) ||
+                                            QColor(36, 219, 36)) ||
                     !image_region_has_color(checkout_no, 128, 96, 64, 8,
-                                            QColor(109, 73, 146)) ||
+                                            QColor(36, 219, 36)) ||
                     !image_region_has_color(checkout_no, 128, 112, 64, 8,
-                                            QColor(109, 73, 146)) ||
-                    image_has_green_ink(checkout_no, 88, 72, 160, 16) ||
+                                            QColor(36, 219, 36)) ||
                     !image_region_has_color(checkout_no, 104, 112, 8, 8,
-                                            QColor(109, 73, 146)) ||
+                                            QColor(36, 219, 36)) ||
                     image_region_has_color(checkout_no, 104, 104, 8, 8,
-                                            QColor(109, 73, 146)) ||
+                                            QColor(36, 219, 36)) ||
                     image_has_green_ink(checkout_no, 72, 48, 160, 8)) {
                     std::cerr << "field Hotel QA: checkout text or old options clear is incorrect\n";
                     return 3;
@@ -19512,6 +19532,10 @@ int main(int argc, char** argv) {
                     field_scene.hotel_option_selection() != 0U) {
                     std::cerr << "field Hotel QA: default No did not return to the first Hotel option\n";
                     return 3;
+                }
+                // The No path returns through 0xCF4E's redraw [C].
+                for (int frame = 0; frame < 3; ++frame) {
+                    advance_field_frame();
                 }
                 const auto options_after_no =
                     capture(output / "options-after-no" / "actual.bmp");
@@ -19541,9 +19565,9 @@ int main(int argc, char** argv) {
                     capture(output / "checkout-yes" / "actual.bmp");
                 if (checkout_yes.isNull() ||
                     !image_region_has_color(checkout_yes, 104, 96, 8, 8,
-                                            QColor(109, 73, 146)) ||
+                                            QColor(36, 219, 36)) ||
                     image_region_has_color(checkout_yes, 104, 112, 8, 8,
-                                            QColor(109, 73, 146)) ||
+                                            QColor(36, 219, 36)) ||
                     !image_region_differs(checkout_no, checkout_yes,
                                           104, 96, 8, 24)) {
                     std::cerr << "field Hotel QA: checkout cursor did not move from No to Yes\n";
@@ -19588,8 +19612,9 @@ int main(int argc, char** argv) {
                 // The route after the doorway contact is input-driven and
                 // fixed at 205 frames. The walk before it depends on the
                 // runner step (30 units since f6b950a9, ROM 0xBEC2), so the
-                // hold is checked relative to the contact frame.
-                constexpr std::uint32_t kHotelFramesAfterContact = 205U;
+                // hold is checked relative to the contact frame. The three
+                // Hotel page-staging waits above add 3 + 3 + 3 frames.
+                constexpr std::uint32_t kHotelFramesAfterContact = 214U;
                 if (route_frame != collision_frame + kHotelFramesAfterContact ||
                     returned_field_frame_30.isNull() ||
                     returned_field_frame_30 != field_only_frame_30) {

@@ -14449,6 +14449,31 @@ bool FieldSceneRuntime::load_hotel_menu_content() {
                         ? "Hotel checkout menu script is unavailable"
                         : game_scripts_.failure());
     }
+    const auto presentation =
+        game_scripts_.string_map("hotel", "presentation");
+    if (!presentation.has_value()) {
+        return fail(game_scripts_.failure().empty()
+                        ? "Hotel presentation script is unavailable"
+                        : game_scripts_.failure());
+    }
+    const auto timing = [&presentation](const char* key)
+        -> std::optional<std::uint32_t> {
+        const auto found = presentation->find(key);
+        if (found == presentation->end()) {
+            return std::nullopt;
+        }
+        try {
+            return static_cast<std::uint32_t>(std::stoul(found->second));
+        } catch (...) {
+            return std::nullopt;
+        }
+    };
+    const auto status_text_delay = timing("status_text_delay_frames");
+    const auto options_redraw = timing("options_redraw_frames");
+    if (!status_text_delay.has_value() || !options_redraw.has_value()) {
+        return fail("Hotel presentation timing is not numeric");
+    }
+    hotel_menu_.set_presentation_timing(*status_text_delay, *options_redraw);
     const auto text_keys = game_scripts_.string_map("hotel", "text_keys");
     if (!text_keys.has_value()) {
         return fail(game_scripts_.failure().empty()
@@ -18106,13 +18131,28 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
     }
     if (hotel_menu_.open()) {
         hotel_menu_.paint(
-            painter, pocket_secretary_grid_, hotel_options_cursor_,
-            hotel_checkout_cursor_, dismiss_runner_random_grid_patterns_,
+            painter, pocket_secretary_background_, pocket_secretary_grid_,
+            // The motel's CFFE palette load leaves CRAM line 2 green, so
+            // the checkout prompt and its cursor match the options ink here
+            // [C: emulator run4 frame 8320; the purple line-2 assets belong
+            // to other menu palettes].
+            hotel_options_cursor_,
+            hotel_options_cursor_, dismiss_runner_random_grid_patterns_,
             hotel_menu_content_,
             [this](QPainter& target, const int x, const int y,
                    const std::string_view text,
-                   const HotelMenuPaletteLine palette_line) {
-                draw_hotel_menu_text(target, x, y, text, palette_line);
+                   const HotelMenuPaletteLine) {
+                draw_hotel_menu_text(
+                    target, x, y, text,
+                    HotelMenuPaletteLine::status_and_options);
+            },
+            [this](QPainter& target) {
+                // Window-plane HUD column (x >= 272) as in the field.
+                target.save();
+                target.setClipRect(QRect(272, 0, 48, 224));
+                target.drawImage(0, 0, field_hud_);
+                paint_field_hud_overlays(target);
+                target.restore();
             });
         apply_palette_fade();
         return;

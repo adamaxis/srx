@@ -118,10 +118,31 @@ void HotelMenuRuntime::open(
         records[slot].delay_meter = status_records[slot].delay_meter;
     }
     phase_ = HotelMenuPhase::entity_status;
+    presented_phase_ = phase_;
+    open_frames_ = 0U;
+    page_hold_frames_ = 0U;
+}
+
+void HotelMenuRuntime::set_presentation_timing(
+    const std::uint32_t status_text_delay_frames,
+    const std::uint32_t options_redraw_frames) noexcept {
+    status_text_delay_frames_ = status_text_delay_frames;
+    options_redraw_frames_ = options_redraw_frames;
+}
+
+void HotelMenuRuntime::present_phase_after(
+    const std::uint32_t frames) noexcept {
+    page_hold_frames_ = frames;
+    if (frames == 0U) {
+        presented_phase_ = phase_;
+    }
 }
 
 void HotelMenuRuntime::close() noexcept {
     phase_ = HotelMenuPhase::closed;
+    presented_phase_ = phase_;
+    open_frames_ = 0U;
+    page_hold_frames_ = 0U;
     options_state_ = HotelOptionsMenuState{};
     checkout_state_ = HotelCheckoutPromptState{};
     medical_attention_rows_.fill(false);
@@ -143,6 +164,10 @@ void HotelMenuRuntime::advance_animation(std::uint16_t& random_seed) {
     // 0xDABA respectively). The Hotel Karma child pauses the parent loop.
     if (phase_ == HotelMenuPhase::closed) {
         return;
+    }
+    ++open_frames_;
+    if (page_hold_frames_ > 0U && --page_hold_frames_ == 0U) {
+        presented_phase_ = phase_;
     }
     advance_random_grid_effect(
         random_grid_effect_,
@@ -182,6 +207,7 @@ HotelMenuEvent HotelMenuRuntime::advance_controller_events(
         phase_ = HotelMenuPhase::options;
         options_state_ = HotelOptionsMenuState{};
         reset_page_effect();
+        present_phase_after(options_redraw_frames_);
         return HotelMenuEvent::status_acknowledged;
     }
 
@@ -194,6 +220,7 @@ HotelMenuEvent HotelMenuRuntime::advance_controller_events(
                 checkout_state_ = HotelCheckoutPromptState{};
                 phase_ = HotelMenuPhase::checkout;
                 reset_page_effect();
+                present_phase_after(0U);
                 return HotelMenuEvent::checkout_opened;
             }
             return HotelMenuEvent::karma_screen_opened;
@@ -216,6 +243,7 @@ HotelMenuEvent HotelMenuRuntime::advance_controller_events(
         phase_ = HotelMenuPhase::options;
         options_state_ = HotelOptionsMenuState{};
         reset_page_effect();
+        present_phase_after(options_redraw_frames_);
         return HotelMenuEvent::stayed_at_hotel;
     }
     close();
@@ -239,25 +267,40 @@ void HotelMenuRuntime::paint_random_grid(
 }
 
 void HotelMenuRuntime::paint(
-    QPainter& painter, const QImage& grid,
+    QPainter& painter, const QImage& background, const QImage& grid,
     const QImage& options_cursor, const QImage& checkout_cursor,
     const std::array<QImage, 7>& random_patterns,
-    const HotelMenuContent& content, const TextPainter& draw_text) const {
-    // Every Hotel page starts from a complete black composition and the
-    // source 28x21 grid. No dialogue panel or previous page controls survive.
+    const HotelMenuContent& content, const TextPainter& draw_text,
+    const SidebarPainter& paint_sidebar) const {
+    // ROM 0xCF38 -> 0x10952 clears Planes A/B and the SAT, 0xCFFE -> 0x10A82
+    // draws the 0xCDA0E.. frame, and 0xC3E6 fills the 28x21 grid. The
+    // window-plane sidebar is not cleared, so the field HUD column stays
+    // visible on the status, Options and Check Out pages [C: emulator].
     painter.fillRect(QRect(0, 0, 320, 224), Qt::black);
     if (!open()) {
         return;
+    }
+    if (!background.isNull()) {
+        painter.drawImage(0, 0, background);
     }
     if (!grid.isNull()) {
         painter.drawImage(24, 24, grid);
     }
     paint_random_grid(painter, random_patterns);
+    if (paint_sidebar) {
+        paint_sidebar(painter);
+    }
     if (!draw_text) {
         return;
     }
+    const auto shown = presented_phase_;
+    if (shown == HotelMenuPhase::entity_status &&
+        open_frames_ < status_text_delay_frames_) {
+        // 0xC0C2's font decode runs before 0xEF08 writes the status text.
+        return;
+    }
 
-    if (phase_ == HotelMenuPhase::entity_status) {
+    if (shown == HotelMenuPhase::entity_status) {
         std::size_t attention_row = 0U;
         for (std::size_t slot = 0; slot < medical_attention_rows_.size();
              ++slot) {
@@ -290,19 +333,21 @@ void HotelMenuRuntime::paint(
         return;
     }
 
-    if (phase_ == HotelMenuPhase::options) {
+    if (shown == HotelMenuPhase::options) {
         draw_text(painter, 72, 48, content.title,
                   HotelMenuPaletteLine::status_and_options);
         draw_text(painter, 72, 56, content.separator,
                   HotelMenuPaletteLine::status_and_options);
+        // C14D0's 0x80 markers leave a blank row between options, and the
+        // C492 cursor steps two rows [C: emulator rows y=72/88].
         for (std::size_t row = 0; row < content.options.size(); ++row) {
-            draw_text(painter, 72, 72 + static_cast<int>(row) * 8,
+            draw_text(painter, 72, 72 + static_cast<int>(row) * 16,
                       content.options[row].label,
                       HotelMenuPaletteLine::status_and_options);
         }
         const auto row = static_cast<int>(options_state_.selection);
         if (!options_cursor.isNull()) {
-            painter.drawImage(72, 72 + row * 8, options_cursor);
+            painter.drawImage(72, 72 + row * 16, options_cursor);
         }
         return;
     }

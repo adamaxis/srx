@@ -56,6 +56,10 @@ struct HotelMenuContent {
     std::array<HotelMenuChoiceText, 2> checkout_choices{};
     std::string medical_attention_suffix;
     std::array<std::string, 5> recovery_message{};
+    // Lua Hotel.presentation(): frames after open before the status text
+    // shows, and frames an Options redraw keeps the previous page.
+    std::uint32_t status_text_delay_frames = 0U;
+    std::uint32_t options_redraw_frames = 0U;
 };
 
 // Typed controller and presenter for the Hotel route entered after a paid
@@ -73,12 +77,21 @@ public:
     void close() noexcept;
     void advance_animation(std::uint16_t& random_seed);
     HotelMenuEvent advance_controller_events(std::uint16_t events);
-    void paint(QPainter& painter, const QImage& grid,
+    using SidebarPainter = std::function<void(QPainter&)>;
+
+    void set_presentation_timing(std::uint32_t status_text_delay_frames,
+                                 std::uint32_t options_redraw_frames) noexcept;
+    void paint(QPainter& painter, const QImage& background,
+               const QImage& grid,
                const QImage& options_cursor,
                const QImage& checkout_cursor,
                const std::array<QImage, 7>& random_patterns,
                const HotelMenuContent& content,
-               const TextPainter& draw_text) const;
+               const TextPainter& draw_text,
+               const SidebarPainter& paint_sidebar) const;
+    HotelMenuPhase presented_phase() const noexcept {
+        return presented_phase_;
+    }
 
     bool open() const noexcept { return phase_ != HotelMenuPhase::closed; }
     HotelMenuPhase phase() const noexcept { return phase_; }
@@ -110,6 +123,12 @@ private:
     RandomGridEffectState random_grid_effect_{};
     std::array<std::int8_t, 12> random_grid_cells_{};
     std::uint32_t animation_frames_ = 0U;
+    void present_phase_after(std::uint32_t frames) noexcept;
+    HotelMenuPhase presented_phase_ = HotelMenuPhase::closed;
+    std::uint32_t open_frames_ = 0U;
+    std::uint32_t page_hold_frames_ = 0U;
+    std::uint32_t status_text_delay_frames_ = 0U;
+    std::uint32_t options_redraw_frames_ = 0U;
 };
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime
