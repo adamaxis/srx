@@ -1,12 +1,29 @@
 #include "audio_playback.hpp"
 
+#include <QtGlobal>
+
+#include <fstream>
+
 #include "qt_audio_sink.hpp"
 
 #include <utility>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
-AudioPlaybackService::~AudioPlaybackService() { finish_output(); }
+AudioPlaybackService::~AudioPlaybackService() {
+    finish_output();
+    // Debug aid: SRX_AUDIO_EVENT_LOG=<path> writes the mixer's command log
+    // (frame, op, id) so A/V traces can line up song starts and fades.
+    const auto log_path = qEnvironmentVariable("SRX_AUDIO_EVENT_LOG");
+    if (!log_path.isEmpty() && mixer_) {
+        std::ofstream log(log_path.toStdString());
+        log << "frame\top\tid\n";
+        for (const auto& event : mixer_->events()) {
+            log << event.frame << '\t' << static_cast<int>(event.op) << '\t'
+                << event.id << '\n';
+        }
+    }
+}
 
 AudioPlaybackService::AudioPlaybackService(PathResolver resolver,
                                            const Output output,
