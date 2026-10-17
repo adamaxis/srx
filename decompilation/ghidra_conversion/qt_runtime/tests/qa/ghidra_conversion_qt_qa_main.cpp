@@ -102,7 +102,8 @@ int run_field_world_activity_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
-    std::vector<std::uint16_t>& field_audio_events) {
+    std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::uint16_t>& field_audio_stops) {
     std::filesystem::create_directories(output);
     std::error_code output_directory_error;
     clear_qa_bitmap_artifacts(output, output_directory_error);
@@ -225,9 +226,14 @@ int run_field_world_activity_qa(
     const auto floor_result = render_field();
     const bool floor_result_saved = save("floor-result.bmp", floor_result) &&
                                     save("actual.bmp", floor_result);
-    const std::vector<std::uint16_t> expected_audio_events{0x2EU, 0x30U};
+    // 0x2E starts through 0x530DE (FF 10 2E). Alarm-off 0x1E09A then sends
+    // 0x30 through 0x530D2, which queues FF 12 30: a stop-resource request,
+    // so it belongs on the stop callback, not the start-event list.
+    const std::vector<std::uint16_t> expected_audio_events{0x2EU};
+    const std::vector<std::uint16_t> expected_audio_stops{0x30U};
     if (!third_floor_visible || !result_panel.source_complete ||
         field_audio_events != expected_audio_events ||
+        field_audio_stops != expected_audio_stops ||
         !floor_result_saved) {
         std::cerr << "field world-activity QA: selected floor text, source result, or audio event diverged"
                   << " third_floor=" << third_floor_visible
@@ -235,6 +241,10 @@ int run_field_world_activity_qa(
                   << " audio_events=";
         for (const auto audio_event : field_audio_events) {
             std::cerr << " 0x" << std::hex << audio_event << std::dec;
+        }
+        std::cerr << " audio_stops=";
+        for (const auto audio_stop : field_audio_stops) {
+            std::cerr << " 0x" << std::hex << audio_stop << std::dec;
         }
         std::cerr << " saved=" << floor_result_saved << "\n";
         return 3;
@@ -15189,6 +15199,9 @@ int main(int argc, char** argv) {
                 smoke_state.restored_field_state = std::move(checkpoint);
             }
             std::vector<std::uint16_t> field_audio_events;
+            // Stop-resource requests (ROM 0x530D2 -> FF 12 <id>) are a
+            // separate host callback from start requests (0x530DE -> FF 10).
+            std::vector<std::uint16_t> field_audio_stops;
             std::vector<std::string> field_source_boundaries;
             qt_runtime::FieldSceneRuntime field_scene(
                 [&field_source_boundaries](const std::string_view boundary) {
@@ -15196,6 +15209,9 @@ int main(int argc, char** argv) {
                 },
                 [&field_audio_events](const std::uint16_t event) {
                     field_audio_events.push_back(event);
+                },
+                [&field_audio_stops](const std::uint16_t resource) {
+                    field_audio_stops.push_back(resource);
                 });
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_motel_street_collision_qa_path.has_value() ||
@@ -15803,7 +15819,8 @@ int main(int argc, char** argv) {
             if (field_world_activity_qa_path.has_value()) {
                 return run_field_world_activity_qa(
                     field_scene, asset_root,
-                    *field_world_activity_qa_path, field_audio_events);
+                    *field_world_activity_qa_path, field_audio_events,
+                    field_audio_stops);
             }
             if (field_hound_close_effect_qa_path.has_value()) {
                 return run_field_hound_close_effect_qa(
