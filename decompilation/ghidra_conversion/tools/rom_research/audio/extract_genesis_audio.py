@@ -38,12 +38,32 @@ Z80_TICKS_PER_FRAME = 59_736
 # the extractor silently dropped VBlanks (about 2% of them for song 0x06),
 # which is what made the rendered tempo depend on the cycle budget.
 Z80_INT_HOLD_TICKS = 228
-# The driver reads the YM2612 status only to poll the busy bit (bit 7 tests
-# at 0x0891, 0x14C8, 0x1503, 0x1516, 0x15B8, 0x15D4 ...); it never tests the
-# Timer A/B overflow bits, and its tempo comes from the VBlank flag that the
-# IM 1 handler at 0x0038 leaves at 0x003F [C].  The offline YM is never
-# busy and its timers are not modelled.
+# The driver polls the YM2612 status busy bit (bit 7 tests at 0x0891,
+# 0x14C8, 0x1503, 0x1516, 0x15B8, 0x15D4 ...) and the offline YM is never
+# busy.  Its tempo normally comes from the VBlank flag that the IM 1 handler
+# at 0x0038 leaves at 0x003F [C].  Some songs (0x0A, 0x11) instead patch the
+# `jr` at 0x02B7 to NOPs (0x02D0 copies 0x02B3/0x02B4 over it), which enables
+# the DI busy-wait at 0x02B9..0x02BD: write register 0x27, then spin on status
+# bit 0 (Timer A overflow) [C].  Without Timer A the driver spins forever with
+# interrupts disabled, so Timer A/B are modelled below.
 YM_STATUS_IDLE = 0x00
+YM_STATUS_TIMER_A_OVERFLOW = 0x01
+YM_STATUS_TIMER_B_OVERFLOW = 0x02
+YM_REG_TIMER_A_HIGH = 0x24
+YM_REG_TIMER_A_LOW = 0x25
+YM_REG_TIMER_B = 0x26
+YM_REG_TIMER_CONTROL = 0x27
+YM_TIMER_LOAD_A = 0x01
+YM_TIMER_LOAD_B = 0x02
+YM_TIMER_ENABLE_A = 0x04
+YM_TIMER_ENABLE_B = 0x08
+YM_TIMER_RESET_A = 0x10
+YM_TIMER_RESET_B = 0x20
+# YM2612 runs at MCLK/7 and one Timer A count is 144 YM clocks; the Z80 runs
+# at MCLK/15, so a count is 144 * 7 / 15 = 67.2 Z80 cycles.  Timer B counts
+# 16 times slower [C, YM2612 datasheet timing].  Kept as exact fractions.
+YM_TIMER_A_COUNT_NUM, YM_TIMER_A_COUNT_DEN = 144 * 7, 15
+YM_TIMER_B_COUNT_NUM, YM_TIMER_B_COUNT_DEN = 16 * 144 * 7, 15
 VGM_RATE = 44_100
 TRACK_COUNT = 0xBC // 2
 # The uploaded driver fetches one decoded event byte through 0x041A.  The
@@ -102,6 +122,16 @@ class GenesisSoundMachine:
         self.stream_restart_ticks: dict[int, list[int]] = {}
         self._stream_start_bytes: dict[int, int] = {}
         self._ym_register = [0, 0]
+        self._timer_a_value = 0
+        self._timer_b_value = 0
+        self._timer_control = 0
+        self._timer_status = YM_STATUS_IDLE
+        # Next overflow, in Z80 cycles scaled by the count denominator (15)
+        # so the 67.2-cycle counts accumulate without drift.
+        self._timer_a_next: int | None = None
+        self._timer_b_next: int | None = None
+        self._chunk_base = 0
+        self._chunk = 0
         self.dropped_interrupts = 0
         self._frame_debt = 0
         driver = rom[ROM_DRIVER_BEGIN:ROM_DRIVER_END]
@@ -178,7 +208,8 @@ class GenesisSoundMachine:
                     if self.loop_start_ticks is None:
                         self.loop_start_ticks = self.ticks
         if 0x4000 <= address <= 0x4003:
-            return YM_STATUS_IDLE
+            self._update_timers()
+            return self._timer_status
         if address >= 0x8000:
             rom_address = self.bank * 0x8000 + address - 0x8000
             return self.rom[rom_address] if rom_address < len(self.rom) else 0xFF
@@ -196,6 +227,8 @@ class GenesisSoundMachine:
         elif address == 0x4002:
             self._ym_register[1] = value
         elif address == 0x4001:
+            if YM_REG_TIMER_A_HIGH <= self._ym_register[0] <= YM_REG_TIMER_CONTROL:
+                self._write_timer(self._ym_register[0], value)
             self.writes.append(
                 ChipWrite(self.ticks, "ym", 0, self._ym_register[0], value)
             )
@@ -206,9 +239,59 @@ class GenesisSoundMachine:
         elif address == 0x7F11:
             self.writes.append(ChipWrite(self.ticks, "psg", 0, 0, value))
 
+    def _now_scaled(self) -> int:
+        # Exact cycle inside the current run() chunk; ticks_to_stop counts down.
+        return (self._chunk_base + self._chunk - self.machine.ticks_to_stop) * YM_TIMER_A_COUNT_DEN
+
+    def _timer_a_period(self) -> int:
+        return (1024 - self._timer_a_value) * YM_TIMER_A_COUNT_NUM
+
+    def _timer_b_period(self) -> int:
+        return (256 - self._timer_b_value) * YM_TIMER_B_COUNT_NUM
+
+    def _update_timers(self) -> None:
+        now = self._now_scaled()
+        if self._timer_a_next is not None and now >= self._timer_a_next:
+            periods = (now - self._timer_a_next) // self._timer_a_period() + 1
+            self._timer_a_next += periods * self._timer_a_period()
+            if self._timer_control & YM_TIMER_ENABLE_A:
+                self._timer_status |= YM_STATUS_TIMER_A_OVERFLOW
+        if self._timer_b_next is not None and now >= self._timer_b_next:
+            periods = (now - self._timer_b_next) // self._timer_b_period() + 1
+            self._timer_b_next += periods * self._timer_b_period()
+            if self._timer_control & YM_TIMER_ENABLE_B:
+                self._timer_status |= YM_STATUS_TIMER_B_OVERFLOW
+
+    def _write_timer(self, register: int, value: int) -> None:
+        self._update_timers()
+        if register == YM_REG_TIMER_A_HIGH:
+            self._timer_a_value = (value << 2) | (self._timer_a_value & 0x03)
+        elif register == YM_REG_TIMER_A_LOW:
+            self._timer_a_value = (self._timer_a_value & 0x3FC) | (value & 0x03)
+        elif register == YM_REG_TIMER_B:
+            self._timer_b_value = value
+        else:
+            now = self._now_scaled()
+            if value & YM_TIMER_LOAD_A:
+                if self._timer_a_next is None:
+                    self._timer_a_next = now + self._timer_a_period()
+            else:
+                self._timer_a_next = None
+            if value & YM_TIMER_LOAD_B:
+                if self._timer_b_next is None:
+                    self._timer_b_next = now + self._timer_b_period()
+            else:
+                self._timer_b_next = None
+            if value & YM_TIMER_RESET_A:
+                self._timer_status &= ~YM_STATUS_TIMER_A_OVERFLOW
+            if value & YM_TIMER_RESET_B:
+                self._timer_status &= ~YM_STATUS_TIMER_B_OVERFLOW
+            self._timer_control = value
+
     def _run_ticks(self, count: int) -> None:
         while count > 0:
             chunk = min(1_000, count)
+            self._chunk_base, self._chunk = self.ticks, chunk
             self.machine.ticks_to_stop = chunk
             self.machine.run()
             self.ticks += chunk
@@ -224,6 +307,7 @@ class GenesisSoundMachine:
             self._run_ticks(Z80_TICKS_PER_FRAME - self._frame_debt)
             held = 0
             while self._interrupts_blocked() and held < Z80_INT_HOLD_TICKS:
+                self._chunk_base, self._chunk = self.ticks, 4
                 self.machine.ticks_to_stop = 4
                 self.machine.run()
                 self.ticks += 4
