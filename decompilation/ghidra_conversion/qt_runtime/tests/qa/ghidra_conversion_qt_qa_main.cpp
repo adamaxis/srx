@@ -19602,8 +19602,41 @@ int main(int argc, char** argv) {
                 }
                 press_button(0x10U); // B confirms Yes and checks out.
                 if (field_scene.hotel_menu_open() ||
-                    field_scene.dialogue_open() || !field_audio_events.empty()) {
-                    std::cerr << "field Hotel QA: Yes did not return to the field or Hotel emitted unexpected audio\n";
+                    field_scene.dialogue_open() || !field_audio_events.empty() ||
+                    !field_scene.field_door_return_active()) {
+                    std::cerr << "field Hotel QA: Yes did not start the door return or Hotel emitted unexpected audio\n";
+                    return 3;
+                }
+                // 0x2F32 -> 0x2BD2: the checkout page fades to black, the
+                // field reloads while black and fades in; walking resumes
+                // 131 frames after the confirm [C: emulator run5 8440].
+                const auto checkout_fading =
+                    capture(output / "checkout-fading" / "actual.bmp");
+                if (checkout_fading.isNull() ||
+                    !image_region_differs(checkout_fading, black_reference,
+                                          0, 0, 320, 224)) {
+                    std::cerr << "field Hotel QA: checkout page did not stay visible at the start of the fade\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 30; ++frame) {
+                    advance_field_frame();
+                }
+                const auto checkout_black =
+                    capture(output / "checkout-black" / "actual.bmp");
+                if (checkout_black.isNull() ||
+                    image_region_differs(checkout_black, black_reference,
+                                         0, 0, 320, 224)) {
+                    std::cerr << "field Hotel QA: checkout reload was not black\n";
+                    return 3;
+                }
+                std::uint32_t door_return_frames = 30U;
+                while (field_scene.field_door_return_active() &&
+                       door_return_frames < 400U) {
+                    advance_field_frame();
+                    ++door_return_frames;
+                }
+                if (door_return_frames != 130U) {
+                    std::cerr << "field Hotel QA: checkout door return lasted " << door_return_frames << " frames, expected 130\n";
                     return 3;
                 }
                 const auto returned_field =
@@ -19641,8 +19674,9 @@ int main(int argc, char** argv) {
                 // runner step (30 units since f6b950a9, ROM 0xBEC2), so the
                 // hold is checked relative to the contact frame. The three
                 // Hotel page-staging waits above add 3 + 3 + 3 frames and
-                // the Karma Screen black load adds 14 more.
-                constexpr std::uint32_t kHotelFramesAfterContact = 228U;
+                // the Karma Screen black load adds 14 more, and the checkout
+                // door return holds input for 130 frames after the confirm.
+                constexpr std::uint32_t kHotelFramesAfterContact = 358U;
                 if (route_frame != collision_frame + kHotelFramesAfterContact ||
                     returned_field_frame_30.isNull() ||
                     returned_field_frame_30 != field_only_frame_30) {

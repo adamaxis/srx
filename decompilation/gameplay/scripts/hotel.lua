@@ -39,6 +39,15 @@ function Hotel.presentation()
         status_text_delay_frames = "4",
         options_redraw_frames = "4",
         karma_load_black_frames = "15",
+        -- Check Out -> field (the door event returns d6=-1; 0x2F32 puts
+        -- the party back at the 0xBC36 return points, 0x131C fades out,
+        -- 0x2BD2 reloads the scene). Frames after the confirm press:
+        -- dimming from +4, black from +16, fade-in from +99, walking
+        -- resumes at +132 (emulator run5: A at 8440) [C].
+        checkout_fade_out_start_frame = "2",
+        checkout_fade_in_start_frame = "99",
+        checkout_input_resume_frame = "131",
+        checkout_camera_settle_start_frame = "83",
     }
 end
 

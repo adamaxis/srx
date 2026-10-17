@@ -631,6 +631,9 @@ public:
     std::uint8_t field_palette_fade_steps_for_dump() const noexcept {
         return field_palette_fade_steps_;
     }
+    bool field_door_return_active() const noexcept {
+        return field_door_return_active_;
+    }
     std::uint8_t field_modal_return_transition_frames_for_dump() const noexcept {
         return field_modal_return_transition_frames_remaining_;
     }
@@ -1954,6 +1957,30 @@ private:
     std::optional<std::uint8_t> field_active_story_trigger_;
     std::uint8_t field_palette_fade_steps_ = 0U;
     std::uint8_t field_modal_return_transition_frames_remaining_ = 0U;
+    // ROM 0xBC36 return point, saved when a door event starts: the lead's
+    // pre-step position plus the 0xBD34 offset for its heading, and the
+    // camera (FFDF44.., FFDF50/52).
+    struct FieldDoorReturnPoint {
+        bool valid = false;
+        SceneRunnerPosition lead{};
+        std::uint16_t heading = 0U;
+        std::uint16_t camera_x = 0U;
+        std::uint16_t camera_y = 0U;
+    };
+    FieldDoorReturnPoint field_door_return_point_{};
+    SceneRunnerPosition field_frame_start_player_position_{};
+    SceneRunnerPosition field_pre_step_player_position_{};
+    std::uint32_t field_door_return_frame_ = 0U;
+    bool field_door_return_active_ = false;
+    std::uint32_t checkout_fade_out_start_frame_ = 0U;
+    std::uint32_t checkout_fade_in_start_frame_ = 0U;
+    std::uint32_t checkout_input_resume_frame_ = 0U;
+    std::uint32_t checkout_camera_settle_start_frame_ = 0U;
+    mutable QImage field_door_return_modal_frame_;
+    void save_field_door_return_point();
+    void begin_field_door_return();
+    bool advance_field_door_return();
+    std::uint8_t field_door_return_palette_level() const noexcept;
     std::uint8_t field_modal_return_blocked_inputs_ = 0U;
     bool field_world_activity_scene_entry_pending_ = false;
     WorldActivityState field_world_activity_state_{};

@@ -1448,6 +1448,8 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 return false;
             }
 
+            // B834 -> 0xBC36 saves the return point for this door event.
+            save_field_door_return_point();
             game_scripts_.set_location_context(
                 "motel", "stoker_motel", "stoker.motel", "stoker");
             // michael_package.stoker_interaction publishes FFDD64 = 0
@@ -13258,11 +13260,129 @@ void FieldSceneRuntime::handle_game_script_task_step(
     source_boundary("field.map_event.new_game_opening_walk_started");
 }
 
+void FieldSceneRuntime::save_field_door_return_point() {
+    // 0xBD34: lead, second and third runner offsets per heading row. Only
+    // the row for an upward walk is confirmed (emulator run5 FFDF44 =
+    // lead + (0,+320), followers (+-320,+320)); the other rows follow the
+    // same "back out of the door" geometry [H].
+    struct Offset { std::int16_t x; std::int16_t y; };
+    constexpr std::array<Offset, 4> kLeadOffset{{
+        {0, 320},   // walking up    -> table row 2
+        {-480, 0},  // walking right -> table row 3
+        {0, -320},  // walking down  -> table row 0
+        {480, 0},   // walking left  -> table row 1
+    }};
+    const auto heading = field_movement_state_.heading;
+    const auto row = static_cast<std::size_t>((heading >> 14U) & 3U);
+    // The ROM reads the lead before this frame's step (FFDF46 = 10890+320
+    // while the contact frame stood at 10860).
+    const bool stepped_this_frame =
+        field_entity_.world_position.x != field_frame_start_player_position_.x ||
+        field_entity_.world_position.y != field_frame_start_player_position_.y;
+    const auto base = stepped_this_frame ? field_frame_start_player_position_
+                                         : field_pre_step_player_position_;
+    field_door_return_point_.valid = true;
+    field_door_return_point_.lead.x =
+        static_cast<std::uint16_t>(base.x + kLeadOffset[row].x);
+    field_door_return_point_.lead.y =
+        static_cast<std::uint16_t>(base.y + kLeadOffset[row].y);
+    // The party is put back facing away from the door.
+    field_door_return_point_.heading =
+        static_cast<std::uint16_t>(heading ^ 0x8000U);
+    field_door_return_point_.camera_x =
+        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
+    field_door_return_point_.camera_y =
+        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y);
+    source_boundary("field.door.return_point_saved");
+}
+
+void FieldSceneRuntime::begin_field_door_return() {
+    if (!field_door_return_point_.valid) {
+        source_boundary("field.door.return_point_missing");
+        return;
+    }
+    // 0xDB20 -> d6=-1 -> 0x2F32: the party is placed at the return point
+    // on the confirm frame [C: emulator run5 8440].
+    const auto& point = field_door_return_point_;
+    field_entity_.world_position = point.lead;
+    field_entity_.projection.world_x = point.lead.x;
+    field_entity_.projection.world_y = point.lead.y;
+    field_movement_state_.position_x = point.lead.x;
+    field_movement_state_.position_y = point.lead.y;
+    field_movement_state_.heading = point.heading;
+    field_movement_state_.animation_heading = point.heading;
+    field_target_heading_ = point.heading;
+    field_movement_behavior_record_.current_heading = point.heading;
+    field_movement_behavior_record_.target_heading = point.heading;
+    // The Lua runner keeps its own heading after spawn; respawn it so the
+    // restored facing is the one it turns from.
+    field_player_actor_script_initialized_ = false;
+    field_entity_.direction =
+        static_cast<std::uint8_t>(((point.heading >> 14U) & 3U) * 2U);
+    // 0x2BD2 aligns the saved camera to 128 units before the reload.
+    state_.field_scene_buffers.camera_x = point.camera_x & 0xFF80U;
+    state_.field_scene_buffers.camera_y = point.camera_y & 0xFF80U;
+    field_camera_alignment_ready_ = false;
+    field_door_return_point_.valid = false;
+    field_door_return_active_ = true;
+    field_door_return_frame_ = 0U;
+    field_door_return_modal_frame_ = QImage{};
+    source_boundary("field.door.return_started");
+}
+
+bool FieldSceneRuntime::advance_field_door_return() {
+    ++field_door_return_frame_;
+    // Inputs are not sampled while the scene reloads.
+    field_controller_sample_state_.events = 0U;
+    if (field_door_return_frame_ >= checkout_camera_settle_start_frame_ &&
+        field_door_return_frame_ < checkout_fade_in_start_frame_) {
+        // The reloaded scene runs its camera pass while the display is still
+        // black (emulator run5: 8576 -> 9568 over +83..+97, about 64 units a
+        // frame), then the camera stays put until walking resumes. Two follow
+        // passes per frame approximate that rate [H: the reload scroll
+        // routine itself is not traced].
+        update_source_field_camera();
+        update_source_field_camera();
+        field_entity_animation_.redraw_requested = true;
+    }
+    if (field_door_return_frame_ >= checkout_input_resume_frame_) {
+        field_door_return_active_ = false;
+        field_modal_return_blocked_inputs_ = 0U;
+        source_boundary("field.door.return_completed");
+        return false;
+    }
+    return true;
+}
+
+std::uint8_t FieldSceneRuntime::field_door_return_palette_level()
+    const noexcept {
+    const auto frame = field_door_return_frame_;
+    if (frame < checkout_fade_in_start_frame_) {
+        // 0x131C: one CRAM level per two frames from the fade start.
+        if (frame <= checkout_fade_out_start_frame_) {
+            return 0U;
+        }
+        return static_cast<std::uint8_t>(std::min<std::uint32_t>(
+            (frame - checkout_fade_out_start_frame_) / 2U, 7U));
+    }
+    // Generic fade-in (ordinary fade): four levels, one per frame.
+    const auto since = frame - checkout_fade_in_start_frame_;
+    return static_cast<std::uint8_t>(since >= 4U ? 0U : 4U - since);
+}
+
 void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
         return;
     }
     service_scene_music_latch();
+    if (field_door_return_active_ && advance_field_door_return()) {
+        return;
+    }
+    if (field_entity_.world_position.x != field_frame_start_player_position_.x ||
+        field_entity_.world_position.y != field_frame_start_player_position_.y) {
+        field_pre_step_player_position_ = field_frame_start_player_position_;
+    }
+    field_frame_start_player_position_ = field_entity_.world_position;
     // A modal dismissal owns the next host transition interval. Fade the
     // replacement field in over sixty host frames and consume every
     // button held or pressed during that interval so its close input cannot
@@ -14488,6 +14608,21 @@ bool FieldSceneRuntime::load_hotel_menu_content() {
         return fail("Hotel presentation timing is not numeric");
     }
     hotel_karma_load_black_frames_ = *karma_load;
+    const auto checkout_fade_out = timing("checkout_fade_out_start_frame");
+    const auto checkout_fade_in = timing("checkout_fade_in_start_frame");
+    const auto checkout_resume = timing("checkout_input_resume_frame");
+    const auto checkout_camera = timing("checkout_camera_settle_start_frame");
+    if (!checkout_fade_out.has_value() || !checkout_fade_in.has_value() ||
+        !checkout_resume.has_value() || !checkout_camera.has_value() ||
+        *checkout_camera >= *checkout_fade_in ||
+        *checkout_fade_in <= *checkout_fade_out + 14U ||
+        *checkout_resume <= *checkout_fade_in) {
+        return fail("Hotel checkout timing is not numeric or ordered");
+    }
+    checkout_fade_out_start_frame_ = *checkout_fade_out;
+    checkout_fade_in_start_frame_ = *checkout_fade_in;
+    checkout_input_resume_frame_ = *checkout_resume;
+    checkout_camera_settle_start_frame_ = *checkout_camera;
     hotel_menu_.set_presentation_timing(*status_text_delay, *options_redraw);
     const auto text_keys = game_scripts_.string_map("hotel", "text_keys");
     if (!text_keys.has_value()) {
@@ -14842,6 +14977,7 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
         source_boundary("field.hotel.checkout.stayed");
         break;
     case HotelMenuEvent::checked_out:
+        begin_field_door_return();
         refresh_field_hud_runner_slot();
         source_boundary("field.hotel.checked_out");
         break;
@@ -18061,6 +18197,10 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
         std::uint8_t palette_passes = 0U;
         bool toward_black = true;
         bool transition_active = false;
+        if (field_door_return_active_) {
+            palette_passes = field_door_return_palette_level();
+            transition_active = palette_passes != 0U;
+        } else
         switch (field_elevator_scene_transition_.phase()) {
         case ElevatorSceneTransitionPhase::fading_to_black:
             palette_passes = std::min<std::uint8_t>(
@@ -18098,6 +18238,14 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
         }
 
         scene_painter.end();
+        if (hotel_menu_.open()) {
+            field_door_return_modal_frame_ = scene;
+        } else if (field_door_return_active_ &&
+                   field_door_return_frame_ < checkout_fade_in_start_frame_ &&
+                   !field_door_return_modal_frame_.isNull()) {
+            // The checkout page itself fades out (0x131C) before the reload.
+            scene = field_door_return_modal_frame_;
+        }
         if (transition_active) {
             scene = transition_genesis_cram_image(
                 scene, palette_passes, toward_black);
