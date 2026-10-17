@@ -921,6 +921,11 @@ void FieldSceneRuntime::source_boundary(
     }
 }
 
+void FieldSceneRuntime::set_actor_heartbeat_observer(
+    scripting::ScriptActorHeartbeatObserver observer) {
+    game_scripts_.set_actor_heartbeat_observer(std::move(observer));
+}
+
 QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
     QJsonObject fields;
     const auto scene = state_.field_scene_buffers.scene_reference;

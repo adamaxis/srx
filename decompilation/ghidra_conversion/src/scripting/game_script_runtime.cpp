@@ -837,6 +837,7 @@ struct GameScriptRuntime::Impl {
     ScriptFieldModeContext field_mode_context{};
     ScriptMenuRouteBindings menu_route_bindings{};
     ScriptMenuRouteSnapshot menu_route_state{};
+    ScriptActorHeartbeatObserver actor_heartbeat_observer;
     const ScriptActorBehaviorContext* active_actor_context = nullptr;
     std::string bridge_failure;
     std::string failure;
@@ -5130,6 +5131,11 @@ void GameScriptRuntime::set_field_mode_context(
     impl_->field_mode_context = context;
 }
 
+void GameScriptRuntime::set_actor_heartbeat_observer(
+    ScriptActorHeartbeatObserver observer) {
+    impl_->actor_heartbeat_observer = std::move(observer);
+}
+
 std::optional<ScriptActorBehaviorDecision>
 GameScriptRuntime::actor_heartbeat(
     const ScriptActorBehaviorContext& context) {
@@ -7349,6 +7355,10 @@ GameScriptRuntime::actor_heartbeat(
         return fail(reason);
     }
     impl_->failure.clear();
+    if (impl_->actor_heartbeat_observer) {
+        impl_->actor_heartbeat_observer(actor_id, context.profile_id,
+                                        context.phase);
+    }
     return decision;
 }
 

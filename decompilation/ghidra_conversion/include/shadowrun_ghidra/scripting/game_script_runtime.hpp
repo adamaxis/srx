@@ -1119,6 +1119,11 @@ struct ScriptActorBehaviorDecision {
     std::optional<std::string> source_action_dispatch;
 };
 
+using ScriptActorHeartbeatObserver =
+    std::function<void(std::string_view actor_id,
+                       std::string_view profile_id,
+                       ScriptActorHeartbeatPhase phase)>;
+
 struct ScriptNativeOperation {
     enum class Type {
         actor_walk_heading,
@@ -1204,6 +1209,8 @@ public:
     void set_field_mode_context(ScriptFieldModeContext context) noexcept;
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);
+    void set_actor_heartbeat_observer(
+        ScriptActorHeartbeatObserver observer);
     // Kept for the existing script-runtime caller contract. New game-runtime
     // code should use actor_heartbeat() to make the per-tick boundary clear.
     std::optional<ScriptActorBehaviorDecision> actor_behavior_decision(

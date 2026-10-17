@@ -1223,12 +1223,33 @@ int main() {
         context.spawn = spawn;
         return context;
     };
+    std::vector<std::string> observed_heartbeats;
+    scripts.set_actor_heartbeat_observer(
+        [&observed_heartbeats](const std::string_view actor_id,
+                               const std::string_view profile_id,
+                               const ScriptActorHeartbeatPhase phase) {
+            const auto phase_name =
+                phase == ScriptActorHeartbeatPhase::behavior
+                    ? "behavior"
+                    : "render";
+            observed_heartbeats.push_back(
+                std::string(actor_id) + "|" + std::string(profile_id) + "|" +
+                phase_name);
+        });
     auto guard_wait_context = actor_context(
         "corp_guard_k05_item06", "guard_wait", 5U,
         ScriptActorActionKind::item, 6U, 1U, true);
     const auto guard_wait = scripts.actor_heartbeat(guard_wait_context);
     guard_wait_context.spawn = false;
     const auto guard_wait_tick = scripts.actor_heartbeat(guard_wait_context);
+    if (!expect(observed_heartbeats.size() == 2U &&
+                    observed_heartbeats[0] ==
+                        "guard_wait|corp_guard_k05_item06|behavior" &&
+                    observed_heartbeats[1] ==
+                        "guard_wait|corp_guard_k05_item06|behavior",
+                "actor Lua heartbeats must report stable actor, profile, and phase")) {
+        return 19;
+    }
 
     auto guard_entry_context = actor_context(
         "corp_guard_k05_item06", "guard_entry", 5U,
@@ -1243,6 +1264,13 @@ int main() {
     for (std::size_t frame = 0; frame < 9U; ++frame) {
         guard_entry_last_frame =
             scripts.actor_heartbeat(guard_entry_context);
+    }
+    if (!expect(std::find(observed_heartbeats.begin(),
+                          observed_heartbeats.end(),
+                          "guard_entry|corp_guard_k05_item06|render") !=
+                    observed_heartbeats.end(),
+                "render heartbeats must be present in the actor observer")) {
+        return 19;
     }
 
     auto pedestrian_context = actor_context(

@@ -174,10 +174,7 @@ public:
                                                    : record->absolute_path;
                                     })),
           field_scene_runtime_([this](const std::string_view boundary) {
-              input_log_.record_source_event(source_frame_index_, boundary);
-              if (debug_event_queue_enabled_) {
-                  pending_debug_events_.push_back(std::string(boundary));
-              }
+              record_debug_source_event(boundary);
           }, [this](const std::uint16_t event) {
               if (audio_playback_) {
                   audio_playback_->play_event(event);
@@ -256,6 +253,19 @@ public:
                 });
         }
         if (debug_event_queue_enabled_ || input_log_.recording()) {
+            field_scene_runtime_.set_actor_heartbeat_observer(
+                [this](const std::string_view actor_id,
+                       const std::string_view profile_id,
+                       const scripting::ScriptActorHeartbeatPhase phase) {
+                    std::ostringstream event;
+                    event << "lua.heartbeat."
+                          << (phase == scripting::ScriptActorHeartbeatPhase::behavior
+                                  ? "behavior"
+                                  : "render")
+                          << ".completed.profile=" << profile_id
+                          << ".actor=" << actor_id;
+                    record_debug_source_event(event.str());
+                });
             set_source_random_observer(
                 [this](const int kind, const std::uint16_t bound,
                        const std::int32_t result, const std::uint16_t seed) {
@@ -271,11 +281,7 @@ public:
                     event << ".bound=" << bound << ".result=" << result
                           << ".seed=0x" << std::hex << std::setw(4)
                           << std::setfill('0') << seed;
-                    const auto name = event.str();
-                    input_log_.record_source_event(source_frame_index_, name);
-                    if (debug_event_queue_enabled_) {
-                        pending_debug_events_.push_back(name);
-                    }
+                    record_debug_source_event(event.str());
                 });
             source_random_observer_installed_ = true;
         }
@@ -603,6 +609,13 @@ private:
             input_log_.record_event(
                 source_frame_index_, event.key(),
                 static_cast<std::uint32_t>(event.modifiers()), pressed);
+        }
+    }
+
+    void record_debug_source_event(const std::string_view name) {
+        input_log_.record_source_event(source_frame_index_, name);
+        if (debug_event_queue_enabled_) {
+            pending_debug_events_.emplace_back(name);
         }
     }
 
@@ -1146,10 +1159,7 @@ private:
             };
         startup_callbacks_.opening_intro.source_boundary =
             [this](const std::string_view boundary) {
-                input_log_.record_source_event(source_frame_index_, boundary);
-                if (debug_event_queue_enabled_) {
-                    pending_debug_events_.push_back(std::string(boundary));
-                }
+                record_debug_source_event(boundary);
             };
         startup_callbacks_.opening_intro.stop_requested = [this] {
             return opening_start_event_latched_;

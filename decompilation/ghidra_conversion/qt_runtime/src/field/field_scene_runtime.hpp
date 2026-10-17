@@ -268,6 +268,8 @@ public:
     void advance_frame();
     void set_controller_nibble(std::uint8_t dpad_nibble) noexcept;
     void set_controller_port_byte(std::uint8_t port_byte) noexcept;
+    void set_actor_heartbeat_observer(
+        scripting::ScriptActorHeartbeatObserver observer);
     void paint(QPainter& painter) const;
     QJsonObject debug_inspection_fields() const;
     void paint_field_scene_for_dump(QPainter& painter) const;
