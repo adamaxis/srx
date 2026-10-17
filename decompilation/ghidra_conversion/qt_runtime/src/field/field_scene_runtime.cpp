@@ -20,6 +20,7 @@
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
+#include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
 #include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_action_math_conversion.hpp"
@@ -897,6 +898,30 @@ FieldSceneRuntime::FieldSceneRuntime(
                 }
                 return "skill_" + std::to_string(
                     first_runner.skills[skill_index]);
+            }
+            const auto vid_phone_action =
+                vid_phone_service_action_for_id(service_id);
+            if (vid_phone_action.has_value()) {
+                if (!field_party_roster_.available()) {
+                    return std::nullopt;
+                }
+                auto& runner = field_party_roster_.active_record();
+                const auto result = apply_vid_phone_service(
+                    *vid_phone_action, field_funds_,
+                    runner.inventory_item_codes,
+                    runner.inventory_phase_bytes,
+                    notebook_contacts_flags_);
+                if (result == VidPhoneServiceResult::purchased) {
+                    refresh_field_hud_runner_slot();
+                    refresh_command_overview_combat_bars();
+                    refresh_command_overview_item_detail();
+                }
+                const auto script_result =
+                    vid_phone_service_script_result(result);
+                return script_result.has_value()
+                           ? std::optional<std::string>{
+                                 std::string(*script_result)}
+                           : std::nullopt;
             }
             if (service_id != "johnson.purchase_decker_contact") {
                 return std::nullopt;

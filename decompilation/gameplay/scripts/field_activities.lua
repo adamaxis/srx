@@ -3,6 +3,7 @@
 local FieldActivities = {}
 local Dialogue = require("dialogue")
 local MatrixPasscodes = require("data.matrix_passcodes")
+local CaptQuintonJaymes = require("vid_phone.capt_quinton_jaymes")
 
 local function run_cursor_menu(menu_id, choices, initial_selection,
                                speaker_id, text_profile)
@@ -49,13 +50,23 @@ local function phone_contact_choices(contacts, page)
     return choices
 end
 
+local function say_phone_contact(contact, event_id)
+    game.ui.say(event_id, contact.speaker_id, "field.vid_phone")
+end
+
+local function phone_call_finished()
+    -- ROM 0xE4C8 returns from the Vid-Phone routine after one contact call.
+    -- The ordinary terminal then redraws its four-option menu.
+    return "phone_call_finished"
+end
+
 local function call_contact(contact)
     local called_fact = "vid_phone_called_" .. contact.source_index
     local first_call = game.state[called_fact] ~= true
     if first_call and not contact.always_first then
         -- ROM 0xE5E2 sets the contact's call-history bit before opening its
-        -- first-call dialogue. Mr. Faradouchi and Agira have the source's
-        -- two explicit exceptions and always use their first record.
+        -- first-call dialogue. Faradouchi and Agira are the two exceptions:
+        -- their source commands set history only after the special offer.
         game.state[called_fact] = true
     end
 
@@ -64,19 +75,29 @@ local function call_contact(contact)
         and contact.first_continuation
         or contact.repeat_continuation
     if continuation then
-        game.ui.say(call_kind, contact.speaker_id, "field.vid_phone")
-        return nil
+        if contact.repeat_story_event ~= nil and not first_call then
+            local choice = game.ui.menu(
+                "call_" .. contact.id .. "_" .. call_kind,
+                { "more" }, contact.speaker_id, "field.vid_phone")
+            if choice == "more" then
+                say_phone_contact(contact, contact.repeat_story_event)
+            end
+        else
+            say_phone_contact(contact, call_kind)
+        end
+        return phone_call_finished()
     end
 
     local choice = game.ui.menu(
         "call_" .. contact.id .. "_" .. call_kind,
         { "services", "goodbye" }, contact.speaker_id, "field.vid_phone")
     if choice == "services" then
-        -- The call screen is source-backed; its contact-specific service
-        -- transactions remain a separate script slice.
+        if contact.id == "capt_quinton_jaymes" then
+            return CaptQuintonJaymes.services()
+        end
         return "phone_services_not_converted"
     end
-    return nil
+    return phone_call_finished()
 end
 
 function FieldActivities.vid_phone()
@@ -121,7 +142,9 @@ function FieldActivities.vid_phone()
             end
             if contact ~= nil then
                 local result = call_contact(contact)
-                if result ~= nil then
+                if result == "phone_call_finished" then
+                    return nil
+                elseif result ~= nil then
                     return result
                 end
             end

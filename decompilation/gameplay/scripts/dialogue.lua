@@ -537,6 +537,69 @@ for _, contact in ipairs(vid_phone_contacts) do
 end
 menu_profiles["field.vid_phone"] = phone_profile
 
+local quinton = speakers.vid_phone_capt_quinton_jaymes
+quinton.events.purchase_insufficient = {
+    title_key = "vid_phone.capt_quinton_jaymes.purchase.insufficient",
+    continuation_key = "",
+}
+quinton.events.purchase_out_of_stock = {
+    title_key = "vid_phone.capt_quinton_jaymes.purchase.out_of_stock",
+    continuation_key = "",
+}
+quinton.events.services_disconnected = {
+    title_key = "vid_phone.capt_quinton_jaymes.services.disconnected",
+    continuation_key = "",
+}
+
+local quinton_prefix = "vid_phone.capt_quinton_jaymes."
+local function define_quinton_menu(id, text_id, option_keys)
+    phone_profile[id] = {
+        title_key = quinton_prefix .. text_id,
+        choice_label_keys = option_keys,
+    }
+end
+
+define_quinton_menu("capt_quinton_services", "services", {
+    hollywood_information = quinton_prefix .. "option.hollywood_information",
+    firepower = quinton_prefix .. "option.firepower",
+    contacts = quinton_prefix .. "option.contacts",
+})
+define_quinton_menu("capt_quinton_hollywood_intro", "hollywood_intro", {
+    more = "vid_phone.option.more",
+})
+define_quinton_menu("capt_quinton_hollywood_topics", "hollywood_topics", {
+    weller_prison_break = quinton_prefix .. "option.weller_prison_break",
+    disconnect = quinton_prefix .. "option.disconnect",
+    return_to_services = quinton_prefix .. "option.return_to_services",
+})
+define_quinton_menu("capt_quinton_weller_intro", "weller_intro", {
+    more = "vid_phone.option.more",
+})
+define_quinton_menu("capt_quinton_weller_result", "weller_result", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+define_quinton_menu("capt_quinton_firepower_intro", "firepower_intro", {
+    more = "vid_phone.option.more",
+})
+define_quinton_menu("capt_quinton_firepower_items", "firepower_items", {
+    frag_grenades = quinton_prefix .. "option.frag_grenades",
+    hk227_s = quinton_prefix .. "option.hk227_s",
+    no_thanks = quinton_prefix .. "option.no_thanks",
+})
+define_quinton_menu("capt_quinton_purchase_result", "purchase_result", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+define_quinton_menu("capt_quinton_contacts_offer", "contacts_offer", {
+    pay_for_rigger_contact = quinton_prefix .. "option.pay_for_rigger_contact",
+    decline_rigger_contact = quinton_prefix .. "option.decline_rigger_contact",
+})
+define_quinton_menu("capt_quinton_sharkey_result", "sharkey_result", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+
 -- Content is grouped by speaker and topic. The controller supplies only the
 -- semantic runner/page ID; this table connects that ID to the imported copy.
 local runner_dialogue = {

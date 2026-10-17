@@ -151,6 +151,15 @@ target_compile_definitions(shadowrun_vid_phone_script_test PRIVATE
 add_test(NAME shadowrun_vid_phone_script_qa
          COMMAND shadowrun_vid_phone_script_test)
 
+add_executable(shadowrun_vid_phone_service_conversion_test
+    tests/field/vid_phone_service_conversion_test.cpp)
+target_include_directories(shadowrun_vid_phone_service_conversion_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+target_link_libraries(shadowrun_vid_phone_service_conversion_test
+    PRIVATE shadowrun_ghidra_conversion_runtime)
+add_test(NAME shadowrun_vid_phone_service_conversion_qa
+         COMMAND shadowrun_vid_phone_service_conversion_test)
+
 add_executable(shadowrun_matrix_field_state_save_test
     tests/persistence/matrix_field_state_save_test.cpp
     src/persistence/game_save_snapshot.cpp)

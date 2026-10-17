@@ -628,7 +628,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         output << '"';
     };
 
-    const std::array<std::pair<const char*, std::size_t>, 149> records{{
+    const std::pair<const char*, std::size_t> records[]{
         // Stoker prompt pointers consumed by the source event/profile path.
         {"stoker.motel.arrival.title", 0x1167EBU},
         {"stoker.motel.arrival.more", 0x0FE5BFU},
@@ -803,7 +803,36 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"vid_phone.contact.chillicut.repeat_call", 0x10EC09U},
         {"vid_phone.contact.professor_jefferson.first_call", 0x10F1EAU},
         {"vid_phone.contact.professor_jefferson.repeat_call", 0x10F257U},
-    }};
+        // Captain Quinton's Services tree: information, equipment, and
+        // contact offers selected by the 0x1096F4 prompt and command handlers.
+        {"vid_phone.capt_quinton_jaymes.services", 0x109900U},
+        {"vid_phone.capt_quinton_jaymes.hollywood_intro", 0x1099E7U},
+        {"vid_phone.capt_quinton_jaymes.hollywood_topics", 0x109A7EU},
+        {"vid_phone.capt_quinton_jaymes.weller_intro", 0x109B36U},
+        {"vid_phone.capt_quinton_jaymes.weller_result", 0x109C0CU},
+        {"vid_phone.capt_quinton_jaymes.firepower_intro", 0x109CF8U},
+        {"vid_phone.capt_quinton_jaymes.firepower_items", 0x109DE3U},
+        {"vid_phone.capt_quinton_jaymes.contacts_offer", 0x109E77U},
+        {"vid_phone.capt_quinton_jaymes.purchase_result", 0x109E59U},
+        {"vid_phone.capt_quinton_jaymes.sharkey_result", 0x109F1BU},
+        {"vid_phone.capt_quinton_jaymes.purchase.insufficient", 0x109F9CU},
+        {"vid_phone.capt_quinton_jaymes.purchase.out_of_stock", 0x109FE8U},
+        // 0x10A0AC is the terminal prompt record; its title pointer is 10A7C4.
+        {"vid_phone.capt_quinton_jaymes.services.disconnected", 0x10A7C4U},
+        {"vid_phone.capt_quinton_jaymes.option.hollywood_information", 0x10499BU},
+        {"vid_phone.capt_quinton_jaymes.option.firepower", 0x1041A8U},
+        {"vid_phone.capt_quinton_jaymes.option.contacts", 0x104666U},
+        {"vid_phone.capt_quinton_jaymes.option.more", 0x0FE5BFU},
+        {"vid_phone.capt_quinton_jaymes.option.weller_prison_break", 0x109B00U},
+        {"vid_phone.capt_quinton_jaymes.option.disconnect", 0x103B3CU},
+        {"vid_phone.capt_quinton_jaymes.option.return_to_services", 0x104817U},
+        {"vid_phone.capt_quinton_jaymes.option.frag_grenades", 0x104329U},
+        {"vid_phone.capt_quinton_jaymes.option.hk227_s", 0x1042EDU},
+        {"vid_phone.capt_quinton_jaymes.option.no_thanks", 0x103A13U},
+        {"vid_phone.capt_quinton_jaymes.option.pay_for_rigger_contact", 0x103A7AU},
+        {"vid_phone.capt_quinton_jaymes.option.decline_rigger_contact", 0x105101U},
+        {"vid_phone.option.more", 0x0FE5BFU},
+    };
 
     output << "-- Generated from the US ROM dialogue and menu text records.\n"
               "-- Pipe characters preserve source segment/page boundaries.\n"
@@ -860,12 +889,17 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         write_lua_string(*value);
         output << ",\n";
     }
-    for (std::size_t record_index = 0; record_index < records.size();
-         ++record_index) {
-        const auto& [key, source_offset] = records[record_index];
-        const auto segments =
-            shadowrun::graphics::read_genesis_dialogue_segments(
+    for (const auto& [key, source_offset] : records) {
+        std::vector<std::string> segments;
+        try {
+            segments = shadowrun::graphics::read_genesis_dialogue_segments(
                 rom, source_offset);
+        } catch (const std::exception& error) {
+            std::ostringstream message;
+            message << "dialogue text " << key << " at ROM +0x" << std::hex
+                    << source_offset << ": " << error.what();
+            throw std::runtime_error(message.str());
+        }
         if (segments.empty()) {
             throw std::runtime_error("empty dialogue text: " +
                                      std::string(key));

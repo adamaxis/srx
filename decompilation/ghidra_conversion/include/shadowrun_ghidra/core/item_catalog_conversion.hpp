@@ -8,6 +8,13 @@ namespace shadowrun::ghidra_conversion {
 
 constexpr std::size_t kUsItemDefinitionCount = 50U;
 
+// Semantic item codes used by native host services. The numeric values are
+// the one-based inventory codes in the US ROM's D4540 item catalog.
+enum class UsItemCode : std::uint8_t {
+    hk227_s_smg = 9U,
+    frag_grenade = 13U,
+};
+
 // The confirmed D4540 fields used by converted field/menu routines.  The
 // source table stores fifty 0x30-byte records.  item_code is the one-based
 // code used by ordinary item records; field-action byte 0 indexes the array
@@ -75,5 +82,6 @@ us_special_item_modifier_selector_table();
 // not model 0x57A44's zero-based field-action table index; that caller uses
 // the catalog array directly after validating its source record byte.
 const UsItemDefinition* find_us_item_definition(std::uint8_t item_code);
+const UsItemDefinition* find_us_item_definition(UsItemCode item_code);
 
 } // namespace shadowrun::ghidra_conversion

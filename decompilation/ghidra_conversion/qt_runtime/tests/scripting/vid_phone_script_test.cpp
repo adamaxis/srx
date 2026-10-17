@@ -66,6 +66,14 @@ bool is_say(const ScriptTaskStep& step, const std::string_view event_id,
            step.operation->dialogue->speaker_id == speaker_id;
 }
 
+bool is_service_call(const ScriptTaskStep& step,
+                     const std::string_view service_id) {
+    return step.status == ScriptTaskStep::Status::awaiting_native_operation &&
+           step.operation.has_value() &&
+           step.operation->type == ScriptNativeOperation::Type::service_call &&
+           step.operation->service_id == service_id;
+}
+
 } // namespace
 
 int main() {
@@ -285,10 +293,12 @@ int main() {
         return 11;
     }
     task = scripts.complete_native_menu_choice("goodbye");
-    for (unsigned row = 0U; row < 4U; ++row) {
-        task = scripts.complete_native_menu_input("down");
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "Henry call did not return from the Vid-Phone activity")) {
+        return 26;
     }
-    task = scripts.complete_native_menu_input("confirm");
+
+    task = scripts.start_task("field_activities", "vid_phone");
     task = scripts.complete_native_menu_input("confirm");
     if (!expect(is_menu(task) &&
                     task.operation->menu->speaker_id ==
@@ -300,22 +310,226 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 12;
     }
-    task = scripts.complete_native_menu_choice("goodbye");
-    task = scripts.complete_native_menu_input("confirm");
-    if (!expect(is_menu(task) &&
-                    task.operation->menu->id ==
-                        "call_capt_quinton_jaymes_repeat_call" &&
-                    (contact_flags & (1U << 13U)) != 0U,
-                "repeat Captain Quinton call did not select repeat dialogue")) {
+    task = scripts.complete_native_menu_choice("services");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "capt_quinton_services",
+                "Captain Quinton Services did not open its source menu")) {
         std::cerr << scripts.failure() << '\n';
-        return 13;
+        return 27;
+    }
+    auto menu_profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(menu_profile.has_value() && menu_profile->choices.size() == 3U &&
+                    menu_profile->title_key ==
+                        "vid_phone.capt_quinton_jaymes.services",
+                "Captain Quinton Services title or choices did not resolve")) {
+        return 28;
+    }
+    for (const auto& choice : menu_profile->choices) {
+        if (!expect(scripts.dialogue_text(choice.label_key) != nullptr,
+                    "a Captain Quinton service label is missing ROM text")) {
+            return 29;
+        }
+    }
+
+    task = scripts.complete_native_menu_choice("hollywood_information");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "capt_quinton_hollywood_intro",
+                "Hollywood information did not show its first ROM prompt")) {
+        return 45;
+    }
+    menu_profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(menu_profile.has_value() && menu_profile->choices.size() == 1U &&
+                    scripts.dialogue_text(menu_profile->title_key) != nullptr &&
+                    scripts.dialogue_text(menu_profile->choices.front().label_key)
+                        != nullptr,
+                "Hollywood opening copy or More label did not resolve")) {
+        return 46;
+    }
+    task = scripts.complete_native_menu_choice("more");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "capt_quinton_hollywood_topics",
+                "Hollywood More choice did not open its topic prompt")) {
+        return 47;
+    }
+    menu_profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(menu_profile.has_value() && menu_profile->choices.size() == 3U &&
+                    scripts.dialogue_text(menu_profile->title_key) != nullptr,
+                "Hollywood topic prompt did not resolve its three choices")) {
+        return 48;
+    }
+    for (const auto& choice : menu_profile->choices) {
+        if (!expect(scripts.dialogue_text(choice.label_key) != nullptr,
+                    "a Hollywood topic choice has no ROM label")) {
+            return 49;
+        }
+    }
+    task = scripts.complete_native_menu_choice("weller_prison_break");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "capt_quinton_weller_intro",
+                "Weller choice did not reach its ROM information node")) {
+        return 50;
+    }
+    task = scripts.complete_native_menu_choice("more");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "capt_quinton_weller_result",
+                "Weller More choice did not reach the advice result node")) {
+        return 51;
+    }
+    menu_profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(menu_profile.has_value() &&
+                    menu_profile->choices.size() == 2U &&
+                    scripts.dialogue_text(menu_profile->title_key) != nullptr,
+                "Weller advice or its Services/Goodbye choices did not resolve")) {
+        return 52;
+    }
+    task = scripts.complete_native_menu_choice("services");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "capt_quinton_services",
+                "Weller result Services choice did not return to Quinton")) {
+        return 53;
+    }
+    task = scripts.complete_native_menu_choice("hollywood_information");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("disconnect");
+    if (!expect(is_say(task, "services_disconnected",
+                       "vid_phone_capt_quinton_jaymes"),
+                "disconnect topic did not show the ROM terminal message")) {
+        return 54;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "terminal disconnect message did not end this phone call")) {
+        return 55;
+    }
+
+    task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    task = scripts.complete_native_menu_choice("services");
+    task = scripts.complete_native_menu_choice("firepower");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "capt_quinton_firepower_intro",
+                "firepower did not show Quinton's first source prompt")) {
+        return 30;
+    }
+    task = scripts.complete_native_menu_choice("more");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "capt_quinton_firepower_items",
+                "firepower More choice did not open the item prompt")) {
+        return 31;
+    }
+    task = scripts.complete_native_menu_choice("frag_grenades");
+    if (!expect(is_service_call(task, "vid_phone.purchase_frag_grenades"),
+                "Frag Grenade choice did not request its native transaction")) {
+        std::cerr << scripts.failure() << '\n';
+        return 32;
+    }
+    task = scripts.complete_native_service_result("purchased");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "capt_quinton_purchase_result",
+                "successful purchase did not show its ROM result prompt")) {
+        return 33;
+    }
+    menu_profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(menu_profile.has_value() &&
+                    menu_profile->title_key ==
+                        "vid_phone.capt_quinton_jaymes.purchase_result" &&
+                    scripts.dialogue_text(menu_profile->title_key) != nullptr,
+                "purchase result copy was not imported from the ROM")) {
+        return 34;
+    }
+    task = scripts.complete_native_menu_choice("services");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "capt_quinton_services",
+                "purchase result Services choice did not return to the root")) {
+        return 35;
+    }
+
+    task = scripts.complete_native_menu_choice("firepower");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("no_thanks");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "capt_quinton_services",
+                "declining firepower did not return to the Services menu")) {
+        return 56;
+    }
+    task = scripts.complete_native_menu_choice("contacts");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "capt_quinton_contacts_offer",
+                "contacts service did not show the rigger offer")) {
+        return 36;
+    }
+    task = scripts.complete_native_menu_choice("decline_rigger_contact");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "capt_quinton_services",
+                "declining the rigger offer did not return to Services")) {
+        return 57;
+    }
+    task = scripts.complete_native_menu_choice("contacts");
+    task = scripts.complete_native_menu_choice("pay_for_rigger_contact");
+    if (!expect(is_service_call(task, "vid_phone.hire_sharkey"),
+                "rigger payment choice did not request the native service")) {
+        return 37;
+    }
+    task = scripts.complete_native_service_result("hired");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "capt_quinton_sharkey_result",
+                "successful rigger payment did not show the Sharkey result")) {
+        return 38;
     }
     task = scripts.complete_native_menu_choice("goodbye");
-    task = scripts.complete_native_menu_input("cancel");
     if (!expect(task.status == ScriptTaskStep::Status::completed,
-                "Vid-Phone menu did not return cleanly to the field")) {
+                "Vid-Phone Goodbye did not finish the call activity")) {
         std::cerr << scripts.failure() << '\n';
-        return 14;
+        return 39;
+    }
+
+    task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    task = scripts.complete_native_menu_choice("goodbye");
+    if (!expect(task.status == ScriptTaskStep::Status::completed &&
+                    (contact_flags & (1U << 13U)) != 0U,
+                "repeat Captain Quinton call did not return cleanly")) {
+        return 13;
+    }
+
+    task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    task = scripts.complete_native_menu_choice("services");
+    task = scripts.complete_native_menu_choice("firepower");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("hk227_s");
+    if (!expect(is_service_call(task, "vid_phone.purchase_hk227_s"),
+                "HK227-S option did not request its transaction")) {
+        return 40;
+    }
+    task = scripts.complete_native_service_result("insufficient");
+    if (!expect(is_say(task, "purchase_insufficient",
+                       "vid_phone_capt_quinton_jaymes"),
+                "insufficient credits did not show Quinton's ROM response")) {
+        return 41;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "insufficient-funds response did not finish the phone call")) {
+        return 42;
+    }
+
+    task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    task = scripts.complete_native_menu_choice("services");
+    task = scripts.complete_native_menu_choice("firepower");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("frag_grenades");
+    task = scripts.complete_native_service_result("out_of_stock");
+    if (!expect(is_say(task, "purchase_out_of_stock",
+                       "vid_phone_capt_quinton_jaymes"),
+                "full-stock response did not show Quinton's ROM text")) {
+        return 43;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "out-of-stock response did not finish the phone call")) {
+        return 44;
     }
 
     contact_flags = 0x00FFU;
@@ -348,7 +562,6 @@ int main() {
         return 21;
     }
     task = scripts.complete_native_operation(true);
-    task = scripts.complete_native_menu_input("cancel");
 
     const auto open_cyberspace_menu = [&scripts]() {
         auto current = scripts.start_task(

@@ -1,6 +1,7 @@
 #include "field_dialogue_runtime.hpp"
 
 #include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
+#include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
 
 #include <QImage>
 #include <QPainter>
@@ -9,6 +10,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -82,6 +84,19 @@ bool advance(FieldDialogueRuntime& runtime, const std::uint16_t input,
                   expected_message);
 }
 
+bool select_phone_option(FieldDialogueRuntime& runtime) {
+    for (std::size_t attempt = 0U; attempt < 4U; ++attempt) {
+        if (runtime.panel().selected_option == 1U) {
+            return true;
+        }
+        if (runtime.advance_controller_events(0x0200U) !=
+            FieldDialogueAdvanceResult::prompt_advanced) {
+            return false;
+        }
+    }
+    return runtime.panel().selected_option == 1U;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -101,11 +116,43 @@ int main(int argc, char** argv) {
         }
         return 1;
     }
+    const auto* frag_item =
+        find_us_item_definition(UsItemCode::frag_grenade);
+    const auto* hk227_item =
+        find_us_item_definition(UsItemCode::hk227_s_smg);
+    const auto hk227_offer = vid_phone_supply_offer(
+        VidPhoneServiceAction::purchase_hk227_s);
+    if (!expect(frag_item != nullptr && hk227_item != nullptr &&
+                    hk227_offer.has_value(),
+                "Quinton service items did not resolve from the US catalog")) {
+        return 1;
+    }
 
     std::string source_boundary;
     FieldDialogueRuntime runtime(
         [&source_boundary](const std::string_view reason) {
             source_boundary.assign(reason);
+        });
+    std::optional<std::uint32_t> phone_funds = 3200U;
+    std::optional<std::uint32_t> phone_contacts_flags = 0U;
+    std::array<std::uint8_t, 8> phone_item_codes{};
+    std::array<std::uint8_t, 8> phone_item_phases{};
+    runtime.set_native_script_service_callback(
+        [&phone_funds, &phone_contacts_flags, &phone_item_codes,
+         &phone_item_phases](const std::string_view service_id)
+            -> std::optional<std::string> {
+            const auto action = vid_phone_service_action_for_id(service_id);
+            if (!action.has_value()) {
+                return std::nullopt;
+            }
+            const auto result = apply_vid_phone_service(
+                *action, phone_funds, phone_item_codes, phone_item_phases,
+                phone_contacts_flags);
+            const auto script_result = vid_phone_service_script_result(result);
+            return script_result.has_value()
+                       ? std::optional<std::string>{
+                             std::string(*script_result)}
+                       : std::nullopt;
         });
     scripting::GameScriptRuntime scripts;
     if (!expect(scripts.load_package(
@@ -245,17 +292,243 @@ int main(int argc, char** argv) {
         !expect(runtime.panel().option_count == 4U,
                 "ending the call did not restore the four field choices") ||
         !expect(save_panel(runtime, output_root, "07-return-to-field-menu"),
-                "could not save the field terminal after the call") ||
-        !expect(runtime.advance_controller_events(0x8000U) ==
-                    FieldDialogueAdvanceResult::returned_to_field,
-                "Start did not leave the field terminal after the phone call") ||
-        !expect(!runtime.open(), "Vid-Phone panel did not clear on exit")) {
+                "could not save the field terminal after the call")) {
         std::cerr << runtime.failure() << '\n';
         if (!source_boundary.empty()) {
             std::cerr << source_boundary << '\n';
         }
         return 8;
     }
+
+    if (!select_phone_option(runtime)) {
+        std::cerr << "could not select Vid-Phone from the field terminal\n";
+        return 9;
+    }
+    if (!advance(runtime, 0x4000U,
+                 "A did not reopen the phone contact list") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Captain Quinton's call") ||
+        !expect(runtime.panel().actor_name == "Capt Quinton Jaymes" &&
+                    runtime.panel().option_count == 2U,
+                "Captain Quinton call screen has the wrong speaker or choices") ||
+        !save_panel(runtime, output_root, "08-quinton-first-call")) {
+        std::cerr << runtime.failure() << '\n';
+        return 9;
+    }
+    if (!advance(runtime, 0x4000U,
+                 "A did not open Captain Quinton's Services menu") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    runtime.panel().actor_name == "Capt Quinton Jaymes" &&
+                    runtime.panel().portrait_alias ==
+                        "dialogue.portraits.vid.phone.capt.quinton.jaymes",
+                "Quinton Services menu did not redraw with his profile") ||
+        !save_panel(runtime, output_root, "09-quinton-services")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 10;
+    }
+
+    if (!advance(runtime, 0x4000U,
+                 "A did not open Quinton's Hollywood information") ||
+        !expect(runtime.panel().text_segment_count > 0U &&
+                    runtime.panel().option_count == 1U,
+                "Hollywood introduction did not replace the Services panel") ||
+        !save_panel(runtime, output_root, "10-quinton-hollywood-intro") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Quinton's Hollywood topics") ||
+        !expect(runtime.panel().option_count == 3U,
+                "Hollywood topic menu did not show its three source choices") ||
+        !save_panel(runtime, output_root, "11-quinton-hollywood-topics") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Quinton's Weller information") ||
+        !expect(runtime.panel().text_segment_count > 0U &&
+                    runtime.panel().option_count == 1U,
+                "Weller introduction did not replace the topic menu") ||
+        !save_panel(runtime, output_root, "12-quinton-weller-intro") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Quinton's Weller advice") ||
+        !expect(runtime.panel().text_segment_count > 0U &&
+                    runtime.panel().option_count == 2U,
+                "Weller advice did not show Services and Goodbye") ||
+        !save_panel(runtime, output_root, "13-quinton-weller-advice") ||
+        !advance(runtime, 0x4000U,
+                 "A did not return to Quinton's Services menu")) {
+        std::cerr << runtime.failure() << '\n';
+        return 11;
+    }
+
+    if (!advance(runtime, 0x1000U,
+                 "B did not open Quinton's firepower information") ||
+        !expect(runtime.panel().text_segment_count > 0U &&
+                    runtime.panel().option_count == 1U,
+                "firepower introduction did not replace the Services panel") ||
+        !save_panel(runtime, output_root, "14-quinton-firepower-intro") ||
+        !advance(runtime, 0x4000U,
+                 "A did not advance to the firepower choices") ||
+        !expect(runtime.panel().text_segment_count > 0U &&
+                    runtime.panel().option_count == 3U,
+                "firepower choices did not replace the introduction panel") ||
+        !save_panel(runtime, output_root, "15-quinton-firepower-choices") ||
+        !advance(runtime, 0x4000U,
+                 "A did not purchase the Frag Grenades") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    runtime.panel().text_segments[0].find("pick a target") !=
+                        std::string_view::npos &&
+                    phone_funds == 2800U && phone_item_codes[0] ==
+                        frag_item->item_code &&
+                    phone_item_phases[0] == 6U,
+                "grenade purchase did not update state and show its success panel") ||
+        !save_panel(runtime, output_root, "16-quinton-purchase-result")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 11;
+    }
+
+    if (!advance(runtime, 0x4000U,
+                 "A did not return to Quinton's Services after purchase") ||
+        !advance(runtime, 0x2000U,
+                 "C did not open Quinton's contacts offer") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    runtime.panel().text_segments[0].find("Rigger") !=
+                        std::string_view::npos,
+                "rigger offer did not replace the Services menu") ||
+        !save_panel(runtime, output_root, "17-quinton-rigger-offer") ||
+        !advance(runtime, 0x4000U,
+                 "A did not buy Quinton's rigger contact") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    runtime.panel().text_segments[0].find("Sharkey") !=
+                        std::string_view::npos &&
+                    phone_funds == 0U && phone_contacts_flags == 4U,
+                "rigger purchase did not add Sharkey or show the result panel") ||
+        !save_panel(runtime, output_root, "18-quinton-sharkey-result") ||
+        !advance(runtime, 0x1000U,
+                 "B did not leave the Quinton call") ||
+        !expect(runtime.panel().option_count == 4U &&
+                    runtime.panel().portrait_alias.empty() &&
+                    runtime.panel().actor_name.empty(),
+                "the field menu retained Quinton's call portrait or buttons") ||
+        !save_panel(runtime, output_root, "19-return-to-field-menu")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 12;
+    }
+
+    if (!select_phone_option(runtime) ||
+        !advance(runtime, 0x4000U,
+                 "A did not reopen the phone for low-funds QA") ||
+        !advance(runtime, 0x4000U,
+                 "A did not select Quinton for low-funds QA") ||
+        !advance(runtime, 0x4000U,
+                 "A did not reopen Quinton's services") ||
+        !advance(runtime, 0x1000U,
+                 "B did not open firepower for low-funds QA") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open firepower choices for low-funds QA") ||
+        !advance(runtime, 0x1000U,
+                 "B did not request the HK227-S") ||
+        !expect(runtime.panel().option_count == 0U &&
+                    runtime.panel().text_segments[0].find("can't pay") !=
+                        std::string_view::npos &&
+                    phone_funds == 0U,
+                "low funds did not show the source denial without a charge") ||
+        !save_panel(runtime, output_root, "20-quinton-insufficient-funds") ||
+        !advance(runtime, 0x4000U,
+                 "A did not dismiss the low-funds response")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 14;
+    }
+
+    phone_item_codes.fill(1U);
+    phone_item_phases.fill(1U);
+    if (!select_phone_option(runtime) ||
+        !advance(runtime, 0x4000U,
+                 "A did not reopen the phone for full-inventory QA") ||
+        !advance(runtime, 0x4000U,
+                 "A did not select Quinton for full-inventory QA") ||
+        !advance(runtime, 0x4000U,
+                 "A did not reopen Quinton's services for full-inventory QA") ||
+        !advance(runtime, 0x1000U,
+                 "B did not open firepower for full-inventory QA") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open firepower choices for full-inventory QA") ||
+        !advance(runtime, 0x4000U,
+                 "A did not request Frag Grenades with a full inventory") ||
+        !expect(runtime.panel().option_count == 0U &&
+                    runtime.panel().text_segments[0].find("outta' stock") !=
+                        std::string_view::npos &&
+                    phone_funds == 0U,
+                "full inventory did not show the source stock denial cleanly") ||
+        !save_panel(runtime, output_root, "21-quinton-out-of-stock") ||
+        !advance(runtime, 0x4000U,
+                 "A did not dismiss the out-of-stock response") ||
+        !expect(runtime.panel().option_count == 4U &&
+                    runtime.panel().portrait_alias.empty() &&
+                    runtime.panel().actor_name.empty(),
+                "return after failed purchase retained dialogue graphics") ||
+        !save_panel(runtime, output_root, "22-return-after-failed-purchase")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 15;
+    }
+
+    phone_funds = 1000U;
+    phone_item_codes = {};
+    phone_item_phases = {};
+    if (!select_phone_option(runtime) ||
+        !advance(runtime, 0x4000U,
+                 "A did not reopen the phone for the HK227-S purchase") ||
+        !advance(runtime, 0x4000U,
+                 "A did not select Quinton for the HK227-S purchase") ||
+        !advance(runtime, 0x4000U,
+                 "A did not reopen Quinton's services for the HK227-S purchase") ||
+        !advance(runtime, 0x1000U,
+                 "B did not select Quinton's firepower service") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Quinton's firepower offers") ||
+        !advance(runtime, 0x1000U,
+                 "B did not select the HK227-S offer") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    runtime.panel().text_segments[0].find("pick a target") !=
+                        std::string_view::npos &&
+                    phone_funds == 0U &&
+                    phone_item_codes[0] == hk227_item->item_code &&
+                    phone_item_phases[0] == hk227_offer->item_phase,
+                "HK227-S transaction did not write the catalog item and "
+                "source accessory phase" ) ||
+        !save_panel(runtime, output_root, "23-quinton-hk227-purchase-result") ||
+        !advance(runtime, 0x1000U,
+                 "B did not select Goodbye after the HK227-S purchase") ||
+        !expect(runtime.panel().option_count == 4U &&
+                    runtime.panel().portrait_alias.empty() &&
+                    runtime.panel().actor_name.empty(),
+                "the field menu retained Quinton UI after the HK227-S purchase") ||
+        !save_panel(runtime, output_root, "24-hk227-return-to-field-menu")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 16;
+    }
+
+    if (!expect(runtime.advance_controller_events(0x8000U) ==
+                    FieldDialogueAdvanceResult::returned_to_field,
+                "Start did not leave the field terminal after the phone call") ||
+        !expect(!runtime.open(), "Vid-Phone panel did not clear on exit")) {
+        std::cerr << runtime.failure() << '\n';
+        return 13;
+    }
+
     const auto returned_screen = render_panel(runtime);
     const auto stale_portrait_sample = returned_screen.pixelColor(40, 56);
     if (!expect(stale_portrait_sample.red() == 0 &&

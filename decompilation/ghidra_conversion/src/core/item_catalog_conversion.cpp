@@ -84,4 +84,8 @@ const UsItemDefinition* find_us_item_definition(
     return &kUsItems[static_cast<std::size_t>(item_code - 1U)];
 }
 
+const UsItemDefinition* find_us_item_definition(const UsItemCode item_code) {
+    return find_us_item_definition(static_cast<std::uint8_t>(item_code));
+}
+
 } // namespace shadowrun::ghidra_conversion
