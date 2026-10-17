@@ -14835,6 +14835,12 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
         source_boundary("field.hotel.karma_screen.opened");
         break;
     case HotelMenuEvent::mode_action:
+        // 0xCFF4 calls the field C-button routine 0x391A, whose first act
+        // is sound event 0x25 via 0x530DE (emulator: +1 frame after C in
+        // Motel Options) [C].
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(0x25U);
+        }
         handle_field_mode_action_event();
         source_boundary("field.hotel.mode_action");
         break;
