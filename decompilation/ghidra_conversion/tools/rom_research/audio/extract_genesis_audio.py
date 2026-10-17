@@ -27,7 +27,23 @@ ROM_DRIVER_END = 0x284E4
 Z80_COMMAND_RING = 0x1B40
 Z80_PRODUCER_INDEX = 0x36
 Z80_CONSUMER_INDEX = 0x37
-Z80_TICKS_PER_FRAME = 100_000
+# NTSC Genesis: the Z80 runs at MCLK/15 and one frame is 262 lines of 3420
+# master clocks, so a frame is 3420 * 262 / 15 = 59,736 Z80 cycles [C].
+# Source frames are mapped to 1/60 s (735 samples) so the rendered assets
+# line up with the frame-locked runtime mixer [H].
+Z80_TICKS_PER_FRAME = 59_736
+# The VDP holds the Z80 /INT line for about one scanline (3420 / 15 = 228
+# Z80 cycles) [H].  A pulse that lands in a DI window or an EI shadow is
+# taken when the window closes inside that hold; before this was modelled
+# the extractor silently dropped VBlanks (about 2% of them for song 0x06),
+# which is what made the rendered tempo depend on the cycle budget.
+Z80_INT_HOLD_TICKS = 228
+# The driver reads the YM2612 status only to poll the busy bit (bit 7 tests
+# at 0x0891, 0x14C8, 0x1503, 0x1516, 0x15B8, 0x15D4 ...); it never tests the
+# Timer A/B overflow bits, and its tempo comes from the VBlank flag that the
+# IM 1 handler at 0x0038 leaves at 0x003F [C].  The offline YM is never
+# busy and its timers are not modelled.
+YM_STATUS_IDLE = 0x00
 VGM_RATE = 44_100
 TRACK_COUNT = 0xBC // 2
 # The uploaded driver fetches one decoded event byte through 0x041A.  The
@@ -86,6 +102,8 @@ class GenesisSoundMachine:
         self.stream_restart_ticks: dict[int, list[int]] = {}
         self._stream_start_bytes: dict[int, int] = {}
         self._ym_register = [0, 0]
+        self.dropped_interrupts = 0
+        self._frame_debt = 0
         driver = rom[ROM_DRIVER_BEGIN:ROM_DRIVER_END]
         self.machine.set_memory_block(0, driver)
 
@@ -159,6 +177,8 @@ class GenesisSoundMachine:
                     restarts.append(self.ticks)
                     if self.loop_start_ticks is None:
                         self.loop_start_ticks = self.ticks
+        if 0x4000 <= address <= 0x4003:
+            return YM_STATUS_IDLE
         if address >= 0x8000:
             rom_address = self.bank * 0x8000 + address - 0x8000
             return self.rom[rom_address] if rom_address < len(self.rom) else 0xFF
@@ -186,16 +206,33 @@ class GenesisSoundMachine:
         elif address == 0x7F11:
             self.writes.append(ChipWrite(self.ticks, "psg", 0, 0, value))
 
+    def _run_ticks(self, count: int) -> None:
+        while count > 0:
+            chunk = min(1_000, count)
+            self.machine.ticks_to_stop = chunk
+            self.machine.run()
+            self.ticks += chunk
+            count -= chunk
+
+    def _interrupts_blocked(self) -> bool:
+        return (not self.machine.iff1) or bool(self.machine.int_disabled)
+
     def _run_frames(self, count: int) -> None:
         for _ in range(count):
-            remaining = Z80_TICKS_PER_FRAME
-            while remaining:
-                chunk = min(1_000, remaining)
-                self.machine.ticks_to_stop = chunk
+            # Cycles spent holding /INT belong to the next frame, so every
+            # frame stays exactly Z80_TICKS_PER_FRAME long.
+            self._run_ticks(Z80_TICKS_PER_FRAME - self._frame_debt)
+            held = 0
+            while self._interrupts_blocked() and held < Z80_INT_HOLD_TICKS:
+                self.machine.ticks_to_stop = 4
                 self.machine.run()
-                self.ticks += chunk
-                remaining -= chunk
-            self.machine.on_handle_active_int()
+                self.ticks += 4
+                held += 4
+            self._frame_debt = held
+            if self._interrupts_blocked():
+                self.dropped_interrupts += 1
+            else:
+                self.machine.on_handle_active_int()
 
     def _queue_bytes(self, payload: bytes) -> None:
         index = self.machine.memory[Z80_PRODUCER_INDEX]
@@ -354,9 +391,11 @@ def main() -> int:
         suffix = (f", first stream restart at {loop_seconds:.6f}s ({loop_samples} samples), "
                   f"{restart_count} source restart(s) recorded"
                   if loop_seconds is not None else ", one-shot/no loop seen")
+        dropped = (f", {trace.dropped_interrupts} VBlank(s) dropped"
+                   if trace.dropped_interrupts else "")
         print(
             f"track-{track_id:03d}: {len(writes)} chip writes, "
-            f"{ym_key_on_count} YM key-on writes{suffix}")
+            f"{ym_key_on_count} YM key-on writes{suffix}{dropped}")
     return 0
 
 
