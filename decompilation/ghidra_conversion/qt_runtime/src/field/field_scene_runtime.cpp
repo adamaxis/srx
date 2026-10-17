@@ -13326,7 +13326,8 @@ void FieldSceneRuntime::begin_field_door_return() {
     field_door_return_point_.valid = false;
     field_door_return_active_ = true;
     field_door_return_frame_ = 0U;
-    field_door_return_modal_frame_ = QImage{};
+    // Keep the last checkout page paint: 0x131C fades that page, not the
+    // field behind it.
     source_boundary("field.door.return_started");
 }
 
@@ -13345,8 +13346,19 @@ bool FieldSceneRuntime::advance_field_door_return() {
         update_source_field_camera();
         field_entity_animation_.redraw_requested = true;
     }
+    // The reloaded scene draws the restored party; project the runner so it
+    // is on screen when the field fades in (the render pass that normally
+    // projects it is skipped while input is held).
+    field_entity_.projection.world_x = field_entity_.world_position.x;
+    field_entity_.projection.world_y = field_entity_.world_position.y;
+    field_entity_.visible = project_entity_screen_position_standard(
+        field_entity_.projection,
+        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
+        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y))
+                                .visible;
     if (field_door_return_frame_ >= checkout_input_resume_frame_) {
         field_door_return_active_ = false;
+        field_door_return_modal_frame_ = QImage{};
         field_modal_return_blocked_inputs_ = 0U;
         source_boundary("field.door.return_completed");
         return false;

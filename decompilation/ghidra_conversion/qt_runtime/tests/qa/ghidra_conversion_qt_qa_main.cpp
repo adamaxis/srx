@@ -1,5 +1,6 @@
 #include "ghidra_conversion_qt_window.hpp"
 #include "enums.hpp"
+#include "genesis_image_compositor.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
@@ -19618,7 +19619,29 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: checkout page did not stay visible at the start of the fade\n";
                     return 3;
                 }
-                for (int frame = 0; frame < 30; ++frame) {
+                // The dimming layer is the checkout page itself, not the
+                // field behind it (0x131C fades the current CRAM).
+                for (int frame = 0; frame < 7; ++frame) {
+                    advance_field_frame();
+                }
+                const auto checkout_dimmed =
+                    capture(output / "checkout-dimmed" / "actual.bmp");
+                int checkout_dim_level = -1;
+                for (int level = 1; level <= 7 && checkout_dim_level < 0;
+                     ++level) {
+                    if (checkout_dimmed ==
+                        transition_genesis_cram_image(
+                            checkout_yes, static_cast<std::uint8_t>(level),
+                            true)
+                            .convertToFormat(checkout_dimmed.format())) {
+                        checkout_dim_level = level;
+                    }
+                }
+                if (checkout_dimmed.isNull() || checkout_dim_level < 2) {
+                    std::cerr << "field Hotel QA: checkout fade did not dim the checkout page (level " << checkout_dim_level << ")\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 23; ++frame) {
                     advance_field_frame();
                 }
                 const auto checkout_black =
