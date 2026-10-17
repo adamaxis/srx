@@ -3991,6 +3991,7 @@
         }
         record("field.map_event.stoker_opening_arrival");
         const auto press_field_button = [this](const std::uint8_t button) {
+            settle_qa_dialogue_input(field_scene_runtime_);
             field_scene_runtime_.set_controller_port_byte(button);
             field_scene_runtime_.advance_frame();
             field_scene_runtime_.set_controller_port_byte(0U);

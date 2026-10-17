@@ -20,8 +20,22 @@ bool save_qa_image(const std::filesystem::path& output_directory,
         (output_directory / relative_path).wstring()));
 }
 
+// Let the source 0xC24 dialogue page wait elapse before a QA press.
+void settle_qa_dialogue_input(FieldSceneRuntime& field_scene) {
+    field_scene.set_controller_port_byte(0U);
+    if (!field_scene.dialogue_input_locked()) {
+        return;
+    }
+    while (field_scene.dialogue_input_locked()) {
+        field_scene.advance_frame();
+    }
+    // One sampled release, as a player lifts the previous button.
+    field_scene.advance_frame();
+}
+
 void tap_qa_controller_button(FieldSceneRuntime& field_scene,
                               const std::uint8_t port_byte) {
+    settle_qa_dialogue_input(field_scene);
     field_scene.set_controller_port_byte(port_byte);
     field_scene.advance_frame();
     field_scene.set_controller_port_byte(0U);

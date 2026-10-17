@@ -12481,6 +12481,7 @@ int run_field_stoker_collision_to_dialogue_qa(
     // Stoker title service supplies the first-visit page and package offer;
     // no mode/event tuple or dialogue record is injected.
     const auto press_button = [&field_scene](const std::uint8_t port_byte) {
+        settle_qa_dialogue_input(field_scene);
         field_scene.set_controller_port_byte(port_byte);
         field_scene.advance_frame();
         field_scene.set_controller_port_byte(0U);
@@ -14119,6 +14120,7 @@ int run_field_jump_house_entry_qa(
         return 3;
     }
 
+    settle_qa_dialogue_input(field_scene);
     field_scene.set_controller_port_byte(0x40U); // ordinary A dismisses page
     field_scene.advance_frame();
     field_scene.set_controller_port_byte(0U);
@@ -17777,6 +17779,7 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto press_field_input = [&](const std::uint8_t input) {
+                    settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(input);
                     field_scene.advance_frame();
                     const bool press_saved =
@@ -18941,6 +18944,7 @@ int main(int argc, char** argv) {
                         std::cerr << "field dialogue dump: modal-return handoff prompt did not open\n";
                         return 3;
                     }
+                    settle_qa_dialogue_input(modal_return_scene);
                     bool modal_returned = false;
                     for (std::uint8_t step = 0U; step < 8U &&
                                                   !modal_returned;
@@ -19097,6 +19101,7 @@ int main(int argc, char** argv) {
                 const auto press_button = [&field_scene,
                                            &advance_field_frame](
                                               const std::uint8_t port_byte) {
+                    settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     advance_field_frame();
                     field_scene.set_controller_port_byte(0U);
@@ -19829,6 +19834,7 @@ int main(int argc, char** argv) {
                 };
                 const auto press_field_input = [&field_scene](
                                                    const std::uint8_t input) {
+                    settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(input);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
@@ -21258,6 +21264,7 @@ int main(int argc, char** argv) {
                 }
 
                 const auto press_field_port = [&](const std::uint8_t port) {
+                    settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
@@ -22148,6 +22155,7 @@ int main(int argc, char** argv) {
                     return true;
                 };
                 const auto press = [&](const std::uint8_t port_byte) {
+                    settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
@@ -23056,6 +23064,7 @@ int main(int argc, char** argv) {
 
                 const auto press_secretary_button =
                     [&field_scene](const std::uint8_t port_byte) {
+                        settle_qa_dialogue_input(field_scene);
                         field_scene.set_controller_port_byte(port_byte);
                         field_scene.advance_frame();
                         field_scene.set_controller_port_byte(0U);
@@ -24833,6 +24842,7 @@ int main(int argc, char** argv) {
                             .wstring()));
                 };
                 const auto press = [&](const std::uint8_t port_byte) {
+                    settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
@@ -25022,6 +25032,7 @@ int main(int argc, char** argv) {
                             .wstring()));
                 };
                 const auto press = [&](const std::uint8_t port_byte) {
+                    settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
@@ -25399,6 +25410,7 @@ int main(int argc, char** argv) {
                             .wstring()));
                 };
                 const auto press = [&](const std::uint8_t port_byte) {
+                    settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
@@ -25753,6 +25765,7 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto press = [&](const std::uint8_t port_byte) {
+                    settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
@@ -27474,6 +27487,7 @@ int main(int argc, char** argv) {
                     return save_scene(name, render_scene());
                 };
                 const auto press = [&](const std::uint8_t port_byte) {
+                    settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);

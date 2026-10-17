@@ -13367,15 +13367,23 @@ void FieldSceneRuntime::advance_frame() {
         // The source prompt loop waits for a high-byte controller edge. The
         // host keeps that loop non-blocking and suspends field movement while
         // the common dialogue panel owns the current prompt.
-        field_controller_latch_state_.events =
-            field_controller_sample_state_.events;
-        field_controller_latch_state_.extra_events = 0U;
-        (void)::shadowrun::ghidra_conversion::latch_controller_events(
-            field_controller_latch_state_);
-        ::shadowrun::ghidra_conversion::sample_controller_input(
-            field_controller_sample_state_, field_controller_port_byte_);
+        // During the 0xC24 page wait the source does not call 0x195C, so
+        // the pad is not sampled and a button held past it is a new edge.
+        const bool dialogue_input_locked =
+            field_dialogue_.consume_input_lockout_frame();
+        if (!dialogue_input_locked) {
+            field_controller_latch_state_.events =
+                field_controller_sample_state_.events;
+            field_controller_latch_state_.extra_events = 0U;
+            (void)::shadowrun::ghidra_conversion::latch_controller_events(
+                field_controller_latch_state_);
+            ::shadowrun::ghidra_conversion::sample_controller_input(
+                field_controller_sample_state_, field_controller_port_byte_);
+        }
         const auto result = field_dialogue_.advance_controller_events(
-            field_controller_sample_state_.events);
+            dialogue_input_locked
+                ? std::uint16_t{0U}
+                : field_controller_sample_state_.events);
         if (result == FieldDialogueAdvanceResult::returned_to_field) {
             source_boundary("field.dialogue.returned_to_field");
             if (!resume_jump_house_entry_transition()) {

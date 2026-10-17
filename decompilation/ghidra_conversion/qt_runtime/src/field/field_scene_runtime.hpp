@@ -363,6 +363,9 @@ public:
         return command_overview_.view().source_state.primary_page;
     }
     bool dialogue_open() const noexcept { return field_dialogue_.open(); }
+    bool dialogue_input_locked() const noexcept {
+        return field_dialogue_.input_lockout_active();
+    }
     const DialoguePanelView& dialogue_panel() const noexcept {
         return field_dialogue_.panel();
     }

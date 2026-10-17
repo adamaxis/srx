@@ -18,6 +18,18 @@ constexpr std::uint16_t kControllerCEvent = 0x2000U;
 constexpr std::uint16_t kControllerStartEvent = 0x8000U;
 constexpr std::uint16_t kControllerUpEvent = 0x0100U;
 constexpr std::uint16_t kControllerDownEvent = 0x0200U;
+// 0x1F3C4 page waits: the pad is not sampled for this many frames after the
+// press that drew the page. A choice page runs 0xC24 with d5=0x0A (0x1F502)
+// and then the 0x1F50C loop's 0xBD2 before 0x195C: 12 frames [C: ROM;
+// emulator taps at +12 ignored, +13 accepted]. A record without options
+// takes 0x1F592 (0xC24 with d5=0x1E, then 0xD94 waits for any FFDD22
+// high-byte edge) [C: emulator taps at +31 ignored, +32 accepted].
+enum class DialogueInputLockout : std::uint8_t {
+    none = 0U,
+    choice_page = 12U,
+    closing_page = 31U,
+};
+
 constexpr std::uint16_t kAnyDialogueEvent = kControllerAEvent |
                                              kControllerBEvent |
                                              kControllerCEvent |
@@ -325,6 +337,9 @@ bool FieldDialogueRuntime::open_stoker_prompt(
         panel_.source_boundary_reason =
             "Stoker dialogue source projection is incomplete";
     }
+    input_lockout_frames_ = static_cast<std::uint8_t>(
+        panel_.option_count == 0U ? DialogueInputLockout::closing_page
+                                  : DialogueInputLockout::choice_page);
     return true;
 }
 
@@ -413,6 +428,11 @@ bool FieldDialogueRuntime::present_script_operation(
                     ? "dialogue script selected an unbound text event"
                     : std::string(panel_.source_boundary_reason));
         }
+        // MORE pages use another wait (not traced, H: none); the closing
+        // page is the 0x1F592 record without options.
+        input_lockout_frames_ = static_cast<std::uint8_t>(
+            panel_.has_more ? DialogueInputLockout::none
+                            : DialogueInputLockout::closing_page);
         return true;
     }
     if (operation.type == scripting::ScriptNativeOperation::Type::ui_menu &&
@@ -482,6 +502,9 @@ bool FieldDialogueRuntime::present_script_operation(
                     ? "dialogue script menu has missing content"
                     : std::string(panel_.source_boundary_reason));
         }
+        input_lockout_frames_ = static_cast<std::uint8_t>(
+            cursor_rows ? DialogueInputLockout::none
+                        : DialogueInputLockout::choice_page);
         return true;
     }
     if (operation.type ==
@@ -602,6 +625,7 @@ bool FieldDialogueRuntime::open_source_boundary(std::string reason) {
         script_runtime_->cancel_task();
     }
     boundary_reason_ = std::move(reason);
+    input_lockout_frames_ = 0U;
     panel_ = DialoguePanelView{};
     panel_.open = true;
     panel_.actor_kind = DialoguePanelActorKind::field_npc;
@@ -630,6 +654,14 @@ std::string_view FieldDialogueRuntime::resolve_text(
     return value == nullptr ? std::string_view{} : std::string_view(*value);
 }
 
+bool FieldDialogueRuntime::consume_input_lockout_frame() noexcept {
+    if (!panel_.open || input_lockout_frames_ == 0U) {
+        return false;
+    }
+    --input_lockout_frames_;
+    return true;
+}
+
 FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     const std::uint16_t event_word) {
     if (!panel_.open || event_word == 0U) {
@@ -641,15 +673,18 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     const bool hosted_list = hosted_choice_list_ &&
                              active_script_menu_.has_value();
     // A closing speaker page (no MORE) is dismissed by any new press,
-    // D-pad included [C: emulator motel 'towels' page, each of
-    // Up/Down/Left/Right/A/B/C/Start closes it within 4 frames; the ROM
-    // routine is not traced, so other ui_say pages are H].
+    // D-pad included [C: ROM 0x1F592 -> 0xD94 tests FFDD22 & 0xFF00 for
+    // every record without options; emulator motel 'towels' page].
     constexpr std::uint16_t kControllerDirectionEvents = 0x0F00U;
     const bool closing_say_page =
-        active_script_operation_.has_value() &&
-        active_script_operation_->type ==
-            scripting::ScriptNativeOperation::Type::ui_say &&
-        !panel_.has_more;
+        (active_script_operation_.has_value() &&
+         active_script_operation_->type ==
+             scripting::ScriptNativeOperation::Type::ui_say &&
+         !panel_.has_more) ||
+        (!active_script_operation_.has_value() &&
+         !active_script_menu_.has_value() &&
+         panel_.kind != DialoguePanelKind::source_boundary &&
+         panel_.option_count == 0U);
     const std::uint16_t accepted_events =
         closing_say_page
             ? static_cast<std::uint16_t>(kAnyDialogueEvent |
@@ -1104,6 +1139,7 @@ void FieldDialogueRuntime::close() noexcept {
         script_runtime_->cancel_task();
     }
     panel_ = DialoguePanelView{};
+    input_lockout_frames_ = 0U;
     active_prompt_ = StokerMotelPromptId::source_boundary;
     active_speaker_profile_.reset();
     active_script_operation_.reset();

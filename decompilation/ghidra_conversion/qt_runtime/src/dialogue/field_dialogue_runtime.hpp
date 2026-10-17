@@ -101,6 +101,13 @@ public:
 
     FieldDialogueAdvanceResult advance_controller_events(
         std::uint16_t event_word);
+    // 0x1F3C4 waits with 0xC24 before it samples the pad again (no 0x195C
+    // call, so a button still held afterwards is a new edge). Returns true
+    // and counts one frame while that wait lasts.
+    bool consume_input_lockout_frame() noexcept;
+    bool input_lockout_active() const noexcept {
+        return panel_.open && input_lockout_frames_ != 0U;
+    }
     std::optional<std::uint8_t> take_matrix_entry_system_id() noexcept;
 
     void close() noexcept;
@@ -140,6 +147,7 @@ private:
     // moves a cursor over the rows and A/B/C confirm the highlighted row.
     bool hosted_choice_list_ = false;
     bool script_task_waiting_ = false;
+    std::uint8_t input_lockout_frames_ = 0U;
     std::optional<std::uint8_t> pending_matrix_entry_system_id_;
     StokerMotelArrivalCommandCallbacks arrival_command_callbacks_;
     std::function<std::optional<StokerMotelRoomPaymentOutcome>()>
