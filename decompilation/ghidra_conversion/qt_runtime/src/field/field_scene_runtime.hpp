@@ -326,6 +326,8 @@ public:
         std::uint16_t source_order, std::uint8_t physical_meter) noexcept;
     bool open_command_overview_for_dump();
 #ifdef SHADOWRUN_QT_QA_DRIVER
+    bool open_ordinary_field_terminal_for_dump(
+        std::uint32_t contact_flags, std::uint32_t funds);
     bool open_taxi_selector_for_dump(std::uint8_t current_region);
     // Injects the stale parent action-row condition for a visual overlap probe.
     void set_inventory_action_overlay_probe_for_dump(bool active) noexcept;
@@ -1159,6 +1161,12 @@ public:
     }
 
 private:
+    enum class FieldDestinationTransitionRoute : std::uint8_t {
+        elevator,
+        taxi,
+        vid_phone,
+    };
+
     struct DefaultFieldActorPresentation;
     struct DefaultActorSpriteView;
     FieldInteractionAdvanceResult advance_field_interaction(
@@ -1288,8 +1296,9 @@ private:
         FieldCollisionEventCode event_code);
     void advance_field_elevator_selector();
     void advance_field_elevator_scene_transition();
-    bool transition_to_field_destination(std::uint16_t scene_reference,
-                                         bool taxi_route = false);
+    bool transition_to_field_destination(
+        std::uint16_t scene_reference,
+        FieldDestinationTransitionRoute route);
     HotelMenuEvent process_hotel_menu_events(std::uint16_t events);
     AttributesSkillsRuntimeEvent process_hotel_karma_screen_events(
         std::uint16_t events);
@@ -1855,6 +1864,8 @@ private:
     bool matrix_field_return_transition_pending_ = false;
     bool field_taxi_transition_active_ = false;
     std::optional<std::uint16_t> field_taxi_pending_destination_;
+    bool field_phone_transition_active_ = false;
+    std::optional<std::uint16_t> field_phone_pending_destination_;
     std::optional<std::uint16_t> field_mode_entry_destination_scene_;
     std::int8_t field_indexed_title_service_result_ = 0;
     std::uint8_t field_palette_fade_steps_ = 0U;

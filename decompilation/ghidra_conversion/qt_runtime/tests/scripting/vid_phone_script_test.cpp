@@ -217,6 +217,150 @@ bool test_alesandro_service_tree(GameScriptRuntime& scripts,
                   "Macklemann result Goodbye did not finish Alesandro's call");
 }
 
+bool test_sharkey_service_tree(GameScriptRuntime& scripts,
+                               std::uint32_t& contact_flags) {
+    contact_flags = 1U << 2U;
+    auto task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "call_sharkey_first_call" &&
+                    task.operation->menu->speaker_id == "vid_phone_sharkey",
+                "Sharkey call did not select her ROM contact profile")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("services");
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "sharkey_services",
+                "Sharkey Services did not open the three ROM service choices")) {
+        return false;
+    }
+    auto profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() && profile->choices.size() == 3U &&
+                    scripts.dialogue_text(profile->title_key) != nullptr,
+                "Sharkey's root service copy or choices did not resolve")) {
+        return false;
+    }
+    for (const auto& choice : profile->choices) {
+        if (!expect(scripts.dialogue_text(choice.label_key) != nullptr,
+                    "Sharkey's root service label is missing ROM text")) {
+            return false;
+        }
+    }
+
+    task = scripts.complete_native_menu_choice("pass_salish");
+    if (!expect(is_menu(task),
+                "Salish choice did not produce its offer menu")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(task.operation->menu->id == "sharkey_salish_passage" &&
+                    profile.has_value() && profile->choices.size() == 3U &&
+                    scripts.dialogue_text(profile->title_key) != nullptr &&
+                    scripts.dialogue_text(profile->title_key)->find("3,000") !=
+                        std::string::npos,
+                "Salish-Shidhe passage did not show its source price and choices")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("pay_for_passage");
+    if (!expect(is_service_call(task, "vid_phone.pass_salish_shidhe"),
+                "Salish passage did not call ROM command 0x6E's native service")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("insufficient");
+    if (!expect(is_say(task, "insufficient_funds", "vid_phone_sharkey"),
+                "insufficient passage funds did not show Sharkey's ROM response")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "sharkey_services",
+                "failed passage payment did not return to Sharkey's services")) {
+        return false;
+    }
+
+    task = scripts.complete_native_menu_choice("pass_sinsearach");
+    task = scripts.complete_native_menu_choice("pay_for_passage");
+    if (!expect(is_service_call(task, "vid_phone.pass_sinsearach"),
+                "Sinsearach passage did not call ROM command 0x6F's service")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("passage_requested");
+    if (!expect(is_say(task, "passage_result", "vid_phone_sharkey"),
+                "successful passage did not show the wilderness arrival text")) {
+        return false;
+    }
+    const auto passage_text = scripts.dialogue_event_text_keys(
+        "vid_phone_sharkey", "field.vid_phone", "passage_result");
+    if (!expect(passage_text.has_value() &&
+                    scripts.dialogue_text(passage_text->title_key) != nullptr &&
+                    scripts.dialogue_text(passage_text->title_key)->find(
+                        "wilderness") != std::string::npos,
+                "passage result does not contain the full ROM travel copy")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed &&
+                    task.result_id == "field_phone_passage_requested",
+                "passage acknowledgement did not return a typed map request")) {
+        return false;
+    }
+
+    task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    task = scripts.complete_native_menu_choice("services");
+    task = scripts.complete_native_menu_choice("smart_goggles");
+    if (!expect(is_menu(task),
+                "Smart Goggles choice did not produce its offer menu")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(task.operation->menu->id ==
+                    "sharkey_smart_goggles_offer" && profile.has_value() &&
+                    profile->choices.size() == 3U &&
+                    scripts.dialogue_text(profile->title_key) != nullptr &&
+                    scripts.dialogue_text(profile->title_key)->find("3,000") !=
+                        std::string::npos,
+                "Smart Goggles offer did not resolve its source text and options")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("confirm_purchase");
+    if (!expect(is_service_call(task, "vid_phone.purchase_smart_goggles"),
+                "Smart Goggles confirmation did not request the item purchase")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("purchased");
+    if (!expect(is_say(task, "smart_goggles_result", "vid_phone_sharkey"),
+                "Smart Goggles purchase did not show its ROM result text")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "sharkey_services",
+                "goggles purchase result did not cleanly redraw Services")) {
+        return false;
+    }
+
+    task = scripts.complete_native_menu_choice("smart_goggles");
+    task = scripts.complete_native_menu_choice("confirm_purchase");
+    task = scripts.complete_native_service_result("out_of_stock");
+    if (!expect(is_say(task, "smart_goggles_inventory_full",
+                       "vid_phone_sharkey"),
+                "full inventory did not show the ROM goggles stock response")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "sharkey_services",
+                "full inventory response did not return to a clean Services menu")) {
+        return false;
+    }
+
+    task = scripts.complete_native_menu_choice("pass_salish");
+    task = scripts.complete_native_menu_choice("other_subject");
+    return expect(task.status == ScriptTaskStep::Status::completed,
+                  "Sharkey's Other Subject option did not end the call");
+}
+
 } // namespace
 
 int main() {
@@ -678,6 +822,10 @@ int main() {
     if (!test_alesandro_service_tree(scripts, contact_flags)) {
         std::cerr << scripts.failure() << '\n';
         return 58;
+    }
+    if (!test_sharkey_service_tree(scripts, contact_flags)) {
+        std::cerr << scripts.failure() << '\n';
+        return 59;
     }
 
     contact_flags = 0x00FFU;

@@ -5,6 +5,7 @@ local Dialogue = require("dialogue")
 local MatrixPasscodes = require("data.matrix_passcodes")
 local CaptQuintonJaymes = require("vid_phone.capt_quinton_jaymes")
 local AlesandroHobbs = require("vid_phone.alesandro_hobbs")
+local Sharkey = require("vid_phone.sharkey")
 
 local function run_cursor_menu(menu_id, choices, initial_selection,
                                speaker_id, text_profile)
@@ -97,6 +98,8 @@ local function call_contact(contact)
             return CaptQuintonJaymes.services()
         elseif contact.id == "alesandro_hobbs" then
             return AlesandroHobbs.services()
+        elseif contact.id == "sharkey" then
+            return Sharkey.services()
         end
         return "phone_services_not_converted"
     end

@@ -38,15 +38,25 @@ to handlers `0x22934`, `0x2296E`, and `0x229A8`: level-3/level-5 maglock
 passkeys cost 10,000/20,000 and store their level in item 20's phase, while
 Sgt. Macklemann costs 8,000 and sets contact bit 5. The panel CTest captures
 the technology response, both purchase outcomes, contact offer/result, and
-clean redraw through screen 34. No independent Vid-Phone call frame exists in
-the reviewed longplay, so this remains partial. Services for the other 11
-contacts remain open. Cyberspace checks
+clean redraw through screen 34. Sharkey's ROM contact record at `0x10A7F2`
+offers commands `0x6E`-`0x70`: 3,000 nuyen for Salish-Shidhe passage to scene
+6, 5,000 for Sinsearach passage to scene 9, or Smart Goggles (item 22) for
+3,000. Lua owns her menu and result flow; typed host services apply the wallet,
+inventory, and destination changes. The production field-runtime QA selects
+Vid-Phone from the ordinary terminal, buys passage, acknowledges the result,
+captures both sides of the fade and the Scene-6 arrival, then exercises the
+Smart Goggles success/full-inventory branches and checks clean return to the
+field terminal. Its full-screen captures are source/runtime regression
+evidence, not an independent Genesis comparison. The QA opens the field
+terminal through a controlled entry seam, so the physical map route into
+event 31 remains open. There is no independent longplay call frame; this hill
+remains partial. Services for the other 11 contacts remain open. Cyberspace checks
 deck/MPCP/datajack facts, offers passcodes or System Search, then enters the
 existing Matrix session and node-action route. Debug/Release CTests cover these script routes, the phone
 pages/calls, the cab selector, and a completed Redmond-to-Downtown map load;
 the taxi selector and arrival full-screen dumps are byte-identical across
 builds. This hill remains partial: the ordinary map-to-terminal physical route,
-Services for the other 12 contacts, full Matrix presentation/actions, and the ROM's
+services for the other 11 contacts, full Matrix presentation/actions, and the ROM's
 mode-exit dialogue are still open. See
 [`field-map-trigger-profile.md`](field-map-trigger-profile.md).
 

@@ -899,6 +899,30 @@ FieldSceneRuntime::FieldSceneRuntime(
                 return "skill_" + std::to_string(
                     first_runner.skills[skill_index]);
             }
+            const auto passage_action =
+                vid_phone_passage_action_for_id(service_id);
+            if (passage_action.has_value()) {
+                const auto offer = vid_phone_passage_offer(*passage_action);
+                if (!field_session_source_assets_ ||
+                    offer.destination_scene >=
+                        field_session_source_assets_->field_scene_resources.size() ||
+                    field_phone_pending_destination_.has_value()) {
+                    return std::nullopt;
+                }
+                const auto result = apply_vid_phone_passage(
+                    *passage_action, field_funds_);
+                if (result == VidPhonePassageResult::passage_requested) {
+                    field_phone_pending_destination_ = offer.destination_scene;
+                    this->source_boundary(
+                        "field.vid_phone.passage.payment_accepted");
+                }
+                const auto script_result =
+                    vid_phone_passage_script_result(result);
+                return script_result.has_value()
+                           ? std::optional<std::string>{
+                                 std::string(*script_result)}
+                           : std::nullopt;
+            }
             const auto vid_phone_action =
                 vid_phone_service_action_for_id(service_id);
             if (vid_phone_action.has_value()) {
@@ -1814,8 +1838,14 @@ bool FieldSceneRuntime::open_field_elevator_selector(
 }
 
 bool FieldSceneRuntime::transition_to_field_destination(
-    const std::uint16_t scene_reference, const bool taxi_route) {
-    const auto source_prefix = taxi_route ? "field.taxi." : "field.elevator.";
+    const std::uint16_t scene_reference,
+    const FieldDestinationTransitionRoute route) {
+    const auto source_prefix =
+        route == FieldDestinationTransitionRoute::taxi
+            ? "field.taxi."
+            : route == FieldDestinationTransitionRoute::vid_phone
+                  ? "field.vid_phone."
+                  : "field.elevator.";
     if (!field_session_source_assets_ ||
         scene_reference >=
             field_session_source_assets_->field_scene_resources.size() ||
@@ -1981,27 +2011,40 @@ void FieldSceneRuntime::advance_field_elevator_selector() {
 
 void FieldSceneRuntime::advance_field_elevator_scene_transition() {
     const auto update = field_elevator_scene_transition_.advance();
+    const bool phone_route = field_phone_transition_active_;
     const bool taxi_route = field_taxi_transition_active_;
-    const auto source_prefix = taxi_route ? "field.taxi." : "field.elevator.";
+    const auto route = phone_route
+                           ? FieldDestinationTransitionRoute::vid_phone
+                           : taxi_route
+                                 ? FieldDestinationTransitionRoute::taxi
+                                 : FieldDestinationTransitionRoute::elevator;
+    const auto source_prefix =
+        phone_route ? "field.vid_phone."
+                    : taxi_route ? "field.taxi." : "field.elevator.";
     if (update.palette_step_changed) {
         source_boundary(std::string(source_prefix) +
                         "destination_fade.palette_step");
     }
     if (update.destination_load_requested) {
-        const auto destination = taxi_route
-                                     ? field_taxi_pending_destination_
+        const auto destination =
+            phone_route ? field_phone_pending_destination_
+                        : taxi_route ? field_taxi_pending_destination_
                                      : field_elevator_pending_destination_;
         if (!destination.has_value() ||
-            !transition_to_field_destination(*destination, taxi_route)) {
+            !transition_to_field_destination(*destination, route)) {
             field_elevator_scene_transition_.cancel();
             field_elevator_pending_destination_.reset();
             field_taxi_pending_destination_.reset();
+            field_phone_pending_destination_.reset();
             field_taxi_transition_active_ = false;
+            field_phone_transition_active_ = false;
             source_boundary(std::string(source_prefix) +
                             "destination_transition_reopened");
             return;
         }
-        if (taxi_route) {
+        if (phone_route) {
+            field_phone_pending_destination_.reset();
+        } else if (taxi_route) {
             field_taxi_pending_destination_.reset();
         } else {
             field_elevator_selector_.close();
@@ -2011,6 +2054,7 @@ void FieldSceneRuntime::advance_field_elevator_scene_transition() {
         if (!field_elevator_scene_transition_.begin_fade_in()) {
             field_elevator_scene_transition_.cancel();
             field_taxi_transition_active_ = false;
+            field_phone_transition_active_ = false;
             source_boundary(std::string(source_prefix) +
                             "destination_fade_in_unresolved");
             return;
@@ -2021,6 +2065,7 @@ void FieldSceneRuntime::advance_field_elevator_scene_transition() {
         source_boundary(std::string(source_prefix) +
                         "destination_fade_finished");
         field_taxi_transition_active_ = false;
+        field_phone_transition_active_ = false;
     }
 }
 
@@ -9769,6 +9814,8 @@ bool FieldSceneRuntime::bootstrap(
     field_taxi_route_active_ = false;
     field_taxi_transition_active_ = false;
     field_taxi_pending_destination_.reset();
+    field_phone_transition_active_ = false;
+    field_phone_pending_destination_.reset();
     field_party_roster_.clear();
     field_menu_text_ = FieldMenuTextCatalog{};
     command_overview_resource_variant_ = ResourceVariantState{};
@@ -13076,6 +13123,19 @@ void FieldSceneRuntime::advance_frame() {
                     std::move(arguments));
                 source_boundary("field.taxi.selector_requested");
             }
+        } else if (result ==
+                   FieldDialogueAdvanceResult::phone_passage_requested) {
+            if (!field_phone_pending_destination_.has_value()) {
+                source_boundary("field.vid_phone.passage_destination_missing");
+            } else if (field_elevator_scene_transition_.begin_fade_out()) {
+                field_phone_transition_active_ = true;
+                source_boundary(
+                    "field.vid_phone.passage_fade_out_started");
+            } else {
+                field_phone_pending_destination_.reset();
+                source_boundary(
+                    "field.vid_phone.passage_transition_busy");
+            }
         }
         return;
     }
@@ -13841,6 +13901,18 @@ bool FieldSceneRuntime::open_command_overview_for_dump() {
     set_controller_port_byte(static_cast<std::uint8_t>(
         field_controller_port_byte_ & static_cast<std::uint8_t>(~0x80U)));
     return command_overview_.open();
+}
+
+bool FieldSceneRuntime::open_ordinary_field_terminal_for_dump(
+    const std::uint32_t contact_flags, const std::uint32_t funds) {
+    if (!ready_ || !set_notebook_contact_flags_for_dump(contact_flags)) {
+        return false;
+    }
+    field_funds_ = funds;
+    game_scripts_.set_location_context(
+        "activity", "field_terminal", "field.main_menu");
+    return field_dialogue_.open_gameplay_task(
+        "field_activities", "ordinary_field_terminal");
 }
 
 bool FieldSceneRuntime::open_taxi_selector_for_dump(

@@ -24,6 +24,8 @@ int main() {
     const auto* hk227_s = find_us_item_definition(UsItemCode::hk227_s_smg);
     const auto* maglock_passkey =
         find_us_item_definition(UsItemCode::maglock_passkey);
+    const auto* smart_goggles =
+        find_us_item_definition(UsItemCode::smart_goggles);
     const auto grenade_offer = vid_phone_supply_offer(
         VidPhoneServiceAction::purchase_frag_grenades);
     const auto hk227_s_offer = vid_phone_supply_offer(
@@ -32,11 +34,15 @@ int main() {
         VidPhoneServiceAction::purchase_maglock_passkey_level_3);
     const auto level5_passkey_offer = vid_phone_supply_offer(
         VidPhoneServiceAction::purchase_maglock_passkey_level_5);
+    const auto smart_goggles_offer = vid_phone_supply_offer(
+        VidPhoneServiceAction::purchase_smart_goggles);
     if (!expect(frag_grenade != nullptr && hk227_s != nullptr &&
                     maglock_passkey != nullptr &&
+                    smart_goggles != nullptr &&
                     grenade_offer.has_value() && hk227_s_offer.has_value() &&
                     level3_passkey_offer.has_value() &&
                     level5_passkey_offer.has_value() &&
+                    smart_goggles_offer.has_value() &&
                     grenade_offer->item_code == UsItemCode::frag_grenade &&
                     hk227_s_offer->item_code == UsItemCode::hk227_s_smg &&
                     grenade_offer->price == 400U &&
@@ -59,7 +65,12 @@ int main() {
                         UsItemCode::maglock_passkey &&
                     level5_passkey_offer->price == 20000U &&
                     level5_passkey_offer->item_phase == 5U &&
-                    maglock_passkey->base_cost == 10000U,
+                    maglock_passkey->base_cost == 10000U &&
+                    smart_goggles_offer->item_code ==
+                        UsItemCode::smart_goggles &&
+                    smart_goggles_offer->price == 3000U &&
+                    smart_goggles_offer->item_phase == 0U &&
+                    smart_goggles->item_code == 22U,
                 "service offer records did not preserve ROM item identity, "
                 "price, attachment phase, and clip capacity separately")) {
         return 10;
@@ -77,6 +88,9 @@ int main() {
                     vid_phone_service_action_for_id(
                         "vid_phone.purchase_maglock_passkey_level_5") ==
                     VidPhoneServiceAction::purchase_maglock_passkey_level_5 &&
+                    vid_phone_service_action_for_id(
+                        "vid_phone.purchase_smart_goggles") ==
+                    VidPhoneServiceAction::purchase_smart_goggles &&
                     vid_phone_service_action_for_id(
                         "vid_phone.hire_sharkey") ==
                     VidPhoneServiceAction::hire_sharkey &&
@@ -234,6 +248,88 @@ int main() {
                          VidPhoneServiceResult::unavailable).has_value(),
                 "typed transaction results did not map back to Lua outcomes")) {
         return 9;
+    }
+
+    items = {};
+    phases = {};
+    funds = 3000U;
+    result = apply_vid_phone_service(
+        VidPhoneServiceAction::purchase_smart_goggles,
+        funds, items, phases, contacts);
+    if (!expect(result == VidPhoneServiceResult::purchased && funds == 0U &&
+                    items[0] == smart_goggles->item_code && phases[0] == 0U,
+                "Smart Goggles purchase did not charge 3,000 or grant item 22")) {
+        return 14;
+    }
+
+    items.fill(1U);
+    phases.fill(7U);
+    funds = 4000U;
+    result = apply_vid_phone_service(
+        VidPhoneServiceAction::purchase_smart_goggles,
+        funds, items, phases, contacts);
+    if (!expect(result == VidPhoneServiceResult::inventory_full &&
+                    funds == 4000U && items[0] == 1U && phases[0] == 7U,
+                "full inventory did not reject goggles before charging")) {
+        return 15;
+    }
+
+    const auto salish_offer =
+        vid_phone_passage_offer(VidPhonePassageAction::salish_shidhe);
+    const auto sinsearach_offer =
+        vid_phone_passage_offer(VidPhonePassageAction::sinsearach);
+    if (!expect(salish_offer.destination_scene == 6U &&
+                    salish_offer.price == 3000U &&
+                    sinsearach_offer.destination_scene == 9U &&
+                    sinsearach_offer.price == 5000U &&
+                    vid_phone_passage_action_for_id(
+                        "vid_phone.pass_salish_shidhe") ==
+                        VidPhonePassageAction::salish_shidhe &&
+                    vid_phone_passage_action_for_id(
+                        "vid_phone.pass_sinsearach") ==
+                        VidPhonePassageAction::sinsearach &&
+                    !vid_phone_passage_action_for_id(
+                         "vid_phone.unknown_passage").has_value(),
+                "Sharkey passage ids, prices, or ROM area destinations are wrong")) {
+        return 16;
+    }
+
+    funds = 3000U;
+    auto passage_result = apply_vid_phone_passage(
+        VidPhonePassageAction::salish_shidhe, funds);
+    if (!expect(passage_result == VidPhonePassageResult::passage_requested &&
+                    funds == 0U &&
+                    vid_phone_passage_script_result(passage_result) ==
+                        "passage_requested",
+                "Salish passage did not charge exactly 3,000 nuyen")) {
+        return 17;
+    }
+    funds = 2999U;
+    passage_result = apply_vid_phone_passage(
+        VidPhonePassageAction::salish_shidhe, funds);
+    if (!expect(passage_result ==
+                        VidPhonePassageResult::insufficient_funds &&
+                    funds == 2999U &&
+                    vid_phone_passage_script_result(passage_result) ==
+                        "insufficient",
+                "short Salish funds were charged or incorrectly accepted")) {
+        return 18;
+    }
+    funds = 5000U;
+    passage_result = apply_vid_phone_passage(
+        VidPhonePassageAction::sinsearach, funds);
+    if (!expect(passage_result == VidPhonePassageResult::passage_requested &&
+                    funds == 0U,
+                "Sinsearach passage did not charge exactly 5,000 nuyen")) {
+        return 19;
+    }
+    funds.reset();
+    passage_result = apply_vid_phone_passage(
+        VidPhonePassageAction::sinsearach, funds);
+    if (!expect(passage_result == VidPhonePassageResult::unavailable &&
+                    !vid_phone_passage_script_result(passage_result).has_value(),
+                "unresolved wallet did not block passage without a script result")) {
+        return 20;
     }
 
     return 0;

@@ -689,6 +689,16 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_taxi_qa
                  --field-taxi-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-taxi-qa.bmp")
 
+# Follow the ordinary field-terminal selection into Sharkey's Lua service,
+# charge the source passage price, acknowledge the result, and run the real
+# destination fade/map reload through a clean Scene 6 arrival capture. Then
+# exercise the production item callback for Smart Goggles success and full
+# inventory, including return to a clean terminal screen.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_vid_phone_passage_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-vid-phone-passage-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-vid-phone-passage-qa")
+
 # The runner summary uses the equipped item's Lua-backed name/category before
 # its ROM-indexed damage and power rows. Keep that shared menu panel covered by
 # a full-frame artifact with the default equipped Model 101T fixture.

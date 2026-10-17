@@ -855,6 +855,26 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"vid_phone.alesandro_hobbs.option.avoid_detection", 0x104AD8U},
         {"vid_phone.alesandro_hobbs.option.pay_for_macklemann", 0x103A7AU},
         {"vid_phone.option.more", 0x0FE5BFU},
+        // Sharkey's contact record at 0x10A7F2 contains three service
+        // commands (0x6E/0x6F/0x70); keep its text pointers named so their
+        // menu paths can be correlated with the ROM handlers.
+        {"vid_phone.sharkey.services", 0x10A969U},
+        {"vid_phone.sharkey.salish_passage", 0x10AA71U},
+        {"vid_phone.sharkey.sinsearach_passage", 0x10AB51U},
+        {"vid_phone.sharkey.smart_goggles_offer", 0x10ACA3U},
+        {"vid_phone.sharkey.passage_result", 0x10ABCBU},
+        {"vid_phone.sharkey.insufficient_funds", 0x10AA20U},
+        {"vid_phone.sharkey.smart_goggles_result", 0x10AD62U},
+        // Command 0x70 points at a small result record at 0x10E476; its first
+        // longword is the actual inventory-full dialogue at 0x10A654.
+        {"vid_phone.sharkey.smart_goggles_inventory_full", 0x10A654U},
+        {"vid_phone.sharkey.option.pass_salish", 0x1049C2U},
+        {"vid_phone.sharkey.option.pass_sinsearach", 0x104A06U},
+        {"vid_phone.sharkey.option.smart_goggles", 0x1041C9U},
+        {"vid_phone.sharkey.option.pay_for_passage", 0x103A7AU},
+        {"vid_phone.sharkey.option.return_to_services", 0x104817U},
+        {"vid_phone.sharkey.option.confirm_purchase", 0x103A0EU},
+        {"vid_phone.sharkey.option.other_subject", 0x104FEBU},
     };
 
     output << "-- Generated from the US ROM dialogue and menu text records.\n"

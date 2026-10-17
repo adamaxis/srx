@@ -17,9 +17,77 @@ enum class VidPhoneServiceAction : std::uint8_t {
     purchase_hk227_s,
     purchase_maglock_passkey_level_3,
     purchase_maglock_passkey_level_5,
+    purchase_smart_goggles,
     hire_sharkey,
     hire_macklemann,
 };
+
+enum class VidPhonePassageAction : std::uint8_t {
+    salish_shidhe,
+    sinsearach,
+};
+
+enum class VidPhonePassageResult : std::uint8_t {
+    passage_requested,
+    insufficient_funds,
+    unavailable,
+};
+
+struct VidPhonePassageOffer {
+    std::uint16_t destination_scene;
+    std::uint32_t price;
+};
+
+inline VidPhonePassageOffer vid_phone_passage_offer(
+    const VidPhonePassageAction action) noexcept {
+    // ROM commands 0x6E/0x6F charge 3,000/5,000, then enter world modes 6/9.
+    // The profile crosswalk names those destination maps Wilderness 1/4.
+    switch (action) {
+    case VidPhonePassageAction::salish_shidhe:
+        return {6U, 3000U};
+    case VidPhonePassageAction::sinsearach:
+        return {9U, 5000U};
+    }
+    return {0U, 0U};
+}
+
+inline std::optional<VidPhonePassageAction>
+vid_phone_passage_action_for_id(const std::string_view service_id) noexcept {
+    if (service_id == "vid_phone.pass_salish_shidhe") {
+        return VidPhonePassageAction::salish_shidhe;
+    }
+    if (service_id == "vid_phone.pass_sinsearach") {
+        return VidPhonePassageAction::sinsearach;
+    }
+    return std::nullopt;
+}
+
+inline VidPhonePassageResult apply_vid_phone_passage(
+    const VidPhonePassageAction action,
+    std::optional<std::uint32_t>& funds) noexcept {
+    if (!funds.has_value()) {
+        return VidPhonePassageResult::unavailable;
+    }
+    const auto offer = vid_phone_passage_offer(action);
+    if (*funds < offer.price) {
+        return VidPhonePassageResult::insufficient_funds;
+    }
+    *funds -= offer.price;
+    return VidPhonePassageResult::passage_requested;
+}
+
+inline std::optional<std::string_view> vid_phone_passage_script_result(
+    const VidPhonePassageResult result) noexcept {
+    switch (result) {
+    case VidPhonePassageResult::passage_requested:
+        return "passage_requested";
+    case VidPhonePassageResult::insufficient_funds:
+        return "insufficient";
+    case VidPhonePassageResult::unavailable:
+        return std::nullopt;
+    }
+    return std::nullopt;
+}
 
 enum class VidPhoneServiceResult : std::uint8_t {
     purchased,
@@ -58,6 +126,8 @@ inline std::optional<VidPhoneSupplyOffer> vid_phone_supply_offer(
         return VidPhoneSupplyOffer{UsItemCode::maglock_passkey, 10000U, 3U};
     case VidPhoneServiceAction::purchase_maglock_passkey_level_5:
         return VidPhoneSupplyOffer{UsItemCode::maglock_passkey, 20000U, 5U};
+    case VidPhoneServiceAction::purchase_smart_goggles:
+        return VidPhoneSupplyOffer{UsItemCode::smart_goggles, 3000U, 0U};
     case VidPhoneServiceAction::hire_sharkey:
     case VidPhoneServiceAction::hire_macklemann:
         return std::nullopt;
@@ -78,6 +148,9 @@ inline std::optional<VidPhoneServiceAction> vid_phone_service_action_for_id(
     }
     if (service_id == "vid_phone.purchase_maglock_passkey_level_5") {
         return VidPhoneServiceAction::purchase_maglock_passkey_level_5;
+    }
+    if (service_id == "vid_phone.purchase_smart_goggles") {
+        return VidPhoneServiceAction::purchase_smart_goggles;
     }
     if (service_id == "vid_phone.hire_sharkey") {
         return VidPhoneServiceAction::hire_sharkey;

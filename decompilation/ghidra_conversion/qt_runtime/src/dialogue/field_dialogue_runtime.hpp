@@ -27,6 +27,7 @@ enum class FieldDialogueAdvanceResult {
     returned_to_field,
     returned_from_world_activity,
     taxi_selector_requested,
+    phone_passage_requested,
     matrix_entry_requested,
     matrix_search_requested,
     hotel_options_requested,

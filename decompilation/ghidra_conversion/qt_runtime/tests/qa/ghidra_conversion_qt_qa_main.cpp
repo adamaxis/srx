@@ -1,4 +1,6 @@
 #include "ghidra_conversion_qt_window.hpp"
+#include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
+#include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 
 #include <string>
@@ -14309,6 +14311,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_hotel_qa_path;
         std::optional<std::filesystem::path> field_command_dump_path;
         std::optional<std::filesystem::path> field_taxi_dump_path;
+        std::optional<std::filesystem::path>
+            field_vid_phone_passage_qa_path;
         std::optional<std::uint8_t> field_command_page;
         std::optional<std::filesystem::path> field_cyberware_dump_path;
         std::optional<std::filesystem::path> field_secretary_dump_path;
@@ -14389,6 +14393,7 @@ int main(int argc, char** argv) {
                        " [--field-scene2-motel-street-collision-qa <output-dir>]"
                        " [--field-command-dump <file>]"
                        " [--field-taxi-dump <file>]"
+                       " [--field-vid-phone-passage-qa <output-dir>]"
                        " [--field-command-page <0..6>]"
                        " [--field-cyberware-dump <file>]"
                        " [--field-cyberware-empty-qa]"
@@ -14698,6 +14703,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_taxi_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-vid-phone-passage-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_vid_phone_passage_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-action-dump" &&
@@ -15206,6 +15218,355 @@ int main(int argc, char** argv) {
             // entry cues during the 31 bootstrap ticks are checked by the
             // scene-actor route and must not masquerade as input-driven audio.
             field_audio_events.clear();
+            if (field_vid_phone_passage_qa_path.has_value()) {
+                const auto output = *field_vid_phone_passage_qa_path;
+                std::filesystem::create_directories(output);
+                std::error_code clear_error;
+                clear_qa_bitmap_artifacts(output, clear_error);
+                if (clear_error) {
+                    std::cerr << "Vid-Phone passage QA: could not clear old "
+                                 "captures: "
+                              << clear_error.message() << '\n';
+                    return 3;
+                }
+                const auto capture = [&field_scene, &output](
+                                         const std::string_view name) {
+                    return save_qa_image(
+                        output, std::string(name) + ".bmp",
+                        render_qa_field(field_scene));
+                };
+                if (field_scene.field_scene_reference_for_dump() != 2U ||
+                    !field_scene.open_ordinary_field_terminal_for_dump(
+                        1U << 2U, 12000U) ||
+                    !field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().option_count != 4U ||
+                    field_scene.dialogue_panel().selected_option != 0U ||
+                    !capture("01-field-terminal")) {
+                    std::cerr << "Vid-Phone passage QA: normal field terminal "
+                                 "did not open with its four source choices\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x02U);
+                if (field_scene.dialogue_panel().selected_option != 1U) {
+                    std::cerr << "Vid-Phone passage QA: Down did not select "
+                                 "the Vid-Phone row\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (!field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().option_count != 1U ||
+                    !capture("02-phone-contacts")) {
+                    std::cerr << "Vid-Phone passage QA: selecting the field "
+                                 "terminal row did not open the contact list\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto& sharkey_call = field_scene.dialogue_panel();
+                if (!field_scene.dialogue_open() ||
+                    sharkey_call.actor_name != "Sharkey" ||
+                    sharkey_call.portrait_alias !=
+                        "dialogue.portraits.vid.phone.sharkey" ||
+                    sharkey_call.option_count != 2U ||
+                    !capture("03-sharkey-call")) {
+                    std::cerr << "Vid-Phone passage QA: Sharkey's call did not "
+                                 "replace the contact list cleanly\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (field_scene.dialogue_panel().option_count != 3U ||
+                    field_scene.dialogue_panel().actor_name != "Sharkey" ||
+                    !capture("04-sharkey-services")) {
+                    std::cerr << "Vid-Phone passage QA: Sharkey's service "
+                                 "menu did not replace the call choices\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto& passage_offer = field_scene.dialogue_panel();
+                bool passage_price_visible = false;
+                for (std::size_t line = 0U;
+                     line < passage_offer.text_segment_count; ++line) {
+                    passage_price_visible = passage_price_visible ||
+                        passage_offer.text_segments[line].find("3,000") !=
+                            std::string_view::npos;
+                }
+                if (passage_offer.option_count != 3U ||
+                    !passage_price_visible ||
+                    !capture("05-salish-passage-offer")) {
+                    std::cerr << "Vid-Phone passage QA: Salish offer lacks "
+                                 "its price or three choices\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto& passage_result = field_scene.dialogue_panel();
+                bool passage_result_visible = false;
+                for (std::size_t line = 0U;
+                     line < passage_result.text_segment_count; ++line) {
+                    passage_result_visible = passage_result_visible ||
+                        passage_result.text_segments[line].find("wilderness") !=
+                            std::string_view::npos;
+                }
+                if (!field_scene.dialogue_open() ||
+                    passage_result.option_count != 0U ||
+                    !passage_result_visible ||
+                    field_scene.field_funds_for_dump() != 9000U ||
+                    !capture("06-passage-paid-result")) {
+                    std::cerr << "Vid-Phone passage QA: payment result did not "
+                                 "show the passage text, charge 3,000, and "
+                                 "remove the choice rows\n";
+                    return 3;
+                }
+
+                tap_qa_controller_button(field_scene, 0x40U);
+                std::uint16_t transition_frames = 2U;
+                if (field_scene.dialogue_open() ||
+                    field_scene.field_scene_reference_for_dump() != 2U ||
+                    field_scene.elevator_scene_transition_phase_for_dump() !=
+                        ElevatorSceneTransitionPhase::fading_to_black ||
+                    !capture("07-fade-out-start")) {
+                    std::cerr << "Vid-Phone passage QA: result acknowledgement "
+                                 "did not close the panel and start the fade\n";
+                    return 3;
+                }
+                while (transition_frames < 90U &&
+                       field_scene.elevator_scene_transition_phase_for_dump() ==
+                           ElevatorSceneTransitionPhase::fading_to_black &&
+                       field_scene
+                               .elevator_scene_transition_palette_step_for_dump() <
+                           3U) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    ++transition_frames;
+                }
+                if (field_scene.elevator_scene_transition_phase_for_dump() !=
+                        ElevatorSceneTransitionPhase::fading_to_black ||
+                    field_scene
+                            .elevator_scene_transition_palette_step_for_dump() !=
+                        3U ||
+                    !capture("08-fade-out-midpoint")) {
+                    std::cerr << "Vid-Phone passage QA: fade midpoint capture "
+                                 "failed\n";
+                    return 3;
+                }
+                while (transition_frames < 90U &&
+                       field_scene.field_scene_reference_for_dump() != 6U) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    ++transition_frames;
+                }
+                if (field_scene.field_scene_reference_for_dump() != 6U ||
+                    field_scene.elevator_scene_transition_phase_for_dump() !=
+                        ElevatorSceneTransitionPhase::fading_from_black ||
+                    field_scene
+                            .elevator_scene_transition_palette_step_for_dump() !=
+                        0U ||
+                    !capture("09-destination-fade-in-start")) {
+                    std::cerr << "Vid-Phone passage QA: destination handoff "
+                                 "capture failed\n";
+                    return 3;
+                }
+                while (transition_frames < 90U &&
+                       field_scene.elevator_scene_transition_phase_for_dump() ==
+                           ElevatorSceneTransitionPhase::fading_from_black &&
+                       field_scene
+                               .elevator_scene_transition_palette_step_for_dump() <
+                           3U) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    ++transition_frames;
+                }
+                if (field_scene.elevator_scene_transition_phase_for_dump() !=
+                        ElevatorSceneTransitionPhase::fading_from_black ||
+                    field_scene
+                            .elevator_scene_transition_palette_step_for_dump() !=
+                        3U ||
+                    !capture("10-fade-in-midpoint")) {
+                    std::cerr << "Vid-Phone passage QA: fade-in midpoint "
+                                 "capture failed\n";
+                    return 3;
+                }
+                while (transition_frames < 90U &&
+                       field_scene.elevator_scene_transition_phase_for_dump() !=
+                           ElevatorSceneTransitionPhase::idle) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    ++transition_frames;
+                }
+                const auto arrival = render_qa_field(field_scene);
+                const auto arrival_field =
+                    render_qa_field(field_scene, true);
+                QImage blank_field(kSceneWidth, kSceneHeight,
+                                   QImage::Format_RGB32);
+                blank_field.fill(Qt::black);
+                const bool arrival_saved =
+                    save_qa_image(output, "actual.bmp", arrival);
+                const auto has_boundary = [&field_source_boundaries](
+                                             const std::string_view boundary) {
+                    return std::find(field_source_boundaries.begin(),
+                                     field_source_boundaries.end(), boundary) !=
+                           field_source_boundaries.end();
+                };
+                const bool transition_boundaries_present =
+                    has_boundary("field.vid_phone.passage.payment_accepted") &&
+                    has_boundary("field.vid_phone.passage_fade_out_started") &&
+                    has_boundary("field.vid_phone.destination_loaded") &&
+                    has_boundary("field.vid_phone.destination_fade_finished");
+                if (field_scene.field_scene_reference_for_dump() != 6U ||
+                    field_scene.elevator_scene_transition_phase_for_dump() !=
+                        ElevatorSceneTransitionPhase::idle ||
+                    field_scene.field_funds_for_dump() != 9000U ||
+                    field_scene.dialogue_open() ||
+                    !transition_boundaries_present ||
+                    arrival_field == blank_field ||
+                    !field_hud_chrome_survives(arrival, asset_root) ||
+                    !arrival_saved) {
+                    std::cerr << "Vid-Phone passage QA: expected a clean Scene 6 "
+                                 "arrival after the complete fade; scene="
+                              << field_scene.field_scene_reference_for_dump()
+                              << " phase=" << static_cast<unsigned>(
+                                     field_scene
+                                         .elevator_scene_transition_phase_for_dump())
+                              << " wallet="
+                              << field_scene.field_funds_for_dump().value_or(0U)
+                              << " dialogue=" << field_scene.dialogue_open()
+                              << " boundaries=" << transition_boundaries_present
+                              << " map_visible="
+                              << (arrival_field != blank_field)
+                              << " hud="
+                              << field_hud_chrome_survives(arrival, asset_root)
+                              << '\n';
+                    return 3;
+                }
+                constexpr auto kSharkeyContactIndex =
+                    static_cast<unsigned>(VidPhoneContactIndex::sharkey);
+                constexpr std::uint32_t kSharkeyAndCallHistoryFlags =
+                    (1U << kSharkeyContactIndex) |
+                    (1U << (kSharkeyContactIndex + 13U));
+                const auto sharkey_item_code = static_cast<std::uint8_t>(
+                    shadowrun::ghidra_conversion::UsItemCode::smart_goggles);
+                const auto panel_contains = [&field_scene](
+                                                const std::string_view text) {
+                    const auto& panel = field_scene.dialogue_panel();
+                    for (std::size_t line = 0U;
+                         line < panel.text_segment_count; ++line) {
+                        if (panel.text_segments[line].find(text) !=
+                            std::string_view::npos) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+                if (!field_scene.open_ordinary_field_terminal_for_dump(
+                        kSharkeyAndCallHistoryFlags, 9000U) ||
+                    field_scene.dialogue_panel().option_count != 4U) {
+                    std::cerr << "Vid-Phone passage QA: the production scene "
+                                 "could not reopen the ordinary field terminal\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x02U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x20U);
+                if (!field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().option_count != 3U ||
+                    !panel_contains("Smart Goggles") ||
+                    !panel_contains("3,000") ||
+                    !capture("11-smart-goggles-offer")) {
+                    std::cerr << "Vid-Phone passage QA: production service "
+                                 "callback did not return Sharkey's goggles offer\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto& runner_after_goggles =
+                    field_scene.active_runner_record();
+                const auto goggles_position = std::find(
+                    runner_after_goggles.inventory_item_codes.begin(),
+                    runner_after_goggles.inventory_item_codes.end(),
+                    sharkey_item_code);
+                const bool goggles_recorded =
+                    goggles_position !=
+                        runner_after_goggles.inventory_item_codes.end() &&
+                    runner_after_goggles.inventory_phase_bytes[
+                        static_cast<std::size_t>(std::distance(
+                            runner_after_goggles.inventory_item_codes.begin(),
+                            goggles_position))] == 0U;
+                if (field_scene.field_funds_for_dump() != 6000U ||
+                    !goggles_recorded ||
+                    field_scene.dialogue_panel().option_count != 0U ||
+                    !panel_contains("dropped there ASAP") ||
+                    !capture("12-smart-goggles-purchased")) {
+                    std::cerr << "Vid-Phone passage QA: production goggles "
+                                 "purchase did not debit 3,000, add item 22, "
+                                 "and draw a text-only result\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x20U);
+                if (!field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().option_count != 4U ||
+                    !field_scene.dialogue_panel().portrait_alias.empty() ||
+                    !field_scene.dialogue_panel().actor_name.empty() ||
+                    !capture("13-field-terminal-after-purchase")) {
+                    std::cerr << "Vid-Phone passage QA: ending Sharkey's call "
+                                 "left her panel over the map\n";
+                    return 3;
+                }
+                field_scene.active_runner_record().inventory_item_codes.fill(1U);
+                field_scene.active_runner_record().inventory_phase_bytes.fill(7U);
+                tap_qa_controller_button(field_scene, 0x02U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x20U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto& full_inventory_record =
+                    field_scene.active_runner_record();
+                const bool inventory_unchanged = std::all_of(
+                    full_inventory_record.inventory_item_codes.begin(),
+                    full_inventory_record.inventory_item_codes.end(),
+                    [](const std::uint8_t code) { return code == 1U; }) &&
+                    std::all_of(
+                        full_inventory_record.inventory_phase_bytes.begin(),
+                        full_inventory_record.inventory_phase_bytes.end(),
+                        [](const std::uint8_t phase) { return phase == 7U; });
+                if (field_scene.field_funds_for_dump() != 6000U ||
+                    !inventory_unchanged ||
+                    field_scene.dialogue_panel().option_count != 0U ||
+                    !panel_contains("out of those") ||
+                    !capture("14-smart-goggles-inventory-full")) {
+                    std::cerr << "Vid-Phone passage QA: full inventory changed "
+                                 "state or failed to show Sharkey's stock result\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x20U);
+                const auto final_field_terminal =
+                    render_qa_field(field_scene);
+                const bool final_terminal_saved = save_qa_image(
+                    output, "15-field-terminal-after-full-inventory.bmp",
+                    final_field_terminal);
+                if (!field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().option_count != 4U ||
+                    !field_scene.dialogue_panel().actor_name.empty() ||
+                    !final_terminal_saved) {
+                    std::cerr << "Vid-Phone passage QA: full-inventory call "
+                                 "return left a stale portrait/dialogue; "
+                                 "open=" << field_scene.dialogue_open()
+                              << " options=" << field_scene.dialogue_panel().option_count
+                              << " actor="
+                              << field_scene.dialogue_panel().actor_name
+                              << '\n';
+                    return 3;
+                }
+                std::cout << "field_vid_phone_passage_qa=passed scene=6 "
+                          << "wallet=6000 goggles=22 inventory_full_preserved=1 "
+                          << "transition_frames="
+                          << static_cast<unsigned>(transition_frames)
+                          << " full_screen_captures=16\n";
+                return 0;
+            }
             if (field_security_terminal_physical_entry_qa_path.has_value() ||
                 field_scene26_maglock_descriptor_route_qa_path.has_value()) {
                 const auto scene26_interaction_mode =

@@ -146,12 +146,30 @@ int main(int argc, char** argv) {
         });
     std::optional<std::uint32_t> phone_funds = 3200U;
     std::optional<std::uint32_t> phone_contacts_flags = 0U;
+    std::optional<std::uint16_t> phone_pending_destination;
     std::array<std::uint8_t, 8> phone_item_codes{};
     std::array<std::uint8_t, 8> phone_item_phases{};
     runtime.set_native_script_service_callback(
         [&phone_funds, &phone_contacts_flags, &phone_item_codes,
-         &phone_item_phases](const std::string_view service_id)
+         &phone_item_phases, &phone_pending_destination](
+            const std::string_view service_id)
             -> std::optional<std::string> {
+            const auto passage_action =
+                vid_phone_passage_action_for_id(service_id);
+            if (passage_action.has_value()) {
+                const auto offer = vid_phone_passage_offer(*passage_action);
+                const auto result = apply_vid_phone_passage(
+                    *passage_action, phone_funds);
+                if (result == VidPhonePassageResult::passage_requested) {
+                    phone_pending_destination = offer.destination_scene;
+                }
+                const auto script_result =
+                    vid_phone_passage_script_result(result);
+                return script_result.has_value()
+                           ? std::optional<std::string>{
+                                 std::string(*script_result)}
+                           : std::nullopt;
+            }
             const auto action = vid_phone_service_action_for_id(service_id);
             if (!action.has_value()) {
                 return std::nullopt;
@@ -634,6 +652,146 @@ int main(int argc, char** argv) {
         !expect(!runtime.open(), "Vid-Phone panel did not clear on exit")) {
         std::cerr << runtime.failure() << '\n';
         return 13;
+    }
+
+    if (!expect(runtime.open_gameplay_task(
+                    "field_activities", "vid_phone"),
+                "could not reopen the phonebook for Sharkey QA")) {
+        std::cerr << runtime.failure() << '\n';
+        return 18;
+    }
+    if (!advance(runtime, 0x0200U, "Down did not select Alesandro") ||
+        !advance(runtime, 0x0200U, "Down did not select Sharkey") ||
+        !advance(runtime, 0x4000U, "A did not open Sharkey's call") ||
+        !expect(runtime.panel().actor_name == "Sharkey" &&
+                    runtime.panel().option_count == 2U &&
+                    runtime.panel().portrait_alias ==
+                        "dialogue.portraits.vid.phone.sharkey",
+                "Sharkey call did not use her contact name, portrait, and rows") ||
+        !save_panel(runtime, output_root, "35-sharkey-first-call") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Sharkey's three service choices") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    panel_contains_text(runtime, "Salish-Shidhe") &&
+                    runtime.panel().portrait_alias ==
+                        "dialogue.portraits.vid.phone.sharkey",
+                "Sharkey Services did not replace her call panel cleanly") ||
+        !save_panel(runtime, output_root, "36-sharkey-services") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Sharkey's Salish-Shidhe passage offer") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    panel_contains_text(runtime, "3,000 large"),
+                "Salish passage screen did not show its price and three choices") ||
+        !save_panel(runtime, output_root, "37-sharkey-salish-offer") ||
+        !advance(runtime, 0x4000U,
+                 "A did not pay for Sharkey's Salish passage") ||
+        !expect(runtime.panel().option_count == 0U &&
+                    panel_contains_text(runtime, "wilderness") &&
+                    phone_funds == 9000U && phone_pending_destination == 6U,
+                "Salish payment did not show arrival text and select scene 6; funds=" +
+                    std::to_string(phone_funds.value_or(0U)) +
+                    ", destination=" +
+                    (phone_pending_destination.has_value()
+                         ? std::to_string(*phone_pending_destination)
+                         : std::string("unset")) +
+                    ", options=" +
+                    std::to_string(runtime.panel().option_count) +
+                    ", text=" +
+                    (runtime.panel().text_segment_count > 0U
+                         ? std::string(runtime.panel().text_segments[0])
+                         : std::string("empty"))) ||
+        !save_panel(runtime, output_root, "38-sharkey-salish-result")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 19;
+    }
+    if (runtime.advance_controller_events(0x4000U) !=
+            FieldDialogueAdvanceResult::phone_passage_requested ||
+        !expect(!runtime.open(),
+                "passage acknowledgement left Sharkey's old panel on screen")) {
+        std::cerr << runtime.failure() << '\n';
+        return 20;
+    }
+
+    if (!expect(runtime.open_gameplay_task(
+                    "field_activities", "ordinary_field_terminal"),
+                "could not restore the field terminal after travel QA")) {
+        std::cerr << runtime.failure() << '\n';
+        return 21;
+    }
+    if (!advance(runtime, 0x0200U,
+                 "Down did not select Vid-Phone after travel QA") ||
+        !advance(runtime, 0x4000U,
+                 "A did not reopen the phonebook for Smart Goggles QA") ||
+        !advance(runtime, 0x0200U, "Down did not select Alesandro") ||
+        !advance(runtime, 0x0200U, "Down did not select Sharkey again") ||
+        !advance(runtime, 0x4000U, "A did not open Sharkey's repeat call") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Sharkey's repeat Services") ||
+        !advance(runtime, 0x2000U,
+                 "C did not select Sharkey's Smart Goggles service") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    panel_contains_text(runtime, "Smart Goggles") &&
+                    panel_contains_text(runtime, "3,000"),
+                "Smart Goggles screen did not replace the passage options; options=" +
+                    std::to_string(runtime.panel().option_count) +
+                    ", actor=" + std::string(runtime.panel().actor_name) +
+                    ", text=" +
+                    (runtime.panel().text_segment_count > 0U
+                         ? std::string(runtime.panel().text_segments[0])
+                         : std::string("empty"))) ||
+        !save_panel(runtime, output_root, "39-sharkey-smart-goggles-offer") ||
+        !advance(runtime, 0x4000U,
+                 "A did not buy the Smart Goggles") ||
+        !expect(runtime.panel().option_count == 0U &&
+                    panel_contains_text(runtime, "dropped there ASAP") &&
+                    phone_funds == 6000U &&
+                    phone_item_codes[2] == static_cast<std::uint8_t>(
+                        UsItemCode::smart_goggles) &&
+                    phone_item_phases[2] == 0U,
+                "Smart Goggles purchase did not charge 3,000 or add item 22") ||
+        !save_panel(runtime, output_root, "40-sharkey-smart-goggles-result") ||
+        !advance(runtime, 0x4000U,
+                 "A did not return to Sharkey's Services")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 22;
+    }
+
+    phone_item_codes.fill(1U);
+    phone_item_phases.fill(7U);
+    if (!advance(runtime, 0x2000U,
+                 "C did not select Smart Goggles with a full inventory") ||
+        !advance(runtime, 0x4000U,
+                 "A did not confirm the full-inventory purchase") ||
+        !expect(runtime.panel().option_count == 0U &&
+                    panel_contains_text(runtime, "out of those") &&
+                    phone_funds == 6000U && phone_item_codes[0] == 1U &&
+                    phone_item_phases[0] == 7U,
+                "full inventory did not preserve credits/items and show ROM copy") ||
+        !save_panel(runtime, output_root,
+                    "41-sharkey-goggles-inventory-full") ||
+        !advance(runtime, 0x4000U,
+                 "A did not redraw Sharkey's Services after the failure") ||
+        !advance(runtime, 0x4000U,
+                 "A did not reopen the passage menu for call exit") ||
+        !expect(runtime.advance_controller_events(0x2000U) ==
+                    FieldDialogueAdvanceResult::prompt_advanced &&
+                    runtime.panel().option_count == 4U &&
+                    runtime.panel().portrait_alias.empty() &&
+                    runtime.panel().actor_name.empty(),
+                "Other Subject did not clear Sharkey and restore field menu") ||
+        !save_panel(runtime, output_root,
+                    "42-sharkey-return-to-field-menu")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 23;
     }
 
     const auto returned_screen = render_panel(runtime);

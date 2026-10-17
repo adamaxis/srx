@@ -662,7 +662,12 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         if (task.status == scripting::ScriptTaskStep::Status::completed) {
             const bool hotel_options_requested =
                 task.result_id == std::optional<std::string>{"hotel-options"};
+            const bool phone_passage_requested = task.result_id ==
+                std::optional<std::string>{"field_phone_passage_requested"};
             close();
+            if (phone_passage_requested) {
+                return FieldDialogueAdvanceResult::phone_passage_requested;
+            }
             return hotel_options_requested
                        ? FieldDialogueAdvanceResult::hotel_options_requested
                        : FieldDialogueAdvanceResult::returned_to_field;
@@ -742,6 +747,8 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             std::optional<std::string>{"cyberspace_not_converted"};
         const bool taxi_selector_requested = task.result_id ==
             std::optional<std::string>{"taxi_selector_requested"};
+        const bool phone_passage_requested = task.result_id ==
+            std::optional<std::string>{"field_phone_passage_requested"};
         const bool unresolved_phone_flags = task.result_id ==
             std::optional<std::string>{"phone_contacts_flags_unresolved"};
         const bool unresolved_cyberspace_facts = task.result_id ==
@@ -780,6 +787,9 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         }
         if (taxi_selector_requested) {
             return FieldDialogueAdvanceResult::taxi_selector_requested;
+        }
+        if (phone_passage_requested) {
+            return FieldDialogueAdvanceResult::phone_passage_requested;
         }
         if (matrix_entry_system_id.has_value()) {
             return FieldDialogueAdvanceResult::matrix_entry_requested;
@@ -873,11 +883,16 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             task.result_id == std::optional<std::string>{"hotel-options"};
         const bool phone_services_unconverted = task.result_id ==
             std::optional<std::string>{"phone_services_not_converted"};
+        const bool phone_passage_requested = task.result_id ==
+            std::optional<std::string>{"field_phone_passage_requested"};
         close();
         if (phone_services_unconverted) {
             open_source_boundary(
                 "This contact's service transactions are not converted yet");
             return FieldDialogueAdvanceResult::source_boundary;
+        }
+        if (phone_passage_requested) {
+            return FieldDialogueAdvanceResult::phone_passage_requested;
         }
         return hotel_options_requested
                    ? FieldDialogueAdvanceResult::hotel_options_requested

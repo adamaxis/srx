@@ -577,6 +577,36 @@ alesandro.events.purchase_out_of_stock = {
     continuation_key = "",
 }
 
+local sharkey = speakers.vid_phone_sharkey
+sharkey.events.salish_passage = {
+    title_key = "vid_phone.sharkey.salish_passage",
+    continuation_key = "",
+}
+sharkey.events.sinsearach_passage = {
+    title_key = "vid_phone.sharkey.sinsearach_passage",
+    continuation_key = "",
+}
+sharkey.events.smart_goggles_offer = {
+    title_key = "vid_phone.sharkey.smart_goggles_offer",
+    continuation_key = "",
+}
+sharkey.events.insufficient_funds = {
+    title_key = "vid_phone.sharkey.insufficient_funds",
+    continuation_key = "",
+}
+sharkey.events.passage_result = {
+    title_key = "vid_phone.sharkey.passage_result",
+    continuation_key = "",
+}
+sharkey.events.smart_goggles_result = {
+    title_key = "vid_phone.sharkey.smart_goggles_result",
+    continuation_key = "",
+}
+sharkey.events.smart_goggles_inventory_full = {
+    title_key = "vid_phone.sharkey.smart_goggles_inventory_full",
+    continuation_key = "",
+}
+
 local quinton_prefix = "vid_phone.capt_quinton_jaymes."
 local function define_quinton_menu(id, text_id, option_keys)
     phone_profile[id] = {
@@ -666,6 +696,36 @@ define_alesandro_menu("alesandro_macklemann_result", "macklemann_result", {
     services = "vid_phone.option.services",
     goodbye = "vid_phone.option.goodbye",
 })
+
+local sharkey_prefix = "vid_phone.sharkey."
+local function define_sharkey_menu(id, text_id, option_keys)
+    phone_profile[id] = {
+        title_key = sharkey_prefix .. text_id,
+        choice_label_keys = option_keys,
+    }
+end
+
+define_sharkey_menu("sharkey_services", "services", {
+    pass_salish = sharkey_prefix .. "option.pass_salish",
+    pass_sinsearach = sharkey_prefix .. "option.pass_sinsearach",
+    smart_goggles = sharkey_prefix .. "option.smart_goggles",
+})
+define_sharkey_menu("sharkey_salish_passage", "salish_passage", {
+    pay_for_passage = sharkey_prefix .. "option.pay_for_passage",
+    return_to_services = sharkey_prefix .. "option.return_to_services",
+    other_subject = sharkey_prefix .. "option.other_subject",
+})
+define_sharkey_menu("sharkey_sinsearach_passage", "sinsearach_passage", {
+    pay_for_passage = sharkey_prefix .. "option.pay_for_passage",
+    return_to_services = sharkey_prefix .. "option.return_to_services",
+    other_subject = sharkey_prefix .. "option.other_subject",
+})
+define_sharkey_menu(
+    "sharkey_smart_goggles_offer", "smart_goggles_offer", {
+        confirm_purchase = sharkey_prefix .. "option.confirm_purchase",
+        return_to_services = sharkey_prefix .. "option.return_to_services",
+        other_subject = sharkey_prefix .. "option.other_subject",
+    })
 
 -- Content is grouped by speaker and topic. The controller supplies only the
 -- semantic runner/page ID; this table connects that ID to the imported copy.
