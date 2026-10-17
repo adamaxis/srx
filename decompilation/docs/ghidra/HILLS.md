@@ -43,20 +43,23 @@ offers commands `0x6E`-`0x70`: 3,000 nuyen for Salish-Shidhe passage to scene
 6, 5,000 for Sinsearach passage to scene 9, or Smart Goggles (item 22) for
 3,000. Lua owns her menu and result flow; typed host services apply the wallet,
 inventory, and destination changes. The production field-runtime QA selects
-Vid-Phone from the ordinary terminal, buys passage, acknowledges the result,
-captures both sides of the fade and the Scene-6 arrival, then exercises the
-Smart Goggles success/full-inventory branches and checks clean return to the
-field terminal. Its full-screen captures are source/runtime regression
+Vid-Phone from the ordinary terminal, pays for both passage destinations,
+acknowledges each result, and captures both fade/load routes into Scenes 6 and
+9. Scene 9's profile spawn `(0x0D80, 0x1100)` projects below the 224-pixel
+frame at camera `(0x0A00, 0x0280)`; the host runs ROM `0x08C0`'s 31 camera
+passes before `0x12F6`, and the QA requires that runner anchor on the field.
+It also exercises the Smart Goggles success/full-inventory branches and
+checks clean terminal redraws. Its full-screen captures are source/runtime regression
 evidence, not an independent Genesis comparison. The QA opens the field
 terminal through a controlled entry seam, so the physical map route into
 event 31 remains open. There is no independent longplay call frame; this hill
-remains partial. Services for the other 11 contacts remain open. Cyberspace checks
+remains partial. The remaining contact-specific service paths remain open. Cyberspace checks
 deck/MPCP/datajack facts, offers passcodes or System Search, then enters the
 existing Matrix session and node-action route. Debug/Release CTests cover these script routes, the phone
 pages/calls, the cab selector, and a completed Redmond-to-Downtown map load;
 the taxi selector and arrival full-screen dumps are byte-identical across
 builds. This hill remains partial: the ordinary map-to-terminal physical route,
-services for the other 11 contacts, full Matrix presentation/actions, and the ROM's
+remaining contact-specific services, full Matrix presentation/actions, and the ROM's
 mode-exit dialogue are still open. See
 [`field-map-trigger-profile.md`](field-map-trigger-profile.md).
 

@@ -344,12 +344,12 @@ and sets the direct continuation at `0x0DB26`. In ordinary field mode
 Vid-Phone checks the contact bitfield and shows the ROM's no-contacts message
 when empty. The Lua call list filters all 13 contact records from the ROM
 contact bitfield, pages the rows, resolves each first/repeat dialogue and
-portrait, and retains per-contact call-history state. The ROM-rooted service
-menu now covers Capt. Quinton's Hollywood/Weller information, Firepower, and
-contact-offer tree; native purchase effects use the live runner wallet,
-inventory, and contact flags. The menu is rooted at `0x1096F4`, with Firepower
-and Contacts nodes at `0x109750` and `0x109780`. Services for the other twelve
-contacts remain unresolved. Cyberspace checks deck,
+portrait, and retains per-contact call-history state. ROM-rooted service
+trees are implemented for Capt. Quinton, Alesandro, and Sharkey, including
+their wallet, inventory, contact-flag, and map-destination effects. The menu
+is rooted at `0x1096F4`, with Firepower and Contacts nodes at `0x109750` and
+`0x109780`. Other contact-specific service paths remain unresolved.
+Cyberspace checks deck,
 MPCP, and datajack facts before showing Enter Passcode / System Search / Exit;
 known passcodes enter their selected system, while System Search follows the
 ROM's eleven permutation rounds and random system choice. The Matrix entry
@@ -363,7 +363,8 @@ cursor mappings, draws the extracted cab-map/cursor assets, and fades into the
 selected field scene after confirmation. The taxi route QA checks the settled
 screen, clean return on the current region, and a completed Downtown scene-0
 arrival after fade-in. Vid-Phone page/call screens and Matrix script screens
-have focused route tests and 320x224 dumps. These checks start at the
+have focused route tests and 320x224 dumps; the phone runtime checks both
+Sharkey passage destinations and item outcomes. These checks start at the
 converted event result or menu route; physical movement into a terminal is
 not yet covered by a joined event-31 route test. They do not certify the full
 Matrix visual system or contact-specific service transactions. The map-viewer

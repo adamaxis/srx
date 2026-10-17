@@ -15397,6 +15397,19 @@ int main(int argc, char** argv) {
                 QImage blank_field(kSceneWidth, kSceneHeight,
                                    QImage::Format_RGB32);
                 blank_field.fill(Qt::black);
+                // ROM projection can mark the runner visible while its anchor
+                // is still below the 224-pixel frame. Scene 9's profile pair
+                // does that until the 0x08C0 camera passes run.
+                const auto runner_anchor_on_field = [&field_scene] {
+                    const auto screen_y =
+                        field_scene.field_entity_screen_y_for_dump();
+                    const int pixel_x = static_cast<int>(
+                        field_scene.field_entity_screen_x_for_dump()) - 0x80;
+                    const int pixel_y = static_cast<int>(screen_y) - 0x80;
+                    return field_scene.field_entity_active_for_dump() &&
+                           screen_y != 0U && pixel_x >= 0 && pixel_x < 272 &&
+                           pixel_y >= 0 && pixel_y < kSceneHeight;
+                };
                 const bool arrival_saved =
                     save_qa_image(output, "actual.bmp", arrival);
                 const auto has_boundary = [&field_source_boundaries](
@@ -15415,6 +15428,7 @@ int main(int argc, char** argv) {
                         ElevatorSceneTransitionPhase::idle ||
                     field_scene.field_funds_for_dump() != 9000U ||
                     field_scene.dialogue_open() ||
+                    !runner_anchor_on_field() ||
                     !transition_boundaries_present ||
                     arrival_field == blank_field ||
                     !field_hud_chrome_survives(arrival, asset_root) ||
@@ -15428,6 +15442,10 @@ int main(int argc, char** argv) {
                               << " wallet="
                               << field_scene.field_funds_for_dump().value_or(0U)
                               << " dialogue=" << field_scene.dialogue_open()
+                              << " runner_screen="
+                              << field_scene.field_entity_screen_x_for_dump()
+                              << ','
+                              << field_scene.field_entity_screen_y_for_dump()
                               << " boundaries=" << transition_boundaries_present
                               << " map_visible="
                               << (arrival_field != blank_field)
@@ -15560,11 +15578,203 @@ int main(int argc, char** argv) {
                               << '\n';
                     return 3;
                 }
+
+                // Reuse the real field terminal after the first transaction.
+                // This second call covers Sharkey's distinct 5,000-nuyen
+                // Sinsearach destination through the same production reload.
+                if (field_scene.dialogue_panel().selected_option != 0U) {
+                    std::cerr << "Vid-Phone passage QA: terminal did not "
+                                 "return to its first row before the second call\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x02U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (!field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().actor_name != "Sharkey" ||
+                    field_scene.dialogue_panel().option_count != 2U ||
+                    !capture("16-sharkey-repeat-call")) {
+                    std::cerr << "Vid-Phone passage QA: repeat call did not "
+                                 "show Sharkey's source menu cleanly\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (!field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().option_count != 3U ||
+                    !capture("17-sharkey-services-repeat")) {
+                    std::cerr << "Vid-Phone passage QA: repeat call did not "
+                                 "return to Sharkey's services\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x10U);
+                if (!field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().option_count != 3U ||
+                    !panel_contains("5,000") ||
+                    !capture("18-sinsearach-passage-offer")) {
+                    std::cerr << "Vid-Phone passage QA: B did not select the "
+                                 "5,000-nuyen Sinsearach service\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (!field_scene.dialogue_open() ||
+                    field_scene.dialogue_panel().option_count != 0U ||
+                    !panel_contains("wilderness") ||
+                    field_scene.field_funds_for_dump() != 1000U ||
+                    !capture("19-sinsearach-paid-result")) {
+                    std::cerr << "Vid-Phone passage QA: Sinsearach result "
+                                 "did not charge 5,000 and clear its choices\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (field_scene.dialogue_open() ||
+                    field_scene.field_scene_reference_for_dump() != 6U ||
+                    field_scene.elevator_scene_transition_phase_for_dump() !=
+                        ElevatorSceneTransitionPhase::fading_to_black ||
+                    !capture("20-sinsearach-fade-out-start")) {
+                    std::cerr << "Vid-Phone passage QA: result acknowledgement "
+                                 "did not close the panel and begin travel\n";
+                    return 3;
+                }
+                transition_frames = 2U;
+                while (transition_frames < 90U &&
+                       field_scene.elevator_scene_transition_phase_for_dump() ==
+                           ElevatorSceneTransitionPhase::fading_to_black &&
+                       field_scene
+                               .elevator_scene_transition_palette_step_for_dump() <
+                           3U) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    ++transition_frames;
+                }
+                if (field_scene
+                            .elevator_scene_transition_palette_step_for_dump() !=
+                        3U ||
+                    !capture("21-sinsearach-fade-out-midpoint")) {
+                    std::cerr << "Vid-Phone passage QA: Sinsearach fade "
+                                 "midpoint was not captured\n";
+                    return 3;
+                }
+                while (transition_frames < 90U &&
+                       field_scene.field_scene_reference_for_dump() != 9U) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    ++transition_frames;
+                }
+                if (field_scene.field_scene_reference_for_dump() != 9U ||
+                    field_scene.elevator_scene_transition_phase_for_dump() !=
+                        ElevatorSceneTransitionPhase::fading_from_black ||
+                    field_scene
+                            .elevator_scene_transition_palette_step_for_dump() !=
+                        0U ||
+                    !capture("22-sinsearach-destination-handoff")) {
+                    std::cerr << "Vid-Phone passage QA: Sinsearach did not "
+                                 "load Scene 9 at the handoff\n";
+                    return 3;
+                }
+                while (transition_frames < 90U &&
+                       field_scene.elevator_scene_transition_phase_for_dump() ==
+                           ElevatorSceneTransitionPhase::fading_from_black &&
+                       field_scene
+                               .elevator_scene_transition_palette_step_for_dump() <
+                           3U) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    ++transition_frames;
+                }
+                if (field_scene
+                            .elevator_scene_transition_palette_step_for_dump() !=
+                        3U ||
+                    !capture("23-sinsearach-fade-in-midpoint")) {
+                    std::cerr << "Vid-Phone passage QA: Sinsearach fade-in "
+                                 "midpoint was not captured\n";
+                    return 3;
+                }
+                while (transition_frames < 90U &&
+                       field_scene.elevator_scene_transition_phase_for_dump() !=
+                           ElevatorSceneTransitionPhase::idle) {
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    ++transition_frames;
+                }
+                const auto sinsearach_arrival = render_qa_field(field_scene);
+                const auto sinsearach_map = render_qa_field(field_scene, true);
+                const bool sinsearach_arrival_saved = save_qa_image(
+                    output, "actual-sinsearach.bmp", sinsearach_arrival);
+                const bool sinsearach_boundaries_present =
+                    has_boundary("field.vid_phone.passage.payment_accepted") &&
+                    has_boundary("field.vid_phone.passage_fade_out_started") &&
+                    has_boundary("field.vid_phone.destination_loaded") &&
+                    has_boundary("field.vid_phone.destination_fade_finished");
+                if (field_scene.field_scene_reference_for_dump() != 9U ||
+                    field_scene.elevator_scene_transition_phase_for_dump() !=
+                        ElevatorSceneTransitionPhase::idle ||
+                    field_scene.field_funds_for_dump() != 1000U ||
+                    field_scene.dialogue_open() ||
+                    !field_scene.field_entity_visible_for_dump() ||
+                    !runner_anchor_on_field() ||
+                    !sinsearach_boundaries_present ||
+                    sinsearach_map == blank_field ||
+                    !field_hud_chrome_survives(sinsearach_arrival,
+                                               asset_root) ||
+                    !sinsearach_arrival_saved) {
+                    std::cerr << "Vid-Phone passage QA: expected a clean Scene 9 "
+                                 "arrival after the full fade; scene="
+                              << field_scene.field_scene_reference_for_dump()
+                              << " phase=" << static_cast<unsigned>(
+                                     field_scene
+                                         .elevator_scene_transition_phase_for_dump())
+                              << " wallet="
+                              << field_scene.field_funds_for_dump().value_or(0U)
+                              << " dialogue=" << field_scene.dialogue_open()
+                              << " runner_visible="
+                              << field_scene.field_entity_visible_for_dump()
+                              << " runner_world="
+                              << field_scene.field_entity_world_position().x
+                              << ','
+                              << field_scene.field_entity_world_position().y
+                              << " runner_screen="
+                              << field_scene.field_entity_screen_x_for_dump()
+                              << ','
+                              << field_scene.field_entity_screen_y_for_dump()
+                              << " boundaries="
+                              << sinsearach_boundaries_present
+                              << " map_visible="
+                              << (sinsearach_map != blank_field)
+                              << " hud=" << field_hud_chrome_survives(
+                                     sinsearach_arrival, asset_root)
+                              << '\n';
+                    return 3;
+                }
                 std::cout << "field_vid_phone_passage_qa=passed scene=6 "
-                          << "wallet=6000 goggles=22 inventory_full_preserved=1 "
+                          << "scene9_wallet=1000 goggles=22 "
+                          << "inventory_full_preserved=1 "
+                          << "scene9_runner_active="
+                          << field_scene.field_entity_active_for_dump()
+                          << " scene9_runner_visible="
+                          << field_scene.field_entity_visible_for_dump()
+                          << " scene9_runner_world="
+                          << field_scene.field_entity_world_position().x
+                          << ','
+                          << field_scene.field_entity_world_position().y
+                          << " scene9_runner_screen="
+                          << field_scene.field_entity_screen_x_for_dump()
+                          << ','
+                          << field_scene.field_entity_screen_y_for_dump()
+                          << " scene9_camera="
+                          << field_scene.state().field_scene_buffers.camera_x
+                          << ','
+                          << field_scene.state().field_scene_buffers.camera_y
+                          << " scene9_camera_bounds="
+                          << field_scene.state().field_scene_buffers.profile[2U]
+                          << ','
+                          << field_scene.state().field_scene_buffers.profile[3U]
+                          << ','
+                          << field_scene.state().field_scene_buffers.profile[4U]
+                          << ','
+                          << field_scene.state().field_scene_buffers.profile[5U]
                           << "transition_frames="
                           << static_cast<unsigned>(transition_frames)
-                          << " full_screen_captures=16\n";
+                          << " full_screen_captures=25\n";
                 return 0;
             }
             if (field_security_terminal_physical_entry_qa_path.has_value() ||

@@ -1912,9 +1912,32 @@ bool FieldSceneRuntime::transition_to_field_destination(
     field_palette_fade_steps_ = 0U;
     field_runtime_state_.display_service_word = 0U;
     state_.display_service_word = 0U;
-    update_source_field_camera();
-    update_entity_render_pass(state_.render_entities,
-                              callbacks_.entity_render_pass);
+    // ROM 0x08C0, before 0x12F6: a new field mode runs 31 camera and entity
+    // projection passes with FFDFE8 clear, then fades in. The fade at 0x12F6
+    // only waits on 0x1342. Scene 9's profile spawn (0x0D80, 0x1100) projects
+    // to pixel y 232 under camera (0x0A00, 0x0280), so those passes have to
+    // finish while the destination is still black.
+    const auto restore_interaction_lock =
+        field_movement_transition_state_.world_interaction_lock;
+    if (route == FieldDestinationTransitionRoute::vid_phone) {
+        field_movement_transition_state_.world_interaction_lock = false;
+        field_camera_follow_.layer_x_dirty = false;
+        field_camera_follow_.layer_y_dirty = false;
+    }
+    constexpr int kModeEntryCameraPasses = 31;
+    const int camera_passes =
+        route == FieldDestinationTransitionRoute::vid_phone
+            ? kModeEntryCameraPasses
+            : 1;
+    for (int pass = 0; pass < camera_passes; ++pass) {
+        update_source_field_camera();
+        update_entity_render_pass(state_.render_entities,
+                                  callbacks_.entity_render_pass);
+    }
+    if (route == FieldDestinationTransitionRoute::vid_phone) {
+        field_movement_transition_state_.world_interaction_lock =
+            restore_interaction_lock;
+    }
     dispatch_field_map_scene_entry(scene_reference);
     source_boundary(std::string(source_prefix) + "destination_loaded");
     return true;
