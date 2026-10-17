@@ -6409,6 +6409,10 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.game.in_combat = [this] {
         return world_frame_logic_state_.world_active != 0U;
     };
+    bindings.game.scene_mode = [this] {
+        // FFDF40: 0 outside; 0x1684C/0x1695C/0x16A04 write 1/2/3 [C].
+        return static_cast<int>(field_movement_transition_state_.world_mode);
+    };
     bindings.game.save_game = [this](const int slot) {
         return save_game_slot(slot);
     };

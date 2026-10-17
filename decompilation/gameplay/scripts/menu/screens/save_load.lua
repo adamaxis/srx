@@ -34,7 +34,13 @@ function SaveLoad.new()
     }
 end
 function SaveLoad.enter(st, ctx)
-    if ctx.game.in_combat() then
+    -- 0xEFC4: tst.w FFDF40; nonzero -> text 0xC26C3, checked before FFDF84 [C].
+    if ctx.game.scene_mode() ~= E.SceneMode.NONE then
+        st.gated = true
+        return wait(MM.SAVE_OUTSIDE_ONLY,
+                    "Save/Load only works in an outside area.")
+    end
+    if ctx.game.in_combat() then        -- 0xEFE6: tst.w FFDF84 [C]
         st.gated = true
         return wait(MM.SAVE_IN_COMBAT,
                     "Save and load are unavailable during an encounter.")

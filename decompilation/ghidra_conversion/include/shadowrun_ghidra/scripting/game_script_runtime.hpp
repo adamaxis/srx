@@ -49,6 +49,11 @@ enum class ScriptMenuLayout : std::uint8_t {
     compact_list,
 };
 
+// ROM 0x1F3C4 dialogue choices are the A/B/C buttons, so a button menu shows
+// at most three rows [C]. The limit is data, not layout: a button menu with
+// more choices is hosted as a cursor list instead of being truncated.
+inline constexpr std::size_t kRomDialogueButtonChoices = 3U;
+
 struct ScriptMenuDefinition {
     std::string id;
     std::string text_profile;
@@ -62,6 +67,7 @@ struct ScriptMenuDefinition {
     ScriptMenuInputMode input_mode = ScriptMenuInputMode::button_choice;
     ScriptMenuLayout layout = ScriptMenuLayout::standard;
     std::size_t selected_index = 0U;
+    std::size_t button_choice_limit = kRomDialogueButtonChoices;
 };
 
 // The live field-menu route is stored in the same Lua state as gameplay
@@ -240,6 +246,8 @@ struct ScriptMenuRouteGame {
     std::function<int(int, int)> roll_successes;
     std::function<bool()> pocket_extra_row;
     std::function<bool()> in_combat;
+    // FFDF40 field scene mode (0 = outside). ROM 0xEFC4 gates Save/Load on it.
+    std::function<int()> scene_mode;
     std::function<bool(int)> save_game;
     std::function<bool(int)> load_game;
     std::function<int(int)> save_status;

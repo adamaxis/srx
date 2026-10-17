@@ -188,12 +188,14 @@ r8:frame(P.A); check(top(r8) == S.DISMISS_RUNNER, "dismiss open"); r8:frame(P.DO
 check(l8.dismissed == 1 and top(r8) == S.POCKET_SECRETARY, "dismiss runner 1")
 end)
 -- save/load 0xEFB4 [C] -- srx host JSON saves (screens/save_load.lua): combat gate FFDF84 [C 0xEFE6], two slots.
--- ROM 0xEFC4 also gates on FFDF40 ("outside only", 0xC26C3); srx save_load.lua has no such gate and the menu
--- binding exposes no scene mode, so it is not asserted here (open item, see patches README).
+-- ROM 0xEFC4 gates first on FFDF40 ("outside only", text 0xC26C3) [C].
 section('save/load 0xEFB4 [C]', function()
 local function sl(o) local r, l, g = mk(o); r:frame(P.A); r:frame(P.UP); r:frame(P.A); return r, l, g end
 local r9, l9, g9 = sl({ combat = true }); check(top(r9) == S.MESSAGE and st(r9).message == MM.SAVE_IN_COMBAT, "gate FFDF84 [C 0xEFE6]")
 r9:frame(P.A); check(top(r9) == S.POCKET_SECRETARY, "gate -> PS rebuild")
+r9 = sl({ scene = 2 }); check(top(r9) == S.MESSAGE and st(r9).message == MM.SAVE_OUTSIDE_ONLY, "gate FFDF40 [C 0xEFC4]")
+r9:frame(P.A); check(top(r9) == S.POCKET_SECRETARY, "outside gate -> PS rebuild")
+r9 = sl({ scene = 1, combat = true }); check(st(r9).message == MM.SAVE_OUTSIDE_ONLY, "FFDF40 checked before FFDF84 [C 0xEFC4 < 0xEFE6]")
 r9, l9, g9 = sl({ save_status = { [0] = 1 } }); check(top(r9) == S.SAVE_LOAD, "save/load open"); local s9 = #l9.sounds
 r9:frame(P.UP); check(st(r9).row == 1 and #l9.sounds == s9, "2 rows, silent wrap"); r9:frame(P.UP)
 r9:frame(P.B); check(top(r9) == S.SAVE_SLOT and st(r9).labels[1] == "Game 1: Saved" and st(r9).labels[2] == "Game 2: Empty", "B confirms; slot labels from save_status")
