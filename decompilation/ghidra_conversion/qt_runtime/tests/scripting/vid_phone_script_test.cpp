@@ -74,6 +74,149 @@ bool is_service_call(const ScriptTaskStep& step,
            step.operation->service_id == service_id;
 }
 
+bool test_alesandro_service_tree(GameScriptRuntime& scripts,
+                                 std::uint32_t& contact_flags) {
+    contact_flags = 1U << 1U;
+    auto task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    if (!expect(is_menu(task) && task.operation->menu->speaker_id ==
+                    "vid_phone_alesandro_hobbs" &&
+                    task.operation->menu->id ==
+                        "call_alesandro_hobbs_first_call" &&
+                    (contact_flags & (1U << 14U)) != 0U,
+                "Alesandro call did not set history or select his speaker")) {
+        return false;
+    }
+    const auto call_profile = scripts.resolve_dialogue_menu(
+        *task.operation->menu);
+    if (!expect(call_profile.has_value() &&
+                    scripts.dialogue_text(call_profile->title_key) != nullptr,
+                "Alesandro first-call copy did not resolve")) {
+        return false;
+    }
+
+    task = scripts.complete_native_menu_choice("services");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "alesandro_services",
+                "Alesandro Services did not open his contact menu")) {
+        return false;
+    }
+    auto profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() && profile->choices.size() == 3U &&
+                    scripts.dialogue_text(profile->title_key) != nullptr,
+                "Alesandro service options or title did not resolve")) {
+        return false;
+    }
+    for (const auto& choice : profile->choices) {
+        if (!expect(scripts.dialogue_text(choice.label_key) != nullptr,
+                    "Alesandro service option is missing its label")) {
+            return false;
+        }
+    }
+
+    task = scripts.complete_native_menu_choice("corporation_information");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "alesandro_security_topics",
+                "corporation information did not open its topic choices")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() && profile->choices.size() == 3U &&
+                    scripts.dialogue_text(profile->title_key) != nullptr,
+                "corporation procedures text or source topics did not resolve")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("second_security_type");
+    if (!expect(is_say(task, "security_technological",
+                       "vid_phone_alesandro_hobbs"),
+                "second security type did not show Alesandro's ROM line")) {
+        return false;
+    }
+    const auto technological_text = scripts.dialogue_event_text_keys(
+        "vid_phone_alesandro_hobbs", "field.vid_phone",
+        "security_technological");
+    if (!expect(technological_text.has_value() &&
+                    scripts.dialogue_text(technological_text->title_key) !=
+                        nullptr &&
+                    scripts.dialogue_text(technological_text->title_key)->find(
+                        "Maglock") != std::string::npos,
+                "technological security text did not include the complete ROM record")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "alesandro_services",
+                "security explanation did not return to Alesandro's services")) {
+        return false;
+    }
+
+    task = scripts.complete_native_menu_choice("maglock_passkey");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "alesandro_passkey_offer",
+                "Maglock Passkey option did not open its two-tier offer")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() && profile->choices.size() == 3U &&
+                    scripts.dialogue_text(profile->title_key) != nullptr &&
+                    scripts.dialogue_text(profile->choices[0].label_key) !=
+                        nullptr &&
+                    scripts.dialogue_text(profile->choices[1].label_key) !=
+                        nullptr,
+                "level-3/level-5 offer copy or choices did not resolve")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("level_3_passkey");
+    if (!expect(is_service_call(
+                    task, "vid_phone.purchase_maglock_passkey_level_3"),
+                "level-3 selection did not request the passkey purchase")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("purchased");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "alesandro_purchase_result",
+                "passkey purchase did not show its delivery result")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("services");
+    task = scripts.complete_native_menu_choice("seattle_official");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "alesandro_official_contact_confirmation",
+                "official offer did not show its confirmation choices")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() && profile->choices.size() == 2U &&
+                    scripts.dialogue_text(profile->title_key) != nullptr &&
+                    scripts.dialogue_text(profile->title_key)->find("8,000") !=
+                        std::string::npos,
+                "official introduction or 8,000 offer text did not resolve")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("pay_for_macklemann");
+    if (!expect(is_service_call(task, "vid_phone.hire_macklemann"),
+                "Macklemann offer did not request the contact service")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("hired");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "alesandro_macklemann_result",
+                "Macklemann introduction did not show its result screen")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() &&
+                    scripts.dialogue_text(profile->title_key) != nullptr &&
+                    scripts.dialogue_text(profile->title_key)->find(
+                        "Sergeant Mackelmann") != std::string::npos,
+                "Macklemann's name and security hint were not imported")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("goodbye");
+    return expect(task.status == ScriptTaskStep::Status::completed,
+                  "Macklemann result Goodbye did not finish Alesandro's call");
+}
+
 } // namespace
 
 int main() {
@@ -530,6 +673,11 @@ int main() {
     if (!expect(task.status == ScriptTaskStep::Status::completed,
                 "out-of-stock response did not finish the phone call")) {
         return 44;
+    }
+
+    if (!test_alesandro_service_tree(scripts, contact_flags)) {
+        std::cerr << scripts.failure() << '\n';
+        return 58;
     }
 
     contact_flags = 0x00FFU;

@@ -8,13 +8,17 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <utility>
 
 namespace shadowrun::ghidra_conversion {
 
 enum class VidPhoneServiceAction : std::uint8_t {
     purchase_frag_grenades,
     purchase_hk227_s,
+    purchase_maglock_passkey_level_3,
+    purchase_maglock_passkey_level_5,
     hire_sharkey,
+    hire_macklemann,
 };
 
 enum class VidPhoneServiceResult : std::uint8_t {
@@ -27,6 +31,7 @@ enum class VidPhoneServiceResult : std::uint8_t {
 
 enum class VidPhoneContactIndex : std::uint8_t {
     sharkey = 2U,
+    macklemann = 5U,
 };
 
 struct VidPhoneSupplyOffer {
@@ -49,7 +54,12 @@ inline std::optional<VidPhoneSupplyOffer> vid_phone_supply_offer(
         return VidPhoneSupplyOffer{
             UsItemCode::hk227_s_smg, 1000U, hk227_accessories};
     }
+    case VidPhoneServiceAction::purchase_maglock_passkey_level_3:
+        return VidPhoneSupplyOffer{UsItemCode::maglock_passkey, 10000U, 3U};
+    case VidPhoneServiceAction::purchase_maglock_passkey_level_5:
+        return VidPhoneSupplyOffer{UsItemCode::maglock_passkey, 20000U, 5U};
     case VidPhoneServiceAction::hire_sharkey:
+    case VidPhoneServiceAction::hire_macklemann:
         return std::nullopt;
     }
     return std::nullopt;
@@ -63,8 +73,17 @@ inline std::optional<VidPhoneServiceAction> vid_phone_service_action_for_id(
     if (service_id == "vid_phone.purchase_hk227_s") {
         return VidPhoneServiceAction::purchase_hk227_s;
     }
+    if (service_id == "vid_phone.purchase_maglock_passkey_level_3") {
+        return VidPhoneServiceAction::purchase_maglock_passkey_level_3;
+    }
+    if (service_id == "vid_phone.purchase_maglock_passkey_level_5") {
+        return VidPhoneServiceAction::purchase_maglock_passkey_level_5;
+    }
     if (service_id == "vid_phone.hire_sharkey") {
         return VidPhoneServiceAction::hire_sharkey;
+    }
+    if (service_id == "vid_phone.hire_macklemann") {
+        return VidPhoneServiceAction::hire_macklemann;
     }
     return std::nullopt;
 }
@@ -90,20 +109,29 @@ inline VidPhoneServiceResult apply_vid_phone_service(
     std::array<std::uint8_t, 8>& inventory_item_codes,
     std::array<std::uint8_t, 8>& inventory_phase_bytes,
     std::optional<std::uint32_t>& notebook_contacts_flags) noexcept {
-    constexpr std::uint32_t kSharkeyIntroductionPrice = 2800U;
-
-    if (action == VidPhoneServiceAction::hire_sharkey) {
+    const auto contact_offer = [&action]()
+        -> std::optional<std::pair<std::uint32_t, VidPhoneContactIndex>> {
+        switch (action) {
+        case VidPhoneServiceAction::hire_sharkey:
+            return std::pair{2800U, VidPhoneContactIndex::sharkey};
+        case VidPhoneServiceAction::hire_macklemann:
+            return std::pair{8000U, VidPhoneContactIndex::macklemann};
+        default:
+            return std::nullopt;
+        }
+    }();
+    if (contact_offer.has_value()) {
         if (!funds.has_value() || !notebook_contacts_flags.has_value()) {
             return VidPhoneServiceResult::unavailable;
         }
-        if (*funds < kSharkeyIntroductionPrice) {
+        if (*funds < contact_offer->first) {
             return VidPhoneServiceResult::insufficient_funds;
         }
-        *funds -= kSharkeyIntroductionPrice;
-        const auto sharkey_mask = static_cast<std::uint32_t>(
-            1U << static_cast<unsigned>(VidPhoneContactIndex::sharkey));
+        *funds -= contact_offer->first;
+        const auto contact_mask = static_cast<std::uint32_t>(
+            1U << static_cast<unsigned>(contact_offer->second));
         *notebook_contacts_flags =
-            (*notebook_contacts_flags | sharkey_mask) & 0x03FFFFFFU;
+            (*notebook_contacts_flags | contact_mask) & 0x03FFFFFFU;
         return VidPhoneServiceResult::hired;
     }
 

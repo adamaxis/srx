@@ -551,6 +551,32 @@ quinton.events.services_disconnected = {
     continuation_key = "",
 }
 
+local alesandro = speakers.vid_phone_alesandro_hobbs
+alesandro.events.security_patrols = {
+    title_key = "vid_phone.alesandro_hobbs.security_patrols",
+    continuation_key = "",
+}
+alesandro.events.security_alerts = {
+    title_key = "vid_phone.alesandro_hobbs.security_alerts",
+    continuation_key = "",
+}
+alesandro.events.security_technological = {
+    title_key = "vid_phone.alesandro_hobbs.security_technological",
+    continuation_key = "",
+}
+alesandro.events.security_cameras = {
+    title_key = "vid_phone.alesandro_hobbs.security_cameras",
+    continuation_key = "",
+}
+alesandro.events.purchase_insufficient = {
+    title_key = "vid_phone.alesandro_hobbs.purchase.insufficient",
+    continuation_key = "",
+}
+alesandro.events.purchase_out_of_stock = {
+    title_key = "vid_phone.alesandro_hobbs.purchase.out_of_stock",
+    continuation_key = "",
+}
+
 local quinton_prefix = "vid_phone.capt_quinton_jaymes."
 local function define_quinton_menu(id, text_id, option_keys)
     phone_profile[id] = {
@@ -596,6 +622,47 @@ define_quinton_menu("capt_quinton_contacts_offer", "contacts_offer", {
     decline_rigger_contact = quinton_prefix .. "option.decline_rigger_contact",
 })
 define_quinton_menu("capt_quinton_sharkey_result", "sharkey_result", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+
+local alesandro_prefix = "vid_phone.alesandro_hobbs."
+local function define_alesandro_menu(id, text_id, option_keys)
+    phone_profile[id] = {
+        title_key = alesandro_prefix .. text_id,
+        choice_label_keys = option_keys,
+    }
+end
+
+define_alesandro_menu("alesandro_services", "services", {
+    corporation_information = alesandro_prefix .. "option.corporation_information",
+    maglock_passkey = alesandro_prefix .. "option.maglock_passkey",
+    seattle_official = alesandro_prefix .. "option.seattle_official",
+})
+define_alesandro_menu("alesandro_security_topics", "corporation_information", {
+    patrols = alesandro_prefix .. "option.security_procedures",
+    second_security_type = alesandro_prefix .. "option.second_security_type",
+    avoid_detection = alesandro_prefix .. "option.avoid_detection",
+})
+define_alesandro_menu("alesandro_passkey_offer", "passkey_offer", {
+    level_3_passkey = alesandro_prefix .. "option.level_3_passkey",
+    level_5_passkey = alesandro_prefix .. "option.level_5_passkey",
+    return_to_services = quinton_prefix .. "option.return_to_services",
+})
+define_alesandro_menu(
+    "alesandro_official_contact_confirmation", "official_contact_offer", {
+        pay_for_macklemann = alesandro_prefix .. "option.pay_for_macklemann",
+        return_to_services = quinton_prefix .. "option.return_to_services",
+    })
+define_alesandro_menu("alesandro_purchase_result", "purchase_result", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+define_alesandro_menu("alesandro_out_of_stock", "purchase.out_of_stock", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+define_alesandro_menu("alesandro_macklemann_result", "macklemann_result", {
     services = "vid_phone.option.services",
     goodbye = "vid_phone.option.goodbye",
 })

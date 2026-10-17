@@ -33,7 +33,14 @@ Vent II attachment mask (`0x18`), separate from the item's 28-round catalog
 capacity. Debug/Release script, transaction, and panel-route CTests cover
 success, insufficient funds, full inventory, and clean return. Their images
 render the dialogue panel over black, so they do not prove cleanup over a live
-map background. Services for the other 12 contacts remain open. Cyberspace checks
+map background. Alesandro's service tree now follows ROM commands `0x6B`-`0x6D`
+to handlers `0x22934`, `0x2296E`, and `0x229A8`: level-3/level-5 maglock
+passkeys cost 10,000/20,000 and store their level in item 20's phase, while
+Sgt. Macklemann costs 8,000 and sets contact bit 5. The panel CTest captures
+the technology response, both purchase outcomes, contact offer/result, and
+clean redraw through screen 34. No independent Vid-Phone call frame exists in
+the reviewed longplay, so this remains partial. Services for the other 11
+contacts remain open. Cyberspace checks
 deck/MPCP/datajack facts, offers passcodes or System Search, then enters the
 existing Matrix session and node-action route. Debug/Release CTests cover these script routes, the phone
 pages/calls, the cab selector, and a completed Redmond-to-Downtown map load;

@@ -4,6 +4,7 @@ local FieldActivities = {}
 local Dialogue = require("dialogue")
 local MatrixPasscodes = require("data.matrix_passcodes")
 local CaptQuintonJaymes = require("vid_phone.capt_quinton_jaymes")
+local AlesandroHobbs = require("vid_phone.alesandro_hobbs")
 
 local function run_cursor_menu(menu_id, choices, initial_selection,
                                speaker_id, text_profile)
@@ -94,6 +95,8 @@ local function call_contact(contact)
     if choice == "services" then
         if contact.id == "capt_quinton_jaymes" then
             return CaptQuintonJaymes.services()
+        elseif contact.id == "alesandro_hobbs" then
+            return AlesandroHobbs.services()
         end
         return "phone_services_not_converted"
     end

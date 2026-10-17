@@ -97,6 +97,17 @@ bool select_phone_option(FieldDialogueRuntime& runtime) {
     return runtime.panel().selected_option == 1U;
 }
 
+bool panel_contains_text(FieldDialogueRuntime& runtime,
+                         const std::string_view text) {
+    const auto& panel = runtime.panel();
+    for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+        if (panel.text_segments[index].find(text) != std::string_view::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -519,6 +530,102 @@ int main(int argc, char** argv) {
             std::cerr << source_boundary << '\n';
         }
         return 16;
+    }
+
+    phone_funds = 50000U;
+    phone_item_codes = {};
+    phone_item_phases = {};
+    if (!select_phone_option(runtime) ||
+        !advance(runtime, 0x4000U,
+                 "A did not reopen the phone for Alesandro QA") ||
+        !advance(runtime, 0x0200U,
+                 "Down did not select Alesandro") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Alesandro's call") ||
+        !expect(runtime.panel().actor_name == "Alesandro Hobbs" &&
+                    runtime.panel().portrait_alias ==
+                        "dialogue.portraits.vid.phone.alesandro.hobbs" &&
+                    runtime.panel().option_count == 2U,
+                "Alesandro call did not use his ROM portrait and choices") ||
+        !save_panel(runtime, output_root, "25-alesandro-first-call") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Alesandro's Services") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    runtime.panel().actor_name == "Alesandro Hobbs",
+                "Alesandro Services did not replace the call panel") ||
+        !save_panel(runtime, output_root, "26-alesandro-services") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open corporate security information") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    runtime.panel().text_segment_count > 0U,
+                "corporate information did not open the topic panel") ||
+        !save_panel(runtime, output_root, "27-alesandro-security-topics") ||
+        !advance(runtime, 0x1000U,
+                 "B did not select the second security type") ||
+        !expect(panel_contains_text(runtime, "Technological") &&
+                    panel_contains_text(runtime, "Maglock"),
+                "second security response did not show the full ROM text") ||
+        !save_panel(runtime, output_root, "28-alesandro-technological-security") ||
+        !advance(runtime, 0x4000U,
+                 "A did not return to Alesandro's Services") ||
+        !advance(runtime, 0x1000U,
+                 "B did not open Alesandro's passkey offer") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    panel_contains_text(runtime, "10,000") &&
+                    panel_contains_text(runtime, "20,000"),
+                "passkey offer did not show the ROM prices") ||
+        !save_panel(runtime, output_root, "29-alesandro-passkey-offer") ||
+        !advance(runtime, 0x4000U,
+                 "A did not purchase the level-3 passkey") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    panel_contains_text(runtime, "delivery boy") &&
+                    phone_funds == 40000U &&
+                    phone_item_codes[0] == static_cast<std::uint8_t>(
+                        UsItemCode::maglock_passkey) &&
+                    phone_item_phases[0] == 3U,
+                "level-3 purchase did not update inventory and show delivery") ||
+        !save_panel(runtime, output_root, "30-alesandro-level-3-result") ||
+        !advance(runtime, 0x4000U,
+                 "A did not return to Alesandro's Services") ||
+        !advance(runtime, 0x1000U,
+                 "B did not reopen the passkey offer") ||
+        !advance(runtime, 0x1000U,
+                 "B did not select the level-5 passkey") ||
+        !expect(runtime.panel().option_count == 2U && phone_funds == 20000U &&
+                    phone_item_codes[1] == static_cast<std::uint8_t>(
+                        UsItemCode::maglock_passkey) &&
+                    phone_item_phases[1] == 5U,
+                "level-5 purchase did not use phase 5 in a second slot") ||
+        !save_panel(runtime, output_root, "31-alesandro-level-5-result") ||
+        !advance(runtime, 0x4000U,
+                 "A did not return from the level-5 result") ||
+        !advance(runtime, 0x2000U,
+                 "C did not select the Seattle official offer") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    panel_contains_text(runtime, "public servant") &&
+                    panel_contains_text(runtime, "8,000"),
+                "official offer did not show the source text and two choices") ||
+        !save_panel(runtime, output_root, "32-alesandro-official-offer") ||
+        !advance(runtime, 0x4000U,
+                 "A did not pay for Sgt. Macklemann") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    runtime.panel().text_segments[0].find("Mackelmann") !=
+                        std::string_view::npos &&
+                    phone_funds == 12000U && phone_contacts_flags == 36U,
+                "Macklemann purchase did not charge 8,000 and set bit 5") ||
+        !save_panel(runtime, output_root, "33-alesandro-macklemann-result") ||
+        !advance(runtime, 0x1000U,
+                 "B did not leave Alesandro's call") ||
+        !expect(runtime.panel().option_count == 4U &&
+                    runtime.panel().portrait_alias.empty() &&
+                    runtime.panel().actor_name.empty(),
+                "Alesandro graphics remained after returning to the field") ||
+        !save_panel(runtime, output_root, "34-alesandro-return-to-field-menu")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 17;
     }
 
     if (!expect(runtime.advance_controller_events(0x8000U) ==

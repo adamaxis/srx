@@ -831,6 +831,29 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"vid_phone.capt_quinton_jaymes.option.no_thanks", 0x103A13U},
         {"vid_phone.capt_quinton_jaymes.option.pay_for_rigger_contact", 0x103A7AU},
         {"vid_phone.capt_quinton_jaymes.option.decline_rigger_contact", 0x105101U},
+        // Alesandro's service nodes are selected from his 0x10A080 record.
+        // Commands 0x6B/0x6C are the two passkey levels; 0x6D introduces
+        // Sgt. Macklemann. Content and option labels follow the record's
+        // pointers and the handlers at 0x22934/0x2296E/0x229A8.
+        {"vid_phone.alesandro_hobbs.services", 0x10A1EBU},
+        {"vid_phone.alesandro_hobbs.corporation_information", 0x10A2E1U},
+        {"vid_phone.alesandro_hobbs.security_patrols", 0x10A30DU},
+        {"vid_phone.alesandro_hobbs.security_alerts", 0x10A38FU},
+        {"vid_phone.alesandro_hobbs.security_technological", 0x10A3F5U},
+        {"vid_phone.alesandro_hobbs.security_cameras", 0x10A4D8U},
+        {"vid_phone.alesandro_hobbs.passkey_offer", 0x10A598U},
+        {"vid_phone.alesandro_hobbs.purchase.insufficient", 0x10A28FU},
+        {"vid_phone.alesandro_hobbs.purchase_result", 0x10A601U},
+        {"vid_phone.alesandro_hobbs.purchase.out_of_stock", 0x10A654U},
+        {"vid_phone.alesandro_hobbs.official_contact_offer", 0x10A689U},
+        {"vid_phone.alesandro_hobbs.macklemann_result", 0x10A72DU},
+        {"vid_phone.alesandro_hobbs.option.corporation_information", 0x104A62U},
+        {"vid_phone.alesandro_hobbs.option.maglock_passkey", 0x104277U},
+        {"vid_phone.alesandro_hobbs.option.seattle_official", 0x104D68U},
+        {"vid_phone.alesandro_hobbs.option.second_security_type", 0x104A86U},
+        {"vid_phone.alesandro_hobbs.option.security_procedures", 0x104AABU},
+        {"vid_phone.alesandro_hobbs.option.avoid_detection", 0x104AD8U},
+        {"vid_phone.alesandro_hobbs.option.pay_for_macklemann", 0x103A7AU},
         {"vid_phone.option.more", 0x0FE5BFU},
     };
 
@@ -931,6 +954,24 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
             write_lua_string(text);
             output << ",\n";
         }
+    }
+    // The ROM stores both prices in one sentence at 0x10A5B9 and dispatches
+    // level 3/5 as separate commands without separate captions. Split that
+    // source offer into explicit host choices while retaining the ROM wording
+    // and amounts.
+    constexpr std::array<std::pair<std::string_view, std::string_view>, 2>
+        kAlesandroPasskeyLevelChoices{{
+            {"vid_phone.alesandro_hobbs.option.level_3_passkey",
+             "Level 3 ($10,000)"},
+            {"vid_phone.alesandro_hobbs.option.level_5_passkey",
+             "Level 5 ($20,000)"},
+        }};
+    for (const auto& [key, text] : kAlesandroPasskeyLevelChoices) {
+        output << "        [";
+        write_lua_string(key);
+        output << "] = ";
+        write_lua_string(text);
+        output << ",\n";
     }
     // Recruited-runner biographies and the converted Ricky/Winston/Trent
     // topic trees are imported from their ROM stream starts. The source

@@ -22,12 +22,21 @@ int main() {
     const auto* frag_grenade =
         find_us_item_definition(UsItemCode::frag_grenade);
     const auto* hk227_s = find_us_item_definition(UsItemCode::hk227_s_smg);
+    const auto* maglock_passkey =
+        find_us_item_definition(UsItemCode::maglock_passkey);
     const auto grenade_offer = vid_phone_supply_offer(
         VidPhoneServiceAction::purchase_frag_grenades);
     const auto hk227_s_offer = vid_phone_supply_offer(
         VidPhoneServiceAction::purchase_hk227_s);
+    const auto level3_passkey_offer = vid_phone_supply_offer(
+        VidPhoneServiceAction::purchase_maglock_passkey_level_3);
+    const auto level5_passkey_offer = vid_phone_supply_offer(
+        VidPhoneServiceAction::purchase_maglock_passkey_level_5);
     if (!expect(frag_grenade != nullptr && hk227_s != nullptr &&
+                    maglock_passkey != nullptr &&
                     grenade_offer.has_value() && hk227_s_offer.has_value() &&
+                    level3_passkey_offer.has_value() &&
+                    level5_passkey_offer.has_value() &&
                     grenade_offer->item_code == UsItemCode::frag_grenade &&
                     hk227_s_offer->item_code == UsItemCode::hk227_s_smg &&
                     grenade_offer->price == 400U &&
@@ -41,7 +50,16 @@ int main() {
                                 UsWeaponAccessory::gas_vent_ii)) &&
                     hk227_s->source_combat_factor == 28U &&
                     hk227_s_offer->item_phase !=
-                        hk227_s->source_combat_factor,
+                        hk227_s->source_combat_factor &&
+                    level3_passkey_offer->item_code ==
+                        UsItemCode::maglock_passkey &&
+                    level3_passkey_offer->price == 10000U &&
+                    level3_passkey_offer->item_phase == 3U &&
+                    level5_passkey_offer->item_code ==
+                        UsItemCode::maglock_passkey &&
+                    level5_passkey_offer->price == 20000U &&
+                    level5_passkey_offer->item_phase == 5U &&
+                    maglock_passkey->base_cost == 10000U,
                 "service offer records did not preserve ROM item identity, "
                 "price, attachment phase, and clip capacity separately")) {
         return 10;
@@ -54,8 +72,17 @@ int main() {
                         "vid_phone.purchase_hk227_s") ==
                     VidPhoneServiceAction::purchase_hk227_s &&
                     vid_phone_service_action_for_id(
+                        "vid_phone.purchase_maglock_passkey_level_3") ==
+                    VidPhoneServiceAction::purchase_maglock_passkey_level_3 &&
+                    vid_phone_service_action_for_id(
+                        "vid_phone.purchase_maglock_passkey_level_5") ==
+                    VidPhoneServiceAction::purchase_maglock_passkey_level_5 &&
+                    vid_phone_service_action_for_id(
                         "vid_phone.hire_sharkey") ==
                     VidPhoneServiceAction::hire_sharkey &&
+                    vid_phone_service_action_for_id(
+                        "vid_phone.hire_macklemann") ==
+                    VidPhoneServiceAction::hire_macklemann &&
                     !vid_phone_service_action_for_id(
                         "vid_phone.unknown_offer").has_value(),
                 "Lua Vid-Phone service ids did not map to typed host actions")) {
@@ -149,6 +176,53 @@ int main() {
     if (!expect(result == VidPhoneServiceResult::unavailable && funds == 2800U,
                 "unresolved notebook contacts charged the player")) {
         return 7;
+    }
+
+    funds = 10000U;
+    contacts = 0U;
+    items = {};
+    phases = {};
+    result = apply_vid_phone_service(
+        VidPhoneServiceAction::purchase_maglock_passkey_level_3,
+        funds, items, phases, contacts);
+    if (!expect(result == VidPhoneServiceResult::purchased && funds == 0U &&
+                    items[0] == maglock_passkey->item_code && phases[0] == 3U,
+                "Alesandro's level-3 passkey did not charge 10000 or preserve level 3")) {
+        return 10;
+    }
+
+    funds = 20000U;
+    items = {};
+    phases = {};
+    result = apply_vid_phone_service(
+        VidPhoneServiceAction::purchase_maglock_passkey_level_5,
+        funds, items, phases, contacts);
+    if (!expect(result == VidPhoneServiceResult::purchased && funds == 0U &&
+                    items[0] == maglock_passkey->item_code && phases[0] == 5U,
+                "Alesandro's level-5 passkey did not charge 20000 or preserve level 5")) {
+        return 11;
+    }
+
+    funds = 8000U;
+    contacts = 0U;
+    result = apply_vid_phone_service(
+        VidPhoneServiceAction::hire_macklemann,
+        funds, items, phases, contacts);
+    if (!expect(result == VidPhoneServiceResult::hired && funds == 0U &&
+                    contacts == (1U << 5U),
+                "Alesandro's offer did not charge 8000 and unlock contact bit 5")) {
+        return 12;
+    }
+
+    funds = 7999U;
+    contacts = 0U;
+    result = apply_vid_phone_service(
+        VidPhoneServiceAction::hire_macklemann,
+        funds, items, phases, contacts);
+    if (!expect(result == VidPhoneServiceResult::insufficient_funds &&
+                    funds == 7999U && contacts == 0U,
+                "failed Macklemann introduction changed money or contact flags")) {
+        return 13;
     }
     if (!expect(vid_phone_service_script_result(
                     VidPhoneServiceResult::insufficient_funds) ==
