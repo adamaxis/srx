@@ -49,31 +49,32 @@ int main(int argc, char** argv) {
         std::int64_t min_ms;
         std::int64_t max_ms;
     };
-    // Durations carried over from the device-only test.
+    // Durations of the Timer-A regen (regen_audio_assets.py); DAC SFX tails
+    // now run to their real release and 0x12 is a 60 s observation render.
     constexpr std::array<Expectation, 23> kMapped{{
         {0x00U, "audio.music.resource.000", 119900, 120100},
-        {0x10U, "audio.intro.title.stage-1", 14800, 14900},
-        {0x16U, "audio.field.effect-016", 2700, 2800},
-        {0x24U, "audio.menu.command-024", 2400, 2600},
+        {0x10U, "audio.intro.title.stage-1", 15851, 15911},
+        {0x16U, "audio.field.effect-016", 2843, 2903},
+        {0x24U, "audio.menu.command-024", 3358, 3418},
         {0x25U, "audio.effects.resource.037", 2050, 2200},
-        {0x1CU, "audio.effects.resource.028", 2450, 2510},
-        {0x1DU, "audio.effects.resource.029", 2780, 2850},
+        {0x1CU, "audio.effects.resource.028", 2353, 2413},
+        {0x1DU, "audio.effects.resource.029", 2455, 2515},
         {0x1EU, "audio.effects.resource.030", 2200, 2350},
-        {0x3FU, "audio.effects.resource.063", 2120, 2180},
-        {0x4AU, "audio.effects.resource.074", 2200, 2350},
+        {0x3FU, "audio.effects.resource.063", 2036, 2096},
+        {0x4AU, "audio.effects.resource.074", 2137, 2197},
         {0x4BU, "audio.effects.resource.075", 2100, 2300},
-        {0x4CU, "audio.effects.resource.076", 2200, 2300},
-        {0x4DU, "audio.effects.resource.077", 2100, 2130},
-        {0x4EU, "audio.effects.resource.078", 2100, 2130},
-        {0x32U, "audio.effects.resource.050", 2440, 2490},
-        {0x34U, "audio.effects.resource.052", 2490, 2540},
-        {0x35U, "audio.effects.resource.053", 2410, 2460},
-        {0x37U, "audio.effects.resource.055", 2790, 2850},
-        {0x3AU, "audio.effects.resource.058", 2700, 2710},
-        {0x51U, "audio.effects.resource.081", 2530, 2600},
+        {0x4CU, "audio.effects.resource.076", 2112, 2172},
+        {0x4DU, "audio.effects.resource.077", 2035, 2095},
+        {0x4EU, "audio.effects.resource.078", 2052, 2112},
+        {0x32U, "audio.effects.resource.050", 2517, 2577},
+        {0x34U, "audio.effects.resource.052", 3944, 4004},
+        {0x35U, "audio.effects.resource.053", 5381, 5441},
+        {0x37U, "audio.effects.resource.055", 2556, 2616},
+        {0x3AU, "audio.effects.resource.058", 3221, 3281},
+        {0x51U, "audio.effects.resource.081", 2453, 2513},
         {0x5CU, "audio.intro.sega-logo-shock-sequence", 4700, 4900},
         {0x5DU, "audio.intro.shadowrun-logo-reveal-sequence", 2680, 2720},
-        {0x12U, "audio.intro.title.stage-3", 20900, 21200},
+        {0x12U, "audio.intro.title.stage-3", 60036, 60096},
     }};
     for (const auto& expected : kMapped) {
         const auto status = playback.playback_status_for_event(expected.event);
@@ -115,11 +116,13 @@ int main(int argc, char** argv) {
         sega_starts += event.op == AudioOp::start && event.id == 0x5CU ? 1U : 0U;
     check(sega_starts == 1U && playback.playing_channel_count_for_event(0x5CU) == 1U,
           "60 source requests start the composite once");
+    // 0x2C was silent only because the extractor lacked YM Timer A; it is a
+    // DAC sample slot and now renders.
     playback.play_sfx(0x2CU);
-    check(playback.alias_for_event(0x2CU).empty() &&
-              playback.playing_channel_count_for_event(0x2CU) == 0U &&
-              playback.events().back() == AudioEvent{playback.mixer().frame(), AudioOp::start, 0x2CU},
-          "silent slot 0x2C is logged but plays nothing");
+    playback.advance_frame();
+    check(!playback.alias_for_event(0x2CU).empty() &&
+              playback.playing_channel_count_for_event(0x2CU) == 1U,
+          "DAC slot 0x2C plays");
     playback.play_music(0x06U);
     check(playback.mixer().music_id() == 0x06U, "field music 0x06 plays");
     playback.fade_out();

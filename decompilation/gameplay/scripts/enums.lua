@@ -80,6 +80,14 @@ E.SoundId = {   -- played through 0x530DE (doc 10) [C]
     TARGET_HEADING = 0x4D, TARGET_HEADING_ALT = 0x4E, PROJECTILE_IMPACT = 0x3C,
     -- Remaining rendered sequence ids (doc 10 §5). Names follow the caller;
     -- [H] where only the caller region is known.
+    -- YM DAC sample effects (Timer A paced, 0x02B9 wait); silent until the
+    -- offline extractor modelled the YM timers. Callers not traced yet [H].
+    DAC_SAMPLE_19 = 0x19, DAC_SAMPLE_1B = 0x1B, DAC_SAMPLE_2C = 0x2C, DAC_SAMPLE_2D = 0x2D,
+    DAC_SAMPLE_2E = 0x2E, DAC_SAMPLE_2F = 0x2F, DAC_SAMPLE_40 = 0x40, DAC_SAMPLE_41 = 0x41,
+    DAC_SAMPLE_42 = 0x42, DAC_SAMPLE_43 = 0x43, DAC_SAMPLE_44 = 0x44, DAC_SAMPLE_45 = 0x45,
+    DAC_SAMPLE_46 = 0x46, DAC_SAMPLE_47 = 0x47, DAC_SAMPLE_48 = 0x48, DAC_SAMPLE_49 = 0x49,
+    DAC_SAMPLE_4F = 0x4F, DAC_SAMPLE_56 = 0x56, DAC_SAMPLE_57 = 0x57, DAC_SAMPLE_58 = 0x58,
+    DAC_SAMPLE_59 = 0x59, DAC_SAMPLE_5A = 0x5A,
     FIELD_EFFECT_16 = 0x16,          -- boot intro stops it via 0x530D2 at 0x5D7F6/0x5D80E [C]; ordinary FF 10 start [H role]
     MATRIX_NODE_14 = 0x14, MATRIX_NODE_15 = 0x15, MATRIX_NODE_17 = 0x17,   -- 0x1B5BC-0x1CB90 node actions [H per id]
     MATRIX_18 = 0x18,                -- 0x18584/0x185C8/0x1A482/0x1A674 [C sites]

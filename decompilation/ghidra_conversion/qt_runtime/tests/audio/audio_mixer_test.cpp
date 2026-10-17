@@ -98,15 +98,16 @@ std::vector<std::int16_t> scripted_session(AudioResourceBank& bank,
 int main() {
     auto bank = make_bank();
     check(bank.error().empty(), "manifest loads: " + bank.error());
-    check(bank.rows().size() == 65U, "65 rendered ids in manifest");
+    check(bank.rows().size() == 94U, "all 94 table ids render");
     for (const auto& [id, row] : bank.rows()) {
         check(bank.frame_count(id).has_value(),
               "id " + std::to_string(id) + " resolves to a 44.1 kHz FLAC (" + row.alias + ")");
         check(!row.enum_name.empty() && row.enum_name != "-",
               "id " + std::to_string(id) + " has an enum name");
     }
-    check(bank.row(0x11U) == nullptr && bank.row(0x2CU) == nullptr,
-          "silent table slots 0x11/0x2C stay unmapped");
+    // 0x11 and 0x2C wait on YM Timer A; the timer-aware extractor renders them.
+    check(bank.row(0x11U) != nullptr && bank.row(0x2CU) != nullptr,
+          "Timer-A slots 0x11/0x2C are mapped");
 
     // Determinism and the 735-sample frame.
     std::vector<AudioEvent> events_a, events_b;
