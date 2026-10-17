@@ -317,9 +317,9 @@ int main() {
         text.catalog.attributes_upgrade_maximum_level_message !=
             "You are at the maximum level." ||
         text.catalog.attributes_upgrade_mage_only_message !=
-            "This skill is for mages" ||
+            "This skill is for mages\n   and shaman only!" ||
         text.catalog.attributes_upgrade_insufficient_karma_message !=
-            "You do not have enough" ||
+            "You do not have enough\nkarma for this upgrade." ||
         text.catalog.attributes_upgrade_prompt != "Upgrade?" ||
         text.catalog.item_display_text_ids != expected_item_display_text_ids ||
         text.catalog.power_labels != expected_power_labels ||

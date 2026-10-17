@@ -19365,6 +19365,28 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: Karma Screen did not enter the separate upgrade route\n";
                     return 3;
                 }
+                // Lua Hotel.presentation().karma_load_black_frames: the child
+                // loads with a black display and ignores the pad meanwhile.
+                {
+                    const auto loading = capture(output / "karma-loading" /
+                                                 "actual.bmp");
+                    if (!field_scene.hotel_karma_screen_loading() ||
+                        loading.isNull() ||
+                        image_has_green_ink(loading, 0, 0, 320, 224)) {
+                        std::cerr << "field Hotel QA: Karma Screen did not load with a black display\n";
+                        return 3;
+                    }
+                    int load_frames = 0;
+                    while (field_scene.hotel_karma_screen_loading() &&
+                           load_frames < 64) {
+                        advance_field_frame();
+                        ++load_frames;
+                    }
+                    if (field_scene.hotel_karma_screen_loading()) {
+                        std::cerr << "field Hotel QA: Karma Screen load did not finish\n";
+                        return 3;
+                    }
+                }
                 mark_route("hotel-karma-upgrade", "A");
                 auto karma_spend = capture(output / "karma-spend" /
                                            "actual.bmp");
@@ -19618,12 +19640,13 @@ int main(int argc, char** argv) {
                 // fixed at 205 frames. The walk before it depends on the
                 // runner step (30 units since f6b950a9, ROM 0xBEC2), so the
                 // hold is checked relative to the contact frame. The three
-                // Hotel page-staging waits above add 3 + 3 + 3 frames.
-                constexpr std::uint32_t kHotelFramesAfterContact = 214U;
+                // Hotel page-staging waits above add 3 + 3 + 3 frames and
+                // the Karma Screen black load adds 14 more.
+                constexpr std::uint32_t kHotelFramesAfterContact = 228U;
                 if (route_frame != collision_frame + kHotelFramesAfterContact ||
                     returned_field_frame_30.isNull() ||
                     returned_field_frame_30 != field_only_frame_30) {
-                    std::cerr << "field Hotel QA: returned field did not stay clean through the 30-frame destination hold\n";
+                    std::cerr << "field Hotel QA: returned field did not stay clean through the 30-frame destination hold (frames after contact " << (route_frame - collision_frame) << ")\n";
                     return 3;
                 }
                 mark_route("hotel-checkout-returned-to-field",

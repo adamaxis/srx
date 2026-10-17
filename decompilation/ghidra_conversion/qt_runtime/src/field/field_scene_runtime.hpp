@@ -390,6 +390,9 @@ public:
     FieldDialogueAdvanceResult advance_stoker_dialogue_for_dump(
         std::uint16_t event_word);
     bool hotel_menu_open() const noexcept { return hotel_menu_.open(); }
+    bool hotel_karma_screen_loading() const noexcept {
+        return hotel_karma_skills_.is_open() && hotel_karma_load_frames_ > 0U;
+    }
     bool hotel_karma_screen_open() const noexcept {
         return hotel_karma_skills_.is_open();
     }
@@ -1661,6 +1664,8 @@ private:
     FieldCommandOverviewBridge command_overview_;
     CommandMenuKarmaViewRuntime command_overview_attributes_skills_{};
     HotelKarmaUpgradeRuntime hotel_karma_skills_{};
+    std::uint32_t hotel_karma_load_frames_ = 0U;
+    std::uint32_t hotel_karma_load_black_frames_ = 0U;
     scripting::GameScriptRuntime game_scripts_;
     GameSaveStore game_save_store_{};
     bool menu_route_active_ = false;

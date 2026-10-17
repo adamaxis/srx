@@ -5854,7 +5854,8 @@ int main() {
         "Pistols", "SMGs", "Shotguns", "Melee Combat", "Throwing",
         "Computer", "Biotech", "Electronics", "Reputation", "Negotiation",
         "Upgrade to       Cost", "You are at the maximum level.",
-        "This skill is for mages", "You do not have enough", "Upgrade?"}};
+        "This skill is for mages\\n   and shaman only!",
+        "You do not have enough\\nkarma for this upgrade.", "Upgrade?"}};
     bool attributes_skills_text_matches = attributes_skills_text.has_value() &&
         attributes_skills_text->title_key.empty() &&
         attributes_skills_text->choices.size() == kAttributesSkillsTextIds.size();

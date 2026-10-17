@@ -13321,6 +13321,10 @@ void FieldSceneRuntime::advance_frame() {
         ::shadowrun::ghidra_conversion::sample_controller_input(
             field_controller_sample_state_, field_controller_port_byte_);
         if (hotel_karma_skills_.is_open()) {
+            if (hotel_karma_load_frames_ > 0U) {
+                --hotel_karma_load_frames_;
+                return;
+            }
             (void)process_hotel_karma_screen_events(
                 field_controller_sample_state_.events);
             return;
@@ -14478,9 +14482,12 @@ bool FieldSceneRuntime::load_hotel_menu_content() {
     };
     const auto status_text_delay = timing("status_text_delay_frames");
     const auto options_redraw = timing("options_redraw_frames");
-    if (!status_text_delay.has_value() || !options_redraw.has_value()) {
+    const auto karma_load = timing("karma_load_black_frames");
+    if (!status_text_delay.has_value() || !options_redraw.has_value() ||
+        !karma_load.has_value()) {
         return fail("Hotel presentation timing is not numeric");
     }
+    hotel_karma_load_black_frames_ = *karma_load;
     hotel_menu_.set_presentation_timing(*status_text_delay, *options_redraw);
     const auto text_keys = game_scripts_.string_map("hotel", "text_keys");
     if (!text_keys.has_value()) {
@@ -14840,6 +14847,7 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
         break;
     case HotelMenuEvent::karma_screen_opened:
         hotel_karma_skills_.open(active_runner_record());
+        hotel_karma_load_frames_ = hotel_karma_load_black_frames_;
         source_boundary("field.hotel.karma_screen.opened");
         break;
     case HotelMenuEvent::mode_action:
@@ -14863,6 +14871,10 @@ HotelMenuEvent FieldSceneRuntime::advance_hotel_menu_for_dump(
         return HotelMenuEvent::waiting;
     }
     if (hotel_karma_skills_.is_open()) {
+        if (hotel_karma_load_frames_ > 0U) {
+            --hotel_karma_load_frames_;
+            return HotelMenuEvent::waiting;
+        }
         (void)process_hotel_karma_screen_events(events);
         return HotelMenuEvent::waiting;
     }
@@ -16326,10 +16338,12 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
     const auto& selected = selected_attribute_skill_cell(
         grid, menu_state.cursor);
     if (selected.label_index <
-        field_menu_text_.attribute_skill_labels.size()) {
+        field_menu_text_.attribute_skill_descriptions.size()) {
+        // 0xC1B70 description, three 8-px rows from (24,168) [C: emulator
+        // run3 8600 rows 168/176/184].
         draw_hotel_menu_text(
             painter, 24, 168,
-            field_menu_text_.attribute_skill_labels[selected.label_index],
+            field_menu_text_.attribute_skill_descriptions[selected.label_index],
             HotelMenuPaletteLine::checkout);
     }
 
@@ -18138,6 +18152,12 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
         return;
     }
     if (hotel_karma_skills_.is_open()) {
+        if (hotel_karma_load_frames_ > 0U) {
+            // The Karma child loads with the display black (Lua timing).
+            painter.fillRect(QRect(0, 0, 320, 224), Qt::black);
+            apply_palette_fade();
+            return;
+        }
         paint_attributes_skills_menu(painter,
                                      hotel_karma_skills_.controller());
         apply_palette_fade();

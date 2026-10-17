@@ -32,10 +32,13 @@ end
 -- return to Options (0xCF4E after 0xEF08 or the Check Out No path) keeps
 -- the previous page for 4 frames (emulator press +8200 -> Options +8204,
 -- No +8400 -> +8404). Options -> Check Out (0xDA6A) has no redraw. [C]
+-- Karma Screen loads with the display black: A at +8560, black 8562-8574,
+-- partly drawn at 8576, complete at 8578 (emulator run3) [C].
 function Hotel.presentation()
     return {
         status_text_delay_frames = "4",
         options_redraw_frames = "4",
+        karma_load_black_frames = "15",
     }
 end
 

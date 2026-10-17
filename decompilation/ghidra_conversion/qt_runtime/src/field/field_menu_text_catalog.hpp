@@ -136,6 +136,9 @@ struct FieldMenuTextCatalog {
         attribute_skill_labels{};
     std::array<std::string, kAttributesSkillsTextCount>
         attribute_skill_text_ids{};
+    // 0xC1B70: bottom-panel description for each label.
+    std::array<std::string, kAttributeSkillLabelCount>
+        attribute_skill_descriptions{};
     std::string attributes_upgrade_header;
     std::string attributes_upgrade_maximum_level_message;
     std::string attributes_upgrade_mage_only_message;

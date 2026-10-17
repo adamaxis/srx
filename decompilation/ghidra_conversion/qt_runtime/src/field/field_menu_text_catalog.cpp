@@ -347,6 +347,7 @@ bool is_field_menu_text_key(const std::string& key) {
         "command_overview.class.option.",
         "command_overview.posture.option.",
         "attributes_skills.text.option.",
+        "attributes_skills.description.",
     };
     for (const auto* prefix : prefixes) {
         if (key.rfind(prefix, 0U) == 0U) {
@@ -666,6 +667,13 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     result.catalog.attributes_upgrade_insufficient_karma_message =
         attributes_skills_text[23];
     result.catalog.attributes_upgrade_prompt = attributes_skills_text[24];
+    std::array<std::string, kAttributeSkillLabelCount> attribute_skill_ids{};
+    std::copy_n(result.catalog.attribute_skill_text_ids.begin(),
+                kAttributeSkillLabelCount, attribute_skill_ids.begin());
+    load_script_menu_labels(
+        scripts, "attributes_skills", "descriptions",
+        "attributes_skills.description", "catalog", attribute_skill_ids,
+        result.catalog.attribute_skill_descriptions, result.errors);
     std::array<std::string, kMagicSpellTextCount> magic_spell_names{};
     load_script_menu_labels(
         scripts, "magic", "spells", "magic.spells", "catalog",
@@ -959,6 +967,24 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
+        constexpr std::string_view kAttributeSkillDescriptionPrefix =
+            "attributes_skills.description.";
+        if (key.rfind(kAttributeSkillDescriptionPrefix, 0U) == 0U) {
+            const auto id = std::string_view(key).substr(
+                kAttributeSkillDescriptionPrefix.size());
+            bool known = false;
+            for (std::size_t label = 0U; label < kAttributeSkillLabelCount;
+                 ++label) {
+                known = known ||
+                        result.catalog.attribute_skill_text_ids[label] == id;
+            }
+            if (!known || value.empty()) {
+                result.errors.emplace_back(
+                    "unknown or empty Attributes/Skills description key: " +
+                    key);
+            }
+            continue;
+        }
         if (has_item_display_text_label_prefix(key)) {
             if (!is_item_display_text_label_key(
                     key, result.catalog.item_display_text_ids)) {
@@ -1098,6 +1124,12 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     for (auto& description : result.catalog.magic_spell_descriptions) {
         decode_newlines(description);
     }
+    for (auto& description : result.catalog.attribute_skill_descriptions) {
+        decode_newlines(description);
+    }
+    decode_newlines(result.catalog.attributes_upgrade_mage_only_message);
+    decode_newlines(
+        result.catalog.attributes_upgrade_insufficient_karma_message);
     for (auto& detail : result.catalog.notebook_mr_johnson_details) {
         decode_newlines(detail);
     }
