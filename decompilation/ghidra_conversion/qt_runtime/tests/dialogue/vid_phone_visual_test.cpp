@@ -917,6 +917,53 @@ int main(int argc, char** argv) {
         return 25;
     }
 
+    phone_funds = 5000U;
+    if (!expect(select_phone_option(runtime),
+                "Vid-Phone row was not selected for Macklemann") ||
+        !advance(runtime, 0x4000U,
+                 "A did not reopen the phonebook for Macklemann") ||
+        !advance(runtime, 0x0200U, "Down did not pass Quinton for Macklemann") ||
+        !advance(runtime, 0x0200U, "Down did not pass Alesandro for Macklemann") ||
+        !advance(runtime, 0x0200U, "Down did not pass Sharkey for Macklemann") ||
+        !advance(runtime, 0x0200U, "Down did not pass Kipp for Macklemann") ||
+        !advance(runtime, 0x0200U, "Down did not select Macklemann") ||
+        !advance(runtime, 0x4000U, "A did not open Macklemann's call") ||
+        !expect(runtime.panel().actor_name == "Sgt. Macklemann" &&
+                    runtime.panel().option_count == 2U &&
+                    runtime.panel().portrait_alias ==
+                        "dialogue.portraits.vid.phone.macklemann",
+                "Macklemann call did not use his contact name and portrait") ||
+        !save_panel(runtime, output_root, "54-macklemann-first-call") ||
+        !advance(runtime, 0x4000U, "A did not open Macklemann's services") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    panel_contains_text(runtime, "found out"),
+                "Macklemann's service menu did not show the ROM copy") ||
+        !save_panel(runtime, output_root, "55-macklemann-services") ||
+        !advance(runtime, 0x2000U, "C did not open the Hollywood badge offer") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    panel_contains_text(runtime, "5,000"),
+                "Hollywood offer did not show its ROM price and two choices") ||
+        !save_panel(runtime, output_root, "56-macklemann-hollywood-offer") ||
+        !advance(runtime, 0x4000U, "A did not pay for the Hollywood badge") ||
+        !expect(runtime.panel().option_count == 0U &&
+                    panel_contains_text(runtime, "Meet me at the gate") &&
+                    phone_funds == 0U &&
+                    phone_contacts_flags == ((1U << 2U) | (1U << 5U) |
+                                             (1U << 28U)),
+                "badge payment did not charge 5,000 and set FFFC2C bit 28") ||
+        !save_panel(runtime, output_root, "57-macklemann-gate") ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                    FieldDialogueAdvanceResult::prompt_advanced &&
+                    runtime.panel().option_count == 4U &&
+                    runtime.panel().portrait_alias.empty(),
+                "Macklemann's gate line did not return to the field menu")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 26;
+    }
+
     const auto returned_screen = render_panel(runtime);
     const auto stale_portrait_sample = returned_screen.pixelColor(40, 56);
     if (!expect(stale_portrait_sample.red() == 0 &&

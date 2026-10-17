@@ -682,6 +682,117 @@ bool test_wilma_service_tree(GameScriptRuntime& scripts,
                   "Wilma's closing sign-off did not end the call");
 }
 
+bool test_macklemann_service_tree(GameScriptRuntime& scripts,
+                                  std::uint32_t& contact_flags) {
+    contact_flags = 1U << 5U;
+    auto task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "call_macklemann_first_call" &&
+                    task.operation->menu->speaker_id == "vid_phone_macklemann",
+                "Macklemann call did not select his ROM contact profile")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("services");
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "macklemann_services",
+                "Macklemann Services did not open his three-choice menu")) {
+        return false;
+    }
+    auto profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() && profile->choices.size() == 3U &&
+                    scripts.dialogue_text(profile->title_key)->find(
+                        "found out") != std::string::npos,
+                "Macklemann's service menu is missing its ROM copy")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("security");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("more");
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "macklemann_security_pass",
+                "security pages did not reach the pass warning")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() &&
+                    scripts.dialogue_text(profile->title_key)->find(
+                        "sore thumb") != std::string::npos,
+                "security pass page is missing the ROM copy")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("services");
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "macklemann_services",
+                "security Services did not return to Macklemann's menu")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("avoid");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("more");
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "macklemann_avoid_decker",
+                "avoid pages did not reach the decker page")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("goodbye");
+    if (!expect(is_say(task, "disconnected", "vid_phone_macklemann"),
+                "info Goodbye did not disconnect with the ROM line")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "Macklemann's disconnect did not end the call")) {
+        return false;
+    }
+
+    task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    task = scripts.complete_native_menu_choice("services");
+    task = scripts.complete_native_menu_choice("hollywood");
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "macklemann_hollywood_offer",
+                "Hollywood choice did not open the 5,000 badge offer")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() && profile->choices.size() == 2U &&
+                    scripts.dialogue_text(profile->title_key)->find(
+                        "5,000") != std::string::npos,
+                "badge offer is missing its ROM price")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("yes");
+    if (!expect(is_service_call(task, "vid_phone.issue_hollywood_badge"),
+                "Yes did not call ROM command 0x76")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("insufficient");
+    if (!expect(is_say(task, "insufficient_funds", "vid_phone_macklemann"),
+                "short badge funds did not show Macklemann's ROM refusal")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "Macklemann's insufficient-funds page did not end the call")) {
+        return false;
+    }
+
+    task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    task = scripts.complete_native_menu_choice("services");
+    task = scripts.complete_native_menu_choice("hollywood");
+    task = scripts.complete_native_menu_choice("yes");
+    task = scripts.complete_native_service_result("hired");
+    if (!expect(is_say(task, "gate", "vid_phone_macklemann"),
+                "badge payment did not show the gate meeting line")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    return expect(task.status == ScriptTaskStep::Status::completed,
+                  "Macklemann's gate line did not end the call");
+}
+
 } // namespace
 
 int main() {
@@ -1155,6 +1266,10 @@ int main() {
     if (!test_wilma_service_tree(scripts, contact_flags)) {
         std::cerr << scripts.failure() << '\n';
         return 61;
+    }
+    if (!test_macklemann_service_tree(scripts, contact_flags)) {
+        std::cerr << scripts.failure() << '\n';
+        return 62;
     }
 
     contact_flags = 0x00FFU;

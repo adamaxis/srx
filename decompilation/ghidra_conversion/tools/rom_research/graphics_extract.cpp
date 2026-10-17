@@ -916,6 +916,21 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"vid_phone.wilma_temmenhoff.storage_full", 0x10BF30U},
         {"vid_phone.wilma_temmenhoff.program_result", 0x10BEE3U},
         {"vid_phone.wilma_temmenhoff.later", 0x11031DU},
+        // Sgt. Macklemann record 0x10BFAC. First and repeat both
+        // enter 0x10BFD2. Command 0x76 is 0x22BF6: 5,000 nuyen, then
+        // FFFC2C bit 28. Command 0x64 later clears that bit at the gate.
+        {"vid_phone.macklemann.services", 0x10C12CU},
+        {"vid_phone.macklemann.security_levels", 0x10C293U},
+        {"vid_phone.macklemann.security_patrols", 0x10C36FU},
+        {"vid_phone.macklemann.security_pass", 0x10C41DU},
+        {"vid_phone.macklemann.avoid_invisibility", 0x10C4D2U},
+        {"vid_phone.macklemann.avoid_cameras", 0x10C5B4U},
+        {"vid_phone.macklemann.avoid_decker", 0x10C665U},
+        {"vid_phone.macklemann.hollywood_offer", 0x10C6EDU},
+        {"vid_phone.macklemann.insufficient_funds", 0x10C20AU},
+        {"vid_phone.macklemann.disconnected", 0x10A7C4U},
+        {"vid_phone.macklemann.gate", 0x10C799U},
+        {"vid_phone.macklemann.option.hollywood", 0x104AFCU},
     };
 
     output << "-- Generated from the US ROM dialogue and menu text records.\n"

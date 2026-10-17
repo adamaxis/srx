@@ -137,6 +137,7 @@ void copy_text_segments(DialoguePanelView& view,
         view.text_segments[view.text_segment_count++] =
             resolved.substr(start, end - start);
         if (separator == std::string_view::npos) {
+            start = resolved.size();
             break;
         }
         start = separator + 1U;

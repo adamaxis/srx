@@ -22,6 +22,7 @@ enum class VidPhoneServiceAction : std::uint8_t {
     purchase_smart_goggles,
     hire_sharkey,
     hire_macklemann,
+    issue_hollywood_badge,
 };
 
 enum class VidPhonePassageAction : std::uint8_t {
@@ -132,6 +133,7 @@ inline std::optional<VidPhoneSupplyOffer> vid_phone_supply_offer(
         return VidPhoneSupplyOffer{UsItemCode::smart_goggles, 3000U, 0U};
     case VidPhoneServiceAction::hire_sharkey:
     case VidPhoneServiceAction::hire_macklemann:
+    case VidPhoneServiceAction::issue_hollywood_badge:
         return std::nullopt;
     }
     return std::nullopt;
@@ -160,6 +162,9 @@ inline std::optional<VidPhoneServiceAction> vid_phone_service_action_for_id(
     if (service_id == "vid_phone.hire_macklemann") {
         return VidPhoneServiceAction::hire_macklemann;
     }
+    if (service_id == "vid_phone.issue_hollywood_badge") {
+        return VidPhoneServiceAction::issue_hollywood_badge;
+    }
     return std::nullopt;
 }
 
@@ -184,6 +189,23 @@ inline VidPhoneServiceResult apply_vid_phone_service(
     std::array<std::uint8_t, 8>& inventory_item_codes,
     std::array<std::uint8_t, 8>& inventory_phase_bytes,
     std::optional<std::uint32_t>& notebook_contacts_flags) noexcept {
+    // 0x22BF6 charges 5,000 and sets FFFC2C bit 28. The 0x03FFFFFF
+    // contact/call-history mask would drop that bit. Command 0x64
+    // clears it when the Hollywood gate plays.
+    if (action == VidPhoneServiceAction::issue_hollywood_badge) {
+        constexpr std::uint32_t kBadgePrice = 0x1388U;
+        constexpr std::uint32_t kHollywoodGateBit = 1U << 28U;
+        if (!funds.has_value() || !notebook_contacts_flags.has_value()) {
+            return VidPhoneServiceResult::unavailable;
+        }
+        if (*funds < kBadgePrice) {
+            return VidPhoneServiceResult::insufficient_funds;
+        }
+        *funds -= kBadgePrice;
+        *notebook_contacts_flags |= kHollywoodGateBit;
+        return VidPhoneServiceResult::hired;
+    }
+
     const auto contact_offer = [&action]()
         -> std::optional<std::pair<std::uint32_t, VidPhoneContactIndex>> {
         switch (action) {

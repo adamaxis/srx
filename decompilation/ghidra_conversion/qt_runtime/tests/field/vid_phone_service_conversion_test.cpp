@@ -498,5 +498,40 @@ int main() {
         return 36;
     }
 
+    std::array<std::uint8_t, 8> item_codes{};
+    std::array<std::uint8_t, 8> item_phases{};
+    std::optional<std::uint32_t> badge_flags = 1U << 5U;
+    funds = 4999U;
+    auto badge = apply_vid_phone_service(
+        VidPhoneServiceAction::issue_hollywood_badge, funds, item_codes,
+        item_phases, badge_flags);
+    if (!expect(badge == VidPhoneServiceResult::insufficient_funds &&
+                    funds == 4999U && badge_flags == (1U << 5U) &&
+                    vid_phone_service_script_result(badge) == "insufficient",
+                "short Hollywood badge funds changed the wallet or flags")) {
+        return 37;
+    }
+    funds = 5000U;
+    badge = apply_vid_phone_service(
+        VidPhoneServiceAction::issue_hollywood_badge, funds, item_codes,
+        item_phases, badge_flags);
+    if (!expect(badge == VidPhoneServiceResult::hired && funds == 0U &&
+                    badge_flags == ((1U << 5U) | (1U << 28U)) &&
+                    vid_phone_service_script_result(badge) == "hired",
+                "Hollywood badge did not charge 5,000 and set FFFC2C bit 28")) {
+        return 38;
+    }
+    badge_flags.reset();
+    funds = 5000U;
+    badge = apply_vid_phone_service(
+        VidPhoneServiceAction::issue_hollywood_badge, funds, item_codes,
+        item_phases, badge_flags);
+    if (!expect(badge == VidPhoneServiceResult::unavailable &&
+                    funds == 5000U &&
+                    !vid_phone_service_script_result(badge).has_value(),
+                "missing contact flags still issued the Hollywood badge")) {
+        return 39;
+    }
+
     return 0;
 }

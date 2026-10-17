@@ -59,7 +59,10 @@ Temmenhoff's record at `0x10B71E` follows commands `0x74`/`0x75`: both charge
 5,000, accept storage sized as rating 3, and store rating 3 for Rebound and
 Degrade. Her result nodes send Services back to the credstick page and
 Goodbye back to the service menu. The panel QA captures that offer, the
-download, and the sign-off. Its full-screen captures are source/runtime regression
+download, and the sign-off. Sgt. Macklemann's record at `0x10BFAC` follows
+command `0x76`: 5,000 nuyen sets `FFFC2C` bit 28 for the Hollywood gate and
+does not set contact bit 5. His information pages return to the service menu;
+Goodbye disconnects. The panel QA captures the badge offer and the gate line. Its full-screen captures are source/runtime regression
 evidence, not an independent Genesis comparison. The QA opens the field
 terminal through a controlled entry seam, so the physical map route into
 event 31 remains open. There is no independent longplay call frame; this hill

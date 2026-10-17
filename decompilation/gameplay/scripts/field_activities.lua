@@ -8,6 +8,7 @@ local AlesandroHobbs = require("vid_phone.alesandro_hobbs")
 local Sharkey = require("vid_phone.sharkey")
 local KippDavid = require("vid_phone.kipp_david")
 local WilmaTemmenhoff = require("vid_phone.wilma_temmenhoff")
+local Macklemann = require("vid_phone.macklemann")
 
 local function run_cursor_menu(menu_id, choices, initial_selection,
                                speaker_id, text_profile)
@@ -106,6 +107,8 @@ local function call_contact(contact)
             return KippDavid.services()
         elseif contact.id == "wilma_temmenhoff" then
             return WilmaTemmenhoff.services()
+        elseif contact.id == "macklemann" then
+            return Macklemann.services()
         end
         return "phone_services_not_converted"
     end

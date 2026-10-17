@@ -126,7 +126,7 @@ struct DialoguePanelView {
 
     // Source 0x80 separators can include blank paragraph rows. Keep enough
     // segments for complete dialogue text, including those blank rows.
-    std::array<std::string_view, 16> text_segments{};
+    std::array<std::string_view, 17> text_segments{};
     std::size_t text_segment_count = 0;
     std::array<DialoguePanelOption, 8> options{};
     std::size_t option_count = 0;

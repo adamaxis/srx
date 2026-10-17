@@ -627,6 +627,20 @@ wilma.events.later = {
     continuation_key = "",
 }
 
+local macklemann = speakers.vid_phone_macklemann
+macklemann.events.insufficient_funds = {
+    title_key = "vid_phone.macklemann.insufficient_funds",
+    continuation_key = "",
+}
+macklemann.events.disconnected = {
+    title_key = "vid_phone.macklemann.disconnected",
+    continuation_key = "",
+}
+macklemann.events.gate = {
+    title_key = "vid_phone.macklemann.gate",
+    continuation_key = "",
+}
+
 local quinton_prefix = "vid_phone.capt_quinton_jaymes."
 local function define_quinton_menu(id, text_id, option_keys)
     phone_profile[id] = {
@@ -843,6 +857,44 @@ define_wilma_menu("wilma_storage_full", "storage_full", {
 })
 define_wilma_menu("wilma_program_result", "program_result", {
     services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+
+local macklemann_prefix = "vid_phone.macklemann."
+local function define_macklemann_menu(id, text_id, option_keys)
+    phone_profile[id] = {
+        title_key = macklemann_prefix .. text_id,
+        choice_label_keys = option_keys,
+    }
+end
+
+define_macklemann_menu("macklemann_services", "services", {
+    security = "vid_phone.alesandro_hobbs.option.security_procedures",
+    avoid = "vid_phone.alesandro_hobbs.option.avoid_detection",
+    hollywood = macklemann_prefix .. "option.hollywood",
+})
+define_macklemann_menu("macklemann_security_levels", "security_levels", {
+    more = "vid_phone.option.more",
+})
+define_macklemann_menu("macklemann_security_patrols", "security_patrols", {
+    more = "vid_phone.option.more",
+})
+define_macklemann_menu("macklemann_security_pass", "security_pass", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+define_macklemann_menu("macklemann_avoid_invisibility", "avoid_invisibility", {
+    more = "vid_phone.option.more",
+})
+define_macklemann_menu("macklemann_avoid_cameras", "avoid_cameras", {
+    more = "vid_phone.option.more",
+})
+define_macklemann_menu("macklemann_avoid_decker", "avoid_decker", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+define_macklemann_menu("macklemann_hollywood_offer", "hollywood_offer", {
+    yes = "vid_phone.sharkey.option.confirm_purchase",
     goodbye = "vid_phone.option.goodbye",
 })
 
