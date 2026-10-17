@@ -640,8 +640,23 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             scripting::ScriptMenuInputMode::cursor;
     const bool hosted_list = hosted_choice_list_ &&
                              active_script_menu_.has_value();
+    // A closing speaker page (no MORE) is dismissed by any new press,
+    // D-pad included [C: emulator motel 'towels' page, each of
+    // Up/Down/Left/Right/A/B/C/Start closes it within 4 frames; the ROM
+    // routine is not traced, so other ui_say pages are H].
+    constexpr std::uint16_t kControllerDirectionEvents = 0x0F00U;
+    const bool closing_say_page =
+        active_script_operation_.has_value() &&
+        active_script_operation_->type ==
+            scripting::ScriptNativeOperation::Type::ui_say &&
+        !panel_.has_more;
+    const std::uint16_t accepted_events =
+        closing_say_page
+            ? static_cast<std::uint16_t>(kAnyDialogueEvent |
+                                         kControllerDirectionEvents)
+            : kAnyDialogueEvent;
     if (!cursor_menu && !hosted_list &&
-        (event_word & kAnyDialogueEvent) == 0U) {
+        (event_word & accepted_events) == 0U) {
         return FieldDialogueAdvanceResult::waiting_for_controller;
     }
     if (!panel_.source_complete) {
