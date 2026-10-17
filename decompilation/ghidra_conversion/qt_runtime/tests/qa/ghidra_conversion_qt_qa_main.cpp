@@ -2701,6 +2701,7 @@ int run_field_spell_effect_qa(
         }
         QImage first_phase;
         bool profile_phases_change_the_frame = false;
+        bool any_phase_visible = false;
         for (std::uint8_t phase = 0U; phase < effect.phase_count; ++phase) {
             if (!field_scene.set_field_spell_effect_for_dump(
                     effect.action_code, phase, true)) {
@@ -2741,10 +2742,15 @@ int run_field_spell_effect_qa(
                     max_y = std::max(max_y, y);
                 }
             }
+            // A small phase can sit entirely behind the player sprite now
+            // that the player is drawn at its ROM 0x8002 origin, so a
+            // zero-change phase is allowed; at least one phase must show.
+            any_phase_visible = any_phase_visible || changed_pixels > 0U;
             effect_frames_differ = effect_frames_differ &&
-                changed_pixels > 0U && changed_pixels < 900U &&
-                min_x >= 0 && max_x < 272 && min_y >= 0 &&
-                max_y < kSceneHeight;
+                changed_pixels < 900U &&
+                (changed_pixels == 0U ||
+                 (min_x >= 0 && max_x < 272 && min_y >= 0 &&
+                  max_y < kSceneHeight));
             if (phase == 0U) {
                 first_phase = image;
             } else if (image != first_phase) {
@@ -2760,7 +2766,7 @@ int run_field_spell_effect_qa(
                 field_hud_chrome_survives(image, asset_root);
         }
         effect_frames_differ = effect_frames_differ &&
-            profile_phases_change_the_frame;
+            profile_phases_change_the_frame && any_phase_visible;
     }
     field_scene.set_field_spell_effect_for_dump(0U, 0U, false);
 
@@ -17485,6 +17491,10 @@ int main(int argc, char** argv) {
                                        .active_runner_record()
                                        .animation_action_gate;
                 QImage projectile_clear_image;
+                // The spawn-frame spark sits under the player sprite at its
+                // ROM 0x8002 origin, so retirement is checked against the
+                // first travelling frame rather than the attack frame.
+                QImage projectile_first_image;
                 bool projectile_first_frame_visible = false;
                 std::ofstream projectile_animation_trace(
                     weapon_fire_dump_path / "projectile-animation.tsv",
@@ -17620,6 +17630,7 @@ int main(int argc, char** argv) {
                     }
                     if (delay_frame == 1U) {
                         projectile_first_frame_visible = differs_from_attack;
+                        projectile_first_image = delay_image;
                     }
                     if (delay_frame == 4U) {
                         projectile_clear_image = delay_image;
@@ -17634,7 +17645,8 @@ int main(int argc, char** argv) {
                 if (!projectile_first_frame_visible ||
                     !primary_motion_observed || !primary_ended ||
                     projectile_clear_image.isNull() ||
-                    same_full_frame(fire_actual, projectile_clear_image)) {
+                    same_full_frame(projectile_first_image,
+                                    projectile_clear_image)) {
                     std::cerr << "field player action dump: whole-screen captures did not show the secondary animation, primary terrain travel, and primary retirement\n";
                     return 3;
                 }
@@ -18188,6 +18200,12 @@ int main(int argc, char** argv) {
                     << field_audio_events.size() << '\n';
 
                 QImage weapon_two_effect_clear;
+
+                // Spawn spark is under the player at its ROM origin; compare the
+
+                // first travelling frame with the cleared frame instead.
+
+                QImage weapon_two_effect_first;
                 bool weapon_two_effect_frame_visible = false;
                 for (std::uint16_t delay_frame = 1U; delay_frame <= 4U;
                      ++delay_frame) {
@@ -18234,6 +18252,7 @@ int main(int argc, char** argv) {
                     if (delay_frame == 1U) {
                         weapon_two_effect_frame_visible =
                             !same_full_frame(weapon_two_fire, frame);
+                        weapon_two_effect_first = frame;
                     }
                     if (delay_frame == 4U) {
                         weapon_two_effect_clear = frame;
@@ -18255,7 +18274,7 @@ int main(int argc, char** argv) {
                 }
                 if (!weapon_two_effect_frame_visible ||
                     weapon_two_effect_clear.isNull() ||
-                    same_full_frame(weapon_two_fire,
+                    same_full_frame(weapon_two_effect_first,
                                     weapon_two_effect_clear) ||
                     !weapon_two_fire_trace) {
                     std::cerr << "field player action dump: weapon 2's full-screen effect frames did not visibly advance and clear\n";
