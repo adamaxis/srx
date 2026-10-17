@@ -30,12 +30,13 @@ function BodyguardEscort.present_offer()
         "Escort my client to " .. route.destination.location_name .. " " ..
         route.destination.area_suffix ..
         "|You will be paid by my client upon safe arrival at the specified destination."
-    -- ROM 0x214CE invokes this handler-specific second description and
-    -- returns its text-only descriptor; the ghoul and courier branches instead
-    -- enter the shared 0x214F6 payment/confirmation screen.
+    -- ROM 0x214CE: F3E1E row FFFBED=1 has secondary handler 0x1EB32, which
+    -- prints F34E7/F34FD and returns text-only descriptor 0x1058B8 (buffer
+    -- FFB740 + "< MORE >" 0xFE5BF). Only rows with a zero secondary entry
+    -- (ghoul 0, courier 2, gang 3, recovery 4, Matrix 6) reach the shared
+    -- 0x214F6 payment/confirmation screen, so no Yes/No is offered here [C].
     game.ui.say_text(terms, false)
-    return game.modules.run_support.present_run_acceptance(
-        offer, "for escorting my client safely to the destination.")
+    return game.runs.registry.resolve_current_offer("yes")
 end
 
 function BodyguardEscort.resolve_field_event()

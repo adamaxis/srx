@@ -33,9 +33,14 @@ function EmployeeRecruitment.present_offer()
         ", wishes for a change in career.|" ..
         "Unfortunately, his current employer frowns upon this.||" ..
         "Assist my client with his professional growth and return here " ..
-        "to receive full compensation for your services.", true)
-    return game.modules.run_support.present_run_acceptance(
-        offer, "for assisting my client's professional growth.")
+        "to receive full compensation for your services.", false)
+    -- ROM 0x214CE: every recruitment initializer (5, 11, 12) canonicalises
+    -- FFFBED to 5 (0x1E810/0x1E81C/0x1E7D0), and F3E1E row 5 has secondary
+    -- handler 0x1E9AC. It prints F39EC ("Unfortunately ...") and returns
+    -- text-only descriptor 0x1058B8, never the 0x214F6 payment screen [C].
+    -- Accepting without a Yes/No mirrors the bodyguard row; what state 0x0A
+    -- after that descriptor does beyond accepting is not yet traced [H].
+    return game.runs.registry.resolve_current_offer("yes")
 end
 
 function EmployeeRecruitment.resolve_field_event()

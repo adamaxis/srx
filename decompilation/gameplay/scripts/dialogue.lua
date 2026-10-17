@@ -1110,6 +1110,9 @@ Dialogue.vid_phone_contacts = vid_phone_contacts
 Dialogue.johnson_interaction_profiles = {
     ["gunderson.jump_house"] = {
         run_offer_context = E.RunOfferContext.JUMP_HOUSE,
+        -- ROM 0x106C99 "Well, ol' Gunderson's got a beauty for you." opens
+        -- the work branch before the offer (bfa3908 always said it here).
+        work_opening_event = "work-opening",
     },
     ["wanderer.vigore_jarl"] = {
         run_offer_context = E.RunOfferContext.WANDERER,
