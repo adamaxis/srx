@@ -287,6 +287,78 @@ int run_field_world_effect_repaint_qa(
     return 0;
 }
 
+// Field audio rules (doc 26 phases 1/3): scene-init music from profile
+// +0x40 through audio.lua, the Start-menu duck 0xB62 (op 0x20 level 8) and
+// its 0xB7A restore, and music on a resource-scene change.
+int run_field_audio_qa(FieldSceneRuntime& field_scene) {
+    const auto print = [](const auto& values) {
+        std::ostringstream text;
+        for (const auto value : values) {
+            text << " 0x" << std::hex << static_cast<unsigned>(value);
+        }
+        return text.str();
+    };
+    // New Game bootstraps scene 2; ROM profile 0x3232[2] +0x40 = 0x0F [C].
+    const std::vector<std::uint16_t> boot_music{
+        static_cast<std::uint16_t>(srx::MusicId::FIELD_0F)};
+    if (field_scene.field_music_requests() != boot_music) {
+        std::cerr << "field audio QA: bootstrap music requests ="
+                  << print(field_scene.field_music_requests()) << "\n";
+        return 1;
+    }
+    if (!field_scene.open_command_overview_for_dump()) {
+        std::cerr << "field audio QA: Start menu did not open\n";
+        return 1;
+    }
+    const std::vector<std::uint8_t> ducked{
+        static_cast<std::uint8_t>(srx::AudioTuning::START_MENU_DUCK)};
+    if (field_scene.field_attenuation_requests() != ducked) {
+        std::cerr << "field audio QA: Start-menu duck ="
+                  << print(field_scene.field_attenuation_requests()) << "\n";
+        return 1;
+    }
+    for (int frame = 0; frame < 10; ++frame) {
+        field_scene.advance_frame();
+    }
+    if (field_scene.field_attenuation_requests() != ducked) {
+        std::cerr << "field audio QA: volume restored while the menu is open\n";
+        return 1;
+    }
+    // Start leaves the route (Start exits are silent, doc 10 §5).
+    for (int attempt = 0; attempt < 8 && field_scene.command_overview_open();
+         ++attempt) {
+        field_scene.set_controller_port_byte(0x80U);
+        field_scene.advance_frame();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const std::vector<std::uint8_t> restored{ducked[0], 0U};
+    if (field_scene.command_overview_open() ||
+        field_scene.field_attenuation_requests() != restored) {
+        std::cerr << "field audio QA: after Start exit attenuation ="
+                  << print(field_scene.field_attenuation_requests()) << "\n";
+        return 1;
+    }
+    if (field_scene.field_music_requests() != boot_music) {
+        std::cerr << "field audio QA: Start menu redraw restarted the song ="
+                  << print(field_scene.field_music_requests()) << "\n";
+        return 1;
+    }
+    if (!field_scene.initialize_world_activity_for_dump(2U, 0x1234U)) {
+        std::cerr << "field audio QA: world activity failed\n";
+        return 1;
+    }
+    field_scene.advance_frame();   // 0x2900 services FFE172 on the next tick
+    if (field_scene.field_music_requests().size() != 2U) {
+        std::cerr << "field audio QA: resource-scene change music ="
+                  << print(field_scene.field_music_requests()) << "\n";
+        return 1;
+    }
+    std::cout << "field_audio_qa=passed music=" << print(field_scene.field_music_requests())
+              << " fades=" << field_scene.field_fade_requests() << "\n";
+    return 0;
+}
+
 int run_field_world_activity_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -14490,6 +14562,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_movement_qa_path;
         std::optional<std::filesystem::path> field_transition_qa_path;
         std::optional<std::filesystem::path> field_world_activity_qa_path;
+        bool field_audio_qa = false;
         std::optional<std::filesystem::path> field_terrain_mark_qa_path;
         std::optional<std::filesystem::path>
             field_world_effect_repaint_qa_path;
@@ -14700,6 +14773,10 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_world_effect_repaint_qa_path =
                     std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-audio-qa") {
+                field_smoke = true;
+                field_audio_qa = true;
             }
             if (std::string(argv[index]) == "--field-world-activity-qa" &&
                 index + 1 < argc) {
@@ -16064,6 +16141,9 @@ int main(int argc, char** argv) {
             if (field_terrain_mark_qa_path.has_value()) {
                 return run_field_terrain_mark_qa(
                     field_scene, *field_terrain_mark_qa_path);
+            }
+            if (field_audio_qa) {
+                return run_field_audio_qa(field_scene);
             }
             if (field_world_activity_qa_path.has_value()) {
                 return run_field_world_activity_qa(

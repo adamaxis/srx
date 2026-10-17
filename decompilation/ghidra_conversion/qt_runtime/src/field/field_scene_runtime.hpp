@@ -267,6 +267,22 @@ public:
         std::uint16_t scene_reference);
     void advance_frame();
     void set_controller_nibble(std::uint8_t dpad_nibble) noexcept;
+    // Host audio entry points beyond play_sfx/stop_sfx (constructor
+    // callbacks): play_music 0x530EA, op 0x20 attenuation 0x5315E, and the
+    // 0x53126 fade. Each is optional.
+    void set_audio_host_callbacks(
+        std::function<void(std::uint16_t)> play_music,
+        std::function<void(std::uint8_t)> attenuate,
+        std::function<void()> fade_out);
+    const std::vector<std::uint16_t>& field_music_requests() const noexcept {
+        return field_music_requests_;
+    }
+    const std::vector<std::uint8_t>& field_attenuation_requests() const noexcept {
+        return field_attenuation_requests_;
+    }
+    std::size_t field_fade_requests() const noexcept {
+        return field_fade_requests_;
+    }
     void set_controller_port_byte(std::uint8_t port_byte) noexcept;
     void set_actor_heartbeat_observer(
         scripting::ScriptActorHeartbeatObserver observer);
@@ -1611,6 +1627,19 @@ private:
     std::function<void(std::string_view)> source_boundary_callback_;
     std::function<void(std::uint16_t)> source_audio_event_callback_;
     std::function<void(std::uint16_t)> source_audio_stop_callback_;
+    std::function<void(std::uint16_t)> source_music_callback_;
+    std::function<void(std::uint8_t)> source_attenuation_callback_;
+    std::function<void()> source_fade_callback_;
+    std::vector<std::uint16_t> field_music_requests_;
+    std::vector<std::uint8_t> field_attenuation_requests_;
+    std::size_t field_fade_requests_ = 0U;
+    bool start_menu_duck_active_ = false;
+    bool scene_music_latch_ = false; // FFE172
+    void service_scene_music_latch();
+    void request_scene_field_music();
+    void request_audio_attenuation(std::uint8_t level);
+    void request_audio_fade();
+    void restore_start_menu_duck();
     integration::FieldSessionBootstrapInput input_;
     integration::FieldSessionBootstrapState state_;
     std::unique_ptr<integration::FieldSessionSourceAssets>

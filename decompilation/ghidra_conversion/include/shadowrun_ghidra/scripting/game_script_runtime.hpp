@@ -1200,6 +1200,10 @@ public:
     std::optional<ScriptFieldEncounterOutcome> resolve_field_encounter(
         std::uint16_t scene_id, std::uint8_t first_roll,
         std::uint8_t second_roll);
+    // audio.lua scene_music: the music id Lua selects on scene init from
+    // scene profile word +0x40 (FFDE06). nullopt = no music / failure.
+    std::optional<std::uint16_t> scene_music(std::uint16_t scene_id,
+                                             std::uint16_t profile_music);
     std::optional<ScriptFieldEncounterTriggerAction>
     evaluate_field_encounter_trigger(
         const ScriptFieldEncounterTriggerInput& input);

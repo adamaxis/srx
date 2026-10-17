@@ -4458,6 +4458,51 @@ GameScriptRuntime::resolve_field_encounter(
     return outcome;
 }
 
+std::optional<std::uint16_t> GameScriptRuntime::scene_music(
+    const std::uint16_t scene_id, const std::uint16_t profile_music) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for scene music";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<std::uint16_t> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("audio")) {
+        return fail("audio.lua module is missing");
+    }
+    lua_getfield(state, -1, "scene_music");
+    if (!lua_isfunction(state, -1)) {
+        return fail("audio.scene_music is missing");
+    }
+    lua_remove(state, -2);
+    lua_createtable(state, 0, 2);
+    lua_pushinteger(state, scene_id);
+    lua_setfield(state, -2, "scene_id");
+    lua_pushinteger(state, profile_music);
+    lua_setfield(state, -2, "profile_music");
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("audio.scene_music failed");
+    }
+    std::optional<std::uint16_t> result;
+    if (lua_isinteger(state, -1)) {
+        const auto value = lua_tointeger(state, -1);
+        if (value < 0 || value > 0xFF) {
+            return fail("audio.scene_music returned an id outside 0..0xFF");
+        }
+        result = static_cast<std::uint16_t>(value);
+    } else if (!lua_isnil(state, -1)) {
+        return fail("audio.scene_music returned a non-integer");
+    }
+    lua_settop(state, stack_base);
+    return result;
+}
+
 std::optional<ScriptFieldEncounterTriggerAction>
 GameScriptRuntime::evaluate_field_encounter_trigger(
     const ScriptFieldEncounterTriggerInput& input) {
