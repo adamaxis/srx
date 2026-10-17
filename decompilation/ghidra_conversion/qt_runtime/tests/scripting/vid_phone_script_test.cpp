@@ -526,6 +526,162 @@ bool test_kipp_service_tree(GameScriptRuntime& scripts,
                   "Excalibur disconnect did not end Kipp's call");
 }
 
+bool test_wilma_service_tree(GameScriptRuntime& scripts,
+                             std::uint32_t& contact_flags) {
+    contact_flags = 1U << 4U;
+    auto task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "call_wilma_temmenhoff_first_call" &&
+                    task.operation->menu->speaker_id ==
+                        "vid_phone_wilma_temmenhoff",
+                "Wilma call did not select her ROM contact profile")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("services");
+    if (!expect(is_menu(task) && task.operation->menu->id == "wilma_credstick",
+                "Wilma Services did not open the credstick page")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("more");
+    if (!expect(is_menu(task) && task.operation->menu->id == "wilma_services",
+                "Wilma's service menu did not follow the credstick page")) {
+        return false;
+    }
+    auto profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() && profile->choices.size() == 3U &&
+                    scripts.dialogue_text(profile->title_key) != nullptr &&
+                    scripts.dialogue_text(profile->title_key)->find(
+                        "experimental software") != std::string::npos,
+                "Wilma's service menu did not resolve its three ROM choices")) {
+        return false;
+    }
+
+    task = scripts.complete_native_menu_choice("matrix");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("more");
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "wilma_matrix_result",
+                "Matrix pages did not reach the end-path result")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() &&
+                    scripts.dialogue_text(profile->title_key)->find(
+                        "end paths") != std::string::npos,
+                "Matrix result is missing the ROM end-path copy")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("services");
+    if (!expect(is_menu(task) && task.operation->menu->id == "wilma_credstick",
+                "Matrix Services did not return to Wilma's credstick page")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("goodbye");
+    if (!expect(is_say(task, "later", "vid_phone_wilma_temmenhoff"),
+                "service-menu Goodbye did not say the ROM sign-off")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "Wilma's sign-off did not end the call")) {
+        return false;
+    }
+
+    task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    task = scripts.complete_native_menu_choice("services");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("programs");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("more");
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "wilma_program_offer",
+                "program pages did not reach the 5,000 nuyen offer")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() && profile->choices.size() == 3U &&
+                    scripts.dialogue_text(profile->title_key)->find(
+                        "5,000") != std::string::npos,
+                "program offer is missing its ROM price")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("buy_rebound");
+    if (!expect(is_service_call(task, "vid_phone.purchase_wilma_rebound"),
+                "Rebound did not call ROM command 0x74")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("insufficient");
+    if (!expect(is_say(task, "insufficient_funds", "vid_phone_wilma_temmenhoff"),
+                "short program funds did not show Wilma's ROM refusal")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "Wilma's insufficient-funds page did not end the call")) {
+        return false;
+    }
+
+    task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    task = scripts.complete_native_menu_choice("services");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("programs");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("buy_degrade");
+    if (!expect(is_service_call(task, "vid_phone.purchase_wilma_degrade"),
+                "Degrade did not call ROM command 0x75")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("storage_full");
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "wilma_storage_full",
+                "full deck storage did not show the ROM cyberjock page")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("goodbye");
+    if (!expect(is_menu(task) && task.operation->menu->id == "wilma_services",
+                "storage Goodbye did not return to Wilma's service menu")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("programs");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("different_subject");
+    if (!expect(is_menu(task) && task.operation->menu->id == "wilma_services",
+                "different subject did not return to Wilma's service menu")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("programs");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("buy_rebound");
+    task = scripts.complete_native_service_result("program_installed");
+    if (!expect(is_menu(task) &&
+                    task.operation->menu->id == "wilma_program_result",
+                "program download did not show its ROM transfer page")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("services");
+    if (!expect(is_menu(task) && task.operation->menu->id == "wilma_credstick",
+                "program-result Services did not return to the credstick page")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("more");
+    task = scripts.complete_native_menu_choice("goodbye");
+    if (!expect(is_say(task, "later", "vid_phone_wilma_temmenhoff"),
+                "closing Goodbye did not say the ROM sign-off")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    return expect(task.status == ScriptTaskStep::Status::completed,
+                  "Wilma's closing sign-off did not end the call");
+}
+
 } // namespace
 
 int main() {
@@ -995,6 +1151,10 @@ int main() {
     if (!test_kipp_service_tree(scripts, contact_flags)) {
         std::cerr << scripts.failure() << '\n';
         return 60;
+    }
+    if (!test_wilma_service_tree(scripts, contact_flags)) {
+        std::cerr << scripts.failure() << '\n';
+        return 61;
     }
 
     contact_flags = 0x00FFU;

@@ -250,6 +250,8 @@ enum class VidPhoneDeckAction : std::uint8_t {
     purchase_excalibur,
     purchase_rebound,
     purchase_degrade,
+    purchase_wilma_rebound,
+    purchase_wilma_degrade,
 };
 
 enum class VidPhoneDeckResult : std::uint8_t {
@@ -270,6 +272,12 @@ inline std::optional<VidPhoneDeckAction> vid_phone_deck_action_for_id(
     }
     if (service_id == "vid_phone.purchase_degrade") {
         return VidPhoneDeckAction::purchase_degrade;
+    }
+    if (service_id == "vid_phone.purchase_wilma_rebound") {
+        return VidPhoneDeckAction::purchase_wilma_rebound;
+    }
+    if (service_id == "vid_phone.purchase_wilma_degrade") {
+        return VidPhoneDeckAction::purchase_wilma_degrade;
     }
     return std::nullopt;
 }
@@ -311,12 +319,23 @@ inline VidPhoneDeckResult apply_vid_phone_deck_service(
         return VidPhoneDeckResult::deck_installed;
     }
 
-    constexpr std::uint32_t kProgramPrice = 0x7530U;
-    if (*funds < kProgramPrice) {
+    const bool wilma_program =
+        action == VidPhoneDeckAction::purchase_wilma_rebound ||
+        action == VidPhoneDeckAction::purchase_wilma_degrade;
+    // Kipp 0x22A9E/0x22AF4: 30,000, size as rating 4, store 6.
+    // Wilma 0x22B4A/0x22BA0: 5,000, size as rating 3, store 3.
+    const auto price = wilma_program ? 0x1388U : 0x7530U;
+    const auto size_rating = static_cast<std::uint8_t>(wilma_program ? 3U : 4U);
+    const auto stored_rating =
+        static_cast<std::uint8_t>(wilma_program ? 3U : 6U);
+    if (*funds < price) {
         return VidPhoneDeckResult::insufficient_funds;
     }
     const auto program = static_cast<std::uint8_t>(
-        action == VidPhoneDeckAction::purchase_rebound ? 3U : 2U);
+        action == VidPhoneDeckAction::purchase_rebound ||
+                action == VidPhoneDeckAction::purchase_wilma_rebound
+            ? 3U
+            : 2U);
     auto record = deck.value_or(CyberdeckRecord{});
     MatrixStorageUsage usage{};
     usage.total_memory = record.storage_megapulses.value_or(0U);
@@ -329,19 +348,18 @@ inline VidPhoneDeckResult apply_vid_phone_deck_service(
                 (*record.data_files)[index].size);
         }
     }
-    // 0x22A9E/0x22AF4 size the download as rating 4, then store rating 6.
     // 0x19558's free-storage word is compared with signed BPL.
     const auto available = static_cast<std::int16_t>(
         calculate_matrix_storage_capacity(usage).available_memory);
     const auto required = static_cast<std::int16_t>(
-        matrix_program_storage_weight(program, 4U));
+        matrix_program_storage_weight(program, size_rating));
     if (available < required) {
         return VidPhoneDeckResult::insufficient_storage;
     }
-    *funds -= kProgramPrice;
+    *funds -= price;
     auto ratings =
         record.program_ratings.value_or(std::array<std::uint8_t, 12>{});
-    ratings[program] = 6U;
+    ratings[program] = stored_rating;
     record.program_ratings = ratings;
     deck = std::move(record);
     return VidPhoneDeckResult::program_installed;

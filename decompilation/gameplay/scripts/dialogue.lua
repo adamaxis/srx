@@ -617,6 +617,16 @@ kipp.events.disconnected = {
     continuation_key = "",
 }
 
+local wilma = speakers.vid_phone_wilma_temmenhoff
+wilma.events.insufficient_funds = {
+    title_key = "vid_phone.wilma_temmenhoff.insufficient_funds",
+    continuation_key = "",
+}
+wilma.events.later = {
+    title_key = "vid_phone.wilma_temmenhoff.later",
+    continuation_key = "",
+}
+
 local quinton_prefix = "vid_phone.capt_quinton_jaymes."
 local function define_quinton_menu(id, text_id, option_keys)
     phone_profile[id] = {
@@ -783,6 +793,55 @@ define_kipp_menu("kipp_storage_full", "storage_full", {
     goodbye = "vid_phone.option.goodbye",
 })
 define_kipp_menu("kipp_program_result", "program_result", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+
+local wilma_prefix = "vid_phone.wilma_temmenhoff."
+local function define_wilma_menu(id, text_id, option_keys)
+    phone_profile[id] = {
+        title_key = wilma_prefix .. text_id,
+        choice_label_keys = option_keys,
+    }
+end
+
+define_wilma_menu("wilma_credstick", "credstick", {
+    more = "vid_phone.option.more",
+})
+define_wilma_menu("wilma_services", "services", {
+    matrix = "vid_phone.kipp_david.option.matrix",
+    programs = "vid_phone.kipp_david.option.programs",
+    goodbye = "vid_phone.option.goodbye",
+})
+define_wilma_menu("wilma_matrix_intro", "matrix_intro", {
+    more = "vid_phone.option.more",
+})
+define_wilma_menu("wilma_matrix_companies", "matrix_companies", {
+    more = "vid_phone.option.more",
+})
+define_wilma_menu("wilma_matrix_sleaze", "matrix_sleaze", {
+    more = "vid_phone.option.more",
+})
+define_wilma_menu("wilma_matrix_result", "matrix_result", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+define_wilma_menu("wilma_program_intro", "program_intro", {
+    more = "vid_phone.option.more",
+})
+define_wilma_menu("wilma_program_degrade", "program_degrade", {
+    more = "vid_phone.option.more",
+})
+define_wilma_menu("wilma_program_offer", "program_offer", {
+    buy_rebound = "vid_phone.kipp_david.option.buy_rebound",
+    buy_degrade = "vid_phone.kipp_david.option.buy_degrade",
+    different_subject = "vid_phone.kipp_david.option.different_subject",
+})
+define_wilma_menu("wilma_storage_full", "storage_full", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+define_wilma_menu("wilma_program_result", "program_result", {
     services = "vid_phone.option.services",
     goodbye = "vid_phone.option.goodbye",
 })

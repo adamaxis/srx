@@ -899,6 +899,23 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"vid_phone.kipp_david.option.buy_degrade", 0x104982U},
         {"vid_phone.kipp_david.option.different_subject", 0x104817U},
         {"vid_phone.kipp_david.option.pay_for_deck", 0x103A7AU},
+        // Wilma Temmenhoff record 0x10B71E. Commands 0x74/0x75 are
+        // 0x22B4A and 0x22BA0. Both charge 5,000, size the download as
+        // rating 3, and store rating 3. Result nodes send Services to
+        // 0x10B75C and Goodbye to 0x10B778.
+        {"vid_phone.wilma_temmenhoff.credstick", 0x10B924U},
+        {"vid_phone.wilma_temmenhoff.services", 0x10BA03U},
+        {"vid_phone.wilma_temmenhoff.matrix_intro", 0x10BADDU},
+        {"vid_phone.wilma_temmenhoff.matrix_companies", 0x10BB68U},
+        {"vid_phone.wilma_temmenhoff.matrix_sleaze", 0x10BC4DU},
+        {"vid_phone.wilma_temmenhoff.matrix_result", 0x10BCB8U},
+        {"vid_phone.wilma_temmenhoff.program_intro", 0x10BD48U},
+        {"vid_phone.wilma_temmenhoff.program_degrade", 0x10BE03U},
+        {"vid_phone.wilma_temmenhoff.program_offer", 0x10BE9DU},
+        {"vid_phone.wilma_temmenhoff.insufficient_funds", 0x10BA82U},
+        {"vid_phone.wilma_temmenhoff.storage_full", 0x10BF30U},
+        {"vid_phone.wilma_temmenhoff.program_result", 0x10BEE3U},
+        {"vid_phone.wilma_temmenhoff.later", 0x11031DU},
     };
 
     output << "-- Generated from the US ROM dialogue and menu text records.\n"

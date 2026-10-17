@@ -436,5 +436,67 @@ int main() {
         return 29;
     }
 
+    if (!expect(vid_phone_deck_action_for_id(
+                    "vid_phone.purchase_wilma_rebound") ==
+                    VidPhoneDeckAction::purchase_wilma_rebound &&
+                    vid_phone_deck_action_for_id(
+                        "vid_phone.purchase_wilma_degrade") ==
+                    VidPhoneDeckAction::purchase_wilma_degrade,
+                "Wilma program ids did not map to commands 0x74 and 0x75")) {
+        return 30;
+    }
+    deck = CyberdeckRecord{};
+    deck->storage_megapulses = 26U;
+    deck->program_ratings = std::array<std::uint8_t, 12>{};
+    funds = 4999U;
+    deck_result = apply_vid_phone_deck_service(
+        VidPhoneDeckAction::purchase_wilma_rebound, funds, deck);
+    if (!expect(deck_result == VidPhoneDeckResult::insufficient_funds &&
+                    funds == 4999U && (*deck->program_ratings)[3] == 0U,
+                "short Wilma Rebound funds changed the wallet or rating")) {
+        return 31;
+    }
+    funds = 5000U;
+    deck_result = apply_vid_phone_deck_service(
+        VidPhoneDeckAction::purchase_wilma_rebound, funds, deck);
+    if (!expect(deck_result == VidPhoneDeckResult::insufficient_storage &&
+                    funds == 5000U && (*deck->program_ratings)[3] == 0U,
+                "26 Mp accepted Wilma's rating-3 Rebound size check")) {
+        return 32;
+    }
+    deck->storage_megapulses = 27U;
+    deck_result = apply_vid_phone_deck_service(
+        VidPhoneDeckAction::purchase_wilma_rebound, funds, deck);
+    if (!expect(deck_result == VidPhoneDeckResult::program_installed &&
+                    funds == 0U && (*deck->program_ratings)[3] == 3U,
+                "27 Mp did not store Wilma Rebound at rating 3")) {
+        return 33;
+    }
+    funds = 5000U;
+    deck_result = apply_vid_phone_deck_service(
+        VidPhoneDeckAction::purchase_wilma_degrade, funds, deck);
+    if (!expect(deck_result == VidPhoneDeckResult::insufficient_storage &&
+                    funds == 5000U && (*deck->program_ratings)[2] == 0U,
+                "stored rating-3 Rebound still left room for Degrade")) {
+        return 34;
+    }
+    deck->program_ratings = std::array<std::uint8_t, 12>{};
+    deck->storage_megapulses = 36U;
+    deck_result = apply_vid_phone_deck_service(
+        VidPhoneDeckAction::purchase_wilma_degrade, funds, deck);
+    if (!expect(deck_result == VidPhoneDeckResult::program_installed &&
+                    funds == 0U && (*deck->program_ratings)[2] == 3U,
+                "36 Mp did not store Wilma Degrade at rating 3")) {
+        return 35;
+    }
+    funds.reset();
+    deck_result = apply_vid_phone_deck_service(
+        VidPhoneDeckAction::purchase_wilma_rebound, funds, deck);
+    if (!expect(deck_result == VidPhoneDeckResult::unavailable &&
+                    !vid_phone_deck_script_result(deck_result).has_value(),
+                "missing wallet still produced a Wilma script result")) {
+        return 36;
+    }
+
     return 0;
 }

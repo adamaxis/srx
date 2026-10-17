@@ -54,7 +54,12 @@ commands `0x71`-`0x73`: 185,000 nuyen writes the Fairlight Excalibur bytes at
 `FFFBBE` (model 4, MPCP 12, Hardening 5, memory 500, storage 1000, load 100,
 response 3) and does not set `FF018F`; Rebound and Degrade cost 30,000, pass
 the rating-4 storage check at `0x19538`, and store rating 6. The panel QA
-captures his service menu, the deck offer, and the disconnect. Its full-screen captures are source/runtime regression
+captures his service menu, the deck offer, and the disconnect. Wilma
+Temmenhoff's record at `0x10B71E` follows commands `0x74`/`0x75`: both charge
+5,000, accept storage sized as rating 3, and store rating 3 for Rebound and
+Degrade. Her result nodes send Services back to the credstick page and
+Goodbye back to the service menu. The panel QA captures that offer, the
+download, and the sign-off. Its full-screen captures are source/runtime regression
 evidence, not an independent Genesis comparison. The QA opens the field
 terminal through a controlled entry seam, so the physical map route into
 event 31 remains open. There is no independent longplay call frame; this hill

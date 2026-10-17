@@ -856,6 +856,67 @@ int main(int argc, char** argv) {
         return 24;
     }
 
+    phone_funds = 5000U;
+    if (!expect(select_phone_option(runtime),
+                "Vid-Phone row was not selected for Wilma") ||
+        !advance(runtime, 0x4000U, "A did not reopen the phonebook for Wilma") ||
+        !advance(runtime, 0x0200U, "Down did not pass Quinton for Wilma") ||
+        !advance(runtime, 0x0200U, "Down did not pass Alesandro for Wilma") ||
+        !advance(runtime, 0x0200U, "Down did not pass Sharkey for Wilma") ||
+        !advance(runtime, 0x0200U, "Down did not select Wilma") ||
+        !advance(runtime, 0x4000U, "A did not open Wilma's call") ||
+        !expect(runtime.panel().actor_name == "Wilma Temmenhoff" &&
+                    runtime.panel().option_count == 2U,
+                "Wilma call did not use her contact name and two choices") ||
+        !save_panel(runtime, output_root, "47-wilma-first-call") ||
+        !advance(runtime, 0x4000U, "A did not open Wilma's credstick page") ||
+        !expect(runtime.panel().option_count == 1U &&
+                    panel_contains_text(runtime, "credstick"),
+                "Wilma's credstick page did not show the ROM copy") ||
+        !save_panel(runtime, output_root, "48-wilma-credstick") ||
+        !advance(runtime, 0x4000U, "A did not open Wilma's service menu") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    panel_contains_text(runtime, "experimental software"),
+                "Wilma's service menu did not show the program choice") ||
+        !save_panel(runtime, output_root, "49-wilma-services") ||
+        !advance(runtime, 0x1000U, "B did not open Wilma's programs") ||
+        !advance(runtime, 0x4000U, "A did not pass Wilma's Rebound page") ||
+        !advance(runtime, 0x4000U, "A did not open Wilma's 5,000 offer") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    panel_contains_text(runtime, "5,000"),
+                "Wilma's program offer did not show its ROM price") ||
+        !save_panel(runtime, output_root, "50-wilma-program-offer") ||
+        !advance(runtime, 0x4000U, "A did not buy Wilma's Rebound") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    panel_contains_text(runtime, "transferred") &&
+                    phone_funds == 0U && phone_deck.has_value() &&
+                    phone_deck->program_ratings.has_value() &&
+                    (*phone_deck->program_ratings)[3] == 3U,
+                "Wilma Rebound did not charge 5,000 and store rating 3") ||
+        !save_panel(runtime, output_root, "51-wilma-program-result") ||
+        !advance(runtime, 0x1000U,
+                 "B did not take the ROM Goodbye back to Wilma's menu") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    runtime.panel().actor_name == "Wilma Temmenhoff",
+                "program-result Goodbye did not return to Wilma's service menu") ||
+        !save_panel(runtime, output_root, "52-wilma-services-after-goodbye") ||
+        !advance(runtime, 0x2000U, "C did not leave Wilma's service menu") ||
+        !expect(runtime.panel().option_count == 0U &&
+                    panel_contains_text(runtime, "Chat with you later"),
+                "service-menu Goodbye did not show the ROM sign-off") ||
+        !save_panel(runtime, output_root, "53-wilma-later") ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                    FieldDialogueAdvanceResult::prompt_advanced &&
+                    runtime.panel().option_count == 4U &&
+                    runtime.panel().portrait_alias.empty(),
+                "Wilma's sign-off did not return to the field menu")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 25;
+    }
+
     const auto returned_screen = render_panel(runtime);
     const auto stale_portrait_sample = returned_screen.pixelColor(40, 56);
     if (!expect(stale_portrait_sample.red() == 0 &&
