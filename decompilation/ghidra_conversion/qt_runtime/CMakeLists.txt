@@ -404,6 +404,12 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_terrain_mark_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-terrain-mark-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-terrain-mark-qa")
+# World-effect FF2700/FF4700 writes repaint the changed 32x32 cell from a
+# donor cell with the same word pair (same rule as the terrain mark).
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_world_effect_repaint_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-world-effect-repaint-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-world-effect-repaint-qa")
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_world_activity_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-world-activity-qa

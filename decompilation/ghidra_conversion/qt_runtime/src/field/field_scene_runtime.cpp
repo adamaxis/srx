@@ -1701,21 +1701,8 @@ bool FieldSceneRuntime::project_field_world_interaction() {
         viewport_state_.alternate_render_pending = 1U;
     }
     if (effect.world_effect_x_dirty || effect.world_effect_y_dirty) {
-        auto& layer = effect.world_effect_y_dirty
-                          ? state_.field_scene_buffers.layer_b
-                          : state_.field_scene_buffers.layer_a;
-        for (const auto& write : effect.map_writes) {
-            if (write.offset < 0 || (write.offset & 1) != 0) {
-                source_boundary("field.world.layer_write_misaligned");
-                continue;
-            }
-            const auto word_index = static_cast<std::size_t>(write.offset / 2);
-            if (word_index >= layer.size()) {
-                source_boundary("field.world.layer_write_out_of_range");
-                continue;
-            }
-            layer[word_index] = write.value;
-        }
+        apply_world_effect_layer_writes(effect.world_effect_y_dirty,
+                                        effect.map_writes);
     }
     if (effect.auxiliary_entity.has_value()) {
         for (std::size_t index = 0; index < field_entity_table_occupancy_.size();
@@ -10329,6 +10316,45 @@ bool FieldSceneRuntime::mark_field_terrain_cell(const std::size_t cell) {
     return true;
 }
 
+std::size_t FieldSceneRuntime::apply_world_effect_layer_writes(
+    const bool layer_b_target, const std::vector<MapWordWrite>& writes) {
+    // World-effect writes land in FF4700 when the effect marks the Y layer
+    // dirty, otherwise in FF2700 (caller sets FFE100/FFE102). The Qt map is
+    // pre-rendered, so each changed cell is repainted from a donor cell that
+    // already shows the new (FF2700, FF4700) pair, exactly as R3 does for
+    // the 0x16760 terrain mark.
+    auto& layer = layer_b_target ? state_.field_scene_buffers.layer_b
+                                 : state_.field_scene_buffers.layer_a;
+    std::size_t repainted = 0U;
+    for (const auto& write : writes) {
+        if (write.offset < 0 || (write.offset & 1) != 0) {
+            source_boundary("field.world.layer_write_misaligned");
+            continue;
+        }
+        const auto word_index = static_cast<std::size_t>(write.offset / 2);
+        if (word_index >= layer.size()) {
+            source_boundary("field.world.layer_write_out_of_range");
+            continue;
+        }
+        layer[word_index] = write.value;
+        if (word_index >= field_map_cell_words_.size()) {
+            continue;   // outside the pre-rendered image (or no geometry)
+        }
+        const std::pair<std::uint16_t, std::uint16_t> shown =
+            field_map_cell_words_[word_index];
+        if (shown.first == state_.field_scene_buffers.layer_a[word_index] &&
+            shown.second == state_.field_scene_buffers.layer_b[word_index]) {
+            continue;   // the image already shows this pair
+        }
+        if (repaint_field_map_cell(word_index)) {
+            ++repainted;
+        } else {
+            source_boundary("field.world.map_write_without_donor");
+        }
+    }
+    return repainted;
+}
+
 void FieldSceneRuntime::reset_field_map_cell_words() {
     constexpr int kCellPixels = 32;
     field_map_cell_words_.clear();
@@ -10362,9 +10388,11 @@ bool FieldSceneRuntime::repaint_field_map_cell(const std::size_t cell) {
     if (field_map_cell_columns_ == 0U || cell >= field_map_cell_words_.size()) {
         return false;
     }
+    // Both words are read live: 0x16760 changes FF2700 and world effects can
+    // change either layer.
     const std::pair<std::uint16_t, std::uint16_t> wanted{
         state_.field_scene_buffers.layer_a[cell],
-        field_map_cell_words_[cell].second};
+        state_.field_scene_buffers.layer_b[cell]};
     std::optional<std::size_t> donor;
     for (std::size_t index = 0U; index < field_map_cell_words_.size();
          ++index) {

@@ -171,6 +171,121 @@ int run_field_terrain_mark_qa(qt_runtime::FieldSceneRuntime& field_scene,
     return 0;
 }
 
+// World-effect map writes (FSR apply_world_effect_layer_writes) repaint the
+// changed cell the same way as R3: the image cell must become an exact copy
+// of a donor cell with the new (FF2700, FF4700) pair, for a write into either
+// layer, and nothing else may change. A word with no donor keeps the pixels
+// and reports zero repaints.
+int run_field_world_effect_repaint_qa(
+    qt_runtime::FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    using shadowrun::ghidra_conversion::MapWordWrite;
+    constexpr int kCell = 32;
+    std::filesystem::create_directories(output);
+    const auto columns = field_scene.field_map_columns_for_dump();
+    const QImage first = field_scene.field_map_for_dump().convertToFormat(
+        QImage::Format_RGB32);
+    if (columns == 0U || first.isNull()) {
+        std::cerr << "world-effect repaint QA: map cell geometry unavailable\n";
+        return 3;
+    }
+    const auto cells =
+        columns * static_cast<std::size_t>(first.height() / kCell);
+    const auto rect = [columns](const std::size_t index) {
+        return QRect(static_cast<int>(index % columns) * kCell,
+                     static_cast<int>(index / columns) * kCell, kCell, kCell);
+    };
+    // One write per layer. Target t and donor d differ only in the written
+    // layer's word, so the new pair at t is exactly d's pair.
+    for (const bool layer_b : {false, true}) {
+        const auto& a = field_scene.field_layer_a_for_dump();
+        const auto& b = field_scene.field_layer_b_for_dump();
+        std::optional<std::size_t> target;
+        std::optional<std::size_t> donor;
+        for (std::size_t t = 0U; t < cells && !target; ++t) {
+            for (std::size_t d = 0U; d < cells; ++d) {
+                const bool keep = layer_b ? a[d] == a[t] : b[d] == b[t];
+                const bool differ = layer_b ? b[d] != b[t] : a[d] != a[t];
+                if (d != t && keep && differ &&
+                    first.copy(rect(d)) != first.copy(rect(t))) {
+                    target = t;
+                    donor = d;
+                    break;
+                }
+            }
+        }
+        if (!target) {
+            std::cerr << "world-effect repaint QA: no donor pair for layer "
+                      << (layer_b ? "FF4700" : "FF2700") << '\n';
+            return 3;
+        }
+        const QImage before = field_scene.field_map_for_dump().convertToFormat(
+            QImage::Format_RGB32);
+        const auto value = layer_b ? b[*donor] : a[*donor];
+        const auto repainted =
+            field_scene.apply_world_effect_layer_writes_for_dump(
+                layer_b, {MapWordWrite{
+                             static_cast<std::int32_t>(*target * 2U), value}});
+        const auto& written = layer_b ? field_scene.field_layer_b_for_dump()
+                                      : field_scene.field_layer_a_for_dump();
+        const QImage after = field_scene.field_map_for_dump().convertToFormat(
+            QImage::Format_RGB32);
+        QImage expected = before;
+        {
+            QPainter painter(&expected);
+            painter.setCompositionMode(QPainter::CompositionMode_Source);
+            painter.drawImage(rect(*target).topLeft(),
+                              before.copy(rect(*donor)));
+        }
+        const auto shown = field_scene.field_map_cell_words_for_dump(*target);
+        if (repainted != 1U || written[*target] != value || after != expected ||
+            shown.first != field_scene.field_layer_a_for_dump()[*target] ||
+            shown.second != field_scene.field_layer_b_for_dump()[*target]) {
+            std::cerr << "world-effect repaint QA: layer "
+                      << (layer_b ? "FF4700" : "FF2700") << " target="
+                      << *target << " donor=" << *donor
+                      << " repainted=" << repainted << " diverged\n";
+            return 3;
+        }
+        // Writing the same word again is a no-op for the image.
+        if (field_scene.apply_world_effect_layer_writes_for_dump(
+                layer_b, {MapWordWrite{
+                             static_cast<std::int32_t>(*target * 2U), value}}) !=
+            0U) {
+            std::cerr << "world-effect repaint QA: unchanged word repainted\n";
+            return 3;
+        }
+        std::cout << "world_effect_repaint_" << (layer_b ? "b" : "a")
+                  << " target=" << *target << " donor=" << *donor << '\n';
+    }
+    // No donor: pick an FF2700 word that appears nowhere in the scene.
+    {
+        const auto& a = field_scene.field_layer_a_for_dump();
+        std::uint16_t unused = 0x7FFFU;
+        while (std::find(a.begin(), a.begin() + static_cast<std::ptrdiff_t>(cells),
+                         unused) != a.begin() + static_cast<std::ptrdiff_t>(cells)) {
+            --unused;
+        }
+        const QImage before = field_scene.field_map_for_dump();
+        const auto repainted =
+            field_scene.apply_world_effect_layer_writes_for_dump(
+                false, {MapWordWrite{0, unused}});
+        if (repainted != 0U || field_scene.field_layer_a_for_dump()[0] != unused ||
+            field_scene.field_map_for_dump() != before) {
+            std::cerr << "world-effect repaint QA: donorless write changed "
+                         "pixels or lost the word\n";
+            return 3;
+        }
+    }
+    const QImage final_map = field_scene.field_map_for_dump();
+    if (!final_map.save(QString::fromStdString((output / "actual.bmp").string()))) {
+        std::cerr << "world-effect repaint QA: could not save capture\n";
+        return 3;
+    }
+    std::cout << "field_world_effect_repaint_qa=passed\n";
+    return 0;
+}
+
 int run_field_world_activity_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -14340,6 +14455,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_world_activity_qa_path;
         std::optional<std::filesystem::path> field_terrain_mark_qa_path;
         std::optional<std::filesystem::path>
+            field_world_effect_repaint_qa_path;
+        std::optional<std::filesystem::path>
             field_random_encounter_spawn_qa_path;
         std::optional<std::filesystem::path>
             field_npc_item_action_qa_path;
@@ -14538,6 +14655,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_terrain_mark_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-world-effect-repaint-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_world_effect_repaint_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-world-activity-qa" &&
@@ -15895,6 +16019,10 @@ int main(int argc, char** argv) {
                 }
                 field_scene.set_field_interaction_mode_for_dump(
                     *interaction_mode);
+            }
+            if (field_world_effect_repaint_qa_path.has_value()) {
+                return run_field_world_effect_repaint_qa(
+                    field_scene, *field_world_effect_repaint_qa_path);
             }
             if (field_terrain_mark_qa_path.has_value()) {
                 return run_field_terrain_mark_qa(

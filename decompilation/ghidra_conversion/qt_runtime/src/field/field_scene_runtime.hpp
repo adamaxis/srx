@@ -525,6 +525,14 @@ public:
     const std::vector<std::uint16_t>& field_layer_a_for_dump() const noexcept {
         return state_.field_scene_buffers.layer_a;
     }
+    const std::vector<std::uint16_t>& field_layer_b_for_dump() const noexcept {
+        return state_.field_scene_buffers.layer_b;
+    }
+    // World-effect map writes (FSR apply path) with an explicit layer.
+    std::size_t apply_world_effect_layer_writes_for_dump(
+        const bool layer_b_target, const std::vector<MapWordWrite>& writes) {
+        return apply_world_effect_layer_writes(layer_b_target, writes);
+    }
     std::uint16_t field_normal_render_pending_for_dump() const noexcept {
         return viewport_state_.normal_render_pending;
     }
@@ -1240,6 +1248,8 @@ private:
     bool mark_field_terrain_cell(std::size_t cell);
     void reset_field_map_cell_words();
     bool repaint_field_map_cell(std::size_t cell);
+    std::size_t apply_world_effect_layer_writes(
+        bool layer_b_target, const std::vector<MapWordWrite>& writes);
     void record_field_activity_start(
         MovementModeTransitionContinuation continuation);
     std::int16_t evaluate_field_collision(std::uint16_t candidate_x,
