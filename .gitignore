@@ -91,3 +91,7 @@
 !/.vscode/launch.json
 !/.vscode/settings.json
 !/.vscode/tasks.json
+
+grok_bot/
+
+decompilation/ghidra_conversion/jump-house-visual-audit/
