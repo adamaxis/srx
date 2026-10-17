@@ -171,6 +171,9 @@ public:
                               : AudioPlaybackService::Output::device)),
           field_scene_runtime_([this](const std::string_view boundary) {
               record_debug_source_event(boundary);
+              // The New Game opening walk's arm/consume boundaries close the
+              // intro sequence; the Lua timeline holds them like 0x59C5E's.
+              queue_opening_presentation_hold(boundary);
           }, [this](const std::uint16_t event) {
               if (audio_playback_) {
                   audio_playback_->play_event(event);

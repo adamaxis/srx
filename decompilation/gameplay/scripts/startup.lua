@@ -99,6 +99,13 @@ function Startup.opening_intro_timeline()
         -- 0x59CFE: 0x53126, then the 0x07F0 field setup until its first
         -- picture (91 frames in the trace, 37 of them lag frames).
         ["0x59CFE.prepare_mode_entry"] = "black." .. (H.AUDIO_FADE_0x53126 + 91),
+        -- 0x07F0 field entry: the first field picture is up while 0x12F6
+        -- runs before the main loop starts Jake's opening walk (emulator:
+        -- field visible 30 frames before the first step). [C]
+        ["field.opening_auto_walk.armed"] = "freeze.30",
+        -- Motel-sign trigger: after the field fade, 0x53126 and the dialogue
+        -- resource load keep the screen black (emulator: 18 + 20 frames). [C]
+        ["field.opening_auto_walk.consumed"] = "black." .. (H.AUDIO_FADE_0x53126 + 20),
     }
 end
 
