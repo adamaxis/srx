@@ -478,5 +478,11 @@ int main(int argc, char** argv) {
         std::cerr << "network response did not include a valid debugger status\n";
         return 1;
     }
+    result = response(server.handle_line(R"({"cmd":"quit"})"));
+    if (!result.value(QStringLiteral("ok")).toBool() ||
+        !result.value(QStringLiteral("quitting")).toBool()) {
+        std::cerr << "quit command did not acknowledge debugger shutdown\n";
+        return 1;
+    }
     return 0;
 }

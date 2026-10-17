@@ -4,7 +4,9 @@
 Examples:
   python frame_debugger.py status
   python frame_debugger.py --port 47800 press a 2 1
+  python frame_debugger.py quit
   python frame_debugger.py break rng 'bounded\\.bound=6'
+  python frame_debugger.py replay-to --exe shadowrun_ghidra_conversion_qt.exe --session run.srxkey --frame 500 --dump frame.bmp
   python frame_debugger.py repl
 
 The client deliberately exposes only commands implemented by the active Qt
@@ -18,6 +20,7 @@ import json
 import os
 import shlex
 import socket
+import subprocess
 import sys
 from typing import Any
 
@@ -27,7 +30,7 @@ def build_request(words: list[str]) -> dict[str, Any]:
         raise ValueError("enter a debugger command")
 
     command, *args = words
-    if command in {"status", "pause", "resume", "hash", "list", "help"}:
+    if command in {"status", "pause", "resume", "hash", "list", "help", "quit"}:
         if args:
             raise ValueError(f"{command} takes no arguments")
         return {"cmd": command}
@@ -119,6 +122,39 @@ def send_request(connection: socket.socket, request: dict[str, Any]) -> str:
         stream.close()
 
 
+def replay_to(words: list[str]) -> int:
+    """Reconstruct an arbitrary recorded frame from the deterministic launch state."""
+    parser = argparse.ArgumentParser(
+        prog="frame_debugger.py replay-to",
+        description="Rebuild a recorded frame by replaying from the game launch state.",
+    )
+    parser.add_argument("--exe", required=True, help="Qt game executable")
+    parser.add_argument("--session", required=True, help=".srxkey input recording")
+    parser.add_argument("--frame", required=True, type=int, help="completed source frame")
+    parser.add_argument("--dump", required=True, help="output image path")
+    parser.add_argument("--assets", help="asset directory, if it is not auto-detected")
+    options = parser.parse_args(words)
+    if options.frame < 0:
+        parser.error("--frame must be nonnegative")
+    command = [
+        options.exe,
+        "--replay-input",
+        options.session,
+        "--headless-replay",
+        "--replay-to-frame",
+        str(options.frame),
+        "--dump-frame",
+        options.dump,
+    ]
+    if options.assets:
+        command.extend(["--assets", options.assets])
+    try:
+        return subprocess.run(command, check=False).returncode
+    except OSError as error:
+        print(f"frame debugger replay-to: {error}", file=sys.stderr)
+        return 2
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -135,6 +171,8 @@ def main(argv: list[str] | None = None) -> int:
     if not words:
         parser.print_help()
         return 2
+    if words[0] == "replay-to":
+        return replay_to(words[1:])
 
     try:
         request = None if words == ["repl"] else build_request(words)

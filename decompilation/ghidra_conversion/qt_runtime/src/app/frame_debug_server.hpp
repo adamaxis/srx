@@ -3,6 +3,7 @@
 #include "shadowrun_ghidra/debug/frame_debugger.hpp"
 
 #include <QByteArray>
+#include <QCoreApplication>
 #include <QHostAddress>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -12,6 +13,7 @@
 #include <QTcpSocket>
 #include <QString>
 #include <QStringList>
+#include <QTimer>
 
 #include <algorithm>
 #include <cmath>
@@ -94,6 +96,15 @@ public:
         }
         const auto request = document.object();
         const auto command = request.value(QStringLiteral("cmd")).toString();
+        if (command == QStringLiteral("quit")) {
+            if (const auto* application = QCoreApplication::instance()) {
+                QTimer::singleShot(100, application, &QCoreApplication::quit);
+            }
+            QJsonObject result;
+            result.insert(QStringLiteral("ok"), true);
+            result.insert(QStringLiteral("quitting"), true);
+            return encode(result);
+        }
         if (command == QStringLiteral("status")) {
             return encode(status_object());
         }
@@ -634,7 +645,7 @@ public:
             QJsonObject result;
             result.insert(QStringLiteral("ok"), true);
             result.insert(QStringLiteral("commands"),
-                          QStringLiteral("status pause resume step key press inspect hash dump events diverge break(frame|watch|event|rng|scene) delete list help"));
+                          QStringLiteral("status pause resume step key press inspect hash dump events diverge break(frame|watch|event|rng|scene) delete list help quit"));
             return encode(result);
         }
         return encode_error(QStringLiteral("unknown command"));

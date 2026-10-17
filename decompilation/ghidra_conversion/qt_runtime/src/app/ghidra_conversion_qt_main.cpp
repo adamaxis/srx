@@ -7,6 +7,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> explicit_assets;
         std::optional<std::filesystem::path> frame_dump;
         std::optional<std::uint16_t> debug_port;
+        std::optional<std::uint64_t> replay_to_frame;
         debug::InputLogConfig input_log;
         bool frame_debug_controls = false;
         bool headless_replay = false;
@@ -15,11 +16,12 @@ int main(int argc, char** argv) {
             if (argument == "--help") {
                 std::cout << "usage: shadowrun_ghidra_conversion_qt [--assets <asset-directory>] "
                              "[--debug-frames] [--record-input <file> | --replay-input <file>]\n"
-                             "                             [--headless-replay] [--dump-frame <file>] [--debug-port <port>]\n"
+                             "                             [--headless-replay] [--replay-to-frame <n>] [--dump-frame <file>] [--debug-port <port>]\n"
                              "  --debug-frames  Enable Pause, . (step), and Shift+. (step 60) controls.\n"
                              "  --record-input  Record accepted keyboard input for replay from a fresh launch.\n"
                              "  --replay-input  Replay a recorded keyboard session from a fresh launch.\n"
                              "  --headless-replay Run the replay to completion without a window or audio output.\n"
+                             "  --replay-to-frame Stop replay after N completed source frames (deterministic seek from launch).\n"
                              "  --dump-frame    Save the final replay frame as an image.\n"
                              "  --debug-port    Start the paused, headless local debugger on 127.0.0.1.\n";
                 return 0;
@@ -41,6 +43,21 @@ int main(int argc, char** argv) {
                     throw std::invalid_argument("--dump-frame requires a file path");
                 }
                 frame_dump = std::filesystem::path(argv[++index]);
+                continue;
+            }
+            if (argument == "--replay-to-frame") {
+                if (index + 1 >= argc) {
+                    throw std::invalid_argument(
+                        "--replay-to-frame requires a nonnegative frame number");
+                }
+                const std::string value(argv[++index]);
+                std::size_t consumed = 0U;
+                const auto frame = std::stoull(value, &consumed, 10);
+                if (consumed != value.size()) {
+                    throw std::invalid_argument(
+                        "--replay-to-frame requires a nonnegative frame number");
+                }
+                replay_to_frame = frame;
                 continue;
             }
             if (argument == "--debug-port") {
@@ -82,6 +99,10 @@ int main(int argc, char** argv) {
         if (frame_dump.has_value() && !headless_replay) {
             throw std::invalid_argument(
                 "--dump-frame is only available with --headless-replay");
+        }
+        if (replay_to_frame.has_value() && !headless_replay) {
+            throw std::invalid_argument(
+                "--replay-to-frame requires --headless-replay");
         }
         if (debug_port.has_value() &&
             input_log.mode == debug::InputLogConfig::Mode::replay) {
@@ -140,6 +161,10 @@ int main(int argc, char** argv) {
                 qt_argument_index += 2;
                 continue;
             }
+            if (argument == "--replay-to-frame") {
+                qt_argument_index += 2;
+                continue;
+            }
             if (argument == "--debug-port") {
                 qt_argument_index += 2;
                 continue;
@@ -177,12 +202,13 @@ int main(int argc, char** argv) {
         if (headless_replay) {
             std::string error;
             if (!window.run_headless_replay(
-                    frame_dump.value_or(std::filesystem::path{}), &error)) {
+                    frame_dump.value_or(std::filesystem::path{}),
+                    replay_to_frame, &error)) {
                 std::cerr << "headless replay: " << error << '\n';
                 return 2;
             }
-            std::cout << "headless replay completed "
-                      << window.source_frame_count_for_debug() << " source frames";
+            std::cout << "headless replay reached source frame "
+                      << window.source_frame_count_for_debug();
             if (frame_dump.has_value()) {
                 std::cout << "; final frame saved to "
                           << frame_dump->string();

@@ -290,16 +290,26 @@ public:
     // Runs a recorded session without presenting a widget or opening the host
     // audio device. The same source-frame and input handlers are used as live
     // replay; only the wall-clock pump and presentation are skipped.
-    bool run_headless_replay(const std::filesystem::path& frame_dump,
-                             std::string* error = nullptr) {
+    bool run_headless_replay(
+        const std::filesystem::path& frame_dump,
+        const std::optional<std::uint64_t> replay_to_frame = std::nullopt,
+        std::string* error = nullptr) {
         if (!input_log_.replaying()) {
             if (error != nullptr) {
                 *error = "headless replay requires --replay-input";
             }
             return false;
         }
+        const auto target_frame =
+            replay_to_frame.value_or(input_log_.recorded_frame_count());
+        if (target_frame > input_log_.recorded_frame_count()) {
+            if (error != nullptr) {
+                *error = "requested replay frame exceeds the recording length";
+            }
+            return false;
+        }
         host_frame_timer_.stop();
-        while (source_frame_index_ < input_log_.recorded_frame_count()) {
+        while (source_frame_index_ < target_frame) {
             apply_recorded_key_inputs();
             const auto completed_frame = source_frame_index_;
             advance_one_source_frame();
@@ -343,8 +353,10 @@ public:
 
         // Key-up events can be recorded on the frame boundary after the final
         // completed source frame. Preserve that boundary just as the live
-        // timer path does.
-        apply_recorded_key_inputs();
+        // timer path does. A seek stops before the next frame's input boundary.
+        if (target_frame == input_log_.recorded_frame_count()) {
+            apply_recorded_key_inputs();
+        }
         if (!frame_dump.empty()) {
             const auto frame = render_scene();
             if (!frame.save(QString::fromStdWString(frame_dump.wstring()))) {
