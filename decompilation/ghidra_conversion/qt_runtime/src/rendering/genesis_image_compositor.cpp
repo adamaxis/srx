@@ -116,6 +116,37 @@ QImage transition_genesis_cram_image(const QImage& image,
     return transitioned;
 }
 
+QImage transition_genesis_cram_image_from_level(
+    const QImage& image, const std::uint8_t start_level,
+    const std::uint8_t passes_completed) {
+    if (image.isNull()) {
+        return image;
+    }
+    const auto step = [start_level, passes_completed](const int expanded) {
+        const auto target = static_cast<int>(
+            (static_cast<unsigned>(expanded) * 7U + 127U) / 255U);
+        const auto start = static_cast<int>(std::min<std::uint8_t>(start_level, 7U));
+        const auto passes = static_cast<int>(passes_completed);
+        const auto level = target >= start ? std::min(target, start + passes)
+                                           : std::max(target, start - passes);
+        return (level << 5) | (level << 2) | (level >> 1);
+    };
+    auto transitioned = image;
+    for (int y = 0; y < transitioned.height(); ++y) {
+        for (int x = 0; x < transitioned.width(); ++x) {
+            auto pixel = transitioned.pixelColor(x, y);
+            if (pixel.alpha() == 0) {
+                continue;
+            }
+            pixel.setRed(step(pixel.red()));
+            pixel.setGreen(step(pixel.green()));
+            pixel.setBlue(step(pixel.blue()));
+            transitioned.setPixelColor(x, y, pixel);
+        }
+    }
+    return transitioned;
+}
+
 void make_field_hud_layer_transparent_outside_chrome(QImage& image) {
     // The extracted HUD plane bakes its color-zero cells as alpha 0
     // everywhere, including the six-tile chrome column at x=272. On the

@@ -1828,8 +1828,31 @@ private:
                 draw_opening_sprite(painter, request);
             }
         }
-        for (const auto& request : opening_text_) {
-            draw_opening_text(painter, request);
+        if (opening_scene_ == OpeningIntroScene::trivid &&
+            opening.stage == OpeningIntroStage::orchestrator_palette_fade_in) {
+            // 0x5AB4E's 0x12F6 steps the text line from the wilderness CRAM
+            // (level-1 grey) toward its green target, one level per two
+            // VBlanks [C: emulator 1,1,1 -> 1,6,1 over ten frames]. The
+            // tri-vid lines are copied directly, so only the text fades in.
+            QImage text_layer(kSceneWidth, kSceneHeight,
+                              QImage::Format_ARGB32_Premultiplied);
+            text_layer.fill(Qt::transparent);
+            {
+                QPainter text_painter(&text_layer);
+                for (const auto& request : opening_text_) {
+                    draw_opening_text(text_painter, request);
+                }
+            }
+            painter.drawImage(
+                0, 0,
+                transition_genesis_cram_image_from_level(
+                    text_layer, kTrividTextFadeStartLevel,
+                    static_cast<std::uint8_t>(
+                        opening.scene_palette_fade_vblank / 2U)));
+        } else {
+            for (const auto& request : opening_text_) {
+                draw_opening_text(painter, request);
+            }
         }
     }
 
@@ -1855,10 +1878,12 @@ private:
 
     void draw_intro_outline(QPainter& painter, const int x, const int y,
                             const int width, const int height) const {
-        // The source tile stream in 0x5B378 presents a fine amber focus box.
+        // The source tile stream in 0x5B378 presents a fine orange focus box.
         // Drawing whole tile-width bars turned it into a thick white frame.
         constexpr int kLine = 1;
-        const QColor outline(0xE0, 0xBB, 0x4C);
+        // CRAM levels (7,5,0) [C: emulator pixel 238,170,0], expanded with
+        // the same 3-bit rule as the rest of the host palette.
+        const QColor outline(0xFF, 0xB6, 0x00);
         if (width <= 0 || height <= 0) {
             return;
         }
@@ -2430,6 +2455,8 @@ private:
         title_circuit_transition_cache_{};
     // A CRAM component has eight levels (0..7); 0x1088/0x10D6 move one per pass.
     static constexpr std::uint8_t kGenesisCramLevels = 7U;
+    // Text CRAM level left by the wilderness palette before 0x5AB4E.
+    static constexpr std::uint8_t kTrividTextFadeStartLevel = 1U;
     // Typed view of Startup.opening_intro_timeline() (Lua owns the counts).
     enum class OpeningPresentationHoldKind : std::uint8_t { freeze, black };
     struct OpeningPresentationHold {

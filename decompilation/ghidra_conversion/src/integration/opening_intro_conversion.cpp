@@ -1432,7 +1432,9 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
         return OpeningIntroAdvanceResult::frame_advanced;
 
     case OpeningIntroStage::orchestrator_palette_fade_in:
-        begin_source_frame(state, callbacks);
+        // Inside 0x12F6 the VDP keeps the SAT 0x5AA96 uploaded, so the
+        // tri-vid figures are visible from the first frame [C: emulator].
+        begin_held_source_frame(state, callbacks);
         // 0x5AA96 samples before the loop, then latches only inside its loop.
         if (advance_scene_palette_fade(state, false)) {
             // 0x5AB48/0x5AB54 save and restore FFDF88 around 0x12F6, so the

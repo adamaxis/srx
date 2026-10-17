@@ -26,6 +26,12 @@ QImage transition_genesis_cram_image(const QImage& image,
                                      std::uint8_t passes_completed,
                                      bool toward_black);
 
+// 0x12F6 from a known CRAM state: every component starts at start_level and
+// moves one level per pass toward the image's own (target) colour.
+QImage transition_genesis_cram_image_from_level(const QImage& image,
+                                                std::uint8_t start_level,
+                                                std::uint8_t passes_completed);
+
 // The field HUD extraction is a full 320x224 view of the source HUD layer.
 // 0x334C installs a six-tile (48px) right-hand chrome column at x=272. The
 // plane's color-zero cells are baked as alpha 0 everywhere, so the host

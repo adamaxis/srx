@@ -2860,8 +2860,9 @@
                 const auto bottom_midpoint =
                     QPoint(outline.x + outline.width / 2,
                            outline.y + outline.height - 1);
+                // CRAM levels (7,5,0) [C: emulator pixel 238,170,0].
                 if (scene.pixelColor(bottom_midpoint) !=
-                    QColor(0xE0, 0xBB, 0x4C)) {
+                    QColor(0xFF, 0xB6, 0x00)) {
                     std::cerr
                         << "startup qa: Seattle focus box was not a fine "
                            "amber outline in phase "
