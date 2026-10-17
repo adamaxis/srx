@@ -1415,8 +1415,8 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     return true;
                 }
                 if (*decision == "run") {
-                    field_active_story_trigger_ = static_cast<std::uint8_t>(
-                        srx::StoryFlag::LANDMARK_MAP_TAKEN);  // service 22
+                    // redmond_barrens.run_vigore_search publishes FFDD64 = 22
+                    // (story_flags.begin_trigger) and marks the 0x5463C tail.
                     if (!field_dialogue_.open_gameplay_task(
                             "redmond_barrens", "run_vigore_search")) {
                         source_boundary(
@@ -1450,8 +1450,8 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
 
             game_scripts_.set_location_context(
                 "motel", "stoker_motel", "stoker.motel", "stoker");
-            field_active_story_trigger_ = static_cast<std::uint8_t>(
-                srx::StoryFlag::MOTEL_BILL_PAID);  // service 0
+            // michael_package.stoker_interaction publishes FFDD64 = 0
+            // through story_flags.begin_trigger before the conversation.
             if (!field_dialogue_.open_stoker_interaction()) {
                 source_boundary("field.dialogue.stoker_story_script_failed");
                 state.caller_exit_status = -1;
@@ -9881,8 +9881,8 @@ bool FieldSceneRuntime::bootstrap(
                     field_flag_mask(
                         FieldRenderEffectFlag::redmond_search_cleanup_29);
                 field_render_effect_flags_ &= ~render_cleanup;
-                field_exit_world_flags_ |= field_flag_mask(
-                    FieldWorldFactFlag::redmond_vigore_search_complete);
+                // FFFC1E bit 22 is marked by the script's 0x5463C tail
+                // (story_flags.finish_trigger) before this fact is written.
                 *group_item_flags_ |= group_item_flag_mask(
                     GroupItemFlag::landmark_map);
                 for (auto& record : field_party_roster_.records()) {

@@ -18,6 +18,7 @@
 -- story_trigger_active_<n> facts. Both read as nil while the session has not
 -- restored them.
 local E = require("enums")
+local Triggers = require("story_triggers")
 
 local StoryFlags = {}
 
@@ -125,6 +126,25 @@ function StoryFlags.apply_dialogue_command(command, options)
         return StoryFlags.mark_fixed(flag)
     end
     return StoryFlags.mark_fixed(mark)
+end
+
+-- 0x53A78: store the dispatched trigger index in FFDD64 before calling its
+-- handler. Only live table entries (story_triggers.lua) dispatch anything.
+function StoryFlags.begin_trigger(index)
+    assert(Triggers.is_live(index),
+        "FFDD64 only holds a live 0x15FD5C trigger index")
+    game.state["story_trigger_active_" .. index] = true
+    return index
+end
+
+-- The handler's own jsr 0x2196C after its conversation (triggers 4, 15, 18
+-- and 22). It marks the CURRENT FFDD64, which a fixed-index dialogue command
+-- may have moved. Returns the bit set, or nil when the handler has no tail.
+function StoryFlags.finish_trigger(index)
+    local live = Triggers.LIVE[index]
+    assert(live ~= nil, "not a live trigger")
+    if not live.tail or #live.tail == 0 then return nil end
+    return StoryFlags.mark_active_trigger()
 end
 
 return StoryFlags

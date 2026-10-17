@@ -1,4 +1,6 @@
 -- Michael's package is a quest hook that can run when a motel is entered.
+local E = require("enums")
+local StoryFlags = require("story_flags")
 local MichaelPackage = {}
 
 function MichaelPackage.motel_entry()
@@ -16,6 +18,9 @@ function MichaelPackage.motel_entry()
 end
 
 function MichaelPackage.stoker_interaction()
+    -- Title-service table entry 0 (0x53AB6): 0x53A78 stores the index in
+    -- FFDD64 before the handler runs; command 0x05's paid branch marks it.
+    StoryFlags.begin_trigger(E.StoryFlag.MOTEL_BILL_PAID)
     local phase = MichaelPackage.motel_entry()
     if phase == "opening_dialogue" then
         game.ui.say("arrival")
@@ -37,6 +42,11 @@ function MichaelPackage.stoker_interaction()
     if debt_choice == "debt-payment" then
         local result = game.services.call("michael_package", "pay_debt")
         if result == "paid" then
+            -- Command 0x05 paid branch: bsr 0x2196C at 0x21410 [C]. The C++
+            -- conversion of 0x213FA performs the same bset inside its funds
+            -- sequence (-250, mark, +500); this story-layer call is
+            -- idempotent and keeps FFFC1E bookkeeping on the Lua side.
+            StoryFlags.apply_dialogue_command(0x05, { paid = true })
             game.state.michael_debt_paid = true
             game.state.michael_package_collected = true
             game.ui.say("package-handoff")
