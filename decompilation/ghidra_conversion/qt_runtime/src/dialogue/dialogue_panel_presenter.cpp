@@ -251,17 +251,21 @@ void DialoguePanelPresenter::paint(QPainter& painter,
         return;
     }
 
-    for (std::size_t index = 0U; index < panel.option_count &&
-                                  index < panel.options.size();
-         ++index) {
+    // Button rows (A/B/C markers, 24px pitch from y=152) only exist for the
+    // three ROM buttons. Anything longer is drawn as a cursor list so a
+    // data-driven choice count can never index past option_markers_.
+    const bool cursor_rows = panel.cursor_selection ||
+                             panel.option_count > option_markers_.size();
+    const auto row_count = std::min(panel.option_count, panel.options.size());
+    for (std::size_t index = 0U; index < row_count; ++index) {
         const auto row_y = panel.compact_cursor_list
             ? 16 + static_cast<int>(index * 16U)
             : 152 + static_cast<int>(index *
-                (panel.cursor_selection && panel.option_count > 3U
-                     ? 16U : 24U));
+                (cursor_rows && row_count > option_markers_.size() ? 16U
+                                                                   : 24U));
         const auto cursor_x = panel.compact_cursor_list ? 80 : 24;
         const auto label_x = panel.compact_cursor_list ? 96 : 48;
-        if (panel.cursor_selection) {
+        if (cursor_rows) {
             if (index == panel.selected_option) {
                 // ROM 0xC376 writes the selected-row cursor tile. Use its
                 // extracted 0x5FF sprite instead of drawing a text glyph.

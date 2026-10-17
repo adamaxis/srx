@@ -136,6 +136,9 @@ private:
     std::optional<scripting::ScriptNativeOperation>
         active_script_operation_;
     std::optional<scripting::ScriptMenuDefinition> active_script_menu_;
+    // A button-choice menu with more rows than button_choice_limit: the host
+    // moves a cursor over the rows and A/B/C confirm the highlighted row.
+    bool hosted_choice_list_ = false;
     bool script_task_waiting_ = false;
     std::optional<std::uint8_t> pending_matrix_entry_system_id_;
     StokerMotelArrivalCommandCallbacks arrival_command_callbacks_;

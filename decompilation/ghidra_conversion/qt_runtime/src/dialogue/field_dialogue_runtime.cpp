@@ -248,6 +248,7 @@ bool FieldDialogueRuntime::open_stoker_prompt(
     hotel_options_menu_follows_ = false;
     active_script_operation_.reset();
     active_script_menu_.reset();
+    hosted_choice_list_ = false;
     StokerMotelPromptView source_view;
     if (prompt == StokerMotelPromptId::manager_greeting ||
         prompt == StokerMotelPromptId::manager_greeting_with_package) {
@@ -352,6 +353,7 @@ bool FieldDialogueRuntime::present_script_operation(
     active_prompt_ = prompt;
     active_script_operation_ = operation;
     active_script_menu_.reset();
+    hosted_choice_list_ = false;
     script_task_waiting_ = true;
     if (operation.type == scripting::ScriptNativeOperation::Type::ui_say) {
         if (!operation.dialogue.has_value()) {
@@ -457,17 +459,22 @@ bool FieldDialogueRuntime::present_script_operation(
             return open_source_boundary(
                 "Lua cursor menu selected an index outside its choices");
         }
+        hosted_choice_list_ =
+            menu.input_mode == scripting::ScriptMenuInputMode::button_choice &&
+            menu.choices.size() > menu.button_choice_limit;
+        const bool cursor_rows =
+            menu.input_mode == scripting::ScriptMenuInputMode::cursor ||
+            hosted_choice_list_;
+        const auto selected = hosted_choice_list_ ? 0U : menu.selected_index;
         if (!menu.inline_prompt) {
             panel_ = make_script_menu_panel_view(
-                speaker, menu.title_key, choices, resolver,
-                menu.input_mode == scripting::ScriptMenuInputMode::cursor,
-                menu.selected_index,
+                speaker, menu.title_key, choices, resolver, cursor_rows,
+                selected,
                 menu.layout == scripting::ScriptMenuLayout::compact_list);
         } else {
             panel_ = make_script_menu_prompt_panel_view(
-                speaker, menu.inline_text, choices, resolver,
-                menu.input_mode == scripting::ScriptMenuInputMode::cursor,
-                menu.selected_index);
+                speaker, menu.inline_text, choices, resolver, cursor_rows,
+                selected);
         }
         if (!panel_.source_complete) {
             return open_source_boundary(
@@ -504,6 +511,7 @@ bool FieldDialogueRuntime::present_script_operation(
             script_task_waiting_ = false;
             active_script_operation_.reset();
             active_script_menu_.reset();
+    hosted_choice_list_ = false;
             close();
             return true;
         }
@@ -605,6 +613,7 @@ bool FieldDialogueRuntime::open_source_boundary(std::string reason) {
     active_speaker_profile_.reset();
     active_script_operation_.reset();
     active_script_menu_.reset();
+    hosted_choice_list_ = false;
     script_task_waiting_ = false;
     hotel_options_menu_follows_ = false;
     if (source_boundary_callback_) {
@@ -629,7 +638,10 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     const bool cursor_menu = active_script_menu_.has_value() &&
         active_script_menu_->input_mode ==
             scripting::ScriptMenuInputMode::cursor;
-    if (!cursor_menu && (event_word & kAnyDialogueEvent) == 0U) {
+    const bool hosted_list = hosted_choice_list_ &&
+                             active_script_menu_.has_value();
+    if (!cursor_menu && !hosted_list &&
+        (event_word & kAnyDialogueEvent) == 0U) {
         return FieldDialogueAdvanceResult::waiting_for_controller;
     }
     if (!panel_.source_complete) {
@@ -739,6 +751,7 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         script_task_waiting_ = false;
         active_script_operation_.reset();
         active_script_menu_.reset();
+    hosted_choice_list_ = false;
         const bool returned_from_activity =
             task.result_id ==
             std::optional<std::string>{"return_from_world_activity"};
@@ -837,7 +850,22 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     }
 
     std::size_t option_index = 0U;
-    if ((event_word & kControllerAEvent) != 0U) {
+    if (hosted_list && panel_.option_count != 0U) {
+        const auto count = panel_.option_count;
+        if ((event_word & kControllerUpEvent) != 0U) {
+            panel_.selected_option = (panel_.selected_option + count - 1U) % count;
+            return FieldDialogueAdvanceResult::prompt_advanced;
+        }
+        if ((event_word & kControllerDownEvent) != 0U) {
+            panel_.selected_option = (panel_.selected_option + 1U) % count;
+            return FieldDialogueAdvanceResult::prompt_advanced;
+        }
+        if ((event_word & (kControllerAEvent | kControllerBEvent |
+                           kControllerCEvent)) == 0U) {
+            return FieldDialogueAdvanceResult::waiting_for_controller;
+        }
+        option_index = panel_.selected_option;
+    } else if ((event_word & kControllerAEvent) != 0U) {
         option_index = 0U;
     } else if ((event_word & kControllerBEvent) != 0U) {
         option_index = 1U;
@@ -879,6 +907,7 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         script_task_waiting_ = false;
         active_script_operation_.reset();
         active_script_menu_.reset();
+    hosted_choice_list_ = false;
         const bool hotel_options_requested =
             task.result_id == std::optional<std::string>{"hotel-options"};
         const bool phone_services_unconverted = task.result_id ==
@@ -1064,6 +1093,7 @@ void FieldDialogueRuntime::close() noexcept {
     active_speaker_profile_.reset();
     active_script_operation_.reset();
     active_script_menu_.reset();
+    hosted_choice_list_ = false;
     script_task_waiting_ = false;
     pending_matrix_entry_system_id_.reset();
     boundary_reason_.clear();

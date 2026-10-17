@@ -599,5 +599,51 @@ int main(const int argc, char** argv) {
         return 12;
     }
 
+    // Data-driven choice count: three button rows keep the ROM A/B/C
+    // markers at y=152/176/200; a fourth row must not index the
+    // three-entry marker array and is drawn as a cursor list instead.
+    {
+        const auto paint_rows = [&presenter](const std::size_t rows) {
+            DialoguePanelView view{};
+            view.open = true;
+            view.kind = DialoguePanelKind::field_npc_prompt;
+            view.option_count = rows;
+            for (std::size_t i = 0U; i < rows; ++i) {
+                view.options[i] = {DialoguePanelOptionRole::script_menu_choice,
+                                   "Choice",
+                                   DialoguePanelCommand::script_menu_choice};
+            }
+            QImage image(320, 224, QImage::Format_RGB32);
+            image.fill(Qt::black);
+            QPainter painter(&image);
+            presenter.paint(painter, view);
+            painter.end();
+            return image;
+        };
+        const auto nonblack = [](const QImage& image, int x, int y, int w,
+                                 int h) {
+            for (int yy = y; yy < y + h; ++yy) {
+                for (int xx = x; xx < x + w; ++xx) {
+                    if ((image.pixel(xx, yy) & 0x00FFFFFFU) != 0U) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
+        const auto three = paint_rows(3U);
+        const auto four = paint_rows(4U);
+        const auto eight = paint_rows(8U);
+        // Button mode: marker C at (16,200). Cursor-list mode: no marker
+        // column at x=16; the selected row's cursor is at (24,152).
+        if (!expect(nonblack(three, 16, 200, 16, 16)) ||
+            !expect(!nonblack(four, 16, 168, 8, 48)) ||
+            !expect(nonblack(four, 24, 152, 16, 16)) ||
+            !expect(nonblack(four, 48, 200, 32, 8)) ||
+            !expect(!nonblack(eight, 16, 168, 8, 48))) {
+            return 16;
+        }
+    }
+
     return 0;
 }
