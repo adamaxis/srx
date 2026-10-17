@@ -188,10 +188,51 @@ public:
                 result.insert(QStringLiteral("pattern"), pattern);
                 return encode(result);
             }
+            if (kind == QStringLiteral("scene")) {
+                const auto requested_scene =
+                    request.value(QStringLiteral("scene"));
+                std::optional<QJsonValue> target_scene;
+                if (!requested_scene.isUndefined()) {
+                    const auto number = requested_scene.toDouble(-1.0);
+                    if (!requested_scene.isDouble() || !std::isfinite(number) ||
+                        number < 0.0 || number > 65535.0 ||
+                        std::floor(number) != number) {
+                        --next_breakpoint_id_;
+                        return encode_error(QStringLiteral(
+                            "scene breakpoint target must be an integer from 0 to 65535"));
+                    }
+                    target_scene = QJsonValue(number);
+                }
+                if (std::any_of(
+                        scene_breakpoints_.begin(), scene_breakpoints_.end(),
+                        [&target_scene](const SceneBreakpoint& breakpoint) {
+                            return breakpoint.target_scene == target_scene;
+                        })) {
+                    --next_breakpoint_id_;
+                    return encode_error(QStringLiteral(
+                        "a scene breakpoint already exists for that target"));
+                }
+                const auto fields = flattened_state_fields();
+                const auto found = fields.constFind(QStringLiteral("field.scene"));
+                std::optional<QJsonValue> current_scene;
+                if (found != fields.constEnd()) {
+                    current_scene = *found;
+                }
+                scene_breakpoints_.push_back(
+                    {id, target_scene, current_scene});
+                QJsonObject result;
+                result.insert(QStringLiteral("ok"), true);
+                result.insert(QStringLiteral("id"), id);
+                result.insert(QStringLiteral("kind"), QStringLiteral("scene"));
+                if (target_scene.has_value()) {
+                    result.insert(QStringLiteral("scene"), *target_scene);
+                }
+                return encode(result);
+            }
             if (kind != QStringLiteral("frame")) {
                 --next_breakpoint_id_;
                 return encode_error(
-                    QStringLiteral("supported breakpoint kinds are frame, watch, and event"));
+                    QStringLiteral("supported breakpoint kinds are frame, watch, event, and scene"));
             }
             const auto value = request.value(QStringLiteral("frame"));
             const auto target = value.toDouble(-1.0);
@@ -250,10 +291,19 @@ public:
                     [id](const EventBreakpoint& breakpoint) {
                         return breakpoint.id == id;
                     });
-                if (event == event_breakpoints_.end()) {
+                if (event != event_breakpoints_.end()) {
+                    event_breakpoints_.erase(event);
+                    return encode(status_object());
+                }
+                const auto scene = std::find_if(
+                    scene_breakpoints_.begin(), scene_breakpoints_.end(),
+                    [id](const SceneBreakpoint& breakpoint) {
+                        return breakpoint.id == id;
+                    });
+                if (scene == scene_breakpoints_.end()) {
                     return encode_error(QStringLiteral("no such breakpoint"));
                 }
-                event_breakpoints_.erase(event);
+                scene_breakpoints_.erase(scene);
                 return encode(status_object());
             }
             watchpoints_.erase(watch);
@@ -281,6 +331,16 @@ public:
                 entry.insert(QStringLiteral("id"), breakpoint.id);
                 entry.insert(QStringLiteral("kind"), QStringLiteral("event"));
                 entry.insert(QStringLiteral("pattern"), breakpoint.pattern);
+                entries.append(entry);
+            }
+            for (const auto& breakpoint : scene_breakpoints_) {
+                QJsonObject entry;
+                entry.insert(QStringLiteral("id"), breakpoint.id);
+                entry.insert(QStringLiteral("kind"), QStringLiteral("scene"));
+                if (breakpoint.target_scene.has_value()) {
+                    entry.insert(QStringLiteral("scene"),
+                                 *breakpoint.target_scene);
+                }
                 entries.append(entry);
             }
             QJsonObject result;
@@ -528,7 +588,7 @@ public:
             QJsonObject result;
             result.insert(QStringLiteral("ok"), true);
             result.insert(QStringLiteral("commands"),
-                          QStringLiteral("status pause resume step key press inspect hash dump events diverge break(frame|watch|event) delete list help"));
+                          QStringLiteral("status pause resume step key press inspect hash dump events diverge break(frame|watch|event|scene) delete list help"));
             return encode(result);
         }
         return encode_error(QStringLiteral("unknown command"));
@@ -575,10 +635,31 @@ public:
                 stop_detail = *event;
             }
         }
+        int scene_hit_id = 0;
+        QString scene_detail;
         int watch_hit_id = 0;
         QString watch_detail;
-        if (!watchpoints_.empty()) {
+        if (!scene_breakpoints_.empty() || !watchpoints_.empty()) {
             const auto fields = flattened_state_fields();
+            for (auto& breakpoint : scene_breakpoints_) {
+                const auto value = fields.constFind(QStringLiteral("field.scene"));
+                std::optional<QJsonValue> current_scene;
+                if (value != fields.constEnd()) {
+                    current_scene = *value;
+                }
+                if (scene_hit_id == 0 && stop_id == 0 &&
+                    current_scene != breakpoint.last_scene &&
+                    current_scene.has_value() &&
+                    (!breakpoint.target_scene.has_value() ||
+                     current_scene == breakpoint.target_scene)) {
+                    scene_hit_id = breakpoint.id;
+                    scene_detail = QStringLiteral("field.scene: ") +
+                                   json_value_text(breakpoint.last_scene) +
+                                   QStringLiteral(" -> ") +
+                                   json_value_text(current_scene);
+                }
+                breakpoint.last_scene = current_scene;
+            }
             for (auto& watchpoint : watchpoints_) {
                 const auto value = fields.constFind(watchpoint.field);
                 std::optional<QJsonValue> current_value;
@@ -597,8 +678,8 @@ public:
             }
         }
         if (stop_id == 0) {
-            stop_id = watch_hit_id;
-            stop_detail = watch_detail;
+            stop_id = scene_hit_id != 0 ? scene_hit_id : watch_hit_id;
+            stop_detail = scene_hit_id != 0 ? scene_detail : watch_detail;
         }
         if (stop_id == 0) {
             return false;
@@ -652,6 +733,12 @@ private:
         int id = 0;
         QString pattern;
         QRegularExpression expression;
+    };
+
+    struct SceneBreakpoint {
+        int id = 0;
+        std::optional<QJsonValue> target_scene;
+        std::optional<QJsonValue> last_scene;
     };
 
     struct ScheduledRelease {
@@ -793,6 +880,7 @@ private:
     std::vector<FrameBreakpoint> breakpoints_;
     std::vector<WatchBreakpoint> watchpoints_;
     std::vector<EventBreakpoint> event_breakpoints_;
+    std::vector<SceneBreakpoint> scene_breakpoints_;
     std::vector<ScheduledRelease> scheduled_releases_;
     int next_breakpoint_id_ = 0;
     QString stop_reason_ = QStringLiteral("none");

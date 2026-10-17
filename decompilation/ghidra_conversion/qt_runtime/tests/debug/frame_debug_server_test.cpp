@@ -61,6 +61,7 @@ int main(int argc, char** argv) {
     QJsonObject state;
     state.insert(QStringLiteral("app.phase"), QStringLiteral("field_ready"));
     state.insert(QStringLiteral("app.paused"), true);
+    state.insert(QStringLiteral("field.scene"), 2);
     QJsonObject actor;
     actor.insert(QStringLiteral("x"), 321);
     actor.insert(QStringLiteral("y"), 456);
@@ -194,9 +195,24 @@ int main(int argc, char** argv) {
         std::cerr << "event breakpoint did not register for a source boundary\n";
         return 1;
     }
+    result = response(server.handle_line(
+        R"({"cmd":"break","kind":"scene","scene":3})"));
+    const auto scene_breakpoint_id = result.value(QStringLiteral("id")).toInt();
+    if (!result.value(QStringLiteral("ok")).toBool() ||
+        scene_breakpoint_id <= 0 ||
+        result.value(QStringLiteral("scene")).toInt() != 3) {
+        std::cerr << "scene breakpoint did not register for a target map\n";
+        return 1;
+    }
+    if (response(server.handle_line(
+            R"({"cmd":"break","kind":"scene","scene":65536})"))
+            .value(QStringLiteral("ok")).toBool()) {
+        std::cerr << "scene breakpoint accepted an out-of-range map id\n";
+        return 1;
+    }
     result = response(server.handle_line(R"({"cmd":"list"})"));
     const auto listed = result.value(QStringLiteral("breakpoints")).toArray();
-    if (!result.value(QStringLiteral("ok")).toBool() || listed.size() != 3 ||
+    if (!result.value(QStringLiteral("ok")).toBool() || listed.size() != 4 ||
         listed.at(0).toObject().value(QStringLiteral("frame")).toInt() != 91) {
         std::cerr << "list command did not return the registered breakpoints\n";
         return 1;
@@ -274,15 +290,39 @@ int main(int argc, char** argv) {
     result = response(server.handle_line(
         QByteArray("{\"cmd\":\"delete\",\"id\":") +
         QByteArray::number(watchpoint_id) + "}"));
+    const auto remaining_breakpoints = response(server.handle_line(
+        R"({"cmd":"list"})"))
+                                          .value(QStringLiteral("breakpoints"))
+                                          .toArray();
     if (!result.value(QStringLiteral("ok")).toBool() ||
-        !response(server.handle_line(R"({"cmd":"list"})"))
-             .value(QStringLiteral("breakpoints")).toArray().isEmpty()) {
+        remaining_breakpoints.size() != 1) {
         std::cerr << "delete command did not remove the frame breakpoint\n";
         return 1;
     }
     current_frame = 92U;
     if (server.check_source_frame_breakpoints()) {
         std::cerr << "deleted frame breakpoint still stopped execution\n";
+        return 1;
+    }
+    state.insert(QStringLiteral("field.scene"), 3);
+    current_frame = 93U;
+    if (!server.check_source_frame_breakpoints()) {
+        std::cerr << "scene breakpoint did not stop after a map transition\n";
+        return 1;
+    }
+    result = response(server.handle_line(R"({"cmd":"status"})"));
+    if (result.value(QStringLiteral("breakpoint")).toInt() !=
+            scene_breakpoint_id ||
+        result.value(QStringLiteral("detail")).toString() !=
+            QStringLiteral("field.scene: 2 -> 3")) {
+        std::cerr << "scene breakpoint did not report the source and destination maps\n";
+        return 1;
+    }
+    if (!response(server.handle_line(
+             QByteArray("{\"cmd\":\"delete\",\"id\":") +
+             QByteArray::number(scene_breakpoint_id) + "}"))
+             .value(QStringLiteral("ok")).toBool()) {
+        std::cerr << "delete command did not remove the scene breakpoint\n";
         return 1;
     }
 
