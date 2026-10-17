@@ -88,6 +88,9 @@ OpeningIntroDrawPoint opening_intro_aircraft_plane_draw_point(
 // captured visual phases; the source routine holds each for two VBlanks.
 constexpr std::uint16_t kSeattleOutlineAnimationFrames = 10U;
 constexpr std::uint16_t kStage2PaletteTransitionVblanks = 34U;
+// 0x5AB96 calls 0x5B2E2 for palette lines 0..3; each call lowers every
+// 3-bit colour component of the line one level [C].
+constexpr std::uint8_t kTrividColorStepsToBlack = 7U;
 
 struct OpeningIntroOutlinePlan {
     int x = 0;
@@ -159,7 +162,11 @@ enum class OpeningIntroStage : std::uint8_t {
     stage_loop_palette_fade_out,
     stage_loop_entry,
     stage_loop,
+    // ROM 0x59CEA: 0x131C fades the finished airport scene before 0x59D12.
+    post_intro_palette_fade_out,
     post_intro,
+    // ROM 0x59CFE: 0x131C fades the cab map before 0x53126 and field setup.
+    exit_palette_fade_out,
     complete,
     interrupted,
 };
@@ -289,12 +296,17 @@ struct OpeningIntroState {
     std::uint8_t post_intro_phase = 0;
     bool post_intro_caption_visible = false;
     bool seattle_plane_cleared = false;
+    // 0x5AF62 schedule exit reported to the host one frame before stage 2.
+    bool seattle_schedule_exit_reported = false;
     std::uint16_t seattle_outline_frame = 0;
     std::uint16_t scene_palette_fade_vblank = 0;
     std::uint8_t scene_palette_fade_step = 7;
     std::uint8_t scene_palette_weight = 255;
     std::uint16_t scroll_accumulator = 0;
     bool source_stop_marker = false;
+    // ROM 0x5AB96 -> 0x5B2E2 darkens the tri-vid one colour level per step
+    // (elapsed >= 0xB4 and (elapsed & 0xB) == 0). Counted for presentation.
+    std::uint8_t trivid_color_steps = 0;
 
     TitleIntroScheduleState schedule{};
     TitleIntroStage2State stage2{};

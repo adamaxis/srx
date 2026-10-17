@@ -21,6 +21,8 @@
 #include "frame_debug_server.hpp"
 #include "genesis_image_compositor.hpp"
 
+#include <deque>
+#include <unordered_map>
 #include <QApplication>
 #include <QColor>
 #include <QElapsedTimer>
@@ -695,6 +697,8 @@ private:
             startup_scripts_.string_map("startup", "text_keys");
         const auto opening_text_keys =
             startup_scripts_.string_map("startup", "opening_text_keys");
+        load_opening_presentation_holds(
+            startup_scripts_.string_map("startup", "opening_intro_timeline"));
         const auto fixed_text_count = [](const auto& lines) {
             std::size_t count = 0U;
             for (const auto& line : lines) {
@@ -850,6 +854,18 @@ private:
             draw_title(scene_painter);
         }
         scene_painter.end();
+        if (!opening_presentation_holds_.empty() &&
+            opening_presentation_holds_.front().kind ==
+                OpeningPresentationHoldKind::black) {
+            scene.fill(Qt::black);
+            return scene;
+        }
+        if (state_.phase == StartupIntegrationPhase::opening_intro &&
+            opening_scene_ == OpeningIntroScene::trivid &&
+            state_.opening_intro.trivid_color_steps != 0U) {
+            return transition_genesis_cram_image(
+                scene, state_.opening_intro.trivid_color_steps, true);
+        }
         if (state_.phase == StartupIntegrationPhase::pre_title) {
             using PresentationStage =
                 PreTitleSequenceState::PresentationStage;
@@ -880,8 +896,24 @@ private:
         }
         if (state_.phase == StartupIntegrationPhase::opening_intro &&
             state_.opening_intro.scene_palette_weight != 255U) {
-            return scale_genesis_image_rgb(
-                scene, state_.opening_intro.scene_palette_weight);
+            // 0x1088 / 0x10D6 move every CRAM component one level per pass,
+            // so dim colours reach black (or their target) before bright
+            // ones; a linear RGB scale would hold the scene visibly longer.
+            const auto stage = state_.opening_intro.stage;
+            const bool toward_black =
+                stage == OpeningIntroStage::stage2_palette_fade_out ||
+                stage == OpeningIntroStage::orchestrator_palette_fade_out ||
+                stage == OpeningIntroStage::stage_loop_palette_fade_out ||
+                stage == OpeningIntroStage::post_intro_palette_fade_out ||
+                stage == OpeningIntroStage::exit_palette_fade_out;
+            const auto level = state_.opening_intro.scene_palette_fade_step;
+            const auto passes = static_cast<std::uint8_t>(
+                toward_black ? kGenesisCramLevels - level : level);
+            if (!toward_black && passes == 0U) {
+                scene.fill(Qt::black);
+                return scene;
+            }
+            return transition_genesis_cram_image(scene, passes, toward_black);
         }
         return scene;
     }
@@ -891,6 +923,7 @@ private:
             audio_playback_->begin_source_sequence();
         }
         title_loop_ = TitleLoopState{};
+        opening_presentation_holds_.clear();
         title_mode_entry_service_ = TitleModeEntryServiceState{};
         title_idle_restart_fade_ = TitleIdleRestartFadeState{};
         logo_strobe_phase_ = 0U;
@@ -1207,6 +1240,7 @@ private:
         startup_callbacks_.opening_intro.source_boundary =
             [this](const std::string_view boundary) {
                 record_debug_source_event(boundary);
+                queue_opening_presentation_hold(boundary);
             };
         startup_callbacks_.opening_intro.stop_requested = [this] {
             return opening_start_event_latched_;
@@ -1407,6 +1441,15 @@ private:
     }
 
     void advance_source_frame_logic() {
+        // A ROM blocking call (audio fade, palette passes over black, decode)
+        // consumes VBlanks without running cutscene or field logic.
+        if (!opening_presentation_holds_.empty()) {
+            auto& hold = opening_presentation_holds_.front();
+            if (++hold.elapsed >= hold.frames) {
+                opening_presentation_holds_.pop_front();
+            }
+            return;
+        }
         if (state_.phase == StartupIntegrationPhase::pre_title) {
             advance_startup_boot_frame(state_, startup_callbacks_);
             return;
@@ -2385,6 +2428,60 @@ private:
                          kTitleCircuitPaletteRevealPassCount + 1U>,
                kTitleCircuitPhaseCount>
         title_circuit_transition_cache_{};
+    // A CRAM component has eight levels (0..7); 0x1088/0x10D6 move one per pass.
+    static constexpr std::uint8_t kGenesisCramLevels = 7U;
+    // Typed view of Startup.opening_intro_timeline() (Lua owns the counts).
+    enum class OpeningPresentationHoldKind : std::uint8_t { freeze, black };
+    struct OpeningPresentationHold {
+        OpeningPresentationHoldKind kind = OpeningPresentationHoldKind::freeze;
+        std::uint16_t frames = 0U;
+        std::uint16_t elapsed = 0U;
+    };
+    std::unordered_map<std::string, OpeningPresentationHold>
+        opening_presentation_hold_table_;
+    std::deque<OpeningPresentationHold> opening_presentation_holds_;
+    // Frame-indexed QA counts conversion logic frames, so it turns the
+    // host-only holds off; the timeline itself is checked by
+    // run_opening_timeline_qa().
+    bool opening_presentation_holds_enabled_ = true;
+
+    void load_opening_presentation_holds(
+        const std::optional<scripting::ScriptStringMap>& table) {
+        opening_presentation_hold_table_.clear();
+        if (!table.has_value()) {
+            throw std::runtime_error(
+                "startup Lua opening_intro_timeline is unresolved");
+        }
+        for (const auto& [boundary, value] : *table) {
+            const auto colon = value.find('.');
+            const auto kind = value.substr(0U, colon);
+            OpeningPresentationHold hold{};
+            if (kind == "freeze") {
+                hold.kind = OpeningPresentationHoldKind::freeze;
+            } else if (kind == "black") {
+                hold.kind = OpeningPresentationHoldKind::black;
+            } else {
+                throw std::runtime_error(
+                    "startup Lua opening_intro_timeline kind: " + value);
+            }
+            hold.frames = static_cast<std::uint16_t>(
+                std::stoul(value.substr(colon + 1U)));
+            opening_presentation_hold_table_[boundary] = hold;
+        }
+    }
+
+    void queue_opening_presentation_hold(const std::string_view boundary) {
+        if (!opening_presentation_holds_enabled_) {
+            return;
+        }
+        const auto found =
+            opening_presentation_hold_table_.find(std::string(boundary));
+        if (found != opening_presentation_hold_table_.end() &&
+            found->second.frames != 0U) {
+            opening_presentation_holds_.push_back(found->second);
+        }
+    }
+
     OpeningIntroScene opening_scene_ = OpeningIntroScene::seattle;
     OpeningIntroStage opening_stage_ = OpeningIntroStage::not_started;
     std::vector<OpeningIntroSpriteRequest> opening_sprites_;

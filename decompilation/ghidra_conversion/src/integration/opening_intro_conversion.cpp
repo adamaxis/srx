@@ -92,6 +92,14 @@ void begin_source_frame(OpeningIntroState& state,
     ++state.source_frame;
 }
 
+// A VBlank inside a ROM palette routine: the VDP keeps showing the last
+// sprite table, so the host's sprite list is kept rather than cleared.
+void begin_held_source_frame(OpeningIntroState& state,
+                             const OpeningIntroCallbacks& callbacks) {
+    callbacks.wait_for_vblank();
+    ++state.source_frame;
+}
+
 void sample_and_latch(const OpeningIntroCallbacks& callbacks) {
     callbacks.sample_controller();
     callbacks.latch_controller_events();
@@ -453,8 +461,12 @@ const char* opening_intro_stage_name(const OpeningIntroStage stage) {
         return "stage_loop_entry";
     case OpeningIntroStage::stage_loop:
         return "stage_loop";
+    case OpeningIntroStage::post_intro_palette_fade_out:
+        return "post_intro_palette_fade_out";
     case OpeningIntroStage::post_intro:
         return "post_intro";
+    case OpeningIntroStage::exit_palette_fade_out:
+        return "exit_palette_fade_out";
     case OpeningIntroStage::complete:
         return "complete";
     case OpeningIntroStage::interrupted:
@@ -990,11 +1002,14 @@ void install_orchestrator(OpeningIntroState& state,
     callbacks.wait_for_vblank();
     ++state.source_frame;
     emit_stage_stream(callbacks, {});
-    // 0x5AB4E: reveal the tri-vid target palette after its first vblank.
+    // 0x5AB4E: 0x12F6 steps from the still-installed wilderness palette to
+    // the tri-vid target, not from black, so the tri-vid is visible at once;
+    // the 34 VBlanks still elapse before the loop [C: emulator trace].
     invoke(callbacks.advance_palette_fade);
+    state.trivid_color_steps = 0U;
     state.scene_palette_fade_vblank = 0U;
-    state.scene_palette_fade_step = 0U;
-    state.scene_palette_weight = 0U;
+    state.scene_palette_fade_step = 7U;
+    state.scene_palette_weight = 255U;
     set_stage(state, callbacks,
               OpeningIntroStage::orchestrator_palette_fade_in);
 }
@@ -1008,11 +1023,11 @@ void begin_orchestrator(OpeningIntroState& state,
         callbacks.service_audio_command(0x12U);
     }
     source_boundary(callbacks, "0x5AA96.begin_trivid_orchestrator");
-    // ROM 0x5AA96 enters through 0x1406 -> 0x131C: seventeen palette steps,
-    // with two VBlanks between steps. Hold the wilderness layer while its
-    // typed scene weight falls to black, then install the tri-vid resources.
-    invoke(callbacks.fade_palette_to_black);
-    state.scene_palette_fade_vblank = 0U;
+    // ROM 0x5AA96 has no 0x1406/0x131C: after 0x53126 it clears both planes
+    // (0x0FFE/0x102A), so the wilderness cuts to black while the tri-vid
+    // streams decode [C: disassembly 0x5AA96..0x5AABA, emulator trace].
+    // The stage completes on its next frame without a palette fade.
+    state.scene_palette_fade_vblank = kStage2PaletteTransitionVblanks;
     state.scene_palette_fade_step = 7U;
     state.scene_palette_weight = 255U;
 }
@@ -1036,7 +1051,12 @@ void advance_orchestrator_frame(OpeningIntroState& state,
     advance_title_intro_stage_service_steps(
         state.orchestrator.current_frame,
         state.orchestrator.animation_start_frame,
-        [&callbacks](const std::uint16_t) {
+        [&state, &callbacks](const std::uint16_t palette_line) {
+            // One service step darkens palette lines 0..3; count it once.
+            if (palette_line == 0U &&
+                state.trivid_color_steps < kTrividColorStepsToBlack) {
+                ++state.trivid_color_steps;
+            }
             source_boundary(callbacks, "0x5AB96.service_trivid_color_step");
         });
 }
@@ -1154,6 +1174,8 @@ void begin_post_intro(OpeningIntroState& state,
     source_boundary(callbacks, "0x59D12.enter_post_intro_mode");
     invoke(callbacks.enter_post_intro_mode);
     invoke(callbacks.clear_presentation);
+    state.scene_palette_weight = 255U;
+    state.scene_palette_fade_step = 7U;
     state.post_intro_frame = 0;
     sync_post_intro_cab(state);
     source_boundary(callbacks, "0x13726.render_mode_selection");
@@ -1180,9 +1202,12 @@ void finish_airport_stage(OpeningIntroState& state,
     invoke(callbacks.clear_stop_request);
     source_boundary(callbacks, "0x59CE4.clear_intro_stop_marker");
     invoke(callbacks.fade_palette_to_black);
-    source_boundary(callbacks, "0x59CEA.step_palette_transition");
-    source_boundary(callbacks, "0x59CF0.publish_post_intro_mode");
-    begin_post_intro(state, callbacks);
+    // 0x59CEA's 0x131C is a visible 17 x two-VBlank fade of the airport
+    // scene; 0x59D12 starts only after it [C: emulator trace].
+    set_stage(state, callbacks, OpeningIntroStage::post_intro_palette_fade_out);
+    state.scene_palette_fade_vblank = 0U;
+    state.scene_palette_fade_step = 7U;
+    state.scene_palette_weight = 255U;
 }
 
 } // namespace
@@ -1244,6 +1269,13 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
     const auto& plan = opening_intro_source_plan();
     switch (state.stage) {
     case OpeningIntroStage::schedule: {
+        if (state.seattle_schedule_exit_reported) {
+            // The host held the schedule's still tail after the exit report;
+            // this frame only continues 0x59C5E (no source VBlank of its own,
+            // matching the hold frames).
+            begin_stage2(state, callbacks);
+            return OpeningIntroAdvanceResult::frame_advanced;
+        }
         begin_source_frame(state, callbacks);
         sample_and_latch(callbacks);
         const auto schedule_complete = advance_title_intro_schedule(
@@ -1268,7 +1300,10 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
         }
         if (schedule_complete &&
             state.seattle_outline_frame >= kSeattleOutlineAnimationFrames) {
-            begin_stage2(state, callbacks);
+            // Report the schedule exit first so the host can hold the still
+            // tail before 0x59C5E's 0x53126 starts the audio fade.
+            state.seattle_schedule_exit_reported = true;
+            source_boundary(callbacks, "0x5AF62.schedule_complete");
         }
         return OpeningIntroAdvanceResult::frame_advanced;
     }
@@ -1400,6 +1435,9 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
         begin_source_frame(state, callbacks);
         // 0x5AA96 samples before the loop, then latches only inside its loop.
         if (advance_scene_palette_fade(state, false)) {
+            // 0x5AB48/0x5AB54 save and restore FFDF88 around 0x12F6, so the
+            // fade-in VBlanks never reach the 0x5AB96 elapsed-frame test.
+            state.source_frame -= kStage2PaletteTransitionVblanks;
             callbacks.sample_controller();
             state.orchestrator_loop_frame = 0;
             set_stage(state, callbacks, OpeningIntroStage::orchestrator_loop);
@@ -1441,13 +1479,38 @@ OpeningIntroAdvanceResult advance_opening_intro_frame(
         }
         ++state.post_intro_frame;
         if (state.post_intro_frame >= kPostIntroCabTotalFrames) {
+            // 0x134D2 returns into 0x59CFE: sample, then a visible 0x131C
+            // fade of the cab map before 0x53126 [C: emulator trace].
             callbacks.sample_controller();
+            source_boundary(callbacks, "0x59CFE.sample_controller_input");
             invoke(callbacks.fade_palette_to_black);
+            set_stage(state, callbacks, OpeningIntroStage::exit_palette_fade_out);
+            state.scene_palette_fade_vblank = 0U;
+            state.scene_palette_fade_step = 7U;
+            state.scene_palette_weight = 255U;
+            return OpeningIntroAdvanceResult::frame_advanced;
+        }
+        sync_post_intro_cab(state);
+        return OpeningIntroAdvanceResult::frame_advanced;
+
+    case OpeningIntroStage::post_intro_palette_fade_out:
+        begin_held_source_frame(state, callbacks);
+        if (advance_scene_palette_fade(state, true)) {
+            source_boundary(callbacks, "0x59CEA.step_palette_transition");
+            source_boundary(callbacks, "0x59CF0.publish_post_intro_mode");
+            begin_post_intro(state, callbacks);
+        }
+        return OpeningIntroAdvanceResult::frame_advanced;
+
+    case OpeningIntroStage::exit_palette_fade_out:
+        begin_held_source_frame(state, callbacks);
+        if (advance_scene_palette_fade(state, true)) {
+            source_boundary(callbacks, "0x59CFE.step_palette_transition");
             invoke(callbacks.prepare_mode_entry);
+            source_boundary(callbacks, "0x59CFE.prepare_mode_entry");
             set_stage(state, callbacks, OpeningIntroStage::complete);
             return OpeningIntroAdvanceResult::source_complete;
         }
-        sync_post_intro_cab(state);
         return OpeningIntroAdvanceResult::frame_advanced;
 
     case OpeningIntroStage::orchestrator_entry:

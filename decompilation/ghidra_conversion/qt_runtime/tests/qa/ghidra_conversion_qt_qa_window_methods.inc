@@ -731,6 +731,7 @@
     // this only exposes their existing Qt presentation as an image dump.
     int prepare_opening_dump(const std::uint32_t selection) {
         host_frame_timer_.stop();
+        opening_presentation_holds_enabled_ = false;
         if (selection > 2U) {
             std::cerr << "startup dump: selection must be 0, 1, or 2\n";
             return 3;
@@ -2667,6 +2668,7 @@
 
     int run_startup_qa(const std::filesystem::path& output_directory) {
         host_frame_timer_.stop();
+        opening_presentation_holds_enabled_ = false;
         std::filesystem::create_directories(output_directory);
         std::ofstream trace(output_directory / "startup-qa.tsv");
         if (!trace) {
