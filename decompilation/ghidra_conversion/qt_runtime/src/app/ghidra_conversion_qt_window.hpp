@@ -865,6 +865,15 @@ private:
             scene.fill(Qt::black);
             return scene;
         }
+        if (!opening_presentation_holds_.empty() &&
+            opening_presentation_holds_.front().kind ==
+                OpeningPresentationHoldKind::fade_in) {
+            // 0x12F6: one CRAM level per two-VBlank pass from black.
+            const auto passes = static_cast<std::uint8_t>(std::min<int>(
+                kGenesisCramLevels,
+                1 + opening_presentation_holds_.front().elapsed / 2));
+            return transition_genesis_cram_image(scene, passes, false);
+        }
         if (state_.phase == StartupIntegrationPhase::opening_intro &&
             opening_scene_ == OpeningIntroScene::trivid &&
             state_.opening_intro.trivid_color_steps != 0U) {
@@ -2471,7 +2480,11 @@ private:
     // Text CRAM level left by the wilderness palette before 0x5AB4E.
     static constexpr std::uint8_t kTrividTextFadeStartLevel = 1U;
     // Typed view of Startup.opening_intro_timeline() (Lua owns the counts).
-    enum class OpeningPresentationHoldKind : std::uint8_t { freeze, black };
+    enum class OpeningPresentationHoldKind : std::uint8_t {
+        freeze,
+        black,
+        fade_in, // freeze while 0x12F6 raises the palette from black
+    };
     struct OpeningPresentationHold {
         OpeningPresentationHoldKind kind = OpeningPresentationHoldKind::freeze;
         std::uint16_t frames = 0U;
@@ -2503,6 +2516,8 @@ private:
                 hold.kind = OpeningPresentationHoldKind::freeze;
             } else if (kind == "black") {
                 hold.kind = OpeningPresentationHoldKind::black;
+            } else if (kind == "fade_in") {
+                hold.kind = OpeningPresentationHoldKind::fade_in;
             } else {
                 throw std::runtime_error(
                     "startup Lua opening_intro_timeline kind: " + value);
