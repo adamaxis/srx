@@ -19658,8 +19658,8 @@ int main(int argc, char** argv) {
                     advance_field_frame();
                     ++door_return_frames;
                 }
-                if (door_return_frames != 130U) {
-                    std::cerr << "field Hotel QA: checkout door return lasted " << door_return_frames << " frames, expected 130\n";
+                if (door_return_frames != 131U) {
+                    std::cerr << "field Hotel QA: checkout door return lasted " << door_return_frames << " frames, expected 131\n";
                     return 3;
                 }
                 const auto returned_field =
@@ -19698,8 +19698,8 @@ int main(int argc, char** argv) {
                 // hold is checked relative to the contact frame. The three
                 // Hotel page-staging waits above add 3 + 3 + 3 frames and
                 // the Karma Screen black load adds 14 more, and the checkout
-                // door return holds input for 130 frames after the confirm.
-                constexpr std::uint32_t kHotelFramesAfterContact = 358U;
+                // door return holds input for 131 frames after the confirm.
+                constexpr std::uint32_t kHotelFramesAfterContact = 359U;
                 if (route_frame != collision_frame + kHotelFramesAfterContact ||
                     returned_field_frame_30.isNull() ||
                     returned_field_frame_30 != field_only_frame_30) {

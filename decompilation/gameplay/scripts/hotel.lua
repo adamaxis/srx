@@ -46,7 +46,7 @@ function Hotel.presentation()
         -- resumes at +132 (emulator run5: A at 8440) [C].
         checkout_fade_out_start_frame = "2",
         checkout_fade_in_start_frame = "99",
-        checkout_input_resume_frame = "131",
+        checkout_input_resume_frame = "132",
         checkout_camera_settle_start_frame = "83",
     }
 end
