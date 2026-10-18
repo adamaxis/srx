@@ -2296,7 +2296,7 @@ local function advance_entity_movement(context, state)
         movement_state.collision_extent = -12
     end
 
-    -- Post-split behaviour fix mirrored here so the differential stays
+    -- Post-split behaviour fixes mirrored here so the differential stays
     -- meaningful (patches_video_6): the 0xB574 walk handler (+0x10 bit 1)
     -- truncates the octant (0xB5BE/0xB6CC); 0xBABC rounds (0xBACC).
     local walk_record_flags = context.dynamic_world_encounter_actor == true
@@ -2366,8 +2366,11 @@ local function advance_entity_movement(context, state)
             local fallback_slot = route.primary_marker <= 0
                 and route.primary_fallback_slot
                 or route.secondary_fallback_slot
+            -- ROM 0xBBC8: the descriptor word is a direction ordinal;
+            -- 0xBBC8 doubles it into the probe slot (0xB77E doubles again
+            -- for the vector table) [C].
             fallback = probe_movement(
-                context, movement_state, fallback_slot, movement_offsets)
+                context, movement_state, fallback_slot << 1, movement_offsets)
             carry_set = movement_probe_is_blocked(fallback, context)
         else
             carry_set = true

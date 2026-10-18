@@ -8985,7 +8985,10 @@ int run_scene19_table_collision_qa(
          {0U, 0U, 0U, 0x7EU}},
         {{2304U, 2180U}, {2244U, 2120U}, {2214U, 2090U}, {2244U, 2090U},
          {0U, 0U, 0x7EU, 0U}},
-        {{1536U, 1792U}, {1896U, 1912U}, {1896U, 1942U}, {1926U, 1882U},
+        // After the blocked southward probe 0xBB86 slides by the
+        // descriptor's direction ordinal 2 (east, +30,0); the earlier
+        // (1926,1882) came from probing ordinal 2 as slot 2 (north-east).
+        {{1536U, 1792U}, {1896U, 1912U}, {1896U, 1942U}, {1926U, 1912U},
          {0U, 0U, 0x7EU, 0U}},
         {{1536U, 2816U}, {1536U, 2696U}, {1536U, 2666U}, {1536U, 2696U},
          {0x7EU, 0x7EU, 0U, 0U}},
@@ -9540,7 +9543,9 @@ int run_low_code_object_bounds_census_qa(
          {0U, 1U, 0U, 1U}},
         {{9942U, 20608U}, {9912U, 20608U}, {9942U, 20608U},
          {1U, 0U, 1U, 0U}},
-        {{9600U, 19854U}, {9600U, 19884U}, {9630U, 19824U},
+        // 0xBB86 slides by direction ordinal 2 (east); the earlier
+        // (9630,19824) probed ordinal 2 as slot 2 (north-east).
+        {{9600U, 19854U}, {9600U, 19884U}, {9630U, 19854U},
          {0U, 0U, 1U, 0U}},
         {{22742U, 13448U}, {22712U, 13448U}, {22742U, 13448U},
          {2U, 0U, 2U, 0U}},
