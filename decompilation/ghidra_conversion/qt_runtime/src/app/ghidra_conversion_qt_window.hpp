@@ -232,6 +232,10 @@ public:
         host_frame_timer_.start();
         update_window_title();
         if (debug_port.has_value()) {
+            debug_fast_stepping_ = qEnvironmentVariableIntValue("SRX_DEBUG_FAST") != 0;
+            if (debug_fast_stepping_) {
+                host_frame_timer_.setInterval(0);
+            }
             frame_stepper_.pause();
             debug_server_ = std::make_unique<FrameDebugServer>(
                 *debug_port, frame_stepper_,
@@ -1420,8 +1424,13 @@ private:
         if (replay_diverged_) {
             return;
         }
-        const auto due_frames = consume_host_frames(
-            host_frame_deadline_ns_, host_clock_.nsecsElapsed());
+        // Debug-port fast stepping (SRX_DEBUG_FAST=1): scripted sessions
+        // run their requested steps as fast as the host can, instead of
+        // at the 60 Hz deadline. Paused/free-run semantics are unchanged.
+        const auto due_frames = debug_fast_stepping_
+            ? kDebugFastFramesPerTick
+            : consume_host_frames(host_frame_deadline_ns_,
+                                  host_clock_.nsecsElapsed());
         const auto frames = frame_stepper_.frames_to_advance(due_frames);
         bool replay_input_applied = false;
         int advanced_frames = 0;
@@ -2532,6 +2541,8 @@ private:
     TitleModeEntryServiceCallbacks title_mode_entry_callbacks_;
     TitleIdleRestartFadeState title_idle_restart_fade_;
     QTimer host_frame_timer_;
+    static constexpr std::uint32_t kDebugFastFramesPerTick = 64U;
+    bool debug_fast_stepping_ = false;
     QElapsedTimer host_clock_;
     std::unique_ptr<FrameDebugServer> debug_server_;
     std::vector<PendingRemoteKey> pending_remote_keys_;
