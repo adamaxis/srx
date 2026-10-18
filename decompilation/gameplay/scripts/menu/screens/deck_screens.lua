@@ -65,7 +65,9 @@ function Program.input(st, events, ctx)
 end
 
 local CyberInfo = { window = E.WindowPlane.OFF }
-function CyberInfo.new() return { row = 0 } end
+function CyberInfo.new(args)
+    return { row = 0, matrix_state = args and args.matrix_state }
+end
 function CyberInfo.enter(st, ctx)
     st.title = "Cyberdeck Information"
     st.labels = { "Deck Stats", "Run Info" }
@@ -80,8 +82,38 @@ function CyberInfo.input(st, events, ctx)
     end
     if events & ABC ~= 0 then
         if st.row == 1 then
-            -- FFF0E3 is clear in the field Cyberdeck route; the ROM prints
-            -- this text and returns without opening a wait screen.
+            -- ROM 0x18C42 branches on signed FFF0E3: zero is no run,
+            -- positive is complete, and negative displays the active
+            -- objective's node, file class, and action.
+            local run = nil
+            if MatrixSession.is_online(st.matrix_state) then
+                run = MatrixSession.world_state(ctx.game).run
+            end
+            local status, action_index = D.run_info(
+                run and run.state or 0,
+                run and run.objective or 0,
+                run and run.value or 0)
+            if status == "COMPLETE" then
+                return { transition = T.POP,
+                         result = { text = "Shadowrun is complete!!" } }
+            end
+            if status == "ACTIVE" then
+                local objective = run.objective
+                local node = objective < 0 and "CPU" or "Datastore"
+                local node_function = objective < 0 and "Cntrl Processor" or
+                                     MatrixSession.file_class_name(objective)
+                local action_names = {
+                    [0] = "Delete File", "Upload File", "Crash System",
+                    "Download File",
+                }
+                return { transition = T.POP, result = { text = table.concat({
+                    "Node: " .. node,
+                    "Node Function: " .. node_function,
+                    "Action: " .. action_names[action_index],
+                }, "|") } }
+            end
+            -- The field Cyberdeck route has no active run. ROM 0x18C50
+            -- writes this text and returns without opening a wait screen.
             return { transition = T.POP,
                      result = { text = "You are not on a matrix run!!" } }
         end

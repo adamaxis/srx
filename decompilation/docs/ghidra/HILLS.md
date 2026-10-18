@@ -41,8 +41,11 @@ the technology response, both purchase outcomes, contact offer/result, and
 clean redraw through screen 34. Sharkey's ROM contact record at `0x10A7F2`
 offers commands `0x6E`-`0x70`: 3,000 nuyen for Salish-Shidhe passage to scene
 6, 5,000 for Sinsearach passage to scene 9, or Smart Goggles (item 22) for
-3,000. Lua owns her menu and result flow; typed host services apply the wallet,
-inventory, and destination changes. The production field-runtime QA selects
+3,000. Lua owns her menu and result flow, and `data/vid_phone_passages.lua`
+owns the two destination/fare records. The typed host accepts a generic
+scene-and-fare request, applies the wallet change, and schedules the shared
+scene transition; it no longer maps those two offers through a C++ action
+table. The production field-runtime QA selects
 Vid-Phone from the ordinary terminal, pays for both passage destinations,
 acknowledges each result, and captures both fade/load routes into Scenes 6 and
 9. Scene 9's profile spawn `(0x0D80, 0x1100)` projects below the 224-pixel

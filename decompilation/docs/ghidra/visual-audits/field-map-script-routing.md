@@ -109,6 +109,38 @@ The Qt field-exit coordinator consumes that typed result to select the
 dialogue event code, service route, or normal area-event continuation. It does
 not interpret ROM addresses at runtime.
 
+Location-to-route bindings are now stored beside the reusable map entity in
+`gameplay/world/entities/<entity>/links.tsv`. The world-content loader reads
+those rows into Lua, and `world_content.lua` finds the unique link belonging
+to an entity instance in the current scene. `building.lua` owns route
+selection: direct same-map services require their source mode, while ordinary
+area links are accepted only when their numeric destination agrees with the
+active ROM event-table row. Unlinked events continue through the same imported
+table path. This gives scene entities reusable route data without assigning
+unknown interiors or treating every collision event as a door.
+
+The initial source-verified links cover Scene 2: Stoker event 2 (same-map
+dialogue), Ares event 11 (same-map shop service), Jump House event 4 to scene
+13, Jackal's Lantern event 5 to scene 19, Boris' Greenhouse event 6 to numeric
+resource scene 26, Ghoul Warehouse event 8 to numeric scripted scene 52,
+Hollywood Correctional Facility event 0 to scene 20 when the source table
+selects it, and Little Chiba's event 1 to numeric resource scene 26. The
+destination bytes are cross-checked against the imported ROM table at runtime.
+Event 3's conditional maglock, event 7's conditional Vigore handler, and
+unresolved/guide-only site identities remain on their existing source route;
+this initial entity set is not a complete route census. In particular, the
+ROM census's 892 rows are event-bearing collision rectangles, not 892
+independently proven doors or reversible links.
+
+The Stoker hotel checkout retains its dedicated ROM return path. Its saved
+lead position and camera now come from the already-expanded `0xBC36` probe
+triplet / `0xBD34` offset bank, rather than a hand-authored four-heading offset
+table. The current code resumes with the opposite heading. The available
+route evidence does not yet establish that heading against an independent
+Genesis capture, and this Stoker-specific return must not be generalized to
+other maps. Generic field/resource activity returns still use their captured
+source-scene snapshot; other building exit paths remain open.
+
 The scene-2 C1 route is exercised from the New Game spawn with normal
 controller input. It walks east through the open southern lane, then north
 through record 93's doorway cell, records event 1, and follows row 1 into the

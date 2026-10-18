@@ -939,20 +939,23 @@ FieldSceneRuntime::FieldSceneRuntime(
                 return "skill_" + std::to_string(
                     first_runner.skills[skill_index]);
             }
-            const auto passage_action =
-                vid_phone_passage_action_for_id(service_id);
-            if (passage_action.has_value()) {
-                const auto offer = vid_phone_passage_offer(*passage_action);
+            // Passage destination and fare are authored in the Lua contact
+            // data. The host validates the requested scene, applies the
+            // wallet transaction, and schedules the shared scene transition.
+            const auto passage_request =
+                parse_vid_phone_passage_request(service_id);
+            if (passage_request.has_value()) {
+                const auto scene_value = passage_request->destination_scene;
                 if (!field_session_source_assets_ ||
-                    offer.destination_scene >=
-                        field_session_source_assets_->field_scene_resources.size() ||
+                    scene_value >= field_session_source_assets_
+                                       ->field_scene_resources.size() ||
                     field_phone_pending_destination_.has_value()) {
                     return std::nullopt;
                 }
-                const auto result = apply_vid_phone_passage(
-                    *passage_action, field_funds_);
+                const auto result = apply_vid_phone_passage_fare(
+                    passage_request->price, field_funds_);
                 if (result == VidPhonePassageResult::passage_requested) {
-                    field_phone_pending_destination_ = offer.destination_scene;
+                    field_phone_pending_destination_ = scene_value;
                     this->source_boundary(
                         "field.vid_phone.passage.payment_accepted");
                 }
@@ -13261,38 +13264,27 @@ void FieldSceneRuntime::handle_game_script_task_step(
 }
 
 void FieldSceneRuntime::save_field_door_return_point() {
-    // 0xBD34: lead, second and third runner offsets per heading row. Only
-    // the row for an upward walk is confirmed (emulator run5 FFDF44 =
-    // lead + (0,+320), followers (+-320,+320)); the other rows follow the
-    // same "back out of the door" geometry [H].
-    struct Offset { std::int16_t x; std::int16_t y; };
-    constexpr std::array<Offset, 4> kLeadOffset{{
-        {0, 320},   // walking up    -> table row 2
-        {-480, 0},  // walking right -> table row 3
-        {0, -320},  // walking down  -> table row 0
-        {480, 0},   // walking left  -> table row 1
-    }};
+    // ROM 0xBC36 has already expanded the selected 0xBD34 bank around the
+    // contact position. Those three positions, rather than an inferred
+    // heading-to-distance rule, are the source return placement.
+    if (!field_collision_probe_state_.initialized) {
+        field_door_return_point_ = FieldDoorReturnPoint{};
+        source_boundary("field.door.return_source_position_missing");
+        return;
+    }
     const auto heading = field_movement_state_.heading;
-    const auto row = static_cast<std::size_t>((heading >> 14U) & 3U);
-    // The ROM reads the lead before this frame's step (FFDF46 = 10890+320
-    // while the contact frame stood at 10860).
-    const bool stepped_this_frame =
-        field_entity_.world_position.x != field_frame_start_player_position_.x ||
-        field_entity_.world_position.y != field_frame_start_player_position_.y;
-    const auto base = stepped_this_frame ? field_frame_start_player_position_
-                                         : field_pre_step_player_position_;
     field_door_return_point_.valid = true;
-    field_door_return_point_.lead.x =
-        static_cast<std::uint16_t>(base.x + kLeadOffset[row].x);
-    field_door_return_point_.lead.y =
-        static_cast<std::uint16_t>(base.y + kLeadOffset[row].y);
-    // The party is put back facing away from the door.
+    field_door_return_point_.lead = SceneRunnerPosition{
+        field_collision_probe_state_.points[0].x,
+        field_collision_probe_state_.points[0].y};
+    // The event heading points into the doorway; the reload resumes with the
+    // opposite heading, so the runner faces away from it.
     field_door_return_point_.heading =
         static_cast<std::uint16_t>(heading ^ 0x8000U);
     field_door_return_point_.camera_x =
-        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
+        field_collision_probe_state_.camera_x;
     field_door_return_point_.camera_y =
-        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y);
+        field_collision_probe_state_.camera_y;
     source_boundary("field.door.return_point_saved");
 }
 

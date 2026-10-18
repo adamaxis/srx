@@ -3,6 +3,7 @@
 -- the location interaction or the table destination without naming unknown
 -- places or inventing an interior.
 local Building = {}
+local World = require("world_content")
 
 local route_kind = {
     no_route = "no_route",
@@ -52,31 +53,64 @@ end
 
 function Building.resolve_field_location_route(context)
     if type(context) ~= "table" or
-       type(context.stoker_motel_street) ~= "boolean" or
        type(context.building_interaction_mode) ~= "boolean" or
+       type(context.scene_id) ~= "number" or
+       context.scene_id % 1 ~= 0 or context.scene_id < 0 or
+       context.scene_id > 255 or
        type(context.event_code) ~= "string" or
        type(context.event_index) ~= "number" or
        context.event_index < 0 or context.event_index > 255 then
         return no_route("event_0")
     end
 
-    -- ROM scene-2 event 2 is Stoker's same-map motel interaction. It does not
-    -- load a Stoker interior; the opening story and later motel states use the
-    -- generic dialogue/menu services. Event 11 selects the Ares service.
-    if context.stoker_motel_street and
-       context.building_interaction_mode then
-        if context.event_code == "event_2" then
+    local link = World.location_link_for_event(
+        context.scene_id, context.event_code)
+    if link ~= nil and
+       (link.requires_mode == "" or
+        (link.requires_mode == "building_interaction" and
+         context.building_interaction_mode)) then
+        -- Entity-owned Lua link data describes the interaction. Ordinary
+        -- area destinations are accepted only when they agree with the
+        -- current map's imported ROM event-table byte.
+        if link.route_kind == route_kind.dialogue and
+           link.script == route_script.stoker_motel then
             return {
                 kind = route_kind.dialogue,
-                script = route_script.stoker_motel,
+                script = link.script,
                 event_code = context.event_code,
             }
-        end
-        if context.event_code == "event_11" then
+        elseif link.route_kind == route_kind.field_service and
+               link.script == route_script.ares_emporium then
             return {
                 kind = route_kind.field_service,
-                script = route_script.ares_emporium,
+                script = link.script,
                 event_code = context.event_code,
+            }
+        elseif link.route_kind == route_kind.area_event and
+               link.script == route_script.map_event_table and
+               type(link.destination_scene) == "number" and
+               link.destination_scene >= 0 and
+               link.destination_scene <= 255 and
+               link.destination_scene % 1 == 0 and
+               context.event_table_available == true and
+               type(context.event_table) == "table" and
+               context.event_index < #context.event_table and
+               context.event_table[context.event_index + 1] ==
+                   link.destination_scene then
+            local mode = link.destination_mode
+            if mode ~= destination_mode.field and
+               mode ~= destination_mode.resource_activity and
+               mode ~= destination_mode.scripted_activity and
+               mode ~= destination_mode.halted then
+                mode = classify_area_event_destination(
+                    link.destination_scene)
+            end
+            return {
+                kind = route_kind.area_event,
+                script = route_script.map_event_table,
+                event_code = context.event_code,
+                area_event_target = link.destination_scene,
+                area_event_destination_mode = mode,
             }
         end
     end

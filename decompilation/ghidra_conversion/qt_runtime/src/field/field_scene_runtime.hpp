@@ -1957,9 +1957,8 @@ private:
     std::optional<std::uint8_t> field_active_story_trigger_;
     std::uint8_t field_palette_fade_steps_ = 0U;
     std::uint8_t field_modal_return_transition_frames_remaining_ = 0U;
-    // ROM 0xBC36 return point, saved when a door event starts: the lead's
-    // pre-step position plus the 0xBD34 offset for its heading, and the
-    // camera (FFDF44.., FFDF50/52).
+    // Source return point captured from the ROM-generated 0xBC36 position
+    // triplet (FFDF44..4F) and camera snapshot (FFDF50/52).
     struct FieldDoorReturnPoint {
         bool valid = false;
         SceneRunnerPosition lead{};

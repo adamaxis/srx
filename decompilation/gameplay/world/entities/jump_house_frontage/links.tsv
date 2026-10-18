@@ -1,0 +1,2 @@
+link_id	source_scene	source_event	route_kind	script	destination_scene	destination_mode	requires_mode	evidence
+rom_event_04	2	event_4	area_event	area_event_table	13	field		ROM scene 2 collision record 85 at 0x1730FC; event-table row 4 at 0x172CE0 selects scene 13 before the indexed title entry description.

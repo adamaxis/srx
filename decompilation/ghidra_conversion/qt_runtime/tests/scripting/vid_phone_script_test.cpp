@@ -262,7 +262,8 @@ bool test_sharkey_service_tree(GameScriptRuntime& scripts,
         return false;
     }
     task = scripts.complete_native_menu_choice("pay_for_passage");
-    if (!expect(is_service_call(task, "vid_phone.pass_salish_shidhe"),
+    if (!expect(is_service_call(
+                    task, "vid_phone.passage_to_scene_6.fare_3000"),
                 "Salish passage did not call ROM command 0x6E's native service")) {
         return false;
     }
@@ -280,7 +281,8 @@ bool test_sharkey_service_tree(GameScriptRuntime& scripts,
 
     task = scripts.complete_native_menu_choice("pass_sinsearach");
     task = scripts.complete_native_menu_choice("pay_for_passage");
-    if (!expect(is_service_call(task, "vid_phone.pass_sinsearach"),
+    if (!expect(is_service_call(
+                    task, "vid_phone.passage_to_scene_9.fare_5000"),
                 "Sinsearach passage did not call ROM command 0x6F's service")) {
         return false;
     }

@@ -63,6 +63,33 @@ function World.events_in_scene(scene_id)
     return result
 end
 
+-- A location link binds a ROM collision event to the entity it belongs to.
+-- The rows live beside the reusable entity profile, while the router remains
+-- generic. Only source-verified links are authored here; unmapped events keep
+-- using the ROM event table supplied by the host.
+function World.location_link_for_event(scene_id, event_code)
+    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
+       type(event_code) ~= "string" then
+        return nil
+    end
+    local result
+    for _, instance in ipairs(World.instances_in_scene(scene_id)) do
+        local entity = World.entity(instance.entity_id)
+        for _, link in ipairs(entity and entity.links or {}) do
+            if link.source_scene == scene_id and
+               link.source_event == event_code then
+                if result ~= nil then
+                    -- Duplicate event bindings make the location ambiguous.
+                    -- Do not silently pick whichever entity loaded first.
+                    return nil
+                end
+                result = link
+            end
+        end
+    end
+    return result
+end
+
 function World.actor_spawns_in_scene(scene_id)
     return records_in_scene("actor_spawns", scene_id)
 end

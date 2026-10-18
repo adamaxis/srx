@@ -218,6 +218,15 @@ local NODE_NAMES = {
 local ALERT_BANDS = {
     [0] = "  ???  ", "  Blue-", " Green-", "Orange-", "   Red-",
 }
+
+function M.file_class_name(class_id)
+    local label = FILE_CLASSES[class_id]
+    if label == nil then return nil end
+    -- These strings are padded to fixed ROM cells for direct rendering. Run
+    -- Info places the same source label in a host message, so discard only
+    -- the cell padding while preserving the authored spelling.
+    return label:match("^%s*(.-)%s*$")
+end
 local ACTIONS = {
     [0] = { { id = "enter_system", label = "Enter System" } },
     [1] = {

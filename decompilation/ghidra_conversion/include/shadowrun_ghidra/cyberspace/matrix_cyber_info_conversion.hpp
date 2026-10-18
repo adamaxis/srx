@@ -45,9 +45,8 @@ struct MatrixRunPresentation {
     MatrixRunAction action = MatrixRunAction::delete_file;
 };
 
-// ROM 0x18C28: FFF0E3 selects the run availability message. Zero means the
-// run is active; a negative value means no run and a positive value means the
-// run is complete.
+// ROM 0x18C42: FFF0E3 selects the Run Info branch. A negative value means an
+// active run; zero means no run; a positive value means the run is complete.
 MatrixRunAvailability classify_matrix_run_availability(
     std::int8_t run_state);
 

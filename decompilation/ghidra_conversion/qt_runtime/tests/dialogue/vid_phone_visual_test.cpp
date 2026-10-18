@@ -165,14 +165,14 @@ int main(int argc, char** argv) {
                                  std::string(*script_result)}
                            : std::nullopt;
             }
-            const auto passage_action =
-                vid_phone_passage_action_for_id(service_id);
-            if (passage_action.has_value()) {
-                const auto offer = vid_phone_passage_offer(*passage_action);
-                const auto result = apply_vid_phone_passage(
-                    *passage_action, phone_funds);
+            const auto passage_request =
+                parse_vid_phone_passage_request(service_id);
+            if (passage_request.has_value()) {
+                const auto result = apply_vid_phone_passage_fare(
+                    passage_request->price, phone_funds);
                 if (result == VidPhonePassageResult::passage_requested) {
-                    phone_pending_destination = offer.destination_scene;
+                    phone_pending_destination =
+                        passage_request->destination_scene;
                 }
                 const auto script_result =
                     vid_phone_passage_script_result(result);

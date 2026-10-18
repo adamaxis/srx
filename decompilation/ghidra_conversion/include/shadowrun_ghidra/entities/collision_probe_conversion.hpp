@@ -20,6 +20,7 @@ struct CollisionProbeState {
     std::uint16_t camera_x = 0;
     std::uint16_t camera_y = 0;
     std::uint8_t selected_offset_bank = 0;
+    bool initialized = false;
 };
 
 using CollisionProbeOffsetBank =

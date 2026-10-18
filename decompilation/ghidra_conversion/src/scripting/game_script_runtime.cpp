@@ -3367,13 +3367,10 @@ GameScriptRuntime::resolve_field_location_route(
         return fail("building.lua route function is missing");
     }
 
-    lua_createtable(state, 0, 5);
+    lua_createtable(state, 0, 6);
     const auto input_index = lua_absindex(state, -1);
-    lua_pushboolean(
-        state,
-        context.scene_id == field_scene_id_value(
-                                FieldSceneId::stoker_motel_street));
-    lua_setfield(state, input_index, "stoker_motel_street");
+    lua_pushinteger(state, context.scene_id);
+    lua_setfield(state, input_index, "scene_id");
     lua_pushboolean(
         state, context.field_mode == field_exit_mode_value(
                                          FieldExitMode::building_interaction));

@@ -977,11 +977,14 @@ The CyberInfo screen at `0x18AA6` is no longer a generic world routine:
 selection zero is Deck Stats and selection one is Run Info. The new native
 screen driver preserves the source setup, per-frame VBlank/latch/sample/history
 order, up-before-down priority, three-button page activation, and bit-15 return
-to the Matrix panel. Its Run Info branch at `0x18C28` classifies the run as
-not-present, active, or complete, then resolves the active node to CPU or
-Datastore and the source action table to Delete File, Upload File, Crash
-System, or Download File. Text/number placement and underlying deck-stat field
-reads remain presentation/data callbacks.
+to the Matrix panel. Its Run Info branch at `0x18C42` classifies signed
+`FFF0E3` as active when negative, absent when zero, and complete when
+positive. For an active run, `FFFBF2` selects CPU versus Datastore and its
+node-function label, while signed `FFFBF6` selects Delete File, Upload File,
+Crash System, or Download File through the `0xE44C8` pointer table. The Lua
+CyberInfo route now presents the same active/absent/complete result from the
+saved Matrix objective state; Deck Stats field extraction and exact panel
+placement remain open callbacks.
 The adjacent Matrix program-slot path at `0x19238` now has its complete
 interactive prompt control flow in `matrix_program_slot_screen_conversion`:
 the source enters on No, wraps the two-entry cursor, prioritizes activation

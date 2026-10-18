@@ -58,6 +58,7 @@ void build_collision_probe_points(
     }
     state.camera_x = camera_x;
     state.camera_y = camera_y;
+    state.initialized = true;
 }
 
 } // namespace shadowrun::ghidra_conversion

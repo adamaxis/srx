@@ -6,10 +6,12 @@
 #include "shadowrun_ghidra/cyberspace/matrix_storage_conversion.hpp"
 
 #include <array>
+#include <charconv>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <system_error>
 #include <utility>
 
 namespace shadowrun::ghidra_conversion {
@@ -25,57 +27,60 @@ enum class VidPhoneServiceAction : std::uint8_t {
     issue_hollywood_badge,
 };
 
-enum class VidPhonePassageAction : std::uint8_t {
-    salish_shidhe,
-    sinsearach,
-};
-
 enum class VidPhonePassageResult : std::uint8_t {
     passage_requested,
     insufficient_funds,
     unavailable,
 };
 
-struct VidPhonePassageOffer {
+struct VidPhonePassageRequest {
     std::uint16_t destination_scene;
     std::uint32_t price;
 };
 
-inline VidPhonePassageOffer vid_phone_passage_offer(
-    const VidPhonePassageAction action) noexcept {
-    // ROM commands 0x6E/0x6F charge 3,000/5,000, then enter world modes 6/9.
-    // The profile crosswalk names those destination maps Wilderness 1/4.
-    switch (action) {
-    case VidPhonePassageAction::salish_shidhe:
-        return {6U, 3000U};
-    case VidPhonePassageAction::sinsearach:
-        return {9U, 5000U};
+inline std::optional<VidPhonePassageRequest>
+parse_vid_phone_passage_request(const std::string_view service_id) noexcept {
+    constexpr std::string_view prefix = "vid_phone.passage_to_scene_";
+    constexpr std::string_view fare_separator = ".fare_";
+    if (service_id.rfind(prefix, 0U) != 0U) {
+        return std::nullopt;
     }
-    return {0U, 0U};
+    const auto request = service_id.substr(prefix.size());
+    const auto separator = request.find(fare_separator);
+    if (separator == std::string_view::npos || separator == 0U ||
+        separator + fare_separator.size() >= request.size()) {
+        return std::nullopt;
+    }
+
+    const auto scene_text = request.substr(0U, separator);
+    const auto fare_text = request.substr(separator + fare_separator.size());
+    std::uint32_t scene = 0U;
+    std::uint32_t price = 0U;
+    const auto parsed_scene = std::from_chars(
+        scene_text.data(), scene_text.data() + scene_text.size(), scene);
+    const auto parsed_price = std::from_chars(
+        fare_text.data(), fare_text.data() + fare_text.size(), price);
+    if (parsed_scene.ec != std::errc{} ||
+        parsed_scene.ptr != scene_text.data() + scene_text.size() ||
+        parsed_price.ec != std::errc{} ||
+        parsed_price.ptr != fare_text.data() + fare_text.size() ||
+        scene > 0xFFU) {
+        return std::nullopt;
+    }
+    return VidPhonePassageRequest{
+        static_cast<std::uint16_t>(scene), price};
 }
 
-inline std::optional<VidPhonePassageAction>
-vid_phone_passage_action_for_id(const std::string_view service_id) noexcept {
-    if (service_id == "vid_phone.pass_salish_shidhe") {
-        return VidPhonePassageAction::salish_shidhe;
-    }
-    if (service_id == "vid_phone.pass_sinsearach") {
-        return VidPhonePassageAction::sinsearach;
-    }
-    return std::nullopt;
-}
-
-inline VidPhonePassageResult apply_vid_phone_passage(
-    const VidPhonePassageAction action,
+inline VidPhonePassageResult apply_vid_phone_passage_fare(
+    const std::uint32_t price,
     std::optional<std::uint32_t>& funds) noexcept {
     if (!funds.has_value()) {
         return VidPhonePassageResult::unavailable;
     }
-    const auto offer = vid_phone_passage_offer(action);
-    if (*funds < offer.price) {
+    if (*funds < price) {
         return VidPhonePassageResult::insufficient_funds;
     }
-    *funds -= offer.price;
+    *funds -= price;
     return VidPhonePassageResult::passage_requested;
 }
 

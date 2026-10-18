@@ -275,29 +275,27 @@ int main() {
         return 15;
     }
 
-    const auto salish_offer =
-        vid_phone_passage_offer(VidPhonePassageAction::salish_shidhe);
-    const auto sinsearach_offer =
-        vid_phone_passage_offer(VidPhonePassageAction::sinsearach);
-    if (!expect(salish_offer.destination_scene == 6U &&
-                    salish_offer.price == 3000U &&
-                    sinsearach_offer.destination_scene == 9U &&
-                    sinsearach_offer.price == 5000U &&
-                    vid_phone_passage_action_for_id(
-                        "vid_phone.pass_salish_shidhe") ==
-                        VidPhonePassageAction::salish_shidhe &&
-                    vid_phone_passage_action_for_id(
-                        "vid_phone.pass_sinsearach") ==
-                        VidPhonePassageAction::sinsearach &&
-                    !vid_phone_passage_action_for_id(
-                         "vid_phone.unknown_passage").has_value(),
-                "Sharkey passage ids, prices, or ROM area destinations are wrong")) {
+    const auto salish_request = parse_vid_phone_passage_request(
+        "vid_phone.passage_to_scene_6.fare_3000");
+    const auto sinsearach_request = parse_vid_phone_passage_request(
+        "vid_phone.passage_to_scene_9.fare_5000");
+    if (!expect(salish_request.has_value() &&
+                    salish_request->destination_scene == 6U &&
+                    salish_request->price == 3000U &&
+                    sinsearach_request.has_value() &&
+                    sinsearach_request->destination_scene == 9U &&
+                    sinsearach_request->price == 5000U &&
+                    !parse_vid_phone_passage_request(
+                         "vid_phone.unknown_passage").has_value() &&
+                    !parse_vid_phone_passage_request(
+                         "vid_phone.passage_to_scene_256.fare_1").has_value(),
+                "Lua passage requests did not parse as bounded scene/fare data")) {
         return 16;
     }
 
     funds = 3000U;
-    auto passage_result = apply_vid_phone_passage(
-        VidPhonePassageAction::salish_shidhe, funds);
+    auto passage_result = apply_vid_phone_passage_fare(
+        salish_request->price, funds);
     if (!expect(passage_result == VidPhonePassageResult::passage_requested &&
                     funds == 0U &&
                     vid_phone_passage_script_result(passage_result) ==
@@ -306,8 +304,8 @@ int main() {
         return 17;
     }
     funds = 2999U;
-    passage_result = apply_vid_phone_passage(
-        VidPhonePassageAction::salish_shidhe, funds);
+    passage_result = apply_vid_phone_passage_fare(
+        salish_request->price, funds);
     if (!expect(passage_result ==
                         VidPhonePassageResult::insufficient_funds &&
                     funds == 2999U &&
@@ -317,16 +315,16 @@ int main() {
         return 18;
     }
     funds = 5000U;
-    passage_result = apply_vid_phone_passage(
-        VidPhonePassageAction::sinsearach, funds);
+    passage_result = apply_vid_phone_passage_fare(
+        sinsearach_request->price, funds);
     if (!expect(passage_result == VidPhonePassageResult::passage_requested &&
                     funds == 0U,
                 "Sinsearach passage did not charge exactly 5,000 nuyen")) {
         return 19;
     }
     funds.reset();
-    passage_result = apply_vid_phone_passage(
-        VidPhonePassageAction::sinsearach, funds);
+    passage_result = apply_vid_phone_passage_fare(
+        sinsearach_request->price, funds);
     if (!expect(passage_result == VidPhonePassageResult::unavailable &&
                     !vid_phone_passage_script_result(passage_result).has_value(),
                 "unresolved wallet did not block passage without a script result")) {

@@ -22,7 +22,7 @@ CyberInfoPage selected_cyber_info_page(
 
 MatrixRunAvailability classify_matrix_run_availability(
     const std::int8_t run_state) {
-    if (run_state < 0) {
+    if (run_state == 0) {
         return MatrixRunAvailability::not_on_run;
     }
     if (run_state > 0) {

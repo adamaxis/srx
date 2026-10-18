@@ -1,6 +1,7 @@
 -- Sharkey's passage and Smart Goggles offers.
 -- ROM contact record 0x10A7F2 maps these choices to commands 0x6E-0x70.
 local Sharkey = {}
+local Passages = require("data.vid_phone_passages")
 
 local SPEAKER = "vid_phone_sharkey"
 local PROFILE = "field.vid_phone"
@@ -14,7 +15,7 @@ local function say(event_id)
     game.ui.say(event_id, SPEAKER, PROFILE)
 end
 
-local function passage(menu_id, service_id)
+local function passage(menu_id, passage_id)
     local choice = menu(menu_id, {
         "pay_for_passage",
         "return_to_services",
@@ -26,7 +27,11 @@ local function passage(menu_id, service_id)
         return "finished"
     end
 
-    local result = game.services.call("vid_phone", service_id)
+    local action = Passages.service_action(passage_id)
+    if action == nil then
+        return "vid_phone_passage_data_unresolved"
+    end
+    local result = game.services.call("vid_phone", action)
     if result == "insufficient" then
         say("insufficient_funds")
         return "services"
@@ -76,10 +81,10 @@ function Sharkey.services()
         })
         local outcome
         if choice == "pass_salish" then
-            outcome = passage("sharkey_salish_passage", "pass_salish_shidhe")
+            outcome = passage("sharkey_salish_passage", "salish_shidhe")
         elseif choice == "pass_sinsearach" then
             outcome = passage(
-                "sharkey_sinsearach_passage", "pass_sinsearach")
+                "sharkey_sinsearach_passage", "sinsearach")
         elseif choice == "smart_goggles" then
             outcome = smart_goggles()
         else
