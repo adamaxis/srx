@@ -74,8 +74,11 @@ bool source_menu_caption_matches(const QImage& scene, const QImage& font,
                     (static_cast<std::uint32_t>(source_pixel.alpha()) *
                      static_cast<std::uint32_t>(coverage)) /
                     255U);
+                // Command text is CRAM 0x02C2 = levels (1,6,1) (emulator
+                // run5 FFD8F4); the presenter pre-scales the tint for the
+                // atlas' 0xDB coverage, so the reference does the same.
                 tinted_glyph.setPixelColor(
-                    glyph_x, glyph_y, QColor(0, 255, 0, alpha));
+                    glyph_x, glyph_y, QColor(42, 255, 42, alpha));
             }
         }
         painter.drawImage(cursor_x, 0, tinted_glyph);
@@ -41788,8 +41791,10 @@ int main(int argc, char** argv) {
                               << actual_saved << ")\n";
                     return 3;
                 }
+                // Command text is CRAM 0x02C2 = levels (1,6,1) (emulator run5
+                // FFD8F4); the earlier (0,219,0) was the host's pure green.
                 if (!image_region_has_color(initial_scene, 120, 160, 40, 8,
-                                            QColor(0, 219, 0)) ||
+                                            QColor(36, 219, 36)) ||
                     image_region_has_color(initial_scene, 64, 200, 224, 8,
                                            QColor(109, 73, 146))) {
                     std::cerr << "field Attributes/Skills dump: command "

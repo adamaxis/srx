@@ -709,13 +709,50 @@ std::optional<std::uint16_t> source_delay_mode(
     return std::nullopt;
 }
 
+// Command-overview text is CRAM line 1 index 10 = 0x02C2 (emulator run5
+// FFD8F4 while the Start menu is open) [C]. The glyph atlas coverage is
+// 0xDB, so the tint is pre-scaled to land on levels (1,6,1).
+QColor command_overview_text_tint() {
+    constexpr int kGlyphCoverage = 0xDB;
+    const auto level = [](const int cram_nibble) {
+        return ((cram_nibble >> 1) * 255 + 3) / 7;
+    };
+    constexpr std::uint16_t kTextCram = 0x02C2U;
+    const auto scale = [&](const int value) {
+        return std::min(255, (value * 255 + kGlyphCoverage / 2) / kGlyphCoverage);
+    };
+    return QColor(scale(level(kTextCram & 0xF)),
+                  scale(level((kTextCram >> 4) & 0xF)),
+                  scale(level((kTextCram >> 8) & 0xF)));
+}
+
+// The ROM menu strings carry their layout as padding: runner names are
+// centred in 13 cells ("   Joshua    ", ROM 0x72972), posture and item
+// labels in 12 ("  Neutral   " 0xD1A21, " Model 101T " 0xD4571), and
+// "Physical   0%" (0xD198C) right-aligns the value to cell 13 [C]. The
+// text catalog stores trimmed strings, so the presenter re-applies it.
+constexpr int kRunnerNameCells = 13;
+constexpr int kMenuLabelCells = 12;
+constexpr int kMetricValueRightEdge = 128 + 13 * 8;
+
+int centered_text_x(const int x, const int field_cells,
+                    const std::string_view text) {
+    const auto length = static_cast<int>(text.size());
+    return length >= field_cells ? x : x + ((field_cells - length) / 2) * 8;
+}
+
+int right_aligned_text_x(const int right_edge,
+                         const std::string_view text) {
+    return right_edge - static_cast<int>(text.size()) * 8;
+}
+
 void draw_command_overview_number(
     QPainter& painter, const QImage& font, const int x, const int y,
     const std::uint32_t value,
     const NumericVisualAlignment alignment = NumericVisualAlignment::left,
     const bool group_thousands = false) {
     draw_numeric_visual(painter, font, x, y, value, alignment,
-                        group_thousands, QColor(0, 255, 0));
+                        group_thousands, command_overview_text_tint());
 }
 
 FieldActionPurchaseState make_purchase_state(
@@ -20655,7 +20692,7 @@ void FieldSceneRuntime::paint_field_shop_notice(QPainter& painter) const {
 void FieldSceneRuntime::draw_command_overview_text(
     QPainter& painter, const int x, const int y,
     const std::string_view text) const {
-    draw_tinted_field_text(painter, x, y, text, QColor(0, 255, 0));
+    draw_tinted_field_text(painter, x, y, text, command_overview_text_tint());
 }
 
 void FieldSceneRuntime::draw_tinted_field_text(
@@ -21060,8 +21097,11 @@ void FieldSceneRuntime::paint_command_overview_posture_panel(
         active_runner_record().posture,
         command_overview_status_bars_.size() - 1U);
     painter.drawImage(176, 168, command_overview_status_bars_[posture]);
-    draw_command_overview_text(painter, 136, 176,
-                               field_menu_text_.status_names[posture]);
+    draw_command_overview_text(
+        painter,
+        centered_text_x(136, kMenuLabelCells,
+                        field_menu_text_.status_names[posture]),
+        176, field_menu_text_.status_names[posture]);
     if (posture_dialog_active_) {
         painter.drawImage(120, 168, posture_focus_);
     }
@@ -22999,11 +23039,16 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             command_overview_portraits_[field_joshua_archetype_selection_]);
     }
 
-    draw_command_overview_text(
-        painter, 128, 8,
-        field_party_roster_.name(field_party_roster_.active_slot()).empty()
-            ? field_menu_text_.runner_names[0]
-            : field_party_roster_.name(field_party_roster_.active_slot()));
+    {
+        // ROM 0x1111A: record +0x58 at plane cell (16,1).
+        const std::string_view name =
+            field_party_roster_.name(field_party_roster_.active_slot()).empty()
+                ? std::string_view(field_menu_text_.runner_names[0])
+                : std::string_view(field_party_roster_.name(
+                      field_party_roster_.active_slot()));
+        draw_command_overview_text(
+            painter, centered_text_x(128, kRunnerNameCells, name), 8, name);
+    }
 
     // 0x11928/0x11AE4 places the five-state bar and status name. Keeping this
     // in a helper lets child screens restore the shared panel after clearing
@@ -23136,18 +23181,26 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                                    field_menu_text_.physical_label);
         draw_command_overview_text(painter, 128, 48,
                                    field_menu_text_.mental_label);
-        draw_command_overview_text(
-            painter, 208, 40,
-            std::to_string(std::min<unsigned>(
-                100U, static_cast<unsigned>(
-                          active_runner_record().delay_meter) * 10U)) +
-                "%");
-        draw_command_overview_text(
-            painter, 208, 48,
-            std::to_string(std::min<unsigned>(
-                100U, static_cast<unsigned>(
-                          active_runner_record().behavior_meter) * 10U)) +
-                "%");
+        {
+            const auto value = std::to_string(std::min<unsigned>(
+                                   100U, static_cast<unsigned>(
+                                             active_runner_record().delay_meter) *
+                                             10U)) +
+                               "%";
+            draw_command_overview_text(
+                painter, right_aligned_text_x(kMetricValueRightEdge, value),
+                40, value);
+        }
+        {
+            const auto value = std::to_string(std::min<unsigned>(
+                                   100U, static_cast<unsigned>(
+                                             active_runner_record().behavior_meter) *
+                                             10U)) +
+                               "%";
+            draw_command_overview_text(
+                painter, right_aligned_text_x(kMetricValueRightEdge, value),
+                48, value);
+        }
         const auto equipped_item_code =
             active_runner_record().equipped_item_code;
         const bool special_spell_action =
@@ -23168,12 +23221,15 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             // Ordinary equipment uses the one-based D4540 item row.
             const auto item_index =
                 static_cast<std::size_t>(equipped_item_code - 1U);
+            const auto& item_text = field_menu_text_.items[item_index];
             draw_command_overview_text(
-                painter, 128, 64, field_menu_text_.items[item_index].name);
-            if (!field_menu_text_.items[item_index].category.empty()) {
+                painter, centered_text_x(128, kMenuLabelCells, item_text.name),
+                64, item_text.name);
+            if (!item_text.category.empty()) {
                 draw_command_overview_text(
-                    painter, 128, 72,
-                    field_menu_text_.items[item_index].category);
+                    painter,
+                    centered_text_x(128, kMenuLabelCells, item_text.category),
+                    72, item_text.category);
             }
         }
         if (special_spell_action) {
