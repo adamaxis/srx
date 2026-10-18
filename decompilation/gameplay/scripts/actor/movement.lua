@@ -398,12 +398,33 @@ end
 -- ROM 0xBDF2, cardinal step by Quickness clamped to 0..9.
 local quickness_cardinal_steps = { 9, 9, 12, 16, 19, 22, 25, 27, 29, 31 }
 
-local function creature_movement_offsets(context, state)
+local function movement_record_flags(context)
     -- +0x10. The runner publishes it as movement_entity_flags. Dynamic
     -- actors publish the same byte as source_record_flags.
-    local record_flags = context.dynamic_world_encounter_actor == true
+    return context.dynamic_world_encounter_actor == true
         and context.source_record_flags
         or context.movement_entity_flags
+end
+
+local function walk_direction_from_heading(heading)
+    -- ROM 0xB574 walk handler (0xB57E, 0xB5BE) and its walk animation pick
+    -- (0xB6CC, C062): rol.w #3 then andi.w #7 with no round-up, so the
+    -- octant is truncated. 0xB36A-family animation picks and the 0xBABC
+    -- step round up instead (direction_from_heading) [C: disasm; emulator
+    -- run5 FF012E 0x7800..0x6000 step diagonally, 0x5800 steps right].
+    return (heading >> 13) & 0x7
+end
+
+local function movement_octant_selector(context)
+    -- 0xACAE installs 0xB574 when +0x10 bit 1 (THINK) is set.
+    if (movement_record_flags(context) & ActorStatus.THINK) ~= 0 then
+        return walk_direction_from_heading
+    end
+    return direction_from_heading
+end
+
+local function creature_movement_offsets(context, state)
+    local record_flags = movement_record_flags(context)
     local controlled_action = ActorStatus.THINK
     local walk_fast_selected = context.walk_fast_enabled == true and
         (record_flags & controlled_action) ~= 0
@@ -596,7 +617,8 @@ local function advance_entity_movement(context, state)
         movement_state.collision_extent = -12
     end
 
-    local initial_direction = direction_from_heading(movement_state.heading)
+    local movement_octant = movement_octant_selector(context)
+    local initial_direction = movement_octant(movement_state.heading)
     local initial_slot = initial_direction * 2
     movement_state.collision_context = movement_context_word(
         movement_offsets, initial_direction)
@@ -607,12 +629,12 @@ local function advance_entity_movement(context, state)
         movement_state.movement_substate = 0x1000
         commit_movement_candidate(movement_state, initial)
         state.animation_id = "walk"
-        state.direction = direction_from_heading(movement_state.heading)
+        state.direction = initial_direction
         return {
             outcome = "accepted",
             state = movement_state,
             direction_animation = 0x20 + context.movement_idle_selectors[
-                direction_from_heading(movement_state.heading) + 1],
+                initial_direction + 1],
         }
     end
 
@@ -735,6 +757,9 @@ R.projectile_heartbeat = projectile_heartbeat
 R.requested_movement_heading = requested_movement_heading
 R.resolve_source_target_motion = resolve_source_target_motion
 R.movement_collision_code = movement_collision_code
+R.movement_record_flags = movement_record_flags
+R.walk_direction_from_heading = walk_direction_from_heading
+R.movement_octant_selector = movement_octant_selector
 R.creature_movement_offsets = creature_movement_offsets
 R.movement_context_word = movement_context_word
 R.probe_movement = probe_movement

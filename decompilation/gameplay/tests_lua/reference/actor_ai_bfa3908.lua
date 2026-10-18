@@ -2296,7 +2296,18 @@ local function advance_entity_movement(context, state)
         movement_state.collision_extent = -12
     end
 
-    local initial_direction = direction_from_heading(movement_state.heading)
+    -- Post-split behaviour fix mirrored here so the differential stays
+    -- meaningful (patches_video_6): the 0xB574 walk handler (+0x10 bit 1)
+    -- truncates the octant (0xB5BE/0xB6CC); 0xBABC rounds (0xBACC).
+    local walk_record_flags = context.dynamic_world_encounter_actor == true
+        and context.source_record_flags
+        or context.movement_entity_flags
+    local initial_direction
+    if (walk_record_flags & 0x02) ~= 0 then
+        initial_direction = (movement_state.heading >> 13) & 0x7
+    else
+        initial_direction = direction_from_heading(movement_state.heading)
+    end
     local initial_slot = initial_direction * 2
     movement_state.collision_context = movement_context_word(
         movement_offsets, initial_direction)
@@ -2307,12 +2318,12 @@ local function advance_entity_movement(context, state)
         movement_state.movement_substate = 0x1000
         commit_movement_candidate(movement_state, initial)
         state.animation_id = "walk"
-        state.direction = direction_from_heading(movement_state.heading)
+        state.direction = initial_direction
         return {
             outcome = "accepted",
             state = movement_state,
             direction_animation = 0x20 + context.movement_idle_selectors[
-                direction_from_heading(movement_state.heading) + 1],
+                initial_direction + 1],
         }
     end
 

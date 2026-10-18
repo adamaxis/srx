@@ -6155,7 +6155,10 @@ int run_field_scene20_physical_entry_qa(
         const auto dispatches_after_c0 =
             field_scene.field_map_event_system_for_dump()
                 .collision_dispatch_count();
-        for (std::uint32_t tick = 1U; tick <= 16U; ++tick) {
+        // The half turn from north keeps stepping north for three frames
+        // and loops east (0xB5BE truncated octant), so the runner passes
+        // the contact row only on the 19th frame; hold for 24.
+        for (std::uint32_t tick = 1U; tick <= 24U; ++tick) {
             field_scene.set_controller_nibble(0x02U); // held Down, away
             field_scene.advance_frame();
             ++frame;
@@ -8954,15 +8957,17 @@ int run_scene19_table_collision_qa(
         Side side;
     };
     constexpr std::array<ContactRoute, 5U> kRoutes{{
-        {"record-8-west", 48U * 16U, 140U * 16U, 0x08U, 8U,
+        // Start rows are offset so each turn (0xB5BE truncated octant:
+        // three north steps, then diagonals) meets the same ROM edge.
+        {"record-8-west", 48U * 16U, 140U * 16U + 60U, 0x08U, 8U,
          0x1D5F28U, ContactRoute::Side::west},
-        {"record-8-east", 144U * 16U, 140U * 16U, 0x04U, 8U,
+        {"record-8-east", 144U * 16U, 140U * 16U - 60U, 0x04U, 8U,
          0x1D5F28U, ContactRoute::Side::east},
         {"record-8-north", 96U * 16U, 112U * 16U, 0x02U, 8U,
          0x1D5F28U, ContactRoute::Side::north},
         {"record-8-south", 96U * 16U, 176U * 16U, 0x01U, 8U,
          0x1D5F28U, ContactRoute::Side::south},
-        {"record-9-west", 144U * 16U, 140U * 16U, 0x08U, 9U,
+        {"record-9-west", 144U * 16U, 140U * 16U + 60U, 0x08U, 9U,
          0x1D5F32U, ContactRoute::Side::west},
     }};
     struct ExpectedContact {
@@ -8976,15 +8981,15 @@ int run_scene19_table_collision_qa(
     // map (0xFF1700) after 0xE8A0's four +/-12,+/-7 corner probes.  Pin each
     // contact so this route cannot silently stop testing a different edge.
     constexpr std::array<ExpectedContact, 5U> kExpectedContacts{{
-        {{768U, 2240U}, {828U, 2150U}, {858U, 2120U}, {828U, 2120U},
+        {{768U, 2300U}, {828U, 2150U}, {858U, 2120U}, {828U, 2120U},
          {0U, 0U, 0U, 0x7EU}},
-        {{2304U, 2240U}, {2244U, 2120U}, {2214U, 2090U}, {2244U, 2090U},
+        {{2304U, 2180U}, {2244U, 2120U}, {2214U, 2090U}, {2244U, 2090U},
          {0U, 0U, 0x7EU, 0U}},
         {{1536U, 1792U}, {1896U, 1912U}, {1896U, 1942U}, {1926U, 1882U},
          {0U, 0U, 0x7EU, 0U}},
         {{1536U, 2816U}, {1536U, 2696U}, {1536U, 2666U}, {1536U, 2696U},
          {0x7EU, 0x7EU, 0U, 0U}},
-        {{2304U, 2240U}, {2364U, 2150U}, {2394U, 2120U}, {2364U, 2120U},
+        {{2304U, 2300U}, {2364U, 2150U}, {2394U, 2120U}, {2364U, 2120U},
          {0U, 0U, 0U, 0x7EU}},
     }};
     constexpr std::array<TerrainCollisionRectangle, 2U> kRomTableRecords{{
@@ -9496,23 +9501,26 @@ int run_low_code_object_bounds_census_qa(
          3U, 0x172DC8U, {928U, 959U, 928U, 943U, 3U},
          3U, 0x172DC8U, {928U, 959U, 928U, 943U, 3U}, true,
          Side::south},
-        {"scene-07-record-1", 7U, 832U * 16U, 1152U * 16U, 0x08U,
+        // +60: the first three frames of the turn from north still step
+        // north (0xB5BE truncated octant), so start lower to meet the edge
+        // at the same row.
+        {"scene-07-record-1", 7U, 832U * 16U, 1152U * 16U + 60U, 0x08U,
          1U, 0x1B3D90U, {896U, 927U, 1136U, 1151U, 1U},
          1U, 0x1B3D90U, {896U, 927U, 1136U, 1151U, 1U}, true,
          Side::west},
-        {"scene-07-record-2", 7U, 1216U * 16U, 1504U * 16U, 0x08U,
+        {"scene-07-record-2", 7U, 1216U * 16U, 1504U * 16U + 60U, 0x08U,
          2U, 0x1B3D9AU, {1280U, 1311U, 1488U, 1503U, 2U},
          2U, 0x1B3D9AU, {1280U, 1311U, 1488U, 1503U, 2U}, true,
          Side::west},
-        {"scene-08-record-1", 8U, 1216U * 16U, 1056U * 16U, 0x08U,
+        {"scene-08-record-1", 8U, 1216U * 16U, 1056U * 16U + 60U, 0x08U,
          1U, 0x1B463EU, {1280U, 1311U, 1040U, 1055U, 1U},
          1U, 0x1B463EU, {1280U, 1311U, 1040U, 1055U, 1U}, true,
          Side::west},
-        {"scene-31-record-102-code-4", 31U, 128U * 16U, 280U * 16U, 0x08U,
+        {"scene-31-record-102-code-4", 31U, 128U * 16U, 280U * 16U + 60U, 0x08U,
          102U, 0x1DB9F4U, {192U, 223U, 264U, 295U, 4U},
          4U, 0x1DB620U, {640U, 671U, 1120U, 1247U, 0x7FU}, false,
          Side::west},
-        {"scene-34-record-102-code-4", 34U, 128U * 16U, 280U * 16U, 0x08U,
+        {"scene-34-record-102-code-4", 34U, 128U * 16U, 280U * 16U + 60U, 0x08U,
          102U, 0x1DB9F4U, {192U, 223U, 264U, 295U, 4U},
          4U, 0x1DB620U, {640U, 671U, 1120U, 1247U, 0x7FU}, false,
          Side::west},
@@ -13324,9 +13332,13 @@ int run_field_stoker_collision_candidate_qa(
     std::uint16_t south_lane_ticks = 0U;
     // The wall's inclusive south edge is row 0x33F. The expanded runner
     // probe reaches seven rows beyond its center, so move the runner center
-    // to row 0x348 before turning east toward record 2.
+    // to row 0x348 before turning east toward record 2. The turn from
+    // south to east then takes four diagonal steps (0xB5BE truncated
+    // octant, +120); continue 60 further so the turn ends on the source
+    // contact row 0x3534.
+    constexpr std::uint16_t kPropertyLaneY = 0x3480U + 60U;
     while (south_lane_ticks < 80U &&
-           field_scene.field_entity_world_position().y < 0x3480U &&
+           field_scene.field_entity_world_position().y < kPropertyLaneY &&
            route_active()) {
         field_scene.set_controller_nibble(0x02U);
         field_scene.advance_frame();
@@ -13788,9 +13800,15 @@ int run_field_scene2_motel_street_collision_qa(
     // doorway directly east of this test lane. Approach the west wall with
     // normal controller input so the QA cannot bypass the live collision path.
     constexpr std::uint16_t west_wall_lane_x = 0x3B20U;
+    // Turning from west to north keeps stepping west for three frames and
+    // north-west for four (0xB5BE truncates the heading octant), 210 units
+    // in all, so release the west input that much early to meet the wall
+    // in the same lane.
+    constexpr std::uint16_t north_turn_west_drift = 210U;
     std::uint16_t west_ticks = 0U;
     while (west_ticks < 160U &&
-           field_scene.field_entity_world_position().x > west_wall_lane_x &&
+           field_scene.field_entity_world_position().x >
+               west_wall_lane_x + north_turn_west_drift &&
            route_active()) {
         field_scene.set_controller_nibble(0x04U);
         field_scene.advance_frame();
@@ -16743,11 +16761,13 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 // Fifteen accepted steps in sixteen held frames. On-screen
-                // calm movement uses 0xBEC2 (30): five diagonal, ten east.
+                // calm movement uses 0xBEC2 (30). The 0xB574 walk handler
+                // truncates the heading octant (0xB5BE): three north, four
+                // diagonal, eight east [C: emulator run5 up/right turns].
                 if (held_target != 0x4000U ||
                     heading_after_eight_ticks != 0x4000U ||
-                    held_heading != 0x4000U || x_delta != 450 ||
-                    y_delta != -150 || held_animation_frame_at_sixteen >= 4U ||
+                    held_heading != 0x4000U || x_delta != 390 ||
+                    y_delta != -210 || held_animation_frame_at_sixteen >= 4U ||
                     frame_advance_count < 5U || frame_wrap_count == 0U ||
                     !std::all_of(observed_walk_frames.begin(),
                                  observed_walk_frames.end(),
