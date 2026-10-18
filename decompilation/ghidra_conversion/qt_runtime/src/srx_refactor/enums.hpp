@@ -584,6 +584,12 @@ enum class SceneMode : std::int64_t {
     BUILDING = 0x2,
     CAVE = 0x3,
 };
+enum class ServiceKind : std::int64_t {
+    NONE = 0x0,
+    HOTEL = 0x1,
+    HOSPITAL = 0x2,
+    SHOP = 0x3,
+};
 enum class Shop : std::int64_t {
     WEAPONS_WORLD = 0x0,
     ARES_WEAPON_EMPORIUM = 0x1,

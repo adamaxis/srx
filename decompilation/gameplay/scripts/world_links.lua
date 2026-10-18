@@ -125,6 +125,24 @@ function WorldLinks.exit_heading(facing, entry_heading)
     error("world_links.exit_heading: unknown facing " .. tostring(facing))
 end
 
+-- Same-map service at (scene, event), from the 0x1F5CA handler chains:
+-- { kind = E.ServiceKind.*, handler } or nil. Such a door is handled in
+-- place; closing it is the 0x9B8 + 0x2FA4 service return.
+function WorldLinks.service_at(scene_id, event)
+    for _, site in ipairs(Data.services) do
+        if site.scene == scene_id and site.event == event then
+            return { kind = E.ServiceKind[site.kind], handler = site.handler }
+        end
+    end
+    return nil
+end
+
+-- service_kind_flat(scene, event) -> { E.ServiceKind }
+function WorldLinks.service_kind_flat(scene_id, event)
+    local site = WorldLinks.service_at(scene_id, event)
+    return { site and site.kind or E.ServiceKind.NONE }
+end
+
 -- Cave/wilderness graph (0x2CE0): leaving `room` by exit dir 0..3
 -- (zone code 8..11). Returns { room, scene, x, y }.
 function WorldLinks.cave_exit(room, dir)

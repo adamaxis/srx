@@ -87,6 +87,13 @@ for _, h in ipairs({ 0x0000, 0x4000, 0x8000, 0xC000, 0x2000, 0xE000 }) do
 end
 check(not pcall(W.exit_heading, 7, 0), "unknown facing rejected")
 
+-- 3b. Service sites (doc 18 section 3; Little Chiba [C emu: Hospital Options in place]).
+check(#D.services == 17, "17 service sites")
+check(W.service_at(2, 1).kind == E.ServiceKind.HOSPITAL and W.service_at(2, 1).handler == 0x01F96A, "Little Chiba hospital")
+check(W.service_at(2, 2).kind == E.ServiceKind.HOTEL, "Stoker motel hotel")
+check(W.service_at(2, 11).kind == E.ServiceKind.SHOP, "Ares shop")
+check(W.service_at(2, 4) == nil and W.service_kind_flat(2, 4)[1] == E.ServiceKind.NONE, "Jump House is not a service")
+
 -- 4. Cave graph (doc 19 section 3).
 local c = W.cave_exit(0, 0)
 check(c.room == 5 and c.scene == 0x2D and c.x == 0x5E00 and c.y == 0x2280, "room 0 dir 0")

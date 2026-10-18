@@ -1215,6 +1215,28 @@ M.scenes = {
     },
 }
 
+-- Same-map services (0x1F5CA chain). A matching (scene, event) is handled in
+-- place and returns d6 = FFFF: 0x9B8 heading + 0x2FA4 placement on close.
+M.services = {
+    { kind = "HOTEL", scene = 0, event = 3, handler = 0x01F666 },
+    { kind = "HOTEL", scene = 1, event = 1, handler = 0x01F6B8 },
+    { kind = "HOTEL", scene = 2, event = 2, handler = 0x01F72A },
+    { kind = "HOTEL", scene = 3, event = 1, handler = 0x01F77C },
+    { kind = "HOTEL", scene = 4, event = 0, handler = 0x01F7CE },
+    { kind = "HOSPITAL", scene = 0, event = 0, handler = 0x01F83C },
+    { kind = "HOSPITAL", scene = 2, event = 1, handler = 0x01F96A },
+    { kind = "HOSPITAL", scene = 1, event = 6, handler = 0x01F9BC },
+    { kind = "HOSPITAL", scene = 4, event = 4, handler = 0x01FA0E },
+    { kind = "SHOP", scene = 2, event = 11, handler = 0x01FA84 },
+    { kind = "SHOP", scene = 1, event = 5, handler = 0x01FAE2 },
+    { kind = "SHOP", scene = 1, event = 3, handler = 0x01FB54 },
+    { kind = "SHOP", scene = 5, event = 2, handler = 0x01FBAE },
+    { kind = "SHOP", scene = 5, event = 3, handler = 0x01FBFC },
+    { kind = "SHOP", scene = 5, event = 4, handler = 0x01FC4A },
+    { kind = "SHOP", scene = 5, event = 5, handler = 0x01FC98 },
+    { kind = "SHOP", scene = 4, event = 3, handler = 0x01FCF2 },
+}
+
 -- Cave/wilderness room graph (0x2CE0): room -> scene, exits by dir 0..3
 -- (zone codes 8..11) -> next room and arrival slot; arrival rows by scene.
 M.room_graph = {

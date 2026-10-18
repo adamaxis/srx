@@ -78,6 +78,24 @@ for s in range(SCENES):
     w("    },")
 w("}")
 w("")
+# Same-map service sites of the 0x1F5CA chain (doc 18 section 3): each
+# handler is a chain of cmpi.b #scene,FFFBF8 / cmpi.b #zone,FFFBF9 tests.
+SERVICE_HANDLERS = (("HOTEL", 0x1F65A, 0x1F830), ("HOSPITAL", 0x1F830, 0x1FA78), ("SHOP", 0x1FA78, 0x1FD80))
+w("-- Same-map services (0x1F5CA chain). A matching (scene, event) is handled in")
+w("-- place and returns d6 = FFFF: 0x9B8 heading + 0x2FA4 placement on close.")
+w("M.services = {")
+services = 0
+for kind, a, b in SERVICE_HANDLERS:
+    scene = None
+    for p in range(a, b, 2):
+        op = d[p:p + 2]; tgt = d[p + 4:p + 8]
+        if op == b"\x0c\x39" and d[p + 2] == 0 and tgt == b"\x00\xff\xfb\xf8":
+            scene = d[p + 3]
+        elif op == b"\x0c\x39" and d[p + 2] == 0 and tgt == b"\x00\xff\xfb\xf9" and scene is not None:
+            w("    { kind = \"%s\", scene = %d, event = %d, handler = 0x%06X }," % (kind, scene, d[p + 3], p))
+            services += 1
+w("}")
+w("")
 w("-- Cave/wilderness room graph (0x2CE0): room -> scene, exits by dir 0..3")
 w("-- (zone codes 8..11) -> next room and arrival slot; arrival rows by scene.")
 w("M.room_graph = {")
@@ -99,4 +117,4 @@ w("}")
 w("")
 w("return M")
 open(out_path, "w").write("\n".join(o) + "\n")
-print("wrote", out_path, "link records", links_total)
+print("wrote", out_path, "link records", links_total, "services", services)
