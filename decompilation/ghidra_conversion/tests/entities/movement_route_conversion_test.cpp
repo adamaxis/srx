@@ -32,7 +32,7 @@ int main() {
         !expect(primary_fallback.fallback_probe.has_value()) ||
         !expect(primary_fallback.fallback_probe->candidate_x == 0x1111) ||
         !expect(route_keys == std::vector<std::uint16_t>{0}) ||
-        !expect(probed_slots == std::vector<std::uint16_t>{4})) {
+        !expect(probed_slots == std::vector<std::uint16_t>{8})) {
         return 1;
     }
 
@@ -40,7 +40,7 @@ int main() {
     const auto secondary_fallback = evaluate_entity_movement_route(
             0x1000, policy,
             [](const std::uint16_t) {
-                return DirectionalMovementRoute{1, 0, 4, 8};
+                return DirectionalMovementRoute{1, 0, 4, 6};
             },
             [&probed_slots](const std::uint16_t slot) {
                 probed_slots.push_back(slot);
@@ -50,7 +50,7 @@ int main() {
     if (!expect(!secondary_fallback.carry_set) ||
         !expect(secondary_fallback.fallback_probe.has_value()) ||
         !expect(secondary_fallback.fallback_probe->candidate_y == 0x4444) ||
-        !expect(probed_slots == std::vector<std::uint16_t>{8})) {
+        !expect(probed_slots == std::vector<std::uint16_t>{12})) {
         return 2;
     }
 
@@ -58,7 +58,7 @@ int main() {
     const auto blocked_fallback = evaluate_entity_movement_route(
             0x1000, policy,
             [](const std::uint16_t) {
-                return DirectionalMovementRoute{1, -1, 4, 10};
+                return DirectionalMovementRoute{1, -1, 4, 5};
             },
             [&probed_slots](const std::uint16_t slot) {
                 probed_slots.push_back(slot);

@@ -29,10 +29,14 @@ MovementRouteResult evaluate_entity_movement_route(
         return {true, std::nullopt};
     }
 
-    const auto direction_slot =
+    // The 0xBBF6 descriptor words are direction ordinals; 0xBBC8 doubles
+    // the chosen one into the probe slot (0xB77E doubles it again for the
+    // vector table).
+    const auto direction_ordinal =
         route.primary_marker <= 0 ? route.primary_fallback_slot
                                   : route.secondary_fallback_slot;
-    const auto fallback_probe = probe(direction_slot);
+    const auto fallback_probe =
+        probe(static_cast<std::uint16_t>(direction_ordinal << 1U));
     return {route_fallback_is_blocked(fallback_probe.collision_code,
                                       result_policy),
             fallback_probe};
