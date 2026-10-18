@@ -537,6 +537,7 @@ dialogue/panel/button-a.bmp	sprite	0	0	16	16	0x1F3C4/0x1232/0xCF11C-0xCF12C	extr
 dialogue/panel/button-b.bmp	sprite	0	0	16	16	0x1F3C4/0x1232/0xCF11C-0xCF12C	extracted
 dialogue/panel/button-c.bmp	sprite	0	0	16	16	0x1F3C4/0x1232/0xCF11C-0xCF12C	extracted
 field/hud/background.bmp	background	0	0	320	224	0x334C/0x39F2	extracted
+field/hud/active-frame.bmp	background	0	0	320	224	0x39F2/0x6AADE	extracted
 field/mode-entry/ares-sprite.bmp	sprite	0	0	56	72	0x1FA78/0x1F246/0x1F292/0x1220C0	extracted
 field/mode-entry/renraku-arcology-sprite.bmp	sprite	0	0	56	72	0x1FA78/0x1F246/0x1F292/0x1220A8	extracted
 field/mode-entry/little-chiba-sprite.bmp	sprite	0	0	56	72	0x1F830/0x1F246/0x1F292/0x12200C	extracted

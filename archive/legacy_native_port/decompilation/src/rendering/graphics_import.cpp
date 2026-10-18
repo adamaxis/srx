@@ -8963,6 +8963,26 @@ RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom) {
     return shifted;
 }
 
+RgbaImage decode_genesis_field_hud_active_frame(
+    const std::vector<std::uint8_t>& rom) {
+    // 0x39F2 stamps the active runner's frame: the 6x8 name block at
+    // 0x6AADE (tiles 0x6D6..0x6F7, palette line 3) at window address
+    // 0xF144 + slot * 0x400, over the 0x6AA7E inactive frame that 0x334C
+    // wrote for every slot. Emulator run5 window plane, slot 0: E6EA E6EB..
+    // vs slots 1-2: E6E8 E6E9.. [C]. Decoded for slot 0; the host offsets
+    // it by 64 px per slot.
+    GenesisBootPatternData scene{
+        std::vector<std::uint8_t>(0x10000U, 0),
+        read_genesis_command_palette_set(rom),
+    };
+    write_genesis_f5c_vram(rom, 0x6A5BEU, 0xDAC0U, 0x4C0U,
+                           scene.pattern_vram);
+    auto image = make_transparent_title_layer();
+    blit_genesis_name_table(rom, scene, image, 0x6AADEU, 6U, 8U,
+                            0xF144U, 0xF000U, 0x6000U, true);
+    return image;
+}
+
 GenesisFieldHudLayers decode_genesis_field_hud_layers(
     const std::vector<std::uint8_t>& rom,
     const std::array<GenesisFieldEntityTemplate, 3>& records) {

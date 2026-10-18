@@ -542,6 +542,9 @@ std::array<std::int8_t, 2> script_action_attribute_selectors() {
 }
 
 constexpr std::string_view kFieldHudAlias = "field.hud.background";
+// ROM 0x39F2: the active runner's 6x8 frame block (0x6AADE), decoded at
+// slot 0's window address 0xF144 (x 272, y 16) [C].
+constexpr std::string_view kFieldHudActiveFrameAlias = "field.hud.active.frame";
 constexpr std::string_view kFieldHudFaceAliasPrefix = "field.hud.face.";
 constexpr std::string_view kFieldHudItemAliasPrefix = "field.hud.item.";
 constexpr std::string_view kFieldHudUnarmedItemAliasPrefix =
@@ -13063,6 +13066,8 @@ bool FieldSceneRuntime::bootstrap(
         !load_image(startup_state.asset_catalog.catalog, kFieldHudAlias,
                     field_hud_) ||
         !load_image(startup_state.asset_catalog.catalog,
+                    kFieldHudActiveFrameAlias, field_hud_active_frame_) ||
+        !load_image(startup_state.asset_catalog.catalog,
                     "menu.field.service.background",
                     field_service_background_) ||
         !load_field_hud_overlays(startup_state.asset_catalog.catalog) ||
@@ -19914,6 +19919,18 @@ void FieldSceneRuntime::paint_field_scene_entities(
 }
 
 void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
+    // ROM 0x39F2 stamps the bright frame at 0xF144 + slot * 0x400 before
+    // 0x3548/0x38FA redraw the faces, items and counters. Emulator run5:
+    // slot 0 window cells E6EA.. vs E6E8.. for the inactive slots [C].
+    {
+        constexpr int kHudX = 272;
+        constexpr int kFrameY = 16;
+        constexpr int kSlotPitch = 64;
+        const auto slot = static_cast<int>(field_party_roster_.active_slot());
+        painter.drawImage(kHudX, kFrameY + slot * kSlotPitch,
+                          field_hud_active_frame_, kHudX, kFrameY, 48,
+                          kSlotPitch);
+    }
     const auto image_for = [this](const FieldHudOverlay& overlay)
         -> const QImage* {
         switch (overlay.kind) {

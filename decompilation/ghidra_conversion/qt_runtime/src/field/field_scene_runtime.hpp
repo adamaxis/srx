@@ -1962,6 +1962,7 @@ private:
     std::vector<std::pair<std::uint16_t, std::uint16_t>> field_map_cell_words_;
     std::size_t field_map_cell_columns_ = 0U;
     QImage field_hud_;
+    QImage field_hud_active_frame_;
     QImage field_service_background_;
     QImage field_taxi_map_;
     std::array<QImage, 8> field_taxi_cursor_tiles_{};

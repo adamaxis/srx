@@ -7106,6 +7106,11 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     // Field HUD and menu source layers.
     write("field/hud/background.bmp", assets.field_hud, "background",
           "0x334C/0x39F2", false);
+    write_catalog_asset(
+        root, "field/hud/active-frame.bmp",
+        shadowrun::graphics::decode_genesis_field_hud_active_frame(rom),
+        "background", "0x39F2/0x6AADE", false, manifest, written, missing,
+        blank);
     const auto ares_mode_sprite =
         shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
             rom, 0x1220C0U);

@@ -791,6 +791,8 @@ decode_genesis_intro_wilderness_pan_frames(
 // slots 0x6AA7E at the $F000 plane alias. The native image retains the
 // visible 48px right column.
 RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom);
+RgbaImage decode_genesis_field_hud_active_frame(
+    const std::vector<std::uint8_t>& rom);
 struct GenesisFieldHudLayers {
     std::array<RgbaImage, 3> faces{};
     std::array<RgbaImage, 3> item_blocks{};
