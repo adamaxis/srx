@@ -550,6 +550,14 @@ protected:
             event->accept();
             return;
         }
+        if (!event->isAutoRepeat() &&
+            (sampled_menu_byte(event->key()) != 0U ||
+             sampled_title_byte(event->key()) != 0U)) {
+            // Record the complete controller edge pair. In field mode the
+            // release clears a live port bit; omitting it makes deterministic
+            // replay hold that button after the original interaction ended.
+            record_key_input(*event, false);
+        }
         if (state_.phase == StartupIntegrationPhase::start_options_shell &&
             !event->isAutoRepeat()) {
             const auto released = sampled_menu_byte(event->key());
@@ -558,7 +566,6 @@ protected:
                     static_cast<std::uint8_t>(
                         pending_start_options_controller_byte_ &
                         static_cast<std::uint8_t>(~released));
-                record_key_input(*event, false);
                 event->accept();
                 return;
             }
@@ -576,7 +583,6 @@ protected:
                     field_controller_nibble_);
                 field_scene_runtime_.set_controller_port_byte(
                     field_controller_port_byte_);
-                record_key_input(*event, false);
                 update();
                 event->accept();
                 return;
@@ -672,7 +678,12 @@ private:
                             input.key,
                             static_cast<Qt::KeyboardModifiers>(input.modifiers));
             replaying_input_ = true;
+            // Recorded game input must pass through the paused debugger just
+            // like a queued remote key. Otherwise --debug-port replay treats
+            // every recorded key as a debugger keystroke and silently drops it.
+            applying_remote_key_ = true;
             QApplication::sendEvent(this, &event);
+            applying_remote_key_ = false;
             replaying_input_ = false;
         }
         return !events.empty();
