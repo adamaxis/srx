@@ -1,3 +1,0 @@
-part_id	source_kind	source_scene	source_x	source_y	width	height	local_x	local_y	draw_layer	role	evidence	asset_path	outline_points
-priority_overhang_1	priority_overlay	1	32	352	240	128	-64	-192	foreground	overhang	ROM priority-overlay pixels for the facade upper structure at scene-1 map pixels (32,352)..(272,480); clipped to this frontage.	field/entities/puyallup_site_04_abandoned_building/priority_overhang_1.png	-64,-192;176,-192;176,-64;-64,-64
-frontage_body_1	map_composite	1	32	480	240	64	-64	-64	behind_actor	body	ROM scene-1 composite frontage at map pixels (32,480)..(272,544); excludes the separately authored cracked-concrete forecourt.	field/entities/puyallup_site_04_abandoned_building/frontage_body_1.png	-64,-64;176,-64;176,0;-64,0

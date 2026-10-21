@@ -1,2 +1,0 @@
-entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
-puyallup_site_05_crime_mall	Crime Mall	building	Visual bounds traced from the extracted ROM scene-1 composite (mode-1.bmp) and its priority overlay. Mike's RPG Center Puyallup marker 5 supplies the displayed place name; it is a name crosswalk, not a ROM label. ROM scene-1 event record(s) 70 at 0x17D9C0. The interaction rectangles remain separate from the facade and concrete forecourt.	-	-	-
