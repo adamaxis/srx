@@ -15,9 +15,11 @@ extern "C" {
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <string>
 #include <vector>
@@ -43,6 +45,7 @@ using shadowrun::ghidra_conversion::qt_runtime::
     make_matrix_datastore_facts;
 using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_system_map;
 using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_node_action_panel;
+using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_traversal_view;
 using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_run_info_text;
 using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_deck_stats_text;
 #endif
@@ -2946,6 +2949,217 @@ int main() {
               closed_count == 11,
           "taxi Start commits the current region through the source route",
           failures);
+
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    // The Section 15 longplay shows an unknown System 15/node 13 SPU with
+    // the ROM-selected mode-3 center effect during Active Alert. Render that
+    // typed traversal state through the production presenter, then compare
+    // each source-cadenced phase against the independent full-frame capture.
+    {
+        const auto traversal_root = matrix_assets / "cyberspace/matrix";
+        const auto load_traversal_image = [&traversal_root](
+                                               const std::string& relative) {
+            return QImage(QString::fromStdString(
+                (traversal_root / relative).string()));
+        };
+        std::array<QImage, 4> traversal_backgrounds{};
+        for (std::size_t theme = 0; theme < traversal_backgrounds.size();
+             ++theme) {
+            traversal_backgrounds[theme] = load_traversal_image(
+                "traversal-background-theme-" +
+                std::to_string(theme + 1U) + ".bmp");
+        }
+        std::array<std::array<QImage, 5>, 6> world_models{};
+        for (std::size_t model = 0; model < world_models.size(); ++model) {
+            for (std::size_t palette = 0;
+                 palette < world_models[model].size(); ++palette) {
+                world_models[model][palette] = load_traversal_image(
+                    "world-model-" + std::to_string(model) +
+                    "-security-color-" + std::to_string(palette) +
+                    ".png");
+            }
+        }
+        constexpr std::array<std::size_t, 9> effect_phase_counts{
+            14U, 4U, 6U, 6U, 4U, 6U, 4U, 4U, 28U};
+        std::array<std::vector<QImage>, 9> world_effect_modes{};
+        for (std::size_t mode = 0; mode < world_effect_modes.size(); ++mode) {
+            for (std::size_t phase = 0;
+                 phase < effect_phase_counts[mode]; ++phase) {
+                world_effect_modes[mode].push_back(load_traversal_image(
+                    "traversal-world-effect-mode-" + std::to_string(mode) +
+                    "-phase-" + std::to_string(phase) + ".png"));
+            }
+        }
+        std::vector<QImage> world_effect_fallback;
+        for (std::size_t phase = 0; phase < 6U; ++phase) {
+            world_effect_fallback.push_back(load_traversal_image(
+                "traversal-world-effect-default-phase-" +
+                std::to_string(phase) + ".png"));
+        }
+        std::array<QImage, 4> analyze_rings{};
+        for (std::size_t phase = 0; phase < analyze_rings.size(); ++phase) {
+            analyze_rings[phase] = load_traversal_image(
+                "traversal-analyze-ring-phase-" +
+                std::to_string(phase) + ".png");
+        }
+        std::array<QImage, 16> program_icons{};
+        for (std::size_t program = 0; program < program_icons.size();
+             ++program) {
+            program_icons[program] = load_traversal_image(
+                "program-icon-" + std::to_string(program) + ".bmp");
+        }
+        std::array<QImage, 7> slot_status_images{};
+        for (std::size_t status = 0; status < slot_status_images.size();
+             ++status) {
+            slot_status_images[status] = load_traversal_image(
+                "cyberdeck-footer-slot-status-" +
+                std::to_string(status) + ".bmp");
+        }
+
+        shadowrun::ghidra_conversion::scripting::ScriptMenuRouteSnapshot
+            active_alert_snapshot{};
+        active_alert_snapshot.top_screen = kMatrixNodeAction;
+        active_alert_snapshot.top_title = "Sub-Processor Unit";
+        active_alert_snapshot.top_matrix_node_status.emplace();
+        auto& traversal_view =
+            active_alert_snapshot.top_matrix_traversal_view.emplace();
+        traversal_view.world_model_id =
+            shadowrun::ghidra_conversion::scripting::
+                ScriptMatrixWorldModelId::sub_processor_unit;
+        traversal_view.palette_theme = 0;
+        traversal_view.world_effect_mode = 3;
+        traversal_view.world_entry_phase = 2;
+        traversal_view.knowledge_rank = 0;
+        traversal_view.function_label = "SPU";
+        traversal_view.alert_band_label = "  ???  ";
+        traversal_view.ice_label = "Ice Unknown";
+        traversal_view.alert_label = "Active Alert";
+        traversal_view.active_program_label = "Analyze-2";
+        traversal_view.active_program_status_label = "Ready...     ";
+        active_alert_snapshot.top_matrix_deck_active_programs_present = true;
+        active_alert_snapshot.top_matrix_deck_active_programs =
+            std::array<std::int8_t, 5>{{9, 11, -1, -1, -1}};
+        active_alert_snapshot.top_matrix_deck_program_slot_status_present = true;
+        active_alert_snapshot.top_matrix_deck_program_slot_status =
+            std::array<std::uint8_t, 5>{{6, 6, 0, 0, 0}};
+
+        const auto independent_alert_path =
+            std::filesystem::weakly_canonical(
+                std::filesystem::path(SHADOWRUN_MATRIX_MAP_ASSET_ROOT))
+                .parent_path().parent_path() /
+            "video analysis" /
+            "long_gameplay_video_rest_ffmpeg_30fps_320x224" /
+            "section_15_source_2820-3120" / "frame_004800.png";
+        const QImage independent_alert(
+            QString::fromStdString(independent_alert_path.string()));
+        double best_center_error = std::numeric_limits<double>::infinity();
+        double best_full_frame_error = std::numeric_limits<double>::infinity();
+        double best_bottom_band_error = std::numeric_limits<double>::infinity();
+        int best_effect_phase = -1;
+        QImage best_alert_frame;
+        for (int phase = 0; phase < 6; ++phase) {
+            traversal_view.world_effect_phase = phase;
+            traversal_view.analyze_runner_phase = 1;
+            traversal_view.analyze_effect_phase = 3;
+            QImage rendered_alert(320, 224, QImage::Format_ARGB32);
+            rendered_alert.fill(QColor(0, 0, 0));
+            QPainter traversal_painter(&rendered_alert);
+            const auto painted = paint_matrix_traversal_view(
+                traversal_painter, traversal_backgrounds, world_models,
+                world_effect_modes, world_effect_fallback,
+                load_traversal_image("traversal-hud-frame.png"),
+                load_traversal_image(
+                    "traversal-runner-world-sequence-phase-4.png"),
+                load_traversal_image("traversal-runner-action-phase-0.png"),
+                load_traversal_image("traversal-runner-action-raised.png"),
+                load_traversal_image("traversal-runner-idle.png"),
+                analyze_rings, map_font, program_icons,
+                load_traversal_image("cyberdeck-program-icon-empty.bmp"),
+                slot_status_images, active_alert_snapshot);
+            traversal_painter.end();
+            const auto artifact_path =
+                std::filesystem::path(SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) /
+                ("active-alert-mode3-phase-" + std::to_string(phase) +
+                 ".bmp");
+            std::filesystem::create_directories(artifact_path.parent_path());
+            const auto saved = rendered_alert.save(
+                QString::fromStdString(artifact_path.string()));
+            check(painted && saved && rendered_alert.size() == QSize(320, 224),
+                  "mode-3 Active Alert renders a complete 320x224 frame",
+                  failures);
+
+            if (painted && independent_alert.size() == QSize(320, 224)) {
+                const auto mean_rgb_error = [&rendered_alert,
+                                             &independent_alert](
+                                                const QRect& bounds) {
+                    double absolute_error = 0.0;
+                    std::size_t channels = 0U;
+                    for (int y = bounds.y();
+                         y < bounds.y() + bounds.height(); ++y) {
+                        for (int x = bounds.x();
+                             x < bounds.x() + bounds.width(); ++x) {
+                            const auto actual =
+                                rendered_alert.pixelColor(x, y);
+                            const auto reference =
+                                independent_alert.pixelColor(x, y);
+                            absolute_error +=
+                                std::abs(actual.red() - reference.red()) +
+                                std::abs(actual.green() - reference.green()) +
+                                std::abs(actual.blue() - reference.blue());
+                            channels += 3U;
+                        }
+                    }
+                    return channels == 0U
+                        ? std::numeric_limits<double>::infinity()
+                        : absolute_error / static_cast<double>(channels);
+                };
+                const auto center_error =
+                    mean_rgb_error(QRect(112, 28, 96, 84));
+                if (center_error < best_center_error) {
+                    best_center_error = center_error;
+                    best_effect_phase = phase;
+                    best_full_frame_error =
+                        mean_rgb_error(QRect(0, 0, 320, 224));
+                    best_bottom_band_error =
+                        mean_rgb_error(QRect(0, 176, 320, 48));
+                    best_alert_frame = rendered_alert;
+                }
+            }
+        }
+        const auto actual_alert_path =
+            std::filesystem::path(SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) /
+            "active-alert-mode3-qa" / "actual.bmp";
+        std::filesystem::create_directories(actual_alert_path.parent_path());
+        const auto actual_alert_saved = !best_alert_frame.isNull() &&
+            best_alert_frame.save(
+                QString::fromStdString(actual_alert_path.string()));
+        check(independent_alert.size() == QSize(320, 224),
+              "Section 15 Active Alert reference is a complete 320x224 frame",
+              failures);
+        check(best_effect_phase >= 0 && best_center_error < 18.0 &&
+                  best_full_frame_error < 15.0 &&
+                  best_bottom_band_error < 15.0 && actual_alert_saved,
+              "ROM mode-3 view matches the independent full frame and bottom band",
+              failures);
+        if (best_effect_phase < 0 || best_center_error >= 18.0 ||
+            best_full_frame_error >= 15.0 ||
+            best_bottom_band_error >= 15.0 || !actual_alert_saved) {
+            std::cerr << "Active Alert effect phase match: phase="
+                      << best_effect_phase << " mean RGB error="
+                      << best_center_error << " full-frame="
+                      << best_full_frame_error << " bottom-band="
+                      << best_bottom_band_error << " actual="
+                      << actual_alert_path << " reference="
+                      << independent_alert_path << '\n';
+        } else {
+            std::cout << "matrix_active_alert_visual=phase-"
+                      << best_effect_phase << " center_mean_rgb_error="
+                      << best_center_error << " full_frame_mean_rgb_error="
+                      << best_full_frame_error << " bottom_mean_rgb_error="
+                      << best_bottom_band_error << " full_frame=320x224\n";
+        }
+    }
+#endif
 
     if (failures != 0) {
         std::cerr << "menu route failures: " << failures << '\n';
