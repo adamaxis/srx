@@ -838,13 +838,15 @@ traversal QA creates a Scene 2 encounter through that source-backed state and
 checks that the negative sign reaches Lua on direct entry. The controller path
 `0x1A370` -> `0x561E8` -> `0x56116` does not run between initial mode setup and
 the node-action handoff: while `0x1D2E6` reports the entry sequence incomplete,
-`0x1ADE6` branches to `0x1AFC0` before the `0x1AF74` controller call; when the
-sequence completes, `0x1ADE6` enters the blocking `0x54662` loop. However,
-profile and effect services later in the `0x1AFC0` path can call
-`0x1B706` -> `0x1A908` directly when their source flags are set. Whether one
-of those services reselects the live route's mode remains open. The typed
-mode-3 fixture predicts phase 4 after 238 service calls. Lua holds its
-selected mode through the node-action loop. A separate
+`0x1ADE6` branches through `0x1AFC0`, then tests `FFDF8C` at `0x1AFD6` and
+routes to `0x1B364` instead of the service block containing the `0x1B706`
+callers. The later shared `0x1AA40` tick is not a `0x1B706` caller. The
+intervening `0x1BF7A` timer has no `0x1B706` call. When `0x1D2E6` reports
+completion, `0x1ADE6` clears `FFDF8C` and enters the blocking `0x54662` loop.
+So this sequence does not reselect the mode after initial setup; the separate
+normal `FFDF8C == 0` controller path can reselect before a transition begins.
+The typed mode-3 fixture predicts phase 4 after 238 service calls. Lua holds
+its selected mode through the node-action loop. A separate
 presenter QA now constructs the typed rank-zero System 15/node 13 SPU view,
 renders all six named mode-3 phases through the production presenter, and
 compares each full 320x224 output against Section 15 frame `004800`. Phase 5

@@ -71,11 +71,14 @@ and phase remain open. ROM bytes confirm `0x1745E` clears `FFDF84` on every
 outer pass, and its `FFDF40` branch writes the separate `FFE171` byte. Alert
 changes at `0x54A8E` and Cancel Alert at `0x54AEA` change `FFF0A0` without
 writing `FFDF84`; Lua now tracks the world-effect gate separately. The
-`0x1A370` -> `0x561E8` -> `0x56116` is skipped while `0x1ADE6` runs its world
-entry sequence, then the blocking `0x54662` action loop begins. Profile and
-effect services during that sequence can still call `0x1B706` -> `0x1A908`
-directly when their flags are set; that activation has not been resolved for
-the live route. The direct `0x181F8` menu path now receives the signed
+`0x1A370` -> `0x561E8` -> `0x56116` controller is skipped while `0xFFDF8C`
+marks the active `0x1ADE6` world-sequence transition. That branch runs the
+figure animation and bypasses the profile/effect service block containing
+the `0x1B706` callers; its one timer helper, `0x1BF7A`, does not call `0x1B706`.
+When the sequence completes, `0x1ADE6` immediately enters the blocking
+`0x54662` action loop. Mode reselection remains possible in the normal
+`0xFFDF8C == 0` controller path before a transition begins. The direct
+`0x181F8` menu path now receives the signed
 `FFDF84` marker from the field timeout state; a Scene 2 ROM encounter QA path
 verifies the negative value reaches Lua when Matrix opens. The live visual
 mode and phase remain open.
@@ -139,10 +142,13 @@ CRAM line 1 at `0xE2E5A`. At `0x1ADE6`, Lua captures the selected mode from its
 typed node, alert, and gate inputs before the entry sequence; source mode
 selection also depends on `FFDF84`, which `0x1745E` clears each outer pass.
 `0x54662` raises the knowledge rank after that sequence. An alert change alone
-does not replace the stored mode, though the `0x1A370` -> `0x561E8` -> `0x56116`
-reselection path may call `0x1A908` when its source gates pass. During entry, mode zero uses its
-source four-phase raw-cadence branch; nonzero modes apply the node reaction
-delta. Section 15 has a presenter-only Active Alert comparison for the
+does not replace the stored mode. While `0xFFDF8C` marks the entry sequence,
+`0x1ADE6` bypasses `0x1A370` and the service block whose handlers call
+`0x1B706`; completion enters `0x54662` directly. The `0x1A370` -> `0x561E8` ->
+`0x56116` path can still reselect during the normal `0xFFDF8C == 0` controller
+service before a transition. During entry, mode zero uses its source
+four-phase raw-cadence branch; nonzero modes apply the node reaction delta.
+Section 15 has a presenter-only Active Alert comparison for the
 rank-zero System 15/node 13 SPU: all six mode-3 phases render as complete
 320x224 frames against independent frame `004800`; the best candidate has
 full-frame mean RGB error `9.653`, and its bottom band was inspected intact.
