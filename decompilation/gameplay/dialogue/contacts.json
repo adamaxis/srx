@@ -1,0 +1,304 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "contactNameTable": "0xC66AC",
+    "contactDescriptorTable": "0x109682",
+    "recordCount": 13
+  },
+  "contacts": [
+    {
+      "sourceIndex": 0,
+      "id": "capt_quinton_jaymes",
+      "speakerId": "vid_phone_capt_quinton_jaymes",
+      "name": "Capt Quinton Jaymes",
+      "nameKey": "pocket_secretary.notebook.contact.name.option.record_0",
+      "portraitAlias": "dialogue.portraits.vid.phone.capt.quinton.jaymes",
+      "textProfile": "field.vid_phone",
+      "availabilityFact": "vid_phone_contact_0",
+      "callHistoryFact": "vid_phone_called_0",
+      "callHistoryPolicy": "before_first_call",
+      "firstCall": {
+        "eventId": "first_call",
+        "textKey": "vid_phone.contact.capt_quinton_jaymes.first_call",
+        "continuation": false
+      },
+      "repeatCall": {
+        "eventId": "repeat_call",
+        "textKey": "vid_phone.contact.capt_quinton_jaymes.repeat_call",
+        "continuation": false
+      },
+      "service": { "module": "vid_phone.capt_quinton_jaymes", "function": "services" }
+    },
+    {
+      "sourceIndex": 1,
+      "id": "alesandro_hobbs",
+      "speakerId": "vid_phone_alesandro_hobbs",
+      "name": "Alesandro Hobbs",
+      "nameKey": "pocket_secretary.notebook.contact.name.option.record_1",
+      "portraitAlias": "dialogue.portraits.vid.phone.alesandro.hobbs",
+      "textProfile": "field.vid_phone",
+      "availabilityFact": "vid_phone_contact_1",
+      "callHistoryFact": "vid_phone_called_1",
+      "callHistoryPolicy": "before_first_call",
+      "firstCall": {
+        "eventId": "first_call",
+        "textKey": "vid_phone.contact.alesandro_hobbs.first_call",
+        "continuation": false
+      },
+      "repeatCall": {
+        "eventId": "repeat_call",
+        "textKey": "vid_phone.contact.alesandro_hobbs.repeat_call",
+        "continuation": false
+      },
+      "service": { "module": "vid_phone.alesandro_hobbs", "function": "services" }
+    },
+    {
+      "sourceIndex": 2,
+      "id": "sharkey",
+      "speakerId": "vid_phone_sharkey",
+      "name": "Sharkey",
+      "nameKey": "pocket_secretary.notebook.contact.name.option.record_2",
+      "portraitAlias": "dialogue.portraits.vid.phone.sharkey",
+      "textProfile": "field.vid_phone",
+      "availabilityFact": "vid_phone_contact_2",
+      "callHistoryFact": "vid_phone_called_2",
+      "callHistoryPolicy": "before_first_call",
+      "firstCall": {
+        "eventId": "first_call",
+        "textKey": "vid_phone.contact.sharkey.first_call",
+        "continuation": false
+      },
+      "repeatCall": {
+        "eventId": "repeat_call",
+        "textKey": "vid_phone.contact.sharkey.repeat_call",
+        "continuation": false
+      },
+      "service": { "module": "vid_phone.sharkey", "function": "services" }
+    },
+    {
+      "sourceIndex": 3,
+      "id": "kipp_david",
+      "speakerId": "vid_phone_kipp_david",
+      "name": "Kipp David",
+      "nameKey": "pocket_secretary.notebook.contact.name.option.record_3",
+      "portraitAlias": "dialogue.portraits.vid.phone.kipp.david",
+      "textProfile": "field.vid_phone",
+      "availabilityFact": "vid_phone_contact_3",
+      "callHistoryFact": "vid_phone_called_3",
+      "callHistoryPolicy": "before_first_call",
+      "firstCall": {
+        "eventId": "first_call",
+        "textKey": "vid_phone.contact.kipp_david.first_call",
+        "continuation": false
+      },
+      "repeatCall": {
+        "eventId": "repeat_call",
+        "textKey": "vid_phone.contact.kipp_david.repeat_call",
+        "continuation": false
+      },
+      "service": { "module": "vid_phone.kipp_david", "function": "services" }
+    },
+    {
+      "sourceIndex": 4,
+      "id": "wilma_temmenhoff",
+      "speakerId": "vid_phone_wilma_temmenhoff",
+      "name": "Wilma Temmenhoff",
+      "nameKey": "pocket_secretary.notebook.contact.name.option.record_4",
+      "portraitAlias": "dialogue.portraits.vid.phone.wilma.temmenhoff",
+      "textProfile": "field.vid_phone",
+      "availabilityFact": "vid_phone_contact_4",
+      "callHistoryFact": "vid_phone_called_4",
+      "callHistoryPolicy": "before_first_call",
+      "firstCall": {
+        "eventId": "first_call",
+        "textKey": "vid_phone.contact.wilma_temmenhoff.first_call",
+        "continuation": false
+      },
+      "repeatCall": {
+        "eventId": "repeat_call",
+        "textKey": "vid_phone.contact.wilma_temmenhoff.repeat_call",
+        "continuation": false
+      },
+      "service": { "module": "vid_phone.wilma_temmenhoff", "function": "services" }
+    },
+    {
+      "sourceIndex": 5,
+      "id": "macklemann",
+      "speakerId": "vid_phone_macklemann",
+      "name": "Sgt. Macklemann",
+      "nameKey": "pocket_secretary.notebook.contact.name.option.record_5",
+      "portraitAlias": "dialogue.portraits.vid.phone.macklemann",
+      "textProfile": "field.vid_phone",
+      "availabilityFact": "vid_phone_contact_5",
+      "callHistoryFact": "vid_phone_called_5",
+      "callHistoryPolicy": "before_first_call",
+      "firstCall": {
+        "eventId": "first_call",
+        "textKey": "vid_phone.contact.macklemann.first_call",
+        "continuation": false
+      },
+      "repeatCall": {
+        "eventId": "repeat_call",
+        "textKey": "vid_phone.contact.macklemann.repeat_call",
+        "continuation": false
+      },
+      "service": { "module": "vid_phone.macklemann", "function": "services" }
+    },
+    {
+      "sourceIndex": 6,
+      "id": "gregory_wilns",
+      "speakerId": "vid_phone_gregory_wilns",
+      "name": "Gregory Wilns",
+      "nameKey": "pocket_secretary.notebook.contact.name.option.record_6",
+      "portraitAlias": "dialogue.portraits.vid.phone.gregory.wilns",
+      "textProfile": "field.vid_phone",
+      "availabilityFact": "vid_phone_contact_6",
+      "callHistoryFact": "vid_phone_called_6",
+      "callHistoryPolicy": "before_first_call",
+      "firstCall": {
+        "eventId": "first_call",
+        "textKey": "vid_phone.contact.gregory_wilns.first_call",
+        "continuation": false
+      },
+      "repeatCall": {
+        "eventId": "repeat_call",
+        "textKey": "vid_phone.contact.gregory_wilns.repeat_call",
+        "continuation": false
+      },
+      "service": { "module": "vid_phone.gregory_wilns", "function": "services" },
+      "farewellEvent": "goodbye"
+    },
+    {
+      "sourceIndex": 7,
+      "id": "mr_faradouchi",
+      "speakerId": "vid_phone_mr_faradouchi",
+      "name": "Mr. Faradouchi",
+      "nameKey": "pocket_secretary.notebook.contact.name.option.record_7",
+      "portraitAlias": "dialogue.portraits.vid.phone.mr.faradouchi",
+      "textProfile": "field.vid_phone",
+      "availabilityFact": "vid_phone_contact_7",
+      "callHistoryFact": "vid_phone_called_7",
+      "callHistoryPolicy": "external_effect",
+      "firstCall": {
+        "eventId": "first_call",
+        "textKey": "vid_phone.contact.mr_faradouchi.first_call",
+        "continuation": true
+      },
+      "repeatCall": {
+        "eventId": "repeat_call",
+        "textKey": "vid_phone.contact.mr_faradouchi.repeat_call",
+        "continuation": true
+      }
+    },
+    {
+      "sourceIndex": 8,
+      "id": "agira_tetsumi",
+      "speakerId": "vid_phone_agira_tetsumi",
+      "name": "Agira Tetsumi",
+      "nameKey": "pocket_secretary.notebook.contact.name.option.record_8",
+      "portraitAlias": "dialogue.portraits.vid.phone.agira.tetsumi",
+      "textProfile": "field.vid_phone",
+      "availabilityFact": "vid_phone_contact_8",
+      "callHistoryFact": "vid_phone_called_8",
+      "callHistoryPolicy": "external_effect",
+      "firstCall": {
+        "eventId": "first_call",
+        "textKey": "vid_phone.contact.agira_tetsumi.first_call",
+        "continuation": true
+      },
+      "repeatCall": {
+        "eventId": "repeat_call",
+        "textKey": "vid_phone.contact.agira_tetsumi.repeat_call",
+        "continuation": true
+      }
+    },
+    {
+      "sourceIndex": 9,
+      "id": "henry_j_culver",
+      "speakerId": "vid_phone_henry_j_culver",
+      "name": "Henry J. Culver",
+      "nameKey": "pocket_secretary.notebook.contact.name.option.record_9",
+      "portraitAlias": "dialogue.portraits.vid.phone.henry.j.culver",
+      "textProfile": "field.vid_phone",
+      "availabilityFact": "vid_phone_contact_9",
+      "callHistoryFact": "vid_phone_called_9",
+      "callHistoryPolicy": "before_first_call",
+      "firstCall": {
+        "eventId": "first_call",
+        "textKey": "vid_phone.contact.henry_j_culver.first_call",
+        "continuation": false
+      },
+      "repeatCall": {
+        "eventId": "repeat_call",
+        "textKey": "vid_phone.contact.henry_j_culver.repeat_call",
+        "continuation": false
+      }
+    },
+    {
+      "sourceIndex": 10,
+      "id": "max",
+      "speakerId": "vid_phone_max",
+      "name": "Max",
+      "nameKey": "pocket_secretary.notebook.contact.name.option.record_10",
+      "portraitAlias": "dialogue.portraits.vid.phone.max",
+      "textProfile": "field.vid_phone",
+      "availabilityFact": "vid_phone_contact_10",
+      "callHistoryFact": "vid_phone_called_10",
+      "callHistoryPolicy": "before_first_call",
+      "firstCall": {
+        "eventId": "first_call",
+        "textKey": "vid_phone.contact.max.first_call",
+        "continuation": false
+      },
+      "repeatCall": {
+        "eventId": "repeat_call",
+        "textKey": "vid_phone.contact.max.repeat_call",
+        "continuation": false
+      }
+    },
+    {
+      "sourceIndex": 11,
+      "id": "chillicut",
+      "speakerId": "vid_phone_chillicut",
+      "name": "Sgt. Chillicut",
+      "nameKey": "pocket_secretary.notebook.contact.name.option.record_11",
+      "portraitAlias": "dialogue.portraits.vid.phone.chillicut",
+      "textProfile": "field.vid_phone",
+      "availabilityFact": "vid_phone_contact_11",
+      "callHistoryFact": "vid_phone_called_11",
+      "callHistoryPolicy": "before_first_call",
+      "firstCall": {
+        "eventId": "first_call",
+        "textKey": "vid_phone.contact.chillicut.first_call",
+        "continuation": true
+      },
+      "repeatCall": {
+        "eventId": "repeat_call",
+        "textKey": "vid_phone.contact.chillicut.repeat_call",
+        "continuation": false
+      }
+    },
+    {
+      "sourceIndex": 12,
+      "id": "professor_jefferson",
+      "speakerId": "vid_phone_professor_jefferson",
+      "name": "Prof. Jefferson",
+      "nameKey": "pocket_secretary.notebook.contact.name.option.record_12",
+      "portraitAlias": "dialogue.portraits.vid.phone.professor.jefferson",
+      "textProfile": "field.vid_phone",
+      "availabilityFact": "vid_phone_contact_12",
+      "callHistoryFact": "vid_phone_called_12",
+      "callHistoryPolicy": "before_first_call",
+      "firstCall": {
+        "eventId": "first_call",
+        "textKey": "vid_phone.contact.professor_jefferson.first_call",
+        "continuation": false
+      },
+      "repeatCall": {
+        "eventId": "repeat_call",
+        "textKey": "vid_phone.contact.professor_jefferson.repeat_call",
+        "continuation": false
+      }
+    }
+  ]
+}

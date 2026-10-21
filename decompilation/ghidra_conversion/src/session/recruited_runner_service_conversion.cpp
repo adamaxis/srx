@@ -81,7 +81,7 @@ struct RecruitedRunnerInformationRecord {
 };
 
 // The source descriptors at 0xFE848..0xFF8F0 still choose these streams and
-// segment counts. ROM text is imported into dialogue/script-text.lua so the
+// segment counts. ROM text is imported into dialogue/script-text.json so the
 // native state conversion carries semantic content IDs rather than narrative
 // copy; dialogue.lua maps each ID to its imported catalog key.
 constexpr RecruitedRunnerInformationTextStream kRickyInformationOpening{

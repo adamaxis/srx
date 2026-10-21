@@ -92,7 +92,7 @@ identified, so this audit does not claim Genesis visual fidelity.
 - Debug dump: `decompilation/ghidra_conversion/build/conversion/qt/debug/qt_runtime/field-redmond-vigore-search-qa/actual.bmp`.
 - Release dump: `decompilation/ghidra_conversion/build/conversion/qt/release/qt_runtime/field-redmond-vigore-search-qa/actual.bmp`.
 - Script: `gameplay/scripts/redmond_barrens.lua`; generated ROM copy is in
-  `assets/dialogue/script-text.lua`.
+  `assets/dialogue/script-text.json`.
 - Host integration/effects: `decompilation/ghidra_conversion/qt_runtime/src/field/field_scene_runtime.cpp`.
 - Source profile and outstanding record ambiguity:
   [field-map-trigger-profile.md](../field-map-trigger-profile.md) and

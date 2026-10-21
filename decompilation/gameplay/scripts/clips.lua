@@ -26,7 +26,7 @@ function Clips.trade_commands()
 end
 
 -- ROM-derived field copy uses stable semantic keys; source text remains in
--- dialogue/script-text.lua and native state supplies runner/item names.
+-- dialogue/script-text.json and native state supplies runner/item names.
 function Clips.text_entries()
     local ids = {
         "header_title",

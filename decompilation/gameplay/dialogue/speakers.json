@@ -1,0 +1,759 @@
+{
+  "profiles": {
+    "boris_greenhouse_narrator": {
+      "events": {
+        "insufficient_funds": {
+          "continuation_key": "",
+          "title_key": "boris.greenhouse.page.insufficient_funds"
+        },
+        "package_payment": {
+          "continuation_key": "",
+          "title_key": "boris.greenhouse.page.alternate_2"
+        },
+        "package_request": {
+          "continuation_key": "",
+          "title_key": "boris.greenhouse.page.alternate_1"
+        }
+      },
+      "name": "Boris",
+      "portrait_alias": "dialogue.portraits.boris.greenhouse",
+      "text_profile": "boris.greenhouse"
+    },
+    "caleb_brightmore": {
+      "events": {
+        "access_blocked": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.access.blocked"
+        },
+        "first_meeting": {
+          "continuation_key": "shared.more",
+          "title_key": "icarus-descending.caleb.first-meeting"
+        },
+        "first_meeting_continuation": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.first-meeting.continuation"
+        },
+        "information_contacts_offer": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.information.contacts-offer"
+        },
+        "leave": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.leave"
+        },
+        "opening": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.opening"
+        },
+        "post_run_opening": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.post-run-opening"
+        },
+        "transaction": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.transaction"
+        },
+        "work_matrix_requirement": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.work.matrix-requirement"
+        },
+        "work_opening": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.work.opening"
+        },
+        "work_recommended_run": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.work.recommended-run"
+        },
+        "work_renraku_followup": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.work.renraku-followup"
+        },
+        "work_renraku_introduction": {
+          "continuation_key": "",
+          "title_key": "icarus-descending.caleb.work.renraku-introduction"
+        }
+      },
+      "name": "Caleb Brightmore",
+      "portrait_alias": "dialogue.portraits.caleb.brightmore",
+      "text_profile": "icarus-descending.caleb_brightmore"
+    },
+    "council_island_hospital_narrator": {
+      "events": {
+        "medical_attention_insufficient_funds": {
+          "continuation_key": "",
+          "title_key": "hospital.medical.insufficient_funds"
+        },
+        "medical_attention_not_needed": {
+          "continuation_key": "",
+          "title_key": "hospital.medical.not_needed"
+        },
+        "package_handoff": {
+          "continuation_key": "",
+          "title_key": "council_island_hospital.entry.package_handoff"
+        },
+        "package_payment": {
+          "continuation_key": "",
+          "title_key": "council_island_hospital.entry.package_payment"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "none",
+      "text_profile": "council_island_hospital"
+    },
+    "council_medicine_lodge_narrator": {
+      "events": {
+        "farewell": {
+          "continuation_key": "",
+          "title_key": "council_medicine_lodge.response.farewell"
+        },
+        "hire_shaman_response": {
+          "continuation_key": "",
+          "title_key": "council_medicine_lodge.response.hire_shaman"
+        },
+        "package_handoff": {
+          "continuation_key": "",
+          "title_key": "council_medicine_lodge.entry.package_handoff"
+        },
+        "package_payment": {
+          "continuation_key": "",
+          "title_key": "council_medicine_lodge.entry.package_payment"
+        },
+        "wise_one_followup": {
+          "continuation_key": "",
+          "title_key": "council_medicine_lodge.response.wise_one"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "none",
+      "text_profile": "council_medicine_lodge"
+    },
+    "david_owlfeather": {
+      "events": {},
+      "name": "David Owlfeather",
+      "portrait_alias": "dialogue.portraits.david.owlfeather",
+      "text_profile": "salish.owlfeather"
+    },
+    "field_narrator": {
+      "events": {
+        "cyberspace_no_datajack": {
+          "continuation_key": "",
+          "title_key": "field.cyberspace.no_datajack"
+        },
+        "cyberspace_no_deck": {
+          "continuation_key": "",
+          "title_key": "field.cyberspace.no_deck"
+        },
+        "cyberspace_no_mpcp": {
+          "continuation_key": "",
+          "title_key": "field.cyberspace.no_mpcp"
+        },
+        "phone_no_contacts": {
+          "continuation_key": "",
+          "title_key": "field.main_menu.vid_phone.no_contacts"
+        },
+        "redmond.vigore-search.page-0": {
+          "continuation_key": "shared.more",
+          "title_key": "redmond.vigore-search.page-0"
+        },
+        "redmond.vigore-search.page-1": {
+          "continuation_key": "shared.more",
+          "title_key": "redmond.vigore-search.page-1"
+        },
+        "redmond.vigore-search.page-2": {
+          "continuation_key": "",
+          "title_key": "redmond.vigore-search.page-2"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "none",
+      "text_profile": "field.world_event"
+    },
+    "fuchi_offices_narrator": {
+      "events": {
+        "entry": {
+          "continuation_key": "shared.more",
+          "title_key": "penumbra.fuchi.page.entry"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "dialogue.portraits.fuchi.offices.entry",
+      "text_profile": "penumbra.fuchi"
+    },
+    "gates_undersound_narrator": {
+      "events": {
+        "entry": {
+          "continuation_key": "",
+          "title_key": "gates.undersound.page.entry"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "dialogue.portraits.gates.undersound.entry",
+      "text_profile": "gates.undersound"
+    },
+    "gunderson": {
+      "events": {
+        "contacts-introduction": {
+          "continuation_key": "shared.more",
+          "title_key": "gunderson.contacts.introduction"
+        },
+        "information-opening": {
+          "continuation_key": "shared.more",
+          "title_key": "gunderson.information.opening"
+        },
+        "johnson-definition": {
+          "continuation_key": "shared.more",
+          "title_key": "gunderson.question.answer"
+        },
+        "vigore-alternate-response": {
+          "continuation_key": "shared.more",
+          "title_key": "gunderson.question.vigore.alternate_response"
+        },
+        "work-opening": {
+          "continuation_key": "shared.more",
+          "title_key": "gunderson.work.opening"
+        }
+      },
+      "name": "Gunderson",
+      "portrait_alias": "dialogue.portraits.gunderson.jump.house",
+      "text_profile": "gunderson.jump_house"
+    },
+    "jackals_lantern_old_man": {
+      "events": {
+        "opening": {
+          "continuation_key": "",
+          "title_key": "jackals-lantern.old-man.opening"
+        }
+      },
+      "name": "Unidentified old man",
+      "portrait_alias": "dialogue.portraits.jackals.lantern.old.man",
+      "text_profile": "jackals_lantern.old_man"
+    },
+    "julius_strouther": {
+      "events": {
+        "booth_entry": {
+          "continuation_key": "shared.more",
+          "title_key": "julius-strouther.booth-entry"
+        },
+        "contacts_opening": {
+          "continuation_key": "shared.more",
+          "title_key": "julius-strouther.contacts.opening"
+        },
+        "leave": {
+          "continuation_key": "",
+          "title_key": "julius-strouther.leave"
+        },
+        "question_default": {
+          "continuation_key": "shared.more",
+          "title_key": "julius-strouther.question.default"
+        },
+        "work_opening": {
+          "continuation_key": "shared.more",
+          "title_key": "julius-strouther.work.opening"
+        }
+      },
+      "name": "Julius Strouther",
+      "portrait_alias": "dialogue.portraits.jump.house.entry",
+      "text_profile": "matchstick.julius_strouther"
+    },
+    "jump_house_entry": {
+      "events": {
+        "entry": {
+          "continuation_key": "",
+          "title_key": "jump-house.entry"
+        }
+      },
+      "name": "The Jump House",
+      "portrait_alias": "dialogue.portraits.jump.house.entry",
+      "text_profile": "jump_house.entry"
+    },
+    "licourtrix": {
+      "events": {},
+      "name": "Licourtrix",
+      "portrait_alias": "dialogue.portraits.licourtrix",
+      "text_profile": "salish.spirit_eyes"
+    },
+    "mortimer_reed": {
+      "events": {
+        "booth_entry": {
+          "continuation_key": "shared.more",
+          "title_key": "big-rhino.booth.entry"
+        },
+        "conditional_opening": {
+          "continuation_key": "",
+          "title_key": "big-rhino.mortimer.conditional-opening"
+        },
+        "information_opening": {
+          "continuation_key": "shared.more",
+          "title_key": "big-rhino.information.opening"
+        },
+        "leave": {
+          "continuation_key": "",
+          "title_key": "big-rhino.leave"
+        },
+        "opening": {
+          "continuation_key": "",
+          "title_key": "big-rhino.mortimer.opening"
+        },
+        "question_default": {
+          "continuation_key": "shared.more",
+          "title_key": "big-rhino.information.question.default"
+        },
+        "repeat_booth_entry": {
+          "continuation_key": "shared.more",
+          "title_key": "big-rhino.mortimer.repeat-booth-entry"
+        },
+        "repeat_opening": {
+          "continuation_key": "",
+          "title_key": "big-rhino.mortimer.repeat-opening"
+        },
+        "work_opening": {
+          "continuation_key": "shared.more",
+          "title_key": "big-rhino.work.opening"
+        }
+      },
+      "name": "Mortimer Reed",
+      "portrait_alias": "dialogue.portraits.mortimer.reed",
+      "text_profile": "big-rhino.mortimer_reed"
+    },
+    "red_buffalo_woman": {
+      "events": {},
+      "name": "Red Buffalo Woman",
+      "portrait_alias": "dialogue.portraits.red.buffalo.woman",
+      "text_profile": "salish.red_buffalo"
+    },
+    "renraku_offices_narrator": {
+      "events": {
+        "entry": {
+          "continuation_key": "shared.more",
+          "title_key": "renraku.offices.page.entry"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "dialogue.portraits.renraku.offices.entry",
+      "text_profile": "renraku.offices"
+    },
+    "spirit_eyes": {
+      "events": {},
+      "name": "Spirit Eyes",
+      "portrait_alias": "dialogue.portraits.spirit.eyes",
+      "text_profile": "salish.spirit_eyes"
+    },
+    "stoker": {
+      "events": {
+        "arrival": {
+          "continuation_key": "stoker.motel.arrival.more",
+          "title_key": "stoker.motel.arrival.title"
+        },
+        "jump-house": {
+          "continuation_key": "",
+          "title_key": "stoker.motel.jump-house.title"
+        },
+        "leave": {
+          "continuation_key": "",
+          "title_key": "stoker.motel.leave.title"
+        },
+        "package-handoff": {
+          "continuation_key": "",
+          "title_key": "stoker.motel.package-handoff.title"
+        },
+        "package-question": {
+          "continuation_key": "",
+          "title_key": "stoker.motel.package-question.title"
+        },
+        "room.insufficient": {
+          "continuation_key": "",
+          "title_key": "stoker.motel.room.insufficient.title"
+        },
+        "room.paid": {
+          "continuation_key": "",
+          "title_key": "stoker.motel.room.paid.title"
+        },
+        "street-ambush": {
+          "continuation_key": "",
+          "title_key": "stoker.motel.street-ambush.title"
+        }
+      },
+      "name": "Stoker",
+      "portrait_alias": "dialogue.portraits.stoker.motel",
+      "text_profile": "stoker.motel"
+    },
+    "tarislar_apartments_narrator": {
+      "events": {},
+      "name": "Narration",
+      "portrait_alias": "none",
+      "text_profile": "tarislar.garden.apartments.entry"
+    },
+    "tarislar_city_inn_narrator": {
+      "events": {},
+      "name": "Narration",
+      "portrait_alias": "none",
+      "text_profile": "tarislar.city_inn"
+    },
+    "vid_phone_agira_tetsumi": {
+      "events": {
+        "first_call": {
+          "continuation_key": "shared.more",
+          "title_key": "vid_phone.contact.agira_tetsumi.first_call"
+        },
+        "repeat_call": {
+          "continuation_key": "shared.more",
+          "title_key": "vid_phone.contact.agira_tetsumi.repeat_call"
+        }
+      },
+      "name": "Agira Tetsumi",
+      "portrait_alias": "dialogue.portraits.vid.phone.agira.tetsumi",
+      "text_profile": "field.vid_phone"
+    },
+    "vid_phone_alesandro_hobbs": {
+      "events": {
+        "first_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.alesandro_hobbs.first_call"
+        },
+        "purchase_insufficient": {
+          "continuation_key": "",
+          "title_key": "vid_phone.alesandro_hobbs.purchase.insufficient"
+        },
+        "purchase_out_of_stock": {
+          "continuation_key": "",
+          "title_key": "vid_phone.alesandro_hobbs.purchase.out_of_stock"
+        },
+        "repeat_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.alesandro_hobbs.repeat_call"
+        },
+        "security_alerts": {
+          "continuation_key": "",
+          "title_key": "vid_phone.alesandro_hobbs.security_alerts"
+        },
+        "security_cameras": {
+          "continuation_key": "",
+          "title_key": "vid_phone.alesandro_hobbs.security_cameras"
+        },
+        "security_patrols": {
+          "continuation_key": "",
+          "title_key": "vid_phone.alesandro_hobbs.security_patrols"
+        },
+        "security_technological": {
+          "continuation_key": "",
+          "title_key": "vid_phone.alesandro_hobbs.security_technological"
+        }
+      },
+      "name": "Alesandro Hobbs",
+      "portrait_alias": "dialogue.portraits.vid.phone.alesandro.hobbs",
+      "text_profile": "field.vid_phone"
+    },
+    "vid_phone_capt_quinton_jaymes": {
+      "events": {
+        "first_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.capt_quinton_jaymes.first_call"
+        },
+        "purchase_insufficient": {
+          "continuation_key": "",
+          "title_key": "vid_phone.capt_quinton_jaymes.purchase.insufficient"
+        },
+        "purchase_out_of_stock": {
+          "continuation_key": "",
+          "title_key": "vid_phone.capt_quinton_jaymes.purchase.out_of_stock"
+        },
+        "repeat_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.capt_quinton_jaymes.repeat_call"
+        },
+        "services_disconnected": {
+          "continuation_key": "",
+          "title_key": "vid_phone.capt_quinton_jaymes.services.disconnected"
+        }
+      },
+      "name": "Capt Quinton Jaymes",
+      "portrait_alias": "dialogue.portraits.vid.phone.capt.quinton.jaymes",
+      "text_profile": "field.vid_phone"
+    },
+    "vid_phone_chillicut": {
+      "events": {
+        "first_call": {
+          "continuation_key": "shared.more",
+          "title_key": "vid_phone.contact.chillicut.first_call"
+        },
+        "repeat_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.chillicut.repeat_call"
+        }
+      },
+      "name": "Sgt. Chillicut",
+      "portrait_alias": "dialogue.portraits.vid.phone.chillicut",
+      "text_profile": "field.vid_phone"
+    },
+    "vid_phone_gregory_wilns": {
+      "events": {
+        "first_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.gregory_wilns.first_call"
+        },
+        "goodbye": {
+          "continuation_key": "",
+          "title_key": "vid_phone.goodbye"
+        },
+        "insufficient_balance": {
+          "continuation_key": "",
+          "title_key": "vid_phone.gregory_wilns.insufficient_balance"
+        },
+        "power_focus_ineligible": {
+          "continuation_key": "",
+          "title_key": "vid_phone.gregory_wilns.power_focus_ineligible"
+        },
+        "power_focus_unavailable": {
+          "continuation_key": "",
+          "title_key": "vid_phone.gregory_wilns.power_focus_unavailable"
+        },
+        "repeat_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.gregory_wilns.repeat_call"
+        }
+      },
+      "name": "Gregory Wilns",
+      "portrait_alias": "dialogue.portraits.vid.phone.gregory.wilns",
+      "text_profile": "field.vid_phone"
+    },
+    "vid_phone_henry_j_culver": {
+      "events": {
+        "first_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.henry_j_culver.first_call"
+        },
+        "repeat_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.henry_j_culver.repeat_call"
+        }
+      },
+      "name": "Henry J. Culver",
+      "portrait_alias": "dialogue.portraits.vid.phone.henry.j.culver",
+      "text_profile": "field.vid_phone"
+    },
+    "vid_phone_kipp_david": {
+      "events": {
+        "disconnected": {
+          "continuation_key": "",
+          "title_key": "vid_phone.kipp_david.disconnected"
+        },
+        "first_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.kipp_david.first_call"
+        },
+        "insufficient_funds": {
+          "continuation_key": "",
+          "title_key": "vid_phone.kipp_david.insufficient_funds"
+        },
+        "repeat_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.kipp_david.repeat_call"
+        }
+      },
+      "name": "Kipp David",
+      "portrait_alias": "dialogue.portraits.vid.phone.kipp.david",
+      "text_profile": "field.vid_phone"
+    },
+    "vid_phone_macklemann": {
+      "events": {
+        "disconnected": {
+          "continuation_key": "",
+          "title_key": "vid_phone.macklemann.disconnected"
+        },
+        "first_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.macklemann.first_call"
+        },
+        "gate": {
+          "continuation_key": "",
+          "title_key": "vid_phone.macklemann.gate"
+        },
+        "insufficient_funds": {
+          "continuation_key": "",
+          "title_key": "vid_phone.macklemann.insufficient_funds"
+        },
+        "repeat_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.macklemann.repeat_call"
+        }
+      },
+      "name": "Sgt. Macklemann",
+      "portrait_alias": "dialogue.portraits.vid.phone.macklemann",
+      "text_profile": "field.vid_phone"
+    },
+    "vid_phone_max": {
+      "events": {
+        "first_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.max.first_call"
+        },
+        "repeat_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.max.repeat_call"
+        }
+      },
+      "name": "Max",
+      "portrait_alias": "dialogue.portraits.vid.phone.max",
+      "text_profile": "field.vid_phone"
+    },
+    "vid_phone_mr_faradouchi": {
+      "events": {
+        "first_call": {
+          "continuation_key": "shared.more",
+          "title_key": "vid_phone.contact.mr_faradouchi.first_call"
+        },
+        "repeat_call": {
+          "continuation_key": "shared.more",
+          "title_key": "vid_phone.contact.mr_faradouchi.repeat_call"
+        }
+      },
+      "name": "Mr. Faradouchi",
+      "portrait_alias": "dialogue.portraits.vid.phone.mr.faradouchi",
+      "text_profile": "field.vid_phone"
+    },
+    "vid_phone_professor_jefferson": {
+      "events": {
+        "first_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.professor_jefferson.first_call"
+        },
+        "repeat_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.professor_jefferson.repeat_call"
+        }
+      },
+      "name": "Prof. Jefferson",
+      "portrait_alias": "dialogue.portraits.vid.phone.professor.jefferson",
+      "text_profile": "field.vid_phone"
+    },
+    "vid_phone_sharkey": {
+      "events": {
+        "first_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.sharkey.first_call"
+        },
+        "insufficient_funds": {
+          "continuation_key": "",
+          "title_key": "vid_phone.sharkey.insufficient_funds"
+        },
+        "passage_result": {
+          "continuation_key": "",
+          "title_key": "vid_phone.sharkey.passage_result"
+        },
+        "repeat_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.sharkey.repeat_call"
+        },
+        "salish_passage": {
+          "continuation_key": "",
+          "title_key": "vid_phone.sharkey.salish_passage"
+        },
+        "sinsearach_passage": {
+          "continuation_key": "",
+          "title_key": "vid_phone.sharkey.sinsearach_passage"
+        },
+        "smart_goggles_inventory_full": {
+          "continuation_key": "",
+          "title_key": "vid_phone.sharkey.smart_goggles_inventory_full"
+        },
+        "smart_goggles_offer": {
+          "continuation_key": "",
+          "title_key": "vid_phone.sharkey.smart_goggles_offer"
+        },
+        "smart_goggles_result": {
+          "continuation_key": "",
+          "title_key": "vid_phone.sharkey.smart_goggles_result"
+        }
+      },
+      "name": "Sharkey",
+      "portrait_alias": "dialogue.portraits.vid.phone.sharkey",
+      "text_profile": "field.vid_phone"
+    },
+    "vid_phone_wilma_temmenhoff": {
+      "events": {
+        "first_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.wilma_temmenhoff.first_call"
+        },
+        "insufficient_funds": {
+          "continuation_key": "",
+          "title_key": "vid_phone.wilma_temmenhoff.insufficient_funds"
+        },
+        "later": {
+          "continuation_key": "",
+          "title_key": "vid_phone.wilma_temmenhoff.later"
+        },
+        "repeat_call": {
+          "continuation_key": "",
+          "title_key": "vid_phone.contact.wilma_temmenhoff.repeat_call"
+        }
+      },
+      "name": "Wilma Temmenhoff",
+      "portrait_alias": "dialogue.portraits.vid.phone.wilma.temmenhoff",
+      "text_profile": "field.vid_phone"
+    },
+    "vigore_jarl": {
+      "events": {
+        "booth_vacated": {
+          "continuation_key": "",
+          "title_key": "wanderer.vigore_jarl.booth-vacated"
+        },
+        "conditional_opening": {
+          "continuation_key": "",
+          "title_key": "wanderer.vigore_jarl.conditional-opening"
+        },
+        "first_impression": {
+          "continuation_key": "shared.more",
+          "title_key": "wanderer.vigore_jarl.first-impression"
+        },
+        "first_meeting": {
+          "continuation_key": "shared.more",
+          "title_key": "wanderer.vigore_jarl.first-meeting"
+        }
+      },
+      "name": "Vigore and Jarl",
+      "portrait_alias": "dialogue.portraits.vigore.jarl",
+      "text_profile": "wanderer.vigore_jarl"
+    },
+    "wanderer_booth_narrator": {
+      "events": {
+        "booth_vacated": {
+          "continuation_key": "",
+          "title_key": "wanderer.vigore_jarl.booth-vacated"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "none",
+      "text_profile": "wanderer.vigore_jarl"
+    },
+    "wylie_gala_inn_narrator": {
+      "events": {
+        "free_stay": {
+          "continuation_key": "",
+          "title_key": "wylie.gala_inn.free_stay"
+        },
+        "package_after": {
+          "continuation_key": "",
+          "title_key": "wylie.gala_inn.package_after"
+        },
+        "package_before": {
+          "continuation_key": "",
+          "title_key": "wylie.gala_inn.package_before"
+        },
+        "room_insufficient": {
+          "continuation_key": "",
+          "title_key": "stoker.motel.room.insufficient.title"
+        },
+        "room_paid": {
+          "continuation_key": "",
+          "title_key": "stoker.motel.room.paid.title"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "none",
+      "text_profile": "penumbra.wylies_gala_inn"
+    }
+  },
+  "schemaVersion": 1
+}

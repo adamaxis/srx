@@ -118,7 +118,7 @@ than silently treating the current rendering as correct.
 
 **2026-10-09 Lua-content review:** startup labels and save/load messages now
 resolve from `gameplay/scripts/startup.lua` and
-`assets/dialogue/script-text.lua`; the controller and source row placements
+`assets/dialogue/script-text.json`; the controller and source row placements
 remain native. The first full-frame pass also found that `draw_cursor()` drew
 the alpha-trimmed cursor at the untrimmed origin. The asset manifest records
 `origin_x=4` from the ROM tile, so the renderer now restores that offset via
@@ -1545,7 +1545,7 @@ new behavior is invented.
    consumes that view without choosing Stoker content. The Stoker controller
    binds the profile-0 portrait and the `stoker.motel.*` Lua text keys for the
    `manager` and `manager-package` states. The text is imported into
-   `assets/dialogue/script-text.lua`. It now reads the source command on
+   `assets/dialogue/script-text.json`. It now reads the source command on
    the arrival `<MORE>` option and runs `0x249C4`: a 0..79 sample opens the
    two-option manager record at `0xF4AB4`; A then opens the room offer. The
    field uses the source bounded-random algorithm, but its seed remains

@@ -1040,7 +1040,7 @@ int main() {
     if (!expect(scripts.load_package(
                     SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
                     std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
-                        "dialogue" / "script-text.lua"),
+                        "dialogue" / "script-text.json"),
                 "Vid-Phone Lua package did not load")) {
         std::cerr << scripts.failure() << '\n';
         return 1;

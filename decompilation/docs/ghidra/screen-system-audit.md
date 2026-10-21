@@ -171,7 +171,7 @@ Wpns/Guns rows, selected-item art, phase-value tiles, and the Atk/Def strips
 are drawn from the direct resource catalog. The seven command-root labels now
 resolve from ROM-derived Lua text keys; the typed selector still owns focus,
 drawing, and dispatch. Archetype, runner, status, power, armor, and menu
-feedback labels resolve from ROM-derived `script-text.lua`; item names,
+feedback labels resolve from ROM-derived `script-text.json`; item names,
 categories, labels, and detail rows resolve through `items.lua` and the same
 shared text table. They all use the existing native presenter/font path.
 Clips, Attributes, Cyberware, Magic, and Pocket Secretary still need remaining
@@ -328,7 +328,7 @@ shared Universal Gun Clips count. The live Clips route resolves reload capacity
 from the currently equipped item's `+0x24` value on each input step.
 
 The top-level and nested selector IDs plus Clips panel/message text IDs live
-in `gameplay/scripts/clips.lua` and `assets/dialogue/script-text.lua`. The
+in `gameplay/scripts/clips.lua` and `assets/dialogue/script-text.json`. The
 screen and math now run in `gameplay/scripts/menu/screens/clips.lua` and
 `gameplay/scripts/menu/rules/clips.lua`; C++ supplies typed runner records,
 active slot, magazine capacity, and ammo writes. `FieldSceneRuntime` presents
@@ -466,7 +466,7 @@ identify the left and right columns; Up/Down changes the row and Left/Right
 changes the column.
 
 The seven root choice IDs and visible labels are now declared in
-`gameplay/scripts/command_overview.lua` and `assets/dialogue/script-text.lua`.
+`gameplay/scripts/command_overview.lua` and `assets/dialogue/script-text.json`.
 `FieldSceneRuntime` validates their ROM order and binds the labels to the
 existing command-menu view. This moves menu content into Lua without giving
 Lua or Qt a second copy of the native page-selection state.

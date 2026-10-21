@@ -1402,7 +1402,8 @@ public:
 
     bool load_package(
         const std::filesystem::path& script_directory,
-        const std::filesystem::path& dialogue_text_file = {});
+        const std::filesystem::path& dialogue_text_file = {},
+        const std::filesystem::path& json_content_directory = {});
     const std::string* dialogue_text(std::string_view key) const;
     const std::unordered_map<std::string, std::string>&
     dialogue_text_entries() const noexcept;

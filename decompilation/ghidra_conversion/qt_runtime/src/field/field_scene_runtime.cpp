@@ -11450,7 +11450,7 @@ bool FieldSceneRuntime::bootstrap(
         "gameplay" / "scripts";
     const auto dialogue_text_file =
         startup_state.asset_catalog.catalog.asset_root / "dialogue" /
-        "script-text.lua";
+        "script-text.json";
     if (!game_scripts_.load_package(script_directory,
                                    dialogue_text_file)) {
         failure_ = game_scripts_.failure();

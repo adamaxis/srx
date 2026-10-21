@@ -63,7 +63,7 @@ capture of the scene remain open.
 - Caleb's information/work/leave labels resolve to `0x104051`, `0x103A3A`,
   and `0x104FEB`. ROM text for the contacts offer, work introduction, two
   Renraku pages, recommended run, Matrix prerequisite, exit, and transaction
-  is imported into `assets/dialogue/script-text.lua`. The complete menu
+  is imported into `assets/dialogue/script-text.json`. The complete menu
   transitions and run effects remain untraced.
 - The default actor list for scene 12 is empty. Caleb's portrait is dialogue
   art and does not establish a standing NPC. The two floor events remain

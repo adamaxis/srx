@@ -11,7 +11,7 @@ loads its labels from `0xD1DDC`. The nested Trade entry at `0x11E7E` installs
 `0xCD37A` and reads the four nested labels from `0xD1E24`. The menu's prompt,
 status, and result text uses the source strings cataloged by the field menu
 audit. The offline import keeps the strings in
-`assets/dialogue/script-text.lua`.
+`assets/dialogue/script-text.json`.
 
 `gameplay/scripts/menu/screens/clips.lua` owns selector,
 reload-confirmation, recipient, quantity, transfer, distribution, and

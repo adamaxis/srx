@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 from functools import lru_cache
 import html
 import re
@@ -114,28 +115,20 @@ def write_tsv(path: Path, headers: Iterable[str], rows: Iterable[dict[str, objec
     temp.replace(path)
 
 
-def read_lua_string_table(path: Path) -> dict[str, str]:
-    """Read the quoted key/value strings from the imported Lua text catalog."""
+def read_dialogue_text_catalog(path: Path) -> dict[str, str]:
+    """Read the versioned JSON text map used by gameplay dialogue."""
     if not path.is_file():
         return {}
-    source = path.read_text(encoding="utf-8")
-    pair_pattern = re.compile(
-        r'\[\s*"((?:\\.|[^"\\])*)"\s*\]\s*=\s*"((?:\\.|[^"\\])*)"',
-        re.DOTALL,
-    )
-
-    def unescape(value: str) -> str:
-        replacements = {"n": "\n", "r": "\r", "t": "\t", '"': '"', "\\": "\\"}
-        return re.sub(
-            r"\\([nrt\"\\])",
-            lambda match: replacements[match.group(1)],
-            value,
-        )
-
-    return {
-        unescape(match.group(1)): unescape(match.group(2))
-        for match in pair_pattern.finditer(source)
-    }
+    document = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(document, dict) or document.get("schemaVersion") != 1:
+        raise ValueError(f"unsupported dialogue JSON schema: {path}")
+    texts = document.get("texts")
+    if not isinstance(texts, dict) or any(
+        not isinstance(key, str) or not isinstance(value, str)
+        for key, value in texts.items()
+    ):
+        raise ValueError(f"dialogue JSON texts must be a string map: {path}")
+    return texts
 
 
 def format_dialogue_text(value: str) -> str:
@@ -2061,8 +2054,8 @@ def read_collision_rectangles(
         if as_int(row, "scene_id", -1) == scene_id
     }
     site_routes = read_site_route_index(repo_root, scene_id)
-    text_catalog = read_lua_string_table(
-        asset_root / "dialogue" / "script-text.lua"
+    text_catalog = read_dialogue_text_catalog(
+        asset_root / "dialogue" / "script-text.json"
     )
     result: list[MapEvidenceRegion] = []
     for record_index, offset in enumerate(range(0, len(data), 10)):
@@ -2560,8 +2553,8 @@ def read_event_rectangles(repo_root: Path, scene_id: int) -> list[MapEvidenceReg
     _, rows = read_tsv(path)
     result: list[MapEvidenceRegion] = []
     site_routes = read_site_route_index(repo_root, scene_id)
-    text_catalog = read_lua_string_table(
-        repo_root / "assets" / "dialogue" / "script-text.lua"
+    text_catalog = read_dialogue_text_catalog(
+        repo_root / "assets" / "dialogue" / "script-text.json"
     )
     for row in rows:
         if as_int(row, "scene_id", -1) != scene_id:
@@ -6054,8 +6047,8 @@ class MapEntityViewer(QMainWindow):
     def _entity_game_flow(self, entity: EntityDefinition) -> str:
         lines = [entity.name, f"Type: {friendly_identifier(entity.category)}", ""]
         route_rows = read_site_route_rows(self.repo_root, self.scene_id)
-        text_catalog = read_lua_string_table(
-            self.assets / "dialogue" / "script-text.lua"
+        text_catalog = read_dialogue_text_catalog(
+            self.assets / "dialogue" / "script-text.json"
         )
 
         def present(value: str) -> bool:

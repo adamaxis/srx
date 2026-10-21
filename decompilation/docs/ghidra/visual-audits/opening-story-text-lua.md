@@ -9,7 +9,7 @@ Screen: opening story captions, ROM text stream `0x5B7D8..0x5BA4B`
 The 22 opening captions are separate printable ROM strings, each terminated
 by `0xFF`. The offline graphics importer reads the bytes at their traced
 offsets, validates the terminator and visible-byte range, and emits stable
-`opening.story.*` keys in `assets/dialogue/script-text.lua`. The
+`opening.story.*` keys in `assets/dialogue/script-text.json`. The
 `startup.lua` module binds the typed `OpeningIntroTextAsset` identities to
 those keys. The Qt intro presenter resolves copy from Lua; the native intro
 schedule still owns when each caption is written, its row, palette bank, and
@@ -58,7 +58,7 @@ clear lifetime. The C++ conversion retains no copy of the captions.
 
 - Debug and Release `shadowrun_graphics_extract --all-assets` each wrote
   1,562 extracted assets with zero missing; their full generated
-  `script-text.lua` SHA-256 is identical:
+  `script-text.json` SHA-256 is identical:
   `779440032A49DC428D365649C2EC82B8E7F149938F61D009F2BB3CA355D9E5A2`.
 - In each configuration, gameplay-script QA, full startup QA, and startup
   integration QA passed (3/3). The workbench startup integration CTest also

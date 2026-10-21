@@ -179,7 +179,9 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
 
     GameScriptRuntime extensible_scripts;
     if (!extensible_scripts.load_package(temporary_directory,
-                                        dialogue_text)) {
+                                        dialogue_text,
+                                        source_directory.parent_path() /
+                                            "dialogue")) {
         std::cerr << extensible_scripts.failure() << '\n';
         return expect(false, "temporary Lua run package did not load");
     }
@@ -354,7 +356,7 @@ int main() {
     if (!expect(scripts.load_package(
                     SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
                     std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
-                        "dialogue" / "script-text.lua"),
+                        "dialogue" / "script-text.json"),
                 "gameplay Lua package did not load")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
@@ -664,13 +666,13 @@ int main() {
     if (!verify_dynamic_run_module(
             SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
             std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
-                "dialogue" / "script-text.lua")) {
+                "dialogue" / "script-text.json")) {
         return 3;
     }
     if (!verify_package_delivery_field_events(
             SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
             std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
-                "dialogue" / "script-text.lua")) {
+                "dialogue" / "script-text.json")) {
         std::cerr << scripts.failure() << '\n';
         return 3;
     }
@@ -10296,7 +10298,7 @@ int main() {
     if (!expect(hospital_medical_scripts.load_package(
                     SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
                     std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
-                        "dialogue" / "script-text.lua"),
+                        "dialogue" / "script-text.json"),
                 "hospital medical Lua package did not load")) {
         std::cerr << hospital_medical_scripts.failure() << '\n';
         return 19;

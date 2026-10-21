@@ -724,7 +724,7 @@ private:
     void load_startup_script_content() {
         const auto script_directory =
             asset_root_.parent_path() / "gameplay" / "scripts";
-        const auto text_file = asset_root_ / "dialogue" / "script-text.lua";
+        const auto text_file = asset_root_ / "dialogue" / "script-text.json";
         if (!startup_scripts_.load_package(script_directory, text_file)) {
             throw std::runtime_error(
                 "startup gameplay scripts did not load: " +

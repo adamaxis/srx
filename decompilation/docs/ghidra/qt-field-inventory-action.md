@@ -71,7 +71,7 @@ the reviewed action row at `(120,184)` with focus x positions
 `128,152,176,200`.
 
 The action confirmation strings are extracted from the ROM text tables into
-`dialogue/script-text.lua` alongside the other field-menu copy. No new runtime
+`dialogue/script-text.json` alongside the other field-menu copy. No new runtime
 text is synthesized for this path.
 
 ## Executable verification

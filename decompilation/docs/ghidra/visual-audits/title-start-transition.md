@@ -164,7 +164,7 @@ Save/Load slots, and archetype selection. The runtime validates the optional
 title and ordered label list against the returned stable choice IDs. Cursor
 state, page transitions, and rendering remain in the native startup
 controller. The ROM-derived wording remains in the keyed Lua text resource at
-`assets/dialogue/script-text.lua`; this change binds each menu entry to that
+`assets/dialogue/script-text.json`; this change binds each menu entry to that
 source copy instead of duplicating text or constructing key names in C++.
 
 For this content-only change, appearance, current selection, selector and

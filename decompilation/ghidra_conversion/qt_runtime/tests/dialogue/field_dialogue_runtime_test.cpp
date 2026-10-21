@@ -141,7 +141,7 @@ int main() {
     if (!gameplay_scripts.load_package(
             SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
             std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
-                "dialogue" / "script-text.lua")) {
+                "dialogue" / "script-text.json")) {
         std::cerr << gameplay_scripts.failure() << '\n';
         return 70;
     }

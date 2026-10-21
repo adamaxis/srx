@@ -27,7 +27,7 @@ resumes the same list selection. Start returns to the Notebook. A/B detail
 selection, list movement, and Start do not make a sound request in this handler.
 
 The host imports the five names and details as keyed entries in
-`assets/dialogue/script-text.lua`; doubled `0x80` line breaks are preserved.
+`assets/dialogue/script-text.json`; doubled `0x80` line breaks are preserved.
 Lua stores the visible source indices, selection, and detail-wait state and
 owns the list input and transitions. `FieldSceneRuntime` supplies typed
 FFFC27/story facts, then projects the Lua route snapshot into the existing Qt

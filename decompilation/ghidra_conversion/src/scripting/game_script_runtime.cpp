@@ -13,6 +13,8 @@ extern "C" {
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <limits>
 #include <set>
 #include <string>
@@ -45,7 +47,11 @@ constexpr std::size_t kMaximumStoryFacts = 4096U;
 // into a gameplay bootstrap failure.
 constexpr std::size_t kMaximumDialogueTextEntries = 4096U;
 constexpr std::size_t kMaximumDialogueTextBytes = 8192U;
+constexpr std::size_t kMaximumDialogueJsonBytes = 4U * 1024U * 1024U;
+constexpr std::size_t kMaximumGameplayJsonDocuments = 256U;
+constexpr std::size_t kMaximumGameplayJsonBytes = 16U * 1024U * 1024U;
 constexpr int kScriptInstructionBudget = 100000;
+constexpr int kDialogueJsonInstructionBudget = 20000000;
 
 std::string stack_error(lua_State* state) {
     const auto* message = lua_tostring(state, -1);
@@ -59,12 +65,14 @@ void instruction_budget_hook(lua_State* state, lua_Debug*) {
 
 class ScopedInstructionBudget final {
 public:
-    explicit ScopedInstructionBudget(lua_State* state)
+    explicit ScopedInstructionBudget(
+        lua_State* state,
+        const int instruction_budget = kScriptInstructionBudget)
         : state_(state), previous_hook_(lua_gethook(state)),
           previous_mask_(lua_gethookmask(state)),
           previous_count_(lua_gethookcount(state)) {
         lua_sethook(state_, instruction_budget_hook, LUA_MASKCOUNT,
-                    kScriptInstructionBudget);
+                    instruction_budget);
     }
     ~ScopedInstructionBudget() {
         lua_sethook(state_, previous_hook_, previous_mask_, previous_count_);
@@ -3792,6 +3800,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::nuyen);
         add_menu_binding(state, gameplay_game_index, "set_nuyen",
                          MenuBinding::set_nuyen);
+        lua_newtable(state); // Immutable-by-convention authored JSON content.
+        lua_setfield(state, -2, "content");
         lua_newtable(state); // game.actors registry; Lua owns actor behavior state
         lua_setfield(state, -2, "actors");
         lua_newtable(state); // Independently-authored run scripts register here.
@@ -3894,6 +3904,230 @@ struct GameScriptRuntime::Impl {
         }
         return true;
     }
+
+    bool decode_json_document(const std::filesystem::path& path,
+                              const std::size_t maximum_bytes,
+                              std::string& error) {
+        std::error_code file_error;
+        const auto size = std::filesystem::file_size(path, file_error);
+        if (file_error || size > maximum_bytes) {
+            error = file_error
+                        ? "could not read JSON file size: " +
+                              file_error.message()
+                        : "JSON file exceeds the byte limit";
+            return false;
+        }
+        const auto base = lua_gettop(state);
+        std::ifstream input(path, std::ios::binary);
+        if (!input) {
+            error = "could not open JSON file";
+            return false;
+        }
+        std::string source(static_cast<std::size_t>(size), '\0');
+        if (!source.empty()) {
+            input.read(source.data(),
+                       static_cast<std::streamsize>(source.size()));
+        }
+        if (!input || input.gcount() !=
+                          static_cast<std::streamsize>(source.size())) {
+            error = "could not read complete JSON file";
+            return false;
+        }
+        std::string module_error;
+        if (!load_module("json", module_error)) {
+            lua_settop(state, base);
+            error = module_error.empty()
+                        ? "gameplay JSON decoder module is missing"
+                        : std::move(module_error);
+            return false;
+        }
+        const auto module_index = lua_absindex(state, -1);
+        lua_getfield(state, module_index, "decode");
+        if (!lua_isfunction(state, -1)) {
+            lua_settop(state, base);
+            error = "gameplay JSON decoder has no decode function";
+            return false;
+        }
+        lua_remove(state, module_index);
+        lua_pushlstring(state, source.data(), source.size());
+        {
+            ScopedInstructionBudget instruction_budget(
+                state, kDialogueJsonInstructionBudget);
+            if (lua_pcall(state, 1, 2, 0) != LUA_OK) {
+                error = stack_error(state);
+                lua_settop(state, base);
+                return false;
+            }
+        }
+        if (!lua_istable(state, -2)) {
+            error = "invalid JSON document";
+            if (lua_type(state, -1) == LUA_TSTRING) {
+                std::size_t length = 0U;
+                const auto* message = lua_tolstring(state, -1, &length);
+                if (message != nullptr) {
+                    error.assign(message, length);
+                }
+            }
+            lua_settop(state, base);
+            return false;
+        }
+        lua_pop(state, 1); // decoder error is nil on success
+        const auto document_index = lua_absindex(state, -1);
+        lua_getfield(state, document_index, "schemaVersion");
+        const bool supported_schema =
+            lua_isinteger(state, -1) && lua_tointeger(state, -1) == 1;
+        lua_pop(state, 1);
+        if (!supported_schema) {
+            lua_settop(state, base);
+            error = "JSON document must declare schemaVersion 1";
+            return false;
+        }
+        return true;
+    }
+
+    bool load_json_content(const std::filesystem::path& content_root,
+                           std::string& error) {
+        std::error_code path_error;
+        if (!std::filesystem::exists(content_root, path_error)) {
+            if (!path_error) {
+                return true;
+            }
+            error = "could not inspect gameplay JSON content directory: " +
+                    path_error.message();
+            return false;
+        }
+        const auto root =
+            std::filesystem::weakly_canonical(content_root, path_error);
+        if (path_error || !std::filesystem::is_directory(root, path_error) ||
+            path_error) {
+            error = "gameplay JSON content path is not a directory: " +
+                    content_root.string();
+            return false;
+        }
+
+        std::vector<std::filesystem::path> documents;
+        for (std::filesystem::recursive_directory_iterator iterator(
+                 root, path_error),
+             end;
+             !path_error && iterator != end; iterator.increment(path_error)) {
+            if (!iterator->is_regular_file(path_error) || path_error ||
+                iterator->path().extension() != ".json") {
+                continue;
+            }
+            const auto document =
+                std::filesystem::weakly_canonical(iterator->path(),
+                                                  path_error);
+            if (path_error || !path_is_within_root(root, document)) {
+                error = "gameplay JSON file resolves outside content root: " +
+                        iterator->path().string();
+                return false;
+            }
+            documents.push_back(document);
+            if (documents.size() > kMaximumGameplayJsonDocuments) {
+                error = "gameplay JSON content exceeds the document limit";
+                return false;
+            }
+        }
+        if (path_error) {
+            error = "could not enumerate gameplay JSON content: " +
+                    path_error.message();
+            return false;
+        }
+        std::sort(documents.begin(), documents.end());
+
+        std::size_t total_bytes = 0U;
+        for (const auto& path : documents) {
+            std::error_code file_error;
+            const auto size = std::filesystem::file_size(path, file_error);
+            if (file_error || size > kMaximumDialogueJsonBytes ||
+                size > kMaximumGameplayJsonBytes - total_bytes) {
+                error = file_error
+                            ? "could not read gameplay JSON file size: " +
+                                  file_error.message()
+                            : "gameplay JSON content exceeds its byte limit";
+                return false;
+            }
+            total_bytes += static_cast<std::size_t>(size);
+
+            const auto relative = path.lexically_relative(root);
+            std::vector<std::string> keys;
+            for (auto component = relative.begin();
+                 component != relative.end(); ++component) {
+                auto key = component->string();
+                auto next_component = component;
+                ++next_component;
+                if (next_component == relative.end()) {
+                    if (std::filesystem::path(key).extension() != ".json") {
+                        error = "gameplay JSON filename has no .json suffix: " +
+                                path.string();
+                        return false;
+                    }
+                    key = std::filesystem::path(key).stem().string();
+                }
+                if (!valid_identifier(key)) {
+                    error = "gameplay JSON path contains an invalid content id: " +
+                            path.string();
+                    return false;
+                }
+                keys.push_back(std::move(key));
+            }
+            if (keys.empty()) {
+                error = "gameplay JSON path has no content id: " +
+                        path.string();
+                return false;
+            }
+
+            const auto base = lua_gettop(state);
+            std::string decode_error;
+            if (!decode_json_document(path, kMaximumDialogueJsonBytes,
+                                      decode_error)) {
+                error = path.string() + ": " + decode_error;
+                lua_settop(state, base);
+                return false;
+            }
+            const auto document_index = lua_absindex(state, -1);
+            lua_getglobal(state, "game");
+            lua_getfield(state, -1, "content");
+            if (!lua_istable(state, -1)) {
+                lua_settop(state, base);
+                error = "game.content JSON registry is missing";
+                return false;
+            }
+            lua_remove(state, -2);
+            auto parent_index = lua_absindex(state, -1);
+            for (std::size_t index = 0U; index + 1U < keys.size(); ++index) {
+                const auto& key = keys[index];
+                lua_getfield(state, parent_index, key.c_str());
+                if (lua_isnil(state, -1)) {
+                    lua_pop(state, 1);
+                    lua_newtable(state);
+                    lua_pushlstring(state, key.data(), key.size());
+                    lua_pushvalue(state, -2);
+                    lua_settable(state, parent_index);
+                } else if (!lua_istable(state, -1)) {
+                    lua_settop(state, base);
+                    error = "gameplay JSON paths collide at content id: " + key;
+                    return false;
+                }
+                parent_index = lua_absindex(state, -1);
+            }
+            const auto& content_id = keys.back();
+            lua_getfield(state, parent_index, content_id.c_str());
+            const bool duplicate = !lua_isnil(state, -1);
+            lua_pop(state, 1);
+            if (duplicate) {
+                lua_settop(state, base);
+                error = "duplicate gameplay JSON content id: " +
+                        relative.generic_string();
+                return false;
+            }
+            lua_pushlstring(state, content_id.data(), content_id.size());
+            lua_pushvalue(state, document_index);
+            lua_settable(state, parent_index);
+            lua_settop(state, base);
+        }
+        return true;
+    }
 };
 
 GameScriptRuntime::GameScriptRuntime() : impl_(std::make_unique<Impl>()) {}
@@ -3903,7 +4137,8 @@ GameScriptRuntime& GameScriptRuntime::operator=(GameScriptRuntime&&) noexcept = 
 
 bool GameScriptRuntime::load_package(
     const std::filesystem::path& script_directory,
-    const std::filesystem::path& dialogue_text_file) {
+    const std::filesystem::path& dialogue_text_file,
+    const std::filesystem::path& json_content_directory) {
     impl_->reset();
     if (impl_->state == nullptr) {
         return false;
@@ -3928,6 +4163,13 @@ bool GameScriptRuntime::load_package(
     if (!detail::load_world_content_tsv(
             impl_->state, impl_->modules_reference, world_directory,
             impl_->failure, field_asset_directory)) {
+        return false;
+    }
+    const auto gameplay_dialogue_directory = json_content_directory.empty()
+        ? script_directory.parent_path() / "dialogue"
+        : json_content_directory;
+    if (!impl_->load_json_content(gameplay_dialogue_directory,
+                                  impl_->failure)) {
         return false;
     }
 
@@ -4044,27 +4286,86 @@ bool GameScriptRuntime::load_package(
         if (!std::filesystem::is_regular_file(dialogue_text_file, error) ||
             error) {
             return fail_dialogue(
-                "gameplay dialogue text script is missing: " +
+                "gameplay dialogue JSON is missing: " +
                 dialogue_text_file.string());
         }
+        const auto dialogue_size =
+            std::filesystem::file_size(dialogue_text_file, error);
+        if (error || dialogue_size > kMaximumDialogueJsonBytes) {
+            return fail_dialogue(
+                error ? "could not read gameplay dialogue JSON size: " +
+                            error.message()
+                      : "gameplay dialogue JSON exceeds the byte limit");
+        }
+        std::ifstream dialogue_input(dialogue_text_file, std::ios::binary);
+        if (!dialogue_input) {
+            return fail_dialogue(
+                "could not open gameplay dialogue JSON: " +
+                dialogue_text_file.string());
+        }
+        std::string dialogue_json(
+            static_cast<std::size_t>(dialogue_size), '\0');
+        if (!dialogue_json.empty()) {
+            dialogue_input.read(
+                dialogue_json.data(),
+                static_cast<std::streamsize>(dialogue_json.size()));
+        }
+        if (!dialogue_input ||
+            dialogue_input.gcount() !=
+                static_cast<std::streamsize>(dialogue_json.size())) {
+            return fail_dialogue(
+                "could not read complete gameplay dialogue JSON: " +
+                dialogue_text_file.string());
+        }
+        if (!impl_->push_module("json")) {
+            return fail_dialogue(
+                "gameplay JSON decoder module is missing");
+        }
+        const auto json_module = lua_absindex(state, -1);
+        lua_getfield(state, json_module, "decode");
+        if (!lua_isfunction(state, -1)) {
+            return fail_dialogue(
+                "gameplay JSON decoder has no decode function");
+        }
+        lua_remove(state, json_module);
+        lua_pushlstring(state, dialogue_json.data(), dialogue_json.size());
         {
-            ScopedInstructionBudget instruction_budget(state);
-            if (luaL_loadfilex(state, dialogue_text_file.string().c_str(),
-                               "t") != LUA_OK ||
-                lua_pcall(state, 0, 1, 0) != LUA_OK) {
+            ScopedInstructionBudget instruction_budget(
+                state, kDialogueJsonInstructionBudget);
+            if (lua_pcall(state, 1, 2, 0) != LUA_OK) {
                 return fail_dialogue(
-                    dialogue_text_file.filename().string() + ": " +
+                    dialogue_text_file.filename().string() +
+                    " could not be decoded: " +
                     stack_error(state));
             }
         }
-        if (!lua_istable(state, -1)) {
+        if (!lua_istable(state, -2)) {
+            std::string decode_error = "invalid JSON document";
+            if (lua_type(state, -1) == LUA_TSTRING) {
+                std::size_t length = 0U;
+                const auto* message = lua_tolstring(state, -1, &length);
+                if (message != nullptr) {
+                    decode_error.assign(message, length);
+                }
+            }
             return fail_dialogue(
-                "dialogue text script must return a table");
+                dialogue_text_file.filename().string() +
+                " is invalid: " + decode_error);
         }
-        lua_getfield(state, -1, "texts");
+        lua_pop(state, 1); // decode error is nil on success
+        const auto document_index = lua_absindex(state, -1);
+        lua_getfield(state, document_index, "schemaVersion");
+        const bool supported_schema =
+            lua_isinteger(state, -1) && lua_tointeger(state, -1) == 1;
+        lua_pop(state, 1);
+        if (!supported_schema) {
+            return fail_dialogue(
+                "dialogue JSON must declare schemaVersion 1");
+        }
+        lua_getfield(state, document_index, "texts");
         if (!lua_istable(state, -1)) {
             return fail_dialogue(
-                "dialogue text script must return a texts table");
+                "dialogue JSON must contain a texts object");
         }
         const auto texts_table = lua_absindex(state, -1);
         std::unordered_map<std::string, std::string> parsed_texts;

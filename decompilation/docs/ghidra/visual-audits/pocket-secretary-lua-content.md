@@ -9,7 +9,7 @@ Screen: Pocket Secretary field root, entry `0xC2A6`
 The field caller selects the five-row variant at `0xC2A6`. The root heading,
 separator, and five displayed labels are read from the ROM table beginning at
 `0xC1418`; the offline importer writes those strings to
-`assets/dialogue/script-text.lua`. The new `gameplay/scripts/pocket_secretary.lua`
+`assets/dialogue/script-text.json`. The new `gameplay/scripts/pocket_secretary.lua`
 contains stable IDs in the same order: `notebook`, `group_items`, `cyberdeck`,
 `dismiss_runner`, and `save_load`, along with explicit keys for the title,
 separator, and each label. It also binds the Notebook title and all possible

@@ -2,12 +2,13 @@
 """Import Contacts and Shadowrunners text from the US Genesis ROM.
 
 This is an offline asset step. The Qt runtime consumes the resulting keyed
-text in assets/dialogue/script-text.lua; it never reads ROM pointers.
+text in assets/dialogue/script-text.json; it never reads ROM pointers.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 
@@ -19,8 +20,6 @@ PAGE_LABELS = (
     ("pocket_secretary.notebook.record_page.option.next", 0xC661D),
     ("pocket_secretary.notebook.record_page.option.prior", 0xC662B),
 )
-BEGIN = "    -- BEGIN ROM-extracted Notebook Contacts and Shadowrunners\n"
-END = "    -- END ROM-extracted Notebook Contacts and Shadowrunners\n"
 
 
 def read_long(rom: bytes, offset: int) -> int:
@@ -49,12 +48,6 @@ def read_text(rom: bytes, offset: int) -> str:
     raise ValueError(f"unterminated text at {offset:#x}")
 
 
-def lua_string(value: str) -> str:
-    return '"' + value.replace("\\", "\\\\").replace('"', '\\"').replace(
-        "\n", "\\n"
-    ) + '"'
-
-
 def extract(rom: bytes) -> list[tuple[str, str]]:
     entries: list[tuple[str, str]] = []
     for kind, count, name_table, detail_table in TABLES:
@@ -76,33 +69,40 @@ def extract(rom: bytes) -> list[tuple[str, str]]:
     return entries
 
 
-def update_script_text(path: Path, entries: list[tuple[str, str]]) -> None:
-    raw = path.read_bytes()
-    newline = b"\r\n" if b"\r\n" in raw else b"\n"
-    text = raw.decode("utf-8").replace("\r\n", "\n")
-    if BEGIN in text:
-        start = text.index(BEGIN)
-        end = text.index(END, start) + len(END)
-        text = text[:start] + text[end:]
-    closing = "    },\n}\n"
-    if not text.endswith(closing):
-        raise ValueError(f"unexpected generated script-text.lua layout: {path}")
-    block = BEGIN + "".join(
-        f"        [{lua_string(key)}] = {lua_string(value)},\n"
-        for key, value in entries
-    ) + END
-    updated = text[: -len(closing)] + block + closing
-    path.write_bytes(updated.replace("\n", newline.decode("ascii")).encode("utf-8"))
+def update_text_catalog(path: Path, entries: list[tuple[str, str]]) -> None:
+    if path.exists():
+        document = json.loads(path.read_text(encoding="utf-8"))
+    else:
+        document = {"schemaVersion": 1, "texts": {}}
+    if not isinstance(document, dict) or document.get("schemaVersion") != 1:
+        raise ValueError(f"unsupported dialogue JSON schema: {path}")
+    texts = document.get("texts")
+    if not isinstance(texts, dict) or any(
+        not isinstance(key, str) or not isinstance(value, str)
+        for key, value in texts.items()
+    ):
+        raise ValueError(f"dialogue JSON texts must be a string map: {path}")
+    for key, value in entries:
+        texts[key] = value
+    document["texts"] = texts
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(document, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    temporary.replace(path)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--rom", type=Path, required=True)
-    parser.add_argument("--script-text", type=Path, required=True)
+    parser.add_argument("--text-catalog", "--script-text", dest="text_catalog",
+                        type=Path, required=True)
     args = parser.parse_args()
     entries = extract(args.rom.read_bytes())
-    update_script_text(args.script_text, entries)
-    print(f"notebook_records={len(entries)} output={args.script_text}")
+    update_text_catalog(args.text_catalog, entries)
+    print(f"notebook_records={len(entries)} output={args.text_catalog}")
     return 0
 
 

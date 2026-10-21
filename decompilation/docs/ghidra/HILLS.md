@@ -464,7 +464,7 @@ partial. See the
 
 Scene 1/event 1 now has entity-owned Lua tasks for the Tarislar City Inn's
 indexed stay/Tabatha service and generic field prompt. ROM text records were
-regenerated into `assets/dialogue/script-text.lua`; the task-level CTests cover
+regenerated into `assets/dialogue/script-text.json`; the task-level CTests cover
 the 30-nuyen paid/insufficient paths, Tabatha's story-bit changes, and the
 explicit boundary at the unconverted ambush. Full 320x224 dialogue panels
 were inspected. There is not yet a physical field-input route QA or an
@@ -568,7 +568,7 @@ conditional candidates remain unconnected to Lua/runtime population and are
 not asserted to be alive NPCs.
 
 The Stoker and field-object ROM dialogue strings have moved from separate TSV
-catalogs into `assets/dialogue/script-text.lua`. The offline importer writes
+catalogs into `assets/dialogue/script-text.json`. The offline importer writes
 that keyed Lua table; native presenters resolve it through `GameScriptRuntime`,
 while retaining their shared page, focus, and input behavior. The importer
 also emits command labels, service titles, shop headings, and transaction

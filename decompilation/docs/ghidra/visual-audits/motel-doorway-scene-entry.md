@@ -546,7 +546,7 @@ menu IDs and each stable choice ID to a source text key under the
 `stoker.motel` location-content profile. Menu copy is independent from the
 optional speaker portrait, so the shared motel menu can be presented with or
 without a named speaker. The text records remain the ROM-imported entries in
-`assets/dialogue/script-text.lua`; this change moves their selection into the
+`assets/dialogue/script-text.json`; this change moves their selection into the
 gameplay script. Static Stoker prompts for the street ambush and package
 question are still on the older native prompt path.
 

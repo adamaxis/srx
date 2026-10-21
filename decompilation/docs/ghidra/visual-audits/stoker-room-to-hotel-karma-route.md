@@ -144,7 +144,7 @@ an independent Genesis visual oracle.
   text keys for both Options and Checkout. Its `text_keys()` map also binds
   the Options separator, medical-attention suffix, and recovery rows. The
   native presenter resolves those keys against the ROM-derived copy in
-  `assets/dialogue/script-text.lua`; it keeps layout and input ownership.
+  `assets/dialogue/script-text.json`; it keeps layout and input ownership.
 - **Code changed:** the Hotel QA follows the physical doorway and normal
   input through the live `FieldSceneRuntime`, dialogue, payment, Hotel,
   Karma, and checkout handlers; no test helper injects a dialogue, payment

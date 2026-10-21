@@ -5,7 +5,7 @@
 This slice has `CommandOverview.root()` return the seven stable command-root
 choice IDs and their parallel explicit label keys from
 `gameplay/scripts/command_overview.lua`; the ROM-derived labels remain in
-`assets/dialogue/script-text.lua`. The label order follows selectors 0 through
+`assets/dialogue/script-text.json`. The label order follows selectors 0 through
 6 at the selected-command text position described in
 [`screen-system-audit.md`](../screen-system-audit.md#command-overview-0x10d30-0x10f50-0x111e8).
 The two Inventory IDs stay separate because they refer to the left and right

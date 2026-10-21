@@ -273,7 +273,7 @@ The Stoker prompt records at `0xF4AA0..0xF4B2C` are represented by the typed
 preserves the source's title/option/command boundaries, including the tested
 manager-package C-to-debt and B-to-referral path, sentinel pages, and the
 unresolved debt-payment result. The offline graphics importer emits the source
-text streams in `assets/dialogue/script-text.lua`; the Qt adapter resolves
+text streams in `assets/dialogue/script-text.json`; the Qt adapter resolves
 those stable keys and projects Stoker through this same panel rather than
 creating an NPC-specific dialogue widget. Its semantic commands are returned
 to the owning conversion controller, so the panel carries no ROM addresses or
@@ -424,7 +424,7 @@ source-derived positions. The normal equipment-detail seam passes the typed
 `EquipmentCombatBarResult` and `ItemActionDetailResult` from converted code
 into that presentation, so the item art, phase-value tiles, Damage/Power,
 Wpns/Guns, and Atk/Def rows are not recomputed by Qt. The label catalog is
-generated offline from ROM text tables into `dialogue/script-text.lua`; the
+generated offline from ROM text tables into `dialogue/script-text.json`; the
 action-detail data for Attributes, Cyberware, Magic, and Pocket Secretary
 remain explicit conversion work. The top-level Clips branch now runs through
 `gameplay/scripts/menu/screens/clips.lua` and its source-derived arithmetic in

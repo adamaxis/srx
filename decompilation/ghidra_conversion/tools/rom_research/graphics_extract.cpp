@@ -700,70 +700,309 @@ void remove_obsolete_menu_text_assets(const std::filesystem::path& root) {
                             "notebook-tips.tsv");
 }
 
-std::string lua_text_entry_key(const std::string_view line) {
-    const auto begin = line.find("[\"");
-    if (begin == std::string_view::npos) {
-        return {};
-    }
-    const auto end = line.find("\"] = ", begin + 2U);
-    if (end == std::string_view::npos) {
-        return {};
-    }
-    return std::string(line.substr(begin + 2U, end - begin - 2U));
-}
+class DialogueTextJsonReader final {
+public:
+    explicit DialogueTextJsonReader(const std::string_view source)
+        : source_(source) {}
 
-void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
-                                const std::filesystem::path& root,
-                                const shadowrun::native::NativePortAssets& assets,
-                                const std::vector<std::pair<std::string,
-                                                            std::string>>&
-                                    field_text) {
-    const auto path = root / "dialogue" / "script-text.lua";
-    std::filesystem::create_directories(path.parent_path());
-    std::string existing_script;
-    {
-        std::ifstream existing(path, std::ios::binary);
-        if (existing) {
-            std::ostringstream contents;
-            contents << existing.rdbuf();
-            if (existing.bad()) {
-                throw std::runtime_error(
-                    "cannot read existing Lua dialogue content: " +
-                    path.string());
-            }
-            existing_script = contents.str();
-        } else if (std::filesystem::exists(path)) {
-            throw std::runtime_error(
-                "cannot read existing Lua dialogue content: " +
-                path.string());
-        }
-    }
-    std::ostringstream output;
-
-    const auto write_lua_string = [&output](const std::string_view text) {
-        output << '"';
-        for (const auto character : text) {
-            switch (character) {
-            case '\\': output << "\\\\"; break;
-            case '"': output << "\\\""; break;
-            case '\n': output << "\\n"; break;
-            case '\r': output << "\\r"; break;
-            case '\t': output << "\\t"; break;
-            default:
-                if (static_cast<unsigned char>(character) < 0x20U) {
-                    output << '\\' << static_cast<char>(
-                        '0' + ((static_cast<unsigned char>(character) / 100U) % 10U))
-                           << static_cast<char>(
-                        '0' + ((static_cast<unsigned char>(character) / 10U) % 10U))
-                           << static_cast<char>(
-                        '0' + (static_cast<unsigned char>(character) % 10U));
-                } else {
-                    output << character;
+    std::map<std::string, std::string> read() {
+        skip_whitespace();
+        expect('{');
+        bool schema_found = false;
+        bool texts_found = false;
+        std::map<std::string, std::string> texts;
+        skip_whitespace();
+        while (peek() != '}') {
+            const auto key = read_string();
+            skip_whitespace();
+            expect(':');
+            skip_whitespace();
+            if (key == "schemaVersion") {
+                if (schema_found || read_integer() != 1U) {
+                    fail("unsupported or duplicate schemaVersion");
                 }
+                schema_found = true;
+            } else if (key == "texts") {
+                if (texts_found) {
+                    fail("duplicate texts object");
+                }
+                texts = read_texts();
+                texts_found = true;
+            } else {
+                fail("unexpected top-level property");
+            }
+            skip_whitespace();
+            if (peek() == '}') {
                 break;
             }
+            expect(',');
+            skip_whitespace();
         }
-        output << '"';
+        expect('}');
+        skip_whitespace();
+        if (position_ != source_.size()) {
+            fail("trailing data");
+        }
+        if (!schema_found || !texts_found) {
+            fail("missing schemaVersion or texts property");
+        }
+        return texts;
+    }
+
+private:
+    char peek() const {
+        return position_ < source_.size() ? source_[position_] : '\0';
+    }
+
+    [[noreturn]] void fail(const std::string_view message) const {
+        throw std::runtime_error(
+            "invalid dialogue JSON at byte " +
+            std::to_string(position_) + ": " + std::string(message));
+    }
+
+    void skip_whitespace() {
+        while (position_ < source_.size()) {
+            const auto character = source_[position_];
+            if (character != ' ' && character != '\t' && character != '\r' &&
+                character != '\n') {
+                break;
+            }
+            ++position_;
+        }
+    }
+
+    void expect(const char expected) {
+        if (peek() != expected) {
+            fail("unexpected character");
+        }
+        ++position_;
+    }
+
+    unsigned read_hex_quad() {
+        if (position_ + 4U > source_.size()) {
+            fail("incomplete Unicode escape");
+        }
+        unsigned value = 0U;
+        for (std::size_t index = 0; index < 4U; ++index) {
+            const auto character = source_[position_++];
+            unsigned digit = 0U;
+            if (character >= '0' && character <= '9') {
+                digit = static_cast<unsigned>(character - '0');
+            } else if (character >= 'a' && character <= 'f') {
+                digit = static_cast<unsigned>(character - 'a') + 10U;
+            } else if (character >= 'A' && character <= 'F') {
+                digit = static_cast<unsigned>(character - 'A') + 10U;
+            } else {
+                fail("invalid Unicode escape");
+            }
+            value = (value << 4U) | digit;
+        }
+        return value;
+    }
+
+    static void append_utf8(std::string& output, const unsigned codepoint) {
+        if (codepoint <= 0x7FU) {
+            output.push_back(static_cast<char>(codepoint));
+        } else if (codepoint <= 0x7FFU) {
+            output.push_back(static_cast<char>(0xC0U | (codepoint >> 6U)));
+            output.push_back(static_cast<char>(0x80U | (codepoint & 0x3FU)));
+        } else if (codepoint <= 0xFFFFU) {
+            output.push_back(static_cast<char>(0xE0U | (codepoint >> 12U)));
+            output.push_back(static_cast<char>(
+                0x80U | ((codepoint >> 6U) & 0x3FU)));
+            output.push_back(static_cast<char>(0x80U | (codepoint & 0x3FU)));
+        } else {
+            output.push_back(static_cast<char>(0xF0U | (codepoint >> 18U)));
+            output.push_back(static_cast<char>(
+                0x80U | ((codepoint >> 12U) & 0x3FU)));
+            output.push_back(static_cast<char>(
+                0x80U | ((codepoint >> 6U) & 0x3FU)));
+            output.push_back(static_cast<char>(0x80U | (codepoint & 0x3FU)));
+        }
+    }
+
+    std::string read_string() {
+        expect('"');
+        std::string result;
+        while (position_ < source_.size()) {
+            const auto character = source_[position_++];
+            if (character == '"') {
+                return result;
+            }
+            if (static_cast<unsigned char>(character) < 0x20U) {
+                fail("unescaped control byte in string");
+            }
+            if (character != '\\') {
+                result.push_back(character);
+                continue;
+            }
+            if (position_ >= source_.size()) {
+                fail("incomplete string escape");
+            }
+            const auto escaped = source_[position_++];
+            switch (escaped) {
+            case '"': result.push_back('"'); break;
+            case '\\': result.push_back('\\'); break;
+            case '/': result.push_back('/'); break;
+            case 'b': result.push_back('\b'); break;
+            case 'f': result.push_back('\f'); break;
+            case 'n': result.push_back('\n'); break;
+            case 'r': result.push_back('\r'); break;
+            case 't': result.push_back('\t'); break;
+            case 'u': {
+                auto codepoint = read_hex_quad();
+                if (codepoint >= 0xD800U && codepoint <= 0xDBFFU) {
+                    if (position_ + 2U > source_.size() ||
+                        source_[position_] != '\\' ||
+                        source_[position_ + 1U] != 'u') {
+                        fail("high surrogate has no low surrogate");
+                    }
+                    position_ += 2U;
+                    const auto low = read_hex_quad();
+                    if (low < 0xDC00U || low > 0xDFFFU) {
+                        fail("invalid low surrogate");
+                    }
+                    codepoint = 0x10000U +
+                                ((codepoint - 0xD800U) << 10U) +
+                                (low - 0xDC00U);
+                } else if (codepoint >= 0xDC00U && codepoint <= 0xDFFFU) {
+                    fail("unexpected low surrogate");
+                }
+                append_utf8(result, codepoint);
+                break;
+            }
+            default: fail("invalid string escape");
+            }
+        }
+        fail("unterminated string");
+    }
+
+    unsigned read_integer() {
+        const auto start = position_;
+        while (peek() >= '0' && peek() <= '9') {
+            ++position_;
+        }
+        if (position_ == start ||
+            (position_ - start > 1U && source_[start] == '0')) {
+            fail("invalid schema version");
+        }
+        unsigned value = 0U;
+        for (auto index = start; index < position_; ++index) {
+            value = value * 10U +
+                    static_cast<unsigned>(source_[index] - '0');
+        }
+        return value;
+    }
+
+    std::map<std::string, std::string> read_texts() {
+        std::map<std::string, std::string> result;
+        expect('{');
+        skip_whitespace();
+        if (peek() == '}') {
+            ++position_;
+            return result;
+        }
+        while (true) {
+            auto key = read_string();
+            skip_whitespace();
+            expect(':');
+            skip_whitespace();
+            auto value = read_string();
+            if (!result.emplace(std::move(key), std::move(value)).second) {
+                fail("duplicate text key");
+            }
+            if (result.size() > 4096U) {
+                fail("text entry limit exceeded");
+            }
+            skip_whitespace();
+            if (peek() == '}') {
+                ++position_;
+                return result;
+            }
+            expect(',');
+            skip_whitespace();
+        }
+    }
+
+    std::string_view source_;
+    std::size_t position_ = 0U;
+};
+
+std::map<std::string, std::string> read_dialogue_text_json(
+    const std::filesystem::path& path) {
+    std::error_code error;
+    if (!std::filesystem::exists(path, error)) {
+        if (error) {
+            throw std::runtime_error(
+                "cannot inspect existing dialogue JSON: " + error.message());
+        }
+        return {};
+    }
+    if (!std::filesystem::is_regular_file(path, error) || error) {
+        throw std::runtime_error("existing dialogue JSON is not a file: " +
+                                 path.string());
+    }
+    const auto size = std::filesystem::file_size(path, error);
+    if (error || size > 8U * 1024U * 1024U) {
+        throw std::runtime_error(
+            error ? "cannot read existing dialogue JSON size: " +
+                        error.message()
+                  : "existing dialogue JSON exceeds the byte limit");
+    }
+    std::ifstream input(path, std::ios::binary);
+    if (!input) {
+        throw std::runtime_error("cannot open existing dialogue JSON: " +
+                                 path.string());
+    }
+    std::string source(static_cast<std::size_t>(size), '\0');
+    if (!source.empty()) {
+        input.read(source.data(), static_cast<std::streamsize>(source.size()));
+    }
+    if (!input || input.gcount() != static_cast<std::streamsize>(source.size())) {
+        throw std::runtime_error("cannot read existing dialogue JSON: " +
+                                 path.string());
+    }
+    return DialogueTextJsonReader(source).read();
+}
+
+void write_json_string(std::ostream& output, const std::string_view text) {
+    constexpr char hex[] = "0123456789abcdef";
+    output << '"';
+    for (const auto character : text) {
+        const auto byte = static_cast<unsigned char>(character);
+        switch (byte) {
+        case '"': output << "\\\""; break;
+        case '\\': output << "\\\\"; break;
+        case '\b': output << "\\b"; break;
+        case '\f': output << "\\f"; break;
+        case '\n': output << "\\n"; break;
+        case '\r': output << "\\r"; break;
+        case '\t': output << "\\t"; break;
+        default:
+            if (byte < 0x20U) {
+                output << "\\u00" << hex[byte >> 4U] << hex[byte & 0x0FU];
+            } else {
+                output << character;
+            }
+            break;
+        }
+    }
+    output << '"';
+}
+
+void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
+                                 const std::filesystem::path& root,
+                                 const shadowrun::native::NativePortAssets& assets,
+                                 const std::vector<std::pair<std::string,
+                                                             std::string>>&
+                                     field_text) {
+    const auto path = root / "dialogue" / "script-text.json";
+    std::filesystem::create_directories(path.parent_path());
+    std::map<std::string, std::string> generated_texts;
+    const auto write_text_entry = [&generated_texts](
+                                     const std::string_view key,
+                                     const std::string_view text) {
+        generated_texts[std::string(key)] = std::string(text);
     };
 
     const std::pair<const char*, std::size_t> records[]{
@@ -1345,9 +1584,6 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"vid_phone.macklemann.option.hollywood", 0x104AFCU},
     };
 
-    output << "-- Generated from the US ROM dialogue and menu text records.\n"
-              "-- Pipe characters preserve source segment/page boundaries.\n"
-              "return {\n    texts = {\n";
     constexpr std::array<std::string_view, 7> kCommandOverviewTextKeys{{
         "field.command_overview.option.inventory_left",
         "field.command_overview.option.inventory_right",
@@ -1359,11 +1595,8 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
     const auto command_labels =
         shadowrun::graphics::read_genesis_command_overview_labels(rom);
     for (std::size_t index = 0; index < command_labels.size(); ++index) {
-        output << "        [";
-        write_lua_string(kCommandOverviewTextKeys[index]);
-        output << "] = ";
-        write_lua_string(command_labels[index]);
-        output << ",\n";
+        write_text_entry(kCommandOverviewTextKeys[index],
+                         command_labels[index]);
     }
     // The ordinary map menu and its gated branches are read from ROM text
     // records. The resource-scene menu remains a separate two-choice screen.
@@ -1394,11 +1627,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
             {"field.main_menu.vid_phone.no_contacts", &no_contacts_text},
         }};
     for (const auto& [key, value] : kFieldMenuText) {
-        output << "        [";
-        write_lua_string(key);
-        output << "] = ";
-        write_lua_string(*value);
-        output << ",\n";
+        write_text_entry(key, *value);
     }
     for (const auto& [key, source_offset] : records) {
         std::vector<std::string> segments;
@@ -1430,24 +1659,18 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
             }
             text += segments[segment_index];
         }
-        output << "        [";
-        write_lua_string(key);
-        output << "] = ";
         // The two upper security-terminal floor records are single-string
         // records in the source continuation; retain their first segment.
         if (key == "field.security-terminal.floor.4" ||
             key == "field.security-terminal.floor.5") {
             text = segments.front();
         }
-        write_lua_string(text);
-        output << ",\n";
+        write_text_entry(key, text);
         // The ROM's 0xFE5BF continuation caption is shared by dialogue and
         // generic world-event prompts. Preserve the motel-specific alias for
         // existing speaker data, and emit the semantic shared UI key too.
         if (key == "stoker.motel.arrival.more") {
-            output << "        [\"shared.more\"] = ";
-            write_lua_string(text);
-            output << ",\n";
+            write_text_entry("shared.more", text);
         }
     }
     // Enter Passcode labels are selected through the 12-pointer table at
@@ -1476,11 +1699,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         }
         const auto key = "field.main_menu.passcodes.option." +
                          std::string(kPasscodeChoiceIds[index]);
-        output << "        [";
-        write_lua_string(key);
-        output << "] = ";
-        write_lua_string(text);
-        output << ",\n";
+        write_text_entry(key, text);
     }
     // The ROM stores both prices in one sentence at 0x10A5B9 and dispatches
     // level 3/5 as separate commands without separate captions. Split that
@@ -1494,11 +1713,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
              "Level 5 ($20,000)"},
         }};
     for (const auto& [key, text] : kAlesandroPasskeyLevelChoices) {
-        output << "        [";
-        write_lua_string(key);
-        output << "] = ";
-        write_lua_string(text);
-        output << ",\n";
+        write_text_entry(key, text);
     }
     // Recruited-runner biographies and the converted Ricky/Winston/Trent
     // topic trees are imported from their ROM stream starts. The source
@@ -1586,11 +1801,7 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
             text += segment;
             first_row = false;
         }
-        output << "        [";
-        write_lua_string(record.key);
-        output << "] = ";
-        write_lua_string(text);
-        output << ",\n";
+        write_text_entry(record.key, text);
     }
     struct RunnerNameRecord {
         std::string_view key;
@@ -1631,23 +1842,10 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
                 "recruited-runner display name changed for " +
                 std::string(record.key));
         }
-        output << "        [";
-        write_lua_string(record.key);
-        output << "] = ";
-        write_lua_string(name);
-        output << ",\n";
+        write_text_entry(record.key, name);
     }
     const auto hotel_text =
         shadowrun::graphics::read_genesis_hotel_options_text(rom);
-    const auto write_text_entry = [&output, &write_lua_string](
-                                      const std::string_view key,
-                                      const std::string_view text) {
-        output << "        [";
-        write_lua_string(key);
-        output << "] = ";
-        write_lua_string(text);
-        output << ",\n";
-    };
     struct OpeningStoryTextRecord {
         std::string_view id;
         std::size_t source_offset;
@@ -1911,87 +2109,34 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
     for (const auto& [key, text] : field_text) {
         write_text_entry(key, text);
     }
-    output << "    },\n}\n";
+    // Specialized importers and authored additions share this versioned JSON
+    // catalog. New ROM-derived values replace old values by stable key while
+    // keys owned by another importer remain available for the next pass.
+    auto merged_texts = read_dialogue_text_json(path);
+    for (const auto& [key, value] : generated_texts) {
+        merged_texts[key] = value;
+    }
+
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
     if (!output) {
-        throw std::runtime_error("cannot write Lua dialogue content: " +
+        throw std::runtime_error("cannot create dialogue JSON: " +
                                  path.string());
     }
-
-    // The tracked Lua table also contains text added by specialized importers
-    // and authored content that this broad asset pass does not know about.
-    // Replace keys generated here, while keeping every other existing entry
-    // and the Notebook extractor's managed block intact.
-    auto generated_script = output.str();
-    std::unordered_set<std::string> generated_keys;
-    std::istringstream generated_lines(generated_script);
-    for (std::string line; std::getline(generated_lines, line);) {
-        const auto key = lua_text_entry_key(line);
-        if (!key.empty()) {
-            generated_keys.insert(key);
+    output << "{\n  \"schemaVersion\": 1,\n  \"texts\": {\n";
+    std::size_t written = 0U;
+    for (const auto& [key, value] : merged_texts) {
+        output << "    ";
+        write_json_string(output, key);
+        output << ": ";
+        write_json_string(output, value);
+        if (++written < merged_texts.size()) {
+            output << ',';
         }
+        output << '\n';
     }
-
-    std::vector<std::string> preserved_lines;
-    std::unordered_set<std::string> preserved_keys;
-    constexpr std::string_view kNotebookBlockBegin =
-        "    -- BEGIN ROM-extracted Notebook Contacts and Shadowrunners";
-    constexpr std::string_view kNotebookBlockEnd =
-        "    -- END ROM-extracted Notebook Contacts and Shadowrunners";
-    bool in_notebook_block = false;
-    std::istringstream existing_lines(existing_script);
-    for (std::string line; std::getline(existing_lines, line);) {
-        if (!line.empty() && line.back() == '\r') {
-            line.pop_back();
-        }
-        const auto is_begin = line == kNotebookBlockBegin;
-        const auto is_end = line == kNotebookBlockEnd;
-        if (is_begin) {
-            in_notebook_block = true;
-            preserved_lines.push_back(line);
-            continue;
-        }
-        if (is_end) {
-            preserved_lines.push_back(line);
-            in_notebook_block = false;
-            continue;
-        }
-
-        const auto key = lua_text_entry_key(line);
-        if (!key.empty()) {
-            if (generated_keys.find(key) == generated_keys.end() &&
-                preserved_keys.insert(key).second) {
-                preserved_lines.push_back(line);
-            }
-        } else if (in_notebook_block ||
-                   line.find("-- ROM ") != std::string::npos) {
-            preserved_lines.push_back(line);
-        }
-    }
-
-    constexpr std::string_view kClosingTable = "    },\n}\n";
-    const auto closing = generated_script.rfind(kClosingTable);
-    if (closing == std::string::npos) {
-        throw std::runtime_error(
-            "generated Lua dialogue content has no closing table: " +
-            path.string());
-    }
-    if (!preserved_lines.empty()) {
-        auto insertion = closing;
-        for (const auto& line : preserved_lines) {
-            generated_script.insert(insertion, line + "\n");
-            insertion += line.size() + 1U;
-        }
-    }
-
-    std::ofstream merged_output(path, std::ios::binary | std::ios::trunc);
-    if (!merged_output) {
-        throw std::runtime_error("cannot create Lua dialogue content: " +
-                                 path.string());
-    }
-    merged_output.write(generated_script.data(),
-                        static_cast<std::streamsize>(generated_script.size()));
-    if (!merged_output) {
-        throw std::runtime_error("cannot write Lua dialogue content: " +
+    output << "  }\n}\n";
+    if (!output) {
+        throw std::runtime_error("cannot write dialogue JSON: " +
                                  path.string());
     }
 }
@@ -4776,12 +4921,12 @@ void write_asset_readme(const std::filesystem::path& root) {
               "it does not contain full-screen flipbook samples or an aggregate "
               "serializer. All ROM-derived dialogue, field-menu labels, "
               "startup menu copy, feedback, and Notebook Tips are keyed in "
-              "`dialogue/script-text.lua`; `menu/field/service-routes.tsv` "
+              "`dialogue/script-text.json`; `menu/field/service-routes.tsv` "
               "retains only "
               "numeric service destinations. Command labels, menu dialogue, "
               "service titles, shop category headings, item names/categories/details, "
               "startup labels/messages, and transaction copy are emitted in "
-              "`dialogue/script-text.lua`; `gameplay/scripts/shop.lua` binds "
+              "`dialogue/script-text.json`; `gameplay/scripts/shop.lua` binds "
               "the 12 service titles, 32 source-order action headings, Ares "
               "categories, and message keys, while "
               "`gameplay/scripts/items.lua` maps source item IDs to their "
@@ -4801,7 +4946,7 @@ void write_asset_readme(const std::filesystem::path& root) {
               "Pocket Secretary menu and child-page text, field-service "
               "titles, shop "
               "text, and item descriptions are emitted as "
-              "`dialogue/script-text.lua` and consumed by the gameplay script "
+              "`dialogue/script-text.json` and consumed by the gameplay script "
               "runtime. `gameplay/scripts/hotel.lua`, "
               "`gameplay/scripts/pocket_secretary.lua`, and "
               "`gameplay/scripts/startup.lua` provide cursor-menu choice IDs; "
@@ -5142,7 +5287,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     auto notebook_tips = read_notebook_tips_script_text(assets);
     field_text.insert(field_text.end(), notebook_tips.begin(),
                       notebook_tips.end());
-    write_dialogue_text_script(rom, root, assets, field_text);
+    write_dialogue_text_catalog(rom, root, assets, field_text);
     const auto write = [&](const std::string& name,
                            const shadowrun::native::NativeImage& image,
                            const std::string& kind,

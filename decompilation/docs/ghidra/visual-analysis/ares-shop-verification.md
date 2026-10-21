@@ -83,7 +83,7 @@ the field approach, fade, prompt, category page, and field return; see
 - Title: `0x56AC0` indexes the 12-entry pointer table at `0x1AAB50` with
   `FFF0B6`. Ares uses entry 1, whose record at `0x1AAB92` stores destination
   cell `0xC110` and text `Ares Weapon Emporium`. The offline extractor emits
-  all 12 titles as keyed Lua text in `dialogue/script-text.lua`;
+  all 12 titles as keyed Lua text in `dialogue/script-text.json`;
   `gameplay/scripts/shop.lua` declares their stable IDs in the same pointer-
   table order. Numeric destination words remain as extracted routing data in
   `menu/field/service-routes.tsv`.
@@ -112,14 +112,14 @@ the field approach, fade, prompt, category page, and field return; see
   The title is at `(104,144)`, and the stock icon is in the first offer cell.
   All 12 service titles, 32 fixed-width
   service headings, and shop transaction strings now live in
-  `dialogue/script-text.lua`; `gameplay/scripts/shop.lua` declares their stable
+  `dialogue/script-text.json`; `gameplay/scripts/shop.lua` declares their stable
   IDs and associates the Ares title, six category heading
   pairs, stock, special clips copy, and transaction-message keys. The shared
   `items.lua` catalog maps the 50 source item IDs and all 32 detail rows to
   ROM-generated text; the native controller still owns item codes and state.
 - Mode-text paragraphs selected by `0x1FA78` now come from ROM records at
   `0x118934`, `0x11898B`, `0x1189D0`, `0x1189F2`, `0x118A1E`, `0x118A46`,
-  `0x118A6C`, and `0x118AA4` in `dialogue/script-text.lua`. The typed native
+  `0x118A6C`, and `0x118AA4` in `dialogue/script-text.json`. The typed native
   event/result selector chooses introduction, package handoff, or payment
   text; the generic dialogue panel and 30-frame wait remain shared.
 - Mode-entry sprite: `0x1FA78` selects profile `0x1220C0`; its ROM pointers are

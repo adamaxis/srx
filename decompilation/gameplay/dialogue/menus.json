@@ -1,0 +1,1537 @@
+{
+  "profiles": {
+    "big-rhino.mortimer_reed": {
+      "conditional_opening": {
+        "choice_label_keys": {
+          "information": "big-rhino.option.information",
+          "leave": "big-rhino.option.leave",
+          "work": "big-rhino.option.work"
+        },
+        "title_key": "big-rhino.mortimer.conditional-opening"
+      },
+      "contacts_insufficient": {
+        "choice_label_keys": {
+          "information": "big-rhino.option.information",
+          "leave": "big-rhino.option.leave",
+          "work": "big-rhino.option.work"
+        },
+        "title_key": "big-rhino.contacts.insufficient"
+      },
+      "contacts_offer": {
+        "choice_label_keys": {
+          "accept": "big-rhino.contacts.option.accept",
+          "back": "big-rhino.information.option.back"
+        },
+        "title_key": "big-rhino.contacts.offer"
+      },
+      "contacts_purchased": {
+        "choice_label_keys": {
+          "information": "big-rhino.option.information",
+          "leave": "big-rhino.option.leave",
+          "work": "big-rhino.option.work"
+        },
+        "title_key": "big-rhino.contacts.purchased"
+      },
+      "information": {
+        "choice_label_keys": {
+          "back": "big-rhino.information.option.back",
+          "contacts": "big-rhino.information.option.contacts",
+          "questions": "big-rhino.information.option.questions"
+        },
+        "title_key": "big-rhino.information.topics"
+      },
+      "opening": {
+        "choice_label_keys": {
+          "information": "big-rhino.option.information",
+          "leave": "big-rhino.option.leave",
+          "work": "big-rhino.option.work"
+        },
+        "title_key": "big-rhino.mortimer.opening"
+      },
+      "opening_after_information": {
+        "choice_label_keys": {
+          "information": "big-rhino.option.information",
+          "leave": "big-rhino.option.leave",
+          "work": "big-rhino.option.work"
+        },
+        "title_key": "big-rhino.mortimer.after-information"
+      },
+      "opening_after_run_return": {
+        "choice_label_keys": {
+          "information": "big-rhino.option.information",
+          "leave": "big-rhino.option.leave",
+          "work": "big-rhino.option.work"
+        },
+        "title_key": "big-rhino.mortimer.conditional-opening"
+      },
+      "question_answer_followup": {
+        "choice_label_keys": {
+          "another_question": "big-rhino.question.option.another",
+          "different_subject": "big-rhino.information.option.back"
+        }
+      },
+      "question_selection": {
+        "choice_label_keys": {
+          "aragorn": "big-rhino.question.option.aragorn",
+          "julius": "big-rhino.question.option.julius",
+          "mako": "big-rhino.question.option.mako"
+        },
+        "title_key": "big-rhino.information.questions.prompt"
+      },
+      "repeat_opening": {
+        "choice_label_keys": {
+          "information": "big-rhino.option.information",
+          "leave": "big-rhino.option.leave",
+          "work": "big-rhino.option.work"
+        },
+        "title_key": "big-rhino.mortimer.repeat-opening"
+      }
+    },
+    "boris.greenhouse": {
+      "david_followup": {
+        "choice_label_keys": {
+          "brother": "boris.greenhouse.option.brother"
+        }
+      },
+      "information_payment": {
+        "choice_label_keys": {
+          "accept": "boris.greenhouse.option.accept",
+          "later": "boris.greenhouse.option.decline"
+        }
+      },
+      "information_topics": {
+        "choice_label_keys": {
+          "david": "boris.greenhouse.option.david",
+          "ilene": "boris.greenhouse.option.ilene",
+          "later": "boris.greenhouse.option.later",
+          "michael": "boris.greenhouse.option.michael",
+          "thon": "boris.greenhouse.option.thon"
+        }
+      },
+      "more": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "opening": {
+        "choice_label_keys": {
+          "information": "boris.greenhouse.option.information",
+          "later": "boris.greenhouse.option.later",
+          "story": "boris.greenhouse.option.story"
+        }
+      },
+      "repeat_opening": {
+        "choice_label_keys": {
+          "information": "boris.greenhouse.option.information",
+          "later": "boris.greenhouse.option.later",
+          "story": "boris.greenhouse.option.story"
+        }
+      },
+      "story_payment": {
+        "choice_label_keys": {
+          "accept": "boris.greenhouse.option.accept",
+          "later": "boris.greenhouse.option.decline"
+        }
+      }
+    },
+    "council_island_hospital": {
+      "hospital_leave_confirmation": {
+        "choice_label_keys": {
+          "no": "ui.option.no",
+          "yes": "ui.option.yes"
+        },
+        "title_key": "hospital.leave.prompt"
+      },
+      "hospital_medical_attention": {
+        "choice_label_keys": {
+          "level_100": "hospital.medical.row.100",
+          "level_40": "hospital.medical.row.40",
+          "level_70": "hospital.medical.row.70",
+          "level_90": "hospital.medical.row.90"
+        }
+      },
+      "hospital_options": {
+        "choice_label_keys": {
+          "cyberware": "hospital.options.cyberware",
+          "exit": "hospital.options.exit",
+          "medical_attention": "hospital.options.medical_attention"
+        },
+        "title_key": "hospital.options.title"
+      },
+      "hospital_service_offer": {
+        "choice_label_keys": {
+          "leave": "council_island_hospital.option.leave",
+          "services": "council_island_hospital.option.services"
+        }
+      }
+    },
+    "council_medicine_lodge": {
+      "medicine_lodge_service_offer": {
+        "choice_label_keys": {
+          "browse_store": "council_medicine_lodge.option.browse_store",
+          "hire_shaman": "council_medicine_lodge.option.hire_shaman",
+          "talk_later": "council_medicine_lodge.option.talk_later",
+          "wise_one": "council_medicine_lodge.option.wise_one"
+        }
+      }
+    },
+    "field.activity": {
+      "resource_main": {
+        "choice_label_keys": {
+          "cyberspace": "field.activity.main_menu.option.cyberspace",
+          "exit": "field.activity.main_menu.option.exit"
+        },
+        "title_key": "field.activity.main_menu.title"
+      }
+    },
+    "field.main_menu": {
+      "cyberspace": {
+        "choice_label_keys": {
+          "enter_passcode": "field.main_menu.cyberspace.option.enter_passcode",
+          "exit": "field.main_menu.cyberspace.option.exit",
+          "system_search": "field.main_menu.cyberspace.option.system_search"
+        },
+        "title_key": "field.main_menu.cyberspace.title"
+      },
+      "ordinary": {
+        "choice_label_keys": {
+          "call_taxi": "field.main_menu.option.call_taxi",
+          "cyberspace": "field.main_menu.option.cyberspace",
+          "exit": "field.main_menu.option.exit",
+          "vid_phone": "field.main_menu.option.vid_phone"
+        },
+        "title_key": "field.main_menu.title"
+      },
+      "passcodes": {
+        "choice_label_keys": {
+          "ares": "field.main_menu.passcodes.option.ares",
+          "aztechnology": "field.main_menu.passcodes.option.aztechnology",
+          "club_penumbra": "field.main_menu.passcodes.option.club_penumbra",
+          "fuchi": "field.main_menu.passcodes.option.fuchi",
+          "gates_undersound": "field.main_menu.passcodes.option.gates_undersound",
+          "hollywood": "field.main_menu.passcodes.option.hollywood",
+          "ito_passcode": "field.main_menu.passcodes.option.ito_passcode",
+          "lone_star": "field.main_menu.passcodes.option.lone_star",
+          "mitsuhama": "field.main_menu.passcodes.option.mitsuhama",
+          "next_screen": "vid_phone.contact.page_next",
+          "prior_screen": "vid_phone.contact.page_previous",
+          "renraku": "field.main_menu.passcodes.option.renraku",
+          "run_passcode": "field.main_menu.passcodes.option.run_passcode",
+          "seattle_general_hospital": "field.main_menu.passcodes.option.seattle_general_hospital"
+        },
+        "layout": "compact_list",
+        "title_key": "field.main_menu.passcodes.title"
+      }
+    },
+    "field.vid_phone": {
+      "alesandro_macklemann_result": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.alesandro_hobbs.macklemann_result"
+      },
+      "alesandro_official_contact_confirmation": {
+        "choice_label_keys": {
+          "pay_for_macklemann": "vid_phone.alesandro_hobbs.option.pay_for_macklemann",
+          "return_to_services": "vid_phone.capt_quinton_jaymes.option.return_to_services"
+        },
+        "title_key": "vid_phone.alesandro_hobbs.official_contact_offer"
+      },
+      "alesandro_out_of_stock": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.alesandro_hobbs.purchase.out_of_stock"
+      },
+      "alesandro_passkey_offer": {
+        "choice_label_keys": {
+          "level_3_passkey": "vid_phone.alesandro_hobbs.option.level_3_passkey",
+          "level_5_passkey": "vid_phone.alesandro_hobbs.option.level_5_passkey",
+          "return_to_services": "vid_phone.capt_quinton_jaymes.option.return_to_services"
+        },
+        "title_key": "vid_phone.alesandro_hobbs.passkey_offer"
+      },
+      "alesandro_purchase_result": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.alesandro_hobbs.purchase_result"
+      },
+      "alesandro_security_topics": {
+        "choice_label_keys": {
+          "avoid_detection": "vid_phone.alesandro_hobbs.option.avoid_detection",
+          "patrols": "vid_phone.alesandro_hobbs.option.security_procedures",
+          "second_security_type": "vid_phone.alesandro_hobbs.option.second_security_type"
+        },
+        "title_key": "vid_phone.alesandro_hobbs.corporation_information"
+      },
+      "alesandro_services": {
+        "choice_label_keys": {
+          "corporation_information": "vid_phone.alesandro_hobbs.option.corporation_information",
+          "maglock_passkey": "vid_phone.alesandro_hobbs.option.maglock_passkey",
+          "seattle_official": "vid_phone.alesandro_hobbs.option.seattle_official"
+        },
+        "title_key": "vid_phone.alesandro_hobbs.services"
+      },
+      "call_agira_tetsumi_first_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.agira_tetsumi.first_call"
+      },
+      "call_agira_tetsumi_repeat_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.agira_tetsumi.repeat_call"
+      },
+      "call_alesandro_hobbs_first_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.alesandro_hobbs.first_call"
+      },
+      "call_alesandro_hobbs_repeat_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.alesandro_hobbs.repeat_call"
+      },
+      "call_capt_quinton_jaymes_first_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.capt_quinton_jaymes.first_call"
+      },
+      "call_capt_quinton_jaymes_repeat_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.capt_quinton_jaymes.repeat_call"
+      },
+      "call_chillicut_first_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.chillicut.first_call"
+      },
+      "call_chillicut_repeat_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.chillicut.repeat_call"
+      },
+      "call_gregory_wilns_first_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.gregory_wilns.first_call"
+      },
+      "call_gregory_wilns_repeat_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.gregory_wilns.repeat_call"
+      },
+      "call_henry_j_culver_first_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.henry_j_culver.first_call"
+      },
+      "call_henry_j_culver_repeat_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.henry_j_culver.repeat_call"
+      },
+      "call_kipp_david_first_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.kipp_david.first_call"
+      },
+      "call_kipp_david_repeat_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.kipp_david.repeat_call"
+      },
+      "call_macklemann_first_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.macklemann.first_call"
+      },
+      "call_macklemann_repeat_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.macklemann.repeat_call"
+      },
+      "call_max_first_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.max.first_call"
+      },
+      "call_max_repeat_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.max.repeat_call"
+      },
+      "call_mr_faradouchi_first_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.mr_faradouchi.first_call"
+      },
+      "call_mr_faradouchi_repeat_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.mr_faradouchi.repeat_call"
+      },
+      "call_professor_jefferson_first_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.professor_jefferson.first_call"
+      },
+      "call_professor_jefferson_repeat_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.professor_jefferson.repeat_call"
+      },
+      "call_sharkey_first_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.sharkey.first_call"
+      },
+      "call_sharkey_repeat_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.sharkey.repeat_call"
+      },
+      "call_wilma_temmenhoff_first_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.wilma_temmenhoff.first_call"
+      },
+      "call_wilma_temmenhoff_repeat_call": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.contact.wilma_temmenhoff.repeat_call"
+      },
+      "capt_quinton_contacts_offer": {
+        "choice_label_keys": {
+          "decline_rigger_contact": "vid_phone.capt_quinton_jaymes.option.decline_rigger_contact",
+          "pay_for_rigger_contact": "vid_phone.capt_quinton_jaymes.option.pay_for_rigger_contact"
+        },
+        "title_key": "vid_phone.capt_quinton_jaymes.contacts_offer"
+      },
+      "capt_quinton_firepower_intro": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.capt_quinton_jaymes.firepower_intro"
+      },
+      "capt_quinton_firepower_items": {
+        "choice_label_keys": {
+          "frag_grenades": "vid_phone.capt_quinton_jaymes.option.frag_grenades",
+          "hk227_s": "vid_phone.capt_quinton_jaymes.option.hk227_s",
+          "no_thanks": "vid_phone.capt_quinton_jaymes.option.no_thanks"
+        },
+        "title_key": "vid_phone.capt_quinton_jaymes.firepower_items"
+      },
+      "capt_quinton_hollywood_intro": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.capt_quinton_jaymes.hollywood_intro"
+      },
+      "capt_quinton_hollywood_topics": {
+        "choice_label_keys": {
+          "disconnect": "vid_phone.capt_quinton_jaymes.option.disconnect",
+          "return_to_services": "vid_phone.capt_quinton_jaymes.option.return_to_services",
+          "weller_prison_break": "vid_phone.capt_quinton_jaymes.option.weller_prison_break"
+        },
+        "title_key": "vid_phone.capt_quinton_jaymes.hollywood_topics"
+      },
+      "capt_quinton_purchase_result": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.capt_quinton_jaymes.purchase_result"
+      },
+      "capt_quinton_services": {
+        "choice_label_keys": {
+          "contacts": "vid_phone.capt_quinton_jaymes.option.contacts",
+          "firepower": "vid_phone.capt_quinton_jaymes.option.firepower",
+          "hollywood_information": "vid_phone.capt_quinton_jaymes.option.hollywood_information"
+        },
+        "title_key": "vid_phone.capt_quinton_jaymes.services"
+      },
+      "capt_quinton_sharkey_result": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.capt_quinton_jaymes.sharkey_result"
+      },
+      "capt_quinton_weller_intro": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.capt_quinton_jaymes.weller_intro"
+      },
+      "capt_quinton_weller_result": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.capt_quinton_jaymes.weller_result"
+      },
+      "contacts": {
+        "choice_label_keys": {
+          "agira_tetsumi": "pocket_secretary.notebook.contact.name.option.record_8",
+          "alesandro_hobbs": "pocket_secretary.notebook.contact.name.option.record_1",
+          "capt_quinton_jaymes": "pocket_secretary.notebook.contact.name.option.record_0",
+          "chillicut": "pocket_secretary.notebook.contact.name.option.record_11",
+          "gregory_wilns": "pocket_secretary.notebook.contact.name.option.record_6",
+          "henry_j_culver": "pocket_secretary.notebook.contact.name.option.record_9",
+          "kipp_david": "pocket_secretary.notebook.contact.name.option.record_3",
+          "macklemann": "pocket_secretary.notebook.contact.name.option.record_5",
+          "max": "pocket_secretary.notebook.contact.name.option.record_10",
+          "mr_faradouchi": "pocket_secretary.notebook.contact.name.option.record_7",
+          "next_screen": "vid_phone.contact.page_next",
+          "prior_screen": "vid_phone.contact.page_previous",
+          "professor_jefferson": "pocket_secretary.notebook.contact.name.option.record_12",
+          "sharkey": "pocket_secretary.notebook.contact.name.option.record_2",
+          "wilma_temmenhoff": "pocket_secretary.notebook.contact.name.option.record_4"
+        },
+        "layout": "compact_list",
+        "title_key": ""
+      },
+      "gregory_creature_page_1": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.gregory_wilns.creature_page_1"
+      },
+      "gregory_creature_page_2": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.gregory_wilns.creature_page_2"
+      },
+      "gregory_creature_page_3": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.gregory_wilns.creature_page_3"
+      },
+      "gregory_creature_page_4": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.gregory_wilns.creature_page_4"
+      },
+      "gregory_discount_offer": {
+        "choice_label_keys": {
+          "accept_discount": "vid_phone.gregory_wilns.option.yes",
+          "decline_discount": "vid_phone.gregory_wilns.option.no",
+          "talk_later": "vid_phone.gregory_wilns.option.talk_later"
+        },
+        "title_key": "vid_phone.gregory_wilns.discount_offer"
+      },
+      "gregory_discount_result": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.gregory_wilns.discount_result"
+      },
+      "gregory_power_focus_offer": {
+        "choice_label_keys": {
+          "buy_power_focus": "vid_phone.gregory_wilns.option.yes",
+          "decline_discount": "vid_phone.gregory_wilns.option.no",
+          "talk_later": "vid_phone.gregory_wilns.option.talk_later"
+        },
+        "title_key": "vid_phone.gregory_wilns.power_focus_offer"
+      },
+      "gregory_power_focus_result": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.gregory_wilns.power_focus_result"
+      },
+      "gregory_services": {
+        "choice_label_keys": {
+          "corporate_discount": "vid_phone.gregory_wilns.option.corporate_discount",
+          "magic_enhancement_device": "vid_phone.gregory_wilns.option.magic_enhancement_device",
+          "paranormal_creatures": "vid_phone.gregory_wilns.option.paranormal_creatures"
+        },
+        "title_key": "vid_phone.gregory_wilns.services"
+      },
+      "kipp_deck_offer": {
+        "choice_label_keys": {
+          "different_subject": "vid_phone.kipp_david.option.different_subject",
+          "pay_for_deck": "vid_phone.kipp_david.option.pay_for_deck"
+        },
+        "title_key": "vid_phone.kipp_david.deck_offer"
+      },
+      "kipp_intro": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.kipp_david.intro"
+      },
+      "kipp_matrix_corps": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.kipp_david.matrix_corps"
+      },
+      "kipp_matrix_intro": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.kipp_david.matrix_intro"
+      },
+      "kipp_matrix_result": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.kipp_david.matrix_result"
+      },
+      "kipp_program_details": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.kipp_david.program_details"
+      },
+      "kipp_program_intro": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.kipp_david.program_intro"
+      },
+      "kipp_program_offer": {
+        "choice_label_keys": {
+          "buy_degrade": "vid_phone.kipp_david.option.buy_degrade",
+          "buy_rebound": "vid_phone.kipp_david.option.buy_rebound",
+          "different_subject": "vid_phone.kipp_david.option.different_subject"
+        },
+        "title_key": "vid_phone.kipp_david.program_offer"
+      },
+      "kipp_program_result": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.kipp_david.program_result"
+      },
+      "kipp_services": {
+        "choice_label_keys": {
+          "cyberdeck": "vid_phone.kipp_david.option.cyberdeck",
+          "matrix": "vid_phone.kipp_david.option.matrix",
+          "programs": "vid_phone.kipp_david.option.programs"
+        },
+        "title_key": "vid_phone.kipp_david.services"
+      },
+      "kipp_storage_full": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.kipp_david.storage_full"
+      },
+      "macklemann_avoid_cameras": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.macklemann.avoid_cameras"
+      },
+      "macklemann_avoid_decker": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.macklemann.avoid_decker"
+      },
+      "macklemann_avoid_invisibility": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.macklemann.avoid_invisibility"
+      },
+      "macklemann_hollywood_offer": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "yes": "vid_phone.sharkey.option.confirm_purchase"
+        },
+        "title_key": "vid_phone.macklemann.hollywood_offer"
+      },
+      "macklemann_security_levels": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.macklemann.security_levels"
+      },
+      "macklemann_security_pass": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.macklemann.security_pass"
+      },
+      "macklemann_security_patrols": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.macklemann.security_patrols"
+      },
+      "macklemann_services": {
+        "choice_label_keys": {
+          "avoid": "vid_phone.alesandro_hobbs.option.avoid_detection",
+          "hollywood": "vid_phone.macklemann.option.hollywood",
+          "security": "vid_phone.alesandro_hobbs.option.security_procedures"
+        },
+        "title_key": "vid_phone.macklemann.services"
+      },
+      "sharkey_salish_passage": {
+        "choice_label_keys": {
+          "other_subject": "vid_phone.sharkey.option.other_subject",
+          "pay_for_passage": "vid_phone.sharkey.option.pay_for_passage",
+          "return_to_services": "vid_phone.sharkey.option.return_to_services"
+        },
+        "title_key": "vid_phone.sharkey.salish_passage"
+      },
+      "sharkey_services": {
+        "choice_label_keys": {
+          "pass_salish": "vid_phone.sharkey.option.pass_salish",
+          "pass_sinsearach": "vid_phone.sharkey.option.pass_sinsearach",
+          "smart_goggles": "vid_phone.sharkey.option.smart_goggles"
+        },
+        "title_key": "vid_phone.sharkey.services"
+      },
+      "sharkey_sinsearach_passage": {
+        "choice_label_keys": {
+          "other_subject": "vid_phone.sharkey.option.other_subject",
+          "pay_for_passage": "vid_phone.sharkey.option.pay_for_passage",
+          "return_to_services": "vid_phone.sharkey.option.return_to_services"
+        },
+        "title_key": "vid_phone.sharkey.sinsearach_passage"
+      },
+      "sharkey_smart_goggles_offer": {
+        "choice_label_keys": {
+          "confirm_purchase": "vid_phone.sharkey.option.confirm_purchase",
+          "other_subject": "vid_phone.sharkey.option.other_subject",
+          "return_to_services": "vid_phone.sharkey.option.return_to_services"
+        },
+        "title_key": "vid_phone.sharkey.smart_goggles_offer"
+      },
+      "wilma_credstick": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.wilma_temmenhoff.credstick"
+      },
+      "wilma_matrix_companies": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.wilma_temmenhoff.matrix_companies"
+      },
+      "wilma_matrix_intro": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.wilma_temmenhoff.matrix_intro"
+      },
+      "wilma_matrix_result": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.wilma_temmenhoff.matrix_result"
+      },
+      "wilma_matrix_sleaze": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.wilma_temmenhoff.matrix_sleaze"
+      },
+      "wilma_program_degrade": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.wilma_temmenhoff.program_degrade"
+      },
+      "wilma_program_intro": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.wilma_temmenhoff.program_intro"
+      },
+      "wilma_program_offer": {
+        "choice_label_keys": {
+          "buy_degrade": "vid_phone.kipp_david.option.buy_degrade",
+          "buy_rebound": "vid_phone.kipp_david.option.buy_rebound",
+          "different_subject": "vid_phone.kipp_david.option.different_subject"
+        },
+        "title_key": "vid_phone.wilma_temmenhoff.program_offer"
+      },
+      "wilma_program_result": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.wilma_temmenhoff.program_result"
+      },
+      "wilma_services": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "matrix": "vid_phone.kipp_david.option.matrix",
+          "programs": "vid_phone.kipp_david.option.programs"
+        },
+        "title_key": "vid_phone.wilma_temmenhoff.services"
+      },
+      "wilma_storage_full": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.wilma_temmenhoff.storage_full"
+      }
+    },
+    "gunderson.jump_house": {
+      "contacts_insufficient": {
+        "choice_label_keys": {
+          "information": "gunderson.option.information",
+          "leave": "gunderson.option.leave",
+          "work": "gunderson.option.work"
+        },
+        "title_key": "gunderson.work.followup"
+      },
+      "contacts_purchased": {
+        "choice_label_keys": {
+          "back": "gunderson.information.option.back",
+          "contacts": "gunderson.information.option.contacts",
+          "questions": "gunderson.information.option.questions"
+        },
+        "title_key": "gunderson.contacts.purchase"
+      },
+      "decker_offer": {
+        "choice_label_keys": {
+          "accept": "gunderson.contacts.option.accept",
+          "back": "gunderson.information.option.back"
+        },
+        "title_key": "gunderson.contacts.decker_offer"
+      },
+      "errascoe_response": {
+        "choice_label_keys": {
+          "another_question": "gunderson.question.option.local",
+          "different_subject": "gunderson.information.option.back"
+        },
+        "title_key": "gunderson.question.errascoe.response"
+      },
+      "information": {
+        "choice_label_keys": {
+          "back": "gunderson.information.option.back",
+          "contacts": "gunderson.information.option.contacts",
+          "questions": "gunderson.information.option.questions"
+        },
+        "title_key": "gunderson.information.contacts"
+      },
+      "information_after_return": {
+        "choice_label_keys": {
+          "back": "gunderson.information.option.back",
+          "contacts": "gunderson.information.option.contacts",
+          "questions": "gunderson.information.option.questions"
+        },
+        "title_key": "gunderson.information.after_return"
+      },
+      "opening": {
+        "choice_label_keys": {
+          "information": "gunderson.option.information",
+          "leave": "gunderson.option.leave",
+          "work": "gunderson.option.work"
+        },
+        "title_key": "gunderson.greeting"
+      },
+      "opening_after_information": {
+        "choice_label_keys": {
+          "information": "gunderson.option.information",
+          "leave": "gunderson.option.leave",
+          "work": "gunderson.option.work"
+        },
+        "title_key": "gunderson.greeting.after_information"
+      },
+      "opening_after_run_return": {
+        "choice_label_keys": {
+          "information": "gunderson.option.information",
+          "leave": "gunderson.option.leave",
+          "work": "gunderson.option.work"
+        },
+        "title_key": "gunderson.greeting.after_run_return"
+      },
+      "question_followup": {
+        "choice_label_keys": {
+          "another_question": "gunderson.question.option.local",
+          "different_subject": "gunderson.information.option.back"
+        },
+        "title_key": "gunderson.question.followup"
+      },
+      "question_selection": {
+        "choice_label_keys": {
+          "errascoe": "gunderson.question.option.errascoe",
+          "johnson": "gunderson.question.johnson",
+          "vigore": "gunderson.question.option.vigore"
+        },
+        "title_key": "gunderson.question.prompt"
+      },
+      "run_acceptance": {
+        "choice_label_keys": {
+          "no": "ui.option.no",
+          "yes": "ui.option.yes"
+        }
+      },
+      "vigore_alternate_followup": {
+        "choice_label_keys": {
+          "another_question": "gunderson.question.option.local",
+          "different_subject": "gunderson.information.option.back"
+        },
+        "title_key": "gunderson.question.vigore.alternate_followup"
+      },
+      "vigore_response": {
+        "choice_label_keys": {
+          "another_question": "gunderson.question.option.local",
+          "different_subject": "gunderson.information.option.back"
+        },
+        "title_key": "gunderson.question.vigore.response"
+      }
+    },
+    "icarus-descending.caleb_brightmore": {
+      "first_meeting": {
+        "choice_label_keys": {
+          "information": "icarus-descending.caleb.option.information",
+          "leave": "icarus-descending.caleb.option.leave",
+          "work": "icarus-descending.caleb.option.work"
+        },
+        "title_key": "icarus-descending.caleb.first-meeting.continuation"
+      },
+      "opening": {
+        "choice_label_keys": {
+          "information": "icarus-descending.caleb.option.information",
+          "leave": "icarus-descending.caleb.option.leave",
+          "work": "icarus-descending.caleb.option.work"
+        },
+        "title_key": "icarus-descending.caleb.opening"
+      },
+      "post_run": {
+        "choice_label_keys": {
+          "information": "icarus-descending.caleb.option.information",
+          "leave": "icarus-descending.caleb.option.leave",
+          "work": "icarus-descending.caleb.option.work"
+        },
+        "title_key": "icarus-descending.caleb.post-run-opening"
+      }
+    },
+    "matchstick.julius_strouther": {
+      "after_run_return": {
+        "choice_label_keys": {
+          "information": "julius-strouther.option.information",
+          "leave": "julius-strouther.option.leave",
+          "work": "julius-strouther.option.work"
+        },
+        "title_key": "julius-strouther.run-return"
+      },
+      "contacts_insufficient": {
+        "choice_label_keys": {
+          "information": "julius-strouther.option.information",
+          "leave": "julius-strouther.option.leave",
+          "work": "julius-strouther.option.work"
+        },
+        "title_key": "julius-strouther.contacts.insufficient"
+      },
+      "contacts_offer": {
+        "choice_label_keys": {
+          "accept": "julius-strouther.contacts.option.accept",
+          "back": "julius-strouther.information.option.back"
+        },
+        "title_key": "julius-strouther.contacts.offer"
+      },
+      "contacts_purchased": {
+        "choice_label_keys": {
+          "information": "julius-strouther.option.information",
+          "leave": "julius-strouther.option.leave",
+          "work": "julius-strouther.option.work"
+        },
+        "title_key": "julius-strouther.contacts.purchased"
+      },
+      "first_meeting": {
+        "choice_label_keys": {
+          "information": "julius-strouther.option.information",
+          "leave": "julius-strouther.option.leave",
+          "work": "julius-strouther.option.work"
+        },
+        "title_key": "julius-strouther.first-meeting"
+      },
+      "information": {
+        "choice_label_keys": {
+          "back": "julius-strouther.information.option.back",
+          "contacts": "julius-strouther.information.option.contacts",
+          "questions": "julius-strouther.information.option.questions"
+        },
+        "title_key": "julius-strouther.information.opening"
+      },
+      "opening": {
+        "choice_label_keys": {
+          "information": "julius-strouther.option.information",
+          "leave": "julius-strouther.option.leave",
+          "work": "julius-strouther.option.work"
+        },
+        "title_key": "julius-strouther.repeat-greeting"
+      },
+      "opening_after_information": {
+        "choice_label_keys": {
+          "information": "julius-strouther.option.information",
+          "leave": "julius-strouther.option.leave",
+          "work": "julius-strouther.option.work"
+        },
+        "title_key": "julius-strouther.after-information"
+      },
+      "question_answer_followup": {
+        "choice_label_keys": {
+          "another_question": "julius-strouther.question.option.another",
+          "different_subject": "julius-strouther.information.option.back"
+        }
+      },
+      "question_selection": {
+        "choice_label_keys": {
+          "caleb": "julius-strouther.question.option.about-caleb",
+          "mortimer": "julius-strouther.question.option.about-mortimer"
+        },
+        "title_key": "julius-strouther.question.prompt"
+      }
+    },
+    "penumbra.wylies_gala_inn": {
+      "inn_service": {
+        "choice_label_keys": {
+          "crash": "wylie.gala_inn.option.crash",
+          "leave": "wylie.gala_inn.option.leave"
+        }
+      },
+      "room_payment": {
+        "choice_label_keys": {
+          "leave": "wylie.gala_inn.option.leave",
+          "pay": "wylie.gala_inn.option.pay"
+        }
+      }
+    },
+    "salish.owlfeather": {
+      "brother_more": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "brother_status": {
+        "choice_label_keys": {
+          "learned": "salish.owlfeather.option.learned"
+        }
+      },
+      "council_more": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "council_topics": {
+        "choice_label_keys": {
+          "council": "salish.owlfeather.option.council",
+          "lands": "salish.owlfeather.option.lands",
+          "thanks": "salish.owlfeather.option.thanks"
+        }
+      },
+      "lands": {
+        "choice_label_keys": {
+          "rangers": "salish.owlfeather.option.rangers",
+          "thanks": "salish.owlfeather.option.thanks"
+        }
+      },
+      "opening": {
+        "choice_label_keys": {
+          "brother": "salish.owlfeather.option.brother",
+          "council": "salish.owlfeather.option.council",
+          "lands": "salish.owlfeather.option.lands"
+        }
+      },
+      "rangers": {
+        "choice_label_keys": {
+          "thanks": "salish.owlfeather.option.thanks",
+          "villages": "salish.owlfeather.option.villages"
+        }
+      },
+      "return_followup": {
+        "choice_label_keys": {
+          "freed": "salish.owlfeather.option.freed"
+        }
+      },
+      "return_more": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "search_followup": {
+        "choice_label_keys": {
+          "council": "salish.owlfeather.option.council",
+          "lands": "salish.owlfeather.option.lands",
+          "later": "salish.owlfeather.option.later"
+        }
+      },
+      "simple_task": {
+        "choice_label_keys": {
+          "task": "salish.owlfeather.option.simple_task"
+        }
+      },
+      "sinsearach": {
+        "choice_label_keys": {
+          "council": "salish.owlfeather.option.council",
+          "lands": "salish.owlfeather.option.lands",
+          "thanks": "salish.owlfeather.option.thanks"
+        }
+      },
+      "status_more": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "status_topic": {
+        "choice_label_keys": {
+          "like_who": "salish.owlfeather.option.like_who"
+        }
+      },
+      "task_result": {
+        "choice_label_keys": {
+          "council": "salish.owlfeather.option.council",
+          "lands": "salish.owlfeather.option.lands",
+          "thanks": "salish.owlfeather.option.thanks"
+        }
+      },
+      "villages": {
+        "choice_label_keys": {
+          "sinsearach": "salish.owlfeather.option.sinsearach",
+          "thanks": "salish.owlfeather.option.thanks"
+        }
+      }
+    },
+    "salish.red_buffalo": {
+      "both_maps_meaning": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "gift": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "harlequin_resolves": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "introduction": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "ito_response": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "ito_update": {
+        "choice_label_keys": {
+          "ito_killed": "tarislar.garden.apartments.option.ito_killed"
+        }
+      },
+      "meeting": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "michael_topic": {
+        "choice_label_keys": {
+          "ask_about_michael": "tarislar.garden.apartments.option.ask_about_michael"
+        }
+      },
+      "no_gift": {
+        "choice_label_keys": {
+          "more": "shared.more",
+          "no_business": "salish.red_buffalo.option.no_business"
+        }
+      },
+      "renraku_explanation": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "renraku_map": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "renraku_map_meaning": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "renraku_topic": {
+        "choice_label_keys": {
+          "why_renraku": "tarislar.garden.apartments.option.why_renraku"
+        }
+      },
+      "thon_curse": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "thon_explanation": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "thon_topic": {
+        "choice_label_keys": {
+          "who_is_thon": "tarislar.garden.apartments.option.who_is_thon"
+        }
+      },
+      "tomb_artifacts": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "vigore_explanation": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "vigore_lead": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "vigore_report": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      }
+    },
+    "salish.spirit_eyes": {
+      "first_contact": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "serpent_intentions": {
+        "choice_label_keys": {
+          "neighborhood": "salish.spirit_eyes.option.neighborhood",
+          "scale": "salish.spirit_eyes.option.scale"
+        }
+      },
+      "serpent_lie": {
+        "choice_label_keys": {
+          "neighborhood": "salish.spirit_eyes.option.neighborhood",
+          "scale": "salish.spirit_eyes.option.scale"
+        }
+      },
+      "serpent_more": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "serpent_task": {
+        "choice_label_keys": {
+          "what": "salish.spirit_eyes.option.what"
+        }
+      },
+      "serpent_thanks": {
+        "choice_label_keys": {
+          "thanks": "salish.spirit_eyes.option.thanks"
+        }
+      }
+    },
+    "stoker.motel": {
+      "debt": {
+        "choice_label_keys": {
+          "debt-payment": "stoker.motel.option.debt-payment",
+          "jump-house": "stoker.motel.option.jump-house"
+        },
+        "title_key": "stoker.motel.debt.title"
+      },
+      "manager": {
+        "choice_label_keys": {
+          "crash": "stoker.motel.option.crash",
+          "leave": "stoker.motel.option.leave",
+          "package": "stoker.motel.option.package"
+        },
+        "title_key": "stoker.motel.manager.title"
+      },
+      "room": {
+        "choice_label_keys": {
+          "leave": "stoker.motel.option.leave",
+          "pay": "stoker.motel.option.pay"
+        },
+        "title_key": "stoker.motel.room.title"
+      }
+    },
+    "tarislar.city_inn": {
+      "inn_service": {
+        "choice_label_keys": {
+          "crash": "tarislar.city_inn.option.crash",
+          "frosty": "tarislar.city_inn.option.frosty",
+          "leave": "tarislar.city_inn.option.leave",
+          "shale": "tarislar.city_inn.option.shale"
+        },
+        "title_key": "tarislar.city_inn.offer"
+      },
+      "room_payment": {
+        "choice_label_keys": {
+          "decline": "tarislar.city_inn.option.decline",
+          "pay": "tarislar.city_inn.option.pay"
+        },
+        "title_key": "tarislar.city_inn.room"
+      },
+      "shale_arrival": {
+        "choice_label_keys": {
+          "about_michael": "tarislar.city_inn.option.about_michael"
+        },
+        "title_key": "tarislar.city_inn.shale.2"
+      },
+      "shale_followup": {
+        "choice_label_keys": {
+          "recruit": "tarislar.city_inn.option.recruit",
+          "thanks": "tarislar.city_inn.option.thanks"
+        },
+        "title_key": "tarislar.city_inn.shale.caleb_followup"
+      },
+      "shale_more": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "shale_other_topic": {
+        "choice_label_keys": {
+          "caleb": "tarislar.city_inn.option.caleb",
+          "errascoe": "tarislar.city_inn.option.errascoe"
+        },
+        "title_key": "tarislar.city_inn.shale.errascoe"
+      },
+      "shale_topics": {
+        "choice_label_keys": {
+          "caleb": "tarislar.city_inn.option.caleb",
+          "errascoe": "tarislar.city_inn.option.errascoe"
+        },
+        "title_key": "tarislar.city_inn.shale.caleb"
+      }
+    },
+    "tarislar.garden.apartments.entry": {
+      "arrival": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "both_maps_meaning": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "harlequin_resolves": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "ito_response": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "ito_update": {
+        "choice_label_keys": {
+          "ito_killed": "tarislar.garden.apartments.option.ito_killed"
+        }
+      },
+      "meeting": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "michael_topic": {
+        "choice_label_keys": {
+          "ask_about_michael": "tarislar.garden.apartments.option.ask_about_michael"
+        }
+      },
+      "penthouse": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "renraku_explanation": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "renraku_map": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "renraku_map_meaning": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "renraku_topic": {
+        "choice_label_keys": {
+          "why_renraku": "tarislar.garden.apartments.option.why_renraku"
+        }
+      },
+      "repeat_service": {
+        "choice_label_keys": {
+          "information": "tarislar.garden.apartments.option.information",
+          "ito_killed": "tarislar.garden.apartments.option.ito_killed",
+          "questions": "tarislar.garden.apartments.option.questions"
+        }
+      },
+      "thon_curse": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "thon_explanation": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "thon_topic": {
+        "choice_label_keys": {
+          "who_is_thon": "tarislar.garden.apartments.option.who_is_thon"
+        }
+      },
+      "tomb_artifacts": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "tomb_declined": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "tomb_flight": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "tomb_good_luck": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "tomb_offer": {
+        "choice_label_keys": {
+          "no": "tarislar.garden.apartments.option.tomb_no",
+          "yes": "tarislar.garden.apartments.option.tomb_yes"
+        }
+      },
+      "tomb_walkie": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "vigore_explanation": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "vigore_lead": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      },
+      "vigore_report": {
+        "choice_label_keys": {
+          "more": "shared.more"
+        }
+      }
+    },
+    "wanderer.vigore_jarl": {
+      "booth_vacated": {
+        "choice_label_keys": {
+          "back": "gunderson.information.option.back",
+          "fixer": "wanderer.vigore_jarl.booth-vacated.option.fixers",
+          "pay": "stoker.motel.option.pay"
+        },
+        "title_key": "wanderer.vigore_jarl.booth-vacated"
+      },
+      "conditional_opening": {
+        "choice_label_keys": {
+          "information": "gunderson.option.information",
+          "leave": "gunderson.option.leave",
+          "work": "gunderson.option.work"
+        },
+        "title_key": "wanderer.vigore_jarl.conditional-opening"
+      },
+      "opening": {
+        "choice_label_keys": {
+          "information": "gunderson.option.information",
+          "leave": "gunderson.option.leave",
+          "work": "gunderson.option.work"
+        },
+        "title_key": "wanderer.vigore_jarl.opening"
+      }
+    }
+  },
+  "schemaVersion": 1
+}

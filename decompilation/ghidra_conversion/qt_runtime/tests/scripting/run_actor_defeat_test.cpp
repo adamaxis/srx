@@ -31,7 +31,7 @@ int main() {
         std::filesystem::path(SHADOWRUN_GAMEPLAY_SCRIPT_ROOT);
     const auto dialogue_text =
         std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
-        "dialogue" / "script-text.lua";
+        "dialogue" / "script-text.json";
     if (!expect(scripts.load_package(script_root, dialogue_text),
                 "gameplay Lua package did not load")) {
         std::cerr << scripts.failure() << '\n';

@@ -1043,7 +1043,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
             }
             continue;
         }
-        // The field-menu text catalog also loads the shared script-text.lua
+        // The field-menu text catalog also loads the shared script-text.json
         // table, but recruited-runner dialogue belongs to the dialogue panel
         // namespace and is validated by dialogue-panel QA.
         if (has_recruited_runner_dialogue_prefix(key)) {

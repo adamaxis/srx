@@ -69,7 +69,7 @@ their current host:
 - **Hotel Options:** HotelMenuRuntime owns the typed status/options/checkout phases; FieldSceneRuntime routes the paid Stoker room result into it and owns a separate spend-enabled Karma child. `gameplay/scripts/hotel.lua` supplies the validated options and checkout choice IDs, and ROM-imported Lua text supplies the visible labels. The native presenter owns layout, focus, input cadence, E660 animation, and the separate Hotel Karma child. The child redraws the full Attributes/Skills page, suspends parent E660, and returns to a rebuilt options panel. Debug/Release QA writes phase screenshots and checks upgrade/decline, Karma mutation, static child frames, source palette lines, sound silence, and stale-control clearing. The status/options and checkout loops advance E660; checkout selection and question text stay fixed during its lower-bezel animation. The source RNG seed and independent Hotel captures remain open.
 - **Pocket Secretary root content:** the five field-mode row IDs are in
   `gameplay/scripts/pocket_secretary.lua`; ROM title, separator, and label
-  text is imported into `assets/dialogue/script-text.lua`. The Qt
+  text is imported into `assets/dialogue/script-text.json`. The Qt
   presenter and typed state own drawing, while Lua owns cursor cadence and handler
   dispatch. Debug/Release field-route QA passed, and route screenshot captures
   match across configurations. The extended six-row caller, Save/Load action,

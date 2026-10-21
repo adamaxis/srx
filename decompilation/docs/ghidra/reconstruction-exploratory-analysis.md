@@ -871,7 +871,7 @@ C calls the shared `0x391A` mode-action routine and resumes Tips, and Start
 returns to Notebook.
 
 Qt loads all 96 source strings from the ROM-generated Lua text table in
-`dialogue/script-text.lua`; source `0x80` line breaks become host newlines. The
+`dialogue/script-text.json`; source `0x80` line breaks become host newlines. The
 screen draws the title/separator at `(88,32)/(72,40)`, page text at `(40,56)`,
 the `C663A` page-count label at `(136,184)`, the right-aligned current page at
 `(184,184)`, and the total at `(232,184)`. `C6645` is the two-cell current-page
@@ -913,7 +913,7 @@ description wait; a fresh input edge returns to the list. C uses the shared
 The field route now gives each page its own Lua screen state and cursor. Lua
 filters records, paginates, handles controls, and selects detail records;
 Qt receives the typed visible-index snapshot and renders the ROM-extracted
-text from `assets/dialogue/script-text.lua`. The offline importer is
+text from `assets/dialogue/script-text.json`. The offline importer is
 `decompilation/ghidra_conversion/tools/rom_research/extract_notebook_records.py`; the runtime does not read ROM
 pointers. Debug and Release route QA covers both tables, details, forward and
 prior paging, parent return without stale child text, and the exact-eight

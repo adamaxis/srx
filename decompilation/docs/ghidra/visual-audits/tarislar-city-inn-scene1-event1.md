@@ -39,7 +39,7 @@ its unconverted encounter commands.
   and 21 before displaying the information record at `0x1180D2`.
 
 Generated text keys for the service, room, package variants, Tabatha dialogue,
-Frosty, and menu labels live in `assets/dialogue/script-text.lua`. The asset
+Frosty, and menu labels live in `assets/dialogue/script-text.json`. The asset
 was regenerated from the US ROM with the existing script copied into a
 temporary output tree so separately managed text entries remained intact.
 

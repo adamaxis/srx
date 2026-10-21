@@ -172,7 +172,7 @@ decompilation/assets/dialogue/
 
 The ROM extractor remains the owner of exact imported strings. It should emit
 `script-text.json` with the same stable keys and retained page/line separators
-as today's `script-text.lua`; authored graph files refer to those keys instead
+as today's `script-text.json`; authored graph files refer to those keys instead
 of copying text. This preserves text provenance, avoids two sources for one
 sentence, and allows a later localization catalog to use the same graph.
 
