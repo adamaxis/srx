@@ -244,6 +244,28 @@ def physical_qa_route(scene: int, record_index: int, event: int) -> str:
         return "Scene-26 physical passkey route; sampled passage cell 712"
     if scene == 26 and record_index in (124, 125):
         return "Joined physical event-1 route reaches Security Terminal D8"
+    if scene == 21 and record_index == 121 and event == 0x1F:
+        return (
+            "Debug/Release after gated Fuchi entry; ordinary Up opens the "
+            "resource Main Menu and Cyberspace enters system 22/node 13"
+        )
+    if scene == 22 and record_index == 136 and event == 0x1F:
+        return (
+            "Debug/Release after the Scene-25 elevator group roundtrip; "
+            "ordinary Up opens the resource Main Menu and Cyberspace enters "
+            "system 22/node 13"
+        )
+    if scene == 24 and record_index == 136 and event == 0x1F:
+        return (
+            "Debug/Release after the Scene-25 elevator route to Scene 24; "
+            "ordinary Up opens the resource Main Menu and Cyberspace enters "
+            "system 22/node 8"
+        )
+    if scene == 26 and record_index == 126 and event == 0x1F:
+        return (
+            "Debug/Release joined event-1 route; ordinary Up opens the "
+            "resource Main Menu and Cyberspace enters system 24/node 22"
+        )
     if event == 0x1D:
         return "Physical group trigger QA; see visual-audits/field-elevator-selector.md"
     return "No focused physical-input route recorded for this rectangle"

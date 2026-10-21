@@ -786,6 +786,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_scene25_g
                  --field-elevator-scene25-group-roundtrip-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene25-group-roundtrip-qa")
 
+# Continue the same elevator chain from Scene 22 to Scene 24, then verify its
+# separate ROM-seeded Matrix node through Scene 24 record 136.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_scene24_matrix_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-elevator-scene25-matrix24-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene24-matrix-entry-qa")
+
 # Scene 29 is the non-member entry scene for the source child-scene group
 # 26/27/28. Walk from its descriptor spawn into its paired event-29 records,
 # verify the group starts at floor index 0, then ride to scene 27 and inspect
