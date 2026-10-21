@@ -280,6 +280,12 @@ def physical_qa_route(scene: int, record_index: int, event: int) -> str:
             "the adjacent cell, then ordinary Up opens the resource Main "
             "Menu and Cyberspace enters system 24/node 9"
         )
+    if scene == 29 and record_index == 135 and event == 0x1F:
+        return (
+            "Debug/Release from the Scene-29 descriptor checkpoint; QA seeds "
+            "the adjacent cell, then ordinary Up opens the resource Main "
+            "Menu and Cyberspace enters system 24/node 26"
+        )
     if scene == 26 and record_index == 126 and event == 0x1F:
         return (
             "Debug/Release joined event-1 route; QA seeds the adjacent cell, "
