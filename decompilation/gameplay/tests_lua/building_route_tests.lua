@@ -449,4 +449,39 @@ assert(motel_paid.kind == "area_event" and
        motel_paid.area_event_target == 26 and
        motel_paid.entry_dialogue_module == nil)
 
+-- The Wanderer map's south-edge exit uses the ROM's null event-table
+-- fallback. Lua resolves the source-audited route without reproducing its
+-- null-pointer address calculation at runtime.
+local wanderer_exit_link = {
+    source_scene = 14,
+    source_event = "event_0",
+    route_kind = "area_event_override",
+    script = "area_event_table",
+    destination_scene = 0,
+    destination_mode = "field",
+    source_table_destination = 0,
+    route_priority = 0,
+}
+game.modules.world_content_data.entities.source_test.links = {
+    wanderer_exit_link,
+}
+game.modules.world_content_data.areas[14] = {
+    { entity_id = "source_test" },
+}
+local wanderer_exit = Building.resolve_field_location_route({
+    scene_id = 14,
+    building_interaction_mode = false,
+    event_code = "event_0",
+    event_index = 0,
+    event_table_available = false,
+    event_table = {},
+    alternate_result = 0,
+})
+assert(wanderer_exit.kind == "area_event" and
+       wanderer_exit.script == "area_event_table" and
+       wanderer_exit.area_event_target == 0 and
+       wanderer_exit.area_event_destination_mode == "field" and
+       wanderer_exit.entry_dialogue_module == nil and
+       wanderer_exit.return_anchor == nil)
+
 print("building route tests passed: conditional variants and entry tasks")

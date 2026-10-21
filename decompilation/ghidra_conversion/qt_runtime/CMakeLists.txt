@@ -506,6 +506,18 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_jump_house_entry_q
                  --field-jump-house-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-jump-house-entry-qa")
 
+# Enter each Scene 14 south-edge event-0 rectangle independently with ordinary
+# Down input. Its null event-table pointer selects field Scene 0 through the
+# ROM's generic handler.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_wanderer_south_exit_record_7_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-wanderer-south-exit-record-7-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-wanderer-south-exit-record-7-qa")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_wanderer_south_exit_record_8_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-wanderer-south-exit-record-8-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-wanderer-south-exit-record-8-qa")
+
 # Enter the Big Rhino booth with ordinary movement and verify the ROM-selected
 # Mortimer Reed first-visit page, portrait, and three-choice root.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_big_rhino_entry_qa

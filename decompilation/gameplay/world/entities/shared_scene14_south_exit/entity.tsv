@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+shared_scene14_south_exit	Scene 14 south-edge exit	map_transition	ROM scene-14 event-0 collision records 7/8 at 0x1D5BFC and 0x1D5C06 cover cells (9,7) and (8,7). The scene-14 profile event-table pointer at 0x1D5BA0 is null; ROM 0x167AE resolves event 0 from ROM byte 0 as field scene 0. No separate visible object is inferred.	-	-	-

@@ -10,3 +10,4 @@ scene14_square_lamp_west	wanderer_square_lamp	0	96
 scene14_square_lamp_east	wanderer_square_lamp	288	96
 scene14_wall_fixture_north	wanderer_east_wall_fixture	288	112
 scene14_wall_fixture_south	wanderer_east_wall_fixture	288	160
+scene14_south_edge_exit	shared_scene14_south_exit	256	224

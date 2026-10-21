@@ -17239,6 +17239,190 @@ int run_field_jump_house_entry_qa(
     return 0;
 }
 
+int run_field_wanderer_south_exit_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::size_t target_record,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Wanderer south exit QA: could not clear prior captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Wanderer south exit QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kFirstExitRecord = 7U;
+    constexpr std::size_t kSecondExitRecord = 8U;
+    if (target_record != kFirstExitRecord &&
+        target_record != kSecondExitRecord) {
+        std::cerr << "Wanderer south exit QA: unsupported event record "
+                  << target_record << '\n';
+        return 3;
+    }
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& rectangles = metadata.terrain_collision_rectangles;
+    const auto start = field_scene.field_entity_world_position();
+    const auto expected_start_x = target_record == kFirstExitRecord
+                                      ? 0x1300U
+                                      : 0x1100U;
+    if (field_scene.field_scene_reference_for_dump() != 14U ||
+        start.x != expected_start_x || start.y != 0x0D00U ||
+        metadata.event_table_available ||
+        rectangles.size() <= kSecondExitRecord ||
+        rectangles[kFirstExitRecord].left != 0x0120U ||
+        rectangles[kFirstExitRecord].right != 0x013FU ||
+        rectangles[kFirstExitRecord].top != 0x00E0U ||
+        rectangles[kFirstExitRecord].bottom != 0x00FFU ||
+        rectangles[kFirstExitRecord].value != 0x0080U ||
+        rectangles[kSecondExitRecord].left != 0x0100U ||
+        rectangles[kSecondExitRecord].right != 0x011FU ||
+        rectangles[kSecondExitRecord].top != 0x00E0U ||
+        rectangles[kSecondExitRecord].bottom != 0x00FFU ||
+        rectangles[kSecondExitRecord].value != 0x0080U) {
+        std::cerr << "Wanderer south exit QA: scene-14 spawn, null event "
+                     "table, or ROM event-0 rectangles do not match (scene="
+                  << field_scene.field_scene_reference_for_dump() << ", x="
+                  << start.x << ", y=" << start.y << ", event-table="
+                  << metadata.event_table_available << ", table-modes="
+                  << metadata.event_mode_table.size() << ", records="
+                  << rectangles.size() << ", record7=";
+        if (rectangles.size() > kSecondExitRecord) {
+            const auto& record7 = rectangles[kFirstExitRecord];
+            const auto& record8 = rectangles[kSecondExitRecord];
+            std::cerr << std::hex << record7.left << ',' << record7.right << ','
+                      << record7.top << ',' << record7.bottom << ','
+                      << static_cast<unsigned>(record7.value)
+                      << "; record8=" << record8.left << ','
+                      << record8.right << ',' << record8.top << ','
+                      << record8.bottom << ','
+                      << static_cast<unsigned>(record8.value) << std::dec;
+        }
+        std::cerr << ")\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] {
+        return render_qa_field(field_scene);
+    };
+    const auto save = [&](const std::string_view name) {
+        const auto image = render();
+        const bool valid_size = image.size() == QSize(kSceneWidth, kSceneHeight);
+        const bool saved = save_qa_image(
+            output, std::string(name) + ".bmp", image);
+        if (!valid_size || !saved) {
+            std::cerr << "Wanderer south exit QA: " << name
+                      << " capture details size=" << image.width() << 'x'
+                      << image.height() << " saved=" << saved << '\n';
+        }
+        return valid_size && saved;
+    };
+    if (!save("south-edge-approach")) {
+        std::cerr << "Wanderer south exit QA: approach capture failed\n";
+        return 3;
+    }
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 90U &&
+           field_scene.field_scene_reference_for_dump() == 14U &&
+           !field_scene.field_transition_pending_for_dump();
+         ++movement_ticks) {
+        field_scene.set_controller_nibble(0x02U); // ordinary Down
+        field_scene.advance_frame();
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto contact = field_scene.field_entity_world_position();
+    const auto& target_rectangle = rectangles[target_record];
+    if (movement_ticks == 0U || movement_ticks >= 90U ||
+        field_scene.field_mode_event_code_for_dump() != 0U ||
+        field_scene.field_scene_reference_for_dump() != 14U ||
+        !field_scene.field_transition_pending_for_dump() ||
+        (contact.x >> 4U) < target_rectangle.left ||
+        (contact.x >> 4U) > target_rectangle.right ||
+        (contact.y >> 4U) < target_rectangle.top ||
+        (contact.y >> 4U) > target_rectangle.bottom ||
+        !save("event0-contact")) {
+        std::cerr << "Wanderer south exit QA: ordinary Down did not reach the "
+                     "Scene-14 event-0 transition (ticks="
+                  << movement_ticks << ", start=" << start.x << ',' << start.y
+                  << ", contact=" << contact.x << ',' << contact.y
+                  << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", transition="
+                  << field_scene.field_transition_pending_for_dump() << ")\n";
+        for (const auto& boundary : source_boundaries) {
+            if (boundary.find("field.exit.") != std::string::npos ||
+                boundary.find("field.entry.") != std::string::npos ||
+                boundary.find("field.scene.transition.") !=
+                    std::string::npos) {
+                std::cerr << "  boundary=" << boundary << '\n';
+            }
+        }
+        return 3;
+    }
+
+    for (std::uint16_t settle = 0U;
+         settle < 120U &&
+         (field_scene.field_scene_reference_for_dump() != 0U ||
+          field_scene.field_transition_pending_for_dump() ||
+          field_scene.field_modal_return_transition_frames_for_dump() != 0U);
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto final_image = render();
+    if (field_scene.field_scene_reference_for_dump() != 0U ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.field_transition_pending_for_dump() ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        !field_hud_chrome_survives(final_image, asset_root) ||
+        count_playfield_lit(final_image) < 100U ||
+        !save("actual")) {
+        std::cerr << "Wanderer south exit QA: event 0 did not finish on a "
+                     "clean field Scene-0 view (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", pending="
+                  << field_scene.field_transition_pending_for_dump()
+                  << ", dialogue=" << field_scene.dialogue_open() << ")\n";
+        for (const auto& boundary : source_boundaries) {
+            if (boundary.find("field.exit.") != std::string::npos ||
+                boundary.find("field.entry.") != std::string::npos ||
+                boundary.find("field.scene.transition.") !=
+                    std::string::npos) {
+                std::cerr << "  boundary=" << boundary << '\n';
+            }
+        }
+        return 3;
+    }
+
+    std::ofstream route(output / "route.tsv", std::ios::trunc);
+    if (!route) return 3;
+    route << "source_scene\trecord\tevent\tevent_table\tstart_x\tstart_y\t"
+             "contact_x\tcontact_y\tmovement_ticks\tdestination_scene\t"
+             "audio_requests\n"
+          << "14\t" << target_record << "\t0\tnull\t" << start.x << '\t'
+          << start.y << '\t'
+          << contact.x << '\t' << contact.y << '\t' << movement_ticks
+          << "\t0\t" << field_audio_events.size() << '\n';
+    std::cout << "field_wanderer_south_exit_qa=passed scene=14 record="
+              << target_record << ' '
+              << "event=0 movement=ordinary-down destination_scene=0 "
+                 "dialogue=none audio_requests="
+              << field_audio_events.size() << " artifacts=" << output.string()
+              << '\n';
+    return 0;
+}
+
 int run_field_redmond_vigore_search_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -22139,6 +22323,10 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_jump_house_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_wanderer_south_exit_record_7_qa_path;
+        std::optional<std::filesystem::path>
+            field_wanderer_south_exit_record_8_qa_path;
+        std::optional<std::filesystem::path>
             field_big_rhino_entry_qa_path;
         std::optional<std::filesystem::path>
             field_icarus_caleb_entry_qa_path;
@@ -22401,6 +22589,20 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_jump_house_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-wanderer-south-exit-record-7-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_wanderer_south_exit_record_7_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-wanderer-south-exit-record-8-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_wanderer_south_exit_record_8_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -23259,6 +23461,40 @@ int main(int argc, char** argv) {
                 checkpoint.active_runner_slot = 0U;
                 smoke_state.restored_field_state = std::move(checkpoint);
             }
+            if (field_wanderer_south_exit_record_7_qa_path.has_value() ||
+                field_wanderer_south_exit_record_8_qa_path.has_value()) {
+                const auto scene14 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 14U);
+                if (!scene14.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Wanderer south exit QA: scene-14 source or "
+                                 "New Game runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 14U;
+                // Start one 32-pixel cell north of the two south-edge event-0
+                // rectangles and keep the ROM collision/transition path live.
+                checkpoint.camera_x = 0U;
+                checkpoint.camera_y = 0U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene14->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] = RestoredRunnerPosition{
+                    static_cast<std::uint16_t>(
+                        field_wanderer_south_exit_record_7_qa_path.has_value()
+                            ? 0x1300U
+                            : 0x1100U),
+                    0x0D00U};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
             if (field_icarus_caleb_entry_qa_path.has_value() ||
                 field_icarus_blocked_entry_qa_path.has_value()) {
                 const auto scene12 = integration::make_field_scene_input(
@@ -23734,6 +23970,8 @@ int main(int argc, char** argv) {
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_motel_street_collision_qa_path.has_value() ||
                 field_movement_qa_path.has_value() ||
+                field_wanderer_south_exit_record_7_qa_path.has_value() ||
+                field_wanderer_south_exit_record_8_qa_path.has_value() ||
                 field_crime_mall_ilene_gate_qa_path.has_value() ||
                 field_riannons_magic_shop_entry_qa_path.has_value() ||
                 field_dr_bobs_clinic_entry_qa_path.has_value() ||
@@ -26523,6 +26761,18 @@ int main(int argc, char** argv) {
                 return run_field_jump_house_entry_qa(
                     field_scene, asset_root,
                     *field_jump_house_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_wanderer_south_exit_record_7_qa_path.has_value()) {
+                return run_field_wanderer_south_exit_qa(
+                    field_scene, asset_root,
+                    *field_wanderer_south_exit_record_7_qa_path, 7U,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_wanderer_south_exit_record_8_qa_path.has_value()) {
+                return run_field_wanderer_south_exit_qa(
+                    field_scene, asset_root,
+                    *field_wanderer_south_exit_record_8_qa_path, 8U,
                     field_audio_events, field_source_boundaries);
             }
             if (field_big_rhino_entry_qa_path.has_value()) {

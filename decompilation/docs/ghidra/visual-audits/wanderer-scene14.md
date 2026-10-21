@@ -3,7 +3,8 @@
 Status: partial. The map viewer now models the room's named fixtures and the
 scene-14 event-30 dialogue profile. The first-visit intro is connected to the
 shared Lua Johnson interaction. The conditional credit menu, post-departure
-branch, work/quest choice effects, and event-0 exit remain incomplete.
+branch, and work/quest choice effects remain incomplete. The lower event-0
+transition to field scene 0 is now source-traced and physically exercised.
 
 ## ROM trace
 
@@ -37,9 +38,19 @@ branch, work/quest choice effects, and event-0 exit remain incomplete.
   The branch's menu includes text `0x10742E`; the condition and choice effects
   are not yet wired to a quest state.
 - Scene-14 event records 7 and 8 (`0x1D5BFC`, `0x1D5C06`) are adjacent
-  event-0 cells at the lower map edge, with no event table. Their leave action
-  and return destination remain unresolved; the Puyallup entry route is not
-  used to assume a reverse exit.
+  event-0 cells at the lower map edge, with no event table. The profile pointer
+  at `0x1D5BA0` is null; the generic `0x167AE` selector reads ROM byte 0 and
+  chooses field scene 0. The shared Lua location-link resolver now represents
+  that static source result. It does not infer a return to Puyallup, a dynamic
+  prior-map destination, or a special exit position or heading.
+- Debug and Release physical-input QA cases start one cell north of each
+  rectangle, enter record 7 or record 8 with ordinary Down, and complete the
+  scene-0 transition. Each case saves full 320x224 approach, event-contact,
+  and destination captures plus a route manifest. The contact capture is the
+  first full-screen black fade frame; `route.tsv` records the contact position,
+  and `actual.bmp` shows the completed scene-0 destination. These captures
+  verify the host path; no independent Scene-14 gameplay frame has been
+  identified.
 
 ## Map entities
 
@@ -75,7 +86,8 @@ from appearance alone. Floor texture remains part of the map background.
    interaction, default actors, dynamic world-event actor candidates, map
    artwork, and authored entity annotations remain separate. The lower event-0
    records are outside the visible map and are shown as small selectable edge
-   markers instead of large rectangles over empty canvas.
+   markers instead of large rectangles over empty canvas. Their destination is
+   now identified as field scene 0 by the null-table fallback.
 7. **Do multiple frames support this interpretation?** A 1-fps scan of the
    extracted longplay folders found no strong Scene-14 map match. The best
    downsampled match scored `0.393`; a known Scene-13 frame matched its map at
@@ -85,5 +97,6 @@ from appearance alone. Floor texture remains part of the map background.
    later recording includes the Wanderer.
 
 The next pass should resolve and connect the scene-14 `FFFC1E`/`FFFBEC`
-branches, trace the work offer's selected run records, and follow event 0
-through the map-transition handler before naming an exit.
+branches and trace the work offer's selected run records. Naming the exit's
+world location or establishing a reverse route still requires separate source
+evidence.
