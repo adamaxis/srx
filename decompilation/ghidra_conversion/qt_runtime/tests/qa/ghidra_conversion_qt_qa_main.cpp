@@ -10,9 +10,11 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -24253,8 +24255,9 @@ int main(int argc, char** argv) {
                     for (int y = 45; y < 120; ++y) {
                         for (int x = 100; x < 220; ++x) {
                             const auto color = image.pixelColor(x, y);
-                            if (color.red() < 20 && color.green() >= 15 &&
-                                color.green() < 200 && color.blue() < 20) {
+                            if (color.green() >= 15 &&
+                                color.green() >= 2 * color.red() &&
+                                color.green() >= 2 * color.blue()) {
                                 min_x = std::min(min_x, x);
                                 min_y = std::min(min_y, y);
                                 max_x = std::max(max_x, x);
@@ -24287,6 +24290,108 @@ int main(int argc, char** argv) {
                                        max_y - min_y + 1);
                     }
                     return bounds;
+                };
+                const auto green_model_mask = [](const QImage& image) {
+                    constexpr int kLeft = 110;
+                    constexpr int kTop = 45;
+                    constexpr int kWidth = 100;
+                    constexpr int kHeight = 67;
+                    struct Mask {
+                        std::vector<std::uint8_t> pixels;
+                        std::size_t count = 0U;
+                    };
+                    Mask mask{std::vector<std::uint8_t>(
+                                  static_cast<std::size_t>(kWidth * kHeight),
+                                  0U),
+                              0U};
+                    std::vector<std::uint8_t> visited(mask.pixels.size(), 0U);
+                    std::vector<std::size_t> largest;
+                    for (int y = 0; y < kHeight; ++y) {
+                        for (int x = 0; x < kWidth; ++x) {
+                            const auto color = image.pixelColor(
+                                kLeft + x, kTop + y);
+                            if (color.green() >= 15 &&
+                                color.green() >= 2 * color.red() &&
+                                color.green() >= 2 * color.blue()) {
+                                const auto index = static_cast<std::size_t>(
+                                    y * kWidth + x);
+                                mask.pixels[index] = 1U;
+                            }
+                        }
+                    }
+                    for (std::size_t start = 0U;
+                         start < mask.pixels.size(); ++start) {
+                        if (mask.pixels[start] == 0U ||
+                            visited[start] != 0U) {
+                            continue;
+                        }
+                        std::vector<std::size_t> component{start};
+                        visited[start] = 1U;
+                        for (std::size_t cursor = 0U;
+                             cursor < component.size(); ++cursor) {
+                            const auto index = component[cursor];
+                            const auto x = static_cast<int>(
+                                index % static_cast<std::size_t>(kWidth));
+                            const auto y = static_cast<int>(
+                                index / static_cast<std::size_t>(kWidth));
+                            for (int offset_y = -1; offset_y <= 1;
+                                 ++offset_y) {
+                                for (int offset_x = -1; offset_x <= 1;
+                                     ++offset_x) {
+                                    const auto next_x = x + offset_x;
+                                    const auto next_y = y + offset_y;
+                                    if (next_x < 0 || next_x >= kWidth ||
+                                        next_y < 0 || next_y >= kHeight) {
+                                        continue;
+                                    }
+                                    const auto next = static_cast<std::size_t>(
+                                        next_y * kWidth + next_x);
+                                    if (mask.pixels[next] != 0U &&
+                                        visited[next] == 0U) {
+                                        visited[next] = 1U;
+                                        component.push_back(next);
+                                    }
+                                }
+                            }
+                        }
+                        if (component.size() > largest.size()) {
+                            largest = std::move(component);
+                        }
+                    }
+                    std::fill(mask.pixels.begin(), mask.pixels.end(), 0U);
+                    for (const auto index : largest) {
+                        mask.pixels[index] = 1U;
+                    }
+                    mask.count = largest.size();
+                    return mask;
+                };
+                const auto green_model_overlap = [&green_model_mask](
+                    const QImage& actual,
+                    const QImage& reference) {
+                    const auto actual_mask = green_model_mask(actual);
+                    const auto reference_mask = green_model_mask(reference);
+                    if (actual_mask.pixels.size() !=
+                            reference_mask.pixels.size() ||
+                        actual_mask.count == 0U ||
+                        reference_mask.count == 0U) {
+                        return 0.0;
+                    }
+                    std::size_t intersection = 0U;
+                    std::size_t union_count = 0U;
+                    for (std::size_t index = 0U;
+                         index < actual_mask.pixels.size(); ++index) {
+                        const auto actual_pixel = actual_mask.pixels[index];
+                        const auto reference_pixel =
+                            reference_mask.pixels[index];
+                        intersection += static_cast<std::size_t>(
+                            actual_pixel != 0U && reference_pixel != 0U);
+                        union_count += static_cast<std::size_t>(
+                            actual_pixel != 0U || reference_pixel != 0U);
+                    }
+                    return union_count == 0U
+                               ? 0.0
+                               : static_cast<double>(intersection) /
+                                     static_cast<double>(union_count);
                 };
                 const auto silver_runner_bounds = [](const QImage& image) {
                     int min_x = image.width();
@@ -24484,6 +24589,34 @@ int main(int argc, char** argv) {
                                   << expected.width() << 'x'
                                   << expected.height() << '\n';
                         return 3;
+                    }
+                    if (anchor.source_frame == 4800 ||
+                        anchor.source_frame == 4820 ||
+                        anchor.source_frame == 4830) {
+                        const auto repository_root =
+                            std::filesystem::weakly_canonical(asset_root)
+                                .parent_path().parent_path();
+                        const auto reference_path = repository_root /
+                            "video analysis" /
+                            "long_gameplay_video_rest_ffmpeg_30fps_320x224" /
+                            "section_21_source_4620-4920" /
+                            ("frame_00" +
+                             std::to_string(anchor.source_frame) + ".png");
+                        const QImage reference(
+                            QString::fromStdString(reference_path.string()));
+                        const auto overlap = green_model_overlap(
+                            image, reference);
+                        if (reference.size() !=
+                                QSize(kSceneWidth, kSceneHeight) ||
+                            overlap < 0.80) {
+                            std::cerr << "Matrix traversal entry QA: model "
+                                         "shape at source frame "
+                                      << anchor.source_frame
+                                      << " has mask overlap " << overlap
+                                      << " with independent longplay frame "
+                                      << reference_path << '\n';
+                            return 3;
+                        }
                     }
                 }
                 const auto final_route =

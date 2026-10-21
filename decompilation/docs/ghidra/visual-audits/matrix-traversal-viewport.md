@@ -146,6 +146,13 @@ markers, compares the selected model asset in unobscured regions, and retains
 the complete blue floor and footer. The separate traversal-entry CTest routes
 to the SPU Green-3 and compares the model's green-pixel bounds at eleven source
 sequence anchors with independent Section 21 frames `004730` through `004830`.
+At frames `004800`, `004820`, and `004830`, it also compares the largest
+8-connected green-dominant component in the model crop (x=110..209,
+y=45..111), requiring silhouette-mask IoU of at least 0.80 against the
+independent 320x224 longplay image. This checks the model footprint while
+tolerating video-compression color shifts; it does not compare facet colors or
+validate the ROM resampler. The QA keeps the full-frame capture, including the
+deck footer.
 The final full-size output also shows the phase-four wide runner. These focused
 comparisons fix the HUD and runner mismatches and verify one model's entry
 projection; the other node combinations, effect timing, and complete Matrix
