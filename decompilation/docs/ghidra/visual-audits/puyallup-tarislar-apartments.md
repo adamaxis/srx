@@ -65,14 +65,15 @@ catalog's source policy explicitly authorizes a correction.
 - Ilene prerequisite: Scene-2/event-0 service 19 at `0x543A2` requires story
   bits 18/19 = 1/0, `FFF0D5=0`, `FFFC34` bit 0 clear, and `FFFC38` bit 12 set.
   It arms `FFE182` and leaves event-table row 0's Scene-20 destination live.
-  The only traced consumer is the `0xEB92` actor-pair scan through `0xECCC`;
-  `0xED92` consumes the marker only when a pair member has `+0x9E` bit 3, its
-  one-shot `+0xB0` bit 7 is clear, and its partner has `+0x10` bit 1. Scene 20's
-  eight default guards/pedestrians have no `+0x9E` overrides, so the eligible
-  actor and bit-3 source remain unresolved. If reached, activity `0x54402` adds
-  2 Karma per runner, sets bit 19, and opens group `0x115ECC`; text `0x115F10`
-  names Ilene. ROM-byte tests cover the source gates and activity writes; this
-  actor-pair route is not wired into the active runtime.
+  When the service-19 marker is pending and `FFE180` is clear, `0xA800`
+  selects list `0xA8CC`: template `0x172CA` (`lone11`, kind 10/action 3)
+  spawns at `(0x0E80,0x0700)` with ordered overrides ending in `+0x9E=0x08`.
+  The `0xEB92` actor-pair scan reaches `0xECCC`, whose bit-3 branch requires
+  the partner's `+0x10` bit 1 and the actor's `+0xB0` bit 7 clear; `0xED92`
+  then consumes `FFE182` and selects `0x54402`. That activity adds 2 Karma per
+  runner, sets bit 19, and opens group `0x115ECC`; text `0x115F10` names Ilene.
+  ROM-byte tests cover this source path, but pending-list spawning, actor-pair
+  contact, and the activity are not yet connected to the active runtime.
 - Prerequisite: the code at `0x53EA8` sets `FFFC1E` bit 9 and opens text
   record `0xF4C04` ("You have completed your tasks, young warrior"). The
   Spirit Eyes event-27 Lua route now models that completion gate after first

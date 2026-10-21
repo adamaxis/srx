@@ -153,6 +153,18 @@ do
           u16(0xEDC8) == 0x0829 and u16(0xEDCA) == 0x0001 and
           u16(0xEDCC) == 0x0010,
           "0xECCC requires pair member +0x9E bit3 and partner +0x10 bit1 before this one-shot branch")
+    check(u16(0xA82C) == 0x4A39 and u32(0xA82E) == 0xFFE182 and
+          u16(0xA836) == 0x267C and u32(0xA838) == 0x0000A8CC and
+          u16(0xA83C) == 0x23CB and u32(0xA83E) == 0xFFE124 and
+          u16(0xA842) == 0x23D3 and u32(0xA844) == 0xFFE110,
+          "pending marker FFE182 selects static entity list A8CC")
+    check(u32(0xA8CC) == 0x800172CA and u32(0xA8D0) == 0x0000A8E4 and
+          u32(0xA8D4) == 0x00000002 and u16(0xA8D8) == 0x9E20 and
+          u16(0xA8DA) == 0x2E80 and u16(0xA8DC) == 0x9E08 and
+          u16(0xA8DE) == 0x0000 and u16(0xA8E4) == 0x0E80 and
+          u16(0xA8E6) == 0x0700 and u16(0x172CA) == 0x000A and
+          u16(0x172D2) == 0x0003,
+          "FFE182 list spawns the Scene-20 lone11 actor at 0E80/0700 with final +9E bit3")
     check(u16(0xED92) == 0x4A39 and u32(0xED94) == 0xFFE182 and
           u16(0xED9C) == 0x4239 and u32(0xED9E) == 0xFFE182 and
           u16(0xEDA2) == 0x23FC and u32(0xEDA4) == 0x54402 and
