@@ -795,6 +795,244 @@ bool test_macklemann_service_tree(GameScriptRuntime& scripts,
                   "Macklemann's gate line did not end the call");
 }
 
+bool test_gregory_service_tree(GameScriptRuntime& scripts,
+                               std::uint32_t& contact_flags) {
+    const auto open_services = [&scripts, &contact_flags]() {
+        contact_flags |= 1U << 6U;
+        auto task = scripts.start_task("field_activities", "vid_phone");
+        task = scripts.complete_native_menu_input("confirm");
+        if (!is_menu(task) ||
+            (task.operation->menu->id != "call_gregory_wilns_first_call" &&
+             task.operation->menu->id != "call_gregory_wilns_repeat_call")) {
+            return task;
+        }
+        return scripts.complete_native_menu_choice("services");
+    };
+
+    contact_flags = 1U << 6U;
+    auto task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "call_gregory_wilns_first_call" &&
+                    (contact_flags & (1U << 19U)) != 0U,
+                "Gregory first call did not set its history bit or show his call")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("services");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "gregory_services",
+                "Gregory Services choice did not open the ROM root")) {
+        return false;
+    }
+    auto profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() && profile->choices.size() == 3U &&
+                    scripts.dialogue_text(profile->title_key) != nullptr,
+                "Gregory's root prompt or three service choices did not resolve")) {
+        return false;
+    }
+    for (const auto& choice : profile->choices) {
+        if (!expect(scripts.dialogue_text(choice.label_key) != nullptr,
+                    "Gregory's service menu has an unresolved ROM label")) {
+            return false;
+        }
+    }
+
+    task = scripts.complete_native_menu_choice("paranormal_creatures");
+    for (const auto page : {"gregory_creature_page_1",
+                            "gregory_creature_page_2",
+                            "gregory_creature_page_3"}) {
+        if (!expect(is_menu(task) && task.operation->menu->id == page,
+                    "Gregory's creature lesson skipped a ROM text page")) {
+            return false;
+        }
+        profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+        if (!expect(profile.has_value() && profile->choices.size() == 1U &&
+                        scripts.dialogue_text(profile->title_key) != nullptr &&
+                        scripts.dialogue_text(
+                            profile->choices.front().label_key) != nullptr,
+                    "Gregory's creature lesson page or More label did not resolve")) {
+            return false;
+        }
+        task = scripts.complete_native_menu_choice("more");
+    }
+    profile = is_menu(task)
+                  ? scripts.resolve_dialogue_menu(*task.operation->menu)
+                  : std::nullopt;
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "gregory_creature_page_4" && profile.has_value() &&
+                    profile->choices.size() == 2U &&
+                    scripts.dialogue_text(profile->title_key) != nullptr,
+                "creature lesson did not reach its Services/Goodbye conclusion")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("services");
+    task = scripts.complete_native_menu_choice("corporate_discount");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "gregory_discount_offer",
+                "discount branch did not show Gregory's 4,000-nuyen offer")) {
+        return false;
+    }
+    profile = scripts.resolve_dialogue_menu(*task.operation->menu);
+    if (!expect(profile.has_value() && profile->choices.size() == 3U &&
+                    scripts.dialogue_text(profile->title_key) != nullptr,
+                "discount offer copy or Yes/No/Talk Later choices did not resolve")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("decline_discount");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "gregory_services",
+                "declining the discount did not return to Services")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("corporate_discount");
+    task = scripts.complete_native_menu_choice("accept_discount");
+    if (!expect(is_service_call(
+                    task, "vid_phone.purchase_merlins_lore_discount"),
+                "accepting the offer did not request command 0x77")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("insufficient");
+    if (!expect(is_say(task, "insufficient_balance",
+                       "vid_phone_gregory_wilns"),
+                "short discount funds did not show Gregory's ROM response")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "discount balance response did not end Gregory's call")) {
+        return false;
+    }
+
+    task = open_services();
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "gregory_services",
+                "Gregory repeat call did not enter his Services tree")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("corporate_discount");
+    task = scripts.complete_native_menu_choice("accept_discount");
+    task = scripts.complete_native_service_result("discount_enabled");
+    profile = is_menu(task)
+                  ? scripts.resolve_dialogue_menu(*task.operation->menu)
+                  : std::nullopt;
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "gregory_discount_result" && profile.has_value() &&
+                    profile->choices.size() == 2U &&
+                    scripts.dialogue_text(profile->title_key) != nullptr,
+                "successful command 0x77 did not show its ROM result choices")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("goodbye");
+    if (!expect(is_say(task, "goodbye", "vid_phone_gregory_wilns"),
+                "discount result Goodbye did not display Gregory's farewell")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "discount result farewell did not finish the call")) {
+        return false;
+    }
+
+    task = open_services();
+    task = scripts.complete_native_menu_choice("magic_enhancement_device");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "gregory_power_focus_offer",
+                "device branch did not open Gregory's Power Focus offer")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("buy_power_focus");
+    if (!expect(is_service_call(task, "vid_phone.purchase_power_focus"),
+                "Yes did not request the Power Focus transaction")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("ineligible");
+    if (!expect(is_say(task, "power_focus_ineligible",
+                       "vid_phone_gregory_wilns"),
+                "non-mage result did not show the ROM eligibility line")) {
+        return false;
+    }
+    const auto ineligible_text = scripts.dialogue_event_text_keys(
+        "vid_phone_gregory_wilns", "field.vid_phone",
+        "power_focus_ineligible");
+    if (!expect(ineligible_text.has_value() &&
+                    scripts.dialogue_text(ineligible_text->title_key) !=
+                        nullptr &&
+                    scripts.dialogue_text(ineligible_text->title_key)->find(
+                        "magically inclined") != std::string::npos,
+                "Power Focus archetype refusal did not import its ROM text")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "Power Focus eligibility response did not end the call")) {
+        return false;
+    }
+
+    task = open_services();
+    task = scripts.complete_native_menu_choice("magic_enhancement_device");
+    task = scripts.complete_native_menu_choice("buy_power_focus");
+    task = scripts.complete_native_service_result("out_of_stock");
+    if (!expect(is_say(task, "power_focus_unavailable",
+                       "vid_phone_gregory_wilns"),
+                "full inventory did not show Gregory's ROM charge warning")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "Power Focus inventory response did not end the call")) {
+        return false;
+    }
+
+    task = open_services();
+    task = scripts.complete_native_menu_choice("magic_enhancement_device");
+    task = scripts.complete_native_menu_choice("buy_power_focus");
+    task = scripts.complete_native_service_result("purchased");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "gregory_power_focus_result",
+                "successful Power Focus purchase did not show its ROM result")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("goodbye");
+    if (!expect(is_say(task, "goodbye", "vid_phone_gregory_wilns"),
+                "Power Focus result did not display Gregory's farewell")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "Power Focus result farewell did not finish the call")) {
+        return false;
+    }
+
+    task = open_services();
+    task = scripts.complete_native_menu_choice("corporate_discount");
+    task = scripts.complete_native_menu_choice("talk_later");
+    if (!expect(is_say(task, "goodbye", "vid_phone_gregory_wilns"),
+                "Talk Later did not follow Gregory's ROM Goodbye path")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "Talk Later farewell did not end the call")) {
+        return false;
+    }
+
+    task = scripts.start_task("field_activities", "vid_phone");
+    task = scripts.complete_native_menu_input("confirm");
+    if (!expect(is_menu(task) && task.operation->menu->id ==
+                    "call_gregory_wilns_repeat_call",
+                "repeat Gregory call did not show its call prompt")) {
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("goodbye");
+    if (!expect(is_say(task, "goodbye", "vid_phone_gregory_wilns"),
+                "Gregory contact Goodbye did not follow its ROM pointer")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    return expect(task.status == ScriptTaskStep::Status::completed,
+                  "Gregory contact Goodbye did not return to the phonebook");
+}
+
 } // namespace
 
 int main() {
@@ -1272,6 +1510,10 @@ int main() {
     if (!test_macklemann_service_tree(scripts, contact_flags)) {
         std::cerr << scripts.failure() << '\n';
         return 62;
+    }
+    if (!test_gregory_service_tree(scripts, contact_flags)) {
+        std::cerr << scripts.failure() << '\n';
+        return 63;
     }
 
     contact_flags = 0x00FFU;

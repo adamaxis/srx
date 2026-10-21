@@ -278,7 +278,18 @@ Goodbye back to the service menu. The panel QA captures that offer, the
 download, and the sign-off. Sgt. Macklemann's record at `0x10BFAC` follows
 command `0x76`: 5,000 nuyen sets `FFFC2C` bit 28 for the Hollywood gate and
 does not set contact bit 5. His information pages return to the service menu;
-Goodbye disconnects. The panel QA captures the badge offer and the gate line. Its full-screen captures are source/runtime regression
+Goodbye disconnects. The panel QA captures the badge offer and the gate line.
+Gregory Wilns's record at `0x10C7FA` now opens the Lua tree at `0x10C838`.
+The four-page paranormal-creature lesson returns to Services; command `0x77`
+charges 4,000 and sets `FF018F` bit 7 for the 25% Ares shop discount, and
+command `0x78` charges 50,000 for item 24 (Power Focus, phase 2) only when the
+runner's signed `+0x9B` value is below 2 and an inventory slot is free. The
+host passes that saved flag through shop price quotes and confirmations. Debug
+and Release script, service, and full-frame panel tests cover the lesson,
+Goodbye/Talk Later paths, both purchases, eligibility, insufficient funds,
+and full inventory. These captures are runtime regression evidence; no
+independent Genesis call frame or physical route to Gregory's service has been
+identified, so the hill remains partial. Its full-screen captures are source/runtime regression
 evidence, not an independent Genesis comparison. The QA opens the field
 terminal through a controlled entry seam for its transaction tests. A separate
 Debug/Release physical-input CTest walks into Scene-0 record 62/event 31, opens

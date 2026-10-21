@@ -146,6 +146,8 @@ local function call_contact(contact)
         { "services", "goodbye" }, contact.speaker_id, "field.vid_phone")
     if choice == "services" then
         return call_contact_services(contact)
+    elseif choice == "goodbye" and contact.farewell_event ~= nil then
+        say_phone_contact(contact, contact.farewell_event)
     end
     return phone_call_finished()
 end

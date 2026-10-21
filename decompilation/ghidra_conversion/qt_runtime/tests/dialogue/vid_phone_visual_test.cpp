@@ -80,8 +80,14 @@ bool contact_cursor_is_visible(FieldDialogueRuntime& runtime) {
 bool advance(FieldDialogueRuntime& runtime, const std::uint16_t input,
              const std::string_view expected_message) {
     const auto result = runtime.advance_controller_events(input);
-    return expect(result == FieldDialogueAdvanceResult::prompt_advanced,
-                  expected_message);
+    if (result != FieldDialogueAdvanceResult::prompt_advanced) {
+        std::cerr << expected_message << " (result="
+                  << static_cast<unsigned>(result)
+                  << ", options=" << runtime.panel().option_count
+                  << ", selected=" << runtime.panel().selected_option << ")\n";
+        return false;
+    }
+    return true;
 }
 
 bool select_phone_option(FieldDialogueRuntime& runtime) {
@@ -146,13 +152,16 @@ int main(int argc, char** argv) {
         });
     std::optional<std::uint32_t> phone_funds = 3200U;
     std::optional<std::uint32_t> phone_contacts_flags = 0U;
+    std::optional<std::uint8_t> phone_feature_flags = 0U;
+    std::int8_t phone_archetype_status = 0;
     std::optional<std::uint16_t> phone_pending_destination;
     std::optional<CyberdeckRecord> phone_deck;
     std::array<std::uint8_t, 8> phone_item_codes{};
     std::array<std::uint8_t, 8> phone_item_phases{};
     runtime.set_native_script_service_callback(
         [&phone_funds, &phone_contacts_flags, &phone_item_codes,
-         &phone_item_phases, &phone_pending_destination, &phone_deck](
+         &phone_item_phases, &phone_pending_destination, &phone_deck,
+         &phone_feature_flags, &phone_archetype_status](
             const std::string_view service_id)
             -> std::optional<std::string> {
             const auto deck_action = vid_phone_deck_action_for_id(service_id);
@@ -187,7 +196,8 @@ int main(int argc, char** argv) {
             }
             const auto result = apply_vid_phone_service(
                 *action, phone_funds, phone_item_codes, phone_item_phases,
-                phone_contacts_flags);
+                phone_contacts_flags, &phone_feature_flags,
+                phone_archetype_status);
             const auto script_result = vid_phone_service_script_result(result);
             return script_result.has_value()
                        ? std::optional<std::string>{
@@ -971,6 +981,221 @@ int main(int argc, char** argv) {
                     stale_portrait_sample.blue() == 0,
                 "the old phone portrait remained over the field menu")) {
         return 8;
+    }
+
+    const auto enter_gregory_services = [&runtime]() {
+        if (!select_phone_option(runtime) ||
+            !advance(runtime, 0x4000U,
+                     "A did not open the phonebook for Gregory")) {
+            return false;
+        }
+        for (unsigned row = 0U; row < 6U; ++row) {
+            if (!advance(runtime, 0x0200U,
+                         "Down did not select Gregory Wilns")) {
+                return false;
+            }
+        }
+        return advance(runtime, 0x4000U,
+                       "A did not open Gregory's call") &&
+               advance(runtime, 0x4000U,
+                       "A did not open Gregory's Services");
+    };
+
+    phone_funds = 50000U;
+    phone_feature_flags = 0x05U;
+    phone_archetype_status = 0;
+    if (!enter_gregory_services() ||
+        !expect(runtime.panel().actor_name == "Gregory Wilns" &&
+                    runtime.panel().option_count == 3U &&
+                    panel_contains_text(runtime, "paranormal creatures"),
+                "Gregory Services did not use his source copy and portrait") ||
+        !save_panel(runtime, output_root, "58-gregory-services")) {
+        std::cerr << runtime.failure() << '\n';
+        return 27;
+    }
+    if (!advance(runtime, 0x4000U,
+                 "A did not open Gregory's creature lesson") ||
+        !expect(runtime.panel().option_count == 1U &&
+                    panel_contains_text(runtime, "Corporations are training"),
+                "creature lesson page one did not show the ROM text") ||
+        !save_panel(runtime, output_root, "59-gregory-creature-page-1") ||
+        !advance(runtime, 0x4000U,
+                 "A did not advance creature lesson page one") ||
+        !expect(panel_contains_text(runtime, "Hell hounds are most common"),
+                "creature lesson page two did not show the ROM text") ||
+        !save_panel(runtime, output_root, "60-gregory-creature-page-2") ||
+        !advance(runtime, 0x4000U,
+                 "A did not advance creature lesson page two") ||
+        !expect(panel_contains_text(runtime, "They also breathe fire"),
+                "creature lesson page three did not show the ROM text") ||
+        !save_panel(runtime, output_root, "61-gregory-creature-page-3") ||
+        !advance(runtime, 0x4000U,
+                 "A did not advance creature lesson page three") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    panel_contains_text(runtime, "blasted Deckers"),
+                "creature lesson conclusion did not show its source return menu") ||
+        !save_panel(runtime, output_root, "62-gregory-creature-page-4") ||
+        !advance(runtime, 0x4000U,
+                 "A did not return from the creature lesson to Services")) {
+        std::cerr << runtime.failure() << '\n';
+        return 28;
+    }
+
+    if (!advance(runtime, 0x2000U,
+                 "C did not select the discount service")) {
+        std::cerr << runtime.failure() << '\n';
+        return 29;
+    }
+    if (!save_panel(runtime, output_root, "63-gregory-discount-offer") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    panel_contains_text(runtime, "Merlin's Lore") &&
+                    panel_contains_text(runtime, "4,000"),
+                "discount offer did not show the source company and price")) {
+        for (std::size_t index = 0U;
+             index < runtime.panel().text_segment_count; ++index) {
+            std::cerr << "Gregory offer text: "
+                      << runtime.panel().text_segments[index] << '\n';
+        }
+        return 29;
+    }
+    if (!advance(runtime, 0x1000U,
+                 "B did not decline the discount offer") ||
+        !expect(runtime.panel().option_count == 3U,
+                "declining the discount did not return to Gregory's Services") ||
+        !advance(runtime, 0x2000U,
+                 "C did not reselect the discount service")) {
+        std::cerr << runtime.failure() << '\n';
+        return 30;
+    }
+    phone_funds = 3999U;
+    if (!advance(runtime, 0x4000U,
+                 "A did not confirm the low-funds discount offer") ||
+        !expect(runtime.panel().option_count == 0U &&
+                    panel_contains_text(runtime, "examines your balance") &&
+                    phone_funds == 3999U && phone_feature_flags == 0x05U,
+                "short discount funds changed state or skipped Gregory's refusal") ||
+        !save_panel(runtime, output_root,
+                    "64-gregory-discount-insufficient-funds") ||
+        !advance(runtime, 0x4000U,
+                 "A did not dismiss Gregory's discount refusal")) {
+        std::cerr << runtime.failure() << '\n';
+        return 31;
+    }
+
+    phone_funds = 4000U;
+    if (!enter_gregory_services() ||
+        !advance(runtime, 0x2000U,
+                 "C did not select Gregory's discount service") ||
+        !advance(runtime, 0x4000U,
+                 "A did not purchase the Merlin's Lore discount") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    panel_contains_text(runtime, "You're all set") &&
+                    phone_funds == 0U && phone_feature_flags == 0x85U,
+                "successful discount did not charge 4,000 and set FF018F bit 7") ||
+        !save_panel(runtime, output_root, "65-gregory-discount-result") ||
+        !advance(runtime, 0x1000U,
+                 "B did not select Goodbye after discount purchase") ||
+        !expect(runtime.panel().option_count == 0U &&
+                    panel_contains_text(runtime, "Goodbye"),
+                "discount result did not show the source Goodbye text") ||
+        !save_panel(runtime, output_root, "66-gregory-discount-goodbye") ||
+        !advance(runtime, 0x4000U,
+                 "A did not return from Gregory's discount call")) {
+        std::cerr << runtime.failure() << '\n';
+        return 32;
+    }
+
+    phone_funds = 50000U;
+    phone_item_codes = {};
+    phone_item_phases = {};
+    phone_archetype_status = 2;
+    if (!enter_gregory_services() ||
+        !advance(runtime, 0x1000U,
+                 "B did not select Gregory's device service") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    panel_contains_text(runtime, "50,000"),
+                "Power Focus offer did not show the ROM price") ||
+        !save_panel(runtime, output_root, "67-gregory-power-focus-offer") ||
+        !advance(runtime, 0x4000U,
+                 "A did not confirm the Power Focus offer") ||
+        !expect(runtime.panel().option_count == 0U &&
+                    panel_contains_text(runtime, "magically inclined") &&
+                    phone_funds == 50000U && phone_item_codes[0] == 0U,
+                "ineligible runner was charged or missed Gregory's refusal") ||
+        !save_panel(runtime, output_root,
+                    "68-gregory-power-focus-ineligible") ||
+        !advance(runtime, 0x4000U,
+                 "A did not dismiss Gregory's eligibility response")) {
+        std::cerr << runtime.failure() << '\n';
+        return 33;
+    }
+
+    phone_funds = 49999U;
+    phone_archetype_status = 0;
+    if (!enter_gregory_services() ||
+        !advance(runtime, 0x1000U,
+                 "B did not select Gregory's device service for funds QA") ||
+        !advance(runtime, 0x4000U,
+                 "A did not request the Power Focus with short funds") ||
+        !expect(runtime.panel().option_count == 0U &&
+                    panel_contains_text(runtime, "examines your balance") &&
+                    phone_funds == 49999U,
+                "low Power Focus funds changed the wallet or skipped refusal") ||
+        !save_panel(runtime, output_root,
+                    "69-gregory-power-focus-insufficient-funds") ||
+        !advance(runtime, 0x4000U,
+                 "A did not dismiss the Power Focus balance response")) {
+        std::cerr << runtime.failure() << '\n';
+        return 34;
+    }
+
+    phone_funds = 50000U;
+    phone_item_codes.fill(1U);
+    phone_item_phases.fill(7U);
+    if (!enter_gregory_services() ||
+        !advance(runtime, 0x1000U,
+                 "B did not select the device service for inventory QA") ||
+        !advance(runtime, 0x4000U,
+                 "A did not request the Power Focus with full inventory") ||
+        !expect(runtime.panel().option_count == 0U &&
+                    panel_contains_text(runtime, "lost its charge") &&
+                    phone_funds == 50000U && phone_item_codes[0] == 1U &&
+                    phone_item_phases[0] == 7U,
+                "full inventory changed state or skipped Gregory's warning") ||
+        !save_panel(runtime, output_root,
+                    "70-gregory-power-focus-inventory-full") ||
+        !advance(runtime, 0x4000U,
+                 "A did not dismiss Gregory's inventory warning")) {
+        std::cerr << runtime.failure() << '\n';
+        return 35;
+    }
+
+    phone_funds = 50000U;
+    phone_item_codes = {};
+    phone_item_phases = {};
+    if (!enter_gregory_services() ||
+        !advance(runtime, 0x1000U,
+                 "B did not select the device service for purchase") ||
+        !advance(runtime, 0x4000U,
+                 "A did not buy the Power Focus") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    panel_contains_text(runtime, "riggers fly this out") &&
+                    phone_funds == 0U && phone_item_codes[0] == 24U &&
+                    phone_item_phases[0] == 2U,
+                "Power Focus purchase did not charge, write item 24/phase 2, and show success") ||
+        !save_panel(runtime, output_root,
+                    "71-gregory-power-focus-purchase-result") ||
+        !advance(runtime, 0x1000U,
+                 "B did not select Goodbye after Power Focus purchase") ||
+        !save_panel(runtime, output_root,
+                    "72-gregory-power-focus-goodbye") ||
+        !advance(runtime, 0x4000U,
+                 "A did not return to the field menu after Power Focus")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 36;
     }
     return 0;
 }

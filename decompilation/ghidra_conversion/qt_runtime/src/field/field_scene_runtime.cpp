@@ -685,10 +685,12 @@ std::string centered_command_footer(const std::string_view label) {
 constexpr std::size_t kSceneProfileEntityPositionWord = 33U;
 
 FieldActionCostContext ares_cost_context(
-    const std::uint8_t menu_mode, const RunnerRecordFields& runner) {
+    const std::uint8_t menu_mode, const RunnerRecordFields& runner,
+    const std::uint8_t runner_feature_flags) {
     // Ares enters the service with FFF0B6 = 1. 1AAC6E[1] is 2, and the
     // source reads the active runner's +0x8C statistic (typed as skills[11]).
-    return FieldActionCostContext{menu_mode, 0U, runner.skills[11], 2U};
+    return FieldActionCostContext{
+        menu_mode, runner_feature_flags, runner.skills[11], 2U};
 }
 
 std::optional<std::uint16_t> source_delay_mode(
@@ -755,7 +757,8 @@ struct FieldShopProgressionInput {
 
 std::optional<FieldShopProgressionInput> make_field_shop_progression_input(
     const ShopMenuController& menu, const RunnerRecordFields& runner,
-    const std::uint32_t funds, const MagicSpellTable& spell_table) {
+    const std::uint32_t funds, const MagicSpellTable& spell_table,
+    const std::uint8_t runner_feature_flags) {
     const auto menu_mode = menu.menu_mode();
     if (menu.shop() != ShopId::medicine_lodge ||
         menu.selected_group() != ShopActionGroup::magic_spells ||
@@ -792,7 +795,8 @@ std::optional<FieldShopProgressionInput> make_field_shop_progression_input(
     result.state.runner_progression_limit =
         static_cast<std::int8_t>(runner.auxiliary[0]);
     result.state.funds = funds;
-    result.state.cost_context = ares_cost_context(menu_mode, runner);
+    result.state.cost_context =
+        ares_cost_context(menu_mode, runner, runner_feature_flags);
     result.state.ledger.source_record_count_word =
         spell_table.entry_count == 0U
             ? 0U
@@ -1166,7 +1170,8 @@ FieldSceneRuntime::FieldSceneRuntime(
                     *vid_phone_action, field_funds_,
                     runner.inventory_item_codes,
                     runner.inventory_phase_bytes,
-                    notebook_contacts_flags_);
+                    notebook_contacts_flags_, &field_runner_feature_flags_,
+                    static_cast<std::int8_t>(runner.archetype_index));
                 if (result == VidPhoneServiceResult::purchased) {
                     refresh_field_hud_runner_slot();
                     refresh_command_overview_combat_bars();
@@ -15931,7 +15936,8 @@ void FieldSceneRuntime::advance_frame() {
                 active_runner_record(), field_shop_menu_.selected_cursor(),
                 *field_funds_);
             const auto cost_context = ares_cost_context(
-                field_shop_menu_.menu_mode(), active_runner_record());
+                field_shop_menu_.menu_mode(), active_runner_record(),
+                field_runner_feature_flags_.value_or(0U));
             const auto confirmation_was_open =
                 field_shop_menu_.transaction_confirmation_open();
             const auto transaction_event =
@@ -16011,7 +16017,8 @@ void FieldSceneRuntime::advance_frame() {
                 auto purchase_state = make_purchase_state(
                     active_runner_record(), *field_funds_);
                 const auto cost_context = ares_cost_context(
-                    field_shop_menu_.menu_mode(), active_runner_record());
+                    field_shop_menu_.menu_mode(), active_runner_record(),
+                    field_runner_feature_flags_.value_or(0U));
                 const auto transaction_event =
                     field_shop_menu_.begin_purchase(
                         *field_shop_menu_.pending_action()->offer,
@@ -16037,7 +16044,8 @@ void FieldSceneRuntime::advance_frame() {
                     active_runner_record(), field_shop_menu_.selected_cursor(),
                     *field_funds_);
                 const auto cost_context = ares_cost_context(
-                    field_shop_menu_.menu_mode(), active_runner_record());
+                    field_shop_menu_.menu_mode(), active_runner_record(),
+                    field_runner_feature_flags_.value_or(0U));
                 const auto transaction_event = field_shop_menu_.begin_sale(
                     cost_context, sale_state, item_resale_base_lookup());
                 if (transaction_event == ShopTransactionEvent::message_shown) {
@@ -16074,7 +16082,8 @@ void FieldSceneRuntime::advance_frame() {
                 }
                 auto progression = make_field_shop_progression_input(
                     field_shop_menu_, active_runner_record(), *field_funds_,
-                    *source_table);
+                    *source_table,
+                    field_runner_feature_flags_.value_or(0U));
                 if (!progression.has_value()) {
                     shop_boundary("progression_source_state_unavailable");
                     field_shop_menu_.finish_action();
@@ -18363,7 +18372,8 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                 if (!transaction_replaces_detail && spell_table != nullptr) {
                     auto progression = make_field_shop_progression_input(
                         field_shop_menu_, active_runner_record(),
-                        field_funds_.value_or(0U), *spell_table);
+                        field_funds_.value_or(0U), *spell_table,
+                        field_runner_feature_flags_.value_or(0U));
                     if (progression.has_value()) {
                         progression_quote =
                             prepare_field_action_progression_quote(
@@ -18568,7 +18578,9 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                     const auto amount = calculate_field_action_record_cost(
                         *selected_offer,
                         ares_cost_context(field_shop_menu_.menu_mode(),
-                                          active_runner_record()),
+                                          active_runner_record(),
+                                          field_runner_feature_flags_.value_or(
+                                              0U)),
                         item_base_cost_lookup());
                     draw_command_overview_number(
                         painter, command_overview_font_, 184, 112, amount,

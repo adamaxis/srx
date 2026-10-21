@@ -470,7 +470,7 @@ local vid_phone_contacts = {
     { source_index = 3, id = "kipp_david", name = "Kipp David", name_key = "pocket_secretary.notebook.contact.name.option.record_3", portrait_alias = "dialogue.portraits.vid.phone.kipp.david", service_module = "vid_phone.kipp_david", service_function = "services" },
     { source_index = 4, id = "wilma_temmenhoff", name = "Wilma Temmenhoff", name_key = "pocket_secretary.notebook.contact.name.option.record_4", portrait_alias = "dialogue.portraits.vid.phone.wilma.temmenhoff", service_module = "vid_phone.wilma_temmenhoff", service_function = "services" },
     { source_index = 5, id = "macklemann", name = "Sgt. Macklemann", name_key = "pocket_secretary.notebook.contact.name.option.record_5", portrait_alias = "dialogue.portraits.vid.phone.macklemann", service_module = "vid_phone.macklemann", service_function = "services" },
-    { source_index = 6, id = "gregory_wilns", name = "Gregory Wilns", name_key = "pocket_secretary.notebook.contact.name.option.record_6", portrait_alias = "dialogue.portraits.vid.phone.gregory.wilns" },
+    { source_index = 6, id = "gregory_wilns", name = "Gregory Wilns", name_key = "pocket_secretary.notebook.contact.name.option.record_6", portrait_alias = "dialogue.portraits.vid.phone.gregory.wilns", service_module = "vid_phone.gregory_wilns", service_function = "services", farewell_event = "goodbye" },
     { source_index = 7, id = "mr_faradouchi", name = "Mr. Faradouchi", name_key = "pocket_secretary.notebook.contact.name.option.record_7", portrait_alias = "dialogue.portraits.vid.phone.mr.faradouchi", always_first = true, first_continuation = true, repeat_continuation = true },
     { source_index = 8, id = "agira_tetsumi", name = "Agira Tetsumi", name_key = "pocket_secretary.notebook.contact.name.option.record_8", portrait_alias = "dialogue.portraits.vid.phone.agira.tetsumi", always_first = true, first_continuation = true, repeat_continuation = true },
     { source_index = 9, id = "henry_j_culver", name = "Henry J. Culver", name_key = "pocket_secretary.notebook.contact.name.option.record_9", portrait_alias = "dialogue.portraits.vid.phone.henry.j.culver" },
@@ -1354,6 +1354,46 @@ for _, contact in ipairs(vid_phone_contacts) do
 end
 menu_profiles["field.vid_phone"] = phone_profile
 
+local gregory_prefix = "vid_phone.gregory_wilns."
+local function define_gregory_menu(id, text_id, option_keys)
+    phone_profile[id] = {
+        title_key = gregory_prefix .. text_id,
+        choice_label_keys = option_keys,
+    }
+end
+
+define_gregory_menu("gregory_services", "services", {
+    paranormal_creatures = gregory_prefix .. "option.paranormal_creatures",
+    magic_enhancement_device = gregory_prefix .. "option.magic_enhancement_device",
+    corporate_discount = gregory_prefix .. "option.corporate_discount",
+})
+for index = 1, 3 do
+    define_gregory_menu("gregory_creature_page_" .. index,
+        "creature_page_" .. index, { more = "vid_phone.option.more" })
+end
+define_gregory_menu("gregory_creature_page_4", "creature_page_4", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+define_gregory_menu("gregory_discount_offer", "discount_offer", {
+    accept_discount = gregory_prefix .. "option.yes",
+    decline_discount = gregory_prefix .. "option.no",
+    talk_later = gregory_prefix .. "option.talk_later",
+})
+define_gregory_menu("gregory_discount_result", "discount_result", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+define_gregory_menu("gregory_power_focus_offer", "power_focus_offer", {
+    buy_power_focus = gregory_prefix .. "option.yes",
+    decline_discount = gregory_prefix .. "option.no",
+    talk_later = gregory_prefix .. "option.talk_later",
+})
+define_gregory_menu("gregory_power_focus_result", "power_focus_result", {
+    services = "vid_phone.option.services",
+    goodbye = "vid_phone.option.goodbye",
+})
+
 local quinton = speakers.vid_phone_capt_quinton_jaymes
 quinton.events.purchase_insufficient = {
     title_key = "vid_phone.capt_quinton_jaymes.purchase.insufficient",
@@ -1365,6 +1405,24 @@ quinton.events.purchase_out_of_stock = {
 }
 quinton.events.services_disconnected = {
     title_key = "vid_phone.capt_quinton_jaymes.services.disconnected",
+    continuation_key = "",
+}
+
+local gregory = speakers.vid_phone_gregory_wilns
+gregory.events.goodbye = {
+    title_key = "vid_phone.goodbye",
+    continuation_key = "",
+}
+gregory.events.insufficient_balance = {
+    title_key = "vid_phone.gregory_wilns.insufficient_balance",
+    continuation_key = "",
+}
+gregory.events.power_focus_unavailable = {
+    title_key = "vid_phone.gregory_wilns.power_focus_unavailable",
+    continuation_key = "",
+}
+gregory.events.power_focus_ineligible = {
+    title_key = "vid_phone.gregory_wilns.power_focus_ineligible",
     continuation_key = "",
 }
 

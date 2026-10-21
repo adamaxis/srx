@@ -22,6 +22,8 @@ enum class VidPhoneServiceAction : std::uint8_t {
     purchase_maglock_passkey_level_3,
     purchase_maglock_passkey_level_5,
     purchase_smart_goggles,
+    purchase_merlins_lore_discount,
+    purchase_power_focus,
     hire_sharkey,
     hire_macklemann,
     issue_hollywood_badge,
@@ -102,6 +104,8 @@ enum class VidPhoneServiceResult : std::uint8_t {
     hired,
     insufficient_funds,
     inventory_full,
+    ineligible,
+    discount_enabled,
     unavailable,
 };
 
@@ -136,6 +140,11 @@ inline std::optional<VidPhoneSupplyOffer> vid_phone_supply_offer(
         return VidPhoneSupplyOffer{UsItemCode::maglock_passkey, 20000U, 5U};
     case VidPhoneServiceAction::purchase_smart_goggles:
         return VidPhoneSupplyOffer{UsItemCode::smart_goggles, 3000U, 0U};
+    case VidPhoneServiceAction::purchase_power_focus:
+        // Gregory Wilns, command 0x78 at ROM 0x22C46. Item 0x18 is the
+        // Power Focus; the transaction initializes its phase/charge byte to 2.
+        return VidPhoneSupplyOffer{UsItemCode::power_focus, 50000U, 2U};
+    case VidPhoneServiceAction::purchase_merlins_lore_discount:
     case VidPhoneServiceAction::hire_sharkey:
     case VidPhoneServiceAction::hire_macklemann:
     case VidPhoneServiceAction::issue_hollywood_badge:
@@ -161,6 +170,12 @@ inline std::optional<VidPhoneServiceAction> vid_phone_service_action_for_id(
     if (service_id == "vid_phone.purchase_smart_goggles") {
         return VidPhoneServiceAction::purchase_smart_goggles;
     }
+    if (service_id == "vid_phone.purchase_merlins_lore_discount") {
+        return VidPhoneServiceAction::purchase_merlins_lore_discount;
+    }
+    if (service_id == "vid_phone.purchase_power_focus") {
+        return VidPhoneServiceAction::purchase_power_focus;
+    }
     if (service_id == "vid_phone.hire_sharkey") {
         return VidPhoneServiceAction::hire_sharkey;
     }
@@ -180,6 +195,8 @@ inline std::optional<std::string_view> vid_phone_service_script_result(
     case VidPhoneServiceResult::hired: return "hired";
     case VidPhoneServiceResult::insufficient_funds: return "insufficient";
     case VidPhoneServiceResult::inventory_full: return "out_of_stock";
+    case VidPhoneServiceResult::ineligible: return "ineligible";
+    case VidPhoneServiceResult::discount_enabled: return "discount_enabled";
     case VidPhoneServiceResult::unavailable: return std::nullopt;
     }
     return std::nullopt;
@@ -193,7 +210,9 @@ inline VidPhoneServiceResult apply_vid_phone_service(
     std::optional<std::uint32_t>& funds,
     std::array<std::uint8_t, 8>& inventory_item_codes,
     std::array<std::uint8_t, 8>& inventory_phase_bytes,
-    std::optional<std::uint32_t>& notebook_contacts_flags) noexcept {
+    std::optional<std::uint32_t>& notebook_contacts_flags,
+    std::optional<std::uint8_t>* runner_feature_flags = nullptr,
+    std::optional<std::int8_t> runner_archetype_status = std::nullopt) noexcept {
     // 0x22BF6 charges 5,000 and sets FFFC2C bit 28. The 0x03FFFFFF
     // contact/call-history mask would drop that bit. Command 0x64
     // clears it when the Hollywood gate plays.
@@ -209,6 +228,33 @@ inline VidPhoneServiceResult apply_vid_phone_service(
         *funds -= kBadgePrice;
         *notebook_contacts_flags |= kHollywoodGateBit;
         return VidPhoneServiceResult::hired;
+    }
+
+    // Gregory's command 0x77 (ROM 0x22C22) charges 4,000 and sets
+    // FF018F bit 7, the Merlin's Lore corporate discount flag.
+    if (action == VidPhoneServiceAction::purchase_merlins_lore_discount) {
+        constexpr std::uint32_t kDiscountPrice = 0x0FA0U;
+        if (runner_feature_flags == nullptr ||
+            !runner_feature_flags->has_value() || !funds.has_value()) {
+            return VidPhoneServiceResult::unavailable;
+        }
+        if (*funds < kDiscountPrice) {
+            return VidPhoneServiceResult::insufficient_funds;
+        }
+        *funds -= kDiscountPrice;
+        **runner_feature_flags |= 0x80U;
+        return VidPhoneServiceResult::discount_enabled;
+    }
+
+    // Command 0x78 (ROM 0x22C46) permits only +0x9B values below 2,
+    // then checks for a free ordinary inventory record before charging.
+    if (action == VidPhoneServiceAction::purchase_power_focus) {
+        if (!runner_archetype_status.has_value()) {
+            return VidPhoneServiceResult::unavailable;
+        }
+        if (*runner_archetype_status >= 2) {
+            return VidPhoneServiceResult::ineligible;
+        }
     }
 
     const auto contact_offer = [&action]()

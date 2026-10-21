@@ -15,6 +15,7 @@ enum class UsItemCode : std::uint8_t {
     frag_grenade = 13U,
     maglock_passkey = 20U,
     smart_goggles = 22U,
+    power_focus = 24U,
 };
 
 // The confirmed D4540 fields used by converted field/menu routines.  The

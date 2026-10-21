@@ -1,4 +1,5 @@
 #include "shop_menu_runtime.hpp"
+#include "shadowrun_ghidra/field/field_action_cost_conversion.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -14,6 +15,12 @@ bool expect(const bool condition) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
     using namespace shadowrun::ghidra_conversion::qt_runtime;
+
+    const FieldActionCostContext merlins_lore_discount{5U, 0x80U, 0U, 2U};
+    if (!expect(apply_field_action_cost_discounts(
+                    1000U, merlins_lore_discount) == 750U)) {
+        return 50;
+    }
 
     const auto ares = ShopId::ares_weapon_emporium;
     const std::array<std::string, 2> confirmation_choice_ids{{"yes", "no"}};

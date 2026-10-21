@@ -27,6 +27,7 @@ int main() {
         find_us_item_definition(UsItemCode::maglock_passkey);
     const auto* smart_goggles =
         find_us_item_definition(UsItemCode::smart_goggles);
+    const auto* power_focus = find_us_item_definition(UsItemCode::power_focus);
     const auto grenade_offer = vid_phone_supply_offer(
         VidPhoneServiceAction::purchase_frag_grenades);
     const auto hk227_s_offer = vid_phone_supply_offer(
@@ -37,13 +38,17 @@ int main() {
         VidPhoneServiceAction::purchase_maglock_passkey_level_5);
     const auto smart_goggles_offer = vid_phone_supply_offer(
         VidPhoneServiceAction::purchase_smart_goggles);
+    const auto power_focus_offer = vid_phone_supply_offer(
+        VidPhoneServiceAction::purchase_power_focus);
     if (!expect(frag_grenade != nullptr && hk227_s != nullptr &&
                     maglock_passkey != nullptr &&
                     smart_goggles != nullptr &&
+                    power_focus != nullptr &&
                     grenade_offer.has_value() && hk227_s_offer.has_value() &&
                     level3_passkey_offer.has_value() &&
                     level5_passkey_offer.has_value() &&
                     smart_goggles_offer.has_value() &&
+                    power_focus_offer.has_value() &&
                     grenade_offer->item_code == UsItemCode::frag_grenade &&
                     hk227_s_offer->item_code == UsItemCode::hk227_s_smg &&
                     grenade_offer->price == 400U &&
@@ -71,7 +76,11 @@ int main() {
                         UsItemCode::smart_goggles &&
                     smart_goggles_offer->price == 3000U &&
                     smart_goggles_offer->item_phase == 0U &&
-                    smart_goggles->item_code == 22U,
+                    smart_goggles->item_code == 22U &&
+                    power_focus_offer->item_code == UsItemCode::power_focus &&
+                    power_focus_offer->price == 50000U &&
+                    power_focus_offer->item_phase == 2U &&
+                    power_focus->item_code == 24U,
                 "service offer records did not preserve ROM item identity, "
                 "price, attachment phase, and clip capacity separately")) {
         return 10;
@@ -92,6 +101,12 @@ int main() {
                     vid_phone_service_action_for_id(
                         "vid_phone.purchase_smart_goggles") ==
                     VidPhoneServiceAction::purchase_smart_goggles &&
+                    vid_phone_service_action_for_id(
+                        "vid_phone.purchase_merlins_lore_discount") ==
+                    VidPhoneServiceAction::purchase_merlins_lore_discount &&
+                    vid_phone_service_action_for_id(
+                        "vid_phone.purchase_power_focus") ==
+                    VidPhoneServiceAction::purchase_power_focus &&
                     vid_phone_service_action_for_id(
                         "vid_phone.hire_sharkey") ==
                     VidPhoneServiceAction::hire_sharkey &&
@@ -536,6 +551,74 @@ int main() {
                     !vid_phone_service_script_result(badge).has_value(),
                 "missing contact flags still issued the Hollywood badge")) {
         return 39;
+    }
+
+    std::optional<std::uint8_t> feature_flags = 0x05U;
+    funds = 3999U;
+    auto gregory = apply_vid_phone_service(
+        VidPhoneServiceAction::purchase_merlins_lore_discount, funds,
+        item_codes, item_phases, badge_flags, &feature_flags);
+    if (!expect(gregory == VidPhoneServiceResult::insufficient_funds &&
+                    funds == 3999U && feature_flags == 0x05U &&
+                    vid_phone_service_script_result(gregory) ==
+                        "insufficient",
+                "short Merlin's Lore funds changed the wallet or feature flags")) {
+        return 40;
+    }
+    funds = 4000U;
+    gregory = apply_vid_phone_service(
+        VidPhoneServiceAction::purchase_merlins_lore_discount, funds,
+        item_codes, item_phases, badge_flags, &feature_flags);
+    if (!expect(gregory == VidPhoneServiceResult::discount_enabled &&
+                    funds == 0U && feature_flags == 0x85U &&
+                    vid_phone_service_script_result(gregory) ==
+                        "discount_enabled",
+                "4,000-nuyen discount did not set FF018F bit 7")) {
+        return 41;
+    }
+    feature_flags.reset();
+    funds = 4000U;
+    gregory = apply_vid_phone_service(
+        VidPhoneServiceAction::purchase_merlins_lore_discount, funds,
+        item_codes, item_phases, badge_flags, &feature_flags);
+    if (!expect(gregory == VidPhoneServiceResult::unavailable &&
+                    funds == 4000U,
+                "unknown runner feature flags still granted the discount")) {
+        return 42;
+    }
+
+    item_codes = {};
+    item_phases = {};
+    funds = 50000U;
+    gregory = apply_vid_phone_service(
+        VidPhoneServiceAction::purchase_power_focus, funds, item_codes,
+        item_phases, badge_flags, nullptr, std::int8_t{2});
+    if (!expect(gregory == VidPhoneServiceResult::ineligible &&
+                    funds == 50000U && item_codes[0] == 0U &&
+                    vid_phone_service_script_result(gregory) == "ineligible",
+                "non-mage archetype was charged or received a Power Focus")) {
+        return 43;
+    }
+    gregory = apply_vid_phone_service(
+        VidPhoneServiceAction::purchase_power_focus, funds, item_codes,
+        item_phases, badge_flags, nullptr, std::int8_t{1});
+    if (!expect(gregory == VidPhoneServiceResult::purchased && funds == 0U &&
+                    item_codes[0] == 24U && item_phases[0] == 2U,
+                "eligible Power Focus purchase did not write item 24/phase 2")) {
+        return 44;
+    }
+    item_codes.fill(1U);
+    item_phases.fill(7U);
+    funds = 50000U;
+    gregory = apply_vid_phone_service(
+        VidPhoneServiceAction::purchase_power_focus, funds, item_codes,
+        item_phases, badge_flags, nullptr, std::int8_t{0});
+    if (!expect(gregory == VidPhoneServiceResult::inventory_full &&
+                    funds == 50000U && item_codes[0] == 1U &&
+                    item_phases[0] == 7U &&
+                    vid_phone_service_script_result(gregory) == "out_of_stock",
+                "full inventory changed funds/items during Power Focus purchase")) {
+        return 45;
     }
 
     return 0;
