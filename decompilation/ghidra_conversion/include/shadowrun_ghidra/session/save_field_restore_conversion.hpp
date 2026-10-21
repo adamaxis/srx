@@ -12,6 +12,9 @@ namespace shadowrun::ghidra_conversion {
 constexpr std::size_t kSaveFieldSourceOffset = 0x3D6U;
 constexpr std::size_t kSaveFieldPayloadSize = 0x248U;
 constexpr std::size_t kSaveFieldTailSize = 0x12U;
+// The copied payload begins at FFF9FA; its byte at +0x22C is ROM FFFC26,
+// used by indexed title services such as Boris' Scene-2 dialogue.
+constexpr std::size_t kSaveFieldDialogueFlagsOffset = 0x22CU;
 constexpr std::size_t kSaveFieldImageSize =
     kSaveFieldSourceOffset + kSaveFieldPayloadSize + kSaveFieldTailSize;
 
@@ -36,6 +39,7 @@ struct SaveFieldRestoreState {
     std::array<RestoredRunnerPosition, 3> runner_positions{};
 
     RunnerRosterState roster{};
+    std::uint8_t dialogue_flags = 0; // source FFFC26
     std::uint8_t field_flags = 0;
     std::array<std::uint8_t, 2> recruited_runner_effect_flags{};
     std::size_t active_runner_slot = 0;

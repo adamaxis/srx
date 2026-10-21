@@ -43,6 +43,8 @@ SaveFieldRestoreResult restore_saved_field_state(
                                          kSaveFieldSourceOffset);
     std::copy_n(source_begin, kSaveFieldPayloadSize,
                 state.work_payload.begin());
+    state.dialogue_flags =
+        state.work_payload[kSaveFieldDialogueFlagsOffset];
 
     // The saved markers are inside the copied payload at the offsets that
     // became FFFC0C and FFFC0D after the source copy.

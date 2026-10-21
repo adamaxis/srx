@@ -345,6 +345,10 @@ constexpr std::string_view kStoryTriggerActivePrefix = "story_trigger_active_";
 constexpr std::string_view kFieldModeFlagBitPrefix = "field_mode_flag_bit_";
 constexpr std::string_view kFieldModeEffectFlagBitPrefix =
     "field_mode_effect_flag_bit_";
+// ROM FFFC26: dialogue and indexed-title-service branch state. Keep this
+// byte separate from the FFFC30 mode word and FFFC34 effect word.
+constexpr std::string_view kFieldDialogueFlagBitPrefix =
+    "field_dialogue_flag_bit_";
 // ROM FFFC40 is a separate field-activity fact word used by the Council
 // Island Spirit Eyes sequence. Keep it distinct from FFFC34 mode effects.
 constexpr std::string_view kFieldAuxiliaryFlagBitPrefix =
@@ -8708,6 +8712,10 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
                  field_dialogue_register_.has_value()
                      ? QJsonValue(*field_dialogue_register_)
                      : QJsonValue(QJsonValue::Null));
+    story.insert(QStringLiteral("dialogue_flags"),
+                 field_dialogue_flags_.has_value()
+                     ? QJsonValue(*field_dialogue_flags_)
+                     : QJsonValue(QJsonValue::Null));
     story.insert(QStringLiteral("map_event_flags"),
                  static_cast<double>(field_map_event_state_flags_));
     story.insert(QStringLiteral("group_item_flags"),
@@ -8832,6 +8840,7 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         std::uint32_t auxiliary_flags = 0U;
         std::uint32_t render_effect_flags = 0U;
         std::optional<std::uint8_t> dialogue_register;
+        std::optional<std::uint8_t> dialogue_flags;
         std::uint32_t map_event_flags = 0U;
         std::optional<std::uint32_t> group_item_flags;
         std::optional<bool> cyberdeck_available;
@@ -9060,6 +9069,8 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
             restored.matrix_field_state, error) ||
         !read_optional_unsigned("dialogue_register", 0xFF,
                                 restored.dialogue_register) ||
+        !read_optional_unsigned("dialogue_flags", 0xFF,
+                                restored.dialogue_flags) ||
         !read_optional_unsigned("group_item_flags", 0xFFFFFFFFLL,
                                 restored.group_item_flags) ||
         !read_optional_unsigned("matrix_passcode_flags", 0xFFFF,
@@ -9215,6 +9226,7 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     field_auxiliary_flags_ = restored.auxiliary_flags;
     field_render_effect_flags_ = restored.render_effect_flags;
     field_dialogue_register_ = restored.dialogue_register;
+    field_dialogue_flags_ = restored.dialogue_flags;
     field_map_event_state_flags_ = restored.map_event_flags;
     group_item_flags_ = restored.group_item_flags;
     cyberdeck_available_ = restored.cyberdeck_available;
@@ -11480,6 +11492,10 @@ bool FieldSceneRuntime::bootstrap(
     // New Game seeds FFFC30 bit 0 at ROM 0x59C48.
     field_mode_flags_ = 1U;
     field_mode_effect_flags_ = 0U;
+    field_dialogue_flags_ = restored_field_state == nullptr
+        ? std::optional<std::uint8_t>{0U}
+        : std::optional<std::uint8_t>{
+              restored_field_state->dialogue_flags};
     field_pending_world_effect_ = false;
     field_world_effect_active_ = false;
     field_auxiliary_flags_ = 0U;
@@ -11591,6 +11607,14 @@ bool FieldSceneRuntime::bootstrap(
                     name, kFieldModeEffectFlagBitPrefix)) {
                 // Source FFFC34: world/dialogue effect flags.
                 return (field_mode_effect_flags_ & (1U << *bit)) != 0U;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kFieldDialogueFlagBitPrefix, 8U)) {
+                if (!field_dialogue_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                return (*field_dialogue_flags_ &
+                        static_cast<std::uint8_t>(1U << *bit)) != 0U;
             }
             if (const auto bit = story_fact_bit_index(
                     name, kFieldAuxiliaryFlagBitPrefix)) {
@@ -11732,6 +11756,18 @@ bool FieldSceneRuntime::bootstrap(
                 field_mode_effect_flags_ = value
                     ? field_mode_effect_flags_ | mask
                     : field_mode_effect_flags_ & ~mask;
+                return true;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kFieldDialogueFlagBitPrefix, 8U)) {
+                if (!field_dialogue_flags_.has_value()) {
+                    return false;
+                }
+                const auto mask = static_cast<std::uint8_t>(1U << *bit);
+                *field_dialogue_flags_ = value
+                    ? static_cast<std::uint8_t>(*field_dialogue_flags_ | mask)
+                    : static_cast<std::uint8_t>(*field_dialogue_flags_ &
+                                                static_cast<std::uint8_t>(~mask));
                 return true;
             }
             if (const auto bit = story_fact_bit_index(
