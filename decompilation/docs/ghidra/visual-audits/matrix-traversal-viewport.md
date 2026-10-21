@@ -568,8 +568,13 @@ Lua's `matrix_session.node_status` exposes this source-derived id as
 traversal presenter consumes it to choose the named model asset. For the
 compact System 2 SPU route, Lua maps elapsed source ticks to a measured canvas
 using the independently observed green bounds; the Debug/Release entry CTest
-checks eleven positions. Other model IDs and the source packet-to-visible
-projection remain open.
+checks eleven positions. The bound scan starts below y=45: the previous scan
+included the green HUD bracket at y=38, so its measurements were not
+object-only. The corrected samples use the green-object extents in independent
+Section 21 frames `004730` through `004830`. Debug and Release captures now
+match those reference bounds within two pixels at every anchor. This remains
+visual scale and placement calibration, not a decoded source-packet transform.
+Other model IDs and the source packet-to-visible projection remain open.
 
 The world-model palette selection is dynamic. `0x176EA` initially copies the
 four-line block at `0xE2E3A` into the palette shadow, and the world-model SAT
@@ -588,11 +593,13 @@ shows the Sub-Processor Unit's faceted model in green; the old host comparison
 used a different system/node and rendered the model in gray. The earlier claim
 that the gray model asset matched the green reference, plus the claim that its
 center color established a separate amber model layer, is withdrawn. The
-security-color palette mapping is ROM-traced. The compact System 2 SPU
-projection now follows all eleven measured Section 21 extents from `004730`
-through `004830`; this is visual calibration, not a decoded source-packet
-transform. Other model profiles, entry streams, and same-state world-effect
-comparisons remain open.
+security-color palette mapping is ROM-traced. The corrected host scan excludes
+the HUD bracket, and the eleven System 2 SPU samples now use the object-only
+bounds from Section 21 frames `004730` through `004830`. Rendered bounds are
+within two pixels of the independent frame measurements at every anchor. The
+host still scales one named model image; its facet shape and the ROM's
+per-frame packed-pixel resampler remain unresolved. Other model profiles,
+entry streams, and same-state world-effect comparisons remain open.
 
 The mode selector at `0x1A908` calls `0x19B40`; the selector reads the current
 node's `+0x13` IC-combo code and applies `0xE31A7` under the `FFDF84` and

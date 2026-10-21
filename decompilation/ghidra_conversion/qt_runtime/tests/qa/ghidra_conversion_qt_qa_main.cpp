@@ -23865,7 +23865,10 @@ int main(int argc, char** argv) {
                     int min_y = image.height();
                     int max_x = -1;
                     int max_y = -1;
-                    for (int y = 38; y < 120; ++y) {
+                    // The green brackets at y=38 are HUD art, not part of
+                    // the world model. Keep the measured viewport region
+                    // below them so the bounds track only the object.
+                    for (int y = 45; y < 120; ++y) {
                         for (int x = 100; x < 220; ++x) {
                             const auto color = image.pixelColor(x, y);
                             if (color.red() < 20 && color.green() >= 15 &&
@@ -24032,16 +24035,16 @@ int main(int argc, char** argv) {
                 };
                 constexpr std::array<EntryAnchor, 11> kEntryAnchors{{
                     {40, 4730, QRect(159, 100, 3, 3)},
-                    {60, 4740, QRect(156, 99, 8, 6)},
-                    {80, 4750, QRect(154, 93, 14, 15)},
-                    {100, 4760, QRect(150, 88, 22, 21)},
-                    {120, 4770, QRect(148, 82, 26, 27)},
-                    {140, 4780, QRect(144, 74, 32, 36)},
-                    {160, 4790, QRect(140, 67, 40, 43)},
-                    {180, 4800, QRect(136, 60, 46, 51)},
-                    {200, 4810, QRect(130, 53, 58, 57)},
-                    {220, 4820, QRect(126, 45, 62, 62)},
-                    {239, 4830, QRect(122, 38, 74, 67)},
+                    {60, 4740, QRect(156, 97, 8, 8)},
+                    {80, 4750, QRect(152, 93, 16, 16)},
+                    {100, 4760, QRect(150, 87, 22, 24)},
+                    {120, 4770, QRect(146, 82, 28, 29)},
+                    {140, 4780, QRect(142, 74, 34, 38)},
+                    {160, 4790, QRect(138, 67, 44, 45)},
+                    {180, 4800, QRect(134, 60, 50, 51)},
+                    {200, 4810, QRect(130, 53, 58, 58)},
+                    {220, 4820, QRect(124, 45, 64, 63)},
+                    {239, 4830, QRect(120, 45, 76, 61)},
                 }};
                 int current_vblank = 0;
                 for (const auto& anchor : kEntryAnchors) {

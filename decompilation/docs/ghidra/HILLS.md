@@ -91,15 +91,20 @@ the longplay. The selected entry layer now composes fixed world-sequence lists
 and `0xEA4A4`, retaining phase 4 after the compact 239-VBlank entry.
 Debug/Release traversal-entry QA compares eleven model bounds with independent
 Section 21 frames `004730`–`004830` and checks the wide runner in its full
-320x224 capture. Both Matrix traversal CTests pass in Debug and Release.
+320x224 capture. Its scan now starts below the green HUD bracket, which the
+previous scan had counted as part of the model. The corrected bounds match the
+independent frame extents within two pixels at every anchor; the named image's
+facet shape and the source resampler remain unresolved. Both Matrix traversal
+CTests pass in Debug and Release.
 
 All six source model identities are mapped. The active importer emits all
 four ROM-selected security-color palettes for each model: `0x19DF2` reads
 `FF1105`, and `0x566D8` replaces CRAM line 0 from the matching `0xE2D52`
 record. Section 21 frames `004620` and `004680` are a node-action panel and
 black transition, not model-size samples. The System 2 SPU entry projection
-is now visually checked across the source sequence, but the complete
-packet-to-screen conversion and other model entry profiles remain open. The
+has independent object-bound checks across the source sequence, but the
+complete packet-to-screen conversion, facet appearance, and other model entry
+profiles remain open. The
 changing traversal HUD text path is traced through
 `0x17998`/`0x17A5E`/`0x17BC0`, including its Plane-A write addresses, and is
 presented from typed Lua state. The nine `0x1A9CE` world-effect modes and the
