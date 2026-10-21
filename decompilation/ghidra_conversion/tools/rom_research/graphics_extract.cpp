@@ -895,12 +895,41 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"salish.red_buffalo.page.branch_21", 0x0F8AB9U},
         {"salish.red_buffalo.page.branch_22", 0x0F8A88U},
         {"salish.red_buffalo.option.no_business", 0x0FBD5AU},
-        // Other indexed title services attached to authored building entities.
+        // Scene-2/event-6 indexed title service 10 for Boris' Greenhouse.
+        // Keep the text roots and labels as named host assets; the dialogue
+        // graph itself is expressed in Lua from the traced source branches.
         {"boris.greenhouse.page.default", 0x0F8508U},
         {"boris.greenhouse.page.alternate_0", 0x0F8609U},
         {"boris.greenhouse.page.alternate_1", 0x0F8739U},
         {"boris.greenhouse.page.alternate_2", 0x0F8794U},
         {"boris.greenhouse.page.followup", 0x0F98FAU},
+        {"boris.greenhouse.page.opening", 0x0F85B4U},
+        {"boris.greenhouse.page.repeat", 0x0F8819U},
+        {"boris.greenhouse.page.after_michael", 0x0F8697U},
+        {"boris.greenhouse.page.story_prompt", 0x0F88F6U},
+        {"boris.greenhouse.page.story_answer", 0x0F8947U},
+        {"boris.greenhouse.page.information_prompt", 0x0F8AE8U},
+        {"boris.greenhouse.page.paid_information", 0x0F8B83U},
+        {"boris.greenhouse.page.paid_information_repeat", 0x0F8BE3U},
+        {"boris.greenhouse.page.michael_unknown", 0x0F8C0EU},
+        {"boris.greenhouse.page.michael_learned", 0x0F8CA2U},
+        {"boris.greenhouse.page.mako_information", 0x0F8E83U},
+        {"boris.greenhouse.page.michael_repeat", 0x0F8F3AU},
+        {"boris.greenhouse.page.david_information", 0x0F8FA0U},
+        {"boris.greenhouse.page.ilene_information", 0x0F91B2U},
+        {"boris.greenhouse.page.thon_information", 0x0F9269U},
+        {"boris.greenhouse.page.david_brother", 0x0F95E2U},
+        {"boris.greenhouse.page.insufficient_funds", 0x0F8A88U},
+        {"boris.greenhouse.option.story", 0x104035U},
+        {"boris.greenhouse.option.information", 0x104051U},
+        {"boris.greenhouse.option.later", 0x104FEBU},
+        {"boris.greenhouse.option.accept", 0x103A7AU},
+        {"boris.greenhouse.option.decline", 0x103C3BU},
+        {"boris.greenhouse.option.michael", 0x1040BEU},
+        {"boris.greenhouse.option.david", 0x103DECU},
+        {"boris.greenhouse.option.ilene", 0x10411AU},
+        {"boris.greenhouse.option.thon", 0x104142U},
+        {"boris.greenhouse.option.brother", 0x103E19U},
         {"renraku.offices.page.entry", 0x1195CFU},
         {"renraku.offices.option", 0x11199CU},
         {"penumbra.fuchi.page.entry", 0x11C213U},
@@ -5749,6 +5778,14 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
             rom, 0x121FC4U),
         "sprite", "0x5425A/0x121FC4/0x1111DE", false, manifest, written,
+        missing, blank);
+    // Scene-2/event-6 title service 10 loads Boris' profile at 0x121F58.
+    // Keep the 56x72 portrait as a direct host asset for the Lua dialogue.
+    write_catalog_asset(
+        root, "dialogue/portraits/boris-greenhouse.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121F58U),
+        "sprite", "0x53F8C/0x121F58/0x1F246", false, manifest, written,
         missing, blank);
     struct VidPhonePortraitRecord {
         std::string_view file_name;

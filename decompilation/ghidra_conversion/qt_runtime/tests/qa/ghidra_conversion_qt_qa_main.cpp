@@ -17467,6 +17467,258 @@ int run_field_jump_house_entry_qa(
     return 0;
 }
 
+int run_field_boris_greenhouse_dialogue_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Boris Greenhouse QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Boris Greenhouse QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    if (field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "Boris Greenhouse QA: expected the Scene-2 field map\n";
+        return 3;
+    }
+
+    const auto save = [&field_scene, &output](const std::string_view name) {
+        const auto image = render_qa_field(field_scene);
+        const auto path = output / (std::string(name) + ".bmp");
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+            image.save(QString::fromStdWString(path.wstring()));
+    };
+    const auto panel_contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count;
+             ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto advance = [&field_scene](const std::string_view stage) {
+        const auto result = field_scene.advance_stoker_dialogue_for_dump(
+            0x4000U); // ordinary A edge
+        if (result != FieldDialogueAdvanceResult::prompt_advanced) {
+            std::cerr << "Boris Greenhouse QA: A did not advance " << stage
+                      << " (result=" << static_cast<int>(result) << ")\n";
+            return false;
+        }
+        return true;
+    };
+    const auto finish = [&field_scene](const std::string_view stage) {
+        const auto result = field_scene.advance_stoker_dialogue_for_dump(
+            0x4000U); // ordinary A edge
+        if (result != FieldDialogueAdvanceResult::returned_to_field) {
+            std::cerr << "Boris Greenhouse QA: A did not finish " << stage
+                      << " (result=" << static_cast<int>(result) << ")\n";
+            return false;
+        }
+        return true;
+    };
+
+    const auto walk_into_greenhouse = [&field_scene]() {
+        // ROM record 87 is the frontage trigger at map pixels x=1312..1343,
+        // y=64..95. The frontage faces south, so approach from y=96 with
+        // ordinary Up input into the event-6 trigger.
+        field_scene.set_field_entity_world_position_for_dump(
+            0x5300U, 0x0600U);
+        field_scene.set_field_camera_world_position_for_dump(
+            0x4900U, 0U);
+        // The field scene consumes input during its entry fade. Let that
+        // interval elapse with the pad released before the approach begins.
+        field_scene.set_controller_nibble(0U);
+        for (std::uint8_t settle = 0U; settle < 65U; ++settle) {
+            field_scene.advance_frame();
+        }
+        field_scene.set_controller_nibble(0x01U);
+        bool opened = false;
+        for (std::uint16_t tick = 0U; tick < 80U; ++tick) {
+            field_scene.advance_frame();
+            if (field_scene.dialogue_open()) {
+                opened = true;
+                break;
+            }
+        }
+        field_scene.set_controller_nibble(0U);
+
+        const auto& dispatch = field_scene.field_map_event_system_for_dump()
+                                   .last_collision_dispatch();
+        const bool routed = opened &&
+            field_scene.field_scene_reference_for_dump() == 2U &&
+            field_scene.field_mode_event_code_for_dump() == 6U &&
+            dispatch.has_value() &&
+            dispatch->decision.source_event_code ==
+                FieldCollisionEventCode::event_6;
+        if (!routed) {
+            const auto position = field_scene.field_entity_world_position();
+            std::cerr << "Boris Greenhouse QA: physical Up approach did not "
+                         "select Scene-2 event 6 (opened=" << opened
+                      << ", scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", mode_event=" << static_cast<unsigned>(
+                             field_scene.field_mode_event_code_for_dump())
+                      << ", dispatch=" << dispatch.has_value()
+                      << ", terrain_code=" << field_scene
+                             .field_terrain_collision_code_for_dump()
+                      << ", position=" << position.x << ',' << position.y
+                      << ", failure=" << field_scene.failure() << ")\n";
+            const auto& rectangles = field_scene.state()
+                .field_scene_buffers.source_metadata
+                .terrain_collision_rectangles;
+            for (std::size_t index = 0U; index < rectangles.size(); ++index) {
+                const auto& rectangle = rectangles[index];
+                if ((rectangle.value & 31U) == 6U) {
+                    std::cerr << "  imported event-6 rectangle index="
+                              << index << " bounds=" << rectangle.left << ','
+                              << rectangle.top << ".." << rectangle.right
+                              << ',' << rectangle.bottom << " value=0x"
+                              << std::hex << static_cast<unsigned>(rectangle.value)
+                              << std::dec << '\n';
+                }
+            }
+        }
+        return routed;
+    };
+
+    field_scene.set_field_funds_for_dump(1000U);
+    const bool service_opened = walk_into_greenhouse();
+    if (!service_opened ||
+        !field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().actor_name != "Boris" ||
+        field_scene.dialogue_panel().option_count != 1U ||
+        !save("opening-description")) {
+        const auto& panel = field_scene.dialogue_panel();
+        std::cerr << "Boris Greenhouse QA: indexed title service opening "
+                     "check failed (service_opened=" << service_opened
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", speaker=" << panel.actor_name
+                  << ", options=" << panel.option_count
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+    if (!advance("opening description") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !panel_contains("Come on in") || !save("opening-menu")) {
+        std::cerr << "Boris Greenhouse QA: opening menu did not expose the "
+                     "three ROM choices\n";
+        return 3;
+    }
+    if (!advance("opening menu") ||
+        field_scene.dialogue_panel().option_count != 2U ||
+        !panel_contains("100$") || !save("story-payment")) {
+        std::cerr << "Boris Greenhouse QA: story branch did not show its "
+                     "ROM $100 offer\n";
+        return 3;
+    }
+    if (!advance("story payment") ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{900U} ||
+        !panel_contains("Boris Errascoe") ||
+        !save("story-answer")) {
+        std::cerr << "Boris Greenhouse QA: accepted story payment did not "
+                     "debit 100 nuyen and show Boris' source answer\n";
+        return 3;
+    }
+    if (!finish("story answer") || field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "Boris Greenhouse QA: closing the answer did not return "
+                     "to Scene 2\n";
+        return 3;
+    }
+
+    QString snapshot_error;
+    const auto paid_snapshot =
+        field_scene.capture_game_save_snapshot_for_dump(&snapshot_error);
+    if (!paid_snapshot.has_value()) {
+        std::cerr << "Boris Greenhouse QA: could not capture paid dialogue "
+                     "state: " << snapshot_error.toStdString() << '\n';
+        return 3;
+    }
+    auto story = paid_snapshot->value(QStringLiteral("story")).toObject();
+    if (story.value(QStringLiteral("dialogue_flags")).toInt(-1) != 1) {
+        std::cerr << "Boris Greenhouse QA: save did not persist FFFC26 bit 0 "
+                     "after the $100 purchase\n";
+        return 3;
+    }
+    auto normalized_paid_snapshot = *paid_snapshot;
+    auto saved_scene = normalized_paid_snapshot.value(
+        QStringLiteral("scene")).toObject();
+    // The live physical-service QA checkpoint uses route mode 2; the save
+    // format stores the Scene-2 map in its field mode 1.
+    saved_scene.insert(QStringLiteral("mode"), 1);
+    normalized_paid_snapshot.insert(QStringLiteral("scene"), saved_scene);
+    auto unpaid_snapshot = normalized_paid_snapshot;
+    auto unpaid_story = unpaid_snapshot.value(QStringLiteral("story")).toObject();
+    unpaid_story.insert(QStringLiteral("dialogue_flags"), 0);
+    unpaid_snapshot.insert(QStringLiteral("story"), unpaid_story);
+    if (!field_scene.restore_game_save_snapshot_for_dump(
+            unpaid_snapshot, &snapshot_error)) {
+        std::cerr << "Boris Greenhouse QA: could not restore the FFFC26-zero "
+                     "save: " << snapshot_error.toStdString() << '\n';
+        return 3;
+    }
+    const auto restored_unpaid =
+        field_scene.capture_game_save_snapshot_for_dump(&snapshot_error);
+    if (!restored_unpaid.has_value() ||
+        restored_unpaid->value(QStringLiteral("story")).toObject()
+                .value(QStringLiteral("dialogue_flags")).toInt(-1) != 0 ||
+        !field_scene.restore_game_save_snapshot_for_dump(
+            normalized_paid_snapshot, &snapshot_error)) {
+        std::cerr << "Boris Greenhouse QA: FFFC26 did not round-trip through "
+                     "save restore: " << snapshot_error.toStdString() << '\n';
+        return 3;
+    }
+
+    // Verify both the unpaid and paid byte values round-trip through the save
+    // layer. The Lua suite independently checks the already-paid dialogue
+    // branch against this source flag.
+    const auto restored_paid =
+        field_scene.capture_game_save_snapshot_for_dump(&snapshot_error);
+    const auto restored_paid_story = restored_paid.has_value()
+        ? restored_paid->value(QStringLiteral("story")).toObject()
+        : QJsonObject{};
+    if (!restored_paid.has_value() ||
+        restored_paid_story.value(QStringLiteral("dialogue_flags")).toInt(-1)
+            != 1 ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{900U} ||
+        !save("paid-state-restored") || !save("actual")) {
+        std::cerr << "Boris Greenhouse QA: paid FFFC26 state or funds did not "
+                     "survive save restore: "
+                  << snapshot_error.toStdString() << '\n';
+        return 3;
+    }
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "Boris Greenhouse QA: restored service state left "
+                     "Scene 2 or retained a dialogue modal\n";
+        return 3;
+    }
+
+    std::ofstream route(output / "route.tsv", std::ios::trunc);
+    if (!route) return 3;
+    route << "scene\trecord\tevent\ttable_destination\tservice\t"
+             "dialogue_flag_byte\tphysical_trigger\tresult\n"
+          << "2\t87\t6\t26\t10@0x53F8C\tFFFC26=1\t"
+             "ordinary_up\tpaid_story_stays_on_scene_2\n";
+    std::cout << "field_boris_greenhouse_dialogue_qa=passed scene=2 event=6 "
+                 "service=10 same_map=yes story_payment=100 "
+                 "FFFC26_save_restore=yes artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 int run_field_wanderer_south_exit_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -22886,6 +23138,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_jump_house_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_boris_greenhouse_dialogue_qa_path;
+        std::optional<std::filesystem::path>
             field_wanderer_south_exit_record_7_qa_path;
         std::optional<std::filesystem::path>
             field_wanderer_south_exit_record_8_qa_path;
@@ -23169,6 +23423,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_jump_house_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-boris-greenhouse-dialogue-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_boris_greenhouse_dialogue_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -27861,6 +28122,10 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_jump_house_entry_qa_path,
                     field_audio_events, field_source_boundaries);
+            }
+            if (field_boris_greenhouse_dialogue_qa_path.has_value()) {
+                return run_field_boris_greenhouse_dialogue_qa(
+                    field_scene, *field_boris_greenhouse_dialogue_qa_path);
             }
             if (field_wanderer_south_exit_record_7_qa_path.has_value()) {
                 return run_field_wanderer_south_exit_qa(

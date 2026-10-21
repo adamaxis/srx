@@ -135,6 +135,25 @@ local speakers = {
             },
         },
     },
+    boris_greenhouse_narrator = {
+        name = "Boris",
+        text_profile = "boris.greenhouse",
+        portrait_alias = "dialogue.portraits.boris.greenhouse",
+        events = {
+            package_request = {
+                title_key = "boris.greenhouse.page.alternate_1",
+                continuation_key = "",
+            },
+            package_payment = {
+                title_key = "boris.greenhouse.page.alternate_2",
+                continuation_key = "",
+            },
+            insufficient_funds = {
+                title_key = "boris.greenhouse.page.insufficient_funds",
+                continuation_key = "",
+            },
+        },
+    },
     council_island_hospital_narrator = {
         name = "Narration",
         text_profile = "council_island_hospital",
@@ -515,6 +534,51 @@ local menu_profiles = {
                 ito_passcode = "field.main_menu.passcodes.option.ito_passcode",
                 next_screen = "vid_phone.contact.page_next",
                 prior_screen = "vid_phone.contact.page_previous",
+            },
+        },
+    },
+    ["boris.greenhouse"] = {
+        more = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        opening = {
+            choice_label_keys = {
+                story = "boris.greenhouse.option.story",
+                information = "boris.greenhouse.option.information",
+                later = "boris.greenhouse.option.later",
+            },
+        },
+        repeat_opening = {
+            choice_label_keys = {
+                story = "boris.greenhouse.option.story",
+                information = "boris.greenhouse.option.information",
+                later = "boris.greenhouse.option.later",
+            },
+        },
+        story_payment = {
+            choice_label_keys = {
+                accept = "boris.greenhouse.option.accept",
+                later = "boris.greenhouse.option.decline",
+            },
+        },
+        information_payment = {
+            choice_label_keys = {
+                accept = "boris.greenhouse.option.accept",
+                later = "boris.greenhouse.option.decline",
+            },
+        },
+        information_topics = {
+            choice_label_keys = {
+                michael = "boris.greenhouse.option.michael",
+                david = "boris.greenhouse.option.david",
+                ilene = "boris.greenhouse.option.ilene",
+                thon = "boris.greenhouse.option.thon",
+                later = "boris.greenhouse.option.later",
+            },
+        },
+        david_followup = {
+            choice_label_keys = {
+                brother = "boris.greenhouse.option.brother",
             },
         },
     },

@@ -735,3 +735,19 @@ partial: the serpent text graph is not fully mapped, the contextual Scene-47
 route lacks physical QA, and no independent Genesis conversation frames were
 identified. See
 [the Spirit Eyes audit](visual-audits/council-spirit-eyes.md).
+
+## Boris Greenhouse Scene-2/event-6 indexed service (partial, 2026-10-21)
+
+ROM record 87 at `0x173110` has event 6 and a raw event-table value of Scene
+26. Indexed title service 10 at `0x53F8C` loads profile `0x121F58`, runs the
+dialogue runner `0x1F246`, and returns D6=-1, so the player stays on Scene 2.
+The Lua entity link gives this service priority over the raw event-table row.
+Debug/Release physical-input QA approaches the imported 32×32 trigger from the
+south with ordinary Up, confirms the Boris portrait and opening choices, pays
+the $100 story offer, and verifies FFFC26 plus the wallet survive save restore.
+The ROM text and profile art were regenerated through the explicit asset
+extractor; `actual.bmp` is a full 320×224 return frame. Lua tests cover the
+$500 information purchase and quest-gated topic choices. The hill remains
+partial: Strike Team command `0x2C`, item commands `0x2D`–`0x2F`, other deeper
+service outcomes, and independent Genesis dialogue frames are unresolved.
+See [the Boris Greenhouse event-6 audit](visual-audits/boris-greenhouse-scene2-event6.md).

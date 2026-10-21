@@ -490,6 +490,7 @@ dialogue/portraits/licourtrix.bmp	sprite	0	0	56	72	0x53F3E/0x121EA4/0xF4C44	extr
 dialogue/portraits/renraku-offices-entry.bmp	sprite	0	0	56	72	0x540B8/0x121E2C/0x110A2A	extracted
 dialogue/portraits/fuchi-offices-entry.bmp	sprite	0	0	56	72	0x5419A/0x122090/0x11B7F4	extracted
 dialogue/portraits/gates-undersound-entry.bmp	sprite	0	0	56	72	0x5425A/0x121FC4/0x1111DE	extracted
+dialogue/portraits/boris-greenhouse.bmp	sprite	0	0	56	72	0x53F8C/0x121F58/0x1F246	extracted
 dialogue/portraits/vid-phone-capt-quinton-jaymes.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-0/record+0x0A/0x1F246	extracted
 dialogue/portraits/vid-phone-alesandro-hobbs.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-1/record+0x0A/0x1F246	extracted
 dialogue/portraits/vid-phone-sharkey.bmp	sprite	0	0	56	72	0x109682/contact-record-pointer-2/record+0x0A/0x1F246	extracted

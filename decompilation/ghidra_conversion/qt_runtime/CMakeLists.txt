@@ -506,6 +506,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_jump_house_entry_q
                  --field-jump-house-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-jump-house-entry-qa")
 
+# Run Boris' Scene-2/event-6 indexed service through the production Lua task
+# bridge, then verify the FFFC26 payment fact survives save restore.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_boris_greenhouse_dialogue_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-boris-greenhouse-dialogue-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-boris-greenhouse-dialogue-qa")
+
 # Enter each Scene 14 south-edge event-0 rectangle independently with ordinary
 # Down input. Its null event-table pointer selects field Scene 0 through the
 # ROM's generic handler.

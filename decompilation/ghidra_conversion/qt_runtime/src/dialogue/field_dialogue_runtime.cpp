@@ -789,6 +789,24 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
                 return FieldDialogueAdvanceResult::source_boundary;
             }
             if (task.result_id == std::optional<std::string>{
+                                    "boris_strike_team_unconverted"}) {
+                open_source_boundary(
+                    "Boris' Brother? branch reaches command 0x2C at 0x21BE4, which starts a Strike Team world effect that is not converted yet");
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
+            if (task.result_id == std::optional<std::string>{
+                                    "boris_dialogue_state_unavailable"}) {
+                open_source_boundary(
+                    "Boris' Greenhouse dialogue needs the saved FFFC26 byte, which this session does not provide");
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
+            if (task.result_id == std::optional<std::string>{
+                                    "boris_payment_unavailable"}) {
+                open_source_boundary(
+                    "Boris' Greenhouse payment needs a resolved credstick balance");
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
+            if (task.result_id == std::optional<std::string>{
                                     "wylie_feature_state_unavailable"}) {
                 open_source_boundary(
                     "Wylie's Gala Inn free-stay branch requires runner status byte FF018F, which this restored save does not provide");
