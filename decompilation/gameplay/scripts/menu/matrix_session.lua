@@ -8,9 +8,11 @@ local Movement = require("menu.rules.matrix_move")
 local FILE_CLASSES = require("data.matrix_file_classes")
 local HUD = require("data.matrix_hud_labels")
 local WORLD_EFFECT_MODES = require("data.matrix_world_effect_modes")
+local WORLD_EFFECT_REACTION_DELTAS = WORLD_EFFECT_MODES.reaction_deltas
 local WORLD_ENTRY = require("data.matrix_entry_profiles")
 
 local M = { active = nil }
+local world_effect_animation
 
 local function source_links(source)
     local links = {}
@@ -298,6 +300,11 @@ function M.begin_world_entry(state)
         sequence_vblanks = 0,
         published_frame = 0,
     }
+    -- 0x1ADE6 initializes and stores the selected effect record before the
+    -- entry sequence. 0x54662 raises the node's knowledge rank only after
+    -- that sequence returns, so capture the mode from the current rank now.
+    state.world_effect_animation = nil
+    world_effect_animation(state, node, M.current_node_knowledge(state))
     state.analyze_runner_idle = false
     return true
 end
@@ -381,32 +388,40 @@ local function model_canvas_for_entry(state, entry)
     }
 end
 
-local function world_effect_animation(state, node, rank)
+world_effect_animation = function(state, node, rank)
     -- 0x19B40 selects the current node's IC type through E31A7; 0x1A908
     -- installs that mode record, or the 1AA10 fallback for an unseen node.
+    -- The ROM stores this selection in FFE0BC; later alert/rank changes do
+    -- not select a new mode until 0x1A908 runs again.
     local mode = Rules.ic_type(node, state.alert or Rules.NONE,
                                state.in_alert == true, rank)
     local animation = state.world_effect_animation
-    if type(animation) ~= "table" or animation.mode ~= mode then
+    if type(animation) ~= "table" then
         local record = mode == Rules.UNSEEN and WORLD_EFFECT_MODES.default or
                        WORLD_EFFECT_MODES[mode]
         animation = {
             mode = mode,
             phase = 0,
-            elapsed = 0,
+            frame_countdown = 0,
             cadence = record and record.cadence or 0,
-            phase_count = record and record.phase_count or 0,
+            phase_count = mode == 0 and 4 or
+                          record and record.phase_count or 0,
         }
         state.world_effect_animation = animation
     end
     return animation
 end
 
--- Called once for each active node-action frame. The source advances the
--- selected 0x1AA40 record at its own byte cadence; Lua owns this animation
--- state, while the host only presents the named extracted frame.
+-- 0x1ADE6 services 0x1AA40 while the world-sequence entry is active. It then
+-- enters the blocking 0x54662 node-action loop, which does not service this
+-- animation. Count only those sequence frames; keep the action-screen phase
+-- fixed until the next world entry.
 function M.advance_world_effect_frame(state)
-    if type(state) ~= "table" or state.phase ~= "node" then return false end
+    if type(state) ~= "table" or state.phase ~= "node" or
+       type(state.world_entry) ~= "table" or
+       state.world_entry.phase ~= "motion" then
+        return false
+    end
     local node = M.current_node(state)
     if not node then return false end
     local animation = world_effect_animation(
@@ -414,9 +429,26 @@ function M.advance_world_effect_frame(state)
     if animation.cadence <= 0 or animation.phase_count <= 0 then
         return false
     end
-    animation.elapsed = animation.elapsed + 1
-    if animation.elapsed < animation.cadence then return false end
-    animation.elapsed = 0
+    local reaction_delta
+    if animation.mode ~= 0 then
+        reaction_delta = WORLD_EFFECT_REACTION_DELTAS[node.ic_reaction]
+        if type(reaction_delta) ~= "number" then return false end
+    end
+    -- 0x1AA40 decrements the source byte first. A fresh record starts at zero,
+    -- so its first world-sequence service advances phase immediately.
+    animation.frame_countdown = (animation.frame_countdown - 1) & 0xFF
+    if animation.frame_countdown < 0x80 then return false end
+    if animation.mode == 0 then
+        -- While the world sequence is active, mode zero uses the special
+        -- 0x1AA68 branch: raw cadence, four phases, and a terminal phase 3.
+        animation.frame_countdown = animation.cadence
+        animation.phase = math.min(animation.phase + 1, 3)
+        return true
+    end
+
+    local next_countdown = (animation.cadence + reaction_delta) & 0xFF
+    if next_countdown >= 0x80 then next_countdown = 0 end
+    animation.frame_countdown = next_countdown
     animation.phase = (animation.phase + 1) % animation.phase_count
     return true
 end

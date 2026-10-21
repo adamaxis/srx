@@ -414,6 +414,16 @@ do local d = ROM; if d then local ok = true
           MatrixWorldEffectModes.default.cadence == d:byte(0x1AA10 + 1) and
           MatrixWorldEffectModes.default.phase_count == d:byte(0x1AA10 + 2),
           "Matrix traversal effect cadence and phase counts == ROM records")
+    local reaction_deltas_ok = true
+    for reaction = 0, 22 do
+        local source_delta = string.unpack(">i2", d,
+            0x1A50E + reaction * 2 + 1)
+        if MatrixWorldEffectModes.reaction_deltas[reaction] ~= source_delta then
+            reaction_deltas_ok = false
+        end
+    end
+    check(reaction_deltas_ok,
+          "Matrix world-effect reaction reads match ROM 0x1A50E, including source overreads")
     local function rs(a, set) local ok2 = true; for i = 0, 6 do if not set[d:byte(a + i + 1)] then ok2 = false end end; return ok2 end
     check(rs(0x15FC9A, MXr.CONNECT_LEFT) and rs(0x15FCA1, MXr.CONNECT_RIGHT) and rs(0x15FCA8, MXr.CONNECT_UP) and rs(0x15FCAF, MXr.CONNECT_DOWN), "connector sets == ROM") end end
 local nd = { ic_condition = 10, ic_code = 13, ic_rating = 4, ic_rating2 = 7 }
@@ -437,7 +447,7 @@ if started then
     hidden_state.current_node = 29
     local view = MatrixSession.traversal_view(
         hidden_state, "Analyze-2", "Resisted!!")
-    check(view.world_model_id == 2 and view.palette_theme == 2 and
+    check(view.world_model_id == 2 and view.palette_theme == 0 and
           view.world_effect_mode == MXr.UNSEEN and
           view.world_effect_phase == 0 and
           view.action_difficulty == -1 and
@@ -446,32 +456,63 @@ if started then
           view.active_program_label == "Analyze-2" and
           view.active_program_status_label == "Resisted!!",
           "unknown Matrix node keeps its model and active deck HUD without a difficulty glyph")
-    local fallback_advanced = false
-    for _ = 1, MatrixWorldEffectModes.default.cadence do
-        fallback_advanced = MatrixSession.advance_world_effect_frame(
-            hidden_state)
-    end
-    check(fallback_advanced and
+    check(not MatrixSession.advance_world_effect_frame(hidden_state),
+          "world effect does not advance outside the ROM entry service")
+    MatrixSession.begin_world_entry(hidden_state)
+    for _ = 1, 61 do MatrixSession.advance_world_entry(hidden_state) end
+    check(MatrixSession.traversal_view(hidden_state).world_effect_phase == 0,
+          "ROM effect timer waits through the 61-VBlank HUD setup")
+    local first_effect_tick = MatrixSession.advance_world_effect_frame(
+        hidden_state)
+    check(first_effect_tick and
           MatrixSession.traversal_view(hidden_state).world_effect_phase == 1,
-          "unseen Matrix node uses the ROM default effect cadence")
+          "unseen Matrix node advances on the first world-sequence service")
     MatrixSession.set_current_node_knowledge(hidden_state, 4)
-    check(MatrixSession.traversal_view(hidden_state).world_effect_mode == 0,
-          "known System 16 node selects its normal IC effect mode")
+    check(MatrixSession.traversal_view(hidden_state).world_effect_mode ==
+              MXr.UNSEEN,
+          "node-action knowledge update does not replace the stored entry mode")
     hidden_state.alert = MXr.ACTIVE
+    hidden_state.in_alert = true
+    check(MatrixSession.traversal_view(hidden_state).world_effect_mode ==
+              MXr.UNSEEN,
+          "alert changes do not replace the mode stored at 0x1A908")
+    local reselection = MatrixSession.begin_world_entry(hidden_state)
+    local selected_mode = MXr.ic_type(
+        MatrixSession.current_node(hidden_state), hidden_state.alert,
+        hidden_state.in_alert, MatrixSession.current_node_knowledge(
+            hidden_state))
     local active_view = MatrixSession.traversal_view(hidden_state)
-    local cadence_advanced = false
-    for _ = 1, MatrixWorldEffectModes[2].cadence do
-        cadence_advanced = MatrixSession.advance_world_effect_frame(hidden_state)
-    end
-    local advanced_view = MatrixSession.traversal_view(hidden_state)
-    check(active_view.world_effect_mode == 2 and cadence_advanced and
-          advanced_view.world_effect_mode == 2 and
-          advanced_view.world_effect_phase == 1,
-          "active alert selects the second IC effect layer and advances on its ROM cadence")
+    check(reselection and active_view.world_effect_mode == selected_mode and
+          active_view.world_effect_phase == 0,
+          "the next 0x1ADE6 entry selects a fresh alert-specific mode record")
     MatrixSession.finish(hidden_state)
 else
     check(false, "unknown Matrix node fixture loads from ROM data")
 end
+local zero_effect_state = {
+    phase = "node", current_node = 0, alert = MXr.NONE,
+    in_alert = false, knowledge_ranks = { [0] = 1 },
+    nodes = { [0] = {
+        x = 0, y = 0, function_id = 2, file_class_id = 0,
+        colour = 1, security = 1, ic_condition = 10, ic_code = 0,
+        ic_reaction = 0, ic_rating = 1, ic_rating2 = 0,
+    } },
+}
+local zero_entry = MatrixSession.begin_world_entry(zero_effect_state)
+for _ = 1, 61 do MatrixSession.advance_world_entry(zero_effect_state) end
+local zero_first_tick = MatrixSession.advance_world_effect_frame(
+    zero_effect_state)
+for _ = 1, 8 do MatrixSession.advance_world_effect_frame(zero_effect_state) end
+local zero_second_tick = MatrixSession.advance_world_effect_frame(
+    zero_effect_state)
+for _ = 1, 9 do MatrixSession.advance_world_effect_frame(zero_effect_state) end
+local zero_terminal_phase = MatrixSession.traversal_view(
+    zero_effect_state).world_effect_phase
+for _ = 1, 9 do MatrixSession.advance_world_effect_frame(zero_effect_state) end
+check(zero_entry and zero_first_tick and zero_second_tick and
+      zero_terminal_phase == 3 and
+      MatrixSession.traversal_view(zero_effect_state).world_effect_phase == 3,
+      "mode-zero entry uses raw cadence and clamps at source phase 3")
 local entry_started, entry_state = MatrixSession.begin(2, false, 2, 0)
 if entry_started then
     MatrixSession.set_current_node_knowledge(entry_state, 4)
