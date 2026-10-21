@@ -190,8 +190,7 @@ event-table byte; the route resolver checks that byte before selecting the
 authored numeric target. These additions cover only the traced entry pages:
 the remaining prompt branches are open. Renraku/Fuchi links now encode the
 FFE184 index/marker overrides and their Debug/Release physical-entry QA checks the
-resulting resource state. Their activity return routes and independent Genesis
-visuals remain open. The four Scene-5 stores still need
+resulting resource state. Their typed activity-return snapshots now restore and assert the ROM probe lead and opposite heading; the in-activity exit triggers and independent Genesis visuals remain open. The four Scene-5 stores still need
 their shop catalogs and activity return behavior. Scene-1 Tarislar now has physical QA for its first-authorized
 Harlequin conversation, its guarded leave branch, and its gated tomb-departure
 Yes route into scene 54. The first conversation returns to scene 1; the tomb

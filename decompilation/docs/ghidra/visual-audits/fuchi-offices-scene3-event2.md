@@ -41,5 +41,8 @@ marker ordinal 3, then clears the effect context. The conditional Lua link now
 records `entry_resource_override=index_two_marker_three`; the host carries it
 with the typed scene-21 route and applies it only after the `enter_scene_21`
 dialogue result resumes the route. Debug and Release physical-entry QA now
-asserts the resulting index and marker along with the activity capture. The
-activity return route and independent Genesis evidence remain open.
+asserts the resulting index and marker along with the activity capture. It
+then invokes the typed resource-activity return adapter and checks the ROM
+collision-probe lead point and away-facing heading in `source-field-return.bmp`.
+That verifies the snapshot handoff; the in-activity exit trigger and
+independent Genesis evidence remain open.
