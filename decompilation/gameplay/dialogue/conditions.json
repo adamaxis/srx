@@ -153,6 +153,24 @@
         "romAddresses": ["0x1F65A", "0xF4AEC"],
         "scope": "negative_signed_prompt_branch"
       }
+    },
+    "vid_phone.quinton_contact_not_called": {
+      "expression": {
+        "fact": "story.vid_phone_called_0", "op": "eq", "value": false
+      },
+      "provenance": {
+        "romAddresses": ["0xE5E2", "0x109682", "0x1096B6"],
+        "scope": "contact_0_call_history_clear"
+      }
+    },
+    "vid_phone.quinton_contact_called": {
+      "expression": {
+        "fact": "story.vid_phone_called_0", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0xE5E2", "0x109682", "0x1096B6"],
+        "scope": "contact_0_call_history_set"
+      }
     }
   }
 }

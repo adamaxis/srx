@@ -27,7 +27,10 @@
         "textKey": "vid_phone.contact.capt_quinton_jaymes.repeat_call",
         "continuation": false
       },
-      "service": { "module": "vid_phone.capt_quinton_jaymes", "function": "services" }
+      "service": {
+        "module": "vid_phone.capt_quinton_jaymes",
+        "graphId": "vid_phone.capt_quinton_jaymes.call"
+      }
     },
     {
       "sourceIndex": 1,

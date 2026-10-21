@@ -76,11 +76,27 @@ for position, record in ipairs(phone_catalog.contacts) do
     }
     if record.service ~= nil then
         assert(type(record.service) == "table" and
-               type(record.service.module) == "string" and
-               type(record.service["function"]) == "string",
+               type(record.service.module) == "string",
             "Vid-Phone service binding is malformed: " .. record.id)
         contact.service_module = record.service.module
-        contact.service_function = record.service["function"]
+        if record.service.graphId ~= nil then
+            assert(type(record.service.graphId) == "string" and
+                   record.service.graphId ~= "",
+                "Vid-Phone service graph binding is malformed: " ..
+                record.id)
+            contact.service_graph_id = record.service.graphId
+        end
+        if record.service["function"] ~= nil then
+            assert(type(record.service["function"]) == "string" and
+                   record.service["function"] ~= "",
+                "Vid-Phone service function binding is malformed: " ..
+                record.id)
+            contact.service_function = record.service["function"]
+        end
+        assert(contact.service_graph_id ~= nil or
+               contact.service_function ~= nil,
+            "Vid-Phone service needs a graph or legacy function: " ..
+            record.id)
     end
     vid_phone_contacts[#vid_phone_contacts + 1] = contact
 end

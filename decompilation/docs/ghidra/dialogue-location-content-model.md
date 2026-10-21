@@ -7,9 +7,11 @@ conditions where needed. The Lua graph engine and typed outcome bridge drive
 Gates Undersound's same-map service, the Renraku and Fuchi gated entry pages,
 Tarislar City Inn, Wylie's Gala Inn, and the two Stoker entry roots. The field
 host dispatches the `hotel.options` and `hospital.options` service IDs.
-Remaining conversation routes and other service outcome dispatchers are
-pending; this does not claim every listed route is implemented or visually
-verified.
+Captain Quinton's first/repeat call and complete service tree is also a JSON
+graph with a Lua action adapter. Six other contact service trees remain
+procedural. Remaining conversation routes and other service outcome
+dispatchers are pending; this does not claim every listed route is implemented
+or visually verified.
 
 ## Design goals
 
@@ -76,14 +78,14 @@ are:
 
 | Terminal behavior | Example | Host meaning |
 | --- | --- | --- |
-| Continue in place | Gates, Red Buffalo, Owlfeather services | Close the interaction and keep the current scene/event context. Do not follow a raw event-table destination suppressed by the source handler. |
-| Resume pending route | Fuchi and Renraku entry pages | Close the page, then continue the already selected event-table route into the source activity. |
-| Return through the saved entrance | Hotel/building checkout and activity exit | Restore the saved origin scene, camera/door return point, and source-derived heading policy. |
-| Enter a named field scene | Sharkey's paid travel offers; the Tarislar Tomb offer | Validate the typed destination against the completed source service, then start the shared field-scene transition with its named ROM arrival policy. |
-| Enter an activity route | Office entries and other event-table destinations | Use the pending source route and its resource/activity entry setup. |
-| Open a host service | Hotel Options, Hospital Options, shops, taxi, Matrix | Hand off to a separately owned service screen and carry an explicit return policy. This is a yield/handoff, not an implicit dialogue return. |
-| Play a cinematic/sequence | Extensible outcome only | The type may be supported, but no surveyed building/phone dialogue terminal has been proven to play a movie. Do not assign one without a ROM trace. |
-| Stop at a source boundary | Tabatha's unconverted encounter commands; unresolved phone facts | Diagnostic state outside the normal game outcome union; retain source command/provenance and do not pretend the route completed. |
+| `continue_in_place` | Gates, Red Buffalo, Owlfeather services | Ends dialogue and keeps the current scene/event context. Do not follow a raw event-table destination suppressed by the source handler. |
+| `resume_source_route` | Fuchi and Renraku entry pages | Ends the page, then continues the already selected event-table route into the source activity. |
+| `return_to_origin` | Hotel/building checkout and activity exit | Ends dialogue and restores the saved origin scene, camera/door return point, and source-derived heading policy. This represents “ends and sends outside” when the saved origin is outdoors. |
+| `enter_field_scene` | Sharkey's paid travel offers; the Tarislar Tomb offer | Ends dialogue and enters a named scene after the typed destination is validated against the completed source service, using the named ROM arrival policy. |
+| `enter_activity` | Office entries and other event-table destinations | Ends dialogue and enters the pending source route with its resource/activity setup. |
+| `open_service` | Hotel Options, Hospital Options, shops, taxi, Matrix | Ends the current graph and hands off to a separately owned service with an explicit return policy. This is a yield/handoff, not an implicit dialogue return. |
+| `play_cinematic` | Extensible outcome only | Ends dialogue and plays a named cinematic/sequence. No surveyed building/phone terminal is proven to use it, so do not assign one without a ROM trace. |
+| `source_boundary` | Tabatha's unconverted encounter commands; unresolved phone facts | Diagnostic state outside the normal game outcome union; retain source command/provenance and do not pretend the route completed. |
 
 ### Prompt and choice shapes
 
@@ -139,9 +141,11 @@ have special first-call/history behavior. Calls may present a one-page or
 multi-page first/repeat message, a Services/Goodbye menu, or a contact-specific
 service graph.
 
-Seven contacts currently have Lua service modules: Captain Quinton, Alesandro,
-Sharkey, Kipp, Wilma, Macklemann, and Gregory. Their source result permutations
-include:
+Seven contacts have source-derived service implementations: Captain Quinton,
+Alesandro, Sharkey, Kipp, Wilma, Macklemann, and Gregory. Quinton's complete
+first/repeat call and service flow is now a JSON graph; the other six service
+flows remain procedural Lua modules pending migration. The traced result
+permutations include:
 
 - Information-only topics and multi-page lessons, with return-to-services or
   disconnect/farewell outcomes.
@@ -156,40 +160,37 @@ include:
 
 The remaining six list contacts still have first/repeat text and portraits;
 their contact-specific service behavior is not inferred from those facts.
-`dialogue.lua` currently holds the 13-contact catalog, speaker profiles, and
-many menu-label profiles while seven separate modules hold service menus and
-branch flow. The JSON model will put shared labels and graph structure with
-the content, while named Lua actions/services retain state mutation policy.
+`contacts.json`, `speakers.json`, `menus.json`, `conditions.json`, and
+`conversations/*.json` now hold shared content and converted graph structure.
+Named Lua actions and typed host services retain state mutation policy. Six
+contact modules still own procedural service flow and are explicitly pending.
 
-## Proposed JSON content layout
+## JSON content and entity-route layout
 
 ```text
-gameplay/scripts/content/dialogue/
-  catalog.json                 # speaker IDs, portraits, common UI profiles
-  conditions.json              # named, composable condition expressions
-  conversations/
-    stoker.json
-    tarislar_city_inn.json
-    ...
-  vid_phone_contacts.json      # 13 ordered records, call-history facts,
-                               # first/repeat graph IDs, service graph IDs
-gameplay/world/entities/<id>/
-  interactions.json            # source event routes, conditions,
-                               # linked dialogue and route outcomes
+decompilation/gameplay/dialogue/
+  contacts.json                # 13 ordered Vid-Phone records and graph links
+  speakers.json                # speaker IDs, portraits, event text bindings
+  menus.json                   # stable choice IDs and ordered label bindings
+  conditions.json              # named, composable typed conditions
+  conversations/<graph>.json   # pages, choices, branches, effects, outcomes
+  location_conditions.json     # source-derived location route conditions
+decompilation/gameplay/world/entities/<id>/
+  interactions.json            # target entity-owned event/route bindings
 decompilation/assets/dialogue/
-  script-text.json             # generated ROM text catalog; source strings
-                               # and page delimiters remain extractor-owned
+  script-text.json             # generated ROM text catalog and page breaks
 ```
 
-The ROM extractor remains the owner of exact imported strings. It should emit
-`script-text.json` with the same stable keys and retained page/line separators
-as today's `script-text.json`; authored graph files refer to those keys instead
-of copying text. This preserves text provenance, avoids two sources for one
+The ROM extractor remains the owner of exact imported strings and emits
+`script-text.json` with stable keys and retained page/line separators. Authored
+graph files refer to those keys through speaker and menu bindings instead of
+copying text. This preserves text provenance, avoids two sources for one
 sentence, and allows a later localization catalog to use the same graph.
 
-Location interaction JSON replaces the nested route/task columns in
-`links.tsv`; map geometry, collision records, and event-table destinations
-remain in the existing map/source-data pipeline. A route may explicitly say
+Entity interaction JSON is the target replacement for nested route/task
+columns in `links.tsv`; unconverted route rows remain there until source gates
+and destinations are traced. Map geometry, collision records, and event-table
+destinations remain in the existing map/source-data pipeline. A route may say
 `resume_source_route`, `suppress_source_route`, `enter_scene`, or
 `return_to_origin`. That records the source distinction without duplicating a
 map event table or embedding ROM address arithmetic in runtime code.
@@ -197,13 +198,13 @@ map event table or embedding ROM address arithmetic in runtime code.
 ### Condition language
 
 Conditions are a small typed expression tree, not Lua strings or a custom
-semicolon mini-language. The evaluator supports `all`, `any`, `not`, and
-typed fact comparisons (`eq`, `ne`, `lt`, `lte`, `gt`, `gte`, `in`). Facts use
-semantic names such as `story.motel_bill_paid`, `phone.contact_available`,
-`run.active_type`, `field.alternate_result`, `party.active_runner.body`, and
-`inventory.has_item`. A fact registry maps those names to Lua-owned game state
-or a narrow typed host query. Source bits/addresses belong in evidence metadata,
-not in condition evaluation.
+semicolon mini-language. `conditions.json` entries wrap an `expression` plus
+ROM provenance. The evaluator supports `all`, `any`, `not`, and typed fact
+comparisons (`eq`, `ne`, `lt`, `lte`, `gt`, `gte`, `in`). Facts use semantic
+names such as `story.vid_phone_called_0`, `story.motel_bill_paid`,
+`run.active_type`, and `field.alternate_result`. A fact provider maps those
+names to Lua-owned game state or a narrow typed host query. Source bits and
+addresses belong in evidence metadata, not in condition evaluation.
 
 Evaluation is tri-state: `true`, `false`, or `unknown`. `unknown` means a
 required save field or source boundary has not been implemented. Route
@@ -216,14 +217,14 @@ Example:
 {
   "schemaVersion": 1,
   "conditions": {
-    "tarislar_inn.paid_stay_service": {
-      "all": [
-        { "fact": "field.scene_id", "op": "eq", "value": 1 },
-        { "fact": "field.event_code", "op": "eq", "value": 1 },
-        { "fact": "story.motel_bill_paid", "op": "eq", "value": true },
-        { "fact": "story.tarislar_asked_shale", "op": "eq", "value": false },
-        { "fact": "field.alternate_result", "op": "eq", "value": 0 }
-      ]
+    "vid_phone.quinton_contact_not_called": {
+      "expression": {
+        "fact": "story.vid_phone_called_0", "op": "eq", "value": false
+      },
+      "provenance": {
+        "romAddresses": ["0xE5E2", "0x109682", "0x1096B6"],
+        "scope": "contact_0_call_history_clear"
+      }
     }
   }
 }
@@ -234,14 +235,15 @@ Example:
 Each graph has a stable ID, entry node, default speaker/presentation profile,
 nodes, and ROM provenance. Nodes are limited to reusable forms:
 
-- `page`: text key, optional portrait/speaker override, continuation input,
-  and next node.
-- `choice`: ordered choices with stable IDs, label keys, optional `when`,
-  input contract (`buttons_abc`, `cursor_list`, or `yes_no`), and edges. A
-  choice may name `promptTextKey` when the ROM presents its text and choices
-  together in one inline prompt; ordinary choices use their catalog title.
+- `page`: speaker event ID, optional speaker/text-profile override, and next
+  node. Speaker JSON binds the event to extracted text and portrait metadata.
+- `choice`: menu ID, ordered stable choice IDs with graph edges, optional
+  condition references, and input contract (`buttons_abc`, `cursor_list`, or
+  `yes_no`). Menu JSON owns title and choice-label keys, including inline
+  prompt text when the ROM shows copy and choices together.
 - `branch`: ordered condition cases and a required explicit fallback.
-- `action`: ordered registered Lua effects or a yielded typed host service.
+- `action`: one registered Lua effect or yielded typed host service, with
+  explicit result-ID edges when the operation can return multiple outcomes.
 - `terminal`: exactly one typed outcome after all ordered effects complete.
 
 Graph node IDs are content IDs, never source addresses. A source command may
@@ -291,38 +293,44 @@ effects, and outcome dispatch. A fake provider can drive every branch without
 Qt. The JSON parser is an adapter behind the catalog loader; the graph,
 conditions, and outcome types must not depend on Qt JSON classes.
 
-## Required validation and migration order
+## Validation and migration checkpoints
 
-1. Add a JSON schema version and validator for unique graph/node/choice IDs,
-   valid references, explicit branch fallback, valid typed outcomes, allowed
-   input contracts, and source metadata on converted routes.
-2. Convert the generated ROM text catalog to JSON and update its consumers;
-   do not edit extracted text by hand.
-3. Move speaker profiles, menu labels, and the 13-contact metadata out of
-   `dialogue.lua` into JSON while preserving current keys and behavior.
-4. Implement the reusable graph/condition engine and typed outcome bridge.
-   Remove string parsing such as `matrix_entry_<ids>` and per-screen result ID
-   switches as each outcome family is converted.
-5. Convert simple, distinct route outcomes first: one-page same-map service,
-   entry page that resumes an activity route, saved-origin return, and a
-   typed service handoff. Then migrate conditional building routes and phone
-   transactions/travel using the same graph engine.
-6. Convert each location's existing link variants to entity-owned JSON with
-   structured conditions and explicit source-route policy. Never infer an
-   interior or destination from a building's name.
-7. For each defended hill, test all source-relevant gates and branch outcomes,
+1. **Implemented:** versioned JSON schema validation checks stable graph,
+   node, and choice IDs; references; explicit branch fallbacks; typed
+   outcomes; input contracts; and ROM provenance.
+2. **Implemented:** the ROM extractor emits the dialogue text catalog as JSON
+   and consumers reference stable text keys. Extracted strings remain
+   extractor-owned.
+3. **Implemented for shared catalogs:** speaker, menu, and 13-contact data are
+   JSON-backed. Captain Quinton is the first contact whose service flow is a
+   JSON graph; six other contact service flows remain procedural Lua.
+4. **Implemented with explicit host boundaries:** the reusable Lua graph and
+   condition engines and typed `DialogueOutcome` union are active. The host
+   dispatches only connected outcome families; return, other activity/service,
+   and cinematic transitions still stop at named boundaries. Remove legacy
+   result strings as each family is source-traced and migrated.
+5. **Ongoing:** migrate one source-traced behavior hill at a time, covering
+   same-map services, pending route continuation, return through the saved
+   origin, typed service handoffs, conditional building gates, and phone
+   transactions/travel. Do not infer an interior or destination from a
+   building's name.
+6. **Ongoing:** move each entity's traced interaction routes from nested TSV
+   route/task columns into entity-owned JSON with structured conditions and
+   explicit source-route policy. Keep unconverted routes in the existing
+   source-data path until their gates and destinations are known.
+7. **For each defended hill:** test all source-relevant gates and outcomes,
    test unknown facts as boundaries, exercise physical input where applicable,
-   and save/review a complete `actual.bmp`. Keep the status partial wherever
-   independent longplay evidence or source work is still missing.
+   and save/review a complete `actual.bmp`. Keep status partial wherever
+   independent longplay evidence or source work remains missing.
 
 The first JSON graph migration was a vertical slice that exercises more than
 one terminal kind. Stoker's indexed service and signed field-exit prompt now
 use separate JSON graph roots. The remaining Stoker work is source coverage
 for the 80..99 effect callback, saved-game fact restoration, and independent
-visual checks; the Salish dialogues and contact services still need
-conversion. Existing incomplete encounter commands, upstream quest
-producers, and unverified visual branches remain explicit work, not filled-in
-defaults.
+visual checks. Quinton's contact service graph is converted; six other contact
+service flows and the Salish dialogues still need conversion. Existing
+incomplete encounter commands, upstream quest producers, and unverified visual
+branches remain explicit work, not filled-in defaults.
 
 ## Implemented condition slice
 
@@ -363,7 +371,7 @@ named `hotel.options`/`hospital.options` service screens. Return, activity,
 other service-screen, and cinematic outcomes still stop at an explicit host
 boundary until their coordinators are source-traced and connected.
 
-Five previously converted graphs and two Stoker roots exercise that contract:
+Six non-Stoker graphs and two Stoker roots currently exercise that contract:
 
 - Gates Undersound trigger 15 performs the ordered trigger/page/effect-flag/
   trigger-tail operations and returns `continue_in_place`, suppressing event
@@ -392,6 +400,15 @@ Five previously converted graphs and two Stoker roots exercise that contract:
   `continue_in_place`. Debug/Release tests cover each graph permutation, and
   physical QA walks to the inn and completes the paid path through Hotel
   Options. Independent Genesis visuals remain unavailable.
+- Captain Quinton's Vid-Phone record 0 is a JSON graph with a condition-driven
+  first/repeat split, the Services/Goodbye menus, Hollywood/Weller information
+  loops, Firepower purchases, and Sharkey hiring. The action adapter records
+  call history and submits typed transactions; JSON selects success,
+  insufficient-funds, out-of-stock, or explicit source-boundary results. The
+  direct Lua suite covers the declared permutations, and Debug/Release
+  Vid-Phone QA covers the call panel and ordinary physical entry/return path.
+  The reviewed longplay has no matching complete Quinton call sequence, so the
+  graph remains partial for independent visual proof.
 
 - Stoker has two JSON roots so the indexed trigger and signed field-exit
   selector stay separate. The indexed root uses the ROM gate from `0x53AB6`

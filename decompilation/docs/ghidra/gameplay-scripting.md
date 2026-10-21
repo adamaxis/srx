@@ -98,6 +98,16 @@ transactions. The indexed service and signed field-exit selector are separate
 graph roots. Each graph operation uses a 100,000-instruction limit on initial
 invocation and resume.
 
+`gameplay/dialogue/conversations/vid_phone_services.json` owns Captain
+Quinton's first/repeat call split, Services/Goodbye choices, Hollywood and
+Weller information routes, Firepower purchases, and Sharkey hiring result
+branches. `conditions.json` selects first versus repeat call from the ROM
+call-history fact; `contacts.json` links the contact to the graph. The Lua
+module `vid_phone/capt_quinton_jaymes.lua` registers named host effects for the
+call-history write and typed wallet/inventory/contact transactions. The other
+six contact service trees remain procedural and still need their ROM
+permutations traced and migrated.
+
 The Ares Weapon Emporium stock is declared in `gameplay/scripts/shop.lua`.
 The script groups offers under stable category names; `GameScriptRuntime`
 validates the bounded catalog, and the native shop controller consumes those

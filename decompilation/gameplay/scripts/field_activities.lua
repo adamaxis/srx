@@ -2,6 +2,7 @@
 -- selected by the player; the Qt panel only presents each yielded menu frame.
 local FieldActivities = {}
 local Dialogue = require("dialogue")
+local DialogueGraph = require("dialogue_graph")
 local MatrixPasscodes = require("data.matrix_passcodes")
 
 -- ROM 0x0DBF8 seeds FFF118 (Matrix node) and FFFBBC (system) from the active
@@ -36,17 +37,27 @@ local resource_scene_matrix_targets = {
 -- initialized. The contact list supplies the module/function association;
 -- dispatch during a yielded task then uses the already-resolved handler.
 local phone_service_handlers = {}
+local phone_service_graph_actions = {}
 for _, contact in ipairs(Dialogue.vid_phone_contacts) do
     local service_module = contact.service_module
     local service_function = contact.service_function
-    if type(service_module) == "string" and service_module ~= "" and
-       type(service_function) == "string" and service_function ~= "" then
+    if type(service_module) == "string" and service_module ~= "" then
         local service_tree = require(service_module)
-        local handler = service_tree[service_function]
-        assert(type(handler) == "function",
-            "Vid-Phone contact names a missing Lua service handler: " ..
-            service_module .. "." .. service_function)
-        phone_service_handlers[contact.id] = handler
+        if contact.service_graph_id ~= nil then
+            assert(type(service_tree.actions) == "function",
+                "Vid-Phone graph contact needs an action provider: " ..
+                service_module)
+            phone_service_graph_actions[contact.id] = service_tree.actions
+        else
+            assert(type(service_function) == "string" and
+                   service_function ~= "",
+                "Vid-Phone service function is missing: " .. contact.id)
+            local handler = service_tree[service_function]
+            assert(type(handler) == "function",
+                "Vid-Phone contact names a missing Lua service handler: " ..
+                service_module .. "." .. service_function)
+            phone_service_handlers[contact.id] = handler
+        end
     end
 end
 
@@ -114,6 +125,22 @@ local function call_contact_services(contact)
 end
 
 local function call_contact(contact)
+    if contact.service_graph_id ~= nil then
+        local action_provider = phone_service_graph_actions[contact.id]
+        if type(action_provider) ~= "function" then
+            return "phone_services_not_converted"
+        end
+        local outcome = DialogueGraph.run(
+            contact.service_graph_id, action_provider(contact))
+        if type(outcome) ~= "table" or type(outcome.type) ~= "string" then
+            return "phone_service_result_unresolved"
+        end
+        if outcome.type == "continue_in_place" then
+            return phone_call_finished()
+        end
+        return outcome
+    end
+
     local called_fact = contact.call_history_fact
     local first_call = game.state[called_fact] ~= true
     if first_call and contact.call_history_policy == "before_first_call" then

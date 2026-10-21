@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "vid_phone.capt_quinton_jaymes.call": {
+      "entryNode": "call_history",
+      "speakerId": "vid_phone_capt_quinton_jaymes",
+      "textProfile": "field.vid_phone",
+      "provenance": {
+        "romAddresses": [
+          "0xE4C8", "0xE5E2", "0xE61C", "0xE65A", "0x109682", "0x1096B6",
+          "0x1096C4", "0x1096CC", "0x1096F4", "0x109710",
+          "0x109720", "0x109750", "0x109776", "0x104862", "0x104889"
+        ],
+        "scope": "quinton_first_repeat_call_and_service_tree"
+      },
+      "nodes": {
+        "call_history": {
+          "type": "branch",
+          "cases": [
+            {
+              "when": "vid_phone.quinton_contact_not_called",
+              "next": "mark_first_call"
+            },
+            {
+              "when": "vid_phone.quinton_contact_called",
+              "next": "repeat_call_options"
+            }
+          ],
+          "fallback": "call_history_boundary"
+        },
+        "mark_first_call": {
+          "type": "action",
+          "actionId": "vid_phone.mark_called",
+          "next": "first_call_options",
+          "results": {
+            "call_history_unavailable": "call_history_boundary"
+          }
+        },
+        "first_call_options": {
+          "type": "choice",
+          "menuId": "call_capt_quinton_jaymes_first_call",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "finished" }
+          ]
+        },
+        "repeat_call_options": {
+          "type": "choice",
+          "menuId": "call_capt_quinton_jaymes_repeat_call",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "finished" }
+          ]
+        },
+        "services": {
+          "type": "choice",
+          "menuId": "capt_quinton_services",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "hollywood_information", "next": "hollywood_intro" },
+            { "id": "firepower", "next": "firepower_intro" },
+            { "id": "contacts", "next": "contacts_offer" }
+          ]
+        },
+        "hollywood_intro": {
+          "type": "choice",
+          "menuId": "capt_quinton_hollywood_intro",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "hollywood_topics" }
+          ]
+        },
+        "hollywood_topics": {
+          "type": "choice",
+          "menuId": "capt_quinton_hollywood_topics",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "weller_prison_break", "next": "weller_intro" },
+            { "id": "disconnect", "next": "services_disconnected" },
+            { "id": "return_to_services", "next": "services" }
+          ]
+        },
+        "weller_intro": {
+          "type": "choice",
+          "menuId": "capt_quinton_weller_intro",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "weller_result" }
+          ]
+        },
+        "weller_result": {
+          "type": "choice",
+          "menuId": "capt_quinton_weller_result",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "finished" }
+          ]
+        },
+        "services_disconnected": {
+          "type": "page",
+          "eventId": "services_disconnected",
+          "next": "finished"
+        },
+        "firepower_intro": {
+          "type": "choice",
+          "menuId": "capt_quinton_firepower_intro",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "firepower_items" }
+          ]
+        },
+        "firepower_items": {
+          "type": "choice",
+          "menuId": "capt_quinton_firepower_items",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "frag_grenades", "next": "purchase_frag_grenades" },
+            { "id": "hk227_s", "next": "purchase_hk227_s" },
+            { "id": "no_thanks", "next": "services" }
+          ]
+        },
+        "purchase_frag_grenades": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_frag_grenades",
+          "results": {
+            "purchased": "purchase_result",
+            "insufficient": "purchase_insufficient",
+            "out_of_stock": "purchase_out_of_stock",
+            "service_unavailable": "purchase_service_boundary"
+          },
+          "evidence": "Quinton contact record 0 exposes source command 0x68; typed host transaction applies the source offer."
+        },
+        "purchase_hk227_s": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_hk227_s",
+          "results": {
+            "purchased": "purchase_result",
+            "insufficient": "purchase_insufficient",
+            "out_of_stock": "purchase_out_of_stock",
+            "service_unavailable": "purchase_service_boundary"
+          },
+          "evidence": "Quinton contact record 0 exposes source command 0x69; typed host transaction applies the source offer."
+        },
+        "purchase_result": {
+          "type": "choice",
+          "menuId": "capt_quinton_purchase_result",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "finished" }
+          ]
+        },
+        "purchase_insufficient": {
+          "type": "page",
+          "eventId": "purchase_insufficient",
+          "next": "finished"
+        },
+        "purchase_out_of_stock": {
+          "type": "page",
+          "eventId": "purchase_out_of_stock",
+          "next": "finished"
+        },
+        "contacts_offer": {
+          "type": "choice",
+          "menuId": "capt_quinton_contacts_offer",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "pay_for_rigger_contact", "next": "hire_sharkey" },
+            { "id": "decline_rigger_contact", "next": "services" }
+          ]
+        },
+        "hire_sharkey": {
+          "type": "action",
+          "actionId": "vid_phone.hire_sharkey",
+          "results": {
+            "hired": "sharkey_result",
+            "insufficient": "purchase_insufficient",
+            "out_of_stock": "purchase_out_of_stock",
+            "service_unavailable": "purchase_service_boundary"
+          },
+          "evidence": "Quinton contact record 0 exposes source command 0x6A; typed host transaction writes the contact bit after payment."
+        },
+        "sharkey_result": {
+          "type": "choice",
+          "menuId": "capt_quinton_sharkey_result",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "finished" }
+          ]
+        },
+        "purchase_service_boundary": {
+          "type": "source_boundary",
+          "reason": "Quinton's host transaction returned an unavailable or unrecognized source result."
+        },
+        "call_history_boundary": {
+          "type": "source_boundary",
+          "reason": "Quinton's ROM call-history fact is unresolved."
+        },
+        "finished": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
+    }
+  }
+}

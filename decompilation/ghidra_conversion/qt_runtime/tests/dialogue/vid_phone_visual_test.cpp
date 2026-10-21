@@ -269,6 +269,8 @@ int main(int argc, char** argv) {
     for (unsigned index = 0U; index < 13U; ++index) {
         contact_state.emplace("vid_phone_contact_" + std::to_string(index),
                               true);
+        contact_state.emplace("vid_phone_called_" + std::to_string(index),
+                              false);
     }
     scripts.set_story_state(std::move(contact_state));
     if (!advance(runtime, 0x0200U,
