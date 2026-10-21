@@ -129,7 +129,16 @@
       "text_profile": "council_medicine_lodge"
     },
     "david_owlfeather": {
-      "events": {},
+      "events": {
+        "farewell_more": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.owlfeather.page.farewell_more"
+        },
+        "farewell_last": {
+          "continuation_key": "",
+          "title_key": "salish.owlfeather.page.farewell"
+        }
+      },
       "name": "David Owlfeather",
       "portrait_alias": "dialogue.portraits.david.owlfeather",
       "text_profile": "salish.owlfeather"

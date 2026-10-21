@@ -10,12 +10,14 @@ clear, clears `FFFC30` bits 8 and 9, opens dialogue `0xF4B68` with portrait
 profile `0x121E14`, and consumes the interaction. The default scene-13 route is
 therefore not taken during this first-contact branch.
 
-The Lua route is attached to the `salish_owlfeather_ranger_lodge` entity link.
-It starts the bit-2 trigger only when the player chooses “Tell me what you
-know about my brother Michael.” The source choice is C. That choice calls ROM
-command `0x17`, which adjusts the runner's three source counters, marks bit 2,
-and opens the brother-information page. The three initial choices and their
-text come from `salish_owlfeather.lua`.
+The route is attached to the `salish_owlfeather_ranger_lodge` entity link.
+Service 2 begins trigger 2 and clears effect bits 8 and 9 before presenting its
+opening choices. The source C choice, "Tell me what you know about my brother
+Michael," calls command `0x17`, which adjusts the runner's three source
+counters, marks story bit 2, and opens the brother-information page. Services
+2, 3, and 4 now call named Lua adapters that provide an explicit
+`dialogue.entry_id` to one shared JSON graph; JSON conditions check that entry
+alongside the lodge, scene 6/event 0, and the corresponding story-bit gate.
 
 ## QA evidence
 
@@ -43,9 +45,14 @@ and the two information-only opening branches. Their 39 full-frame captures
 and route facts are written under
 `qt_runtime/field-owlfeather-{physical-entry,search-followup,return-followup,closed-gate,opening-land-choice,opening-council-choice}-qa/`.
 The images were inspected at original `320x224` resolution; every matching
-Debug/Release BMP has the same SHA-256. These checks cover the host route, not
-independent Genesis visuals. Deeper Ranger/village topic chains, other service
-outcomes, and leaving Scene 13 remain open.
+Debug/Release BMP has the same SHA-256. GameScriptRuntime integration tests
+also traverse the nested Ranger/village/Sinsearach/Council loop, the task and
+farewell pages, the search Later branch, and the returned-brother sequence,
+including command `0x19` and the service-4 trigger tail. The repeated search
+prompt is ROM text at `0xF7190`; the two goodbye pages are mapped to semantic
+Owlfeather text keys. These checks cover the host route, not independent
+Genesis visuals. Exhaustive interaction-edge QA, other service outcomes, and
+leaving Scene 13 remain open.
 
 No matching independent Genesis dialogue frame has been identified. The
 ungated fallback's separate scene-13 building links carry their own ROM return

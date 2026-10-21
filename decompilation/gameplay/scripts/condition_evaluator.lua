@@ -46,6 +46,9 @@ function FactProvider:read(fact_name, context)
     if fact_name:sub(1, 6) == "field." then
         local key = fact_name:sub(7)
         local source = type(context) == "table" and context or nil
+        if type(source) == "table" and type(source.field) == "table" then
+            source = source.field
+        end
         if source == nil and type(game) == "table" then
             source = game.field
         end
@@ -61,6 +64,11 @@ function FactProvider:read(fact_name, context)
             location = game.location
         end
         return state_value(location, fact_name:sub(10))
+    end
+
+    if fact_name:sub(1, 9) == "dialogue." then
+        local dialogue = type(context) == "table" and context.dialogue or nil
+        return state_value(dialogue, fact_name:sub(10))
     end
 
     local registry = self.run_registry

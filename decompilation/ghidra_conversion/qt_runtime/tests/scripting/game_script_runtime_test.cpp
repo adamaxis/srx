@@ -9294,10 +9294,126 @@ int main() {
     owlfeather_task = scripts.complete_native_operation(true);
     owlfeather_task = scripts.complete_native_operation(true);
     if (!expect(owlfeather_task.status == ScriptTaskStep::Status::completed &&
-                    owlfeather_task.result_id ==
-                        std::optional<std::string>{"field_return"} &&
+                    owlfeather_task.dialogue_outcome.has_value() &&
+                    owlfeather_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place &&
                     scripts.story_state().at("field_mode_effect_flag_bit_10"),
-                "Owlfeather's ROM dialogue graph did not finish its task branch and effect bit 10")) {
+                "Owlfeather's JSON dialogue graph did not finish its task branch, farewell pages, and effect bit 10")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    // The shared information loop visits each nested topic and returns via
+    // the two source-backed goodbye pages without accepting the brother task.
+    scripts.set_story_state({
+        {"story_flag_bit_1", true},
+        {"story_flag_bit_2", false},
+        {"story_flag_bit_3", false},
+        {"story_flag_bit_4", false},
+    });
+    owlfeather_task = scripts.start_task(
+        "salish_owlfeather", "present_first_contact");
+    owlfeather_task = scripts.complete_native_menu_choice("lands");
+    owlfeather_task = scripts.complete_native_menu_choice("rangers");
+    owlfeather_task = scripts.complete_native_menu_choice("villages");
+    owlfeather_task = scripts.complete_native_menu_choice("sinsearach");
+    owlfeather_task = scripts.complete_native_menu_choice("council");
+    owlfeather_task = scripts.complete_native_menu_choice("more");
+    owlfeather_task = scripts.complete_native_menu_choice("thanks");
+    owlfeather_task = scripts.complete_native_operation(true);
+    owlfeather_task = scripts.complete_native_operation(true);
+    if (!expect(owlfeather_task.status == ScriptTaskStep::Status::completed &&
+                    owlfeather_task.dialogue_outcome.has_value() &&
+                    owlfeather_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place &&
+                    !scripts.story_state().at("story_flag_bit_2"),
+                "Owlfeather's shared Lands/Rangers/villages/Council topic loop changed the task gate or missed its terminal")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_1", false},
+        {"story_flag_bit_2", true},
+        {"story_flag_bit_3", false},
+        {"story_flag_bit_4", false},
+        {"field_mode_effect_flag_bit_9", true},
+    });
+    owlfeather_task = scripts.start_task(
+        "salish_owlfeather", "present_search_followup");
+    if (!expect(owlfeather_task.operation.has_value() &&
+                    owlfeather_task.operation->menu.has_value() &&
+                    owlfeather_task.operation->menu->id == "search_followup" &&
+                    scripts.dialogue_text(
+                        "salish.owlfeather.page.search_followup") != nullptr &&
+                    !scripts.story_state().at("field_mode_effect_flag_bit_9"),
+                "Owlfeather's search follow-up did not select its ROM prompt and clear effect bit 9")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    owlfeather_task = scripts.complete_native_menu_choice("later");
+    owlfeather_task = scripts.complete_native_operation(true);
+    owlfeather_task = scripts.complete_native_operation(true);
+    if (!expect(owlfeather_task.status == ScriptTaskStep::Status::completed &&
+                    owlfeather_task.dialogue_outcome.has_value() &&
+                    owlfeather_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place &&
+                    !scripts.story_state().at("story_flag_bit_3"),
+                "Owlfeather's Later branch did not return in place with its repeat gate open")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_1", false},
+        {"story_flag_bit_2", false},
+        {"story_flag_bit_3", true},
+        {"story_flag_bit_4", false},
+        {"field_mode_effect_flag_bit_8", true},
+        {"field_mode_effect_flag_bit_9", true},
+        {"field_mode_effect_flag_bit_10", true},
+        {"field_mode_effect_flag_bit_13", true},
+        {"field_mode_effect_flag_bit_14", false},
+    });
+    owlfeather_task = scripts.start_task(
+        "salish_owlfeather", "present_return_followup");
+    if (!expect(owlfeather_task.operation.has_value() &&
+                    owlfeather_task.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    owlfeather_task.operation->service_id ==
+                        "runner.adjust_source_byte_triplet_2",
+                "Owlfeather's return follow-up did not request the D0=2 runner adjustment")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    owlfeather_task = scripts.complete_native_service_result("applied");
+    if (!expect(owlfeather_task.operation.has_value() &&
+                    owlfeather_task.operation->menu.has_value() &&
+                    owlfeather_task.operation->menu->id == "return_followup" &&
+                    !scripts.story_state().at("field_mode_effect_flag_bit_8") &&
+                    !scripts.story_state().at("field_mode_effect_flag_bit_9") &&
+                    !scripts.story_state().at("field_mode_effect_flag_bit_10") &&
+                    !scripts.story_state().at("field_mode_effect_flag_bit_13") &&
+                    scripts.story_state().at("field_mode_effect_flag_bit_14"),
+                "Owlfeather's return follow-up did not apply its ordered effect flag updates")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    owlfeather_task = scripts.complete_native_menu_choice("freed");
+    owlfeather_task = scripts.complete_native_menu_choice("more");
+    owlfeather_task = scripts.complete_native_menu_choice("more");
+    owlfeather_task = scripts.complete_native_menu_choice("more");
+    owlfeather_task = scripts.complete_native_menu_choice("more");
+    owlfeather_task = scripts.complete_native_menu_choice("thanks");
+    owlfeather_task = scripts.complete_native_operation(true);
+    owlfeather_task = scripts.complete_native_operation(true);
+    if (!expect(owlfeather_task.status == ScriptTaskStep::Status::completed &&
+                    owlfeather_task.dialogue_outcome.has_value() &&
+                    owlfeather_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place &&
+                    scripts.story_state().at("story_flag_bit_4") &&
+                    scripts.story_state().at("story_trigger_active_4"),
+                "Owlfeather's Aragorn return path missed command 0x19, its handler tail, or the typed same-map outcome")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }

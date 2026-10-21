@@ -464,7 +464,7 @@ function Session:run(graph_id, context)
     return self:_boundary(graph_id, node_id, "step_limit_exceeded")
 end
 
-function DialogueGraph.run(graph_id, registered_actions)
+function DialogueGraph.run(graph_id, registered_actions, invocation_context)
     local content = type(game) == "table" and game.content or nil
     local graph_documents = type(content) == "table" and
         type(content.conversations) == "table" and
@@ -492,6 +492,14 @@ function DialogueGraph.run(graph_id, registered_actions)
     local evaluator = ConditionEvaluator.new(
         ConditionEvaluator.FactProvider.new())
     local actions = DialogueActions.new_default_registry(registered_actions)
+    local context = { field = game.field }
+    if invocation_context ~= nil then
+        assert(type(invocation_context) == "table",
+            "dialogue graph invocation context must be an object")
+        for key, value in pairs(invocation_context) do
+            context[key] = value
+        end
+    end
     local host = {
         present_page = function(node, speaker_id, text_profile)
             return game.ui.say(node.eventId, speaker_id, text_profile)
@@ -513,7 +521,7 @@ function DialogueGraph.run(graph_id, registered_actions)
         end,
     }
     local session = Session.new(catalog, evaluator, actions, host)
-    return session:run(graph_id, game.field)
+    return session:run(graph_id, context)
 end
 
 DialogueGraph.Catalog = Catalog

@@ -138,6 +138,29 @@ local document = {
 local catalog = DialogueGraph.Catalog.new(document, condition_document)
 local evaluator = ConditionEvaluator.new(
     ConditionEvaluator.FactProvider.new({ state = { enabled = true } }))
+local invocation_evaluator = ConditionEvaluator.new(
+    ConditionEvaluator.FactProvider.new({
+        state = { story_flag_bit_3 = true },
+        location = {
+            type = "building",
+            id = "salish_owlfeather_ranger_lodge",
+        },
+    }))
+local invocation_context = {
+    field = { mode = 6, event_code = 0 },
+    dialogue = { entry_id = "return_followup" },
+}
+assert(invocation_evaluator:evaluate(
+    eq("dialogue.entry_id", "return_followup"),
+    invocation_context).status == Status.true_value)
+assert(invocation_evaluator:evaluate(
+    eq("field.mode", 6), invocation_context).status == Status.true_value)
+assert(invocation_evaluator:evaluate(
+    eq("location.id", "salish_owlfeather_ranger_lodge"),
+    invocation_context).status == Status.true_value)
+assert(invocation_evaluator:evaluate(
+    eq("story.story_flag_bit_3", true), invocation_context).status ==
+        Status.true_value)
 local action_calls = 0
 local actions = {
     execute = function(_, action_id, arguments)

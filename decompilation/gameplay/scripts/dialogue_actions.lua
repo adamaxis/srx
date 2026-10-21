@@ -55,6 +55,14 @@ local function register_core_actions(registry)
         return true
     end)
 
+    registry:register("story.apply_dialogue_command", function(arguments)
+        assert(is_integer(arguments.commandId, 0, 255),
+            "story.apply_dialogue_command needs commandId 0..255")
+        local marked = StoryFlags.apply_dialogue_command(
+            arguments.commandId, arguments.options)
+        return marked == nil and "command_unresolved" or true
+    end)
+
     registry:register("story.set_flag", function(arguments)
         assert(is_integer(arguments.flagBit, 0, 31) and
                type(arguments.value) == "boolean",
@@ -70,6 +78,15 @@ local function register_core_actions(registry)
         game.state["field_mode_effect_flag_bit_" .. arguments.flagBit] =
             arguments.value
         return true
+    end)
+
+    registry:register("runner.adjust_source_byte_triplet", function(arguments)
+        assert(is_integer(arguments.amount, 1, 2),
+            "runner.adjust_source_byte_triplet needs amount 1 or 2")
+        local result = game.services.call(
+            "runner", "adjust_source_byte_triplet_" ..
+                tostring(arguments.amount))
+        return result == "applied" and "applied" or "service_unavailable"
     end)
 
     registry:register("building.charge_amount", function(arguments)

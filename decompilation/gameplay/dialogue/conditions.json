@@ -171,6 +171,66 @@
         "romAddresses": ["0xE5E2", "0x109682", "0x1096B6"],
         "scope": "contact_0_call_history_set"
       }
+    },
+    "salish.owlfeather.first_contact_available": {
+      "expression": {
+        "all": [
+          { "fact": "dialogue.entry_id", "op": "eq", "value": "first_contact" },
+          { "fact": "location.type", "op": "eq", "value": "building" },
+          { "fact": "location.id", "op": "eq", "value": "salish_owlfeather_ranger_lodge" },
+          { "fact": "field.mode", "op": "eq", "value": 6 },
+          { "fact": "field.event_code", "op": "eq", "value": 0 },
+          { "fact": "story.story_flag_bit_1", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_2", "op": "eq", "value": false }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x53B78", "0x53A78", "0x14C108"],
+        "scope": "scene_6_event_0_first_contact_gate"
+      }
+    },
+    "salish.owlfeather.search_followup_available": {
+      "expression": {
+        "all": [
+          { "fact": "dialogue.entry_id", "op": "eq", "value": "search_followup" },
+          { "fact": "location.type", "op": "eq", "value": "building" },
+          { "fact": "location.id", "op": "eq", "value": "salish_owlfeather_ranger_lodge" },
+          { "fact": "field.mode", "op": "eq", "value": 6 },
+          { "fact": "field.event_code", "op": "eq", "value": 0 },
+          { "fact": "story.story_flag_bit_2", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_3", "op": "eq", "value": false }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x53BCC", "0x53C50", "0x53A78", "0x14C108"],
+        "scope": "scene_6_event_0_search_followup_gate"
+      }
+    },
+    "salish.owlfeather.return_followup_available": {
+      "expression": {
+        "all": [
+          { "fact": "dialogue.entry_id", "op": "eq", "value": "return_followup" },
+          { "fact": "location.type", "op": "eq", "value": "building" },
+          { "fact": "location.id", "op": "eq", "value": "salish_owlfeather_ranger_lodge" },
+          { "fact": "field.mode", "op": "eq", "value": 6 },
+          { "fact": "field.event_code", "op": "eq", "value": 0 },
+          { "fact": "story.story_flag_bit_3", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_4", "op": "eq", "value": false }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x53CEA", "0x53D5A", "0x53A78", "0x14C108"],
+        "scope": "scene_6_event_0_return_followup_gate"
+      }
+    },
+    "salish.owlfeather.return_followup_tail": {
+      "expression": {
+        "fact": "dialogue.entry_id", "op": "eq", "value": "return_followup"
+      },
+      "provenance": {
+        "romAddresses": ["0x53CEA", "0x53D4E"],
+        "scope": "return_followup_tail_dispatch"
+      }
     }
   }
 }

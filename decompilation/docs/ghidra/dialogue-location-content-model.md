@@ -1,18 +1,20 @@
 # Dialogue and location interaction content model
 
 Status: design, source inventory, and staged implementation. The generated
-text catalog, speaker/menu/contact catalogs, and location condition catalog
-are JSON-backed. All 87 current entity link rows reference named JSON
-conditions where needed. The Lua graph engine and typed outcome bridge drive
-Gates Undersound's same-map service, the Renraku and Fuchi gated entry pages,
-Tarislar City Inn, Wylie's Gala Inn, and the two Stoker entry roots. The field
-host dispatches the `hotel.options` and `hospital.options` service IDs.
+text catalog, speaker/menu/contact catalogs, conversation graphs, and location
+condition catalog are JSON-backed. All 87 current entity link rows reference
+named JSON conditions where needed. The Lua graph engine and typed outcome
+bridge drive Gates Undersound's same-map service, the Renraku and Fuchi gated
+entry pages, Tarislar City Inn, Wylie's Gala Inn, and the two Stoker entry
+roots. The field host dispatches the `hotel.options` and `hospital.options`
+service IDs.
 Captain Quinton's first/repeat call and complete service tree is a JSON graph;
 Alesandro's, Sharkey's, Kipp's, Wilma's, Macklemann's, and Gregory's service
-trees are also JSON-backed. Their Lua modules register named host actions.
-Remaining conversation routes and other service outcome dispatchers are
-pending; this does not claim every listed route is implemented or visually
-verified.
+trees are also JSON-backed. Owlfeather's scene-6/event-0 services 2, 3, and 4
+now share a JSON graph with explicit route conditions and named Lua action
+adapters. Their Lua modules register named host actions. Remaining conversation
+routes and other service outcome dispatchers are pending; this does not claim
+every listed route is implemented or visually verified.
 
 ## Design goals
 
@@ -108,6 +110,33 @@ message-plus-choice screen:
 These are different input contracts. A `MORE` page is not a two-choice menu;
 the Vid-Phone contact list is not an A/B/C prompt; and the Hospital Exit
 confirmation ignores Start and returns to Options when No is chosen.
+
+### Owlfeather graph conversion
+
+The ROM title services at `0x53B78`, `0x53BCC`, and `0x53CEA` call three
+entry adapters that pass `dialogue.entry_id` into the shared
+`salish.owlfeather.lodge_services` graph. JSON conditions select each route
+from the location, field mode/event, and story-flag facts. The graph contains
+the first-contact choices and brother task, the shared Lands/Rangers/villages/
+Sinsearach/Council topic loop, the search follow-up's Later branch, and the
+returned-brother/referral sequence. It keeps the source effect order: runner
+counter adjustment, dialogue command, effect-flag updates, and the service-4
+trigger tail. Unsupported runner or command behavior stays an explicit source
+boundary. Normal endings use `continue_in_place`, which consumes the indexed
+service without following the scene-13 event-table fallback.
+
+Page copy remains in the ROM-generated text catalog. The repeated search
+prompt is mapped to `salish.owlfeather.page.search_followup` at `0xF7190`; the
+two goodbye pages are mapped to semantic Owlfeather keys instead of the old
+misassigned Red Buffalo branch aliases. The extractor preserves existing
+catalog order while updating values and placing new keys in their namespace,
+so refreshing generated strings does not reorder unrelated content.
+
+Lua graph tests exercise the nested topic loop and each service's distinct
+branch shape. Existing physical-entry QA covers the three service gates and
+several opening choices with full-frame host dumps. These are internal route
+and rendering checks; the reviewed longplay sections contain no matching
+Owlfeather sequence, so independent Genesis dialogue visuals remain open.
 
 ### Longplay evidence
 

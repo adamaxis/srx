@@ -172,67 +172,35 @@ game.state.story_flag_bit_4 = false
 selected = route(6, "event_0", 0, event_table)
 assert(selected.kind == "area_event" and selected.area_event_target == 13)
 
--- The first service requires the Inn clue, sets trigger 2 only when the
--- player asks about Michael, and follows the ROM's two nested question pages.
-game.state.story_flag_bit_1 = true
+-- The JSON graph dispatches these reusable typed actions. Its actual text,
+-- conditions, and branch permutations are exercised through GameScriptRuntime.
+local StoryFlags = require("story_flags")
+local DialogueActions = require("dialogue_actions")
+local action_registry = DialogueActions.new_default_registry()
 game.state.story_flag_bit_2 = false
-game.state.story_flag_bit_3 = false
-game.state.story_flag_bit_4 = false
-game.state.field_mode_effect_flag_bit_8 = true
-game.state.field_mode_effect_flag_bit_9 = true
-game.field.mode = 6
-game.field.event_code = 0
-choices = { "brother", "more", "learned", "more", "like_who", "task", "thanks" }
-assert(Owlfeather.present_first_contact() == "field_return")
-assert(game.state.story_trigger_active_2 == true and
-       game.state.story_flag_bit_2 == true)
-assert(game.state.field_mode_effect_flag_bit_8 == false and
-       game.state.field_mode_effect_flag_bit_9 == false and
-       game.state.field_mode_effect_flag_bit_10 == true)
-assert(#services == 1 and services[1][1] == "runner" and
-       services[1][2] == "adjust_source_byte_triplet_1")
-assert(seen_menus[1].menu_id == "opening" and
-       seen_menus[1].choices[3] == "brother")
+StoryFlags.begin_trigger(2)
+local succeeded, result = action_registry:execute(
+    "runner.adjust_source_byte_triplet", { amount = 1 })
+assert(succeeded and result == "applied")
+succeeded, result = action_registry:execute(
+    "story.apply_dialogue_command", { commandId = 0x17 })
+assert(succeeded and result == nil and game.state.story_flag_bit_2 == true)
 
--- Trigger 3 is the missed-Aragorn follow-up. Its Later branch shows both
--- farewell pages and leaves the repeat-service gate open.
-game.state.story_flag_bit_2 = true
-game.state.story_flag_bit_3 = false
-game.state.field_mode_effect_flag_bit_9 = true
-choices = { "later" }
-local farewell_count = #dialogues
-assert(Owlfeather.present_search_followup() == "field_return")
-assert(game.state.story_trigger_active_3 == true and
-       game.state.story_flag_bit_3 == false and
-       game.state.field_mode_effect_flag_bit_9 == false)
-assert(seen_menus[#seen_menus].menu_id == "search_followup" and
-       seen_menus[#seen_menus].choices[3] == "later")
-assert(#dialogues == farewell_count + 2 and
-       dialogues[farewell_count + 1].text:find("Sure thing", 1, true) ~= nil and
-       dialogues[farewell_count + 1].continuation == true and
-       dialogues[farewell_count + 2].text:find("Farewell", 1, true) ~= nil and
-       dialogues[farewell_count + 2].continuation == false)
-
--- Trigger 4's return branch applies its D0=2 runner adjustment, effect flags,
--- command 0x19, and the handler's unconditional trigger tail.
-game.state.story_flag_bit_3 = true
 game.state.story_flag_bit_4 = false
-game.state.story_trigger_active_2 = nil
-game.state.field_mode_effect_flag_bit_8 = true
-game.state.field_mode_effect_flag_bit_9 = true
-game.state.field_mode_effect_flag_bit_10 = true
-game.state.field_mode_effect_flag_bit_13 = true
-game.state.field_mode_effect_flag_bit_14 = false
-choices = { "freed", "more", "more", "more", "more", "thanks" }
-assert(Owlfeather.present_return_followup() == "field_return")
+StoryFlags.begin_trigger(4)
+succeeded, result = action_registry:execute(
+    "runner.adjust_source_byte_triplet", { amount = 2 })
+assert(succeeded and result == "applied")
+succeeded, result = action_registry:execute(
+    "story.apply_dialogue_command", { commandId = 0x19 })
+assert(succeeded and result == nil and game.state.story_flag_bit_4 == true)
+StoryFlags.finish_trigger(4)
 assert(game.state.story_trigger_active_4 == true and
        game.state.story_flag_bit_4 == true)
-assert(game.state.field_mode_effect_flag_bit_8 == false and
-       game.state.field_mode_effect_flag_bit_9 == false and
-       game.state.field_mode_effect_flag_bit_10 == false and
-       game.state.field_mode_effect_flag_bit_13 == false and
-       game.state.field_mode_effect_flag_bit_14 == true)
-assert(services[2][2] == "adjust_source_byte_triplet_2")
+
+succeeded, result = action_registry:execute(
+    "story.apply_dialogue_command", { commandId = 0xFF })
+assert(succeeded and result == "command_unresolved")
 
 local red_links = {
     {
@@ -309,4 +277,4 @@ assert(#seen_menus == menu_count + 9 and
        seen_menus[menu_count + 9].menu_id == "renraku_explanation")
 assert(game.state.field_mode_effect_flag_bit_7 == true)
 
-print("Salish lodge tests passed: ROM-gated services, dialogue, and same-map return")
+print("Salish lodge tests passed: ROM route gates, typed actions, dialogue, and same-map return")

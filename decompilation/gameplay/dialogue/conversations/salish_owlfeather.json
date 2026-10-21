@@ -1,0 +1,374 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "salish.owlfeather.lodge_services": {
+      "entryNode": "select_service_route",
+      "speakerId": "david_owlfeather",
+      "textProfile": "salish.owlfeather",
+      "provenance": {
+        "romAddresses": [
+          "0x53B78", "0x53BCC", "0x53CEA", "0x53A78",
+          "0xF4B68", "0xF4B84", "0xF4BA0", "0x21ED0",
+          "0x218C6", "0x218E4", "0x2196C"
+        ],
+        "longplayEvidence": "Reviewed early-story frames cover the Tabatha and Stoker sequence, not the Owlfeather service. They do not provide an independent capture of these pages.",
+        "scope": "scene_6_event_0_first_search_and_return_followups"
+      },
+      "nodes": {
+        "select_service_route": {
+          "type": "branch",
+          "cases": [
+            {
+              "when": "salish.owlfeather.first_contact_available",
+              "next": "first_begin_trigger"
+            },
+            {
+              "when": "salish.owlfeather.search_followup_available",
+              "next": "search_begin_trigger"
+            },
+            {
+              "when": "salish.owlfeather.return_followup_available",
+              "next": "return_begin_trigger"
+            }
+          ],
+          "fallback": "service_route_boundary",
+          "evidence": "ROM indexed title services 2, 3, and 4 at 0x53B78, 0x53BCC, and 0x53CEA select distinct roots from the scene-6 event-0 story gates."
+        },
+        "service_route_boundary": {
+          "type": "source_boundary",
+          "reason": "The invocation entry id, location, event, or story flags do not match an Owlfeather service root traced from the ROM."
+        },
+
+        "first_begin_trigger": {
+          "type": "action",
+          "actionId": "story.begin_trigger",
+          "arguments": { "triggerId": 2 },
+          "next": "first_clear_effect_8",
+          "evidence": "The indexed trigger loop stores service index 2 in FFDD64 before 0x53B78."
+        },
+        "first_clear_effect_8": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 8, "value": false },
+          "next": "first_clear_effect_9"
+        },
+        "first_clear_effect_9": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 9, "value": false },
+          "next": "opening"
+        },
+        "opening": {
+          "type": "choice",
+          "menuId": "opening",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.opening",
+          "choices": [
+            { "id": "lands", "next": "topic_lands" },
+            { "id": "council", "next": "council_more" },
+            { "id": "brother", "next": "adjust_runner_triplet_1" }
+          ],
+          "evidence": "Dialogue root 0xF4B68 presents Lands, Council Island, and Michael's brother in that button order."
+        },
+        "adjust_runner_triplet_1": {
+          "type": "action",
+          "actionId": "runner.adjust_source_byte_triplet",
+          "arguments": { "amount": 1 },
+          "results": {
+            "applied": "mark_brother_contact",
+            "service_unavailable": "runner_state_boundary"
+          },
+          "evidence": "Choice C reaches command 0x17, which calls 0x59C34 with D0=1 before marking the active story trigger."
+        },
+        "mark_brother_contact": {
+          "type": "action",
+          "actionId": "story.apply_dialogue_command",
+          "arguments": { "commandId": 23 },
+          "results": { "command_unresolved": "dialogue_command_boundary" },
+          "next": "brother_more"
+        },
+        "brother_more": {
+          "type": "choice",
+          "menuId": "brother_more",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.brother",
+          "choices": [{ "id": "more", "next": "brother_status" }]
+        },
+        "brother_status": {
+          "type": "choice",
+          "menuId": "brother_status",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.brother_status",
+          "choices": [{ "id": "learned", "next": "status_more" }]
+        },
+        "status_more": {
+          "type": "choice",
+          "menuId": "status_more",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.status_more",
+          "choices": [{ "id": "more", "next": "status_topic" }]
+        },
+        "status_topic": {
+          "type": "choice",
+          "menuId": "status_topic",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.status_topic",
+          "choices": [{ "id": "like_who", "next": "simple_task" }]
+        },
+        "simple_task": {
+          "type": "choice",
+          "menuId": "simple_task",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.simple_task",
+          "choices": [{ "id": "task", "next": "set_effect_10" }]
+        },
+        "set_effect_10": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 10, "value": true },
+          "next": "task_result",
+          "evidence": "Dialogue command 0x3C at 0x21ED0 sets FFFC30 bit 10 before opening 0xF50C8."
+        },
+
+        "search_begin_trigger": {
+          "type": "action",
+          "actionId": "story.begin_trigger",
+          "arguments": { "triggerId": 3 },
+          "next": "search_clear_effect_9",
+          "evidence": "The indexed trigger loop stores service index 3 in FFDD64 before 0x53BCC."
+        },
+        "search_clear_effect_9": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 9, "value": false },
+          "next": "search_followup"
+        },
+        "search_followup": {
+          "type": "choice",
+          "menuId": "search_followup",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.search_followup",
+          "choices": [
+            { "id": "lands", "next": "topic_lands" },
+            { "id": "council", "next": "council_more" },
+            { "id": "later", "next": "farewell_more" }
+          ],
+          "evidence": "Service 3 at 0x53BCC reaches the 0xF4B84 repeat prompt after clearing FFFC30 bit 9."
+        },
+
+        "return_begin_trigger": {
+          "type": "action",
+          "actionId": "story.begin_trigger",
+          "arguments": { "triggerId": 4 },
+          "next": "adjust_runner_triplet_2",
+          "evidence": "The indexed trigger loop stores service index 4 in FFDD64 before 0x53CEA."
+        },
+        "adjust_runner_triplet_2": {
+          "type": "action",
+          "actionId": "runner.adjust_source_byte_triplet",
+          "arguments": { "amount": 2 },
+          "results": {
+            "applied": "return_clear_effect_8",
+            "service_unavailable": "runner_state_boundary"
+          },
+          "evidence": "Service 4 calls 0x59C34 with D0=2 before opening 0xF4BA0; its prompt text is shared with service 3 at 0xF7190."
+        },
+        "return_clear_effect_8": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 8, "value": false },
+          "next": "return_clear_effect_9"
+        },
+        "return_clear_effect_9": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 9, "value": false },
+          "next": "return_clear_effect_10"
+        },
+        "return_clear_effect_10": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 10, "value": false },
+          "next": "return_clear_effect_13"
+        },
+        "return_clear_effect_13": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 13, "value": false },
+          "next": "return_set_effect_14"
+        },
+        "return_set_effect_14": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 14, "value": true },
+          "next": "return_followup"
+        },
+        "return_followup": {
+          "type": "choice",
+          "menuId": "return_followup",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.search_followup",
+          "choices": [{ "id": "freed", "next": "mark_aragorn_returned" }]
+        },
+        "mark_aragorn_returned": {
+          "type": "action",
+          "actionId": "story.apply_dialogue_command",
+          "arguments": { "commandId": 25 },
+          "results": { "command_unresolved": "dialogue_command_boundary" },
+          "next": "return_offer",
+          "evidence": "The freed choice reaches dialogue command 0x19, which marks the active trigger before the reunion pages."
+        },
+        "return_offer": {
+          "type": "choice",
+          "menuId": "return_more",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.return_offer",
+          "choices": [{ "id": "more", "next": "return_arrival" }]
+        },
+        "return_arrival": {
+          "type": "choice",
+          "menuId": "return_more",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.return_arrival",
+          "choices": [{ "id": "more", "next": "return_arrival_more" }]
+        },
+        "return_arrival_more": {
+          "type": "choice",
+          "menuId": "return_more",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.return_arrival_more",
+          "choices": [{ "id": "more", "next": "return_reunion" }]
+        },
+        "return_reunion": {
+          "type": "choice",
+          "menuId": "return_more",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.return_reunion",
+          "choices": [{ "id": "more", "next": "return_closing" }]
+        },
+        "return_closing": {
+          "type": "choice",
+          "menuId": "task_result",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.return_closing",
+          "choices": [
+            { "id": "lands", "next": "topic_lands" },
+            { "id": "council", "next": "council_more" },
+            { "id": "thanks", "next": "farewell_more" }
+          ]
+        },
+
+        "topic_lands": {
+          "type": "choice",
+          "menuId": "lands",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.lands",
+          "choices": [
+            { "id": "rangers", "next": "topic_rangers" },
+            { "id": "thanks", "next": "farewell_more" }
+          ]
+        },
+        "topic_rangers": {
+          "type": "choice",
+          "menuId": "rangers",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.rangers",
+          "choices": [
+            { "id": "villages", "next": "topic_villages" },
+            { "id": "thanks", "next": "farewell_more" }
+          ]
+        },
+        "topic_villages": {
+          "type": "choice",
+          "menuId": "villages",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.villages",
+          "choices": [
+            { "id": "sinsearach", "next": "topic_sinsearach" },
+            { "id": "thanks", "next": "farewell_more" }
+          ]
+        },
+        "topic_sinsearach": {
+          "type": "choice",
+          "menuId": "sinsearach",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.sinsearach",
+          "choices": [
+            { "id": "lands", "next": "topic_lands" },
+            { "id": "council", "next": "council_more" },
+            { "id": "thanks", "next": "farewell_more" }
+          ]
+        },
+        "council_more": {
+          "type": "choice",
+          "menuId": "council_more",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.council",
+          "choices": [{ "id": "more", "next": "council_topics" }]
+        },
+        "council_topics": {
+          "type": "choice",
+          "menuId": "council_topics",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.council_topics",
+          "choices": [
+            { "id": "lands", "next": "topic_lands" },
+            { "id": "council", "next": "council_more" },
+            { "id": "thanks", "next": "farewell_more" }
+          ]
+        },
+        "task_result": {
+          "type": "choice",
+          "menuId": "task_result",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.owlfeather.page.task_result",
+          "choices": [
+            { "id": "lands", "next": "topic_lands" },
+            { "id": "council", "next": "council_more" },
+            { "id": "thanks", "next": "farewell_more" }
+          ]
+        },
+        "farewell_more": {
+          "type": "page",
+          "eventId": "farewell_more",
+          "next": "farewell_last"
+        },
+        "farewell_last": {
+          "type": "page",
+          "eventId": "farewell_last",
+          "next": "maybe_finish_return_trigger"
+        },
+        "maybe_finish_return_trigger": {
+          "type": "branch",
+          "cases": [
+            {
+              "when": "salish.owlfeather.return_followup_tail",
+              "next": "finish_return_trigger"
+            }
+          ],
+          "fallback": "continue_in_place"
+        },
+        "finish_return_trigger": {
+          "type": "action",
+          "actionId": "story.finish_trigger",
+          "arguments": { "triggerId": 4 },
+          "next": "continue_in_place",
+          "evidence": "Service 4 calls 0x2196C at 0x53D4E after its dialogue returns, including after command 0x19."
+        },
+        "continue_in_place": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        },
+
+        "runner_state_boundary": {
+          "type": "source_boundary",
+          "reason": "The ROM counter adjustment at 0x59C34 requires restored runner source-byte triplet state from the host service."
+        },
+        "dialogue_command_boundary": {
+          "type": "source_boundary",
+          "reason": "The requested Owlfeather dialogue command has no converted story-flag effect."
+        }
+      }
+    }
+  }
+}
