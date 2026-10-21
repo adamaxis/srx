@@ -535,6 +535,10 @@ local alert_context = {
     game = {
         deck_record = function() return alert_deck end,
         deck_slots = function() return alert_slots end,
+        deck_commit = function(record, slots)
+            alert_deck = record
+            alert_slots = slots
+        end,
         matrix_alert_random_bound = function(bound)
             eq(bound, 10, "Matrix alert uses the ROM ten-sided bound")
             return 0
@@ -547,10 +551,36 @@ local alert_screen = MatrixNodeAction.new({
     matrix_state = active_spu_state, traversal_view = true,
 })
 MatrixNodeAction.enter(alert_screen, alert_context)
+eq(active_spu_state.alert, MX.PASSIVE,
+    "ROM alert probe waits until the world-entry sequence finishes")
+eq(alert_screen.matrix_message, nil,
+    "world-entry view does not show the later node-action notice")
+for _ = 1, 61 do
+    MatrixNodeAction.input(alert_screen, 0, alert_context)
+end
+eq(Session.traversal_view(active_spu_state).world_effect_phase, 0,
+    "ROM world-effect timer starts after the 61-VBlank HUD setup")
+for _ = 1, 238 do
+    MatrixNodeAction.input(alert_screen, 0, alert_context)
+end
+eq(active_spu_state.alert, MX.PASSIVE,
+    "random-alert probe remains after the 238 serviced entry frames")
+eq(Session.traversal_view(active_spu_state).world_effect_phase, 4,
+    "the unseen entry record uses node reaction timing during entry")
+eq(Session.traversal_view(active_spu_state).world_effect_mode, MX.UNSEEN,
+    "0x1A908 selects from the rank-zero state before 0x54662 raises rank")
+MatrixNodeAction.input(alert_screen, 0, alert_context)
 eq(active_spu_state.alert, MX.ACTIVE,
-    "ROM random-alert event raises the SPU route to Active Alert")
+    "ROM random-alert event runs after the world-entry handoff")
 eq(active_spu_state.in_alert, true,
     "Active Alert retains the FFDF84 IC-world-effect gate")
+eq(alert_screen.message_delay_frames, 25,
+    "ROM alert notice starts its 25-VBlank wait after entry")
+for _ = 1, 25 do MatrixNodeAction.input(alert_screen, 0, alert_context) end
+MatrixNodeAction.input(alert_screen, E.Pad.A, alert_context)
+for _ = 1, 14 do MatrixNodeAction.input(alert_screen, 0, alert_context) end
+eq(Session.traversal_view(active_spu_state).world_effect_phase, 4,
+    "stored world-effect phase remains fixed while the node-action loop is open")
 eq(Session.set_current_node_knowledge(active_spu_state, 0), true,
     "active-alert reproduction keeps the SPU unknown")
 local active_spu_view = Session.traversal_view(active_spu_state)
@@ -560,8 +590,31 @@ eq(active_spu_view.palette_theme, 0,
     "unknown active-alert SPU keeps neutral model palette")
 eq(active_spu_view.ice_label, HUD.ic_visibility[1],
     "active-alert SPU still presents Ice Unknown")
-eq(active_spu_view.world_effect_mode, 3,
-    "ROM System 15/node 13 selects Blaster world-effect mode 3")
+eq(active_spu_view.world_effect_mode, MX.UNSEEN,
+    "the node-action alert does not replace the mode stored at 0x1A908")
+eq(Session.begin_world_entry(active_spu_state), true,
+    "a later source entry initializes a fresh world-effect record")
+eq(Session.traversal_view(active_spu_state).world_effect_mode, 3,
+    "System 15/node 13 selects Blaster mode when the entry sees FFDF84")
+eq(Session.traversal_view(active_spu_state).world_effect_phase, 0,
+    "fresh mode selection resets the entry phase")
+active_spu_state.phase = "link_select"
+active_spu_state.link_cursor = 0
+MatrixNodeAction.input(alert_screen, E.Pad.A, alert_context)
+eq(active_spu_state.current_node, 0,
+    "link confirmation selects the linked System Access node")
+eq(alert_screen.world_entry_pending, true,
+    "traversal link confirmation starts the next world-entry sequence")
+eq(Session.current_node_knowledge(active_spu_state), 0,
+    "the new node's knowledge rank stays unchanged during entry")
+for _ = 1, 400 do
+    if not alert_screen.world_entry_pending then break end
+    MatrixNodeAction.input(alert_screen, 0, alert_context)
+end
+eq(alert_screen.world_entry_pending, false,
+    "the second world-entry sequence reaches its node-action handoff")
+eq(Session.current_node_knowledge(active_spu_state), 4,
+    "the node-action handoff applies rank four after world entry")
 end
 local loading_state = {}
 local loading_slots = {

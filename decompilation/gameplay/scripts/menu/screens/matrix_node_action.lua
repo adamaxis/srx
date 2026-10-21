@@ -431,11 +431,20 @@ function M.enter(st, ctx)
     if not MatrixSession.is_online(st.matrix_state) then
         return { transition = T.POP, result = {} }
     end
+    if st.traversal_view then
+        st.world_entry_pending = MatrixSession.begin_world_entry(
+            st.matrix_state)
+        if st.world_entry_pending then
+            update_deck_view(st, ctx)
+            refresh(st)
+            ctx.redraw(R.FULL)
+            return
+        end
+    end
     -- ROM 0x54662 replaces FFFB30's knowledge nibble for the selected
-    -- map cell with 4 before the node-action HUD is rendered.
+    -- map cell with 4 after 0x1ADE6's entry sequence returns.
     MatrixSession.set_current_node_knowledge(st.matrix_state, 4)
     if st.traversal_view then
-        MatrixSession.begin_world_entry(st.matrix_state)
         update_deck_view(st, ctx)
     end
     rebuild_node_view(st, ctx)
@@ -617,20 +626,29 @@ function M.input(st, events, ctx)
     if not MatrixSession.is_online(state) then
         return { transition = T.POP, result = {} }
     end
-    if st.traversal_view and MatrixSession.advance_world_entry(state) then
-        refresh(st)
-        ctx.redraw(R.FULL)
-        return
+    if st.traversal_view and st.world_entry_pending then
+        local entry_phase = state.world_entry and state.world_entry.phase
+        if MatrixSession.advance_world_entry(state) then
+            local next_phase = state.world_entry and state.world_entry.phase
+            if entry_phase == "motion" and next_phase == "motion" then
+                MatrixSession.advance_world_effect_frame(state)
+            end
+            if next_phase == "settled" then
+                st.world_entry_pending = false
+                MatrixSession.set_current_node_knowledge(state, 4)
+                -- 0x1ADE6 enters 0x54662 only after the world sequence ends;
+                -- the node-action loop draws its node, then probes 0x54A8E.
+                rebuild_node_view(st, ctx)
+            else
+                refresh(st)
+                ctx.redraw(R.FULL)
+            end
+            return
+        end
+        st.world_entry_pending = false
     end
     if service_program_loading(st, ctx) then
         update_deck_view(st, ctx)
-        refresh(st)
-        ctx.redraw(R.FULL)
-    end
-    if st.traversal_view and state.phase == "node" and
-       not st.matrix_transition and not st.transfer and not st.shutdown and
-       not st.matrix_message and
-       MatrixSession.advance_world_effect_frame(state) then
         refresh(st)
         ctx.redraw(R.FULL)
     end
@@ -832,8 +850,14 @@ function M.input(st, events, ctx)
     if events & CONFIRM ~= 0 and
        MatrixSession.commit_node_selection(state) then
         if st.traversal_view then
-            MatrixSession.set_current_node_knowledge(state, 4)
-            MatrixSession.begin_world_entry(state)
+            st.world_entry_pending = MatrixSession.begin_world_entry(state)
+            if st.world_entry_pending then
+                update_deck_view(st, ctx)
+                st.row = 0
+                refresh(st)
+                ctx.redraw(R.FULL)
+                return
+            end
         end
         st.row = 0
         rebuild_node_view(st, ctx)
