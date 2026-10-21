@@ -549,6 +549,17 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_guarded_e
                  --field-tarislar-guarded-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-guarded-entry-qa")
 
+# Exercise both signed FFF0D5 result pages by reaching record 67 with ordinary
+# field movement. Each path must remain on scene 1 after its one-page prompt.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_positive_alternate_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-positive-alternate-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-positive-alternate-qa")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_negative_alternate_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-negative-alternate-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-negative-alternate-qa")
+
 # Enter scene-1 record 68 through ordinary Up movement with title service 1's
 # source flags, then confirm its Lua-owned intro, choices, same-map leave, and
 # clean return without taking the table's numeric scene-53 route.

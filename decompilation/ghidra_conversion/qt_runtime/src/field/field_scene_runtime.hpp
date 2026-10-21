@@ -1154,6 +1154,10 @@ public:
             : field_exit_world_flags_ & ~mask;
         return true;
     }
+    void set_field_exit_alternate_result_for_dump(
+        std::int8_t result) noexcept {
+        field_exit_alternate_result_ = result;
+    }
     void set_compact_runner_markers_for_dump(
         std::uint8_t primary_marker,
         std::uint8_t secondary_marker) noexcept {

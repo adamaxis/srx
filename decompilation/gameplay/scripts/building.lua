@@ -88,6 +88,18 @@ local function condition_matches(clause, context)
         return type(context) == "table" and
             context.alternate_result == tonumber(alternate_result)
     end
+    local alternate_result_sign = clause:match("^alternate_result=(%a+)$")
+    if alternate_result_sign == "positive" or
+       alternate_result_sign == "negative" then
+        if type(context) ~= "table" or
+           type(context.alternate_result) ~= "number" then
+            return false
+        end
+        if alternate_result_sign == "positive" then
+            return context.alternate_result > 0
+        end
+        return context.alternate_result < 0
+    end
 
     local fact, expected = clause:match("^([a-z][a-z0-9_]*)=(%a+)$")
     assert(fact ~= nil and (expected == "true" or expected == "false"),

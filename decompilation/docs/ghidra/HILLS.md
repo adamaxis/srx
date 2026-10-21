@@ -261,7 +261,11 @@ captures the greeting, Renraku response, remaining map pages, and clean scene-1
 28, 26, and 27, plus alternate result 0; its Yes branch presents the three ROM
 travel pages and enters scene 54, while No returns to scene 1. Debug/Release
 physical-input QA captures both outcomes and the full-screen scene-1/scene-54
-`actual.bmp` files. The upstream Frosty conversation, nonzero FFF0D5 branch,
+`actual.bmp` files. Signed nonzero FFF0D5 results now have higher-priority Lua
+entity routes: positive selects the ROM package-pickup page and negative the
+package-delivery page. Debug/Release CTests reach event 7 with ordinary Up
+input, verify each one-page dialog, suppress scene 13, and capture the clean
+scene-1 return as `actual.bmp`. The upstream Frosty conversation,
 pending-descriptor override, and scene-54 completion/return remain open.
 Scene 54's extracted map is a tall 320x1344 layout, and its profile has no
 event table or elevator group. Its event-31 handler returns without a route in

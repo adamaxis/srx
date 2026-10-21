@@ -144,6 +144,31 @@ function TarislarApartments.present_guarded_entry()
     return "left"
 end
 
+function TarislarApartments.present_alternate_result()
+    if not at_apartments() or game.field.mode ~= 1 or
+       game.field.event_code ~= 7 or game.field.alternate_result == 0 then
+        return "denied"
+    end
+
+    -- ROM 0x5447E tests signed FFF0D5 before the Frosty and visit flags.
+    -- Positive selects group 0x15FF28 / text 0x15FE5D; negative selects
+    -- group 0x15FF20 / text 0x15FDB8. Both prompt chains are one page and
+    -- leave D6 at -1, so the scene-1 event-table destination is suppressed.
+    if game.field.alternate_result > 0 then
+        game.ui.say_text(table.concat({
+            "Heavily armed and armored elves train their weapons on you.",
+            "After confirming you as the pick-up man, you are given a package and pushed back out into the street.",
+        }, "||"), false)
+    else
+        game.ui.say_text(table.concat({
+            "The metallic clacking of weapons being readied stops you in your tracks!",
+            "A lone elf approaches and you hand him the package.",
+            "He tosses you a grin and a credstick, and walks you to the door.",
+        }, "||"), false)
+    end
+    return "left"
+end
+
 function TarislarApartments.present_tomb_departure()
     if not at_apartments() or
        StoryFlags.is_set(E.StoryFlag.FROSTY_MET) ~= true or

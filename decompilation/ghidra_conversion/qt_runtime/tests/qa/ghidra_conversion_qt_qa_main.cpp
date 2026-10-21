@@ -21155,6 +21155,193 @@ int run_field_tarislar_guarded_entry_qa(
     return 0;
 }
 
+int run_field_tarislar_alternate_result_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries,
+    const std::int8_t alternate_result,
+    const std::string_view expected_text) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Tarislar alternate-result QA: could not clear prior captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) return 3;
+
+    constexpr std::size_t kTarislarRecord = 67U;
+    constexpr std::uint16_t kStartX = 0x2E00U;
+    constexpr std::uint16_t kStartY = 0x0D00U;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& rectangles = metadata.terrain_collision_rectangles;
+    const auto& initial = field_scene.field_entity_world_position();
+    if (alternate_result == 0 ||
+        field_scene.field_scene_reference_for_dump() != 1U ||
+        initial.x != kStartX || initial.y != kStartY ||
+        rectangles.size() <= kTarislarRecord ||
+        rectangles[kTarislarRecord].value != 0x00C7U) {
+        std::cerr << "Tarislar alternate-result QA: invalid event/spawn fixture\n";
+        return 3;
+    }
+    field_scene.set_field_exit_alternate_result_for_dump(alternate_result);
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        const auto path = output / (std::string(name) + ".bmp");
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_field_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) !=
+                 *expect_field_hud) ||
+            !image.save(QString::fromStdWString(path.wstring()))) {
+            std::cerr << "Tarislar alternate-result QA: could not capture "
+                      << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    const auto contains_text = [&](const DialoguePanelView& panel) {
+        for (std::size_t index = 0U;
+             index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(expected_text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    const auto flags_before = field_scene.field_world_fact_flags_for_dump();
+    const auto audio_before = field_audio_events.size();
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace || !save("spawn", true)) return 3;
+    trace << "phase\tframe\tinput\tscene\tx\ty\tevent\tdialogue\t"
+             "alternate_result\n";
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U && !field_scene.dialogue_open();
+         ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U);
+        field_scene.advance_frame();
+        const auto position = field_scene.field_entity_world_position();
+        trace << "approach\t" << movement_ticks + 1U << "\t1\t"
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << position.x << '\t' << position.y << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump())
+              << '\t' << (field_scene.dialogue_open() ? 1 : 0) << '\t'
+              << static_cast<int>(alternate_result) << '\n';
+        if (field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_scene_reference_for_dump() != 1U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_terrain_collision_code_for_dump() != 0xFFC7U ||
+        field_scene.field_projected_code_for_dump() != 0xFFC7U ||
+        field_scene.field_mode_event_code_for_dump() != 7U ||
+        !save("doorway-contact", std::nullopt)) {
+        std::cerr << "Tarislar alternate-result QA: ordinary Up input missed "
+                     "record 67/event 7\n";
+        return 3;
+    }
+    for (std::uint8_t settle = 0U;
+         settle < 100U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 1U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto& panel = field_scene.dialogue_panel();
+    const auto image = render();
+    const bool page_valid = field_scene.dialogue_open() &&
+        field_scene.field_scene_reference_for_dump() == 1U &&
+        panel.source_complete && panel.option_count == 0U &&
+        panel.portrait_alias == "none" && !panel.has_more &&
+        contains_text(panel) &&
+        !field_hud_chrome_survives(image, asset_root) &&
+        image_has_green_ink(image, 88, 16, 216, 120) &&
+        save("alternate-result-page", false);
+    const auto entry_opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.location_dialogue_opened"));
+    if (!page_valid || entry_opened != 1 ||
+        field_scene.field_world_fact_flags_for_dump() != flags_before ||
+        field_audio_events.size() != audio_before) {
+        std::cerr << "Tarislar alternate-result QA: signed branch page, map, "
+                     "flags, or audio check failed (open="
+                  << field_scene.dialogue_open() << ", complete="
+                  << panel.source_complete << ", text=" << contains_text(panel)
+                  << ", options="
+                  << static_cast<unsigned>(panel.option_count)
+                  << ", more=" << panel.has_more << ", segments=";
+        for (std::size_t index = 0U;
+             index < panel.text_segment_count; ++index) {
+            std::cerr << '[' << panel.text_segments[index] << ']';
+        }
+        std::cerr
+                  << ", flags_unchanged="
+                  << (field_scene.field_world_fact_flags_for_dump() ==
+                      flags_before)
+                  << ", audio=" << field_audio_events.size() << "/"
+                  << audio_before << ")\n";
+        return 3;
+    }
+
+    settle_qa_dialogue_input(field_scene);
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    const auto return_frames = static_cast<std::uint8_t>(
+        field_scene.field_modal_return_transition_frames_for_dump());
+    const auto denied_transition = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.location_dialogue_denied_transition"));
+    if (field_scene.dialogue_open() || return_frames == 0U ||
+        return_frames > 60U || denied_transition != 1) {
+        std::cerr << "Tarislar alternate-result QA: one-page close did not "
+                     "suppress the scene-13 transition\n";
+        return 3;
+    }
+    if (!save("return-start", std::nullopt)) return 3;
+    for (std::uint8_t frame = 0U; frame < return_frames; ++frame) {
+        field_scene.advance_frame();
+        if (frame == return_frames / 2U &&
+            !save("return-midpoint", std::nullopt)) {
+            return 3;
+        }
+    }
+    const auto final_image = render();
+    if (field_scene.field_scene_reference_for_dump() != 1U ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        !field_hud_chrome_survives(final_image, asset_root) ||
+        count_playfield_lit(final_image) < 100U ||
+        !save("actual", true)) {
+        std::cerr << "Tarislar alternate-result QA: return failed to redraw "
+                     "the full scene-1 field\n";
+        return 3;
+    }
+    trace << "result\t" << movement_ticks << "\t64\t1\t" << kStartX
+          << '\t' << kStartY << "\t7\t0\t"
+          << static_cast<int>(alternate_result) << '\n';
+    trace.close();
+    if (!trace) return 3;
+    std::cout << "field_tarislar_alternate_result_qa=passed result="
+              << static_cast<int>(alternate_result)
+              << " scene=1 event=7 destination_suppressed=yes artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 int run_field_tarislar_repeat_service_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -21735,6 +21922,10 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_tarislar_guarded_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_tarislar_positive_alternate_qa_path;
+        std::optional<std::filesystem::path>
+            field_tarislar_negative_alternate_qa_path;
+        std::optional<std::filesystem::path>
             field_tarislar_tomb_departure_qa_path;
         std::optional<std::filesystem::path>
             field_tarislar_tomb_decline_qa_path;
@@ -22051,6 +22242,20 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_tarislar_guarded_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-tarislar-positive-alternate-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_tarislar_positive_alternate_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-tarislar-negative-alternate-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_tarislar_negative_alternate_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -22867,6 +23072,8 @@ int main(int argc, char** argv) {
                 field_tarislar_repeat_service_qa_path.has_value() ||
                 field_tarislar_city_inn_qa_path.has_value() ||
                 field_tarislar_guarded_entry_qa_path.has_value() ||
+                field_tarislar_positive_alternate_qa_path.has_value() ||
+                field_tarislar_negative_alternate_qa_path.has_value() ||
                 field_tarislar_tomb_departure_qa_path.has_value() ||
                 field_tarislar_tomb_decline_qa_path.has_value()) {
                 const auto scene1 = integration::make_field_scene_input(
@@ -23286,6 +23493,8 @@ int main(int argc, char** argv) {
                 field_tarislar_first_entry_qa_path.has_value() ||
                 field_tarislar_repeat_service_qa_path.has_value() ||
                 field_tarislar_guarded_entry_qa_path.has_value() ||
+                field_tarislar_positive_alternate_qa_path.has_value() ||
+                field_tarislar_negative_alternate_qa_path.has_value() ||
                 field_tarislar_tomb_departure_qa_path.has_value() ||
                 field_tarislar_tomb_decline_qa_path.has_value()) {
                 // The movement/collision QA routes need the same source tick
@@ -23327,6 +23536,8 @@ int main(int argc, char** argv) {
             if (field_tarislar_first_entry_qa_path.has_value() ||
                 field_tarislar_repeat_service_qa_path.has_value() ||
                 field_tarislar_guarded_entry_qa_path.has_value() ||
+                field_tarislar_positive_alternate_qa_path.has_value() ||
+                field_tarislar_negative_alternate_qa_path.has_value() ||
                 field_tarislar_tomb_departure_qa_path.has_value() ||
                 field_tarislar_tomb_decline_qa_path.has_value()) {
                 const bool repeat_visit =
@@ -26192,6 +26403,20 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_tarislar_guarded_entry_qa_path,
                     field_audio_events, field_source_boundaries);
+            }
+            if (field_tarislar_positive_alternate_qa_path.has_value()) {
+                return run_field_tarislar_alternate_result_qa(
+                    field_scene, asset_root,
+                    *field_tarislar_positive_alternate_qa_path,
+                    field_audio_events, field_source_boundaries, 1,
+                    "Heavily armed and armored elves train their weapons on you.");
+            }
+            if (field_tarislar_negative_alternate_qa_path.has_value()) {
+                return run_field_tarislar_alternate_result_qa(
+                    field_scene, asset_root,
+                    *field_tarislar_negative_alternate_qa_path,
+                    field_audio_events, field_source_boundaries, -1,
+                    "The metallic clacking of weapons being readied stops you in your tracks!");
             }
             if (field_tarislar_tomb_departure_qa_path.has_value()) {
                 return run_field_tarislar_tomb_departure_qa(

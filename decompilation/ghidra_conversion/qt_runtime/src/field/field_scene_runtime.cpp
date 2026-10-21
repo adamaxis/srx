@@ -1789,6 +1789,11 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     state.caller_exit_status = -1;
                     return true;
                 }
+                game_scripts_.set_field_mode_context(
+                    scripting::ScriptFieldModeContext{
+                        static_cast<std::uint8_t>(runtime_state.field_mode),
+                        event_route.event_code,
+                        field_exit_alternate_result_});
                 game_scripts_.set_location_context(
                     event_route.entry_location_type,
                     event_route.entry_location_id,

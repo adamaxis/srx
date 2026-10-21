@@ -8955,14 +8955,56 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
-    tarislar_context.alternate_result = -1;
-    const auto tarislar_alternate =
-        scripts.resolve_field_location_route(tarislar_context);
-    if (!expect(tarislar_alternate.has_value() &&
-                    tarislar_alternate->area_event_target ==
-                        std::optional<std::uint8_t>{13U} &&
-                    tarislar_alternate->entry_dialogue_module.empty(),
-                "Tarislar override ignored its FFF0D5 alternate-result gate")) {
+    const auto check_tarislar_alternate_task =
+        [&scripts, &tarislar_context](const std::int8_t result,
+                                      const std::string_view expected_text) {
+            tarislar_context.alternate_result = result;
+            scripts.set_field_mode_context(
+                ScriptFieldModeContext{1U, 7U, result});
+            const auto route =
+                scripts.resolve_field_location_route(tarislar_context);
+            if (!route.has_value() ||
+                route->area_event_target !=
+                    std::optional<std::uint8_t>{13U} ||
+                route->entry_dialogue_module != "tarislar_apartments" ||
+                route->entry_dialogue_function != "present_alternate_result" ||
+                route->entry_continue_result_id != "enter_scene_13") {
+                return false;
+            }
+            auto task = scripts.start_task(
+                "tarislar_apartments", "present_alternate_result");
+            if (task.status !=
+                    ScriptTaskStep::Status::awaiting_native_operation ||
+                !task.operation.has_value() ||
+                task.operation->type != ScriptNativeOperation::Type::ui_say ||
+                !task.operation->dialogue.has_value() ||
+                task.operation->dialogue->speaker_id !=
+                    "tarislar_apartments_narrator" ||
+                task.operation->dialogue->inline_text != expected_text ||
+                !task.operation->dialogue->continuation_key.empty()) {
+                return false;
+            }
+            task = scripts.complete_native_operation(true);
+            return task.status == ScriptTaskStep::Status::completed &&
+                   task.result_id == std::optional<std::string>{"left"};
+        };
+    constexpr std::string_view kTarislarPositiveAlternateText =
+        "Heavily armed and armored elves train their weapons on you.||"
+        "After confirming you as the pick-up man, you are given a package "
+        "and pushed back out into the street.";
+    constexpr std::string_view kTarislarNegativeAlternateText =
+        "The metallic clacking of weapons being readied stops you in your "
+        "tracks!||A lone elf approaches and you hand him the package.||"
+        "He tosses you a grin and a credstick, and walks you to the door.";
+    if (!expect(check_tarislar_alternate_task(
+                    1, kTarislarPositiveAlternateText),
+                "Tarislar positive FFF0D5 did not select its one-page package handoff")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    if (!expect(check_tarislar_alternate_task(
+                    -1, kTarislarNegativeAlternateText),
+                "Tarislar negative FFF0D5 did not select its one-page package delivery")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
@@ -9003,8 +9045,11 @@ int main() {
     if (!expect(tarislar_repeat_alternate.has_value() &&
                     tarislar_repeat_alternate->area_event_target ==
                         std::optional<std::uint8_t>{13U} &&
-                    tarislar_repeat_alternate->entry_dialogue_module.empty(),
-                "Tarislar repeat route ignored nonzero FFF0D5")) {
+                    tarislar_repeat_alternate->entry_dialogue_module ==
+                        "tarislar_apartments" &&
+                    tarislar_repeat_alternate->entry_dialogue_function ==
+                        "present_alternate_result",
+                "Tarislar repeat route did not yield to signed FFF0D5 service")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }

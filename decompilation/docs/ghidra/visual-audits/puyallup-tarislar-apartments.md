@@ -1,8 +1,9 @@
 # Puyallup: Tarislar Garden Apartments
 
-Status: **partial; first visit, guarded leave, repeat information service,
-and gated tomb departure are connected, while upstream and alternate branches
-remain open**. Scene 1 record 67 is an event-7 trigger whose event-table
+Status: **partial; first visit, guarded leave, signed alternate-result pages,
+repeat information service, and gated tomb departure are connected, while the
+upstream Frosty handoff and pending descriptor path remain open**. Scene 1
+record 67 is an event-7 trigger whose event-table
 default is scene 13. With FFFC1E bit 30 set, bit 21 clear, and alternate
 result/FFF0D5 zero, the first visit marks bit 21, awards +2 Karma to the three
 live runners, presents the Harlequin prompt chain, then returns to scene 1. The
@@ -13,8 +14,8 @@ branch; the information path shows the available Renraku and paired maps, then
 returns to scene 1. The tomb offer requires bits 30, 21, 16, 28, 26, and 27 and
 alternate result zero. Yes follows the three ROM travel pages and enters scene
 54; No presents the two preparation pages and returns to scene 1. Debug/Release
-physical-input CTests cover first visit, guard, repeat information, and both
-tomb choices. The upstream Frosty dialogue, nonzero FFF0D5 branch, and
+physical-input CTests cover first visit, guard, both signed alternate results,
+repeat information, and both tomb choices. The upstream Frosty dialogue and
 pending-descriptor override remain open. A pending descriptor list at FFE162
 can instead override the selector result to scene 15. Scene 55 is a separate
 marker-2 route that starts Tomb of Ellisia dialogue; it is not the event-7
@@ -44,6 +45,13 @@ catalog's source policy explicitly authorizes a correction.
   executes before the generic route. It matches `FFFBF8 == 1` and
   `FFFBF9 == 7`. `FFF0D5` chooses a separate text path when nonzero; it does
   not disable the service.
+- Signed alternate-result branch: before checking story bits 30/21, service
+  21 tests `FFF0D5`. Positive selects profile `0x122024`, group `0x15FF28`,
+  and page `0x15FE5D`; negative selects the same profile, group `0x15FF20`,
+  and page `0x15FDB8`. Both are one-page prompts. The completion path leaves
+  `FFF0CC` clear, sets `D6=-1`, and suppresses event-table row 7's scene-13
+  transition. The Lua entity links now select the signed branch by result sign
+  and retain the numeric scene-13 destination as its suppressed route.
 - Story access: handler `0x21FD0` (dispatcher index `0x44`) sets `FFFC1E` bit 30,
   loads profile `0x121F4C`, and starts text chain `0xF57F8`. The first text
   record is “You are taken to Frosty.” The associated extracted profile is a
@@ -127,14 +135,16 @@ destination, and no reverse route has been added.
 ## Seven visual and behavioral checks
 
 1. **Does it look correct?** The Qt tests capture the first-visit prompts,
-   guarded pages, tomb offer, travel pages, clean scene-1 return, and full
-   scene-54 frame. The offer's question and Yes/No labels match ROM text; no
-   independent Genesis frame for this branch has been identified.
+   guarded pages, both signed alternate-result pages, tomb offer, travel pages,
+   clean scene-1 return, and full scene-54 frame. The offer's question and
+   Yes/No labels match ROM text; no independent Genesis frame for these
+   dialogue branches has been identified.
 2. **Does the look reflect the behavioral state?** First visit uses the ROM
    bit-30/bit-21 and alternate-result gates. The tomb route additionally checks
    bits 16/28/26/27; Yes enters scene 54 and No returns to scene 1. Repeat
    information uses bits 16/28/26/27 and group-item bits 8/7. Upstream Frosty,
-   nonzero FFF0D5, and pending-descriptor paths remain unconnected.
+   pending-descriptor paths remain unconnected. Both signed FFF0D5 pages now
+   have entity-owned Lua tasks and ordinary-input QA.
 3. **Are the visuals correct?** The source text nodes and portrait profile
    have been identified. Scene 1 imports as 1600x1504, scene 13, 15, and 54
    as 320x224 frames, and scene 54's full map is 320x1344; scene 55 is
@@ -154,9 +164,9 @@ destination, and no reverse route has been added.
    after their dialogue; tomb Yes redraws scene 54 and No redraws scene 1.
    Scene-54 exit and return cleanup are unresolved.
 7. **Do multiple frames support the interpretation?** Physical tests capture
-   spawn, contact, source dialogue, travel pages, and final scene-1/scene-54
-   `actual.bmp` frames. These are host captures; no independently aligned
-   Genesis sequence has been identified.
+   spawn, contact, source dialogue, both alternate-result pages, travel pages,
+   and final scene-1/scene-54 `actual.bmp` frames. These are host captures; no
+   independently aligned Genesis sequence has been identified.
 
 ## Next implementation evidence needed
 
@@ -167,10 +177,13 @@ destination, and no reverse route has been added.
   Scene-47 dialogue; the direct `0x53EA8` task-completion branch is now
   represented, but the incomplete upstream handoff cannot satisfy its final
   inventory gate from the traced Scene-47 code alone.
-- The first-authorized, guarded, repeat-information, and gated tomb-departure
-  branches have source text, entity-owned route conditions, and focused
-  physical QA. Continue with the upstream Frosty branch, nonzero FFF0D5 path,
-  pending descriptor, and scene-54 completion/return trace.
+- The first-authorized, guarded, signed alternate-result, repeat-information,
+  and gated tomb-departure branches have source text, entity-owned route
+  conditions, and focused physical QA. Debug/Release tests reach event 7 with
+  ordinary Up input for both signs, capture each full one-page dialog and the
+  clean scene-1 redraw, and verify that the scene-13 transition stays
+  suppressed. Continue with the upstream Frosty branch, pending descriptor,
+  and scene-54 completion/return trace.
 - Trace which world-effect path can populate `FFE162`, whether it is active
   for Tarislar's event-7 route, and how selector precedence reaches scene 54
   or the pending scene-15 override.
