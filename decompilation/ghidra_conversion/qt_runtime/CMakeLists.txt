@@ -793,6 +793,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_scene24_m
                  --field-elevator-scene25-matrix24-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene24-matrix-entry-qa")
 
+# Continue the Fuchi elevator route to Scene 23 and verify its separate
+# event-31 Matrix node from ROM record 159.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_scene23_matrix_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-elevator-scene25-matrix23-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene23-matrix-entry-qa")
+
 # Scene 29 is the non-member entry scene for the source child-scene group
 # 26/27/28. Walk from its descriptor spawn into its paired event-29 records,
 # verify the group starts at floor index 0, then ride to scene 27 and inspect

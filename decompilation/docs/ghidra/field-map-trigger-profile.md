@@ -495,10 +495,11 @@ active-runner datajack facts. Their source comparisons are `FF018F` bit 0,
 the runtime's field facts read the live deck record and cyberware bit rather
 than duplicating those RAM addresses. Missing prerequisite data remains a
 source boundary. Physical-input QA now confirms Scene 21 record 121 and Scene
-22 record 136 reach Matrix system 22/node 13, Scene 24 record 136 reaches
-system 22/node 8, and Scene 26 record 126 reaches system 24/node 22. The other
-19 target rows have Lua mapping coverage but still need their own physical
-routes before claiming them independently defended.
+22 record 136 reach Matrix system 22/node 13, Scene 23 record 159 reaches
+system 22/node 6, Scene 24 record 136 reaches system 22/node 8, and Scene 26
+record 126 reaches system 24/node 22. The other 18 target rows have Lua
+mapping coverage but still need their own physical routes before claiming
+them independently defended.
 
 `FieldSceneRuntime` now connects the normal event-31 continuation to the Lua
 four-choice task. Call Taxi uses `0xD4456` / `0xD445D` for the seven region and
@@ -509,13 +510,13 @@ arrival after fade-in. Vid-Phone page/call screens and Matrix script screens
 have focused route tests and 320x224 dumps; the phone runtime checks both
 Sharkey passage destinations and item outcomes. Separate ordinary-input QA
 physically reaches the Scene-0 terminal-to-Vid-Phone route, the Scene-21
-record-121, Scene-22 record-136, and Scene-24 record-136 resource-scene Matrix
-routes, and the Scene-26 record-126 resource-scene Matrix route. The resource
-routes check that the Matrix session keeps its ROM-seeded system/node target
-after the source entry wait. These checks do not certify the full Matrix visual
-system, the other 19 resource-scene event-31 routes, or contact-specific
-service transactions. The map-viewer preview remains a readable content and
-ordering aid, not pixel-fidelity proof.
+record-121, Scene-22 record-136, Scene-23 record-159, and Scene-24 record-136
+resource-scene Matrix routes, plus the Scene-26 record-126 route. These routes
+check that the Matrix session keeps its ROM-seeded system/node target after the
+source entry wait. They do not certify the full Matrix visual system, the
+other 18 resource-scene event-31 routes, or contact-specific service
+transactions. The map-viewer preview remains a readable content and ordering
+aid, not pixel-fidelity proof.
 The scene-6 default actor list is empty. The guide's named people therefore
 remain site cross-references until their actor service and gated placements
 are source-traced; they are not populated as scenery residents. See the
@@ -616,22 +617,26 @@ enums rather than ROM address interpretation.
   continuation, but the contextual physical-input route and the complete
   conversation graph remain untested.
   Scene 21 record 121 (`0x1D7A20`, x `0x00E0..0x00FF`, y `0x00C0..0x00DF`,
-  event `0x1F`) is tested after gated Fuchi entry. Ordinary Up from the
-  adjacent southern cell opens Lua's resource `Main Menu`; Cyberspace enters
-  system 22/node 13.
+  event `0x1F`) is tested after gated Fuchi entry. The QA seeds the runner in
+  the adjacent southern cell; ordinary Up opens Lua's resource `Main Menu`,
+  and Cyberspace enters system 22/node 13.
 
-  The Scene-25 elevator-group route returns to Scene 22. Ordinary Up from the
-  southern adjacent cell of record 136 (`0x1D814A`, x `0x00C0..0x00DF`, y
-  `0x0300..0x031F`) opens the same menu and enters system 22/node 13. Its
-  separate continuation travels from Scene 22 to Scene 24, then crosses record
-  136 and confirms the different system 22/node 8 target.
+  The Scene-25 elevator-group route returns to Scene 22. Its QA seeds the
+  runner in the southern adjacent cell of record 136 (`0x1D814A`, x
+  `0x00C0..0x00DF`, y `0x0300..0x031F`); ordinary Up opens the same menu and
+  enters system 22/node 13. Separate elevator routes from Scene 22 reach
+  Scene 23 and Scene 24. Each QA seeds the runner in the corresponding event
+  cell's adjacent area before ordinary Up: Scene 23 record 159 (`0x1D8960`, x
+  `0x0100..0x011F`, y `0x0020..0x003F`) enters system 22/node 6, and Scene 24
+  record 136 enters system 22/node 8.
 
   Scene 26 record 126 (`0x1D9E5A`, x/y `0x0200..0x021F`, event `0x1F`) has a
-  physical-input QA route: Up from the adjacent cell opens Lua's resource
+  physical-input QA route: the QA seeds the adjacent cell, then ordinary Up
+  opens Lua's resource
   `Main Menu`; Down selects `Exit`; A restores the captured Scene-2 field
   state. A second ordinary-input QA chooses Cyberspace and checks that the
   Matrix session receives system 24/node 22. These routes physically defend
-  the direct Matrix entry paths in Scenes 21, 22, 24, and 26; the other 19
+  the direct Matrix entry paths in Scenes 21, 22, 23, 24, and 26; the other 18
   rows in the 21-through-43 target table have Lua mapping coverage. The
   ordinary four-choice task and taxi/phone/Matrix handlers are connected in
   Qt, with physical-input coverage for Scene-0 Vid-Phone and these resource
