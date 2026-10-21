@@ -7020,6 +7020,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
 
             std::optional<std::uint16_t> selected_scene;
             std::optional<WorldActivityMode> routed_destination_mode;
+            auto entry_resource_override =
+                FieldLocationResourceEntryOverride::none;
             if (active_field_script_route_.has_value() &&
                 active_field_script_route_->kind ==
                     FieldScriptRouteKind::area_event &&
@@ -7030,6 +7032,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     *active_field_script_route_->area_event_target);
                 routed_destination_mode =
                     active_field_script_route_->area_event_destination_mode;
+                entry_resource_override =
+                    active_field_script_route_->entry_resource_override;
             }
 
             const auto run_target_actor_group =
@@ -7064,6 +7068,19 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             input.timeout_override = runtime.scene_runtime_state;
             input.world_flags = field_exit_world_flags_;
             input.contact_flags = notebook_contacts_flags_;
+            switch (entry_resource_override) {
+            case FieldLocationResourceEntryOverride::none:
+                break;
+            case FieldLocationResourceEntryOverride::index_five_marker_zero:
+                input.resource_overrides.force_index_five_marker_zero = true;
+                break;
+            case FieldLocationResourceEntryOverride::index_two_marker_three:
+                input.resource_overrides.force_index_two_marker_three = true;
+                break;
+            case FieldLocationResourceEntryOverride::index_four:
+                input.resource_overrides.force_index_four = true;
+                break;
+            }
             input.primary_runner_marker =
                 field_party_roster_.primary_compact_marker();
             input.secondary_runner_marker =

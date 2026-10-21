@@ -119,6 +119,16 @@ enum class FieldLocationReturnFacing {
     face_away_from_entry,
 };
 
+// Some ROM title services select a particular resource entry and marker
+// after their gated dialogue completes. Entity link data names the typed
+// effect; the field host applies it at the shared resource-activity boundary.
+enum class FieldLocationResourceEntryOverride {
+    none,
+    index_five_marker_zero,
+    index_two_marker_three,
+    index_four,
+};
+
 struct FieldScriptRouteContext {
     std::uint8_t scene_id = 0;
     std::uint8_t field_mode = 0;
@@ -164,6 +174,8 @@ struct FieldScriptRoute {
     std::string entry_speaker_id;
     std::string entry_event_id;
     std::string entry_continue_result_id;
+    FieldLocationResourceEntryOverride entry_resource_override =
+        FieldLocationResourceEntryOverride::none;
     std::string field_service_id;
     // Synchronous Lua policy that may update transient world facts before an
     // area-event route continues. It does not own the modal or transition.

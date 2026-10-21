@@ -182,10 +182,14 @@ local function entry_dialogue_fields(link, context)
     local speaker_id = link.entry_speaker_id or ""
     local event_id = link.entry_event_id or ""
     local continue_result = link.entry_continue_result_id or ""
+    local resource_override = link.entry_resource_override or ""
     if text_profile == "-" then text_profile = "" end
     if speaker_id == "-" then speaker_id = "" end
     if event_id == "-" then event_id = "" end
     if continue_result == "-" then continue_result = "" end
+    if resource_override == "-" then resource_override = "" end
+    assert(resource_override == "" or continue_result ~= "",
+        "resource entry override needs a successful dialogue result")
     return {
         entry_dialogue_module = module,
         entry_dialogue_function = function_name,
@@ -195,6 +199,7 @@ local function entry_dialogue_fields(link, context)
         entry_speaker_id = speaker_id,
         entry_event_id = event_id,
         entry_continue_result_id = continue_result,
+        entry_resource_override = resource_override,
     }
 end
 

@@ -1972,9 +1972,14 @@ int main() {
                     "present_map_overlay_entry" &&
                 renraku_office_first_visit->entry_continue_result_id ==
                     "enter_scene_35" &&
+                renraku_office_first_visit->entry_resource_override ==
+                    FieldLocationResourceEntryOverride::
+                        index_five_marker_zero &&
                 renraku_office_repeat_visit.has_value() &&
                 renraku_office_repeat_visit->area_event_target == 35U &&
                 renraku_office_repeat_visit->entry_dialogue_module.empty() &&
+                renraku_office_repeat_visit->entry_resource_override ==
+                    FieldLocationResourceEntryOverride::none &&
                 fuchi_office_first_visit.has_value() &&
                 fuchi_office_first_visit->area_event_target == 21U &&
                 fuchi_office_first_visit->entry_dialogue_module ==
@@ -1983,9 +1988,14 @@ int main() {
                     "present_cyberheart_entry" &&
                 fuchi_office_first_visit->entry_continue_result_id ==
                     "enter_scene_21" &&
+                fuchi_office_first_visit->entry_resource_override ==
+                    FieldLocationResourceEntryOverride::
+                        index_two_marker_three &&
                 fuchi_office_repeat_visit.has_value() &&
                 fuchi_office_repeat_visit->area_event_target == 21U &&
                 fuchi_office_repeat_visit->entry_dialogue_module.empty() &&
+                fuchi_office_repeat_visit->entry_resource_override ==
+                    FieldLocationResourceEntryOverride::none &&
                 gates_undersound_first_visit.has_value() &&
                 gates_undersound_first_visit->kind ==
                     FieldScriptRouteKind::field_service &&

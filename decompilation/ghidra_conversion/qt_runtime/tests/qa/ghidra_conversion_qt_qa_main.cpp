@@ -18780,6 +18780,8 @@ struct FieldGatedBuildingEntryQaSpec {
     std::string_view expected_text_first;
     std::string_view expected_text_last;
     std::string_view portrait_alias;
+    std::uint16_t expected_resource_index = 0U;
+    std::uint8_t expected_marker_ordinal = 0U;
 };
 
 int run_field_gated_building_entry_qa(
@@ -18940,10 +18942,14 @@ int run_field_gated_building_entry_qa(
                                      .field_mode;
     const auto transition_finished =
         finish_field_modal_return_transition(field_scene);
+    const auto& activity = field_scene.world_activity_state_for_dump();
     const bool activity_frame_saved =
         save(route.destination_capture, std::nullopt);
     if (!dialogue_closed || destination_scene != route.destination_scene ||
         destination_mode != route.destination_scene || return_frames != 59U ||
+        activity.selected_resource_random_index !=
+            route.expected_resource_index ||
+        activity.resource_marker_ordinal != route.expected_marker_ordinal ||
         !transition_finished || !activity_frame_saved ||
         std::count(source_boundaries.begin(), source_boundaries.end(),
                    std::string("field.entry.area_event_scene_entered")) != 1) {
@@ -18953,6 +18959,10 @@ int run_field_gated_building_entry_qa(
                   << dialogue_closed << ", scene=" << destination_scene
                   << ", mode=" << destination_mode << ", frames="
                   << static_cast<unsigned>(return_frames)
+                  << ", resource_index="
+                  << activity.selected_resource_random_index
+                  << ", marker="
+                  << static_cast<unsigned>(activity.resource_marker_ordinal)
                   << ", transition_finished=" << transition_finished
                   << ")\n";
         return 3;
@@ -18960,12 +18970,14 @@ int run_field_gated_building_entry_qa(
 
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) return 3;
-    trace << "record\tevent\tservice\tgate\tmovement_ticks\tresult\taudio_requests\n"
+    trace << "record\tevent\tservice\tgate\tmovement_ticks\tresult\tresource_index\tmarker_ordinal\taudio_requests\n"
           << route.record_index << '\t'
           << static_cast<unsigned>(route.event_code) << '\t'
           << static_cast<unsigned>(route.title_service) << '\t'
           << route.gate_description << '\t' << movement_ticks
           << "\tresource_activity_" << route.destination_scene << '\t'
+          << activity.selected_resource_random_index << '\t'
+          << static_cast<unsigned>(activity.resource_marker_ordinal) << '\t'
           << field_audio_events.size() << '\n';
     std::cout << "field_gated_building_entry_qa=passed location="
               << route.location_name << " record=" << route.record_index
@@ -27336,7 +27348,7 @@ int main(int argc, char** argv) {
                         "story_flag_bit_16=1,story_flag_bit_12=0,alternate_result=0",
                         "make it past the foyer",
                         "Finding out what Renraku knows about this whole mess",
-                        "dialogue.portraits.renraku.offices.entry"});
+                        "dialogue.portraits.renraku.offices.entry", 5U, 0U});
             }
             if (field_fuchi_offices_qa_path.has_value()) {
                 return run_field_gated_building_entry_qa(
@@ -27350,7 +27362,7 @@ int main(int argc, char** argv) {
                         "story_flag_bit_25=1,story_flag_bit_14=0,alternate_result=0",
                         "enter Fuchi just prior to their closing",
                         "Now to find that cyber-heart",
-                        "dialogue.portraits.fuchi.offices.entry"});
+                        "dialogue.portraits.fuchi.offices.entry", 2U, 3U});
             }
             if (field_penumbra_lone_star_qa_path.has_value()) {
                 return run_field_penumbra_lone_star_entry_qa(

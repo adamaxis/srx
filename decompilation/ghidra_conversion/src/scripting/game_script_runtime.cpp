@@ -4340,6 +4340,7 @@ GameScriptRuntime::resolve_field_location_route(
     route.area_event_destination_mode = destination_mode;
     route.return_anchor = return_anchor;
     route.return_facing = return_facing;
+    std::string resource_override_name;
     if (!read_optional_string("entry_dialogue_module",
                               route.entry_dialogue_module) ||
         !read_optional_string("entry_dialogue_function",
@@ -4356,6 +4357,8 @@ GameScriptRuntime::resolve_field_location_route(
                               route.entry_event_id) ||
         !read_optional_string("entry_continue_result_id",
                               route.entry_continue_result_id) ||
+        !read_optional_string("entry_resource_override",
+                              resource_override_name) ||
         !read_optional_string("field_service_id",
                               route.field_service_id) ||
         !read_location_task("route_preparation",
@@ -4364,6 +4367,22 @@ GameScriptRuntime::resolve_field_location_route(
                             route.indexed_title_service) ||
         !read_location_task("field_exit_prompt", route.field_exit_prompt)) {
         return fail("building.lua route has invalid entry dialogue fields");
+    }
+    if (resource_override_name.empty() || resource_override_name == "none" ||
+        resource_override_name == "-") {
+        route.entry_resource_override =
+            FieldLocationResourceEntryOverride::none;
+    } else if (resource_override_name == "index_five_marker_zero") {
+        route.entry_resource_override =
+            FieldLocationResourceEntryOverride::index_five_marker_zero;
+    } else if (resource_override_name == "index_two_marker_three") {
+        route.entry_resource_override =
+            FieldLocationResourceEntryOverride::index_two_marker_three;
+    } else if (resource_override_name == "index_four") {
+        route.entry_resource_override =
+            FieldLocationResourceEntryOverride::index_four;
+    } else {
+        return fail("building.lua route has an unknown resource entry override");
     }
     const bool no_target = !target_scene.has_value();
     if (kind_name == "no_route" && script_name == "none" && no_target) {
@@ -4413,6 +4432,16 @@ GameScriptRuntime::resolve_field_location_route(
          route.entry_location_type.empty() ||
          route.entry_location_id.empty())) {
         return fail("building.lua route has incomplete entry dialogue data");
+    }
+
+    if (route.entry_resource_override !=
+            FieldLocationResourceEntryOverride::none &&
+        (route.kind != FieldScriptRouteKind::area_event ||
+         destination_mode != WorldActivityMode::resource_activity ||
+         route.entry_dialogue_module.empty() ||
+         route.entry_continue_result_id.empty())) {
+        return fail(
+            "resource entry override needs an accepted resource-activity dialogue");
     }
 
     if ((route.indexed_title_service.has_value() &&
