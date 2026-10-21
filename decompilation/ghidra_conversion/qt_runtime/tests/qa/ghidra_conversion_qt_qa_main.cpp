@@ -22941,6 +22941,8 @@ int main(int argc, char** argv) {
         bool field_scene30_matrix_entry_qa = false;
         bool field_scene31_matrix_entry_qa = false;
         bool field_scene32_matrix_entry_qa = false;
+        bool field_scene33_matrix_entry_qa = false;
+        bool field_scene34_matrix_entry_qa = false;
         bool field_elevator_scene25_matrix24_qa = false;
         bool field_elevator_scene25_matrix23_qa = false;
         bool field_elevator_scene34_group_roundtrip_qa = false;
@@ -23506,6 +23508,24 @@ int main(int argc, char** argv) {
                 field_elevator_nonmember_entry_qa_path =
                     std::filesystem::path(argv[++index]);
                 field_scene32_matrix_entry_qa = true;
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene33-matrix-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_elevator_nonmember_entry_scene = 33U;
+                field_elevator_nonmember_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+                field_scene33_matrix_entry_qa = true;
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene34-matrix-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_elevator_nonmember_entry_scene = 34U;
+                field_elevator_nonmember_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+                field_scene34_matrix_entry_qa = true;
             }
             if (std::string(argv[index]) ==
                     "--field-elevator-scene25-matrix23-entry-qa" &&
@@ -28222,6 +28242,40 @@ int main(int argc, char** argv) {
                     return run_resource_scene_matrix_entry_menu_qa(
                         field_scene, matrix_output, 32U, 117U, 0x14U, 0x09U,
                         0x01D0U, 0x0040U);
+                }
+                if (field_scene33_matrix_entry_qa) {
+                    const auto matrix_output =
+                        *field_elevator_nonmember_entry_qa_path /
+                        "scene33-resource-matrix-entry";
+                    std::error_code matrix_output_error;
+                    std::filesystem::create_directories(
+                        matrix_output, matrix_output_error);
+                    if (matrix_output_error) {
+                        std::cerr << "Scene-33 Matrix QA: could not "
+                                     "create capture folder: "
+                                  << matrix_output_error.message() << '\n';
+                        return 3;
+                    }
+                    return run_resource_scene_matrix_entry_menu_qa(
+                        field_scene, matrix_output, 33U, 117U, 0x14U, 0x18U,
+                        0x01D0U, 0x0040U);
+                }
+                if (field_scene34_matrix_entry_qa) {
+                    const auto matrix_output =
+                        *field_elevator_nonmember_entry_qa_path /
+                        "scene34-resource-matrix-entry";
+                    std::error_code matrix_output_error;
+                    std::filesystem::create_directories(
+                        matrix_output, matrix_output_error);
+                    if (matrix_output_error) {
+                        std::cerr << "Scene-34 Matrix QA: could not "
+                                     "create capture folder: "
+                                  << matrix_output_error.message() << '\n';
+                        return 3;
+                    }
+                    return run_resource_scene_matrix_entry_menu_qa(
+                        field_scene, matrix_output, 34U, 103U, 0x14U, 0x0EU,
+                        0x0290U, 0x00C0U);
                 }
                 auto route_status = run_scene_route(
                     *field_elevator_nonmember_entry_scene,

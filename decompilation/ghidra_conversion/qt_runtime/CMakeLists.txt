@@ -800,7 +800,7 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene29_matrix_ent
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene29-matrix-entry-qa")
 
 # Exercise the event-31 Main Menu and Lua Matrix targets from fixed ROM
-# descriptor checkpoints in resource scenes 30-32.
+# descriptor checkpoints in resource scenes 30-34.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene30_matrix_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene30-matrix-entry-qa
@@ -813,6 +813,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene32_matrix_ent
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene32-matrix-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene32-matrix-entry-qa")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene33_matrix_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene33-matrix-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene33-matrix-entry-qa")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene34_matrix_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene34-matrix-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene34-matrix-entry-qa")
 
 # Enter the 21/22/23/24 group from scene 25, follow source selector handoffs
 # through each member-scene event-29 trigger, then test scene 22's event-31
