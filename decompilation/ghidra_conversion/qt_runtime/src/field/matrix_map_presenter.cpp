@@ -135,7 +135,7 @@ bool paint_matrix_system_map(
 bool paint_matrix_traversal_view(
     QPainter& painter,
     const std::array<QImage, 4>& backgrounds,
-    const std::array<std::array<QImage, 4>, 6>& world_models,
+    const std::array<std::array<QImage, 5>, 6>& world_models,
     const std::array<std::vector<QImage>, 9>& world_effect_modes,
     const std::vector<QImage>& world_effect_fallback,
     const QImage& hud_frame,
@@ -162,9 +162,9 @@ bool paint_matrix_traversal_view(
 
     const auto& view = *state.top_matrix_traversal_view;
     const auto model_id = static_cast<std::size_t>(view.world_model_id);
-    const auto palette_id = static_cast<std::size_t>(view.palette_theme - 1);
-    if (model_id >= world_models.size() || view.palette_theme < 1U ||
-        view.palette_theme > world_models[model_id].size() ||
+    const auto palette_id = static_cast<std::size_t>(view.palette_theme);
+    if (model_id >= world_models.size() || view.palette_theme < 0 ||
+        palette_id >= world_models[model_id].size() ||
         backgrounds[0].size() != QSize(kScreenWidth, kScreenHeight) ||
         (model_id == 0U &&
          world_models[model_id][palette_id].size() != QSize(112, 64)) ||
@@ -175,9 +175,9 @@ bool paint_matrix_traversal_view(
 
     painter.save();
     painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
-    // Keep the traversal floor on its blue base palette. The typed
-    // palette_theme is the current node's security color, used by node UI;
-    // applying it to the perspective floor recolors a ROM-blue viewport.
+    // The ROM selects the model palette from the knowledge rank: row 0 for
+    // an unknown node, then rows 1..4 for its security color. Applying that
+    // palette to the floor would recolor a ROM-blue viewport.
     // The independent traversal frames (for example longplay frame 004440)
     // show the blue grid even when the SAN status reads Green-4.
     painter.drawImage(QPoint(0, 0), backgrounds[0]);

@@ -1923,7 +1923,7 @@ private:
     std::array<QImage, 7> matrix_cyberdeck_footer_slot_status_{};
     std::array<QImage, 4> matrix_map_tile_atlases_{};
     std::array<QImage, 4> matrix_traversal_backgrounds_{};
-    std::array<std::array<QImage, 4>, 6> matrix_world_models_{};
+    std::array<std::array<QImage, 5>, 6> matrix_world_models_{};
     std::array<std::vector<QImage>, 9> matrix_traversal_world_effect_modes_{};
     std::vector<QImage> matrix_traversal_world_effect_fallback_;
     QImage matrix_traversal_hud_frame_;

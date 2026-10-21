@@ -337,7 +337,9 @@ struct ScriptMatrixNodeStatusView {
 struct ScriptMatrixTraversalView {
     ScriptMatrixWorldModelId world_model_id =
         ScriptMatrixWorldModelId::system_access_network;
-    int palette_theme = 1;
+    // ROM 0x19DF2 selects palette row 0 for an unknown node and rows 1..4
+    // for a known node's security color.
+    int palette_theme = 0;
     // 0x1A908 selects an IC mode 0..8, -1 selects the 0x1AA10 fallback,
     // and 0x45 suppresses this world-effect layer.
     int world_effect_mode = 0x45;

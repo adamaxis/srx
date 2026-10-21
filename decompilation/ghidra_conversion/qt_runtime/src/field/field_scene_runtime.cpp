@@ -6107,12 +6107,12 @@ bool FieldSceneRuntime::load_command_overview_assets(
         return false;
     }
     for (std::size_t model = 0U; model < matrix_world_models_.size(); ++model) {
-        for (std::size_t security_color = 1U; security_color <= 4U;
+        for (std::size_t security_color = 0U; security_color <= 4U;
              ++security_color) {
             const auto alias = "cyberspace.matrix.world.model." +
                 std::to_string(model) + ".security.color." +
                 std::to_string(security_color);
-            auto& image = matrix_world_models_[model][security_color - 1U];
+            auto& image = matrix_world_models_[model][security_color];
             const auto expected_size = model == 0U ? QSize(112, 64)
                                                     : QSize(96, 80);
             if (!load_image(catalog, alias, image) ||

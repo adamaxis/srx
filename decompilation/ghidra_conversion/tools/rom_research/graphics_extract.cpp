@@ -5346,16 +5346,18 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             false, manifest, written, missing, blank);
     }
     // The world-model SAT attributes select palette line 0. After the base
-    // four-line load, 0x19DF2 selects the line-0 colors by FF1105 from the
-    // five 0x20-byte records rooted at E2D52; live Matrix nodes use ids 1..4.
+    // four-line load, 0x19DF2 leaves D0 at zero for an unknown node and
+    // selects FF1105 for a known node. Both paths use the five 0x20-byte
+    // records rooted at E2D52; live Matrix security colors use ids 1..4.
     struct WorldModelPalette {
         std::uint8_t security_color;
         const char* source_label;
         std::size_t source;
     };
-    constexpr std::array<WorldModelPalette, 4> kWorldModelPalettes{{
-        {1U, "e2d72", 0x0E2D72U}, {2U, "e2d92", 0x0E2D92U},
-        {3U, "e2db2", 0x0E2DB2U}, {4U, "e2dd2", 0x0E2DD2U},
+    constexpr std::array<WorldModelPalette, 5> kWorldModelPalettes{{
+        {0U, "e2d52", 0x0E2D52U}, {1U, "e2d72", 0x0E2D72U},
+        {2U, "e2d92", 0x0E2D92U}, {3U, "e2db2", 0x0E2DB2U},
+        {4U, "e2dd2", 0x0E2DD2U},
     }};
     for (std::size_t model = 0U; model < 6U; ++model) {
         for (const auto& palette : kWorldModelPalettes) {

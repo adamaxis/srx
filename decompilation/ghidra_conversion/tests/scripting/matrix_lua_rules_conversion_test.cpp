@@ -500,9 +500,7 @@ eq(HUD.ic_types[8], "  BlackIce-   ",
     "IC-type catalog includes the final ROM record")
 eq(HUD.ic_visibility[2], "Ice Suppressed",
     "IC visibility catalog includes the suppression state")
-local routed_spu_state = {
-    nodes = Systems[2].nodes, current_node = 2, knowledge_ranks = {},
-}
+local routed_spu_state = select(2, Session.begin(2, false, 2))
 local routed_spu_status = Session.node_status(routed_spu_state)
 eq(routed_spu_status.knowledge_rank, 0,
     "unvisited Matrix node starts with no IC knowledge")
@@ -510,6 +508,8 @@ eq(routed_spu_status.file_class_label, "",
     "unrevealed node hides its file-class label")
 eq(routed_spu_status.action_difficulty, -1,
     "unrevealed node hides its security rating")
+eq(Session.traversal_view(routed_spu_state).palette_theme, 0,
+    "ROM keeps an unrevealed world model on neutral palette row zero")
 eq(Session.set_current_node_knowledge(routed_spu_state, 4), true,
     "node-action entry sets the source knowledge rank")
 routed_spu_status = Session.node_status(routed_spu_state)
@@ -517,6 +517,9 @@ eq(routed_spu_status.file_class_label, " Data Routing ",
     "system 2 SPU renders its padded ROM file-class label")
 eq(routed_spu_status.action_difficulty, Systems[2].nodes[2].security,
     "rank-four node displays its ROM security rating")
+eq(Session.traversal_view(routed_spu_state).palette_theme,
+    Systems[2].nodes[2].security_color,
+    "known world model selects its ROM security-color palette row")
 local loading_state = {}
 local loading_slots = {
     [0] = { status = 5, timer = 2, phase = 0 },

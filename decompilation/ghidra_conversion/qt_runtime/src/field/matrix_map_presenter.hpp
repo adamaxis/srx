@@ -20,7 +20,7 @@ bool paint_matrix_system_map(
 bool paint_matrix_traversal_view(
     QPainter& painter,
     const std::array<QImage, 4>& backgrounds,
-    const std::array<std::array<QImage, 4>, 6>& world_models,
+    const std::array<std::array<QImage, 5>, 6>& world_models,
     const std::array<std::vector<QImage>, 9>& world_effect_modes,
     const std::vector<QImage>& world_effect_fallback,
     const QImage& hud_frame,

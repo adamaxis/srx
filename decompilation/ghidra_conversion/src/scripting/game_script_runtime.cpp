@@ -2237,7 +2237,7 @@ struct GameScriptRuntime::Impl {
                     if (world_model_id.has_value() &&
                         *world_model_id >= 0 && *world_model_id <= 5 &&
                         palette_theme.has_value() &&
-                        *palette_theme >= 1 && *palette_theme <= 4 &&
+                        *palette_theme >= 0 && *palette_theme <= 4 &&
                         world_effect_mode.has_value() &&
                         (*world_effect_mode == -1 ||
                          (*world_effect_mode >= 0 &&

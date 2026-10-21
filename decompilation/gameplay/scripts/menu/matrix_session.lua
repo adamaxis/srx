@@ -688,7 +688,11 @@ function M.traversal_view(state, active_program_label,
 
     return {
         world_model_id = status.world_model_id,
-        palette_theme = status.palette_theme,
+        -- ROM 0x19DF2 leaves D0 at zero when 0x17C3C reports no known node
+        -- rank. Otherwise it selects the active node's security-color row.
+        -- Row zero is the neutral gray model palette at 0xE2D52.
+        palette_theme = status.knowledge_rank > 0 and
+                        status.palette_theme or 0,
         world_effect_mode = effect_animation.mode,
         world_effect_phase = effect_animation.phase,
         action_mode = state.mode or E.MatrixModeResult.BALANCED,
