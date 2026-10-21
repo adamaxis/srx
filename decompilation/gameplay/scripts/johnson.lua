@@ -2,6 +2,7 @@
 -- speaker, portrait, menu copy, and ROM-derived dialogue pages; this module
 -- owns the reusable conversation flow.
 local Johnson = {}
+local StoryFlags = require("story_flags")
 
 local function present_location_intro(profile, entry_seen_before)
     if profile == nil then
@@ -303,6 +304,19 @@ function Johnson.interaction()
                 "Johnson access fact must name a story-state field")
             game.state[fact] = true
         end
+    end
+    if profile ~= nil and profile.post_departure_story_flag ~= nil and
+       StoryFlags.is_set(profile.post_departure_story_flag) == true then
+        -- Scene 14 checks FFFC1E bit 16 before its normal first-visit and
+        -- Johnson-return paths. It clears context 3 with 0x1E68C, then shows
+        -- the blank-profile booth-vacated page with no choices.
+        local context = profile.post_departure_context or
+            profile.run_offer_context
+        game.runs.registry.clear_active_offer_for_context(context)
+        game.ui.say(profile.post_departure_event,
+            profile.post_departure_speaker,
+            profile.post_departure_text_profile)
+        return "booth_vacated"
     end
     local returned_run = profile ~= nil and profile.run_offer_context ~= nil
         and game.runs.registry.take_pending_johnson_return() or nil

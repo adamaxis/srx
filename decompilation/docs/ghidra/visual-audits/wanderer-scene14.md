@@ -1,10 +1,11 @@
 # The Wanderer (field scene 14)
 
 Status: partial. The map viewer now models the room's named fixtures and the
-scene-14 event-30 dialogue profile. The first-visit intro is connected to the
-shared Lua Johnson interaction. The conditional credit menu, post-departure
-branch, and work/quest choice effects remain incomplete. The lower event-0
-transition to field scene 0 is now source-traced and physically exercised.
+scene-14 event-30 dialogue profile. The first-visit intro, conditional credit
+root, and post-Ito booth-vacated branch use the shared Lua Johnson interaction.
+The departure branch is physically exercised in Debug and Release. The
+work/quest choice effects remain incomplete. The lower event-0 transition to
+field scene 0 is source-traced and physically exercised.
 
 ## ROM trace
 
@@ -30,13 +31,18 @@ transition to field scene 0 is now source-traced and physically exercised.
 - The shared conditional descriptor gate at `0x20AFC` selects descriptor
   `0x105988` when `FFFBEC` is negative, `FFFC1C` bit 7 is set, and the low
   byte of `FFFBEC` matches dialogue slot 3. Its opening text at `0x105BD9`
-  says Vigore owes credits. These source conditions are documented in the
-  route profile, but that conditional branch is not yet connected in Lua.
-- A separate scene-14 branch checks `FFFC1E` bit 16 and `FFFBEC == 3`, then
-  uses profile `0x121E20` and descriptor `0x105370`. Text `0x10760C` says the
-  booth Vigore and Jarl used is empty. The decoded `0x121E20` image is blank.
-  The branch's menu includes text `0x10742E`; the condition and choice effects
-  are not yet wired to a quest state.
+  says Vigore owes credits. The Wanderer profile selects the conditional
+  opening root for a completed context-3 Johnson return; Lua route QA covers
+  that root.
+- The scene-14 branch checks `FFFC1E` bit 16 before the first-visit flag and
+  ordinary menu. If the low byte of `FFFBEC` is 3, it calls `0x1E68C`, which
+  sets `FFFBEC` to `-1` and clears `FFFC1C`. It then uses blank profile
+  `0x121E20` and descriptor `0x105370`; text `0x10760C` says the booth Vigore
+  and Jarl used is empty. The descriptor's first-choice field is
+  `0xFFFFFFFF`, so the ROM presents one closing page with no menu. The nearby
+  `0x10742E` fixer text is behind that sentinel and is not shown on this
+  branch. Lua now applies the matching context-3 reset and uses a narrator
+  profile with no portrait.
 - Scene-14 event records 7 and 8 (`0x1D5BFC`, `0x1D5C06`) are adjacent
   event-0 cells at the lower map edge, with no event table. The profile pointer
   at `0x1D5BA0` is null; the generic `0x167AE` selector reads ROM byte 0 and
@@ -51,6 +57,14 @@ transition to field scene 0 is now source-traced and physically exercised.
   and `actual.bmp` shows the completed scene-0 destination. These captures
   verify the host path; no independent Scene-14 gameplay frame has been
   identified.
+- `shadowrun_ghidra_conversion_qt_field_wanderer_vacated_entry_qa` starts one
+  cell south of record 9, sets `FFFC1E` bit 16, and enters event 30 with
+  ordinary Up input. It checks the closing text, blank portrait well, and zero
+  choice rows, then writes full-screen `spawn.bmp`, `event-contact.bmp`, and
+  `actual.bmp` plus `route.tsv`. Debug and Release outputs match by SHA-256;
+  both full 320x224 `actual.bmp` frames were inspected. No independent Genesis
+  frame of this Scene-14 dialogue appears in the supplied longplay, so these
+  captures verify the host route and layout only.
 
 ## Map entities
 
@@ -96,7 +110,6 @@ from appearance alone. Floor texture remains part of the map background.
    independent gameplay sequence; dialogue pages need their own capture if a
    later recording includes the Wanderer.
 
-The next pass should resolve and connect the scene-14 `FFFC1E`/`FFFBEC`
-branches and trace the work offer's selected run records. Naming the exit's
-world location or establishing a reverse route still requires separate source
-evidence.
+The next pass should trace the work offer's selected run records and choice
+effects. Naming the lower exit's world location or establishing a reverse
+route still requires separate source evidence.

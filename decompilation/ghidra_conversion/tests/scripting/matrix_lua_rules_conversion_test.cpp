@@ -1536,6 +1536,90 @@ eq(johnson_intro_events[1], "first_impression",
 eq(johnson_intro_events[2], "first_meeting",
     "second Wanderer page uses its location profile")
 
+-- The ROM gives Scene 14's post-Ito branch priority over first-visit and
+-- run-return menus. It clears only context 3, then shows the empty-booth page
+-- with the source's blank portrait profile and no choices.
+local old_active_offer = Registry.active_offer
+local old_pending_return = Registry._pending_johnson_return
+Registry.active_offer = {
+    id = "matrix_objective_probe",
+    source_offer_context = E.RunOfferContext.WANDERER,
+}
+Registry._pending_johnson_return = {
+    run_id = "matrix_objective_probe",
+    context = E.RunOfferContext.WANDERER,
+}
+game.location = { text_profile = "wanderer.vigore_jarl" }
+game.state = {
+    story_flag_bit_16 = true,
+    wanderer_vigore_jarl_intro_seen = false,
+}
+local vacated_say
+local vacated_menu_called = false
+game.ui = {
+    say = function(event_id, speaker_id, text_profile)
+        vacated_say = { event_id, speaker_id, text_profile }
+    end,
+    say_text = function() end,
+    menu = function()
+        vacated_menu_called = true
+        error("ROM booth-vacated descriptor has no choices")
+    end,
+}
+eq(Johnson.interaction(), "booth_vacated",
+    "post-Ito Scene 14 interaction ends on the empty-booth page")
+eq(vacated_say[1], "booth_vacated",
+    "post-Ito branch uses the empty-booth ROM text")
+eq(vacated_say[2], "wanderer_booth_narrator",
+    "post-Ito branch selects the source blank portrait profile")
+eq(vacated_say[3], "wanderer.vigore_jarl",
+    "post-Ito page retains the Wanderer text catalog")
+eq(vacated_menu_called, false,
+    "source sentinel prevents a booth-vacated choice menu")
+eq(Registry.active_offer, nil,
+    "0x1E68C clears the matching Wanderer offer")
+eq(Registry._pending_johnson_return, nil,
+    "0x1E68C clears the matching pending Wanderer return")
+eq(game.state.wanderer_vigore_jarl_intro_seen, false,
+    "post-Ito branch bypasses the first-visit intro flag")
+Registry.active_offer = old_active_offer
+Registry._pending_johnson_return = old_pending_return
+
+-- A completed context-3 return uses the ROM's alternate-credit root.
+local return_run = game.runs.matrix_objective_probe
+local old_present_completion = return_run.present_completion
+local old_take_return = Registry.take_pending_johnson_return
+local return_presented = false
+return_run.present_completion = function()
+    return_presented = true
+end
+Registry.take_pending_johnson_return = function()
+    return {
+        run_id = "matrix_objective_probe",
+        context = E.RunOfferContext.WANDERER,
+    }
+end
+game.location = { text_profile = "wanderer.vigore_jarl" }
+game.state = {}
+local return_root_menu
+game.ui = {
+    say = function() end,
+    say_text = function() end,
+    menu = function(menu_id)
+        return_root_menu = menu_id
+        return "leave"
+    end,
+    prompt_text = function() return "no" end,
+}
+eq(Johnson.interaction(), "leave",
+    "completed Wanderer run returns through the alternate root")
+eq(return_presented, true,
+    "completed Wanderer offer presents its Lua completion")
+eq(return_root_menu, "conditional_opening",
+    "FFFBEC/FFFC1C gate selects the conditional credit root")
+Registry.take_pending_johnson_return = old_take_return
+return_run.present_completion = old_present_completion
+
 -- Mortimer's Big Rhino work choice uses source context 2 and its own opening
 -- page. Information remains separate until its ROM question and contact-
 -- purchase branches are connected.

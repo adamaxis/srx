@@ -416,6 +416,27 @@ function Registry.take_pending_johnson_return()
     }
 end
 
+-- ROM 0x1E68C resets the run-context word and FFFC1C when the matching
+-- Johnson booth has been vacated. The Scene-14 caller applies it only when
+-- FFFBEC's low byte is the Wanderer context, so preserve every other offer.
+function Registry.clear_active_offer_for_context(context)
+    assert(type(context) == "number" and context % 1 == 0 and
+           context >= 0 and context <= 0xFF,
+        "Johnson context reset is invalid")
+    local cleared = false
+    local active = Registry.active_offer
+    if active ~= nil and active.source_offer_context == context then
+        Registry.active_offer = nil
+        cleared = true
+    end
+    local pending = Registry._pending_johnson_return
+    if pending ~= nil and pending.context == context then
+        Registry._pending_johnson_return = nil
+        cleared = true
+    end
+    return cleared
+end
+
 function Registry.active_run_id()
     return Registry.active_offer and Registry.active_offer.id or "none"
 end

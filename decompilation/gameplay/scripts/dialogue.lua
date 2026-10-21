@@ -314,6 +314,17 @@ local speakers = {
             },
         },
     },
+    wanderer_booth_narrator = {
+        name = "Narration",
+        text_profile = "wanderer.vigore_jarl",
+        portrait_alias = "none",
+        events = {
+            booth_vacated = {
+                title_key = "wanderer.vigore_jarl.booth-vacated",
+                continuation_key = "",
+            },
+        },
+    },
     caleb_brightmore = {
         name = "Caleb Brightmore",
         text_profile = "icarus-descending.caleb_brightmore",
@@ -1881,6 +1892,12 @@ Dialogue.johnson_interaction_profiles = {
         run_offer_context = E.RunOfferContext.WANDERER,
         first_visit_fact = "wanderer_vigore_jarl_intro_seen",
         first_visit_events = { "first_impression", "first_meeting" },
+        post_departure_story_flag = E.StoryFlag.ITO_FIGHT_WON,
+        post_departure_context = E.RunOfferContext.WANDERER,
+        post_departure_event = "booth_vacated",
+        post_departure_speaker = "wanderer_booth_narrator",
+        post_departure_text_profile = "wanderer.vigore_jarl",
+        run_return_root = "conditional_opening",
     },
     ["icarus-descending.caleb_brightmore"] = {
         run_offer_context = E.RunOfferContext.ICARUS_DESCENDING,

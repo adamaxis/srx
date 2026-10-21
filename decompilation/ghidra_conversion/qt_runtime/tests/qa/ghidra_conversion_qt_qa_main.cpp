@@ -16807,6 +16807,110 @@ int run_field_big_rhino_entry_qa(
     return 0;
 }
 
+int run_field_wanderer_vacated_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Wanderer departure QA: could not clear prior captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Wanderer departure QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    if (field_scene.field_scene_reference_for_dump() != 14U ||
+        field_scene.field_entity_world_position().x != 272U * 16U ||
+        field_scene.field_entity_world_position().y != 80U * 16U ||
+        !field_scene.set_story_flag_for_dump(16U, true)) {
+        std::cerr << "Wanderer departure QA: scene-14 checkpoint or source "
+                     "story flag is invalid\n";
+        return 3;
+    }
+
+    const auto save = [&field_scene, &output](const std::string_view name) {
+        const auto image = render_qa_field(field_scene);
+        const auto path = output / (std::string(name) + ".bmp");
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+               image.save(QString::fromStdWString(path.wstring()));
+    };
+    const auto panel_contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count;
+             ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    if (!save("spawn")) {
+        std::cerr << "Wanderer departure QA: could not save the start frame\n";
+        return 3;
+    }
+    const auto opened_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.dialogue_task_opened"));
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 90U && !field_scene.dialogue_open();
+         ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into event 30
+        field_scene.advance_frame();
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto contact = field_scene.field_entity_world_position();
+    const auto& panel = field_scene.dialogue_panel();
+    const auto opened_after = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.dialogue_task_opened"));
+    if (movement_ticks == 0U || movement_ticks >= 90U ||
+        field_scene.field_scene_reference_for_dump() != 14U ||
+        !field_scene.dialogue_open() || panel.actor_name != "Narration" ||
+        panel.portrait_alias != "none" || panel.option_count != 0U ||
+        panel.has_more ||
+        !panel_contains("The booth that Vigore and Jarl worked out of") ||
+        !panel_contains("no one seems to know why they left") ||
+        opened_after != opened_before + 1 ||
+        !save("event-contact") || !save("actual")) {
+        std::cerr << "Wanderer departure QA: ordinary Up did not open the "
+                     "blank-profile, no-choice post-Ito page (ticks="
+                  << movement_ticks << ", contact=" << contact.x << ','
+                  << contact.y << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", speaker='" << panel.actor_name << "', portrait='"
+                  << panel.portrait_alias << "', options="
+                  << static_cast<unsigned>(panel.option_count)
+                  << ", more=" << panel.has_more << ", text=";
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            std::cerr << '[' << panel.text_segments[index] << ']';
+        }
+        std::cerr << ", failure='" << field_scene.failure() << "')\n";
+        return 3;
+    }
+    std::ofstream route(output / "route.tsv", std::ios::trunc);
+    if (!route) {
+        std::cerr << "Wanderer departure QA: could not write route trace\n";
+        return 3;
+    }
+    route << "scene\tevent\tinput\tmovement_ticks\tcontact_x\tcontact_y\t"
+             "gate\tspeaker\tportrait\tchoices\n"
+          << "14\t30\tordinary_up\t" << movement_ticks << '\t'
+          << contact.x << '\t' << contact.y
+          << "\tstory_flag_bit_16=true\tNarration\tblank\t0\n";
+    std::cout << "field_wanderer_vacated_entry_qa=passed scene=14 event=30 "
+                 "movement=ordinary-up gate=story-flag-16 "
+                 "portrait=blank choices=0 captures=" << output.string()
+              << '\n';
+    return 0;
+}
+
 int run_field_jump_house_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -22329,6 +22433,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_big_rhino_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_wanderer_vacated_entry_qa_path;
+        std::optional<std::filesystem::path>
             field_icarus_caleb_entry_qa_path;
         std::optional<std::filesystem::path>
             field_icarus_blocked_entry_qa_path;
@@ -22610,6 +22716,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_big_rhino_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-wanderer-vacated-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_wanderer_vacated_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -23490,6 +23603,35 @@ int main(int argc, char** argv) {
                             ? 0x1300U
                             : 0x1100U),
                     0x0D00U};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
+            if (field_wanderer_vacated_entry_qa_path.has_value()) {
+                const auto scene14 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 14U);
+                if (!scene14.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Wanderer departure QA: scene-14 source or "
+                                 "New Game runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 14U;
+                // Scene-14 record 9 covers X 256..287, Y 32..63. Start one
+                // map cell south and enter it with ordinary Up movement.
+                checkpoint.camera_x = 272U * 16U;
+                checkpoint.camera_y = 80U * 16U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene14->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] = RestoredRunnerPosition{
+                    checkpoint.camera_x, checkpoint.camera_y};
                 checkpoint.roster.default_record.bytes =
                     smoke_state.joshua_selection->live_joshua_record;
                 checkpoint.active_runner_slot = 0U;
@@ -26778,6 +26920,11 @@ int main(int argc, char** argv) {
             if (field_big_rhino_entry_qa_path.has_value()) {
                 return run_field_big_rhino_entry_qa(
                     field_scene, *field_big_rhino_entry_qa_path,
+                    field_source_boundaries);
+            }
+            if (field_wanderer_vacated_entry_qa_path.has_value()) {
+                return run_field_wanderer_vacated_entry_qa(
+                    field_scene, *field_wanderer_vacated_entry_qa_path,
                     field_source_boundaries);
             }
             if (field_icarus_caleb_entry_qa_path.has_value()) {

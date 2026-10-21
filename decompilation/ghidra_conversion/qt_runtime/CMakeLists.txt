@@ -525,6 +525,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_big_rhino_entry_qa
                  --field-big-rhino-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-big-rhino-entry-qa")
 
+# Enter the Wanderer after FFFC1E bit 16 and verify its blank-profile,
+# no-choice booth-vacated page using ordinary movement into event 30.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_wanderer_vacated_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-wanderer-vacated-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-wanderer-vacated-entry-qa")
+
 # Enter Icarus Descending through its scene-12/event-30 rectangle with normal
 # Up input and the ROM access flag, then capture Caleb's first meeting.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_icarus_caleb_entry_qa
