@@ -15,17 +15,20 @@ button edge. The message advances shared `E660` bezel animation, with QA
 capturing and checking each of 30 full-screen wait frames. Application save
 snapshots preserve the deck-present flag and typed deck record. The
 Cyberdeck grid and program, info, and storage child routes are registered in
-the active profile. Ordinary Pocket Secretary entry remains offline, as the
-ROM sets FFF0B0 clear outside a Matrix session. Debug Pick System can start an
-online Lua session and reach the Cyberdeck route, but the Matrix world
-renderer, actor/IC heartbeat, and node-action handoff are not connected. The
+the active profile. When FF018F bit 0 is set, Pocket Secretary opens that
+typed deck screen through the `0x18150` route; ordinary-input Debug/Release QA
+writes parent, full-deck, and same-row-return captures. The full deck image was
+inspected against independent longplay frame
+`section_15_source_2820-3120/frame_004220.png`. Ordinary Pocket Secretary entry
+remains offline, as the ROM sets FFF0B0 clear outside a Matrix session. Debug
+Pick System can start an online Lua session and reach the Cyberdeck route, but
+the Matrix world renderer, actor/IC heartbeat, and node-action handoff are not
+connected. The
 System Map child now renders the ROM's 40x28 backdrop, six fixed labels, and
 140 Lua-selected 2x2 cells using the map palette and tile tables. Its live
 route test writes `matrix-map-route-qa/actual.bmp`, checks old-screen clearing,
 green labels, and blank-cell transparency; backdrop and label placement were
-reviewed against independent longplay map frames. The separate 4x4 Cyberdeck
-grid's text and card art remain interim and have not passed an independent
-visual comparison.
+reviewed against independent longplay map frames.
 The Debug menu is registered in the live route and remains unlocked by the Qt
 development override. Nuyen, Spells, Test Deck, Heal All, +10 Karma, Contacts,
 Walk Fast, and Pick System have live route behavior. Pick System clamps to the
@@ -82,7 +85,7 @@ cursor-cell erase/draw operation.
 - D12 Item-action children REPLACE the action row, so their result returns straight to the Command page; no "return-to-row" flag.
 - D13 Attributes/Skills from the Command page is view-only (srx command_view_only); karma upgrades only when opened with args.karma (hotel). Previously one flag in FSR did both.
 - D14 `leader_spell_gate` renamed to `leader_archetype`: +0x9B is the archetype (< 2 = caster), not a gate.
-- D15 Pocket Secretary root: only A (bit 14) dispatches; B does nothing (FSR treated B like A) [C 0xC2A6]. Lua owns root input/row, Group Items bit-list construction and fresh-edge wait, Dismiss Runner selection/action, Notebook/Tips/Mr. Johnsons input, filtering, waits, and return paths, plus the `0x18150` no-deck branch through generic `MESSAGE`. C++ supplies typed ROM facts and projects route state for painting. The deck-present Matrix branch remains an adapter boundary.
+- D15 Pocket Secretary root: only A (bit 14) dispatches; B does nothing (FSR treated B like A) [C 0xC2A6]. Lua owns root input/row, Group Items bit-list construction and fresh-edge wait, Dismiss Runner selection/action, Notebook/Tips/Mr. Johnsons input, filtering, waits, and return paths, plus both `0x18150` branches: no deck pushes generic `MESSAGE`; a present deck pushes the registered typed `CYBERDECK` screen. Debug/Release ordinary-input QA captures the installed-deck page and same-row Start return. The direct route stays offline; System Search starts a Matrix session separately.
 - D16 Magic: the force/posture loop is two stacked screens (MAGIC_FORCE, MAGIC_POSTURE) instead of a mode int.
 
 - D17 Clips is ONE-SHOT per ROM 0x11B58: every outcome prints its text, waits for any edge (0xD94, silent) and returns to the Command page; Cancel / trade-Start print "Function Aborted!" (0xD1ED8, new MenuMessage.FUNCTION_ABORTED=21). B and C act like A; the main loop has NO Start check. Reload prompt: default No (0x11D00 clr + 0x127B0 eori), A only, "No" exits silently. srx/FSR kept the menu open and closed on B/Start: replaced [C].
@@ -110,7 +113,7 @@ Next: complete the Matrix traversal/action behavior and same-state Genesis compa
 Each one replaces its `legacy(...)` line in menu/init.lua.
 
 - D24 Save/Load is registered in the active profile. Lua owns Save/Load and slot selection; the host stores two versioned JSON snapshots in the app data directory using atomic file replacement. Snapshots cover field location/player/camera, all three runner records and roster membership, funds, typed cyberdeck and spell-table state, story/map/notebook flags, script story facts, RNG/tick counters, and the Lua run registry including its active offer and per-run progress. Loading rebuilds the saved map resources before restoring state. This is application game-state persistence, not cartridge SRAM emulation. Dynamic field actor states and an active Matrix session are not yet included.
-- D25 **partial:** the 4x4 Cyberdeck grid and mode input are registered in `field_init.lua`; field jack-in and debug entry pass Lua Matrix state through the source 20-frame wait. Start opens the node-action route, and later deck round trips preserve the node. Ordinary Pocket Secretary entry remains offline. The host publishes the typed Cyberdeck record and five program slots. The static Matrix traversal presenter is connected; entry scaling, action effects/cadence, and same-state independent visual comparison remain pending.
+- D25 **partial:** the 4x4 Cyberdeck grid and mode input are registered in `field_init.lua`; the installed-deck Pocket Secretary branch and field jack-in/debug entry both use the typed screen. Field jack-in and debug entry pass Lua Matrix state through the source 20-frame wait. Start opens the node-action route, and later deck round trips preserve the node. Ordinary Pocket Secretary entry remains offline. The host publishes the typed Cyberdeck record and five program slots. The static Matrix traversal presenter is connected; entry scaling, action effects/cadence, and a same-state independent Matrix traversal comparison remain pending.
 
 - D26 **partial:** Program load/erase, deck info, and storage view/erase run through Lua and typed deck snapshots. Map/Retreat run from the Matrix session using selected-system Lua map and node records; a confirmed retreat returns to the node-action loop. The System Map paints the ROM backdrop, labels, and 14x10 tile layout from named assets; a complete independent map-state comparison remains open.
 - D27 The no-slots, no-memory, no-run, run-complete, and no-datafiles plain-rts text returns to the grid without a wait. CyberInfo's ROM-padded `Cyberdeck Info` selector, bracketed separator, and choices are placed at their source rows. Run Info reads the active Lua Matrix objective and draws the no-run, complete, and active values at the ROM plane positions from `$C328`, `$C334`, `$C4AC`, `$C630`, `$C42C`, and `$C42E`. Deck Stats returns the live Lua Cyberdeck record and places maker/model at `$C1AE` and grouped fields at `$C346`, `$C3C6`, `$C4C6`, `$C546`, `$C5C6`, `$C6C6`, `$C7C6`, `$C846`, `$C8C6`, and `$C946`; Debug/Release QA writes `qt_runtime/field-matrix-cyber-info-qa/{actual,no-run,complete,cyber-info,cyberdeck,deck-stats}.bmp`. The full Matrix traversal viewport and an independent Genesis match for the child selector remain open. No-retreat-node presentation is still pending. Storage acts on A only and its erase choice defaults to Yes. See [CyberInfo placement audit](../../../docs/ghidra/visual-audits/matrix-cyber-info-run-info.md).

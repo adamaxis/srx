@@ -35242,6 +35242,88 @@ int main(int argc, char** argv) {
                                  "record\n";
                     return 3;
                 }
+
+                // Exercise the installed-deck branch from the actual field
+                // Command -> Pocket Secretary route. The other Matrix QA
+                // enters the same deck loop from System Search, so it does
+                // not cover ROM 0x18150's field-menu caller.
+                if (!field_scene.seed_cyberspace_access_for_dump() ||
+                    !field_scene.seed_cyberdeck_reference_frame_for_dump()) {
+                    std::cerr << "field secretary dump: could not seed the "
+                                 "ROM deck-present state\n";
+                    return 3;
+                }
+                for (std::size_t attempt = 0U;
+                     field_scene.pocket_secretary_selection() != 2U &&
+                     attempt < 5U;
+                     ++attempt) {
+                    const auto selection =
+                        field_scene.pocket_secretary_selection();
+                    press_secretary_button(selection < 2U ? 0x02U : 0x01U);
+                }
+                if (field_scene.pocket_secretary_selection() != 2U) {
+                    std::cerr << "field secretary dump: could not select "
+                                 "the Cyberdeck row\n";
+                    return 3;
+                }
+                const auto installed_deck_parent = render_secretary_scene();
+                if (!save_secretary_scene("cyberdeck-present-parent",
+                                          installed_deck_parent)) {
+                    std::cerr << "field secretary dump: could not capture "
+                                 "the selected Cyberdeck parent row\n";
+                    return 3;
+                }
+                press_secretary_button(0x40U);
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::CYBERDECK) ||
+                    !field_scene.pocket_secretary_open()) {
+                    std::cerr << "field secretary dump: installed Cyberdeck "
+                                 "did not open the typed deck screen\n";
+                    return 3;
+                }
+                const auto installed_deck_frame = render_secretary_scene();
+                int footer_pixels = 0;
+                int bottom_edge_pixels = 0;
+                for (int y = 192; y < installed_deck_frame.height(); ++y) {
+                    for (int x = 0; x < installed_deck_frame.width(); ++x) {
+                        if (installed_deck_frame.pixelColor(x, y) !=
+                            QColor(Qt::black)) {
+                            ++footer_pixels;
+                            if (y == installed_deck_frame.height() - 1) {
+                                ++bottom_edge_pixels;
+                            }
+                        }
+                    }
+                }
+                if (installed_deck_frame.size() !=
+                        QSize(kSceneWidth, kSceneHeight) ||
+                    footer_pixels < 1000 || bottom_edge_pixels < 64 ||
+                    !save_secretary_scene("cyberdeck-present-actual",
+                                          installed_deck_frame)) {
+                    std::cerr << "field secretary dump: installed Cyberdeck "
+                                 "screen is cropped or its footer is missing\n";
+                    return 3;
+                }
+                press_secretary_button(0x80U); // Start returns to the same row.
+                const auto installed_deck_return = render_secretary_scene();
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::POCKET_SECRETARY) ||
+                    !field_scene.pocket_secretary_open() ||
+                    field_scene.pocket_secretary_selection() != 2U ||
+                    installed_deck_return.copy(
+                        QRect(0, 0, kSceneWidth, 192)) !=
+                        installed_deck_parent.copy(
+                            QRect(0, 0, kSceneWidth, 192)) ||
+                    !save_secretary_scene("cyberdeck-present-return",
+                                          installed_deck_return)) {
+                    std::cerr << "field secretary dump: Start did not return "
+                                 "to the selected Cyberdeck row cleanly\n";
+                    return 3;
+                }
+                std::cout << "installed_cyberdeck_route=field_secretary,"
+                             "typed_deck_screen,full_footer,same_row_return\n";
                 std::cout << "dismiss_runner_review=fixed_abort,active_list,"
                              "compact_marker,active_runner_switch,e660_cadence "
                              "e660_pixels=pending "

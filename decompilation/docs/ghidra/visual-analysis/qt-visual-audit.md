@@ -1337,8 +1337,8 @@ new behavior is invented.
    text clears during each child, and the same selected row returns. The
    source random-grid destinations lie in the bottom bezel. Held captures
    confirm the lamps do not cover child text or selectable rows. Notebook detail
-   handlers, Save/Load, deck-present Matrix, and restored-save flags remain
-   explicit Qt boundaries; Dismiss E660 art and candidate HUD projection are
+   handlers, Save/Load, normal deck acquisition, and restored-save flag imports
+   remain explicit Qt boundaries; Dismiss E660 art and candidate HUD projection are
    documented in its applied review below.
  7. **Do multiple frames support the interpretation?** Native checkpoints
     capture entry, each Group Items branch, 30 held frames, return, and the

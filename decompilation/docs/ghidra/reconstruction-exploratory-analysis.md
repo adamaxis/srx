@@ -760,9 +760,13 @@ returns to the Pocket Secretary loop. The three fixed source strings are:
 Qt extracts those lines. The active Lua route reads the typed deck-present
 fact and pushes generic `MESSAGE` with `NO_CYBERDECK` when the bit is clear;
 the Qt presenter draws the extracted lines and returns to the same selected
-row on a fresh button edge. The deck-present path remains an explicit adapter
-boundary until Matrix entry is connected. The inline branch beginning at
-`0x1817E` is now source-traced as the
+row on a fresh button edge. When the flag is set, the registered Lua route
+pushes the same typed Cyberdeck screen used by Matrix entry and returns to the
+selected Pocket Secretary row on Start. Debug/Release ordinary-input QA now
+captures this `0x18150` branch and its clean return; the full deck image was
+inspected against independent Section 15 frame `004220`. This path opens the
+offline deck menu; the separate Cyberspace/System Search route starts a Matrix
+session. The inline branch beginning at `0x1817E` is now source-traced as the
 deck-present entry shell: it prepares/copies the Matrix resource block at
 `0xE2E3A`, establishes ten menu slots, enters `0x1822C`, then refreshes the
 mode data/palette and restores field resources. The `0x1822C` deck/program loop
