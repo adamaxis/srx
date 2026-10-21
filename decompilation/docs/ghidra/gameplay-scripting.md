@@ -122,8 +122,14 @@ Kipp's service tree is the fourth Vid-Phone graph. It stores his Matrix lesson,
 program and cyberdeck offers, transaction outcomes, service loops, and call
 terminal in JSON. `vid_phone/kipp_david.lua` only translates the three named
 purchase actions; the shared deck service retains the ROM's prices, storage
-check, program ratings, and Excalibur fields. Three contact service trees
-remain procedural: Wilma, Macklemann, and Gregory.
+check, program ratings, and Excalibur fields.
+
+Wilma Temmenhoff's service tree is the fifth graph. JSON owns the credstick
+introduction, Matrix pages, program offer, transaction results, and the
+different Services/Goodbye return destinations. Her Lua module only registers
+the Rebound and Degrade transactions; the typed host service retains the ROM
+price and rating-3 storage/write behavior. Two service trees remain procedural:
+Macklemann and Gregory.
 
 The Ares Weapon Emporium stock is declared in `gameplay/scripts/shop.lua`.
 The script groups offers under stable category names; `GameScriptRuntime`

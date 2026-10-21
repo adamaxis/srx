@@ -8,12 +8,11 @@ Gates Undersound's same-map service, the Renraku and Fuchi gated entry pages,
 Tarislar City Inn, Wylie's Gala Inn, and the two Stoker entry roots. The field
 host dispatches the `hotel.options` and `hospital.options` service IDs.
 Captain Quinton's first/repeat call and complete service tree is a JSON graph;
-Alesandro's, Sharkey's, and Kipp's service trees are also JSON-backed. Their
-Lua modules register named host actions. Three other contact service trees remain
-procedural. Remaining
-conversation routes and other service outcome
-dispatchers are pending; this does not claim every listed route is implemented
-or visually verified.
+Alesandro's, Sharkey's, Kipp's, and Wilma's service trees are also JSON-backed.
+Their Lua modules register named host actions. Macklemann and Gregory's service
+trees remain procedural. Remaining conversation routes and other service
+outcome dispatchers are pending; this does not claim every listed route is
+implemented or visually verified.
 
 ## Design goals
 
@@ -144,11 +143,11 @@ multi-page first/repeat message, a Services/Goodbye menu, or a contact-specific
 service graph.
 
 Seven contacts have source-derived service implementations: Captain Quinton,
-Alesandro, Sharkey, Kipp, Wilma, Macklemann, and Gregory. Four flows are now
+Alesandro, Sharkey, Kipp, Wilma, Macklemann, and Gregory. Five flows are now
 JSON graphs: Quinton's complete first/repeat call and service flow, plus
-Alesandro's, Sharkey's, and Kipp's service flows. The other three service flows remain
-procedural Lua modules pending migration. The traced result
-permutations include:
+Alesandro's, Sharkey's, Kipp's, and Wilma's service flows. Macklemann and
+Gregory's service flows remain procedural Lua modules pending migration. The
+traced result permutations include:
 
 - Information-only topics and multi-page lessons, with return-to-services or
   disconnect/farewell outcomes.

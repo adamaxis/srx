@@ -643,6 +643,155 @@
           "outcome": { "type": "continue_in_place" }
         }
       }
+    },
+    "vid_phone.wilma_temmenhoff.services": {
+      "entryNode": "credstick_intro",
+      "speakerId": "vid_phone_wilma_temmenhoff",
+      "textProfile": "field.vid_phone",
+      "provenance": {
+        "romAddresses": [
+          "0x10B71E", "0x10B75C", "0x10B778", "0x10B81C",
+          "0x10B834", "0x10B84C", "0x22B4A", "0x22BA0"
+        ],
+        "scope": "wilma_matrix_and_program_services_commands_0x74_to_0x75"
+      },
+      "nodes": {
+        "credstick_intro": {
+          "type": "choice",
+          "menuId": "wilma_credstick",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "services" }
+          ]
+        },
+        "services": {
+          "type": "choice",
+          "menuId": "wilma_services",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "matrix", "next": "matrix_intro" },
+            { "id": "programs", "next": "program_intro" },
+            { "id": "goodbye", "next": "later" }
+          ]
+        },
+        "matrix_intro": {
+          "type": "choice",
+          "menuId": "wilma_matrix_intro",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "matrix_companies" }
+          ]
+        },
+        "matrix_companies": {
+          "type": "choice",
+          "menuId": "wilma_matrix_companies",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "matrix_sleaze" }
+          ]
+        },
+        "matrix_sleaze": {
+          "type": "choice",
+          "menuId": "wilma_matrix_sleaze",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "matrix_result" }
+          ]
+        },
+        "matrix_result": {
+          "type": "choice",
+          "menuId": "wilma_matrix_result",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "credstick_intro" },
+            { "id": "goodbye", "next": "services" }
+          ]
+        },
+        "program_intro": {
+          "type": "choice",
+          "menuId": "wilma_program_intro",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "program_degrade" }
+          ]
+        },
+        "program_degrade": {
+          "type": "choice",
+          "menuId": "wilma_program_degrade",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "program_offer" }
+          ]
+        },
+        "program_offer": {
+          "type": "choice",
+          "menuId": "wilma_program_offer",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "buy_rebound", "next": "purchase_rebound" },
+            { "id": "buy_degrade", "next": "purchase_degrade" },
+            { "id": "different_subject", "next": "services" }
+          ]
+        },
+        "purchase_rebound": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_wilma_rebound",
+          "results": {
+            "program_installed": "program_result",
+            "insufficient": "insufficient_funds",
+            "storage_full": "storage_full",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "purchase_degrade": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_wilma_degrade",
+          "results": {
+            "program_installed": "program_result",
+            "insufficient": "insufficient_funds",
+            "storage_full": "storage_full",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "program_result": {
+          "type": "choice",
+          "menuId": "wilma_program_result",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "credstick_intro" },
+            { "id": "goodbye", "next": "services" }
+          ]
+        },
+        "storage_full": {
+          "type": "choice",
+          "menuId": "wilma_storage_full",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "credstick_intro" },
+            { "id": "goodbye", "next": "services" }
+          ]
+        },
+        "insufficient_funds": {
+          "type": "page",
+          "eventId": "insufficient_funds",
+          "next": "finished"
+        },
+        "later": {
+          "type": "page",
+          "eventId": "later",
+          "next": "finished"
+        },
+        "service_boundary": {
+          "type": "source_boundary",
+          "reason": "Wilma's host transaction returned an unavailable or unrecognized source result."
+        },
+        "finished": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
     }
   }
 }

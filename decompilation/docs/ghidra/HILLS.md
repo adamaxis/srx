@@ -257,8 +257,8 @@ choices, and result edges; Lua submits the three typed host transactions. The
 direct Lua permutation suite and Debug/Release script/panel CTests cover the
 graph branches and render through screen 34. Alesandro's shared portrait
 appears in section 23 frame 001770, but no complete matching call sequence was
-found in the reviewed longplay. Three other contact service trees remain
-procedural.
+found in the reviewed longplay. At that point in the conversion, three other
+contact service trees still used procedural Lua.
 
 Sharkey's ROM contact record at `0x10A7F2`
 offers commands `0x6E`-`0x70`: 3,000 nuyen for Salish-Shidhe passage to scene
@@ -289,9 +289,13 @@ the portrait art only; no full Vid-Phone call sequence or physical Kipp-service
 route appears in the reviewed longplay. Wilma
 Temmenhoff's record at `0x10B71E` follows commands `0x74`/`0x75`: both charge
 5,000, accept storage sized as rating 3, and store rating 3 for Rebound and
-Degrade. Her result nodes send Services back to the credstick page and
-Goodbye back to the service menu. The panel QA captures that offer, the
-download, and the sign-off. Sgt. Macklemann's record at `0x10BFAC` follows
+Degrade. Her JSON service graph owns the information and program pages, both
+transaction result branches, and the distinct Services/Goodbye return routes;
+Lua only registers the two typed transaction actions. The permutation test
+covers both commands, every recognized host result, and both result-menu
+destinations. Panel QA captures the offer, download, and sign-off. No matching
+independent call frame or physical Wilma-service route is identified, so the
+visual hill remains partial. Sgt. Macklemann's record at `0x10BFAC` follows
 command `0x76`: 5,000 nuyen sets `FFFC2C` bit 28 for the Hollywood gate and
 does not set contact bit 5. His information pages return to the service menu;
 Goodbye disconnects. The panel QA captures the badge offer and the gate line.

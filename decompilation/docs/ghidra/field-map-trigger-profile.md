@@ -453,9 +453,11 @@ Vid-Phone checks the contact bitfield and shows the ROM's no-contacts message
 when empty. The Lua call list filters all 13 contact records from the ROM
 contact bitfield, pages the rows, resolves each first/repeat dialogue and
 portrait, and retains per-contact call-history state. ROM-rooted service
-trees are implemented for Capt. Quinton, Alesandro, Sharkey, Kipp David, Wilma Temmenhoff, and Sgt. Macklemann,
-including their wallet, inventory, contact-flag, deck-record, and
-map-destination effects. The menu
+trees are implemented for Capt. Quinton, Alesandro, Sharkey, Kipp David,
+Wilma Temmenhoff, Sgt. Macklemann, and Gregory Wilns, including wallet,
+inventory, contact-flag, deck-record, and map-destination effects. Quinton,
+Alesandro, Sharkey, Kipp, and Wilma use the reusable JSON conversation graph;
+the other converted contact services still use procedural Lua. The menu
 is rooted at `0x1096F4`, with Firepower and Contacts nodes at `0x109750` and
 `0x109780`. Other contact-specific service paths remain unresolved.
 Cyberspace checks deck,

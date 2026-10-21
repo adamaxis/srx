@@ -135,7 +135,11 @@
         "textKey": "vid_phone.contact.wilma_temmenhoff.repeat_call",
         "continuation": false
       },
-      "service": { "module": "vid_phone.wilma_temmenhoff", "function": "services" }
+      "service": {
+        "module": "vid_phone.wilma_temmenhoff",
+        "graphId": "vid_phone.wilma_temmenhoff.services",
+        "graphScope": "services"
+      }
     },
     {
       "sourceIndex": 5,
