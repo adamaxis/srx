@@ -60,16 +60,19 @@ catalog's source policy explicitly authorizes a correction.
   story bit 30, loads profile `0x121F4C`, and opens group `0xF57F8`, whose
   first text at `0xFB6C8` says Joshua is taken to Frosty. The Lua source test
   checks the command-table entries and ROM branch bytes. These source roots
-  are identified, but their live world-object caller and location route remain
+  are identified, but their live field-interaction caller and location route remain
   unconnected.
 - Ilene prerequisite: Scene-2/event-0 service 19 at `0x543A2` requires story
   bits 18/19 = 1/0, `FFF0D5=0`, `FFFC34` bit 0 clear, and `FFFC38` bit 12 set.
   It arms `FFE182` and leaves event-table row 0's Scene-20 destination live.
-  After a Scene-20 world-object contact, `0xED92` consumes that marker and
-  selects activity `0x54402`; the activity adds 2 Karma per runner, sets story
-  bit 19, and opens group `0x115ECC`. Its first text at `0x115F10` names Ilene.
-  ROM-byte tests now cover this intermediate gate and completion, but the
-  conditional activity is not yet wired into the active runtime.
+  The only traced consumer is the `0xEB92` actor-pair scan through `0xECCC`;
+  `0xED92` consumes the marker only when a pair member has `+0x9E` bit 3, its
+  one-shot `+0xB0` bit 7 is clear, and its partner has `+0x10` bit 1. Scene 20's
+  eight default guards/pedestrians have no `+0x9E` overrides, so the eligible
+  actor and bit-3 source remain unresolved. If reached, activity `0x54402` adds
+  2 Karma per runner, sets bit 19, and opens group `0x115ECC`; text `0x115F10`
+  names Ilene. ROM-byte tests cover the source gates and activity writes; this
+  actor-pair route is not wired into the active runtime.
 - Prerequisite: the code at `0x53EA8` sets `FFFC1E` bit 9 and opens text
   record `0xF4C04` ("You have completed your tasks, young warrior"). The
   Spirit Eyes event-27 Lua route now models that completion gate after first
@@ -183,7 +186,7 @@ destination, and no reverse route has been added.
 
 - Wire and physically verify the source-confirmed Ilene continuation without
   flattening it into an unconditional Scene-20 entry. Then trace the live
-  world-object caller for command `0x34`'s Lady Gillian root and command
+  field-interaction caller for command `0x34`'s Lady Gillian root and command
   `0x44`'s Frosty handoff. Preserve the verified command distinction: `0x34`
   selects `0xF57E4`; `0x44` sets bit 30 and opens `0xF57F8`.
 - Trace the complete `0xF4C44` dialogue and the world-context route that

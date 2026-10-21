@@ -144,11 +144,20 @@ do
           u16(0x543F8) == 0x13FC and u16(0x543FA) == 0x00FF and
           u32(0x543FC) == 0xFFE182,
           "service19 gates on bits18/19, Scene2/event0, FFF0D5, FFFC34 bit0, and FFFC38 bit12 before arming FFE182")
+    check(u16(0xED3C) == 0x0829 and u16(0xED3E) == 0x0003 and
+          u16(0xED40) == 0x009E and u16(0xED46) == 0x0829 and
+          u16(0xED48) == 0x0007 and u16(0xED4A) == 0x00B0 and
+          u16(0xED50) == 0x0828 and u16(0xED52) == 0x0001 and
+          u16(0xED54) == 0x0010 and u16(0xEDB4) == 0x0828 and
+          u16(0xEDB6) == 0x0003 and u16(0xEDB8) == 0x009E and
+          u16(0xEDC8) == 0x0829 and u16(0xEDCA) == 0x0001 and
+          u16(0xEDCC) == 0x0010,
+          "0xECCC requires pair member +0x9E bit3 and partner +0x10 bit1 before this one-shot branch")
     check(u16(0xED92) == 0x4A39 and u32(0xED94) == 0xFFE182 and
           u16(0xED9C) == 0x4239 and u32(0xED9E) == 0xFFE182 and
           u16(0xEDA2) == 0x23FC and u32(0xEDA4) == 0x54402 and
           u32(0xEDA8) == 0xFFDD2C,
-          "world-object contact consumes FFE182 and selects activity 0x54402")
+          "eligible actor-pair contact consumes FFE182 and selects activity 0x54402")
     check(u16(0x54402) == 0x303C and u16(0x54404) == 2 and
           u16(0x54406) == 0x4EB9 and u32(0x54408) == 0x59C34 and
           u16(0x54412) == 0x08C1 and u16(0x54414) == 0x0013 and
