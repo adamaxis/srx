@@ -2,7 +2,6 @@
 
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/field/field_action_cost_conversion.hpp"
-#include "shadowrun_ghidra/field/field_action_selection_navigation_conversion.hpp"
 
 #include <algorithm>
 #include <array>
@@ -14,47 +13,19 @@
 namespace shadowrun::ghidra_conversion::qt_runtime {
 namespace {
 
-constexpr std::uint16_t kActionCursorDecrement = 0x0400U;
-constexpr std::uint16_t kActionPanelDecrement = 0x0100U;
-constexpr std::uint16_t kActionCursorIncrement = 0x0800U;
-constexpr std::uint16_t kActionPanelIncrement = 0x0200U;
-constexpr std::uint16_t kRestartSetup = 0x2000U;
-constexpr std::uint16_t kConfirm = 0x4000U;
-constexpr std::uint16_t kAlternateConfirm = 0x1000U;
-constexpr std::uint16_t kReturnToField = 0x8000U;
-
-constexpr std::uint8_t kAresMenuMode = 1U;
-
 std::string_view group_id(const ShopActionGroup group) {
     switch (group) {
-    case ShopActionGroup::weapons:
-        return "weapons";
-    case ShopActionGroup::other_items:
-        return "other_items";
-    case ShopActionGroup::armor:
-        return "armor";
-    case ShopActionGroup::source_action_3:
-        return "source_action_3";
-    case ShopActionGroup::source_action_4:
-        return "source_action_4";
-    case ShopActionGroup::sell:
-        return "sell";
+    case ShopActionGroup::weapons: return "weapons";
+    case ShopActionGroup::other_items: return "other_items";
+    case ShopActionGroup::armor: return "armor";
+    case ShopActionGroup::source_action_3: return "source_action_3";
+    case ShopActionGroup::source_action_4: return "source_action_4";
+    case ShopActionGroup::sell: return "sell";
+    case ShopActionGroup::magic_spells: return "magic_spells";
+    case ShopActionGroup::magic_items: return "magic_items";
+    case ShopActionGroup::magic_foci: return "magic_foci";
     }
     return {};
-}
-
-std::optional<ShopActionGroup> group_from_id(const std::string_view id) {
-    for (std::int8_t index = 0; index <= 5; ++index) {
-        const auto group = static_cast<ShopActionGroup>(index);
-        if (group_id(group) == id) {
-            return group;
-        }
-    }
-    return std::nullopt;
-}
-
-bool is_action_confirmed(const std::uint16_t events) {
-    return (events & (kConfirm | kAlternateConfirm)) != 0U;
 }
 
 } // namespace
@@ -63,9 +34,13 @@ bool ShopMenuController::open(
     const ShopId shop,
     const scripting::ScriptShopDefinition& definition,
     const std::array<std::string, 2>& confirmation_choice_ids) {
-    if (shop != ShopId::ares_weapon_emporium ||
-        definition.id != "ares_weapon_emporium" ||
-        definition.groups.size() != group_ids_.size() ||
+    const bool shop_id_matches_definition =
+        (shop == ShopId::ares_weapon_emporium &&
+         definition.id == "ares_weapon_emporium") ||
+        (shop == ShopId::medicine_lodge &&
+         definition.id == "medicine_lodge");
+    if (!shop_id_matches_definition || definition.groups.empty() ||
+        definition.groups.size() > group_ids_.size() ||
         confirmation_choice_ids[0] != "yes" ||
         confirmation_choice_ids[1] != "no") {
         return false;
@@ -73,14 +48,19 @@ bool ShopMenuController::open(
 
     std::array<std::string, 6> group_ids{};
     std::array<std::vector<FieldActionCostRecord>, 6> offer_groups{};
+    std::array<std::vector<scripting::ScriptShopProgressionOffer>, 6>
+        progression_offer_groups{};
     for (std::size_t index = 0; index < definition.groups.size(); ++index) {
         const auto& scripted_group = definition.groups[index];
         const auto previous = std::find(
             group_ids.begin(), group_ids.begin() + index,
             scripted_group.id);
-        if (!group_from_id(scripted_group.id).has_value() ||
+        if (scripted_group.id.empty() ||
             previous != group_ids.begin() + index ||
-            scripted_group.offers.size() > 8U) {
+            scripted_group.offers.size() > 8U ||
+            scripted_group.progression_offers.size() > 8U ||
+            (!scripted_group.offers.empty() &&
+             !scripted_group.progression_offers.empty())) {
             return false;
         }
         group_ids[index] = scripted_group.id;
@@ -90,19 +70,25 @@ bool ShopMenuController::open(
             offers.push_back(FieldActionCostRecord{
                 offer.type, offer.value, offer.quantity});
         }
+        progression_offer_groups[index] = scripted_group.progression_offers;
     }
     shop_ = shop;
+    definition_id_ = definition.id;
+    group_count_ = definition.groups.size();
     group_ids_ = std::move(group_ids);
     displayed_offer_group_ =
-        group_from_id(group_ids_.front()).value_or(ShopActionGroup::weapons);
+        ShopActionGroup::weapons;
+    displayed_offer_group_source_index_ = 0U;
     confirmation_choice_ids_ = confirmation_choice_ids;
     offer_groups_ = std::move(offer_groups);
-    menu_mode_ = kAresMenuMode;
+    progression_offer_groups_ = std::move(progression_offer_groups);
+    menu_mode_ = definition.menu_mode;
     source_state_ = FieldModeServiceState{};
-    source_state_.action_selection.menu_result = -1;
+    source_state_.action_selection.menu_result = definition.menu_result;
     source_state_.action_selection.action_cursor = 0;
     source_state_.action_selection.action_panel = 0;
     source_state_.action_selection.selected_action = 0;
+    displayed_offer_group_ = selected_group();
     source_state_.selection_marker = -1;
     pending_action_.reset();
     reset_transaction();
@@ -115,10 +101,14 @@ void ShopMenuController::close() noexcept {
     pending_action_.reset();
     reset_transaction();
     source_state_ = FieldModeServiceState{};
+    definition_id_.clear();
     group_ids_ = {};
+    group_count_ = 0U;
     displayed_offer_group_ = ShopActionGroup::weapons;
+    displayed_offer_group_source_index_ = 0U;
     confirmation_choice_ids_ = {};
     offer_groups_ = {};
+    progression_offer_groups_ = {};
     menu_mode_ = 0U;
 }
 
@@ -128,20 +118,20 @@ void ShopMenuController::finish_action() noexcept {
     }
     pending_action_.reset();
     reset_transaction();
-    source_state_.service_result = 0;
-    source_state_.selection_marker = -1;
-    source_state_.action_selection.action_cursor = 0;
-    source_state_.action_selection.action_panel = 0;
-    source_state_.action_selection.selected_action = 0;
-    displayed_offer_group_ =
-        group_ids_.empty()
-            ? ShopActionGroup::weapons
-            : group_from_id(group_ids_.front())
-                  .value_or(ShopActionGroup::weapons);
 }
 
 void ShopMenuController::clear_pending_action() noexcept {
     pending_action_.reset();
+}
+
+void ShopMenuController::show_progression_message(
+    const ShopTransactionMessage message) noexcept {
+    reset_transaction();
+    if (message == ShopTransactionMessage::none) {
+        return;
+    }
+    transaction_message_ = message;
+    transaction_waiting_for_event_ = true;
 }
 
 void ShopMenuController::reset_transaction() noexcept {
@@ -320,35 +310,66 @@ ShopTransactionEvent ShopMenuController::advance_transaction(
     return ShopTransactionEvent::unresolved;
 }
 
-void ShopMenuController::publish_selected_group() noexcept {
-    source_state_.action_selection.selected_action =
-        source_state_.action_selection.action_cursor;
+ShopActionGroup ShopMenuController::selected_group() const noexcept {
+    const auto index = selected_group_index();
+    if (index >= group_count_) {
+        return ShopActionGroup::weapons;
+    }
+    const auto& id = group_ids_[index];
+    if (id == "weapons") return ShopActionGroup::weapons;
+    if (id == "other_items") return ShopActionGroup::other_items;
+    if (id == "armor") return ShopActionGroup::armor;
+    if (id == "source_action_3") return ShopActionGroup::source_action_3;
+    if (id == "source_action_4") return ShopActionGroup::source_action_4;
+    if (id == "sell") return ShopActionGroup::sell;
+    if (id == "magic_spells") return ShopActionGroup::magic_spells;
+    if (id == "magic_items") return ShopActionGroup::magic_items;
+    if (id == "magic_foci") return ShopActionGroup::magic_foci;
+    return static_cast<ShopActionGroup>(index);
 }
 
-ShopActionGroup ShopMenuController::selected_group() const noexcept {
-    const auto group = source_state_.action_selection.selected_action;
-    if (group < 0 || static_cast<std::size_t>(group) >= group_ids_.size()) {
-        return ShopActionGroup::source_action_3;
-    }
-    const auto selected = group_from_id(
-        group_ids_[static_cast<std::size_t>(group)]);
-    return selected.value_or(ShopActionGroup::source_action_3);
+std::size_t ShopMenuController::selected_group_index() const noexcept {
+    const auto index = source_state_.action_selection.selected_action;
+    return index < 0 ? group_count_ : static_cast<std::size_t>(index);
+}
+
+std::size_t ShopMenuController::displayed_offer_group_index() const noexcept {
+    return displayed_offer_group_source_index_ < group_count_
+               ? displayed_offer_group_source_index_
+               : group_count_;
+}
+
+std::string_view ShopMenuController::selected_group_id() const noexcept {
+    const auto index = selected_group_index();
+    return index < group_count_
+               ? std::string_view(group_ids_[index])
+               : std::string_view{};
+}
+
+std::string_view ShopMenuController::displayed_offer_group_id() const noexcept {
+    const auto index = displayed_offer_group_index();
+    return index < group_count_
+               ? std::string_view(group_ids_[index])
+               : std::string_view{};
 }
 
 std::size_t ShopMenuController::offer_count(
     const ShopActionGroup group) const noexcept {
-    if (!open_ || group < ShopActionGroup::weapons ||
-        group > ShopActionGroup::armor) {
+    if (!open_) {
         return 0U;
     }
     const auto id = group_id(group);
-    const auto found = std::find(group_ids_.begin(), group_ids_.end(), id);
-    if (found == group_ids_.end()) {
+    const auto found = std::find(
+        group_ids_.begin(), group_ids_.begin() +
+                                static_cast<std::ptrdiff_t>(group_count_),
+        id);
+    if (found == group_ids_.begin() +
+                     static_cast<std::ptrdiff_t>(group_count_)) {
         return 0U;
     }
-    const auto group_index = static_cast<std::size_t>(
+    const auto index = static_cast<std::size_t>(
         std::distance(group_ids_.begin(), found));
-    return offer_groups_[group_index].size();
+    return offer_groups_[index].size();
 }
 
 std::optional<FieldActionCostRecord> ShopMenuController::offer(
@@ -357,105 +378,132 @@ std::optional<FieldActionCostRecord> ShopMenuController::offer(
         return std::nullopt;
     }
     const auto id = group_id(group);
-    const auto found = std::find(group_ids_.begin(), group_ids_.end(), id);
-    if (found == group_ids_.end()) {
+    const auto found = std::find(
+        group_ids_.begin(), group_ids_.begin() +
+                                static_cast<std::ptrdiff_t>(group_count_),
+        id);
+    if (found == group_ids_.begin() +
+                     static_cast<std::ptrdiff_t>(group_count_)) {
         return std::nullopt;
     }
-    const auto group_index = static_cast<std::size_t>(
+    const auto group_slot = static_cast<std::size_t>(
         std::distance(group_ids_.begin(), found));
-    return offer_groups_[group_index][index];
+    return offer_groups_[group_slot][index];
 }
 
-ShopMenuEvent ShopMenuController::advance(
-    const std::uint16_t controller_events) {
-    if (!open_ || pending_action_.has_value()) {
-        return ShopMenuEvent::no_change;
+std::size_t ShopMenuController::progression_offer_count(
+    const ShopActionGroup group) const noexcept {
+    if (!open_) {
+        return 0U;
+    }
+    const auto id = group_id(group);
+    const auto found = std::find(
+        group_ids_.begin(), group_ids_.begin() +
+                                static_cast<std::ptrdiff_t>(group_count_),
+        id);
+    if (found == group_ids_.begin() +
+                     static_cast<std::ptrdiff_t>(group_count_)) {
+        return 0U;
+    }
+    const auto index = static_cast<std::size_t>(
+        std::distance(group_ids_.begin(), found));
+    return progression_offer_groups_[index].size();
+}
+
+std::optional<scripting::ScriptShopProgressionOffer>
+ShopMenuController::progression_offer(
+    const ShopActionGroup group, const std::size_t index) const noexcept {
+    if (index >= progression_offer_count(group)) {
+        return std::nullopt;
+    }
+    const auto id = group_id(group);
+    const auto found = std::find(
+        group_ids_.begin(), group_ids_.begin() +
+                                static_cast<std::ptrdiff_t>(group_count_),
+        id);
+    if (found == group_ids_.begin() +
+                     static_cast<std::ptrdiff_t>(group_count_)) {
+        return std::nullopt;
+    }
+    const auto group_slot = static_cast<std::size_t>(
+        std::distance(group_ids_.begin(), found));
+    return progression_offer_groups_[group_slot][index];
+}
+
+std::optional<ShopMenuEvent> ShopMenuController::apply_script_snapshot(
+    const scripting::ScriptShopMenuSnapshot& snapshot) {
+    if (!open_ || snapshot.shop_id != definition_id_ ||
+        snapshot.menu_mode != menu_mode_ ||
+        snapshot.selected_action >= group_count_) {
+        return std::nullopt;
     }
 
-    auto& selection = source_state_.action_selection;
-    FieldActionSelectionNavigationCallbacks navigation_callbacks{};
-    if ((controller_events & kActionCursorDecrement) != 0U) {
-        const auto before = selection.action_cursor;
-        advance_field_action_selection_cursor(selection, -1,
-                                              navigation_callbacks);
-        if (selection.action_cursor != before) {
-            if (selection.action_panel == 0) {
-                publish_selected_group();
-            }
-            return ShopMenuEvent::selection_moved;
-        }
-        return ShopMenuEvent::no_change;
-    }
-    if ((controller_events & kActionPanelDecrement) != 0U) {
-        const auto before = selection.action_panel;
-        advance_field_action_selection_panel(selection, -1,
-                                             navigation_callbacks);
-        if (selection.action_panel != before) {
-            publish_selected_group();
-            return ShopMenuEvent::panel_changed;
-        }
-        return ShopMenuEvent::no_change;
-    }
-    if ((controller_events & kActionCursorIncrement) != 0U) {
-        const auto before = selection.action_cursor;
-        advance_field_action_selection_cursor(selection, 1,
-                                              navigation_callbacks);
-        if (selection.action_cursor != before) {
-            if (selection.action_panel == 0) {
-                publish_selected_group();
-            }
-            return ShopMenuEvent::selection_moved;
-        }
-        return ShopMenuEvent::no_change;
-    }
-    if ((controller_events & kActionPanelIncrement) != 0U) {
-        const auto before = selection.action_panel;
-        const auto selected_group = selection.action_cursor;
-        advance_field_action_selection_panel(selection, 1,
-                                             navigation_callbacks);
-        if (selection.action_panel != before) {
-            source_state_.action_selection.selected_action = selected_group;
-            displayed_offer_group_ = this->selected_group();
-            return ShopMenuEvent::panel_changed;
-        }
-        return ShopMenuEvent::no_change;
+    ShopMenuEvent event = ShopMenuEvent::no_change;
+    if (snapshot.event == "selection_moved") {
+        event = ShopMenuEvent::selection_moved;
+    } else if (snapshot.event == "panel_changed") {
+        event = ShopMenuEvent::panel_changed;
+    } else if (snapshot.event == "purchase_selected") {
+        event = ShopMenuEvent::purchase_selected;
+    } else if (snapshot.event == "sale_selected") {
+        event = ShopMenuEvent::sale_selected;
+    } else if (snapshot.event == "offer_unavailable") {
+        event = ShopMenuEvent::offer_unavailable;
+    } else if (snapshot.event == "progression_selected") {
+        event = ShopMenuEvent::progression_selected;
+    } else if (snapshot.event == "source_action_boundary") {
+        event = ShopMenuEvent::source_action_boundary;
+    } else if (snapshot.event == "active_runner_change_requested") {
+        event = ShopMenuEvent::active_runner_change_requested;
+    } else if (snapshot.event == "returned_to_field") {
+        event = ShopMenuEvent::returned_to_field;
+    } else if (snapshot.event != "opened" &&
+               snapshot.event != "no_change") {
+        return std::nullopt;
     }
 
-    if (is_action_confirmed(controller_events)) {
-        if (selection.action_panel == 0) {
-            publish_selected_group();
-            return ShopMenuEvent::no_change;
-        }
+    source_state_.action_selection.menu_result = snapshot.menu_result;
+    source_state_.action_selection.action_cursor =
+        static_cast<std::int8_t>(snapshot.action_cursor);
+    source_state_.action_selection.action_panel =
+        static_cast<std::int8_t>(snapshot.action_panel);
+    source_state_.action_selection.selected_action =
+        static_cast<std::int8_t>(snapshot.selected_action);
+    if (event == ShopMenuEvent::panel_changed && snapshot.action_panel != 0U) {
+        displayed_offer_group_ = selected_group();
+        displayed_offer_group_source_index_ = selected_group_index();
+    }
 
+    pending_action_.reset();
+    if (event == ShopMenuEvent::purchase_selected ||
+        event == ShopMenuEvent::sale_selected ||
+        event == ShopMenuEvent::progression_selected ||
+        event == ShopMenuEvent::source_action_boundary) {
         ShopActionRequest request{};
         request.group = selected_group();
-        request.cursor = static_cast<std::uint8_t>(selection.action_cursor);
-        if (request.group >= ShopActionGroup::weapons &&
-            request.group <= ShopActionGroup::armor) {
+        request.cursor = static_cast<std::uint8_t>(snapshot.action_cursor);
+        if (event == ShopMenuEvent::purchase_selected) {
             request.offer = offer(request.group, request.cursor);
             if (!request.offer.has_value()) {
-                return ShopMenuEvent::offer_unavailable;
+                return std::nullopt;
             }
-            pending_action_ = request;
-            return ShopMenuEvent::purchase_selected;
-        }
-        if (request.group == ShopActionGroup::sell) {
-            pending_action_ = request;
-            return ShopMenuEvent::sale_selected;
+        } else if (event == ShopMenuEvent::progression_selected) {
+            request.progression_offer =
+                progression_offer(request.group, request.cursor);
+            if (!request.progression_offer.has_value()) {
+                return std::nullopt;
+            }
         }
         pending_action_ = request;
-        return ShopMenuEvent::source_action_boundary;
     }
 
-    if ((controller_events & kRestartSetup) != 0U) {
-        finish_action();
-        return ShopMenuEvent::active_runner_change_requested;
-    }
-    if ((controller_events & kReturnToField) != 0U) {
+    if (!snapshot.open) {
+        if (event != ShopMenuEvent::returned_to_field) {
+            return std::nullopt;
+        }
         close();
-        return ShopMenuEvent::returned_to_field;
     }
-    return ShopMenuEvent::no_change;
+    return event;
 }
 
 FieldActionApplicationResult ShopTransactionService::purchase(

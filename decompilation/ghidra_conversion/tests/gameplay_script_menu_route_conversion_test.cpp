@@ -26,6 +26,7 @@ using shadowrun::ghidra_conversion::scripting::GameScriptRuntime;
 using shadowrun::ghidra_conversion::scripting::ScriptNotebookBoundary;
 using shadowrun::ghidra_conversion::scripting::ScriptNotebookFacts;
 using shadowrun::ghidra_conversion::scripting::ScriptCyberdeckRecord;
+using shadowrun::ghidra_conversion::scripting::ScriptCyberdeckProgramSlot;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteGame;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuPartyMember;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteBindings;
@@ -42,6 +43,8 @@ using shadowrun::ghidra_conversion::qt_runtime::
     make_matrix_datastore_facts;
 using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_system_map;
 using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_node_action_panel;
+using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_run_info_text;
+using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_deck_stats_text;
 #endif
 
 namespace {
@@ -58,6 +61,7 @@ constexpr std::uint16_t kDeckMap = 34U;
 constexpr std::uint16_t kMatrixNodeAction = 37U;
 constexpr std::uint16_t kMatrixEntry = 38U;
 constexpr std::uint16_t kMatrixSearch = 39U;
+constexpr std::uint16_t kDeckCyberInfo = 32U;
 constexpr std::uint16_t kTaxiSelector = 40U;
 constexpr std::uint16_t kCommandPagePocketSecretary = 6U;
 constexpr std::uint16_t kNotebook = 10U;
@@ -99,12 +103,17 @@ void verify_cyberdeck_file_value_bridge(int& failures) {
     source.files[0] = {4, 20, -1};
     source.files[1] = {9, 30, 12};
     game.deck_record = [&source] { return source; };
+    std::array<ScriptCyberdeckProgramSlot, 5> source_slots{};
+    source_slots[0] = {2U, 33U, 4U};
+    game.deck_slots = [&source_slots] { return source_slots; };
     ScriptCyberdeckRecord committed;
+    std::array<ScriptCyberdeckProgramSlot, 5> committed_slots{};
     bool did_commit = false;
-    game.deck_commit = [&committed, &did_commit](
+    game.deck_commit = [&committed, &committed_slots, &did_commit](
                            const ScriptCyberdeckRecord& record,
-                           const std::array<ScriptCyberdeckProgramSlot, 5>&) {
+                           const std::array<ScriptCyberdeckProgramSlot, 5>& slot_records) {
         committed = record;
+        committed_slots = slot_records;
         did_commit = true;
     };
 
@@ -119,6 +128,17 @@ void verify_cyberdeck_file_value_bridge(int& failures) {
           failures);
     lua_settop(lua, 0);
 
+    dispatch_cyberdeck_menu_binding(
+        lua, game, CyberdeckMenuBinding::program_slots);
+    lua_rawgeti(lua, -1, 0);
+    lua_getfield(lua, -1, "status");
+    int slot_status_is_integer = 0;
+    const auto slot_status = lua_tointegerx(lua, -1, &slot_status_is_integer);
+    lua_settop(lua, 0);
+    check(slot_status_is_integer != 0 && slot_status == 2,
+          "Lua receives typed program slot records at zero-based indexes",
+          failures);
+
     lua_createtable(lua, 0, 1); // record
     lua_createtable(lua, 1, 0); // files
     lua_createtable(lua, 0, 3); // file 0
@@ -130,12 +150,24 @@ void verify_cyberdeck_file_value_bridge(int& failures) {
     lua_setfield(lua, -2, "value");
     lua_rawseti(lua, -2, 0);
     lua_setfield(lua, -2, "files");
-    lua_createtable(lua, 5, 0); // program slots
+    lua_createtable(lua, 5, 0); // program slot records
+    lua_createtable(lua, 0, 3); // slot 0
+    lua_pushinteger(lua, 3);
+    lua_setfield(lua, -2, "status");
+    lua_pushinteger(lua, 27);
+    lua_setfield(lua, -2, "timer");
+    lua_pushinteger(lua, 1);
+    lua_setfield(lua, -2, "phase");
+    lua_rawseti(lua, -2, 0);
     dispatch_cyberdeck_menu_binding(lua, game, CyberdeckMenuBinding::commit);
     check(did_commit && committed.files[0].id == 12 &&
               committed.files[0].size == 40 &&
-              committed.files[0].value == -7,
-          "Lua commit preserves the signed Cyberdeck file value", failures);
+              committed.files[0].value == -7 &&
+              committed_slots[0].status == 3U &&
+              committed_slots[0].timer == 27U &&
+              committed_slots[0].phase == 1U,
+          "Lua commit preserves Cyberdeck files and typed program slots",
+          failures);
     lua_close(lua);
 }
 
@@ -220,13 +252,14 @@ int main() {
     int debug_unlock_consumptions = 0;
     int deck_enter_count = 0;
     int deck_leave_count = 0;
-    int deck_tick_count = 0;
     int deck_mode = 0;
     // Out-of-range sentinel suppresses alerts during this broad route test;
     // the dedicated alert path below switches to valid ROM rolls.
     int matrix_alert_roll_value = 0xFFFF;
     std::vector<int> matrix_alert_roll_bounds;
     ScriptMatrixWorldState matrix_world_state;
+    matrix_world_state.karma_counter = 1;
+    matrix_world_state.passive_ic_counter = -3;
     matrix_world_state.run = ScriptMatrixRunState{-1, -1, 0, 0, 1, 0};
     matrix_world_state.datastore = ScriptMatrixDatastoreFacts{
         0U, 0xA2345678U, 0xCDEF1234U, 0x81234567U, 0x6023U,
@@ -243,6 +276,8 @@ int main() {
     matrix_deck.load_io = 2U;
     matrix_deck.response = 2U;
     matrix_deck.persona = {2U, 2U, 2U, 5U};
+    matrix_deck.ratings[11] = 4U;
+    std::array<ScriptCyberdeckProgramSlot, 5> matrix_deck_slots{};
     int matrix_deck_commits = 0;
     std::optional<int> taxi_destination;
     bool pocket_extra_row = false;
@@ -310,18 +345,18 @@ int main() {
     bindings.game.leader_archetype = [] { return 3; };
     bindings.game.party = [&party] { return party; };
     bindings.game.deck_record = [&matrix_deck] { return matrix_deck; };
-    bindings.game.deck_slots = [] {
-        return std::array<shadowrun::ghidra_conversion::scripting::
-                              ScriptCyberdeckProgramSlot,
-                          5>{};
+    bindings.game.deck_slots = [&matrix_deck_slots] {
+        return matrix_deck_slots;
     };
-    bindings.game.deck_commit = [&matrix_deck, &matrix_deck_commits](
+    bindings.game.deck_commit = [&matrix_deck, &matrix_deck_slots,
+                                 &matrix_deck_commits](
                                     const ScriptCyberdeckRecord& record,
                                     const std::array<shadowrun::ghidra_conversion::
                                                          scripting::
                                                              ScriptCyberdeckProgramSlot,
-                                                     5>&) {
+                                                     5>& slot_records) {
         matrix_deck = record;
+        matrix_deck_slots = slot_records;
         ++matrix_deck_commits;
     };
     bindings.game.active_slot = [] { return 0; };
@@ -403,7 +438,6 @@ int main() {
     bindings.game.deck_leave = [&deck_leave_count](int) {
         ++deck_leave_count;
     };
-    bindings.game.deck_tick = [&deck_tick_count] { ++deck_tick_count; };
     bindings.game.set_deck_mode = [&deck_mode](const int value) {
         deck_mode = value;
     };
@@ -412,6 +446,8 @@ int main() {
     };
     bindings.game.commit_matrix_world_state = [&matrix_world_state](
         const ScriptMatrixWorldState& update) {
+        matrix_world_state.karma_counter = update.karma_counter;
+        matrix_world_state.passive_ic_counter = update.passive_ic_counter;
         if (update.run.has_value()) {
             matrix_world_state.run = update.run;
         }
@@ -439,6 +475,7 @@ int main() {
             }
         }
     };
+    const auto matrix_visual_bindings = bindings;
     runtime.set_menu_route_bindings(std::move(bindings));
 
     const auto opened = runtime.open_menu_route(kCommand);
@@ -1057,8 +1094,9 @@ int main() {
 
     // Exercise the debug-only Matrix entry as a live route, not as an
     // isolated Lua function. The picker clamps 0..24, waits 20 frames, then
-    // enters the Lua node-action loop. Start opens the deck loop and returns
-    // here; the 3D Matrix actor/service loop remains a separate integration hill.
+    // enters the source Cyberdeck loop. The separate node-action rules are
+    // exercised below through a controlled route seam because the Matrix
+    // world-view handoff after the deck is not integrated yet.
     party[0].attributes[1] = 12U;
     party[0].attributes[4] = 12U;
     party[0].skills[7] = 12U;
@@ -1100,27 +1138,40 @@ int main() {
     matrix_world_state.run = ScriptMatrixRunState{
         -1, 5, 0, 30, 1, 0, std::uint8_t{1}};
     runtime.advance_menu_route(0x4000U); // Jack in.
-    check(runtime.menu_route_snapshot().top_screen == kDebugPickSystem &&
+    check(runtime.menu_route_snapshot().top_screen == kMatrixEntry &&
               sounds.back() == 0x1AU && debug_unlock_consumptions == 1,
           "Matrix entry plays the ROM jack-in effect and consumes the title unlock",
           failures);
     for (int frame = 0; frame < 19; ++frame) {
         runtime.advance_menu_route(0U);
     }
-    check(runtime.menu_route_snapshot().top_screen == kDebugPickSystem,
+    check(runtime.menu_route_snapshot().top_screen == kMatrixEntry,
           "Matrix entry keeps the source 20-frame transition", failures);
     runtime.advance_menu_route(0U);
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kMatrixNodeAction &&
-              route.top_option_labels == std::vector<std::string>{"Enter System"} &&
+    check(route.top_screen == kCyberdeck &&
+              route.top_option_labels.size() == 16U &&
               route.top_matrix_state_present &&
               route.top_matrix_system_id == 0 && route.top_matrix_node == 0 &&
               matrix_world_state.run.has_value() &&
               matrix_world_state.run->state == 0 &&
               matrix_world_state.run->target_system_id ==
                   std::optional<std::uint8_t>{1U} &&
-              deck_enter_count == 0,
-          "jack-in keeps a Matrix objective inactive outside its ROM target system",
+              deck_enter_count == 1,
+          "jack-in enters the source Cyberdeck and keeps an off-target objective inactive",
+          failures);
+    runtime.close_menu_route();
+    ScriptMenuRouteStartArguments node_route_arguments{};
+    node_route_arguments.matrix_system_id = 0U;
+    const bool node_route_opened =
+        runtime.open_menu_route(kMatrixNodeAction, node_route_arguments);
+    check(node_route_opened,
+          "open the separately tested Matrix node-action route", failures);
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kMatrixNodeAction &&
+              route.top_option_labels == std::vector<std::string>{"Enter System"} &&
+              route.top_matrix_state_present && route.top_matrix_node == 0,
+          "the controlled node-action route receives the active Lua Matrix state",
           failures);
     runtime.advance_menu_route(0x4000U); // Select Enter System.
     route = runtime.menu_route_snapshot();
@@ -1134,12 +1185,13 @@ int main() {
           "link confirmation enters the source CPU node and its action list",
           failures);
     check(route.top_matrix_node_status.has_value() &&
-              route.top_matrix_node_status->file_class_label.find(
-                  "Unlisted") != std::string::npos &&
-              route.top_matrix_node_status->alert_band_label.size() == 7U &&
-              route.top_matrix_node_status->alert_band_label.back() == '-' &&
-              route.top_matrix_node_status->action_difficulty == 4,
-          "Lua publishes the source node class, alert label, and difficulty as separate values",
+              route.top_matrix_node_status->file_class_label.empty() &&
+              route.top_matrix_node_status->alert_band_label == "  ???  " &&
+              route.top_matrix_node_status->action_difficulty == -1 &&
+              route.top_matrix_node_status->world_model_id ==
+                  shadowrun::ghidra_conversion::scripting::
+                      ScriptMatrixWorldModelId::central_processing_unit,
+          "Lua preserves hidden node details and the ROM-selected world model as typed values",
           failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     QImage node_actual(320, 224, QImage::Format_ARGB32);
@@ -1148,8 +1200,31 @@ int main() {
     const std::filesystem::path node_assets(SHADOWRUN_MATRIX_MAP_ASSET_ROOT);
     const QImage node_font = QImage(QString::fromStdString(
         (node_assets / "cyberspace/matrix/system-map-font.bmp").string()));
+    const auto node_background_for = [&node_assets](const auto& snapshot) {
+        const auto& status = snapshot.top_matrix_node_status;
+        const auto profile = status.has_value()
+            ? std::clamp(status->background_profile, 0, 4)
+            : 0;
+        const auto theme = status.has_value()
+            ? std::clamp(status->palette_theme, 1, 4)
+            : 1;
+        const auto alias = "cyberspace/matrix/node-background-profile-" +
+            std::to_string(profile) + "-color-" +
+            std::to_string(theme) + ".bmp";
+        return QImage(QString::fromStdString((node_assets / alias).string()));
+    };
+    const auto node_cursor_for = [&node_assets](const auto& snapshot) {
+        const auto& status = snapshot.top_matrix_node_status;
+        const auto theme = status.has_value()
+            ? std::clamp(status->palette_theme, 1, 4)
+            : 1;
+        const auto alias = "cyberspace/matrix/node-action-cursor-color-" +
+            std::to_string(theme) + ".bmp";
+        return QImage(QString::fromStdString((node_assets / alias).string()));
+    };
     const bool node_painted = paint_matrix_node_action_panel(
-        node_painter, node_font, route);
+        node_painter, node_font, node_background_for(route),
+        node_cursor_for(route), route);
     node_painter.end();
     check(node_painted,
           "live Lua node-action state reaches the Qt panel presenter", failures);
@@ -1176,13 +1251,13 @@ int main() {
         }
         return false;
     };
-    const bool node_status_matches_rom_rows =
+    const bool hidden_node_status_matches_rom_rows =
         has_green_text(96, 64, 120, 72) &&
-        has_green_text(104, 56, 232, 64) &&
+        !has_green_text(104, 56, 232, 64) &&
         has_green_text(120, 80, 176, 88) &&
-        has_green_text(176, 80, 184, 88);
-    check(node_status_matches_rom_rows,
-          "Matrix node title, class, alert band, and difficulty use ROM name-table positions",
+        has_green_text(176, 80, 192, 88);
+    check(hidden_node_status_matches_rom_rows,
+          "Matrix keeps unknown status rows at ROM positions and hides the file class",
           failures);
     bool no_labels_at_panel_header = true;
     for (int y = 20; y < 72; ++y) {
@@ -1195,11 +1270,11 @@ int main() {
           "Matrix node status no longer stacks under the panel header",
           failures);
     bool node_labels_have_separate_rows = true;
-    constexpr std::array<int, 3> kNodeActionRows{114, 136, 158};
+    constexpr std::array<int, 3> kNodeActionRows{104, 120, 136};
     for (const auto y0 : kNodeActionRows) {
         bool row_has_text = false;
         for (int y = y0; y < y0 + 10; ++y) {
-            for (int x = 28; x < 180; ++x) {
+            for (int x = 120; x < 300; ++x) {
                 row_has_text = row_has_text ||
                     node_actual.pixelColor(x, y) == QColor(36, 219, 36);
             }
@@ -1215,6 +1290,90 @@ int main() {
     std::filesystem::create_directories(node_artifact.parent_path());
     check(node_actual.save(QString::fromStdString(node_artifact.string()), "BMP"),
           "write live Matrix node-entry-screen.bmp artifact", failures);
+
+    // Longplay Section 21 frame 004620 shows the System 2, node 1 Datastore
+    // after its details are known: Dead Projects / Green-3. The original
+    // System 0 CPU fixture is useful for hidden-status coverage, but is not a
+    // valid visual comparison for that independent frame.
+    GameScriptRuntime matrix_visual_runtime;
+    const bool matrix_visual_package_loaded = matrix_visual_runtime.load_package(
+        std::filesystem::path(SHADOWRUN_GAMEPLAY_SCRIPT_ROOT));
+    check(matrix_visual_package_loaded,
+          "load gameplay Lua for the source-matched Matrix visual route",
+          failures);
+    matrix_visual_runtime.set_menu_route_bindings(matrix_visual_bindings);
+    ScriptMenuRouteStartArguments datastore_arguments{};
+    datastore_arguments.matrix_system_id = 2U;
+    datastore_arguments.matrix_node_id = 1U;
+    const bool datastore_route_opened = matrix_visual_package_loaded &&
+        matrix_visual_runtime.open_menu_route(kMatrixNodeAction,
+                                              datastore_arguments);
+    const auto datastore_route = matrix_visual_runtime.menu_route_snapshot();
+    const bool datastore_rom_state_matches = datastore_route_opened &&
+        datastore_route.top_screen == kMatrixNodeAction &&
+        datastore_route.top_matrix_system_id == 2 &&
+        datastore_route.top_matrix_node == 1 &&
+        datastore_route.top_title == "Datastore" &&
+        datastore_route.top_option_labels == std::vector<std::string>{
+            "Leave Node", "Transfer Data", "Erase"} &&
+        datastore_route.top_matrix_node_status.has_value() &&
+        datastore_route.top_matrix_node_status->file_class_label ==
+            "Dead Projects " &&
+        datastore_route.top_matrix_node_status->alert_band_label ==
+            " Green-" &&
+        datastore_route.top_matrix_node_status->action_difficulty == 3 &&
+        datastore_route.top_matrix_node_status->background_profile == 3 &&
+        datastore_route.top_matrix_node_status->palette_theme == 2 &&
+        datastore_route.top_matrix_node_status->world_model_id ==
+            shadowrun::ghidra_conversion::scripting::
+                ScriptMatrixWorldModelId::datastore;
+    if (!datastore_rom_state_matches) {
+        std::cerr << "System 2 Datastore fixture: opened="
+                  << datastore_route_opened
+                  << " failure=\"" << matrix_visual_runtime.failure()
+                  << "\""
+                  << " screen=" << datastore_route.top_screen
+                  << " system="
+                  << datastore_route.top_matrix_system_id.value_or(-1)
+                  << " node=" << datastore_route.top_matrix_node.value_or(-1)
+                  << " title=\"" << datastore_route.top_title << "\"";
+        for (const auto& label : datastore_route.top_option_labels) {
+            std::cerr << " option=\"" << label << "\"";
+        }
+        if (datastore_route.top_matrix_node_status.has_value()) {
+            const auto& status = *datastore_route.top_matrix_node_status;
+            std::cerr << " class=\"" << status.file_class_label
+                      << "\" band=\"" << status.alert_band_label
+                      << "\" difficulty=" << status.action_difficulty
+                      << " profile=" << status.background_profile
+                      << " palette=" << status.palette_theme;
+        }
+        std::cerr << '\n';
+    }
+    check(datastore_rom_state_matches,
+          "Matrix node seed selects the source System 2 Dead Projects Datastore record",
+          failures);
+    if (datastore_rom_state_matches) {
+        QImage datastore_actual(320, 224, QImage::Format_ARGB32);
+        datastore_actual.fill(QColor(255, 0, 255));
+        QPainter datastore_painter(&datastore_actual);
+        const auto datastore_background = node_background_for(datastore_route);
+        const bool datastore_painted = paint_matrix_node_action_panel(
+            datastore_painter, node_font, datastore_background,
+            node_cursor_for(datastore_route), datastore_route);
+        datastore_painter.end();
+        check(datastore_painted,
+              "source-matched Matrix Datastore frame reaches the Qt presenter",
+              failures);
+        const auto datastore_artifact = std::filesystem::path(
+            SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) /
+            "system-2-dead-projects-datastore.bmp";
+        std::filesystem::create_directories(
+            datastore_artifact.parent_path());
+        check(datastore_actual.save(
+                  QString::fromStdString(datastore_artifact.string()), "BMP"),
+              "write full-frame System 2 Datastore Matrix capture", failures);
+    }
 #endif
     forced_roll_successes = 0;
     runtime.advance_menu_route(0x0200U); // Cancel Alert.
@@ -1233,7 +1392,8 @@ int main() {
     const QImage action_failed_font = QImage(QString::fromStdString(
         (node_assets / "cyberspace/matrix/system-map-font.bmp").string()));
     const bool action_failed_painted = paint_matrix_node_action_panel(
-        action_failed_painter, action_failed_font, route);
+        action_failed_painter, action_failed_font, node_background_for(route),
+        node_cursor_for(route), route);
     action_failed_painter.end();
     check(action_failed_painted,
           "failed Matrix action message reaches the Qt panel presenter",
@@ -1288,7 +1448,8 @@ int main() {
     const QImage alert_message_font = QImage(QString::fromStdString(
         (node_assets / "cyberspace/matrix/system-map-font.bmp").string()));
     const bool alert_message_painted = paint_matrix_node_action_panel(
-        alert_message_painter, alert_message_font, route);
+        alert_message_painter, alert_message_font, node_background_for(route),
+        node_cursor_for(route), route);
     alert_message_painter.end();
     check(alert_message_painted,
           "Cancel Alert message reaches the Qt panel presenter", failures);
@@ -1358,7 +1519,8 @@ int main() {
     const QImage lockout_font = QImage(QString::fromStdString(
         (node_assets / "cyberspace/matrix/system-map-font.bmp").string()));
     const bool lockout_painted = paint_matrix_node_action_panel(
-        lockout_painter, lockout_font, route);
+        lockout_painter, lockout_font, node_background_for(route),
+        node_cursor_for(route), route);
     lockout_painter.end();
     check(lockout_painted,
           "Lockout message reaches the Qt panel presenter", failures);
@@ -1431,7 +1593,8 @@ int main() {
     const QImage offline_font = QImage(QString::fromStdString(
         (node_assets / "cyberspace/matrix/system-map-font.bmp").string()));
     const bool offline_painted = paint_matrix_node_action_panel(
-        offline_painter, offline_font, route);
+        offline_painter, offline_font, node_background_for(route),
+        node_cursor_for(route), route);
     offline_painter.end();
     bool old_node_action_pixels = false;
     for (const int row_y : {85, 107, 129}) {
@@ -1501,7 +1664,8 @@ int main() {
           "the first source dot appears on frame 20", failures);
 
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
-    const auto save_transfer_frame = [&failures](
+    const auto save_transfer_frame = [&failures, &node_background_for,
+                                      &node_cursor_for](
                                          const std::string& filename,
                                          const auto& snapshot) {
         QImage image(320, 224, QImage::Format_ARGB32);
@@ -1512,7 +1676,8 @@ int main() {
              "cyberspace/matrix/system-map-font.bmp")
                 .string())));
         const bool painted = paint_matrix_node_action_panel(
-            painter, font, snapshot);
+            painter, font, node_background_for(snapshot),
+            node_cursor_for(snapshot), snapshot);
         painter.end();
         bool stale_pixels = false;
         for (int y = 0; y < image.height(); ++y) {
@@ -1530,7 +1695,8 @@ int main() {
         check(image.save(QString::fromStdString(artifact.string()), "BMP"),
               "write Transfer Data route frame", failures);
     };
-    const auto replaces_previous_frame = [&node_assets](
+    const auto replaces_previous_frame =
+        [&node_assets, &node_background_for, &node_cursor_for](
                                              const auto& previous,
                                              const auto& current) {
         const QImage font(QImage(QString::fromStdString(
@@ -1541,16 +1707,22 @@ int main() {
         {
             QPainter painter(&reused);
             const bool previous_painted =
-                paint_matrix_node_action_panel(painter, font, previous);
+                paint_matrix_node_action_panel(
+                    painter, font, node_background_for(previous),
+                    node_cursor_for(previous), previous);
             const bool current_painted =
-                paint_matrix_node_action_panel(painter, font, current);
+                paint_matrix_node_action_panel(
+                    painter, font, node_background_for(current),
+                    node_cursor_for(current), current);
             if (!previous_painted || !current_painted) return false;
         }
         QImage fresh(320, 224, QImage::Format_ARGB32);
         fresh.fill(QColor(255, 0, 255));
         {
             QPainter painter(&fresh);
-            if (!paint_matrix_node_action_panel(painter, font, current)) {
+            if (!paint_matrix_node_action_panel(
+                    painter, font, node_background_for(current),
+                    node_cursor_for(current), current)) {
                 return false;
             }
         }
@@ -1749,7 +1921,9 @@ int main() {
         QPainter painter(&image);
         const QImage font = QImage(QString::fromStdString(
             (node_assets / "cyberspace/matrix/system-map-font.bmp").string()));
-        const bool painted = paint_matrix_node_action_panel(painter, font, route);
+        const bool painted = paint_matrix_node_action_panel(
+            painter, font, node_background_for(route), node_cursor_for(route),
+            route);
         painter.end();
         bool stale_pixels = false;
         for (int y = 0; y < image.height(); ++y) {
@@ -1829,8 +2003,14 @@ int main() {
     check(route.top_screen == kCyberdeck &&
               route.top_option_labels.size() == 16U &&
               route.top_matrix_state_present && route.top_matrix_node == 1 &&
-              deck_enter_count == 1,
-          "Start enters the Cyberdeck loop while preserving the selected node",
+              route.top_matrix_deck_detail_labels_present &&
+              route.top_matrix_deck_detail_labels ==
+                  std::array<std::string, 3>{
+                      "Size. . . . . .  Mp",
+                      "Free Memory . .  Mp",
+                      "Load Time . .  Secs"} &&
+              deck_enter_count == 2,
+          "Start enters the Cyberdeck with ROM detail labels and preserves the selected node",
           failures);
     runtime.advance_menu_route(0x0100U); // Up wraps to Map row 3.
     runtime.advance_menu_route(0x0800U);
@@ -1841,8 +2021,11 @@ int main() {
               route.top_matrix_state_present && route.top_matrix_system_id == 0,
           "online Matrix session opens the Map and Retreat utility",
           failures);
-    check(deck_tick_count == 4,
-          "online deck frame reaches Lua heartbeat callback", failures);
+    check(route.top_matrix_deck_palette_phase.has_value() &&
+              *route.top_matrix_deck_palette_phase >= 0 &&
+              *route.top_matrix_deck_palette_phase < 4,
+          "deck palette phase is exposed from the active Lua screen state",
+          failures);
     check(deck_mode == -1,
           "A selects the signed host attack mode before opening the Map utility",
           failures);
@@ -1999,7 +2182,7 @@ int main() {
     route = runtime.menu_route_snapshot();
     check(route.open && route.top_screen == kCommand &&
               route.page == kCommandPagePocketSecretary &&
-              deck_leave_count == 3 && closed_count == 3,
+              deck_leave_count == 3 && closed_count == 4,
           "Matrix exit clears hidden children and rebuilds Command on page 6",
           failures);
     runtime.advance_menu_route(0x4000U); // Reopen Pocket Secretary.
@@ -2015,10 +2198,11 @@ int main() {
     // Two action attempts raise passive then active alert, each notice waits
     // 25 frames, and the active transition uses its own source sound.
     matrix_world_state.field.alarm = false;
-    for (int row = 0; row < 3; ++row) runtime.advance_menu_route(0x0200U);
-    runtime.advance_menu_route(0x4000U); // Pick System.
-    runtime.advance_menu_route(0x4000U); // Jack in to system zero.
-    for (int frame = 0; frame < 20; ++frame) runtime.advance_menu_route(0U);
+    runtime.close_menu_route(); // End the debug-unlock route.
+    ScriptMenuRouteStartArguments alert_route_arguments{};
+    alert_route_arguments.matrix_system_id = 0U;
+    check(runtime.open_menu_route(kMatrixNodeAction, alert_route_arguments),
+          "open the independent Matrix alert-action route", failures);
     runtime.advance_menu_route(0x4000U); // Enter System.
     runtime.advance_menu_route(0x4000U); // First link enters CPU.
     check(runtime.menu_route_snapshot().top_matrix_alert == -1,
@@ -2101,6 +2285,13 @@ int main() {
               matrix_world_state.field.maglocks_off ==
                   std::optional<bool>{true},
           "Crash System commits its source run-completion and field flags through the host", failures);
+    check(matrix_world_state.karma_counter == std::optional<std::int8_t>{1},
+          "FFF0CE signed counter survives the Lua world-state host round trip",
+          failures);
+    check(matrix_world_state.passive_ic_counter ==
+              std::optional<std::int8_t>{-3},
+          "FFF0A3 signed counter survives the Lua world-state host round trip",
+          failures);
     check(matrix_world_state.datastore.has_value() &&
               matrix_world_state.datastore->tips_page3_flags ==
                   0xA2345678U &&
@@ -2129,7 +2320,8 @@ int main() {
         image.fill(QColor(255, 0, 255));
         QPainter painter(&image);
         const bool painted = paint_matrix_node_action_panel(
-            painter, node_font, frame);
+            painter, node_font, node_background_for(frame),
+            node_cursor_for(frame), frame);
         painter.end();
         bool rows_visible = true;
         for (const int row_y : {80, 96, 112}) {
@@ -2227,7 +2419,8 @@ int main() {
         image.fill(QColor(255, 0, 255));
         QPainter painter(&image);
         const bool painted = paint_matrix_node_action_panel(
-            painter, node_font, route);
+            painter, node_font, node_background_for(route),
+            node_cursor_for(route), route);
         painter.end();
         bool full_black = painted;
         for (int y = 0; y < image.height() && full_black; ++y) {
@@ -2249,7 +2442,8 @@ int main() {
               runtime.menu_route_snapshot().top_matrix_transition_fade_step == 5,
           "Crash System keeps the logout handoff for 54 total frames", failures);
     runtime.advance_menu_route(0U);
-    check(!runtime.menu_route_snapshot().open && closed_count == 4,
+    route = runtime.menu_route_snapshot();
+    check(!route.open && closed_count == 6,
           "Crash System exits after the 10-frame fade and 54-frame handoff",
           failures);
     check(runtime.open_menu_route(kCommand),
@@ -2265,10 +2459,12 @@ int main() {
     // Recreate two alerts, then perform one more successful action while the
     // active alert is set to take the armed-overload path.
     matrix_alert_roll_value = 0xFFFF;
-    for (int row = 0; row < 3; ++row) runtime.advance_menu_route(0x0200U);
-    runtime.advance_menu_route(0x4000U); // Pick System.
-    runtime.advance_menu_route(0x4000U); // Jack in to system zero.
-    for (int frame = 0; frame < 20; ++frame) runtime.advance_menu_route(0U);
+    runtime.close_menu_route(); // End the debug-unlock route.
+    ScriptMenuRouteStartArguments overload_route_arguments{};
+    overload_route_arguments.matrix_system_id = 0U;
+    check(runtime.open_menu_route(kMatrixNodeAction,
+                                  overload_route_arguments),
+          "open the independent Matrix overload-action route", failures);
     runtime.advance_menu_route(0x4000U); // Enter System.
     runtime.advance_menu_route(0x4000U); // First link enters CPU.
     matrix_alert_roll_value = 0;
@@ -2332,7 +2528,8 @@ int main() {
              "cyberspace/matrix/system-map-font.bmp")
                 .string())));
         const bool painted = paint_matrix_node_action_panel(
-            painter, font, route);
+            painter, font, node_background_for(route), node_cursor_for(route),
+            route);
         painter.end();
         bool full_black = painted;
         for (int y = 0; y < image.height() && full_black; ++y) {
@@ -2371,18 +2568,19 @@ int main() {
           "overload message cannot be dismissed before its 30-frame wait",
           failures);
     runtime.advance_menu_route(0x4000U); // 0xD94 any-edge wait after 30 frames.
-    check(!runtime.menu_route_snapshot().open && closed_count == 5,
+    check(!runtime.menu_route_snapshot().open && closed_count == 8,
           "overload exits the Matrix route after message and input waits",
           failures);
 
     runtime.close_menu_route();
-    check(!runtime.menu_route_snapshot().open && closed_count == 5,
+    check(!runtime.menu_route_snapshot().open && closed_count == 8,
           "Matrix overload leaves the debug route closed", failures);
 
     // Production event-31 System Search runs the ROM permutation cadence,
     // selects from its 14-system table, then shares the same 20-frame entry.
     matrix_search_miss = false;
     random_high_branch = false;
+    matrix_world_state.run = ScriptMatrixRunState{-1, -1, 0, 0, 0, 0};
     ScriptMenuRouteStartArguments field_matrix_arguments{};
     field_matrix_arguments.return_to_field = true;
     check(runtime.open_menu_route(kMatrixSearch, field_matrix_arguments),
@@ -2412,14 +2610,280 @@ int main() {
           "field Matrix entry waits 20 VBlanks before building a session", failures);
     runtime.advance_menu_route(0U);
     route = runtime.menu_route_snapshot();
-    check(route.open && route.top_screen == kMatrixNodeAction &&
+    check(route.open && route.top_screen == kCyberdeck &&
               route.top_matrix_state_present && route.top_matrix_system_id == 0,
-          "the field route reaches the native Matrix node screen", failures);
+          "the field route enters the source Cyberdeck after jack-in", failures);
+    const int commits_before_program_load = matrix_deck_commits;
 
-    runtime.advance_menu_route(0x8000U); // Open the deck from the node.
-    check(runtime.menu_route_snapshot().top_screen == kCyberdeck,
-          "field Matrix node opens its Lua Cyberdeck", failures);
+    // ROM 0x19238 installs the selected program through the shared typed slot
+    // records. This exercises the real C++/Lua bridge that the Lua-only deck
+    // fixture cannot cover.
+    for (int step = 0; step < 3; ++step) {
+        runtime.advance_menu_route(0x0800U); // Right, col 0 -> 3.
+    }
+    for (int step = 0; step < 2; ++step) {
+        runtime.advance_menu_route(0x0200U); // Down, row 0 -> 2 (Analyze).
+    }
+    runtime.advance_menu_route(0x4000U); // Load Analyze-4.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kCyberdeck &&
+              route.top_matrix_deck_active_programs_present &&
+              route.top_matrix_deck_active_programs[0] == 11 &&
+              matrix_deck.active_programs[0] == 11 &&
+              matrix_deck_slots[0].status == 0U &&
+              matrix_deck_slots[0].phase == 0U &&
+              matrix_deck_slots[0].timer > 0U &&
+              matrix_deck_commits == commits_before_program_load + 1 &&
+              runtime.failure().empty(),
+          "program entry commits typed slot state and returns to Cyberdeck",
+          failures);
+    for (int frame = 0; frame < 320; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kCyberdeck,
+          "ROM-timed Lua loader keeps the deck route active", failures);
+    check(matrix_deck_slots[0].status == 6U,
+          "ROM-timed Lua loader completes the first footer slot", failures);
+    check(matrix_deck_slots[0].phase == 1U,
+          "ROM-timed Lua loader publishes Ready in the footer record", failures);
+    check(matrix_deck_commits > commits_before_program_load + 1 &&
+              runtime.failure().empty(),
+          "ROM-timed Lua loader commits source steps through the typed bridge",
+          failures);
+    for (int step = 0; step < 2; ++step) {
+        runtime.advance_menu_route(0x0100U); // Up, row 2 -> 0.
+    }
+    for (int step = 0; step < 3; ++step) {
+        runtime.advance_menu_route(0x0400U); // Left, col 3 -> 0.
+    }
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kCyberdeck && route.top_column == 0 &&
+              route.top_row == 0,
+          "the program grid cursor returns to its initial cell", failures);
+
     for (int step = 0; step < 3; ++step) runtime.advance_menu_route(0x0200U);
+    runtime.advance_menu_route(0x4000U); // Open CyberInfo.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kDeckCyberInfo &&
+              route.top_title == "  Cyberdeck Info" &&
+              route.top_option_labels ==
+                  std::vector<std::string>{"  Deck Stats", "  Run Info"},
+          "CyberInfo presents its two ROM choices", failures);
+
+    matrix_deck.model = 0;
+    matrix_deck.hardening = 3U;
+    runtime.advance_menu_route(0x4000U); // Deck Stats.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kCyberdeck &&
+              route.top_matrix_deck_stats.has_value() &&
+              route.top_matrix_deck_stats->manufacturer == "Cyber Shack" &&
+              route.top_matrix_deck_stats->model == "PCD-500" &&
+              route.top_matrix_deck_stats->values ==
+                  std::array<unsigned int, 10>{6U, 3U, 128U, 1000U, 2U,
+                                               2U, 2U, 2U, 2U, 5U},
+          "Deck Stats returns live Lua Cyberdeck values and source model text",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    QImage deck_stats_actual(320, 224, QImage::Format_ARGB32);
+    deck_stats_actual.fill(QColor(0, 0, 0));
+    QPainter deck_stats_painter(&deck_stats_actual);
+    const bool deck_stats_painted = paint_matrix_deck_stats_text(
+        deck_stats_painter, map_font, route);
+    deck_stats_painter.end();
+    const auto has_deck_stats_ink = [&deck_stats_actual](const int left,
+                                                         const int top,
+                                                         const int width) {
+        for (int y = top; y < top + 8; ++y) {
+            for (int x = left; x < left + width; ++x) {
+                if (deck_stats_actual.pixelColor(x, y) != QColor(0, 0, 0)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+    check(deck_stats_painted && has_deck_stats_ink(184, 24, 88) &&
+              has_deck_stats_ink(184, 32, 56) &&
+              has_deck_stats_ink(160, 40, 128) &&
+              has_deck_stats_ink(160, 48, 112) &&
+              has_deck_stats_ink(280, 48, 8) &&
+              has_deck_stats_ink(160, 56, 112) &&
+              has_deck_stats_ink(160, 72, 144) &&
+              has_deck_stats_ink(248, 72, 40) &&
+              has_deck_stats_ink(160, 80, 144) &&
+              has_deck_stats_ink(160, 88, 144) &&
+              has_deck_stats_ink(160, 104, 128) &&
+              has_deck_stats_ink(160, 120, 128) &&
+              has_deck_stats_ink(160, 128, 128) &&
+              has_deck_stats_ink(160, 136, 128) &&
+              has_deck_stats_ink(160, 144, 128),
+          "Deck Stats text occupies ROM model and value-row positions",
+          failures);
+    const std::filesystem::path deck_stats_artifact_dir(
+        SHADOWRUN_MATRIX_CYBER_INFO_ARTIFACT_DIR);
+    std::filesystem::create_directories(deck_stats_artifact_dir);
+    check(deck_stats_actual.save(QString::fromStdString(
+              (deck_stats_artifact_dir / "deck-stats-text-layer.bmp").string())),
+          "Deck Stats source-position text layer is written", failures);
+#endif
+    runtime.advance_menu_route(0x4000U); // Reopen CyberInfo.
+    runtime.advance_menu_route(0x0200U); // Run Info.
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(!route.top_matrix_deck_stats.has_value(),
+          "switching to Run Info clears the prior Deck Stats view", failures);
+    check(route.top_screen == kCyberdeck &&
+              route.top_matrix_run_info.has_value() &&
+              route.top_matrix_run_info->kind ==
+                  shadowrun::ghidra_conversion::scripting::
+                      ScriptMatrixRunInfoKind::active &&
+              route.top_matrix_run_info->node == "CPU" &&
+              route.top_matrix_run_info->node_function ==
+                  "Cntrl Processor" &&
+              route.top_matrix_run_info->action == "Crash System",
+          "Run Info returns typed CPU details to the active Lua Matrix grid",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    QImage run_info_actual(320, 224, QImage::Format_ARGB32);
+    run_info_actual.fill(QColor(0, 0, 0));
+    QPainter run_info_painter(&run_info_actual);
+    const bool run_info_painted = paint_matrix_run_info_text(
+        run_info_painter, map_font, route);
+    run_info_painter.end();
+    check(run_info_painted,
+          "typed Lua Run Info reaches the ROM-positioned text presenter",
+          failures);
+    const auto has_ink = [&run_info_actual](const int left, const int top,
+                                            const int width,
+                                            const int height) {
+        for (int y = top; y < top + height; ++y) {
+            for (int x = left; x < left + width; ++x) {
+                if (run_info_actual.pixelColor(x, y).alpha() != 0 &&
+                    run_info_actual.pixelColor(x, y) != QColor(0, 0, 0)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+    check(has_ink(160, 48, 48, 8) && has_ink(208, 48, 24, 8) &&
+              has_ink(160, 64, 112, 8) && has_ink(176, 72, 120, 8) &&
+              has_ink(160, 88, 56, 8) && has_ink(192, 96, 96, 8) &&
+              !has_ink(28, 56, 120, 16),
+          "Run Info labels and values occupy their ROM name-table positions",
+          failures);
+    const std::filesystem::path run_info_artifact_dir(
+        SHADOWRUN_MATRIX_CYBER_INFO_ARTIFACT_DIR);
+    std::filesystem::create_directories(run_info_artifact_dir);
+    check(run_info_actual.save(QString::fromStdString(
+              (run_info_artifact_dir / "active-text-layer.bmp").string())),
+          "Run Info active text layer is written", failures);
+#endif
+
+    matrix_world_state.run->state = 0;
+    runtime.advance_menu_route(0x4000U); // Reopen CyberInfo.
+    runtime.advance_menu_route(0x0200U);
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_matrix_run_info.has_value() &&
+              route.top_matrix_run_info->kind ==
+                  shadowrun::ghidra_conversion::scripting::
+                      ScriptMatrixRunInfoKind::no_run &&
+              route.top_matrix_run_info->message ==
+                  "You are not on|a matrix run!!",
+          "Run Info preserves the signed zero no-run branch", failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    QImage no_run_actual(320, 224, QImage::Format_ARGB32);
+    no_run_actual.fill(QColor(0, 0, 0));
+    QPainter no_run_painter(&no_run_actual);
+    const bool no_run_painted = paint_matrix_run_info_text(
+        no_run_painter, map_font, route);
+    no_run_painter.end();
+    bool no_run_message_pixel = false;
+    for (int y = 64; y < 80; ++y) {
+        for (int x = 176; x < 320; ++x) {
+            no_run_message_pixel = no_run_message_pixel ||
+                (no_run_actual.pixelColor(x, y) != QColor(0, 0, 0));
+        }
+    }
+    bool no_run_second_line_pixel = false;
+    for (int y = 72; y < 80; ++y) {
+        for (int x = 176; x < 296; ++x) {
+            no_run_second_line_pixel = no_run_second_line_pixel ||
+                (no_run_actual.pixelColor(x, y) != QColor(0, 0, 0));
+        }
+    }
+    bool no_run_overflowed_right = false;
+    for (int y = 64; y < 80; ++y) {
+        for (int x = 296; x < 320; ++x) {
+            no_run_overflowed_right = no_run_overflowed_right ||
+                (no_run_actual.pixelColor(x, y) != QColor(0, 0, 0));
+        }
+    }
+    check(no_run_painted && no_run_message_pixel && no_run_second_line_pixel &&
+              !no_run_overflowed_right &&
+              no_run_actual.save(QString::fromStdString(
+                  (run_info_artifact_dir / "no-run-text-layer.bmp").string())),
+          "both 0xC42C message rows fit inside the visible screen", failures);
+#endif
+    matrix_world_state.run->state = 1;
+    runtime.advance_menu_route(0x4000U); // Reopen CyberInfo.
+    runtime.advance_menu_route(0x0200U);
+    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_matrix_run_info.has_value() &&
+              route.top_matrix_run_info->kind ==
+                  shadowrun::ghidra_conversion::scripting::
+                      ScriptMatrixRunInfoKind::complete &&
+              route.top_matrix_run_info->message ==
+                  "Shadowrun is| complete!!",
+          "Run Info preserves the signed positive completion branch", failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    QImage complete_actual(320, 224, QImage::Format_ARGB32);
+    complete_actual.fill(QColor(0, 0, 0));
+    QPainter complete_painter(&complete_actual);
+    const bool complete_painted = paint_matrix_run_info_text(
+        complete_painter, map_font, route);
+    complete_painter.end();
+    bool complete_message_pixel = false;
+    for (int y = 64; y < 80; ++y) {
+        for (int x = 184; x < 320; ++x) {
+            complete_message_pixel = complete_message_pixel ||
+                (complete_actual.pixelColor(x, y) != QColor(0, 0, 0));
+        }
+    }
+    bool complete_second_line_pixel = false;
+    for (int y = 72; y < 80; ++y) {
+        for (int x = 184; x < 272; ++x) {
+            complete_second_line_pixel = complete_second_line_pixel ||
+                (complete_actual.pixelColor(x, y) != QColor(0, 0, 0));
+        }
+    }
+    bool complete_overflowed_right = false;
+    for (int y = 64; y < 80; ++y) {
+        // 0x18C66 starts at x=184. "Shadowrun is" occupies twelve 8px
+        // cells, so the final glyph ends at x=279; x=280 onward is clear.
+        for (int x = 280; x < 320; ++x) {
+            complete_overflowed_right = complete_overflowed_right ||
+                (complete_actual.pixelColor(x, y) != QColor(0, 0, 0));
+        }
+    }
+    const bool complete_saved = complete_actual.save(QString::fromStdString(
+        (run_info_artifact_dir / "complete-text-layer.bmp").string()));
+    if (!complete_painted || !complete_message_pixel ||
+        !complete_second_line_pixel || complete_overflowed_right) {
+        std::cerr << "completion text pixels: painted=" << complete_painted
+                  << " first=" << complete_message_pixel
+                  << " second=" << complete_second_line_pixel
+                  << " overflow=" << complete_overflowed_right << '\n';
+    }
+    check(complete_painted && complete_message_pixel &&
+              complete_second_line_pixel && !complete_overflowed_right &&
+              complete_saved,
+          "both 0xC42E completion rows fit inside the visible screen", failures);
+#endif
+
     for (int step = 0; step < 3; ++step) runtime.advance_menu_route(0x0800U);
     runtime.advance_menu_route(0x4000U); // Pull Plug.
     check(runtime.menu_route_snapshot().top_title.find("pull the plug") !=
@@ -2427,7 +2891,7 @@ int main() {
           "the field Matrix exposes the source Pull Plug confirmation", failures);
     runtime.advance_menu_route(0x0100U); // Yes.
     runtime.advance_menu_route(0x4000U);
-    check(!runtime.menu_route_snapshot().open && closed_count == 6,
+    check(!runtime.menu_route_snapshot().open && closed_count == 9,
           "normal field Matrix logout exits to the field caller", failures);
 
     // Taxi's Lua menu uses the same seven ROM destinations and cab outline
@@ -2468,7 +2932,7 @@ int main() {
     }
     runtime.advance_menu_route(0x4000U); // A: request travel.
     check(!runtime.menu_route_snapshot().open && taxi_destination == 5 &&
-              closed_count == 7,
+              closed_count == 10,
           "taxi confirm requests the selected scene and exits the route",
           failures);
     check(runtime.open_menu_route(kTaxiSelector, taxi_arguments),
@@ -2479,7 +2943,7 @@ int main() {
     }
     runtime.advance_menu_route(0x8000U); // Start: commit current mode.
     check(!runtime.menu_route_snapshot().open && taxi_destination == 2 &&
-              closed_count == 8,
+              closed_count == 11,
           "taxi Start commits the current region through the source route",
           failures);
 

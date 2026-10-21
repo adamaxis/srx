@@ -3,7 +3,6 @@
 -- development. Six source effects are wired to typed host services below.
 local E = require("enums")
 local Grid = require("menu.rules.random_grid")
-local MatrixSession = require("menu.matrix_session")
 local P, D, R, T, St = E.Pad, E.DebugOption, E.MenuRegion,
                          E.MenuTransition, E.RunnerStatus
 
@@ -137,9 +136,8 @@ function M.input(st, events, ctx)
 end
 
 -- ROM 0x59A9A: Up and Down change the system number within 0..24; Start
--- returns to the debug menu. A plays the jack-in sound and waits 20 VBlanks.
--- The current host route seeds that system's Lua data and opens the online
--- Cyberdeck model; the ROM's 0x181F8/0x1822C world loop remains unported.
+-- returns to the debug menu. A writes FFFBBC and jumps to 0xE47A, which owns
+-- jack-in sound and the 20-VBlank wait before the 0x181F8 deck entry.
 local Pick = { window = E.WindowPlane.SIDEBAR, MAX_SYSTEM = 0x18 }
 
 local function show_system(st)
@@ -156,27 +154,6 @@ function Pick.enter(st, ctx)
 end
 
 function Pick.input(st, events, ctx)
-    if st.wait_frames then
-        st.wait_frames = st.wait_frames - 1
-        if st.wait_frames <= 0 then
-            st.wait_frames = nil
-            local world = MatrixSession.world_state(ctx.game)
-            local started, session = MatrixSession.begin(
-                st.system, world.field and world.field.alarm)
-            if not started then return end
-            if world.run and
-               MatrixSession.activate_run_for_system(st.system, world.run) then
-                MatrixSession.commit_world_state(ctx.game, world)
-            end
-            return { transition = T.REPLACE,
-                     screen = E.MenuScreen.MATRIX_NODE_ACTION,
-                     args = { system_id = st.system,
-                              matrix_session = true,
-                              matrix_state = session } }
-        end
-        return
-    end
-
     if events & P.UP ~= 0 then
         if st.system > 0 then st.system = st.system - 1 end
         show_system(st)
@@ -190,9 +167,9 @@ function Pick.input(st, events, ctx)
         return
     end
     if events & P.A ~= 0 then
-        ctx.sound(E.MenuSound.JACK_IN)
-        st.wait_frames = 20
-        return
+        return { transition = T.REPLACE,
+                 screen = E.MenuScreen.MATRIX_ENTRY,
+                 args = { system_id = st.system } }
     end
     if events & P.START ~= 0 then return { transition = T.POP } end
 end

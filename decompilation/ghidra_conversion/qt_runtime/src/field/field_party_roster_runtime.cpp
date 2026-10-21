@@ -48,6 +48,8 @@ void FieldPartyRosterRuntime::clear() noexcept {
     active_slots_ = {};
     portrait_asset_families_ = {};
     active_slot_ = 0U;
+    primary_compact_marker_ = 0xFFU;
+    secondary_compact_marker_ = 0xFFU;
     source_ = Source::unavailable;
 }
 
@@ -72,6 +74,8 @@ bool FieldPartyRosterRuntime::restore_saved_party(
     const std::array<std::string, kSlotCount>& names,
     const std::array<bool, kSlotCount>& active_slots,
     const std::array<std::uint8_t, kSlotCount>& portrait_families,
+    const std::uint8_t primary_compact_marker,
+    const std::uint8_t secondary_compact_marker,
     const std::size_t active_slot) noexcept {
     if (active_slot >= kSlotCount || !active_slots[active_slot] ||
         !active_slots[0]) {
@@ -81,6 +85,8 @@ bool FieldPartyRosterRuntime::restore_saved_party(
     names_ = names;
     active_slots_ = active_slots;
     portrait_asset_families_ = portrait_families;
+    primary_compact_marker_ = primary_compact_marker;
+    secondary_compact_marker_ = secondary_compact_marker;
     active_slot_ = active_slot;
     source_ = Source::restored_save;
     return true;
@@ -113,6 +119,11 @@ bool FieldPartyRosterRuntime::deactivate_party_member(
     // Dismiss Runner removes the FFFC0C/FFFC0D compact party marker. It does
     // not erase the live record or its field-presence byte at +0x10.
     active_slots_[slot] = false;
+    if (slot == 1U) {
+        primary_compact_marker_ = 0xFFU;
+    } else {
+        secondary_compact_marker_ = 0xFFU;
+    }
     return true;
 }
 
@@ -122,6 +133,8 @@ FieldPartyRosterRuntime::Source FieldPartyRosterRuntime::initialize(
 
     if (startup_state.restored_field_state.has_value()) {
         const auto& restored = *startup_state.restored_field_state;
+        primary_compact_marker_ = restored.roster.primary_marker;
+        secondary_compact_marker_ = restored.roster.secondary_marker;
         records_[0] = read_runner_record_fields(restored.roster.default_record);
         names_[0] = read_runner_name(restored.roster.default_record);
         mark_slot_active(records_[0]);

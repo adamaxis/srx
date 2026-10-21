@@ -36,6 +36,9 @@ int main() {
         !expect(roster.active_slot() == 0U && roster.slot_active(0U) &&
                     !roster.slot_active(1U) && !roster.slot_active(2U),
                 "new-game roster activated an invented recruited slot") ||
+        !expect(roster.primary_compact_marker() == 0xFFU &&
+                    roster.secondary_compact_marker() == 0xFFU,
+                "new-game roster did not retain the source absent markers") ||
         !expect((roster.active_record().flags & 0x0101U) == 0x0101U &&
                     roster.active_record().ammo_clips == 3U &&
                     roster.name(0U) == "Joshua" &&
@@ -72,6 +75,9 @@ int main() {
         !expect(roster.slot_active(0U) && roster.slot_active(1U) &&
                     !roster.slot_active(2U) && roster.active_slot() == 1U,
                 "save roster markers did not control active slots") ||
+        !expect(roster.primary_compact_marker() == 1U &&
+                    roster.secondary_compact_marker() == 0xFFU,
+                "save roster did not preserve the raw compact markers") ||
         !expect(roster.records()[0].ammo_clips == 2U &&
                     roster.records()[1].ammo_clips == 7U &&
                     roster.name(0U) == "Winston Marrs" &&
@@ -84,6 +90,7 @@ int main() {
 
     if (!expect(roster.deactivate_party_member(1U) &&
                     !roster.slot_active(1U) && roster.slot_active(0U) &&
+                    roster.primary_compact_marker() == 0xFFU &&
                     !roster.deactivate_party_member(1U) &&
                     !roster.deactivate_party_member(0U) &&
                     (roster.records()[1].flags & 0x0100U) != 0U &&

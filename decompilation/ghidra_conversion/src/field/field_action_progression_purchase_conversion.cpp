@@ -5,7 +5,6 @@
 namespace shadowrun::ghidra_conversion {
 namespace {
 
-constexpr std::size_t kFixedOfferCount = 18U;
 constexpr std::size_t kMenuModeOfferCount = 8U;
 constexpr std::uint8_t kFirstDynamicMenuMode = 3U;
 constexpr std::uint8_t kLastDynamicMenuMode = 5U;
@@ -46,38 +45,18 @@ select_field_action_progression_offer(
     const std::uint8_t menu_mode,
     const std::int8_t saved_selection,
     const std::int8_t primary_cursor) {
-    if (primary_cursor < 0) {
+    if (saved_selection != 0 || primary_cursor < 0) {
         return std::nullopt;
     }
 
     const auto cursor = static_cast<std::size_t>(primary_cursor);
-    if (saved_selection == 1) {
-        if (cursor >= kFixedOfferCount) {
-            return std::nullopt;
-        }
-        return tables.saved_selection_one[cursor];
-    }
-
-    // 0x56E98 compares the saved-selection byte with one and takes BMI for
-    // the dynamic family. Preserve the wrapped N flag instead of treating
-    // only literal zero as that source branch.
-    const auto selection_byte = static_cast<std::uint8_t>(saved_selection);
-    const bool compare_is_negative =
-        (static_cast<std::uint8_t>(selection_byte - 1U) & 0x80U) != 0U;
-    if (compare_is_negative) {
-        if (menu_mode < kFirstDynamicMenuMode ||
-            menu_mode > kLastDynamicMenuMode ||
-            cursor >= kMenuModeOfferCount) {
-            return std::nullopt;
-        }
-        return tables.saved_selection_zero_by_menu_mode
-            [static_cast<std::size_t>(menu_mode - kFirstDynamicMenuMode)][cursor];
-    }
-
-    if (cursor >= kFixedOfferCount) {
+    if (menu_mode < kFirstDynamicMenuMode ||
+        menu_mode > kLastDynamicMenuMode ||
+        cursor >= kMenuModeOfferCount) {
         return std::nullopt;
     }
-    return tables.saved_selection_two_or_more[cursor];
+    return tables.saved_selection_zero_by_menu_mode
+        [static_cast<std::size_t>(menu_mode - kFirstDynamicMenuMode)][cursor];
 }
 
 FieldActionProgressionQuoteOutcome prepare_field_action_progression_quote(
@@ -200,9 +179,12 @@ FieldActionProgressionPurchaseResult purchase_field_action_progression(
     const FieldActionProgressionPurchaseCallbacks& callbacks) {
     if (state.saved_selection == 3U) {
         // 0x56E5A diverts exactly saved selection 3 to the separate removal
-        // leaf at 0x56F4A. Saved selections 0, 1, and 2 all continue through
-        // the progression offer families and the shared application path.
+        // leaf at 0x56F4A. Selection zero is the only progression purchase
+        // family; selections one and two use their separate item catalogs.
         return FieldActionProgressionPurchaseResult::removal_selection;
+    }
+    if (state.saved_selection != 0U) {
+        return FieldActionProgressionPurchaseResult::invalid_offer_selection;
     }
 
     if (runner_action_progression_is_blocked(state.runner_archetype_status)) {

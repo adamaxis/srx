@@ -6,6 +6,11 @@ local P, S, MM = E.Pad, E.MenuScreen, E.MenuMessage
 local fails, n = 0, 0
 local function check(c, msg) n = n + 1; if not c then fails = fails + 1; print("FAIL " .. msg) end end
 local function zeros(k) local t = {}; for i = 0, k - 1 do t[i] = 0 end; return t end
+local function deck_slots()
+    local slots = {}
+    for i = 0, 4 do slots[i] = { status = 6, timer = 1, phase = 1 } end
+    return slots
+end
 local function runner(o)
     local r = { status = E.RunnerStatus.ACTIVE, clips = 2, rounds = 0, weapon_slot = 0, weapon_code = 3, armor = 0,
         inventory = zeros(8), phase = zeros(8), attributes = zeros(8), skills = zeros(16),
@@ -47,7 +52,7 @@ local function mk(o)
         save_game = function(n) g.saved = n; return o.save_ok ~= false end, load_game = function(n) g.loaded = n; return o.load_ok or false end,
         save_status = function(n) return (o.save_status or {})[n] or 0 end,
         deck_enter = function() g.deck_in = true; return 7 end, deck_leave = function(v) g.deck_out = v end,
-        deck_tick = function() end, set_deck_mode = function(v) g.mode = v end,
+        set_deck_mode = function(v) g.mode = v end,
         deck_record = function() return g.rec end, deck_slots = function() return g.dslots end,
         deck_commit = function() g.commits = (g.commits or 0) + 1 end, program_unloaded = function(p) g.unloaded = p end,
         deck_paint_stats = function() g.stats = true end, run_state = function() return o.run or 0 end,
@@ -71,7 +76,7 @@ local function mk(o)
     }
     g.rec = o.rec or { memory = 40, storage = 500, load_io = 3, ratings = zeros(12), active = { [0] = -1, -1, -1, -1, -1 },
         files = { [0] = { id = -1, size = 0 }, { id = -1, size = 0 }, { id = -1, size = 0 }, { id = -1, size = 0 }, { id = -1, size = 0 } } }
-    g.dslots = { status = { [0] = 6, 6, 6, 6, 6 }, timer = zeros(5), phase = zeros(5) }
+    g.dslots = deck_slots()
     local r = Route.new(host, game); r:open(S.COMMAND); return r, log, g
 end
 local function top(r) return r:top().screen end
@@ -86,6 +91,7 @@ check(ROM ~= nil and #ROM == 0x200000, "ROM image present (" .. ROM_PATH .. ")")
 local AT = require("menu.screens.attributes").Attributes
 local MR = require("menu.rules.magic")
 local MXr = require("menu.rules.matrix")
+local MatrixWorldEffectModes = require("data.matrix_world_effect_modes")
 -- host spell_table(index) shape (game_script_runtime.cpp MenuBinding::spell_table): entry_count + 1-based entries
 local function sp(code, limit) return { code = code, force_limit = limit, availability = 0, difficulty_modifier = 0, base_effect = 0 } end
 local function deck(o) o = o or {}; o.deck = true; local r, l, g = mk(o); r:frame(P.A); r:frame(P.DOWN); r:frame(P.DOWN); r:frame(P.A); return r, l, g end
@@ -247,10 +253,17 @@ check(gd.party[0].status == E.RunnerStatus.ACTIVE and gd.party[0].physical == 10
 rd:frame(P.A); rd:frame(P.DOWN); rd:frame(P.A); check(gd.spells.entry_count == 14 and gd.spells.entries[1].code == 13 and gd.spells.entries[14].code == 0 and gd.spells.entries[1].force_limit == 4, "spells 13..0 force 4 [C 0x59B34]")
 rd:frame(P.A); for _ = 1, 3 do rd:frame(P.DOWN) end; rd:frame(P.A); check(top(rd) == S.DEBUG_PICK_SYSTEM, "pick system")
 rd:frame(P.UP); check(st(rd).system == 0, "pick clamp lo"); for _ = 1, 30 do rd:frame(P.DOWN) end; check(st(rd).system == 0x18, "pick clamp hi")
--- 0x59A9A: A plays the jack-in sound and waits 20 VBlanks; srx then opens the Lua Matrix session (node action).
-rd:frame(P.A); check(ld.sounds[#ld.sounds] == E.MenuSound.JACK_IN and top(rd) == S.DEBUG_PICK_SYSTEM, "jack-in sound, 20-frame wait [C 0x59A9A]")
-for _ = 1, 19 do rd:frame(0) end; check(top(rd) == S.DEBUG_PICK_SYSTEM, "still waiting at frame 19")
-rd:frame(0); check(top(rd) == S.MATRIX_NODE_ACTION and st(rd).system_id == 0x18, "frame 20 -> Matrix node action for system 0x18 [srx]")
+-- 0x59B10 writes FFFBBC and jumps to 0xE47A; its 20-VBlank entry opens 0x181F8.
+rd:frame(P.A); check(ld.sounds[#ld.sounds] == E.MenuSound.JACK_IN and top(rd) == S.MATRIX_ENTRY, "pick system -> shared Matrix entry [C 0x59B10]")
+for _ = 1, 19 do rd:frame(0) end; check(top(rd) == S.MATRIX_ENTRY, "still waiting at frame 19")
+rd:frame(0); check(top(rd) == S.CYBERDECK and st(rd).system_id == 0x18 and st(rd).matrix_session,
+    "frame 20 -> 0x181F8 Matrix deck loop for system 0x18 [C] (screen=" .. tostring(top(rd)) ..
+    ", system=" .. tostring(st(rd).system_id) .. ", session=" .. tostring(st(rd).matrix_session) ..
+    ", wait=" .. tostring(st(rd).wait_frames) .. ", jack=" .. tostring(gd.jack) .. ")")
+rd:frame(P.START); check(top(rd) == S.MATRIX_NODE_ACTION and
+    st(rd).system_id == 0x18 and
+    st(rd).matrix_state and st(rd).matrix_state.system_id == 0x18,
+    "first deck exit -> live world-mode node route; retain Lua Matrix state")
 require("menu.matrix_session").finish(nil)   -- the session is module-wide; do not leak it into later sections
 end)
 -- automatic-use item: message only, no effect [C 0x121C0]
@@ -315,20 +328,26 @@ local function deckp(o, col, row) local r, l, g = deck(o); for _ = 1, col do r:f
 local function rec(rt, act) local R0 = { memory = 40, storage = 500, load_io = 3, ratings = zeros(12), active = act or { [0] = -1, -1, -1, -1, -1 }, files = {} }
     for k = 0, 4 do R0.files[k] = { id = -1, size = 0 } end; for p, v in pairs(rt) do R0.ratings[p] = v end; return R0 end
 local rp, lp, gp = deckp({ rec = rec({ [5] = 2 }) }, 1, 1)
-check(gp.rec.active[0] == 5 and gp.dslots.timer[0] == 60 and gp.dslots.status[0] == 0 and top(rp) == S.CYBERDECK, "load p5 r2: 16 Mp, ceil(16/3)=6 -> timer 60")
+check(gp.rec.active[0] == 5 and gp.dslots[0].timer == 60 and gp.dslots[0].status == 0 and top(rp) == S.CYBERDECK, "load p5 r2: 16 Mp, ceil(16/3)=6 -> timer 60")
 rp, lp, gp = deckp({ rec = rec({ [5] = 4 }) }, 1, 1); check(st(rp).text == "No available memory!" and gp.rec.active[0] == -1, "64 Mp > 40 -> no memory")
 rp, lp, gp = deckp({ rec = rec({ [5] = 1 }, { [0] = 1, 2, 3, 4, 6 }) }, 1, 1); check(st(rp).text == "No available slots!", "no free slot")
 rp, lp, gp = deckp({ rec = rec({ [5] = 1 }, { [0] = -1, -1, 5, -1, -1 }) }, 1, 1)
 check(top(rp) == S.DECK_PROGRAM and st(rp).choice == 1, "loaded -> erase prompt, default No"); rp:frame(P.A); check(gp.rec.active[2] == 5, "No keeps it")
-rp:frame(P.A); rp:frame(P.UP); rp:frame(P.C); check(gp.rec.active[2] == -1 and gp.dslots.status[2] == 6 and gp.unloaded == 5, "Yes erases, status 6, effect clear")
+rp:frame(P.A); rp:frame(P.UP); rp:frame(P.C); check(gp.rec.active[2] == -1 and gp.dslots[2].status == 6 and gp.unloaded == 5, "Yes erases, status 6, effect clear")
 local fr = rec({}); fr.files[1] = { id = 2, size = 9 }; fr.files[3] = { id = 0, size = 4 }
 check(DR.free_storage(fr) == 487 and DR.next_file(fr, 4) == 3 and DR.next_file(fr, 2) == 1 and DR.next_file(fr, 0) == 3, "storage free + circular cursor")
+local full_storage = rec({}); full_storage.storage = 20
+full_storage.files[0] = { id = 45, size = 20 }
+check(DR.free_storage(full_storage) == 0 and
+      not DR.storage_fits_file(full_storage, 20) and
+      DR.storage_fits_file(full_storage, 0),
+      "storage file check uses the ROM signed word subtraction")
 local rs, ls, gs = deck({ rec = fr }); rs:frame(P.UP); rs:frame(P.RIGHT); rs:frame(P.A); check(top(rs) == S.DECK_STORAGE, "storage")
 rs:frame(P.B); check(top(rs) == S.DECK_STORAGE, "storage: B ignored (A only)")
 rs:frame(P.DOWN); rs:frame(P.A); check(st(rs).file == 3 and st(rs).choice == 0, "erase prompt file 3, default Yes")
 rs:frame(P.DOWN); rs:frame(P.A); check(st(rs).file == 1 and st(rs).choice == 0, "No -> next file, Yes again"); rs:frame(P.A)
 check(fr.files[1].id == -1 and fr.files[1].size == 0 and top(rs) == S.CYBERDECK and st(rs).text == DR.FILE_NAMES[0] .. "  4 Mp", "Yes erases -> remaining file list")
-local ri, li, gi = deck({ run = 0 }); ri:frame(P.UP); ri:frame(P.A); ri:frame(P.DOWN); ri:frame(P.A); check(st(ri).text == "You are not on a matrix run!!", "run info: not on a run")
+local ri, li, gi = deck({ run = 0 }); ri:frame(P.UP); ri:frame(P.A); ri:frame(P.DOWN); ri:frame(P.A); check(st(ri).matrix_run_info.kind == "no_run" and st(ri).matrix_run_info.message == "You are not on|a matrix run!!", "run info: not on a run keeps the ROM row break")
 local rm, lm, gm = deck({ online = true, prev = 4 }); rm:frame(P.UP); rm:frame(P.LEFT); rm:frame(P.LEFT); rm:frame(P.A); check(top(rm) == S.DECK_MAP, "online col 2 -> map/retreat")
 rm:frame(P.A); rm:frame(P.B); check(top(rm) == S.DECK_MAP and st(rm).phase == "map", "map waits for Start only"); rm:frame(P.START); check(top(rm) == S.CYBERDECK, "map -> back to grid")
 rm:frame(P.A); rm:frame(P.DOWN); rm:frame(P.A); rm:frame(P.C); check(gm.retreated and top(rm) == S.POCKET_SECRETARY, "retreat: swap nodes, FFF0AD exits deck")
@@ -341,14 +360,28 @@ end)
 -- (save rules were parked with menu/rules/save.lua: srx uses host JSON saves)
 section('matrix rules (2026-10-15) [C]', function()
 do local d = ROM; if d then local ok = true
-    for c = 0, 17 do if MXr.IC_TABLE[c][1] ~= d:byte(0xE31A7 + 2 * c + 1) or MXr.IC_TABLE[c][2] ~= d:byte(0xE31A7 + 2 * c + 2) then ok = false end end
+    for c = 0, 26 do if MXr.IC_TABLE[c][1] ~= d:byte(0xE31A7 + 2 * c + 1) or MXr.IC_TABLE[c][2] ~= d:byte(0xE31A7 + 2 * c + 2) then ok = false end end
     check(ok, "IC table == ROM 0xE31A7")
+    local effect_records_ok = true
+    for mode = 0, 8 do
+        local record = string.unpack(">I4", d, 0x1A9CE + mode * 4 + 1)
+        local definition = MatrixWorldEffectModes[mode]
+        if not definition or definition.cadence ~= d:byte(record + 1) or
+           definition.phase_count ~= d:byte(record + 2) then
+            effect_records_ok = false
+        end
+    end
+    check(effect_records_ok and
+          MatrixWorldEffectModes.default.cadence == d:byte(0x1AA10 + 1) and
+          MatrixWorldEffectModes.default.phase_count == d:byte(0x1AA10 + 2),
+          "Matrix traversal effect cadence and phase counts == ROM records")
     local function rs(a, set) local ok2 = true; for i = 0, 6 do if not set[d:byte(a + i + 1)] then ok2 = false end end; return ok2 end
     check(rs(0x15FC9A, MXr.CONNECT_LEFT) and rs(0x15FCA1, MXr.CONNECT_RIGHT) and rs(0x15FCA8, MXr.CONNECT_UP) and rs(0x15FCAF, MXr.CONNECT_DOWN), "connector sets == ROM") end end
 local nd = { ic_condition = 10, ic_code = 13, ic_rating = 4, ic_rating2 = 7 }
 check(MXr.ic_type(nd, MXr.NONE, false, 1) == 0 and MXr.ic_type(nd, MXr.ACTIVE, false, 1) == 8, "two-layer IC: Access then Black at active alert")
 check(MXr.ic_type(nd, MXr.NONE, false, 0) == MXr.UNSEEN and MXr.ic_type(nd, MXr.NONE, true, 0) == 0, "unseen unless FFDF84 < 0")
 check(MXr.ic_type({ ic_condition = 0, ic_code = 1 }, 0, true, 1) == 0x45 and MXr.ic_type({ ic_condition = 5, ic_code = 0xFF }, 0, true, 1) == 0x45, "0x45 = no live IC")
+check(MXr.ic_type({ ic_condition = 5, ic_code = 26 }, MXr.ACTIVE, true, 0) == 8 and MXr.ic_type({ ic_condition = 5, ic_code = -1 }, MXr.ACTIVE, true, 1) == 0x45, "upper ROM IC code and signed no-IC sentinel")
 check(MXr.ic_rating(nd, MXr.NONE) == 4 and MXr.ic_rating(nd, MXr.PASSIVE) == 5 and MXr.ic_rating(nd, MXr.ACTIVE) == 9, "IC rating + alert bonus, layer 2")
 local a, ov = MXr.raise_alert(MXr.ACTIVE, 1, true); local a2 = MXr.raise_alert(MXr.NONE, -1, false)
 check(a == 1 and ov and a2 == -1 and MXr.raise_alert(-1, 1, true) == 0, "alert clamp + overload")
@@ -359,6 +392,88 @@ local act, run = { [0] = 1, 5, -1, 1, -1 }, { [0] = 6, 6, 0, 6, 0 }
 check(MXr.cycle_slot(0, -1, act, run) == 4 and run[0] == 1, "slot cycle wraps, resets state>=6")
 check(MXr.cycle_slot(1, 1, act, run) == 2 and run[1] == 6, "persistent program 5 keeps state")
 check(MXr.matrix_delay(3, 2) == 9 and MXr.LOGOUT_FRAMES == 54, "delay + logout frames")
+local MatrixSession = require("menu.matrix_session")
+local started, hidden_state = MatrixSession.begin(16, false)
+if started then
+    hidden_state.current_node = 29
+    local view = MatrixSession.traversal_view(
+        hidden_state, "Analyze-2", "Resisted!!")
+    check(view.world_model_id == 2 and view.palette_theme == 2 and
+          view.world_effect_mode == MXr.UNSEEN and
+          view.world_effect_phase == 0 and
+          view.action_difficulty == -1 and
+          view.action_difficulty_label == "" and
+          view.ice_label == " Ice Unknown  " and
+          view.active_program_label == "Analyze-2" and
+          view.active_program_status_label == "Resisted!!",
+          "unknown Matrix node keeps its model and active deck HUD without a difficulty glyph")
+    local fallback_advanced = false
+    for _ = 1, MatrixWorldEffectModes.default.cadence do
+        fallback_advanced = MatrixSession.advance_world_effect_frame(
+            hidden_state)
+    end
+    check(fallback_advanced and
+          MatrixSession.traversal_view(hidden_state).world_effect_phase == 1,
+          "unseen Matrix node uses the ROM default effect cadence")
+    MatrixSession.set_current_node_knowledge(hidden_state, 4)
+    check(MatrixSession.traversal_view(hidden_state).world_effect_mode == 0,
+          "known System 16 node selects its normal IC effect mode")
+    hidden_state.alert = MXr.ACTIVE
+    local active_view = MatrixSession.traversal_view(hidden_state)
+    local cadence_advanced = false
+    for _ = 1, MatrixWorldEffectModes[2].cadence do
+        cadence_advanced = MatrixSession.advance_world_effect_frame(hidden_state)
+    end
+    local advanced_view = MatrixSession.traversal_view(hidden_state)
+    check(active_view.world_effect_mode == 2 and cadence_advanced and
+          advanced_view.world_effect_mode == 2 and
+          advanced_view.world_effect_phase == 1,
+          "active alert selects the second IC effect layer and advances on its ROM cadence")
+    MatrixSession.finish(hidden_state)
+else
+    check(false, "unknown Matrix node fixture loads from ROM data")
+end
+local entry_started, entry_state = MatrixSession.begin(2, false, 2, 0)
+if entry_started then
+    MatrixSession.set_current_node_knowledge(entry_state, 4)
+    local began = MatrixSession.begin_world_entry(entry_state)
+    local entry_view = MatrixSession.traversal_view(entry_state)
+    for _ = 1, 61 do
+        MatrixSession.advance_world_entry(entry_state)
+    end
+    local setup_complete = MatrixSession.traversal_view(entry_state)
+    for _ = 1, 40 do
+        MatrixSession.advance_world_entry(entry_state)
+    end
+    local first_reference = MatrixSession.traversal_view(entry_state)
+    for _ = 41, 239 do
+        MatrixSession.advance_world_entry(entry_state)
+    end
+    local settled = MatrixSession.traversal_view(entry_state)
+    check(began and entry_view.world_entry_phase == 0 and
+          entry_view.world_entry_sequence_duration == 239 and
+          entry_view.ice_label == "Ice Suppressed" and
+          entry_view.alert_band_label == " Green-" and
+          entry_view.action_difficulty_label == "3" and
+          setup_complete.world_entry_phase == 1 and
+          setup_complete.world_entry_setup_vblanks == 61 and
+          setup_complete.world_entry_sequence_vblanks == 0 and
+          first_reference.world_entry_sequence_vblanks == 40 and
+          first_reference.world_entry_published_frame == 11 and
+          first_reference.model_canvas_width > 0 and
+          first_reference.model_canvas_height > 0 and
+          settled.world_entry_phase == 2 and
+          settled.world_entry_sequence_vblanks == 239 and
+          settled.world_entry_published_frame == 56 and
+          settled.model_canvas_x == 115 and
+          settled.model_canvas_y == 33 and
+          settled.model_canvas_width == 88 and
+          settled.model_canvas_height == 73,
+          "System 2 SPU entry follows 61 setup VBlanks, the 239-tick compact stream, and the calibrated longplay projection")
+    MatrixSession.finish(entry_state)
+else
+    check(false, "System 2 SPU entry fixture loads from ROM data")
+end
 end)
 -- matrix combat + movement (2026-10-15) [C]
 section('matrix combat + movement (2026-10-15)', function()

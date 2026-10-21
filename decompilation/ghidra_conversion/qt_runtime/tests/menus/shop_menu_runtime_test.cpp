@@ -17,9 +17,27 @@ int main() {
 
     const auto ares = ShopId::ares_weapon_emporium;
     const std::array<std::string, 2> confirmation_choice_ids{{"yes", "no"}};
+    const auto snapshot = [](
+        const std::string_view shop_id, const std::uint8_t menu_mode,
+        const std::int8_t menu_result, const std::uint8_t cursor,
+        const std::uint8_t panel, const std::uint8_t selected_action,
+        const std::string_view event, const bool open = true) {
+        scripting::ScriptShopMenuSnapshot value{};
+        value.open = open;
+        value.shop_id = shop_id;
+        value.menu_mode = menu_mode;
+        value.menu_result = menu_result;
+        value.action_cursor = cursor;
+        value.action_panel = panel;
+        value.selected_action = selected_action;
+        value.event = event;
+        return value;
+    };
     shadowrun::ghidra_conversion::scripting::ScriptShopDefinition
         ares_definition;
     ares_definition.id = "ares_weapon_emporium";
+    ares_definition.menu_mode = 1U;
+    ares_definition.menu_result = -1;
     ares_definition.groups = {
         {"weapons", {}, {{0x01U, 0x00U, 0x00U}, {0x02U, 0x00U, 0x00U},
                           {0x06U, 0x00U, 0x0FU}, {0x04U, 0x00U, 0x00U},
@@ -45,6 +63,58 @@ int main() {
             std::array<std::string, 2>{"no", "yes"}))) {
         return 18;
     }
+
+    shadowrun::ghidra_conversion::scripting::ScriptShopDefinition
+        medicine_definition;
+    medicine_definition.id = "medicine_lodge";
+    medicine_definition.menu_mode = 3U;
+    medicine_definition.menu_result = 0;
+    medicine_definition.groups = {
+        {"magic_spells", {}, {}, {{0x03U, 0x06U, 1000U}}},
+        {"magic_items", {}, {{0x12U, 0x0AU, 0x00U}}, {}},
+        {"magic_foci", {}, {{0x1BU, 0x02U, 0x00U}}, {}},
+        {"sell", {}, {}, {}}};
+    ShopMenuController medicine_menu;
+    if (!expect(medicine_menu.open(
+                    ShopId::medicine_lodge, medicine_definition,
+                    confirmation_choice_ids)) ||
+        !expect(medicine_menu.menu_mode() == 3U) ||
+        !expect(medicine_menu.source_state().action_selection.menu_result ==
+                0) ||
+        !expect(medicine_menu.apply_script_snapshot(snapshot(
+                    "medicine_lodge", 3U, 0, 0U, 0U, 0U, "opened")) ==
+                ShopMenuEvent::no_change) ||
+        !expect(medicine_menu.selected_group_id() == "magic_spells") ||
+        !expect(medicine_menu.progression_offer_count(
+                    ShopActionGroup::magic_spells) == 1U) ||
+        !expect(medicine_menu.apply_script_snapshot(snapshot(
+                    "medicine_lodge", 3U, 0, 0U, 1U, 0U, "panel_changed")) ==
+                ShopMenuEvent::panel_changed) ||
+        !expect(medicine_menu.apply_script_snapshot(snapshot(
+                    "medicine_lodge", 3U, 0, 0U, 1U, 0U,
+                    "progression_selected")) ==
+                ShopMenuEvent::progression_selected) ||
+        !expect(medicine_menu.pending_action().has_value()) ||
+        !expect(medicine_menu.pending_action()->progression_offer.has_value()) ||
+        !expect(medicine_menu.pending_action()->progression_offer->action_code ==
+                0x03U)) {
+        return 22;
+    }
+    if (!expect(medicine_menu.apply_script_snapshot(snapshot(
+                    "medicine_lodge", 3U, 0, 1U, 0U, 1U,
+                    "selection_moved")) == ShopMenuEvent::selection_moved) ||
+        !expect(medicine_menu.selected_group_id() == "magic_items") ||
+        !expect(medicine_menu.apply_script_snapshot(snapshot(
+                    "medicine_lodge", 3U, 0, 0U, 1U, 1U, "panel_changed")) ==
+                ShopMenuEvent::panel_changed) ||
+        !expect(medicine_menu.apply_script_snapshot(snapshot(
+                    "medicine_lodge", 3U, 0, 0U, 1U, 1U,
+                    "purchase_selected")) ==
+                ShopMenuEvent::purchase_selected) ||
+        !expect(medicine_menu.pending_action()->offer->type == 0x12U)) {
+        return 23;
+    }
+    medicine_menu.close();
     auto reordered_definition = ares_definition;
     std::swap(reordered_definition.groups[0],
               reordered_definition.groups[1]);
@@ -74,35 +144,44 @@ int main() {
 
     if (!expect(menu.menu_mode() == 1U) ||
         !expect(menu.source_state().action_selection.menu_result == -1) ||
-        !expect(menu.advance(0x0800U) == ShopMenuEvent::selection_moved) ||
+        !expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 1U, 0U, 1U,
+                    "selection_moved")) == ShopMenuEvent::selection_moved) ||
         !expect(menu.selected_group() == ShopActionGroup::other_items) ||
         !expect(menu.displayed_offer_group() == ShopActionGroup::weapons) ||
-        !expect(menu.advance(0x0200U) == ShopMenuEvent::panel_changed) ||
+        !expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed) ||
         !expect(menu.offers_panel_active()) ||
         !expect(menu.selected_group() == ShopActionGroup::other_items) ||
         !expect(menu.displayed_offer_group() == ShopActionGroup::other_items) ||
-        !expect(menu.advance(0x4000U) == ShopMenuEvent::purchase_selected) ||
+        !expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
+                    "purchase_selected")) == ShopMenuEvent::purchase_selected) ||
         !expect(menu.pending_action().has_value()) ||
         !expect(menu.pending_action()->offer->type == 0x45U)) {
         return 3;
     }
     menu.finish_action();
-    if (!expect(menu.selected_group() == ShopActionGroup::weapons) ||
-        !expect(menu.displayed_offer_group() == ShopActionGroup::weapons)) {
+    if (!expect(menu.selected_group() == ShopActionGroup::other_items) ||
+        !expect(menu.displayed_offer_group() == ShopActionGroup::other_items)) {
         return 20;
     }
 
     ShopMenuController retained_display_menu;
     if (!expect(retained_display_menu.open(
                     ares, ares_definition, confirmation_choice_ids)) ||
-        !expect(retained_display_menu.advance(0x0800U) ==
-                ShopMenuEvent::selection_moved) ||
-        !expect(retained_display_menu.advance(0x0200U) ==
-                ShopMenuEvent::panel_changed) ||
+        !expect(retained_display_menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 1U, 0U, 1U,
+                    "selection_moved")) == ShopMenuEvent::selection_moved) ||
+        !expect(retained_display_menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed) ||
         !expect(retained_display_menu.displayed_offer_group() ==
                 ShopActionGroup::other_items) ||
-        !expect(retained_display_menu.advance(0x0100U) ==
-                ShopMenuEvent::panel_changed) ||
+        !expect(retained_display_menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 0U, 0U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed) ||
         !expect(!retained_display_menu.offers_panel_active()) ||
         !expect(retained_display_menu.selected_group() ==
                 ShopActionGroup::weapons) ||
@@ -111,22 +190,35 @@ int main() {
         return 21;
     }
 
-    if (!expect(menu.advance(0x0200U) == ShopMenuEvent::panel_changed) ||
-        !expect(menu.advance(0x0800U) == ShopMenuEvent::selection_moved) ||
-        !expect(menu.advance(0x0800U) == ShopMenuEvent::selection_moved) ||
+    if (!expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 0U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed) ||
+        !expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 2U, 1U, 0U,
+                    "selection_moved")) == ShopMenuEvent::selection_moved) ||
         !expect(menu.selected_cursor() == 2U) ||
-        !expect(menu.advance(0x4000U) == ShopMenuEvent::purchase_selected) ||
+        !expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 2U, 1U, 0U,
+                    "purchase_selected")) == ShopMenuEvent::purchase_selected) ||
         !expect(menu.pending_action()->offer->type == 6U) ||
         !expect(menu.pending_action()->offer->quantity == 15U)) {
         return 4;
     }
 
     menu.finish_action();
-    if (!expect(menu.advance(0x0800U) == ShopMenuEvent::selection_moved) ||
-        !expect(menu.advance(0x0800U) == ShopMenuEvent::selection_moved) ||
+    if (!expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 2U, 0U, 2U,
+                    "selection_moved")) == ShopMenuEvent::selection_moved) ||
+        !expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 2U, 0U, 2U,
+                    "selection_moved")) == ShopMenuEvent::selection_moved) ||
         !expect(menu.selected_group() == ShopActionGroup::armor) ||
-        !expect(menu.advance(0x0200U) == ShopMenuEvent::panel_changed) ||
-        !expect(menu.advance(0x4000U) == ShopMenuEvent::purchase_selected) ||
+        !expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 2U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed) ||
+        !expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 2U,
+                    "purchase_selected")) == ShopMenuEvent::purchase_selected) ||
         !expect(menu.pending_action().has_value()) ||
         !expect(menu.pending_action()->group == ShopActionGroup::armor) ||
         !expect(menu.pending_action()->offer->type == 0x2EU)) {
@@ -134,32 +226,40 @@ int main() {
     }
 
     menu.finish_action();
-    for (int step = 0; step < 5; ++step) {
-        if (!expect(menu.advance(0x0800U) ==
-                    ShopMenuEvent::selection_moved)) {
-            return 5;
-        }
-    }
-    if (!expect(menu.selected_group() == ShopActionGroup::sell) ||
-        !expect(menu.advance(0x0200U) == ShopMenuEvent::panel_changed) ||
-        !expect(menu.advance(0x0800U) == ShopMenuEvent::selection_moved) ||
-        !expect(menu.advance(0x0800U) == ShopMenuEvent::selection_moved) ||
-        !expect(menu.advance(0x4000U) == ShopMenuEvent::sale_selected) ||
+    if (!expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 5U, 0U, 5U,
+                    "selection_moved")) == ShopMenuEvent::selection_moved) ||
+        !expect(menu.selected_group() == ShopActionGroup::sell) ||
+        !expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 5U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed) ||
+        !expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 2U, 1U, 5U,
+                    "selection_moved")) == ShopMenuEvent::selection_moved) ||
+        !expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 2U, 1U, 5U,
+                    "sale_selected")) == ShopMenuEvent::sale_selected) ||
         !expect(menu.pending_action()->cursor == 2U)) {
         return 6;
     }
 
     menu.finish_action();
-    for (int step = 0; step < 3; ++step) {
-        menu.advance(0x0800U);
-    }
-    if (!expect(menu.advance(0x0200U) == ShopMenuEvent::panel_changed) ||
-        !expect(menu.advance(0x4000U) ==
+    if (!expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 3U, 0U, 3U,
+                    "selection_moved")) == ShopMenuEvent::selection_moved) ||
+        !expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 3U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed) ||
+        !expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 3U,
+                    "source_action_boundary")) ==
                 ShopMenuEvent::source_action_boundary)) {
         return 7;
     }
     menu.finish_action();
-    if (!expect(menu.advance(0x8000U) ==
+    if (!expect(menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 0U, 0U,
+                    "returned_to_field", false)) ==
                 ShopMenuEvent::returned_to_field) ||
         !expect(!menu.is_open())) {
         return 8;
@@ -196,6 +296,29 @@ int main() {
         !expect(special_purchase.funds == 75U) ||
         !expect(special_purchase.runner.special_action_count == 1U)) {
         return 11;
+    }
+
+    const FieldActionCostContext medicine_cost_context{3U, 0U, 0U, 2U};
+    const auto& medicine_item = medicine_definition.groups[1].offers[0];
+    const auto& medicine_focus = medicine_definition.groups[2].offers[0];
+    FieldActionPurchaseState medicine_transactions{};
+    medicine_transactions.funds = 25000U;
+    const auto medicine_item_result = transactions.purchase(
+        FieldActionCostRecord{medicine_item.type, medicine_item.value,
+                              medicine_item.quantity},
+        medicine_cost_context, medicine_transactions, true);
+    const auto medicine_focus_result = transactions.purchase(
+        FieldActionCostRecord{medicine_focus.type, medicine_focus.value,
+                              medicine_focus.quantity},
+        medicine_cost_context, medicine_transactions, true);
+    if (!expect(medicine_item_result == FieldActionApplicationResult::applied) ||
+        !expect(medicine_focus_result == FieldActionApplicationResult::applied) ||
+        !expect(medicine_transactions.runner.action_codes[0] == 0x13U) ||
+        !expect(medicine_transactions.runner.companion_values[0] == 0x0AU) ||
+        !expect(medicine_transactions.runner.action_codes[1] == 0x1CU) ||
+        !expect(medicine_transactions.runner.companion_values[1] == 0x02U) ||
+        !expect(medicine_transactions.funds == 20500U)) {
+        return 24;
     }
 
     RunnerActionRemovalState sale{};
@@ -258,12 +381,15 @@ int main() {
     ShopMenuController transaction_menu;
     if (!expect(transaction_menu.open(
                     ares, ares_definition, confirmation_choice_ids)) ||
-        !expect(transaction_menu.advance(0x0800U) ==
-                ShopMenuEvent::selection_moved) ||
-        !expect(transaction_menu.advance(0x0200U) ==
-                ShopMenuEvent::panel_changed) ||
-        !expect(transaction_menu.advance(0x4000U) ==
-                ShopMenuEvent::purchase_selected)) {
+        !expect(transaction_menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 1U, 0U, 1U,
+                    "selection_moved")) == ShopMenuEvent::selection_moved) ||
+        !expect(transaction_menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed) ||
+        !expect(transaction_menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
+                    "purchase_selected")) == ShopMenuEvent::purchase_selected)) {
         return 17;
     }
     FieldActionPurchaseState live_special_purchase{};
@@ -295,8 +421,9 @@ int main() {
         return 18;
     }
 
-    if (!expect(transaction_menu.advance(0x4000U) ==
-                ShopMenuEvent::purchase_selected)) {
+    if (!expect(transaction_menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
+                    "purchase_selected")) == ShopMenuEvent::purchase_selected)) {
         return 19;
     }
     FieldActionPurchaseState default_no_purchase{};
@@ -313,8 +440,9 @@ int main() {
         return 20;
     }
 
-    if (!expect(transaction_menu.advance(0x4000U) ==
-                ShopMenuEvent::purchase_selected)) {
+    if (!expect(transaction_menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
+                    "purchase_selected")) == ShopMenuEvent::purchase_selected)) {
         return 21;
     }
     FieldActionPurchaseState poor_purchase{};
@@ -347,17 +475,16 @@ int main() {
                     ares, ares_definition, confirmation_choice_ids))) {
         return 23;
     }
-    for (int step = 0; step < 5; ++step) {
-        if (!expect(sale_menu.advance(0x0800U) ==
-                    ShopMenuEvent::selection_moved)) {
-            return 24;
-        }
-    }
-    if (!expect(sale_menu.selected_group() == ShopActionGroup::sell) ||
-        !expect(sale_menu.advance(0x0200U) ==
-                ShopMenuEvent::panel_changed) ||
-        !expect(sale_menu.advance(0x4000U) ==
-                ShopMenuEvent::sale_selected)) {
+    if (!expect(sale_menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 5U, 0U, 5U,
+                    "selection_moved")) == ShopMenuEvent::selection_moved) ||
+        !expect(sale_menu.selected_group() == ShopActionGroup::sell) ||
+        !expect(sale_menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 5U,
+                    "panel_changed")) == ShopMenuEvent::panel_changed) ||
+        !expect(sale_menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 5U,
+                    "sale_selected")) == ShopMenuEvent::sale_selected)) {
         return 25;
     }
     RunnerActionRemovalState live_sale{};
@@ -374,8 +501,9 @@ int main() {
                 live_sale.runner.action_codes[0] == 2U)) {
         return 26;
     }
-    if (!expect(sale_menu.advance(0x4000U) ==
-                ShopMenuEvent::sale_selected) ||
+    if (!expect(sale_menu.apply_script_snapshot(snapshot(
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 5U,
+                    "sale_selected")) == ShopMenuEvent::sale_selected) ||
         !expect(sale_menu.begin_sale(cost_context, live_sale) ==
                 ShopTransactionEvent::confirmation_opened) ||
         !expect(sale_menu.advance_transaction(

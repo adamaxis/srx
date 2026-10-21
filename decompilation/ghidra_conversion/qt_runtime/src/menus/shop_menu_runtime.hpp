@@ -11,13 +11,14 @@
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <vector>
+#include <string_view>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
 enum class ShopId : std::uint8_t {
     ares_weapon_emporium,
+    medicine_lodge,
 };
 
 enum class ShopActionGroup : std::int8_t {
@@ -29,12 +30,16 @@ enum class ShopActionGroup : std::int8_t {
     source_action_3 = 3,
     source_action_4 = 4,
     sell = 5,
+    magic_spells = 6,
+    magic_items = 7,
+    magic_foci = 8,
 };
 
 struct ShopActionRequest {
     ShopActionGroup group = ShopActionGroup::weapons;
     std::uint8_t cursor = 0;
     std::optional<FieldActionCostRecord> offer;
+    std::optional<scripting::ScriptShopProgressionOffer> progression_offer;
 };
 
 struct ShopSaleOutcome {
@@ -54,6 +59,7 @@ enum class ShopTransactionMessage : std::uint8_t {
     insufficient_funds,
     special_action_limit,
     protected_sale,
+    training_unavailable,
 };
 
 enum class ShopTransactionEvent : std::uint8_t {
@@ -76,15 +82,15 @@ enum class ShopMenuEvent : std::uint8_t {
     purchase_selected,
     sale_selected,
     offer_unavailable,
+    progression_selected,
     source_action_boundary,
     active_runner_change_requested,
     returned_to_field,
 };
 
-// A non-blocking controller for the source 0x56AC0 field service menu. It
-// keeps the converted selection record authoritative and reports transaction
-// requests to the field/session owner instead of maintaining another wallet
-// or inventory copy.
+// Native adapter for the Lua-owned source 0x56AC0 field service state. It
+// exposes the latest typed snapshot to the presenter and owns only host-side
+// transaction application state.
 class ShopMenuController final {
 public:
     bool open(ShopId shop,
@@ -93,11 +99,15 @@ public:
     void close() noexcept;
     void finish_action() noexcept;
 
-    ShopMenuEvent advance(std::uint16_t controller_events);
+    std::optional<ShopMenuEvent> apply_script_snapshot(
+        const scripting::ScriptShopMenuSnapshot& snapshot);
 
     bool is_open() const noexcept { return open_; }
     ShopId shop() const noexcept { return shop_; }
     std::uint8_t menu_mode() const noexcept { return menu_mode_; }
+    std::int8_t menu_result() const noexcept {
+        return source_state_.action_selection.menu_result;
+    }
     const FieldModeServiceState& source_state() const noexcept {
         return source_state_;
     }
@@ -126,9 +136,13 @@ public:
         return last_sale_outcome_;
     }
     ShopActionGroup selected_group() const noexcept;
+    std::size_t selected_group_index() const noexcept;
     ShopActionGroup displayed_offer_group() const noexcept {
         return displayed_offer_group_;
     }
+    std::size_t displayed_offer_group_index() const noexcept;
+    std::string_view selected_group_id() const noexcept;
+    std::string_view displayed_offer_group_id() const noexcept;
     std::uint8_t selected_cursor() const noexcept {
         return static_cast<std::uint8_t>(
             source_state_.action_selection.action_cursor);
@@ -139,6 +153,9 @@ public:
 
     std::size_t offer_count(ShopActionGroup group) const noexcept;
     std::optional<FieldActionCostRecord> offer(
+        ShopActionGroup group, std::size_t index) const noexcept;
+    std::size_t progression_offer_count(ShopActionGroup group) const noexcept;
+    std::optional<scripting::ScriptShopProgressionOffer> progression_offer(
         ShopActionGroup group, std::size_t index) const noexcept;
 
     ShopTransactionEvent begin_purchase(
@@ -157,21 +174,26 @@ public:
         RunnerActionRemovalState& sale_state,
         const FieldActionBaseCostLookup& purchase_base_lookup = {},
         const FieldActionBaseCostLookup& resale_base_lookup = {});
+    void show_progression_message(ShopTransactionMessage message) noexcept;
     void clear_pending_action() noexcept;
 
 private:
     enum class TransactionKind : std::uint8_t { none, purchase, sale };
     void reset_transaction() noexcept;
-    void publish_selected_group() noexcept;
 
     ShopId shop_ = ShopId::ares_weapon_emporium;
+    std::string definition_id_;
     std::uint8_t menu_mode_ = 0;
+    std::size_t group_count_ = 0U;
     FieldModeServiceState source_state_{};
     std::optional<ShopActionRequest> pending_action_;
     std::array<std::string, 6> group_ids_{};
     ShopActionGroup displayed_offer_group_ = ShopActionGroup::weapons;
+    std::size_t displayed_offer_group_source_index_ = 0U;
     std::array<std::string, 2> confirmation_choice_ids_{};
     std::array<std::vector<FieldActionCostRecord>, 6> offer_groups_{};
+    std::array<std::vector<scripting::ScriptShopProgressionOffer>, 6>
+        progression_offer_groups_{};
     MenuConfirmationState transaction_confirmation_{};
     TransactionKind transaction_kind_ = TransactionKind::none;
     ShopTransactionMessage transaction_message_ = ShopTransactionMessage::none;

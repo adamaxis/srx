@@ -19,9 +19,8 @@ int main() {
     FieldActionProgressionTables tables{};
     // These records mirror the first three dynamic blocks at 0x1AAF40:
     // menu mode 3/category 2 is action 0x0C with a 1000-unit base cost.
+    tables.saved_selection_zero_by_menu_mode[0][0] = {0x03U, 0x06U, 1000U};
     tables.saved_selection_zero_by_menu_mode[0][2] = {0x0CU, 0x06U, 1000U};
-    tables.saved_selection_one[0] = {0x12U, 0x0AU, 0x0026U};
-    tables.saved_selection_two_or_more[0] = {0x1BU, 0x02U, 0x001BU};
 
     FieldActionProgressionPurchaseState state{};
     state.menu_mode = 3U;
@@ -187,6 +186,9 @@ int main() {
         return 7;
     }
 
+    // Result-zero tabs one and two are three-byte item/focus catalogs, not
+    // progression records. Their purchase paths are handled by the shared
+    // item transaction conversion rather than this progression routine.
     FieldActionProgressionPurchaseState selection_one{};
     selection_one.menu_mode = 3U;
     selection_one.saved_selection = 1;
@@ -200,15 +202,14 @@ int main() {
     glyph_transfers.clear();
     if (!expect(prepare_field_action_progression_quote(
                     tables, selection_one, quote_callbacks)
-                    .result == FieldActionProgressionQuoteResult::quoted &&
-                selection_one.selected_action_code == 0x12U &&
-                selection_one.pending_cost == 0x26U &&
+                    .result ==
+                    FieldActionProgressionQuoteResult::invalid_offer_selection &&
                 purchase_field_action_progression(
                     tables, selection_one, purchase_callbacks) ==
-                    FieldActionProgressionPurchaseResult::applied &&
-                selection_one.funds == 0x3C2U &&
-                selection_one.ledger.records[1].action_code == 0x12U &&
-                selection_one.ledger.records[1].progression_level == 1U)) {
+                    FieldActionProgressionPurchaseResult::invalid_offer_selection &&
+                selection_one.funds == 1000U &&
+                selection_one.ledger.records[1].action_code == 0U &&
+                selection_one.ledger.records[1].progression_level == 0U)) {
         return 8;
     }
 
@@ -281,12 +282,11 @@ int main() {
     if (!expect(select_field_action_progression_offer(
                     tables, 2U, 0, 2) == std::nullopt &&
                 select_field_action_progression_offer(
-                    tables, 3U, 1, 0)->action_code == 0x12U &&
-                select_field_action_progression_offer(
-                    tables, 3U, 2, 0)->action_code == 0x1BU &&
-                select_field_action_progression_offer(
-                    tables, 3U, static_cast<std::int8_t>(0xFFU), 2)
-                        ->action_code == 0x0CU)) {
+                    tables, 3U, 0, 0)->action_code == 0x03U &&
+                !select_field_action_progression_offer(
+                    tables, 3U, 1, 0).has_value() &&
+                !select_field_action_progression_offer(
+                    tables, 3U, 2, 0).has_value())) {
         return 15;
     }
 

@@ -36,16 +36,29 @@ public:
     bool available() const noexcept { return source_ != Source::unavailable; }
     std::size_t active_slot() const noexcept { return active_slot_; }
     void set_active_slot(std::size_t slot) noexcept;
+    std::uint8_t primary_compact_marker() const noexcept {
+        return primary_compact_marker_;
+    }
+    std::uint8_t secondary_compact_marker() const noexcept {
+        return secondary_compact_marker_;
+    }
     bool restore_saved_party(
         const std::array<RunnerRecordFields, kSlotCount>& records,
         const std::array<std::string, kSlotCount>& names,
         const std::array<bool, kSlotCount>& active_slots,
         const std::array<std::uint8_t, kSlotCount>& portrait_families,
+        std::uint8_t primary_compact_marker,
+        std::uint8_t secondary_compact_marker,
         std::size_t active_slot) noexcept;
     void install_party_member_for_dump(std::size_t slot,
                                        RunnerRecordFields record,
                                        std::string name,
                                        std::uint8_t portrait_asset_family = 0U);
+    void set_compact_markers_for_dump(std::uint8_t primary_marker,
+                                      std::uint8_t secondary_marker) noexcept {
+        primary_compact_marker_ = primary_marker;
+        secondary_compact_marker_ = secondary_marker;
+    }
     // Clear the compact roster membership marker represented by this host
     // slot. The live record remains available for field/world state.
     bool deactivate_party_member(std::size_t slot) noexcept;
@@ -89,6 +102,8 @@ private:
     std::array<bool, kSlotCount> active_slots_{};
     std::array<std::uint8_t, kSlotCount> portrait_asset_families_{};
     std::size_t active_slot_ = 0U;
+    std::uint8_t primary_compact_marker_ = 0xFFU;
+    std::uint8_t secondary_compact_marker_ = 0xFFU;
     Source source_ = Source::unavailable;
 };
 

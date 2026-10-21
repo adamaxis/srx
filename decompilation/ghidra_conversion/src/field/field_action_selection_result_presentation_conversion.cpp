@@ -293,16 +293,20 @@ void render_field_action_selection_presentation(
         return;
     }
     if (callbacks.select_action_record_table) {
+        const auto menu_mode_index =
+            static_cast<std::int16_t>(state.menu_mode) - 3;
         if (state.selected_action == 1) {
             callbacks.select_action_record_table(
-                FieldActionSelectionActionRecordTable::fixed_selection_one, 0);
+                FieldActionSelectionActionRecordTable::fixed_selection_one,
+                menu_mode_index);
         } else if (source_cmp_byte_is_negative(state.selected_action, 1U)) {
             callbacks.select_action_record_table(
                 FieldActionSelectionActionRecordTable::dynamic_menu_mode,
-                static_cast<std::int16_t>(state.menu_mode) - 3);
+                menu_mode_index);
         } else {
             callbacks.select_action_record_table(
-                FieldActionSelectionActionRecordTable::fixed_low_menu, 0);
+                FieldActionSelectionActionRecordTable::fixed_low_menu,
+                menu_mode_index);
         }
     }
     render_alternating_field_action_selection_records(state.glyph_records,

@@ -320,9 +320,17 @@ int main() {
                 glyph_triples == 31 && text_passes == 1)) {
         return 9;
     }
+    normal.action_cursor = 1;
+    render_field_action_selection_presentation(normal, callbacks);
+    if (!expect(selected_action_tables.size() == 2U &&
+                selected_action_tables.back().first ==
+                    FieldActionSelectionActionRecordTable::fixed_selection_one &&
+                selected_action_tables.back().second == 2)) {
+        return 35;
+    }
     normal.action_cursor = 3;
     render_field_action_selection_presentation(normal, callbacks);
-    if (!expect(glyph_triples == 39 && text_passes == 1)) {
+    if (!expect(glyph_triples == 47 && text_passes == 1)) {
         return 10;
     }
 
@@ -331,11 +339,11 @@ int main() {
     dynamic_action_table.menu_mode = 5;
     dynamic_action_table.action_cursor = -1;
     render_field_action_selection_presentation(dynamic_action_table, callbacks);
-    if (!expect(selected_action_tables.size() == 2U &&
+    if (!expect(selected_action_tables.size() == 3U &&
                 selected_action_tables.back().first ==
                     FieldActionSelectionActionRecordTable::dynamic_menu_mode &&
                 selected_action_tables.back().second == 2 &&
-                glyph_triples == 47)) {
+                glyph_triples == 55)) {
         return 11;
     }
 
@@ -344,10 +352,11 @@ int main() {
     high_zero.menu_mode = 5;
     high_zero.action_cursor = static_cast<std::int8_t>(0x80U);
     render_field_action_selection_presentation(high_zero, callbacks);
-    if (!expect(selected_action_tables.size() == 3U &&
+    if (!expect(selected_action_tables.size() == 4U &&
                 selected_action_tables.back().first ==
                     FieldActionSelectionActionRecordTable::fixed_low_menu &&
-                glyph_triples == 55)) {
+                selected_action_tables.back().second == 2 &&
+                glyph_triples == 63)) {
         return 34;
     }
 

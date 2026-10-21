@@ -38,10 +38,23 @@ end
 
 local function push(self, screen, args)
     local m = assert(registry[screen], "unregistered screen " .. tostring(screen))
-    local entry = { screen = screen, state = m.new(args or {}) }
+    local entry = {
+        screen = screen,
+        state = m.new(args or {}),
+        debug_enter_callback_present = m.enter ~= nil,
+        debug_enter_called = false,
+        debug_enter_transition = T.NONE,
+    }
     self.stack[#self.stack + 1] = entry
     apply_presentation(self)
-    if m.enter then self:apply(entry, m.enter(entry.state, self.ctx)) end
+    if m.enter then
+        entry.debug_enter_called = true
+        local result = m.enter(entry.state, self.ctx)
+        if result and result.transition ~= nil then
+            entry.debug_enter_transition = result.transition
+        end
+        self:apply(entry, result)
+    end
 end
 
 -- Apply a screen result: { transition = E.MenuTransition.*, screen = id, args = {}, result = {} }

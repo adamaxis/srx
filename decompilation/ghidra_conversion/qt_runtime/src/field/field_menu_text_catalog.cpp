@@ -1117,6 +1117,7 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     };
     decode_newlines(result.catalog.first_aid_prompt);
     decode_newlines(result.catalog.first_aid_not_injured);
+    decode_newlines(result.catalog.clips_function_aborted);
     decode_newlines(result.catalog.action_trade_full_inventory_message);
     decode_newlines(result.catalog.action_automatic_use_message);
     decode_newlines(result.catalog.magic_panel_metric_labels);
