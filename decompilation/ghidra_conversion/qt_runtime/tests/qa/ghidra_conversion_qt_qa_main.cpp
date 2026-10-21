@@ -24239,15 +24239,17 @@ int main(int argc, char** argv) {
                     }
                     return bottom_band_ink >= 1000 && bottom_edge_ink >= 64;
                 };
-                const auto green_model_bounds = [](const QImage& image) {
+                const auto green_model_bounds = [](
+                    const QImage& image,
+                    const bool include_model_top = false) {
                     QRect bounds;
                     int min_x = image.width();
                     int min_y = image.height();
                     int max_x = -1;
                     int max_y = -1;
-                    // The green brackets at y=38 are HUD art, not part of
-                    // the world model. Keep the measured viewport region
-                    // below them so the bounds track only the object.
+                    // The green brackets at y=38 are HUD art, so the main
+                    // viewport scan starts below them. The settled model top
+                    // is checked separately in a narrow center strip.
                     for (int y = 45; y < 120; ++y) {
                         for (int x = 100; x < 220; ++x) {
                             const auto color = image.pixelColor(x, y);
@@ -24257,6 +24259,25 @@ int main(int argc, char** argv) {
                                 min_y = std::min(min_y, y);
                                 max_x = std::max(max_x, x);
                                 max_y = std::max(max_y, y);
+                            }
+                        }
+                    }
+                    // The final independent frame's object rises above the
+                    // HUD bracket baseline. The bracket itself is at x>=176;
+                    // the model's top facet is visible in the center strip.
+                    if (include_model_top) {
+                        for (int y = 37; y < 45; ++y) {
+                            for (int x = 140; x < 176; ++x) {
+                                const auto color = image.pixelColor(x, y);
+                                if (color.red() < 20 &&
+                                    color.green() >= 15 &&
+                                    color.green() < 200 &&
+                                    color.blue() < 20) {
+                                    min_x = std::min(min_x, x);
+                                    min_y = std::min(min_y, y);
+                                    max_x = std::max(max_x, x);
+                                    max_y = std::max(max_y, y);
+                                }
                             }
                         }
                     }
@@ -24424,7 +24445,7 @@ int main(int argc, char** argv) {
                     {180, 4800, QRect(134, 60, 50, 51)},
                     {200, 4810, QRect(130, 53, 58, 58)},
                     {220, 4820, QRect(124, 45, 64, 63)},
-                    {239, 4830, QRect(120, 45, 76, 61)},
+                    {239, 4830, QRect(122, 38, 74, 67)},
                 }};
                 int current_vblank = 0;
                 for (const auto& anchor : kEntryAnchors) {
@@ -24445,7 +24466,8 @@ int main(int argc, char** argv) {
                     const auto image = capture(
                         "matrix-entry-frame-" +
                         std::to_string(anchor.source_frame));
-                    const auto actual = green_model_bounds(image);
+                    const auto actual = green_model_bounds(
+                        image, anchor.source_frame == 4830);
                     const auto& expected = anchor.expected_green_bounds;
                     if (!complete_frame(image) || actual.isNull() ||
                         std::abs(actual.x() - expected.x()) > 2 ||

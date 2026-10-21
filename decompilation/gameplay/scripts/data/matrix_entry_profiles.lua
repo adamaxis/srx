@@ -42,7 +42,7 @@ return {
             { vblank = 180, x = 134, y = 60, width = 50, height = 51 },
             { vblank = 200, x = 130, y = 53, width = 58, height = 58 },
             { vblank = 220, x = 124, y = 45, width = 64, height = 63 },
-            { vblank = 239, x = 120, y = 45, width = 76, height = 61 },
+            { vblank = 239, x = 122, y = 38, width = 74, height = 67 },
         },
     },
 }

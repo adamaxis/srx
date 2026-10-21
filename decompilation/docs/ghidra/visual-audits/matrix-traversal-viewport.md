@@ -641,6 +641,22 @@ now reproduces the measured System 2 SPU growth at eleven source-tick anchors;
 this does not reconstruct the ROM's packed-pixel resampler or establish
 transforms for the other models.
 
+### Settled SPU extent correction (2026-10-21)
+
+The entry QA's green-model scan began at screen row 45 to avoid the HUD
+brackets. The settled SPU in independent Section 21 frame `004830` extends
+above that line, so the scan clipped its top and recorded `(120,45,76x61)`.
+That clipped extent drove an overly short vertical canvas in Lua. The full
+independent object extent is `(122,38,74x67)`, matching the separate measured
+anchor already recorded in the status below. The Lua endpoint now uses those
+full bounds. QA still scans the viewport below the HUD baseline, then checks
+the final top facet in a narrow central strip that excludes the bracket. The
+Debug and Release traversal tests pass, and both full 320x224 captures were
+reopened beside frame `004830`; the settled host object now reaches the same
+top and bottom rows. This corrects the endpoint canvas calibration only. The
+ROM resampler, intermediate facet changes, and packet-derived placement remain
+unimplemented or unverified.
+
 The offline `--matrix-title-figure-atlases` diagnostic emits descriptor-C
 phase pairs, the world-sequence groups, behavior-A/behavior-B phase pairs, the
 `0x1B5FC` transition, and descriptor D/E lists. All lists sharing `0x1C506`
