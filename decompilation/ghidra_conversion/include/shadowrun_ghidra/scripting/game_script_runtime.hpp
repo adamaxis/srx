@@ -903,11 +903,21 @@ struct ScriptWorldActivityActor {
     std::string sprite_stem;
     ScriptActorActionKind action_kind = ScriptActorActionKind::none;
     std::uint8_t action_code = 0;
+    std::uint8_t source_action_slot = 0;
+    std::uint8_t source_action_ammo = 0;
+    std::uint8_t source_action_counter = 0;
     std::uint8_t palette_line = 0;
     std::uint16_t world_x = 0;
     std::uint16_t world_y = 0;
     std::uint16_t heading = 0;
     std::string ordered_overrides;
+    std::uint8_t source_spawn_state_flags = 0;
+    std::uint8_t source_interaction_flags = 0;
+    std::uint8_t physical_meter = 0;
+    std::uint8_t delay_primary_attribute = 0;
+    std::uint8_t delay_secondary_attribute = 0;
+    std::uint16_t delay_capability_flags = 0;
+    ScriptCombatantFacts combatant{};
 };
 
 // The selector result is data, not an event-specific C++ switch. Dialogue

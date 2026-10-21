@@ -384,12 +384,27 @@ int main() {
                 ilene_gate_actors->front().action_kind ==
                     ScriptActorActionKind::item &&
                 ilene_gate_actors->front().action_code == 3U &&
+                ilene_gate_actors->front().source_action_slot == 0U &&
+                ilene_gate_actors->front().source_action_ammo == 11U &&
+                ilene_gate_actors->front().source_action_counter == 0U &&
                 ilene_gate_actors->front().palette_line == 1U &&
                 ilene_gate_actors->front().world_x == 0x1100U &&
                 ilene_gate_actors->front().world_y == 0x0300U &&
                 ilene_gate_actors->front().heading == 0xC000U &&
                 ilene_gate_actors->front().ordered_overrides ==
                     "0x2E=0xC0,0x9E=0x10" &&
+                ilene_gate_actors->front().source_spawn_state_flags == 0x10U &&
+                ilene_gate_actors->front().source_interaction_flags == 0U &&
+                ilene_gate_actors->front().physical_meter == 10U &&
+                ilene_gate_actors->front().delay_primary_attribute == 3U &&
+                ilene_gate_actors->front().delay_secondary_attribute == 2U &&
+                ilene_gate_actors->front().combatant.mental_meter == 10U &&
+                ilene_gate_actors->front().combatant.posture == 2U &&
+                ilene_gate_actors->front().combatant.item_codes[0] == 4U &&
+                ilene_gate_actors->front().combatant.item_codes[4] == 44U &&
+                ilene_gate_actors->front().combatant.action_phase_extension[0] ==
+                    1U &&
+                ilene_gate_actors->front().combatant.action_skills[1] == 3U &&
                 absent_scene_script_actors.has_value() &&
                 absent_scene_script_actors->empty(),
             "Lua did not return the typed ROM scene-13 script actor list")) {

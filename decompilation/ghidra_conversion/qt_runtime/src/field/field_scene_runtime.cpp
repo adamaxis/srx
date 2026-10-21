@@ -3053,13 +3053,37 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
         failure_ = "cannot read extracted conditional world-activity actor table";
         return false;
     }
-    if (!std::getline(script_actor_input, line) ||
-        line != "scene\tlist_id\tlist_offset\tsource_order\tscript_index"
-                "\tsource_record_offset\ttagged_template\ttemplate_offset"
-                "\tposition_offset\tentity_kind\tactor_name\tprofile_id"
-                "\tsprite_stem\taction_kind\taction_code\tpalette_line"
-                "\tworld_x\tworld_y\tinitial_heading\tordered_overrides"
-                "\tactivation_rule") {
+    if (!std::getline(script_actor_input, line)) {
+        failure_ = "conditional world-activity actor table header is invalid";
+        return false;
+    }
+    if (!line.empty() && line.back() == '\r') {
+        line.pop_back();
+    }
+    std::vector<std::string> script_actor_columns;
+    {
+        std::istringstream header(line);
+        std::string column;
+        while (std::getline(header, column, '\t')) {
+            script_actor_columns.push_back(std::move(column));
+        }
+    }
+    const auto column_index = [&script_actor_columns](
+                                 const std::string_view name)
+        -> std::optional<std::size_t> {
+        const auto found = std::find(script_actor_columns.begin(),
+                                     script_actor_columns.end(), name);
+        if (found == script_actor_columns.end()) {
+            return std::nullopt;
+        }
+        return static_cast<std::size_t>(
+            std::distance(script_actor_columns.begin(), found));
+    };
+    const auto script_index_column = column_index("script_index");
+    const auto entity_kind_column = column_index("entity_kind");
+    const auto sprite_stem_column = column_index("sprite_stem");
+    if (script_actor_columns.size() < 21U || !script_index_column ||
+        !entity_kind_column || !sprite_stem_column) {
         failure_ = "conditional world-activity actor table header is invalid";
         return false;
     }
@@ -3077,22 +3101,25 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             while (std::getline(row, field, '\t')) {
                 fields.push_back(std::move(field));
             }
-            if (fields.size() != 21U || fields[12].empty()) {
+            if (fields.size() != script_actor_columns.size() ||
+                fields[*sprite_stem_column].empty()) {
                 failure_ = "conditional world-activity actor row is malformed";
                 return false;
             }
-            const auto script_index = std::stoi(fields[4]);
+            const auto script_index =
+                std::stoi(fields[*script_index_column]);
             if (script_index < 0) {
                 continue;
             }
             const auto entity_kind = static_cast<std::uint16_t>(
-                std::stoul(fields[9]));
+                std::stoul(fields[*entity_kind_column]));
             if (script_index > 0xFF || entity_kind < 3U ||
                 entity_kind > 14U) {
                 failure_ = "conditional world-activity actor identity is invalid";
                 return false;
             }
-            script_actor_kinds.emplace_back(fields[12], entity_kind);
+            script_actor_kinds.emplace_back(fields[*sprite_stem_column],
+                                            entity_kind);
         }
     } catch (const std::exception& error) {
         failure_ = std::string("cannot parse conditional actor table: ") +
@@ -3600,7 +3627,8 @@ void FieldSceneRuntime::initialize_default_field_actors(
         std::remove_if(
             field_default_actors_.begin(), field_default_actors_.end(),
             [](const DefaultFieldActorPresentation& actor) {
-                return actor.temporary_world_encounter;
+                return actor.temporary_world_encounter ||
+                       actor.world_activity_script_actor;
             }),
         field_default_actors_.end());
     field_world_effect_slots_occupied_.fill(false);
@@ -3708,12 +3736,254 @@ void FieldSceneRuntime::initialize_default_field_actors(
     }
 }
 
+void FieldSceneRuntime::publish_pending_world_activity_script_actors(
+    const std::uint16_t scene_reference) {
+    if (!pending_world_activity_script_actor_scene_.has_value() ||
+        *pending_world_activity_script_actor_scene_ != scene_reference ||
+        pending_world_activity_script_actors_.empty()) {
+        return;
+    }
+
+    std::size_t published = 0U;
+    for (const auto& source_actor : pending_world_activity_script_actors_) {
+        const auto artwork =
+            field_dynamic_actor_artwork_.find(source_actor.sprite_stem);
+        if (source_actor.entity_kind < 3U || source_actor.entity_kind > 14U ||
+            artwork == field_dynamic_actor_artwork_.end()) {
+            failure_ = "selected ROM world-script actor has no extracted Lua profile and art";
+            source_boundary(
+                "field.world_activity.script_actor_art_unresolved");
+            break;
+        }
+
+        std::array<bool, 7> occupied_actor_slots{};
+        for (const auto& actor : field_default_actors_) {
+            if (!actor.active || actor.scene_reference != scene_reference ||
+                !actor.source_record_slot.has_value()) {
+                continue;
+            }
+            const auto slot = static_cast<std::size_t>(
+                *actor.source_record_slot);
+            if (slot >= 3U && slot <= 9U) {
+                occupied_actor_slots[slot - 3U] = true;
+            }
+        }
+        const auto actor_slot = std::find(occupied_actor_slots.begin(),
+                                          occupied_actor_slots.end(), false);
+        if (actor_slot == occupied_actor_slots.end()) {
+            source_boundary(
+                "field.world_activity.script_actor_slots_exhausted");
+            break;
+        }
+        const auto effect_slot = std::find(
+            field_world_effect_slots_occupied_.begin(),
+            field_world_effect_slots_occupied_.end(), false);
+        if (effect_slot == field_world_effect_slots_occupied_.end()) {
+            source_boundary(
+                "field.world_activity.script_actor_effect_slots_exhausted");
+            break;
+        }
+
+        DefaultFieldActorPresentation actor{};
+        actor.active = true;
+        actor.world_activity_script_actor = true;
+        actor.scene_reference = scene_reference;
+        actor.source_order = source_actor.source_order;
+        actor.source_record_slot = static_cast<FieldWorldActorSlot>(
+            std::distance(occupied_actor_slots.begin(), actor_slot) + 3);
+        actor.entity_kind = source_actor.entity_kind;
+        actor.actor_instance_id =
+            "field_scene_" + std::to_string(scene_reference) +
+            "_world_script_" + std::to_string(source_actor.script_index) +
+            "_actor_" + std::to_string(source_actor.source_order);
+        actor.script_profile_id = source_actor.profile_id;
+        actor.action_kind = source_actor.action_kind;
+        actor.initial_action_code = source_actor.action_code;
+        actor.world_position = SceneRunnerPosition{
+            source_actor.world_x, source_actor.world_y};
+        actor.initial_heading = source_actor.heading;
+        actor.palette_line = source_actor.palette_line;
+        actor.physical_meter = source_actor.physical_meter;
+        actor.delay_primary_attribute = source_actor.delay_primary_attribute;
+        actor.delay_secondary_attribute = source_actor.delay_secondary_attribute;
+        actor.delay_capability_flags = source_actor.delay_capability_flags;
+        actor.sprite_stem = source_actor.sprite_stem;
+        actor.template_offset = source_actor.template_offset;
+        actor.position_offset = source_actor.position_offset;
+        actor.list_offset = source_actor.list_offset;
+        actor.ordered_overrides = source_actor.ordered_overrides;
+        actor.source_record_flags = static_cast<std::uint8_t>(
+            actor_flag_mask(ActorServiceFlag::active) |
+            actor_flag_mask(ActorServiceFlag::unresolved_service_bit_2) |
+            ((source_actor.tagged_template & 0x80000000U) != 0U
+                 ? actor_flag_mask(ActorServiceFlag::activity_probe_enabled)
+                 : 0U));
+        actor.source_interaction_flags =
+            source_actor.source_interaction_flags;
+        actor.source_spawn_state_flags =
+            source_actor.source_spawn_state_flags;
+        actor.source_action_slot = source_actor.source_action_slot;
+        actor.source_action_ammo = source_actor.source_action_ammo;
+        actor.source_action_counter = source_actor.source_action_counter;
+        actor.combatant = source_actor.combatant;
+        actor.combatant.record_type = static_cast<std::uint16_t>(
+            *actor.source_record_slot);
+        actor.combatant.source_flags = actor.source_record_flags;
+        actor.combatant.interaction_flags = actor.source_interaction_flags;
+        actor.combatant.physical_meter = actor.physical_meter;
+        actor.combatant.equipped_action_code = actor.initial_action_code;
+        actor.effect_slot = static_cast<std::uint8_t>(std::distance(
+            field_world_effect_slots_occupied_.begin(), effect_slot));
+        actor.initial_behavior_delay = static_cast<std::uint8_t>(
+            advance_source_random_seed(field_random_seed_) & 0x000FU);
+        actor.animation_direction = static_cast<std::uint8_t>(
+            field_movement_direction_from_heading(actor.initial_heading));
+        actor.source_animation_selector = static_cast<std::uint16_t>(
+            actor.animation_direction * 4U);
+        actor.movement_state.position_x = actor.world_position.x;
+        actor.movement_state.position_y = actor.world_position.y;
+        actor.movement_state.heading = actor.initial_heading;
+        actor.movement_state.animation_heading = actor.initial_heading;
+        actor.movement_state.collision_extent = 0U;
+        actor.movement_state_initialized = true;
+
+        const auto& actor_artwork = artwork->second;
+        actor.entry_animation_frame_count = actor_artwork.entry_frame_count;
+        actor.walk_animation_frame_count = actor_artwork.walk_frame_count;
+        actor.action_animation_frame_count =
+            actor_artwork.action_frame_count;
+        actor.action_animation_increment =
+            actor_artwork.action_frame_increment;
+        actor.action_animation_threshold =
+            actor_artwork.action_frame_threshold;
+        actor.action_animation_audio_event =
+            actor_artwork.action_audio_event;
+        actor.item_action_frame_count =
+            actor_artwork.item_action_frame_count;
+        actor.item_action_increment = actor_artwork.item_action_increment;
+        actor.item_action_threshold = actor_artwork.item_action_threshold;
+        actor.hurt_animation_frame_count = actor_artwork.hurt_frame_count;
+        actor.hurt_animation_increment = actor_artwork.hurt_frame_increment;
+        actor.hurt_animation_threshold = actor_artwork.hurt_frame_threshold;
+        actor.hurt_audio_event = actor_artwork.hurt_audio_event;
+        actor.down_audio_event = actor_artwork.down_audio_event;
+
+        scripting::ScriptActorBehaviorContext context{
+            actor.script_profile_id,
+            actor.entity_kind,
+            actor.action_kind,
+            actor.initial_action_code,
+            actor.initial_behavior_delay,
+            false,
+            false,
+            actor.actor_instance_id,
+            actor.initial_heading,
+            true,
+        };
+        context.dynamic_world_encounter_actor = true;
+        context.combatant = actor.combatant;
+        context.source_actor_posture = actor.combatant.posture;
+        context.source_record_flags = actor.source_record_flags;
+        context.source_interaction_flags = actor.source_interaction_flags;
+        context.source_behavior_flags = actor.source_behavior_flags;
+        context.source_action_slot = actor.source_action_slot;
+        context.source_action_ammo = actor.source_action_ammo;
+        context.source_action_counter = actor.source_action_counter;
+        context.source_animation_selector = actor.source_animation_selector;
+        context.source_spawn_state_flags = actor.source_spawn_state_flags;
+        context.source_record_slot = static_cast<std::uint8_t>(
+            *actor.source_record_slot);
+        context.world_activity_active =
+            world_frame_logic_state_.world_active != 0U;
+        context.world_scene_state = world_frame_logic_state_.scene_state;
+        context.movement_scene_id = scene_reference;
+        context.entry_animation_frame_count =
+            actor.entry_animation_frame_count;
+        context.walk_animation_frame_count = actor.walk_animation_frame_count;
+        context.action_animation_frame_count =
+            actor.action_animation_frame_count;
+        context.action_animation_increment =
+            actor.action_animation_increment;
+        context.action_animation_threshold =
+            actor.action_animation_threshold;
+        context.action_animation_audio_event =
+            actor.action_animation_audio_event;
+        context.item_action_frame_count = actor.item_action_frame_count;
+        context.item_action_increment = actor.item_action_increment;
+        context.item_action_threshold = actor.item_action_threshold;
+        context.hurt_animation_frame_count =
+            actor.hurt_animation_frame_count;
+        context.hurt_animation_increment = actor.hurt_animation_increment;
+        context.hurt_animation_threshold = actor.hurt_animation_threshold;
+        context.hurt_audio_event = actor.hurt_audio_event;
+        context.down_audio_event = actor.down_audio_event;
+        context.delay_primary_attribute = actor.delay_primary_attribute;
+        context.delay_secondary_attribute = actor.delay_secondary_attribute;
+        context.delay_capability_flags = actor.delay_capability_flags;
+        context.action_profile_modifiers =
+            script_action_profile_modifiers(state_.action_selection_profiles);
+        context.action_attribute_selectors =
+            script_action_attribute_selectors();
+        context.combat_meter_service_blocked =
+            field_movement_transition_state_.world_mode == 3U;
+        context.world_effect_slot_occupancy =
+            field_world_effect_slots_occupied_;
+        context.world_effect_slot_occupancy[actor.effect_slot.value()] = true;
+        context.source_projection_active = caster_projection_active(
+            actor.world_position.x, actor.world_position.y,
+            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
+            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y));
+        const auto decision = game_scripts_.actor_heartbeat(context);
+        if (!decision.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary(
+                "field.world_activity.script_actor_lua_package_failed");
+            break;
+        }
+
+        actor.ai_package_id = decision->package_id;
+        actor.ai_weapon_item_id = decision->weapon_item_id;
+        actor.ai_target_id = decision->ai_target_id.value_or("");
+        actor.ai_target_heading = decision->ai_target_heading.value_or(0U);
+        actor.ai_target_distance = decision->ai_target_distance.value_or(0U);
+        actor.action_delay = decision->action_delay;
+        actor.source_record_flags = decision->source_record_flags;
+        actor.source_behavior_flags = decision->source_behavior_flags;
+        actor.source_animation_selector =
+            decision->source_animation_selector;
+        actor.animation_direction = decision->direction;
+        actor.animation_id = decision->animation_id;
+        actor.animation_frame = decision->animation_frame;
+        actor.transition_started = decision->transition_started;
+        actor.transition_complete = decision->transition_complete;
+
+        field_world_effect_slots_occupied_[actor.effect_slot.value()] = true;
+        field_default_actors_.push_back(std::move(actor));
+        ++published;
+        source_boundary(
+            "field.world_activity.script_actor_published_from_rom_list");
+    }
+
+    pending_world_activity_script_actors_.clear();
+    pending_world_activity_script_actor_scene_.reset();
+    if (published != 0U) {
+        refresh_world_entity_service_targets();
+        state_.display_dirty_flags = static_cast<std::uint8_t>(
+            state_.display_dirty_flags | 0x0EU);
+        field_runtime_state_.display_dirty_flags = static_cast<std::uint8_t>(
+            field_runtime_state_.display_dirty_flags | 0x0EU);
+    }
+}
+
 void FieldSceneRuntime::advance_default_field_actors() {
     const auto current_scene = state_.field_scene_buffers.scene_reference;
+    publish_pending_world_activity_script_actors(current_scene);
     for (auto& actor : field_default_actors_) {
         if (!actor.active || actor.scene_reference != current_scene) {
             continue;
         }
+        const bool dynamic_world_actor = actor.temporary_world_encounter ||
+                                         actor.world_activity_script_actor;
         scripting::ScriptActorBehaviorContext context{
             actor.script_profile_id,
             actor.entity_kind,
@@ -3723,7 +3993,7 @@ void FieldSceneRuntime::advance_default_field_actors() {
             actor.transition_started,
             actor.transition_complete,
             actor.actor_instance_id,
-            actor.temporary_world_encounter
+            dynamic_world_actor
                 ? actor.movement_state.heading
                 : actor.initial_heading,
             false,
@@ -3736,11 +4006,11 @@ void FieldSceneRuntime::advance_default_field_actors() {
             script_action_attribute_selectors();
         context.combat_meter_service_blocked =
             field_movement_transition_state_.world_mode == 3U;
-        if (actor.temporary_world_encounter) {
+        if (dynamic_world_actor) {
             context.combatant = actor.combatant;
             context.source_actor_posture = actor.combatant.posture;
         }
-        if (actor.temporary_world_encounter) {
+        if (dynamic_world_actor) {
             context.dynamic_world_encounter_actor = true;
             context.source_record_flags = actor.source_record_flags;
             context.source_interaction_flags =
@@ -4174,7 +4444,7 @@ void FieldSceneRuntime::advance_default_field_actors() {
             actor.active = false;
             continue;
         }
-        if (actor.temporary_world_encounter) {
+        if (dynamic_world_actor) {
             actor.source_item_spawn_result.reset();
         }
         actor.ai_package_id = decision->package_id;
@@ -4222,11 +4492,12 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 ? "field.actor.spell.effect_requested"
                 : "field.actor.spell.action_resolved");
         }
-        if (actor.temporary_world_encounter) {
+        if (dynamic_world_actor) {
             actor.source_record_flags = decision->source_record_flags;
             actor.source_behavior_flags = decision->source_behavior_flags;
             actor.source_animation_selector =
                 decision->source_animation_selector;
+            actor.combatant.source_flags = actor.source_record_flags;
         }
         if (decision->target_motion_effect_slot_request.has_value()) {
             const auto slot = *decision->target_motion_effect_slot_request;
@@ -4327,7 +4598,7 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 }
             }
         }
-        if (actor.temporary_world_encounter &&
+        if (dynamic_world_actor &&
             decision->movement_step.has_value()) {
             const auto& step = *decision->movement_step;
             actor.movement_state.position_x = step.state.position_x;
@@ -4363,7 +4634,7 @@ void FieldSceneRuntime::advance_default_field_actors() {
             source_audio_event_callback_(
                 *decision->target_heading_audio_event);
         }
-        if (actor.temporary_world_encounter &&
+        if (dynamic_world_actor &&
             decision->source_action_dispatch.has_value() &&
             *decision->source_action_dispatch == "item_spawn_requested") {
             service_dynamic_actor_weapon_action(actor, context, *decision);
@@ -4380,7 +4651,9 @@ void FieldSceneRuntime::service_dynamic_actor_weapon_action(
             scripting::ScriptActorItemSpawnResult::blocked;
         source_boundary("field.actor.weapon_action." + std::string(reason));
     };
-    if (!actor.active || !actor.temporary_world_encounter ||
+    if (!actor.active ||
+        (!actor.temporary_world_encounter &&
+         !actor.world_activity_script_actor) ||
         actor.action_kind != scripting::ScriptActorActionKind::item ||
         actor.initial_action_code == 0U ||
         actor.initial_action_code > 12U || actor.source_action_ammo == 0U ||
@@ -4563,6 +4836,7 @@ FieldSceneRuntime::default_actor_sprite_view(
         actor.animation_direction & 0x07U);
     const DefaultActorArtwork* artwork = nullptr;
     if (!actor.temporary_world_encounter &&
+        !actor.world_activity_script_actor &&
         (actor.entity_kind == 5U || actor.entity_kind == 11U)) {
         const auto kind_index = actor.entity_kind == 5U ? 0U : 1U;
         artwork = &field_default_actor_artwork_[kind_index];
@@ -6630,6 +6904,36 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 world_activity_routine_state_.scene_id != source_scene_id;
             runtime.field_scene_gate = static_cast<std::uint16_t>(
                 world_activity_routine_state_.mode);
+            if (result == WorldActivityResult::world_script_selected) {
+                if (!world_activity_routine_state_.selected_world_script) {
+                    failure_ =
+                        "ROM selected a world actor script without its index";
+                    source_boundary(
+                        "field.world_activity.script_actor_index_missing");
+                    runtime.field_transition_requested = true;
+                } else {
+                    auto actors = game_scripts_.world_activity_actors_for_script(
+                        world_activity_routine_state_.scene_id,
+                        static_cast<std::uint16_t>(
+                            *world_activity_routine_state_
+                                 .selected_world_script));
+                    if (!actors.has_value() || actors->empty()) {
+                        failure_ = game_scripts_.failure().empty()
+                            ? "selected ROM world script has no extracted actor list"
+                            : game_scripts_.failure();
+                        source_boundary(
+                            "field.world_activity.script_actor_list_unresolved");
+                        runtime.field_transition_requested = true;
+                    } else {
+                        pending_world_activity_script_actor_scene_ =
+                            world_activity_routine_state_.scene_id;
+                        pending_world_activity_script_actors_ =
+                            std::move(*actors);
+                        source_boundary(
+                            "field.world_activity.script_actor_list_queued");
+                    }
+                }
+            }
             if (result == WorldActivityResult::resource_activity_ready) {
                 field_security_floor_index_ = static_cast<std::uint8_t>(
                     world_activity_routine_state_
@@ -12371,7 +12675,8 @@ FieldSceneRuntime::heartbeat_field_player(
                     candidate.spawn_state_flags =
                         actor->source_spawn_state_flags;
                     candidate.world_activity_actor =
-                        actor->temporary_world_encounter;
+                        actor->temporary_world_encounter ||
+                        actor->world_activity_script_actor;
                 }
                 actor_context.world_target_selection_candidates.push_back(
                     std::move(candidate));
@@ -13629,7 +13934,8 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
             context.source_record_slot = static_cast<std::uint8_t>(
                 *actor.source_record_slot);
         }
-        if (actor.temporary_world_encounter) {
+        if (actor.temporary_world_encounter ||
+            actor.world_activity_script_actor) {
             context.dynamic_world_encounter_actor = true;
             context.combatant = actor.combatant;
             context.source_actor_posture = actor.combatant.posture;
@@ -13784,12 +14090,14 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
-        if (actor.temporary_world_encounter) {
+        if (actor.temporary_world_encounter ||
+            actor.world_activity_script_actor) {
             actor.source_record_flags = decision->source_record_flags;
             actor.source_behavior_flags = decision->source_behavior_flags;
             actor.source_animation_selector =
                 decision->source_animation_selector;
             actor.source_item_spawn_result.reset();
+            actor.combatant.source_flags = actor.source_record_flags;
         }
         if (decision->spell_effect_resolution.has_value()) {
             if (decision->combat_meter_update.has_value() &&
@@ -20883,6 +21191,60 @@ std::size_t FieldSceneRuntime::dynamic_world_actor_count_for_dump() const noexce
             return actor.active && actor.temporary_world_encounter &&
                    actor.scene_reference == scene_reference;
         }));
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+std::size_t FieldSceneRuntime::world_activity_script_actor_count_for_dump()
+    const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    return static_cast<std::size_t>(std::count_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference](const DefaultFieldActorPresentation& actor) {
+            return actor.active && actor.world_activity_script_actor &&
+                   actor.scene_reference == scene_reference;
+        }));
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<SceneRunnerPosition>
+FieldSceneRuntime::world_activity_script_actor_position_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.active && candidate.world_activity_script_actor &&
+                   candidate.scene_reference == scene_reference &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+        ? std::nullopt
+        : std::optional<SceneRunnerPosition>{actor->world_position};
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<std::string>
+FieldSceneRuntime::world_activity_script_actor_profile_for_dump(
+    const std::uint16_t source_order) const {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.active && candidate.world_activity_script_actor &&
+                   candidate.scene_reference == scene_reference &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+        ? std::nullopt
+        : std::optional<std::string>{actor->script_profile_id};
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 

@@ -5132,9 +5132,18 @@ GameScriptRuntime::world_activity_actors_for_script(
         std::uint32_t entity_kind = 0U;
         std::uint32_t palette_line = 0U;
         std::uint32_t action_code = 0U;
+        std::uint32_t source_action_slot = 0U;
+        std::uint32_t source_action_ammo = 0U;
+        std::uint32_t source_action_counter = 0U;
         std::uint32_t world_x = 0U;
         std::uint32_t world_y = 0U;
         std::uint32_t heading = 0U;
+        std::uint32_t source_spawn_state_flags = 0U;
+        std::uint32_t source_interaction_flags = 0U;
+        std::uint32_t physical_meter = 0U;
+        std::uint32_t delay_primary_attribute = 0U;
+        std::uint32_t delay_secondary_attribute = 0U;
+        std::uint32_t delay_capability_flags = 0U;
         std::uint32_t list_offset = 0U;
         std::uint32_t source_record_offset = 0U;
         std::uint32_t tagged_template = 0U;
@@ -5176,6 +5185,12 @@ GameScriptRuntime::world_activity_actors_for_script(
             read_field_string(state, row_index, "action_kind", action_kind) &&
             read_field_integer(state, row_index, "action_code", 0xFFU,
                                action_code) &&
+            read_field_integer(state, row_index, "source_action_slot", 0xFFU,
+                               source_action_slot) &&
+            read_field_integer(state, row_index, "source_action_ammo", 0xFFU,
+                               source_action_ammo) &&
+            read_field_integer(state, row_index, "source_action_counter", 0xFFU,
+                               source_action_counter) &&
             read_field_integer(state, row_index, "palette_line", 3U,
                                palette_line) &&
             read_field_integer(state, row_index, "x", 0xFFFFU, world_x) &&
@@ -5183,7 +5198,23 @@ GameScriptRuntime::world_activity_actors_for_script(
             read_field_integer(state, row_index, "heading", 0xFFFFU,
                                heading) &&
             read_field_text(state, row_index, "ordered_overrides",
-                            actor.ordered_overrides, 512U);
+                            actor.ordered_overrides, 512U) &&
+            read_field_integer(state, row_index,
+                               "source_spawn_state_flags", 0xFFU,
+                               source_spawn_state_flags) &&
+            read_field_integer(state, row_index,
+                               "source_interaction_flags", 0xFFU,
+                               source_interaction_flags) &&
+            read_field_integer(state, row_index, "physical_meter", 0xFFU,
+                               physical_meter) &&
+            read_field_integer(state, row_index,
+                               "delay_primary_attribute", 0xFFU,
+                               delay_primary_attribute) &&
+            read_field_integer(state, row_index,
+                               "delay_secondary_attribute", 0xFFU,
+                               delay_secondary_attribute) &&
+            read_field_integer(state, row_index, "delay_capability_flags",
+                               0xFFFFU, delay_capability_flags);
         if (!valid) {
             return fail("world-content script actor row has invalid source fields");
         }
@@ -5210,11 +5241,123 @@ GameScriptRuntime::world_activity_actors_for_script(
         actor.position_offset = position_offset;
         actor.entity_kind = static_cast<std::uint16_t>(entity_kind);
         actor.action_code = static_cast<std::uint8_t>(action_code);
+        actor.source_action_slot =
+            static_cast<std::uint8_t>(source_action_slot);
+        actor.source_action_ammo =
+            static_cast<std::uint8_t>(source_action_ammo);
+        actor.source_action_counter =
+            static_cast<std::uint8_t>(source_action_counter);
         actor.palette_line = static_cast<std::uint8_t>(palette_line);
         actor.world_x = static_cast<std::uint16_t>(world_x);
         actor.world_y = static_cast<std::uint16_t>(world_y);
         actor.heading = static_cast<std::uint16_t>(heading);
+        actor.source_spawn_state_flags =
+            static_cast<std::uint8_t>(source_spawn_state_flags);
+        actor.source_interaction_flags =
+            static_cast<std::uint8_t>(source_interaction_flags);
+        actor.physical_meter = static_cast<std::uint8_t>(physical_meter);
+        actor.delay_primary_attribute =
+            static_cast<std::uint8_t>(delay_primary_attribute);
+        actor.delay_secondary_attribute =
+            static_cast<std::uint8_t>(delay_secondary_attribute);
+        actor.delay_capability_flags =
+            static_cast<std::uint16_t>(delay_capability_flags);
+
+        lua_getfield(state, row_index, "combatant");
+        if (!lua_istable(state, -1)) {
+            return fail("world-content actor combat facts must be a table");
+        }
+        const auto combatant_index = lua_absindex(state, -1);
+        const auto read_combatant_byte =
+            [state, combatant_index](const char* field,
+                                     std::uint8_t& destination) {
+                std::uint32_t value = 0U;
+                if (!read_field_integer(state, combatant_index, field, 0xFFU,
+                                        value)) {
+                    return false;
+                }
+                destination = static_cast<std::uint8_t>(value);
+                return true;
+            };
+        const auto read_combatant_word =
+            [state, combatant_index](const char* field,
+                                     std::uint16_t& destination) {
+                std::uint32_t value = 0U;
+                if (!read_field_integer(state, combatant_index, field, 0xFFFFU,
+                                        value)) {
+                    return false;
+                }
+                destination = static_cast<std::uint16_t>(value);
+                return true;
+            };
+        auto& combatant = actor.combatant;
+        std::uint8_t race_or_state = 0U;
+        const bool combatant_scalars_valid =
+            read_combatant_byte("physical_meter", combatant.physical_meter) &&
+            read_combatant_byte("mental_meter", combatant.mental_meter) &&
+            read_combatant_word("cyberware_flags", combatant.cyberware_flags) &&
+            read_combatant_byte("posture", combatant.posture) &&
+            read_combatant_byte("command_attribute_77",
+                                combatant.command_attribute_77) &&
+            read_combatant_byte("command_attribute_78",
+                                combatant.command_attribute_78) &&
+            read_combatant_byte("command_attribute_79",
+                                combatant.command_attribute_79) &&
+            read_combatant_byte("command_attribute_7b",
+                                combatant.command_attribute_7b) &&
+            read_combatant_byte("command_attribute_7c",
+                                combatant.command_attribute_7c) &&
+            read_combatant_byte("command_attribute_85",
+                                combatant.command_attribute_85) &&
+            read_combatant_byte("item18_base", combatant.item18_base) &&
+            read_combatant_byte("armor_index", combatant.armor_index) &&
+            read_combatant_byte("race_or_state", race_or_state) &&
+            read_combatant_byte("class_code", combatant.class_code) &&
+            read_combatant_byte("action_profile_modifier_flags",
+                                combatant.action_profile_modifier_flags) &&
+            read_combatant_byte("auxiliary_roll_bonus",
+                                combatant.auxiliary_roll_bonus);
+        if (!combatant_scalars_valid) {
+            return fail("world-content actor combat facts are invalid");
+        }
+        combatant.race_or_state = static_cast<std::int8_t>(race_or_state);
+        const auto read_combatant_array =
+            [state, combatant_index](const char* field, auto& destination) {
+                lua_getfield(state, combatant_index, field);
+                if (!lua_istable(state, -1) ||
+                    lua_rawlen(state, -1) != destination.size()) {
+                    lua_pop(state, 1);
+                    return false;
+                }
+                const auto array_index = lua_absindex(state, -1);
+                bool valid = true;
+                for (std::size_t element = 0U;
+                     element < destination.size(); ++element) {
+                    lua_rawgeti(state, array_index,
+                                static_cast<lua_Integer>(element + 1U));
+                    std::uint32_t value = 0U;
+                    valid = valid && read_integer(state, -1, 0xFFU, value);
+                    lua_pop(state, 1);
+                    if (!valid) {
+                        break;
+                    }
+                    destination[element] =
+                        static_cast<std::uint8_t>(value);
+                }
+                lua_pop(state, 1);
+                return valid;
+            };
+        if (!read_combatant_array("item_codes", combatant.item_codes) ||
+            !read_combatant_array("item_phases", combatant.item_phases) ||
+            !read_combatant_array("action_phase_extension",
+                                  combatant.action_phase_extension) ||
+            !read_combatant_array("action_skills", combatant.action_skills)) {
+            return fail("world-content actor combat arrays are invalid");
+        }
+        combatant.interaction_flags = actor.source_interaction_flags;
+        combatant.equipped_action_code = actor.action_code;
         actors.push_back(std::move(actor));
+        lua_pop(state, 1);
         lua_pop(state, 1);
     }
     lua_settop(state, stack_base);

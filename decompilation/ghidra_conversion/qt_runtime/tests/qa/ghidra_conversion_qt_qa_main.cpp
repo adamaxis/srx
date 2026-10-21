@@ -18507,6 +18507,15 @@ int run_field_owlfeather_physical_entry_qa(
              !field_scene.dialogue_open(); ++settle) {
             field_scene.advance_frame();
         }
+        if (ilene_gate_script_qa) {
+            for (std::uint8_t service = 0U;
+                 service < 8U &&
+                 field_scene.world_activity_script_actor_count_for_dump() == 0U &&
+                 field_scene.field_scene_reference_for_dump() == 13U;
+                 ++service) {
+                field_scene.advance_frame();
+            }
+        }
         const auto transition_frames =
             field_scene.field_modal_return_transition_frames_for_dump();
         const auto opened_services = std::count(
@@ -18516,6 +18525,17 @@ int run_field_owlfeather_physical_entry_qa(
             field_scene.world_activity_state_for_dump();
         const bool script_selected =
             world_activity.selected_world_script == 3U;
+        const auto script_actor_position =
+            field_scene.world_activity_script_actor_position_for_dump(0U);
+        const auto script_actor_profile =
+            field_scene.world_activity_script_actor_profile_for_dump(0U);
+        const bool script_actor_published =
+            field_scene.world_activity_script_actor_count_for_dump() == 1U &&
+            script_actor_position.has_value() &&
+            script_actor_position->x == 0x1100U &&
+            script_actor_position->y == 0x0300U &&
+            script_actor_profile ==
+                std::optional<std::string>{"lone11_k0a_item03"};
         const auto destination_image = render();
         if (field_scene.dialogue_open() ||
             field_scene.field_scene_reference_for_dump() != 13U ||
@@ -18523,6 +18543,7 @@ int run_field_owlfeather_physical_entry_qa(
             opened_services != 0 ||
             field_scene.field_interaction_open() ||
             (ilene_gate_script_qa && !script_selected) ||
+            (ilene_gate_script_qa && !script_actor_published) ||
             (closed_gate_qa && script_selected) ||
             (ilene_gate_script_qa &&
              (field_scene.field_world_fact_flags_for_dump() &
@@ -18538,6 +18559,15 @@ int run_field_owlfeather_physical_entry_qa(
                       << static_cast<unsigned>(transition_frames)
                       << ", services=" << opened_services
                       << ", selected_script=" << script_selected
+                      << ", script_actor_count="
+                      << field_scene.world_activity_script_actor_count_for_dump()
+                      << ", script_actor_position="
+                      << (script_actor_position.has_value()
+                              ? std::to_string(script_actor_position->x) + "," +
+                                    std::to_string(script_actor_position->y)
+                              : std::string("missing"))
+                      << ", script_actor_profile="
+                      << script_actor_profile.value_or("missing")
                       << ", dialogue=" << field_scene.dialogue_open()
                       << ", failure=" << field_scene.failure() << ")\n";
             return 3;

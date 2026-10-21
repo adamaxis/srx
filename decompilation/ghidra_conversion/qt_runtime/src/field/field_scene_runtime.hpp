@@ -292,6 +292,13 @@ public:
     void paint_field_scene_for_dump(QPainter& painter) const;
     std::size_t default_actor_count_for_dump() const noexcept;
     std::size_t dynamic_world_actor_count_for_dump() const noexcept;
+    std::size_t world_activity_script_actor_count_for_dump() const noexcept;
+    std::optional<SceneRunnerPosition>
+    world_activity_script_actor_position_for_dump(
+        std::uint16_t source_order) const noexcept;
+    std::optional<std::string>
+    world_activity_script_actor_profile_for_dump(
+        std::uint16_t source_order) const;
     std::size_t visible_default_actor_count_for_dump() const;
     std::vector<SceneRunnerPosition>
     active_default_actor_positions_for_dump() const;
@@ -1421,6 +1428,8 @@ private:
         const ConversionAssetCatalog& catalog);
     void initialize_default_field_actors(std::uint16_t scene_reference);
     void advance_default_field_actors();
+    void publish_pending_world_activity_script_actors(
+        std::uint16_t scene_reference);
     void service_dynamic_actor_weapon_action(
         DefaultFieldActorPresentation& actor,
         const scripting::ScriptActorBehaviorContext& context,
@@ -1627,6 +1636,10 @@ private:
         scripting::ScriptCombatantFacts combatant{};
         std::optional<std::uint8_t> effect_slot;
         bool temporary_world_encounter = false;
+        // ROM-selected scene script actors share the dynamic actor behavior
+        // package, but their lifetime is tied to the selected scene script,
+        // not to a random encounter sequence.
+        bool world_activity_script_actor = false;
         bool target_selected = false;
         bool target_marker_visible = false;
         bool target_marker_animating = false;
@@ -2049,6 +2062,10 @@ private:
     std::vector<EntityServiceTargetRecord> field_entity_target_records_{16U};
     std::optional<scripting::ScriptFieldEncounterOutcome>
         pending_field_encounter_outcome_;
+    std::optional<std::uint16_t>
+        pending_world_activity_script_actor_scene_;
+    std::vector<scripting::ScriptWorldActivityActor>
+        pending_world_activity_script_actors_;
     std::array<std::vector<QImage>, 16> field_weapon_projectile_images_{};
     std::array<std::vector<int>, 16> field_weapon_projectile_origin_x_{};
     std::array<std::vector<int>, 16> field_weapon_projectile_origin_y_{};

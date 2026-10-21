@@ -6670,6 +6670,34 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::string list_id;
         std::string activation_rule;
     };
+    struct WorldActivityActorTemplateFacts {
+        std::uint8_t source_spawn_state_flags = 0U;
+        std::uint8_t source_interaction_flags = 0U;
+        std::uint8_t physical_meter = 0U;
+        std::uint8_t delay_primary_attribute = 0U;
+        std::uint8_t delay_secondary_attribute = 0U;
+        std::uint16_t delay_capability_flags = 0U;
+        std::uint8_t mental_meter = 0U;
+        std::uint16_t cyberware_flags = 0U;
+        std::uint8_t posture = 0U;
+        std::uint8_t attribute_77 = 0U;
+        std::uint8_t attribute_78 = 0U;
+        std::uint8_t attribute_79 = 0U;
+        std::uint8_t attribute_7b = 0U;
+        std::uint8_t attribute_7c = 0U;
+        std::uint8_t attribute_85 = 0U;
+        std::uint8_t item18_base = 0U;
+        std::uint8_t armor_index = 0U;
+        std::int8_t race_or_state = 0;
+        std::uint8_t class_code = 0U;
+        std::uint8_t modifier_flags_df = 0U;
+        std::uint16_t profile_index_a0 = 0U;
+        std::array<std::uint8_t, 8> item_codes{};
+        std::array<std::uint8_t, 8> item_phases{};
+        std::array<std::uint8_t, 10> action_phase_extension{};
+        std::array<std::uint8_t, 4> action_skills{};
+        std::uint8_t auxiliary_roll_bonus = 0U;
+    };
     struct WorldActivityActorRecord {
         std::uint16_t scene_id;
         std::int16_t script_index;
@@ -6695,6 +6723,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint16_t heading;
         std::string overrides;
         std::string activation_rule;
+        WorldActivityActorTemplateFacts template_facts;
     };
     const std::array<WorldActivityActorList, 13> kWorldActivityActorLists{{
         {0x0AU, 0, 0x17018U, "scene_10_event_6_script",
@@ -6724,6 +6753,50 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         {0x2FU, -1, 0x1E628U, "pending_list_1e628",
          "0x43B6 pending-list continuation for pointer 0x1E628"},
     }};
+    const auto read_world_activity_actor_template_facts = [&rom](
+        const std::size_t template_offset) {
+        WorldActivityActorTemplateFacts facts{};
+        facts.source_spawn_state_flags = rom[template_offset + 0x9EU];
+        facts.source_interaction_flags = rom[
+            shadowrun::rom::kPostObjectEntityTemplate + 0x11U];
+        facts.physical_meter = rom[template_offset + 0x04U];
+        facts.posture = rom[template_offset + 0x05U];
+        facts.delay_primary_attribute = rom[template_offset + 0x2AU];
+        facts.delay_secondary_attribute = rom[template_offset + 0x2DU];
+        facts.delay_capability_flags = read_big_endian_word(
+            rom, template_offset + 0x44U);
+        facts.mental_meter = rom[template_offset + 0x43U];
+        facts.cyberware_flags = facts.delay_capability_flags;
+        facts.attribute_77 = rom[template_offset + 0x29U];
+        facts.attribute_78 = rom[template_offset + 0x2AU];
+        facts.attribute_79 = rom[template_offset + 0x2BU];
+        facts.attribute_7b = rom[template_offset + 0x2DU];
+        facts.attribute_7c = rom[template_offset + 0x2EU];
+        facts.attribute_85 = rom[template_offset + 0x37U];
+        facts.item18_base = rom[template_offset + 0x32U];
+        facts.armor_index = rom[template_offset + 0x28U];
+        facts.race_or_state = static_cast<std::int8_t>(
+            rom[template_offset + 0x41U]);
+        facts.class_code = rom[template_offset + 0x42U];
+        facts.modifier_flags_df = rom[
+            shadowrun::rom::kPostObjectEntityTemplate + 0xDFU];
+        facts.profile_index_a0 = read_big_endian_word(
+            rom, template_offset + 0x46U);
+        for (std::size_t index = 0U; index < facts.item_codes.size(); ++index) {
+            facts.item_codes[index] = rom[template_offset + 0x18U + index];
+            facts.item_phases[index] = rom[template_offset + 0x20U + index];
+        }
+        for (std::size_t index = 0U;
+             index < facts.action_phase_extension.size(); ++index) {
+            facts.action_phase_extension[index] =
+                rom[template_offset + 0x28U + index];
+        }
+        for (std::size_t index = 0U; index < facts.action_skills.size(); ++index) {
+            facts.action_skills[index] = rom[template_offset + 0x33U + index];
+        }
+        facts.auxiliary_roll_bonus = rom[template_offset + 0x49U];
+        return facts;
+    };
     std::vector<WorldActivityActorRecord> world_activity_actor_records;
     for (const auto& list : kWorldActivityActorLists) {
         auto cursor = static_cast<std::size_t>(list.list_offset);
@@ -6739,12 +6812,14 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             const auto template_offset = tagged_template & 0x7FFFFFFFU;
             const auto position_offset = read_big_endian_long(rom, cursor + 4U);
             if (template_offset > rom.size() ||
-                rom.size() - template_offset < 0x4AU ||
+                rom.size() - template_offset < 0xA0U ||
                 position_offset > rom.size() ||
                 rom.size() - position_offset < 4U) {
                 throw std::runtime_error(
                     "world-activity actor record points outside ROM");
             }
+            auto template_facts =
+                read_world_activity_actor_template_facts(template_offset);
             const auto actor_name = read_actor_name(template_offset);
             const auto entity_kind = read_big_endian_word(rom, template_offset);
             const auto palette_line = static_cast<std::uint8_t>(
@@ -6787,6 +6862,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     } else if (byte_offset == 0x2FU) {
                         heading = static_cast<std::uint16_t>(
                             (heading & 0xFF00U) | byte_value);
+                    } else if (byte_offset == 0x11U) {
+                        template_facts.source_interaction_flags = byte_value;
+                    } else if (byte_offset == 0x9EU) {
+                        template_facts.source_spawn_state_flags = byte_value;
                     }
                     first_override = false;
                     pair_offset += 2U;
@@ -6827,6 +6906,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 heading,
                 first_override ? "-" : overrides.str(),
                 list.activation_rule,
+                template_facts,
             });
             cursor = next_record;
         }
@@ -6874,9 +6954,37 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                  "\tsource_record_offset\ttagged_template"
                  "\ttemplate_offset\tposition_offset\tentity_kind"
                  "\tactor_name\tprofile_id\tsprite_stem\taction_kind"
-                 "\taction_code"
+                 "\taction_code\tsource_action_slot"
+                 "\tsource_action_ammo\tsource_action_counter"
                  "\tpalette_line\tworld_x\tworld_y\tinitial_heading"
-                 "\tordered_overrides\tactivation_rule\n";
+                 "\tordered_overrides\tactivation_rule"
+                 "\tsource_spawn_state_flags\tsource_interaction_flags"
+                 "\tphysical_meter\tdelay_primary_attribute"
+                 "\tdelay_secondary_attribute\tdelay_capability_flags"
+                 "\tcombat_mental_meter\tcombat_cyberware_flags"
+                 "\tcombat_posture\tcombat_attribute_77"
+                 "\tcombat_attribute_78\tcombat_attribute_79"
+                 "\tcombat_attribute_7b\tcombat_attribute_7c"
+                 "\tcombat_attribute_85\tcombat_item18_base"
+                 "\tcombat_armor_index\tcombat_race_or_state"
+                 "\tcombat_class_code\tcombat_modifier_flags_df"
+                 "\tcombat_profile_index_a0"
+                 "\tcombat_item_code_0\tcombat_item_code_1"
+                 "\tcombat_item_code_2\tcombat_item_code_3"
+                 "\tcombat_item_code_4\tcombat_item_code_5"
+                 "\tcombat_item_code_6\tcombat_item_code_7"
+                 "\tcombat_item_phase_0\tcombat_item_phase_1"
+                 "\tcombat_item_phase_2\tcombat_item_phase_3"
+                 "\tcombat_item_phase_4\tcombat_item_phase_5"
+                 "\tcombat_item_phase_6\tcombat_item_phase_7"
+                 "\tcombat_action_phase_76\tcombat_action_phase_77"
+                 "\tcombat_action_phase_78\tcombat_action_phase_79"
+                 "\tcombat_action_phase_7a\tcombat_action_phase_7b"
+                 "\tcombat_action_phase_7c\tcombat_action_phase_7d"
+                 "\tcombat_action_phase_7e\tcombat_action_phase_7f"
+                 "\tcombat_action_skill_81\tcombat_action_skill_82"
+                 "\tcombat_action_skill_83\tcombat_action_skill_84"
+                 "\tcombat_auxiliary_roll_bonus\n";
         for (const auto& actor : world_activity_actor_records) {
             table << actor.scene_id << '\t' << actor.list_id << '\t'
                   << format_offset(actor.list_offset) << '\t'
@@ -6890,10 +6998,66 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                   << actor.profile_id << '\t' << actor.sprite_stem << '\t'
                   << actor.action_kind << '\t'
                   << static_cast<unsigned>(actor.action_code) << '\t'
+                  << static_cast<unsigned>(actor.source_action_slot) << '\t'
+                  << static_cast<unsigned>(actor.source_action_ammo) << '\t'
+                  << static_cast<unsigned>(actor.source_action_counter) << '\t'
                   << static_cast<unsigned>(actor.palette_line) << '\t'
                   << actor.world_x << '\t' << actor.world_y << '\t'
                   << actor.heading << '\t' << actor.overrides << '\t'
-                  << actor.activation_rule << '\n';
+                  << actor.activation_rule << '\t'
+                  << static_cast<unsigned>(
+                         actor.template_facts.source_spawn_state_flags) << '\t'
+                  << static_cast<unsigned>(
+                         actor.template_facts.source_interaction_flags) << '\t'
+                  << static_cast<unsigned>(actor.template_facts.physical_meter)
+                  << '\t'
+                  << static_cast<unsigned>(
+                         actor.template_facts.delay_primary_attribute) << '\t'
+                  << static_cast<unsigned>(
+                         actor.template_facts.delay_secondary_attribute) << '\t'
+                  << actor.template_facts.delay_capability_flags << '\t'
+                  << static_cast<unsigned>(actor.template_facts.mental_meter)
+                  << '\t' << actor.template_facts.cyberware_flags << '\t'
+                  << static_cast<unsigned>(actor.template_facts.posture) << '\t'
+                  << static_cast<unsigned>(actor.template_facts.attribute_77)
+                  << '\t'
+                  << static_cast<unsigned>(actor.template_facts.attribute_78)
+                  << '\t'
+                  << static_cast<unsigned>(actor.template_facts.attribute_79)
+                  << '\t'
+                  << static_cast<unsigned>(actor.template_facts.attribute_7b)
+                  << '\t'
+                  << static_cast<unsigned>(actor.template_facts.attribute_7c)
+                  << '\t'
+                  << static_cast<unsigned>(actor.template_facts.attribute_85)
+                  << '\t'
+                  << static_cast<unsigned>(actor.template_facts.item18_base)
+                  << '\t'
+                  << static_cast<unsigned>(actor.template_facts.armor_index)
+                  << '\t'
+                  << static_cast<unsigned>(static_cast<std::uint8_t>(
+                         actor.template_facts.race_or_state)) << '\t'
+                  << static_cast<unsigned>(actor.template_facts.class_code)
+                  << '\t'
+                  << static_cast<unsigned>(
+                         actor.template_facts.modifier_flags_df) << '\t'
+                  << actor.template_facts.profile_index_a0;
+            for (const auto value : actor.template_facts.item_codes) {
+                table << '\t' << static_cast<unsigned>(value);
+            }
+            for (const auto value : actor.template_facts.item_phases) {
+                table << '\t' << static_cast<unsigned>(value);
+            }
+            for (const auto value :
+                 actor.template_facts.action_phase_extension) {
+                table << '\t' << static_cast<unsigned>(value);
+            }
+            for (const auto value : actor.template_facts.action_skills) {
+                table << '\t' << static_cast<unsigned>(value);
+            }
+            table << '\t' << static_cast<unsigned>(
+                         actor.template_facts.auxiliary_roll_bonus)
+                  << '\n';
         }
         if (!table) {
             throw std::runtime_error(
