@@ -461,6 +461,10 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_matrix_deck_parent_row;
     bool top_matrix_deck_parent_program_name_present = false;
     std::string top_matrix_deck_parent_program_name;
+    bool top_matrix_storage_panel_lines_present = false;
+    std::array<std::string, 6> top_matrix_storage_panel_lines{};
+    std::optional<int> top_matrix_storage_total;
+    std::optional<int> top_matrix_storage_available;
     std::optional<int> top_matrix_countdown;
     std::optional<int> top_matrix_transition_fade_step;
     bool top_matrix_map_cells_present = false;

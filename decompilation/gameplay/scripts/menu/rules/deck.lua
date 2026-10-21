@@ -56,6 +56,14 @@ M.STAT_LABELS = {
 M.PROGRAM_DETAIL_LABELS = {
     "Size. . . . . .  Mp", "Free Memory . .  Mp", "Load Time . .  Secs",
 } -- ROM 0xE38C6; written at $C2A6 for installed programs 0..11.
+M.STORAGE_PANEL_LINES = {
+    "      Storage",
+    "      [" .. string.rep("\\", 8),
+    "Total  . . . . . Mp",
+    "Available. . . . Mp",
+    "     DataFiles",
+    "     [" .. string.rep("\\", 9),
+} -- ROM 0xE3A07; 0x80 advances one text row, including the blank row.
 M.RUNNER_DETAIL_LABELS = { "Success", "Defense" }
 M.NO_ACTIVE_RUN_DETAILS = { "Unknown", "Unknown" } -- ROM 0xE4370 at $C4B4.
 

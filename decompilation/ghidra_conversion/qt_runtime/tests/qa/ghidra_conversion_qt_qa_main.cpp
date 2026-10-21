@@ -24696,11 +24696,114 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
+                // Storage is the second utility on the retained Command row.
+                // Its ROM entry redraws only the right panel and leaves the
+                // selected row, installed icons, and footer in place.
+                tap_qa_controller_button(field_scene, 0x40U); // Keep running.
+                tap_qa_controller_button(field_scene, 0x04U);
+                tap_qa_controller_button(field_scene, 0x04U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto storage_route =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                const std::array<std::string, 6> kStoragePanelLines{{
+                    "      Storage",
+                    std::string("      [") + std::string(8U, '\\'),
+                    "Total  . . . . . Mp",
+                    "Available. . . . Mp",
+                    "     DataFiles",
+                    std::string("     [") + std::string(9U, '\\'),
+                }};
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::DECK_STORAGE) ||
+                    storage_route.top_title != "Storage" ||
+                    storage_route.top_option_labels !=
+                        std::vector<std::string>{"View", "Erase"} ||
+                    storage_route.top_row != 0 ||
+                    storage_route.top_matrix_deck_parent_column != 1 ||
+                    storage_route.top_matrix_deck_parent_row != 3 ||
+                    !storage_route.top_matrix_storage_panel_lines_present ||
+                    storage_route.top_matrix_storage_panel_lines !=
+                        kStoragePanelLines ||
+                    storage_route.top_matrix_storage_total != 1000 ||
+                    storage_route.top_matrix_storage_available != 973 ||
+                    !storage_route.top_matrix_deck_program_ratings_present ||
+                    storage_route.top_matrix_deck_program_ratings !=
+                        kExpectedCyberdeckRatings ||
+                    !storage_route.top_matrix_deck_active_programs_present ||
+                    storage_route.top_matrix_deck_active_programs !=
+                        std::array<std::int8_t, 5>{9, 0, -1, -1, -1} ||
+                    !storage_route
+                         .top_matrix_deck_program_slot_status_present ||
+                    storage_route.top_matrix_deck_program_slot_status !=
+                        kExpectedCyberdeckSlotStatus) {
+                    std::cerr << "Matrix CyberInfo QA: Storage did not expose "
+                                 "its ROM panel and retained deck state\n";
+                    return 3;
+                }
+                const auto storage_image = capture("deck-storage");
+                const auto storage_dump = output / "deck-storage";
+                std::filesystem::create_directories(storage_dump);
+                const bool storage_full_frame =
+                    full_cyberdeck_frame(storage_image);
+                const bool storage_retained_surface =
+                    retained_deck_surface_matches(
+                        storage_image,
+                        storage_route.top_matrix_deck_palette_phase.value_or(0),
+                        3, storage_route.top_matrix_deck_program_ratings,
+                        storage_route.top_matrix_deck_active_programs,
+                        storage_route.top_matrix_deck_program_slot_status);
+                const bool storage_function_icon = source_pixels_match_at(
+                        storage_image, 48, 144,
+                        "cyberspace/matrix/program-icon-13.bmp");
+                const std::array<QRect, 21> storage_text_cell_bounds{{
+                    QRect(200, 16, 8, 8), QRect(248, 16, 8, 8),
+                    QRect(200, 24, 8, 8), QRect(264, 24, 8, 8),
+                    QRect(152, 32, 8, 8), QRect(296, 32, 8, 8),
+                    QRect(248, 32, 8, 8), QRect(272, 32, 8, 8),
+                    QRect(152, 40, 8, 8), QRect(296, 40, 8, 8),
+                    QRect(256, 40, 8, 8), QRect(272, 40, 8, 8),
+                    QRect(192, 56, 8, 8), QRect(256, 56, 8, 8),
+                    QRect(192, 64, 8, 8), QRect(264, 64, 8, 8),
+                    QRect(200, 80, 8, 8), QRect(216, 80, 8, 8),
+                    QRect(240, 80, 8, 8), QRect(216, 96, 8, 8),
+                    QRect(248, 96, 8, 8),
+                }};
+                std::vector<QPoint> missing_storage_text_cells;
+                for (const auto& bounds : storage_text_cell_bounds) {
+                    if (!has_matrix_green(storage_image, bounds)) {
+                        missing_storage_text_cells.emplace_back(
+                            bounds.x(), bounds.y());
+                    }
+                }
+                const bool storage_text_cells =
+                    missing_storage_text_cells.empty();
+                const bool storage_actual_written =
+                    save_qa_image(storage_dump, "actual.bmp", storage_image);
+                if (!storage_full_frame || !storage_retained_surface ||
+                    !storage_function_icon || !storage_text_cells ||
+                    !storage_actual_written) {
+                    std::cerr << "Matrix CyberInfo QA: Storage frame does not "
+                                 "match ROM panel origins, options, grid, or "
+                                 "footer, or could not write actual.bmp"
+                              << " (full=" << storage_full_frame
+                              << ", retained=" << storage_retained_surface
+                              << ", function_icon=" << storage_function_icon
+                              << ", text_cells=" << storage_text_cells
+                              << ", dump=" << storage_actual_written << ")\n";
+                    for (const auto& point : missing_storage_text_cells) {
+                        std::cerr << " missing-cell=(" << point.x() << ','
+                                  << point.y() << ')';
+                    }
+                    std::cerr << '\n';
+                    return 3;
+                }
+
+                tap_qa_controller_button(field_scene, 0x80U); // Close Storage.
                 // The ROM's first deck loop returns through the world-mode
                 // traversal before the node-action loop. Exercise that live
                 // route and retain a complete 320x224 artifact for visual
                 // review, including the lower HUD/footer rows.
-                tap_qa_controller_button(field_scene, 0x40U); // A: keep running
                 if (field_scene.field_menu_route_screen_for_dump() !=
                     static_cast<std::uint16_t>(srx::MenuScreen::CYBERDECK)) {
                     std::cerr << "Matrix traversal QA: No did not return to "

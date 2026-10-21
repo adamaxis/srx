@@ -25,6 +25,15 @@ place. Lua now passes that parent row plus live deck artwork state to the
 presenter; CyberInfo, Run Info, and Deck Stats QA checks the retained assets in
 full frames. The Cyberdeck hill remains partial pending broader Matrix visual
 and action coverage.
+The Storage root at ROM `0x18D1A` now keeps that same parent row, program grid,
+and footer, then draws the source panel and live total/available capacity. Its
+`Storage`, `View`, and `Erase` text comes from `0xE3A07`/`0xE38BA`; the numeric
+writes at `$C244`/`$C2C4` align at `(272,32)`/`(272,40)`. Debug and Release QA
+write `deck-storage/actual.bmp` and check all six panel rows, both options,
+capacity values, the retained program icon, and the complete 320x224 deck
+surface. The two captures have matching SHA-256 hashes. View and Erase child
+flows are still incomplete, and no independent Genesis Storage frame has been
+identified, so this screen remains partial.
 The loaded-program prompt at `0x19238` also redraws only the right panel,
 starting at `$C628`; the selected program detail panel above it and the parent
 grid/footer remain visible. Lua carries the parent program's name, rating, and

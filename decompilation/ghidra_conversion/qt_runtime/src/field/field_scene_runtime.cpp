@@ -19627,7 +19627,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             if (routed_screen == srx::MenuScreen::CYBERDECK ||
                 routed_screen == srx::MenuScreen::PULL_PLUG ||
                 routed_screen == srx::MenuScreen::DECK_CYBERINFO ||
-                routed_screen == srx::MenuScreen::DECK_PROGRAM) {
+                routed_screen == srx::MenuScreen::DECK_PROGRAM ||
+                routed_screen == srx::MenuScreen::DECK_STORAGE) {
                 // 0x17708 writes the five 3x2 installed/empty slot records
                 // at y=184, then 0x19856 writes each 3-tile status strip at
                 // y=208. The five slots begin at x=80 with 48-pixel spacing.
@@ -19739,6 +19740,13 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 // remain visible while the loaded-program prompt is active.
                 draw_retained_deck_grid(
                     routed_menu.top_matrix_deck_parent_row.value_or(0));
+            }
+            if (routed_screen == srx::MenuScreen::DECK_STORAGE) {
+                // ROM 0x18D1A enters 0x1897C before drawing the storage panel
+                // at $C126. The parent row, program grid, and 0x17708 footer
+                // therefore remain visible behind this right-panel screen.
+                draw_retained_deck_grid(
+                    routed_menu.top_matrix_deck_parent_row.value_or(3));
             }
             if (routed_screen == srx::MenuScreen::CYBERDECK &&
                 has_deck_info) {
@@ -20009,6 +20017,46 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     }
                     draw_matrix_text(232, y,
                                      routed_menu.top_option_labels[option]);
+                }
+                return;
+            }
+
+            if (routed_screen == srx::MenuScreen::DECK_STORAGE) {
+                // ROM 0x18D22 streams the panel rows at $C126, $C1A6, $C226,
+                // $C2A6, $C3A6, and $C426. The blank row before DataFiles is
+                // retained as a gap in these explicit native coordinates.
+                constexpr std::array<int, 6> kStoragePanelY{{
+                    16, 24, 32, 40, 56, 64}};
+                if (routed_menu.top_matrix_storage_panel_lines_present) {
+                    for (std::size_t line = 0U;
+                         line < kStoragePanelY.size(); ++line) {
+                        draw_matrix_text(
+                            152, kStoragePanelY[line],
+                            routed_menu.top_matrix_storage_panel_lines[line]);
+                    }
+                }
+                const auto draw_storage_value = [&draw_matrix_text](
+                                                    const int y,
+                                                    const std::optional<int>& value) {
+                    if (!value.has_value()) return;
+                    const auto text = std::to_string(*value);
+                    const auto x = 272 -
+                        static_cast<int>(text.size() - 1U) * 8;
+                    draw_matrix_text(x, y, text);
+                };
+                draw_storage_value(32, routed_menu.top_matrix_storage_total);
+                draw_storage_value(40,
+                                   routed_menu.top_matrix_storage_available);
+                for (std::size_t option = 0U;
+                     option < routed_menu.top_option_labels.size() &&
+                     option < 2U;
+                     ++option) {
+                    const auto y = 80 + static_cast<int>(option) * 16;
+                    if (routed_menu.top_row == static_cast<int>(option)) {
+                        draw_matrix_text(200, y, ">");
+                    }
+                    draw_matrix_text(
+                        216, y, routed_menu.top_option_labels[option]);
                 }
                 return;
             }

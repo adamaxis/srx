@@ -1893,6 +1893,20 @@ struct GameScriptRuntime::Impl {
                         state, -1,
                         menu_route_state.top_matrix_deck_parent_program_name);
                 lua_pop(state, 1);
+                const auto storage_panel_lines = read_string_array(
+                    screen_state_index, "storage_panel_lines", 6U);
+                if (storage_panel_lines.size() ==
+                    menu_route_state.top_matrix_storage_panel_lines.size()) {
+                    std::copy(
+                        storage_panel_lines.begin(), storage_panel_lines.end(),
+                        menu_route_state.top_matrix_storage_panel_lines.begin());
+                    menu_route_state.top_matrix_storage_panel_lines_present =
+                        true;
+                }
+                menu_route_state.top_matrix_storage_total =
+                    read_optional(screen_state_index, "storage_total");
+                menu_route_state.top_matrix_storage_available =
+                    read_optional(screen_state_index, "storage_available");
                 const auto deck_palette_phase =
                     read_optional(screen_state_index,
                                   "deck_palette_phase");

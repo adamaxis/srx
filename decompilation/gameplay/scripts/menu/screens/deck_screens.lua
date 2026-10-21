@@ -205,12 +205,22 @@ function Storage.new(args)
     args = args or {}
     local deck_palette = args.deck_palette or DeckPalette.new()
     return { row = 0, matrix_state = args.matrix_state,
+             deck_parent_col = args.deck_parent_col or args.col,
+             deck_parent_row = args.deck_parent_row or args.row,
              deck_palette = deck_palette,
              deck_palette_phase = DeckPalette.phase(deck_palette) }
 end
+local function update_storage_panel(st, ctx)
+    local record = ctx.game.deck_record()
+    st.storage_panel_lines = D.STORAGE_PANEL_LINES
+    st.storage_total = record.storage or 0
+    st.storage_available = D.free_storage(record)
+    Cyberdeck.update_program_art_state(st, ctx)
+end
 function Storage.enter(st, ctx)
-    st.title = "Cyberdeck Storage"
-    st.labels = { "View Files", "Erase File" }
+    update_storage_panel(st, ctx)
+    st.title = "Storage"
+    st.labels = { "View", "Erase" }
     ctx.redraw(R.SUBMENU)
 end
 local function return_file_list(ctx)
@@ -222,7 +232,9 @@ local function return_file_list(ctx)
     return { transition = T.POP, result = { text = text } }
 end
 function Storage.input(st, events, ctx)
+    tick_palette(st, ctx)
     service_program_loading(st, ctx)
+    update_storage_panel(st, ctx)
     local g = ctx.game
     if st.phase == "erase" then
         if events & (P.UP | P.DOWN) ~= 0 then
