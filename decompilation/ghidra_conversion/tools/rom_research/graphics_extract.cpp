@@ -14,6 +14,7 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -57,6 +58,31 @@ std::uint32_t read_big_endian_long(
            static_cast<std::uint32_t>(bytes[offset + 3U]);
 }
 
+std::string read_multiline_rom_text(const std::vector<std::uint8_t>& rom,
+                                    const std::size_t offset,
+                                    const std::size_t length,
+                                    const std::string_view label) {
+    if (offset > rom.size() || length > rom.size() - offset) {
+        throw std::runtime_error(std::string(label) + " exceeds the ROM image");
+    }
+    std::string text;
+    text.reserve(length);
+    for (std::size_t index = 0; index < length; ++index) {
+        const auto byte = rom[offset + index];
+        if (byte == 0xFFU) {
+            break;
+        }
+        if (byte == 0x80U) {
+            text.push_back('\n');
+        } else if (byte >= 0x20U && byte <= 0x7EU) {
+            text.push_back(static_cast<char>(byte));
+        } else {
+            text.push_back(' ');
+        }
+    }
+    return text;
+}
+
 std::vector<std::uint8_t> read_file(const std::string& path) {
     std::ifstream input(path, std::ios::binary);
     if (!input) {
@@ -64,6 +90,74 @@ std::vector<std::uint8_t> read_file(const std::string& path) {
     }
     return std::vector<std::uint8_t>(
         std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+}
+
+std::vector<std::uint16_t> decode_hud_sprite_stream_for_asset(
+    const std::vector<std::uint8_t>& rom,
+    const std::size_t source_offset,
+    const std::string_view label) {
+    // Offline extraction of the 0x1728 name-word format. Runtime rendering
+    // consumes the resulting full-screen bitmap; it never walks this stream.
+    if (source_offset > rom.size() || rom.size() - source_offset < 3U) {
+        throw std::runtime_error(std::string(label) + " is truncated");
+    }
+    const auto tile_base = read_big_endian_word(rom, source_offset);
+    auto cursor = source_offset + 2U;
+    std::vector<std::uint16_t> words;
+    words.reserve(40U * 28U);
+
+    const auto read_byte = [&]() {
+        if (cursor >= rom.size()) {
+            throw std::runtime_error(std::string(label) + " packet is truncated");
+        }
+        return rom[cursor++];
+    };
+    const auto append = [&words, tile_base](const std::uint16_t delta) {
+        words.push_back(static_cast<std::uint16_t>(tile_base + delta));
+    };
+
+    for (;;) {
+        const auto control = read_byte();
+        if (control == 0U) {
+            break;
+        }
+        const auto encoded_count = static_cast<unsigned>(control & 0x1FU);
+        if (control >= 0xC1U) {
+            // 0x1728's BGT loop emits N words, with zero encoding one word.
+            const auto count = std::max(encoded_count, 1U);
+            if ((control & 0x20U) == 0U) {
+                for (unsigned index = 0U; index < count; ++index) {
+                    append(read_byte());
+                }
+            } else {
+                for (unsigned index = 0U; index < count; ++index) {
+                    const auto delta = read_big_endian_word(rom, cursor);
+                    cursor += 2U;
+                    append(delta);
+                }
+            }
+        } else {
+            const auto step = control < 0x41U
+                                  ? -1
+                                  : (control < 0x81U ? 0 : 1);
+            // Every step run enters the shared BGE loop at 0x1816 and emits
+            // N+1 words. Only literal runs use the separate BGT loop.
+            const auto count = encoded_count + 1U;
+            std::uint16_t delta = 0U;
+            if ((control & 0x20U) != 0U) {
+                delta = read_big_endian_word(rom, cursor);
+                cursor += 2U;
+            } else {
+                delta = read_byte();
+            }
+            for (unsigned index = 0U; index < count; ++index) {
+                append(delta);
+                delta = static_cast<std::uint16_t>(
+                    static_cast<int>(delta) + step);
+            }
+        }
+    }
+    return words;
 }
 
 void write_rom_record(const std::vector<std::uint8_t>& rom,
@@ -276,8 +370,46 @@ write_field_service_routes(
                  std::string(kAttributesSkillsTextIds[index]),
              attribute_skill_labels[index]);
     }
-    const auto attributes_skills_text =
+    constexpr std::array<std::string_view, 20>
+        kAttributeSkillDescriptionIds{{
+            "body", "quickness", "strength", "charisma", "intelligence",
+            "willpower", "essence", "magic", "sorcery", "firearms",
+            "pistols", "smgs", "shotguns", "melee_combat", "throwing",
+            "computer", "biotech", "electronics", "reputation",
+            "negotiation"}};
+    // ROM 0xC1B70 is the 20-entry bottom-panel description pointer table.
+    // Keep these strings in the offline importer so each menu runtime reads
+    // stable host text without walking ROM pointers.
+    for (std::size_t index = 0;
+         index < kAttributeSkillDescriptionIds.size(); ++index) {
+        const auto source = static_cast<std::size_t>(
+            read_big_endian_long(rom, 0xC1B70U + index * 4U));
+        const auto segments = shadowrun::graphics::
+            read_genesis_dialogue_segments(rom, source);
+        std::string description;
+        for (std::size_t segment = 0; segment < segments.size(); ++segment) {
+            if (segment != 0U) {
+                description.push_back('\n');
+            }
+            description += segments[segment];
+        }
+        emit("attributes_skills.description." +
+                 std::string(kAttributeSkillDescriptionIds[index]),
+             escape_field_text(std::move(description)));
+    }
+    auto attributes_skills_text =
         shadowrun::graphics::read_genesis_attributes_skills_text(rom);
+    // The source strings use 0x80 row breaks. The older fixed-width menu-text
+    // helper stops at the first break, while ROM 0xD3D0/0xD408 sends the full
+    // strings to the title writer. Keep both rows in the host text catalog.
+    attributes_skills_text.mage_only_message =
+        escape_field_text(read_multiline_rom_text(
+            rom, 0xC2122U, 0x2CU,
+            "Genesis Attributes/Skills mage-only text"));
+    attributes_skills_text.insufficient_karma_message =
+        escape_field_text(read_multiline_rom_text(
+            rom, 0xC214EU, 0x2FU,
+            "Genesis Attributes/Skills Karma text"));
     const std::array<std::string, 5> attributes_upgrade_text{{
         attributes_skills_text.upgrade_header,
         attributes_skills_text.maximum_level_message,
@@ -496,6 +628,12 @@ write_field_service_routes(
          ++index) {
         emit_clips_text(kNoPartyIds[index], clips_text.no_party_members[index]);
     }
+    // ROM 0x11C9C prints the shared Function Aborted message from 0xD1ED8.
+    // 0x80 is the source line break and 0xFF ends the encoded title string.
+    emit_clips_text(
+        "function_aborted",
+        escape_field_text(read_multiline_rom_text(
+            rom, 0xD1ED8U, 18U, "Genesis field-menu Function Aborted text")));
     constexpr std::array<std::string_view, 27> kItemDisplayTextIds{{
         "power_meager", "power_minor", "power_very_low", "power_low",
         "power_very_light", "power_light", "power_medium",
@@ -648,6 +786,132 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"stoker.motel.room.paid.title", 0x0F4241U},
         {"stoker.motel.room.insufficient.title", 0x0F42C1U},
         {"stoker.motel.jump-house.title", 0x0F41A1U},
+        // Scene-1/event-1 Tarislar City Inn title service and generic prompt.
+        {"tarislar.city_inn.entry", 0x117CE2U},
+        {"tarislar.city_inn.offer", 0x117DB6U},
+        // Scene-3/event-1 Wylie's Gala Inn field-exit service.
+        {"wylie.gala_inn.entry", 0x114CE1U},
+        {"wylie.gala_inn.room", 0x114E66U},
+        {"wylie.gala_inn.free_stay", 0x114EF5U},
+        {"wylie.gala_inn.package_after", 0x113A22U},
+        {"wylie.gala_inn.package_before", 0x114DC1U},
+        {"wylie.gala_inn.option.crash", 0x103A17U},
+        {"wylie.gala_inn.option.leave", 0x104FEBU},
+        {"wylie.gala_inn.option.pay", 0x103A7AU},
+        {"tarislar.city_inn.room", 0x117E58U},
+        {"tarislar.city_inn.shale.0", 0x117EC5U},
+        {"tarislar.city_inn.shale.1", 0x117F78U},
+        {"tarislar.city_inn.shale.2", 0x118060U},
+        {"tarislar.city_inn.shale.apartment", 0x0F5D09U},
+        {"tarislar.city_inn.shale.last_run", 0x0F5DA6U},
+        {"tarislar.city_inn.shale.caleb", 0x0F5EA7U},
+        {"tarislar.city_inn.shale.errascoe", 0x0F5F4AU},
+        {"tarislar.city_inn.shale.caleb_followup", 0x0F600DU},
+        {"tarislar.city_inn.shale.refuses_recruitment", 0x0F60D6U},
+        {"tarislar.city_inn.shale.attack", 0x0F617FU},
+        {"tarislar.city_inn.frosty", 0x1180D2U},
+        {"tarislar.city_inn.package.before", 0x113991U},
+        {"tarislar.city_inn.package.after", 0x113A22U},
+        {"tarislar.city_inn.leave", 0x0F4134U},
+        {"tarislar.city_inn.option.crash", 0x103A17U},
+        {"tarislar.city_inn.option.leave", 0x104FEBU},
+        {"tarislar.city_inn.option.shale", 0x103C8DU},
+        {"tarislar.city_inn.option.frosty", 0x103CB7U},
+        {"tarislar.city_inn.option.pay", 0x103A7AU},
+        {"tarislar.city_inn.option.decline", 0x103A13U},
+        {"tarislar.city_inn.option.about_michael", 0x103CFCU},
+        {"tarislar.city_inn.option.caleb", 0x103D53U},
+        {"tarislar.city_inn.option.errascoe", 0x103D24U},
+        {"tarislar.city_inn.option.recruit", 0x103C5BU},
+        {"tarislar.city_inn.option.thanks", 0x104F7EU},
+        // Scene-6/event-0 Owlfeather services and their source prompt labels.
+        {"salish.owlfeather.option.lands", 0x103E57U},
+        {"salish.owlfeather.option.council", 0x103E39U},
+        {"salish.owlfeather.option.brother", 0x1040BEU},
+        {"salish.owlfeather.option.rangers", 0x103E7BU},
+        {"salish.owlfeather.option.villages", 0x103E8CU},
+        {"salish.owlfeather.option.sinsearach", 0x103EB1U},
+        {"salish.owlfeather.option.thanks", 0x104FC2U},
+        {"salish.owlfeather.option.learned", 0x103EBDU},
+        {"salish.owlfeather.option.like_who", 0x103EDBU},
+        {"salish.owlfeather.option.simple_task", 0x103EECU},
+        {"salish.owlfeather.option.later", 0x104FEBU},
+        {"salish.owlfeather.option.freed", 0x1040EEU},
+        {"salish.owlfeather.page.opening", 0x0F63CFU},
+        {"salish.owlfeather.page.lands", 0x0F645BU},
+        {"salish.owlfeather.page.rangers", 0x0F651EU},
+        {"salish.owlfeather.page.villages", 0x0F65D1U},
+        {"salish.owlfeather.page.sinsearach", 0x0F66ADU},
+        {"salish.owlfeather.page.council", 0x0F675DU},
+        {"salish.owlfeather.page.council_topics", 0x0F6809U},
+        {"salish.owlfeather.page.brother", 0x0F68E0U},
+        {"salish.owlfeather.page.brother_status", 0x0F6980U},
+        {"salish.owlfeather.page.status_more", 0x0F6A3FU},
+        {"salish.owlfeather.page.status_topic", 0x0F6AF5U},
+        {"salish.owlfeather.page.simple_task", 0x0F6BA2U},
+        {"salish.owlfeather.page.task_result", 0x0F6CE8U},
+        {"salish.owlfeather.page.return_offer", 0x0F6DB9U},
+        {"salish.owlfeather.page.return_arrival", 0x0F6EB4U},
+        {"salish.owlfeather.page.return_arrival_more", 0x0F6F21U},
+        {"salish.owlfeather.page.return_reunion", 0x0F6FEEU},
+        {"salish.owlfeather.page.return_closing", 0x0F70B7U},
+        {"salish.red_buffalo.page.introduction", 0x0FB57CU},
+        {"salish.red_buffalo.page.gift", 0x0FB5EBU},
+        {"salish.red_buffalo.page.no_gift", 0x0FB647U},
+        {"salish.red_buffalo.page.no_business_followup", 0x0FBD94U},
+        {"salish.red_buffalo.page.no_business_response", 0x0FBEECU},
+        {"salish.red_buffalo.page.topics", 0x0FBFCBU},
+        {"salish.red_buffalo.page.michael", 0x0FC08BU},
+        {"salish.red_buffalo.page.thon", 0x0FC166U},
+        {"salish.red_buffalo.page.thon_more", 0x0FC2FDU},
+        {"salish.red_buffalo.page.renraku", 0x0FC3ACU},
+        {"salish.red_buffalo.page.renraku_more", 0x0FC477U},
+        {"salish.red_buffalo.page.gillian", 0x0FC54EU},
+        {"salish.red_buffalo.page.gillian_followup", 0x0FC628U},
+        {"salish.red_buffalo.page.gillian_detail", 0x0FC6D6U},
+        {"salish.red_buffalo.page.ito", 0x0FC757U},
+        {"salish.red_buffalo.page.ito_detail", 0x0FC921U},
+        {"salish.red_buffalo.page.branch_0", 0x0FC95AU},
+        {"salish.red_buffalo.page.branch_1", 0x0FCE10U},
+        {"salish.red_buffalo.page.branch_2", 0x0FCEAEU},
+        {"salish.red_buffalo.page.branch_3", 0x0FCF20U},
+        {"salish.red_buffalo.page.branch_4", 0x0FCFE4U},
+        {"salish.red_buffalo.page.branch_5", 0x0FC9F3U},
+        {"salish.red_buffalo.page.branch_6", 0x0FCA56U},
+        {"salish.red_buffalo.page.branch_7", 0x0FCB09U},
+        {"salish.red_buffalo.page.branch_8", 0x0FCBA7U},
+        {"salish.red_buffalo.page.branch_9", 0x0FC222U},
+        {"salish.red_buffalo.page.branch_10", 0x0FC841U},
+        {"salish.red_buffalo.page.branch_11", 0x0FCC74U},
+        {"salish.red_buffalo.page.branch_12", 0x0FCD6DU},
+        {"salish.red_buffalo.page.branch_13", 0x0FD06EU},
+        {"salish.red_buffalo.page.branch_14", 0x0FD130U},
+        {"salish.red_buffalo.page.branch_15", 0x0FD200U},
+        {"salish.red_buffalo.page.branch_16", 0x0F414EU},
+        {"salish.red_buffalo.page.branch_17", 0x0F41A1U},
+        {"salish.red_buffalo.page.branch_18", 0x0F4241U},
+        {"salish.red_buffalo.page.branch_19", 0x0F7152U},
+        {"salish.red_buffalo.page.branch_20", 0x0F4298U},
+        {"salish.red_buffalo.page.branch_21", 0x0F8AB9U},
+        {"salish.red_buffalo.page.branch_22", 0x0F8A88U},
+        {"salish.red_buffalo.option.no_business", 0x0FBD5AU},
+        // Other indexed title services attached to authored building entities.
+        {"boris.greenhouse.page.default", 0x0F8508U},
+        {"boris.greenhouse.page.alternate_0", 0x0F8609U},
+        {"boris.greenhouse.page.alternate_1", 0x0F8739U},
+        {"boris.greenhouse.page.alternate_2", 0x0F8794U},
+        {"boris.greenhouse.page.followup", 0x0F98FAU},
+        {"renraku.offices.page.entry", 0x1195CFU},
+        {"renraku.offices.option", 0x11199CU},
+        {"penumbra.fuchi.page.entry", 0x11C213U},
+        {"penumbra.fuchi.page.followup", 0x11C2D2U},
+        {"gates.undersound.page.entry", 0x113D46U},
+        {"gates.undersound.page.followup", 0x113B47U},
+        {"gates.undersound.page.result", 0x1131B5U},
+        {"gates.undersound.page.closing", 0x113FE7U},
+        // Shared output nodes returned by command 0x06's payment branches.
+        {"shared.hotel.room.paid", 0x0F4241U},
+        {"shared.hotel.room.insufficient", 0x0F42C1U},
         // Mode-2 field object prompts and outcomes selected by 0x20E48,
         // 0x20EC2, and their source mode-command handlers.
         {"field.maglock.door.title", 0x11C882U},
@@ -682,16 +946,58 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"field.mode.little_chiba.description", 0x11739EU},
         {"field.mode.little_chiba.package_handoff", 0x1176BBU},
         {"field.mode.little_chiba.package_payment", 0x117718U},
+        // Scene-4/event-4 Council Island Hospital entry. The descriptor at
+        // 0x110ECA selects the default copy and its two choices; alternate
+        // results select the single-page roots at 0x110EE2/0x110EEA.
+        {"council_island_hospital.entry.default", 0x11AAFAU},
+        {"council_island_hospital.entry.package_handoff", 0x11ABB7U},
+        {"council_island_hospital.entry.package_payment", 0x11AC2BU},
+        {"council_island_hospital.option.services", 0x1044F2U},
+        {"council_island_hospital.option.leave", 0x105101U},
+        // Hospital mode 4/event 4 opens the full-screen menu at 0xC928.
+        // Its title, separator, rows, and leave confirmation are ROM text;
+        // the row pointers are the text records following the menu metadata.
+        {"hospital.options.title", 0x0C150CU},
+        {"hospital.options.separator", 0x0C151EU},
+        {"hospital.options.medical_attention", 0x0C1534U},
+        {"hospital.options.cyberware", 0x0C1545U},
+        {"hospital.options.exit", 0x0C1552U},
+        {"hospital.medical.row.100", 0x0C1564U},
+        {"hospital.medical.row.90", 0x0C1578U},
+        {"hospital.medical.row.70", 0x0C158CU},
+        {"hospital.medical.row.40", 0x0C15A0U},
+        {"hospital.medical.not_needed", 0x0C15B4U},
+        {"hospital.medical.choose", 0x0C15D7U},
+        {"hospital.medical.insufficient_funds", 0x0C15FBU},
+        {"hospital.leave.prompt", 0x0C1629U},
+        // Field-mode cyberspace entry uses these ROM pages when its deck,
+        // MPCP, or datajack gate fails; 0xE1E6 presents the search copy.
+        {"field.cyberspace.no_deck", 0xC21B5U},
+        {"field.cyberspace.no_mpcp", 0xC2202U},
+        {"field.cyberspace.no_datajack", 0xC2252U},
+        {"field.cyberspace.search_progress", 0xC1978U},
+        {"field.main_menu.passcodes.title", 0xC179BU},
         // Scene 2/event 7 indexed title service 22. ROM 0x545B6 passes this
         // three-record narrative to the shared field prompt runner.
         {"redmond.vigore-search.page-0", 0x117193U},
         {"redmond.vigore-search.page-1", 0x117266U},
         {"redmond.vigore-search.page-2", 0x117314U},
+        // Scene-1/event-7 title service 21. These prompt labels are selected
+        // by the Harlequin graph rooted at 0xF4DE0/0xF4DF4/0xF4E08.
+        {"tarislar.garden.apartments.option.ask_about_michael", 0x1040BEU},
+        {"tarislar.garden.apartments.option.who_is_thon", 0x10416DU},
+        {"tarislar.garden.apartments.option.why_renraku", 0x104371U},
+        {"tarislar.garden.apartments.option.ito_killed", 0x104494U},
+        {"tarislar.garden.apartments.option.questions", 0x1047D4U},
+        {"tarislar.garden.apartments.option.tomb_yes", 0x103A0EU},
+        {"tarislar.garden.apartments.option.tomb_no", 0x103A13U},
+        {"tarislar.garden.apartments.option.information", 0x104473U},
         // Scene-2/event-4 entry service and scene-13 Gunderson dialogue.
         {"jump-house.entry", 0x116C12U},
         {"gunderson.greeting", 0x106266U},
         {"gunderson.greeting.continuation", 0x106289U},
         {"gunderson.greeting.after_information", 0x106396U},
+        {"gunderson.greeting.after_run_return", 0x105B52U},
         {"gunderson.option.information", 0x104051U},
         {"gunderson.option.work", 0x103A3AU},
         {"gunderson.option.leave", 0x104FEBU},
@@ -728,10 +1034,35 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         // opening descriptor through the mode-2 entry in 0x12CC50.
         {"big-rhino.booth.entry", 0x107D56U},
         {"big-rhino.mortimer.opening", 0x107DE0U},
+        {"big-rhino.mortimer.repeat-booth-entry", 0x107E69U},
+        {"big-rhino.mortimer.repeat-opening", 0x107F0FU},
         {"big-rhino.mortimer.conditional-opening", 0x105B7AU},
+        {"big-rhino.mortimer.after-information", 0x107F61U},
+        {"big-rhino.information.opening", 0x107FA9U},
+        {"big-rhino.information.topics", 0x108049U},
+        {"big-rhino.information.questions.prompt", 0x1080C3U},
+        {"big-rhino.information.question.default", 0x106229U},
+        {"big-rhino.information.question.julius", 0x10811FU},
+        {"big-rhino.information.question.mako", 0x1081F1U},
+        {"big-rhino.information.question.aragorn", 0x108565U},
+        {"big-rhino.contacts.insufficient", 0x1082C9U},
+        {"big-rhino.contacts.offer", 0x10838AU},
+        {"big-rhino.contacts.purchased", 0x108457U},
+        {"big-rhino.leave", 0x10854FU},
         {"big-rhino.option.information", 0x104051U},
         {"big-rhino.option.work", 0x103A3AU},
         {"big-rhino.option.leave", 0x104FEBU},
+        {"big-rhino.information.option.questions", 0x1047D4U},
+        {"big-rhino.information.option.contacts", 0x104666U},
+        {"big-rhino.information.option.back", 0x104817U},
+        {"big-rhino.contacts.option.accept", 0x103A7AU},
+        {"big-rhino.question.option.another", 0x1047F4U},
+        {"big-rhino.question.option.julius", 0x104636U},
+        {"big-rhino.question.option.mako", 0x104B33U},
+        {"big-rhino.question.option.aragorn", 0x103E22U},
+        // Context 2's work callback at 0x215DA shows this page when no active
+        // offer is being resumed, then indexes the context-2 run table.
+        {"big-rhino.work.opening", 0x108501U},
         // Related restaurant and package text is imported for map inspection;
         // it is not asserted as the event-30 dialogue without a route trace.
         {"big-rhino.related.restaurant-description", 0x1154AEU},
@@ -766,6 +1097,36 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
         {"icarus-descending.caleb.option.information", 0x104051U},
         {"icarus-descending.caleb.option.work", 0x103A3AU},
         {"icarus-descending.caleb.option.leave", 0x104FEBU},
+        // Scene 18 event 30 selects Julius Strouther through the context-1
+        // row at 0x12CC60. Preserve the separate first-visit page, repeat
+        // roots, question branches, and paid Quinton contact flow.
+        {"julius-strouther.booth-entry", 0x107695U},
+        {"julius-strouther.first-meeting", 0x107727U},
+        {"julius-strouther.repeat-greeting", 0x1077D4U},
+        {"julius-strouther.after-information", 0x107806U},
+        {"julius-strouther.information.opening", 0x107840U},
+        {"julius-strouther.work.opening", 0x107A36U},
+        {"julius-strouther.contacts.insufficient", 0x107A7DU},
+        {"julius-strouther.question.caleb", 0x1078C0U},
+        {"julius-strouther.question.mortimer", 0x107966U},
+        {"julius-strouther.question.default", 0x106229U},
+        {"julius-strouther.question.prompt", 0x107D37U},
+        {"julius-strouther.contacts.opening", 0x107B37U},
+        {"julius-strouther.contacts.offer", 0x107BE4U},
+        {"julius-strouther.contacts.purchased", 0x107C5FU},
+        {"julius-strouther.leave", 0x107D51U},
+        {"julius-strouther.run-return", 0x105AB7U},
+        {"julius-strouther.option.information", 0x104051U},
+        {"julius-strouther.option.work", 0x103A3AU},
+        {"julius-strouther.option.leave", 0x104FEBU},
+        {"julius-strouther.information.option.questions", 0x1047D4U},
+        {"julius-strouther.information.option.contacts", 0x104666U},
+        {"julius-strouther.information.option.back", 0x104817U},
+        {"julius-strouther.contacts.option.accept", 0x103A7AU},
+        {"julius-strouther.question.option.another", 0x1047F4U},
+        {"julius-strouther.question.option.about-caleb", 0x103D53U},
+        {"julius-strouther.question.option.about-mortimer", 0x104605U},
+        // Scene 19's event-30 fallback prompt at 0x20C78 uses this first
         // Scene 19's event-30 fallback prompt at 0x20C78 uses this first
         // narrative pointer. The remaining pointer slots are not presented
         // because the first choice pointer is the ROM's negative sentinel.
@@ -999,6 +1360,13 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
                     << source_offset << ": " << error.what();
             throw std::runtime_error(message.str());
         }
+        if (std::string_view(key).rfind("hospital.options.", 0U) == 0U &&
+            segments.size() > 1U) {
+            // The menu title, separator, and each option occupy consecutive
+            // 0x80-delimited records terminated together by 0xFF. Emit only
+            // the record selected by this pointer, not every later row.
+            segments.resize(1U);
+        }
         if (segments.empty()) {
             throw std::runtime_error("empty dialogue text: " +
                                      std::string(key));
@@ -1030,6 +1398,38 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
             write_lua_string(text);
             output << ",\n";
         }
+    }
+    // Enter Passcode labels are selected through the 12-pointer table at
+    // 0xC19C2. Keep the label order stable for Lua's named passcode IDs while
+    // resolving the displayed copy from each source pointer.
+    constexpr std::array<std::string_view, 12> kPasscodeChoiceIds{{
+        "run_passcode", "aztechnology", "club_penumbra",
+        "seattle_general_hospital", "ares", "gates_undersound",
+        "hollywood", "mitsuhama", "renraku", "fuchi", "lone_star",
+        "ito_passcode"}};
+    for (std::size_t index = 0; index < kPasscodeChoiceIds.size(); ++index) {
+        const auto source = static_cast<std::size_t>(
+            read_big_endian_long(rom, 0xC19C2U + index * 4U));
+        const auto segments =
+            shadowrun::graphics::read_genesis_dialogue_segments(rom, source);
+        if (segments.empty()) {
+            throw std::runtime_error(
+                "empty field-menu passcode label in ROM pointer table");
+        }
+        std::string text;
+        for (std::size_t segment = 0; segment < segments.size(); ++segment) {
+            if (segment != 0U) {
+                text.push_back('|');
+            }
+            text += segments[segment];
+        }
+        const auto key = "field.main_menu.passcodes.option." +
+                         std::string(kPasscodeChoiceIds[index]);
+        output << "        [";
+        write_lua_string(key);
+        output << "] = ";
+        write_lua_string(text);
+        output << ",\n";
     }
     // The ROM stores both prices in one sentence at 0x10A5B9 and dispatches
     // level 3/5 as separate commands without separate captions. Split that
@@ -1384,6 +1784,22 @@ void write_dialogue_text_script(const std::vector<std::uint8_t>& rom,
                      shop_text.sale_quote_heading);
     write_text_entry("shop.transaction.purchase_price_heading",
                      shop_text.purchase_price_heading);
+    write_text_entry(
+        "shop.progression.training_unavailable",
+        read_multiline_rom_text(rom, 0x1AA42CU, 0x80U,
+                                "field spell-training restriction"));
+    write_text_entry(
+        "shop.progression.maximum_level",
+        read_multiline_rom_text(rom, 0x1AA85FU, 0x40U,
+                                "field spell maximum-level message"));
+    write_text_entry(
+        "shop.progression.cost_heading",
+        read_multiline_rom_text(rom, 0x1AA884U, 0x20U,
+                                "field spell-training cost heading"));
+    write_text_entry(
+        "shop.progression.level_label",
+        read_multiline_rom_text(rom, 0x1AA89AU, 0x10U,
+                                "field spell progression level label"));
     const auto item_detail_labels =
         shadowrun::graphics::read_genesis_field_menu_item_detail_labels(rom);
     constexpr std::array<std::string_view, 3> kItemDetailLabelKeys{{
@@ -2149,6 +2565,91 @@ shadowrun::graphics::RgbaImage to_rgba_image(
     return {source.width, source.height, source.pixels};
 }
 
+struct MatrixGraphicsUploadHistory {
+    std::array<std::uint8_t, 0x800U> overlap{};
+};
+
+std::vector<std::uint8_t> decode_matrix_graphics_upload(
+    const std::vector<std::uint8_t>& rom, const std::size_t source_offset,
+    MatrixGraphicsUploadHistory& history) {
+    // 0x177CC uploads D86E0 then D78AA through 0x1530 using the same
+    // FFBF40 overlap buffer; 0x1826C uploads D9376 through that buffer next.
+    // Keep this state only in the offline asset extractor. The runtime uses
+    // the named images below and has no ROM resource decoder.
+    if (source_offset > rom.size() || rom.size() - source_offset < 2U) {
+        throw std::runtime_error(
+            "Matrix graphics upload header is truncated");
+    }
+    const auto output_count = static_cast<std::size_t>(
+        read_big_endian_word(rom, source_offset)) + 1U;
+    if (output_count > 0x10000U) {
+        throw std::runtime_error("Matrix graphics upload size is invalid");
+    }
+    std::size_t source = source_offset + 2U;
+    std::size_t ring_index = 0U;
+    std::size_t remaining = output_count;
+    std::uint8_t control = 0U;
+    unsigned control_bits = 0U;
+    std::vector<std::uint8_t> output;
+    output.reserve(output_count);
+
+    const auto read_byte = [&]() {
+        if (source >= rom.size()) {
+            throw std::runtime_error(
+                "Matrix graphics upload token is truncated");
+        }
+        return rom[source++];
+    };
+    const auto emit = [&](const std::uint8_t value) {
+        history.overlap[ring_index] = value;
+        ring_index = (ring_index + 1U) & 0x07FFU;
+        output.push_back(value);
+        --remaining;
+    };
+
+    while (remaining > 0U) {
+        if (control_bits == 0U) {
+            control = read_byte();
+            control_bits = 8U;
+        }
+        const bool compressed = (control & 0x80U) != 0U;
+        control = static_cast<std::uint8_t>(control << 1U);
+        --control_bits;
+        if (!compressed) {
+            emit(read_byte());
+            continue;
+        }
+
+        const auto descriptor = read_byte();
+        const auto run_count = (descriptor & 0x80U) == 0U
+            ? static_cast<std::size_t>(descriptor & 0x7FU) + 3U
+            : static_cast<std::size_t>(descriptor & 0x0FU) + 3U;
+        if (run_count > remaining) {
+            throw std::runtime_error(
+                "Matrix graphics upload run exceeds its declared output");
+        }
+        if ((descriptor & 0x80U) == 0U) {
+            const auto value = read_byte();
+            for (std::size_t index = 0U; index < run_count; ++index) {
+                emit(value);
+            }
+            continue;
+        }
+
+        const auto offset_low = read_byte();
+        const auto offset = static_cast<std::size_t>(
+            ((static_cast<std::size_t>(offset_low) << 3U) |
+             ((descriptor >> 4U) & 0x07U)) & 0x07FFU);
+        auto copy_index = (ring_index - offset) & 0x07FFU;
+        for (std::size_t index = 0U; index < run_count; ++index) {
+            const auto value = history.overlap[copy_index];
+            copy_index = (copy_index + 1U) & 0x07FFU;
+            emit(value);
+        }
+    }
+    return output;
+}
+
 shadowrun::graphics::RgbaImage compose_matrix_map_backdrop(
     const std::vector<std::uint8_t>& rom,
     const shadowrun::graphics::RgbaImage& patterns,
@@ -2201,6 +2702,1647 @@ shadowrun::graphics::RgbaImage compose_matrix_map_backdrop(
         }
     }
     return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_cyberdeck_plane_b_background(
+    const std::vector<std::uint8_t>& rom,
+    const shadowrun::graphics::RgbaImage& matrix_ui_patterns,
+    const shadowrun::graphics::RgbaImage& field_menu_patterns) {
+    // Matrix entry 0x181F8 writes D9C96 to Plane B at $E000 (40x22,
+    // palette line 1). Its live colors are installed by 0x17F80 -> 0x566E2,
+    // which copies sixteen words from 0xE2EBA into FFD89E. D9C96 emits the
+    // full 40x22 Plane-B panel. The subsequent 0x17708 HUD pass writes D8316
+    // at $EB00, row 22 (40x6, palette line 3); both streams fill every
+    // visible name-table cell in their respective areas.
+    // Both resource banks are loaded before the menu: D9376 at $8160 and
+    // D78AA at $0580. This is a one-time host image composition.
+    constexpr std::size_t kWidth = 320U;
+    constexpr std::size_t kHeight = 224U;
+    constexpr std::size_t kPlaneColumns = 40U;
+    constexpr std::size_t kPlaneRows = 28U;
+    constexpr std::size_t kMainPatternBase = 0x040BU;
+    constexpr std::size_t kMainPatternCount = 199U;
+    constexpr std::size_t kFooterPatternBase = 0x002CU;
+    constexpr std::size_t kFooterPatternCount = 147U;
+    constexpr std::size_t kFooterFirstRow = 22U;
+    constexpr std::size_t kMainExpectedWords = 880U;
+    constexpr std::size_t kFooterExpectedWords = 240U;
+    if (matrix_ui_patterns.width != 128U ||
+        matrix_ui_patterns.height != 104U ||
+        field_menu_patterns.width != 128U ||
+        field_menu_patterns.height != 80U) {
+        throw std::runtime_error(
+            "Matrix Cyberdeck Plane-B pattern atlases have invalid dimensions");
+    }
+
+    shadowrun::graphics::RgbaImage image{
+        static_cast<std::uint16_t>(kWidth),
+        static_cast<std::uint16_t>(kHeight),
+        std::vector<shadowrun::native::Rgba8>(
+            kWidth * kHeight, shadowrun::native::Rgba8{0U, 0U, 0U, 255U}),
+    };
+    const auto draw_stream = [&image](
+        const std::vector<std::uint16_t>& words,
+        const std::size_t first_row,
+        const shadowrun::graphics::RgbaImage& patterns,
+        const std::size_t pattern_base,
+        const std::size_t pattern_count,
+        const std::string_view label) {
+        if (words.size() > kPlaneColumns * (kPlaneRows - first_row)) {
+            throw std::runtime_error(std::string(label) +
+                                     " exceeds the 40-column Plane-B area");
+        }
+        for (std::size_t index = 0U; index < words.size(); ++index) {
+            const auto word = static_cast<std::uint16_t>(words[index] |
+                (label == "D9C96" ? 0x2000U : 0x6000U));
+            const auto pattern = static_cast<std::size_t>(word & 0x07FFU);
+            if (pattern < pattern_base ||
+                pattern - pattern_base >= pattern_count) {
+                throw std::runtime_error(std::string(label) +
+                                         " references a missing source tile");
+            }
+            const auto pattern_index = pattern - pattern_base;
+            const auto source_x = (pattern_index % 16U) * 8U;
+            const auto source_y = (pattern_index / 16U) * 8U;
+            const auto target_x = (index % kPlaneColumns) * 8U;
+            const auto target_y = (first_row + index / kPlaneColumns) * 8U;
+            const bool flip_x = (word & 0x0800U) != 0U;
+            const bool flip_y = (word & 0x1000U) != 0U;
+            for (std::size_t y = 0U; y < 8U; ++y) {
+                for (std::size_t x = 0U; x < 8U; ++x) {
+                    const auto from_x = source_x + (flip_x ? 7U - x : x);
+                    const auto from_y = source_y + (flip_y ? 7U - y : y);
+                    const auto& pixel = patterns.pixels[
+                        from_y * static_cast<std::size_t>(patterns.width) +
+                        from_x];
+                    if (pixel.alpha == 0U) {
+                        continue;
+                    }
+                    image.pixels[(target_y + y) * kWidth + target_x + x] =
+                        pixel;
+                }
+            }
+        }
+    };
+
+    const auto main_words = decode_hud_sprite_stream_for_asset(
+        rom, 0xD9C96U, "Matrix Plane-B stream D9C96");
+    const auto footer_words = decode_hud_sprite_stream_for_asset(
+        rom, 0xD8316U, "Matrix HUD footer stream D8316");
+    if (main_words.size() != kMainExpectedWords ||
+        footer_words.size() != kFooterExpectedWords) {
+        throw std::runtime_error(
+            "Matrix Cyberdeck Plane-B stream cell counts changed");
+    }
+    draw_stream(main_words, 0U, matrix_ui_patterns, kMainPatternBase,
+                kMainPatternCount, "D9C96");
+    draw_stream(footer_words, kFooterFirstRow, field_menu_patterns,
+                kFooterPatternBase, kFooterPatternCount, "D8316");
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_cyberdeck_panel(
+    const std::vector<std::uint8_t>& rom,
+    const shadowrun::graphics::RgbaImage& pattern_atlas) {
+    // ROM 0x1897C repeats 19 words from 0xD8454 for 18 rows at $C126.
+    // Plane A uses 64 cells per row, and $C126 wraps to VRAM byte address
+    // 0x0126, placing the right-side panel at pixel (152,16). The grid writer
+    // ORs 0x6000 into each word, so these patterns use CRAM line 3.
+    // ROM 0x177CC uploads 0xD78AA to VRAM $0580 (pattern $02C). These are
+    // the patterns named by 0xD8454; 0xD9376 is the separate Matrix icon set
+    // uploaded at $8160. This is a one-time host composition; the runtime
+    // consumes the resulting image directly.
+    constexpr std::size_t kPatternBase = 0x002CU;
+    constexpr std::size_t kPatternCount = 147U;
+    constexpr std::size_t kRowTable = 0xD8454U;
+    constexpr std::size_t kColumns = 19U;
+    constexpr std::size_t kRows = 18U;
+    constexpr std::size_t kOriginX = 152U;
+    constexpr std::size_t kOriginY = 16U;
+    if (pattern_atlas.width != 128U || pattern_atlas.height != 80U) {
+        throw std::runtime_error("Matrix panel pattern atlas has invalid dimensions");
+    }
+
+    shadowrun::graphics::RgbaImage image{
+        320U, 224U,
+        std::vector<shadowrun::native::Rgba8>(
+            320U * 224U, shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    for (std::size_t row = 0U; row < kRows; ++row) {
+        for (std::size_t column = 0U; column < kColumns; ++column) {
+            const auto word = read_big_endian_word(
+                rom, kRowTable + column * 2U);
+            const auto pattern = static_cast<std::size_t>(word & 0x07FFU);
+            if (pattern < kPatternBase ||
+                pattern - kPatternBase >= kPatternCount) {
+                throw std::runtime_error(
+                    "Matrix panel row references an unimported pattern");
+            }
+            const bool flip_x = (word & 0x0800U) != 0U;
+            const bool flip_y = (word & 0x1000U) != 0U;
+            const auto pattern_index = pattern - kPatternBase;
+            const auto source_x = (pattern_index % 16U) * 8U;
+            const auto source_y = (pattern_index / 16U) * 8U;
+            const auto target_x = kOriginX + column * 8U;
+            const auto target_y = kOriginY + row * 8U;
+            for (std::size_t y = 0U; y < 8U; ++y) {
+                for (std::size_t x = 0U; x < 8U; ++x) {
+                    const auto from_x = source_x + (flip_x ? 7U - x : x);
+                    const auto from_y = source_y + (flip_y ? 7U - y : y);
+                    const auto& source = pattern_atlas.pixels[
+                        from_y * static_cast<std::size_t>(pattern_atlas.width) +
+                        from_x];
+                    if (source.alpha == 0U) {
+                        continue;
+                    }
+                    image.pixels[(target_y + y) * 320U + target_x + x] =
+                        source;
+                }
+            }
+        }
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_cyberdeck_runner_headers(
+    const std::vector<std::uint8_t>& rom,
+    const shadowrun::graphics::RgbaImage& pattern_atlas) {
+    // ROM 0x1A16A writes five source tiles from D9ED4 at $C4A6 and five from
+    // D9EDE at $C526. These are Plane-A detail rows at (152,72) and (152,80).
+    // Their 0x0439.. tile IDs refer to the Matrix UI bank from D9376, loaded
+    // at $8160, and use CRAM line 1. Decode them once into a named host image.
+    constexpr std::size_t kPatternBase = 0x040BU;
+    constexpr std::size_t kPatternCount = 199U;
+    constexpr std::array<std::size_t, 2> kRows{0xD9ED4U, 0xD9EDEU};
+    constexpr std::array<std::size_t, 2> kOriginY{72U, 80U};
+    constexpr std::size_t kColumns = 5U;
+    if (pattern_atlas.width != 128U || pattern_atlas.height != 104U) {
+        throw std::runtime_error(
+            "Matrix runner-detail pattern atlas has invalid dimensions");
+    }
+
+    shadowrun::graphics::RgbaImage image{
+        320U, 224U,
+        std::vector<shadowrun::native::Rgba8>(
+            320U * 224U, shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    for (std::size_t row = 0U; row < kRows.size(); ++row) {
+        for (std::size_t column = 0U; column < kColumns; ++column) {
+            const auto word = static_cast<std::uint16_t>(
+                read_big_endian_word(rom, kRows[row] + column * 2U) |
+                0x2000U);
+            const auto pattern = static_cast<std::size_t>(word & 0x07FFU);
+            if (pattern < kPatternBase ||
+                pattern - kPatternBase >= kPatternCount) {
+                throw std::runtime_error(
+                    "Matrix runner-detail header references an unavailable "
+                    "pattern at row " + std::to_string(row) + ", column " +
+                    std::to_string(column) + ": " +
+                    std::to_string(pattern));
+            }
+            const auto pattern_index = pattern - kPatternBase;
+            const auto source_x = (pattern_index % 16U) * 8U;
+            const auto source_y = (pattern_index / 16U) * 8U;
+            const auto target_x = 152U + column * 8U;
+            const auto target_y = kOriginY[row];
+            const bool flip_x = (word & 0x0800U) != 0U;
+            const bool flip_y = (word & 0x1000U) != 0U;
+            for (std::size_t y = 0U; y < 8U; ++y) {
+                for (std::size_t x = 0U; x < 8U; ++x) {
+                    const auto from_x = source_x + (flip_x ? 7U - x : x);
+                    const auto from_y = source_y + (flip_y ? 7U - y : y);
+                    const auto& pixel = pattern_atlas.pixels[
+                        from_y * static_cast<std::size_t>(pattern_atlas.width) +
+                        from_x];
+                    if (pixel.alpha == 0U) continue;
+                    image.pixels[(target_y + y) * 320U + target_x + x] =
+                        pixel;
+                }
+            }
+        }
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_cyberdeck_detail_strip(
+    const std::vector<std::uint8_t>& rom,
+    const shadowrun::graphics::RgbaImage& pattern_atlas,
+    const std::size_t entry) {
+    constexpr std::size_t kTable = 0xD9EE8U;
+    constexpr std::size_t kEntryCount = 16U;
+    constexpr std::size_t kEntryStride = 0x0CU;
+    constexpr std::size_t kPatternBase = 0x040BU;
+    constexpr std::size_t kPatternCount = 199U;
+    if (entry >= kEntryCount || pattern_atlas.width != 128U ||
+        pattern_atlas.height != 104U) {
+        throw std::runtime_error("Matrix deck detail strip source is invalid");
+    }
+    shadowrun::graphics::RgbaImage image{
+        48U, 8U,
+        std::vector<shadowrun::native::Rgba8>(
+            48U * 8U, shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    for (std::size_t column = 0U; column < 6U; ++column) {
+        const auto word = read_big_endian_word(
+            rom, kTable + entry * kEntryStride + column * 2U);
+        const auto pattern = static_cast<std::size_t>(word & 0x07FFU);
+        if (pattern < kPatternBase || pattern - kPatternBase >= kPatternCount) {
+            throw std::runtime_error(
+                "Matrix deck detail strip references an unavailable pattern");
+        }
+        const auto pattern_index = pattern - kPatternBase;
+        const auto source_x = (pattern_index % 16U) * 8U;
+        const auto source_y = (pattern_index / 16U) * 8U;
+        const bool flip_x = (word & 0x0800U) != 0U;
+        const bool flip_y = (word & 0x1000U) != 0U;
+        for (std::size_t y = 0U; y < 8U; ++y) {
+            for (std::size_t x = 0U; x < 8U; ++x) {
+                const auto from_x = source_x + (flip_x ? 7U - x : x);
+                const auto from_y = source_y + (flip_y ? 7U - y : y);
+                const auto& pixel = pattern_atlas.pixels[
+                    from_y * static_cast<std::size_t>(pattern_atlas.width) +
+                    from_x];
+                if (pixel.alpha == 0U) continue;
+                image.pixels[y * 48U + column * 8U + x] = pixel;
+            }
+        }
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_cyberdeck_cursor(
+    const std::vector<std::uint8_t>& rom,
+    const shadowrun::graphics::RgbaImage& pattern_atlas) {
+    constexpr std::size_t kSpriteRecord = 0xE31E8U;
+    constexpr std::size_t kPatternBase = 0x040BU;
+    constexpr std::size_t kPatternCount = 199U;
+    if (pattern_atlas.width != 128U || pattern_atlas.height != 104U) {
+        throw std::runtime_error("Matrix deck cursor atlas is invalid");
+    }
+    const auto word = read_big_endian_word(rom, kSpriteRecord + 6U);
+    const auto pattern = static_cast<std::size_t>(word & 0x07FFU);
+    if (pattern < kPatternBase || pattern - kPatternBase >= kPatternCount) {
+        throw std::runtime_error("Matrix deck cursor pattern is unavailable");
+    }
+    const auto pattern_index = pattern - kPatternBase;
+    const auto source_x = (pattern_index % 16U) * 8U;
+    const auto source_y = (pattern_index / 16U) * 8U;
+    shadowrun::graphics::RgbaImage image{
+        8U, 8U,
+        std::vector<shadowrun::native::Rgba8>(
+            8U * 8U, shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    const bool flip_x = (word & 0x0800U) != 0U;
+    const bool flip_y = (word & 0x1000U) != 0U;
+    for (std::size_t y = 0U; y < 8U; ++y) {
+        for (std::size_t x = 0U; x < 8U; ++x) {
+            const auto from_x = source_x + (flip_x ? 7U - x : x);
+            const auto from_y = source_y + (flip_y ? 7U - y : y);
+            image.pixels[y * 8U + x] = pattern_atlas.pixels[
+                from_y * static_cast<std::size_t>(pattern_atlas.width) +
+                from_x];
+        }
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_cyberdeck_program_icon(
+    const std::vector<std::uint8_t>& rom,
+    const shadowrun::graphics::RgbaImage& pattern_atlas,
+    const std::size_t icon) {
+    constexpr std::size_t kIconTable = 0xD92B6U;
+    constexpr std::size_t kIconCount = 16U;
+    constexpr std::size_t kPatternBase = 0x00BFU;
+    constexpr std::size_t kPatternCount = 139U;
+    constexpr std::size_t kIconStride = 0x0CU;
+    if (icon >= kIconCount || pattern_atlas.width != 128U ||
+        pattern_atlas.height != 72U) {
+        throw std::runtime_error(
+            "Matrix program icon source has invalid dimensions");
+    }
+
+    shadowrun::graphics::RgbaImage image{
+        24U, 16U,
+        std::vector<shadowrun::native::Rgba8>(
+            24U * 16U, shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    for (std::size_t cell = 0U; cell < 6U; ++cell) {
+        const auto word = read_big_endian_word(
+            rom, kIconTable + icon * kIconStride + cell * 2U);
+        const auto pattern = static_cast<std::size_t>(word & 0x07FFU);
+        if (pattern < kPatternBase ||
+            pattern - kPatternBase >= kPatternCount) {
+            throw std::runtime_error(
+                "Matrix program icon references an unavailable pattern");
+        }
+        const auto pattern_index = pattern - kPatternBase;
+        const auto source_x = (pattern_index % 16U) * 8U;
+        const auto source_y = (pattern_index / 16U) * 8U;
+        const auto target_x = (cell % 3U) * 8U;
+        const auto target_y = (cell / 3U) * 8U;
+        const bool flip_x = (word & 0x0800U) != 0U;
+        const bool flip_y = (word & 0x1000U) != 0U;
+        for (std::size_t y = 0U; y < 8U; ++y) {
+            for (std::size_t x = 0U; x < 8U; ++x) {
+                const auto from_x = source_x + (flip_x ? 7U - x : x);
+                const auto from_y = source_y + (flip_y ? 7U - y : y);
+                const auto& source = pattern_atlas.pixels[
+                    from_y * static_cast<std::size_t>(pattern_atlas.width) +
+                    from_x];
+                if (source.alpha == 0U) continue;
+                image.pixels[(target_y + y) * 24U + target_x + x] = source;
+            }
+        }
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_cyberdeck_empty_program_icon(
+    const std::vector<std::uint8_t>& rom,
+    const shadowrun::graphics::RgbaImage& pattern_atlas) {
+    // 0x17708 selects the six-word empty-slot record at 0xD92AA whenever a
+    // signed installed-program ID is negative. This shares the same uploaded
+    // D86E0 tile bank and palette line as the installed-program records.
+    constexpr std::size_t kEmptyIconTable = 0xD92AAU;
+    constexpr std::size_t kPatternBase = 0x00BFU;
+    constexpr std::size_t kPatternCount = 139U;
+    if (pattern_atlas.width != 128U || pattern_atlas.height != 72U) {
+        throw std::runtime_error(
+            "Matrix empty program icon atlas has invalid dimensions");
+    }
+
+    shadowrun::graphics::RgbaImage image{
+        24U, 16U,
+        std::vector<shadowrun::native::Rgba8>(
+            24U * 16U, shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    for (std::size_t cell = 0U; cell < 6U; ++cell) {
+        const auto word = read_big_endian_word(
+            rom, kEmptyIconTable + cell * 2U);
+        const auto pattern = static_cast<std::size_t>(word & 0x07FFU);
+        if (pattern < kPatternBase ||
+            pattern - kPatternBase >= kPatternCount) {
+            throw std::runtime_error(
+                "Matrix empty icon references an unavailable pattern");
+        }
+        const auto pattern_index = pattern - kPatternBase;
+        const auto source_x = (pattern_index % 16U) * 8U;
+        const auto source_y = (pattern_index / 16U) * 8U;
+        const auto target_x = (cell % 3U) * 8U;
+        const auto target_y = (cell / 3U) * 8U;
+        const bool flip_x = (word & 0x0800U) != 0U;
+        const bool flip_y = (word & 0x1000U) != 0U;
+        for (std::size_t y = 0U; y < 8U; ++y) {
+            for (std::size_t x = 0U; x < 8U; ++x) {
+                const auto from_x = source_x + (flip_x ? 7U - x : x);
+                const auto from_y = source_y + (flip_y ? 7U - y : y);
+                const auto& source = pattern_atlas.pixels[
+                    from_y * static_cast<std::size_t>(pattern_atlas.width) +
+                    from_x];
+                if (source.alpha == 0U) continue;
+                image.pixels[(target_y + y) * 24U + target_x + x] = source;
+            }
+        }
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_cyberdeck_footer_slot_status(
+    const std::vector<std::uint8_t>& rom,
+    const shadowrun::graphics::RgbaImage& pattern_atlas,
+    const std::size_t status) {
+    // 0x19856 selects three tiles from D84D6 + status*6, then writes them
+    // with palette line 3. D78AA is uploaded at tile $02C by 0x177CC.
+    constexpr std::size_t kStatusTable = 0xD84D6U;
+    constexpr std::size_t kStatusCount = 7U;
+    constexpr std::size_t kPatternBase = 0x002CU;
+    constexpr std::size_t kPatternCount = 147U;
+    if (status >= kStatusCount || pattern_atlas.width != 128U ||
+        pattern_atlas.height != 80U) {
+        throw std::runtime_error(
+            "Matrix footer status source has invalid dimensions");
+    }
+
+    shadowrun::graphics::RgbaImage image{
+        24U, 8U,
+        std::vector<shadowrun::native::Rgba8>(
+            24U * 8U, shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    for (std::size_t cell = 0U; cell < 3U; ++cell) {
+        const auto word = read_big_endian_word(
+            rom, kStatusTable + status * 6U + cell * 2U);
+        const auto pattern = static_cast<std::size_t>(word & 0x07FFU);
+        if (pattern < kPatternBase ||
+            pattern - kPatternBase >= kPatternCount) {
+            throw std::runtime_error(
+                "Matrix footer status references an unavailable pattern");
+        }
+        const auto pattern_index = pattern - kPatternBase;
+        const auto source_x = (pattern_index % 16U) * 8U;
+        const auto source_y = (pattern_index / 16U) * 8U;
+        const auto target_x = cell * 8U;
+        const bool flip_x = (word & 0x0800U) != 0U;
+        const bool flip_y = (word & 0x1000U) != 0U;
+        for (std::size_t y = 0U; y < 8U; ++y) {
+            for (std::size_t x = 0U; x < 8U; ++x) {
+                const auto from_x = source_x + (flip_x ? 7U - x : x);
+                const auto from_y = source_y + (flip_y ? 7U - y : y);
+                const auto& source = pattern_atlas.pixels[
+                    from_y * static_cast<std::size_t>(pattern_atlas.width) +
+                    from_x];
+                if (source.alpha == 0U) continue;
+                image.pixels[y * 24U + target_x + x] = source;
+            }
+        }
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_cyberdeck_selector(
+    const std::vector<std::uint8_t>& rom,
+    const shadowrun::graphics::RgbaImage& pattern_atlas,
+    const std::size_t selected_row) {
+    constexpr std::size_t kSelectorTable = 0xD9FA8U;
+    constexpr std::size_t kPatternBase = 0x040BU;
+    constexpr std::size_t kPatternCount = 199U;
+    constexpr std::size_t kRowStride = 0x24U;
+    constexpr std::size_t kDestinationX = 40U;
+    constexpr std::size_t kDestinationY = 8U;
+    if (selected_row >= 4U || pattern_atlas.width != 128U ||
+        pattern_atlas.height != 104U) {
+        throw std::runtime_error(
+            "Matrix selector source has invalid dimensions");
+    }
+
+    shadowrun::graphics::RgbaImage image{
+        320U, 224U,
+        std::vector<shadowrun::native::Rgba8>(
+            320U * 224U, shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    // 0x189D8 writes the previous tab's inactive nine-cell strip and the
+    // current tab's active strip when selection moves. The static D9C96 map
+    // already contains all four inactive labels; this host layer contains
+    // only the active strip so it cannot repaint the other three tabs.
+    const auto target_y = kDestinationY + selected_row * 40U;
+    const auto source_row = kSelectorTable + selected_row * kRowStride + 9U * 2U;
+    for (std::size_t column = 0U; column < 9U; ++column) {
+        const auto word = read_big_endian_word(
+            rom, source_row + column * 2U);
+        const auto pattern = static_cast<std::size_t>(word & 0x07FFU);
+        if (pattern < kPatternBase ||
+            pattern - kPatternBase >= kPatternCount) {
+            throw std::runtime_error(
+                "Matrix selector references an unavailable pattern");
+        }
+        const auto pattern_index = pattern - kPatternBase;
+        const auto source_x = (pattern_index % 16U) * 8U;
+        const auto source_y = (pattern_index / 16U) * 8U;
+        const auto target_x = kDestinationX + column * 8U;
+        const bool flip_x = (word & 0x0800U) != 0U;
+        const bool flip_y = (word & 0x1000U) != 0U;
+        for (std::size_t y = 0U; y < 8U; ++y) {
+            for (std::size_t x = 0U; x < 8U; ++x) {
+                const auto from_x = source_x + (flip_x ? 7U - x : x);
+                const auto from_y = source_y + (flip_y ? 7U - y : y);
+                const auto& source = pattern_atlas.pixels[
+                    from_y * static_cast<std::size_t>(pattern_atlas.width) +
+                    from_x];
+                if (source.alpha == 0U) continue;
+                image.pixels[(target_y + y) * 320U + target_x + x] =
+                    source;
+            }
+        }
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_node_action_background(
+    const std::vector<std::uint8_t>& rom,
+    const std::vector<std::uint8_t>& matrix_field_resource,
+    const std::size_t profile,
+    const std::size_t theme) {
+    // 0x1745E loads the field-mode pattern stream at 0xD646A into VRAM
+    // $8160 (pattern $00B). 0x54662 selects one of two six-grid layouts at
+    // 0x166330/0x166368, loads the shared terminal patterns from 0x15FF30 to
+    // VRAM $1C80, then writes the centered terminal pieces from
+    // 0x1604D0/0x160538/0x160558/0x160578.
+    // The selected node color indexes the palette pointer table at 0x166448;
+    // the grid writer ORs $6000 into every tile word, selecting CRAM line 3.
+    constexpr std::size_t kMatrixFieldPatternBase = 0x000BU;
+    constexpr std::size_t kMatrixFieldPatternCount = 304U;
+    constexpr std::size_t kMatrixScenePatternBase = 0x00E4U;
+    constexpr std::size_t kMatrixScenePatternCount = 45U;
+    constexpr std::size_t kNodeProfileTable = 0x166330U;
+    constexpr std::size_t kNodeProfileStride = 0x38U;
+    constexpr std::size_t kThemePointerTable = 0x166448U;
+    constexpr std::size_t kScenePatternSource = 0x15FF30U;
+    constexpr std::size_t kScenePatternBytes = 0x5A0U;
+    constexpr std::array<std::array<std::size_t, 4>, 4> kTerminalGrids{{
+        {{0x1604D0U, 0xC20EU, 26U, 2U}},
+        {{0x160538U, 0xC310U, 1U, 16U}},
+        {{0x160558U, 0xC33EU, 1U, 16U}},
+        {{0x160578U, 0xCB10U, 24U, 2U}},
+    }};
+    if (profile > 4U || theme > 3U ||
+        matrix_field_resource.size() != kMatrixFieldPatternCount * 32U) {
+        throw std::runtime_error("Matrix node layout selection is invalid");
+    }
+
+    const auto palette_source = read_big_endian_long(
+        rom, kThemePointerTable + theme * 4U);
+    const auto palette =
+        shadowrun::graphics::read_genesis_palette(rom, palette_source);
+    const auto field_patterns = shadowrun::graphics::decode_tile_atlas(
+        matrix_field_resource, 0U, kMatrixFieldPatternCount, palette, 16U, 0U);
+    const auto scene_patterns = shadowrun::graphics::decode_tile_atlas(
+        rom, kScenePatternSource, kMatrixScenePatternCount, palette, 16U, 0U);
+    if (scene_patterns.width != 128U ||
+        scene_patterns.height != 24U) {
+        throw std::runtime_error("Matrix terminal pattern block changed size");
+    }
+    if (kScenePatternBytes != kMatrixScenePatternCount * 32U) {
+        throw std::runtime_error("Matrix terminal source size is inconsistent");
+    }
+
+    const auto profile_address =
+        kNodeProfileTable + profile * kNodeProfileStride;
+    const auto extra_pattern_source = static_cast<std::size_t>(
+        read_big_endian_long(rom, profile_address));
+    const auto extra_pattern_bytes = static_cast<std::size_t>(
+        read_big_endian_long(rom, profile_address + 4U));
+    shadowrun::graphics::RgbaImage extra_patterns{};
+    if (extra_pattern_bytes != 0U) {
+        if (extra_pattern_bytes % 32U != 0U) {
+            throw std::runtime_error(
+                "Matrix node extra pattern block is not tile-aligned");
+        }
+        extra_patterns = shadowrun::graphics::decode_tile_atlas(
+            rom, extra_pattern_source, extra_pattern_bytes / 32U, palette,
+            16U, 0U);
+    }
+
+    shadowrun::graphics::RgbaImage image{
+        320U, 224U,
+        std::vector<shadowrun::native::Rgba8>(
+            320U * 224U,
+            shadowrun::native::Rgba8{0U, 0U, 0U, 255U}),
+    };
+    const auto draw_word = [&](const std::size_t cell_index,
+                               const std::uint16_t raw_word) {
+        const auto word = static_cast<std::uint16_t>(raw_word | 0x6000U);
+        const auto pattern = static_cast<std::size_t>(word & 0x07FFU);
+        const shadowrun::graphics::RgbaImage* atlas = nullptr;
+        std::size_t atlas_pattern = 0U;
+        if (pattern >= kMatrixScenePatternBase &&
+            pattern - kMatrixScenePatternBase <
+                kMatrixScenePatternCount) {
+            atlas = &scene_patterns;
+            atlas_pattern = pattern - kMatrixScenePatternBase;
+        } else if (!extra_patterns.pixels.empty() &&
+                   pattern >= 0x0111U &&
+                   pattern - 0x0111U < extra_pattern_bytes / 32U) {
+            atlas = &extra_patterns;
+            atlas_pattern = pattern - 0x0111U;
+        } else if (pattern >= kMatrixFieldPatternBase &&
+                   pattern - kMatrixFieldPatternBase <
+                       kMatrixFieldPatternCount) {
+            atlas = &field_patterns;
+            atlas_pattern = pattern - kMatrixFieldPatternBase;
+        } else if (pattern <= 0x000AU) {
+            // Low reserved and transparent patterns are left as the black
+            // background established when the source planes are cleared.
+            return;
+        } else {
+            throw std::runtime_error(
+                "Matrix node name table references an unavailable pattern");
+        }
+
+        const auto cell_x = cell_index % 64U;
+        const auto cell_y = cell_index / 64U;
+        if (cell_x >= 40U || cell_y >= 28U) return;
+        const auto target_x = cell_x * 8U;
+        const auto target_y = cell_y * 8U;
+        const auto source_x = (atlas_pattern % 16U) * 8U;
+        const auto source_y = (atlas_pattern / 16U) * 8U;
+        const bool flip_x = (word & 0x0800U) != 0U;
+        const bool flip_y = (word & 0x1000U) != 0U;
+        for (std::size_t y = 0U; y < 8U; ++y) {
+            for (std::size_t x = 0U; x < 8U; ++x) {
+                const auto from_x = source_x + (flip_x ? 7U - x : x);
+                const auto from_y = source_y + (flip_y ? 7U - y : y);
+                const auto& source = atlas->pixels[
+                    from_y * static_cast<std::size_t>(atlas->width) +
+                    from_x];
+                if (source.alpha == 0U) continue;
+                image.pixels[(target_y + y) * 320U + target_x + x] = source;
+            }
+        }
+    };
+    const auto draw_grid = [&rom, &draw_word](const std::size_t source,
+                                              const std::size_t destination,
+                                              const std::size_t columns,
+                                              const std::size_t rows) {
+        // The profile tables target Plane B at $E000, while the terminal
+        // tables target Plane A at $C000. Both are screen-local name-table
+        // positions after subtracting their respective VDP plane bases.
+        const auto plane_base = destination >= 0xE000U
+                                    ? 0xE000U
+                                    : 0xC000U;
+        for (std::size_t row = 0U; row < rows; ++row) {
+            const auto row_address =
+                (destination - plane_base + row * 0x80U) & 0x3FFFU;
+            for (std::size_t column = 0U; column < columns; ++column) {
+                const auto source_word =
+                    source + (row * columns + column) * 2U;
+                const auto word = read_big_endian_word(rom, source_word);
+                const auto address =
+                    (row_address + column * 2U) & 0x3FFFU;
+                draw_word(address / 2U, word);
+            }
+        }
+    };
+
+    for (std::size_t grid = 0U; grid < 6U; ++grid) {
+        const auto record = profile_address + 8U + grid * 8U;
+        const auto source = static_cast<std::size_t>(
+            read_big_endian_long(rom, record));
+        const auto destination = static_cast<std::size_t>(
+            read_big_endian_word(rom, record + 4U));
+        const auto columns = static_cast<std::size_t>(rom[record + 6U]) + 1U;
+        const auto rows = static_cast<std::size_t>(rom[record + 7U]) + 1U;
+        draw_grid(source, destination, columns, rows);
+    }
+
+    for (const auto& grid : kTerminalGrids) {
+        draw_grid(grid[0], grid[1], grid[2], grid[3]);
+    }
+    return image;
+}
+
+template <typename Palette>
+shadowrun::graphics::RgbaImage compose_matrix_node_action_cursor(
+    const std::vector<std::uint8_t>& title_font_resource,
+    const Palette& palette) {
+    constexpr std::size_t kPatternBase = 0x05ABU;
+    constexpr std::size_t kPatternCount = 0x55U;
+    constexpr std::uint16_t kCursorWord = 0x85FFU;
+    constexpr std::size_t kCursorPattern = kCursorWord & 0x07FFU;
+    if (title_font_resource.size() != kPatternCount * 32U ||
+        kCursorPattern < kPatternBase ||
+        kCursorPattern - kPatternBase >= kPatternCount) {
+        throw std::runtime_error(
+            "Matrix node-action cursor source tile is unavailable");
+    }
+
+    // 0xC0C2 uploads 85 title-font patterns from 0xC1064 at VRAM $B560
+    // (pattern $5AB). 0xC376 writes $85FF for the selected row, selecting
+    // the final pattern ($5FF) with palette line 0. The security-color
+    // setup at 0x566D8 supplies that line from the corresponding 0xE2D52
+    // palette record. This is an offline tile extraction; Qt receives only
+    // the named 8x8 image.
+    const auto patterns = shadowrun::graphics::decode_tile_atlas(
+        title_font_resource, 0U, kPatternCount, palette, 16U, 0U);
+    if (patterns.width != 128U || patterns.height != 48U) {
+        throw std::runtime_error(
+            "Matrix node-action cursor atlas has invalid dimensions");
+    }
+    const auto pattern_index = kCursorPattern - kPatternBase;
+    const auto source_x = (pattern_index % 16U) * 8U;
+    const auto source_y = (pattern_index / 16U) * 8U;
+    shadowrun::graphics::RgbaImage cursor{
+        8U, 8U,
+        std::vector<shadowrun::native::Rgba8>(
+            64U, shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    for (std::size_t y = 0U; y < 8U; ++y) {
+        for (std::size_t x = 0U; x < 8U; ++x) {
+            cursor.pixels[y * 8U + x] = patterns.pixels[
+                (source_y + y) * patterns.width + source_x + x];
+        }
+    }
+    return cursor;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_traversal_background(
+    const std::vector<std::uint8_t>& rom,
+    const std::vector<std::uint8_t>& matrix_field_resource,
+    const shadowrun::graphics::RgbaImage& matrix_menu_patterns,
+    const std::size_t theme) {
+    // 0x1745E uploads the Matrix menu patterns from 0xD78AA at $0580 and
+    // the 304 field patterns from 0xD646A at $8160, then draws the world view
+    // with the 0x1728 streams at 0xD806C/$E000 (40x13) and 0xD74F4/$E680
+    // (40x9). 0x17708 draws the shared six-row footer from 0xD8316 at $EB00.
+    // D806C and D8316 use the menu patterns at $02C with palette 0xE2E9A;
+    // D74F4 uses the field patterns at $040B and the selected palette pointer
+    // from 0x166448. This is an offline composition; the Qt runtime loads the
+    // resulting image and never decodes the source streams.
+    constexpr std::size_t kWidth = 320U;
+    constexpr std::size_t kHeight = 224U;
+    constexpr std::size_t kColumns = 40U;
+    constexpr std::size_t kRows = 28U;
+    constexpr std::size_t kFieldPatternBase = 0x040BU;
+    constexpr std::size_t kFieldPatternCount = 304U;
+    constexpr std::size_t kMenuPatternBase = 0x002CU;
+    constexpr std::size_t kMenuPatternCount = 147U;
+    constexpr std::size_t kPalettePointerTable = 0x166448U;
+    constexpr std::array<std::size_t, 3> kStreamSources{
+        0xD806CU, 0xD74F4U, 0xD8316U};
+    constexpr std::array<std::size_t, 3> kStreamFirstRows{0U, 13U, 22U};
+    constexpr std::array<std::size_t, 3> kExpectedWordCounts{
+        520U, 360U, 240U};
+    if (theme > 3U ||
+        matrix_field_resource.size() != kFieldPatternCount * 32U ||
+        matrix_menu_patterns.width != 128U ||
+        matrix_menu_patterns.height != 80U) {
+        throw std::runtime_error(
+            "Matrix traversal background selection is invalid");
+    }
+
+    const auto palette_source = static_cast<std::size_t>(
+        read_big_endian_long(rom, kPalettePointerTable + theme * 4U));
+    const auto field_patterns = shadowrun::graphics::decode_tile_atlas(
+        matrix_field_resource, 0U, kFieldPatternCount,
+        shadowrun::graphics::read_genesis_palette(rom, palette_source),
+        16U, 0U);
+    if (field_patterns.width != 128U || field_patterns.height != 152U) {
+        throw std::runtime_error(
+            "Matrix traversal pattern atlas has invalid dimensions");
+    }
+
+    shadowrun::graphics::RgbaImage image{
+        static_cast<std::uint16_t>(kWidth),
+        static_cast<std::uint16_t>(kHeight),
+        std::vector<shadowrun::native::Rgba8>(
+            kWidth * kHeight,
+            shadowrun::native::Rgba8{0U, 0U, 0U, 255U}),
+    };
+    constexpr std::array<std::size_t, 3> kPatternBases{
+        kMenuPatternBase, kFieldPatternBase, kMenuPatternBase};
+    constexpr std::array<std::size_t, 3> kPatternCounts{
+        kMenuPatternCount, kFieldPatternCount, kMenuPatternCount};
+    const std::array<const shadowrun::graphics::RgbaImage*, 3> atlases{
+        &matrix_menu_patterns, &field_patterns, &matrix_menu_patterns};
+    for (std::size_t stream = 0U; stream < kStreamSources.size(); ++stream) {
+        const auto words = decode_hud_sprite_stream_for_asset(
+            rom, kStreamSources[stream], "Matrix traversal background stream");
+        if (words.size() != kExpectedWordCounts[stream] ||
+            words.size() > kColumns * (kRows - kStreamFirstRows[stream])) {
+            throw std::runtime_error(
+                "Matrix traversal background stream cell count changed");
+        }
+        for (std::size_t index = 0U; index < words.size(); ++index) {
+            const auto word = static_cast<std::uint16_t>(words[index] | 0x6000U);
+            const auto pattern = static_cast<std::size_t>(word & 0x07FFU);
+            if (pattern < kPatternBases[stream] ||
+                pattern - kPatternBases[stream] >= kPatternCounts[stream]) {
+                throw std::runtime_error(
+                    "Matrix traversal stream references a missing tile");
+            }
+            const auto pattern_index = pattern - kPatternBases[stream];
+            const auto source_x = (pattern_index % 16U) * 8U;
+            const auto source_y = (pattern_index / 16U) * 8U;
+            const auto target_x = (index % kColumns) * 8U;
+            const auto target_y =
+                (kStreamFirstRows[stream] + index / kColumns) * 8U;
+            const bool flip_x = (word & 0x0800U) != 0U;
+            const bool flip_y = (word & 0x1000U) != 0U;
+            for (std::size_t y = 0U; y < 8U; ++y) {
+                for (std::size_t x = 0U; x < 8U; ++x) {
+                    const auto from_x = source_x + (flip_x ? 7U - x : x);
+                    const auto from_y = source_y + (flip_y ? 7U - y : y);
+                    const auto& source = atlases[stream]->pixels[
+                        from_y * static_cast<std::size_t>(atlases[stream]->width) +
+                        from_x];
+                    if (source.alpha == 0U) continue;
+                    image.pixels[(target_y + y) * kWidth + target_x + x] =
+                        source;
+                }
+            }
+        }
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_traversal_hud_frame(
+    const std::vector<std::uint8_t>& rom,
+    const shadowrun::graphics::RgbaImage& matrix_menu_patterns) {
+    // 0x1789C calls 0x178C8 twice. Each batch writes five small Plane-A grids
+    // from 0xD86C8; the second pass is displaced by 0x28 bytes to complete the
+    // two top status frames. The ROM's grid writer adds 0x80 bytes per row.
+    constexpr std::size_t kScreenWidth = 320U;
+    constexpr std::size_t kScreenHeight = 224U;
+    constexpr std::size_t kPatternBase = 0x002CU;
+    constexpr std::size_t kPatternCount = 147U;
+    constexpr std::size_t kSource = 0xD86C8U;
+    struct HudGrid {
+        std::size_t source_word_offset;
+        std::uint16_t destination;
+        std::size_t columns;
+        std::size_t rows;
+    };
+    constexpr std::array<HudGrid, 5> kGrids{{
+        {0U, 0xC004U, 1U, 1U},
+        {1U, 0xC022U, 1U, 1U},
+        {2U, 0xC204U, 2U, 2U},
+        {6U, 0xC220U, 2U, 2U},
+        {10U, 0xC292U, 2U, 1U},
+    }};
+    if (matrix_menu_patterns.width != 128U ||
+        matrix_menu_patterns.height != 80U) {
+        throw std::runtime_error(
+            "Matrix traversal HUD pattern atlas has invalid dimensions");
+    }
+
+    shadowrun::graphics::RgbaImage image{
+        static_cast<std::uint16_t>(kScreenWidth),
+        static_cast<std::uint16_t>(kScreenHeight),
+        std::vector<shadowrun::native::Rgba8>(
+            kScreenWidth * kScreenHeight,
+            shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    for (std::size_t batch = 0U; batch < 2U; ++batch) {
+        const auto batch_offset = batch == 0U ? 0U : 0x28U;
+        for (const auto& grid : kGrids) {
+            const auto destination = static_cast<std::size_t>(
+                grid.destination) + batch_offset;
+            const auto plane_offset = destination - 0xC000U;
+            for (std::size_t row = 0U; row < grid.rows; ++row) {
+                for (std::size_t column = 0U; column < grid.columns;
+                     ++column) {
+                    const auto source_offset = kSource +
+                        (grid.source_word_offset + row * grid.columns +
+                         column) * 2U;
+                    const auto word = static_cast<std::uint16_t>(
+                        read_big_endian_word(rom, source_offset) | 0x6000U);
+                    const auto pattern = static_cast<std::size_t>(
+                        word & 0x07FFU);
+                    if (pattern < kPatternBase ||
+                        pattern - kPatternBase >= kPatternCount) {
+                        throw std::runtime_error(
+                            "Matrix traversal HUD frame references a missing tile");
+                    }
+                    const auto pattern_index = pattern - kPatternBase;
+                    const auto source_x = (pattern_index % 16U) * 8U;
+                    const auto source_y = (pattern_index / 16U) * 8U;
+                    const auto name_cell =
+                        (plane_offset + row * 0x80U + column * 2U) / 2U;
+                    const auto cell_x = name_cell % 64U;
+                    const auto cell_y = name_cell / 64U;
+                    if (cell_x >= kScreenWidth / 8U ||
+                        cell_y >= kScreenHeight / 8U) {
+                        continue;
+                    }
+                    const auto target_x = cell_x * 8U;
+                    const auto target_y = cell_y * 8U;
+                    const bool flip_x = (word & 0x0800U) != 0U;
+                    const bool flip_y = (word & 0x1000U) != 0U;
+                    for (std::size_t y = 0U; y < 8U; ++y) {
+                        for (std::size_t x = 0U; x < 8U; ++x) {
+                            const auto from_x = source_x +
+                                (flip_x ? 7U - x : x);
+                            const auto from_y = source_y +
+                                (flip_y ? 7U - y : y);
+                            const auto& pixel = matrix_menu_patterns.pixels[
+                                from_y * matrix_menu_patterns.width + from_x];
+                            if (pixel.alpha == 0U) continue;
+                            image.pixels[(target_y + y) * kScreenWidth +
+                                         target_x + x] = pixel;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_traversal_runner_pose(
+    const std::vector<std::uint8_t>& rom,
+    const std::size_t primary_table,
+    const std::size_t primary_phase,
+    const std::size_t secondary_table,
+    const std::size_t secondary_phase,
+    const char* pose_name) {
+    // 0x1C506 draws the primary list before the secondary list. Behavior E
+    // supplies the steady traversal pose; behavior A's final phase supplies
+    // the raised-arm action pose. Both use the fixed 0xDA038 bank at tile
+    // 0x11B, and the action pose also references the 0xDAAB8 bank at tile
+    // 0x16F. D1=FF158E=0x120 is SAT X and D2=FF1590=0x12F is SAT Y; 0x1378
+    // adds the first/second list words to X/Y respectively.
+    constexpr std::size_t kWidth = 320U;
+    constexpr std::size_t kHeight = 224U;
+    constexpr std::size_t kFixedPatternSource = 0xDA038U;
+    constexpr std::size_t kFixedPatternBytes = 0x0A80U;
+    constexpr std::size_t kFixedPatternFirstTile = 0x011BU;
+    constexpr std::size_t kActionPatternFirstTile = 0x016FU;
+    constexpr std::size_t kTilesPerRow = 16U;
+    constexpr int kBaseX = 0x0120 - 128;
+    constexpr int kBaseY = 0x012F - 128;
+    if (kFixedPatternSource > rom.size() ||
+        kFixedPatternBytes > rom.size() - kFixedPatternSource ||
+        kFixedPatternBytes % 32U != 0U) {
+        throw std::runtime_error(
+            "Matrix traversal fixed runner pattern bank is truncated");
+    }
+    const std::vector<std::uint8_t> fixed_patterns(
+        rom.begin() + static_cast<std::ptrdiff_t>(kFixedPatternSource),
+        rom.begin() + static_cast<std::ptrdiff_t>(
+            kFixedPatternSource + kFixedPatternBytes));
+    const auto action_patterns =
+        shadowrun::graphics::decode_genesis_resource_stream(rom, 0xDAAB8U);
+    if (action_patterns.empty() || action_patterns.size() % 32U != 0U) {
+        throw std::runtime_error(
+            "Matrix traversal action runner pattern bank is invalid");
+    }
+    const auto palette = shadowrun::graphics::read_genesis_palette(
+        rom, 0x0E2E9AU);
+    const auto fixed_atlas = shadowrun::graphics::decode_tile_atlas(
+        fixed_patterns, 0U, kFixedPatternBytes / 32U, palette,
+        kTilesPerRow, 0U);
+    const auto action_atlas = shadowrun::graphics::decode_tile_atlas(
+        action_patterns, 0U, action_patterns.size() / 32U, palette,
+        kTilesPerRow, 0U);
+    shadowrun::graphics::RgbaImage image{
+        static_cast<std::uint16_t>(kWidth),
+        static_cast<std::uint16_t>(kHeight),
+        std::vector<shadowrun::native::Rgba8>(
+            kWidth * kHeight,
+            shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    const auto get_list = [&](const std::size_t table,
+                              const std::size_t phase) {
+        const auto maximum_phase = static_cast<std::size_t>(
+            read_big_endian_word(rom, table));
+        if (phase > maximum_phase) {
+            throw std::runtime_error(
+                std::string("Matrix traversal ") + pose_name +
+                " phase exceeds its source list table");
+        }
+        return static_cast<std::size_t>(read_big_endian_long(
+            rom, table + 2U + phase * 4U));
+    };
+    const auto draw_list = [&](std::size_t record) {
+        for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+            if (record > rom.size() || rom.size() - record < 8U) {
+                throw std::runtime_error(
+                    std::string("Matrix traversal ") + pose_name +
+                    " list is truncated");
+            }
+            const auto x_offset = static_cast<std::int16_t>(
+                read_big_endian_word(rom, record));
+            if (x_offset == std::numeric_limits<std::int16_t>::min()) {
+                return;
+            }
+            const auto y_offset = static_cast<std::int16_t>(
+                read_big_endian_word(rom, record + 2U));
+            const auto size_word = read_big_endian_word(rom, record + 4U);
+            const auto attributes = read_big_endian_word(rom, record + 6U);
+            if ((size_word & 0xFF00U) != 0U ||
+                (attributes & 0xF000U) != 0x8000U) {
+                throw std::runtime_error(
+                    std::string("Matrix traversal ") + pose_name +
+                    " record has invalid attributes");
+            }
+            const auto first_tile = static_cast<std::size_t>(
+                attributes & 0x07FFU);
+            const bool uses_action_bank =
+                first_tile >= kActionPatternFirstTile;
+            const auto pattern_first_tile = uses_action_bank
+                ? kActionPatternFirstTile : kFixedPatternFirstTile;
+            const auto pattern_tile_count = uses_action_bank
+                ? action_patterns.size() / 32U
+                : kFixedPatternBytes / 32U;
+            const auto& atlas = uses_action_bank
+                ? action_atlas : fixed_atlas;
+            if (first_tile < pattern_first_tile) {
+                throw std::runtime_error(
+                    std::string("Matrix traversal ") + pose_name +
+                    " record precedes its pattern bank");
+            }
+            const auto width_tiles = static_cast<std::size_t>(
+                ((size_word >> 2U) & 0x03U) + 1U);
+            const auto height_tiles = static_cast<std::size_t>(
+                (size_word & 0x03U) + 1U);
+            const auto tile_offset = first_tile - pattern_first_tile;
+            if (tile_offset > pattern_tile_count ||
+                width_tiles * height_tiles >
+                    pattern_tile_count - tile_offset) {
+                throw std::runtime_error(
+                    std::string("Matrix traversal ") + pose_name +
+                    " sprite exceeds its pattern bank");
+            }
+            const auto sprite_width = width_tiles * 8U;
+            const auto sprite_height = height_tiles * 8U;
+            const bool flip_x = (attributes & 0x0800U) != 0U;
+            const bool flip_y = (attributes & 0x1000U) != 0U;
+            for (std::size_t y = 0U; y < sprite_height; ++y) {
+                for (std::size_t x = 0U; x < sprite_width; ++x) {
+                    const auto source_x = flip_x ? sprite_width - 1U - x : x;
+                    const auto source_y = flip_y ? sprite_height - 1U - y : y;
+                    const auto tile = tile_offset +
+                        (source_x / 8U) * height_tiles + source_y / 8U;
+                    const auto atlas_x = (tile % kTilesPerRow) * 8U +
+                                         source_x % 8U;
+                    const auto atlas_y = (tile / kTilesPerRow) * 8U +
+                                         source_y % 8U;
+                    const auto pixel = atlas.pixels[
+                        atlas_y * atlas.width + atlas_x];
+                    const auto target_x = kBaseX + x_offset +
+                                          static_cast<int>(x);
+                    const auto target_y = kBaseY + y_offset +
+                                          static_cast<int>(y);
+                    if (pixel.alpha == 0U || target_x < 0 || target_y < 0 ||
+                        target_x >= static_cast<int>(kWidth) ||
+                        target_y >= static_cast<int>(kHeight)) {
+                        continue;
+                    }
+                    image.pixels[static_cast<std::size_t>(target_y) * kWidth +
+                                 static_cast<std::size_t>(target_x)] = pixel;
+                }
+            }
+            record += 8U;
+        }
+        throw std::runtime_error(
+            std::string("Matrix traversal ") + pose_name +
+            " list has no terminator");
+    };
+    // 0x1C506 draws A2 (primary) before A4 (secondary).
+    draw_list(get_list(primary_table, primary_phase));
+    draw_list(get_list(secondary_table, secondary_phase));
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_traversal_idle_runner(
+    const std::vector<std::uint8_t>& rom) {
+    // 0x1ADE6 attaches descriptor E, whose tables are phase-zero only.
+    return compose_matrix_traversal_runner_pose(
+        rom, 0x1C34AU, 0U, 0x1C344U, 0U, "descriptor-E idle runner");
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_traversal_world_sequence_runner(
+    const std::vector<std::uint8_t>& rom) {
+    // 0x1D280 starts the FFDF8C entry sequence with phase 0 / countdown 4.
+    // 0x1B364 advances the four independent figure groups once per sequence
+    // frame. On the 239-VBlank compact path, the sequence-completion branch
+    // stops the final figure pass at phase 4. This is the wide runner retained
+    // by the first Matrix traversal frame, not descriptor E's arms-down pose.
+    struct FigureGroup {
+        std::size_t pointer_table;
+        std::size_t destination;
+        std::uint16_t base_x;
+        std::uint16_t base_y;
+    };
+    constexpr std::size_t kPhase = 4U;
+    constexpr std::size_t kScreenWidth = 320U;
+    constexpr std::size_t kScreenHeight = 224U;
+    constexpr std::array<FigureGroup, 4> kGroups{{
+        {0x1DAF4U, 0xF000U, 0x00F8U, 0x00E4U},
+        {0x1DB08U, 0xF000U, 0x0148U, 0x00E4U},
+        {0x0EA490U, 0xF800U, 0x00E2U, 0x0114U},
+        {0x0EA4A4U, 0xF800U, 0x015EU, 0x0114U},
+    }};
+    auto figure = shadowrun::graphics::RgbaImage{
+        static_cast<std::uint16_t>(kScreenWidth),
+        static_cast<std::uint16_t>(kScreenHeight),
+        std::vector<shadowrun::native::Rgba8>(
+            kScreenWidth * kScreenHeight,
+            shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    const auto palette = shadowrun::graphics::read_genesis_palette(
+        rom, 0x0E2E9AU);
+    const auto draw_sprite = [&] (
+        shadowrun::graphics::RgbaImage& target,
+        const shadowrun::graphics::RgbaImage& atlas,
+        const std::size_t atlas_tile_count,
+        const std::size_t atlas_tiles_per_row,
+        const std::size_t sprite_tile_first,
+        const std::size_t sprite_tile_bank_first,
+        const std::uint8_t size,
+        const std::uint16_t attributes,
+        const int origin_x,
+        const int origin_y) {
+        if (sprite_tile_first < sprite_tile_bank_first ||
+            atlas_tiles_per_row == 0U) {
+            throw std::runtime_error(
+                "Matrix entry runner sprite starts outside its tile bank");
+        }
+        const auto width_tiles = static_cast<std::size_t>(
+            ((size >> 2U) & 0x03U) + 1U);
+        const auto height_tiles = static_cast<std::size_t>(
+            (size & 0x03U) + 1U);
+        const auto tile_offset = sprite_tile_first - sprite_tile_bank_first;
+        const auto sprite_tile_count = width_tiles * height_tiles;
+        if (tile_offset > atlas_tile_count ||
+            sprite_tile_count > atlas_tile_count - tile_offset) {
+            throw std::runtime_error(
+                "Matrix entry runner sprite exceeds its decoded tile bank");
+        }
+        const bool flip_x = (attributes & 0x0800U) != 0U;
+        const bool flip_y = (attributes & 0x1000U) != 0U;
+        const auto width = width_tiles * 8U;
+        const auto height = height_tiles * 8U;
+        for (std::size_t y = 0U; y < height; ++y) {
+            for (std::size_t x = 0U; x < width; ++x) {
+                const auto source_x = flip_x ? width - x - 1U : x;
+                const auto source_y = flip_y ? height - y - 1U : y;
+                const auto tile_index = tile_offset +
+                    (source_x / 8U) * height_tiles + source_y / 8U;
+                const auto atlas_x =
+                    (tile_index % atlas_tiles_per_row) * 8U + source_x % 8U;
+                const auto atlas_y =
+                    (tile_index / atlas_tiles_per_row) * 8U + source_y % 8U;
+                const auto source_pixel = atlas.pixels[
+                    atlas_y * atlas.width + atlas_x];
+                if (source_pixel.alpha == 0U) {
+                    continue;
+                }
+                const auto target_x = origin_x + static_cast<int>(x);
+                const auto target_y = origin_y + static_cast<int>(y);
+                if (target_x < 0 || target_y < 0 ||
+                    target_x >= static_cast<int>(kScreenWidth) ||
+                    target_y >= static_cast<int>(kScreenHeight)) {
+                    continue;
+                }
+                target.pixels[static_cast<std::size_t>(target_y) *
+                                  kScreenWidth +
+                              static_cast<std::size_t>(target_x)] = source_pixel;
+            }
+        }
+    };
+    // 0x1D2E6's world sequence contributes the centered body from its fixed
+    // pair before 0x1B364 adds the four animated side groups below.
+    constexpr std::size_t kFixedPatternSource = 0xDA038U;
+    constexpr std::size_t kFixedPatternBytes = 0x0A80U;
+    constexpr std::size_t kFixedPatternFirstTile = 0x011BU;
+    constexpr std::size_t kFixedPatternTileCount =
+        kFixedPatternBytes / 32U;
+    constexpr std::size_t kFixedPatternTilesPerRow = 16U;
+    const auto fixed_atlas = shadowrun::graphics::decode_tile_atlas(
+        rom, kFixedPatternSource, kFixedPatternTileCount, palette,
+        kFixedPatternTilesPerRow, 0U);
+    constexpr std::array<std::size_t, 2> kFixedFigureLists{{
+        0x1D428U, 0x1D452U,
+    }};
+    constexpr int kFixedFigureBaseX = 0x0120 - 128;
+    constexpr int kFixedFigureBaseY = 0x012F - 128;
+    for (const auto list : kFixedFigureLists) {
+        auto record = list;
+        bool terminated = false;
+        for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+            if (record > rom.size() || rom.size() - record < 8U) {
+                throw std::runtime_error(
+                    "Matrix entry runner fixed sprite list is truncated");
+            }
+            const auto x_offset = static_cast<std::int16_t>(
+                read_big_endian_word(rom, record));
+            if (x_offset == std::numeric_limits<std::int16_t>::min()) {
+                terminated = true;
+                break;
+            }
+            const auto y_offset = static_cast<std::int16_t>(
+                read_big_endian_word(rom, record + 2U));
+            const auto size_word = read_big_endian_word(rom, record + 4U);
+            const auto attributes = static_cast<std::uint16_t>(
+                read_big_endian_word(rom, record + 6U) | 0x6000U);
+            if ((size_word & 0xFF00U) != 0U) {
+                throw std::runtime_error(
+                    "Matrix entry runner fixed sprite size is invalid");
+            }
+            const auto first_tile = static_cast<std::size_t>(
+                attributes & 0x07FFU);
+            draw_sprite(figure, fixed_atlas, kFixedPatternTileCount,
+                        kFixedPatternTilesPerRow, first_tile,
+                        kFixedPatternFirstTile,
+                        static_cast<std::uint8_t>(size_word), attributes,
+                        kFixedFigureBaseX + x_offset,
+                        kFixedFigureBaseY + y_offset);
+            record += 8U;
+        }
+        if (!terminated) {
+            throw std::runtime_error(
+                "Matrix entry runner fixed sprite list has no terminator");
+        }
+    }
+    for (const auto& group : kGroups) {
+        const auto table_entry = group.pointer_table + kPhase * 4U;
+        if (table_entry > rom.size() || rom.size() - table_entry < 4U) {
+            throw std::runtime_error(
+                "Matrix entry runner phase table is truncated");
+        }
+        const auto descriptor = static_cast<std::size_t>(
+            read_big_endian_long(rom, table_entry));
+        if (descriptor > rom.size() || rom.size() - descriptor < 8U) {
+            throw std::runtime_error(
+                "Matrix entry runner descriptor is truncated");
+        }
+        const auto pattern_source = static_cast<std::size_t>(
+            read_big_endian_long(rom, descriptor + 2U));
+        const auto pattern_bytes = static_cast<std::size_t>(
+            read_big_endian_word(rom, descriptor + 6U));
+        if (pattern_bytes == 0U || pattern_bytes % 32U != 0U ||
+            pattern_source > rom.size() ||
+            pattern_bytes > rom.size() - pattern_source ||
+            group.destination > 0x10000U ||
+            pattern_bytes > 0x10000U - group.destination) {
+            throw std::runtime_error(
+                "Matrix entry runner pattern block is invalid");
+        }
+        std::vector<std::uint8_t> pattern_vram(0x10000U, 0U);
+        std::copy_n(rom.begin() + static_cast<std::ptrdiff_t>(pattern_source),
+                    pattern_bytes,
+                    pattern_vram.begin() + static_cast<std::ptrdiff_t>(
+                                               group.destination));
+        const auto tile_count = pattern_bytes / 32U;
+        const auto atlas = shadowrun::graphics::decode_tile_atlas(
+            pattern_vram, group.destination, tile_count, palette,
+            tile_count, 0U);
+
+        auto record = descriptor + 8U;
+        bool terminated = false;
+        for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+            if (record > rom.size() || rom.size() - record < 8U) {
+                throw std::runtime_error(
+                    "Matrix entry runner sprite list is truncated");
+            }
+            const auto x_offset = static_cast<std::int16_t>(
+                read_big_endian_word(rom, record));
+            if (x_offset == std::numeric_limits<std::int16_t>::min()) {
+                terminated = true;
+                break;
+            }
+            const auto y_offset = static_cast<std::int16_t>(
+                read_big_endian_word(rom, record + 2U));
+            const auto size_word = read_big_endian_word(rom, record + 4U);
+            const auto attributes = read_big_endian_word(rom, record + 6U);
+            if ((size_word & 0xFF00U) != 0U ||
+                ((attributes & 0xF000U) != 0U &&
+                 (attributes & 0xF000U) != 0x0800U)) {
+                throw std::runtime_error(
+                    "Matrix entry runner SAT entry has invalid flags");
+            }
+            const auto first_tile = static_cast<std::size_t>(
+                attributes & 0x07FFU);
+            const auto origin_x = static_cast<int>(group.base_x) +
+                                  x_offset - 128;
+            const auto origin_y = static_cast<int>(group.base_y) +
+                                  y_offset - 128;
+            draw_sprite(figure, atlas, tile_count, tile_count, first_tile,
+                        0U, static_cast<std::uint8_t>(size_word), attributes,
+                        origin_x, origin_y);
+            record += 8U;
+        }
+        if (!terminated) {
+            throw std::runtime_error(
+                "Matrix entry runner sprite list has no terminator");
+        }
+    }
+    return figure;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_traversal_action_runner_phase(
+    const std::vector<std::uint8_t>& rom,
+    const std::size_t phase) {
+    // 0x1B5B8 attaches behavior A after a successful world-action selection.
+    // 0x1C3FA advances both layer phases from zero to one after five source
+    // calls; phase zero is the compact bent-arm pose and phase one is raised.
+    return compose_matrix_traversal_runner_pose(
+        rom, 0x1C33AU, phase, 0x1C330U, phase,
+        phase == 0U ? "behavior-A initial runner"
+                    : "behavior-A raised-arm runner");
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_world_model(
+    const std::vector<std::uint8_t>& rom,
+    const std::size_t model,
+    const std::size_t palette_source) {
+    constexpr std::size_t kModelTable = 0x0E2EDAU;
+    constexpr std::size_t kModelCount = 6U;
+    constexpr std::size_t kModelRecordBytes = 12U;
+    if (model >= kModelCount) {
+        throw std::invalid_argument("Matrix world model index is invalid");
+    }
+
+    const auto record = kModelTable + model * kModelRecordBytes;
+    const auto width = static_cast<std::size_t>(
+        read_big_endian_word(rom, record));
+    const auto height = static_cast<std::size_t>(
+        read_big_endian_word(rom, record + 2U));
+    const auto map_source = static_cast<std::size_t>(
+        read_big_endian_long(rom, record + 4U));
+    const auto pattern_source = static_cast<std::size_t>(
+        read_big_endian_long(rom, record + 8U));
+    if ((width != 112U || height != 64U) &&
+        (width != 96U || height != 80U)) {
+        throw std::runtime_error(
+            "Matrix world model record has an unexpected pixel size");
+    }
+
+    const auto columns = width / 8U;
+    const auto rows = height / 8U;
+    const auto map_entries = columns * rows;
+    const auto map_bytes = map_entries * 2U;
+    if (map_source > rom.size() || map_bytes > rom.size() - map_source) {
+        throw std::runtime_error("Matrix world model map exceeds the ROM");
+    }
+    std::vector<std::uint16_t> tile_map;
+    tile_map.reserve(map_entries);
+    std::size_t maximum_tile = 0U;
+    for (std::size_t index = 0U; index < map_entries; ++index) {
+        const auto tile = static_cast<std::size_t>(
+            read_big_endian_word(rom, map_source + index * 2U));
+        maximum_tile = std::max(maximum_tile, tile);
+        tile_map.push_back(static_cast<std::uint16_t>(tile));
+    }
+
+    const auto tile_count = maximum_tile + 1U;
+    const auto pattern_bytes = tile_count * 32U;
+    if (pattern_source > rom.size() ||
+        pattern_bytes > rom.size() - pattern_source) {
+        throw std::runtime_error("Matrix world model patterns exceed the ROM");
+    }
+    const std::vector<std::uint8_t> patterns(
+        rom.begin() + static_cast<std::ptrdiff_t>(pattern_source),
+        rom.begin() + static_cast<std::ptrdiff_t>(
+            pattern_source + pattern_bytes));
+    const auto atlas = shadowrun::graphics::decode_tile_atlas(
+        patterns, 0U, tile_count,
+        shadowrun::graphics::read_genesis_palette(rom, palette_source),
+        16U, 0U);
+
+    shadowrun::graphics::RgbaImage image{
+        static_cast<std::uint16_t>(width),
+        static_cast<std::uint16_t>(height),
+        std::vector<shadowrun::native::Rgba8>(
+            width * height, shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    for (std::size_t row = 0U; row < rows; ++row) {
+        for (std::size_t column = 0U; column < columns; ++column) {
+            const auto tile = static_cast<std::size_t>(
+                tile_map[row * columns + column]);
+            for (std::size_t pixel_y = 0U; pixel_y < 8U; ++pixel_y) {
+                for (std::size_t pixel_x = 0U; pixel_x < 8U; ++pixel_x) {
+                    const auto atlas_x = (tile % 16U) * 8U + pixel_x;
+                    const auto atlas_y = (tile / 16U) * 8U + pixel_y;
+                    image.pixels[(row * 8U + pixel_y) * width +
+                                 column * 8U + pixel_x] = atlas.pixels[
+                        atlas_y * atlas.width + atlas_x];
+                }
+            }
+        }
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_analyze_ring_phase(
+    const std::vector<std::uint8_t>& rom,
+    const shadowrun::graphics::RgbaImage& action_atlas,
+    const std::size_t action_tile_count,
+    const std::size_t phase) {
+    // The successful Analyze action enters 0x1BEBA's 60-tick profile
+    // transition. It selects a four-phase list from 0x1C136 and builds it at
+    // both hand anchors. This helper is only for offline extraction; the game
+    // runtime consumes the resulting named phase images.
+    constexpr std::size_t kWidth = 320U;
+    constexpr std::size_t kHeight = 224U;
+    constexpr std::size_t kListTable = 0x1C136U;
+    constexpr std::size_t kPatternFirstTile = 0x016FU;
+    constexpr std::size_t kTilesPerRow = 16U;
+    constexpr std::array<int, 2> kOriginX{0x015E - 128, 0x00E0 - 128};
+    constexpr int kOriginY = 0x00EE - 128;
+    if (phase >= 4U || action_tile_count == 0U ||
+        action_atlas.width != kTilesPerRow * 8U) {
+        throw std::invalid_argument(
+            "Matrix Analyze ring phase extraction inputs are invalid");
+    }
+    const auto list = static_cast<std::size_t>(read_big_endian_long(
+        rom, kListTable + phase * 4U));
+    shadowrun::graphics::RgbaImage image{
+        static_cast<std::uint16_t>(kWidth),
+        static_cast<std::uint16_t>(kHeight),
+        std::vector<shadowrun::native::Rgba8>(
+            kWidth * kHeight,
+            shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    for (const auto origin_x : kOriginX) {
+        auto record = list;
+        auto terminated = false;
+        for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+            if (record > rom.size() || rom.size() - record < 8U) {
+                throw std::runtime_error(
+                    "Matrix Analyze ring sprite list is truncated");
+            }
+            const auto x_offset = static_cast<std::int16_t>(
+                read_big_endian_word(rom, record));
+            if (x_offset == std::numeric_limits<std::int16_t>::min()) {
+                terminated = true;
+                break;
+            }
+            const auto y_offset = static_cast<std::int16_t>(
+                read_big_endian_word(rom, record + 2U));
+            const auto size = read_big_endian_word(rom, record + 4U);
+            const auto attributes = static_cast<std::uint16_t>(
+                read_big_endian_word(rom, record + 6U) | 0x2000U);
+            if ((size & 0xFF00U) != 0U ||
+                (attributes & 0xE000U) != 0xA000U) {
+                throw std::runtime_error(
+                    "Matrix Analyze ring sprite record is invalid");
+            }
+            const auto first_tile = static_cast<std::size_t>(
+                attributes & 0x07FFU);
+            if (first_tile < kPatternFirstTile) {
+                throw std::runtime_error(
+                    "Matrix Analyze ring sprite precedes its pattern bank");
+            }
+            const auto width_tiles = static_cast<std::size_t>(
+                ((size >> 2U) & 0x03U) + 1U);
+            const auto height_tiles = static_cast<std::size_t>(
+                (size & 0x03U) + 1U);
+            const auto tile_offset = first_tile - kPatternFirstTile;
+            const auto sprite_tile_count = width_tiles * height_tiles;
+            if (tile_offset > action_tile_count ||
+                sprite_tile_count > action_tile_count - tile_offset) {
+                throw std::runtime_error(
+                    "Matrix Analyze ring sprite exceeds its pattern bank");
+            }
+            const bool flip_x = (attributes & 0x0800U) != 0U;
+            const bool flip_y = (attributes & 0x1000U) != 0U;
+            const auto sprite_width = width_tiles * 8U;
+            const auto sprite_height = height_tiles * 8U;
+            for (std::size_t y = 0U; y < sprite_height; ++y) {
+                for (std::size_t x = 0U; x < sprite_width; ++x) {
+                    const auto source_x = flip_x ? sprite_width - 1U - x : x;
+                    const auto source_y = flip_y ? sprite_height - 1U - y : y;
+                    // Genesis sprite tiles advance down each tile column.
+                    const auto tile = tile_offset +
+                        (source_x / 8U) * height_tiles + source_y / 8U;
+                    const auto atlas_x = (tile % kTilesPerRow) * 8U +
+                                         source_x % 8U;
+                    const auto atlas_y = (tile / kTilesPerRow) * 8U +
+                                         source_y % 8U;
+                    const auto& pixel = action_atlas.pixels[
+                        atlas_y * action_atlas.width + atlas_x];
+                    const auto target_x = origin_x + x_offset +
+                                          static_cast<int>(x);
+                    const auto target_y = kOriginY + y_offset +
+                                          static_cast<int>(y);
+                    if (pixel.alpha == 0U || target_x < 0 || target_y < 0 ||
+                        target_x >= static_cast<int>(kWidth) ||
+                        target_y >= static_cast<int>(kHeight)) {
+                        continue;
+                    }
+                    image.pixels[static_cast<std::size_t>(target_y) * kWidth +
+                                 static_cast<std::size_t>(target_x)] = pixel;
+                }
+            }
+            record += 8U;
+        }
+        if (!terminated) {
+            throw std::runtime_error(
+                "Matrix Analyze ring sprite list has no terminator");
+        }
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_world_effect_record_phase(
+    const std::vector<std::uint8_t>& rom,
+    const std::size_t mode_record,
+    const std::size_t phase) {
+    // Offline import for one record selected by 0x1A908/0x19B40. The
+    // negative selector uses the separate default record at 0x1AA10.
+    // 0x1AA40 builds its sprites at (0x120,0xD0) with tile base 0x694 and
+    // palette attributes 0x2000, so the host image is anchored at (160,80)
+    // and decoded with CRAM line 1 from 0xE2E5A.
+    constexpr std::size_t kFrameWidth = 320U;
+    constexpr std::size_t kFrameHeight = 224U;
+    constexpr std::size_t kTilesPerRow = 16U;
+    constexpr std::size_t kFirstTile = 0x0694U;
+    constexpr int kOriginX = 0x0120 - 128;
+    constexpr int kOriginY = 0x00D0 - 128;
+    if (mode_record > rom.size() || rom.size() - mode_record < 6U) {
+        throw std::runtime_error("Matrix world-effect mode record is truncated");
+    }
+    const auto phase_count = static_cast<std::size_t>(rom[mode_record + 1U]);
+    const auto phase_table = static_cast<std::size_t>(
+        read_big_endian_long(rom, mode_record + 2U));
+    if (phase_count == 0U || phase >= phase_count ||
+        phase_table > rom.size() ||
+        phase_count > (rom.size() - phase_table) / 4U) {
+        throw std::out_of_range("Matrix world-effect phase is invalid");
+    }
+
+    const auto descriptor = static_cast<std::size_t>(
+        read_big_endian_long(rom, phase_table + phase * 4U));
+    if (descriptor > rom.size() || rom.size() - descriptor < 8U) {
+        throw std::runtime_error(
+            "Matrix world-effect descriptor is truncated");
+    }
+    const auto pattern_source = static_cast<std::size_t>(
+        read_big_endian_long(rom, descriptor + 2U));
+    const auto pattern_bytes = static_cast<std::size_t>(
+        read_big_endian_word(rom, descriptor + 6U));
+    if (pattern_bytes == 0U || pattern_bytes % 32U != 0U ||
+        pattern_source > rom.size() ||
+        pattern_bytes > rom.size() - pattern_source) {
+        throw std::runtime_error(
+            "Matrix world-effect pattern bank is invalid");
+    }
+    const auto tile_count = pattern_bytes / 32U;
+    const std::vector<std::uint8_t> pattern_data(
+        rom.begin() + static_cast<std::ptrdiff_t>(pattern_source),
+        rom.begin() + static_cast<std::ptrdiff_t>(
+            pattern_source + pattern_bytes));
+    const auto atlas = shadowrun::graphics::decode_tile_atlas(
+        pattern_data, 0U, tile_count,
+        shadowrun::graphics::read_genesis_palette(rom, 0x0E2E5AU),
+        kTilesPerRow, 0U);
+
+    shadowrun::graphics::RgbaImage image{
+        static_cast<std::uint16_t>(kFrameWidth),
+        static_cast<std::uint16_t>(kFrameHeight),
+        std::vector<shadowrun::native::Rgba8>(
+            kFrameWidth * kFrameHeight,
+            shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    auto terminated = false;
+    for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+        const auto record = descriptor + 8U + sprite * 8U;
+        if (record > rom.size() || rom.size() - record < 8U) {
+            throw std::runtime_error(
+                "Matrix world-effect sprite list is truncated");
+        }
+        const auto x_offset = static_cast<std::int16_t>(
+            read_big_endian_word(rom, record));
+        if (x_offset == std::numeric_limits<std::int16_t>::min()) {
+            terminated = true;
+            break;
+        }
+        const auto y_offset = static_cast<std::int16_t>(
+            read_big_endian_word(rom, record + 2U));
+        const auto size_word = read_big_endian_word(rom, record + 4U);
+        const auto tile_offset = static_cast<std::size_t>(
+            read_big_endian_word(rom, record + 6U));
+        if ((size_word & 0xFF00U) != 0U || tile_offset > tile_count) {
+            throw std::runtime_error(
+                "Matrix world-effect sprite record is invalid");
+        }
+        const auto width_tiles = static_cast<std::size_t>(
+            ((size_word >> 2U) & 0x03U) + 1U);
+        const auto height_tiles = static_cast<std::size_t>(
+            (size_word & 0x03U) + 1U);
+        const auto sprite_tile_count = width_tiles * height_tiles;
+        if (sprite_tile_count > tile_count - tile_offset) {
+            throw std::runtime_error(
+                "Matrix world-effect sprite exceeds its pattern bank");
+        }
+
+        const auto sprite_width = width_tiles * 8U;
+        const auto sprite_height = height_tiles * 8U;
+        for (std::size_t local_y = 0U; local_y < sprite_height; ++local_y) {
+            for (std::size_t local_x = 0U; local_x < sprite_width; ++local_x) {
+                // Genesis multi-tile sprites advance vertically within each
+                // tile column. Mode records do not request X/Y flips.
+                const auto tile_index = tile_offset +
+                    (local_x / 8U) * height_tiles + local_y / 8U;
+                const auto atlas_x = (tile_index % kTilesPerRow) * 8U +
+                                     local_x % 8U;
+                const auto atlas_y = (tile_index / kTilesPerRow) * 8U +
+                                     local_y % 8U;
+                const auto pixel = atlas.pixels[
+                    atlas_y * atlas.width + atlas_x];
+                const auto target_x = kOriginX + x_offset +
+                                      static_cast<int>(local_x);
+                const auto target_y = kOriginY + y_offset +
+                                      static_cast<int>(local_y);
+                if (pixel.alpha == 0U || target_x < 0 || target_y < 0 ||
+                    target_x >= static_cast<int>(kFrameWidth) ||
+                    target_y >= static_cast<int>(kFrameHeight)) {
+                    continue;
+                }
+                image.pixels[static_cast<std::size_t>(target_y) * kFrameWidth +
+                             static_cast<std::size_t>(target_x)] = pixel;
+            }
+        }
+    }
+    if (!terminated) {
+        throw std::runtime_error(
+            "Matrix world-effect sprite list has no terminator");
+    }
+    return image;
+}
+
+shadowrun::graphics::RgbaImage compose_matrix_world_effect_mode_phase(
+    const std::vector<std::uint8_t>& rom,
+    const std::size_t mode,
+    const std::size_t phase) {
+    constexpr std::size_t kModeTable = 0x1A9CEU;
+    constexpr std::size_t kModeCount = 9U;
+    if (mode >= kModeCount || kModeTable + (mode + 1U) * 4U > rom.size()) {
+        throw std::invalid_argument("Matrix world-effect mode is invalid");
+    }
+    const auto mode_record = static_cast<std::size_t>(
+        read_big_endian_long(rom, kModeTable + mode * 4U));
+    return compose_matrix_world_effect_record_phase(rom, mode_record, phase);
 }
 
 shadowrun::graphics::RgbaImage decode_matrix_map_font(
@@ -2895,6 +5037,57 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     std::size_t blank = 0;
     const auto assets = shadowrun::graphics::decode_genesis_native_assets(rom);
     auto field_text = write_field_service_routes(rom, root, assets);
+    struct NotebookRecordTables {
+        std::string_view id;
+        std::size_t count;
+        std::size_t name_table;
+        std::size_t detail_table;
+    };
+    // ROM pointer tables back the notebook's 13 contacts and 10 recruited
+    // runners. Import their names and biographies here so --all-assets is a
+    // complete one-step extraction; the runtime consumes only keyed Lua text.
+    constexpr std::array<NotebookRecordTables, 2> kNotebookRecordTables{{
+        {"contact", 13U, 0xC66ACU, 0xC66E0U},
+        {"shadowrunner", 10U, 0xC665CU, 0xC6684U},
+    }};
+    const auto read_notebook_text = [&rom](const std::size_t source) {
+        const auto segments =
+            shadowrun::graphics::read_genesis_dialogue_segments(rom, source);
+        std::string text;
+        for (std::size_t index = 0; index < segments.size(); ++index) {
+            if (index != 0U) {
+                text.push_back('\n');
+            }
+            text += segments[index];
+        }
+        if (text.empty()) {
+            throw std::runtime_error("notebook ROM text is empty");
+        }
+        return text;
+    };
+    for (const auto& table : kNotebookRecordTables) {
+        for (std::size_t index = 0; index < table.count; ++index) {
+            const auto record_id = "record_" + std::to_string(index);
+            const auto name_source = static_cast<std::size_t>(
+                read_big_endian_long(rom, table.name_table + index * 4U));
+            const auto detail_source = static_cast<std::size_t>(
+                read_big_endian_long(rom, table.detail_table + index * 4U));
+            field_text.emplace_back(
+                "pocket_secretary.notebook." + std::string(table.id) +
+                    ".name.option." + record_id,
+                read_notebook_text(name_source));
+            field_text.emplace_back(
+                "pocket_secretary.notebook." + std::string(table.id) +
+                    ".detail.option." + record_id,
+                read_notebook_text(detail_source));
+        }
+    }
+    field_text.emplace_back(
+        "pocket_secretary.notebook.record_page.option.next",
+        read_notebook_text(0xC661DU));
+    field_text.emplace_back(
+        "pocket_secretary.notebook.record_page.option.prior",
+        read_notebook_text(0xC662BU));
     auto notebook_tips = read_notebook_tips_script_text(assets);
     field_text.insert(field_text.end(), notebook_tips.begin(),
                       notebook_tips.end());
@@ -2963,6 +5156,393 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         "0x532BC/0xC0DA/0xC1320 glyphs; attribute 0x2000; "
         "CRAM 0x15FCB6 palette line 1",
         true, manifest, written, missing, blank);
+
+    constexpr std::size_t kMatrixUiPatternCount = 199U;
+    constexpr std::size_t kMatrixMenuPatternCount = 147U;
+    constexpr std::size_t kMatrixFieldMenuPatternCount = 139U;
+    constexpr std::size_t kMatrixPaletteBase = 0x0E2E3AU;
+    // Matrix entry calls 0x17F80 -> 0x566E2, which copies these sixteen
+    // palette words into FFD89E (CRAM line 1) after the common palette at
+    // 0xE2E3A has been loaded. Extract Matrix UI tiles with the live palette.
+    constexpr std::size_t kMatrixLiveUiPalette = 0x0E2EBAU;
+    constexpr std::size_t kMatrixPanelPaletteLine = 3U;
+    MatrixGraphicsUploadHistory matrix_upload_history{};
+    const auto matrix_field_menu_resource = decode_matrix_graphics_upload(
+        rom, 0xD86E0U, matrix_upload_history);
+    const auto matrix_menu_resource = decode_matrix_graphics_upload(
+        rom, 0xD78AAU, matrix_upload_history);
+    if (matrix_menu_resource.size() != kMatrixMenuPatternCount * 32U) {
+        throw std::runtime_error(
+            "Matrix menu graphics stream no longer contains 147 tiles");
+    }
+    const auto matrix_menu_patterns = shadowrun::graphics::decode_tile_atlas(
+        matrix_menu_resource, 0U, kMatrixMenuPatternCount,
+        shadowrun::graphics::read_genesis_palette(
+            rom, kMatrixPaletteBase + kMatrixPanelPaletteLine * 0x20U),
+        16U, 0U);
+    const auto matrix_ui_resource = decode_matrix_graphics_upload(
+        rom, 0xD9376U, matrix_upload_history);
+    if (matrix_ui_resource.size() != kMatrixUiPatternCount * 32U) {
+        throw std::runtime_error(
+            "Matrix UI graphics stream no longer contains 199 tiles");
+    }
+    // C0C2 loads the title-font stream after the D86E0/D78AA/D9376 uploads.
+    // It shares FFBF40's 0x800-byte overlap history, so keep that order in
+    // this offline extraction pass as well.
+    const auto matrix_title_font_resource = decode_matrix_graphics_upload(
+        rom, 0xC1064U, matrix_upload_history);
+    if (matrix_title_font_resource.size() != 0x55U * 32U) {
+        throw std::runtime_error(
+            "Matrix title-font stream no longer contains 85 tiles");
+    }
+    constexpr std::size_t kMatrixFieldPatternCount = 304U;
+    const auto matrix_field_resource =
+        shadowrun::graphics::decode_genesis_resource_stream(rom, 0xD646AU);
+    if (matrix_field_resource.size() != kMatrixFieldPatternCount * 32U) {
+        throw std::runtime_error(
+            "Matrix field-mode graphics stream no longer contains 304 tiles");
+    }
+    for (std::size_t theme = 0U; theme < 4U; ++theme) {
+        write_catalog_asset(
+            root,
+            "cyberspace/matrix/traversal-background-theme-" +
+                std::to_string(theme + 1U) + ".bmp",
+            compose_matrix_traversal_background(
+                rom, matrix_field_resource, matrix_menu_patterns, theme),
+            "background",
+            "0x1745E field-mode presentation: 0xD646A patterns; 0xD806C "
+            "and 0xD74F4 Plane-B streams; 0xD8316 shared footer; "
+            "palette 0x166448[" + std::to_string(theme) + "]",
+            false, manifest, written, missing, blank);
+        write_catalog_asset(
+            root, "cyberspace/matrix/node-action-cursor-color-" +
+                      std::to_string(theme + 1U) + ".bmp",
+            compose_matrix_node_action_cursor(
+                matrix_title_font_resource,
+                shadowrun::graphics::read_genesis_palette(
+                    rom, 0xE2D52U + theme * 0x20U)),
+            "sprite",
+            "0xC0C2 loads 0xC1064 at VRAM $B560; 0xC376 writes the selected "
+            "cursor tile $85FF (pattern $5FF); 0x566D8 color palette line 0 "
+            "from 0xE2D52[" + std::to_string(theme) + "]",
+            false, manifest, written, missing, blank);
+    }
+    write_catalog_asset(
+        root, "cyberspace/matrix/traversal-hud-frame.png",
+        compose_matrix_traversal_hud_frame(rom, matrix_menu_patterns),
+        "sprite",
+        "0x1789C/0x178C8 writes the two 5-grid Plane-A status-frame batches "
+        "from 0xD86C8; 147 Matrix menu tiles from 0xD78AA; palette line 3 "
+        "from 0xE2E9A",
+        false, manifest, written, missing, blank);
+    write_catalog_asset(
+        root, "cyberspace/matrix/traversal-runner-idle.png",
+        compose_matrix_traversal_idle_runner(rom), "sprite",
+        "0x1ADE6 attaches descriptor E; 0x1C34A/0x1C344 phase-zero lists; "
+        "0xDA038 patterns at tile 0x11B; 0x1C506 origin FF158E/FF1590; "
+        "palette line 3 at 0xE2E9A",
+        false, manifest, written, missing, blank);
+    write_catalog_asset(
+        root,
+        "cyberspace/matrix/traversal-runner-world-sequence-phase-4.png",
+        compose_matrix_traversal_world_sequence_runner(rom), "sprite",
+        "0x1D280 initializes the FFDF8C sequence figure at phase 0/countdown "
+        "4; 0x1B364 draws the four 1DAF4/1DB08/EA490/EA4A4 groups; the "
+        "239-VBlank compact entry retains phase 4; palette line 3 at 0xE2E9A",
+        false, manifest, written, missing, blank);
+    write_catalog_asset(
+        root, "cyberspace/matrix/traversal-runner-action-phase-0.png",
+        compose_matrix_traversal_action_runner_phase(rom, 0U), "sprite",
+        "0x1B5B8 behavior A phase 0/0 before 0x1C3FA advances both layers; "
+        "0x1C33A/0x1C330 lists use 0xDA038 tile 0x11B and 0xDAAB8 tile "
+        "0x16F; origin FF158E/FF1590; palette line 3 at 0xE2E9A",
+        false, manifest, written, missing, blank);
+    write_catalog_asset(
+        root, "cyberspace/matrix/traversal-runner-action-raised.png",
+        compose_matrix_traversal_action_runner_phase(rom, 1U), "sprite",
+        "0x1B5B8 behavior A phase 1/1 after 0x1C3FA advances both layers; "
+        "0x1C33A/0x1C330 lists use 0xDA038 tile 0x11B and 0xDAAB8 tile "
+        "0x16F; origin FF158E/FF1590; palette line 3 at 0xE2E9A",
+        false, manifest, written, missing, blank);
+    const auto matrix_action_pattern_bytes =
+        shadowrun::graphics::decode_genesis_resource_stream(rom, 0xDAAB8U);
+    if (matrix_action_pattern_bytes.empty() ||
+        matrix_action_pattern_bytes.size() % 32U != 0U) {
+        throw std::runtime_error(
+            "Matrix Analyze effect pattern bank is invalid");
+    }
+    const auto matrix_action_atlas =
+        shadowrun::graphics::decode_tile_atlas(
+            matrix_action_pattern_bytes, 0U,
+            matrix_action_pattern_bytes.size() / 32U,
+            shadowrun::graphics::read_genesis_palette(rom, 0x0E2E5AU),
+            16U, 0U);
+    for (std::size_t phase = 0U; phase < 4U; ++phase) {
+        write_catalog_asset(
+            root,
+            "cyberspace/matrix/traversal-analyze-ring-phase-" +
+                std::to_string(phase) + ".png",
+            compose_matrix_analyze_ring_phase(
+                rom, matrix_action_atlas,
+                matrix_action_pattern_bytes.size() / 32U, phase),
+            "sprite",
+            "0x1BE82 Analyze success starts 0x1BEBA's 60-tick profile "
+            "transition; phase ((-FFE00C >> 1) & 3) selects 0x1C136; "
+            "0xDAAB8 tile bank starts at 0x16F; D6=0x2000 selects traversal "
+            "CRAM line 1 at 0xE2E5A; screen anchors (222,110)/(96,110)",
+            false, manifest, written, missing, blank);
+    }
+    constexpr std::size_t kWorldEffectModeTable = 0x1A9CEU;
+    constexpr std::size_t kWorldEffectModeCount = 9U;
+    for (std::size_t mode = 0U; mode < kWorldEffectModeCount; ++mode) {
+        const auto mode_record = static_cast<std::size_t>(
+            read_big_endian_long(rom, kWorldEffectModeTable + mode * 4U));
+        if (mode_record > rom.size() || rom.size() - mode_record < 6U) {
+            throw std::runtime_error(
+                "Matrix world-effect mode record is truncated");
+        }
+        const auto cadence = rom[mode_record];
+        const auto phase_count = static_cast<std::size_t>(
+            rom[mode_record + 1U]);
+        for (std::size_t phase = 0U; phase < phase_count; ++phase) {
+            write_catalog_asset(
+                root,
+                "cyberspace/matrix/traversal-world-effect-mode-" +
+                    std::to_string(mode) + "-phase-" +
+                    std::to_string(phase) + ".png",
+                compose_matrix_world_effect_mode_phase(rom, mode, phase),
+                "sprite",
+                "0x1A908/0x19B40 mode selection; 0x1A9CE[" +
+                    std::to_string(mode) + "] phase " +
+                    std::to_string(phase) + " from its ROM descriptor table; "
+                    "0x1AA40 cadence " + std::to_string(cadence) +
+                    " ticks; screen anchor (160,80), D6=0x2000, CRAM line 1 "
+                    "at 0xE2E5A",
+                false, manifest, written, missing, blank);
+        }
+    }
+    constexpr std::size_t kWorldEffectDefaultRecord = 0x1AA10U;
+    if (kWorldEffectDefaultRecord > rom.size() ||
+        rom.size() - kWorldEffectDefaultRecord < 6U) {
+        throw std::runtime_error(
+            "Matrix world-effect default record is truncated");
+    }
+    const auto default_cadence = rom[kWorldEffectDefaultRecord];
+    const auto default_phase_count = static_cast<std::size_t>(
+        rom[kWorldEffectDefaultRecord + 1U]);
+    for (std::size_t phase = 0U; phase < default_phase_count; ++phase) {
+        write_catalog_asset(
+            root,
+            "cyberspace/matrix/traversal-world-effect-default-phase-" +
+                std::to_string(phase) + ".png",
+            compose_matrix_world_effect_record_phase(
+                rom, kWorldEffectDefaultRecord, phase),
+            "sprite",
+            "0x1A908 negative selector fallback at 0x1AA10, phase " +
+                std::to_string(phase) + "; 0x1AA40 cadence " +
+                std::to_string(default_cadence) +
+                " ticks; screen anchor (160,80), D6=0x2000, CRAM line 1 "
+                "at 0xE2E5A",
+            false, manifest, written, missing, blank);
+    }
+    // The world-model SAT attributes select palette line 0. After the base
+    // four-line load, 0x19DF2 selects the line-0 colors by FF1105 from the
+    // five 0x20-byte records rooted at E2D52; live Matrix nodes use ids 1..4.
+    struct WorldModelPalette {
+        std::uint8_t security_color;
+        const char* source_label;
+        std::size_t source;
+    };
+    constexpr std::array<WorldModelPalette, 4> kWorldModelPalettes{{
+        {1U, "e2d72", 0x0E2D72U}, {2U, "e2d92", 0x0E2D92U},
+        {3U, "e2db2", 0x0E2DB2U}, {4U, "e2dd2", 0x0E2DD2U},
+    }};
+    for (std::size_t model = 0U; model < 6U; ++model) {
+        for (const auto& palette : kWorldModelPalettes) {
+            const auto relative_name =
+                "cyberspace/matrix/world-model-" +
+                std::to_string(model) + "-security-color-" +
+                std::to_string(palette.security_color) + ".png";
+            write_catalog_asset(
+                root, relative_name,
+                compose_matrix_world_model(rom, model, palette.source),
+                "sprite",
+                "0xE2EDA record " + std::to_string(model) +
+                    " supplies the pixel dimensions, tile map, and pattern "
+                    "bank; 0x19DF2 selects security-color " +
+                    std::to_string(palette.security_color) +
+                    " from 0x" + palette.source_label,
+                false, manifest, written, missing, blank);
+        }
+    }
+    const auto matrix_ui_palette_one_patterns =
+        shadowrun::graphics::decode_tile_atlas(
+            matrix_ui_resource, 0U, kMatrixUiPatternCount,
+            shadowrun::graphics::read_genesis_palette(
+                rom, kMatrixLiveUiPalette),
+            16U, 0U);
+    write_catalog_asset(
+        root, "cyberspace/matrix/cyberdeck-background.bmp",
+        compose_matrix_cyberdeck_plane_b_background(
+            rom, matrix_ui_palette_one_patterns, matrix_menu_patterns),
+        "background",
+        "0x181F8 writes D9C96 to Plane B at $E000 (palette line 1); "
+        "0x17F80/0x566E2 replaces CRAM line 1 from 0xE2EBA; "
+        "0x17708 writes D8316 at $EB00 (palette line 3); patterns from "
+        "D9376 at $8160 and D78AA at $0580",
+        false, manifest, written, missing, blank);
+    write_catalog_asset(
+        root, "cyberspace/matrix/cyberdeck-panel.bmp",
+        compose_matrix_cyberdeck_panel(rom, matrix_menu_patterns),
+        "background",
+        "0x177CC uploads 0xD78AA to $0580; palette line 3 from 0xE2E3A; "
+        "0x1882E/0x1897C repeat 19x18 tiles from 0xD8454 at $C126",
+        false, manifest, written, missing, blank);
+    write_catalog_asset(
+        root, "cyberspace/matrix/cyberdeck-runner-detail-headers.bmp",
+        compose_matrix_cyberdeck_runner_headers(
+            rom, matrix_ui_palette_one_patterns),
+        "background",
+        "0x1A16A writes five-tile grids D9ED4/D9EDE at $C4A6/$C526 "
+        "(152,72)/(152,80), live CRAM line 1 from 0xE2EBA",
+        false, manifest, written, missing, blank);
+
+    write_catalog_asset(
+        root, "cyberspace/matrix/cyberdeck-cursor.bmp",
+        compose_matrix_cyberdeck_cursor(rom,
+                                        matrix_ui_palette_one_patterns),
+        "sprite",
+        "0x182C0 builds the cursor from 0xE31E8; tile 0x04C6 from 0xD9376 "
+        "uses live CRAM line 1 from 0xE2EBA; screen origin is $0C,$14",
+        false, manifest, written, missing, blank);
+
+    for (std::size_t selected_row = 0U; selected_row < 4U; ++selected_row) {
+        write_catalog_asset(
+            root,
+            "cyberspace/matrix/cyberdeck-selector-selected-row-" +
+                std::to_string(selected_row) + ".bmp",
+            compose_matrix_cyberdeck_selector(
+                rom, matrix_ui_palette_one_patterns, selected_row),
+            "background",
+            "0x189D8 selects one of four rows from 0xD9FA8; pattern stream "
+            "0xD9376 at $8160; live CRAM line 1 from 0xE2EBA",
+            false, manifest, written, missing, blank);
+    }
+
+    // 0x196F2 rotates CRAM line 1 entries 8-11 every five field-loop frames.
+    // Import each resulting phase once; the host chooses a named image from
+    // the Lua menu phase and does not decode or simulate palette memory.
+    for (std::size_t phase = 1U; phase < 4U; ++phase) {
+        auto phase_palette = shadowrun::graphics::read_genesis_palette(
+            rom, kMatrixLiveUiPalette);
+        std::rotate(phase_palette.begin() + 8,
+                    phase_palette.begin() + 8 +
+                        static_cast<std::ptrdiff_t>(phase),
+                    phase_palette.begin() + 12);
+        const auto phase_patterns = shadowrun::graphics::decode_tile_atlas(
+            matrix_ui_resource, 0U, kMatrixUiPatternCount, phase_palette,
+            16U, 0U);
+        const auto palette_provenance =
+            "0x196F2 phase " + std::to_string(phase) +
+            " rotates CRAM line 1 entries 8-11 from 0xE2EBA; "
+            "five-frame cadence; source images composed offline";
+        write_catalog_asset(
+            root, "cyberspace/matrix/cyberdeck-background-phase-" +
+                      std::to_string(phase) + ".bmp",
+            compose_matrix_cyberdeck_plane_b_background(
+                rom, phase_patterns, matrix_menu_patterns),
+            "background", palette_provenance, false, manifest, written,
+            missing, blank);
+        write_catalog_asset(
+            root, "cyberspace/matrix/cyberdeck-cursor-phase-" +
+                      std::to_string(phase) + ".bmp",
+            compose_matrix_cyberdeck_cursor(rom, phase_patterns), "sprite",
+            palette_provenance + "; cursor source 0xE31E8", false,
+            manifest, written, missing, blank);
+        for (std::size_t selected_row = 0U; selected_row < 4U;
+             ++selected_row) {
+            write_catalog_asset(
+                root, "cyberspace/matrix/cyberdeck-selector-selected-row-" +
+                          std::to_string(selected_row) + "-phase-" +
+                          std::to_string(phase) + ".bmp",
+                compose_matrix_cyberdeck_selector(
+                    rom, phase_patterns, selected_row),
+                "background", palette_provenance +
+                                  "; selected row data 0xD9FA8",
+                false, manifest, written, missing, blank);
+        }
+    }
+
+    if (matrix_field_menu_resource.size() !=
+        kMatrixFieldMenuPatternCount * 32U) {
+        throw std::runtime_error(
+            "Matrix deck icon stream no longer contains 139 tiles");
+    }
+    const auto matrix_field_menu_patterns =
+        shadowrun::graphics::decode_tile_atlas(
+            matrix_field_menu_resource, 0U, kMatrixFieldMenuPatternCount,
+            shadowrun::graphics::read_genesis_palette(
+                rom, kMatrixPaletteBase + kMatrixPanelPaletteLine * 0x20U),
+            16U, 0U);
+    write_catalog_asset(
+        root, "cyberspace/matrix/cyberdeck-program-icon-empty.bmp",
+        compose_matrix_cyberdeck_empty_program_icon(
+            rom, matrix_field_menu_patterns),
+        "sprite",
+        "0x17708 selects the six-word empty-slot record at 0xD92AA; "
+        "pattern stream 0xD86E0 at $17E0; palette line 3 from 0xE2E3A",
+        false, manifest, written, missing, blank);
+    for (std::size_t icon = 0U; icon < 16U; ++icon) {
+        write_catalog_asset(
+            root, "cyberspace/matrix/program-icon-" +
+                      std::to_string(icon) + ".bmp",
+            compose_matrix_cyberdeck_program_icon(
+                rom, matrix_field_menu_patterns, icon),
+            "sprite",
+            "0x187AA reads 3x2 records from 0xD92B6; pattern stream "
+            "0xD86E0 at $17E0; palette line 3 from 0xE2E3A",
+            false, manifest, written, missing, blank);
+        write_catalog_asset(
+            root, "cyberspace/matrix/detail-strip-" +
+                      std::to_string(icon) + ".bmp",
+            compose_matrix_cyberdeck_detail_strip(
+                rom, matrix_ui_palette_one_patterns, icon),
+            "sprite",
+            "0x18886 selects one six-tile row from 0xD9EE8; pattern stream "
+            "0xD9376 at $8160; live CRAM line 1 from 0xE2EBA",
+            false, manifest, written, missing, blank);
+    }
+    for (std::size_t status = 0U; status < 7U; ++status) {
+        write_catalog_asset(
+            root, "cyberspace/matrix/cyberdeck-footer-slot-status-" +
+                      std::to_string(status) + ".bmp",
+            compose_matrix_cyberdeck_footer_slot_status(
+                rom, matrix_menu_patterns, status),
+            "sprite",
+            "0x19856 selects three words from 0xD84D6 + status*6; "
+            "pattern stream 0xD78AA at $0580; palette line 3 from 0xE2E3A",
+            false, manifest, written, missing, blank);
+    }
+
+    for (std::size_t profile = 0U; profile < 5U; ++profile) {
+        for (std::size_t theme = 0U; theme < 4U; ++theme) {
+            std::ostringstream provenance;
+            provenance << "0x54662 node layout 0x166330/0x166368 profile "
+                       << profile << "; field-mode tiles 0xD646A and "
+                       << "terminal tiles 0x15FF30; "
+                       << "terminal grids 0x1604D0/0x160538/0x160558/0x160578; "
+                       << "palette 0x166448[" << theme << "]";
+            write_catalog_asset(
+                root,
+                "cyberspace/matrix/node-background-profile-" +
+                    std::to_string(profile) + "-color-" +
+                    std::to_string(theme + 1U) + ".bmp",
+                compose_matrix_node_action_background(
+                    rom, matrix_field_resource, profile, theme),
+                "background", provenance.str(), false, manifest, written,
+                missing, blank);
+        }
+    }
 
     for (std::size_t palette_line = 1U; palette_line <= 3U;
          ++palette_line) {
@@ -3114,6 +5694,59 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
             rom, 0x121EBCU),
         "sprite", "0x20484/0x121EBC/0x110D1E", false, manifest, written,
+        missing, blank);
+    // Scene-6/event-0 services 2-4 use profile 0x121E14 for David Owlfeather.
+    write_catalog_asset(
+        root, "dialogue/portraits/david-owlfeather.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121E14U),
+        "sprite", "0x53B78/0x53BCC/0x53CEA/0x121E14", false, manifest,
+        written, missing, blank);
+    // Scene-6/event-1 service 18 uses the separate Red Buffalo Woman profile.
+    write_catalog_asset(
+        root, "dialogue/portraits/red-buffalo-woman.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121F04U),
+        "sprite", "0x54322/0x121F04", false, manifest, written, missing,
+        blank);
+    // Scene-4 event 27 at 0x53D5A uses profile 0x121EF8 for the Spirit Eyes
+    // conversation. The separate Scene-47 continuation at 0x53F3E uses
+    // profile 0x121EA4 for the feathered serpent Licourtrix.
+    write_catalog_asset(
+        root, "dialogue/portraits/spirit-eyes.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121EF8U),
+        "sprite", "0x53D5A/0x121EF8/0xF4BD8", false, manifest, written,
+        missing, blank);
+    write_catalog_asset(
+        root, "dialogue/portraits/licourtrix.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121EA4U),
+        "sprite", "0x53F3E/0x121EA4/0xF4C44", false, manifest, written,
+        missing, blank);
+    // Scene-5/event-6 title service 12 loads profile 0x121E2C with the
+    // Renraku Offices entry root at 0x110A2A.
+    write_catalog_asset(
+        root, "dialogue/portraits/renraku-offices-entry.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121E2CU),
+        "sprite", "0x540B8/0x121E2C/0x110A2A", false, manifest, written,
+        missing, blank);
+    // Scene-3/event-2 title service 14 loads profile 0x122090 with the
+    // Fuchi cyber-heart entry root at 0x11B7F4.
+    write_catalog_asset(
+        root, "dialogue/portraits/fuchi-offices-entry.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x122090U),
+        "sprite", "0x5419A/0x122090/0x11B7F4", false, manifest, written,
+        missing, blank);
+    // Scene-0/event-3 title service 15 loads profile 0x121FC4 with the
+    // Ogami departure prompt rooted at 0x1111DE.
+    write_catalog_asset(
+        root, "dialogue/portraits/gates-undersound-entry.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121FC4U),
+        "sprite", "0x5425A/0x121FC4/0x1111DE", false, manifest, written,
         missing, blank);
     struct VidPhonePortraitRecord {
         std::string_view file_name;
@@ -4029,12 +6662,14 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
 
     struct WorldActivityActorList {
         std::uint16_t scene_id;
+        std::int16_t script_index;
         std::uint32_t list_offset;
         std::string list_id;
         std::string activation_rule;
     };
     struct WorldActivityActorRecord {
         std::uint16_t scene_id;
+        std::int16_t script_index;
         std::string list_id;
         std::uint32_t list_offset;
         std::uint16_t source_order;
@@ -4057,12 +6692,32 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::string overrides;
         std::string activation_rule;
     };
-    const std::array<WorldActivityActorList, 3> kWorldActivityActorLists{{
-        {0x2FU, 0x1E552U, "mode_13_entry",
+    const std::array<WorldActivityActorList, 13> kWorldActivityActorLists{{
+        {0x0AU, 0, 0x17018U, "scene_10_event_6_script",
+         "0x167AE: FFFBF9=6 and neither runner marker is 3"},
+        {0x0AU, 1, 0x17034U, "scene_10_default_script",
+         "0x167AE: FFFBF9!=6 and neither runner marker is 5"},
+        {0x0BU, 1, 0x17050U, "scene_11_script",
+         "0x167AE: neither runner marker is 2"},
+        {0x0DU, 3, 0x1706CU, "scene_13_ilene_gate_script",
+         "0x167AE: FFFC1E bit 19 (ILENE_MET) set and neither runner marker is 7"},
+        {0x0EU, 4, 0x17088U, "scene_14_script",
+         "0x167AE: neither runner marker is 4"},
+        {0x0FU, 5, 0x170A2U, "scene_15_script",
+         "0x167AE: FFFC1E bit 29 set and neither runner marker is 10"},
+        {0x10U, 6, 0x170BCU, "scene_16_script",
+         "0x167AE: neither runner marker is 6"},
+        {0x11U, 7, 0x170D8U, "scene_17_script",
+         "0x167AE: neither runner marker is 8"},
+        {0x12U, 8, 0x170F4U, "scene_18_script",
+         "0x167AE: neither runner marker is 9"},
+        {0x13U, 9, 0x16FFCU, "scene_19_script",
+         "0x167AE: neither runner marker is 1"},
+        {0x2FU, -1, 0x1E552U, "mode_13_entry",
          "0x2CE0 mode 0x13 transition, with FFFC1E bit 8 clear"},
-        {0x2FU, 0x1E5C4U, "pending_list_1e5c4",
+        {0x2FU, -1, 0x1E5C4U, "pending_list_1e5c4",
          "0x43B6 pending-list continuation for pointer 0x1E5C4"},
-        {0x2FU, 0x1E628U, "pending_list_1e628",
+        {0x2FU, -1, 0x1E628U, "pending_list_1e628",
          "0x43B6 pending-list continuation for pointer 0x1E628"},
     }};
     std::vector<WorldActivityActorRecord> world_activity_actor_records;
@@ -4143,6 +6798,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                             : make_sprite_stem(actor_name);
             world_activity_actor_records.push_back(WorldActivityActorRecord{
                 list.scene_id,
+                list.script_index,
                 list.list_id,
                 list.list_offset,
                 source_order,
@@ -4172,6 +6828,32 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 "world-activity actor list has no null sentinel");
         }
     }
+    // Actor template names are not unique animation-profile keys. The ROM
+    // reuses names such as "lone11" with different entity-kind/palette
+    // records; those resolve through distinct 0xC042/0xC0A2 selector tables.
+    // Keep the decoded actor_name as source evidence and qualify only the
+    // extracted asset namespace when one name maps to multiple visual kinds.
+    std::map<std::string,
+             std::set<std::pair<std::uint16_t, std::uint8_t>>>
+        world_activity_sprite_variants;
+    for (const auto& actor : default_actor_records) {
+        world_activity_sprite_variants[actor.sprite_stem].insert(
+            {actor.entity_kind, actor.palette_line});
+    }
+    for (const auto& actor : world_activity_actor_records) {
+        world_activity_sprite_variants[actor.sprite_stem].insert(
+            {actor.entity_kind, actor.palette_line});
+    }
+    for (auto& actor : world_activity_actor_records) {
+        const auto variants =
+            world_activity_sprite_variants.find(actor.sprite_stem);
+        if (variants != world_activity_sprite_variants.end() &&
+            variants->second.size() > 1U) {
+            actor.sprite_stem =
+                "actor-kind-" + std::to_string(actor.entity_kind) +
+                "-palette-" + std::to_string(actor.palette_line);
+        }
+    }
     {
         const auto table_path = root / "field/entities/world-activity-actors.tsv";
         std::filesystem::create_directories(table_path.parent_path());
@@ -4181,6 +6863,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 "cannot create source world-activity actor table");
         }
         table << "scene\tlist_id\tlist_offset\tsource_order"
+                    "\tscript_index"
                  "\tsource_record_offset\ttagged_template"
                  "\ttemplate_offset\tposition_offset\tentity_kind"
                  "\tactor_name\tsprite_stem\taction_kind\taction_code"
@@ -4190,6 +6873,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             table << actor.scene_id << '\t' << actor.list_id << '\t'
                   << format_offset(actor.list_offset) << '\t'
                   << actor.source_order << '\t'
+                  << actor.script_index << '\t'
                   << format_offset(actor.source_record_offset) << '\t'
                   << format_offset(actor.tagged_template) << '\t'
                   << format_offset(actor.template_offset) << '\t'
@@ -4284,6 +6968,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint8_t auxiliary_roll_bonus;
         std::string sprite_stem;
         std::string ordered_overrides;
+        std::uint8_t run_target_area = 0U;
+        std::uint8_t run_target_event = 0U;
+        std::uint16_t run_target_x = 0U;
+        std::uint16_t run_target_y = 0U;
     };
     constexpr std::size_t kFieldContextGroupTableOffset = 0x3312U;
     constexpr std::size_t kWorldActivityEnableTableOffset = 0x1D70E4U;
@@ -4563,6 +7251,167 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             }
         }
     }
+    // ROM 0x1F086 installs one of these pointer-only actor lists for a
+    // matching gang-contract target. Unlike the regular random-encounter
+    // lists above, these have no per-record override tail; each actor copies
+    // its raw ROM template. Keep them in the typed Lua content table with
+    // explicit target area/event fields so regular encounter selection never
+    // consumes these records.
+    struct RunTargetGangActorList {
+        std::uint8_t area_id;
+        std::uint8_t event_id;
+        std::uint32_t list_offset;
+    };
+    static constexpr std::array<RunTargetGangActorList, 3>
+        kRunTargetGangActorLists{{
+            {1U, 9U, 0x1D6D4AU},
+            {2U, 9U, 0x1D6D5EU},
+            {3U, 4U, 0x1D6D72U},
+        }};
+    // ROM 0x16A26 pairs each selected actor-template pointer with the
+    // corresponding six-byte placement record beginning at 0x16A6A. Actor
+    // service 0x142DC reads the first two words as world X/Y; the third word
+    // links a further placement and is zero for these four-row target groups.
+    constexpr std::size_t kRunTargetPlacementTableOffset = 0x16A6AU;
+    for (const auto& list : kRunTargetGangActorLists) {
+        auto cursor = static_cast<std::size_t>(list.list_offset);
+        bool found_terminator = false;
+        for (std::uint16_t source_order = 0U; source_order < 16U;
+             ++source_order, cursor += 4U) {
+            const auto tagged_template = read_big_endian_long(rom, cursor);
+            if (tagged_template == 0U) {
+                found_terminator = true;
+                break;
+            }
+            const auto template_offset =
+                static_cast<std::size_t>(tagged_template & 0x7FFFFFFFU);
+            if (template_offset > rom.size() ||
+                rom.size() - template_offset < 0x4AU) {
+                throw std::runtime_error(
+                    "run-target actor template points outside the ROM");
+            }
+
+            const auto entity_kind =
+                read_big_endian_word(rom, template_offset);
+            const auto palette_line = static_cast<std::uint8_t>(
+                (read_big_endian_word(rom, template_offset + 2U) >> 13U) &
+                0x03U);
+            const auto actor_name = read_actor_name(template_offset);
+            if (actor_name.empty()) {
+                throw std::runtime_error(
+                    "run-target actor template has no readable name");
+            }
+            const auto action_selector = rom[template_offset + 8U];
+            const auto action_code = rom[template_offset + 9U];
+            const auto action_kind = action_code == 0U
+                ? std::string("none")
+                : ((action_selector & 0x80U) != 0U
+                       ? std::string("spell")
+                       : std::string("item"));
+            const auto profile_id = make_actor_profile_id(
+                rom, template_offset, entity_kind, action_kind, action_code);
+            std::array<std::uint8_t, 10> action_phase_extension{};
+            for (std::size_t index = 0U;
+                 index < action_phase_extension.size(); ++index) {
+                action_phase_extension[index] =
+                    rom[template_offset + 0x28U + index];
+            }
+            std::array<std::uint8_t, 4> action_skills{};
+            for (std::size_t index = 0U; index < action_skills.size(); ++index) {
+                action_skills[index] = rom[template_offset + 0x33U + index];
+            }
+            std::array<std::uint8_t, 8> item_codes{};
+            std::array<std::uint8_t, 8> item_phases{};
+            for (std::size_t index = 0U; index < item_codes.size(); ++index) {
+                item_codes[index] = rom[template_offset + 0x18U + index];
+                item_phases[index] = rom[template_offset + 0x20U + index];
+            }
+            const auto sprite_stem =
+                "actor-kind-" + std::to_string(entity_kind) + "-palette-" +
+                std::to_string(palette_line);
+            const auto cyberware_flags = read_big_endian_word(
+                rom, template_offset + 0x44U);
+            const auto key = std::make_pair(entity_kind, palette_line);
+            if (actor_visual_sources.find(key) == actor_visual_sources.end()) {
+                actor_visual_sources.emplace(
+                    key, DefaultActorKindSource{
+                             entity_kind, palette_line,
+                             "ROM kind " + std::to_string(entity_kind),
+                             sprite_stem,
+                             static_cast<std::uint32_t>(template_offset)});
+            }
+
+            DynamicWorldActorRecord actor{};
+            actor.scene_id = list.area_id;
+            actor.context_group = 0U;
+            actor.random_sum = 0U;
+            actor.source_order = source_order;
+            actor.pointer_cell_offset = list.list_offset;
+            actor.sequence_list_offset = list.list_offset;
+            actor.tagged_template = tagged_template;
+            actor.template_offset =
+                static_cast<std::uint32_t>(template_offset);
+            actor.entity_kind = entity_kind;
+            actor.palette_line = palette_line;
+            actor.actor_name = actor_name;
+            actor.profile_id = profile_id;
+            actor.action_code = action_code;
+            actor.source_action_slot = action_selector;
+            actor.source_action_ammo = rom[template_offset + 6U];
+            actor.source_action_counter = rom[template_offset + 7U];
+            actor.action_kind = action_kind;
+            actor.source_interaction_flags = rom[
+                shadowrun::rom::kPostObjectEntityTemplate + 0x11U];
+            actor.physical_meter = rom[template_offset + 0x04U];
+            actor.delay_primary_attribute = rom[template_offset + 0x2AU];
+            actor.delay_secondary_attribute = rom[template_offset + 0x2DU];
+            actor.delay_capability_flags = cyberware_flags;
+            actor.mental_meter = rom[template_offset + 0x43U];
+            actor.cyberware_flags = cyberware_flags;
+            actor.posture = rom[template_offset + 0x05U];
+            actor.attribute_77 = action_phase_extension[1];
+            actor.attribute_78 = action_phase_extension[2];
+            actor.attribute_79 = action_phase_extension[3];
+            actor.attribute_7b = action_phase_extension[5];
+            actor.attribute_7c = action_phase_extension[6];
+            actor.attribute_85 = rom[template_offset + 0x37U];
+            actor.item18_base = rom[template_offset + 0x32U];
+            actor.armor_index = action_phase_extension[0];
+            actor.race_or_state = static_cast<std::int8_t>(
+                rom[template_offset + 0x41U]);
+            actor.class_code = rom[template_offset + 0x42U];
+            actor.modifier_flags_df = rom[
+                shadowrun::rom::kPostObjectEntityTemplate + 0xDFU];
+            actor.profile_index_a0 = read_big_endian_word(
+                rom, template_offset + 0x46U);
+            actor.item_codes = item_codes;
+            actor.item_phases = item_phases;
+            actor.action_phase_extension = action_phase_extension;
+            actor.action_skills = action_skills;
+            actor.auxiliary_roll_bonus = rom[template_offset + 0x49U];
+            actor.sprite_stem = sprite_stem;
+            actor.ordered_overrides = "-";
+            actor.run_target_area = list.area_id;
+            actor.run_target_event = list.event_id;
+            const auto placement_offset =
+                kRunTargetPlacementTableOffset +
+                static_cast<std::size_t>(source_order) * 6U;
+            if (placement_offset > rom.size() ||
+                rom.size() - placement_offset < 6U) {
+                throw std::runtime_error(
+                    "run-target actor placement points outside the ROM");
+            }
+            actor.run_target_x =
+                read_big_endian_word(rom, placement_offset);
+            actor.run_target_y =
+                read_big_endian_word(rom, placement_offset + 2U);
+            dynamic_world_actor_records.push_back(std::move(actor));
+        }
+        if (!found_terminator) {
+            throw std::runtime_error(
+                "run-target actor list has no null sentinel");
+        }
+    }
     {
         const auto table_path =
             root / "field/entities/dynamic-world-activity-actors.tsv";
@@ -4615,7 +7464,9 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         }
         table << "\tcombat_auxiliary_roll_bonus"
                  "\tsource_action_slot\tsource_action_ammo"
-                 "\tsource_action_counter";
+                 "\tsource_action_counter"
+                 "\trun_target_area\trun_target_event"
+                 "\trun_target_x\trun_target_y";
         table << '\n';
         for (const auto& actor : dynamic_world_actor_records) {
             const auto key = std::make_pair(actor.entity_kind, actor.palette_line);
@@ -4640,7 +7491,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                   << format_offset(actor.tagged_template) << '\t'
                   << format_offset(actor.template_offset) << '\t'
                   << actor.ordered_overrides << '\t'
-                  << "open screen-edge candidates based on the current viewport and terrain\t"
+                  << (actor.run_target_area == 0U
+                          ? "open screen-edge candidates based on the current viewport and terrain"
+                          : "ROM pending-descriptor actor placement")
+                  << '\t'
                   << static_cast<unsigned>(actor.physical_meter) << '\t'
                   << static_cast<unsigned>(actor.delay_primary_attribute)
                   << '\t'
@@ -4678,7 +7532,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             table << '\t'
                   << static_cast<unsigned>(actor.source_action_slot) << '\t'
                   << static_cast<unsigned>(actor.source_action_ammo) << '\t'
-                  << static_cast<unsigned>(actor.source_action_counter);
+                  << static_cast<unsigned>(actor.source_action_counter) << '\t'
+                  << static_cast<unsigned>(actor.run_target_area) << '\t'
+                  << static_cast<unsigned>(actor.run_target_event) << '\t'
+                  << actor.run_target_x << '\t' << actor.run_target_y;
             table << '\n';
         }
         if (!table) {
@@ -5736,6 +8593,27 @@ shadowrun::graphics::RgbaImage render_native_title_frame(
 } // namespace
 
 int main(int argc, char** argv) {
+    if (argc == 5 && std::string(argv[3]) == "--dialogue-record") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const auto source_offset = static_cast<std::size_t>(
+                parse_number(argv[4]));
+            const auto segments =
+                shadowrun::graphics::read_genesis_dialogue_segments(
+                    rom, source_offset);
+            for (std::size_t index = 0U; index < segments.size(); ++index) {
+                if (index != 0U) {
+                    std::cout << "|";
+                }
+                std::cout << segments[index];
+            }
+            std::cout << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[3]) == "--field-event-cells") {
         try {
             const auto rom = read_file(argv[1]);
@@ -6332,6 +9210,47 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 4 &&
+        std::string(argv[3]) == "--matrix-cyberdeck-selectors") {
+        try {
+            const auto rom = read_file(argv[1]);
+            MatrixGraphicsUploadHistory history{};
+            const auto field_menu = decode_matrix_graphics_upload(
+                rom, 0xD86E0U, history);
+            const auto menu = decode_matrix_graphics_upload(
+                rom, 0xD78AAU, history);
+            const auto matrix_ui = decode_matrix_graphics_upload(
+                rom, 0xD9376U, history);
+            if (field_menu.size() != 139U * 32U ||
+                menu.size() != 147U * 32U ||
+                matrix_ui.size() != 199U * 32U) {
+                throw std::runtime_error(
+                    "Matrix Cyberdeck source graphics changed size");
+            }
+            const auto patterns = shadowrun::graphics::decode_tile_atlas(
+                matrix_ui, 0U, 199U,
+                shadowrun::graphics::read_genesis_palette(
+                    rom, 0x0E2EBAU),
+                16U, 0U);
+            const std::filesystem::path root(argv[2]);
+            for (std::size_t row = 0U; row < 4U; ++row) {
+                const auto path = root / "cyberspace" / "matrix" /
+                    ("cyberdeck-selector-selected-row-" +
+                     std::to_string(row) + ".bmp");
+                std::filesystem::create_directories(path.parent_path());
+                shadowrun::graphics::write_bmp32(
+                    path.string(),
+                    compose_matrix_cyberdeck_selector(rom, patterns, row));
+            }
+            std::cout << "four Cyberdeck selector assets written to "
+                      << argv[2]
+                      << " using live ROM palette line 1 at 0xE2EBA\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[3]) == "--all-assets") {
         try {
             const auto rom = read_file(argv[1]);
@@ -6342,9 +9261,1771 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 4 && std::string(argv[3]) == "--matrix-field-atlases") {
+        try {
+            const auto rom = read_file(argv[1]);
+            constexpr std::size_t kPatternCount = 304U;
+            const auto resource =
+                shadowrun::graphics::decode_genesis_resource_stream(
+                    rom, 0xD646AU);
+            if (resource.size() != kPatternCount * 32U) {
+                throw std::runtime_error(
+                    "Matrix field-mode graphics stream changed size");
+            }
+            const std::filesystem::path root(argv[2]);
+            std::filesystem::create_directories(root);
+            for (std::size_t theme = 0U; theme < 4U; ++theme) {
+                const auto palette_offset = static_cast<std::size_t>(
+                    read_big_endian_long(rom, 0x166448U + theme * 4U));
+                const auto atlas = shadowrun::graphics::decode_tile_atlas(
+                    resource, 0U, kPatternCount,
+                    shadowrun::graphics::read_genesis_palette(
+                        rom, palette_offset),
+                    16U, 0U);
+                const auto path = root /
+                    ("matrix-field-pattern-atlas-theme-" +
+                     std::to_string(theme + 1U) + ".bmp");
+                shadowrun::graphics::write_bmp32(path.string(), atlas);
+            }
+            std::cout << "four 304-tile Matrix field-mode atlases written to "
+                      << argv[2]
+                      << " using palette pointers at 0x166448\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 &&
+        std::string(argv[3]) == "--matrix-world-models") {
+        try {
+            const auto rom = read_file(argv[1]);
+            constexpr std::size_t kModelTable = 0x0E2EDAU;
+            constexpr std::size_t kModelCount = 6U;
+            constexpr std::size_t kModelRecordBytes = 12U;
+            // World model SAT packets use palette line 0. Matrix field-mode
+            // entry copies the standard four-line palette block from E2E3A.
+            constexpr std::size_t kPaletteSource = 0x0E2E3AU;
+            const auto palette =
+                shadowrun::graphics::read_genesis_palette(rom,
+                                                          kPaletteSource);
+            const std::filesystem::path root(argv[2]);
+            std::filesystem::create_directories(root);
+            for (std::size_t model = 0U; model < kModelCount; ++model) {
+                const auto record = kModelTable +
+                    model * kModelRecordBytes;
+                const auto width_pixels = static_cast<std::size_t>(
+                    read_big_endian_word(rom, record));
+                const auto height_pixels = static_cast<std::size_t>(
+                    read_big_endian_word(rom, record + 2U));
+                const auto map_source = static_cast<std::size_t>(
+                    read_big_endian_long(rom, record + 4U));
+                const auto pattern_source = static_cast<std::size_t>(
+                    read_big_endian_long(rom, record + 8U));
+                if (width_pixels == 0U || height_pixels == 0U ||
+                    width_pixels % 8U != 0U || height_pixels % 8U != 0U) {
+                    throw std::runtime_error(
+                        "Matrix world-object model has non-tile dimensions");
+                }
+                const auto columns = width_pixels / 8U;
+                const auto rows = height_pixels / 8U;
+                const auto map_bytes = columns * rows * 2U;
+                if (map_source > rom.size() ||
+                    map_bytes > rom.size() - map_source) {
+                    throw std::runtime_error(
+                        "Matrix world-object model tile map exceeds the ROM");
+                }
+                std::size_t maximum_tile = 0U;
+                std::vector<std::uint16_t> tile_map;
+                tile_map.reserve(columns * rows);
+                for (std::size_t index = 0U; index < columns * rows;
+                     ++index) {
+                    const auto tile = static_cast<std::size_t>(
+                        read_big_endian_word(rom,
+                                             map_source + index * 2U));
+                    maximum_tile = std::max(maximum_tile, tile);
+                    tile_map.push_back(static_cast<std::uint16_t>(tile));
+                }
+                const auto tile_count = maximum_tile + 1U;
+                const auto pattern_bytes = tile_count * 32U;
+                if (pattern_source > rom.size() ||
+                    pattern_bytes > rom.size() - pattern_source) {
+                    throw std::runtime_error(
+                        "Matrix world-object model pattern bank exceeds the ROM");
+                }
+                const std::vector<std::uint8_t> patterns(
+                    rom.begin() + static_cast<std::ptrdiff_t>(pattern_source),
+                    rom.begin() + static_cast<std::ptrdiff_t>(
+                        pattern_source + pattern_bytes));
+                const auto atlas = shadowrun::graphics::decode_tile_atlas(
+                    patterns, 0U, tile_count, palette, 16U, 0U);
+                shadowrun::graphics::RgbaImage model_image{};
+                model_image.width =
+                    static_cast<std::uint16_t>(width_pixels);
+                model_image.height =
+                    static_cast<std::uint16_t>(height_pixels);
+                model_image.pixels.assign(
+                    width_pixels * height_pixels,
+                    shadowrun::native::Rgba8{0U, 0U, 0U, 0U});
+                for (std::size_t row = 0U; row < rows; ++row) {
+                    for (std::size_t column = 0U; column < columns;
+                         ++column) {
+                        const auto tile = static_cast<std::size_t>(
+                            tile_map[row * columns + column]);
+                        for (std::size_t pixel_y = 0U; pixel_y < 8U;
+                             ++pixel_y) {
+                            for (std::size_t pixel_x = 0U; pixel_x < 8U;
+                                 ++pixel_x) {
+                                const auto atlas_x = (tile % 16U) * 8U +
+                                    pixel_x;
+                                const auto atlas_y = (tile / 16U) * 8U +
+                                    pixel_y;
+                                model_image.pixels[
+                                    (row * 8U + pixel_y) * width_pixels +
+                                    column * 8U + pixel_x] = atlas.pixels[
+                                    atlas_y * atlas.width + atlas_x];
+                            }
+                        }
+                    }
+                }
+                const auto path = root /
+                    ("matrix-world-model-" + std::to_string(model) +
+                     ".png");
+                write_png32(path.string(), model_image);
+                const auto alternate_palette =
+                    shadowrun::graphics::read_genesis_palette(
+                        rom, kPaletteSource + 0x20U);
+                const auto alternate_atlas =
+                    shadowrun::graphics::decode_tile_atlas(
+                        patterns, 0U, tile_count, alternate_palette, 16U, 0U);
+                auto alternate_image = model_image;
+                for (std::size_t row = 0U; row < rows; ++row) {
+                    for (std::size_t column = 0U; column < columns;
+                         ++column) {
+                        const auto tile = static_cast<std::size_t>(
+                            tile_map[row * columns + column]);
+                        for (std::size_t pixel_y = 0U; pixel_y < 8U;
+                             ++pixel_y) {
+                            for (std::size_t pixel_x = 0U; pixel_x < 8U;
+                                 ++pixel_x) {
+                                const auto atlas_x = (tile % 16U) * 8U +
+                                    pixel_x;
+                                const auto atlas_y = (tile / 16U) * 8U +
+                                    pixel_y;
+                                alternate_image.pixels[
+                                    (row * 8U + pixel_y) * width_pixels +
+                                    column * 8U + pixel_x] =
+                                    alternate_atlas.pixels[
+                                        atlas_y * alternate_atlas.width +
+                                        atlas_x];
+                            }
+                        }
+                    }
+                }
+                const auto alternate_path = root /
+                    ("matrix-world-model-" + std::to_string(model) +
+                     "-alternate-palette.png");
+                write_png32(alternate_path.string(), alternate_image);
+                std::cout << "model " << model << " " << width_pixels << 'x'
+                          << height_pixels << " map=0x" << std::hex
+                          << map_source << " patterns=0x" << pattern_source
+                          << " tiles=" << std::dec << tile_count << " -> "
+                          << path.string() << "\n";
+            }
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 &&
+        std::string(argv[3]) == "--scene-5bd2c-sprite-lists") {
+        try {
+            const auto rom = read_file(argv[1]);
+            // The field callback at 0x5BAC4 loads descriptor 0x5C966. Its
+            // second pattern stream is the odd pointer 0x1F002F (stream data
+            // at 0x1F002E), uploaded at VRAM byte address $8A80 (tile $454).
+            // The callback's sprite lists at 0x1EF988 and 0x1EFAAA select
+            // from this bank. Keep this source path separate from the still-
+            // untraced live Matrix traversal sprite path.
+            constexpr std::size_t kPatternStream = 0x1F002EU;
+            constexpr std::size_t kPatternFirstTile = 0x0454U;
+            constexpr std::size_t kPaletteLine1 = 0x5C9F2U;
+            constexpr std::array<std::size_t, 2> kLists{{
+                0x1EF988U, 0x1EFAAAU,
+            }};
+            constexpr std::array<const char*, 2> kNames{{
+                "list-1ef988", "list-1efaaa",
+            }};
+            const auto pattern_bytes =
+                shadowrun::graphics::decode_genesis_resource_stream(
+                    rom, kPatternStream);
+            if (pattern_bytes.empty() || pattern_bytes.size() % 32U != 0U) {
+                throw std::runtime_error(
+                    "0x5BD2C sprite pattern stream has an invalid tile length");
+            }
+            const auto tile_count = pattern_bytes.size() / 32U;
+            const auto palette = shadowrun::graphics::read_genesis_palette(
+                rom, kPaletteLine1);
+            constexpr std::size_t kTilesPerRow = 16U;
+            const auto atlas = shadowrun::graphics::decode_tile_atlas(
+                pattern_bytes, 0U, tile_count, palette, kTilesPerRow, 0U);
+            const std::filesystem::path root(argv[2]);
+            std::filesystem::create_directories(root);
+            constexpr std::size_t kWidth = 320U;
+            constexpr std::size_t kHeight = 224U;
+            for (std::size_t list_index = 0U;
+                 list_index < kLists.size(); ++list_index) {
+                shadowrun::graphics::RgbaImage image{};
+                image.width = static_cast<std::uint16_t>(kWidth);
+                image.height = static_cast<std::uint16_t>(kHeight);
+                image.pixels.assign(
+                    kWidth * kHeight,
+                    shadowrun::native::Rgba8{0U, 0U, 0U, 0U});
+                auto record = kLists[list_index];
+                bool terminated = false;
+                for (std::size_t sprite_index = 0U;
+                     sprite_index < 64U; ++sprite_index) {
+                    if (record > rom.size() || rom.size() - record < 8U) {
+                        throw std::runtime_error(
+                            "0x5BD2C sprite list is truncated");
+                    }
+                    const auto x_offset = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record));
+                    if (x_offset == std::numeric_limits<std::int16_t>::min()) {
+                        terminated = true;
+                        break;
+                    }
+                    const auto y_offset = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record + 2U));
+                    const auto size = read_big_endian_word(rom, record + 4U);
+                    const auto attributes = read_big_endian_word(
+                        rom, record + 6U);
+                    const auto tile = static_cast<std::size_t>(
+                        attributes & 0x07FFU);
+                    const auto width_tiles = static_cast<std::size_t>(
+                        ((size >> 2U) & 0x03U) + 1U);
+                    const auto height_tiles = static_cast<std::size_t>(
+                        (size & 0x03U) + 1U);
+                    if ((size & 0xFF00U) != 0U ||
+                        tile < kPatternFirstTile ||
+                        tile - kPatternFirstTile > tile_count ||
+                        width_tiles * height_tiles >
+                            tile_count - (tile - kPatternFirstTile)) {
+                        throw std::runtime_error(
+                            "0x5BD2C sprite exceeds its uploaded pattern bank");
+                    }
+                    const auto tile_offset = tile - kPatternFirstTile;
+                    const bool flip_x = (attributes & 0x0800U) != 0U;
+                    const bool flip_y = (attributes & 0x1000U) != 0U;
+                    const auto sprite_width = width_tiles * 8U;
+                    const auto sprite_height = height_tiles * 8U;
+                    for (std::size_t local_y = 0U;
+                         local_y < sprite_height; ++local_y) {
+                        for (std::size_t local_x = 0U;
+                             local_x < sprite_width; ++local_x) {
+                            const auto source_x = flip_x
+                                ? sprite_width - 1U - local_x
+                                : local_x;
+                            const auto source_y = flip_y
+                                ? sprite_height - 1U - local_y
+                                : local_y;
+                            const auto tile_index = tile_offset +
+                                (source_x / 8U) * height_tiles +
+                                (source_y / 8U);
+                            const auto atlas_x =
+                                (tile_index % kTilesPerRow) * 8U +
+                                (source_x % 8U);
+                            const auto atlas_y =
+                                (tile_index / kTilesPerRow) * 8U +
+                                (source_y % 8U);
+                            const auto source_pixel = atlas.pixels[
+                                atlas_y * atlas.width + atlas_x];
+                            if (source_pixel.alpha == 0U) {
+                                continue;
+                            }
+                            const auto target_x = 160 + x_offset +
+                                static_cast<int>(local_x);
+                            const auto target_y = 112 + y_offset +
+                                static_cast<int>(local_y);
+                            if (target_x < 0 || target_y < 0 ||
+                                target_x >= static_cast<int>(kWidth) ||
+                                target_y >= static_cast<int>(kHeight)) {
+                                continue;
+                            }
+                            image.pixels[
+                                static_cast<std::size_t>(target_y) * kWidth +
+                                static_cast<std::size_t>(target_x)] = source_pixel;
+                        }
+                    }
+                    record += 8U;
+                }
+                if (!terminated) {
+                    throw std::runtime_error(
+                        "0x5BD2C sprite list has no terminator");
+                }
+                const auto output = root /
+                    (std::string("scene-5bd2c-") + kNames[list_index] +
+                     "-centered.png");
+                write_png32(output.string(), image);
+                std::cout << kNames[list_index] << " sprites rendered from "
+                          << tile_count << " decoded patterns -> "
+                          << output.string() << "\n";
+            }
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 &&
+        std::string(argv[3]) == "--matrix-title-figure-atlases") {
+        try {
+            const auto rom = read_file(argv[1]);
+            struct FigurePatternGroup {
+                const char* name;
+                std::size_t pointer_table;
+                std::size_t destination;
+                std::uint16_t base_x;
+                std::uint16_t base_y;
+            };
+            // ROM 0x1D428/0x1D452 and 0x1DAF4/0x1DB08/0xEA490/0xEA4A4
+            // belong to the FFDF8C world-sequence transition. The normal
+            // traversal behavior descriptor C selects fixed lists through
+            // two phase tables rooted at 0x1C2D2 and 0x1C2C8.
+            constexpr std::array<FigurePatternGroup, 4> kGroups{{
+                {"upper-left", 0x1DAF4U, 0xF000U, 0x00F8U, 0x00E4U},
+                {"upper-right", 0x1DB08U, 0xF000U, 0x0148U, 0x00E4U},
+                {"lower-left", 0x0EA490U, 0xF800U, 0x00E2U, 0x0114U},
+                {"lower-right", 0x0EA4A4U, 0xF800U, 0x015EU, 0x0114U},
+            }};
+            const auto palette = shadowrun::graphics::read_genesis_palette(
+                rom, 0x0E2E9AU);
+            const std::filesystem::path root(argv[2]);
+            std::filesystem::create_directories(root);
+            constexpr std::size_t kFrameWidth = 320U;
+            constexpr std::size_t kFrameHeight = 224U;
+            std::array<shadowrun::graphics::RgbaImage, 5> figures{};
+            for (auto& figure : figures) {
+                figure.width = static_cast<std::uint16_t>(kFrameWidth);
+                figure.height = static_cast<std::uint16_t>(kFrameHeight);
+                figure.pixels.assign(kFrameWidth * kFrameHeight,
+                                     shadowrun::native::Rgba8{0U, 0U, 0U, 0U});
+            }
+            constexpr std::size_t kFixedFigurePatternOffset = 0xDA038U;
+            constexpr std::size_t kFixedFigurePatternBytes = 0x0A80U;
+            constexpr std::size_t kFixedFigureFirstTile = 0x011BU;
+            constexpr std::size_t kFixedFigureTileCount =
+                kFixedFigurePatternBytes / 32U;
+            constexpr std::size_t kFixedFigureTilesPerRow = 16U;
+            if (kFixedFigurePatternOffset > rom.size() ||
+                kFixedFigurePatternBytes >
+                    rom.size() - kFixedFigurePatternOffset) {
+                throw std::runtime_error(
+                    "Matrix fixed-figure pattern bank is truncated");
+            }
+            const std::vector<std::uint8_t> fixed_figure_patterns(
+                rom.begin() + static_cast<std::ptrdiff_t>(
+                    kFixedFigurePatternOffset),
+                rom.begin() + static_cast<std::ptrdiff_t>(
+                    kFixedFigurePatternOffset +
+                    kFixedFigurePatternBytes));
+            const auto fixed_figure_atlas =
+                shadowrun::graphics::decode_tile_atlas(
+                    fixed_figure_patterns, 0U, kFixedFigureTileCount,
+                    palette, kFixedFigureTilesPerRow, 0U);
+            const auto draw_figure_sprite = [&] (
+                shadowrun::graphics::RgbaImage& figure,
+                const shadowrun::graphics::RgbaImage& atlas,
+                const std::size_t atlas_tile_count,
+                const std::size_t atlas_tiles_per_row,
+                const std::size_t sprite_tile_first,
+                const std::size_t sprite_tile_bank_first,
+                const std::uint8_t size,
+                const std::uint16_t attributes,
+                const int origin_x,
+                const int origin_y) {
+                if (sprite_tile_first < sprite_tile_bank_first ||
+                    atlas_tiles_per_row == 0U) {
+                    throw std::runtime_error(
+                        "Matrix figure sprite starts outside its tile bank");
+                }
+                const auto width_tiles = static_cast<std::size_t>(
+                    ((size >> 2U) & 0x03U) + 1U);
+                const auto height_tiles = static_cast<std::size_t>(
+                    (size & 0x03U) + 1U);
+                const auto tile_offset = sprite_tile_first -
+                    sprite_tile_bank_first;
+                const auto sprite_tile_count = width_tiles * height_tiles;
+                if (tile_offset > atlas_tile_count ||
+                    sprite_tile_count > atlas_tile_count - tile_offset) {
+                    throw std::runtime_error(
+                        "Matrix figure sprite exceeds its decoded tile bank");
+                }
+                const bool flip_x = (attributes & 0x0800U) != 0U;
+                const bool flip_y = (attributes & 0x1000U) != 0U;
+                const auto sprite_width = width_tiles * 8U;
+                const auto sprite_height = height_tiles * 8U;
+                for (std::size_t local_y = 0U;
+                     local_y < sprite_height; ++local_y) {
+                    for (std::size_t local_x = 0U;
+                         local_x < sprite_width; ++local_x) {
+                        const auto source_x = flip_x
+                            ? sprite_width - 1U - local_x
+                            : local_x;
+                        const auto source_y = flip_y
+                            ? sprite_height - 1U - local_y
+                            : local_y;
+                        // Genesis sprite patterns advance vertically through
+                        // each tile column before moving to the next column.
+                        const auto tile_index = tile_offset +
+                            (source_x / 8U) * height_tiles +
+                            (source_y / 8U);
+                        const auto atlas_x =
+                            (tile_index % atlas_tiles_per_row) * 8U +
+                            (source_x % 8U);
+                        const auto atlas_y =
+                            (tile_index / atlas_tiles_per_row) * 8U +
+                            (source_y % 8U);
+                        const auto source_pixel = atlas.pixels[
+                            atlas_y * atlas.width + atlas_x];
+                        if (source_pixel.alpha == 0U) {
+                            continue;
+                        }
+                        const auto target_x = origin_x +
+                            static_cast<int>(local_x);
+                        const auto target_y = origin_y +
+                            static_cast<int>(local_y);
+                        if (target_x < 0 || target_y < 0 ||
+                            target_x >= static_cast<int>(kFrameWidth) ||
+                            target_y >= static_cast<int>(kFrameHeight)) {
+                            continue;
+                        }
+                        figure.pixels[
+                            static_cast<std::size_t>(target_y) *
+                                kFrameWidth +
+                            static_cast<std::size_t>(target_x)] =
+                            source_pixel;
+                    }
+                }
+            };
+            constexpr std::array<std::size_t, 2> kFixedFigureLists{{
+                0x1D428U, 0x1D452U,
+            }};
+            // 0x1C506 loads D1 from FF158E=0x120 and D2 from
+            // FF1590=0x12F; 0x1378 writes D1 to SAT X and D2 to SAT Y.
+            constexpr int kFixedFigureBaseX = 0x0120 - 128;
+            constexpr int kFixedFigureBaseY = 0x012F - 128;
+            for (auto& figure : figures) {
+                for (const auto list : kFixedFigureLists) {
+                    auto record = list;
+                    bool terminated = false;
+                    for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+                        if (record > rom.size() || rom.size() - record < 8U) {
+                            throw std::runtime_error(
+                                "Matrix fixed-figure SAT list is truncated");
+                        }
+                        const auto x_offset = static_cast<std::int16_t>(
+                            read_big_endian_word(rom, record));
+                        if (x_offset == std::numeric_limits<std::int16_t>::min()) {
+                            terminated = true;
+                            break;
+                        }
+                        const auto y_offset = static_cast<std::int16_t>(
+                            read_big_endian_word(rom, record + 2U));
+                        const auto size_word = read_big_endian_word(
+                            rom, record + 4U);
+                        if ((size_word & 0xFF00U) != 0U) {
+                            throw std::runtime_error(
+                                "Matrix fixed-figure size exceeds one byte");
+                        }
+                        const auto attributes = static_cast<std::uint16_t>(
+                            read_big_endian_word(rom, record + 6U) |
+                            0x6000U);
+                        const auto tile = static_cast<std::size_t>(
+                            attributes & 0x07FFU);
+                        draw_figure_sprite(
+                            figure, fixed_figure_atlas,
+                            kFixedFigureTileCount, kFixedFigureTilesPerRow,
+                            tile, kFixedFigureFirstTile,
+                            static_cast<std::uint8_t>(size_word), attributes,
+                            kFixedFigureBaseX + x_offset,
+                            kFixedFigureBaseY + y_offset);
+                        record += 8U;
+                    }
+                    if (!terminated) {
+                        throw std::runtime_error(
+                            "Matrix fixed-figure SAT list has no terminator");
+                    }
+                }
+            }
+
+            // Field entry copies the bootstrap tables at 0x1C2B4/0x1C2BE,
+            // then 0x1B628 immediately attaches descriptor C, selecting the
+            // phase tables at 0x1C2D2/0x1C2C8. Each table's first word is its
+            // maximum phase index; following longwords are ROM sprite lists.
+            // Rendering order is primary (FF158D) then secondary (FF158C).
+            // 0x1C506 passes FF158E=0x120 as D1/X and FF1590=0x12F as D2/Y;
+            // 0x1378 writes D1 to SAT X and D2 to SAT Y.
+            constexpr std::array<std::size_t, 2> kLiveFigureTables{{
+                0x1C2D2U, 0x1C2C8U,
+            }};
+            constexpr int kLiveFigureBaseX = 0x0120 - 128;
+            constexpr int kLiveFigureBaseY = 0x012F - 128;
+            // ROM 0x1C506 checks bit 1 in the copied 0x1C4DA flags, then
+            // redraws A2/A4 at the selected Y offset from 0x1C5EC. The row
+            // is FFE169-1 (clamped to three); the column is FFDF88 & 3.
+            constexpr std::array<std::array<int, 4>, 4>
+                kLiveFigureOverlayYOffsets{{
+                    {{0x003C, 0x0000, 0x0000, 0x0000}},
+                    {{0x003C, -0x003C, 0x0000, 0x0000}},
+                    {{0x003C, -0x003C, 0x0078, 0x0000}},
+                    {{0x003C, -0x003C, 0x0078, -0x0078}},
+                }};
+            const bool live_figure_overlay_enabled =
+                (rom[0x1C4DAU + 0x12U] & 0x02U) != 0U;
+            const auto live_overlay_directory =
+                root / "matrix-live-runner-overlay-states";
+            std::filesystem::create_directories(live_overlay_directory);
+            const auto draw_live_figure_list = [&] (
+                shadowrun::graphics::RgbaImage& pose,
+                const std::size_t list,
+                const int y_offset) {
+                bool terminated = false;
+                for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+                    if (list > rom.size() ||
+                        rom.size() - list < (sprite + 1U) * 8U) {
+                        throw std::runtime_error(
+                            "Matrix live-figure SAT list is truncated");
+                    }
+                    const auto record = list + sprite * 8U;
+                    const auto x = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record));
+                    if (x == std::numeric_limits<std::int16_t>::min()) {
+                        terminated = true;
+                        break;
+                    }
+                    const auto y = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record + 2U));
+                    const auto size = read_big_endian_word(
+                        rom, record + 4U);
+                    const auto attributes = static_cast<std::uint16_t>(
+                        read_big_endian_word(rom, record + 6U) | 0x6000U);
+                    const auto tile = static_cast<std::size_t>(
+                        attributes & 0x07FFU);
+                    if ((size & 0xFF00U) != 0U) {
+                        throw std::runtime_error(
+                            "Matrix live-figure size exceeds one byte");
+                    }
+                    draw_figure_sprite(
+                        pose, fixed_figure_atlas, kFixedFigureTileCount,
+                        kFixedFigureTilesPerRow, tile,
+                        kFixedFigureFirstTile,
+                        static_cast<std::uint8_t>(size), attributes,
+                        kLiveFigureBaseX + x,
+                        kLiveFigureBaseY + y + y_offset);
+                }
+                if (!terminated) {
+                    throw std::runtime_error(
+                        "Matrix live-figure SAT list has no terminator");
+                }
+            };
+            for (std::size_t primary_phase = 0U; primary_phase < 2U;
+                 ++primary_phase) {
+                for (std::size_t secondary_phase = 0U;
+                     secondary_phase < 2U; ++secondary_phase) {
+                    const std::array<std::size_t, 2> phases{{
+                        primary_phase, secondary_phase,
+                    }};
+                    std::array<std::size_t, 2> lists{};
+                    for (std::size_t layer = 0U; layer < 2U; ++layer) {
+                        const auto table = kLiveFigureTables[layer];
+                        const auto maximum_phase = static_cast<std::size_t>(
+                            read_big_endian_word(rom, table));
+                        if (phases[layer] > maximum_phase) {
+                            throw std::runtime_error(
+                                "Matrix live-figure phase exceeds its ROM table");
+                        }
+                        lists[layer] = static_cast<std::size_t>(
+                            read_big_endian_long(
+                                rom, table + 2U + phases[layer] * 4U));
+                    }
+                    for (std::size_t overlay_row = 0U; overlay_row < 4U;
+                         ++overlay_row) {
+                        for (std::size_t frame_column = 0U;
+                             frame_column < 4U; ++frame_column) {
+                            shadowrun::graphics::RgbaImage pose{};
+                            pose.width =
+                                static_cast<std::uint16_t>(kFrameWidth);
+                            pose.height =
+                                static_cast<std::uint16_t>(kFrameHeight);
+                            pose.pixels.assign(
+                                kFrameWidth * kFrameHeight,
+                                shadowrun::native::Rgba8{
+                                    0U, 0U, 0U, 0U});
+                            for (std::size_t layer = 0U; layer < 2U;
+                                 ++layer) {
+                                draw_live_figure_list(pose, lists[layer], 0);
+                                const auto offset =
+                                    kLiveFigureOverlayYOffsets[overlay_row]
+                                        [frame_column];
+                                if (live_figure_overlay_enabled &&
+                                    offset != 0) {
+                                    draw_live_figure_list(
+                                        pose, lists[layer], offset);
+                                }
+                            }
+                            const auto filename =
+                                "matrix-live-runner-pose-primary-" +
+                                std::to_string(primary_phase) +
+                                "-secondary-" +
+                                std::to_string(secondary_phase) +
+                                "-overlay-row-" +
+                                std::to_string(overlay_row) + "-frame-" +
+                                std::to_string(frame_column) + ".png";
+                            const auto path = live_overlay_directory /
+                                filename;
+                            write_png32(path.string(), pose);
+                            if (overlay_row == 0U && frame_column == 1U) {
+                                const auto baseline_path = root /
+                                    ("matrix-live-runner-pose-primary-" +
+                                     std::to_string(primary_phase) +
+                                     "-secondary-" +
+                                     std::to_string(secondary_phase) +
+                                     ".png");
+                                write_png32(baseline_path.string(), pose);
+                            }
+                        }
+                    }
+                }
+            }
+            for (const auto& group : kGroups) {
+                for (std::size_t phase = 0U; phase < figures.size(); ++phase) {
+                    const auto descriptor = static_cast<std::size_t>(
+                        read_big_endian_long(
+                            rom, group.pointer_table + phase * 4U));
+                    const auto pattern_source = static_cast<std::size_t>(
+                        read_big_endian_long(rom, descriptor + 2U));
+                    const auto pattern_byte_count = static_cast<std::size_t>(
+                        read_big_endian_word(rom, descriptor + 6U));
+                    // append_sprite_record queues this byte count for
+                    // write_vdp_word_block_with_source_wrap (0x0F5C). Its
+                    // D2 loop consumes 64-byte blocks, then trailing words
+                    // and an optional final word. The first ROM block is
+                    // 0xC0 bytes and ends exactly at its following descriptor.
+                    const auto pattern_length = pattern_byte_count;
+                    if (pattern_length == 0U || pattern_length % 32U != 0U ||
+                        pattern_source > rom.size() ||
+                        pattern_length > rom.size() - pattern_source ||
+                        group.destination > 0x10000U ||
+                        pattern_length > 0x10000U - group.destination) {
+                        throw std::runtime_error(
+                            "Matrix figure pattern block exceeds ROM or VRAM");
+                    }
+                    // append_sprite_record (ROM 0x61CC) queues this source
+                    // pointer and byte length for a direct DMA to key << 5.
+                    // The descriptor does not reference a 0x1530 stream.
+                    std::vector<std::uint8_t> pattern_vram(0x10000U, 0U);
+                    std::copy_n(rom.begin() +
+                                    static_cast<std::ptrdiff_t>(pattern_source),
+                                pattern_length,
+                                pattern_vram.begin() +
+                                    static_cast<std::ptrdiff_t>(
+                                        group.destination));
+                    const auto tile_count = pattern_length / 32U;
+                    const auto atlas = shadowrun::graphics::decode_tile_atlas(
+                        pattern_vram, group.destination, tile_count, palette,
+                        tile_count, 0U);
+                    const auto atlas_path = root /
+                        (std::string("matrix-title-figure-") + group.name +
+                         "-phase-" + std::to_string(phase) + ".bmp");
+                    shadowrun::graphics::write_bmp32(
+                        atlas_path.string(), atlas);
+
+                    auto record = descriptor + 8U;
+                    bool terminated = false;
+                    for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+                        if (record > rom.size() || rom.size() - record < 8U) {
+                            throw std::runtime_error(
+                                "Matrix figure SAT list is truncated");
+                        }
+                        const auto x_offset = static_cast<std::int16_t>(
+                            read_big_endian_word(rom, record));
+                        if (x_offset == std::numeric_limits<std::int16_t>::min()) {
+                            terminated = true;
+                            break;
+                        }
+                        const auto y_offset = static_cast<std::int16_t>(
+                            read_big_endian_word(rom, record + 2U));
+                        const auto size = read_big_endian_word(rom, record + 4U);
+                        const auto tile_and_flip = read_big_endian_word(
+                            rom, record + 6U);
+                        // 0x13BE writes the source byte into the high byte of
+                        // the Genesis SAT size/link word. In that byte, bits
+                        // 0-1 encode vertical size and bits 2-3 horizontal
+                        // size.
+                        const auto first_tile = static_cast<std::size_t>(
+                            tile_and_flip & 0x07FFU);
+                        if ((size & 0xFF00U) != 0U ||
+                            (tile_and_flip & 0xF000U) != 0x0000U &&
+                                (tile_and_flip & 0xF000U) != 0x0800U) {
+                            throw std::runtime_error(
+                                "Matrix figure SAT entry exceeds its pattern block");
+                        }
+                        auto& figure = figures[phase];
+                        const auto origin_x =
+                            static_cast<int>(group.base_x) + x_offset - 128;
+                        const auto origin_y =
+                            static_cast<int>(group.base_y) + y_offset - 128;
+                        draw_figure_sprite(
+                            figure, atlas, tile_count, tile_count, first_tile,
+                            0U, static_cast<std::uint8_t>(size),
+                            tile_and_flip, origin_x, origin_y);
+                        record += 8U;
+                    }
+                    if (!terminated) {
+                        throw std::runtime_error(
+                            "Matrix figure SAT list has no terminator");
+                    }
+                    std::cout << group.name << " phase " << phase
+                              << " pattern=0x" << std::hex << pattern_source
+                              << " bytes=0x" << pattern_length
+                              << " SAT=0x" << descriptor + 8U << std::dec
+                              << " -> " << atlas_path.string() << "\n";
+                }
+            }
+            for (std::size_t phase = 0U; phase < figures.size(); ++phase) {
+                const auto path = root /
+                    ("matrix-title-figure-composed-phase-" +
+                     std::to_string(phase) + ".png");
+                write_png32(path.string(), figures[phase]);
+            }
+
+            // ROM 0x1ADE6 attaches descriptor E (0x1B680), whose live lists
+            // are at 0x1C34A/0x1C344 and use the 0xDA038 field-pattern bank.
+            // Render its two active source lists independently from descriptor
+            // C and the world-sequence reveal figure above.
+            const auto make_transparent_figure = [&]() {
+                shadowrun::graphics::RgbaImage figure{};
+                figure.width = static_cast<std::uint16_t>(kFrameWidth);
+                figure.height = static_cast<std::uint16_t>(kFrameHeight);
+                figure.pixels.assign(
+                    kFrameWidth * kFrameHeight,
+                    shadowrun::native::Rgba8{0U, 0U, 0U, 0U});
+                return figure;
+            };
+            constexpr std::array<std::size_t, 2> kDescriptorEListTables{{
+                0x1C34AU, 0x1C344U,
+            }};
+            constexpr std::size_t kDescriptorEFirstTile = 0x011BU;
+            // These use the same D1/D2 origin as 0x1C506 above: X=FF158E,
+            // Y=FF1590. Keeping memory-field order separate from screen-axis
+            // order avoids swapping the centered runner by 15 pixels.
+            constexpr int kDescriptorEBaseX = 0x0120U - 128;
+            constexpr int kDescriptorEBaseY = 0x012FU - 128;
+            const auto draw_descriptor_e_list = [&] (
+                shadowrun::graphics::RgbaImage& figure,
+                const std::size_t list) {
+                auto record = list;
+                bool terminated = false;
+                for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+                    if (record > rom.size() || rom.size() - record < 8U) {
+                        throw std::runtime_error(
+                            "Matrix descriptor-E sprite list is truncated");
+                    }
+                    const auto x_offset = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record));
+                    if (x_offset == std::numeric_limits<std::int16_t>::min()) {
+                        terminated = true;
+                        break;
+                    }
+                    const auto y_offset = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record + 2U));
+                    const auto size = read_big_endian_word(rom, record + 4U);
+                    const auto attributes = read_big_endian_word(
+                        rom, record + 6U);
+                    if ((size & 0xFF00U) != 0U ||
+                        (attributes & 0xF000U) != 0x8000U) {
+                        throw std::runtime_error(
+                            "Matrix descriptor-E sprite has unexpected attributes");
+                    }
+                    const auto first_tile = static_cast<std::size_t>(
+                        attributes & 0x07FFU);
+                    draw_figure_sprite(
+                        figure, fixed_figure_atlas, kFixedFigureTileCount,
+                        kFixedFigureTilesPerRow, first_tile,
+                        kDescriptorEFirstTile,
+                        static_cast<std::uint8_t>(size),
+                        static_cast<std::uint16_t>(attributes | 0x6000U),
+                        kDescriptorEBaseX + x_offset,
+                        kDescriptorEBaseY + y_offset);
+                    record += 8U;
+                }
+                if (!terminated) {
+                    throw std::runtime_error(
+                        "Matrix descriptor-E sprite list has no terminator");
+                }
+            };
+            const auto descriptor_e_primary_max = static_cast<std::size_t>(
+                read_big_endian_word(rom, kDescriptorEListTables[0]));
+            const auto descriptor_e_secondary_max = static_cast<std::size_t>(
+                read_big_endian_word(rom, kDescriptorEListTables[1]));
+            auto descriptor_e_figure = make_transparent_figure();
+            for (std::size_t primary_phase = 0U;
+                 primary_phase <= descriptor_e_primary_max; ++primary_phase) {
+                const auto primary_list = static_cast<std::size_t>(
+                    read_big_endian_long(
+                        rom, kDescriptorEListTables[0] + 2U +
+                            primary_phase * 4U));
+                for (std::size_t secondary_phase = 0U;
+                     secondary_phase <= descriptor_e_secondary_max;
+                     ++secondary_phase) {
+                    const auto secondary_list = static_cast<std::size_t>(
+                        read_big_endian_long(
+                            rom, kDescriptorEListTables[1] + 2U +
+                                secondary_phase * 4U));
+                    auto figure = make_transparent_figure();
+                    // 0x1C506 draws the primary A2 list before the secondary
+                    // A4 list. Preserve that source layer order per frame.
+                    draw_descriptor_e_list(figure, primary_list);
+                    draw_descriptor_e_list(figure, secondary_list);
+                    const auto path = root /
+                        ("matrix-world-effect-descriptor-e-primary-" +
+                         std::to_string(primary_phase) + "-secondary-" +
+                         std::to_string(secondary_phase) + ".png");
+                    write_png32(path.string(), figure);
+                    if (primary_phase == 0U && secondary_phase == 0U) {
+                        descriptor_e_figure = figure;
+                        write_png32(
+                            (root / "matrix-world-effect-descriptor-e.png")
+                                .string(),
+                            figure);
+                    }
+                }
+            }
+            const auto descriptor_e_path =
+                root / "matrix-world-effect-descriptor-e.png";
+            write_png32(descriptor_e_path.string(), descriptor_e_figure);
+
+            // Descriptor D (0x1B654) instead selects the 0x1C31E/0x1C318
+            // lists from the 0xDAAB8 upload at VRAM $2DE0 (tile $16F).
+            const auto descriptor_d_patterns =
+                shadowrun::graphics::decode_genesis_resource_stream(
+                    rom, 0x0DAAB8U);
+            if (descriptor_d_patterns.size() % 32U != 0U) {
+                throw std::runtime_error(
+                    "Matrix descriptor-D pattern stream is not tile aligned");
+            }
+            const auto descriptor_d_tile_count =
+                descriptor_d_patterns.size() / 32U;
+            const auto descriptor_d_atlas =
+                shadowrun::graphics::decode_tile_atlas(
+                    descriptor_d_patterns, 0U, descriptor_d_tile_count,
+                    palette, 16U, 0U);
+            constexpr std::size_t kDescriptorDFirstTile = 0x016FU;
+            // The traversal loads the 4-line palette block from 0xE2E3A;
+            // D6=0x2000 selects line 1 at 0xE2E5A. 0xE2EBA is a later
+            // Cyberdeck-only replacement and must not color this effect.
+            const auto hand_ring_palette =
+                shadowrun::graphics::read_genesis_palette(rom, 0x0E2E5AU);
+            const auto hand_ring_atlas =
+                shadowrun::graphics::decode_tile_atlas(
+                    descriptor_d_patterns, 0U, descriptor_d_tile_count,
+                    hand_ring_palette, 16U, 0U);
+
+            // Emit the source-selected phase images as an offline diagnostic.
+            for (std::size_t phase = 0U; phase < 4U; ++phase) {
+                const auto image = compose_matrix_analyze_ring_phase(
+                    rom, hand_ring_atlas, descriptor_d_tile_count, phase);
+                const auto list = read_big_endian_long(
+                    rom, 0x1C136U + phase * 4U);
+                const auto output = root /
+                    ("matrix-world-effect-hand-ring-phase-" +
+                     std::to_string(phase) + ".png");
+                write_png32(output.string(), image);
+                std::cout << "Matrix hand-ring phase " << phase
+                          << " list=0x" << std::hex << list << std::dec
+                          << " -> " << output.string() << "\n";
+            }
+            const auto descriptor_d_atlas_path =
+                root / "matrix-world-effect-descriptor-d-pattern-atlas.png";
+            write_png32(
+                descriptor_d_atlas_path.string(), descriptor_d_atlas);
+
+            // 0x1C61C mirrors paired lists from 0x1C6BC around the runner
+            // while advancing the 32-entry 0x1C6D4 phase/offset table. The
+            // resulting motifs land near the hands but do not by themselves
+            // explain the large circular outlines in the capture.
+            const auto draw_title_sprite_list = [&] (
+                shadowrun::graphics::RgbaImage& image,
+                std::size_t list,
+                const int base_x,
+                const int base_y,
+                const std::uint16_t attribute_offset) {
+                for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+                    if (list > rom.size() || rom.size() - list < 2U) {
+                        throw std::runtime_error(
+                            "Matrix title-sweep sprite list is truncated");
+                    }
+                    const auto x = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, list));
+                    list += 2U;
+                    if (x == std::numeric_limits<std::int16_t>::min()) {
+                        return list;
+                    }
+                    if (list > rom.size() || rom.size() - list < 6U) {
+                        throw std::runtime_error(
+                            "Matrix title-sweep sprite record is truncated");
+                    }
+                    const auto y = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, list));
+                    const auto size = read_big_endian_word(rom, list + 2U);
+                    const auto source_attributes = read_big_endian_word(
+                        rom, list + 4U);
+                    list += 6U;
+                    const auto first_tile = static_cast<std::size_t>(
+                        source_attributes & 0x07FFU);
+                    if ((size & 0xFF00U) != 0U ||
+                        (source_attributes & 0xF000U) != 0x8000U ||
+                        first_tile < kDescriptorDFirstTile) {
+                        throw std::runtime_error(
+                            "Matrix title-sweep sprite has unexpected source data");
+                    }
+                    draw_figure_sprite(
+                        image, descriptor_d_atlas, descriptor_d_tile_count,
+                        16U, first_tile, kDescriptorDFirstTile,
+                        static_cast<std::uint8_t>(size),
+                        static_cast<std::uint16_t>(
+                            source_attributes | attribute_offset),
+                        base_x + x, base_y + y);
+                }
+                throw std::runtime_error(
+                    "Matrix title-sweep sprite list has no terminator");
+            };
+            for (std::size_t phase = 0U; phase < 32U; ++phase) {
+                const auto entry = 0x1C6D4U + phase * 4U;
+                const auto list_index = static_cast<std::size_t>(rom[entry]);
+                const auto offset_byte = rom[entry + 1U];
+                const auto x_offset = static_cast<int>(
+                    static_cast<std::int8_t>(offset_byte));
+                if (list_index >= 6U) {
+                    throw std::runtime_error(
+                        "Matrix title-sweep phase selects an unknown list");
+                }
+                const auto first_list = static_cast<std::size_t>(
+                    read_big_endian_long(
+                        rom, 0x1C6BCU + list_index * 4U));
+                auto image = make_transparent_figure();
+                const auto first_end = draw_title_sprite_list(
+                    image, first_list,
+                    0x0120 + x_offset - 128, 0x012F - 128, 0x6000U);
+                draw_title_sprite_list(
+                    image, first_end,
+                    0x0120 - x_offset - 128, 0x012F - 128, 0x6000U);
+                write_png32(
+                    (root / ("matrix-world-effect-action-sweep-phase-" +
+                             std::to_string(phase) + ".png"))
+                        .string(),
+                    image);
+            }
+
+            // 0x1BA6E advances a four-phase burst at five-frame intervals.
+            // Its first eight bytes select that phase's pattern upload;
+            // the following records are positioned relative to FFE04A/C.
+            // Use a labeled center anchor here until those live coordinates
+            // are recovered from the activation caller.
+            for (std::size_t phase = 0U; phase < 4U; ++phase) {
+                const auto packet = static_cast<std::size_t>(
+                    read_big_endian_long(rom, 0x1D970U + phase * 4U));
+                const auto pattern_source = static_cast<std::size_t>(
+                    read_big_endian_long(rom, packet + 2U));
+                const auto expected_pattern_bytes = static_cast<std::size_t>(
+                    read_big_endian_word(rom, packet + 6U));
+                if (pattern_source > rom.size() ||
+                    expected_pattern_bytes > rom.size() - pattern_source) {
+                    throw std::runtime_error(
+                        "Matrix title-burst pattern range is outside the ROM");
+                }
+                const std::vector<std::uint8_t> patterns(
+                    rom.begin() + static_cast<std::ptrdiff_t>(pattern_source),
+                    rom.begin() + static_cast<std::ptrdiff_t>(
+                        pattern_source + expected_pattern_bytes));
+                if (patterns.size() != expected_pattern_bytes ||
+                    patterns.size() % 32U != 0U) {
+                    throw std::runtime_error(
+                        "Matrix title-burst raw pattern range has an unexpected size");
+                }
+                const auto pattern_count = patterns.size() / 32U;
+                const auto atlas = shadowrun::graphics::decode_tile_atlas(
+                    patterns, 0U, pattern_count, palette, 16U, 0U);
+                auto image = make_transparent_figure();
+                auto record = packet + 8U;
+                bool terminated = false;
+                for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+                    if (record > rom.size() || rom.size() - record < 8U) {
+                        throw std::runtime_error(
+                            "Matrix title-burst sprite list is truncated");
+                    }
+                    const auto x = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record));
+                    if (x == std::numeric_limits<std::int16_t>::min()) {
+                        terminated = true;
+                        break;
+                    }
+                    const auto y = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record + 2U));
+                    const auto size = read_big_endian_word(
+                        rom, record + 4U);
+                    const auto source_attributes = read_big_endian_word(
+                        rom, record + 6U);
+                    const auto first_tile = static_cast<std::size_t>(
+                        source_attributes & 0x07FFU);
+                    if ((size & 0xFF00U) != 0U ||
+                        first_tile >= pattern_count) {
+                        throw std::runtime_error(
+                            "Matrix title-burst sprite record is invalid");
+                    }
+                    draw_figure_sprite(
+                        image, atlas, pattern_count, 16U,
+                        first_tile, 0U,
+                        static_cast<std::uint8_t>(size),
+                        static_cast<std::uint16_t>(
+                            source_attributes + 0x0780U | 0x6000U),
+                        160 + x, 112 + y);
+                    record += 8U;
+                }
+                if (!terminated) {
+                    throw std::runtime_error(
+                        "Matrix title-burst sprite list has no terminator");
+                }
+                const auto output = root /
+                    ("matrix-world-effect-title-burst-phase-" +
+                     std::to_string(phase) +
+                     "-centered-inspection-anchor.png");
+                write_png32(output.string(), image);
+                std::cout << "Matrix title-burst phase " << phase
+                          << " raw pattern=0x" << std::hex << pattern_source
+                          << "+0x" << expected_pattern_bytes << std::dec
+                          << " center inspection anchor -> "
+                          << output.string() << "\n";
+            }
+
+            // 0x1CB6A spawns the left/right action effects; 0x1D0DE selects
+            // their three-frame direct sprite tables. Preserve these as
+            // source-tile previews and as exact spawn-callsite placements.
+            // The effects then move every source frame, so the placement
+            // previews below are deliberately labeled as spawn positions.
+            struct WorldEffectMotionTable {
+                std::size_t source_variant;
+                std::size_t pointer_table;
+            };
+            constexpr std::array<WorldEffectMotionTable, 3>
+                kWorldEffectMotionTables{{
+                    {0U, 0x1D134U},
+                    {1U, 0x1D11CU},
+                    {2U, 0x1D128U},
+                }};
+            const auto render_world_effect_motion_list = [&] (
+                const std::size_t list,
+                const int base_x,
+                const int base_y,
+                const std::uint16_t attribute_offset,
+                const std::filesystem::path& output) {
+                auto image = make_transparent_figure();
+                bool terminated = false;
+                for (std::size_t sprite = 0U; sprite < 16U; ++sprite) {
+                    const auto record = list + sprite * 8U;
+                    if (record > rom.size() || rom.size() - record < 8U) {
+                        throw std::runtime_error(
+                            "Matrix world-effect motion sprite list is truncated");
+                    }
+                    const auto x = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record));
+                    if (x == std::numeric_limits<std::int16_t>::min()) {
+                        terminated = true;
+                        break;
+                    }
+                    const auto y = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record + 2U));
+                    const auto size = read_big_endian_word(
+                        rom, record + 4U);
+                    const auto source_attributes = read_big_endian_word(
+                        rom, record + 6U);
+                    if ((size & 0xFF00U) != 0U ||
+                        (source_attributes & 0xF000U) != 0x8000U) {
+                        throw std::runtime_error(
+                            "Matrix world-effect motion sprite has unexpected attributes");
+                    }
+                    const auto first_tile = static_cast<std::size_t>(
+                        source_attributes & 0x07FFU);
+                    if (first_tile < kDescriptorDFirstTile) {
+                        throw std::runtime_error(
+                            "Matrix world-effect motion sprite is outside the 0xDAAB8 bank");
+                    }
+                    draw_figure_sprite(
+                        image, descriptor_d_atlas, descriptor_d_tile_count,
+                        16U, first_tile, kDescriptorDFirstTile,
+                        static_cast<std::uint8_t>(size),
+                        static_cast<std::uint16_t>(
+                            source_attributes | attribute_offset),
+                        base_x + x, base_y + y);
+                }
+                if (!terminated) {
+                    throw std::runtime_error(
+                        "Matrix world-effect motion sprite list has no terminator");
+                }
+                write_png32(output.string(), image);
+            };
+            for (const auto& table : kWorldEffectMotionTables) {
+                for (std::size_t phase = 0U; phase < 3U; ++phase) {
+                    const auto list = static_cast<std::size_t>(
+                        read_big_endian_long(
+                            rom, table.pointer_table + phase * 4U));
+                    render_world_effect_motion_list(
+                        list, 160, 120, 0x6000U,
+                        root / ("matrix-world-effect-motion-variant-" +
+                                std::to_string(table.source_variant) +
+                                "-phase-" + std::to_string(phase) +
+                                "-centered-inspection-anchor.png"));
+                }
+            }
+            constexpr int kActionRunnerRawX = 0x0120;
+            constexpr int kActionRunnerRawY = 0x012F;
+            constexpr std::array<std::pair<const char*, int>, 2>
+                kHandEffectSpawnOffsets{{
+                    {"left", -0x20}, {"right", 0x20},
+                }};
+            const auto spawn_phase_zero = static_cast<std::size_t>(
+                read_big_endian_long(rom, 0x1D134U));
+            for (const auto& hand : kHandEffectSpawnOffsets) {
+                const auto base_x = kActionRunnerRawX + hand.second - 128;
+                const auto base_y = kActionRunnerRawY - 0x28 - 128;
+                render_world_effect_motion_list(
+                    spawn_phase_zero, base_x, base_y, 0x6000U,
+                    root / (std::string("matrix-world-effect-motion-spawn-") +
+                            hand.first + "-variant-0-phase-0.png"));
+            }
+
+            // 0x1BB6A draws these paired 3x3 title-noise sprites while the
+            // action timer is in its 4..7 subphase. Include each SAT record's
+            // signed local offsets in the preview; the sprites do not form
+            // the large circular outlines visible in the capture.
+            constexpr std::array<std::pair<const char*, std::size_t>, 2>
+                kActionPairedSpriteLists{{
+                    {"left", 0x1DAEAU},
+                    {"right", 0x1DAE0U},
+                }};
+            for (const auto& sprite_pair : kActionPairedSpriteLists) {
+                const auto raw_x = sprite_pair.first[0] == 'l'
+                    ? 0x00E7 : 0x0158;
+                auto image = make_transparent_figure();
+                auto record = sprite_pair.second;
+                bool terminated = false;
+                for (std::size_t sprite = 0U; sprite < 8U; ++sprite) {
+                    if (record > rom.size() || rom.size() - record < 8U) {
+                        throw std::runtime_error(
+                        "Matrix paired title-noise list is truncated");
+                    }
+                    const auto x_offset = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record));
+                    if (x_offset ==
+                        std::numeric_limits<std::int16_t>::min()) {
+                        terminated = true;
+                        break;
+                    }
+                    const auto y_offset = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record + 2U));
+                    const auto size = read_big_endian_word(
+                        rom, record + 4U);
+                    const auto source_attributes = read_big_endian_word(
+                        rom, record + 6U);
+                    const auto first_tile = static_cast<std::size_t>(
+                        source_attributes & 0x07FFU);
+                    if ((size & 0xFF00U) != 0U ||
+                        (source_attributes & 0xF000U) != 0x8000U ||
+                        first_tile < kDescriptorDFirstTile) {
+                        throw std::runtime_error(
+                            "Matrix paired title-noise sprite has unexpected source data");
+                    }
+                    draw_figure_sprite(
+                        image, descriptor_d_atlas, descriptor_d_tile_count,
+                        16U, first_tile, kDescriptorDFirstTile,
+                        static_cast<std::uint8_t>(size),
+                        static_cast<std::uint16_t>(
+                            source_attributes | 0x2000U),
+                        raw_x - 128 + x_offset,
+                        0x00FC - 128 + y_offset);
+                    record += 8U;
+                }
+                if (!terminated) {
+                    throw std::runtime_error(
+                        "Matrix paired title-noise list has no terminator");
+                }
+                const auto output = root /
+                    (std::string("matrix-world-effect-title-noise-paired-") +
+                     sprite_pair.first + ".png");
+                write_png32(output.string(), image);
+                std::cout << "Matrix paired title-noise list 0x" << std::hex
+                          << sprite_pair.second << " source origin x=0x"
+                          << raw_x << " y=0xfc"
+                          << std::dec << " -> screen position x="
+                          << raw_x - 128 + static_cast<std::int16_t>(
+                                 read_big_endian_word(
+                                     rom, sprite_pair.second))
+                          << ", y=" << 0xFC - 128 + static_cast<std::int16_t>(
+                                 read_big_endian_word(
+                                     rom, sprite_pair.second + 2U))
+                          << " -> " << output.string() << "\n";
+            }
+            constexpr std::array<std::size_t, 4>
+                kTitleNoiseInlineLists{{
+                    0x1DAB8U, 0x1DAC2U, 0x1DACCU, 0x1DAD6U,
+                }};
+            for (std::size_t variant = 0U;
+                 variant < kTitleNoiseInlineLists.size(); ++variant) {
+                auto image = make_transparent_figure();
+                const auto list = kTitleNoiseInlineLists[variant];
+                const auto size = read_big_endian_word(rom, list + 4U);
+                const auto source_attributes = read_big_endian_word(
+                    rom, list + 6U);
+                const auto first_tile = static_cast<std::size_t>(
+                    source_attributes & 0x07FFU);
+                if ((size & 0xFF00U) != 0U ||
+                    (source_attributes & 0xF000U) != 0x8000U ||
+                    first_tile < kDescriptorDFirstTile) {
+                    throw std::runtime_error(
+                        "Matrix title-noise inline sprite has unexpected source data");
+                }
+                for (std::size_t sprite = 0U; sprite < 7U; ++sprite) {
+                    const auto raw_x =
+                        0x00D8 + static_cast<int>(sprite + 1U) * 0x10;
+                    draw_figure_sprite(
+                        image, descriptor_d_atlas, descriptor_d_tile_count,
+                        16U, first_tile, kDescriptorDFirstTile,
+                        static_cast<std::uint8_t>(size),
+                        static_cast<std::uint16_t>(
+                            source_attributes | 0x2000U),
+                        raw_x - 128, 0x00EC - 128);
+                }
+                write_png32(
+                    (root / ("matrix-world-effect-title-noise-row-variant-" +
+                             std::to_string(variant) + ".png"))
+                        .string(),
+                    image);
+            }
+
+            // The action-selection pulse attaches behavior A (0x1B5B8),
+            // while the ordinary world-effect loop uses behavior B
+            // (0x1B612). Their lists share tiles from the fixed 0xDA038 bank
+            // and may also select the 0xDAAB8 upload at tile 0x16F. Emit each
+            // discrete primary/secondary frame pair so that pose identity is
+            // not inferred from a merge of mutually exclusive phases.
+            const auto draw_behavior_list = [&] (
+                shadowrun::graphics::RgbaImage& figure,
+                const std::size_t list) {
+                auto record = list;
+                bool terminated = false;
+                for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+                    if (record > rom.size() || rom.size() - record < 8U) {
+                        throw std::runtime_error(
+                            "Matrix behavior sprite list is truncated");
+                    }
+                    const auto x = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record));
+                    if (x == std::numeric_limits<std::int16_t>::min()) {
+                        terminated = true;
+                        break;
+                    }
+                    const auto y = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record + 2U));
+                    const auto size = read_big_endian_word(
+                        rom, record + 4U);
+                    const auto attributes = read_big_endian_word(
+                        rom, record + 6U);
+                    if ((size & 0xFF00U) != 0U ||
+                        (attributes & 0xF000U) != 0x8000U) {
+                        throw std::runtime_error(
+                            "Matrix behavior sprite has unexpected attributes");
+                    }
+                    const auto first_tile = static_cast<std::size_t>(
+                        attributes & 0x07FFU);
+                    const bool uses_descriptor_d_bank =
+                        first_tile >= kDescriptorDFirstTile;
+                    draw_figure_sprite(
+                        figure,
+                        uses_descriptor_d_bank
+                            ? descriptor_d_atlas
+                            : fixed_figure_atlas,
+                        uses_descriptor_d_bank
+                            ? descriptor_d_tile_count
+                            : kFixedFigureTileCount,
+                        16U, first_tile,
+                        uses_descriptor_d_bank
+                            ? kDescriptorDFirstTile
+                            : kDescriptorEFirstTile,
+                        static_cast<std::uint8_t>(size),
+                        static_cast<std::uint16_t>(attributes | 0x6000U),
+                        kDescriptorEBaseX + x,
+                        kDescriptorEBaseY + y);
+                    record += 8U;
+                }
+                if (!terminated) {
+                    throw std::runtime_error(
+                        "Matrix behavior sprite list has no terminator");
+                }
+            };
+            const auto write_behavior_pose_pairs = [&] (
+                const char* behavior_name,
+                const std::size_t primary_table,
+                const std::size_t secondary_table) {
+                const auto primary_max = static_cast<std::size_t>(
+                    read_big_endian_word(rom, primary_table));
+                const auto secondary_max = static_cast<std::size_t>(
+                    read_big_endian_word(rom, secondary_table));
+                for (std::size_t primary_phase = 0U;
+                     primary_phase <= primary_max; ++primary_phase) {
+                    const auto primary_list = static_cast<std::size_t>(
+                        read_big_endian_long(
+                            rom, primary_table + 2U + primary_phase * 4U));
+                    for (std::size_t secondary_phase = 0U;
+                         secondary_phase <= secondary_max;
+                         ++secondary_phase) {
+                        const auto secondary_list = static_cast<std::size_t>(
+                            read_big_endian_long(
+                                rom, secondary_table + 2U +
+                                    secondary_phase * 4U));
+                        auto figure = make_transparent_figure();
+                        draw_behavior_list(figure, primary_list);
+                        draw_behavior_list(figure, secondary_list);
+                        const auto path = root /
+                            (std::string("matrix-world-effect-behavior-") +
+                             behavior_name + "-primary-" +
+                             std::to_string(primary_phase) + "-secondary-" +
+                             std::to_string(secondary_phase) + ".png");
+                        write_png32(path.string(), figure);
+                    }
+                }
+            };
+            write_behavior_pose_pairs("a", 0x1C33AU, 0x1C330U);
+            write_behavior_pose_pairs("b", 0x1C29EU, 0x1C294U);
+            shadowrun::graphics::RgbaImage descriptor_d_figure{};
+            descriptor_d_figure.width =
+                static_cast<std::uint16_t>(kFrameWidth);
+            descriptor_d_figure.height =
+                static_cast<std::uint16_t>(kFrameHeight);
+            descriptor_d_figure.pixels.assign(
+                kFrameWidth * kFrameHeight,
+                shadowrun::native::Rgba8{0U, 0U, 0U, 0U});
+            constexpr std::array<std::size_t, 2> kDescriptorDListTables{{
+                0x1C31EU, 0x1C318U,
+            }};
+            for (const auto table : kDescriptorDListTables) {
+                const auto maximum_phase = static_cast<std::size_t>(
+                    read_big_endian_word(rom, table));
+                for (std::size_t phase = 0U; phase <= maximum_phase; ++phase) {
+                    const auto list = static_cast<std::size_t>(
+                        read_big_endian_long(rom, table + 2U + phase * 4U));
+                    auto record = list;
+                    bool terminated = false;
+                    for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+                        if (record > rom.size() ||
+                            rom.size() - record < 8U) {
+                            throw std::runtime_error(
+                                "Matrix descriptor-D sprite list is truncated");
+                        }
+                        const auto x_offset = static_cast<std::int16_t>(
+                            read_big_endian_word(rom, record));
+                        if (x_offset == std::numeric_limits<std::int16_t>::min()) {
+                            terminated = true;
+                            break;
+                        }
+                        const auto y_offset = static_cast<std::int16_t>(
+                            read_big_endian_word(rom, record + 2U));
+                        const auto size = read_big_endian_word(
+                            rom, record + 4U);
+                        const auto tile_and_flip = read_big_endian_word(
+                            rom, record + 6U);
+                        if ((size & 0xFF00U) != 0U ||
+                            (tile_and_flip & 0xF000U) != 0x8000U) {
+                            throw std::runtime_error(
+                                "Matrix descriptor-D sprite has unexpected attributes");
+                        }
+                        const auto first_tile = static_cast<std::size_t>(
+                            tile_and_flip & 0x07FFU);
+                        draw_figure_sprite(
+                            descriptor_d_figure, descriptor_d_atlas,
+                            descriptor_d_tile_count, 16U, first_tile,
+                            kDescriptorDFirstTile,
+                            static_cast<std::uint8_t>(size),
+                            static_cast<std::uint16_t>(tile_and_flip | 0x6000U),
+                            kDescriptorEBaseX + x_offset,
+                            kDescriptorEBaseY + y_offset);
+                        std::cout << "descriptor D list 0x" << std::hex << list
+                                  << " phase 0x" << phase << " sprite 0x"
+                                  << sprite << " tile 0x" << first_tile
+                                  << std::dec << "\n";
+                        record += 8U;
+                    }
+                    if (!terminated) {
+                        throw std::runtime_error(
+                            "Matrix descriptor-D sprite list has no terminator");
+                    }
+                }
+            }
+            const auto descriptor_d_path =
+                root / "matrix-world-effect-descriptor-d.png";
+            write_png32(descriptor_d_path.string(), descriptor_d_figure);
+
+            // 0x1B5FC installs a separate, single-phase behavior record. Its
+            // tables select lists at 0x1D6CA and 0x1D47C from the 0xDAAB8
+            // upload; retain its source identity without misnaming it as the
+            // ordinary behavior B attached at 0x1B612.
+            shadowrun::graphics::RgbaImage transition_1b5fc_figure{};
+            transition_1b5fc_figure.width =
+                static_cast<std::uint16_t>(kFrameWidth);
+            transition_1b5fc_figure.height =
+                static_cast<std::uint16_t>(kFrameHeight);
+            transition_1b5fc_figure.pixels.assign(
+                kFrameWidth * kFrameHeight,
+                shadowrun::native::Rgba8{0U, 0U, 0U, 0U});
+            constexpr std::array<std::size_t, 2> kTransition1B5FCListTables{{
+                0x1C2A8U, 0x1C2AEU,
+            }};
+            for (const auto table : kTransition1B5FCListTables) {
+                const auto maximum_phase = static_cast<std::size_t>(
+                    read_big_endian_word(rom, table));
+                for (std::size_t phase = 0U; phase <= maximum_phase; ++phase) {
+                    const auto list = static_cast<std::size_t>(
+                        read_big_endian_long(rom, table + 2U + phase * 4U));
+                    auto record = list;
+                    bool terminated = false;
+                    for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+                        if (record > rom.size() || rom.size() - record < 8U) {
+                            throw std::runtime_error(
+                            "Matrix 0x1B5FC sprite list is truncated");
+                        }
+                        const auto x_offset = static_cast<std::int16_t>(
+                            read_big_endian_word(rom, record));
+                        if (x_offset == std::numeric_limits<std::int16_t>::min()) {
+                            terminated = true;
+                            break;
+                        }
+                        const auto y_offset = static_cast<std::int16_t>(
+                            read_big_endian_word(rom, record + 2U));
+                        const auto size = read_big_endian_word(
+                            rom, record + 4U);
+                        const auto attributes = read_big_endian_word(
+                            rom, record + 6U);
+                        if ((size & 0xFF00U) != 0U ||
+                            (attributes & 0xF000U) != 0x8000U) {
+                            throw std::runtime_error(
+                                "Matrix descriptor-B sprite has unexpected attributes");
+                        }
+                        const auto first_tile = static_cast<std::size_t>(
+                            attributes & 0x07FFU);
+                        draw_figure_sprite(
+                            transition_1b5fc_figure, descriptor_d_atlas,
+                            descriptor_d_tile_count, 16U, first_tile,
+                            kDescriptorDFirstTile,
+                            static_cast<std::uint8_t>(size),
+                            static_cast<std::uint16_t>(attributes | 0x6000U),
+                            kDescriptorEBaseX + x_offset,
+                            kDescriptorEBaseY + y_offset);
+                        record += 8U;
+                    }
+                    if (!terminated) {
+                        throw std::runtime_error(
+                            "Matrix 0x1B5FC sprite list has no terminator");
+                    }
+                    std::cout << "0x1B5FC transition list 0x" << std::hex << list
+                              << " phase 0x" << phase << std::dec << "\n";
+                }
+            }
+            const auto transition_1b5fc_path =
+                root / "matrix-world-effect-transition-1b5fc.png";
+            write_png32(transition_1b5fc_path.string(),
+                        transition_1b5fc_figure);
+
+            // 0x26972 contributes a second SAT list on every source scene
+            // update. Its branch keys off the active behavior's primary list
+            // table: 0x1C31E selects 0x14CD0E, 0x1C32A selects 0x14CD30, and
+            // all other tables (including descriptor E's 0x1C34A) select
+            // 0x14CCEC. The lists reference the 0x14C222 stream uploaded at
+            // VRAM $8C40 (tile $462).
+            const auto auxiliary_sprite_patterns =
+                shadowrun::graphics::decode_genesis_resource_stream(
+                    rom, 0x14C222U);
+            if (auxiliary_sprite_patterns.size() % 32U != 0U) {
+                throw std::runtime_error(
+                    "Matrix auxiliary sprite stream is not tile aligned");
+            }
+            const auto auxiliary_sprite_tile_count =
+                auxiliary_sprite_patterns.size() / 32U;
+            const auto auxiliary_sprite_atlas =
+                shadowrun::graphics::decode_tile_atlas(
+                    auxiliary_sprite_patterns, 0U,
+                    auxiliary_sprite_tile_count, palette, 16U, 0U);
+            constexpr std::size_t kAuxiliarySpriteFirstTile = 0x0462U;
+            constexpr std::array<std::pair<const char*, std::size_t>, 3>
+                kAuxiliarySpriteLists{{
+                    {"table-1c31e", 0x14CD0EU},
+                    {"table-1c32a", 0x14CD30U},
+                    {"default", 0x14CCECU},
+                }};
+            for (const auto& [name, list] : kAuxiliarySpriteLists) {
+                shadowrun::graphics::RgbaImage auxiliary_figure{};
+                auxiliary_figure.width =
+                    static_cast<std::uint16_t>(kFrameWidth);
+                auxiliary_figure.height =
+                    static_cast<std::uint16_t>(kFrameHeight);
+                auxiliary_figure.pixels.assign(
+                    kFrameWidth * kFrameHeight,
+                    shadowrun::native::Rgba8{0U, 0U, 0U, 0U});
+                auto record = list;
+                bool terminated = false;
+                for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+                    if (record > rom.size() || rom.size() - record < 8U) {
+                        throw std::runtime_error(
+                            "Matrix auxiliary sprite list is truncated");
+                    }
+                    const auto x_offset = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record));
+                    if (x_offset == std::numeric_limits<std::int16_t>::min()) {
+                        terminated = true;
+                        break;
+                    }
+                    const auto y_offset = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record + 2U));
+                    const auto size = read_big_endian_word(
+                        rom, record + 4U);
+                    const auto attributes = read_big_endian_word(
+                        rom, record + 6U);
+                    if ((size & 0xFF00U) != 0U ||
+                        (attributes & 0xE000U) != 0x8000U) {
+                        throw std::runtime_error(
+                            "Matrix auxiliary sprite has unexpected source attributes");
+                    }
+                    const auto first_tile = static_cast<std::size_t>(
+                        attributes & 0x07FFU);
+                    draw_figure_sprite(
+                        auxiliary_figure, auxiliary_sprite_atlas,
+                        auxiliary_sprite_tile_count, 16U, first_tile,
+                        kAuxiliarySpriteFirstTile,
+                        static_cast<std::uint8_t>(size),
+                        static_cast<std::uint16_t>(attributes | 0x6000U),
+                        kDescriptorEBaseX + x_offset,
+                        kDescriptorEBaseY + y_offset);
+                    std::cout << "auxiliary sprite list 0x" << std::hex
+                              << list << " sprite 0x" << sprite
+                              << " tile 0x" << first_tile << std::dec << "\n";
+                    record += 8U;
+                }
+                if (!terminated) {
+                    throw std::runtime_error(
+                        "Matrix auxiliary sprite list has no terminator");
+                }
+                const auto auxiliary_path = root /
+                    (std::string("matrix-world-effect-") + name +
+                     "-sprites.png");
+                write_png32(auxiliary_path.string(), auxiliary_figure);
+                if (list == 0x14CCECU) {
+                    auto combined = auxiliary_figure;
+                    for (std::size_t pixel = 0U;
+                         pixel < combined.pixels.size(); ++pixel) {
+                        if (descriptor_e_figure.pixels[pixel].alpha != 0U) {
+                            combined.pixels[pixel] =
+                                descriptor_e_figure.pixels[pixel];
+                        }
+                    }
+                    write_png32(
+                        (root / "matrix-world-effect-descriptor-e-combined.png")
+                            .string(),
+                        combined);
+                    for (std::size_t pixel = 0U;
+                         pixel < combined.pixels.size(); ++pixel) {
+                        if (transition_1b5fc_figure.pixels[pixel].alpha != 0U) {
+                            combined.pixels[pixel] =
+                                transition_1b5fc_figure.pixels[pixel];
+                        }
+                    }
+                    write_png32(
+                        (root / "matrix-world-effect-transition-1b5fc-combined.png")
+                            .string(),
+                        combined);
+                }
+            }
+            // 0x1A908 chooses a mode record through 0x1A9CE. Its phase
+            // descriptor carries the direct pattern transfer at +2/+6 and
+            // the SAT list at +8. 0x1AA40 uses D1=0x120 (X), D2=0xD0 (Y),
+            // D4=0x694, and D6=0x2000. The three separately timed overlays
+            // use the same descriptor layout with tile base 0x7A8.
+            constexpr std::size_t kWorldEffectModeTable = 0x1A9CEU;
+            constexpr std::size_t kWorldEffectModeCount = 9U;
+            // 0x1AA40 emits attributes with D6=0x2000 (palette line 1).
+            // 0x176EA loads the four-line block from E2E3A, so this line
+            // begins at E2E5A; the generic figure palette above is line 3.
+            const auto world_effect_mode_palette =
+                shadowrun::graphics::read_genesis_palette(rom, 0x0E2E5AU);
+            const auto render_world_effect_descriptor = [&] (
+                const std::size_t descriptor,
+                const std::size_t first_tile,
+                const int base_x,
+                const int base_y,
+                const std::filesystem::path& output) {
+                const auto pattern_source = static_cast<std::size_t>(
+                    read_big_endian_long(rom, descriptor + 2U));
+                const auto pattern_bytes = static_cast<std::size_t>(
+                    read_big_endian_word(rom, descriptor + 6U));
+                if (pattern_bytes == 0U || pattern_bytes % 32U != 0U ||
+                    pattern_source > rom.size() ||
+                    pattern_bytes > rom.size() - pattern_source) {
+                    throw std::runtime_error(
+                        "Matrix world-effect descriptor has invalid pattern data");
+                }
+                const auto tile_count = pattern_bytes / 32U;
+                const std::vector<std::uint8_t> pattern_data(
+                    rom.begin() + static_cast<std::ptrdiff_t>(pattern_source),
+                    rom.begin() + static_cast<std::ptrdiff_t>(
+                        pattern_source + pattern_bytes));
+                const auto atlas = shadowrun::graphics::decode_tile_atlas(
+                    pattern_data, 0U, tile_count, world_effect_mode_palette,
+                    16U, 0U);
+
+                shadowrun::graphics::RgbaImage image{};
+                image.width = static_cast<std::uint16_t>(kFrameWidth);
+                image.height = static_cast<std::uint16_t>(kFrameHeight);
+                image.pixels.assign(
+                    kFrameWidth * kFrameHeight,
+                    shadowrun::native::Rgba8{0U, 0U, 0U, 0U});
+                bool terminated = false;
+                for (std::size_t sprite = 0U; sprite < 32U; ++sprite) {
+                    const auto record = descriptor + 8U + sprite * 8U;
+                    if (record > rom.size() || rom.size() - record < 8U) {
+                        throw std::runtime_error(
+                            "Matrix world-effect SAT list is truncated");
+                    }
+                    const auto x_offset = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record));
+                    if (x_offset == std::numeric_limits<std::int16_t>::min()) {
+                        terminated = true;
+                        break;
+                    }
+                    const auto y_offset = static_cast<std::int16_t>(
+                        read_big_endian_word(rom, record + 2U));
+                    const auto size_word = read_big_endian_word(
+                        rom, record + 4U);
+                    if ((size_word & 0xFF00U) != 0U) {
+                        throw std::runtime_error(
+                            "Matrix world-effect sprite size exceeds one byte");
+                    }
+                    const auto tile_offset = static_cast<std::size_t>(
+                        read_big_endian_word(rom, record + 6U));
+                    if (tile_offset > tile_count) {
+                        throw std::runtime_error(
+                            "Matrix world-effect sprite starts beyond its art");
+                    }
+                    const auto attributes = static_cast<std::uint16_t>(
+                        0x2000U | (first_tile + tile_offset));
+                    draw_figure_sprite(
+                        image, atlas, tile_count, 16U,
+                        first_tile + tile_offset, first_tile,
+                        static_cast<std::uint8_t>(size_word), attributes,
+                        base_x + x_offset, base_y + y_offset);
+                }
+                if (!terminated) {
+                    throw std::runtime_error(
+                        "Matrix world-effect SAT list has no terminator");
+                }
+                write_png32(output.string(), image);
+                std::cout << "Matrix world-effect sprite descriptor 0x"
+                          << std::hex << descriptor << " art=0x"
+                          << pattern_source << "+0x" << pattern_bytes
+                          << std::dec << " -> " << output.string() << "\n";
+            };
+
+            for (std::size_t mode = 0U; mode < kWorldEffectModeCount; ++mode) {
+                const auto mode_record = static_cast<std::size_t>(
+                    read_big_endian_long(
+                        rom, kWorldEffectModeTable + mode * 4U));
+                const auto phase_count = static_cast<std::size_t>(
+                    rom[mode_record + 1U]);
+                const auto phase_table = static_cast<std::size_t>(
+                    read_big_endian_long(rom, mode_record + 2U));
+                if (phase_count == 0U || phase_count > 32U) {
+                    throw std::runtime_error(
+                        "Matrix world-effect mode has an invalid phase count");
+                }
+                for (std::size_t phase = 0U; phase < phase_count; ++phase) {
+                    const auto descriptor = static_cast<std::size_t>(
+                        read_big_endian_long(rom, phase_table + phase * 4U));
+                    const auto output = root /
+                        ("matrix-world-effect-mode-" +
+                         std::to_string(mode) + "-phase-" +
+                         std::to_string(phase) + ".png");
+                    render_world_effect_descriptor(
+                        descriptor, 0x0694U, 0x0120 - 128, 0x00D0 - 128,
+                        output);
+                }
+            }
+
+            struct OverlayTable {
+                const char* name;
+                std::size_t table;
+                std::size_t phases;
+                std::size_t first_tile;
+                int initial_x;
+                int initial_y;
+                bool dynamic_x;
+            };
+            constexpr std::array<OverlayTable, 3> kOverlayTables{{
+                {"primary", 0xF1BDEU, 26U, 0x07A8U,
+                 (0x4800 >> 6) - 128, 0x00B9 - 128, false},
+                {"secondary", 0xF1BCEU, 4U, 0x07A8U,
+                 (0x47C0 >> 6) - 128, 0x00B9 - 128, false},
+                {"background", 0xF1BBEU, 4U, 0x07A8U,
+                 160, 0x00D0 - 128, true},
+            }};
+            for (const auto& overlay : kOverlayTables) {
+                for (std::size_t phase = 0U; phase < overlay.phases; ++phase) {
+                    const auto descriptor = static_cast<std::size_t>(
+                        read_big_endian_long(
+                            rom, overlay.table + phase * 4U));
+                    const auto output = root /
+                        (std::string("matrix-world-effect-") + overlay.name +
+                         "-phase-" + std::to_string(phase) +
+                         (overlay.dynamic_x
+                              ? "-centered-inspection-anchor.png"
+                              : "-initial.png"));
+                    render_world_effect_descriptor(
+                        descriptor, overlay.first_tile, overlay.initial_x,
+                        overlay.initial_y, output);
+                    if (overlay.dynamic_x && phase == 0U) {
+                        std::cout << "  dynamic X from FFE0C6>>4; centered "
+                                     "inspection anchor is screen x=160\n";
+                    }
+                }
+            }
+            std::cout << "descriptor D pattern bytes: "
+                      << descriptor_d_patterns.size() << "\n"
+                      << "auxiliary sprite pattern bytes: "
+                      << auxiliary_sprite_patterns.size() << "\n"
+                      << "descriptor E figure: "
+                      << descriptor_e_path.string() << "\n"
+                      << "descriptor D figure: "
+                      << descriptor_d_path.string() << "\n"
+                      << "0x1B5FC transition figure: "
+                      << transition_1b5fc_path.string() << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc != 6 && argc != 7) {
         std::cerr << "usage: shadowrun_graphics_extract <rom.bin> <out.bmp> "
                      "<tile-offset> <tile-count> <palette-offset> [--resource]\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <ignored> "
+                     "--dialogue-record <rom-offset>\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> --title\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out.bmp> "
                       "--native-field\n";
@@ -6402,6 +11083,16 @@ int main(int argc, char** argv) {
                      "--title-boot-assets\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
                      "--all-assets\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
+                     "--matrix-cyberdeck-selectors\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
+                     "--matrix-field-atlases\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
+                     "--matrix-world-models\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
+                     "--scene-5bd2c-sprite-lists\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
+                     "--matrix-title-figure-atlases\n";
         std::cerr << "numeric offsets accept decimal or 0x-prefixed hex\n";
         return 2;
     }
