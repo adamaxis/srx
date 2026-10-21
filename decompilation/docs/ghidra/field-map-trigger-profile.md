@@ -490,11 +490,14 @@ template `0x172CA` and position data at `0x17082`: actor name `lone11`, kind
 10, palette line 1, item action 3, position `(0x1100, 0x0300)`, heading
 `0xC000`, and ordered overrides `+0x2E=0xC0`, `+0x9E=0x10`. The extracted
 `world-activity-actors.tsv` preserves that row; Lua exposes the selected list
-through `World.world_activity_actors_for_script(13, 3)`. Physical-input QA
-also reaches scene 13 with bit 19 set and both runner markers clear, then
-checks that the typed selector chooses index 3. The selected actor is not yet
-materialized by the live field population/render path, so the scene remains
-partial. Bit 19's Ilene connection is now source-backed: Scene-2/event-0
+through `World.world_activity_actors_for_script(13, 3)`. The field runtime queues
+the Lua descriptors and publishes the selected actor during the actor-service
+pass. Debug/Release physical-input QA reaches scene 13 with bit 19 set and both
+runner markers clear, then checks script index 3, the actor profile and
+position, and a full-frame capture. The actor gate and materialization are
+connected; that test seeds bit 19 and does not exercise the path that sets it
+or the actor's dialogue/contact behavior. Bit 19's Ilene connection is now
+source-backed: Scene-2/event-0
 service 19 arms `FFE182` after the gift prerequisite, and the follow-up
 Scene-20 activity at `0x54402` opens a text page that names Ilene while
 setting bit 19. This still does not establish the Scene-13 list's dialogue,

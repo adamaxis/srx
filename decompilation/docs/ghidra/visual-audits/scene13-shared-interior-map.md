@@ -35,8 +35,12 @@ scene 0. The work-contract branch remains unresolved.
   area-3/event-4 gang target selects the passage and Scene-15 actor group at
   `0x1F086`; a different active target and no active contract both follow row
   4 to Scene 13. Debug/Release ordinary-input QA checks all three states.
-- Scene 13 has no default map actors. The Gunderson portrait selected by event
-  30 is dialogue art, not a resident sprite.
+- Scene 13 has no default map actor list. A separate post-load world script
+  publishes one conditional actor when FFFC1E bit 19 is set and both compact
+  runner markers allow it; Debug/Release physical-input QA checks its ROM
+  profile and position. This seeded-flag test does not identify the actor or
+  establish its contact behavior. The Gunderson portrait selected by event 30
+  is dialogue art, not a resident sprite.
 - Scene 13 records 11 and 12 (`0x1B3CF8`, `0x1B3D02`) are adjacent event-30
   cells at map pixels `(0,32)` and `(32,32)`. ROM `0xB7B8` dispatches them to
   `0x20990`, which selects dialogue row 0, profile `0x121E80`, and root
