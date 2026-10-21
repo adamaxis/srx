@@ -360,6 +360,44 @@ int main() {
         return 1;
     }
 
+    const auto ilene_gate_actors =
+        scripts.world_activity_actors_for_script(13U, 3U);
+    const auto absent_scene_script_actors =
+        scripts.world_activity_actors_for_script(13U, 2U);
+    if (!expect(
+            ilene_gate_actors.has_value() &&
+                ilene_gate_actors->size() == 1U &&
+                ilene_gate_actors->front().scene_id == 13U &&
+                ilene_gate_actors->front().script_index == 3U &&
+                ilene_gate_actors->front().source_order == 0U &&
+                ilene_gate_actors->front().list_offset == 0x1706CU &&
+                ilene_gate_actors->front().source_record_offset == 0x1706CU &&
+                ilene_gate_actors->front().tagged_template == 0x800172CAU &&
+                ilene_gate_actors->front().template_offset == 0x172CAU &&
+                ilene_gate_actors->front().position_offset == 0x17082U &&
+                ilene_gate_actors->front().actor_name == "lone11" &&
+                ilene_gate_actors->front().profile_id ==
+                    "lone11_k0a_item03" &&
+                ilene_gate_actors->front().entity_kind == 10U &&
+                ilene_gate_actors->front().sprite_stem ==
+                    "actor-kind-10-palette-1" &&
+                ilene_gate_actors->front().action_kind ==
+                    ScriptActorActionKind::item &&
+                ilene_gate_actors->front().action_code == 3U &&
+                ilene_gate_actors->front().palette_line == 1U &&
+                ilene_gate_actors->front().world_x == 0x1100U &&
+                ilene_gate_actors->front().world_y == 0x0300U &&
+                ilene_gate_actors->front().heading == 0xC000U &&
+                ilene_gate_actors->front().ordered_overrides ==
+                    "0x2E=0xC0,0x9E=0x10" &&
+                absent_scene_script_actors.has_value() &&
+                absent_scene_script_actors->empty(),
+            "Lua did not return the typed ROM scene-13 script actor list")) {
+        std::cerr << "scene script actor lookup: " << scripts.failure()
+                  << '\n';
+        return 1;
+    }
+
     const auto redmond_creature_sequence =
         scripts.resolve_field_encounter(0U, 0U, 0U);
     const auto barrens_creature_sequence =

@@ -115,8 +115,16 @@ function World.world_activity_actors_for_script(scene_id, script_index)
             result[#result + 1] = {
                 id = "world_activity:" .. scene_id .. ":" .. script_index ..
                     ":" .. row.source_order,
+                scene = row.scene,
+                script_index = row.script_index,
                 source_order = row.source_order,
+                list_offset = row.list_offset,
+                source_record_offset = row.source_record_offset,
+                tagged_template = row.tagged_template,
+                template_offset = row.template_offset,
+                position_offset = row.position_offset,
                 name = row.actor_name,
+                profile_id = row.profile_id,
                 entity_kind = row.entity_kind,
                 palette_line = row.palette_line,
                 sprite = row.sprite_stem,

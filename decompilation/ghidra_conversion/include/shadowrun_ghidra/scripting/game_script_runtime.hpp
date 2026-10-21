@@ -884,6 +884,32 @@ struct ScriptFieldEncounterActor {
     ScriptCombatantFacts combatant;
 };
 
+// A source-selected field script list is installed by the world-activity
+// selector and consumed by the next actor-service pass. It remains separate
+// from random-encounter actors because its placement and lifecycle come from
+// the scene-script list at 0x167AE / 0x43B6.
+struct ScriptWorldActivityActor {
+    std::uint16_t scene_id = 0;
+    std::uint16_t script_index = 0;
+    std::uint16_t source_order = 0;
+    std::uint32_t list_offset = 0;
+    std::uint32_t source_record_offset = 0;
+    std::uint32_t tagged_template = 0;
+    std::uint32_t template_offset = 0;
+    std::uint32_t position_offset = 0;
+    std::string actor_name;
+    std::string profile_id;
+    std::uint16_t entity_kind = 0;
+    std::string sprite_stem;
+    ScriptActorActionKind action_kind = ScriptActorActionKind::none;
+    std::uint8_t action_code = 0;
+    std::uint8_t palette_line = 0;
+    std::uint16_t world_x = 0;
+    std::uint16_t world_y = 0;
+    std::uint16_t heading = 0;
+    std::string ordered_overrides;
+};
+
 // The selector result is data, not an event-specific C++ switch. Dialogue
 // handler continuations remain source-owned until their respective branches
 // have been traced and ported; dynamic actor lists are fully typed here.
@@ -1356,6 +1382,9 @@ public:
     std::optional<ScriptFieldEncounterOutcome> resolve_field_encounter(
         std::uint16_t scene_id, std::uint8_t first_roll,
         std::uint8_t second_roll);
+    std::optional<std::vector<ScriptWorldActivityActor>>
+    world_activity_actors_for_script(std::uint16_t scene_id,
+                                     std::uint16_t script_index);
     std::optional<ScriptFieldEncounterOutcome>
     resolve_run_target_actor_group(std::uint8_t area_id,
                                    std::uint8_t event_id);

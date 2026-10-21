@@ -920,9 +920,10 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "run_target_y"}},
             {"entities/world-activity-actors.tsv",
              "world_activity_actor_lists",
-             {"scene", "source_order", "script_index", "entity_kind", "action_code",
-              "palette_line",
-              "template_offset"}},
+             {"scene", "list_offset", "source_order", "script_index",
+              "source_record_offset", "tagged_template", "template_offset",
+              "position_offset", "entity_kind", "action_code",
+              "palette_line", "world_x", "world_y", "initial_heading"}},
         }};
         for (const auto& source_table : source_tables) {
             TsvDocument document;

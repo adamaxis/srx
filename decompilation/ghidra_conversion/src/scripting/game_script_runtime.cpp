@@ -5076,6 +5076,152 @@ GameScriptRuntime::resolve_field_encounter(
                                         false);
 }
 
+std::optional<std::vector<ScriptWorldActivityActor>>
+GameScriptRuntime::world_activity_actors_for_script(
+    const std::uint16_t scene_id, const std::uint16_t script_index) {
+    auto* state = impl_->state;
+    if (state == nullptr || scene_id > 55U || script_index > 0xFFU) {
+        impl_->failure = "world-activity actor lookup is outside source bounds";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<std::vector<ScriptWorldActivityActor>> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    constexpr std::string_view kModule = "world_content";
+    constexpr std::string_view kFunction =
+        "world_activity_actors_for_script";
+    if (!impl_->push_module(kModule)) {
+        return fail("gameplay script module is missing: world_content");
+    }
+    lua_getfield(state, -1, std::string(kFunction).c_str());
+    if (!lua_isfunction(state, -1)) {
+        return fail("world_content.world_activity_actors_for_script is missing");
+    }
+    lua_remove(state, -2);
+    lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
+    lua_pushinteger(state, static_cast<lua_Integer>(script_index));
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 2, 1, 0) != LUA_OK) {
+        return fail("world_content.world_activity_actors_for_script: " +
+                    stack_error(state));
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("world-content script actor lookup must return an array");
+    }
+    const auto list_index = lua_absindex(state, -1);
+    const auto actor_count = lua_rawlen(state, list_index);
+    if (actor_count > 32U) {
+        return fail("world-content script actor list exceeds the ROM limit");
+    }
+
+    std::vector<ScriptWorldActivityActor> actors;
+    actors.reserve(actor_count);
+    std::set<std::uint16_t> source_orders;
+    for (std::size_t index = 0U; index < actor_count; ++index) {
+        lua_rawgeti(state, list_index, static_cast<lua_Integer>(index + 1U));
+        if (!lua_istable(state, -1)) {
+            return fail("world-content script actor list contains a bad row");
+        }
+        const auto row_index = lua_absindex(state, -1);
+        ScriptWorldActivityActor actor{};
+        std::uint32_t source_order = 0U;
+        std::uint32_t entity_kind = 0U;
+        std::uint32_t palette_line = 0U;
+        std::uint32_t action_code = 0U;
+        std::uint32_t world_x = 0U;
+        std::uint32_t world_y = 0U;
+        std::uint32_t heading = 0U;
+        std::uint32_t list_offset = 0U;
+        std::uint32_t source_record_offset = 0U;
+        std::uint32_t tagged_template = 0U;
+        std::uint32_t template_offset = 0U;
+        std::uint32_t position_offset = 0U;
+        std::uint32_t row_scene = 0U;
+        std::uint32_t row_script_index = 0U;
+        std::string action_kind;
+        const bool valid =
+            read_field_integer(state, row_index, "scene", 55U,
+                               row_scene) &&
+            row_scene == scene_id &&
+            read_field_integer(state, row_index, "script_index", 0xFFU,
+                               row_script_index) &&
+            row_script_index == script_index &&
+            read_field_integer(state, row_index, "source_order", 31U,
+                               source_order) &&
+            source_orders.insert(static_cast<std::uint16_t>(source_order))
+                .second &&
+            read_field_integer(state, row_index, "list_offset", 0x1FFFFFU,
+                               list_offset) &&
+            read_field_integer(state, row_index, "source_record_offset",
+                               0x1FFFFFU, source_record_offset) &&
+            read_field_integer(state, row_index, "tagged_template",
+                               0xFFFFFFFFU, tagged_template) &&
+            read_field_integer(state, row_index, "template_offset",
+                               0x1FFFFFU, template_offset) &&
+            read_field_integer(state, row_index, "position_offset",
+                               0x1FFFFFU, position_offset) &&
+            read_field_text(state, row_index, "name", actor.actor_name,
+                            128U) &&
+            read_field_string(state, row_index, "profile_id",
+                              actor.profile_id) &&
+            valid_identifier(actor.profile_id) &&
+            read_field_integer(state, row_index, "entity_kind", 15U,
+                               entity_kind) &&
+            read_field_string(state, row_index, "sprite", actor.sprite_stem) &&
+            valid_identifier(actor.sprite_stem) &&
+            read_field_string(state, row_index, "action_kind", action_kind) &&
+            read_field_integer(state, row_index, "action_code", 0xFFU,
+                               action_code) &&
+            read_field_integer(state, row_index, "palette_line", 3U,
+                               palette_line) &&
+            read_field_integer(state, row_index, "x", 0xFFFFU, world_x) &&
+            read_field_integer(state, row_index, "y", 0xFFFFU, world_y) &&
+            read_field_integer(state, row_index, "heading", 0xFFFFU,
+                               heading) &&
+            read_field_text(state, row_index, "ordered_overrides",
+                            actor.ordered_overrides, 512U);
+        if (!valid) {
+            return fail("world-content script actor row has invalid source fields");
+        }
+        if (action_kind == "none") {
+            actor.action_kind = ScriptActorActionKind::none;
+        } else if (action_kind == "item") {
+            actor.action_kind = ScriptActorActionKind::item;
+        } else if (action_kind == "spell") {
+            actor.action_kind = ScriptActorActionKind::spell;
+        } else {
+            return fail("world-content script actor action kind is unknown");
+        }
+        if ((actor.action_kind == ScriptActorActionKind::none) !=
+            (action_code == 0U)) {
+            return fail("world-content script actor action fields disagree");
+        }
+        actor.scene_id = scene_id;
+        actor.script_index = script_index;
+        actor.source_order = static_cast<std::uint16_t>(source_order);
+        actor.list_offset = list_offset;
+        actor.source_record_offset = source_record_offset;
+        actor.tagged_template = tagged_template;
+        actor.template_offset = template_offset;
+        actor.position_offset = position_offset;
+        actor.entity_kind = static_cast<std::uint16_t>(entity_kind);
+        actor.action_code = static_cast<std::uint8_t>(action_code);
+        actor.palette_line = static_cast<std::uint8_t>(palette_line);
+        actor.world_x = static_cast<std::uint16_t>(world_x);
+        actor.world_y = static_cast<std::uint16_t>(world_y);
+        actor.heading = static_cast<std::uint16_t>(heading);
+        actors.push_back(std::move(actor));
+        lua_pop(state, 1);
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return actors;
+}
+
 std::optional<ScriptFieldEncounterOutcome>
 GameScriptRuntime::resolve_field_encounter_impl(
     const std::uint16_t scene_id, const std::uint8_t first_roll,
