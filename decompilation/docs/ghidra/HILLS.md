@@ -230,28 +230,37 @@ to the same ROM blank profile at `0x121E20`, and Alesandro and Professor
 Jefferson share `0x121F34`. Capt. Quinton and Sharkey have no matching visual
 frame in the reviewed longplay. The Vid-Phone visual CTest checks Henry's
 portrait pixels and verifies that the image clears when the call returns to
-the field menu. No matching independent longplay frame of a Vid-Phone call has
-been identified, so the visual hill remains partial. Each contact's Lua record
-now names its service module and function when that service tree is traced;
-the shared terminal resolves those handlers during module initialization and
-dispatches without a contact-ID branch. Capt. Quinton's service
-tree is now connected: the ROM menu rooted at `0x1096F4` reaches Firepower
-(`0x109750`) and Contacts (`0x109780`); command IDs `0x68`-`0x6A` dispatch
-through `0x12CCB4` to handlers `0x22898`, `0x228D0`, and `0x22908`. Lua
-contains his Hollywood/Weller information, weapon offers, and Rigger offer.
-The typed host applies the 400-nuyen grenade purchase, 1,000-nuyen HK227-S
-purchase, and 2,800-nuyen Sharkey introduction against the live runner wallet,
-inventory, and contact flags. The HK phase byte is the Laser Sight and Gas
-Vent II attachment mask (`0x18`), separate from the item's 28-round catalog
-capacity. Debug/Release script, transaction, and panel-route CTests cover
-success, insufficient funds, full inventory, and clean return. Their images
-render the dialogue panel over black, so they do not prove cleanup over a live
-map background. Alesandro's service tree now follows ROM commands `0x6B`-`0x6D`
-to handlers `0x22934`, `0x2296E`, and `0x229A8`: level-3/level-5 maglock
-passkeys cost 10,000/20,000 and store their level in item 20's phase, while
-Sgt. Macklemann costs 8,000 and sets contact bit 5. The panel CTest captures
-the technology response, both purchase outcomes, contact offer/result, and
-clean redraw through screen 34. Sharkey's ROM contact record at `0x10A7F2`
+the field menu. No matching independent longplay frame of a Vid-Phone call has been identified,
+so the visual hill remains partial. `contacts.json` binds each traced contact
+to either a JSON graph and action module or a legacy Lua service function; the
+shared terminal resolves these bindings without a contact-ID branch.
+
+Capt. Quinton's full call graph is connected. The ROM menu rooted at `0x1096F4`
+reaches Firepower (`0x109750`) and Contacts (`0x109780`); command IDs `0x68`-
+`0x6A` dispatch through `0x12CCB4` to handlers `0x22898`, `0x228D0`, and
+`0x22908`. His JSON graph owns first/repeat, Hollywood/Weller information,
+weapon offers, and the Rigger offer. The typed host applies the 400-nuyen
+grenade purchase, 1,000-nuyen HK227-S purchase, and 2,800-nuyen Sharkey
+introduction against the live runner wallet, inventory, and contact flags. The
+HK phase byte is the Laser Sight and Gas Vent II attachment mask (`0x18`),
+separate from the item's 28-round catalog capacity. Debug/Release script,
+transaction, and panel-route CTests cover success, insufficient funds, full
+inventory, and clean return. Their images render the dialogue panel over
+black, so they do not prove cleanup over a live map background.
+
+Alesandro's service flow is a JSON graph reached from the shared first/repeat
+call menu. It follows ROM commands `0x6B`-`0x6D` to handlers `0x22934`,
+`0x2296E`, and `0x229A8`: level-3/level-5 maglock passkeys cost 10,000/20,000
+and store their level in item 20's phase, while Sgt. Macklemann costs 8,000
+and sets contact bit 5. JSON owns his three information topics, purchase/offer
+choices, and result edges; Lua submits the three typed host transactions. The
+direct Lua permutation suite and Debug/Release script/panel CTests cover the
+graph branches and render through screen 34. Alesandro's shared portrait
+appears in section 23 frame 001770, but no complete matching call sequence was
+found in the reviewed longplay. Five other contact service trees remain
+procedural.
+
+Sharkey's ROM contact record at `0x10A7F2`
 offers commands `0x6E`-`0x70`: 3,000 nuyen for Salish-Shidhe passage to scene
 6, 5,000 for Sinsearach passage to scene 9, or Smart Goggles (item 22) for
 3,000. Lua owns her menu and result flow, and `data/vid_phone_passages.lua`

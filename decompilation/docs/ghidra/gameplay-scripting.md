@@ -105,8 +105,14 @@ branches. `conditions.json` selects first versus repeat call from the ROM
 call-history fact; `contacts.json` links the contact to the graph. The Lua
 module `vid_phone/capt_quinton_jaymes.lua` registers named host effects for the
 call-history write and typed wallet/inventory/contact transactions. The other
-six contact service trees remain procedural and still need their ROM
+five contact service trees remain procedural and still need their ROM
 permutations traced and migrated.
+
+Alesandro's service tree is the second Vid-Phone graph in the same JSON
+catalog. His `contacts.json` record keeps the shared call-history/menu flow in
+the common caller, then selects the service graph. The Lua action module only
+forwards the two passkey purchases and Macklemann contact purchase to typed
+host transactions; JSON owns the information pages, result menus, and edges.
 
 The Ares Weapon Emporium stock is declared in `gameplay/scripts/shop.lua`.
 The script groups offers under stable category names; `GameScriptRuntime`

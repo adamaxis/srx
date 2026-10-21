@@ -29,7 +29,8 @@
       },
       "service": {
         "module": "vid_phone.capt_quinton_jaymes",
-        "graphId": "vid_phone.capt_quinton_jaymes.call"
+        "graphId": "vid_phone.capt_quinton_jaymes.call",
+        "graphScope": "call"
       }
     },
     {
@@ -53,7 +54,11 @@
         "textKey": "vid_phone.contact.alesandro_hobbs.repeat_call",
         "continuation": false
       },
-      "service": { "module": "vid_phone.alesandro_hobbs", "function": "services" }
+      "service": {
+        "module": "vid_phone.alesandro_hobbs",
+        "graphId": "vid_phone.alesandro_hobbs.services",
+        "graphScope": "services"
+      }
     },
     {
       "sourceIndex": 2,

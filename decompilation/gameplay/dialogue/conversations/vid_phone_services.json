@@ -205,6 +205,152 @@
           "outcome": { "type": "continue_in_place" }
         }
       }
+    },
+    "vid_phone.alesandro_hobbs.services": {
+      "entryNode": "services",
+      "speakerId": "vid_phone_alesandro_hobbs",
+      "textProfile": "field.vid_phone",
+      "provenance": {
+        "romAddresses": [
+          "0xE61C", "0x109682", "0x12CCB4", "0x22934", "0x2296E",
+          "0x229A8"
+        ],
+        "scope": "alesandro_services_and_source_transaction_results"
+      },
+      "nodes": {
+        "services": {
+          "type": "choice",
+          "menuId": "alesandro_services",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "corporation_information", "next": "security_topics" },
+            { "id": "maglock_passkey", "next": "passkey_offer" },
+            { "id": "seattle_official", "next": "official_contact_offer" }
+          ]
+        },
+        "security_topics": {
+          "type": "choice",
+          "menuId": "alesandro_security_topics",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "patrols", "next": "security_patrols" },
+            { "id": "second_security_type", "next": "security_technological" },
+            { "id": "avoid_detection", "next": "security_cameras" }
+          ]
+        },
+        "security_patrols": {
+          "type": "page",
+          "eventId": "security_patrols",
+          "next": "security_alerts"
+        },
+        "security_alerts": {
+          "type": "page",
+          "eventId": "security_alerts",
+          "next": "services"
+        },
+        "security_technological": {
+          "type": "page",
+          "eventId": "security_technological",
+          "next": "services"
+        },
+        "security_cameras": {
+          "type": "page",
+          "eventId": "security_cameras",
+          "next": "services"
+        },
+        "passkey_offer": {
+          "type": "choice",
+          "menuId": "alesandro_passkey_offer",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "level_3_passkey", "next": "purchase_level_3" },
+            { "id": "level_5_passkey", "next": "purchase_level_5" },
+            { "id": "return_to_services", "next": "services" }
+          ]
+        },
+        "purchase_level_3": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_maglock_passkey_level_3",
+          "results": {
+            "purchased": "purchase_result",
+            "insufficient": "purchase_insufficient",
+            "out_of_stock": "out_of_stock",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "purchase_level_5": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_maglock_passkey_level_5",
+          "results": {
+            "purchased": "purchase_result",
+            "insufficient": "purchase_insufficient",
+            "out_of_stock": "out_of_stock",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "purchase_result": {
+          "type": "choice",
+          "menuId": "alesandro_purchase_result",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "finished" }
+          ]
+        },
+        "purchase_insufficient": {
+          "type": "page",
+          "eventId": "purchase_insufficient",
+          "next": "finished"
+        },
+        "out_of_stock": {
+          "type": "choice",
+          "menuId": "alesandro_out_of_stock",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "finished" }
+          ]
+        },
+        "official_contact_offer": {
+          "type": "choice",
+          "menuId": "alesandro_official_contact_confirmation",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "pay_for_macklemann", "next": "hire_macklemann" },
+            { "id": "return_to_services", "next": "services" }
+          ]
+        },
+        "hire_macklemann": {
+          "type": "action",
+          "actionId": "vid_phone.hire_macklemann",
+          "results": {
+            "hired": "macklemann_result",
+            "insufficient": "purchase_insufficient",
+            "out_of_stock": "out_of_stock",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "macklemann_result": {
+          "type": "choice",
+          "menuId": "alesandro_macklemann_result",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "finished" }
+          ]
+        },
+        "service_boundary": {
+          "type": "source_boundary",
+          "reason": "Alesandro's host transaction returned an unavailable or unrecognized source result."
+        },
+        "finished": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
     }
   }
 }

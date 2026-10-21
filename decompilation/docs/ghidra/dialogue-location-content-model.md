@@ -7,9 +7,10 @@ conditions where needed. The Lua graph engine and typed outcome bridge drive
 Gates Undersound's same-map service, the Renraku and Fuchi gated entry pages,
 Tarislar City Inn, Wylie's Gala Inn, and the two Stoker entry roots. The field
 host dispatches the `hotel.options` and `hospital.options` service IDs.
-Captain Quinton's first/repeat call and complete service tree is also a JSON
-graph with a Lua action adapter. Six other contact service trees remain
-procedural. Remaining conversation routes and other service outcome
+Captain Quinton's first/repeat call and complete service tree is a JSON graph;
+Alesandro's service tree is also JSON-backed. Their Lua modules register named
+host actions. Five other contact service trees remain procedural. Remaining
+conversation routes and other service outcome
 dispatchers are pending; this does not claim every listed route is implemented
 or visually verified.
 
@@ -143,8 +144,9 @@ service graph.
 
 Seven contacts have source-derived service implementations: Captain Quinton,
 Alesandro, Sharkey, Kipp, Wilma, Macklemann, and Gregory. Quinton's complete
-first/repeat call and service flow is now a JSON graph; the other six service
-flows remain procedural Lua modules pending migration. The traced result
+first/repeat call and service flow is now a JSON graph; Alesandro's service
+flow is a second graph. The other five service flows remain procedural Lua
+modules pending migration. The traced result
 permutations include:
 
 - Information-only topics and multi-page lessons, with return-to-services or
@@ -169,7 +171,7 @@ contact modules still own procedural service flow and are explicitly pending.
 
 ```text
 decompilation/gameplay/dialogue/
-  contacts.json                # 13 ordered Vid-Phone records and graph links
+  contacts.json                # 13 ordered records and graph scope bindings
   speakers.json                # speaker IDs, portraits, event text bindings
   menus.json                   # stable choice IDs and ordered label bindings
   conditions.json              # named, composable typed conditions
@@ -302,8 +304,8 @@ conditions, and outcome types must not depend on Qt JSON classes.
    and consumers reference stable text keys. Extracted strings remain
    extractor-owned.
 3. **Implemented for shared catalogs:** speaker, menu, and 13-contact data are
-   JSON-backed. Captain Quinton is the first contact whose service flow is a
-   JSON graph; six other contact service flows remain procedural Lua.
+   JSON-backed. Captain Quinton's full call flow and Alesandro's service flow
+   use JSON graphs; five other contact service flows remain procedural Lua.
 4. **Implemented with explicit host boundaries:** the reusable Lua graph and
    condition engines and typed `DialogueOutcome` union are active. The host
    dispatches only connected outcome families; return, other activity/service,
@@ -327,8 +329,9 @@ The first JSON graph migration was a vertical slice that exercises more than
 one terminal kind. Stoker's indexed service and signed field-exit prompt now
 use separate JSON graph roots. The remaining Stoker work is source coverage
 for the 80..99 effect callback, saved-game fact restoration, and independent
-visual checks. Quinton's contact service graph is converted; six other contact
-service flows and the Salish dialogues still need conversion. Existing
+visual checks. Quinton's call graph and Alesandro's service graph are
+converted; five other contact service flows and the Salish dialogues still
+need conversion. Existing
 incomplete encounter commands, upstream quest producers, and unverified visual
 branches remain explicit work, not filled-in defaults.
 
@@ -371,7 +374,7 @@ named `hotel.options`/`hospital.options` service screens. Return, activity,
 other service-screen, and cinematic outcomes still stop at an explicit host
 boundary until their coordinators are source-traced and connected.
 
-Six non-Stoker graphs and two Stoker roots currently exercise that contract:
+Seven non-Stoker graphs and two Stoker roots currently exercise that contract:
 
 - Gates Undersound trigger 15 performs the ordered trigger/page/effect-flag/
   trigger-tail operations and returns `continue_in_place`, suppressing event
@@ -409,6 +412,15 @@ Six non-Stoker graphs and two Stoker roots currently exercise that contract:
   Vid-Phone QA covers the call panel and ordinary physical entry/return path.
   The reviewed longplay has no matching complete Quinton call sequence, so the
   graph remains partial for independent visual proof.
+- Alesandro's Vid-Phone service tree is a JSON graph reached after the shared
+  first/repeat call menu. It covers three corporate-security topics (including
+  the two-page patrol route), level-3 and level-5 passkey transactions, and
+  Macklemann's contact offer. Purchased/hired and out-of-stock results lead to
+  Services/Goodbye menus; insufficient funds ends on its page; unavailable or
+  unknown service results stop at a source boundary. A direct Lua suite covers
+  these permutations, and Debug/Release script/panel QA passes. The longplay
+  has a shared Alesandro/Professor portrait reference but no complete matching
+  Alesandro call sequence.
 
 - Stoker has two JSON roots so the indexed trigger and signed field-exit
   selector stay separate. The indexed root uses the ROM gate from `0x53AB6`

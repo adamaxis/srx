@@ -33,9 +33,9 @@ local resource_scene_matrix_targets = {
     [43] = { system_id = 0x17, node_id = 0x0B },
 }
 
--- Resolve each contact's source-backed Lua service tree while this module is
--- initialized. The contact list supplies the module/function association;
--- dispatch during a yielded task then uses the already-resolved handler.
+-- Resolve legacy service functions and JSON-graph action providers while this
+-- module is initialized. The contact catalog supplies graph scope or the
+-- module/function binding; yielded tasks use these resolved handlers.
 local phone_service_handlers = {}
 local phone_service_graph_actions = {}
 for _, contact in ipairs(Dialogue.vid_phone_contacts) do
@@ -116,7 +116,26 @@ local function phone_call_finished()
     return "phone_call_finished"
 end
 
+local function run_contact_graph(contact)
+    local action_provider = phone_service_graph_actions[contact.id]
+    if type(action_provider) ~= "function" then
+        return "phone_services_not_converted"
+    end
+    local outcome = DialogueGraph.run(
+        contact.service_graph_id, action_provider(contact))
+    if type(outcome) ~= "table" or type(outcome.type) ~= "string" then
+        return "phone_service_result_unresolved"
+    end
+    if outcome.type == "continue_in_place" then
+        return phone_call_finished()
+    end
+    return outcome
+end
+
 local function call_contact_services(contact)
+    if contact.service_graph_scope == "services" then
+        return run_contact_graph(contact)
+    end
     local handler = phone_service_handlers[contact.id]
     if type(handler) ~= "function" then
         return "phone_services_not_converted"
@@ -125,20 +144,8 @@ local function call_contact_services(contact)
 end
 
 local function call_contact(contact)
-    if contact.service_graph_id ~= nil then
-        local action_provider = phone_service_graph_actions[contact.id]
-        if type(action_provider) ~= "function" then
-            return "phone_services_not_converted"
-        end
-        local outcome = DialogueGraph.run(
-            contact.service_graph_id, action_provider(contact))
-        if type(outcome) ~= "table" or type(outcome.type) ~= "string" then
-            return "phone_service_result_unresolved"
-        end
-        if outcome.type == "continue_in_place" then
-            return phone_call_finished()
-        end
-        return outcome
+    if contact.service_graph_scope == "call" then
+        return run_contact_graph(contact)
     end
 
     local called_fact = contact.call_history_fact

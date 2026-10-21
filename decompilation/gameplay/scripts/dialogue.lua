@@ -84,7 +84,12 @@ for position, record in ipairs(phone_catalog.contacts) do
                    record.service.graphId ~= "",
                 "Vid-Phone service graph binding is malformed: " ..
                 record.id)
+            assert(record.service.graphScope == "call" or
+                   record.service.graphScope == "services",
+                "Vid-Phone service graph needs call or services scope: " ..
+                record.id)
             contact.service_graph_id = record.service.graphId
+            contact.service_graph_scope = record.service.graphScope
         end
         if record.service["function"] ~= nil then
             assert(type(record.service["function"]) == "string" and
