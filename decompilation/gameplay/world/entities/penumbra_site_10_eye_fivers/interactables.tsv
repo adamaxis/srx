@@ -1,2 +1,2 @@
 interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
-rom_event_BE	160	224	32	32	building.resolve_field_location_route	ROM record at 0x18ABBE	Exact ROM scene-3 32x32 event cell; see scene-03-site-routes.tsv for table/direct route result.
+rom_event_BE	160	224	32	32	building.resolve_field_location_route	ROM record 100 at 0x18ABBE	Exact ROM Scene-3 32x32 event-4 cell; the reusable link keeps the Scene-13 fallback, while an exact active area-3/event-4 gang contract opens the passage and selects Scene 15. Debug/Release ordinary-input QA covers match, different-target, and no-run states; see scene-03-site-routes.tsv.

@@ -170,9 +170,15 @@ def describe_target(value: int) -> str:
 def physical_qa_route(scene: int, record_index: int, event: int) -> str:
     if scene == 1 and record_index in (76, 77):
         return (
-            "Debug/Release ordinary Up QA verifies the exact active gang "
-            "target opens its passage and scene-15 actor group; a mismatched "
-            "run and no-run case follow event-table row 9 to scene 13"
+            "Debug/Release ordinary Up QA reaches the exact active Puyallup "
+            "gang target and verifies its passage/Scene-15 actor group; a "
+            "mismatched target and no-run case follow row 9 to Scene 13"
+        )
+    if scene == 3 and record_index == 100:
+        return (
+            "Debug/Release ordinary Up QA reaches the exact active Eye-Fivers "
+            "gang target and verifies its passage/Scene-15 actor group; a "
+            "different target and no-run case follow row 4 to Scene 13"
         )
     if scene == 1 and record_index == 69:
         return (

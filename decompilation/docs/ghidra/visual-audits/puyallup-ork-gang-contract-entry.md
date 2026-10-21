@@ -23,8 +23,10 @@ the Ork Gang entity link retains the normal event-table route and return policy.
 
 ## Physical QA
 
-The named Debug/Release CTest uses ordinary Up movement and a seeded run-state
-fixture to exercise three source cases:
+`shadowrun_ghidra_conversion_qt_field_gang_contract_target_entry_qa` uses
+ordinary Up movement and a seeded run-state fixture in Debug and Release to
+exercise the Puyallup source cases together with the other ROM gang target
+sites:
 
 | Source case | Route result |
 | --- | --- |
@@ -32,13 +34,17 @@ fixture to exercise three source cases:
 | Record 77, active target area 2/event 9 | No passage; row 9 loads Scene 13 |
 | Record 76, no active contract | No passage; row 9 loads Scene 13 |
 
-The matching route reached event 9 on frame 5, opened the passage on frame 22,
-and reached Scene 15 after dismissal with four actors published. Each fallback
-reached Scene 13 on frame 22 with no dialogue and zero funds. The test writes
-approach, contact, entry-passage, destination, and route-log artifacts under
-`qt_runtime/{debug,release}/field-puyallup-ork-gang-contract-entry-qa/`.
-All 13 files match across configurations by SHA-256. Full 320x224 contact,
-dialogue, and destination images were inspected at original resolution.
+The matching Puyallup route reached event 9 on frame 5, opened the passage on
+frame 22, and reached Scene 15 after dismissal with four actors published.
+Each fallback reached Scene 13 with no dialogue and zero funds. The test writes
+approach, event-contact, entry-passage, destination, and route-log artifacts
+under
+`qt_runtime/{debug,release}/field-gang-contract-target-entry-qa/active-puyallup-gang-contract/`.
+The companion Eye-Fivers route covers Scene 3/event 4. Its exact area-3/event-4
+contract opens the same passage and publishes the third ROM actor group; a
+different active target and no active run both use Scene 13. All 26 artifacts
+match across configurations by SHA-256. Full 320x224 contact, dialogue, and
+destination images were inspected at original resolution.
 
 These captures validate the host route and layout only; no independent Genesis
 frame for this exact Puyallup contract branch has been identified. The

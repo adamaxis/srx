@@ -699,14 +699,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene2_gang_contra
                  --field-scene2-gang-contract-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene2-gang-contract-entry-qa")
 
-# Puyallup event 9 is a conditional Ork Gang target: a matching active
-# contract shows the ROM entry passage and publishes its actor group; other
-# states use the ordinary Scene-13 table route.
+# ROM gang-contract targets in Puyallup and Penumbra show the same entry
+# passage at an exact area/event match; the Scene-2 test covers the third
+# tuple. Wrong-target/no-run states use each map's ordinary event-table route.
 add_shadowrun_qt_qa_case(
-    shadowrun_ghidra_conversion_qt_field_puyallup_ork_gang_contract_entry_qa
+    shadowrun_ghidra_conversion_qt_field_gang_contract_target_entry_qa
     --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
-    --field-puyallup-ork-gang-contract-entry-qa
-    "${CMAKE_CURRENT_BINARY_DIR}/field-puyallup-ork-gang-contract-entry-qa")
+    --field-gang-contract-target-entry-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-gang-contract-target-entry-qa")
 
 # Continue the ordinary-input event-table route into scene 26, cross its ROM
 # event-29 elevator trigger, animate the two independently tracked floor

@@ -63,6 +63,17 @@ both the source initializer and canonical handler ID.
   `qt_runtime/field-scene2-gang-contract-entry-qa/` (`route.tsv`, four
   full-frame BMPs). The scene-15 actor handoff is connected; combat results,
   payout, and an independent Genesis comparison remain open.
+- The other two source tuples in the type-3 target table are also physically
+  covered. Ordinary-Up QA reaches Puyallup Scene 1 records 76/77 (area 1/event
+  9) and Penumbra Scene 3 record 100 (area 3/event 4). Exact matches show the
+  same `0xFE0DE` passage and publish the corresponding four-actor Scene-15
+  group; wrong-target and no-run states continue through event-table rows 9/4
+  to Scene 13. Debug/Release captures for the six Puyallup/Penumbra cases are
+  SHA-256 identical (26 files per build). All three target tuples are now
+  physically routed through the ROM gate; fight results, payout, and
+  independent Genesis comparisons remain open. See the [Puyallup entry
+  audit](puyallup-ork-gang-contract-entry.md) and [Eye-Fivers entry
+  audit](eye-fivers-gang-contract-entry.md).
 - Matrix generation follows `0x1ED2C`: objective index, one of its eligible
   systems, retry until that system matches the initializer's difficulty band,
   then file size 10/20/30. Named objective text and system names use the

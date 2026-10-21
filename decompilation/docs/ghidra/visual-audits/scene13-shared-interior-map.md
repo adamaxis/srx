@@ -30,6 +30,11 @@ scene 0. The work-contract branch remains unresolved.
   Debug/Release physical QA checks the matching branch at record 76 and the
   mismatched branch at adjacent record 77; it does not complete the gang fight
   or reward path.
+- Penumbra Scene 3 record 100/event 4 (guide and contract crosswalk:
+  Eye-Fivers) also uses Scene 13 as its generic route. An exact active
+  area-3/event-4 gang target selects the passage and Scene-15 actor group at
+  `0x1F086`; a different active target and no active contract both follow row
+  4 to Scene 13. Debug/Release ordinary-input QA checks all three states.
 - Scene 13 has no default map actors. The Gunderson portrait selected by event
   30 is dialogue art, not a resident sprite.
 - Scene 13 records 11 and 12 (`0x1B3CF8`, `0x1B3D02`) are adjacent event-30

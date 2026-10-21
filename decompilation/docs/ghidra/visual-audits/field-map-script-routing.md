@@ -211,16 +211,21 @@ and select Scene 15. `run_gang_contract.lua` owns the target match, passage
 task, and actor-group data; the entity link remains the reusable Scene-13
 fallback and records return policy.
 
-`shadowrun_ghidra_conversion_qt_field_puyallup_ork_gang_contract_entry_qa`
-physically reaches the rectangles with ordinary Up input in Debug and Release.
+`shadowrun_ghidra_conversion_qt_field_gang_contract_target_entry_qa` physically
+reaches the Puyallup rectangles with ordinary Up input in Debug and Release.
 Record 76 with an exact area-1/event-9 target shows the passage and enters
 Scene 15 with four actors. Record 77 with an active area-2/event-9 target and
 record 76 with no active contract both follow row 9 to Scene 13 without the
-passage. The 13 generated files match across builds by SHA-256; the 320x224
-contact, passage, and destination captures were inspected at full resolution.
-These are host captures, not independent Genesis comparisons. The active
-record-77 match, gang fight result, reward settlement, and independent visual
-reference remain open. See the [Ork Gang target-entry audit](puyallup-ork-gang-contract-entry.md).
+passage. The same test exercises Penumbra Scene 3 record 100/event 4: the exact
+area-3/event-4 Eye-Fivers target enters Scene 15 with the third actor group,
+while a different target and no active run follow row 4 to Scene 13. All 26
+generated files match across builds by SHA-256; the full 320x224 contact,
+passage, destination, and fallback captures were inspected. Together with the
+existing Scene-2/event-9 route test, all three ROM target tuples are physically
+covered. These are host captures, not independent Genesis comparisons. The
+gang fight result, reward settlement, and independent visual reference remain
+open. See the [Ork Gang target-entry audit](puyallup-ork-gang-contract-entry.md)
+and [Eye-Fivers target-entry audit](eye-fivers-gang-contract-entry.md).
 
 The named-route sweep still has source-profiled gaps. Scene-1 Tarislar Garden
 Apartments has indexed service 21 and story-bit gates. The first-authorized
