@@ -48,6 +48,22 @@
         "romAddresses": ["0x54152", "0x53A78"],
         "scope": "indexed_title_service_gate"
       }
+    },
+    "tarislar_city_inn.paid_stay_and_shale_service_available": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "building" },
+          { "fact": "location.id", "op": "eq", "value": "puyallup_site_03_tarislar_city_inn" },
+          { "fact": "field.event_code", "op": "eq", "value": 1 },
+          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "story.story_flag_bit_0", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_1", "op": "eq", "value": false }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x53B16", "0x53A78"],
+        "scope": "indexed_title_service_gate"
+      }
     }
   }
 }

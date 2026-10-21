@@ -40,7 +40,7 @@ function Registry:execute(action_id, arguments, context)
     return false, nil, "action returned an unsupported result"
 end
 
-local function register_story_actions(registry)
+local function register_core_actions(registry)
     registry:register("story.begin_trigger", function(arguments)
         assert(is_integer(arguments.triggerId, 0, 31),
             "story.begin_trigger needs triggerId 0..31")
@@ -71,11 +71,33 @@ local function register_story_actions(registry)
             arguments.value
         return true
     end)
+
+    registry:register("building.charge_amount", function(arguments)
+        assert(is_integer(arguments.amount, 0, 999999),
+            "building.charge_amount needs an amount from 0 to 999999")
+        local result = game.services.call(
+            "building", "charge_" .. tostring(arguments.amount))
+        if result == "paid" or result == "insufficient" then
+            return result
+        end
+        return "service_unavailable"
+    end)
 end
 
-function DialogueActions.new_default_registry()
+function DialogueActions.new_default_registry(registered_actions)
     local registry = Registry.new()
-    register_story_actions(registry)
+    register_core_actions(registry)
+    registered_actions = registered_actions or {}
+    assert(type(registered_actions) == "table",
+        "registered dialogue actions must be a table")
+    local action_ids = {}
+    for action_id in pairs(registered_actions) do
+        action_ids[#action_ids + 1] = action_id
+    end
+    table.sort(action_ids)
+    for _, action_id in ipairs(action_ids) do
+        registry:register(action_id, registered_actions[action_id])
+    end
     return registry
 end
 

@@ -30,6 +30,7 @@ enum class FieldDialogueAdvanceResult {
     returned_from_world_activity,
     taxi_selector_requested,
     enter_field_scene_requested,
+    open_service_requested,
     matrix_entry_requested,
     matrix_search_requested,
     hotel_options_requested,

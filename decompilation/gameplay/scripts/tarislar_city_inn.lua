@@ -4,6 +4,7 @@
 -- path from source-backed story facts before this module presents it.
 local E = require("enums")
 local StoryFlags = require("story_flags")
+local DialogueGraph = require("dialogue_graph")
 
 local Inn = {}
 
@@ -24,37 +25,6 @@ end
 
 local function leave()
     say("I'll be seeing you, chum.", false)
-    return "field_return"
-end
-
-local function room_offer()
-    local choice = game.ui.prompt_text(
-        "room_payment",
-        table.concat({
-            "Sorry, but all we have left are rooms with views.",
-            "Those are going for a meager 30$.",
-            "A fair price, chummer?",
-        }, "||"),
-        { "pay", "decline" })
-    if choice == "decline" then return leave() end
-    if choice ~= "pay" then return "field_return" end
-
-    -- ROM command 0x06 charges the active FFF10D amount (30 at this branch).
-    local payment = game.services.call("building", "charge_30")
-    if payment == "paid" then
-        say(table.concat({
-            "Hope you brought your own towels.",
-            "I've been cleaned out this month.",
-            "Enjoy your stay.",
-        }, "||"), false)
-        return "hotel-options"
-    end
-    if payment == "insufficient" then
-        say(table.concat({
-            "Your stick seems to be low on creds.",
-            "I'm sorry, but we can only board paying customers.",
-        }, "||"), false)
-    end
     return "field_return"
 end
 
@@ -218,27 +188,15 @@ function Inn.present_indexed_title_service()
     end
 
     -- ROM 0x53A78 publishes indexed title service 1 in FFDD64 before calling
-    -- 0x53B16. The intro/options root is 0xF49E8/0xF49FC.
-    StoryFlags.begin_trigger(1)
-    if not more("shale_more", table.concat({
-        "The Tarislar City Inn caters mostly to elves, as the word Tarislar is elvish for Remembrance.",
-        "Despite its run-down appearance, this apartment has a great rep for being the safest place to stay in the Barrens.",
-    }, "||")) then
-        return "field_return"
-    end
-
-    local choice = game.ui.prompt_text(
-        "inn_service",
-        table.concat({
-            "You need a place to stay?",
-            "Well you've come to the right place.",
-            "This is the safest hotel in the city, for the price.",
-            "Of course, payment is required in advance.",
-        }, "||"),
-        { "crash", "leave", "shale" })
-    if choice == "crash" then return room_offer() end
-    if choice == "shale" then return tabatha_conversation() end
-    return leave()
+    -- 0x53B16. The intro, manager options, and paid-stay branch are represented
+    -- by the reusable JSON graph. Tabatha's command-heavy conversation remains
+    -- a registered Lua action until its encounter handoff is converted.
+    return DialogueGraph.run(
+        "tarislar_city_inn.paid_stay_and_shale_service", {
+            ["tarislar_city_inn.present_tabatha_conversation"] = function()
+                return tabatha_conversation()
+            end,
+        })
 end
 
 function Inn.present_field_exit_prompt()

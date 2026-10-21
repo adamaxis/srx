@@ -116,6 +116,10 @@ local document = {
             done = { type = "terminal",
                      outcome = { type = "continue_in_place" } },
         }),
+        ["test.source_boundary"] = graph("blocked", {
+            blocked = { type = "source_boundary",
+                        reason = "ROM command 0x1234 is not converted." },
+        }),
     },
 }
 
@@ -187,6 +191,9 @@ assert(outcome.type == "play_cinematic" and
 outcome = session:run("test.unknown")
 assert(outcome.type == "source_boundary" and
        outcome.reason:match("story.not_loaded") ~= nil)
+outcome = session:run("test.source_boundary")
+assert(outcome.type == "source_boundary" and
+       outcome.reason:match("ROM command 0x1234 is not converted") ~= nil)
 assert(Status.unknown == "unknown")
 
 local invalid = pcall(function()

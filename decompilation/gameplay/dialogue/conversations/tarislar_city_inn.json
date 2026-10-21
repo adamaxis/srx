@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "tarislar_city_inn.paid_stay_and_shale_service": {
+      "entryNode": "begin_trigger",
+      "precondition": "tarislar_city_inn.paid_stay_and_shale_service_available",
+      "speakerId": "tarislar_city_inn_narrator",
+      "textProfile": "tarislar.city_inn",
+      "provenance": {
+        "romAddresses": ["0x53B16", "0xF49E8", "0xF49FC", "0xF49C0", "0x21458", "0xCF38"],
+        "scope": "indexed_service_intro_room_transaction_and_tabatha_handoff"
+      },
+      "nodes": {
+        "begin_trigger": {
+          "type": "action",
+          "actionId": "story.begin_trigger",
+          "arguments": { "triggerId": 1 },
+          "next": "inn_intro"
+        },
+        "inn_intro": {
+          "type": "page",
+          "eventId": "entry",
+          "next": "manager_options"
+        },
+        "manager_options": {
+          "type": "choice",
+          "menuId": "inn_service",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "crash", "next": "room_payment" },
+            { "id": "leave", "next": "farewell" },
+            { "id": "shale", "next": "tabatha_conversation" }
+          ]
+        },
+        "room_payment": {
+          "type": "choice",
+          "menuId": "room_payment",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "pay", "next": "charge_room" },
+            { "id": "decline", "next": "farewell" }
+          ]
+        },
+        "charge_room": {
+          "type": "action",
+          "actionId": "building.charge_amount",
+          "arguments": { "amount": 30 },
+          "results": {
+            "paid": "room_paid",
+            "insufficient": "room_insufficient"
+          },
+          "evidence": "ROM command 0x06 charges active price FFF10D; this branch sets it to 30 before the payment prompt."
+        },
+        "room_paid": {
+          "type": "page",
+          "eventId": "room_paid",
+          "next": "hotel_options"
+        },
+        "room_insufficient": {
+          "type": "page",
+          "eventId": "room_insufficient",
+          "next": "stay_on_map"
+        },
+        "hotel_options": {
+          "type": "terminal",
+          "outcome": {
+            "type": "open_service",
+            "serviceId": "hotel.options",
+            "returnPolicy": "origin"
+          }
+        },
+        "farewell": {
+          "type": "page",
+          "eventId": "leave",
+          "next": "stay_on_map"
+        },
+        "tabatha_conversation": {
+          "type": "action",
+          "actionId": "tarislar_city_inn.present_tabatha_conversation",
+          "results": {
+            "field_return": "stay_on_map",
+            "tabatha_state_unavailable": "tabatha_state_boundary",
+            "tabatha_ambush_unconverted": "tabatha_ambush_boundary"
+          },
+          "evidence": "ROM command 0x16 starts the one-shot Tabatha conversation; its attack path reaches the unresolved commands 0x4B, 0x4C, and 0x20."
+        },
+        "tabatha_state_boundary": {
+          "type": "source_boundary",
+          "reason": "ROM command 0x14 at 0x21862 requires the runner source-byte-triplet service, which is unavailable in this session."
+        },
+        "tabatha_ambush_boundary": {
+          "type": "source_boundary",
+          "reason": "ROM encounter commands 0x4B, 0x4C, and 0x20 are not converted yet."
+        },
+        "stay_on_map": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
+    }
+  }
+}

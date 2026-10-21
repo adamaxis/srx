@@ -4,7 +4,12 @@ Status: **partial**. The source-gated Inn service and dialogue tasks are
 connected through the shared Lua location-task path. Debug and Release
 `FieldSceneRuntime` QA now reaches record 68 with ordinary Up input, exercises
 the bit-0/bit-1 title-service gate, advances the intro, selects Leave with B,
-and returns to scene 1 without a charge or scene-53 load. The supplied longplay
+and returns to scene 1 without a charge or scene-53 load. The room/Leave/
+Tabatha choices and paid/insufficient transaction now run through the JSON
+graph. A successful graph transaction yields typed `open_service` for
+`hotel.options`; the graph payment test and a controlled QA call through the
+production service dispatcher verify those two parts separately. This does
+not claim an end-to-end paid physical field transaction. The supplied longplay
 has no identified matching Inn capture, and the Tabatha ambush still stops at
 its unconverted encounter commands.
 
@@ -55,8 +60,14 @@ prompt task. Each row carries a typed location context and the Inn narrator.
 `field_exit_prompt` tasks. `GameScriptRuntime` validates and returns the task
 record; `FieldSceneRuntime` sets the location/field context and opens the Lua
 task through `FieldDialogueRuntime`. The shared host accepts the 30-nuyen
-building transaction and the runner source-byte-triple adjustment. Story facts
-for the Inn's three ROM flag groups use the existing typed native accessors.
+building transaction and the runner source-byte-triple adjustment. The Inn's
+indexed task now runs `conversations/tarislar_city_inn.json`: the named room
+charge action yields paid/insufficient edges, and the paid terminal requests
+`hotel.options` with return policy `origin`. `FieldSceneRuntime` dispatches
+that named host service and also recognizes the shared `hospital.options` ID.
+Story facts for the Inn's three ROM flag groups use the existing typed native
+accessors. Tabatha's authored conversation remains a named Lua action until
+the encounter commands are converted.
 
 The generic dialogue menu resolver now receives whether a prompt carries
 inline title text. It resolves the stable choice labels while leaving the
@@ -85,7 +96,15 @@ key.
   restored scene-1 frame in both Debug and Release
   `qt_runtime/field-tarislar-city-inn-qa/` folders. The QA checks the source
   30-nuyen service is not charged on Leave and that the numeric scene-53 table
-  destination is not used for that same-map service result.
+  destination is not used for that same-map service result. After the physical
+  route, it uses a controlled typed `open_service hotel.options` request to
+  exercise the same production dispatcher and saves
+  `controlled-hotel-options-dispatch.bmp`; it does not simulate a second Inn
+  visit or represent this capture as the paid graph path.
+- `shadowrun_ghidra_field_dialogue_runtime` advances the JSON graph through
+  paid and insufficient-funds results and checks the typed `hotel.options`
+  outcome. Together, these tests cover the graph transaction and host service
+  dispatch in separate, explicit steps.
 - The six Debug panels were inspected at native resolution. They show the
   complete frame and bottom choice area. This is renderer regression evidence,
   not an independent Genesis comparison.

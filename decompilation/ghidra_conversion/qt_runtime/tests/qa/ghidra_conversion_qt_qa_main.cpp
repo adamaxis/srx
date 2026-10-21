@@ -18725,15 +18725,43 @@ int run_field_tarislar_city_inn_qa(
         return 3;
     }
 
+    if (!field_scene.dispatch_dialogue_service_for_dump(
+            "hotel.options", "origin") ||
+        !field_scene.hotel_menu_open() ||
+        field_scene.hotel_menu_phase() != HotelMenuPhase::entity_status ||
+        field_scene.field_scene_reference_for_dump() != 1U) {
+        std::cerr << "Tarislar City Inn QA: typed open_service dispatch seam "
+                     "did not open Hotel Options on scene 1\n";
+        return 3;
+    }
+    // The source hotel screen waits four VBlanks before its status text is
+    // drawn. The controlled seam does not consume the input/release frames
+    // that a physical service outcome would have used, so advance through the
+    // full text delay explicitly here.
+    for (int frame = 0; frame < 5; ++frame) {
+        field_scene.advance_frame();
+    }
+    const auto hotel_options_frame = render();
+    if (hotel_options_frame.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !image_has_green_ink(hotel_options_frame, 24, 48, 240, 48) ||
+        !hotel_options_frame.save(QString::fromStdWString(
+            (output / "controlled-hotel-options-dispatch.bmp").wstring()))) {
+        std::cerr << "Tarislar City Inn QA: controlled Hotel Options frame "
+                     "did not render its full-screen status text\n";
+        return 3;
+    }
+
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) return 3;
-    trace << "record\tevent\tservice\tgate\tmovement_ticks\tresult\taudio_requests\n"
+    trace << "record\tevent\tservice\tgate\tmovement_ticks\tpaid_path\tresult\taudio_requests\n"
           << "68\t1\t1\tstory_bit_0=1,story_bit_1=0\t"
-          << movement_ticks << "\tsame_scene_leave\t"
+          << movement_ticks << "\ttyped_dispatch_seam\t"
+          << "leave_then_controlled_hotel_dispatch_same_scene\t"
           << field_audio_events.size() << '\n';
     std::cout << "field_tarislar_city_inn_qa=passed record=68 event=1 "
                  "service=1 gate=story_bit_0:1,story_bit_1:0 "
-                 "result=same_scene_leave artifacts="
+                 "result=leave_then_controlled_hotel_dispatch_same_scene "
+                 "artifacts="
               << output.string() << '\n';
     return 0;
 }

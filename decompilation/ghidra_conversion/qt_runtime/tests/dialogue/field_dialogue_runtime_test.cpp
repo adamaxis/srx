@@ -399,10 +399,17 @@ int main() {
                 std::string_view::npos) ||
         !expect(capture_tarislar_inn("room-paid")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::hotel_options_requested) ||
-        !expect(runtime.take_gameplay_task_result() ==
-                std::optional<std::string>{"hotel-options"})) {
-        std::cerr << "Tarislar City Inn room transaction did not route paid checkout to Hotel Options\n";
+                FieldDialogueAdvanceResult::open_service_requested)) {
+        std::cerr << "Tarislar City Inn room transaction did not yield its typed service outcome\n";
+        return 121;
+    }
+    const auto inn_service_outcome = runtime.take_gameplay_task_outcome();
+    if (!expect(inn_service_outcome.has_value()) ||
+        !expect(inn_service_outcome->type ==
+                scripting::DialogueOutcomeType::open_service) ||
+        !expect(inn_service_outcome->destination_id == "hotel.options") ||
+        !expect(inn_service_outcome->return_policy == "origin")) {
+        std::cerr << "Tarislar City Inn did not return the Hotel Options service ID and origin policy\n";
         return 121;
     }
 
@@ -683,10 +690,12 @@ int main() {
         return 122;
     }
     const auto insufficient_return = runtime.advance_controller_events(0x4000U);
-    if (insufficient_return != FieldDialogueAdvanceResult::returned_to_field ||
-        runtime.take_gameplay_task_result() !=
-            std::optional<std::string>{"field_return"}) {
-        std::cerr << "Tarislar City Inn did not return after the insufficient-funds page: "
+    const auto insufficient_outcome = runtime.take_gameplay_task_outcome();
+    if (insufficient_return != FieldDialogueAdvanceResult::continue_in_place ||
+        !insufficient_outcome.has_value() ||
+        insufficient_outcome->type !=
+            scripting::DialogueOutcomeType::continue_in_place) {
+        std::cerr << "Tarislar City Inn did not continue in place after the insufficient-funds page: "
                   << static_cast<int>(insufficient_return) << '\n';
         return 122;
     }
@@ -747,10 +756,17 @@ int main() {
         !expect(runtime.panel().kind == DialoguePanelKind::source_boundary) ||
         !expect(runtime.panel().source_boundary_reason.find("0x4B") !=
                 std::string_view::npos) ||
-        !expect(capture_tarislar_inn("tabatha-encounter-boundary")) ||
-        !expect(runtime.take_gameplay_task_result() ==
-                std::optional<std::string>{"tabatha_ambush_unconverted"})) {
+        !expect(capture_tarislar_inn("tabatha-encounter-boundary"))) {
         std::cerr << "Tarislar City Inn did not stop at its unresolved ROM encounter handoff\n";
+        return 123;
+    }
+    const auto tabatha_boundary = runtime.take_gameplay_task_outcome();
+    if (!expect(tabatha_boundary.has_value()) ||
+        !expect(tabatha_boundary->type ==
+                scripting::DialogueOutcomeType::source_boundary) ||
+        !expect(tabatha_boundary->reason.find("0x4B") !=
+                std::string::npos)) {
+        std::cerr << "Tarislar JSON graph did not retain the unresolved encounter boundary\n";
         return 123;
     }
     runtime.close();

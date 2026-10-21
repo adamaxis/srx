@@ -220,6 +220,10 @@ local function validate_graph(graph_id, graph, conditions)
                 owner .. " needs a next edge or result edges")
         elseif node.type == "terminal" then
             validate_outcome(node.outcome)
+        elseif node.type == "source_boundary" then
+            assert(type(node.reason) == "string" and node.reason ~= "" and
+                   #node.reason <= 384,
+                owner .. " needs a bounded source-boundary reason")
         else
             error(owner .. " uses an unsupported node type")
         end
@@ -434,6 +438,12 @@ function Session:run(graph_id, context)
                 outcome[key] = value
             end
             return outcome
+        elseif node.type == "source_boundary" then
+            return {
+                type = "source_boundary",
+                reason = "dialogue_graph:" .. graph_id .. ":" .. node_id ..
+                    ":" .. node.reason,
+            }
         else
             return self:_boundary(graph_id, node_id, "node_type_unresolved")
         end
@@ -441,7 +451,7 @@ function Session:run(graph_id, context)
     return self:_boundary(graph_id, node_id, "step_limit_exceeded")
 end
 
-function DialogueGraph.run(graph_id)
+function DialogueGraph.run(graph_id, registered_actions)
     local content = type(game) == "table" and game.content or nil
     local graph_documents = type(content) == "table" and
         type(content.conversations) == "table" and
@@ -468,7 +478,7 @@ function DialogueGraph.run(graph_id)
     local catalog = Catalog.new(graph_document, conditions)
     local evaluator = ConditionEvaluator.new(
         ConditionEvaluator.FactProvider.new())
-    local actions = DialogueActions.new_default_registry()
+    local actions = DialogueActions.new_default_registry(registered_actions)
     local host = {
         present_page = function(node, speaker_id, text_profile)
             return game.ui.say(node.eventId, speaker_id, text_profile)

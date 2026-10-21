@@ -385,7 +385,24 @@
       "text_profile": "tarislar.garden.apartments.entry"
     },
     "tarislar_city_inn_narrator": {
-      "events": {},
+      "events": {
+        "entry": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.city_inn.entry"
+        },
+        "leave": {
+          "continuation_key": "",
+          "title_key": "tarislar.city_inn.leave"
+        },
+        "room_insufficient": {
+          "continuation_key": "",
+          "title_key": "shared.hotel.room.insufficient"
+        },
+        "room_paid": {
+          "continuation_key": "",
+          "title_key": "shared.hotel.room.paid"
+        }
+      },
       "name": "Narration",
       "portrait_alias": "none",
       "text_profile": "tarislar.city_inn"

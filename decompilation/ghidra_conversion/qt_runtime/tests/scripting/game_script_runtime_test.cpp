@@ -8968,19 +8968,23 @@ int main() {
     }
     auto inn_task = scripts.start_task(
         "tarislar_city_inn", "present_indexed_title_service");
+    const auto inn_entry_text = scripts.dialogue_event_text_keys(
+        "tarislar_city_inn_narrator", "tarislar.city_inn", "entry");
     if (!expect(inn_task.status ==
                         ScriptTaskStep::Status::awaiting_native_operation &&
                     inn_task.operation.has_value() &&
                     inn_task.operation->type ==
-                        ScriptNativeOperation::Type::ui_menu &&
-                    inn_task.operation->menu.has_value() &&
-                    inn_task.operation->menu->id == "shale_more" &&
+                        ScriptNativeOperation::Type::ui_say &&
+                    inn_task.operation->dialogue.has_value() &&
+                    inn_task.operation->dialogue->event_id == "entry" &&
+                    inn_entry_text.has_value() &&
+                    inn_entry_text->title_key == "tarislar.city_inn.entry" &&
                     scripts.story_state().at("story_trigger_active_1"),
-                "Inn service did not open its intro under story trigger 1")) {
+                "Inn JSON graph did not open its generated intro under story trigger 1")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
-    inn_task = scripts.complete_native_menu_choice("more");
+    inn_task = scripts.complete_native_operation(true);
     if (!expect(inn_task.status ==
                         ScriptTaskStep::Status::awaiting_native_operation &&
                     inn_task.operation.has_value() &&
@@ -8988,26 +8992,27 @@ int main() {
                         ScriptNativeOperation::Type::ui_menu &&
                     inn_task.operation->menu.has_value() &&
                     inn_task.operation->menu->id == "inn_service" &&
+                    !inn_task.operation->menu->inline_prompt &&
                     inn_task.operation->menu->choices.size() == 3U,
-                "Inn service did not expose crash, leave, and Tabatha choices")) {
+                "Inn JSON graph did not expose crash, leave, and Tabatha choices")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
     const auto inn_service_menu = scripts.resolve_dialogue_menu(
         *inn_task.operation->menu);
     if (!expect(inn_service_menu.has_value() &&
-                    inn_service_menu->title_key.empty() &&
+                    inn_service_menu->title_key ==
+                        "tarislar.city_inn.offer" &&
                     inn_service_menu->choices.size() == 3U,
-                "Inn service choices do not resolve for its inline source prompt")) {
+                "Inn service choices do not resolve from its JSON menu definition")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
     const auto* inn_offer_text =
         scripts.dialogue_text("tarislar.city_inn.offer");
     if (!expect(inn_offer_text != nullptr &&
-                    inn_task.operation->menu->inline_prompt &&
-                    inn_task.operation->menu->inline_text == *inn_offer_text,
-                "Inn inline service prompt differs from its regenerated ROM text")) {
+                    inn_service_menu->title_key == "tarislar.city_inn.offer",
+                "Inn menu title does not resolve to its generated ROM text")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
@@ -9018,17 +9023,17 @@ int main() {
                     inn_task.operation->type ==
                         ScriptNativeOperation::Type::ui_say &&
                     inn_task.operation->dialogue.has_value() &&
-                    inn_task.operation->dialogue->inline_text ==
-                        "I'll be seeing you, chum.",
+                    inn_task.operation->dialogue->event_id == "leave",
                 "Inn leave choice did not produce the source farewell")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
     inn_task = scripts.complete_native_operation(true);
     if (!expect(inn_task.status == ScriptTaskStep::Status::completed &&
-                    inn_task.result_id ==
-                        std::optional<std::string>{"field_return"},
-                "Inn service did not return to the field after leaving")) {
+                    inn_task.dialogue_outcome.has_value() &&
+                    inn_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place,
+                "Inn JSON graph did not continue in place after leaving")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }

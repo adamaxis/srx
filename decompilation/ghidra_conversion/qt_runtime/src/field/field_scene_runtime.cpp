@@ -15839,6 +15839,15 @@ void FieldSceneRuntime::advance_frame() {
                 begin_field_modal_return_transition();
             }
         } else if (result ==
+                   FieldDialogueAdvanceResult::open_service_requested) {
+            const auto outcome = field_dialogue_.take_gameplay_task_outcome();
+            if (!outcome.has_value()) {
+                source_boundary(
+                    "field.dialogue.open_service_outcome_unresolved");
+                return;
+            }
+            (void)dispatch_open_service_outcome(*outcome);
+        } else if (result ==
                    FieldDialogueAdvanceResult::hotel_options_requested) {
             // Room-payment tasks are an alternate mode service outcome. They
             // enter Hotel Options without resuming a pending area-table
@@ -16867,6 +16876,16 @@ bool FieldSceneRuntime::open_command_overview_for_dump() {
     return command_overview_.open();
 }
 
+bool FieldSceneRuntime::dispatch_dialogue_service_for_dump(
+    const std::string_view service_id,
+    const std::string_view return_policy) {
+    scripting::DialogueOutcome outcome{};
+    outcome.type = scripting::DialogueOutcomeType::open_service;
+    outcome.destination_id = std::string(service_id);
+    outcome.return_policy = std::string(return_policy);
+    return dispatch_open_service_outcome(outcome);
+}
+
 bool FieldSceneRuntime::open_hospital_menu_for_dump(
     const std::string_view function) {
     if (!ready_ || (function != "present_options" &&
@@ -17319,6 +17338,42 @@ void FieldSceneRuntime::begin_hotel_menu() {
                      field_party_roster_.active_slot());
     refresh_field_hud_runner_slot();
     source_boundary("field.hotel.entity_status.opened");
+}
+
+bool FieldSceneRuntime::dispatch_open_service_outcome(
+    const scripting::DialogueOutcome& outcome) {
+    if (!ready_ ||
+        outcome.type != scripting::DialogueOutcomeType::open_service) {
+        source_boundary("field.dialogue.open_service_outcome_invalid");
+        return false;
+    }
+    if (outcome.return_policy != "origin") {
+        source_boundary("field.dialogue.open_service_return_policy_unresolved:" +
+                        outcome.return_policy);
+        return false;
+    }
+
+    field_mode_entry_transition_pending_ = false;
+    field_mode_entry_destination_scene_.reset();
+    field_mode_entry_run_target_actor_group_.reset();
+
+    if (outcome.destination_id == "hotel.options") {
+        begin_hotel_menu();
+        return hotel_menu_.open();
+    }
+    if (outcome.destination_id == "hospital.options") {
+        hospital_service_session_active_ = false;
+        game_scripts_.set_location_context(
+            "building", "council_island_hospital",
+            "council_island_hospital", "council_island_hospital_narrator");
+        game_scripts_.set_field_mode_context(
+            scripting::ScriptFieldModeContext{4U, 4U, 0});
+        return begin_hospital_menu_task("present_options");
+    }
+
+    source_boundary("field.dialogue.open_service_unknown:" +
+                    outcome.destination_id);
+    return false;
 }
 
 bool FieldSceneRuntime::load_command_overview_menu_content() {

@@ -357,6 +357,8 @@ public:
         std::uint16_t source_order, std::uint8_t physical_meter) noexcept;
     bool open_command_overview_for_dump();
 #ifdef SHADOWRUN_QT_QA_DRIVER
+    bool dispatch_dialogue_service_for_dump(
+        std::string_view service_id, std::string_view return_policy);
     bool open_hospital_menu_for_dump(std::string_view function);
     bool open_ordinary_field_terminal_for_dump(
         std::uint32_t contact_flags, std::uint32_t funds);
@@ -1491,6 +1493,8 @@ private:
     FieldActionBaseCostLookup item_base_cost_lookup() const;
     FieldActionBaseCostLookup item_resale_base_lookup() const;
     void begin_hotel_menu();
+    bool dispatch_open_service_outcome(
+        const scripting::DialogueOutcome& outcome);
     bool load_command_overview_menu_content();
     bool load_hotel_menu_content();
     bool load_pocket_secretary_menu_content();

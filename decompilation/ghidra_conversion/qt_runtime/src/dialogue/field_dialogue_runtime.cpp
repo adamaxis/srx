@@ -384,12 +384,13 @@ FieldDialogueRuntime::resolve_typed_outcome(
         return FieldDialogueAdvanceResult::resume_source_route;
     case scripting::DialogueOutcomeType::enter_field_scene:
         return FieldDialogueAdvanceResult::enter_field_scene_requested;
+    case scripting::DialogueOutcomeType::open_service:
+        return FieldDialogueAdvanceResult::open_service_requested;
     case scripting::DialogueOutcomeType::source_boundary:
         open_source_boundary(task.dialogue_outcome->reason);
         return FieldDialogueAdvanceResult::source_boundary;
     case scripting::DialogueOutcomeType::return_to_origin:
     case scripting::DialogueOutcomeType::enter_activity:
-    case scripting::DialogueOutcomeType::open_service:
     case scripting::DialogueOutcomeType::play_cinematic:
         open_source_boundary(
             "field dialogue outcome is not dispatched yet: " +

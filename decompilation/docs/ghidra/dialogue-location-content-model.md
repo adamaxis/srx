@@ -5,9 +5,10 @@ text catalog, speaker/menu/contact catalogs, and location condition catalog
 are JSON-backed. All 87 current entity link rows reference named JSON
 conditions where needed. The Lua graph engine and typed outcome bridge now
 drive Gates Undersound's same-map service plus the Renraku and Fuchi gated
-entry pages. Remaining conversation routes and most host outcome dispatchers
-are pending; this does not claim every listed route is implemented or
-visually verified.
+entry pages, plus the Tarislar City Inn paid-stay graph. The field host now
+dispatches the `hotel.options` and `hospital.options` service IDs. Remaining
+conversation routes and other service outcome dispatchers are pending; this
+does not claim every listed route is implemented or visually verified.
 
 ## Design goals
 
@@ -346,11 +347,11 @@ The C++ script boundary parses a discriminated `DialogueOutcome` value:
 `continue_in_place`, `resume_source_route`, `return_to_origin`,
 `enter_field_scene`, `enter_activity`, `open_service`, `play_cinematic`, and a
 diagnostic `source_boundary`. Route data can declare the expected typed result
-for a pre-entry page. The field presenter currently dispatches
-`continue_in_place`, `resume_source_route`, and the Sharkey travel form of
-`enter_field_scene`. Return, activity, service-screen, and cinematic outcomes
-still stop at an explicit host boundary until their coordinators are
-source-traced and connected.
+for a pre-entry page. The field presenter dispatches `continue_in_place`,
+`resume_source_route`, the Sharkey travel form of `enter_field_scene`, and the
+named `hotel.options`/`hospital.options` service screens. Return, activity,
+other service-screen, and cinematic outcomes still stop at an explicit host
+boundary until their coordinators are source-traced and connected.
 
 Three source-backed graphs exercise that contract:
 
@@ -365,6 +366,15 @@ Three source-backed graphs exercise that contract:
   `resume_source_route`; the route link expects that type before loading the
   already selected activity 21. Its old `enter_scene_21` result string has
   been removed from this route.
+- Tarislar City Inn service 1 is a JSON graph with its intro, room/Leave/Tabatha
+  choices, 30-nuyen payment, insufficient-funds branch, and same-map return.
+  A successful payment yields `open_service` for `hotel.options` with the
+  `origin` return policy. Its named Tabatha action remains Lua-owned, and the
+  unconverted runner/ambush commands remain explicit source boundaries. The
+  graph/payment outcome is covered by the field-dialogue runtime test; the
+  FieldScene QA separately checks physical entry/Leave and exercises the
+  production hotel dispatcher through a controlled typed-outcome seam, so it
+  does not claim one end-to-end paid field transaction.
 
 The Lua graph tests cover branch fallback, unknown-condition boundaries,
 condition-filtered choices, cursor input, registered action result edges,
