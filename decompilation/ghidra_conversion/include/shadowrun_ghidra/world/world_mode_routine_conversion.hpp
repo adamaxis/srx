@@ -20,7 +20,8 @@ struct WorldModeRoutineState {
     std::uint16_t menu_delay = 0;
     std::uint16_t behavior_start = 0;
     std::uint16_t behavior_end = 0;
-    std::uint8_t field_effect_marker = 0;
+    std::uint8_t world_effect_gate = 0; // FFDF84
+    std::uint8_t terrain_copy_suppression = 0; // FFE171
     bool exit_requested = false;
     std::uint32_t iterations = 0;
 };

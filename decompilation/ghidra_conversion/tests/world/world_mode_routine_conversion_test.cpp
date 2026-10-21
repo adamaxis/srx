@@ -12,9 +12,13 @@ int main() {
     state.observed_audio_menu_generation = 2U;
     state.field_mode = 1U;
     state.animation_seed = 7U;
+    state.world_effect_gate = 0x80U;
+    state.terrain_copy_suppression = 0x12U;
 
     std::vector<std::string> calls;
     int ticks = 0;
+    bool first_pass_gate_reset = false;
+    bool second_pass_gate_reset = false;
     const auto record = [&calls](const char* name) {
         calls.emplace_back(name);
     };
@@ -48,6 +52,14 @@ int main() {
     callbacks.run_menu_hud_tick_loop = [&](WorldModeRoutineState& current) {
         record("tick");
         ++ticks;
+        if (ticks == 1) {
+            first_pass_gate_reset = current.world_effect_gate == 0U &&
+                                    current.terrain_copy_suppression == 0xFFU;
+            current.world_effect_gate = 0xFFU;
+        } else if (ticks == 2) {
+            second_pass_gate_reset = current.world_effect_gate == 0U &&
+                                     current.terrain_copy_suppression == 0xFFU;
+        }
         current.exit_requested = ticks == 2;
     };
     callbacks.service_audio_variant = [&] { record("audio-variant"); };
@@ -60,7 +72,10 @@ int main() {
     run_world_mode_routine(state, callbacks);
 
     if (state.published_resource_token != 0x4321U ||
-        state.field_effect_marker != 0xFFU || state.iterations != 2U ||
+        state.world_effect_gate != 0U ||
+        state.terrain_copy_suppression != 0xFFU ||
+        !first_pass_gate_reset || !second_pass_gate_reset ||
+        state.iterations != 2U ||
         state.behavior_start != 0x0120U || state.behavior_end != 0x012FU ||
         ticks != 2 || calls.size() < 20U || calls.front() != "audio-reset" ||
         calls[1] != "audio-copy" || calls[2] != "delay" ||

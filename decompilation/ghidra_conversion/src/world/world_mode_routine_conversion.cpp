@@ -17,7 +17,6 @@ void run_world_mode_routine(
     state.published_resource_token = state.resource_token;
     state.menu_delay = 10U;
     state.audio_cursor = 0U;
-    state.field_effect_marker = 0U;
 
     if (state.audio_menu_generation != state.observed_audio_menu_generation) {
         call_once(callbacks.reset_audio_menu_arrays);
@@ -38,10 +37,14 @@ void run_world_mode_routine(
         state.behavior_start = 0U;
         state.behavior_end = 0U;
         state.menu_delay = 0x28U;
+        // ROM 0x174E4 clears FFDF84 on every outer pass. The backedge at
+        // 0x1768C returns to 0x174C6, before this clear.
+        state.world_effect_gate = 0U;
 
         call_once(callbacks.convert_audio_setup);
         if (state.field_mode != 0U) {
-            state.field_effect_marker = 0xFFU;
+            // 0x17524 sets FFE171; it is a separate terrain-copy gate.
+            state.terrain_copy_suppression = 0xFFU;
         }
         call_once(callbacks.prepare_mode_entry);
         call_once(callbacks.clear_plane_a);
