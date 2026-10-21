@@ -833,12 +833,16 @@ hypothesis that the next outer pass preserves the negative `FFDF84` marker.
 The field traversal path enters after the `0x174E4` clear. The direct menu
 entry at `0x181F8` does not itself clear `FFDF84`, so it must receive the
 current value from its host; the Qt host callback is still a false-valued
-stub and direct-entry gate fidelity remains open. A later controller
-reselection is possible through `0x1A370` -> `0x561E8` -> `0x56116` when its
-gate, countdown, and alert-state conditions pass. The typed mode-3 fixture
-predicts phase 4 after 238 service calls. Lua holds its selected mode through
-the node-action loop; whether and when the controller reselection path runs on
-the live route remains open. A separate
+stub and direct-entry gate fidelity remains open. The controller path
+`0x1A370` -> `0x561E8` -> `0x56116` does not run between initial mode setup and
+the node-action handoff: while `0x1D2E6` reports the entry sequence incomplete,
+`0x1ADE6` branches to `0x1AFC0` before the `0x1AF74` controller call; when the
+sequence completes, `0x1ADE6` enters the blocking `0x54662` loop. However,
+profile and effect services later in the `0x1AFC0` path can call
+`0x1B706` -> `0x1A908` directly when their source flags are set. Whether one
+of those services reselects the live route's mode remains open. The typed
+mode-3 fixture predicts phase 4 after 238 service calls. Lua holds its
+selected mode through the node-action loop. A separate
 presenter QA now constructs the typed rank-zero System 15/node 13 SPU view,
 renders all six named mode-3 phases through the production presenter, and
 compares each full 320x224 output against Section 15 frame `004800`. Phase 5
