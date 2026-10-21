@@ -10,6 +10,13 @@ scene 0. The work-contract branch remains unresolved.
 - Scene 2 event record 85 at `0x1730FC` is event 4; its route-table byte at
   `0x172CE0` selects numeric field scene 13. The separate indexed title
   service may show the Jump House entry page before the map loads.
+- Puyallup Scene 1 record 69/event 5 (guide crosswalk: Crime Mall) and record
+  72/event 3 (guide crosswalk: Riannon's Magic Shop) both select the same
+  numeric scene 13 without an entry dialogue in ordinary-input route QA.
+  FFFC1E bit 19 is tested after scene preparation and selects script 3 with
+  `lone11_k0a_item03` at `(4352,768)`; the flag does not gate either entrance.
+  This route evidence does not establish that the shared room is a named shop
+  interior or that the Lua service-title key opens a shop catalog.
 - Scene 13 has no default map actors. The Gunderson portrait selected by event
   30 is dialogue art, not a resident sprite.
 - Scene 13 records 11 and 12 (`0x1B3CF8`, `0x1B3D02`) are adjacent event-30

@@ -406,6 +406,13 @@ add_shadowrun_qt_qa_case(
     --field-crime-mall-ilene-gate-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-crime-mall-ilene-gate-qa")
 
+# Reuse the same route probe for Riannon's event-3 entrance to shared Scene 13.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_riannons_magic_shop_entry_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-riannons-magic-shop-entry-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-riannons-magic-shop-entry-qa")
+
 # Every accepted collision is policy-routed through field_events.lua; the
 # native event system records the typed result and still supports scoped
 # scene-entry and actor-within-scope rules.
