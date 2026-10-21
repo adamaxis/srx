@@ -436,13 +436,44 @@ bool verify_dialogue_graph_outcomes(
     }
     task = scripts.complete_native_operation(true);
     const auto renraku_state = scripts.story_state();
+    if (!expect(task.status == ScriptTaskStep::Status::completed &&
+                    task.dialogue_outcome.has_value() &&
+                    task.dialogue_outcome->type ==
+                        DialogueOutcomeType::resume_source_route &&
+                    renraku_state.at("story_trigger_active_12") &&
+                    !renraku_state.at("story_flag_bit_12"),
+                "Renraku graph did not resume the selected source route")) {
+        return false;
+    }
+
+    scripts.set_location_context(
+        "building", "penumbra_site_02_fuchi", "penumbra.fuchi",
+        "fuchi_offices_narrator");
+    scripts.set_field_mode_context(ScriptFieldModeContext{0U, 2U, 0});
+    scripts.set_story_state({
+        {"story_flag_bit_25", true},
+        {"story_flag_bit_14", false},
+    });
+    task = scripts.start_task(
+        "fuchi_offices", "present_cyberheart_entry");
+    if (!expect(task.status == ScriptTaskStep::Status::
+                                   awaiting_native_operation &&
+                    task.operation.has_value() &&
+                    task.operation->type == ScriptNativeOperation::Type::ui_say &&
+                    task.operation->dialogue.has_value() &&
+                    task.operation->dialogue->event_id == "entry",
+                "Fuchi graph did not present its source page")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    const auto fuchi_state = scripts.story_state();
     return expect(task.status == ScriptTaskStep::Status::completed &&
                       task.dialogue_outcome.has_value() &&
                       task.dialogue_outcome->type ==
                           DialogueOutcomeType::resume_source_route &&
-                      renraku_state.at("story_trigger_active_12") &&
-                      !renraku_state.at("story_flag_bit_12"),
-                  "Renraku graph did not resume the selected source route");
+                      fuchi_state.at("story_trigger_active_14") &&
+                      !fuchi_state.at("story_flag_bit_14"),
+                  "Fuchi graph did not resume the selected source route");
 }
 
 } // namespace
@@ -2182,8 +2213,9 @@ int main() {
                     "fuchi_offices" &&
                 fuchi_office_first_visit->entry_dialogue_function ==
                     "present_cyberheart_entry" &&
-                fuchi_office_first_visit->entry_continue_result_id ==
-                    "enter_scene_21" &&
+                fuchi_office_first_visit->entry_continue_outcome_type ==
+                    std::optional<DialogueOutcomeType>{
+                        DialogueOutcomeType::resume_source_route} &&
                 fuchi_office_first_visit->entry_resource_override ==
                     FieldLocationResourceEntryOverride::
                         index_two_marker_three &&

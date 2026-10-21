@@ -45,12 +45,13 @@ local gated_entry = {
     entry_location_id = "penumbra_site_02_fuchi",
     entry_text_profile = "penumbra.fuchi",
     entry_speaker_id = "fuchi_offices_narrator",
-    entry_continue_result_id = "enter_scene_21",
+    entry_continue_outcome_type = "resume_source_route",
 }
 
 game = {
     state = { story_flag_bit_25 = true, story_flag_bit_14 = false },
     location = { type = "building", id = "penumbra_site_02_fuchi" },
+    field = { event_code = 2, alternate_result = 0 },
     ui = {
         say = function(event_id)
             game.last_dialogue_event = event_id
@@ -85,6 +86,10 @@ end
 game.content.speakers = load_dialogue_catalog("speakers")
 game.content.contacts = load_dialogue_catalog("contacts")
 game.content.menus = load_dialogue_catalog("menus")
+game.content.conditions = load_dialogue_catalog("conditions")
+game.content.conversations = {
+    fuchi_offices = load_dialogue_catalog("conversations/fuchi_offices"),
+}
 
 local Dialogue = require("dialogue")
 local FuchiOffices = require("fuchi_offices")
@@ -103,8 +108,9 @@ local route = Building.resolve_field_location_route(context)
 assert(route.kind == "area_event" and route.area_event_target == 21)
 assert(route.entry_dialogue_module == "fuchi_offices" and
        route.entry_dialogue_function == "present_cyberheart_entry" and
-       route.entry_continue_result_id == "enter_scene_21")
-assert(FuchiOffices.present_cyberheart_entry() == "enter_scene_21")
+       route.entry_continue_outcome_type == "resume_source_route")
+local entry_outcome = FuchiOffices.present_cyberheart_entry()
+assert(entry_outcome.type == "resume_source_route")
 assert(game.last_dialogue_event == "entry" and
        game.state.story_trigger_active_14 == true and
        game.state.story_flag_bit_14 == false)
@@ -119,7 +125,9 @@ local completed_route = Building.resolve_field_location_route(context)
 assert(completed_route.kind == "area_event" and
        completed_route.area_event_target == 21 and
        completed_route.entry_dialogue_module == nil)
-assert(FuchiOffices.present_cyberheart_entry() == "denied")
+local repeat_outcome = FuchiOffices.present_cyberheart_entry()
+assert(repeat_outcome.type == "source_boundary" and
+       repeat_outcome.reason:match("precondition:not_satisfied") ~= nil)
 
 game.state.story_flag_bit_14 = false
 game.state.story_flag_bit_25 = false

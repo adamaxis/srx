@@ -12,10 +12,12 @@ destination.
 
 The Lua link for `penumbra_site_02_fuchi` records the source conditions and
 entry task in `gameplay/world/entities/penumbra_site_02_fuchi/links.tsv`.
-`fuchi_offices.present_cyberheart_entry()` validates the building location
-and story bits, marks trigger 14 active, says the extracted `entry` page, and
-returns `enter_scene_21`. The active trigger index is separate from FFFC1E
-bit 14, which remains clear as required by the route gate.
+`conversations/fuchi_offices.json` declares the location, event, alternate
+result, and story-bit precondition, then runs the registered trigger-14 action,
+shows the extracted `entry` page, and returns the typed
+`resume_source_route` outcome. The host checks this result against the route's
+expected type before continuing to activity 21. The active trigger index is
+separate from FFFC1E bit 14, which remains clear as required by the route gate.
 
 ## Physical QA
 

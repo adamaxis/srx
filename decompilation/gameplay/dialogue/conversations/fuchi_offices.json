@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "fuchi_offices.cyberheart_entry": {
+      "entryNode": "begin_trigger",
+      "precondition": "penumbra_fuchi.cyberheart_entry_available",
+      "speakerId": "fuchi_offices_narrator",
+      "textProfile": "penumbra.fuchi",
+      "provenance": {
+        "romAddresses": ["0x54152", "0x11B7F4", "0x11C213"],
+        "scope": "title_service_14_entry_page_then_resume_event_route"
+      },
+      "nodes": {
+        "begin_trigger": {
+          "type": "action",
+          "actionId": "story.begin_trigger",
+          "arguments": { "triggerId": 14 },
+          "next": "cyberheart_entry_page"
+        },
+        "cyberheart_entry_page": {
+          "type": "page",
+          "eventId": "entry",
+          "next": "resume_activity_route"
+        },
+        "resume_activity_route": {
+          "type": "terminal",
+          "outcome": { "type": "resume_source_route" }
+        }
+      }
+    }
+  }
+}

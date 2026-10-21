@@ -206,6 +206,30 @@ int main() {
     }
 
     gameplay_scripts.set_story_state({
+        {"story_flag_bit_25", true},
+        {"story_flag_bit_14", false},
+    });
+    gameplay_scripts.set_location_context(
+        "building", "penumbra_site_02_fuchi", "penumbra.fuchi",
+        "fuchi_offices_narrator");
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{0U, 2U, 0});
+    if (!expect(runtime.open_gameplay_task(
+                    "fuchi_offices", "present_cyberheart_entry")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::resume_source_route)) {
+        std::cerr << "Fuchi graph did not complete as resume_source_route\n";
+        return 132;
+    }
+    const auto fuchi_outcome = runtime.take_gameplay_task_outcome();
+    if (!expect(fuchi_outcome.has_value() &&
+                fuchi_outcome->type ==
+                    scripting::DialogueOutcomeType::resume_source_route)) {
+        std::cerr << "Fuchi graph lost its typed outcome at the presenter\n";
+        return 133;
+    }
+
+    gameplay_scripts.set_story_state({
         {"vigore_lead_available", false},
         {"vigore_search_pending", false},
         {"errascoe_question_available", false},

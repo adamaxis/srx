@@ -4,9 +4,10 @@ Status: design, source inventory, and staged implementation. The generated
 text catalog, speaker/menu/contact catalogs, and location condition catalog
 are JSON-backed. All 87 current entity link rows reference named JSON
 conditions where needed. The Lua graph engine and typed outcome bridge now
-drive Gates Undersound's same-map service and Renraku's entry page. Remaining
-conversation routes and most host outcome dispatchers are pending; this does
-not claim every listed route is implemented or visually verified.
+drive Gates Undersound's same-map service plus the Renraku and Fuchi gated
+entry pages. Remaining conversation routes and most host outcome dispatchers
+are pending; this does not claim every listed route is implemented or
+visually verified.
 
 ## Design goals
 
@@ -350,7 +351,7 @@ for a pre-entry page. The field presenter currently dispatches
 stop at an explicit host boundary until their return, travel, service, and
 cinematic coordinators are source-traced and connected.
 
-Two source-backed graphs exercise that contract:
+Three source-backed graphs exercise that contract:
 
 - Gates Undersound trigger 15 performs the ordered trigger/page/effect-flag/
   trigger-tail operations and returns `continue_in_place`, suppressing event
@@ -359,13 +360,17 @@ Two source-backed graphs exercise that contract:
   `resume_source_route`; the route link expects that type before loading the
   already selected activity 35. Its old `enter_scene_35` result string has
   been removed from this route.
+- Fuchi title service 14 performs its trigger/page and returns
+  `resume_source_route`; the route link expects that type before loading the
+  already selected activity 21. Its old `enter_scene_21` result string has
+  been removed from this route.
 
 The Lua graph tests cover branch fallback, unknown-condition boundaries,
 condition-filtered choices, cursor input, registered action result edges,
 pages, and every declared successful outcome shape. The C++ runtime test
-advances both real JSON graphs through their page yield and checks their typed
-outcomes and ordered story effects. Debug CTest also exercises those graphs
-through the field dialogue presenter. Full physical route QA and independent
-Genesis comparison remain separate evidence; the reviewed longplay shows
-shared panel/menu examples but no matching Gates departure or Renraku
-first-entry sequence.
+advances all three real JSON graphs through their page yield and checks their
+typed outcomes and ordered story effects. Debug and Release CTests also
+exercise them through the field dialogue presenter. Full physical route QA and
+independent Genesis comparison remain separate evidence; the reviewed
+longplay shows shared panel/menu examples but no matching Gates departure or
+Renraku/Fuchi first-entry sequence.
