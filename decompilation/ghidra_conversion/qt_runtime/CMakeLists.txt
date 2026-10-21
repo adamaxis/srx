@@ -778,8 +778,9 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_scene25_e
                  --field-elevator-scene25-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-elevator-scene25-entry-qa")
 
-# Enter the 21/22/23/24 group from scene 25, then follow source selector
-# handoffs through each member-scene event-29 trigger and back to scene 22.
+# Enter the 21/22/23/24 group from scene 25, follow source selector handoffs
+# through each member-scene event-29 trigger, then test scene 22's event-31
+# Matrix route from its adjacent cell.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_elevator_scene25_group_roundtrip_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-elevator-scene25-group-roundtrip-qa

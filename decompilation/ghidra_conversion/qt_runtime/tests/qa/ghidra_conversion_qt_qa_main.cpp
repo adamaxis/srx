@@ -28085,7 +28085,18 @@ int main(int argc, char** argv) {
                                      4U>
                         member_routes{{{22U, 2U}, {23U, 3U}, {24U, 0U},
                                        {21U, 1U}}};
-                    return run_group_members(member_routes);
+                    const auto group_status =
+                        run_group_members(member_routes);
+                    if (group_status != 0) {
+                        return group_status;
+                    }
+                    const auto matrix_output =
+                        *field_elevator_nonmember_entry_qa_path /
+                        "scene22-resource-matrix-entry";
+                    std::filesystem::create_directories(matrix_output);
+                    return run_resource_scene_matrix_entry_menu_qa(
+                        field_scene, matrix_output, 22U, 136U, 0x16U, 0x0DU,
+                        0x00D0U, 0x0330U);
                 } else if (*field_elevator_nonmember_entry_scene == 34U &&
                            field_elevator_scene34_group_roundtrip_qa) {
                     const std::array<std::pair<std::uint16_t, std::uint8_t>,
