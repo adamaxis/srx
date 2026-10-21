@@ -128,14 +128,20 @@ Wilma Temmenhoff's service tree is the fifth graph. JSON owns the credstick
 introduction, Matrix pages, program offer, transaction results, and the
 different Services/Goodbye return destinations. Her Lua module only registers
 the Rebound and Degrade transactions; the typed host service retains the ROM
-price and rating-3 storage/write behavior. Gregory's service tree remains
-procedural.
+price and rating-3 storage/write behavior.
 
 Sgt. Macklemann's service tree is the sixth graph. JSON owns the Security and
 Avoid Detection lessons, their Services/Goodbye loops, and the Hollywood badge
 offer/result pages. The Lua adapter registers the single badge transaction;
 the host service retains the 5,000-nuyen charge and Hollywood gate flag write.
-Gregory is the only converted contact service tree still procedural.
+
+Gregory Wilns' service tree is the seventh graph. JSON owns the paranormal
+creature lesson, Merlin's Lore discount offer, Power Focus offer, result pages,
+and return/farewell routes. His Lua adapter registers the two typed purchase
+actions; host services retain eligibility, affordability, inventory, feature
+flag, and item rules. All seven contacts with source-derived services now use
+JSON graphs; the other six contact records remain without inferred service
+behavior.
 
 The Ares Weapon Emporium stock is declared in `gameplay/scripts/shop.lua`.
 The script groups offers under stable category names; `GameScriptRuntime`

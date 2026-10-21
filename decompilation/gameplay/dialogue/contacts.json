@@ -189,7 +189,11 @@
         "textKey": "vid_phone.contact.gregory_wilns.repeat_call",
         "continuation": false
       },
-      "service": { "module": "vid_phone.gregory_wilns", "function": "services" },
+      "service": {
+        "module": "vid_phone.gregory_wilns",
+        "graphId": "vid_phone.gregory_wilns.services",
+        "graphScope": "services"
+      },
       "farewellEvent": "goodbye"
     },
     {

@@ -305,15 +305,18 @@ checks the charge, gate flag, and unchanged contact bit. Debug/Release script,
 service, and panel CTests pass. The panel captures are internal regression
 artifacts; no matching independent call frame or physical Macklemann-service
 route is identified, so the visual hill remains partial.
-Gregory Wilns's record at `0x10C7FA` now opens the Lua tree at `0x10C838`.
-The four-page paranormal-creature lesson returns to Services; command `0x77`
+Gregory Wilns's record at `0x10C7FA` opens the JSON service graph at `0x10C838`.
+It owns the four-page paranormal-creature lesson, both offers, result menus,
+and typed transaction branches; Lua registers the two host actions. The
+creature lesson returns to Services; command `0x77`
 charges 4,000 and sets `FF018F` bit 7 for the 25% Ares shop discount, and
 command `0x78` charges 50,000 for item 24 (Power Focus, phase 2) only when the
 runner's signed `+0x9B` value is below 2 and an inventory slot is free. The
 host passes that saved flag through shop price quotes and confirmations. Debug
 and Release script, service, and full-frame panel tests cover the lesson,
 Goodbye/Talk Later paths, both purchases, eligibility, insufficient funds,
-and full inventory. These captures are runtime regression evidence; no
+and full inventory. The graph permutation suite covers every dialogue edge
+and recognized action result. These captures are runtime regression evidence; no
 independent Genesis call frame or physical route to Gregory's service has been
 identified, so the hill remains partial. Its full-screen captures are source/runtime regression
 evidence, not an independent Genesis comparison. The QA opens the field

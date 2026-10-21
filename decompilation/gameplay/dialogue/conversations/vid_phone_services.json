@@ -910,6 +910,153 @@
           "outcome": { "type": "continue_in_place" }
         }
       }
+    },
+    "vid_phone.gregory_wilns.services": {
+      "entryNode": "services",
+      "speakerId": "vid_phone_gregory_wilns",
+      "textProfile": "field.vid_phone",
+      "provenance": {
+        "romAddresses": [
+          "0x10C7FA", "0x10C838", "0x10C9B2", "0x10CB0A",
+          "0x10CBEB", "0x10CCA8", "0x10CD8F", "0x10CDDB",
+          "0x10CE5F", "0x10CED5", "0x10CFBB", "0x10D020",
+          "0x10CA8B", "0x1109B1", "0x22C22", "0x22C46"
+        ],
+        "scope": "gregory_creature_lesson_discount_and_power_focus_services"
+      },
+      "nodes": {
+        "services": {
+          "type": "choice",
+          "menuId": "gregory_services",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "paranormal_creatures", "next": "creature_page_1" },
+            { "id": "magic_enhancement_device", "next": "power_focus_offer" },
+            { "id": "corporate_discount", "next": "discount_offer" }
+          ]
+        },
+        "creature_page_1": {
+          "type": "choice",
+          "menuId": "gregory_creature_page_1",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "creature_page_2" }
+          ]
+        },
+        "creature_page_2": {
+          "type": "choice",
+          "menuId": "gregory_creature_page_2",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "creature_page_3" }
+          ]
+        },
+        "creature_page_3": {
+          "type": "choice",
+          "menuId": "gregory_creature_page_3",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "creature_page_4" }
+          ]
+        },
+        "creature_page_4": {
+          "type": "choice",
+          "menuId": "gregory_creature_page_4",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "discount_offer": {
+          "type": "choice",
+          "menuId": "gregory_discount_offer",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "accept_discount", "next": "purchase_discount" },
+            { "id": "decline_discount", "next": "services" },
+            { "id": "talk_later", "next": "goodbye" }
+          ]
+        },
+        "purchase_discount": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_merlins_lore_discount",
+          "results": {
+            "discount_enabled": "discount_result",
+            "insufficient": "insufficient_balance",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "discount_result": {
+          "type": "choice",
+          "menuId": "gregory_discount_result",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "power_focus_offer": {
+          "type": "choice",
+          "menuId": "gregory_power_focus_offer",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "buy_power_focus", "next": "purchase_power_focus" },
+            { "id": "decline_discount", "next": "services" },
+            { "id": "talk_later", "next": "goodbye" }
+          ]
+        },
+        "purchase_power_focus": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_power_focus",
+          "results": {
+            "purchased": "power_focus_result",
+            "insufficient": "insufficient_balance",
+            "ineligible": "power_focus_ineligible",
+            "out_of_stock": "power_focus_unavailable",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "power_focus_result": {
+          "type": "choice",
+          "menuId": "gregory_power_focus_result",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "insufficient_balance": {
+          "type": "page",
+          "eventId": "insufficient_balance",
+          "next": "finished"
+        },
+        "power_focus_unavailable": {
+          "type": "page",
+          "eventId": "power_focus_unavailable",
+          "next": "finished"
+        },
+        "power_focus_ineligible": {
+          "type": "page",
+          "eventId": "power_focus_ineligible",
+          "next": "finished"
+        },
+        "goodbye": {
+          "type": "page",
+          "eventId": "goodbye",
+          "next": "finished"
+        },
+        "service_boundary": {
+          "type": "source_boundary",
+          "reason": "Gregory's transaction returned an unavailable or unrecognized source result."
+        },
+        "finished": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
     }
   }
 }
