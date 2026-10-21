@@ -33,6 +33,25 @@ activity-21 scene loads after A. This validates the host route and capture
 dimensions, not visual equivalence to an independent Genesis capture. No
 independent Genesis frame is available.
 
+## Physical activity exit
+
+Scene 21 collision record 102 at `0x1D7962` is an event-0 cell at
+`x=0x0440..0x045F`, `y=0x04C0..0x04DF`, with collision value `0x0080`; records
+103-105 continue the same adjacent area. With no event table, ordinary event
+0 takes `0xB7B8` through `0x1651E` and starts the normal field transition.
+The entry context saved by `0x16E30` is restored by the shared `0x2F32` scene
+path.
+
+Debug and Release QA seed the safe cell immediately north of record 102, then
+use ordinary Down input to enter it. The transition restores Scene 3 at the
+saved collision-probe lead `(2248, 6088)` and heading `0x8000`; the route takes
+32 movement updates from the seeded approach point. Captures include
+`activity-exit-approach.bmp`, `activity-exit-contact.bmp`, and
+`source-field-return.bmp`. All seven 320x224 BMPs and the route trace match
+between Debug and Release. The exit route uses a seeded approach point, so it
+does not establish an uninterrupted walk from the activity spawn. The
+independent Genesis interior and exit appearance remains unavailable.
+
 ## Resource entry context
 
 The ROM sets transient FFE187 on the gated title-service path at `0x54152`.

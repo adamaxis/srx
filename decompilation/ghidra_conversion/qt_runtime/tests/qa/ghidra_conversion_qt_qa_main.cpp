@@ -18782,6 +18782,14 @@ struct FieldGatedBuildingEntryQaSpec {
     std::string_view portrait_alias;
     std::uint16_t expected_resource_index = 0U;
     std::uint8_t expected_marker_ordinal = 0U;
+    std::size_t activity_exit_record_index = 0U;
+    std::uint16_t activity_exit_start_x = 0U;
+    std::uint16_t activity_exit_start_y = 0U;
+    std::uint16_t activity_exit_rectangle_left = 0U;
+    std::uint16_t activity_exit_rectangle_right = 0U;
+    std::uint16_t activity_exit_rectangle_top = 0U;
+    std::uint16_t activity_exit_rectangle_bottom = 0U;
+    std::uint16_t activity_exit_collision_code = 0U;
 };
 
 int run_field_gated_building_entry_qa(
@@ -18977,13 +18985,89 @@ int run_field_gated_building_entry_qa(
         return 3;
     }
 
-    const auto expected_return_heading = static_cast<std::uint16_t>(
-        entry_heading ^ 0x8000U);
-    if (!field_scene.return_from_world_activity_for_dump()) {
+    // Resource-scene event 0x00 follows the ordinary 0xB7B8 -> 0x1651E
+    // projected-interaction path. The successful field transition then
+    // reaches the shared scene restore in the normal coordinator; this QA
+    // enters the ROM collision cell with ordinary Down input instead of
+    // calling the test-only return adapter.
+    const auto& activity_rectangles = field_scene.state()
+        .field_scene_buffers.source_metadata.terrain_collision_rectangles;
+    if (activity_rectangles.size() <= route.activity_exit_record_index ||
+        activity_rectangles[route.activity_exit_record_index].left !=
+            route.activity_exit_rectangle_left ||
+        activity_rectangles[route.activity_exit_record_index].right !=
+            route.activity_exit_rectangle_right ||
+        activity_rectangles[route.activity_exit_record_index].top !=
+            route.activity_exit_rectangle_top ||
+        activity_rectangles[route.activity_exit_record_index].bottom !=
+            route.activity_exit_rectangle_bottom ||
+        activity_rectangles[route.activity_exit_record_index].value !=
+            route.activity_exit_collision_code) {
         std::cerr << route.location_name
-                  << " QA: resource activity did not restore its source field\n";
+                  << " QA: activity exit collision record did not match ROM\n";
         return 3;
     }
+    field_scene.set_field_entity_world_position_for_dump(
+        route.activity_exit_start_x, route.activity_exit_start_y);
+    field_scene.set_field_camera_world_position_for_dump(
+        static_cast<std::uint16_t>(route.activity_exit_start_x - 112U * 16U),
+        static_cast<std::uint16_t>(route.activity_exit_start_y - 112U * 16U));
+    if (!save("activity-exit-approach", std::nullopt)) return 3;
+
+    std::uint16_t activity_exit_ticks = 0U;
+    for (; activity_exit_ticks < 80U; ++activity_exit_ticks) {
+        field_scene.set_controller_nibble(0x02U); // ordinary Down to event 0
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_scene_reference_for_dump() !=
+                route.destination_scene) {
+            ++activity_exit_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto expected_exit_collision = static_cast<std::uint16_t>(
+        0xFF00U | route.activity_exit_collision_code);
+    const auto& activity_exit_transition =
+        field_scene.last_field_movement_transition_for_dump();
+    if (activity_exit_ticks == 0U || activity_exit_ticks >= 80U ||
+        field_scene.field_scene_reference_for_dump() !=
+            route.destination_scene ||
+        field_scene.field_terrain_collision_code_for_dump() !=
+            expected_exit_collision ||
+        field_scene.field_projected_code_for_dump() !=
+            expected_exit_collision ||
+        field_scene.field_mode_event_code_for_dump() != 0U ||
+        !activity_exit_transition.mode_event_code_published ||
+        !field_scene.field_interaction_transition_active_for_dump() ||
+        !save("activity-exit-contact", std::nullopt)) {
+        const auto position = field_scene.field_entity_world_position();
+        std::cerr << route.location_name
+                  << " QA: ordinary Down did not reach activity exit record "
+                  << route.activity_exit_record_index << "/event 0 (ticks="
+                  << activity_exit_ticks << ", scene="
+                  << field_scene.field_scene_reference_for_dump() << ", x="
+                  << position.x << ", y=" << position.y << ", collision=0x"
+                  << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+    for (std::uint16_t settle = 0U;
+         settle < 180U &&
+         field_scene.field_scene_reference_for_dump() != route.source_scene;
+         ++settle) {
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+    }
+
+    const auto expected_return_heading = static_cast<std::uint16_t>(
+        entry_heading ^ 0x8000U);
     const auto return_position = field_scene.field_entity_world_position();
     const auto return_heading = field_scene.field_entity_heading_for_dump();
     const bool source_field_return_saved = save("source-field-return", true);
@@ -18992,11 +19076,13 @@ int run_field_gated_building_entry_qa(
         return_position.y != return_probe.points[0U].y ||
         return_heading != expected_return_heading ||
         !source_field_return_saved ||
+        field_scene.field_interaction_transition_active_for_dump() ||
+        field_scene.field_transition_pending_for_dump() ||
         std::count(source_boundaries.begin(), source_boundaries.end(),
                    std::string("field.world_activity.source_scene_restored")) !=
             1) {
         std::cerr << route.location_name
-                  << " QA: activity return missed the ROM probe lead or "
+                  << " QA: physical activity exit missed the ROM probe lead or "
                      "away-facing heading (scene="
                   << field_scene.field_scene_reference_for_dump()
                   << ", position=" << return_position.x << ','
@@ -19010,7 +19096,7 @@ int run_field_gated_building_entry_qa(
 
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) return 3;
-    trace << "record\tevent\tservice\tgate\tmovement_ticks\tresult\tresource_index\tmarker_ordinal\treturn_x\treturn_y\treturn_heading\taudio_requests\n"
+    trace << "record\tevent\tservice\tgate\tentry_movement_ticks\tresult\tresource_index\tmarker_ordinal\texit_record\texit_event\texit_movement_ticks\treturn_x\treturn_y\treturn_heading\taudio_requests\n"
           << route.record_index << '\t'
           << static_cast<unsigned>(route.event_code) << '\t'
           << static_cast<unsigned>(route.title_service) << '\t'
@@ -19018,6 +19104,8 @@ int run_field_gated_building_entry_qa(
           << "\tresource_activity_" << route.destination_scene << '\t'
           << activity.selected_resource_random_index << '\t'
           << static_cast<unsigned>(activity.resource_marker_ordinal) << '\t'
+          << route.activity_exit_record_index << "\t0\t"
+          << activity_exit_ticks << '\t'
           << return_position.x << '\t' << return_position.y << '\t'
           << return_heading << '\t'
           << field_audio_events.size() << '\n';
@@ -19026,6 +19114,8 @@ int run_field_gated_building_entry_qa(
               << " event=" << static_cast<unsigned>(route.event_code)
               << " service=" << static_cast<unsigned>(route.title_service)
               << " destination=" << route.destination_scene
+              << " activity_exit_record=" << route.activity_exit_record_index
+              << " activity_exit_ticks=" << activity_exit_ticks
               << " artifacts=" << output.string() << '\n';
     return 0;
 }
@@ -27390,7 +27480,9 @@ int main(int argc, char** argv) {
                         "story_flag_bit_16=1,story_flag_bit_12=0,alternate_result=0",
                         "make it past the foyer",
                         "Finding out what Renraku knows about this whole mess",
-                        "dialogue.portraits.renraku.offices.entry", 5U, 0U});
+                        "dialogue.portraits.renraku.offices.entry", 5U, 0U,
+                        121U, 0x3B00U, 0x3E00U,
+                        0x03A0U, 0x03BFU, 0x0400U, 0x041FU, 0x0080U});
             }
             if (field_fuchi_offices_qa_path.has_value()) {
                 return run_field_gated_building_entry_qa(
@@ -27404,7 +27496,9 @@ int main(int argc, char** argv) {
                         "story_flag_bit_25=1,story_flag_bit_14=0,alternate_result=0",
                         "enter Fuchi just prior to their closing",
                         "Now to find that cyber-heart",
-                        "dialogue.portraits.fuchi.offices.entry", 2U, 3U});
+                        "dialogue.portraits.fuchi.offices.entry", 2U, 3U,
+                        102U, 0x4500U, 0x4A00U,
+                        0x0440U, 0x045FU, 0x04C0U, 0x04DFU, 0x0080U});
             }
             if (field_penumbra_lone_star_qa_path.has_value()) {
                 return run_field_penumbra_lone_star_entry_qa(

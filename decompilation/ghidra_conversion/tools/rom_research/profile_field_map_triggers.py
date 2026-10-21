@@ -65,6 +65,12 @@ def event_handler(event: int, scene: int) -> tuple[str, str, str]:
             "0xB7B8; 0x1FA02",
             "field_events.lua; GameScriptRuntime; FieldSceneRuntime; council_island_hospital.lua",
         )
+    if 21 <= scene <= 43 and event == 0:
+        return (
+            "resource_activity_source_field_return",
+            "0xB7B8; 0x1651E; 0x16E30; 0x2F32",
+            "field_events.lua; GameScriptRuntime.resolve_field_location_route; FieldSceneRuntime snapshot/restore_world_activity_source_scene",
+        )
     if 2 <= event <= 5 and (scene == 20 or 21 <= scene <= 43):
         return (
             "conditional_electromagnetic_lock",
@@ -124,6 +130,11 @@ def event_handler(event: int, scene: int) -> tuple[str, str, str]:
 
 def table_route_description(scene: int, event: int, table: bytes) -> tuple[str, str]:
     """Describe the table lookup without treating every byte as a doorway."""
+    if 21 <= scene <= 43 and event == 0:
+        return (
+            "resource_activity_source_field_return",
+            "null event table; 0xB7B8 -> 0x1651E starts the field transition, and 0x2F32 restores the saved source scene",
+        )
     if scene == 2 and event in (2, 11):
         return "bypassed_by_scene2_story_or_service_route", "table byte is diagnostic only"
     if scene == 4 and event == 3:
@@ -168,6 +179,18 @@ def describe_target(value: int) -> str:
 
 
 def physical_qa_route(scene: int, record_index: int, event: int) -> str:
+    if scene == 21 and record_index == 102 and event == 0:
+        return (
+            "Debug/Release ordinary Down QA enters this resource event-0 cell "
+            "and restores the source field at the saved probe lead with the "
+            "away-facing heading; see fuchi-offices-scene3-event2.md"
+        )
+    if scene == 35 and record_index == 121 and event == 0:
+        return (
+            "Debug/Release ordinary Down QA enters this resource event-0 cell "
+            "and restores the source field at the saved probe lead with the "
+            "away-facing heading; see renraku-offices-scene5-event6.md"
+        )
     if scene == 1 and record_index in (76, 77):
         return (
             "Debug/Release ordinary Up QA reaches the exact active Puyallup "
