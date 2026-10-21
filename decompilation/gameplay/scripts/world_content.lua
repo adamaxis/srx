@@ -97,24 +97,29 @@ function World.actor_spawns_in_scene(scene_id)
     return records_in_scene("actor_spawns", scene_id)
 end
 
--- Return the ROM-selected conditional population as ordinary host actor
--- descriptors. The selector index is resolved by the field activity policy;
--- this lookup consumes extracted scene/list data and never follows ROM
--- pointers at runtime. Entries with script_index -1 are event-driven lists
--- consumed by their own activity route.
-function World.world_activity_actors_for_script(scene_id, script_index)
-    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
-       type(script_index) ~= "number" or script_index % 1 ~= 0 or
-       script_index < 0 then
-        return {}
-    end
+-- Return one extracted actor list as ordinary host actor descriptors. A
+-- caller selects by ROM list offset or world-script index; the lookup consumes
+-- extracted scene/list data and never follows ROM pointers at runtime.
+local function world_activity_actor_descriptors(scene_id, selector_field,
+                                                selector)
     local rows = content().world_activity_actor_lists or {}
     local result = {}
     for _, row in ipairs(rows) do
-        if row.scene == scene_id and row.script_index == script_index then
+        local selector_matches = selector_field == "script_index"
+            and row.script_index == selector
+            or selector_field == "list_offset"
+                and row.list_offset == selector
+        if row.scene == scene_id and selector_matches then
+            local id
+            if row.script_index >= 0 then
+                id = "world_activity:" .. scene_id .. ":" ..
+                    row.script_index .. ":" .. row.source_order
+            else
+                id = "world_activity:" .. scene_id .. ":list:" ..
+                    row.list_offset .. ":" .. row.source_order
+            end
             result[#result + 1] = {
-                id = "world_activity:" .. scene_id .. ":" .. script_index ..
-                    ":" .. row.source_order,
+                id = id,
                 scene = row.scene,
                 script_index = row.script_index,
                 source_order = row.source_order,
@@ -202,6 +207,28 @@ function World.world_activity_actors_for_script(scene_id, script_index)
         return left.source_order < right.source_order
     end)
     return result
+end
+
+-- Script selection excludes event-driven lists. Those are retrieved only
+-- when their owning route selects a source list offset.
+function World.world_activity_actors_for_script(scene_id, script_index)
+    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
+       type(script_index) ~= "number" or script_index % 1 ~= 0 or
+       script_index < 0 then
+        return {}
+    end
+    return world_activity_actor_descriptors(scene_id, "script_index",
+                                             script_index)
+end
+
+function World.world_activity_actors_for_source_list(scene_id, list_offset)
+    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
+       type(list_offset) ~= "number" or list_offset % 1 ~= 0 or
+       list_offset < 0 then
+        return {}
+    end
+    return world_activity_actor_descriptors(scene_id, "list_offset",
+                                             list_offset)
 end
 
 function World.encounter_regions_in_scene(scene_id)

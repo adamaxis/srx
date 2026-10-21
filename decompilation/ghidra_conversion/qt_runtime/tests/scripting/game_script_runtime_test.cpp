@@ -364,6 +364,8 @@ int main() {
         scripts.world_activity_actors_for_script(13U, 3U);
     const auto absent_scene_script_actors =
         scripts.world_activity_actors_for_script(13U, 2U);
+    const auto ilene_pending_list =
+        scripts.world_activity_actors_for_source_list(20U, 0xA8CCU);
     if (!expect(
             ilene_gate_actors.has_value() &&
                 ilene_gate_actors->size() == 1U &&
@@ -406,8 +408,35 @@ int main() {
                     1U &&
                 ilene_gate_actors->front().combatant.action_skills[1] == 3U &&
                 absent_scene_script_actors.has_value() &&
-                absent_scene_script_actors->empty(),
-            "Lua did not return the typed ROM scene-13 script actor list")) {
+                absent_scene_script_actors->empty() &&
+                ilene_pending_list.has_value() &&
+                ilene_pending_list->size() == 1U &&
+                ilene_pending_list->front().scene_id == 20U &&
+                ilene_pending_list->front().script_index == -1 &&
+                ilene_pending_list->front().source_order == 0U &&
+                ilene_pending_list->front().list_offset == 0xA8CCU &&
+                ilene_pending_list->front().source_record_offset ==
+                    0xA8CCU &&
+                ilene_pending_list->front().tagged_template ==
+                    0x800172CAU &&
+                ilene_pending_list->front().template_offset == 0x172CAU &&
+                ilene_pending_list->front().position_offset == 0xA8E4U &&
+                ilene_pending_list->front().profile_id ==
+                    "lone11_k0a_item03" &&
+                ilene_pending_list->front().entity_kind == 10U &&
+                ilene_pending_list->front().sprite_stem ==
+                    "actor-kind-10-palette-1" &&
+                ilene_pending_list->front().action_kind ==
+                    ScriptActorActionKind::item &&
+                ilene_pending_list->front().action_code == 3U &&
+                ilene_pending_list->front().world_x == 0x0E80U &&
+                ilene_pending_list->front().world_y == 0x0700U &&
+                ilene_pending_list->front().heading == 0x8000U &&
+                ilene_pending_list->front().ordered_overrides ==
+                    "0x9E=0x20,0x2E=0x80,0x9E=0x8" &&
+                ilene_pending_list->front().source_spawn_state_flags ==
+                    0x08U,
+            "Lua did not return the typed ROM scene actor lists")) {
         std::cerr << "scene script actor lookup: " << scripts.failure()
                   << '\n';
         return 1;

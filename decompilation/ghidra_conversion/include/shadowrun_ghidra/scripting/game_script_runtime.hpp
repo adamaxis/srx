@@ -906,7 +906,7 @@ struct ScriptFieldEncounterActor {
 // the scene-script list at 0x167AE / 0x43B6.
 struct ScriptWorldActivityActor {
     std::uint16_t scene_id = 0;
-    std::uint16_t script_index = 0;
+    std::int16_t script_index = 0;
     std::uint16_t source_order = 0;
     std::uint32_t list_offset = 0;
     std::uint32_t source_record_offset = 0;
@@ -1414,6 +1414,9 @@ public:
     std::optional<std::vector<ScriptWorldActivityActor>>
     world_activity_actors_for_script(std::uint16_t scene_id,
                                      std::uint16_t script_index);
+    std::optional<std::vector<ScriptWorldActivityActor>>
+    world_activity_actors_for_source_list(std::uint16_t scene_id,
+                                          std::uint32_t list_offset);
     std::optional<ScriptFieldEncounterOutcome>
     resolve_run_target_actor_group(std::uint8_t area_id,
                                    std::uint8_t event_id);
@@ -1489,6 +1492,12 @@ public:
     const std::string& failure() const noexcept;
 
 private:
+    std::optional<std::vector<ScriptWorldActivityActor>>
+    world_activity_actors_for_selector(std::uint16_t scene_id,
+                                       std::string_view selector_field,
+                                       std::uint32_t selector_value,
+                                       std::uint32_t selector_maximum,
+                                       std::string_view lua_function);
     std::optional<ScriptFieldEncounterOutcome>
     resolve_field_encounter_impl(std::uint16_t scene_id,
                                  std::uint8_t first_roll,

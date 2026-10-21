@@ -5135,8 +5135,36 @@ GameScriptRuntime::resolve_field_encounter(
 std::optional<std::vector<ScriptWorldActivityActor>>
 GameScriptRuntime::world_activity_actors_for_script(
     const std::uint16_t scene_id, const std::uint16_t script_index) {
+    if (script_index > 0xFFU) {
+        impl_->failure = "world-activity script selector is outside source bounds";
+        return std::nullopt;
+    }
+    return world_activity_actors_for_selector(
+        scene_id, "script_index", script_index, 0xFFU,
+        "world_activity_actors_for_script");
+}
+
+std::optional<std::vector<ScriptWorldActivityActor>>
+GameScriptRuntime::world_activity_actors_for_source_list(
+    const std::uint16_t scene_id, const std::uint32_t list_offset) {
+    if (list_offset > 0x1FFFFFU) {
+        impl_->failure = "world-activity source list is outside ROM bounds";
+        return std::nullopt;
+    }
+    return world_activity_actors_for_selector(
+        scene_id, "list_offset", list_offset, 0x1FFFFFU,
+        "world_activity_actors_for_source_list");
+}
+
+std::optional<std::vector<ScriptWorldActivityActor>>
+GameScriptRuntime::world_activity_actors_for_selector(
+    const std::uint16_t scene_id, const std::string_view selector_field,
+    const std::uint32_t selector_value,
+    const std::uint32_t selector_maximum,
+    const std::string_view lua_function) {
     auto* state = impl_->state;
-    if (state == nullptr || scene_id > 55U || script_index > 0xFFU) {
+    if (state == nullptr || scene_id > 55U ||
+        selector_value > selector_maximum) {
         impl_->failure = "world-activity actor lookup is outside source bounds";
         return std::nullopt;
     }
@@ -5148,25 +5176,24 @@ GameScriptRuntime::world_activity_actors_for_script(
         return std::nullopt;
     };
     constexpr std::string_view kModule = "world_content";
-    constexpr std::string_view kFunction =
-        "world_activity_actors_for_script";
     if (!impl_->push_module(kModule)) {
         return fail("gameplay script module is missing: world_content");
     }
-    lua_getfield(state, -1, std::string(kFunction).c_str());
+    const auto function_name = std::string(lua_function);
+    lua_getfield(state, -1, function_name.c_str());
     if (!lua_isfunction(state, -1)) {
-        return fail("world_content.world_activity_actors_for_script is missing");
+        return fail("world_content." + function_name + " is missing");
     }
     lua_remove(state, -2);
     lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
-    lua_pushinteger(state, static_cast<lua_Integer>(script_index));
+    lua_pushinteger(state, static_cast<lua_Integer>(selector_value));
     ScopedInstructionBudget instruction_budget(state);
     if (lua_pcall(state, 2, 1, 0) != LUA_OK) {
-        return fail("world_content.world_activity_actors_for_script: " +
+        return fail("world_content." + function_name + ": " +
                     stack_error(state));
     }
     if (!lua_istable(state, -1)) {
-        return fail("world-content script actor lookup must return an array");
+        return fail("world-content actor lookup must return an array");
     }
     const auto list_index = lua_absindex(state, -1);
     const auto actor_count = lua_rawlen(state, list_index);
@@ -5180,7 +5207,7 @@ GameScriptRuntime::world_activity_actors_for_script(
     for (std::size_t index = 0U; index < actor_count; ++index) {
         lua_rawgeti(state, list_index, static_cast<lua_Integer>(index + 1U));
         if (!lua_istable(state, -1)) {
-            return fail("world-content script actor list contains a bad row");
+            return fail("world-content actor list contains a bad row");
         }
         const auto row_index = lua_absindex(state, -1);
         ScriptWorldActivityActor actor{};
@@ -5206,21 +5233,24 @@ GameScriptRuntime::world_activity_actors_for_script(
         std::uint32_t template_offset = 0U;
         std::uint32_t position_offset = 0U;
         std::uint32_t row_scene = 0U;
-        std::uint32_t row_script_index = 0U;
+        int row_script_index = 0;
         std::string action_kind;
         const bool valid =
             read_field_integer(state, row_index, "scene", 55U,
                                row_scene) &&
             row_scene == scene_id &&
-            read_field_integer(state, row_index, "script_index", 0xFFU,
-                               row_script_index) &&
-            row_script_index == script_index &&
+            read_field_signed_integer(state, row_index, "script_index", -1,
+                                      0xFF, row_script_index) &&
+            (selector_field != "script_index" ||
+             row_script_index == static_cast<int>(selector_value)) &&
             read_field_integer(state, row_index, "source_order", 31U,
                                source_order) &&
             source_orders.insert(static_cast<std::uint16_t>(source_order))
                 .second &&
             read_field_integer(state, row_index, "list_offset", 0x1FFFFFU,
                                list_offset) &&
+            (selector_field != "list_offset" ||
+             list_offset == selector_value) &&
             read_field_integer(state, row_index, "source_record_offset",
                                0x1FFFFFU, source_record_offset) &&
             read_field_integer(state, row_index, "tagged_template",
@@ -5272,7 +5302,7 @@ GameScriptRuntime::world_activity_actors_for_script(
             read_field_integer(state, row_index, "delay_capability_flags",
                                0xFFFFU, delay_capability_flags);
         if (!valid) {
-            return fail("world-content script actor row has invalid source fields");
+            return fail("world-content actor row has invalid source fields");
         }
         if (action_kind == "none") {
             actor.action_kind = ScriptActorActionKind::none;
@@ -5288,7 +5318,7 @@ GameScriptRuntime::world_activity_actors_for_script(
             return fail("world-content script actor action fields disagree");
         }
         actor.scene_id = scene_id;
-        actor.script_index = script_index;
+        actor.script_index = static_cast<std::int16_t>(row_script_index);
         actor.source_order = static_cast<std::uint16_t>(source_order);
         actor.list_offset = list_offset;
         actor.source_record_offset = source_record_offset;

@@ -6725,7 +6725,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::string activation_rule;
         WorldActivityActorTemplateFacts template_facts;
     };
-    const std::array<WorldActivityActorList, 13> kWorldActivityActorLists{{
+    const std::array<WorldActivityActorList, 14> kWorldActivityActorLists{{
         {0x0AU, 0, 0x17018U, "scene_10_event_6_script",
          "0x167AE: FFFBF9=6 and neither runner marker is 3"},
         {0x0AU, 1, 0x17034U, "scene_10_default_script",
@@ -6746,6 +6746,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
          "0x167AE: neither runner marker is 9"},
         {0x13U, 9, 0x16FFCU, "scene_19_script",
          "0x167AE: neither runner marker is 1"},
+        {0x14U, -1, 0xA8CCU, "scene_20_ilene_pending_list",
+         "0xA800: FFE180 clear and FFE182 set"},
         {0x2FU, -1, 0x1E552U, "mode_13_entry",
          "0x2CE0 mode 0x13 transition, with FFFC1E bit 8 clear"},
         {0x2FU, -1, 0x1E5C4U, "pending_list_1e5c4",
