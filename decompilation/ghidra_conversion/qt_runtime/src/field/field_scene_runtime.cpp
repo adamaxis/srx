@@ -16467,6 +16467,23 @@ bool FieldSceneRuntime::seed_cyberdeck_reference_frame_for_dump() {
     return true;
 }
 
+bool FieldSceneRuntime::seed_matrix_storage_files_for_dump() {
+    if (!ready_ || !field_matrix_deck_record_.has_value()) {
+        return false;
+    }
+
+    // Exercise all five ROM records, reverse display order, and three-digit
+    // storage values while keeping the rest of the active deck fixture intact.
+    std::array<CyberdeckDataFile, 5U> files{};
+    files[0U] = CyberdeckDataFile{0, 4U, 0};
+    files[1U] = CyberdeckDataFile{2, 9U, 0};
+    files[2U] = CyberdeckDataFile{13, 20U, 0};
+    files[3U] = CyberdeckDataFile{48, 80U, 0};
+    files[4U] = CyberdeckDataFile{69, 255U, 0};
+    field_matrix_deck_record_->data_files = files;
+    return true;
+}
+
 bool FieldSceneRuntime::seed_cyberdeck_pull_plug_reference_for_dump() {
     if (!ready_ || !cyberdeck_available_ ||
         !field_matrix_deck_record_.has_value()) {
@@ -19885,6 +19902,19 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                                      std::string("  Empty|Utility Slot"),
                                      8, 2);
                 }
+                if (routed_menu
+                        .top_matrix_storage_empty_message_lines.size() ==
+                    2U) {
+                    // ROM 0xE3A6C writes at $C52C and advances by 0x80.
+                    draw_matrix_text(
+                        176, 80,
+                        routed_menu
+                            .top_matrix_storage_empty_message_lines[0]);
+                    draw_matrix_text(
+                        176, 88,
+                        routed_menu
+                            .top_matrix_storage_empty_message_lines[1]);
+                }
                 painter.drawImage(12 + column * 32, 20 + row * 40,
                                   matrix_cyberdeck_cursors_[deck_palette_phase]);
                 return;
@@ -20037,16 +20067,68 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 }
                 const auto draw_storage_value = [&draw_matrix_text](
                                                     const int y,
-                                                    const std::optional<int>& value) {
-                    if (!value.has_value()) return;
-                    const auto text = std::to_string(*value);
+                                                    const int value) {
+                    const auto text = std::to_string(value);
                     const auto x = 272 -
                         static_cast<int>(text.size() - 1U) * 8;
                     draw_matrix_text(x, y, text);
                 };
-                draw_storage_value(32, routed_menu.top_matrix_storage_total);
-                draw_storage_value(40,
-                                   routed_menu.top_matrix_storage_available);
+                if (routed_menu.top_matrix_storage_total.has_value()) {
+                    draw_storage_value(
+                        32, *routed_menu.top_matrix_storage_total);
+                }
+                if (routed_menu.top_matrix_storage_available.has_value()) {
+                    draw_storage_value(
+                        40, *routed_menu.top_matrix_storage_available);
+                }
+                if (routed_menu.top_matrix_storage_phase == "view") {
+                    const auto file_count = std::min(
+                        routed_menu.top_matrix_storage_file_names.size(),
+                        routed_menu.top_matrix_storage_file_sizes.size());
+                    for (std::size_t file = 0U; file < file_count; ++file) {
+                        const auto row_y = 72 + static_cast<int>(file) * 16;
+                        draw_matrix_text(
+                            152, row_y,
+                            routed_menu.top_matrix_storage_file_names[file]);
+                        draw_matrix_text(
+                            152, row_y + 8,
+                            routed_menu.top_matrix_storage_separator);
+                        draw_storage_value(
+                            row_y + 8,
+                            routed_menu.top_matrix_storage_file_sizes[file]);
+                    }
+                    return;
+                }
+                if (routed_menu.top_matrix_storage_phase == "erase") {
+                    if (routed_menu
+                            .top_matrix_storage_erase_name_present) {
+                        draw_matrix_text(
+                            152, 80,
+                            routed_menu.top_matrix_storage_erase_name);
+                    }
+                    draw_matrix_text(
+                        152, 88,
+                        routed_menu.top_matrix_storage_separator);
+                    if (routed_menu.top_matrix_storage_erase_size.has_value()) {
+                        draw_storage_value(
+                            88,
+                            *routed_menu.top_matrix_storage_erase_size);
+                    }
+                    for (std::size_t option = 0U;
+                         option < routed_menu.top_option_labels.size() &&
+                         option < 2U;
+                         ++option) {
+                        const auto y = 104 + static_cast<int>(option) * 16;
+                        if (routed_menu.top_row ==
+                            static_cast<int>(option)) {
+                            draw_matrix_text(200, y, ">");
+                        }
+                        draw_matrix_text(
+                            216, y,
+                            routed_menu.top_option_labels[option]);
+                    }
+                    return;
+                }
                 for (std::size_t option = 0U;
                      option < routed_menu.top_option_labels.size() &&
                      option < 2U;

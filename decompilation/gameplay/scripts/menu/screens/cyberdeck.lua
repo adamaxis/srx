@@ -145,6 +145,7 @@ function M.new(args)
         deck_palette = deck_palette,
         deck_palette_phase = DeckPalette.phase(deck_palette),
         program_detail_labels = D.PROGRAM_DETAIL_LABELS,
+        storage_empty_message_lines = nil,
     }
     update_description(state)
     return state
@@ -231,6 +232,7 @@ function M.input(st, events, ctx)
     if moved then
         st.col, st.row = col, row
         st.text = nil
+        st.storage_empty_message_lines = nil
         update_description(st)
         update_program_details(st, g.deck_record())
         st.matrix_run_info = nil
@@ -247,6 +249,7 @@ function M.input(st, events, ctx)
     g.set_deck_mode(MODE[btn])
     if st.matrix_state then st.matrix_state.mode = RESULT_MODE[btn] end
     st.text = nil
+    st.storage_empty_message_lines = nil
     if st.row ~= M.PLUG_ROW then return { transition = T.PUSH, screen = E.MenuScreen.DECK_PROGRAM, args = { col = st.col, row = st.row, deck_palette = st.deck_palette, matrix_state = st.matrix_state, deck_parent_col = st.col, deck_parent_row = st.row } } end
     if st.col == M.PLUG_COL then
         if not online(st, ctx) then return end
@@ -278,6 +281,8 @@ function M.child_returned(st, child, res, ctx)
         return leave(st, ctx, st.return_to_node_action and {} or
             (st.matrix_session and { exit_secretary = true } or {}))                    -- 0x549C0 resumes 0x54662
     end
+    st.storage_empty_message_lines = res.storage_empty == true and
+        D.STORAGE_EMPTY_MESSAGE_LINES or nil
     st.text = type(res.text) == "string" and res.text or nil                           -- plain-rts text remains until redraw
     st.matrix_run_info = type(res.matrix_run_info) == "table"
         and res.matrix_run_info or nil

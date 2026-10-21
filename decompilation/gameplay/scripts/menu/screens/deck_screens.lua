@@ -190,21 +190,11 @@ function CyberInfo.input(st, events, ctx)
     end
 end
 
-local function file_text(record)
-    local lines = {}
-    for _, index in ipairs(D.files(record)) do
-        local file = record.files[index]
-        local name = D.FILE_NAMES[file.id] or ("File " .. file.id)
-        lines[#lines + 1] = name .. "  " .. file.size .. " Mp"
-    end
-    return #lines == 0 and nil or table.concat(lines, "|")
-end
-
 local Storage = { window = E.WindowPlane.OFF }
 function Storage.new(args)
     args = args or {}
     local deck_palette = args.deck_palette or DeckPalette.new()
-    return { row = 0, matrix_state = args.matrix_state,
+    return { row = 0, phase = "menu", matrix_state = args.matrix_state,
              deck_parent_col = args.deck_parent_col or args.col,
              deck_parent_row = args.deck_parent_row or args.row,
              deck_palette = deck_palette,
@@ -213,29 +203,71 @@ end
 local function update_storage_panel(st, ctx)
     local record = ctx.game.deck_record()
     st.storage_panel_lines = D.STORAGE_PANEL_LINES
+    st.storage_separator = D.STORAGE_DATAFILE_SEPARATOR
     st.storage_total = record.storage or 0
     st.storage_available = D.free_storage(record)
     Cyberdeck.update_program_art_state(st, ctx)
 end
+local function datafile_name(file)
+    return D.FILE_NAMES[file.id] or ("File " .. file.id)
+end
+local function storage_file_rows(record)
+    local names, sizes = {}, {}
+    for _, index in ipairs(D.files(record)) do
+        local file = record.files[index]
+        names[#names + 1] = datafile_name(file)
+        sizes[#sizes + 1] = file.size
+    end
+    return names, sizes
+end
+local function show_storage_files(st, record, ctx)
+    local names, sizes = storage_file_rows(record)
+    if #names == 0 then
+        return { transition = T.POP, result = { storage_empty = true } }
+    end
+    st.phase = "view"
+    st.storage_file_names = names
+    st.storage_file_sizes = sizes
+    st.storage_erase_name = nil
+    st.storage_erase_size = nil
+    st.labels = {}
+    ctx.redraw(R.SUBMENU)
+end
+local function show_erase_prompt(st, record, index, ctx)
+    if index == nil then
+        return { transition = T.POP, result = { storage_empty = true } }
+    end
+    local file = record.files[index]
+    if not file or file.id < 0 then
+        return show_storage_files(st, record, ctx)
+    end
+    st.phase, st.file = "erase", index
+    st.choice, st.row = 0, 0
+    st.storage_file_names = nil
+    st.storage_file_sizes = nil
+    st.storage_erase_name = datafile_name(file)
+    st.storage_erase_size = file.size
+    st.labels = { "Yes", "No" }
+    ctx.redraw(R.MESSAGE)
+end
 function Storage.enter(st, ctx)
     update_storage_panel(st, ctx)
+    st.phase = "menu"
     st.title = "Storage"
     st.labels = { "View", "Erase" }
     ctx.redraw(R.SUBMENU)
-end
-local function return_file_list(ctx)
-    local text = file_text(ctx.game.deck_record())
-    if not text then
-        return { transition = T.POP,
-                 result = { text = "No datafiles in storage" } }
-    end
-    return { transition = T.POP, result = { text = text } }
 end
 function Storage.input(st, events, ctx)
     tick_palette(st, ctx)
     service_program_loading(st, ctx)
     update_storage_panel(st, ctx)
     local g = ctx.game
+    if st.phase == "view" then
+        if events & P.START ~= 0 then
+            return { transition = T.POP, result = {} }
+        end
+        return
+    end
     if st.phase == "erase" then
         if events & (P.UP | P.DOWN) ~= 0 then
             st.choice = 1 - st.choice
@@ -249,20 +281,14 @@ function Storage.input(st, events, ctx)
             if st.choice == 0 then
                 D.erase_file(record, st.file)
                 g.deck_commit(record, g.deck_slots())
-                return return_file_list(ctx)
+                return show_storage_files(st, record, ctx)
             end
-            st.file = D.next_file(record, st.file - 1)
-            if not st.file then
-                return { transition = T.POP,
-                         result = { text = "No datafiles in storage" } }
-            end
-            st.choice, st.row = 0, 0
-            st.title = ""
-            st.labels = { "Yes", "No" }
-            ctx.redraw(R.MESSAGE)
-            return
+            return show_erase_prompt(
+                st, record, D.next_file(record, st.file - 1), ctx)
         end
-        if events & P.START ~= 0 then return return_file_list(ctx) end
+        if events & P.START ~= 0 then
+            return show_storage_files(st, g.deck_record(), ctx)
+        end
         return
     end
 
@@ -273,17 +299,12 @@ function Storage.input(st, events, ctx)
     end
     -- The ROM storage menu accepts A only.
     if events & P.A ~= 0 then
-        if st.row == 0 then return return_file_list(ctx) end
-        st.file = D.next_file(g.deck_record(), D.FILES - 1)
-        if not st.file then
-            return { transition = T.POP,
-                     result = { text = "No datafiles in storage" } }
+        local record = g.deck_record()
+        if st.row == 0 then
+            return show_storage_files(st, record, ctx)
         end
-        st.phase, st.choice, st.row = "erase", 0, 0
-        st.title = ""
-        st.labels = { "Yes", "No" }
-        ctx.redraw(R.MESSAGE)
-        return
+        return show_erase_prompt(
+            st, record, D.next_file(record, D.FILES - 1), ctx)
     end
     if events & P.START ~= 0 then return { transition = T.POP, result = {} } end
 end

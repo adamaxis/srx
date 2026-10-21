@@ -24799,18 +24799,366 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                tap_qa_controller_button(field_scene, 0x80U); // Close Storage.
+                const auto storage_step_image =
+                    [&capture, &output](const std::string_view name) {
+                        const auto image = capture(name);
+                        const auto dump = output / std::string(name);
+                        std::error_code error;
+                        std::filesystem::create_directories(dump, error);
+                        return !error &&
+                               save_qa_image(dump, "actual.bmp", image)
+                            ? image
+                            : QImage{};
+                    };
+
+                // Empty View returns immediately with the ROM's two-line
+                // message at $C52C, retained over the selected Storage icon.
+                tap_qa_controller_button(field_scene, 0x40U);
+                auto empty_storage_route =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                const std::vector<std::string> kEmptyStorageMessage{
+                    "No datafiles", " in storage"};
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::CYBERDECK) ||
+                    empty_storage_route
+                            .top_matrix_storage_empty_message_lines !=
+                        kEmptyStorageMessage) {
+                    std::cerr << "Matrix Storage QA: empty View did not "
+                                 "return its source message to the deck\n";
+                    return 3;
+                }
+                const auto empty_storage_image = storage_step_image(
+                    "deck-storage-empty");
+                if (!full_cyberdeck_frame(empty_storage_image) ||
+                    !retained_deck_surface_matches(
+                        empty_storage_image,
+                        empty_storage_route
+                            .top_matrix_deck_palette_phase.value_or(0),
+                        3,
+                        empty_storage_route
+                            .top_matrix_deck_program_ratings,
+                        empty_storage_route
+                            .top_matrix_deck_active_programs,
+                        empty_storage_route
+                            .top_matrix_deck_program_slot_status) ||
+                    !has_matrix_green(empty_storage_image,
+                                      QRect(176, 80, 96, 8)) ||
+                    !has_matrix_green(empty_storage_image,
+                                      QRect(184, 88, 88, 8))) {
+                    std::cerr << "Matrix Storage QA: empty message is not at "
+                                 "the ROM two-row origin\n";
+                    return 3;
+                }
+
+                if (!field_scene.seed_matrix_storage_files_for_dump()) {
+                    std::cerr << "Matrix Storage QA: could not seed the "
+                                 "five source records for route coverage\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                auto seeded_storage_route =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                const std::vector<std::string> kStorageFileNames{
+                    "Unsolved Cases", "Security Expenses",
+                    "Employee Scheduling", "Cancelled Accounts",
+                    "Back-up Files"};
+                const std::vector<int> kStorageFileSizes{
+                    255, 80, 20, 9, 4};
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::DECK_STORAGE) ||
+                    seeded_storage_route.top_matrix_storage_phase != "menu" ||
+                    seeded_storage_route.top_matrix_storage_total != 1000 ||
+                    seeded_storage_route.top_matrix_storage_available != 605) {
+                    std::cerr << "Matrix Storage QA: seeded root menu lost "
+                                 "capacity or selected screen state; screen="
+                              << field_scene.field_menu_route_screen_for_dump()
+                              << " phase="
+                              << seeded_storage_route.top_matrix_storage_phase
+                              << " total="
+                              << seeded_storage_route
+                                     .top_matrix_storage_total.value_or(-1)
+                              << " available="
+                              << seeded_storage_route
+                                     .top_matrix_storage_available.value_or(-1)
+                              << '\n';
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // View.
+                auto storage_view_route =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::DECK_STORAGE) ||
+                    storage_view_route.top_matrix_storage_phase != "view" ||
+                    storage_view_route.top_matrix_storage_separator !=
+                        "     . . . . ." ||
+                    storage_view_route.top_matrix_storage_file_names !=
+                        kStorageFileNames ||
+                    storage_view_route.top_matrix_storage_file_sizes !=
+                        kStorageFileSizes ||
+                    !storage_view_route.top_option_labels.empty()) {
+                    std::cerr << "Matrix Storage QA: View did not expose the "
+                                 "five descending ROM records\n";
+                    return 3;
+                }
+                const auto storage_view_image = storage_step_image(
+                    "deck-storage-view");
+                bool storage_view_cells = true;
+                for (std::size_t file = 0U;
+                     file < kStorageFileNames.size(); ++file) {
+                    const auto y = 72 + static_cast<int>(file) * 16;
+                    const auto last_name_x = 152 +
+                        static_cast<int>(kStorageFileNames[file].size() - 1U) *
+                            8;
+                    const auto size_text =
+                        std::to_string(kStorageFileSizes[file]);
+                    const auto first_size_x =
+                        272 - static_cast<int>(size_text.size() - 1U) * 8;
+                    storage_view_cells = storage_view_cells &&
+                        has_matrix_green(storage_view_image,
+                                         QRect(152, y, 8, 8)) &&
+                        has_matrix_green(storage_view_image,
+                                         QRect(last_name_x, y, 8, 8)) &&
+                        has_matrix_green(storage_view_image,
+                                         QRect(192, y + 8, 8, 8)) &&
+                        has_matrix_green(storage_view_image,
+                                         QRect(240, y + 8, 8, 8)) &&
+                        has_matrix_green(storage_view_image,
+                                         QRect(first_size_x, y + 8, 8, 8)) &&
+                        has_matrix_green(storage_view_image,
+                                         QRect(272, y + 8, 8, 8));
+                }
+                if (!full_cyberdeck_frame(storage_view_image) ||
+                    !storage_view_cells ||
+                    !retained_deck_surface_matches(
+                        storage_view_image,
+                        storage_view_route
+                            .top_matrix_deck_palette_phase.value_or(0),
+                        3,
+                        storage_view_route
+                            .top_matrix_deck_program_ratings,
+                        storage_view_route
+                            .top_matrix_deck_active_programs,
+                        storage_view_route
+                            .top_matrix_deck_program_slot_status) ||
+                    !source_pixels_match_at(
+                        storage_view_image, 48, 144,
+                        "cyberspace/matrix/program-icon-13.bmp")) {
+                    std::cerr << "Matrix Storage QA: five-row View frame "
+                                 "does not match ROM rows, sizes, grid, or "
+                                 "footer\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x20U); // B is ignored.
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::DECK_STORAGE) ||
+                    field_scene.field_menu_route_snapshot_for_dump()
+                            .top_matrix_storage_phase != "view") {
+                    std::cerr << "Matrix Storage QA: View accepted B instead "
+                                 "of waiting for Start\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x80U); // Start.
+
+                tap_qa_controller_button(field_scene, 0x40U); // Reopen Storage.
+                tap_qa_controller_button(field_scene, 0x02U); // Erase.
+                tap_qa_controller_button(field_scene, 0x40U);
+                auto storage_erase_route =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::DECK_STORAGE) ||
+                    storage_erase_route.top_matrix_storage_phase != "erase" ||
+                    storage_erase_route.top_matrix_storage_erase_name !=
+                        "Unsolved Cases" ||
+                    storage_erase_route.top_matrix_storage_erase_size != 255 ||
+                    storage_erase_route.top_option_labels !=
+                        std::vector<std::string>{"Yes", "No"} ||
+                    storage_erase_route.top_row != 0) {
+                    std::cerr << "Matrix Storage QA: Erase prompt lost the "
+                                 "highest occupied record or Yes default\n";
+                    return 3;
+                }
+                const auto storage_erase_image = storage_step_image(
+                    "deck-storage-erase");
+                if (!full_cyberdeck_frame(storage_erase_image) ||
+                    !retained_deck_surface_matches(
+                        storage_erase_image,
+                        storage_erase_route
+                            .top_matrix_deck_palette_phase.value_or(0),
+                        3,
+                        storage_erase_route
+                            .top_matrix_deck_program_ratings,
+                        storage_erase_route
+                            .top_matrix_deck_active_programs,
+                        storage_erase_route
+                            .top_matrix_deck_program_slot_status) ||
+                    !has_matrix_green(storage_erase_image,
+                                      QRect(152, 80, 8, 8)) ||
+                    !has_matrix_green(storage_erase_image,
+                                      QRect(256, 80, 8, 8)) ||
+                    !has_matrix_green(storage_erase_image,
+                                      QRect(192, 88, 8, 8)) ||
+                    !has_matrix_green(storage_erase_image,
+                                      QRect(240, 88, 8, 8)) ||
+                    !has_matrix_green(storage_erase_image,
+                                      QRect(256, 88, 8, 8)) ||
+                    !has_matrix_green(storage_erase_image,
+                                      QRect(272, 88, 8, 8)) ||
+                    !has_matrix_green(storage_erase_image,
+                                      QRect(200, 104, 8, 8)) ||
+                    !has_matrix_green(storage_erase_image,
+                                      QRect(216, 104, 8, 8)) ||
+                    !has_matrix_green(storage_erase_image,
+                                      QRect(232, 104, 8, 8)) ||
+                    !has_matrix_green(storage_erase_image,
+                                      QRect(216, 120, 8, 8)) ||
+                    !has_matrix_green(storage_erase_image,
+                                      QRect(224, 120, 8, 8))) {
+                    std::cerr << "Matrix Storage QA: Erase prompt does not "
+                                 "match ROM name, size, choice, cursor, grid, "
+                                 "or footer\n";
+                    return 3;
+                }
+
+                tap_qa_controller_button(field_scene, 0x02U); // No.
+                tap_qa_controller_button(field_scene, 0x40U);
+                storage_erase_route =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                if (storage_erase_route.top_matrix_storage_phase != "erase" ||
+                    storage_erase_route.top_matrix_storage_erase_name !=
+                        "Security Expenses" ||
+                    storage_erase_route.top_matrix_storage_erase_size != 80 ||
+                    storage_erase_route.top_row != 0) {
+                    std::cerr << "Matrix Storage QA: No did not cycle to the "
+                                 "next occupied record\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x80U); // Start opens View.
+                if (field_scene.field_menu_route_snapshot_for_dump()
+                        .top_matrix_storage_phase != "view") {
+                    std::cerr << "Matrix Storage QA: Start from Erase did not "
+                                 "open the file list\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x80U); // Leave View.
+
+                tap_qa_controller_button(field_scene, 0x40U); // Storage.
+                tap_qa_controller_button(field_scene, 0x02U); // Erase.
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x40U); // Yes.
+                auto storage_after_erase_route =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                const std::vector<std::string> kStorageAfterEraseNames{
+                    "Security Expenses", "Employee Scheduling",
+                    "Cancelled Accounts", "Back-up Files"};
+                const std::vector<int> kStorageAfterEraseSizes{
+                    80, 20, 9, 4};
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::DECK_STORAGE) ||
+                    storage_after_erase_route.top_matrix_storage_phase !=
+                        "view" ||
+                    storage_after_erase_route.top_matrix_storage_file_names !=
+                        kStorageAfterEraseNames ||
+                    storage_after_erase_route.top_matrix_storage_file_sizes !=
+                        kStorageAfterEraseSizes ||
+                    storage_after_erase_route.top_matrix_storage_available !=
+                        860) {
+                    std::cerr << "Matrix Storage QA: Yes did not erase the "
+                                 "file and redraw remaining records\n";
+                    return 3;
+                }
+                const auto storage_after_erase_image = storage_step_image(
+                    "deck-storage-after-erase");
+                if (!full_cyberdeck_frame(storage_after_erase_image) ||
+                    !has_matrix_green(storage_after_erase_image,
+                                      QRect(152, 72, 8, 8)) ||
+                    !has_matrix_green(storage_after_erase_image,
+                                      QRect(280, 72, 8, 8)) ||
+                    !has_matrix_green(storage_after_erase_image,
+                                      QRect(272, 80, 8, 8))) {
+                    std::cerr << "Matrix Storage QA: post-erase file list "
+                                 "does not render its remaining first row\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x80U); // Return to deck.
+
+                const std::array<std::string, 5> kStorageNamesByDeleteOrder{{
+                    "Unsolved Cases", "Security Expenses",
+                    "Employee Scheduling", "Cancelled Accounts",
+                    "Back-up Files"}};
+                for (int remaining = 3; remaining >= 0; --remaining) {
+                    tap_qa_controller_button(field_scene, 0x40U); // Storage.
+                    tap_qa_controller_button(field_scene, 0x02U); // Erase.
+                    tap_qa_controller_button(field_scene, 0x40U);
+                    const auto prompt_route =
+                        field_scene.field_menu_route_snapshot_for_dump();
+                    const auto delete_index = static_cast<std::size_t>(
+                        4 - remaining);
+                    if (prompt_route.top_matrix_storage_phase != "erase" ||
+                        prompt_route.top_matrix_storage_erase_name !=
+                            kStorageNamesByDeleteOrder[delete_index]) {
+                        std::cerr << "Matrix Storage QA: repeated Erase "
+                                     "selected the wrong source file\n";
+                        return 3;
+                    }
+                    tap_qa_controller_button(field_scene, 0x40U); // Yes.
+                    const auto after_delete_route =
+                        field_scene.field_menu_route_snapshot_for_dump();
+                    if (remaining == 0) {
+                        if (field_scene.field_menu_route_screen_for_dump() !=
+                                static_cast<std::uint16_t>(
+                                    srx::MenuScreen::CYBERDECK) ||
+                            after_delete_route
+                                    .top_matrix_storage_empty_message_lines !=
+                                kEmptyStorageMessage) {
+                            std::cerr << "Matrix Storage QA: deleting the last "
+                                         "file did not return the empty message\n";
+                            return 3;
+                        }
+                        const auto emptied_image = storage_step_image(
+                            "deck-storage-empty-after-erase");
+                        if (!full_cyberdeck_frame(emptied_image) ||
+                            !has_matrix_green(emptied_image,
+                                              QRect(176, 80, 8, 8)) ||
+                            !has_matrix_green(emptied_image,
+                                              QRect(256, 88, 8, 8))) {
+                            std::cerr << "Matrix Storage QA: final empty-file "
+                                         "message is missing from the full frame\n";
+                            return 3;
+                        }
+                    } else {
+                        if (field_scene.field_menu_route_screen_for_dump() !=
+                                static_cast<std::uint16_t>(
+                                    srx::MenuScreen::DECK_STORAGE) ||
+                            after_delete_route.top_matrix_storage_phase !=
+                                "view" ||
+                            after_delete_route
+                                    .top_matrix_storage_file_names.size() !=
+                                static_cast<std::size_t>(remaining)) {
+                            std::cerr << "Matrix Storage QA: deletion did not "
+                                         "advance to the remaining file list\n";
+                            return 3;
+                        }
+                        tap_qa_controller_button(field_scene, 0x80U);
+                    }
+                }
+
                 // The ROM's first deck loop returns through the world-mode
                 // traversal before the node-action loop. Exercise that live
                 // route and retain a complete 320x224 artifact for visual
                 // review, including the lower HUD/footer rows.
                 if (field_scene.field_menu_route_screen_for_dump() !=
                     static_cast<std::uint16_t>(srx::MenuScreen::CYBERDECK)) {
-                    std::cerr << "Matrix traversal QA: No did not return to "
+                    std::cerr << "Matrix traversal QA: Storage did not return to "
                                  "the active deck\n";
                     return 3;
                 }
-                tap_qa_controller_button(field_scene, 0x80U); // Start
+                tap_qa_controller_button(field_scene, 0x80U); // Leave deck.
                 auto traversal_route =
                     field_scene.field_menu_route_snapshot_for_dump();
                 for (int frame = 0;

@@ -465,6 +465,14 @@ struct ScriptMenuRouteSnapshot {
     std::array<std::string, 6> top_matrix_storage_panel_lines{};
     std::optional<int> top_matrix_storage_total;
     std::optional<int> top_matrix_storage_available;
+    std::string top_matrix_storage_phase;
+    std::string top_matrix_storage_separator;
+    std::vector<std::string> top_matrix_storage_file_names;
+    std::vector<int> top_matrix_storage_file_sizes;
+    bool top_matrix_storage_erase_name_present = false;
+    std::string top_matrix_storage_erase_name;
+    std::optional<int> top_matrix_storage_erase_size;
+    std::vector<std::string> top_matrix_storage_empty_message_lines;
     std::optional<int> top_matrix_countdown;
     std::optional<int> top_matrix_transition_fade_step;
     bool top_matrix_map_cells_present = false;

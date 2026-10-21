@@ -344,9 +344,48 @@ check(DR.free_storage(full_storage) == 0 and
       "storage file check uses the ROM signed word subtraction")
 local rs, ls, gs = deck({ rec = fr }); rs:frame(P.UP); rs:frame(P.RIGHT); rs:frame(P.A); check(top(rs) == S.DECK_STORAGE, "storage")
 rs:frame(P.B); check(top(rs) == S.DECK_STORAGE, "storage: B ignored (A only)")
-rs:frame(P.DOWN); rs:frame(P.A); check(st(rs).file == 3 and st(rs).choice == 0, "erase prompt file 3, default Yes")
-rs:frame(P.DOWN); rs:frame(P.A); check(st(rs).file == 1 and st(rs).choice == 0, "No -> next file, Yes again"); rs:frame(P.A)
-check(fr.files[1].id == -1 and fr.files[1].size == 0 and top(rs) == S.CYBERDECK and st(rs).text == DR.FILE_NAMES[0] .. "  4 Mp", "Yes erases -> remaining file list")
+rs:frame(P.A)
+check(top(rs) == S.DECK_STORAGE and st(rs).phase == "view" and
+      st(rs).storage_file_names[1] == DR.FILE_NAMES[0] and
+      st(rs).storage_file_names[2] == DR.FILE_NAMES[2] and
+      st(rs).storage_file_sizes[1] == 4 and
+      st(rs).storage_file_sizes[2] == 9,
+      "View renders reverse file records with sizes")
+rs:frame(P.B)
+check(top(rs) == S.DECK_STORAGE and st(rs).phase == "view",
+      "View waits for Start")
+rs:frame(P.START)
+check(top(rs) == S.CYBERDECK, "View Start returns to deck")
+rs:frame(P.A); rs:frame(P.DOWN); rs:frame(P.A)
+check(top(rs) == S.DECK_STORAGE and st(rs).phase == "erase" and
+      st(rs).file == 3 and st(rs).choice == 0 and
+      st(rs).storage_erase_name == DR.FILE_NAMES[0] and
+      st(rs).storage_erase_size == 4,
+      "Erase starts at highest occupied slot with Yes default")
+rs:frame(P.DOWN); rs:frame(P.A)
+check(st(rs).file == 1 and st(rs).choice == 0 and
+      st(rs).storage_erase_name == DR.FILE_NAMES[2] and
+      st(rs).storage_erase_size == 9 and fr.files[3].id == 0,
+      "No advances to the next occupied file without deleting")
+rs:frame(P.START)
+check(top(rs) == S.DECK_STORAGE and st(rs).phase == "view" and
+      #st(rs).storage_file_names == 2,
+      "Erase Start opens the file list")
+rs:frame(P.START); rs:frame(P.A); rs:frame(P.DOWN); rs:frame(P.A); rs:frame(P.A)
+check(fr.files[3].id == -1 and fr.files[3].size == 0 and
+      top(rs) == S.DECK_STORAGE and st(rs).phase == "view" and
+      #st(rs).storage_file_names == 1 and
+      st(rs).storage_file_names[1] == DR.FILE_NAMES[2] and
+      st(rs).storage_file_sizes[1] == 9,
+      "Yes erases the selected record and shows remaining files")
+rs:frame(P.START)
+local empty_record = rec({})
+local re = deck({ rec = empty_record })
+re:frame(P.UP); re:frame(P.RIGHT); re:frame(P.A); re:frame(P.A)
+check(top(re) == S.CYBERDECK and
+      st(re).storage_empty_message_lines[1] == "No datafiles" and
+      st(re).storage_empty_message_lines[2] == " in storage",
+      "Empty storage returns the ROM message lines to the parent deck")
 local ri, li, gi = deck({ run = 0 }); ri:frame(P.UP); ri:frame(P.A); ri:frame(P.DOWN); ri:frame(P.A); check(st(ri).matrix_run_info.kind == "no_run" and st(ri).matrix_run_info.message == "You are not on|a matrix run!!", "run info: not on a run keeps the ROM row break")
 local rm, lm, gm = deck({ online = true, prev = 4 }); rm:frame(P.UP); rm:frame(P.LEFT); rm:frame(P.LEFT); rm:frame(P.A); check(top(rm) == S.DECK_MAP, "online col 2 -> map/retreat")
 rm:frame(P.A); rm:frame(P.B); check(top(rm) == S.DECK_MAP and st(rm).phase == "map", "map waits for Start only"); rm:frame(P.START); check(top(rm) == S.CYBERDECK, "map -> back to grid")

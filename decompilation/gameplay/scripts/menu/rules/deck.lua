@@ -64,6 +64,10 @@ M.STORAGE_PANEL_LINES = {
     "     DataFiles",
     "     [" .. string.rep("\\", 9),
 } -- ROM 0xE3A07; 0x80 advances one text row, including the blank row.
+M.STORAGE_DATAFILE_SEPARATOR = "     . . . . ." -- ROM 0xE3FFD.
+M.STORAGE_EMPTY_MESSAGE_LINES = {
+    "No datafiles", " in storage",
+} -- ROM 0xE3A6C, drawn at $C52C with an 0x80 row advance.
 M.RUNNER_DETAIL_LABELS = { "Success", "Defense" }
 M.NO_ACTIVE_RUN_DETAILS = { "Unknown", "Unknown" } -- ROM 0xE4370 at $C4B4.
 

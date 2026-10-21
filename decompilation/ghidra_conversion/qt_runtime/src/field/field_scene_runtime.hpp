@@ -357,6 +357,7 @@ public:
     bool seed_cyberspace_access_for_dump();
     bool seed_cyberdeck_reference_frame_for_dump();
     bool seed_cyberdeck_pull_plug_reference_for_dump();
+    bool seed_matrix_storage_files_for_dump();
     bool open_matrix_traversal_for_dump(std::uint8_t system_id,
                                         std::uint8_t node_id);
     bool seed_matrix_degrade_action_for_dump();

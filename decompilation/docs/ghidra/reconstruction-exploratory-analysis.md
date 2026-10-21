@@ -1006,9 +1006,15 @@ before applying the source E2DF2 footprint table. Normal flags are 0/1, but
 the native conversion preserves the source operation, and
 `0x19558` subtracts both totals from the Matrix's total memory word. The new
 `matrix_storage_conversion` module returns those values as ordinary host
-integers. The same module now models the `0x18F5E` reverse five-slot datafile
-walk, preserving each occupied record's signed type, usage byte, source slot,
-and display order; only slot selection and text rendering remain unresolved.
+integers. The Lua Storage screen now models the `0x18F5E` reverse five-slot
+datafile walk, ROM filename/separator/size rows, Start-to-return behavior,
+empty-storage return, and `0x18DE0` erase prompt. No cycles through occupied
+records; Yes clears type/size/value and returns through the file-list branch.
+The Qt layer receives typed phase/name/size fields and places the text at the
+traced plane coordinates. Debug/Release route QA writes complete frames for
+the root, empty view, list, prompt, post-erase list, and empty result. The full
+Cyberdeck/Matrix hill remains partial pending broader traversal coverage and an
+independent Genesis Storage comparison.
 The callable sub-entries are retained separately in the ledger: `0x195A6`
 selects the current program before entering timing arithmetic at `0x195AA`,
 `0x19538` is the callable footprint-multiplier tail of `0x1952C`, and

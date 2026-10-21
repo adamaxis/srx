@@ -25,15 +25,19 @@ place. Lua now passes that parent row plus live deck artwork state to the
 presenter; CyberInfo, Run Info, and Deck Stats QA checks the retained assets in
 full frames. The Cyberdeck hill remains partial pending broader Matrix visual
 and action coverage.
-The Storage root at ROM `0x18D1A` now keeps that same parent row, program grid,
-and footer, then draws the source panel and live total/available capacity. Its
-`Storage`, `View`, and `Erase` text comes from `0xE3A07`/`0xE38BA`; the numeric
-writes at `$C244`/`$C2C4` align at `(272,32)`/`(272,40)`. Debug and Release QA
-write `deck-storage/actual.bmp` and check all six panel rows, both options,
-capacity values, the retained program icon, and the complete 320x224 deck
-surface. The two captures have matching SHA-256 hashes. View and Erase child
-flows are still incomplete, and no independent Genesis Storage frame has been
-identified, so this screen remains partial.
+The Storage screen at ROM `0x18D1A` keeps that parent row, program grid, and
+footer while drawing the source panel and live capacity. View at `0x18F5E`
+walks occupied records from slot 4 down to 0, drawing each ROM filename,
+separator, and size; Start returns to Storage. Erase begins with the highest
+occupied slot, defaults to Yes, cycles through occupied slots on No, deletes
+the chosen record on Yes, and shows the remaining list. Empty storage writes
+the ROM's two-line message and returns to the deck. The Debug/Release QA writes
+full 320x224 `actual.bmp` captures for the root, empty view, file list, erase
+prompt, post-erase list, and empty-after-erase state. All six Debug/Release
+pairs have matching SHA-256 hashes; the full frames were inspected. These are
+source-position and internal regression checks, not independent Genesis pixel
+proof. The Storage screen hill is defended by the traced Lua state, named CTest,
+and full-frame dumps; the wider Cyberdeck/Matrix hill remains partial.
 The loaded-program prompt at `0x19238` also redraws only the right panel,
 starting at `$C628`; the selected program detail panel above it and the parent
 grid/footer remain visible. Lua carries the parent program's name, rating, and
@@ -371,6 +375,7 @@ the [City Inn route audit](visual-audits/tarislar-city-inn-scene1-event1.md).
 
 | Cluster | Hill | ROM | Status | Defending test | Dump |
 |---|---|---|---|---|---|
+| later | Matrix Storage screen | `0x18D1A` / `0x18F5E` / `0x18DE0` / `0x18F2A` | defended | `shadowrun_ghidra_gameplay_script_menu_route`; `shadowrun_ghidra_conversion_qt_field_matrix_cyber_info_qa` | Debug/Release route and Lua tests cover root, reverse file list, Start return, erase prompt/default, No cycling, Yes deletion, remaining files, and empty message; six full 320x224 captures per build match by SHA-256. This defends the traced Storage behavior and layout; no independent Genesis Storage frame was identified. See [Matrix Storage audit](visual-audits/matrix-storage-screen.md) |
 | 0 Process | Visual dump CLI | — | partial | Archived legacy-native CLI; no active Ghidra CTest for this general capability | No root-project-wide dump is retained; the Release Qt executable dumps only supported scenes |
 | 0 Process | Leftover-clear (startup + field menu) | `0x59092` / `0x59172` / `0x10F50` | defended | `shadowrun_leftover_clear` | leftover-clear/*.bmp |
 | 1 Boot | Pre-title logos | `0x5D746` after reset `0x0236` | partial | `shadowrun_boot_sequence`; `shadowrun_ghidra_conversion_qt_boot_fasa_qa` | `decompilation/ghidra_conversion/build/conversion/qt/debug/qt_runtime/boot-fasa-qa/actual.bmp` plus shock/strobe checkpoints (source-batch lightning lifetime, ROM-cadenced seven-step figure fade, FASA 34-VBlank fades and 121-VBlank hold, palette-line-2 logo, clean title handoff); whole pre-title hill remains partial |

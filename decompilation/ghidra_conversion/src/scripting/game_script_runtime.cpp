@@ -1907,6 +1907,32 @@ struct GameScriptRuntime::Impl {
                     read_optional(screen_state_index, "storage_total");
                 menu_route_state.top_matrix_storage_available =
                     read_optional(screen_state_index, "storage_available");
+                (void)read_field_string(
+                    state, screen_state_index, "phase",
+                    menu_route_state.top_matrix_storage_phase);
+                (void)read_field_string(
+                    state, screen_state_index, "storage_separator",
+                    menu_route_state.top_matrix_storage_separator);
+                menu_route_state.top_matrix_storage_file_names =
+                    read_string_array(screen_state_index,
+                                      "storage_file_names", 5U);
+                menu_route_state.top_matrix_storage_file_sizes =
+                    read_integer_array(screen_state_index,
+                                       "storage_file_sizes", 5U, 0,
+                                       0xFFFF);
+                lua_getfield(state, screen_state_index,
+                             "storage_erase_name");
+                menu_route_state.top_matrix_storage_erase_name_present =
+                    read_string(
+                        state, -1,
+                        menu_route_state.top_matrix_storage_erase_name);
+                lua_pop(state, 1);
+                menu_route_state.top_matrix_storage_erase_size =
+                    read_optional(screen_state_index,
+                                  "storage_erase_size");
+                menu_route_state.top_matrix_storage_empty_message_lines =
+                    read_string_array(screen_state_index,
+                                      "storage_empty_message_lines", 2U);
                 const auto deck_palette_phase =
                     read_optional(screen_state_index,
                                   "deck_palette_phase");
