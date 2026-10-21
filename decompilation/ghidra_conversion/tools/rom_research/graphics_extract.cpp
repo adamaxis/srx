@@ -6308,8 +6308,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint16_t source_order;
         std::uint16_t entity_kind;
         std::string actor_name;
-        std::string sprite_stem;
         std::string profile_id;
+        std::string sprite_stem;
         std::string action_kind;
         std::uint8_t initial_action_code;
         std::uint16_t world_x;
@@ -6440,8 +6440,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             }
             const auto entity_kind = read_big_endian_word(rom, template_offset);
             const auto actor_name = read_actor_name(template_offset);
-            const auto sprite_stem = make_sprite_stem(actor_name);
-            if (actor_name.empty() || sprite_stem.empty()) {
+            if (actor_name.empty()) {
                 throw std::runtime_error(
                     "default field actor template has no display name");
             }
@@ -6458,6 +6457,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             const auto profile_id = make_actor_profile_id(
                 rom, template_offset, entity_kind, action_kind,
                 initial_action_code);
+            // The actor-name slug is not a unique visual key. Keep the ROM
+            // action profile ID as the asset stem, matching the conditional
+            // actor and encounter extractors below.
+            const auto sprite_stem = profile_id;
             const auto palette_line = static_cast<std::uint8_t>(
                 (read_big_endian_word(rom, template_offset + 2U) >> 13U) &
                 0x03U);
@@ -6466,8 +6469,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 source_order,
                 entity_kind,
                 actor_name,
-                sprite_stem,
                 profile_id,
+                sprite_stem,
                 action_kind,
                 initial_action_code,
                 read_big_endian_word(rom, position_offset),
@@ -6679,6 +6682,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint32_t position_offset;
         std::uint16_t entity_kind;
         std::string actor_name;
+        std::string profile_id;
         std::string sprite_stem;
         std::uint8_t action_code;
         std::uint8_t source_action_slot;
@@ -6753,6 +6757,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 : ((action_selector & 0x80U) != 0U
                        ? std::string("spell")
                        : std::string("item"));
+            const auto profile_id = make_actor_profile_id(
+                rom, template_offset, entity_kind, action_kind, action_code);
             auto heading = read_big_endian_word(rom, 0x7361AU + 0x2EU);
             auto next_record = cursor + 8U;
             std::ostringstream overrides;
@@ -6808,6 +6814,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 position_offset,
                 entity_kind,
                 actor_name,
+                profile_id,
                 sprite_stem,
                 action_code,
                 action_selector,
@@ -6866,7 +6873,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     "\tscript_index"
                  "\tsource_record_offset\ttagged_template"
                  "\ttemplate_offset\tposition_offset\tentity_kind"
-                 "\tactor_name\tsprite_stem\taction_kind\taction_code"
+                 "\tactor_name\tprofile_id\tsprite_stem\taction_kind"
+                 "\taction_code"
                  "\tpalette_line\tworld_x\tworld_y\tinitial_heading"
                  "\tordered_overrides\tactivation_rule\n";
         for (const auto& actor : world_activity_actor_records) {
@@ -6879,7 +6887,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                   << format_offset(actor.template_offset) << '\t'
                   << format_offset(actor.position_offset) << '\t'
                   << actor.entity_kind << '\t' << actor.actor_name << '\t'
-                  << actor.sprite_stem << '\t' << actor.action_kind << '\t'
+                  << actor.profile_id << '\t' << actor.sprite_stem << '\t'
+                  << actor.action_kind << '\t'
                   << static_cast<unsigned>(actor.action_code) << '\t'
                   << static_cast<unsigned>(actor.palette_line) << '\t'
                   << actor.world_x << '\t' << actor.world_y << '\t'

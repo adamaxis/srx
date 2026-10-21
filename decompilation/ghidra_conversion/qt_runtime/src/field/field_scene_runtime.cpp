@@ -2774,10 +2774,22 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
         return false;
     }
 
-    constexpr std::array<std::string_view, 2> kActorAssetPrefixes{
-        "field.entities.actors.corp.guard",
-        "field.entities.actors.pedestrian"};
     constexpr std::array<std::uint16_t, 2> kActorKinds{5U, 11U};
+    std::array<std::string, 2> actor_asset_prefixes{};
+    for (const auto& actor : field_default_actors_) {
+        const auto kind_index = actor.entity_kind == 5U ? 0U : 1U;
+        std::string prefix = "field.entities.actors.";
+        prefix.reserve(prefix.size() + actor.sprite_stem.size());
+        for (const char character : actor.sprite_stem) {
+            prefix.push_back(character == '-' ? '.' : character);
+        }
+        if (actor_asset_prefixes[kind_index].empty()) {
+            actor_asset_prefixes[kind_index] = std::move(prefix);
+        } else if (actor_asset_prefixes[kind_index] != prefix) {
+            failure_ = "default actor kind maps to multiple extracted sprite stems";
+            return false;
+        }
+    }
     std::array<std::array<bool, 8>, 2> loaded_directions{};
     for (const auto& actor : field_default_actors_) {
         const auto kind_index = actor.entity_kind == 5U ? 0U : 1U;
@@ -2806,8 +2818,8 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
         const auto direction_suffix = direction == 0U
             ? std::string{}
             : ".dir." + std::to_string(direction);
-        const auto idle_alias = std::string(kActorAssetPrefixes[kind_index]) +
-                                ".idle" + direction_suffix;
+        const auto idle_alias = actor_asset_prefixes[kind_index] + ".idle" +
+                                direction_suffix;
         if (!load_sprite_image(catalog, idle_alias,
                                artwork.idle_images[direction],
                                artwork.idle_origin_x[direction],
@@ -2816,7 +2828,7 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
         }
         for (std::size_t frame = 0; frame < 2U; ++frame) {
             const auto entry_alias =
-                std::string(kActorAssetPrefixes[kind_index]) + ".entry.dir." +
+                actor_asset_prefixes[kind_index] + ".entry.dir." +
                 std::to_string(direction) + ".frame." +
                 std::to_string(frame);
             if (!load_sprite_image(
@@ -2970,6 +2982,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
     }
 
     std::unordered_map<std::string, std::uint16_t> actor_kinds;
+    std::vector<std::pair<std::string, std::uint16_t>> script_actor_kinds;
     try {
         while (std::getline(input, line)) {
             if (!line.empty() && line.back() == '\r') {
@@ -3024,6 +3037,65 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
         }
     } catch (const std::exception& error) {
         failure_ = std::string("cannot parse dynamic actor table: ") +
+                   error.what();
+        return false;
+    }
+
+    const auto* script_actor_table =
+        catalog.find("field.entities.world.activity.actors");
+    if (script_actor_table == nullptr || script_actor_table->kind != "state") {
+        failure_ = "missing extracted conditional world-activity actor table";
+        return false;
+    }
+    std::ifstream script_actor_input(script_actor_table->absolute_path,
+                                     std::ios::binary);
+    if (!script_actor_input) {
+        failure_ = "cannot read extracted conditional world-activity actor table";
+        return false;
+    }
+    if (!std::getline(script_actor_input, line) ||
+        line != "scene\tlist_id\tlist_offset\tsource_order\tscript_index"
+                "\tsource_record_offset\ttagged_template\ttemplate_offset"
+                "\tposition_offset\tentity_kind\tactor_name\tprofile_id"
+                "\tsprite_stem\taction_kind\taction_code\tpalette_line"
+                "\tworld_x\tworld_y\tinitial_heading\tordered_overrides"
+                "\tactivation_rule") {
+        failure_ = "conditional world-activity actor table header is invalid";
+        return false;
+    }
+    try {
+        while (std::getline(script_actor_input, line)) {
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+            if (line.empty()) {
+                continue;
+            }
+            std::vector<std::string> fields;
+            std::istringstream row(line);
+            std::string field;
+            while (std::getline(row, field, '\t')) {
+                fields.push_back(std::move(field));
+            }
+            if (fields.size() != 21U || fields[12].empty()) {
+                failure_ = "conditional world-activity actor row is malformed";
+                return false;
+            }
+            const auto script_index = std::stoi(fields[4]);
+            if (script_index < 0) {
+                continue;
+            }
+            const auto entity_kind = static_cast<std::uint16_t>(
+                std::stoul(fields[9]));
+            if (script_index > 0xFF || entity_kind < 3U ||
+                entity_kind > 14U) {
+                failure_ = "conditional world-activity actor identity is invalid";
+                return false;
+            }
+            script_actor_kinds.emplace_back(fields[12], entity_kind);
+        }
+    } catch (const std::exception& error) {
+        failure_ = std::string("cannot parse conditional actor table: ") +
                    error.what();
         return false;
     }
@@ -3288,6 +3360,35 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
         return false;
     }
 
+    for (const auto& [sprite_stem, entity_kind] : script_actor_kinds) {
+        const auto action_profile = action_profiles.find(sprite_stem);
+        const auto item_action_profile = item_action_profiles.find(sprite_stem);
+        const auto reaction_profile = reaction_profiles.find(sprite_stem);
+        std::string alias_prefix = "field.entities.actors.";
+        for (const char character : sprite_stem) {
+            alias_prefix.push_back(character == '-' ? '.' : character);
+        }
+        // Some ROM-selected script rows intentionally remain visible as
+        // source data until their profile resources have been extracted. Do
+        // not fail unrelated field scenes for those rows; selection of an
+        // unsupported row is reported at the actor publication boundary.
+        if (action_profile == action_profiles.end() ||
+            action_profile->second.entity_kind != entity_kind ||
+            item_action_profile == item_action_profiles.end() ||
+            item_action_profile->second.entity_kind != entity_kind ||
+            reaction_profile == reaction_profiles.end() ||
+            reaction_profile->second.entity_kind != entity_kind ||
+            catalog.find(alias_prefix + ".idle") == nullptr) {
+            continue;
+        }
+        const auto [existing, inserted] =
+            actor_kinds.emplace(sprite_stem, entity_kind);
+        if (!inserted && existing->second != entity_kind) {
+            failure_ = "conditional actor sprite stem maps to multiple kinds";
+            return false;
+        }
+    }
+
     for (const auto& [sprite_stem, entity_kind] : actor_kinds) {
         std::string alias_prefix = "field.entities.actors.";
         alias_prefix.reserve(alias_prefix.size() + sprite_stem.size());
@@ -3483,7 +3584,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 }
             }
         }
-        if (entity_kind < 4U || entity_kind > 14U) {
+        if (entity_kind < 3U || entity_kind > 14U) {
             failure_ = "dynamic actor source kind is outside the supported range";
             return false;
         }
