@@ -4,6 +4,7 @@ local E = require("enums")
 local D = require("menu.rules.deck")
 local MatrixSession = require("menu.matrix_session")
 local DeckPalette = require("menu.deck_palette")
+local Cyberdeck = require("menu.screens.cyberdeck").Cyberdeck
 local P, R, T, MM = E.Pad, E.MenuRegion, E.MenuTransition, E.MenuMessage
 local ABC = P.A | P.B | P.C
 
@@ -93,6 +94,8 @@ function CyberInfo.new(args)
     args = args or {}
     local deck_palette = args.deck_palette or DeckPalette.new()
     return { row = 0, matrix_state = args.matrix_state,
+             deck_parent_col = args.deck_parent_col,
+             deck_parent_row = args.deck_parent_row,
              deck_palette = deck_palette,
              deck_palette_phase = DeckPalette.phase(deck_palette) }
 end
@@ -102,11 +105,13 @@ function CyberInfo.enter(st, ctx)
     -- each visible line; the 12-glyph separator is placed by the presenter.
     st.title = "  Cyberdeck Info"
     st.labels = { "  Deck Stats", "  Run Info" }
+    Cyberdeck.update_program_art_state(st, ctx)
     ctx.redraw(R.SUBMENU)
 end
 function CyberInfo.input(st, events, ctx)
     tick_palette(st, ctx)
     service_program_loading(st, ctx)
+    Cyberdeck.update_program_art_state(st, ctx)
     if events & (P.UP | P.DOWN) ~= 0 then
         st.row = 1 - st.row
         ctx.redraw(R.SUBMENU)

@@ -23992,32 +23992,6 @@ int main(int argc, char** argv) {
                     return cyberdeck_source_backgrounds[
                         static_cast<std::size_t>(std::clamp(phase, 0, 3))];
                 };
-                const auto child_has_no_program_grid =
-                    [&source_background_for_phase](const QImage& image,
-                                                   const int phase) {
-                    const auto& source_background =
-                        source_background_for_phase(phase);
-                    if (source_background.size() !=
-                            QSize(kSceneWidth, kSceneHeight) ||
-                        image.size() != QSize(kSceneWidth, kSceneHeight)) {
-                        return false;
-                    }
-                    // ROM child screens keep the Plane-B Cyberdeck backdrop.
-                    // Their Run Info and Deck Stats text begins at x=160; the
-                    // upper 176 pixels must match the static base with no
-                    // Cyberdeck selector, program icons, or cursor left over.
-                    // The common renderer intentionally keeps the live
-                    // runner portrait and loaded-slot footer below this area.
-                    for (int y = 0; y < 176; ++y) {
-                        for (int x = 0; x < 152; ++x) {
-                            if (image.pixelColor(x, y) !=
-                                source_background.pixelColor(x, y)) {
-                                return false;
-                            }
-                        }
-                    }
-                    return true;
-                };
                 if (field_scene.field_scene_reference_for_dump() != 2U ||
                     !field_scene.seed_cyberspace_access_for_dump() ||
                     !field_scene.seed_cyberdeck_reference_frame_for_dump() ||
@@ -24149,6 +24123,61 @@ int main(int argc, char** argv) {
                         }
                         return found_opaque_pixel;
                     };
+                const auto retained_deck_surface_matches =
+                    [&source_pixels_match_at, &full_cyberdeck_frame](
+                        const QImage& image, const int phase,
+                        const int parent_row,
+                        const std::array<std::uint8_t, 12>& ratings,
+                        const std::array<std::int8_t, 5>& active_programs,
+                        const std::array<std::uint8_t, 5>& slot_status) {
+                    const auto selector_asset = phase == 0
+                        ? std::filesystem::path(
+                              "cyberspace/matrix/"
+                              "cyberdeck-selector-selected-row-" +
+                              std::to_string(parent_row) + ".bmp")
+                        : std::filesystem::path("cyberspace/matrix/") /
+                              ("cyberdeck-selector-selected-row-" +
+                               std::to_string(parent_row) + "-phase-" +
+                               std::to_string(phase) + ".bmp");
+                    bool grid_matches =
+                        full_cyberdeck_frame(image) && parent_row >= 0 &&
+                        parent_row < 4 && phase >= 0 && phase < 4 &&
+                        source_pixels_match_at(image, 0, 0, selector_asset);
+                    for (int program = 0; program < 16; ++program) {
+                        if (program < 12 &&
+                            ratings[static_cast<std::size_t>(program)] == 0U) {
+                            continue;
+                        }
+                        grid_matches = grid_matches && source_pixels_match_at(
+                            image, 16 + (program % 4) * 32,
+                            24 + (program / 4) * 40,
+                            std::filesystem::path("cyberspace/matrix") /
+                                ("program-icon-" + std::to_string(program) +
+                                 ".bmp"));
+                    }
+                    bool footer_matches = true;
+                    for (std::size_t slot = 0U;
+                         slot < active_programs.size(); ++slot) {
+                        const auto program = active_programs[slot];
+                        const auto icon_name = program >= 0
+                            ? "program-icon-" + std::to_string(program) +
+                                  ".bmp"
+                            : "cyberdeck-program-icon-empty.bmp";
+                        footer_matches = footer_matches &&
+                            source_pixels_match_at(
+                                image, 80 + static_cast<int>(slot) * 48, 184,
+                                std::filesystem::path("cyberspace/matrix") /
+                                    icon_name) &&
+                            slot_status[slot] < 7U &&
+                            source_pixels_match_at(
+                                image, 80 + static_cast<int>(slot) * 48, 208,
+                                std::filesystem::path("cyberspace/matrix") /
+                                    ("cyberdeck-footer-slot-status-" +
+                                     std::to_string(slot_status[slot]) +
+                                     ".bmp"));
+                    }
+                    return grid_matches && footer_matches;
+                };
                 bool palette_phase_assets_match =
                     initial_palette_phase == 0 &&
                     source_pixels_match_at(
@@ -24330,15 +24359,40 @@ int main(int argc, char** argv) {
                     cyber_info_route.top_title != "  Cyberdeck Info" ||
                     cyber_info_route.top_option_labels !=
                         std::vector<std::string>{
-                            "  Deck Stats", "  Run Info"}) {
+                            "  Deck Stats", "  Run Info"} ||
+                    cyber_info_route.top_matrix_deck_parent_column != 0 ||
+                    cyber_info_route.top_matrix_deck_parent_row != 3 ||
+                    !cyber_info_route.top_matrix_deck_program_ratings_present ||
+                    cyber_info_route.top_matrix_deck_program_ratings !=
+                        kExpectedCyberdeckRatings ||
+                    !cyber_info_route.top_matrix_deck_active_programs_present ||
+                    cyber_info_route.top_matrix_deck_active_programs !=
+                        kExpectedCyberdeckActivePrograms ||
+                    !cyber_info_route
+                         .top_matrix_deck_program_slot_status_present ||
+                    cyber_info_route.top_matrix_deck_program_slot_status !=
+                        kExpectedCyberdeckSlotStatus) {
                     std::cerr << "Matrix CyberInfo QA: CyberInfo choices "
-                                 "did not open from the deck grid\n";
+                                 "did not retain the parent deck route/art state\n";
                     return 3;
                 }
                 const auto cyber_info_image = capture("cyber-info");
-                if (cyber_info_image.isNull()) {
+                if (cyber_info_image.isNull() ||
+                    !full_cyberdeck_frame(cyber_info_image)) {
                     std::cerr << "Matrix CyberInfo QA: CyberInfo image was "
-                                 "not captured at 320x224\n";
+                                 "not captured as a full 320x224 frame\n";
+                    return 3;
+                }
+                const auto cyber_info_phase =
+                    cyber_info_route.top_matrix_deck_palette_phase.value_or(0);
+                if (!retained_deck_surface_matches(
+                        cyber_info_image, cyber_info_phase, 3,
+                        cyber_info_route.top_matrix_deck_program_ratings,
+                        cyber_info_route.top_matrix_deck_active_programs,
+                        cyber_info_route.top_matrix_deck_program_slot_status)) {
+                    std::cerr << "Matrix CyberInfo QA: the retained parent "
+                                 "deck surface did not match the selected "
+                                 "ROM palette phase\n";
                     return 3;
                 }
                 const auto cyber_info_has_green =
@@ -24386,11 +24440,25 @@ int main(int argc, char** argv) {
                                  "contain the complete 320x224 screen\n";
                     return 3;
                 }
-                if (!child_has_no_program_grid(
+                if (!route.top_matrix_deck_program_ratings_present ||
+                    !route.top_matrix_deck_active_programs_present ||
+                    !route.top_matrix_deck_program_slot_status_present ||
+                    route.top_matrix_deck_program_ratings !=
+                        kExpectedCyberdeckRatings ||
+                    route.top_matrix_deck_active_programs !=
+                        kExpectedCyberdeckActivePrograms ||
+                    route.top_matrix_deck_program_slot_status !=
+                        kExpectedCyberdeckSlotStatus ||
+                    !retained_deck_surface_matches(
                         run_info_image,
-                        route.top_matrix_deck_palette_phase.value_or(0))) {
+                        route.top_matrix_deck_palette_phase.value_or(0),
+                        route.top_row.value_or(-1),
+                        route.top_matrix_deck_program_ratings,
+                        route.top_matrix_deck_active_programs,
+                        route.top_matrix_deck_program_slot_status)) {
                     std::cerr << "Matrix CyberInfo QA: Run Info did not "
-                                 "retain the source Plane-B backdrop cleanly\n";
+                                 "retain the selected deck row, grid, and "
+                                 "footer\n";
                     return 3;
                 }
                 tap_qa_controller_button(field_scene, 0x40U);
@@ -24407,11 +24475,25 @@ int main(int argc, char** argv) {
                                  "cropped or its lower edge is blank\n";
                     return 3;
                 }
-                if (!child_has_no_program_grid(
+                if (!route.top_matrix_deck_program_ratings_present ||
+                    !route.top_matrix_deck_active_programs_present ||
+                    !route.top_matrix_deck_program_slot_status_present ||
+                    route.top_matrix_deck_program_ratings !=
+                        kExpectedCyberdeckRatings ||
+                    route.top_matrix_deck_active_programs !=
+                        kExpectedCyberdeckActivePrograms ||
+                    route.top_matrix_deck_program_slot_status !=
+                        kExpectedCyberdeckSlotStatus ||
+                    !retained_deck_surface_matches(
                         deck_stats_image,
-                        route.top_matrix_deck_palette_phase.value_or(0))) {
+                        route.top_matrix_deck_palette_phase.value_or(0),
+                        route.top_row.value_or(-1),
+                        route.top_matrix_deck_program_ratings,
+                        route.top_matrix_deck_active_programs,
+                        route.top_matrix_deck_program_slot_status)) {
                     std::cerr << "Matrix CyberInfo QA: Deck Stats did not "
-                                 "retain the source Plane-B backdrop cleanly\n";
+                                 "retain the selected deck row, grid, and "
+                                 "footer\n";
                     return 3;
                 }
                 // The ROM returns to the selected Command row after Deck

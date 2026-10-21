@@ -19,6 +19,12 @@ title at `(192,48)`, bracketed separator at `(176,56)`, choices at `(192,72)`
 and `(192,88)`, and cursor base `$C4AC`. The full CyberInfo frame is captured
 in Debug and Release; QA checks the final title glyph and both ends of the
 separator. The title no longer clips at the right edge.
+ROM `0x18AA6`, `0x18B5C`, and `0x18C28` rewrite the right panel at `$C126` but
+leave the selected parent deck row, installed program grid, and footer in
+place. Lua now passes that parent row plus live deck artwork state to the
+presenter; CyberInfo, Run Info, and Deck Stats QA checks the retained assets in
+full frames. The Cyberdeck hill remains partial pending broader Matrix visual
+and action coverage.
 The row-3/column-3 Pull Plug prompt now retains the selected Command grid and
 footer. ROM `0x1846E` / `0x18480` / `0x18492` place the optional warning,
 question, and Yes/No rows at `$C228`, `$C426`, and `$C638`; `$C632` places the

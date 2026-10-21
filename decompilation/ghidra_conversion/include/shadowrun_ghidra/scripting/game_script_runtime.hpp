@@ -457,6 +457,8 @@ struct ScriptMenuRouteSnapshot {
     bool top_matrix_deck_program_slot_status_present = false;
     std::array<std::uint8_t, 5> top_matrix_deck_program_slot_status{};
     std::optional<int> top_matrix_deck_palette_phase;
+    std::optional<int> top_matrix_deck_parent_column;
+    std::optional<int> top_matrix_deck_parent_row;
     std::optional<int> top_matrix_countdown;
     std::optional<int> top_matrix_transition_fade_step;
     bool top_matrix_map_cells_present = false;

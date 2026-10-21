@@ -82,6 +82,7 @@ local function update_program_art_state(st, ctx)
     st.program_slot_status = status
     return changed, record
 end
+M.update_program_art_state = update_program_art_state
 
 local function service_program_loading(st, ctx)
     if not MatrixSession.is_online(st.matrix_state) then return false end
@@ -252,7 +253,9 @@ function M.input(st, events, ctx)
     if st.col == 2 and not online(st, ctx) then return end
     return { transition = T.PUSH, screen = M.FUNCTION[st.col],
              args = { deck_palette = st.deck_palette,
-                      matrix_state = st.matrix_state } }                              -- 0xE2DFE[col]
+                      matrix_state = st.matrix_state,
+                      deck_parent_col = st.col,
+                      deck_parent_row = st.row } }                                -- 0xE2DFE[col]
 end
 function M.child_returned(st, child, res, ctx)
     if res.logged_out then return leave(st, ctx, { exit_secretary = true }) end          -- FFF0DC = FF

@@ -1881,6 +1881,10 @@ struct GameScriptRuntime::Impl {
                     read_optional_alias(screen_state_index, "col", "column");
                 menu_route_state.top_row =
                     read_optional(screen_state_index, "row");
+                menu_route_state.top_matrix_deck_parent_column =
+                    read_optional(screen_state_index, "deck_parent_col");
+                menu_route_state.top_matrix_deck_parent_row =
+                    read_optional(screen_state_index, "deck_parent_row");
                 const auto deck_palette_phase =
                     read_optional(screen_state_index,
                                   "deck_palette_phase");

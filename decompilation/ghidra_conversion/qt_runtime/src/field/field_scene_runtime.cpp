@@ -19625,7 +19625,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 0, 0, matrix_cyberdeck_backgrounds_[deck_palette_phase]);
 
             if (routed_screen == srx::MenuScreen::CYBERDECK ||
-                routed_screen == srx::MenuScreen::PULL_PLUG) {
+                routed_screen == srx::MenuScreen::PULL_PLUG ||
+                routed_screen == srx::MenuScreen::DECK_CYBERINFO) {
                 // 0x17708 writes the five 3x2 installed/empty slot records
                 // at y=184, then 0x19856 writes each 3-tile status strip at
                 // y=208. The five slots begin at x=80 with 48-pixel spacing.
@@ -19700,6 +19701,44 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     12 + kPullPlugGridColumn * 32,
                     20 + kPullPlugGridRow * 40,
                     matrix_cyberdeck_cursors_[deck_palette_phase]);
+            }
+            const auto draw_retained_deck_grid = [&](const int retained_row) {
+                const auto parent_row = std::clamp(retained_row, 0, 3);
+                painter.drawImage(
+                    0, 0,
+                    matrix_cyberdeck_selector_rows_[
+                        static_cast<std::size_t>(parent_row)]
+                                                  [deck_palette_phase]);
+                for (std::size_t index = 0U;
+                     index < matrix_cyberdeck_program_icons_.size(); ++index) {
+                    if (index < 12U &&
+                        (!routed_menu
+                              .top_matrix_deck_program_ratings_present ||
+                         routed_menu
+                                 .top_matrix_deck_program_ratings[index] == 0U)) {
+                        continue;
+                    }
+                    painter.drawImage(
+                        16 + static_cast<int>(index % 4U) * 32,
+                        24 + static_cast<int>(index / 4U) * 40,
+                        matrix_cyberdeck_program_icons_[index]);
+                }
+            };
+            if (routed_screen == srx::MenuScreen::DECK_CYBERINFO) {
+                // ROM 0x18AA6 rewrites only the right panel from $C126. The
+                // selected deck row, program icons, and 0x17708 footer remain
+                // displayed from the parent deck loop. FFF0D1 is still the
+                // parent row (distinct from the CyberInfo cursor FFF0DC).
+                draw_retained_deck_grid(
+                    routed_menu.top_matrix_deck_parent_row.value_or(3));
+            }
+            if (routed_screen == srx::MenuScreen::CYBERDECK &&
+                has_deck_info) {
+                // The Run Info and Deck Stats branches return from 0x18AA6
+                // after updating the right panel. Their call to 0x1897C
+                // writes the panel region beginning at $C126; it does not
+                // clear the parent program grid or its selected row.
+                draw_retained_deck_grid(row);
             }
             if (routed_screen == srx::MenuScreen::CYBERDECK &&
                 !has_deck_info) {

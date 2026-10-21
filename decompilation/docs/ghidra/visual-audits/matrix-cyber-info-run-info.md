@@ -41,6 +41,24 @@ the separator and cursor at the ROM origins. The earlier host title
 `Cyberdeck Information` exceeded the source wording and was clipped; the
 source-backed `Cyberdeck Info` now fits through its final glyph.
 
+### Retained parent Cyberdeck surface
+
+ROM `0x18AA6` calls `0x1897C`, which fills the right panel beginning at Plane-A
+`$C126` (pixel origin `(152,16)`). It does not clear the left program grid,
+selected parent row (`FFF0D1`), or the footer written by `0x17708`. The child
+cursor uses the separate `FFF0DC` value. The Run Info and Deck Stats branches
+also call `0x1897C` before drawing their right-panel text, so those displays
+retain the same parent grid and footer.
+
+The host previously rebuilt CyberInfo on a blank left grid and omitted its
+parent selection. Lua now carries the parent deck row/column and publishes the
+live ratings, installed programs, and slot statuses to the typed snapshot.
+The presenter keeps the selected row and active program icons in CyberInfo,
+Run Info, and Deck Stats, along with the loaded-program footer. The CyberInfo
+QA checks the retained source assets in full 320x224 frames for all three
+views. This is a source-backed regression check; it does not by itself prove
+independent Genesis pixel fidelity.
+
 ## Change
 
 Lua now returns a typed Run Info view for all three `FFF0E3` branches. The Qt
@@ -106,8 +124,9 @@ selected Attack detail icon, the two installed footer icons at `(80,184)` and
 The longplay fixture uses a 15 Mp deck: the loaded Deception and Analyze
 programs occupy 2 Mp and 3 Mp, leaving the displayed 10 Mp free; the selected
 Attack 3 entry separately reports its 18 Mp size and two load steps. Run Info
-and Deck Stats clear the program grid while retaining the shared live footer,
-so their backdrop check covers the upper 176 rows and leaves the footer intact.
+and Deck Stats retain the selected program row, installed grid icons, and
+shared live footer. Their QA checks each named icon and footer asset at its
+source position instead of expecting an empty left panel.
 The Qt visual QA now seeds those visible inputs from independent frame
 `004220` instead of the earlier all-programs-at-rating-4 test deck. The
 selected Attack rating, free memory, loaded Deception/Analyze slots, and
@@ -195,8 +214,9 @@ which shows the matching Attack 3 detail view and intact bottom toolbar.
   `no-run.bmp`, `complete.bmp`, `cyber-info.bmp`, `cyberdeck.bmp`,
   `deck-stats.bmp`, and `pull-plug.bmp`.
 - CyberInfo selector QA checks the exact Lua strings, final title glyph, both
-  ends of the ROM separator, option-row origins, and cursor origin. The full
-  Debug and Release frames were inspected; the title is no longer clipped.
+  ends of the ROM separator, option-row origins, and cursor origin. Full
+  Debug and Release frames check the retained parent row, program grid, and
+  footer in CyberInfo, Run Info, and Deck Stats; the title is no longer clipped.
 - Cyberdeck QA requires every pixel of the lower-left 32x32 footer portrait to
   match the source-composed `D8316` background region, preventing a field-menu
   preview from obscuring the silver avatar.
