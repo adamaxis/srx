@@ -277,6 +277,18 @@ continuation `0x20C90` if the source marker condition succeeds. Events `0x1C`,
 Those are source-proven branches, but their full in-game meaning and connected
 Qt handlers are unresolved. Their full per-record locations are in the TSV.
 
+The Matrix main-menu path is specifically the event-`0x1F` branch: the ROM
+dispatcher at `0xB7B8` checks the collision event's low five bits, and its
+branch body at `0xB86E` writes handler pointer `0x0000DB26` to `0x00FFDD2C`.
+The generated collision records for Scenes 27 and 35 (profile addresses
+`0x1D9ED2` and `0x1DC248`) contain no event-`0x1F` rows. Scene 27 has elevator
+selector (`0x1D`) and changed-floor handoff (`0x1C`) records alongside ordinary
+interactions and terrain markers; Scene 35 has the same elevator pair plus
+source-return records and terrain markers. Their Lua Matrix system/node rows
+remain useful target mappings, but the ROM data examined here does not
+establish a physical route from either scene to the Matrix main menu. Do not
+reinterpret another event as that menu without a separate ROM trace.
+
 ## Lua event system connection
 
 `field_events.lua` owns live collision policy at the field-controller seam.
