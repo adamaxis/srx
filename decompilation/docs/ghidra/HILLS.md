@@ -59,7 +59,15 @@ I inspected the full Release frame beside independent Section 15 longplay frame 
 the grid, prompt, cursor, and footer align. ROM `0x196F2`'s four-phase deck
 palette cycle now has Lua-owned cadence and named extracted assets; Debug and
 Release QA captures cover all phases. The full Matrix traversal viewport
-remains open.
+remains open. A focused ROM trace now places `0x1AA40` ticks inside the
+`0x1ADE6` entry sequence; the blocking `0x54662` node-action loop holds the
+selected phase, and its first alert probe runs after the entry handoff. The
+mode-3 fixture's System 15/node 13 reaction index 15 adds `-2` to raw cadence
+7, producing reload 5. Debug/Release route and Lua tests cover the 61-VBlank
+setup, 238 effect service calls, deferred alert, and held action-screen
+phase. The typed mode-3 fixture predicts phase 4 at handoff, while phase 5 is
+the closest presenter match for longplay frame `004800`; the live visual mode
+and phase remain open.
 Cyberdeck chrome now uses the live Matrix palette override: ROM `0x17F80` /
 `0x566E2` copies sixteen words from `0xE2EBA` into CRAM line 1, replacing the
 initial line from `0xE2E5A`. The prior extractor used that initial line, which
@@ -116,14 +124,18 @@ changing traversal HUD text path is traced through
 `0x17998`/`0x17A5E`/`0x17BC0`, including its Plane-A write addresses, and is
 presented from typed Lua state. The nine `0x1A9CE` world-effect modes and the
 `0x1AA10` default record import 82 individually named phase overlays using
-CRAM line 1 at `0xE2E5A`. Lua selects the mode from the node IC table and alert
-state and advances the source cadence; the runtime draws the selected asset.
-Section 15 now has a presenter-only Active Alert comparison for the rank-zero
-System 15/node 13 SPU: all six mode-3 phases render as complete 320x224 frames
-against independent frame `004800`; the best candidate has full-frame mean
-RGB error `9.653`, and its bottom band was inspected intact. Lua separately
-checks the alert gate. This does not establish the live route's exact phase or
-the following `004810`/`004818` sequence.
+CRAM line 1 at `0xE2E5A`. At `0x1ADE6`, Lua captures the selected mode from the
+current node/alert state before the entry sequence; `0x54662` raises the
+knowledge rank after that sequence, and alert changes do not replace the
+stored mode until another `0x1A908` call. During entry, mode zero uses its
+source four-phase raw-cadence branch; nonzero modes apply the node reaction
+delta. Section 15 has a presenter-only Active Alert comparison for the
+rank-zero System 15/node 13 SPU: all six mode-3 phases render as complete
+320x224 frames against independent frame `004800`; the best candidate has
+full-frame mean RGB error `9.653`, and its bottom band was inspected intact.
+That is typed-snapshot evidence, not a live-route match. The live entry's
+selected mode/phase at `004800`, the independent VBlank palette service, and
+the following `004810`/`004818` sequence remain unresolved.
 Analyze and Medic now run from the selected deck slot through the traced Lua
 rules. The ROM maps C/A/B to attack/balanced/defense, and the source priority
 checks C before A. Medic applies its rating roll to persona condition, capped

@@ -106,14 +106,36 @@ Section 21 frames `004730` through `004830`.
 
 ### Runtime world-effect connection (2026-10-20)
 
-Lua selects the effect mode from the current node's ROM IC-combo code and
-alert state using the `0xE31A7` table. It keeps the selected mode, phase, and
-elapsed source ticks in the Matrix session. Mode cadence and phase counts are
-the bytes in the nine records addressed by `0x1A9CE`; a negative selector uses
-the separate six-phase record at `0x1AA10`. C++ presents the corresponding
-named, transparent images extracted offline from the descriptors and tile
-banks, over the node model and behind the runner. The runtime does not decode
-ROM data.
+At `0x1ADE6`, `0x1A908` selects and stores the effect mode from the current
+node's IC-combo code, alert state, and knowledge rank using the `0xE31A7`
+table. The selected record persists through the entry sequence; `0x54662`
+raises the node's knowledge rank only after that sequence returns, and later
+alert changes do not select a new record. Mode cadence and phase counts come
+from the nine records addressed by `0x1A9CE`; a negative selector uses the
+separate six-phase record at `0x1AA10`. During entry, mode zero uses the
+`0x1AA68` special branch: raw cadence, four phases, and a terminal phase 3.
+Nonzero modes decrement the byte countdown and, on underflow, add the signed
+16-bit delta from `0x1A4EA`, indexed by the current node's `+0x10` reaction
+byte, to the cadence using `ADD.B`/`BPL` semantics. System 15/node 13 has
+reaction index 15 (`-2`), so mode 3's raw cadence 7 reloads 5 and advances
+every six serviced VBlanks after its initial immediate phase. The blocking
+`0x54662` action loop does not tick `0x1AA40`.
+
+The reaction lookup has no range check. Its 21-word table ends at `0x1A536`,
+but current Matrix records also contain indexes 21 and 22; the ROM therefore
+reads words `0x41F9` and `0x00FF` from `0x1A538`/`0x1A53A`. `ADD.B` uses their
+low bytes as effective deltas `-7` and `-1`. Lua preserves those two observed
+reads as named source data; the current ROM node catalog has no larger index.
+
+A separate interrupt/display path can still update the palette during that
+blocking loop: vector `0x78` reaches `0x1872`, which calls `0x5672C` when its
+suppression gate is clear. When `FFDDC4 == 0` and `FFDF40 == 0`, this service
+cycles six words from `0x18AD42` into CRAM `$C014` every seven VBlanks. The
+values of those two gates in the Matrix route are not yet established, so
+that palette cycle and the mode-record phase must remain separate in visual
+comparisons. C++ presents named, transparent images extracted offline from
+the descriptors and tile banks, over the node model and behind the runner;
+the runtime does not decode ROM data.
 
 The earlier note tying
 `build/conversion/qt/release/matrix-system16-node29-effect.bmp` to frame 2050
@@ -788,16 +810,25 @@ IC combo 3. Frames `004740` and `004760`
 show the unknown SPU under No Alert; frame `004800` shows Active Alert, keeps
 `Ice Unknown`, and displays the small amber center effect.
 
-`0x19B40` returns UNSEEN for a rank-zero node while `FFDF84` is clear. When
-`FFDF84` is negative it reads the node's `+0x13` combo and indexes `0xE31A7`;
-System 15/node 13's combo-3 entry at `0xE31AD` is `{3, 0xFF}`. `0x1A908`
-selects mode 3 and `0x1AA40` advances its six phase images at seven-VBlank
-cadence. The alert-probe route now keeps the typed `in_alert` marker set for
-Active Alert and clears it when the alert is canceled. Lua QA verifies that
-this exact node remains visually unknown while selecting mode 3. Matrix entry
-still clears `FFDF84` independently of an initial field alert (`0x174E4`);
-only a later active-alert probe retains the marker, as in `0x56116`. This
-proves the source mode selection and host state transition. A separate
+`0x19B40` returns UNSEEN for a rank-zero node while `FFDF84` is clear. If
+`FFDF84` is negative before `0x1A908`, it instead reads the node's `+0x13`
+combo and indexes `0xE31A7`; System 15/node 13's combo-3 entry at `0xE31AD` is
+`{3, 0xFF}`. That is the explicit mode-3 fixture used below. The active Lua
+route begins with rank zero and `FFDF84` clear, so it stores the fallback
+record before `0x54662` raises rank. `0x1ADE6` runs the 61-VBlank setup and
+compact 239-VBlank entry, servicing `0x1AA40` for 238 motion frames before the
+final handoff; the first service advances immediately. For the mode-3 fixture,
+System 15/node 13 reaction index 15 selects `-2` from `0x1A4EA`, so cadence 7
+reloads 5 (six serviced VBlanks per later phase). The blocking `0x54662`
+node-action loop does not tick the stored world effect. It draws the node
+before the first `0x54A8E` random-alert probe, whose notice waits 25 VBlanks
+plus input. That later alert does not reselect the effect record; a later
+`0x1A908` entry does. Lua QA covers both the rank-zero fallback route and an
+entry that begins with the active-alert gate already set. Matrix entry still
+clears `FFDF84` independently of an initial field alert (`0x174E4`); only a
+later active-alert probe retains the marker, as in `0x56116`. The typed mode-3
+fixture predicts phase 4 after 238 service calls and holds it through the
+node-action message and input wait. A separate
 presenter QA now constructs the typed rank-zero System 15/node 13 SPU view,
 renders all six named mode-3 phases through the production presenter, and
 compares each full 320x224 output against Section 15 frame `004800`. Phase 5
@@ -806,9 +837,10 @@ is the closest candidate: mean absolute RGB error is `11.647` in the central
 rows. The complete `actual.bmp` was inspected beside the independent capture;
 the shell, HUD, runner, rings, blue floor, and footer are present. This is a
 presenter comparison from an explicit typed snapshot, while Lua separately
-tests the alert gate. It does not establish the live route's exact phase at
-frame `004800`; the changing central effect in `004810` and `004818` and the
-alert-to-effect timing remain open.
+tests the alert gate. The explicit mode-3 snapshot predicts phase 4, which does
+not match the phase-5 best visual candidate at frame `004800`. The live route's
+stored mode/phase, recording entry offset, separate VBlank palette state, and
+the changing central effect in `004810`/`004818` remain unresolved.
 
 ## Status
 
