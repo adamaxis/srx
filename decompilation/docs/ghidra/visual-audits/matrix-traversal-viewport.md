@@ -830,9 +830,17 @@ separately from alert state. Separately, `0x1745E` clears `FFDF84` at
 before the clear. The nearby `FFDF40` branch writes `0xFF` to `FFE171` at
 `0x17524`, a separate terrain-copy gate. This rules out the earlier
 hypothesis that the next outer pass preserves the negative `FFDF84` marker.
-The field traversal path enters after the `0x174E4` clear. The direct menu
-entry at `0x181F8` does not itself clear `FFDF84`, so it must receive the
-current value from its host. The Qt binding now reads the signed field
+The field traversal path enters after the `0x174E4` clear. `0x17490` compares
+the selected system ID at `FFFBBC` with the previously selected ID at `FFFBBD`;
+only a change calls `0x53290`, whose 35 longword clears cover the 140 cells in
+both `FFFAA4` revealed-cell flags and `FFFB30` knowledge/color records. The Matrix host now
+retains the 140 visible cells of each array across same-system entries, imports
+them into Lua, and clears them on a system change or fresh bootstrap. ROM
+`0x54662` updates the selected record's high nibble to 4 after node entry, and
+the Lua bridge preserves its low color nibble. This RAM is not included in the
+host save format. The direct menu entry at `0x181F8` does not itself clear
+`FFDF84`, so it must receive the current value from its host. The Qt binding
+now reads the signed field
 timeout marker maintained by the `0x1DBAA` world-activity path; the Matrix
 traversal QA creates a Scene 2 encounter through that source-backed state and
 checks that the negative sign reaches Lua on direct entry. The controller path

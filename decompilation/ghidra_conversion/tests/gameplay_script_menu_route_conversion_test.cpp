@@ -278,6 +278,14 @@ int main() {
     matrix_world_state.field.alarm = true;
     matrix_world_state.field.security_off = false;
     matrix_world_state.field.maglocks_off = false;
+    shadowrun::ghidra_conversion::scripting::ScriptMatrixMapMemory
+        matrix_map_memory;
+    matrix_map_memory.system_id = 0U;
+    // System 0/node 0 occupies y*14+x = 91. Its remembered rank and color
+    // exercise the FFFB30 table through the production Lua bridge.
+    matrix_map_memory.cells[91] = 0x21U;
+    matrix_map_memory.revealed[0] = 0xFFU;
+    matrix_world_state.matrix_map_memory = matrix_map_memory;
     matrix_world_state.actors = {{"fixture-armed", 0x02U},
                                  {"fixture-other", 0x04U}};
     ScriptCyberdeckRecord matrix_deck;
@@ -457,8 +465,16 @@ int main() {
     };
     bindings.game.commit_matrix_world_state = [&matrix_world_state](
         const ScriptMatrixWorldState& update) {
-        matrix_world_state.karma_counter = update.karma_counter;
-        matrix_world_state.passive_ic_counter = update.passive_ic_counter;
+        if (update.karma_counter.has_value()) {
+            matrix_world_state.karma_counter = update.karma_counter;
+        }
+        if (update.passive_ic_counter.has_value()) {
+            matrix_world_state.passive_ic_counter =
+                update.passive_ic_counter;
+        }
+        if (update.matrix_map_memory.has_value()) {
+            matrix_world_state.matrix_map_memory = update.matrix_map_memory;
+        }
         if (update.run.has_value()) {
             matrix_world_state.run = update.run;
         }
@@ -1168,6 +1184,10 @@ int main() {
               matrix_world_state.run->state == 0 &&
               matrix_world_state.run->target_system_id ==
                   std::optional<std::uint8_t>{1U} &&
+              matrix_world_state.matrix_map_memory.has_value() &&
+              matrix_world_state.matrix_map_memory->system_id == 0U &&
+              matrix_world_state.matrix_map_memory->cells[91] == 0x21U &&
+              matrix_world_state.matrix_map_memory->revealed[0] == 0xFFU &&
               deck_enter_count == 1,
           "jack-in enters the source Cyberdeck and keeps an off-target objective inactive",
           failures);
@@ -1186,6 +1206,10 @@ int main() {
               route.top_matrix_world_effect_gate_negative ==
                   std::optional<bool>{false},
           "the controlled node-action route receives the active Lua Matrix state",
+          failures);
+    check(matrix_world_state.matrix_map_memory.has_value() &&
+              matrix_world_state.matrix_map_memory->cells[91] == 0x41U,
+          "node-action entry replaces only FFFB30 knowledge and preserves its color nibble",
           failures);
     runtime.advance_menu_route(0x4000U); // Select Enter System.
     route = runtime.menu_route_snapshot();

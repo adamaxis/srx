@@ -52,7 +52,8 @@ function M.input(st, events, ctx)
     local started, matrix_state = MatrixSession.begin(
         system_id, world.field and world.field.alarm, st.node_id,
         st.node_ic_condition,
-        world_effect_gate_negative(ctx.game), st.node_knowledge_rank)
+        world_effect_gate_negative(ctx.game), st.node_knowledge_rank,
+        world.matrix_map_memory)
     if not started then
         return { transition = T.EXIT, result = { system_unavailable = true } }
     end
@@ -60,6 +61,7 @@ function M.input(st, events, ctx)
         system_id, world.run) then
         MatrixSession.commit_world_state(ctx.game, world)
     end
+    MatrixSession.commit_map_memory(ctx.game, matrix_state)
     return {
         transition = T.REPLACE,
         -- ROM 0xE47A enters the ten-slot Matrix menu at 0x181F8, which falls

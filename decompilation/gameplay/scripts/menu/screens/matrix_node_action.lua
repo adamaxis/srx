@@ -316,6 +316,7 @@ local function start_analyze(st, events, ctx)
     end
 
     MatrixSession.merge_current_node_knowledge(state, result.level)
+    MatrixSession.commit_map_memory(game, state)
     MatrixSession.begin_analyze_transition(
         state, slot_index, result.net > 0 and 6 or 10)
     -- The world loop calls the profile service after 0x1C754 dispatches the
@@ -428,8 +429,12 @@ function M.enter(st, ctx)
             local started, matrix_state = MatrixSession.begin(
                 st.system_id, world.field and world.field.alarm,
                 st.node_id, st.node_ic_condition,
-                world_effect_gate_negative(ctx.game))
-            if started then st.matrix_state = matrix_state end
+                world_effect_gate_negative(ctx.game), nil,
+                nil, world.matrix_map_memory)
+            if started then
+                st.matrix_state = matrix_state
+                MatrixSession.commit_map_memory(ctx.game, matrix_state)
+            end
         end
     end
     if not MatrixSession.is_online(st.matrix_state) then
@@ -448,6 +453,7 @@ function M.enter(st, ctx)
     -- ROM 0x54662 replaces FFFB30's knowledge nibble for the selected
     -- map cell with 4 after 0x1ADE6's entry sequence returns.
     MatrixSession.set_current_node_knowledge(st.matrix_state, 4)
+    MatrixSession.commit_map_memory(ctx.game, st.matrix_state)
     if st.traversal_view then
         update_deck_view(st, ctx)
     end
@@ -640,6 +646,7 @@ function M.input(st, events, ctx)
             if next_phase == "settled" then
                 st.world_entry_pending = false
                 MatrixSession.set_current_node_knowledge(state, 4)
+                MatrixSession.commit_map_memory(game, state)
                 -- 0x1ADE6 enters 0x54662 only after the world sequence ends;
                 -- the node-action loop draws its node, then probes 0x54A8E.
                 rebuild_node_view(st, ctx)
@@ -853,6 +860,7 @@ function M.input(st, events, ctx)
 
     if events & CONFIRM ~= 0 and
        MatrixSession.commit_node_selection(state) then
+        MatrixSession.commit_map_memory(ctx.game, state)
         if st.traversal_view then
             st.world_entry_pending = MatrixSession.begin_world_entry(
                 state, world_effect_gate_negative(ctx.game))

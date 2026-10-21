@@ -378,6 +378,7 @@ function Map.input(st, events, ctx)
         end
         if MatrixSession.is_online(st.matrix_state) then
             MatrixSession.retreat(st.matrix_state)
+            MatrixSession.commit_map_memory(ctx.game, st.matrix_state)
             return { transition = T.POP, result = { exit_deck = true } }
         end
         g.show_retreat()

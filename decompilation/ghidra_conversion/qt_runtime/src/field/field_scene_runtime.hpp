@@ -2023,6 +2023,11 @@ private:
     // Matrix node actions mutate field/world facts through Lua. The active
     // Matrix run record belongs to the Lua run registry and its save state.
     scripting::ScriptMatrixFieldState field_matrix_field_state_{};
+    // FFFB30 is source RAM shared by Matrix sessions. It is transient and is
+    // cleared on bootstrap; Lua updates its typed cell records through the
+    // Matrix world-state bridge.
+    std::optional<scripting::ScriptMatrixMapMemory>
+        field_matrix_map_memory_;
     // ROM FFF0CE: shared karma rollover state. New Game clears it, and loaded
     // source state stays unknown until the save adapter restores this byte.
     std::optional<std::int8_t> field_matrix_karma_counter_;

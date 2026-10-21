@@ -44,17 +44,66 @@ local function typed_node(source)
     }
 end
 
+local function copy_map_memory(system_id, source)
+    local memory = { system_id = system_id, cells = {}, revealed = {} }
+    if type(source) ~= "table" or source.system_id ~= system_id or
+       type(source.cells) ~= "table" then
+        return memory
+    end
+    -- ROM 0x53290 clears 35 longwords in each map array. The 14x10 map
+    -- consumes exactly cells 0..0x8B; preserve only those records.
+    for cell = 0, Rules.LAST do
+        local value = source.cells[cell]
+        if type(value) == "number" and value % 1 == 0 and
+           value >= 0 and value <= 0xFF then
+            memory.cells[cell] = value
+        end
+        local revealed = source.revealed and source.revealed[cell]
+        if revealed == true then
+            memory.revealed[cell] = 0xFF
+        elseif type(revealed) == "number" and revealed > 0 and
+               revealed % 1 == 0 and revealed <= 0xFF then
+            memory.revealed[cell] = revealed
+        end
+    end
+    return memory
+end
+
+local function copy_map_memory_for_host(memory)
+    if type(memory) ~= "table" or type(memory.system_id) ~= "number" or
+       type(memory.cells) ~= "table" then
+        return nil
+    end
+    return copy_map_memory(memory.system_id, memory)
+end
+
 local function remember_node_colour(state, node_id)
     local node = state.nodes[node_id]
     if node then
-        state.map_colours[node.y * Rules.W + node.x] = node.colour
+        local cell = node.y * Rules.W + node.x
+        state.map_colours[cell] = node.colour
+        local memory = state.matrix_map_memory
+        if memory and memory.cells then
+            local record = memory.cells[cell] or 0
+            memory.cells[cell] = record | (node.colour & 0x0F)
+        end
+    end
+end
+
+local function sync_revealed_map_memory(state)
+    local memory = state.matrix_map_memory
+    if not memory then return end
+    state.known = state.known or {}
+    memory.revealed = memory.revealed or {}
+    for cell = 0, Rules.LAST do
+        memory.revealed[cell] = state.known[cell] == true and 0xFF or 0
     end
 end
 
 function M.begin(system_id, field_alarm, initial_node_id,
                  initial_node_ic_condition,
                  initial_world_effect_gate_negative,
-                 initial_node_knowledge_rank)
+                 initial_node_knowledge_rank, initial_matrix_map_memory)
     local source = Systems[system_id]
     if type(source) ~= "table" then return false end
 
@@ -93,6 +142,8 @@ function M.begin(system_id, field_alarm, initial_node_id,
     end
     local selected_node_id = initial_node_id or 0
     local selected_node = nodes[selected_node_id]
+    local matrix_map_memory = copy_map_memory(
+        system_id, initial_matrix_map_memory)
     if initial_node_ic_condition ~= nil then
         selected_node.ic_condition = initial_node_ic_condition
     end
@@ -127,18 +178,29 @@ function M.begin(system_id, field_alarm, initial_node_id,
         -- FFFB30 is indexed by map cell. Keep its high nibble as a typed
         -- per-cell knowledge rank instead of deriving it from visibility.
         knowledge_ranks = {},
+        matrix_map_memory = matrix_map_memory,
     }
-    -- FFFB30 survives the direct 0x181F8 Matrix entry. A caller with a
-    -- restored source record can provide this node's existing high nibble;
-    -- the ordinary gameplay path leaves it unset until the source action
-    -- loop publishes or updates knowledge.
+    for cell, value in pairs(matrix_map_memory.cells) do
+        local rank = (value >> 4) & 0x0F
+        if rank > 0 then state.knowledge_ranks[cell] = rank end
+        local colour = value & 0x0F
+        if colour > 0 then state.map_colours[cell] = colour end
+    end
+    for cell, value in pairs(matrix_map_memory.revealed) do
+        if value > 0 then state.known[cell] = true end
+    end
+    -- A test or recovered caller may provide an explicit current-node seed.
     if initial_node_knowledge_rank ~= nil then
-        state.knowledge_ranks[selected_node.y * Rules.W + selected_node.x] =
-            initial_node_knowledge_rank
+        local cell = selected_node.y * Rules.W + selected_node.x
+        state.knowledge_ranks[cell] = initial_node_knowledge_rank
+        local record = matrix_map_memory.cells[cell] or 0
+        matrix_map_memory.cells[cell] =
+            (record & 0x0F) | (initial_node_knowledge_rank << 4)
     end
     state.known = Rules.reveal(map, state.known,
                               selected_node.x, selected_node.y)
     remember_node_colour(state, selected_node_id)
+    sync_revealed_map_memory(state)
     M.active = state
     return true, state
 end
@@ -176,6 +238,24 @@ function M.world_state(game)
     local run = RunRegistry.active_matrix_run_state()
     if run ~= nil then world.run = run end
     return world
+end
+
+-- FFFB30 is a narrow typed RAM fact. Lua owns its nibble updates; the host
+-- keeps the byte array alive while the field session is active.
+function M.commit_map_memory(game, state)
+    state = state or M.active
+    if type(state) ~= "table" or
+       type(state.matrix_map_memory) ~= "table" or
+       type(game) ~= "table" or
+       type(game.commit_matrix_world_state) ~= "function" then
+        return false
+    end
+    local memory = copy_map_memory_for_host(state.matrix_map_memory)
+    if not memory then return false end
+    game.commit_matrix_world_state({
+        matrix_map_memory = memory,
+    })
+    return true
 end
 
 function M.commit_world_state(game, world)
@@ -227,6 +307,7 @@ function M.retreat(state)
     local node = state.nodes[state.current_node]
     Rules.reveal(state.map, state.known, node.x, node.y)
     remember_node_colour(state, state.current_node)
+    sync_revealed_map_memory(state)
     state.phase = "node"
     state.pending_action = nil
     return true
@@ -279,7 +360,19 @@ function M.set_current_node_knowledge(state, rank)
     local node = M.current_node(state)
     if not node then return false end
     state.knowledge_ranks = state.knowledge_ranks or {}
-    state.knowledge_ranks[node.y * Rules.W + node.x] = rank
+    local cell = node.y * Rules.W + node.x
+    state.knowledge_ranks[cell] = rank
+    state.matrix_map_memory = state.matrix_map_memory or
+        { system_id = state.system_id, cells = {} }
+    local record = state.matrix_map_memory.cells[cell] or 0
+    state.matrix_map_memory.cells[cell] =
+        (record & 0x0F) | (rank << 4)
+    if node.function_id == 1 then
+        -- ROM 0x54676 calls 0x532A8 when the selected node is the CPU, which
+        -- marks all 0x8C map cells revealed in FFFAA4.
+        for map_cell = 0, Rules.LAST do state.known[map_cell] = true end
+    end
+    sync_revealed_map_memory(state)
     return true
 end
 
@@ -296,6 +389,11 @@ function M.merge_current_node_knowledge(state, rank)
     local cell = node.y * Rules.W + node.x
     state.knowledge_ranks[cell] =
         (state.knowledge_ranks[cell] or 0) | rank
+    state.matrix_map_memory = state.matrix_map_memory or
+        { system_id = state.system_id, cells = {} }
+    local record = state.matrix_map_memory.cells[cell] or 0
+    state.matrix_map_memory.cells[cell] =
+        (record & 0x0F) | (state.knowledge_ranks[cell] << 4)
     return true
 end
 
@@ -801,7 +899,7 @@ function M.node_cursor_text(state)
     local target
     if state.phase == "link_select" then
         local node = M.current_node(state)
-        target = node and node.links[state.link_cursor]
+        target = node and node.links and node.links[state.link_cursor]
         return "Link " .. tostring(state.link_cursor + 1) .. "|" ..
                "Destination: " .. M.node_name(state, target)
     end
@@ -884,6 +982,7 @@ local function enter_node(state, target, previous)
     state.link_cursor, state.goto_cursor = 0, nil
     Rules.reveal(state.map, state.known, next_node.x, next_node.y)
     remember_node_colour(state, target)
+    sync_revealed_map_memory(state)
     return true
 end
 

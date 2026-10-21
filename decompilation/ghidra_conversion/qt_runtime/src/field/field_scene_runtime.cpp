@@ -8306,6 +8306,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
         scripting::ScriptMatrixWorldState world;
         world.karma_counter = field_matrix_karma_counter_;
         world.passive_ic_counter = field_matrix_passive_ic_counter_;
+        world.matrix_map_memory = field_matrix_map_memory_;
         world.field = field_matrix_field_state_;
         world.datastore = make_matrix_datastore_facts(
             notebook_tip_flags_, notebook_tip_flags_resolved_,
@@ -8330,6 +8331,9 @@ void FieldSceneRuntime::configure_field_menu_route() {
         }
         if (update.passive_ic_counter.has_value()) {
             field_matrix_passive_ic_counter_ = update.passive_ic_counter;
+        }
+        if (update.matrix_map_memory.has_value()) {
+            field_matrix_map_memory_ = update.matrix_map_memory;
         }
         if (update.field.alarm.has_value()) {
             field_matrix_field_state_.alarm = update.field.alarm;
@@ -11238,6 +11242,10 @@ bool FieldSceneRuntime::bootstrap(
     field_funds_.reset();
     field_walk_fast_enabled_ = false;
     field_matrix_field_state_ = scripting::ScriptMatrixFieldState{};
+    // Startup 0x007F6 calls 0x53290; field mode also calls it when 0x17490
+    // detects a system change. A fresh bootstrap starts a new RAM bank, and
+    // this transient memory is not included in the host's durable save record.
+    field_matrix_map_memory_.reset();
     field_matrix_karma_counter_.reset();
     command_overview_magic_state_ = CommandOverviewMagicState::inactive;
     command_overview_magic_physical_defense_ = MagicDefenseStripView{};

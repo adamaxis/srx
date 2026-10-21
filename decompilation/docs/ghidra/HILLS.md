@@ -82,6 +82,17 @@ When the sequence completes, `0x1ADE6` immediately enters the blocking
 `FFDF84` marker from the field timeout state; a Scene 2 ROM encounter QA path
 verifies the negative value reaches Lua when Matrix opens. The live visual
 mode and phase remain open.
+Matrix map RAM now survives direct re-entry into the same system. At
+`0x17490`, the ROM compares `FFFBBC` with `FFFBBD`; when they differ,
+`0x53290` clears the `FFFAA4` revealed-cell flags and `FFFB30` cell records
+before copying the selected system ID into `FFFBBD`. Its 35 longword writes
+clear exactly 140 bytes in each array. The typed Lua bridge now
+carries those 140 knowledge/color records and revealed flags across same-
+system entries, and clears them on a system change or fresh bootstrap. Analyze
+and node-action knowledge updates preserve the low color nibble. This transient
+RAM is not added to save data. Lua Debug/Release tests cover same-system
+retention, mode selection from a restored rank, and system-change clearing;
+the host route test covers the typed round trip.
 Cyberdeck chrome now uses the live Matrix palette override: ROM `0x17F80` /
 `0x566E2` copies sixteen words from `0xE2EBA` into CRAM line 1, replacing the
 initial line from `0xE2E5A`. The prior extractor used that initial line, which

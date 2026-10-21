@@ -228,6 +228,15 @@ struct ScriptMatrixDatastoreFacts {
     std::optional<std::uint8_t> mr_johnsons_met_flags; // FFFC27.
 };
 
+// ROM FFFB30 stores one byte per Matrix map cell: the high nibble is node
+// knowledge and the low nibble is the remembered security color. ROM 0x53290
+// clears the 0x8C visible cells when the selected system changes.
+struct ScriptMatrixMapMemory {
+    std::uint8_t system_id = 0U;
+    std::array<std::uint8_t, 0x8C> cells{};
+    std::array<std::uint8_t, 0x8C> revealed{};
+};
+
 struct ScriptMatrixWorldState {
     std::optional<ScriptMatrixRunState> run;
     ScriptMatrixFieldState field;
@@ -238,6 +247,9 @@ struct ScriptMatrixWorldState {
     std::optional<std::int8_t> karma_counter;
     // ROM FFF0A3 is reset by the Attack and Slow program handlers.
     std::optional<std::int8_t> passive_ic_counter;
+    // FFFB30 is transient Matrix RAM. It survives reopening the same system,
+    // resets when its system changes, and is not part of the host save format.
+    std::optional<ScriptMatrixMapMemory> matrix_map_memory;
 };
 
 struct ScriptMenuRouteGame {

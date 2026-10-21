@@ -187,12 +187,34 @@ void push_optional_integer(lua_State* lua, const int table_index,
 
 void push_matrix_world_state(lua_State* lua,
                              const ScriptMatrixWorldState& world) {
-    lua_createtable(lua, 0, 6);
+    lua_createtable(lua, 0, 7);
     const int world_index = lua_absindex(lua, -1);
     push_optional_integer(lua, world_index, "karma_counter",
                           world.karma_counter);
     push_optional_integer(lua, world_index, "passive_ic_counter",
                           world.passive_ic_counter);
+    if (world.matrix_map_memory.has_value()) {
+        const auto& memory = *world.matrix_map_memory;
+        lua_createtable(lua, 0, 3);
+        const auto memory_index = lua_absindex(lua, -1);
+        lua_pushinteger(lua, memory.system_id);
+        lua_setfield(lua, memory_index, "system_id");
+        lua_createtable(lua, static_cast<int>(memory.cells.size()), 0);
+        const auto cells_index = lua_absindex(lua, -1);
+        for (std::size_t index = 0; index < memory.cells.size(); ++index) {
+            lua_pushinteger(lua, memory.cells[index]);
+            lua_rawseti(lua, cells_index, static_cast<lua_Integer>(index));
+        }
+        lua_setfield(lua, memory_index, "cells");
+        lua_createtable(lua, static_cast<int>(memory.revealed.size()), 0);
+        const auto revealed_index = lua_absindex(lua, -1);
+        for (std::size_t index = 0; index < memory.revealed.size(); ++index) {
+            lua_pushinteger(lua, memory.revealed[index]);
+            lua_rawseti(lua, revealed_index, static_cast<lua_Integer>(index));
+        }
+        lua_setfield(lua, memory_index, "revealed");
+        lua_setfield(lua, world_index, "matrix_map_memory");
+    }
     if (world.run.has_value()) {
         const auto& run = *world.run;
         lua_createtable(lua, 0, 7);
@@ -272,6 +294,21 @@ ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
         world.passive_ic_counter = static_cast<std::int8_t>(
             std::clamp<lua_Integer>(*value, -128, 127));
     }
+    lua_getfield(lua, world_index, "matrix_map_memory");
+    if (lua_istable(lua, -1)) {
+        const auto memory_index = lua_absindex(lua, -1);
+        const auto system_id = read_optional_integer(
+            lua, memory_index, "system_id");
+        if (system_id.has_value() && *system_id >= 0 && *system_id <= 24) {
+            ScriptMatrixMapMemory memory;
+            memory.system_id = static_cast<std::uint8_t>(*system_id);
+            read_array(lua, memory_index, "cells", memory.cells, 0, 0xFF);
+            read_array(lua, memory_index, "revealed", memory.revealed, 0,
+                       0xFF);
+            world.matrix_map_memory = memory;
+        }
+    }
+    lua_pop(lua, 1);
     lua_getfield(lua, world_index, "run");
     if (lua_istable(lua, -1)) {
         const int run_index = lua_absindex(lua, -1);

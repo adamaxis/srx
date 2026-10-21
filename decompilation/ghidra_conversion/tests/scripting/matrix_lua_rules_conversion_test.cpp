@@ -605,6 +605,47 @@ eq(Session.traversal_view(gate_session).world_effect_mode, 3,
 eq(Session.traversal_view(gate_session).world_effect_phase, 0,
     "fresh mode selection resets the entry phase")
 Session.finish(gate_session)
+local memory_previous_active = Session.active
+local remembered_node = Systems[15].nodes[13]
+local remembered_cell = remembered_node.y * MX.W + remembered_node.x
+local map_memory = {
+    system_id = 15,
+    cells = { [remembered_cell] = 0x42 },
+    revealed = { [0] = 0xFF },
+}
+local memory_started, memory_state = Session.begin(
+    15, false, 13, nil, false, nil, map_memory)
+eq(memory_started, true, "same-system Matrix entry accepts FFFB30 memory")
+eq(Session.current_node_knowledge(memory_state), 4,
+    "direct entry restores the current node's FFFB30 knowledge nibble")
+eq(memory_state.map_colours[remembered_cell], 2,
+    "direct entry restores the FFFB30 visited-node color nibble")
+eq(memory_state.known[0], true,
+    "same-system direct entry restores the FFFAA4 revealed-cell bitmap")
+eq(Session.begin_world_entry(memory_state), true,
+    "restored map knowledge participates in source world-mode selection")
+eq(Session.traversal_view(memory_state).world_effect_mode, 3,
+    "remembered rank reveals the System 15/node 13 Blaster effect without FFDF84")
+Session.set_current_node_knowledge(memory_state, 4)
+eq(memory_state.matrix_map_memory.cells[remembered_cell], 0x42,
+    "rank updates preserve the FFFB30 security-color nibble")
+local reopened_started, reopened_state = Session.begin(
+    15, false, 13, nil, false, nil, memory_state.matrix_map_memory)
+eq(reopened_started, true, "reopening the same system reuses its RAM memory")
+eq(Session.current_node_knowledge(reopened_state), 4,
+    "same-system re-entry retains the analyzed node rank")
+eq(reopened_state.map_colours[remembered_cell], 2,
+    "same-system re-entry retains the visited map color")
+local switched_started, switched_state = Session.begin(
+    16, false, 0, nil, false, nil, reopened_state.matrix_map_memory)
+eq(switched_started, true, "switching Matrix systems starts a valid session")
+eq(switched_state.matrix_map_memory.cells[remembered_cell], nil,
+    "a system change clears the previous FFFB30 map records")
+eq(switched_state.matrix_map_memory.revealed[0], 0,
+    "a system change clears the previous FFFAA4 reveal bitmap")
+eq(Session.current_node_knowledge(switched_state), 0,
+    "a different system does not inherit the previous node's knowledge")
+Session.active = memory_previous_active
 active_spu_state.phase = "link_select"
 active_spu_state.link_cursor = 0
 MatrixNodeAction.input(alert_screen, E.Pad.A, alert_context)
