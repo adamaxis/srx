@@ -67,7 +67,10 @@ mode-3 fixture's System 15/node 13 reaction index 15 adds `-2` to raw cadence
 setup, 238 effect service calls, deferred alert, and held action-screen
 phase. The typed mode-3 fixture predicts phase 4 at handoff, while phase 5 is
 the closest presenter match for longplay frame `004800`; the live visual mode
-and phase remain open.
+and phase remain open. ROM bytes confirm `0x1745E` clears `FFDF84` on every
+outer pass, and its `FFDF40` branch writes the separate `FFE171` byte. The
+possible `0x1A370` -> `0x561E8` -> `0x56116` mode-reselection path and its gate
+state are not represented by the current Lua entry latch.
 Cyberdeck chrome now uses the live Matrix palette override: ROM `0x17F80` /
 `0x566E2` copies sixteen words from `0xE2EBA` into CRAM line 1, replacing the
 initial line from `0xE2E5A`. The prior extractor used that initial line, which
@@ -124,10 +127,12 @@ changing traversal HUD text path is traced through
 `0x17998`/`0x17A5E`/`0x17BC0`, including its Plane-A write addresses, and is
 presented from typed Lua state. The nine `0x1A9CE` world-effect modes and the
 `0x1AA10` default record import 82 individually named phase overlays using
-CRAM line 1 at `0xE2E5A`. At `0x1ADE6`, Lua captures the selected mode from the
-current node/alert state before the entry sequence; `0x54662` raises the
-knowledge rank after that sequence, and alert changes do not replace the
-stored mode until another `0x1A908` call. During entry, mode zero uses its
+CRAM line 1 at `0xE2E5A`. At `0x1ADE6`, Lua captures the selected mode from its
+typed node, alert, and gate inputs before the entry sequence; source mode
+selection also depends on `FFDF84`, which `0x1745E` clears each outer pass.
+`0x54662` raises the knowledge rank after that sequence. An alert change alone
+does not replace the stored mode, though the `0x1A370` -> `0x561E8` -> `0x56116`
+reselection path may call `0x1A908` when its source gates pass. During entry, mode zero uses its
 source four-phase raw-cadence branch; nonzero modes apply the node reaction
 delta. Section 15 has a presenter-only Active Alert comparison for the
 rank-zero System 15/node 13 SPU: all six mode-3 phases render as complete

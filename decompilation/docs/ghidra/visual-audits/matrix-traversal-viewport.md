@@ -810,25 +810,34 @@ IC combo 3. Frames `004740` and `004760`
 show the unknown SPU under No Alert; frame `004800` shows Active Alert, keeps
 `Ice Unknown`, and displays the small amber center effect.
 
-`0x19B40` returns UNSEEN for a rank-zero node while `FFDF84` is clear. If
-`FFDF84` is negative before `0x1A908`, it instead reads the node's `+0x13`
+`0x19B40` returns UNSEEN for an eligible current record while `FFDF84` is
+zero. With negative `FFDF84` before `0x1A908`, it instead reads the node's `+0x13`
 combo and indexes `0xE31A7`; System 15/node 13's combo-3 entry at `0xE31AD` is
 `{3, 0xFF}`. That is the explicit mode-3 fixture used below. The active Lua
-route begins with rank zero and `FFDF84` clear, so it stores the fallback
-record before `0x54662` raises rank. `0x1ADE6` runs the 61-VBlank setup and
+route begins with `FFDF84` clear, so it stores the fallback record before
+`0x54662` raises node knowledge. `0x1ADE6` runs the 61-VBlank setup and
 compact 239-VBlank entry, servicing `0x1AA40` for 238 motion frames before the
 final handoff; the first service advances immediately. For the mode-3 fixture,
 System 15/node 13 reaction index 15 selects `-2` from `0x1A4EA`, so cadence 7
 reloads 5 (six serviced VBlanks per later phase). The blocking `0x54662`
 node-action loop does not tick the stored world effect. It draws the node
 before the first `0x54A8E` random-alert probe, whose notice waits 25 VBlanks
-plus input. That later alert does not reselect the effect record; a later
-`0x1A908` entry does. Lua QA covers both the rank-zero fallback route and an
-entry that begins with the active-alert gate already set. Matrix entry still
-clears `FFDF84` independently of an initial field alert (`0x174E4`); only a
-later active-alert probe retains the marker, as in `0x56116`. The typed mode-3
-fixture predicts phase 4 after 238 service calls and holds it through the
-node-action message and input wait. A separate
+plus input. The `0x54A8E` alert itself does not reselect the effect record;
+subsequent `0x1A908` calls can. Lua QA covers the fallback and a typed fixture
+with the negative `FFDF84` gate set. Separately, `0x1745E` clears `FFDF84` at
+`0x174E4` on every outer pass: its `0x1768C`
+backedge returns to `0x174C6`, before the clear. The nearby `FFDF40` branch
+writes `0xFF` to `FFE171` at `0x17524`, a separate terrain-copy gate. This
+rules out the earlier hypothesis that the next outer pass preserves the
+negative `FFDF84` marker. A later controller reselection is still possible
+through `0x1A370` -> `0x561E8` -> `0x56116` when its gate, countdown, and
+alert-state conditions pass; `0x54A8E` itself only updates alert through
+`0x1989A`. The current Lua route still conflates its `in_alert` input with
+the negative `FFDF84` gate, so the rank-zero fallback and mode-3 cases below
+are typed fixtures, not a proven live mode transition. The typed mode-3
+fixture predicts phase 4 after 238 service calls. Lua holds its initial mode
+through the node-action loop; whether a source-side reselection occurs before
+that handoff remains open. A separate
 presenter QA now constructs the typed rank-zero System 15/node 13 SPU view,
 renders all six named mode-3 phases through the production presenter, and
 compares each full 320x224 output against Section 15 frame `004800`. Phase 5
