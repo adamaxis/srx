@@ -102,6 +102,7 @@ function M.begin(system_id, field_alarm, initial_node_id,
         alert = Rules.initial_alert(field_alarm),
         attempts = 0,
         overload_armed = true,
+        -- 0x174E4 clears FFDF84 on entry, independently of FFE16F's alert.
         in_alert = false,
         known = {},
         map_colours = {},

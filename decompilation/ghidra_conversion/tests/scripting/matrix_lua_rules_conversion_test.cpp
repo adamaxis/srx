@@ -520,6 +520,49 @@ eq(routed_spu_status.action_difficulty, Systems[2].nodes[2].security,
 eq(Session.traversal_view(routed_spu_state).palette_theme,
     Systems[2].nodes[2].security_color,
     "known world model selects its ROM security-color palette row")
+do
+local active_spu_state = select(2, Session.begin(15, false, 13))
+active_spu_state.alert = MX.PASSIVE
+active_spu_state.attempts = 1
+local alert_deck = { active = { [0] = -1, [1] = -1, [2] = -1,
+                                [3] = -1, [4] = -1 }, ratings = {} }
+local alert_slots = {
+    [0] = { status = 0, phase = 0 }, [1] = { status = 0, phase = 0 },
+    [2] = { status = 0, phase = 0 }, [3] = { status = 0, phase = 0 },
+    [4] = { status = 0, phase = 0 },
+}
+local alert_context = {
+    game = {
+        deck_record = function() return alert_deck end,
+        deck_slots = function() return alert_slots end,
+        matrix_alert_random_bound = function(bound)
+            eq(bound, 10, "Matrix alert uses the ROM ten-sided bound")
+            return 0
+        end,
+    },
+    redraw = function() end,
+    sound = function() end,
+}
+local alert_screen = MatrixNodeAction.new({
+    matrix_state = active_spu_state, traversal_view = true,
+})
+MatrixNodeAction.enter(alert_screen, alert_context)
+eq(active_spu_state.alert, MX.ACTIVE,
+    "ROM random-alert event raises the SPU route to Active Alert")
+eq(active_spu_state.in_alert, true,
+    "Active Alert retains the FFDF84 IC-world-effect gate")
+eq(Session.set_current_node_knowledge(active_spu_state, 0), true,
+    "active-alert reproduction keeps the SPU unknown")
+local active_spu_view = Session.traversal_view(active_spu_state)
+eq(active_spu_view.world_model_id, 2,
+    "Section 15 SPU route uses world model 2")
+eq(active_spu_view.palette_theme, 0,
+    "unknown active-alert SPU keeps neutral model palette")
+eq(active_spu_view.ice_label, HUD.ic_visibility[1],
+    "active-alert SPU still presents Ice Unknown")
+eq(active_spu_view.world_effect_mode, 3,
+    "ROM System 15/node 13 selects Blaster world-effect mode 3")
+end
 local loading_state = {}
 local loading_slots = {
     [0] = { status = 5, timer = 2, phase = 0 },
@@ -603,6 +646,8 @@ local alarm_started, alarm_session = Session.begin(0, true)
 eq(alarm_started, true, "alarm-backed Matrix session starts")
 eq(alarm_session.alert, MX.ACTIVE,
    "FFE16F seeds an active Matrix alert on entry")
+eq(alarm_session.in_alert, false,
+   "0x174E4 clears FFDF84 independently of the initial alert")
 eq(alarm_session.attempts, 0,
    "Matrix action-attempt counter starts at zero")
 eq(alarm_session.overload_armed, true,
@@ -1002,8 +1047,11 @@ local nodes = {
 eq(Move.goto_right(nodes, 0, 0), 1, "CPU node navigation skips current")
 eq(Move.goto_commit(nodes, 0, 1), 1, "linked jump preserves previous node")
 eq(Move.goto_commit(nodes, 0, 0), 0, "unlinked jump has no retreat point")
-local cancelled = Actions.cancel_alert({ alert = 0 })
+local cancelled_alert_state = { alert = 0, in_alert = true }
+local cancelled = Actions.cancel_alert(cancelled_alert_state)
 eq(cancelled.text, Actions.TEXT.ALERT_CANCELLED, "cancel active alert text")
+eq(cancelled_alert_state.in_alert, false,
+   "Cancel Alert clears the FFDF84 IC-world-effect gate")
 local run = { state = -1, objective = 5, value = 0, size = 30,
     fc28 = 1, fc1c = 0 }
 local found = Actions.search(run, { class = 5 }, {}, decker, deck, nil,

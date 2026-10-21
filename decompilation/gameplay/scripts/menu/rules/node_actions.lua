@@ -31,7 +31,11 @@ end
 
 -- 0x54AEA Cancel Alert: no roll.
 function M.cancel_alert(st)
-    if st.alert >= 0 then st.alert = -1; return { text = M.TEXT.ALERT_CANCELLED, redraw = true } end
+    if st.alert >= 0 then
+        st.alert = -1
+        st.in_alert = false
+        return { text = M.TEXT.ALERT_CANCELLED, redraw = true }
+    end
     return { text = M.TEXT.NO_ALERTS }
 end
 -- 0x54B34 Crash System: countdown 3..0 at 60 frames, fade 0x18776, logout 0x26A00.

@@ -363,6 +363,10 @@ local function show_random_alert(st, ctx)
     local alert, overload = MatrixRules.raise_alert(
         previous, 1, state.overload_armed)
     state.alert = alert
+    -- 0x1B706 arms FFDF84 before the Matrix alert probe. 0x56116 clears
+    -- that marker below Active Alert and reinitializes the world effect while
+    -- it remains active, allowing 0x19B40 to select hidden-node IC art.
+    state.in_alert = alert == MatrixRules.ACTIVE
     -- 0x1989A returns from its overload branch before the FFE189 sound-latch
     -- check; the overload path has no separate alert SFX.
     if not overload and alert ~= previous then
