@@ -253,7 +253,7 @@ E.StoryFlag = {
   SHAMAN_MET           = 5,  -- cmd15 from F4BD8 (FFDD64=5 @0x53D8E) [C]
   SHAMAN_ITEM4_GIVEN   = 6,  -- 0x53DD0 consumes Group Item 4 -> F4C34 [C]
   SHAMAN_PELT_GIVEN    = 7,  -- 0x53E38 consumes Hell Hound Pelt -> F4C3C; cmd40 0x21F46 is FFFC34 (tool bug) [C]
-  SERPENT_SCALE_TAKEN  = 8,  -- FFDD64=8 @0x53F00; 0x53F50 sets FFFC1E bit8 and clears FFFC22 bit2. The source that grants the later Feathered Scale item flag is unresolved [C]
+  SERPENT_SCALE_TAKEN  = 8,  -- FFDD64=8 @0x53F00; 0x53F50 sets story bit 8 and FFFC22 bit 2; 0x53EA8 consumes item bit 2 [C]
   SHAMAN_TASKS_DONE    = 9,  -- 0x53EA8 consumes Feathered Scale -> F4C04 [C]
   MICHAEL_ALIAS_LEARNED = 10, -- cmd2B (needs b1) -> F5414 "came in using the name Owlfeather" [C site][H name]
   MAKO_DEFEATED        = 11, -- 0x53FFC encounter 0x1E628 cleared -> F4CA8 "Mako lies unconscious" [C]

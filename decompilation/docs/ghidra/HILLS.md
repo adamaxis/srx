@@ -648,8 +648,11 @@ state. Debug/Release physical-input QA reaches the record with ordinary Up,
 checks the event-27 dispatch and first-contact/horn-request panels, and writes
 `qt_runtime/field-spirit-eyes-physical-entry-qa/actual.bmp`; the full frames
 were inspected. Scene-47 record 62 routes its context-`0x13` event-25
-continuation to the separate Licourtrix Lua task. Keep this hill partial: the
-serpent text graph is not fully mapped, the ROM handler clears Group Item bit
-2 without a located grant, the contextual Scene-47 route lacks physical QA,
-and no independent Genesis conversation frames were identified. See
+continuation to the separate Licourtrix Lua task. ROM `0x53F50` sets story bit
+8 and Group Item bit 2; Spirit Eyes handler `0x53E84` consumes that scale at
+`0x53E98` and sets bit 9 at `0x53EA8`. Lua and Debug/Release script-runtime
+QA now exercise the item handoff through the bit-9 completion. Keep this hill
+partial: the serpent text graph is not fully mapped, the contextual Scene-47
+route lacks physical QA, and no independent Genesis conversation frames were
+identified. See
 [the Spirit Eyes audit](visual-audits/council-spirit-eyes.md).

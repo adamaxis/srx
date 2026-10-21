@@ -64,10 +64,11 @@ catalog's source policy explicitly authorizes a correction.
   record `0xF4C04` ("You have completed your tasks, young warrior"). The
   Spirit Eyes event-27 Lua route now models that completion gate after first
   contact, the gargoyle horn, the hellhound pelt, and the feathered-serpent
-  encounter. The neighboring Scene-47 continuation says Licourtrix gives a
-  scale, but its traced post-dialogue code sets story bit 8 and clears Group
-  Item bit 2; no bit-2 grant was found. The final inventory producer and
-  independent confirmation of the serpent conversation remain unresolved.
+  encounter. The Scene-47 post-dialogue handler `0x53F50` sets story bit 8
+  and Group Item bit 2; Spirit Eyes handler `0x53E84` checks and consumes that
+  scale at `0x53E98`, then sets bit 9 at `0x53EA8`. Lua and Debug/Release
+  script-runtime QA now cover this connected item handoff. Independent
+  confirmation of the serpent conversation remains unresolved.
   See [the Spirit Eyes audit](council-spirit-eyes.md).
 - Branch state: if bit 30 is set and bit 21 is clear, `0x5447E` sets bit 21
   using `0x2196C`, then calls `0x59C34` with D0=2 before the first-entry
@@ -173,10 +174,9 @@ destination, and no reverse route has been added.
 - Trace the live caller and location route for the upstream Frosty command
   `0x44`; its direct bit-30 effect is now represented by `StoryFlags` and
   checked against the ROM handler.
-- Trace the missing Group Item bit-2 producer for the scale described by the
-  Scene-47 dialogue; the direct `0x53EA8` task-completion branch is now
-  represented, but the incomplete upstream handoff cannot satisfy its final
-  inventory gate from the traced Scene-47 code alone.
+- Trace the complete `0xF4C44` dialogue and the world-context route that
+  selects Scene-47 event-25 continuation `0x53EFA`; its item grant and the
+  Spirit Eyes bit-9 consumer are now connected in Lua.
 - The first-authorized, guarded, signed alternate-result, repeat-information,
   and gated tomb-departure branches have source text, entity-owned route
   conditions, and focused physical QA. Debug/Release tests reach event 7 with

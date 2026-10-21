@@ -9535,6 +9535,76 @@ int main() {
         return 18;
     }
 
+    constexpr std::string_view kFeatheredSerpentLair =
+        "salish_feathered_serpent_lair";
+    scripts.set_location_context(
+        "site", kFeatheredSerpentLair, "salish.spirit_eyes", "licourtrix");
+    scripts.set_field_mode_context(ScriptFieldModeContext{47U, 25U, 0});
+    scripts.set_story_state({
+        {"story_flag_bit_7", false},
+        {"story_flag_bit_8", false},
+        {"story_flag_bit_9", false},
+        {"group_item_flag_bit_2", false},
+    });
+    auto licourtrix_task = scripts.start_task(
+        "salish_spirit_eyes", "present_serpent_encounter");
+    for (const auto* choice : {"more", "more", "more", "scale", "thanks",
+                               "what", "more", "more", "more"}) {
+        if (!expect(licourtrix_task.status ==
+                            ScriptTaskStep::Status::awaiting_native_operation &&
+                        licourtrix_task.operation.has_value() &&
+                        licourtrix_task.operation->menu.has_value(),
+                    "Licourtrix encounter lost a ROM dialogue choice node")) {
+            std::cerr << scripts.failure() << '\n';
+            return 18;
+        }
+        licourtrix_task = scripts.complete_native_menu_choice(choice);
+    }
+    if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
+                    licourtrix_task.result_id ==
+                        std::optional<std::string>{"field_return"} &&
+                    scripts.story_state().at("story_flag_bit_8") &&
+                    scripts.story_state().at("group_item_flag_bit_2"),
+                "Licourtrix completion did not grant FFFC22 bit 2 with story bit 8")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    scripts.set_location_context(
+        "site", kSpiritEyesSite, "salish.spirit_eyes", "spirit_eyes");
+    scripts.set_field_mode_context(ScriptFieldModeContext{4U, 27U, 0});
+    scripts.set_story_state({
+        {"story_flag_bit_5", true},
+        {"story_flag_bit_6", true},
+        {"story_flag_bit_7", true},
+        {"story_flag_bit_8", true},
+        {"story_flag_bit_9", false},
+        {"group_item_flag_bit_2", true},
+    });
+    auto spirit_eyes_completion = scripts.start_task(
+        "salish_spirit_eyes", "present");
+    if (!expect(spirit_eyes_completion.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    spirit_eyes_completion.operation.has_value() &&
+                    spirit_eyes_completion.operation->dialogue.has_value() &&
+                    spirit_eyes_completion.operation->dialogue->inline_text.find(
+                        "completed your tasks") != std::string::npos &&
+                    scripts.story_state().at("story_flag_bit_9") &&
+                    !scripts.story_state().at("group_item_flag_bit_2"),
+                "Spirit Eyes did not consume the Licourtrix scale into bit 9")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    spirit_eyes_completion = scripts.complete_native_operation(true);
+    if (!expect(spirit_eyes_completion.status ==
+                        ScriptTaskStep::Status::completed &&
+                    spirit_eyes_completion.result_id ==
+                        std::optional<std::string>{"field_return"},
+                "Spirit Eyes scale completion did not return to Scene 4")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
     constexpr std::string_view kCouncilMedicineLodge =
         "council_medicine_lodge";
     scripts.set_location_context(

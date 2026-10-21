@@ -211,9 +211,11 @@ The source path is:
    with Frosty in context, though the extracted profile has no name label. The
    Lua `StoryFlags` now maps command `0x44` to a direct bit-30 write, and its
    test checks the command-table pointer and handler opcodes. The live caller
-   and route remain unconnected. Code at `0x53EA8` also writes prerequisite
-   bit 9 and opens `0xF4C04`; its caller and item/quest conditions have not
-   been identified, and no Lua path currently writes bit 9.
+   and route remain unconnected. The Spirit Eyes branch at `0x53E84` checks
+   Group Item bit 2 and, at `0x53E98`, consumes the scale before setting
+   prerequisite story bit 9 at `0x53EA8` and opening `0xF4C04`. Scene-47
+   handler `0x53F50` sets story bit 8 and Group Item bit 2 after the
+   Licourtrix conversation; Lua now models both ends of that item handoff.
 4. `FFF0D5` is not a gate: when nonzero the service chooses a separate text
    path at `0x15FF20` or `0x15FF28` based on its sign. When it is zero and bit
    30 is clear, service 21 selects the armed-guard copy beginning at
@@ -544,8 +546,9 @@ enums rather than ROM address interpretation.
   physical-input route from a map's event-31 trigger through the ordinary menu
   remains untested. Other scene-specific event-31 paths, events 26, 28, and
   30, and the ordinary terminal cursor graphic remain unresolved. The final
-  item producer in the Spirit Eyes ritual is also unresolved: the Scene-47
-  handler clears Group Item bit 2 after the dialogue, and no grant was found.
+  item path in the Spirit Eyes ritual now has a traced producer and consumer:
+  Scene-47 handler `0x53F50` sets Group Item bit 2, and Scene-4 handler
+  `0x53E98` consumes it before setting story bit 9.
 - Scene 2 event 0 and event 1 have numeric targets `0x14` and `0x1A` in the
   event table. `0x1A` is resource activity according to `0x167AE`; it is not a
   ROM place-name, so this profile does not label it “office.” The source route

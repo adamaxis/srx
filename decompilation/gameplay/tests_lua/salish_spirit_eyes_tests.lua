@@ -117,23 +117,37 @@ assert(game.state.field_mode_effect_flag_bit_15 == false and
        game.state.field_auxiliary_flag_bit_2 == false)
 
 -- The ROM's separate scene-47 continuation selects FFDD64=8 before the
--- encounter dialogue, then sets story bit 8 and clears Group Item 2 at its
--- post-dialogue return. It does not grant that later item flag here.
+-- encounter dialogue. Its post-dialogue 0x53F50 path marks story bit 8 and
+-- grants the Feathered Scale by setting FFFC22 bit 2.
 clear_menus_and_dialogue()
 game.location.id = "salish_feathered_serpent_lair"
 game.field.event_code = 25
 game.field.mode = 47
 backing.story_flag_bit_7 = false
 backing.story_flag_bit_8 = false
-backing.group_item_flag_bit_2 = true
+backing.story_flag_bit_9 = false
+backing.group_item_flag_bit_2 = false
 choose("more", "more", "more", "scale", "thanks", "what",
        "more", "more", "more")
 assert(SpiritEyes.present_serpent_encounter() == "field_return")
 assert(active_trigger == 8 and game.state.story_flag_bit_8 == true and
-       game.state.group_item_flag_bit_2 == false)
+       game.state.group_item_flag_bit_2 == true)
 assert(menus[4].id == "serpent_intentions" and
        menus[5].id == "serpent_thanks" and
        menus[6].id == "serpent_task")
+assert(#choices == 0)
+
+-- Verify the item produced by Licourtrix completes the same ritual branch
+-- that consumes Group Item bit 2 and advances the active story trigger to 9.
+clear_menus_and_dialogue()
+game.location.id = "council_spirit_eyes_site"
+game.field.event_code = 27
+game.field.mode = 4
+backing.story_flag_bit_7 = true
+assert(SpiritEyes.present() == "field_return")
+assert(game.state.story_flag_bit_9 == true and active_trigger == 9 and
+       game.state.group_item_flag_bit_2 == false)
+assert(dialogue[#dialogue].text:find("completed your tasks", 1, true))
 assert(#choices == 0)
 
 print("Spirit Eyes tests passed: source item gates, fixed triggers, and lair return")

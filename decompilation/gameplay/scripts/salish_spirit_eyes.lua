@@ -256,10 +256,11 @@ function SpiritEyes.present_serpent_encounter()
         return "field_return"
     end
 
-    -- 0x53F00 sets FFDD64=8. After 0x1F246, 0x53F50 calls 0x2196C and
-    -- clears FFFC22 bit 2; no group-item addition is present in this handler.
+    -- 0x53F00 sets FFDD64=8. After 0x1F246, 0x53F50 calls 0x2196C to set
+    -- story bit 8, then BSETs FFFC22 bit 2 for the Feathered Scale. The
+    -- Spirit Eyes route consumes that item at 0x53E98 on return.
     StoryFlags.set(E.StoryFlag.SERPENT_SCALE_TAKEN)
-    game.state.group_item_flag_bit_2 = false
+    game.state.group_item_flag_bit_2 = true
     return "field_return"
 end
 

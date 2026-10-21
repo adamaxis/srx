@@ -31,9 +31,10 @@ independent Genesis capture of either conversation has been identified.
   continuation `0x53EFA` is selected only for transition context `0x13`; the
   other route rewrites the event to 8. `0x53F00` selects story index 8 and
   opens Licourtrix's `0xF4C44` text profile. After the conversation,
-  `0x53F50` calls `0x2196C` to set story bit 8 and clears Group Item bit 2.
-  The conversation text says the serpent gives a scale, but no item-bit-2
-  grant was found in this handler. Do not infer a grant from the text alone.
+  `0x53F50` calls `0x2196C` to set story bit 8, then sets FFFC22 bit 2 with
+  `BSET #2,D0`. This is the Feathered Scale consumed by the Spirit Eyes event
+  at `0x53E98` when Joshua returns. Lua now carries the item from Licourtrix
+  into the bit-9 completion branch and consumes it there.
 
 ## Native and Lua implementation
 
@@ -50,9 +51,9 @@ independent Genesis capture of either conversation has been identified.
 
 ## Verification
 
-- Lua tests cover the site/event gates, the ordered horn and pelt handoffs,
-  the final bit-2 gate, story-bit changes, and the Scene-47 post-dialogue
-  clear without inventing an item grant.
+- Lua and Debug/Release script-runtime tests cover the site/event gates, the
+  ordered horn and pelt handoffs, the Licourtrix FFFC22 bit-2 grant, and the
+  return to Spirit Eyes that consumes the scale and sets story bit 9.
 - Debug CTest
   `shadowrun_ghidra_conversion_qt_field_spirit_eyes_physical_entry_qa` walks
   into record 96 with ordinary Up and checks the `0xFFDB`/event-27 dispatch,
@@ -66,8 +67,6 @@ independent Genesis capture of either conversation has been identified.
 - Trace every choice/response node in the `0xF4C44` graph against the ROM and
   establish the exact world-context condition for entering the direct
   continuation from Scene 47.
-- Find the source path that grants Group Item bit 2, or confirm from the ROM
-  that the dialogue path intentionally leaves the scale unavailable.
 - Exercise the contextual Scene-47 route with physical input and compare both
   conversations against independent Genesis frames before raising the hill
   above partial.
