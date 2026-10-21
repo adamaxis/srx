@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_30	0	0	32	32	field_events.present_location_dialogue	event_30	Exact scene-15 record-12 contact bounds at 0x1D5D3E: map pixels x=288..319, y=32..63.

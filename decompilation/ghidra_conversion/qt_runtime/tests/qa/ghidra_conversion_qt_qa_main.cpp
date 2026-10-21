@@ -10277,6 +10277,275 @@ int run_scene19_old_man_contact_qa(
     return 0;
 }
 
+int run_scene15_old_man_contact_qa(
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-15 old-man QA: could not clear prior output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-15 old-man QA: could not create output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    std::vector<std::string> boundaries;
+    std::vector<std::uint16_t> audio_events;
+    FieldSceneRuntime field_scene(
+        [&boundaries](const std::string_view boundary) {
+            boundaries.emplace_back(boundary);
+        },
+        [&audio_events](const std::uint16_t event) {
+            audio_events.push_back(event);
+        });
+    field_scene.set_source_random_seed_for_dump(0x4000U);
+    field_scene.set_field_world_frame_counter_for_dump(0x0200U);
+    constexpr std::uint8_t kScene = 15U;
+    if (!field_scene.bootstrap_for_scene_dump(startup_state, kScene)) {
+        std::cerr << "Scene-15 old-man QA: bootstrap failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kEventRecordIndex = 11U;
+    constexpr std::uint32_t kEventRecordAddress = 0x1D5D3EU;
+    constexpr std::uint16_t kContactX = 304U * 16U;
+    constexpr std::uint16_t kContactY = 80U * 16U;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto spawn = field_scene.field_entity_world_position();
+    const bool source_spawn_matches =
+        !metadata.initial_field_records.empty() &&
+        spawn.x == metadata.initial_field_records.front().x &&
+        spawn.y == metadata.initial_field_records.front().y;
+    const bool source_event_record_matches =
+        metadata.terrain_collision_rectangles.size() > kEventRecordIndex &&
+        metadata.terrain_collision_rectangles[kEventRecordIndex].left == 0x0120U &&
+        metadata.terrain_collision_rectangles[kEventRecordIndex].right == 0x013FU &&
+        metadata.terrain_collision_rectangles[kEventRecordIndex].top == 0x0020U &&
+        metadata.terrain_collision_rectangles[kEventRecordIndex].bottom == 0x003FU &&
+        metadata.terrain_collision_rectangles[kEventRecordIndex].value == 0x009EU;
+    const bool spawn_is_outside_contact =
+        spawn.x < 288U * 16U || spawn.x >= 320U * 16U ||
+        spawn.y < 32U * 16U || spawn.y >= 64U * 16U;
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&output](const std::string_view name,
+                                const QImage& image) {
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+               image.save(QString::fromStdWString(
+                   (output / std::string(name)).wstring()));
+    };
+    if (!source_spawn_matches || !source_event_record_matches ||
+        !spawn_is_outside_contact || field_scene.dialogue_open() ||
+        !save("scene-entry.bmp", render())) {
+        std::cerr << "Scene-15 old-man QA: descriptor spawn, ROM event 30, or "
+                     "entry state diverged (spawn="
+                  << spawn.x << ',' << spawn.y
+                  << ", source_spawn=" << source_spawn_matches
+                  << ", source_trigger=" << source_event_record_matches
+                  << ", spawn_outside=" << spawn_is_outside_contact
+                  << ", dialogue_on_entry=" << field_scene.dialogue_open()
+                  << ")\n";
+        return 3;
+    }
+
+    // Event 30 is at the north-east edge. The descriptor fallback spawn is
+    // kept as the entry check above; this seeded approach is outside its
+    // rectangle and reaches it with ordinary Up input.
+    field_scene.set_field_entity_world_position_for_dump(kContactX, kContactY);
+    field_scene.set_field_camera_world_position_for_dump(0U, 0U);
+    if (!save("approach-start.bmp", render())) {
+        std::cerr << "Scene-15 old-man QA: approach capture failed\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) {
+        std::cerr << "Scene-15 old-man QA: route log could not be opened\n";
+        return 3;
+    }
+    trace << "stage\ttick\tscene\tx_fixed\ty_fixed\tevent\tmode_event"
+             "\tdialogue_open\ttext_segments\toptions\n";
+    trace << "scene-entry\t0\t15\t" << spawn.x << '\t' << spawn.y
+          << "\t-\t-\t0\t0\t0\n";
+    bool event_contact = false;
+    std::uint16_t contact_tick = 0U;
+    SceneRunnerPosition contact_position{};
+    field_scene.set_controller_nibble(0x01U); // ordinary Up
+    for (std::uint16_t tick = 1U; tick <= 80U; ++tick) {
+        field_scene.advance_frame();
+        const auto position = field_scene.field_entity_world_position();
+        const auto& dispatch =
+            field_scene.field_map_event_system_for_dump().last_collision_dispatch();
+        const bool event_30 = dispatch.has_value() &&
+            dispatch->decision.source_event_code ==
+                FieldCollisionEventCode::event_30;
+        trace << "approach\t" << tick << '\t'
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << position.x << '\t' << position.y << '\t'
+              << (dispatch.has_value()
+                      ? static_cast<unsigned>(dispatch->decision.event_code)
+                      : 255U)
+              << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump())
+              << '\t' << field_scene.dialogue_open() << '\t'
+              << field_scene.dialogue_panel().text_segment_count << '\t'
+              << field_scene.dialogue_panel().option_count << '\n';
+        if (event_30) {
+            event_contact = true;
+            contact_tick = tick;
+            contact_position = position;
+            if (!save("event-30-contact.bmp", render())) {
+                field_scene.set_controller_nibble(0U);
+                std::cerr << "Scene-15 old-man QA: event contact capture failed\n";
+                return 3;
+            }
+            break;
+        }
+        if (field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != kScene) {
+            field_scene.set_controller_nibble(0U);
+            std::cerr << "Scene-15 old-man QA: left the expected map before "
+                         "contact\n";
+            return 3;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    if (!event_contact ||
+        field_scene.field_map_event_system_for_dump().collision_dispatch_count() !=
+            1U) {
+        std::cerr << "Scene-15 old-man QA: ordinary Up did not contact ROM "
+                     "record 12/event 30 (found=" << event_contact
+                  << ", dispatches="
+                  << field_scene.field_map_event_system_for_dump()
+                         .collision_dispatch_count()
+                  << ", position=" << contact_position.x << ','
+                  << contact_position.y << ")\n";
+        return 3;
+    }
+
+    bool dialogue_opened = false;
+    for (std::uint16_t tick = 1U; tick <= 240U; ++tick) {
+        field_scene.advance_frame();
+        if (!field_scene.dialogue_open()) {
+            continue;
+        }
+        dialogue_opened = true;
+        const auto& panel = field_scene.dialogue_panel();
+        const bool expected_text = panel.text_segment_count > 0U &&
+            panel.text_segments[0U].find(
+                "old man flashes his gums at you.") != std::string_view::npos;
+        const bool expected_speaker =
+            panel.actor_name == "Unidentified old man" &&
+            panel.portrait_alias ==
+                "dialogue.portraits.jackals.lantern.old.man";
+        if (!expected_text || !expected_speaker || panel.option_count != 0U ||
+            !panel.source_complete || !save("old-man-dialogue.bmp", render())) {
+            std::cerr << "Scene-15 old-man QA: event 30 did not show the "
+                         "source passage/profile without choices\n";
+            return 3;
+        }
+        trace << "dialogue-open\t" << tick << '\t'
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << field_scene.field_entity_world_position().x << '\t'
+              << field_scene.field_entity_world_position().y
+              << "\t30\t30\t1\t" << panel.text_segment_count << '\t'
+              << panel.option_count << '\n';
+        break;
+    }
+    if (!dialogue_opened ||
+        std::find(boundaries.begin(), boundaries.end(),
+                  "field.location.dialogue_task_opened") == boundaries.end()) {
+        std::cerr << "Scene-15 old-man QA: event 30 did not reach its Lua "
+                     "dialogue profile\n";
+        return 3;
+    }
+
+    for (std::uint16_t tick = 0U;
+         tick < 120U && field_scene.dialogue_input_locked(); ++tick) {
+        field_scene.advance_frame();
+    }
+    field_scene.set_controller_port_byte(0x40U); // ordinary A dismisses
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    for (std::uint16_t tick = 0U;
+         tick < 120U && field_scene.dialogue_open(); ++tick) {
+        field_scene.advance_frame();
+    }
+    const auto return_start = render();
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != kScene ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 60U ||
+        return_start.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !save("return-transition-start.bmp", return_start)) {
+        std::cerr << "Scene-15 old-man QA: A did not begin the source-scene "
+                     "return fade (dialogue="
+                  << field_scene.dialogue_open() << ", scene="
+                  << static_cast<unsigned>(
+                         field_scene.field_scene_reference_for_dump())
+                  << ", fade_frames="
+                  << static_cast<unsigned>(
+                         field_scene.field_modal_return_transition_frames_for_dump())
+                  << ")\n";
+        return 3;
+    }
+    for (std::uint8_t frame = 0U; frame < 60U; ++frame) {
+        field_scene.advance_frame();
+        if (frame == 29U || frame == 59U) {
+            const auto transition_frame = render();
+            const auto name = frame == 29U
+                ? "return-transition-midpoint.bmp"
+                : "return-transition-complete.bmp";
+            if (transition_frame.size() != QSize(kSceneWidth, kSceneHeight) ||
+                !save(name, transition_frame)) {
+                std::cerr << "Scene-15 old-man QA: return fade capture failed at "
+                          << static_cast<unsigned>(frame) << '\n';
+                return 3;
+            }
+        }
+    }
+    const auto returned = render();
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != kScene ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        field_scene.field_palette_fade_steps_for_dump() != 0U ||
+        !field_hud_chrome_survives(returned, asset_root) ||
+        count_playfield_lit(returned) < 100U || !save("actual.bmp", returned) ||
+        !audio_events.empty()) {
+        std::cerr << "Scene-15 old-man QA: completed return did not redraw the "
+                     "same field scene cleanly (dialogue="
+                  << field_scene.dialogue_open() << ", scene="
+                  << static_cast<unsigned>(
+                         field_scene.field_scene_reference_for_dump())
+                  << ", fade_frames="
+                  << static_cast<unsigned>(
+                         field_scene.field_modal_return_transition_frames_for_dump())
+                  << ", palette_steps="
+                  << static_cast<unsigned>(
+                         field_scene.field_palette_fade_steps_for_dump())
+                  << ", audio_events=" << audio_events.size() << ")\n";
+        return 3;
+    }
+    trace << "returned-to-field\t" << contact_tick << "\t15\t"
+          << field_scene.field_entity_world_position().x << '\t'
+          << field_scene.field_entity_world_position().y
+          << "\t30\t30\t0\t0\t0\n";
+    trace.flush();
+    std::cout << "scene15_old_man_contact_qa=passed rom=0x" << std::hex
+              << kEventRecordAddress << std::dec << " contact="
+              << contact_position.x << ',' << contact_position.y
+              << " tick=" << contact_tick << " artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 bool run_scene2_object_bounds_four_side_lookup_qa(
     const FieldSceneSourceMetadata& metadata,
     const std::filesystem::path& output) {
@@ -25132,6 +25401,12 @@ int main(int argc, char** argv) {
                         smoke_state, asset_root,
                         *field_movement_qa_path /
                             "scene19-old-man-contact") != 0) {
+                    return 3;
+                }
+                if (run_scene15_old_man_contact_qa(
+                        smoke_state, asset_root,
+                        *field_movement_qa_path /
+                            "scene15-old-man-contact") != 0) {
                     return 3;
                 }
                 if (run_low_code_object_bounds_census_qa(

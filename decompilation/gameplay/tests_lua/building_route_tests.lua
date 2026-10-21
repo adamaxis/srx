@@ -403,6 +403,46 @@ assert(restaurant_event.kind == "dialogue" and
            "council_friendship_restaurant" and
        restaurant_event.entry_event_id == "opening")
 
+-- Scene 15's event 30 is a separate contact in the shared ROM scene. The
+-- default continuation is the same no-choice old-man passage, independent of
+-- which exterior route loaded the map.
+local scene15_contact = {
+    source_scene = 15,
+    source_event = "event_30",
+    route_kind = "dialogue",
+    script = "lua_dialogue",
+    route_priority = 0,
+    entry_dialogue_module = "field_events",
+    entry_dialogue_function = "present_location_dialogue",
+    entry_location_type = "building",
+    entry_location_id = "scene15_unidentified_contact",
+    entry_text_profile = "jackals_lantern.old_man",
+    entry_speaker_id = "jackals_lantern_old_man",
+    entry_event_id = "opening",
+}
+game.modules.world_content_data.entities.source_test.links = {
+    scene15_contact,
+}
+game.modules.world_content_data.areas[15] = {
+    { entity_id = "source_test" },
+}
+local scene15_event = Building.resolve_field_location_route({
+    scene_id = 15,
+    building_interaction_mode = false,
+    event_code = "event_30",
+    event_index = 30,
+    event_table_available = false,
+    event_table = {},
+    alternate_result = 0,
+})
+assert(scene15_event.kind == "dialogue" and
+       scene15_event.script == "lua_dialogue" and
+       scene15_event.area_event_target == nil and
+       scene15_event.entry_location_id == "scene15_unidentified_contact" and
+       scene15_event.entry_text_profile == "jackals_lantern.old_man" and
+       scene15_event.entry_speaker_id == "jackals_lantern_old_man" and
+       scene15_event.entry_event_id == "opening")
+
 game.state.story_flag_bit_0 = true
 local motel_paid = Building.resolve_field_location_route(motel_context)
 assert(motel_paid.kind == "area_event" and

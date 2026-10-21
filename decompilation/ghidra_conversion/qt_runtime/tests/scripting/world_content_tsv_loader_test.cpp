@@ -108,6 +108,58 @@ int main() {
                                "Stoker's Coffin Motel"),
                "entity.tsv was not loaded into the runtime data table");
 
+    lua_getfield(state, entities, "puyallup_site_04_crime_mall");
+    const int crime_mall = lua_absindex(state, -1);
+    valid = expect(field_string_is(state, crime_mall, "name", "Crime Mall"),
+                   "Puyallup marker 4 must resolve to the Crime Mall") &&
+            valid;
+    lua_pop(state, 1);
+
+    lua_getfield(state, entities, "puyallup_site_05_underground_93");
+    const int underground_93 = lua_absindex(state, -1);
+    valid = expect(field_string_is(state, underground_93, "name",
+                                   "Underground 93"),
+                   "Puyallup marker 5 must resolve to Underground 93") &&
+            valid;
+    lua_pop(state, 1);
+
+    lua_getfield(state, entities, "scene15_unnamed_old_man_contact");
+    const int scene15_contact = lua_absindex(state, -1);
+    valid = expect(field_string_is(state, scene15_contact, "speaker_id",
+                                   "jackals_lantern_old_man"),
+                   "Scene 15 event 30 lost its Lua speaker profile") &&
+            valid;
+    lua_getfield(state, scene15_contact, "interactables");
+    const int scene15_interactables = lua_absindex(state, -1);
+    lua_rawgeti(state, scene15_interactables, 1);
+    const int scene15_interactable = lua_absindex(state, -1);
+    valid = expect(field_string_is(state, scene15_interactable,
+                                   "source_event", "event_30") &&
+                       field_integer_is(state, scene15_interactable,
+                                        "width", 32) &&
+                       field_integer_is(state, scene15_interactable,
+                                        "height", 32),
+                   "Scene 15 interaction bounds did not load as event 30") &&
+            valid;
+    lua_pop(state, 2);
+    lua_getfield(state, scene15_contact, "links");
+    const int scene15_links = lua_absindex(state, -1);
+    lua_rawgeti(state, scene15_links, 1);
+    const int scene15_link = lua_absindex(state, -1);
+    valid = expect(field_integer_is(state, scene15_link, "source_scene", 15) &&
+                       field_string_is(state, scene15_link, "source_event",
+                                       "event_30") &&
+                       field_string_is(state, scene15_link, "route_kind",
+                                       "dialogue") &&
+                       field_string_is(state, scene15_link, "script",
+                                       "lua_dialogue") &&
+                       field_string_is(state, scene15_link,
+                                       "entry_text_profile",
+                                       "jackals_lantern.old_man"),
+                   "Scene 15 event 30 did not load its Lua dialogue link") &&
+            valid;
+    lua_pop(state, 3);
+
     lua_getfield(state, stoker, "parts");
     const int stoker_parts = lua_absindex(state, -1);
     valid = expect(array_has_id(state, stoker_parts, "left_pipe_attachment") &&
@@ -133,6 +185,28 @@ int main() {
                                    "scene02_stokers_coffin_motel", 958, 643),
                 "scene-02.tsv placement was not loaded from its area file") &&
             valid;
+
+    lua_rawgeti(state, -2, 1);
+    const int scene_one = lua_absindex(state, -1);
+    valid = expect(
+                scene_has_instance(state, scene_one,
+                                   "scene01_puyallup_site_04_crime_mall",
+                                   96, 544) &&
+                    scene_has_instance(state, scene_one,
+                                       "scene01_puyallup_site_05_underground_93",
+                                       800, 512),
+                "Puyallup site names were not bound to the ROM-aligned markers") &&
+            valid;
+    lua_pop(state, 1);
+
+    lua_rawgeti(state, -2, 15);
+    const int scene_fifteen = lua_absindex(state, -1);
+    valid = expect(scene_has_instance(state, scene_fifteen,
+                                      "scene15_unnamed_old_man_contact",
+                                      288, 32),
+                   "scene-15.tsv did not place the event-30 contact region") &&
+            valid;
+    lua_pop(state, 1);
 
     lua_getfield(state, data_table, "map_events");
     valid = expect(lua_rawlen(state, -1) == 1U,

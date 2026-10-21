@@ -267,6 +267,16 @@ independent Decker-branch visuals remain open. The static scene-0 destination
 does not establish a dynamic return map or an exit placement/facing rule. See
 [`Jump House entry and Gunderson audit`](visual-audits/jump-house-entry-and-gunderson.md).
 
+Scene 15 record 12/event 30 (`0x1D5D3E`) now has a map entity and Lua
+link to the shared unnamed old-man profile. The source branch presents
+five text segments without choices and contains no nuyen or reputation
+check; it runs after the map loads. Debug/Release ordinary-Up QA starts
+outside the rectangle, captures contact/dialogue/the full 60-frame return,
+and returns to Scene 15. All eight 320x224 BMPs match across builds by
+SHA-256 and were inspected at full size. Scene 15 is reused by multiple
+routes, so this event does not identify a specific named site. No
+independent Genesis contact frame is identified.
+
 Scene 12 record 11/event 30 now routes by FFFC1E bit 10: clear presents the
 bodyguard page; set opens Caleb Brightmore through the shared Lua Johnson
 system. Debug/Release physical-input tests enter with ordinary Up through both

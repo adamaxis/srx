@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+scene15_unnamed_old_man_contact	Unidentified old-man contact region	interaction_region	Scene-15 record 12 at 0x1D5D3E is the event-30 contact region. The ROM event record does not identify or place a visible actor. Its default 0x20990 branch reaches 0x20C78, which presents the unnamed old-man text with portrait profile 0x121E5C and no menu choices.	jackals_lantern.old_man	jackals_lantern_old_man	-
