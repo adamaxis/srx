@@ -671,6 +671,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene20_entry_gate
                  --field-scene20-entry-gate-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-entry-gate-qa")
 
+# Seed service 19's ROM story/tip gates, enter through the paired Scene-2
+# doorway with ordinary movement, and check that Lua arms transient FFE182
+# while the existing route still enters Scene 20.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene20_ilene_prerequisite_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene20-ilene-prerequisite-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-ilene-prerequisite-qa")
+
 # Scene 20 record 110 is a source C0/event-0 contact with no event-table row.
 # Enter through Scene 2's physical C0 route, then walk around the adjacent
 # 0x7F rectangle with ordinary Left and Up input. Keep Up held through the

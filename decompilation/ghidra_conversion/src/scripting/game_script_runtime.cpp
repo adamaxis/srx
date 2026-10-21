@@ -4339,6 +4339,8 @@ GameScriptRuntime::resolve_field_location_route(
                               route.entry_continue_result_id) ||
         !read_optional_string("field_service_id",
                               route.field_service_id) ||
+        !read_location_task("route_preparation",
+                            route.route_preparation) ||
         !read_location_task("indexed_title_service",
                             route.indexed_title_service) ||
         !read_location_task("field_exit_prompt", route.field_exit_prompt)) {
@@ -4397,6 +4399,8 @@ GameScriptRuntime::resolve_field_location_route(
     if ((route.indexed_title_service.has_value() &&
          (route.kind != FieldScriptRouteKind::field_service ||
           route.script != FieldScriptId::lua_field_service)) ||
+        (route.route_preparation.has_value() &&
+         route.kind != FieldScriptRouteKind::area_event) ||
         (route.field_exit_prompt.has_value() &&
          route.kind != FieldScriptRouteKind::area_event) ||
         (!route.field_service_id.empty() &&

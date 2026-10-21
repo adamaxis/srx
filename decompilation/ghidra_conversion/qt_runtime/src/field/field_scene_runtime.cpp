@@ -1304,6 +1304,18 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                       QString::fromStdString(route.entry_dialogue_module));
         fields.insert(QStringLiteral("field.route.entry_function"),
                       QString::fromStdString(route.entry_dialogue_function));
+        fields.insert(QStringLiteral("field.route.preparation"),
+                      route.route_preparation.has_value());
+        fields.insert(QStringLiteral("field.route.preparation_module"),
+                      route.route_preparation.has_value()
+                          ? QString::fromStdString(
+                                route.route_preparation->module)
+                          : QString());
+        fields.insert(QStringLiteral("field.route.preparation_function"),
+                      route.route_preparation.has_value()
+                          ? QString::fromStdString(
+                                route.route_preparation->function)
+                          : QString());
     } else {
         fields.insert(QStringLiteral("field.route.kind"),
                       QStringLiteral("none"));
@@ -1330,6 +1342,8 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                   state_.field_scene_buffers.camera_y);
     fields.insert(QStringLiteral("field.world.frame"),
                   field_world_frame_counter_);
+    fields.insert(QStringLiteral("field.world.pending_effect"),
+                  field_pending_world_effect_);
     fields.insert(QStringLiteral("field.world.encounter_sequence"),
                   static_cast<double>(field_world_encounter_sequence_));
     fields.insert(QStringLiteral("field.world.random_seed"),
@@ -1746,6 +1760,33 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     callbacks.run_indexed_title_services =
         [this, &runtime_state, &event_route](
             FieldExitOrchestratorState& state) {
+            if (event_route.route_preparation.has_value()) {
+                const auto& preparation = *event_route.route_preparation;
+                game_scripts_.set_field_mode_context(
+                    scripting::ScriptFieldModeContext{
+                        static_cast<std::uint8_t>(runtime_state.field_mode),
+                        event_route.event_code,
+                        field_exit_alternate_result_});
+                game_scripts_.set_location_context(
+                    preparation.location_type,
+                    preparation.location_id,
+                    preparation.text_profile,
+                    preparation.speaker_id);
+                const auto outcome = game_scripts_.call_string(
+                    preparation.module, preparation.function);
+                if (!outcome.has_value() || *outcome != "continue") {
+                    failure_ = game_scripts_.failure().empty()
+                        ? "Lua route preparation did not continue"
+                        : game_scripts_.failure();
+                    source_boundary(
+                        "field.location.route_preparation_unresolved");
+                    state.caller_exit_status = -1;
+                    return true;
+                }
+                source_boundary(
+                    "field.location.route_preparation_completed");
+            }
+
             if (event_route.indexed_title_service.has_value()) {
                 const auto& task = *event_route.indexed_title_service;
                 game_scripts_.set_field_mode_context(
@@ -11143,6 +11184,7 @@ bool FieldSceneRuntime::bootstrap(
     // New Game seeds FFFC30 bit 0 at ROM 0x59C48.
     field_mode_flags_ = 1U;
     field_mode_effect_flags_ = 0U;
+    field_pending_world_effect_ = false;
     field_auxiliary_flags_ = 0U;
     field_dialogue_register_ = restored_field_state == nullptr
         ? std::optional<std::uint8_t>{0U}
@@ -11300,6 +11342,9 @@ bool FieldSceneRuntime::bootstrap(
             if (name == "opening_dialogue_seen") {
                 return stoker_motel_story_state_.opening_dialogue_seen;
             }
+            if (name == "pending_world_effect") {
+                return field_pending_world_effect_;
+            }
             if (name == "michael_debt_paid") {
                 return stoker_motel_story_state_.michael_debt_paid;
             }
@@ -11455,6 +11500,10 @@ bool FieldSceneRuntime::bootstrap(
             }
             if (name == "opening_dialogue_seen") {
                 stoker_motel_story_state_.opening_dialogue_seen = value;
+                return true;
+            }
+            if (name == "pending_world_effect") {
+                field_pending_world_effect_ = value;
                 return true;
             }
             if (name == "michael_debt_paid") {

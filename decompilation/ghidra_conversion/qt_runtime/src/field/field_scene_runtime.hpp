@@ -1167,6 +1167,9 @@ public:
     std::uint32_t field_mode_effect_flags_for_dump() const noexcept {
         return field_mode_effect_flags_;
     }
+    bool pending_world_effect_for_dump() const noexcept {
+        return field_pending_world_effect_;
+    }
     std::uint32_t field_mode_flags_for_dump() const noexcept {
         return field_mode_flags_;
     }
@@ -2217,6 +2220,9 @@ private:
     // Typed counterparts for the field story-service registers. These remain
     // session state until the save adapter restores their source facts.
     std::uint32_t field_mode_effect_flags_ = 0;
+    // FFE182 selects the ROM's pending entity-list handoff. It is transient
+    // field state and is not part of the persistent story/save flags.
+    bool field_pending_world_effect_ = false;
     // ROM FFFC40: separate world-activity facts, including Spirit Eyes
     // component-request markers at bits 0..2.
     std::uint32_t field_auxiliary_flags_ = 0;

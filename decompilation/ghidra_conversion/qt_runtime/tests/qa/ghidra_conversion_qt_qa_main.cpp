@@ -5532,6 +5532,7 @@ int run_field_ares_collision_shop_qa(
 }
 
 enum class Scene20PhysicalEntryQaPath : std::uint8_t {
+    ilene_prerequisite,
     c0_exit_lifetime,
     entry_pending_flag,
     walk_away,
@@ -5593,6 +5594,17 @@ int run_field_scene20_physical_entry_qa(
         std::cerr << "Scene-20 physical-entry QA: New Game state, paired C0 "
                      "doorway records, or event-table destination is wrong\n";
         return 3;
+    }
+
+    if (path == Scene20PhysicalEntryQaPath::ilene_prerequisite) {
+        if (!field_scene.set_story_flag_for_dump(18U, true) ||
+            !field_scene.set_story_flag_for_dump(19U, false)) {
+            std::cerr << "Scene-20 Ilene QA: could not seed ROM story bits\n";
+            return 3;
+        }
+        field_scene.seed_notebook_tip_flags_for_qa(
+            {{1U << 12U, 0U, 0U}});
+        field_scene.set_field_exit_alternate_result_for_dump(0);
     }
 
     if (path == Scene20PhysicalEntryQaPath::entry_pending_flag) {
@@ -5679,7 +5691,7 @@ int run_field_scene20_physical_entry_qa(
     }
     trace << "stage\tframe\tscene\tx\ty\tworld_mode\tfield_mode\tevent"
              "\traw_collision\tprojected\tfade_timer\tpalette_steps"
-             "\tinteraction\tmode_text\tshop\n";
+             "\tpending_world_effect\tinteraction\tmode_text\tshop\n";
     std::uint32_t frame = 0U;
     const auto write_state = [&] (const std::string_view stage) {
         const auto position = field_scene.field_entity_world_position();
@@ -5697,6 +5709,7 @@ int run_field_scene20_physical_entry_qa(
               << field_scene.field_interaction_transition_timer_for_dump()
               << '\t' << static_cast<unsigned>(
                      field_scene.field_palette_fade_steps_for_dump())
+              << '\t' << field_scene.pending_world_effect_for_dump()
               << '\t' << field_scene.field_interaction_open() << '\t'
               << field_scene.field_mode_text_open_for_dump() << '\t'
               << field_scene.shop_menu_open() << '\n';
@@ -5898,6 +5911,25 @@ int run_field_scene20_physical_entry_qa(
         return 3;
     }
     write_state("scene20-entry");
+    if (path == Scene20PhysicalEntryQaPath::ilene_prerequisite) {
+        const auto route_preparations = std::count(
+            source_boundaries.begin(), source_boundaries.end(),
+            std::string("field.location.route_preparation_completed"));
+        if (!field_scene.pending_world_effect_for_dump() ||
+            route_preparations != 1 || !save("actual")) {
+            std::cerr << "Scene-20 Ilene QA: service 19 did not arm FFE182 "
+                         "through the physical scene-2/event-0 route "
+                         "(pending="
+                      << field_scene.pending_world_effect_for_dump()
+                      << ", preparations=" << route_preparations << ")\n";
+            return 3;
+        }
+        std::cout << "field_scene20_ilene_prerequisite_qa=passed "
+                  << "scene=20 service=19 marker=FFE182 "
+                  << "preparations=" << route_preparations
+                  << " artifacts=" << output.string() << '\n';
+        return 0;
+    }
     if (path == Scene20PhysicalEntryQaPath::entry_pending_flag) {
         constexpr std::uint32_t kSceneTwentyEntryFlag =
             std::uint32_t{1U} << 26U;
@@ -21938,6 +21970,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene20_entry_gate_qa_path;
         std::optional<std::filesystem::path>
+            field_scene20_ilene_prerequisite_qa_path;
+        std::optional<std::filesystem::path>
             field_scene20_c0_exit_qa_path;
         std::optional<std::filesystem::path>
             field_scene20_passkey_qa_path;
@@ -22298,6 +22332,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene20_entry_gate_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene20-ilene-prerequisite-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene20_ilene_prerequisite_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -26454,6 +26495,13 @@ int main(int argc, char** argv) {
                     *field_scene20_entry_gate_qa_path,
                     field_audio_events, field_source_boundaries,
                     Scene20PhysicalEntryQaPath::entry_pending_flag);
+            }
+            if (field_scene20_ilene_prerequisite_qa_path.has_value()) {
+                return run_field_scene20_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_scene20_ilene_prerequisite_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    Scene20PhysicalEntryQaPath::ilene_prerequisite);
             }
             if (field_scene20_c0_exit_qa_path.has_value()) {
                 return run_field_scene20_physical_entry_qa(

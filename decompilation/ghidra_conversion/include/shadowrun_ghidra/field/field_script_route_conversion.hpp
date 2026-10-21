@@ -165,6 +165,9 @@ struct FieldScriptRoute {
     std::string entry_event_id;
     std::string entry_continue_result_id;
     std::string field_service_id;
+    // Synchronous Lua policy that may update transient world facts before an
+    // area-event route continues. It does not own the modal or transition.
+    std::optional<FieldLocationScriptTask> route_preparation;
     std::optional<FieldLocationScriptTask> indexed_title_service;
     std::optional<FieldLocationScriptTask> field_exit_prompt;
 };

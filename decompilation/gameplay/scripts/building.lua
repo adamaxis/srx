@@ -231,6 +231,8 @@ local function location_script_task(link, prefix)
 end
 
 local function add_location_script_tasks(route, link)
+    route.route_preparation =
+        location_script_task(link, "route_preparation")
     route.indexed_title_service =
         location_script_task(link, "indexed_title_service")
     route.field_exit_prompt = location_script_task(link, "field_exit_prompt")

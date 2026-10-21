@@ -72,7 +72,11 @@ catalog's source policy explicitly authorizes a correction.
   the partner's `+0x10` bit 1 and the actor's `+0xB0` bit 7 clear; `0xED92`
   then consumes `FFE182` and selects `0x54402`. That activity adds 2 Karma per
   runner, sets bit 19, and opens group `0x115ECC`; text `0x115F10` names Ilene.
-  ROM-byte tests cover this source path, but pending-list spawning, actor-pair
+  `Ilene.prepare_scene_20_entry` now implements the gate as a Lua route
+  preparation and writes transient `pending_world_effect` state for FFE182.
+  Debug/Release physical-input QA verifies it fires once on the scene-2/event-0
+  route and still enters scene 20, writing a full-screen `actual.bmp`. ROM-byte
+  tests cover the remaining source path, but pending-list spawning, actor-pair
   contact, and the activity are not yet connected to the active runtime.
 - Prerequisite: the code at `0x53EA8` sets `FFFC1E` bit 9 and opens text
   record `0xF4C04` ("You have completed your tasks, young warrior"). The

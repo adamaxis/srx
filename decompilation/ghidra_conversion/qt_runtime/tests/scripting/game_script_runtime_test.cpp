@@ -1892,6 +1892,10 @@ int main() {
                 scene20_route->area_event_target == 20U &&
                 scene20_route->area_event_destination_mode ==
                     WorldActivityMode::field &&
+                scene20_route->route_preparation.has_value() &&
+                scene20_route->route_preparation->module == "ilene" &&
+                scene20_route->route_preparation->function ==
+                    "prepare_scene_20_entry" &&
                 scene20_route->return_anchor ==
                     FieldLocationReturnAnchor::collision_probe_lead &&
                 scene20_route->return_facing ==
@@ -1963,6 +1967,89 @@ int main() {
                 gates_undersound_pre_mako->area_event_target == 21U &&
                 authored_location_routes_match,
             "Lua did not resolve ROM-backed field location routes and destination modes")) {
+        std::cerr << scripts.failure() << '\n';
+        return 2;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_18", true},
+        {"story_flag_bit_19", false},
+        {"field_mode_effect_flag_bit_0", false},
+        {"notebook_tip_flag_bit_12", true},
+        {"pending_world_effect", false},
+    });
+    scripts.set_field_mode_context(
+        ScriptFieldModeContext{2U, 0U, 0});
+    scripts.set_location_context(
+        "building", "hollywood_correctional_facility",
+        "field.scene_20.ilene_gate", "field_narrator");
+    const auto ilene_preparation =
+        scripts.call_string("ilene", "prepare_scene_20_entry");
+    const auto ilene_preparation_facts = scripts.story_state();
+    if (!expect(ilene_preparation ==
+                        std::optional<std::string>{"continue"} &&
+                    ilene_preparation_facts.at("pending_world_effect"),
+                "Ilene service 19 did not arm FFE182 when all ROM gates pass")) {
+        std::cerr << scripts.failure() << '\n';
+        return 2;
+    }
+
+    const auto verify_ilene_gate_blocks = [&scripts](
+        const StoryFacts& facts, const ScriptFieldModeContext field_context,
+        const std::string_view location_id) {
+        scripts.set_story_state(facts);
+        scripts.set_field_mode_context(field_context);
+        scripts.set_location_context(
+            "building", location_id, "field.scene_20.ilene_gate",
+            "field_narrator");
+        const auto result =
+            scripts.call_string("ilene", "prepare_scene_20_entry");
+        const auto final_facts = scripts.story_state();
+        const auto marker = final_facts.find("pending_world_effect");
+        return result == std::optional<std::string>{"continue"} &&
+               (marker == final_facts.end() || !marker->second);
+    };
+    const StoryFacts ilene_allowed_facts{
+        {"story_flag_bit_18", true},
+        {"story_flag_bit_19", false},
+        {"field_mode_effect_flag_bit_0", false},
+        {"notebook_tip_flag_bit_12", true},
+        {"pending_world_effect", false},
+    };
+    auto ilene_blocked_facts = ilene_allowed_facts;
+    ilene_blocked_facts["story_flag_bit_18"] = false;
+    const bool blocks_missing_shaman = verify_ilene_gate_blocks(
+        ilene_blocked_facts, ScriptFieldModeContext{2U, 0U, 0},
+        "hollywood_correctional_facility");
+    ilene_blocked_facts = ilene_allowed_facts;
+    ilene_blocked_facts["story_flag_bit_19"] = true;
+    const bool blocks_already_met = verify_ilene_gate_blocks(
+        ilene_blocked_facts, ScriptFieldModeContext{2U, 0U, 0},
+        "hollywood_correctional_facility");
+    ilene_blocked_facts = ilene_allowed_facts;
+    ilene_blocked_facts["field_mode_effect_flag_bit_0"] = true;
+    const bool blocks_effect_flag = verify_ilene_gate_blocks(
+        ilene_blocked_facts, ScriptFieldModeContext{2U, 0U, 0},
+        "hollywood_correctional_facility");
+    ilene_blocked_facts = ilene_allowed_facts;
+    ilene_blocked_facts["notebook_tip_flag_bit_12"] = false;
+    const bool blocks_tip_gate = verify_ilene_gate_blocks(
+        ilene_blocked_facts, ScriptFieldModeContext{2U, 0U, 0},
+        "hollywood_correctional_facility");
+    const bool blocks_alternate_result = verify_ilene_gate_blocks(
+        ilene_allowed_facts, ScriptFieldModeContext{2U, 0U, 1},
+        "hollywood_correctional_facility");
+    const bool blocks_wrong_event = verify_ilene_gate_blocks(
+        ilene_allowed_facts, ScriptFieldModeContext{2U, 1U, 0},
+        "hollywood_correctional_facility");
+    const bool blocks_wrong_location = verify_ilene_gate_blocks(
+        ilene_allowed_facts, ScriptFieldModeContext{2U, 0U, 0},
+        "council_island_hospital");
+    if (!expect(blocks_missing_shaman && blocks_already_met &&
+                    blocks_effect_flag && blocks_tip_gate &&
+                    blocks_alternate_result && blocks_wrong_event &&
+                    blocks_wrong_location,
+                "Ilene service 19 armed FFE182 outside one or more ROM gates")) {
         std::cerr << scripts.failure() << '\n';
         return 2;
     }
