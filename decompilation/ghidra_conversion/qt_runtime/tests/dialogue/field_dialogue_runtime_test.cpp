@@ -149,8 +149,32 @@ int main() {
         {"vigore_lead_available", false},
         {"vigore_search_pending", false},
         {"errascoe_question_available", false},
+        {"cyberspace_deck_present", true},
+        {"cyberspace_mpcp_functional", true},
+        {"cyberspace_datajack_present", true},
     });
     runtime.set_script_runtime(&gameplay_scripts);
+    gameplay_scripts.set_location_context(
+        "activity", "resource_scene", "field.activity", "", "", 26U);
+    if (!expect(runtime.open_gameplay_task(
+                    "field_activities", "resource_scene_main_menu")) ||
+        !expect(runtime.panel().cursor_selection) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::matrix_entry_requested) ||
+        !expect(runtime.take_matrix_entry_system_id() ==
+                std::optional<std::uint8_t>{0x18U}) ||
+        !expect(runtime.take_matrix_entry_node_id() ==
+                std::optional<std::uint8_t>{0x16U})) {
+        std::cerr << "Scene-26 resource Main Menu did not hand its seeded "
+                     "Matrix system/node directly to the host\n";
+        return 119;
+    }
+    gameplay_scripts.set_story_state({
+        {"vigore_lead_available", false},
+        {"vigore_search_pending", false},
+        {"errascoe_question_available", false},
+    });
     runtime.set_room_payment_callback([&room_payment_funds,
                                        &room_payment_outcome]() {
         StokerMotelRoomPaymentState state{};

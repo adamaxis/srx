@@ -4,6 +4,34 @@ local FieldActivities = {}
 local Dialogue = require("dialogue")
 local MatrixPasscodes = require("data.matrix_passcodes")
 
+-- ROM 0x0DBF8 seeds FFF118 (Matrix node) and FFFBBC (system) from the active
+-- resource scene before presenting its Cyberspace / Exit Main Menu.
+local resource_scene_matrix_targets = {
+    [21] = { system_id = 0x16, node_id = 0x0D },
+    [22] = { system_id = 0x16, node_id = 0x0D },
+    [23] = { system_id = 0x16, node_id = 0x06 },
+    [24] = { system_id = 0x16, node_id = 0x08 },
+    [25] = { system_id = 0x16, node_id = 0x0F },
+    [26] = { system_id = 0x18, node_id = 0x16 },
+    [27] = { system_id = 0x18, node_id = 0x03 },
+    [28] = { system_id = 0x18, node_id = 0x09 },
+    [29] = { system_id = 0x18, node_id = 0x1A },
+    [30] = { system_id = 0x14, node_id = 0x07 },
+    [31] = { system_id = 0x14, node_id = 0x02 },
+    [32] = { system_id = 0x14, node_id = 0x09 },
+    [33] = { system_id = 0x14, node_id = 0x18 },
+    [34] = { system_id = 0x14, node_id = 0x0E },
+    [35] = { system_id = 0x15, node_id = 0x03 },
+    [36] = { system_id = 0x15, node_id = 0x04 },
+    [37] = { system_id = 0x15, node_id = 0x08 },
+    [38] = { system_id = 0x15, node_id = 0x13 },
+    [39] = { system_id = 0x15, node_id = 0x14 },
+    [40] = { system_id = 0x15, node_id = 0x12 },
+    [41] = { system_id = 0x17, node_id = 0x15 },
+    [42] = { system_id = 0x17, node_id = 0x09 },
+    [43] = { system_id = 0x17, node_id = 0x0B },
+}
+
 -- Resolve each contact's source-backed Lua service tree while this module is
 -- initialized. The contact list supplies the module/function association;
 -- dispatch during a yielded task then uses the already-resolved handler.
@@ -239,33 +267,40 @@ function FieldActivities.enter_passcode()
     end
 end
 
-function FieldActivities.enter_cyberspace()
+local function cyberspace_access_ready()
     local deck_present = game.state.cyberspace_deck_present
     if deck_present == nil then
-        return "cyberspace_access_facts_unresolved"
+        return nil, "cyberspace_access_facts_unresolved"
     end
     if not deck_present then
         game.ui.say("cyberspace_no_deck", "field_narrator", "field.main_menu")
-        return nil
+        return false
     end
 
     local mpcp_functional = game.state.cyberspace_mpcp_functional
     if mpcp_functional == nil then
-        return "cyberspace_access_facts_unresolved"
+        return nil, "cyberspace_access_facts_unresolved"
     end
     if not mpcp_functional then
         game.ui.say("cyberspace_no_mpcp", "field_narrator", "field.main_menu")
-        return nil
+        return false
     end
 
     local datajack_present = game.state.cyberspace_datajack_present
     if datajack_present == nil then
-        return "cyberspace_access_facts_unresolved"
+        return nil, "cyberspace_access_facts_unresolved"
     end
     if not datajack_present then
         game.ui.say("cyberspace_no_datajack", "field_narrator", "field.main_menu")
-        return nil
+        return false
     end
+    return true
+end
+
+function FieldActivities.enter_cyberspace()
+    local access_ready, unresolved = cyberspace_access_ready()
+    if unresolved ~= nil then return unresolved end
+    if not access_ready then return nil end
 
     local choice = run_cursor_menu("cyberspace", {
         "enter_passcode", "system_search", "exit",
@@ -311,8 +346,20 @@ function FieldActivities.resource_scene_main_menu()
         if choice == "exit" then
             return "return_from_world_activity"
         elseif choice == "cyberspace" then
-            local result = FieldActivities.enter_cyberspace()
-            if result ~= nil then return result end
+            local target = resource_scene_matrix_targets[
+                game.location.scene_id]
+            if target == nil then
+                return "resource_matrix_target_unresolved"
+            end
+            local access_ready, unresolved = cyberspace_access_ready()
+            if unresolved ~= nil then return unresolved end
+            if access_ready then
+                -- ROM 0x0E40C enters 0x181F8 directly with FFF118 and
+                -- FFBBC already seeded. It does not open the field-terminal
+                -- Enter Passcode / System Search submenu.
+                return "matrix_entry_target_" .. target.system_id .. "_" ..
+                    target.node_id
+            end
         end
     end
 end

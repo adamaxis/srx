@@ -7497,8 +7497,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 state_.field_scene_buffers.scene_reference;
             // ROM 0x0DB26 sends FFDF40==0 to the ordinary four-choice field
             // terminal menu. Nonzero resource-scene mode takes the separate
-            // scene-specific branch at 0x0DBF8; scene 26 is currently the
-            // converted two-choice case.
+            // scene-specific branch at 0x0DBF8, which seeds the Matrix node
+            // and system from the current resource scene.
             if (field_movement_transition_state_.world_mode == 0U) {
                 game_scripts_.set_location_context(
                     "activity", "field_terminal", "field.main_menu");
@@ -7512,13 +7512,14 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 }
                 return integration::PendingFieldSceneHandlerResult::resumed_field;
             }
-            if (scene_reference != 26U) {
+            if (scene_reference < 21U || scene_reference > 43U) {
                 source_boundary(
                     "field.activity.event31_scene_route_unresolved");
                 return integration::PendingFieldSceneHandlerResult::resumed_field;
             }
             game_scripts_.set_location_context(
-                "activity", "resource_scene", "field.activity");
+                "activity", "resource_scene", "field.activity", "", "",
+                static_cast<std::uint8_t>(scene_reference));
             if (!field_dialogue_.open_gameplay_task(
                     "field_activities", "resource_scene_main_menu")) {
                 source_boundary(
@@ -15804,17 +15805,21 @@ void FieldSceneRuntime::advance_frame() {
                    FieldDialogueAdvanceResult::matrix_entry_requested) {
             const auto system_id =
                 field_dialogue_.take_matrix_entry_system_id();
+            const auto node_id = field_dialogue_.take_matrix_entry_node_id();
             if (!system_id.has_value()) {
                 source_boundary("field.matrix.entry_target_missing");
             } else {
                 scripting::ScriptMenuRouteStartArguments arguments{};
                 arguments.matrix_system_id = *system_id;
+                arguments.matrix_node_id = node_id;
                 arguments.return_to_field = true;
                 open_command_overview(
                     static_cast<std::uint16_t>(
                         srx::MenuScreen::MATRIX_ENTRY),
                     std::move(arguments));
-                source_boundary("field.matrix.entry_requested");
+                source_boundary(node_id.has_value()
+                    ? "field.matrix.resource_target_entry_requested"
+                    : "field.matrix.entry_requested");
             }
         } else if (result ==
                    FieldDialogueAdvanceResult::matrix_search_requested) {

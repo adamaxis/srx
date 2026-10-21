@@ -886,6 +886,7 @@ struct GameScriptRuntime::Impl {
     std::string location_text_profile;
     std::string location_speaker_id;
     std::string location_event_id;
+    std::optional<std::uint8_t> location_scene_id;
     ScriptFieldModeContext field_mode_context{};
     ScriptMenuRouteBindings menu_route_bindings{};
     ScriptMenuRouteSnapshot menu_route_state{};
@@ -3012,6 +3013,14 @@ struct GameScriptRuntime::Impl {
             lua_pushnil(lua);
             return 1;
         }
+        if (field == "scene_id") {
+            if (self->location_scene_id.has_value()) {
+                lua_pushinteger(lua, *self->location_scene_id);
+            } else {
+                lua_pushnil(lua);
+            }
+            return 1;
+        }
         std::string_view value;
         if (field == "type") {
             value = self->location_type;
@@ -3753,6 +3762,7 @@ struct GameScriptRuntime::Impl {
         location_id.clear();
         location_text_profile.clear();
         location_speaker_id.clear();
+        location_scene_id.reset();
         field_mode_context = ScriptFieldModeContext{};
         menu_route_bindings = ScriptMenuRouteBindings{};
         menu_route_state = ScriptMenuRouteSnapshot{};
@@ -6846,7 +6856,8 @@ void GameScriptRuntime::set_location_context(
     const std::string_view type, const std::string_view id,
     const std::string_view text_profile,
     const std::string_view speaker_id,
-    const std::string_view event_id) {
+    const std::string_view event_id,
+    const std::optional<std::uint8_t> scene_id) {
     if (impl_->state == nullptr || !valid_identifier(type) ||
         !valid_identifier(id) ||
         (!text_profile.empty() && !valid_identifier(text_profile)) ||
@@ -6860,6 +6871,7 @@ void GameScriptRuntime::set_location_context(
     impl_->location_text_profile = std::string(text_profile);
     impl_->location_speaker_id = std::string(speaker_id);
     impl_->location_event_id = std::string(event_id);
+    impl_->location_scene_id = scene_id;
 }
 
 void GameScriptRuntime::set_field_mode_context(

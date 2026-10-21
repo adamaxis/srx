@@ -1458,7 +1458,9 @@ public:
     void set_location_context(std::string_view type, std::string_view id,
                               std::string_view text_profile = {},
                               std::string_view speaker_id = {},
-                              std::string_view event_id = {});
+                              std::string_view event_id = {},
+                              std::optional<std::uint8_t> scene_id =
+                                  std::nullopt);
     void set_field_mode_context(ScriptFieldModeContext context) noexcept;
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);

@@ -455,6 +455,50 @@ loop at ROM `0x181F8`/`0x1822C`. The node-action route represents the separate
 world-mode path at `0x54662`, not the initial jack-in screen. `FFDF40` nonzero
 still follows the separate scene-specific branch.
 
+For the nonzero branch, the ROM switch at `0x0DBF8` uses the current resource
+scene (`FFFBF8`) to seed Matrix node `FFF118` and system `FFFBBC`. The shared
+`0x0DE5E` Main Menu offers Cyberspace and Exit; selecting Cyberspace at
+`0x0E40C` passes the seeded target directly to the 20-frame Matrix entry at
+`0x181F8`, without the ordinary field terminal's Passcode/System Search menu.
+Lua now owns this recovered map in `field_activities.lua` and returns a target
+that the host forwards to `matrix_entry.lua`:
+
+| Resource scene | System | Node |
+|---:|---:|---:|
+| 21 | `0x16` | `0x0D` |
+| 22 | `0x16` | `0x0D` |
+| 23 | `0x16` | `0x06` |
+| 24 | `0x16` | `0x08` |
+| 25 | `0x16` | `0x0F` |
+| 26 | `0x18` | `0x16` |
+| 27 | `0x18` | `0x03` |
+| 28 | `0x18` | `0x09` |
+| 29 | `0x18` | `0x1A` |
+| 30 | `0x14` | `0x07` |
+| 31 | `0x14` | `0x02` |
+| 32 | `0x14` | `0x09` |
+| 33 | `0x14` | `0x18` |
+| 34 | `0x14` | `0x0E` |
+| 35 | `0x15` | `0x03` |
+| 36 | `0x15` | `0x04` |
+| 37 | `0x15` | `0x08` |
+| 38 | `0x15` | `0x13` |
+| 39 | `0x15` | `0x14` |
+| 40 | `0x15` | `0x12` |
+| 41 | `0x17` | `0x15` |
+| 42 | `0x17` | `0x09` |
+| 43 | `0x17` | `0x0B` |
+
+The E40C gate checks are represented by the shared deck, nonzero MPCP, and
+active-runner datajack facts. Their source comparisons are `FF018F` bit 0,
+`FFFBBE` nonzero, and bit 0 of the active runner record at `FFFC04 + 0x90`;
+the runtime's field facts read the live deck record and cyberware bit rather
+than duplicating those RAM addresses. Missing prerequisite data remains a
+source boundary. Scene-26 physical-input QA now confirms the direct target
+reaches Matrix system 24/node 22; the other 22 target rows have Lua mapping
+coverage but still need their own physical routes before claiming them
+independently defended.
+
 `FieldSceneRuntime` now connects the normal event-31 continuation to the Lua
 four-choice task. Call Taxi uses `0xD4456` / `0xD445D` for the seven region and
 cursor mappings, draws the extracted cab-map/cursor assets, and fades into the
@@ -462,11 +506,13 @@ selected field scene after confirmation. The taxi route QA checks the settled
 screen, clean return on the current region, and a completed Downtown scene-0
 arrival after fade-in. Vid-Phone page/call screens and Matrix script screens
 have focused route tests and 320x224 dumps; the phone runtime checks both
-Sharkey passage destinations and item outcomes. These checks start at the
-converted event result or menu route; physical movement into a terminal is
-not yet covered by a joined event-31 route test. They do not certify the full
-Matrix visual system or contact-specific service transactions. The map-viewer
-preview remains a readable content and ordering aid, not pixel-fidelity proof.
+Sharkey passage destinations and item outcomes. Separate ordinary-input QA
+physically reaches the Scene-0 terminal-to-Vid-Phone route and the Scene-26
+resource-scene Matrix route. The latter checks that the Matrix session keeps
+system 24/node 22 after the source entry wait. These checks do not certify the
+full Matrix visual system, other resource-scene event-31 routes, or
+contact-specific service transactions. The map-viewer preview remains a
+readable content and ordering aid, not pixel-fidelity proof.
 The scene-6 default actor list is empty. The guide's named people therefore
 remain site cross-references until their actor service and gated placements
 are source-traced; they are not populated as scenery residents. See the
@@ -569,7 +615,10 @@ enums rather than ROM address interpretation.
   Scene 26 record 126 (`0x1D9E5A`, x/y `0x0200..0x021F`, event `0x1F`) has a
   physical-input QA route: Up from the adjacent cell opens Lua's resource
   `Main Menu`; Down selects `Exit`; A restores the captured Scene-2 field
-  state. This verifies only the Scene-26 special-mode path. The normal-mode
+  state. A second ordinary-input QA chooses Cyberspace and checks the Matrix
+  session snapshot receives system 24/node 22. This physically defends only
+  the Scene-26 special-mode path; the full 21–43 node/system table has Lua
+  mapping coverage. The normal-mode
   four-choice task and taxi/phone/Matrix handlers are connected in Qt, but a
   physical-input route from a map's event-31 trigger through the ordinary menu
   remains untested. Other scene-specific event-31 paths, events 26, 28, and

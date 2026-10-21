@@ -926,12 +926,51 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         const bool matrix_search_requested = task.result_id ==
             std::optional<std::string>{"matrix_system_search_requested"};
         std::optional<std::uint8_t> matrix_entry_system_id;
+        std::optional<std::uint8_t> matrix_entry_node_id;
+        bool invalid_resource_matrix_target = false;
         if (task.result_id.has_value()) {
             constexpr std::string_view kMatrixEntryPrefix = "matrix_entry_";
+            constexpr std::string_view kMatrixTargetPrefix =
+                "matrix_entry_target_";
             const auto& result_id = *task.result_id;
             if (result_id == "matrix_entry_current") {
                 // 0xFFFBBC is the current passcode target in the ROM.
                 matrix_entry_system_id = 0xFFU;
+            } else if (result_id.compare(0U, kMatrixTargetPrefix.size(),
+                                         kMatrixTargetPrefix) == 0) {
+                bool target_parsed = false;
+                if (result_id.size() > kMatrixTargetPrefix.size()) {
+                    const auto suffix = std::string_view(result_id).substr(
+                        kMatrixTargetPrefix.size());
+                    const auto separator = suffix.find('_');
+                    if (separator != std::string_view::npos) {
+                        unsigned system_id = 0U;
+                        unsigned node_id = 0U;
+                        const auto system_text =
+                            suffix.substr(0U, separator);
+                        const auto node_text = suffix.substr(separator + 1U);
+                        const auto parsed_system = std::from_chars(
+                            system_text.data(),
+                            system_text.data() + system_text.size(), system_id);
+                        const auto parsed_node = std::from_chars(
+                            node_text.data(),
+                            node_text.data() + node_text.size(), node_id);
+                        if (parsed_system.ec == std::errc{} &&
+                            parsed_system.ptr ==
+                                system_text.data() + system_text.size() &&
+                            parsed_node.ec == std::errc{} &&
+                            parsed_node.ptr ==
+                                node_text.data() + node_text.size() &&
+                            system_id < 25U && node_id < 27U) {
+                            matrix_entry_system_id =
+                                static_cast<std::uint8_t>(system_id);
+                            matrix_entry_node_id =
+                                static_cast<std::uint8_t>(node_id);
+                            target_parsed = true;
+                        }
+                    }
+                }
+                invalid_resource_matrix_target = !target_parsed;
             } else if (result_id.size() > kMatrixEntryPrefix.size() &&
                        result_id.compare(0U, kMatrixEntryPrefix.size(),
                                          kMatrixEntryPrefix) == 0) {
@@ -950,6 +989,7 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         }
         close();
         pending_matrix_entry_system_id_ = matrix_entry_system_id;
+        pending_matrix_entry_node_id_ = matrix_entry_node_id;
         if (matrix_search_requested) {
             return FieldDialogueAdvanceResult::matrix_search_requested;
         }
@@ -987,6 +1027,11 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         if (matrix_entry_system_id.has_value()) {
             return FieldDialogueAdvanceResult::matrix_entry_requested;
         }
+        if (invalid_resource_matrix_target) {
+            open_source_boundary(
+                "Lua returned an invalid resource-scene Matrix target");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
         if (returned_from_activity) {
             return FieldDialogueAdvanceResult::returned_from_world_activity;
         }
@@ -1003,6 +1048,12 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         if (unresolved_cyberspace_facts) {
             open_source_boundary(
                 "Cyberspace prerequisite facts are unresolved for this save");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        if (task.result_id == std::optional<std::string>{
+                "resource_matrix_target_unresolved"}) {
+            open_source_boundary(
+                "The ROM Matrix target for this resource scene is not mapped");
             return FieldDialogueAdvanceResult::source_boundary;
         }
         if (unresolved_passcode_flags) {
@@ -1316,6 +1367,7 @@ void FieldDialogueRuntime::close() noexcept {
     hosted_choice_list_ = false;
     script_task_waiting_ = false;
     pending_matrix_entry_system_id_.reset();
+    pending_matrix_entry_node_id_.reset();
     boundary_reason_.clear();
     hotel_options_menu_follows_ = false;
 }
@@ -1324,6 +1376,13 @@ std::optional<std::uint8_t>
 FieldDialogueRuntime::take_matrix_entry_system_id() noexcept {
     auto requested = pending_matrix_entry_system_id_;
     pending_matrix_entry_system_id_.reset();
+    return requested;
+}
+
+std::optional<std::uint8_t>
+FieldDialogueRuntime::take_matrix_entry_node_id() noexcept {
+    auto requested = pending_matrix_entry_node_id_;
+    pending_matrix_entry_node_id_.reset();
     return requested;
 }
 

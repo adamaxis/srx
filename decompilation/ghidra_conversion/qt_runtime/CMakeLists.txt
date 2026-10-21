@@ -616,6 +616,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_fuchi_offices_qa
                  --field-fuchi-offices-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-fuchi-offices-qa")
 
+# Enter resource scene 26, reach its event-31 menu through ordinary movement,
+# and verify the ROM-seeded Matrix system/node survive the Lua handoff.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_resource_matrix_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene26-event31-matrix-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-resource-matrix-entry-qa")
+
 # Enter the source-confirmed Penumbra Lone Star frontage through its ordinary
 # event-6 route and verify the numeric resource-activity destination 41.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_lone_star_entry_qa

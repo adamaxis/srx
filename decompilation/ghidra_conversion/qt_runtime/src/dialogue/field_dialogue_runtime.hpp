@@ -117,6 +117,7 @@ public:
         return panel_.open && input_lockout_frames_ != 0U;
     }
     std::optional<std::uint8_t> take_matrix_entry_system_id() noexcept;
+    std::optional<std::uint8_t> take_matrix_entry_node_id() noexcept;
     std::optional<std::string> take_gameplay_task_result();
     bool uses_field_console_menu_layout() const noexcept;
     std::string_view field_console_menu_title() const noexcept;
@@ -162,6 +163,7 @@ private:
     bool script_task_waiting_ = false;
     std::uint8_t input_lockout_frames_ = 0U;
     std::optional<std::uint8_t> pending_matrix_entry_system_id_;
+    std::optional<std::uint8_t> pending_matrix_entry_node_id_;
     std::optional<std::string> last_gameplay_task_result_id_;
     StokerMotelArrivalCommandCallbacks arrival_command_callbacks_;
     std::function<std::optional<StokerMotelRoomPaymentOutcome>()>

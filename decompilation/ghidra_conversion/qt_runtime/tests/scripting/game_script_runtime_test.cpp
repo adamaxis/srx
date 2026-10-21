@@ -8497,6 +8497,119 @@ int main() {
         return 15;
     }
 
+    struct ResourceMatrixTarget {
+        std::uint8_t scene_id;
+        std::uint8_t system_id;
+        std::uint8_t node_id;
+    };
+    scripts.set_story_fact_accessors({}, {});
+    constexpr std::array<ResourceMatrixTarget, 23U> resource_targets{{
+        {21U, 0x16U, 0x0DU}, {22U, 0x16U, 0x0DU},
+        {23U, 0x16U, 0x06U}, {24U, 0x16U, 0x08U},
+        {25U, 0x16U, 0x0FU}, {26U, 0x18U, 0x16U},
+        {27U, 0x18U, 0x03U}, {28U, 0x18U, 0x09U},
+        {29U, 0x18U, 0x1AU}, {30U, 0x14U, 0x07U},
+        {31U, 0x14U, 0x02U}, {32U, 0x14U, 0x09U},
+        {33U, 0x14U, 0x18U}, {34U, 0x14U, 0x0EU},
+        {35U, 0x15U, 0x03U}, {36U, 0x15U, 0x04U},
+        {37U, 0x15U, 0x08U}, {38U, 0x15U, 0x13U},
+        {39U, 0x15U, 0x14U}, {40U, 0x15U, 0x12U},
+        {41U, 0x17U, 0x15U}, {42U, 0x17U, 0x09U},
+        {43U, 0x17U, 0x0BU},
+    }};
+    scripts.set_story_state({
+        {"cyberspace_deck_present", true},
+        {"cyberspace_mpcp_functional", true},
+        {"cyberspace_datajack_present", true},
+    });
+    for (const auto& target : resource_targets) {
+        scripts.set_location_context(
+            "activity", "resource_scene", "field.activity", "", "",
+            target.scene_id);
+        auto resource_entry = scripts.start_task(
+            "field_activities", "resource_scene_main_menu");
+        if (!expect(resource_entry.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                        resource_entry.operation.has_value() &&
+                        resource_entry.operation->type ==
+                            ScriptNativeOperation::Type::ui_menu &&
+                        resource_entry.operation->menu.has_value() &&
+                        resource_entry.operation->menu->id == "resource_main",
+                    "resource scene did not open its Main Menu")) {
+            std::cerr << scripts.failure() << '\n';
+            return 15;
+        }
+        resource_entry = scripts.complete_native_menu_input("confirm");
+        const auto expected_target = "matrix_entry_target_" +
+            std::to_string(target.system_id) + "_" +
+            std::to_string(target.node_id);
+        if (!expect(resource_entry.status == ScriptTaskStep::Status::completed &&
+                        resource_entry.result_id == expected_target,
+                    "resource scene did not return its ROM Matrix system/node "
+                    "directly from the Main Menu")) {
+            std::cerr << "scene " << static_cast<unsigned>(target.scene_id)
+                      << ": " << scripts.failure() << '\n';
+            return 15;
+        }
+    }
+    scripts.set_story_state({
+        {"cyberspace_deck_present", true},
+        {"cyberspace_mpcp_functional", true},
+        {"cyberspace_datajack_present", false},
+    });
+    scripts.set_location_context(
+        "activity", "resource_scene", "field.activity", "", "", 26U);
+    auto denied_resource_entry = scripts.start_task(
+        "field_activities", "resource_scene_main_menu");
+    denied_resource_entry =
+        scripts.complete_native_menu_input("confirm");
+    if (!expect(denied_resource_entry.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    denied_resource_entry.operation.has_value() &&
+                    denied_resource_entry.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    denied_resource_entry.operation->dialogue.has_value() &&
+                    denied_resource_entry.operation->dialogue->event_id ==
+                        "cyberspace_no_datajack",
+                "resource-scene Matrix entry bypassed the ROM datajack gate")) {
+        std::cerr << scripts.failure() << '\n';
+        return 15;
+    }
+    denied_resource_entry = scripts.complete_native_operation(true);
+    if (!expect(denied_resource_entry.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    denied_resource_entry.operation.has_value() &&
+                    denied_resource_entry.operation->menu.has_value() &&
+                    denied_resource_entry.operation->menu->id ==
+                        "resource_main",
+                "resource-scene Matrix denial did not return to Main Menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 15;
+    }
+    denied_resource_entry =
+        scripts.complete_native_menu_input("cancel");
+    if (!expect(denied_resource_entry.status ==
+                        ScriptTaskStep::Status::completed &&
+                    denied_resource_entry.result_id == std::optional<
+                        std::string>{"return_from_world_activity"},
+                "resource-scene menu did not remain usable after denial")) {
+        std::cerr << scripts.failure() << '\n';
+        return 15;
+    }
+    scripts.set_location_context(
+        "activity", "resource_scene", "field.activity");
+    auto unresolved_resource_entry = scripts.start_task(
+        "field_activities", "resource_scene_main_menu");
+    unresolved_resource_entry = scripts.complete_native_menu_input("confirm");
+    if (!expect(unresolved_resource_entry.status ==
+                        ScriptTaskStep::Status::completed &&
+                    unresolved_resource_entry.result_id == std::optional<
+                        std::string>{"resource_matrix_target_unresolved"},
+                "unmapped resource scene did not report its Lua boundary")) {
+        std::cerr << scripts.failure() << '\n';
+        return 15;
+    }
+
     scripts.set_story_fact_accessors({}, {});
     scripts.set_story_state({
         {"vigore_search_pending", true},

@@ -4530,6 +4530,128 @@ int run_field_scene26_event1_terminal_qa(
     return 0;
 }
 
+int run_field_scene26_event31_matrix_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code error;
+    std::filesystem::remove_all(output, error);
+    if (error) {
+        std::cerr << "Scene-26 event-31 Matrix QA: could not clear output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, error);
+    if (error) return 3;
+
+    const auto entry_output = output / "scene2-resource-entry";
+    if (run_field_scene26_event1_physical_entry_qa(
+            field_scene, asset_root, entry_output, field_audio_events,
+            source_boundaries) != 0 ||
+        field_scene.field_scene_reference_for_dump() != 26U ||
+        !field_scene.seed_cyberspace_access_for_dump() ||
+        !field_scene.seed_cyberdeck_reference_frame_for_dump()) {
+        std::cerr << "Scene-26 event-31 Matrix QA: could not physically enter "
+                     "the resource scene and seed ROM cyberware prerequisites\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene]() {
+        QImage frame(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        frame.fill(Qt::black);
+        QPainter painter(&frame);
+        field_scene.paint(painter);
+        painter.end();
+        return frame;
+    };
+    const auto save = [&output, &render](const std::string_view name) {
+        const auto frame = render();
+        return frame.size() == QSize(kSceneWidth, kSceneHeight) &&
+            frame.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()));
+    };
+    for (std::uint8_t frame = 0U; frame < 90U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+
+    // Scene-26 record 126 (ROM 0x1D9E5A), event 0x1F. Approach from the
+    // south-side adjacent cell with ordinary Up input, as the source map does.
+    field_scene.set_field_entity_world_position_for_dump(
+        static_cast<std::uint16_t>(0x0210U << 4U),
+        static_cast<std::uint16_t>(0x0230U << 4U));
+    for (std::uint8_t frame = 0U;
+         frame < 48U && !field_scene.dialogue_open(); ++frame) {
+        field_scene.set_controller_nibble(0x01U);
+        field_scene.advance_frame();
+        if (field_scene.last_field_movement_transition_for_dump().event_code ==
+            FieldCollisionEventCode::event_31) {
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    for (std::uint8_t frame = 0U;
+         frame < 5U && !field_scene.dialogue_open(); ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const auto& main_menu = field_scene.dialogue_panel();
+    if (!field_scene.dialogue_open() || !main_menu.cursor_selection ||
+        main_menu.text_segment_count == 0U ||
+        main_menu.text_segments[0] != "Main Menu" ||
+        main_menu.option_count != 2U ||
+        main_menu.options[0].source_label != "Cyberspace" ||
+        main_menu.options[1].source_label != "Exit" ||
+        !save("resource-scene-main-menu")) {
+        std::cerr << "Scene-26 event-31 Matrix QA: ordinary Up did not open "
+                     "the two-choice resource Main Menu (dialogue="
+                  << field_scene.dialogue_open() << ", options="
+                  << static_cast<unsigned>(main_menu.option_count) << ")\n";
+        return 3;
+    }
+
+    field_scene.set_controller_port_byte(0x40U); // Confirm Cyberspace.
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
+        field_scene.advance_frame();
+    }
+    const auto route = field_scene.field_menu_route_snapshot_for_dump();
+    constexpr auto kExpectedSystem = 0x18;
+    constexpr auto kExpectedNode = 0x16;
+    constexpr auto kExpectedScreen = static_cast<std::uint16_t>(
+        srx::MenuScreen::CYBERDECK);
+    if (field_scene.dialogue_open() || !route.top_matrix_state_present ||
+        route.top_matrix_system_id != kExpectedSystem ||
+        route.top_matrix_node != kExpectedNode ||
+        field_scene.field_menu_route_screen_for_dump() != kExpectedScreen ||
+        !save("matrix-resource-target-24-22-actual")) {
+        std::cerr << "Scene-26 event-31 Matrix QA: Cyberspace did not enter "
+                     "the Lua-seeded system 24/node 22 (system="
+                  << (route.top_matrix_system_id.has_value()
+                          ? std::to_string(*route.top_matrix_system_id)
+                          : "<missing>")
+                  << ", node="
+                  << (route.top_matrix_node.has_value()
+                          ? std::to_string(*route.top_matrix_node)
+                          : "<missing>") << ")\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "entry_scene\ttrigger_record\ttrigger_event\tchoice\t"
+             "matrix_system\tmatrix_node\tmatrix_screen\n"
+          << "26\t126\t0x1F\tcyberspace\t24\t22\t"
+          << field_scene.field_menu_route_screen_for_dump() << '\n';
+    std::cout << "field_scene26_event31_matrix_entry_qa=passed scene=26 "
+                 "record=126 event=0x1F target_system=24 node=22 "
+                 "artifacts=" << output.string() << '\n';
+    return 0;
+}
+
 int run_field_security_terminal_physical_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -22671,6 +22793,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene26_event1_terminal_qa_path;
         std::optional<std::filesystem::path>
+            field_scene26_event31_matrix_entry_qa_path;
+        std::optional<std::filesystem::path>
             field_elevator_physical_entry_qa_path;
         std::optional<std::uint16_t>
             field_elevator_nonmember_entry_scene;
@@ -23113,6 +23237,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene26_event1_terminal_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene26-event31-matrix-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene26_event31_matrix_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -27817,6 +27948,12 @@ int main(int argc, char** argv) {
                     *field_scene26_event1_terminal_qa_path,
                     field_audio_events, field_audio_stops,
                     field_source_boundaries);
+            }
+            if (field_scene26_event31_matrix_entry_qa_path.has_value()) {
+                return run_field_scene26_event31_matrix_entry_qa(
+                    field_scene, asset_root,
+                    *field_scene26_event31_matrix_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
             }
             if (field_scene26_maglock_descriptor_route_qa_path.has_value()) {
                 return run_field_scene26_maglock_descriptor_route_qa(
