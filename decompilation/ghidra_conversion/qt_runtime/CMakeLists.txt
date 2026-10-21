@@ -399,6 +399,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_movement_qa
                  --field-movement-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-movement-qa")
 
+# Verify the physical Crime Mall route and the post-load ILENE_MET actor gate.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_crime_mall_ilene_gate_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-crime-mall-ilene-gate-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-crime-mall-ilene-gate-qa")
+
 # Every accepted collision is policy-routed through field_events.lua; the
 # native event system records the typed result and still supports scoped
 # scene-entry and actor-within-scope rules.

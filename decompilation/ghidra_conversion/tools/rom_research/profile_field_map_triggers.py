@@ -168,6 +168,11 @@ def describe_target(value: int) -> str:
 
 
 def physical_qa_route(scene: int, record_index: int, event: int) -> str:
+    if scene == 1 and record_index == 69:
+        return (
+            "Debug/Release ordinary Up route selects scene 13 at zero funds; "
+            "ILENE_MET bit 19 gates the post-load actor; see Crime Mall QA"
+        )
     if scene == 1 and record_index == 70:
         return (
             "Debug/Release ordinary Up route selects scene 15 at zero funds; "

@@ -10858,6 +10858,308 @@ int run_scene1_underground93_story_gate_qa(
     return 0;
 }
 
+int run_scene1_crime_mall_ilene_gate_qa(
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Crime Mall entry QA: could not clear output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Crime Mall entry QA: could not create output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    struct GateCase {
+        bool ilene_met;
+        const char* directory;
+    };
+    constexpr std::array<GateCase, 2U> kCases{{
+        {false, "ilene-not-met"},
+        {true, "ilene-met"},
+    }};
+    constexpr std::size_t kEntranceRecordIndex = 69U;
+    constexpr std::uint32_t kEntranceRecordAddress = 0x17D9B6U;
+    constexpr std::uint8_t kEntranceEvent = 5U;
+    constexpr std::uint16_t kDestinationScene = 13U;
+    constexpr SceneRunnerPosition kApproachStart{
+        112U * 16U, 584U * 16U};
+
+    for (const auto& test_case : kCases) {
+        const auto case_output = output / test_case.directory;
+        std::filesystem::create_directories(case_output, output_error);
+        if (output_error) {
+            std::cerr << "Crime Mall entry QA: could not create case "
+                      << test_case.directory << ": "
+                      << output_error.message() << '\n';
+            return 3;
+        }
+
+        std::vector<std::string> boundaries;
+        std::vector<std::uint16_t> audio_events;
+        FieldSceneRuntime field_scene(
+            [&boundaries](const std::string_view boundary) {
+                boundaries.emplace_back(boundary);
+            },
+            [&audio_events](const std::uint16_t event) {
+                audio_events.push_back(event);
+            });
+        field_scene.set_source_random_seed_for_dump(0x4000U);
+        field_scene.set_field_world_frame_counter_for_dump(0x0200U);
+        if (!field_scene.bootstrap_for_scene_dump(startup_state, 1U)) {
+            std::cerr << "Crime Mall entry QA: Scene 1 bootstrap failed: "
+                      << field_scene.failure() << '\n';
+            return 3;
+        }
+        if (!field_scene.set_story_flag_for_dump(19U, test_case.ilene_met)) {
+            std::cerr << "Crime Mall entry QA: could not seed ILENE_MET\n";
+            return 3;
+        }
+        field_scene.set_field_funds_for_dump(0U);
+        // The Scene-13 script actor is suppressed only for compact marker 7.
+        field_scene.set_compact_runner_markers_for_dump(1U, 0xFFU);
+
+        const auto& source_metadata =
+            field_scene.state().field_scene_buffers.source_metadata;
+        const bool source_record_matches =
+            source_metadata.terrain_collision_rectangles.size() >
+                kEntranceRecordIndex &&
+            source_metadata.terrain_collision_rectangles[
+                kEntranceRecordIndex].left == 0x0060U &&
+            source_metadata.terrain_collision_rectangles[
+                kEntranceRecordIndex].right == 0x007FU &&
+            source_metadata.terrain_collision_rectangles[
+                kEntranceRecordIndex].top == 0x0220U &&
+            source_metadata.terrain_collision_rectangles[
+                kEntranceRecordIndex].bottom == 0x023FU &&
+            source_metadata.terrain_collision_rectangles[
+                kEntranceRecordIndex].value == 0x00C5U &&
+            source_metadata.event_table_available &&
+            source_metadata.event_mode_table.size() > kEntranceEvent &&
+            source_metadata.event_mode_table[kEntranceEvent] ==
+                kDestinationScene;
+        if (!source_record_matches) {
+            std::cerr << "Crime Mall entry QA: ROM record 69/event 5 or "
+                         "event-table row 5 did not match\n";
+            return 3;
+        }
+
+        field_scene.set_field_entity_world_position_for_dump(
+            kApproachStart.x, kApproachStart.y);
+        field_scene.set_field_camera_world_position_for_dump(0U, 0x2000U);
+        const auto render = [&field_scene] {
+            return render_qa_field(field_scene);
+        };
+        const auto save = [&case_output, &asset_root](
+                              const std::string_view name,
+                              const QImage& image) {
+            return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+                   field_hud_chrome_survives(image, asset_root) &&
+                   image.save(QString::fromStdWString(
+                       (case_output / std::string(name)).wstring()));
+        };
+        const auto write_state = [&case_output, &field_scene, &test_case](
+                                     const std::string_view stage,
+                                     const std::uint16_t tick) {
+            std::ofstream trace(case_output / "route.tsv",
+                                std::ios::app);
+            if (!trace) return false;
+            const auto position = field_scene.field_entity_world_position();
+            const auto& world = field_scene.world_activity_state_for_dump();
+            const auto actor = field_scene
+                .world_activity_script_actor_position_for_dump(0U);
+            const auto profile = field_scene
+                .world_activity_script_actor_profile_for_dump(0U);
+            const auto dispatch = field_scene
+                                      .field_map_event_system_for_dump()
+                                      .last_collision_dispatch();
+            trace << test_case.ilene_met << '\t' << stage << '\t' << tick
+                  << '\t' << field_scene.field_scene_reference_for_dump()
+                  << '\t' << position.x << '\t' << position.y << '\t'
+                  << (dispatch.has_value()
+                          ? static_cast<unsigned>(
+                                dispatch->decision.event_code)
+                          : 255U)
+                  << '\t' << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << '\t' << field_scene.dialogue_open() << '\t'
+                  << field_scene.field_funds_for_dump().value_or(0U) << '\t'
+                  << (world.selected_world_script.has_value()
+                          ? std::to_string(*world.selected_world_script)
+                          : "-")
+                  << '\t'
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << '\t' << (profile.has_value() ? *profile : "-") << '\t'
+                  << (actor.has_value() ? actor->x : 0U) << '\t'
+                  << (actor.has_value() ? actor->y : 0U) << '\n';
+            return static_cast<bool>(trace);
+        };
+
+        {
+            std::ofstream trace(case_output / "route.tsv", std::ios::trunc);
+            if (!trace) {
+                std::cerr << "Crime Mall entry QA: could not create route.tsv\n";
+                return 3;
+            }
+            trace << "ilene_met\tstage\ttick\tscene\tx_fixed\ty_fixed"
+                     "\tevent\tmode_event\tdialogue_open\tfunds"
+                     "\tworld_script\tscript_actors\tactor_profile"
+                     "\tactor_x\tactor_y\n";
+        }
+        if (!save("approach-start.bmp", render()) ||
+            !write_state("approach-start", 0U)) {
+            std::cerr << "Crime Mall entry QA: approach frame failed\n";
+            return 3;
+        }
+
+        bool entrance_contact = false;
+        std::uint16_t contact_tick = 0U;
+        field_scene.set_controller_nibble(0x01U); // ordinary Up
+        for (std::uint16_t tick = 1U; tick <= 80U; ++tick) {
+            field_scene.advance_frame();
+            const auto& dispatch = field_scene
+                .field_map_event_system_for_dump()
+                .last_collision_dispatch();
+            if (dispatch.has_value() &&
+                dispatch->decision.source_event_code ==
+                    FieldCollisionEventCode::event_5) {
+                entrance_contact = true;
+                contact_tick = tick;
+                if (!save("event-5-contact.bmp", render()) ||
+                    !write_state("event-5-contact", tick)) {
+                    field_scene.set_controller_nibble(0U);
+                    std::cerr << "Crime Mall entry QA: contact frame failed\n";
+                    return 3;
+                }
+                break;
+            }
+            if (field_scene.field_scene_reference_for_dump() != 1U ||
+                field_scene.dialogue_open()) {
+                field_scene.set_controller_nibble(0U);
+                std::cerr << "Crime Mall entry QA: route left Scene 1 or "
+                             "opened dialogue before record 69 contact\n";
+                return 3;
+            }
+        }
+        field_scene.set_controller_nibble(0U);
+        if (!entrance_contact || contact_tick == 0U ||
+            field_scene.field_mode_event_code_for_dump() != kEntranceEvent ||
+            field_scene.dialogue_open() ||
+            field_scene.field_map_event_system_for_dump()
+                    .collision_dispatch_count() != 1U) {
+            std::cerr << "Crime Mall entry QA: ordinary Up did not reach one "
+                         "ROM event-5 collision (found="
+                      << entrance_contact << ", mode_event="
+                      << static_cast<unsigned>(
+                             field_scene.field_mode_event_code_for_dump())
+                      << ")\n";
+            return 3;
+        }
+
+        for (std::uint16_t tick = 1U;
+             tick <= 180U &&
+             field_scene.field_scene_reference_for_dump() == 1U;
+             ++tick) {
+            field_scene.advance_frame();
+            if (!write_state("entry-transition", tick)) return 3;
+        }
+        if (test_case.ilene_met) {
+            for (std::uint8_t service = 0U;
+                 service < 8U &&
+                 field_scene.world_activity_script_actor_count_for_dump() == 0U &&
+                 field_scene.field_scene_reference_for_dump() ==
+                     kDestinationScene;
+                 ++service) {
+                field_scene.advance_frame();
+            }
+        }
+
+        const auto& destination_metadata =
+            field_scene.state().field_scene_buffers.source_metadata;
+        const auto destination_position =
+            field_scene.field_entity_world_position();
+        const auto& world = field_scene.world_activity_state_for_dump();
+        const auto actor_position = field_scene
+            .world_activity_script_actor_position_for_dump(0U);
+        const auto actor_profile = field_scene
+            .world_activity_script_actor_profile_for_dump(0U);
+        const bool actor_state_matches = test_case.ilene_met
+            ? world.selected_world_script == 3U &&
+                  field_scene.world_activity_script_actor_count_for_dump() == 1U &&
+                  actor_position.has_value() && actor_position->x == 4352U &&
+                  actor_position->y == 768U && actor_profile.has_value() &&
+                  *actor_profile == "lone11_k0a_item03"
+            : !world.selected_world_script.has_value() &&
+                  field_scene.world_activity_script_actor_count_for_dump() == 0U &&
+                  !actor_position.has_value() && !actor_profile.has_value();
+        const bool route_boundary_observed = std::find(
+            boundaries.begin(), boundaries.end(),
+            "field.exit.area_event_route_selected:event=5:scene=13") !=
+            boundaries.end();
+        const auto actual = render();
+        const bool spawn_matches =
+            !destination_metadata.initial_field_records.empty() &&
+            destination_position.x ==
+                destination_metadata.initial_field_records.front().x &&
+            destination_position.y ==
+                destination_metadata.initial_field_records.front().y;
+        if (field_scene.field_scene_reference_for_dump() !=
+                kDestinationScene ||
+            !spawn_matches || field_scene.dialogue_open() ||
+            field_scene.field_interaction_open() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_mode_text_open_for_dump() ||
+            !field_scene.field_entity_visible_for_dump() ||
+            !route_boundary_observed || !actor_state_matches ||
+            field_scene.field_funds_for_dump() != 0U ||
+            field_scene.field_world_fact_flags_for_dump() !=
+                (test_case.ilene_met ? (std::uint32_t{1U} << 19U) : 0U) ||
+            !field_hud_chrome_survives(actual, asset_root) ||
+            count_playfield_lit(actual) < 100U ||
+            !save("actual.bmp", actual)) {
+            std::cerr << "Crime Mall entry QA: event 5 did not load Scene 13 "
+                         "with the ILENE_MET script gate (ilene_met="
+                      << test_case.ilene_met << ", scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", script="
+                      << (world.selected_world_script.has_value()
+                              ? std::to_string(*world.selected_world_script)
+                              : "none")
+                      << ", actors="
+                      << field_scene.world_activity_script_actor_count_for_dump()
+                      << ", profile=" << actor_profile.value_or("missing")
+                      << ", dialogue=" << field_scene.dialogue_open()
+                      << ", funds="
+                      << field_scene.field_funds_for_dump().value_or(0U)
+                      << ", route_boundary=" << route_boundary_observed
+                      << ", spawn_matches=" << spawn_matches << ", failure="
+                      << field_scene.failure() << ")\n";
+            return 3;
+        }
+        if (!write_state("destination", 181U)) return 3;
+        std::ofstream trace(case_output / "route.tsv", std::ios::app);
+        if (!trace) return 3;
+        trace << "source\trom_record=0x" << std::hex
+              << kEntranceRecordAddress << std::dec
+              << "\tdestination_scene=13\tilene_met="
+              << test_case.ilene_met
+              << "\tfunds=0\tentry_dialogue=none\n";
+        if (!trace) return 3;
+    }
+
+    std::cout << "crime_mall_ilene_gate_qa=passed record=69 event=5 "
+                 "destination_scene=13 zero_funds=loaded "
+                 "ilene_met_controls_one_script_actor captures=320x224 "
+              << "artifacts=" << output.string() << '\n';
+    return 0;
+}
+
 bool run_scene2_object_bounds_four_side_lookup_qa(
     const FieldSceneSourceMetadata& metadata,
     const std::filesystem::path& output) {
@@ -21019,6 +21321,8 @@ int main(int argc, char** argv) {
         bool intro_to_field_smoke = false;
         std::optional<std::filesystem::path> field_dump_path;
         std::optional<std::filesystem::path> field_movement_qa_path;
+        std::optional<std::filesystem::path>
+            field_crime_mall_ilene_gate_qa_path;
         std::optional<std::filesystem::path> field_transition_qa_path;
         std::optional<std::filesystem::path> field_world_activity_qa_path;
         bool field_audio_qa = false;
@@ -21196,6 +21500,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_movement_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-crime-mall-ilene-gate-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_crime_mall_ilene_gate_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-transition-qa" &&
@@ -22571,6 +22882,7 @@ int main(int argc, char** argv) {
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_motel_street_collision_qa_path.has_value() ||
                 field_movement_qa_path.has_value() ||
+                field_crime_mall_ilene_gate_qa_path.has_value() ||
                 field_matrix_cyber_info_qa_path.has_value() ||
                 field_matrix_traversal_entry_qa_path.has_value() ||
                 field_wylie_gala_inn_qa_path.has_value() ||
@@ -22595,6 +22907,11 @@ int main(int argc, char** argv) {
             if (!bootstrapped) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
+            }
+            if (field_crime_mall_ilene_gate_qa_path.has_value()) {
+                return run_scene1_crime_mall_ilene_gate_qa(
+                    smoke_state, asset_root,
+                    *field_crime_mall_ilene_gate_qa_path);
             }
             if (field_tarislar_first_entry_qa_path.has_value() ||
                 field_tarislar_repeat_service_qa_path.has_value() ||
