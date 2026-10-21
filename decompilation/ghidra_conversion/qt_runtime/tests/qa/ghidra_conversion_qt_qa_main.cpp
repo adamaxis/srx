@@ -18889,6 +18889,15 @@ int run_field_gated_building_entry_qa(
                   << ")\n";
         return 3;
     }
+    const auto return_probe =
+        field_scene.field_collision_probe_state_for_dump();
+    const auto entry_heading = field_scene.field_entity_heading_for_dump();
+    if (!return_probe.initialized) {
+        std::cerr << route.location_name
+                  << " QA: doorway contact did not initialize the ROM return "
+                     "probe\n";
+        return 3;
+    }
 
     for (std::uint8_t settle = 0U;
          settle < 120U && !field_scene.dialogue_open() &&
@@ -18968,9 +18977,40 @@ int run_field_gated_building_entry_qa(
         return 3;
     }
 
+    const auto expected_return_heading = static_cast<std::uint16_t>(
+        entry_heading ^ 0x8000U);
+    if (!field_scene.return_from_world_activity_for_dump()) {
+        std::cerr << route.location_name
+                  << " QA: resource activity did not restore its source field\n";
+        return 3;
+    }
+    const auto return_position = field_scene.field_entity_world_position();
+    const auto return_heading = field_scene.field_entity_heading_for_dump();
+    const bool source_field_return_saved = save("source-field-return", true);
+    if (field_scene.field_scene_reference_for_dump() != route.source_scene ||
+        return_position.x != return_probe.points[0U].x ||
+        return_position.y != return_probe.points[0U].y ||
+        return_heading != expected_return_heading ||
+        !source_field_return_saved ||
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   std::string("field.world_activity.source_scene_restored")) !=
+            1) {
+        std::cerr << route.location_name
+                  << " QA: activity return missed the ROM probe lead or "
+                     "away-facing heading (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", position=" << return_position.x << ','
+                  << return_position.y << ", expected="
+                  << return_probe.points[0U].x << ','
+                  << return_probe.points[0U].y << ", heading=0x"
+                  << std::hex << return_heading << ", expected=0x"
+                  << expected_return_heading << std::dec << ")\n";
+        return 3;
+    }
+
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) return 3;
-    trace << "record\tevent\tservice\tgate\tmovement_ticks\tresult\tresource_index\tmarker_ordinal\taudio_requests\n"
+    trace << "record\tevent\tservice\tgate\tmovement_ticks\tresult\tresource_index\tmarker_ordinal\treturn_x\treturn_y\treturn_heading\taudio_requests\n"
           << route.record_index << '\t'
           << static_cast<unsigned>(route.event_code) << '\t'
           << static_cast<unsigned>(route.title_service) << '\t'
@@ -18978,6 +19018,8 @@ int run_field_gated_building_entry_qa(
           << "\tresource_activity_" << route.destination_scene << '\t'
           << activity.selected_resource_random_index << '\t'
           << static_cast<unsigned>(activity.resource_marker_ordinal) << '\t'
+          << return_position.x << '\t' << return_position.y << '\t'
+          << return_heading << '\t'
           << field_audio_events.size() << '\n';
     std::cout << "field_gated_building_entry_qa=passed location="
               << route.location_name << " record=" << route.record_index
