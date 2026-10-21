@@ -27,12 +27,6 @@ enum class StokerMotelPromptId {
     source_boundary,
 };
 
-struct StokerMotelStoryState {
-    bool opening_dialogue_seen = false;
-    bool michael_debt_paid = false;
-    bool michael_package_collected = false;
-};
-
 enum class StokerMotelPromptOptionRole {
     continue_arrival,
     rent_room,

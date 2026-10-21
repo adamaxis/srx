@@ -8185,62 +8185,7 @@ int main() {
         return 4;
     }
 
-    const StoryFacts new_game{
-        {"opening_dialogue_seen", false},
-        {"michael_debt_paid", false},
-        {"michael_package_collected", false},
-    };
-    scripts.set_location_context("motel", "stoker_motel");
-    scripts.set_story_state(new_game);
-    const auto first_visit =
-        scripts.call_string("michael_package", "motel_entry");
-    if (!expect(first_visit == "opening_dialogue",
-                "first motel visit did not select the opening dialogue")) {
-        std::cerr << scripts.failure() << '\n';
-        return 5;
-    }
-    if (!expect(scripts.story_state().at("opening_dialogue_seen"),
-                "Lua could not set a story flag through game.state")) {
-        return 5;
-    }
-
-    const StoryFacts repeat_visit{
-        {"opening_dialogue_seen", true},
-        {"michael_debt_paid", false},
-        {"michael_package_collected", false},
-    };
-    scripts.set_story_state(repeat_visit);
-    const auto repeat =
-        scripts.call_string("michael_package", "motel_entry");
-    if (!expect(repeat == "package_offer",
-                "repeat unpaid visit lost the Michael package offer")) {
-        return 6;
-    }
-
-    const StoryFacts paid_but_not_collected{
-        {"opening_dialogue_seen", true},
-        {"michael_debt_paid", true},
-        {"michael_package_collected", false},
-    };
-    scripts.set_story_state(paid_but_not_collected);
-    if (!expect(scripts.call_string("michael_package", "motel_entry") ==
-                    "package_offer",
-                "paid debt hid an uncollected package")) {
-        return 7;
-    }
-
-    const StoryFacts completed{
-        {"opening_dialogue_seen", true},
-        {"michael_debt_paid", true},
-        {"michael_package_collected", true},
-    };
-    scripts.set_story_state(completed);
-    if (!expect(scripts.call_string("michael_package", "motel_entry") ==
-                    "ordinary_motel",
-                "completed package quest did not return to motel service")) {
-        return 8;
-    }
-
+    const StoryFacts completed{{"story_flag_bit_0", true}};
     scripts.set_story_state(completed);
     scripts.set_location_context("motel", "stoker_motel");
     const auto manager =
@@ -8251,7 +8196,6 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 9;
     }
-    scripts.set_story_state(repeat_visit);
     scripts.set_location_context("motel", "downtown_motel");
     const auto ordinary_motel_manager =
         scripts.string_list("motel", "manager_choices");
@@ -8260,51 +8204,40 @@ int main() {
                 "Michael quest hook leaked into another motel")) {
         return 10;
     }
-    scripts.set_location_context("motel", "stoker_motel");
-    const auto package_manager =
-        scripts.string_list("motel", "manager_choices");
-    if (!expect(package_manager.has_value() &&
-                    package_manager->size() == 3U &&
-                    (*package_manager)[2] == "package",
-                "unpaid manager menu lacks the package choice")) {
-        std::cerr << scripts.failure() << '\n';
-        return 10;
-    }
-    scripts.set_story_state(paid_but_not_collected);
-    const auto paid_package_manager =
-        scripts.string_list("motel", "manager_choices");
-    if (!expect(paid_package_manager.has_value() &&
-                    paid_package_manager->size() == 3U,
-                "debt payment prematurely removed the uncollected package")) {
-        return 11;
-    }
-    scripts.set_story_state(completed);
-    const auto completed_package_manager =
-        scripts.string_list("motel", "manager_choices");
-    if (!expect(completed_package_manager.has_value() &&
-                    completed_package_manager->size() == 2U,
-                "completed package facts did not remove the special choice")) {
-        return 12;
-    }
-
-    scripts.set_story_state(repeat_visit);
+    const StoryFacts stoker_unpaid{{"story_flag_bit_0", false}};
+    scripts.set_story_state(stoker_unpaid);
     scripts.set_location_context(
         "motel", "stoker_motel", "stoker.motel", "stoker");
+    scripts.set_field_mode_context(ScriptFieldModeContext{2U, 2U, 0});
     const auto stoker_interaction =
         scripts.start_task("michael_package", "stoker_interaction");
     if (!expect(stoker_interaction.status ==
                         ScriptTaskStep::Status::awaiting_native_operation &&
                     stoker_interaction.operation.has_value() &&
                     stoker_interaction.operation->type ==
-                        ScriptNativeOperation::Type::ui_menu &&
-                    stoker_interaction.operation->menu.has_value() &&
-                    stoker_interaction.operation->menu->choices.size() == 3U &&
-                    stoker_interaction.operation->menu->speaker_id == "stoker",
-                "repeat Stoker visit did not yield the shared motel menu")) {
+                        ScriptNativeOperation::Type::ui_say &&
+                    stoker_interaction.operation->dialogue.has_value() &&
+                    stoker_interaction.operation->dialogue->event_id ==
+                        "arrival" &&
+                    scripts.story_state().at("story_trigger_active_0"),
+                "Stoker JSON graph did not begin with its source page")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
-    auto repeat_choice = scripts.complete_native_menu_choice("package");
+    auto repeat_choice = scripts.complete_native_operation(true);
+    if (!expect(repeat_choice.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    repeat_choice.operation.has_value() &&
+                    repeat_choice.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    repeat_choice.operation->menu.has_value() &&
+                    repeat_choice.operation->menu->choices.size() == 3U &&
+                    repeat_choice.operation->menu->speaker_id == "stoker",
+                "Stoker arrival page did not continue into its JSON choices")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    repeat_choice = scripts.complete_native_menu_choice("package");
     if (!expect(repeat_choice.status ==
                         ScriptTaskStep::Status::awaiting_native_operation &&
                     repeat_choice.operation.has_value() &&
@@ -8361,58 +8294,6 @@ int main() {
         return 13;
     }
 
-    scripts.set_story_state(new_game);
-    const auto first_stoker_interaction =
-        scripts.start_task("michael_package", "stoker_interaction");
-    if (!expect(first_stoker_interaction.status ==
-                        ScriptTaskStep::Status::awaiting_native_operation &&
-                    first_stoker_interaction.operation.has_value() &&
-                    first_stoker_interaction.operation->type ==
-                        ScriptNativeOperation::Type::ui_say &&
-                    first_stoker_interaction.operation->dialogue.has_value() &&
-                    first_stoker_interaction.operation->dialogue->event_id ==
-                        "arrival" &&
-                    scripts.story_state().at("opening_dialogue_seen"),
-                "first Stoker visit did not set its flag and yield arrival dialogue")) {
-        std::cerr << scripts.failure() << '\n';
-        return 13;
-    }
-
-    auto first_continuation = scripts.complete_native_operation(true);
-    if (!expect(first_continuation.status ==
-                        ScriptTaskStep::Status::awaiting_native_operation &&
-                    first_continuation.operation.has_value() &&
-                    first_continuation.operation->type ==
-                        ScriptNativeOperation::Type::ui_menu &&
-                    first_continuation.operation->menu.has_value() &&
-                    first_continuation.operation->menu->choices.size() == 3U,
-                "first-entry dialogue did not continue into the shared menu")) {
-        std::cerr << scripts.failure() << '\n';
-        return 13;
-    }
-    first_continuation = scripts.complete_native_menu_choice("leave");
-    if (!expect(first_continuation.status ==
-                        ScriptTaskStep::Status::awaiting_native_operation &&
-                    first_continuation.operation.has_value() &&
-                    first_continuation.operation->type ==
-                        ScriptNativeOperation::Type::ui_say &&
-                    first_continuation.operation->dialogue.has_value() &&
-                    first_continuation.operation->dialogue->event_id ==
-                        "leave",
-                "first-visit motel Leave choice did not yield farewell dialogue")) {
-        std::cerr << scripts.failure() << '\n';
-        return 13;
-    }
-    first_continuation = scripts.complete_native_operation(true);
-    if (!expect(first_continuation.status ==
-                        ScriptTaskStep::Status::completed &&
-                    first_continuation.result_id ==
-                        std::optional<std::string>{"leave"},
-                "first Stoker visit did not finish after farewell dialogue")) {
-        std::cerr << scripts.failure() << '\n';
-        return 13;
-    }
-
     const auto manager_interaction =
         scripts.start_task("motel", "manager_interaction");
     if (!expect(manager_interaction.status ==
@@ -8422,7 +8303,7 @@ int main() {
                         ScriptNativeOperation::Type::ui_menu &&
                     manager_interaction.operation->menu.has_value() &&
                     manager_interaction.operation->menu->title_key.empty() &&
-                    manager_interaction.operation->menu->choices.size() == 3U,
+                    manager_interaction.operation->menu->choices.size() == 2U,
                 "shared motel script did not yield an unmapped stable-id menu")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
@@ -8435,19 +8316,21 @@ int main() {
                     manager_menu_content->choices[0].label_key ==
                         "stoker.motel.option.crash" &&
                     manager_menu_content->choices[1].label_key ==
-                        "stoker.motel.option.leave" &&
-                    manager_menu_content->choices[2].label_key ==
-                        "stoker.motel.option.package",
+                        "stoker.motel.option.leave",
                 "Lua did not map the shared motel menu text explicitly")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
     const auto menu_selection =
-        scripts.complete_native_menu_choice("package");
-    if (!expect(menu_selection.status == ScriptTaskStep::Status::completed &&
-                    menu_selection.result_id ==
-                        std::optional<std::string>{"package"},
-                "native menu choice did not resume Lua with its stable id")) {
+        scripts.complete_native_menu_choice("leave");
+    if (!expect(menu_selection.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    menu_selection.operation.has_value() &&
+                    menu_selection.operation->dialogue.has_value() &&
+                    menu_selection.operation->dialogue->event_id == "leave" &&
+                    scripts.complete_native_operation(true).status ==
+                        ScriptTaskStep::Status::completed,
+                "shared motel manager choice did not resume with its stable id")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
@@ -8570,9 +8453,8 @@ int main() {
     }
 
     StoryFacts native_story{
-        {"opening_dialogue_seen", false},
-        {"michael_debt_paid", false},
-        {"michael_package_collected", false},
+        {"story_flag_bit_0", false},
+        {"story_trigger_active_0", false},
     };
     scripts.set_story_fact_accessors(
         [&native_story](const std::string_view name)
@@ -8590,20 +8472,31 @@ int main() {
             fact->second = value;
             return true;
         });
-    const auto native_first_visit =
-        scripts.call_string("michael_package", "motel_entry");
-    if (!expect(native_first_visit == "opening_dialogue" &&
-                    native_story.at("opening_dialogue_seen"),
-                "Lua did not update the bound native story state directly")) {
+    scripts.set_location_context(
+        "motel", "stoker_motel", "stoker.motel", "stoker");
+    scripts.set_field_mode_context(ScriptFieldModeContext{2U, 2U, 0});
+    auto native_first_visit =
+        scripts.start_task("michael_package", "stoker_interaction");
+    if (!expect(native_first_visit.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    native_first_visit.operation.has_value() &&
+                    native_first_visit.operation->dialogue.has_value() &&
+                    native_first_visit.operation->dialogue->event_id ==
+                        "arrival",
+                "Stoker graph did not read its source gate from native facts")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
-    native_story["michael_debt_paid"] = true;
-    native_story["michael_package_collected"] = true;
+    scripts.cancel_task();
+    native_story["story_flag_bit_0"] = true;
     const auto native_completed_visit =
-        scripts.call_string("michael_package", "motel_entry");
-    if (!expect(native_completed_visit == "ordinary_motel",
-                "Lua did not read current facts from the native story state")) {
+        scripts.start_task("michael_package", "stoker_interaction");
+    if (!expect(native_completed_visit.status ==
+                        ScriptTaskStep::Status::completed &&
+                    native_completed_visit.dialogue_outcome.has_value() &&
+                    native_completed_visit.dialogue_outcome->type ==
+                        DialogueOutcomeType::source_boundary,
+                "Stoker graph did not reread changed native story facts")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }

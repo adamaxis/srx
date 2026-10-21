@@ -1318,6 +1318,13 @@
         },
         "title_key": "stoker.motel.manager.title"
       },
+      "arrival_manager": {
+        "choice_label_keys": {
+          "crash": "stoker.motel.option.crash",
+          "leave": "stoker.motel.option.leave"
+        },
+        "title_key": "stoker.motel.manager.title"
+      },
       "room": {
         "choice_label_keys": {
           "leave": "stoker.motel.option.leave",

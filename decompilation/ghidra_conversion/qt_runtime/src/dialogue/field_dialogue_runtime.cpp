@@ -35,20 +35,6 @@ constexpr std::uint16_t kAnyDialogueEvent = kControllerAEvent |
                                              kControllerCEvent |
                                              kControllerStartEvent;
 
-std::optional<StokerMotelPromptId> stoker_prompt_for_asset(
-    const FieldExitPromptAsset asset) {
-    switch (asset) {
-    case FieldExitPromptAsset::stoker_motel_arrival:
-        return StokerMotelPromptId::arrival;
-    case FieldExitPromptAsset::stoker_motel_package_question:
-        return StokerMotelPromptId::package_question;
-    case FieldExitPromptAsset::stoker_motel_package_handoff:
-        return StokerMotelPromptId::package_handoff;
-    default:
-        return std::nullopt;
-    }
-}
-
 DialogueSpeakerPresentation present_speaker(
     const scripting::ScriptSpeakerProfile& profile) {
     return {profile.id, profile.name, profile.text_profile,
@@ -153,33 +139,30 @@ bool FieldDialogueRuntime::open_field_exit_prompt(
         return open_source_boundary(
             "field exit selected a prompt profile without a converted dialogue asset");
     }
-    const auto prompt = stoker_prompt_for_asset(selection.prompt_asset);
-    if (!prompt.has_value()) {
+    if (script_runtime_ == nullptr) {
         return open_source_boundary(
-            "Stoker field-exit selection has no mapped prompt record");
+            "Stoker field-exit graph has no gameplay script runtime");
     }
-    return open_stoker_prompt(*prompt);
+    script_runtime_->set_location_context(
+        "motel", "stoker_motel", "stoker.motel", "stoker");
+    // 0x1F65A's typed selection is carried as field mode/event/result facts;
+    // the JSON graph resolves the signed branch and the prompt commands.
+    return open_gameplay_task("michael_package",
+                              "present_field_exit_prompt");
 }
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldDialogueRuntime::open_stoker_prompt_for_dump(
     const StokerMotelPromptId prompt) {
     if (prompt == StokerMotelPromptId::manager_greeting_with_package) {
-        // The package option belongs to the quest-wrapped shared motel
-        // interaction. Start at a repeat visit so this diagnostic exercises
-        // the real Lua menu and its debt/referral service hooks.
-        return open_stoker_interaction_for_dump(
-            StokerMotelStoryState{true, false, false});
+        // This prompt ID is a diagnostic alias for indexed trigger 0. Start
+        // its JSON graph with the source-default New Game gate and location.
+        return open_stoker_interaction_for_dump();
     }
     if (prompt == StokerMotelPromptId::manager_greeting) {
         if (script_runtime_ != nullptr) {
             script_runtime_->set_location_context(
                 "motel", "stoker_motel", "stoker.motel", "stoker");
-        }
-        if (script_runtime_ != nullptr) {
-            script_runtime_->set_story_state({
-                {"michael_debt_paid", true},
-                {"michael_package_collected", true}});
         }
     }
     return open_stoker_prompt(prompt);
@@ -211,14 +194,14 @@ bool FieldDialogueRuntime::present_source_boundary_for_host(
 }
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
-bool FieldDialogueRuntime::open_stoker_interaction_for_dump(
-    const StokerMotelStoryState& story_state) {
+bool FieldDialogueRuntime::open_stoker_interaction_for_dump() {
     if (script_runtime_ != nullptr) {
         script_runtime_->set_story_state({
-            {"opening_dialogue_seen", story_state.opening_dialogue_seen},
-            {"michael_debt_paid", story_state.michael_debt_paid},
-            {"michael_package_collected",
-             story_state.michael_package_collected}});
+            {"story_flag_bit_0", false}});
+        script_runtime_->set_location_context(
+            "motel", "stoker_motel", "stoker.motel", "stoker");
+        script_runtime_->set_field_mode_context(
+            scripting::ScriptFieldModeContext{2U, 2U, 0});
     }
     return open_stoker_interaction();
 }
@@ -612,6 +595,12 @@ bool FieldDialogueRuntime::present_script_operation(
             active_script_operation_.reset();
             active_script_menu_.reset();
     hosted_choice_list_ = false;
+            last_gameplay_task_result_id_ = task.result_id;
+            if (const auto outcome = resolve_typed_outcome(task);
+                outcome.has_value()) {
+                inline_task_advance_result_ = *outcome;
+                return true;
+            }
             close();
             return true;
         }
@@ -626,6 +615,20 @@ bool FieldDialogueRuntime::present_script_operation(
 
 std::optional<std::string> FieldDialogueRuntime::invoke_script_service(
     const std::string_view service_id) {
+    if (service_id == "stoker_motel.resolve_arrival") {
+        const auto result = resolve_stoker_motel_arrival_command(
+            arrival_command_callbacks_);
+        if (result == StokerMotelArrivalCommandResult::manager_greeting) {
+            return "manager";
+        }
+        if (result == StokerMotelArrivalCommandResult::street_ambush) {
+            return "street_ambush";
+        }
+        // Preserve the graph's explicit service-unavailable branch. Returning
+        // no host value would abort the script before JSON can select its
+        // source-boundary node.
+        return "service_unavailable";
+    }
     if (service_id == "motel.pay_room") {
         if (!room_payment_callback_) {
             return std::nullopt;
@@ -794,6 +797,11 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
                 !present_script_operation(*task.operation, prompt)) {
                 return FieldDialogueAdvanceResult::source_boundary;
             }
+            if (inline_task_advance_result_.has_value()) {
+                const auto result = *inline_task_advance_result_;
+                inline_task_advance_result_.reset();
+                return result;
+            }
             return FieldDialogueAdvanceResult::prompt_advanced;
         }
         script_task_waiting_ = false;
@@ -927,6 +935,11 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             if (!task.operation.has_value() ||
                 !present_script_operation(*task.operation, prompt)) {
                 return FieldDialogueAdvanceResult::source_boundary;
+            }
+            if (inline_task_advance_result_.has_value()) {
+                const auto result = *inline_task_advance_result_;
+                inline_task_advance_result_.reset();
+                return result;
             }
             return FieldDialogueAdvanceResult::prompt_advanced;
         }
@@ -1177,6 +1190,11 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
                 !present_script_operation(*task.operation, prompt)) {
                 return FieldDialogueAdvanceResult::source_boundary;
             }
+            if (inline_task_advance_result_.has_value()) {
+                const auto result = *inline_task_advance_result_;
+                inline_task_advance_result_.reset();
+                return result;
+            }
             return FieldDialogueAdvanceResult::prompt_advanced;
         }
         if (task.status != scripting::ScriptTaskStep::Status::completed) {
@@ -1417,6 +1435,7 @@ void FieldDialogueRuntime::close() noexcept {
     script_task_waiting_ = false;
     pending_matrix_entry_system_id_.reset();
     pending_matrix_entry_node_id_.reset();
+    inline_task_advance_result_.reset();
     boundary_reason_.clear();
     hotel_options_menu_follows_ = false;
 }

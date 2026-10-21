@@ -15085,8 +15085,7 @@ int run_field_stoker_collision_to_dialogue_qa(
         arrival.portrait_alias != "dialogue.portraits.stoker.motel" ||
         !arrival_text_present() || !arrival.has_more ||
         arrival.option_count != 1U ||
-        !field_scene.stoker_motel_story_state_for_dump()
-             .opening_dialogue_seen ||
+        (field_scene.field_world_fact_flags_for_dump() & 1U) != 0U ||
         arrival.continuation_label.find("< MORE >") == std::string_view::npos ||
         !save_frame("stoker-arrival-dialogue", false)) {
         std::cerr << "Stoker collision QA: normal contact did not select the "
@@ -15099,9 +15098,8 @@ int run_field_stoker_collision_to_dialogue_qa(
                   << "\", segments=" << arrival.text_segment_count
                   << ", more=" << arrival.has_more
                   << ", options=" << arrival.option_count
-                  << ", opening_seen="
-                  << field_scene.stoker_motel_story_state_for_dump()
-                         .opening_dialogue_seen
+                  << ", source_bit_0_set="
+                  << ((field_scene.field_world_fact_flags_for_dump() & 1U) != 0U)
                   << ", continuation=\"" << arrival.continuation_label
                   << "\", text=";
         for (std::size_t index = 0; index < arrival.text_segment_count; ++index) {
@@ -15180,9 +15178,7 @@ int run_field_stoker_collision_to_dialogue_qa(
     if (!field_scene.dialogue_open() ||
         field_scene.field_funds_for_dump() !=
             std::optional<std::uint32_t>{500U} ||
-        !field_scene.stoker_motel_story_state_for_dump().michael_debt_paid ||
-        !field_scene.stoker_motel_story_state_for_dump()
-             .michael_package_collected ||
+        (field_scene.field_world_fact_flags_for_dump() & 1U) == 0U ||
         package_handoff.actor_name != "Stoker" ||
         package_handoff.option_count != 0U ||
         !package_text_present ||

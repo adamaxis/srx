@@ -21,6 +21,11 @@ CTest: `shadowrun_ghidra_conversion_qt_field_stoker_collision_to_dialogue_qa`.
 Output: `qt_runtime/field-stoker-collision-to-dialogue-qa/` in Debug and
 Release builds.
 
+This audit preserves chronological checkpoints. The final section,
+“Stoker JSON conversation roots (2026-10-21),” is the current model and
+supersedes earlier sections that describe a Lua quest hook or custom
+`opening_dialogue_seen`/debt/package state.
+
 ## Source route and runtime result
 
 - `0x59C5E` sets `FFE18B` during the New Game opening. `0x075E` then loads the
@@ -744,3 +749,38 @@ The dialogue-return and physical interaction CTests pass in Debug and Release,
 and all 270 field-action QA screenshots match by SHA-256 across configurations.
 The transition remains partial until an independent Genesis timing reference
 is available; the 30-frame fade is explicitly a host presentation choice.
+
+## Stoker JSON conversation roots (2026-10-21)
+
+The Stoker production conversation now uses
+`gameplay/dialogue/conversations/stoker_motel.json`, with conditions in
+`gameplay/dialogue/conditions.json`, labels in `gameplay/dialogue/menus.json`,
+and ROM text in the generated `assets/dialogue/script-text.json`. The Lua
+module registers named host effects; it no longer owns a parallel dialogue
+tree or invented `opening_dialogue_seen`/debt/package state.
+
+The ROM disassembly at `0x53AB6` confirms that indexed trigger 0 loads root
+`0xF4AFC` only when FFFC1E bit 0 is clear, field mode/event is 2/2, and the
+signed alternate result is zero. That is the three-choice manager graph seen
+around section 03 frames `000300/000301`. The `0x1F65A` signed prompt selector
+is a separate root: positive selects the package question, negative selects
+the handoff page, and zero selects arrival. Continuing the arrival page runs
+command E9 at `0x249C4`; rolls 0..79 reach the two-choice manager record
+`0xF4AB4`, while 80..99 pass through `0x1E1FC`. The latter remains an explicit
+boundary because the actor/effect handoff is not converted.
+
+The indexed JSON graph covers the room offer, exact 20-nuyen payment,
+insufficient funds, Hotel Options handoff, package/debt question, 250-nuyen
+payment, package handoff, Jump House referral, and same-map terminals. Lua
+tests cover those choice and payment outcomes plus signed prompt branches,
+known/unavailable arrival results, unknown facts, and wrong context. The
+field-dialogue runtime now forwards a synchronous typed graph outcome to the
+field coordinator, so `open_service hotel.options` is not lost when the host
+transaction completes inline.
+
+The longplay frames corroborate the visible arrival, three-choice manager,
+debt, and referral states. They do not identify every unchosen branch or ROM
+frame timing. Debug Lua and field-dialogue tests passed during this update;
+the dialogue hill remains partial until the rare effect, loaded-save facts,
+remaining physical permutations, and independent payment/Hotel visuals are
+closed.

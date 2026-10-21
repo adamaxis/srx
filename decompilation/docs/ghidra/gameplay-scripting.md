@@ -8,37 +8,33 @@ its own C-facing functions. The runtime currently pins Lua 5.4.9 and compiles
 the vendored upstream source into the game. The script package contains
 readable `.lua` files; it does not use version-specific bytecode.
 
-Scripts should read naturally as gameplay logic. A motel interaction should
-use a shared motel routine and ask the quest layer for relevant story hooks.
-A cutscene should be a sequential function that places actors, awaits their
-movement or animation, plays sounds, and presents dialogue. Item scripts
-should call inventory operations. They should not be nested data records that
-repeat a choice id, visual role, and native action for every row.
+Dialogue text, ordered choices, condition expressions, branch edges, and
+typed terminal outcomes belong in versioned JSON catalogs. Lua owns the
+active graph session and registers small named quest actions; those actions
+can yield typed requests to native wallet, inventory, travel, and presentation
+services. A cutscene can remain a sequential Lua function for actor movement,
+animation, and sound operations.
 
 The Lua-facing surface is one global `game` facade. Scripts read global native
 context directly instead of threading location and quest facts through every
 callback. The connected surface today is:
 
 ```lua
-game.state.opening_dialogue_seen = true
-if game.location.type == "motel" then
-    game.ui.say("arrival")
-end
-if game.field.mode == 2 and game.field.event_code == 11 then
-    -- Read-only native mode/event context selects Lua-authored content.
-end
-local choice = game.ui.menu("manager", {"crash", "leave"})
+local DialogueGraph = require("dialogue_graph")
+return DialogueGraph.run("stoker_motel.indexed_service", registered_actions)
 ```
 
-`game.state` reads and writes native story facts through a boolean property
-proxy. The live field runtime binds known properties directly to its typed
-quest state; Lua sees the current values and writes them back immediately,
-without an interaction-level snapshot/copy-back pass. Standalone script QA may
-still use an in-memory fact store. `game.location` is a read-only proxy over
-native location context, including type, identity, text profile, and optional
-speaker. `game.field` is read-only field-mode context, including mode, event
-code, and the signed alternate result used by source mode prompts. The proxies
-are not duplicated Lua tables or raw pointers into Qt objects.
+`DialogueGraph.run` loads a JSON graph, evaluates named conditions against
+typed `game.state`, `game.location`, and `game.field` facts, presents pages and
+choices through the shared host adapter, and returns a typed result. Unknown
+facts and unconverted source edges stop at explicit boundaries. `game.state`
+reads and writes ROM-backed facts through native accessors; dialogue flow is
+not duplicated in native code. Standalone script QA may use an in-memory fact
+store. `game.location` is read-only native context, including type, identity,
+text profile, and optional speaker. `game.field` is read-only field-mode
+context, including mode, event code, and the signed alternate result used by
+source prompts. The proxies are not duplicated Lua tables or raw pointers
+into Qt objects.
 
 The next capabilities should follow the same shape, added only as they connect
 to real native systems:
@@ -82,32 +78,25 @@ Four coroutine operations are connected to live routes. The first is
 0 through 7, yields a typed request to the native field controller, and resumes
 with the operation result. `game.ui.say(event_id)` resolves the speaker and
 text profile from native location context, then suspends until the dialogue
-presenter advances the page. `dialogue.lua` resolves the speaker's display
-name, text profile, and portrait alias from the speaker id in location
-context; the host verifies the profile matches that context and that the
-portrait asset exists. Stoker is the only currently bound field speaker. The
-speaker profile binds `arrival`, `street-ambush`, `package-question`, `leave`,
-`room.paid`, `room.insufficient`, `package-handoff`, and `jump-house` to
-explicit title/continuation keys. Static prompt conversion now carries only
-these event IDs or the `room`/`debt` menu IDs and stable choice IDs; the Qt
-runtime resolves all prompt and menu copy through the Lua profiles. Arrival
-has its source A-button continuation; the other event pages are title-only.
-`game.ui.menu(menu_id, choice_ids)` carries only stable IDs and location
-context. Lua maps each Stoker motel menu title and each selected stable choice
-to a text key; shared motel menus use the `stoker.motel` content profile even
-when the presentation has no named speaker. C++ no longer invents these keys
-by concatenating profile/menu/choice strings. The common presenter resolves
-the explicit keys, owns layout, and preserves the source A/B/C mapping. Menu
-selection resumes the script with the stable selected ID.
+presenter advances the page. The JSON speaker catalog binds Stoker's
+`arrival`, `street-ambush`, `package-question`, `leave`, `room.paid`,
+`room.insufficient`, `package-handoff`, and `jump-house` events to explicit
+text keys and portrait metadata. The JSON menu catalog binds each menu ID and
+stable choice ID to its text key. The legacy prompt conversion remains for
+focused resource/dump QA; production dialogue graphs carry event and menu IDs
+directly. `game.ui.menu(menu_id, choice_ids)` still carries stable IDs and
+location context to the shared presenter. The presenter owns layout and source
+A/B/C mapping, then resumes Lua with the selected stable ID. C++ does not infer
+keys from profile/menu/choice strings.
 `game.services.call(domain, action)` yields a namespaced request to an
-allowlisted native service and resumes Lua with a stable result ID. Current
-Stoker scripts use it for room payment, debt-offer flags, debt payment, and the
-Jump House referral. Lua chooses the room/debt menus, updates its bound quest
-facts from the returned outcome, and selects result dialogue; C++ validates
-and applies wallet, source-world, and runner-record effects. The Motel module
-handles the shared manager and room menu; Michael's quest module contributes
-the package option and debt menu. Each operation uses a 100,000-instruction
-limit on initial invocation and resume.
+allowlisted native service and resumes Lua with a stable result ID. The Stoker
+JSON graphs call it for the arrival roll, room payment, debt offer, debt
+payment, and Jump House referral. JSON chooses the ordered menus and branches
+on stable paid/insufficient/service result IDs; Lua registers named host
+effects and C++ applies typed wallet, source-world, and runner-record
+transactions. The indexed service and signed field-exit selector are separate
+graph roots. Each graph operation uses a 100,000-instruction limit on initial
+invocation and resume.
 
 The Ares Weapon Emporium stock is declared in `gameplay/scripts/shop.lua`.
 The script groups offers under stable category names; `GameScriptRuntime`
@@ -160,15 +149,15 @@ runner has no `io`, `os`, `debug`, or package-loader access.
 
 ## Content organization
 
-Static menu and display-catalog functions return three Lua values: ordered
-stable IDs, an optional title key, and ordered label keys. The runtime requires
-the label table and validates that its size matches the IDs; it no longer
-builds label keys in C++. Ordered ID-only lists use the separate `string_list`
-API, so command IDs cannot accidentally be treated as display menus. This
-keeps the motel quest hook and inventory action list data-only while Lua
-supplies every visible Pocket Secretary and command-overview label. Dynamic
-building menus still pass stable IDs through `game.ui.menu`; Lua resolves their
-titles and labels from the location content profile.
+Legacy Lua menu catalogs return ordered stable IDs, optional title keys, and
+ordered label keys; the runtime validates their sizes and does not build label
+keys in C++. Ordered ID-only lists use the separate `string_list` API, so
+command IDs cannot accidentally be treated as display menus. New dialogue
+conversations use versioned JSON for text bindings, ordered choices,
+conditions, graph edges, and outcomes, with Lua registering named effects.
+Pocket Secretary and other legacy menus remain Lua catalogs until migrated.
+Dynamic building menus pass stable IDs through `game.ui.menu`; their
+presentation adapter resolves explicit content keys.
 
 Startup Lua maps archetype IDs to their extracted portrait assets. Dialogue
 Lua maps speaker IDs to their portrait aliases, and both feed the shared
@@ -193,12 +182,9 @@ rather than a second Lua copy.
   portrait key from the signed field-mode/event context exposed by
   `game.field`. Native code keeps only the shared prompt's sentinel timing and
   input behavior.
-- `gameplay/scripts/motel.lua` contains one shared motel interaction, not a
-  script for every named building. It adds the base choices and collects the
-  optional `motel_manager_choices()` hook from quest modules in stable
-  module-name order. `manager_interaction()` handles the shared manager menu,
-  room menu, payment service, result dialogue, and Leave dialogue. A successful
-  room payment returns the hotel-options result to the native host.
+- `gameplay/scripts/motel.lua` retains a reusable manager/room helper for
+  legacy callers and non-quest motel flows. Stoker's production path uses its
+  JSON conversation graph instead of the helper's optional quest-choice hook.
 - `gameplay/scripts/dialogue.lua` owns field-speaker display names, named text
   profiles, portrait aliases, and explicit event/menu text bindings. Speaker
   display properties resolve from the active location; menu copy resolves
@@ -209,19 +195,15 @@ rather than a second Lua copy.
   extracted portraits shown by New Game. The menu's choice and cursor remain
   typed native state; archetype starting values still come from the matching
   ROM-derived record asset.
-- `gameplay/scripts/michael_package.lua` contains the Michael quest hook and
-  its first-visit, repeat, and completed branches. `stoker_interaction()` now
-  chooses the arrival page and shared motel manager in Lua; the field route no
-  longer converts a Lua phase string into a C++ story-entry enum. Its
-  motel-choice hook checks `game.location`, so the quest option appears at
-  Stoker and does not leak into another motel. `stoker_interaction()` uses the
-  speaker supplied by location context, runs the first-visit `arrival` event,
-  enters the shared motel manager, then opens the debt menu and selects
-  payment/referral result pages. It writes first-visit and debt/package facts
-  through the live native-state proxy after the matching story transition;
-  no dialogue adapter copies these facts into a temporary Lua map. Other
-  quests can add the same choice hook without adding per-building scripts or
-  changing `motel.lua`.
+- `gameplay/scripts/michael_package.lua` registers named host effects for the
+  Stoker conversation; `gameplay/dialogue/conversations/stoker_motel.json`
+  owns page order, choices, conditions, result branches, and typed terminals.
+  The indexed trigger root is gated by source facts from `0x53AB6`; the signed
+  field-exit root models the positive/negative prompt and the E9 arrival
+  command. Neither root uses `opening_dialogue_seen`, `michael_debt_paid`, or
+  `michael_package_collected`. The room and debt commands remain typed native
+  transactions, while JSON selects their confirmed outcomes. The unresolved
+  80..99 encounter effect remains an explicit source boundary.
 - `gameplay/scripts/shop.lua` declares all 12 service-title IDs and all 32
   service action-heading IDs in ROM order, with explicit per-row text keys
   returned from each Lua menu function. Its Ares catalog connects the Ares
@@ -419,19 +401,20 @@ synchronized.
   Menus and dialogue use the generic Qt presenters, and Lua supplies the
   available stable choice ids and story text keys.
 
-The current slice connects the New Game trigger, native-backed story facts,
-the Michael quest branch, shared motel and debt menus, Hotel menu definitions,
-room/debt service calls, arrival/farewell/result dialogue, and the Qt
-presenters. The opening story captions now resolve through the same Lua text
-resource while their source-derived schedule and native rendering remain in
-the intro controller. Stoker, field interaction, Ares mode-event paragraphs,
-Hotel text,
+Current slices connect the New Game trigger, native-backed story facts,
+Stoker's JSON graph roots, Hotel menu definitions, room/debt host transactions,
+arrival/farewell/result dialogue, and the Qt presenters. The opening story
+captions now resolve through the same Lua text resource while their
+source-derived schedule and native rendering remain in the intro controller.
+Field interaction, Ares mode-event paragraphs, Hotel text,
 startup menu text/choices, Pocket Secretary root choices/labels,
 command-overview root choices/labels, Clips selector choices/labels and panel
 text keys, Pocket Secretary root and Notebook title/separator/label keys, Notebook option
 IDs/labels, shared confirmation choices/labels, Magic spell
 IDs/names/descriptions, field-object prompt choices, and shop
-service/action-heading IDs are Lua content. Runner biographies and the
+service/action-heading IDs are Lua content. Stoker's dialogue copy and choices
+are JSON graph data, with Lua executing the graph and registering host actions.
+Runner biographies and the
 converted Ricky/Winston/Trent topic trees are grouped in `dialogue.lua`; the
 shared panel resolves them through Lua and QA captures their screens. Their
 conversation path still needs integration with the live roster/field UI.

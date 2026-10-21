@@ -105,6 +105,54 @@
         "romAddresses": ["0x249FA", "0x114EF5"],
         "scope": "runner_feature_flag_bit_2"
       }
+    },
+    "stoker_motel.indexed_service_context": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "motel" },
+          { "fact": "location.id", "op": "eq", "value": "stoker_motel" },
+          { "fact": "field.mode", "op": "eq", "value": 2 },
+          { "fact": "field.event_code", "op": "eq", "value": 2 },
+          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "story.story_flag_bit_0", "op": "eq", "value": false }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x53A78", "0x53AB6", "0x173138"],
+        "scope": "stoker_indexed_service_gate"
+      }
+    },
+    "stoker_motel.field_exit_context": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "motel" },
+          { "fact": "location.id", "op": "eq", "value": "stoker_motel" },
+          { "fact": "field.mode", "op": "eq", "value": 2 },
+          { "fact": "field.event_code", "op": "eq", "value": 2 }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x1F65A", "0x173138"],
+        "scope": "scene_2_event_2_prompt_context"
+      }
+    },
+    "stoker_motel.alternate_result_positive": {
+      "expression": {
+        "fact": "field.alternate_result", "op": "gt", "value": 0
+      },
+      "provenance": {
+        "romAddresses": ["0x1F65A", "0xF4AF4"],
+        "scope": "positive_signed_prompt_branch"
+      }
+    },
+    "stoker_motel.alternate_result_negative": {
+      "expression": {
+        "fact": "field.alternate_result", "op": "lt", "value": 0
+      },
+      "provenance": {
+        "romAddresses": ["0x1F65A", "0xF4AEC"],
+        "scope": "negative_signed_prompt_branch"
+      }
     }
   }
 }

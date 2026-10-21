@@ -29,7 +29,7 @@ run() {
   printf '%s: ' "$name"
   if timeout 600 "$lua_bin" "$@" </dev/null >"$out" 2>&1; then tail -1 "$out"; else st=$?; tail -1 "$out"; echo "  -> exit $st"; rc=1; fi
 }
-for t in menu_tests submenu_tests matrix_actions_tests story_flags_tests equiv_units run_target_event_tests condition_evaluator_tests dialogue_graph_tests building_route_tests tarislar_city_inn_tests wylie_gala_inn_tests tarislar_apartments_tests salish_lodge_tests salish_spirit_eyes_tests renraku_offices_tests fuchi_offices_tests gates_undersound_tests boris_greenhouse_tests council_medicine_lodge_tests world_content_tests; do
+for t in menu_tests submenu_tests matrix_actions_tests story_flags_tests equiv_units run_target_event_tests condition_evaluator_tests dialogue_graph_tests building_route_tests michael_package_tests tarislar_city_inn_tests wylie_gala_inn_tests tarislar_apartments_tests salish_lodge_tests salish_spirit_eyes_tests renraku_offices_tests fuchi_offices_tests gates_undersound_tests boris_greenhouse_tests council_medicine_lodge_tests world_content_tests; do
   run "$t" "decompilation/gameplay/tests_lua/$t.lua"
 done
 run equiv_heartbeat decompilation/gameplay/tests_lua/equiv_heartbeat.lua 200 1 30

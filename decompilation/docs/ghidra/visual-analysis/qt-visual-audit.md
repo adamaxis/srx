@@ -1621,9 +1621,8 @@ source traced and checked against multiple independent gameplay frames. Debug
 and Release tests cover the 0xE9 thresholds, ordinary arrival-to-manager and
 room-offer transitions, injected ambush text, stale-control clearing, and the
 manager-to-debt-to-referral path. The manager dump for the two-option
-`0xF4AB4` record is renderer output, not an independent golden. The rare
-`0x1E1FC` effect, host-vs-source random seed, property selecting the
-three-option package state, `FFF0AF` frame selection, additional speaker data,
+`0xF4AB4` record is renderer output, not an independent golden. The rare `0x1E1FC` effect, host-vs-source random seed, `FFF0AF` frame
+selection, additional speaker data,
 debt-payment result, Hotel Options UI, loaded-save wallet state, live field
 restoration, and measured dialogue audio remain open. Exact independent
 longplay frames for the two-option manager and room-payment outcomes are not

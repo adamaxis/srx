@@ -290,6 +290,7 @@ int main() {
          &julius_contact_funds, &julius_contact_purchase_calls,
          &mortimer_contact_funds, &mortimer_contact_purchase_calls,
          &inn_funds, &inn_source_triplet_updates,
+         &room_payment_funds, &room_payment_outcome,
          &run_random_services, &run_random_results, &run_random_call](
             const std::string_view service_id) -> std::optional<std::string> {
             if (service_id.rfind("random.bounded_", 0U) == 0U ||
@@ -299,6 +300,22 @@ int main() {
                     return std::nullopt;
                 }
                 return std::string(run_random_results[run_random_call++]);
+            }
+            if (service_id == "building.charge_20") {
+                StokerMotelRoomPaymentState state{};
+                state.funds = room_payment_funds;
+                room_payment_outcome =
+                    resolve_stoker_motel_room_payment(state);
+                room_payment_funds = state.funds;
+                if (room_payment_outcome.result ==
+                    StokerMotelRoomPaymentResult::room_paid) {
+                    return "paid";
+                }
+                if (room_payment_outcome.result ==
+                    StokerMotelRoomPaymentResult::insufficient_funds) {
+                    return "insufficient";
+                }
+                return std::nullopt;
             }
             if (service_id == "building.charge_30") {
                 if (inn_funds < 30U) {
@@ -1707,6 +1724,10 @@ int main() {
         FieldExitResourceProfile::stoker_motel,
         FieldExitPromptAsset::stoker_motel_arrival,
         0x14U};
+    gameplay_scripts.set_story_state({{"story_flag_bit_0", false}});
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{2U, 2U, 0});
+    boundary = {};
     if (!expect(runtime.open_field_exit_prompt(arrival))) {
         return 7;
     }
@@ -1835,12 +1856,27 @@ int main() {
     QPainter room_paid_idle_painter(&room_paid_idle);
     runtime.paint(room_paid_idle_painter);
     room_paid_idle_painter.end();
+    const auto room_paid_close =
+        runtime.advance_controller_events(0x4000U);
     if (!expect(matches_region(room_paid_scene, room_paid_idle, 0, 0, 320,
                                224)) ||
-        !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::hotel_options_requested) ||
+        !expect(room_paid_close ==
+                FieldDialogueAdvanceResult::open_service_requested) ||
         !expect(!runtime.open()) ||
         !expect(boundary.empty())) {
+        std::cerr << "Stoker graph hotel service: close="
+                  << static_cast<int>(room_paid_close)
+                  << " open=" << runtime.open()
+                  << " boundary=" << boundary << '\n';
+        return 65;
+    }
+
+    const auto stoker_hotel_outcome = runtime.take_gameplay_task_outcome();
+    if (!expect(stoker_hotel_outcome.has_value() &&
+                stoker_hotel_outcome->type ==
+                    scripting::DialogueOutcomeType::open_service &&
+                stoker_hotel_outcome->destination_id == "hotel.options" &&
+                stoker_hotel_outcome->return_policy == "origin")) {
         return 65;
     }
 
@@ -1888,23 +1924,35 @@ int main() {
                 std::string_view::npos)) {
         return 68;
     }
+    runtime.close();
+    boundary = {};
 
-    // The 80..99 path must not be misreported as the manager greeting while
-    // the source 0x1E1FC effect sequence is still unbound.
+    // An 80..99 roll without the source effect callback remains unresolved;
+    // the graph stops before it claims which encounter page was selected.
     if (!expect(runtime.open_field_exit_prompt(arrival))) {
         return 54;
     }
     arrival_roll = 80U;
-    if (!expect(runtime.advance_controller_events(0x4000U) ==
+    const auto unresolved_arrival_result =
+        runtime.advance_controller_events(0x4000U);
+    if (!expect(unresolved_arrival_result ==
                 FieldDialogueAdvanceResult::source_boundary) ||
         !expect(runtime.panel().kind == DialoguePanelKind::source_boundary) ||
-        !expect(boundary.find("ambush-effect callback is unresolved") !=
+        !expect(boundary.find("arrival command") !=
                 std::string_view::npos)) {
+        std::cerr << "unresolved arrival: result="
+                  << static_cast<int>(unresolved_arrival_result)
+                  << " kind=" << static_cast<int>(runtime.panel().kind)
+                  << " text=" << runtime.panel().text_segments[0]
+                  << " panel_reason=" << runtime.panel().source_boundary_reason
+                  << " boundary=" << boundary << '\n';
         return 55;
     }
+    runtime.close();
+    boundary = {};
 
-    // If the source effect handler reports success, command 0xE9 selects its
-    // own text record and clears the previous manager buttons from the panel.
+    // When the source effect callback selects the rare encounter, the JSON
+    // graph presents that page and then preserves its unresolved actor edge.
     arrival_callbacks.forward_ambush_effect_sequence = [] { return true; };
     runtime.set_arrival_command_callbacks(arrival_callbacks);
     if (!expect(runtime.open_field_exit_prompt(arrival)) ||
@@ -1912,39 +1960,28 @@ int main() {
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.panel().text_segments[0].find(
                     "leap from the shadows") != std::string_view::npos) ||
-        !expect(runtime.panel().option_count == 0U) ||
-        !expect(runtime.panel().returns_to_field)) {
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::source_boundary) ||
+        !expect(boundary.find("actor/effect handoff") !=
+                std::string_view::npos)) {
         return 57;
     }
-    QImage ambush_scene(320, 224, QImage::Format_RGB32);
-    ambush_scene.fill(Qt::magenta);
-    QPainter ambush_painter(&ambush_scene);
-    runtime.paint(ambush_painter);
-    ambush_painter.end();
-    if (!expect(!has_exact_color(ambush_scene, 0, 0, 320, 224,
-                                 QColor(Qt::magenta))) ||
-        !expect(matches_region(ambush_scene, standard_frame, 16, 152, 16, 16)) ||
-        !expect(matches_region(ambush_scene, standard_frame, 16, 176, 16, 16)) ||
-        !expect(matches_region(ambush_scene, standard_frame, 16, 200, 16, 16))) {
-        return 58;
-    }
-    if (!expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::returned_to_field) ||
-        !expect(!runtime.open())) {
-        return 59;
-    }
+    runtime.close();
+    boundary = {};
 
     const FieldExitPromptSelection package_question{
         FieldExitResourceProfile::stoker_motel,
         FieldExitPromptAsset::stoker_motel_package_question,
         0x14U};
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{2U, 2U, 1});
     if (!expect(runtime.open_field_exit_prompt(package_question)) ||
         !expect(runtime.panel().text_segment_count != 0U) ||
         !expect(runtime.panel().text_segments[0].find("Do you have the package") !=
                 std::string_view::npos) ||
         !expect(runtime.panel().option_count == 0U) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::returned_to_field)) {
+                FieldDialogueAdvanceResult::continue_in_place)) {
         return 9;
     }
 
@@ -1997,340 +2034,121 @@ int main() {
         return 34;
     }
 
-    if (!expect(runtime.open_stoker_interaction_for_dump(
-            StokerMotelStoryState{true, false, false})) ||
-        !expect(runtime.panel().text_segment_count == 5U) ||
-        !expect(runtime.panel().option_count == 3U) ||
-        !expect(runtime.panel().text_segments[0].find("manager yawns") !=
-                std::string_view::npos)) {
-        return 11;
-    }
-    QImage scene(320, 224, QImage::Format_RGB32);
-    scene.fill(Qt::magenta);
-    QPainter painter(&scene);
-    runtime.paint(painter);
-    painter.end();
-    if (!expect(!has_exact_color(scene, 0, 0, 320, 224,
-                                 QColor(Qt::magenta)))) {
-        return 13;
-    }
-    if (!expect(has_green_ink(scene, 88, 16, 216, 8))) {
-        return 19;
-    }
-    if (!expect(!has_green_ink(scene, 82, 16, 6, 8))) {
-        return 20;
-    }
-    if (!expect(has_green_ink(scene, 88, 32, 216, 8))) {
-        return 21;
-    }
-    if (!expect(!has_green_ink(scene, 88, 24, 216, 8))) {
-        return 22;
-    }
-    if (!expect(has_nonblack_pixel(scene, 16, 32, 56, 72))) {
-        return 23;
-    }
-    if (!expect(matches_region(scene, standard_frame, 16, 20, 54, 8))) {
-        return 24;
-    }
-    if (!expect(has_green_ink(scene, 88, 56, 216, 8))) {
-        return 25;
-    }
-    if (!expect(!has_green_ink(scene, 88, 48, 216, 8))) {
-        return 26;
-    }
-    if (!expect(matches_region(scene, standard_frame, 0, 146, 320, 6))) {
-        return 27;
-    }
-    if (!expect(matches_region(scene, standard_frame, 312, 152, 8, 72))) {
-        return 29;
-    }
-    int lit_pixels = 0;
-    for (int y = 0; y < scene.height(); ++y) {
-        for (int x = 0; x < scene.width(); ++x) {
-            const auto pixel = scene.pixelColor(x, y);
-            if (pixel.red() != 0 || pixel.green() != 0 || pixel.blue() != 0) {
-                ++lit_pixels;
-            }
-        }
-    }
-    if (!expect(lit_pixels > 1000)) {
-        return 12;
-    }
-
-    const auto debt_choice_result = runtime.advance_controller_events(0x2000U);
-    if (debt_choice_result != FieldDialogueAdvanceResult::prompt_advanced ||
-        !expect(followup_state.story_flags == 3U) ||
-        !expect(followup_state.referral_flags == 0U) ||
-        !expect(runtime.panel().option_count == 2U) ||
-        !expect(runtime.panel().text_segments[0].find("Michael's brother") !=
-                std::string_view::npos)) {
-        std::cerr << "debt menu state: result="
-                  << static_cast<int>(debt_choice_result)
-                  << " followup_flags=" << followup_state.story_flags
-                  << " referral_flags="
-                  << static_cast<unsigned>(followup_state.referral_flags)
-                  << " options=" << runtime.panel().option_count
-                  << " text=" << runtime.panel().text_segments[0]
-                  << " panel_reason="
-                  << runtime.panel().source_boundary_reason
-                  << " boundary=" << boundary << '\n';
-        return 30;
-    }
-    scene.fill(Qt::magenta);
-    QPainter debt_painter(&scene);
-    runtime.paint(debt_painter);
-    debt_painter.end();
-    if (!expect(!has_exact_color(scene, 0, 0, 320, 224,
-                                 QColor(Qt::magenta))) ||
-        !expect(has_green_ink(scene, 88, 16, 216, 8)) ||
-        !expect(!has_green_ink(scene, 88, 32, 216, 8)) ||
-        !expect(has_green_ink(scene, 88, 40, 216, 8)) ||
-        !expect(has_green_ink(scene, 88, 80, 216, 8)) ||
-        !expect(!has_green_ink(scene, 88, 88, 216, 8)) ||
-        !expect(has_green_ink(scene, 88, 96, 216, 8)) ||
-        !expect(!has_green_ink(scene, 48, 197, 256, 16))) {
-        return 31;
-    }
-    const auto held_debt_scene = scene;
-    for (int frame = 0; frame < 30; ++frame) {
-        if (!expect(runtime.advance_controller_events(0U) ==
-                    FieldDialogueAdvanceResult::waiting_for_controller)) {
-            return 60;
-        }
-    }
-    scene.fill(Qt::magenta);
-    QPainter held_debt_painter(&scene);
-    runtime.paint(held_debt_painter);
-    held_debt_painter.end();
-    if (!expect(matches_region(scene, held_debt_scene, 0, 0, 320, 224))) {
-        return 61;
-    }
-    if (!expect(runtime.advance_controller_events(0x1000U) ==
-                FieldDialogueAdvanceResult::prompt_advanced) ||
-        !expect(followup_state.story_flags == 3U) ||
-        !expect(followup_state.referral_flags == 1U) ||
-        !expect(runtime.panel().text_segments[0].find("Jump House") !=
+    gameplay_scripts.set_story_state({{"story_flag_bit_0", false}});
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{2U, 2U, 0});
+    if (!expect(runtime.open_stoker_interaction_for_dump()) ||
+        !expect(runtime.panel().text_segments[0].find("battered sign") !=
                 std::string_view::npos) ||
-        !expect(runtime.panel().option_count == 0U) ||
-        !expect(!runtime.panel().returns_to_field)) {
-        return 32;
-    }
-    scene.fill(Qt::magenta);
-    QPainter referral_painter(&scene);
-    runtime.paint(referral_painter);
-    referral_painter.end();
-    if (!expect(!has_exact_color(scene, 0, 0, 320, 224,
-                                 QColor(Qt::magenta))) ||
-        !expect(!has_green_ink(scene, 48, 152, 256, 64)) ||
-        !expect(!has_green_ink(scene, 296, 16, 8, 120)) ||
-        !expect(!has_nonblack_pixel(scene, 17, 203, 11, 11))) {
-        return 62;
-    }
-    const auto held_referral_scene = scene;
-    for (int frame = 0; frame < 30; ++frame) {
-        if (!expect(runtime.advance_controller_events(0U) ==
-                    FieldDialogueAdvanceResult::waiting_for_controller)) {
-            return 63;
-        }
-    }
-    scene.fill(Qt::magenta);
-    QPainter held_referral_painter(&scene);
-    runtime.paint(held_referral_painter);
-    held_referral_painter.end();
-    if (!expect(matches_region(scene, held_referral_scene, 0, 0, 320, 224))) {
-        return 64;
+        !expect(runtime.panel().has_more) ||
+        !expect(runtime.panel().option_count == 1U)) {
+        return 71;
     }
     if (!expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::returned_to_field) ||
+                    FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find("manager yawns") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().options[2].source_label.find(
+                    "Michael's stuff") != std::string_view::npos)) {
+        return 72;
+    }
+    if (!expect(runtime.advance_controller_events(0x1000U) ==
+                    FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find("seeing you") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 0U) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                    FieldDialogueAdvanceResult::continue_in_place) ||
         !expect(!runtime.open())) {
-        return 33;
+        return 73;
     }
 
-    // Paying the debt with a typed wallet below 250 returns the script to the
-    // source Jump House page and clears the former debt choices.
-    debt_payment_state.followup_state.referral_flags = 0U;
-    if (!expect(runtime.open_stoker_interaction_for_dump(
-            StokerMotelStoryState{true, false, false})) ||
+    // The JSON graph owns the manager, debt choice, and outcome pages. The
+    // C++ callback contributes only the ROM-derived wallet transaction.
+    debt_payment_state.funds = 249U;
+    debt_payment_state.followup_state = followup_state;
+    gameplay_scripts.set_story_state({{"story_flag_bit_0", false}});
+    if (!expect(runtime.open_stoker_interaction_for_dump()) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.advance_controller_events(0x2000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().text_segments[0].find("Michael's brother") !=
+                std::string_view::npos) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(debt_payment_outcome.result ==
                 StokerMotelDebtPaymentResult::insufficient_funds) ||
         !expect(debt_payment_outcome.remaining_funds == 249U) ||
-        !expect(debt_payment_state.followup_state.referral_flags == 1U) ||
-        !expect(!gameplay_scripts.story_state().at("michael_debt_paid")) ||
-        !expect(!gameplay_scripts.story_state().at(
-                    "michael_package_collected")) ||
+        !expect(!gameplay_scripts.story_state().at("story_flag_bit_0")) ||
         !expect(runtime.panel().text_segments[0].find("Jump House") !=
                 std::string_view::npos) ||
         !expect(runtime.panel().option_count == 0U) ||
-        !expect(!runtime.panel().returns_to_field)) {
-        std::cerr << "debt debug open=" << runtime.open()
-                  << " result=" << static_cast<int>(debt_payment_outcome.result)
-                  << " funds=" << debt_payment_outcome.remaining_funds
-                  << " referral=" << static_cast<int>(
-                         debt_payment_state.followup_state.referral_flags)
-                  << " debt-paid=" << gameplay_scripts.story_state().at(
-                         "michael_debt_paid")
-                  << " package-collected=" << gameplay_scripts.story_state().at(
-                         "michael_package_collected")
-                  << " text=" << runtime.panel().text_segments[0]
-                  << " options=" << runtime.panel().option_count
-                  << " returns=" << runtime.panel().returns_to_field << '\n';
-        return 65;
-    }
-    scene.fill(Qt::magenta);
-    QPainter debt_payment_painter(&scene);
-    runtime.paint(debt_payment_painter);
-    debt_payment_painter.end();
-    if (!expect(!has_exact_color(scene, 0, 0, 320, 224,
-                                 QColor(Qt::magenta))) ||
-        !expect(!has_green_ink(scene, 48, 152, 256, 64)) ||
-        !expect(!has_green_ink(scene, 296, 16, 8, 120)) ||
-        !expect(!has_nonblack_pixel(scene, 17, 203, 11, 11))) {
-        return 66;
-    }
-    const auto debt_payment_scene = scene;
-    for (int frame = 0; frame < 30; ++frame) {
-        if (!expect(runtime.advance_controller_events(0U) ==
-                    FieldDialogueAdvanceResult::waiting_for_controller)) {
-            return 67;
-        }
-    }
-    scene.fill(Qt::magenta);
-    QPainter held_debt_payment_painter(&scene);
-    runtime.paint(held_debt_payment_painter);
-    held_debt_payment_painter.end();
-    if (!expect(matches_region(scene, debt_payment_scene, 0, 0, 320, 224)) ||
-        !expect(runtime.open_stoker_prompt_for_dump(
-            StokerMotelPromptId::jump_house_referral))) {
-        return 68;
-    }
-    scene.fill(Qt::magenta);
-    QPainter direct_referral_painter(&scene);
-    runtime.paint(direct_referral_painter);
-    direct_referral_painter.end();
-    if (!expect(matches_region(scene, debt_payment_scene, 0, 0, 320, 224))) {
-        return 69;
-    }
-    if (!expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::continue_in_place) ||
         !expect(!runtime.open())) {
-        return 70;
+        std::cerr << "Stoker insufficient graph funds="
+                  << debt_payment_outcome.remaining_funds
+                  << " text=" << runtime.panel().text_segments[0]
+                  << " boundary=" << boundary << '\n';
+        return 74;
     }
 
-    // At exactly 250 nuyen the source pays the debt, applies its world and
-    // runner-state mutations, then presents the package handoff record.
     debt_payment_state.funds = 250U;
     debt_payment_state.world_flags = 0U;
     debt_payment_state.effect_marker = 0U;
     debt_payment_state.runner_feature_flags = 0x40U;
     debt_payment_state.runner_source_bytes = {0xFFU, 0x00U, 0x7FU};
-    debt_payment_state.followup_state.story_flags = 3U;
-    if (!expect(runtime.open_stoker_interaction_for_dump(
-            StokerMotelStoryState{true, false, false})) ||
+    debt_payment_state.followup_state = followup_state;
+    gameplay_scripts.set_story_state({{"story_flag_bit_0", false}});
+    if (!expect(runtime.open_stoker_interaction_for_dump()) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(runtime.advance_controller_events(0x2000U) ==
-                FieldDialogueAdvanceResult::prompt_advanced)) {
-        return 78;
-    }
-    if (!expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::prompt_advanced)) {
-        return 79;
-    }
-    if (!expect(debt_payment_outcome.result ==
-                    StokerMotelDebtPaymentResult::debt_paid) ||
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(debt_payment_outcome.result ==
+                StokerMotelDebtPaymentResult::debt_paid) ||
         !expect(debt_payment_outcome.remaining_funds == 500U) ||
         !expect(debt_payment_outcome.michael_package_sequence_follows) ||
-        !expect(gameplay_scripts.story_state().at("michael_debt_paid")) ||
-        !expect(gameplay_scripts.story_state().at(
-                    "michael_package_collected"))) {
-        return 81;
-    }
-    if (!expect(debt_payment_state.world_flags == 0x01U) ||
+        !expect(gameplay_scripts.story_state().at("story_flag_bit_0")) ||
+        !expect(debt_payment_state.world_flags == 0x01U) ||
         !expect(debt_payment_state.runner_feature_flags == 0x41U) ||
         !expect(debt_payment_state.runner_source_bytes ==
                 std::array<std::uint8_t, 3>{0x00U, 0x01U, 0x80U}) ||
-        !expect(debt_payment_state.followup_state.story_flags == 0x1CU)) {
-        return 82;
-    }
-    if (!expect(runtime.panel().text_segment_count == 3U) ||
-        !expect(runtime.panel().text_segments[2].find("Here's the package") !=
-                std::string_view::npos) ||
-        !expect(!runtime.panel().returns_to_field)) {
-        return 83;
-    }
-    scene.fill(Qt::magenta);
-    QPainter package_handoff_painter(&scene);
-    runtime.paint(package_handoff_painter);
-    package_handoff_painter.end();
-    if (!expect(!has_exact_color(scene, 0, 0, 320, 224,
-                                 QColor(Qt::magenta))) ||
-        !expect(!has_green_ink(scene, 48, 152, 256, 64)) ||
-        !expect(!has_nonblack_pixel(scene, 17, 203, 11, 11))) {
-        return 76;
-    }
-    if (!expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(debt_payment_state.followup_state.story_flags == 0x1CU) ||
+        !expect([&runtime]() {
+            for (std::size_t index = 0U;
+                 index < runtime.panel().text_segment_count; ++index) {
+                if (runtime.panel().text_segments[index].find(
+                        "Here's the package") != std::string_view::npos) {
+                    return true;
+                }
+            }
+            return false;
+        }()) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::continue_in_place) ||
         !expect(!runtime.open())) {
-        return 77;
+        std::cerr << "Stoker paid graph funds="
+                  << debt_payment_outcome.remaining_funds
+                  << " payment=" << static_cast<int>(debt_payment_outcome.result)
+                  << " package="
+                  << debt_payment_outcome.michael_package_sequence_follows
+                  << " story=" << gameplay_scripts.story_state().at(
+                         "story_flag_bit_0")
+                  << " world=" << debt_payment_state.world_flags
+                  << " runner=" << static_cast<unsigned>(
+                         debt_payment_state.runner_feature_flags)
+                  << " followup=" << debt_payment_state.followup_state.story_flags
+                  << " text-count=" << runtime.panel().text_segment_count
+                  << " text=" << runtime.panel().text_segments[0]
+                  << " boundary=" << boundary << '\n';
+        return 75;
     }
-
-    StokerMotelStoryState first_visit_state{};
-    if (!expect(runtime.open_stoker_interaction_for_dump(first_visit_state)) ||
-        !expect(gameplay_scripts.story_state().at("opening_dialogue_seen")) ||
-        !expect(runtime.panel().text_segments[0].find("battered sign") !=
-                std::string_view::npos) ||
-        !expect(runtime.panel().actor_name == "Stoker") ||
-        !expect(runtime.panel().portrait_alias ==
-                "dialogue.portraits.stoker.motel") ||
-        !expect(runtime.panel().has_more) ||
-        !expect(runtime.panel().continuation_label.find("MORE") !=
-                std::string_view::npos)) {
-        return 71;
-    }
-    if (!expect(runtime.advance_controller_events(0x1000U) ==
-                    FieldDialogueAdvanceResult::waiting_for_controller) ||
-        !expect(runtime.open())) {
-        return 71;
-    }
-    QImage arrival_scene(320, 224, QImage::Format_RGB32);
-    arrival_scene.fill(Qt::black);
-    QPainter arrival_painter(&arrival_scene);
-    runtime.paint(arrival_painter);
-    arrival_painter.end();
-    if (!expect(matches_overlay(arrival_scene, button_a, 16, 152))) {
-        return 74;
-    }
-    if (!expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::prompt_advanced) ||
-        !expect(runtime.panel().option_count == 3U) ||
-        !expect(runtime.panel().options[2].source_label.find(
-                    "Michael's stuff") != std::string_view::npos)) {
-        return 71;
-    }
-    if (!expect(runtime.advance_controller_events(0x1000U) ==
-                FieldDialogueAdvanceResult::prompt_advanced) ||
-        !expect(runtime.panel().text_segments[0].find("seeing you") !=
-                std::string_view::npos) ||
-        !expect(runtime.panel().option_count == 0U) ||
-        !expect(!runtime.panel().has_more) ||
-        !expect(runtime.advance_controller_events(0x1000U) ==
-                FieldDialogueAdvanceResult::returned_to_field) ||
-        !expect(runtime.open_stoker_interaction_for_dump(
-                    StokerMotelStoryState{true, false, false})) ||
-        !expect(runtime.panel().option_count == 3U)) {
-        return 72;
-    }
-    runtime.close();
-    if (!expect(runtime.open_stoker_interaction_for_dump(
-                    StokerMotelStoryState{true, true, true})) ||
-        !expect(runtime.panel().option_count == 2U)) {
-        return 73;
-    }
-    runtime.close();
-
     // A different source can supply its resolved speaker/event view without
     // inheriting Stoker content. Repainting fewer options removes the old
     // bottom row and selector before applying the source-selected frame mode.

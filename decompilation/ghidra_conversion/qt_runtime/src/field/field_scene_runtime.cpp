@@ -1995,6 +1995,11 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 return false;
             }
 
+            game_scripts_.set_field_mode_context(
+                scripting::ScriptFieldModeContext{
+                    static_cast<std::uint8_t>(runtime_state.field_mode),
+                    event_route.event_code,
+                    field_exit_alternate_result_});
             game_scripts_.set_location_context(
                 event_route.entry_location_type,
                 event_route.entry_location_id,
@@ -2064,6 +2069,11 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 dialogue_event_code,
                 field_exit_alternate_result_,
                 field_exit_world_flags_};
+            game_scripts_.set_field_mode_context(
+                scripting::ScriptFieldModeContext{
+                    static_cast<std::uint8_t>(runtime_state.field_mode),
+                    dialogue_event_code,
+                    field_exit_alternate_result_});
             const auto action = field_dialogue_event_resolver_.resolve(
                 event_context, prompt_state,
                 {[this](FieldExitPromptSelection& selection,
@@ -8715,12 +8725,6 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
     party.insert(QStringLiteral("members"), members);
 
     QJsonObject story;
-    story.insert(QStringLiteral("opening_dialogue_seen"),
-                 stoker_motel_story_state_.opening_dialogue_seen);
-    story.insert(QStringLiteral("michael_debt_paid"),
-                 stoker_motel_story_state_.michael_debt_paid);
-    story.insert(QStringLiteral("michael_package_collected"),
-                 stoker_motel_story_state_.michael_package_collected);
     story.insert(QStringLiteral("exit_world_flags"),
                  static_cast<double>(field_exit_world_flags_));
     story.insert(QStringLiteral("mode_effect_flags"),
@@ -8855,7 +8859,6 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         std::size_t active_slot = 0U;
         bool funds_available = false;
         std::uint32_t funds = 0U;
-        StokerMotelStoryState stoker{};
         std::uint32_t exit_world_flags = 0U;
         std::uint32_t mode_effect_flags = 0U;
         std::uint32_t auxiliary_flags = 0U;
@@ -9037,14 +9040,6 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     restored.funds = static_cast<std::uint32_t>(numeric);
 
     const auto story = snapshot.value(QStringLiteral("story")).toObject();
-    if (!read_save_boolean(story, "opening_dialogue_seen",
-                           restored.stoker.opening_dialogue_seen, error) ||
-        !read_save_boolean(story, "michael_debt_paid",
-                           restored.stoker.michael_debt_paid, error) ||
-        !read_save_boolean(story, "michael_package_collected",
-                           restored.stoker.michael_package_collected, error)) {
-        return false;
-    }
     if (!read_save_integer(story, "exit_world_flags", 0, 0xFFFFFFFFLL,
                            numeric, error)) return false;
     restored.exit_world_flags = static_cast<std::uint32_t>(numeric);
@@ -9241,7 +9236,6 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     field_funds_ = restored.funds_available
                        ? std::optional<std::uint32_t>(restored.funds)
                        : std::nullopt;
-    stoker_motel_story_state_ = restored.stoker;
     field_exit_world_flags_ = restored.exit_world_flags;
     field_mode_effect_flags_ = restored.mode_effect_flags;
     field_auxiliary_flags_ = restored.auxiliary_flags;
@@ -11524,7 +11518,6 @@ bool FieldSceneRuntime::bootstrap(
         ? std::optional<std::uint8_t>{0U}
         : std::nullopt;
     field_render_effect_flags_ = 0U;
-    stoker_motel_story_state_ = StokerMotelStoryState{};
     game_scripts_.set_story_fact_accessors(
         [this](const std::string_view name) -> std::optional<bool> {
             if (name == "cyberspace_deck_present") {
@@ -11681,20 +11674,11 @@ bool FieldSceneRuntime::bootstrap(
                 }
                 return *field_active_story_trigger_ == *trigger;
             }
-            if (name == "opening_dialogue_seen") {
-                return stoker_motel_story_state_.opening_dialogue_seen;
-            }
             if (name == "pending_world_effect") {
                 return field_pending_world_effect_;
             }
             if (name == "world_effect_active") {
                 return field_world_effect_active_;
-            }
-            if (name == "michael_debt_paid") {
-                return stoker_motel_story_state_.michael_debt_paid;
-            }
-            if (name == "michael_package_collected") {
-                return stoker_motel_story_state_.michael_package_collected;
             }
             if (name == "wanderer_vigore_jarl_intro_seen") {
                 if (!field_dialogue_register_.has_value()) {
@@ -11855,24 +11839,12 @@ bool FieldSceneRuntime::bootstrap(
                 field_active_story_trigger_ = *trigger;
                 return true;
             }
-            if (name == "opening_dialogue_seen") {
-                stoker_motel_story_state_.opening_dialogue_seen = value;
-                return true;
-            }
             if (name == "pending_world_effect") {
                 field_pending_world_effect_ = value;
                 return true;
             }
             if (name == "world_effect_active") {
                 field_world_effect_active_ = value;
-                return true;
-            }
-            if (name == "michael_debt_paid") {
-                stoker_motel_story_state_.michael_debt_paid = value;
-                return true;
-            }
-            if (name == "michael_package_collected") {
-                stoker_motel_story_state_.michael_package_collected = value;
                 return true;
             }
             if (name == "wanderer_vigore_jarl_intro_seen") {

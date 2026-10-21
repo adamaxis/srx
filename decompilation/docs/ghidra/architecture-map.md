@@ -267,30 +267,29 @@ borrow that portrait alias. The shared Qt presenter looks up each view's
 than falling back to Stoker. Stoker is still the only extracted field-NPC
 portrait currently bound to this route.
 
-The Stoker prompt records at `0xF4AA0..0xF4B2C` are represented by the typed
-`StokerMotelPromptView` graph in
-`src/field/stoker_motel_prompt_conversion.cpp`. The graph
-preserves the source's title/option/command boundaries, including the tested
-manager-package C-to-debt and B-to-referral path, sentinel pages, and the
-unresolved debt-payment result. The offline graphics importer emits the source
-text streams in `assets/dialogue/script-text.json`; the Qt adapter resolves
-those stable keys and projects Stoker through this same panel rather than
-creating an NPC-specific dialogue widget. Its semantic commands are returned
-to the owning conversion controller, so the panel carries no ROM addresses or
-Genesis command bytes.
+The Stoker conversation now runs from
+`gameplay/dialogue/conversations/stoker_motel.json`. Its indexed-service graph
+is separate from the signed field-exit graph; both use the shared JSON
+conditions, speaker/menu catalogs, ROM text catalog, Lua graph runner, and
+typed Qt presenter. `michael_package.lua` registers named host effects for the
+source wallet and story transactions. The older typed
+`StokerMotelPromptView` conversion remains for focused resource/dump QA, not as
+the production branch policy. The panel receives stable text and choice IDs;
+it does not carry ROM addresses or Genesis command bytes.
 
 After the typed Stoker arrival record is selected, the ordinary `0x249C4`
-branch now runs from the shared Qt controller: rolls 0..79 select the source
-`0xF4AB4` manager record. Rolls 80..99 still stop
-at an explicit boundary because the `0x1E1FC` effect sequence is not
-connected. The host uses the source bounded-random algorithm, but its field
-seed is currently initialized by Qt. The three-option package state seen in
-independent section 03 frame 000300 has no traced live property condition and
-still has no traced live property condition and does not replace the
-two-option record. The `qt_runtime/field_dialogue_runtime.*` seam connects the
-converted field-exit orchestrator to the shared panel without duplicating
-field state or putting ROM pointers in the runtime. Its controller path
-preserves source A/B/C priority and title-only wait semantics.
+branch now runs through the shared Qt presenter: rolls 0..79 select the source
+`0xF4AB4` two-choice manager record, while 80..99 remain at an explicit
+boundary until the `0x1E1FC` effect sequence is connected. The host uses the
+source bounded-random algorithm, but its field seed is currently initialized
+by Qt. The separate three-choice root at `0xF4AFC` belongs to indexed trigger
+0 (`0x53AB6`), whose ROM gate is FFFC1E bit 0 clear, scene/event 2/2, and
+alternate result 0. It is the panel shown in independent section 03 frame
+000301; it does not replace the two-choice post-arrival record. The
+`qt_runtime/field_dialogue_runtime.*` seam connects both source routes to the
+shared panel without duplicating field state or putting ROM pointers in the
+runtime. Its controller path preserves source A/B/C priority and title-only
+wait semantics.
 
 The Hotel handoff is now covered from ordinary New Game field input. Scene-2
 record 91 (`0x173138`, `0xC2`) opens Stoker arrival; A resolves the bounded

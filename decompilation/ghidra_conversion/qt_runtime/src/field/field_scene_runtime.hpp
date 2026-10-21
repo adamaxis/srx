@@ -422,16 +422,7 @@ public:
     const DialoguePanelView& dialogue_panel() const noexcept {
         return field_dialogue_.panel();
     }
-    bool open_stoker_dialogue_for_dump(
-        StokerMotelPromptId prompt) {
-        // Script state reads this typed field state directly in a live
-        // session, so seed the native owner for deterministic diagnostic
-        // prompts instead of writing only GameScriptRuntime's fallback map.
-        if (prompt == StokerMotelPromptId::manager_greeting_with_package) {
-            stoker_motel_story_state_ = {true, false, false};
-        } else if (prompt == StokerMotelPromptId::manager_greeting) {
-            stoker_motel_story_state_ = {true, true, true};
-        }
+    bool open_stoker_dialogue_for_dump(StokerMotelPromptId prompt) {
         return field_dialogue_.open_stoker_prompt_for_dump(prompt);
     }
     bool open_gunderson_interaction_for_dump();
@@ -645,10 +636,6 @@ public:
     }
     const FieldMapEventSystem& field_map_event_system_for_dump() const noexcept {
         return field_map_event_system_;
-    }
-    const StokerMotelStoryState& stoker_motel_story_state_for_dump() const
-        noexcept {
-        return stoker_motel_story_state_;
     }
     std::uint16_t field_terrain_collision_code_for_dump() const noexcept {
         return field_movement_transition_state_.terrain_collision_code;
@@ -1861,7 +1848,6 @@ private:
     std::optional<std::uint16_t> field_elevator_pending_destination_;
     ShopMenuController field_shop_menu_{};
     FieldDialogueEventResolver field_dialogue_event_resolver_;
-    StokerMotelStoryState stoker_motel_story_state_{};
     FieldPartyRosterRuntime field_party_roster_{};
     std::array<std::optional<MagicSpellTable>, kUsMagicSpellTableCount>
         field_magic_spell_table_overrides_{};

@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "stoker_motel.indexed_service": {
+      "entryNode": "begin_trigger",
+      "precondition": "stoker_motel.indexed_service_context",
+      "speakerId": "stoker",
+      "textProfile": "stoker.motel",
+      "provenance": {
+        "romAddresses": [
+          "0x53A78", "0x53AB6", "0x1F246", "0x1F3C4",
+          "0xF4AFC", "0x213CA", "0x213E2", "0x213FA",
+          "0x21458", "0x173138"
+        ],
+        "scope": "indexed_service_and_confirmed_manager_payment_branches"
+      },
+      "nodes": {
+        "begin_trigger": {
+          "type": "action",
+          "actionId": "story.begin_trigger",
+          "arguments": { "triggerId": 0 },
+          "next": "arrival"
+        },
+        "arrival": { "type": "page", "eventId": "arrival", "next": "manager" },
+        "manager": {
+          "type": "choice",
+          "menuId": "manager",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "crash", "next": "room" },
+            { "id": "leave", "next": "farewell" },
+            { "id": "package", "next": "prepare_debt_offer" }
+          ]
+        },
+        "room": {
+          "type": "choice",
+          "menuId": "room",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "pay", "next": "pay_room" },
+            { "id": "leave", "next": "farewell" }
+          ]
+        },
+        "pay_room": {
+          "type": "action",
+          "actionId": "building.charge_amount",
+          "arguments": { "amount": 20 },
+          "results": {
+            "paid": "room_paid",
+            "insufficient": "room_insufficient",
+            "service_unavailable": "room_payment_boundary"
+          },
+          "evidence": "ROM 0x21458 charges the active motel price of 20 nuyen."
+        },
+        "room_paid": { "type": "page", "eventId": "room.paid", "next": "hotel_options" },
+        "room_insufficient": { "type": "page", "eventId": "room.insufficient", "next": "stay_on_map" },
+        "room_payment_boundary": {
+          "type": "source_boundary",
+          "reason": "ROM room payment did not return a recognized wallet result."
+        },
+        "prepare_debt_offer": {
+          "type": "action",
+          "actionId": "stoker_motel.prepare_debt_offer",
+          "results": { "ready": "debt_question", "service_unavailable": "debt_service_boundary" }
+        },
+        "debt_question": {
+          "type": "choice",
+          "menuId": "debt",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "debt-payment", "next": "pay_debt" },
+            { "id": "jump-house", "next": "prepare_referral" }
+          ]
+        },
+        "pay_debt": {
+          "type": "action",
+          "actionId": "stoker_motel.pay_debt",
+          "results": {
+            "paid": "record_paid_debt",
+            "insufficient": "jump_house_after_insufficient",
+            "service_unavailable": "debt_payment_boundary"
+          },
+          "evidence": "ROM 0x213FA checks 250 nuyen; paid and insufficient branches have separate source effects."
+        },
+        "record_paid_debt": {
+          "type": "action",
+          "actionId": "story.set_flag",
+          "arguments": { "flagBit": 0, "value": true },
+          "next": "package_handoff"
+        },
+        "package_handoff": { "type": "page", "eventId": "package-handoff", "next": "stay_on_map" },
+        "jump_house_after_insufficient": { "type": "page", "eventId": "jump-house", "next": "stay_on_map" },
+        "prepare_referral": {
+          "type": "action",
+          "actionId": "stoker_motel.prepare_referral",
+          "results": { "ready": "jump_house", "service_unavailable": "referral_boundary" }
+        },
+        "jump_house": { "type": "page", "eventId": "jump-house", "next": "stay_on_map" },
+        "farewell": { "type": "page", "eventId": "leave", "next": "stay_on_map" },
+        "debt_service_boundary": { "type": "source_boundary", "reason": "ROM debt-offer command 0x30 did not complete." },
+        "debt_payment_boundary": { "type": "source_boundary", "reason": "ROM debt-payment command 0x05 did not return a recognized result." },
+        "referral_boundary": { "type": "source_boundary", "reason": "ROM referral command 0x31 did not complete." },
+        "hotel_options": {
+          "type": "terminal",
+          "outcome": { "type": "open_service", "serviceId": "hotel.options", "returnPolicy": "origin" }
+        },
+        "stay_on_map": { "type": "terminal", "outcome": { "type": "continue_in_place" } }
+      }
+    },
+    "stoker_motel.field_exit_prompt": {
+      "entryNode": "signed_result",
+      "precondition": "stoker_motel.field_exit_context",
+      "speakerId": "stoker",
+      "textProfile": "stoker.motel",
+      "provenance": {
+        "romAddresses": [
+          "0x1F65A", "0xF4AA0", "0xF4AF4", "0xF4AEC",
+          "0x249C4", "0x0D3A", "0x1E1FC", "0xF4AB4", "0x21458"
+        ],
+        "scope": "signed_prompt_selection_and_arrival_command"
+      },
+      "nodes": {
+        "signed_result": {
+          "type": "branch",
+          "cases": [
+            { "when": "stoker_motel.alternate_result_positive", "next": "package_question" },
+            { "when": "stoker_motel.alternate_result_negative", "next": "package_handoff" }
+          ],
+          "fallback": "arrival"
+        },
+        "package_question": { "type": "page", "eventId": "package-question", "next": "stay_on_map" },
+        "package_handoff": { "type": "page", "eventId": "package-handoff", "next": "stay_on_map" },
+        "arrival": { "type": "page", "eventId": "arrival", "next": "resolve_arrival" },
+        "resolve_arrival": {
+          "type": "action",
+          "actionId": "stoker_motel.resolve_arrival",
+          "results": {
+            "manager": "arrival_manager",
+            "street_ambush": "street_ambush",
+            "service_unavailable": "arrival_command_boundary"
+          },
+          "evidence": "ROM 0x249C4 samples 0..99; values 80..99 pass through the unresolved 0x1E1FC effect callback."
+        },
+        "arrival_manager": {
+          "type": "choice",
+          "menuId": "arrival_manager",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "crash", "next": "room" },
+            { "id": "leave", "next": "farewell" }
+          ]
+        },
+        "room": {
+          "type": "choice",
+          "menuId": "room",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "pay", "next": "pay_room" },
+            { "id": "leave", "next": "farewell" }
+          ]
+        },
+        "pay_room": {
+          "type": "action",
+          "actionId": "building.charge_amount",
+          "arguments": { "amount": 20 },
+          "results": {
+            "paid": "room_paid",
+            "insufficient": "room_insufficient",
+            "service_unavailable": "room_payment_boundary"
+          }
+        },
+        "room_paid": { "type": "page", "eventId": "room.paid", "next": "hotel_options" },
+        "room_insufficient": { "type": "page", "eventId": "room.insufficient", "next": "stay_on_map" },
+        "farewell": { "type": "page", "eventId": "leave", "next": "stay_on_map" },
+        "street_ambush": { "type": "page", "eventId": "street-ambush", "next": "ambush_boundary" },
+        "room_payment_boundary": { "type": "source_boundary", "reason": "ROM room payment did not return a recognized wallet result." },
+        "arrival_command_boundary": { "type": "source_boundary", "reason": "ROM arrival command 0xE9 or its random service is unresolved." },
+        "ambush_boundary": { "type": "source_boundary", "reason": "ROM 0x1E1FC selects a street encounter whose actor/effect handoff is not converted." },
+        "hotel_options": {
+          "type": "terminal",
+          "outcome": { "type": "open_service", "serviceId": "hotel.options", "returnPolicy": "origin" }
+        },
+        "stay_on_map": { "type": "terminal", "outcome": { "type": "continue_in_place" } }
+      }
+    }
+  }
+}

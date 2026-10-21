@@ -101,11 +101,10 @@ public:
     bool open_stoker_prompt_for_dump(StokerMotelPromptId prompt);
     bool open_stoker_arrival_result_for_dump(std::uint8_t random_roll);
 
-    // The story script reads and writes the native story facts through the
-    // GameScriptRuntime binding, then enters the shared motel interaction.
+    // The production Stoker interaction is the JSON graph. The dump helper
+    // supplies a source-default trigger context.
     bool open_stoker_interaction();
-    bool open_stoker_interaction_for_dump(
-        const StokerMotelStoryState& story_state);
+    bool open_stoker_interaction_for_dump();
     bool open_gameplay_task(std::string_view module,
                             std::string_view function);
     bool present_source_boundary_for_host(std::string reason);
@@ -173,6 +172,7 @@ private:
     std::optional<std::uint8_t> pending_matrix_entry_node_id_;
     std::optional<std::string> last_gameplay_task_result_id_;
     std::optional<scripting::DialogueOutcome> last_gameplay_task_outcome_;
+    std::optional<FieldDialogueAdvanceResult> inline_task_advance_result_;
     StokerMotelArrivalCommandCallbacks arrival_command_callbacks_;
     std::function<std::optional<StokerMotelRoomPaymentOutcome>()>
         room_payment_callback_;

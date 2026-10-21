@@ -3,12 +3,13 @@
 Status: design, source inventory, and staged implementation. The generated
 text catalog, speaker/menu/contact catalogs, and location condition catalog
 are JSON-backed. All 87 current entity link rows reference named JSON
-conditions where needed. The Lua graph engine and typed outcome bridge now
-drive Gates Undersound's same-map service, the Renraku and Fuchi gated entry
-pages, Tarislar City Inn, and Wylie's Gala Inn. The field host dispatches the
-`hotel.options` and `hospital.options` service IDs. Remaining conversation
-routes and other service outcome dispatchers are pending; this does not claim
-every listed route is implemented or visually verified.
+conditions where needed. The Lua graph engine and typed outcome bridge drive
+Gates Undersound's same-map service, the Renraku and Fuchi gated entry pages,
+Tarislar City Inn, Wylie's Gala Inn, and the two Stoker entry roots. The field
+host dispatches the `hotel.options` and `hospital.options` service IDs.
+Remaining conversation routes and other service outcome dispatchers are
+pending; this does not claim every listed route is implemented or visually
+verified.
 
 ## Design goals
 
@@ -43,7 +44,7 @@ known from the US ROM and current route audits are:
 
 | Slot | Source handler | Interaction | Source-backed branch/result shape |
 | ---: | --- | --- | --- |
-| 0 | `0x53AB6` | Stoker | Prompt roots vary with field/run context and signed alternate result; page, A/B/C choice, payment, job, and later-referral paths. |
+| 0 | `0x53AB6` | Stoker | Three-choice root `0xF4AFC` only when FFFC1E bit 0 is clear, scene/event is 2/2, and signed alternate result is 0. `0x1F65A` separately selects arrival, positive package question, or negative package handoff. Arrival `<MORE>` runs E9: rolls 0..79 select the two-choice manager record `0xF4AB4`; 80..99 enter the unresolved effect sequence. |
 | 1 | `0x53B16` | Tarislar City Inn | Requires scene/event 1/1, story bit 0 set, bit 1 clear, alternate result 0. Same-map service; successful 30-nuyen stay opens Hotel Options. |
 | 2 | `0x53B78` | Owlfeather first contact | Scene 6/event 0; bit 1 set and bit 2 clear. Three initial choices, with the brother choice applying command `0x17`. |
 | 3 | `0x53BCC` | Owlfeather search follow-up | Bit 2 set and bit 3 clear. Topic branches and a later/leave path. |
@@ -112,7 +113,11 @@ same panel shell serving separate states: Stoker's opening page at section 03
 frame 000082, three-choice manager menu at 000301, payment/debt prompt at
 000601, and title-only Jump House referral at 000690. The lower choice area is
 replaced between these states. This supports page, menu, and title-only
-presentation states; it does not expose every unchosen ROM branch.
+presentation states; it does not expose every unchosen ROM branch. The 000301
+three-choice panel is the indexed trigger-0 graph rooted at `0xF4AFC`. It is
+not the two-choice `0xF4AB4` manager panel reached after the arrival page's E9
+roll, which has a separate 0..79 route and is covered by a different graph
+entry.
 
 Later longplay frames also show dialogue presentation variants: section 05
 frame 001440 (Max portrait/text page), section 14 frame 006630 (Henry portrait
@@ -310,11 +315,14 @@ conditions, and outcome types must not depend on Qt JSON classes.
    and save/review a complete `actual.bmp`. Keep the status partial wherever
    independent longplay evidence or source work is still missing.
 
-The first JSON graph migration is a vertical slice that exercises more than
-one terminal kind. Larger quest trees such as Stoker, the Salish dialogues,
-and contact services still need conversion. Existing incomplete encounter
-commands, upstream quest producers, and unverified visual branches remain
-explicit work, not filled-in defaults.
+The first JSON graph migration was a vertical slice that exercises more than
+one terminal kind. Stoker's indexed service and signed field-exit prompt now
+use separate JSON graph roots. The remaining Stoker work is source coverage
+for the 80..99 effect callback, saved-game fact restoration, and independent
+visual checks; the Salish dialogues and contact services still need
+conversion. Existing incomplete encounter commands, upstream quest
+producers, and unverified visual branches remain explicit work, not filled-in
+defaults.
 
 ## Implemented condition slice
 
@@ -355,7 +363,7 @@ named `hotel.options`/`hospital.options` service screens. Return, activity,
 other service-screen, and cinematic outcomes still stop at an explicit host
 boundary until their coordinators are source-traced and connected.
 
-Five source-backed graphs exercise that contract:
+Five previously converted graphs and two Stoker roots exercise that contract:
 
 - Gates Undersound trigger 15 performs the ordered trigger/page/effect-flag/
   trigger-tail operations and returns `continue_in_place`, suppressing event
@@ -385,13 +393,25 @@ Five source-backed graphs exercise that contract:
   physical QA walks to the inn and completes the paid path through Hotel
   Options. Independent Genesis visuals remain unavailable.
 
+- Stoker has two JSON roots so the indexed trigger and signed field-exit
+  selector stay separate. The indexed root uses the ROM gate from `0x53AB6`
+  (scene/event 2/2, alternate result 0, FFFC1E bit 0 clear), presents the
+  three-choice `0xF4AFC` menu, and models the room, debt, package handoff,
+  referral, and typed Hotel Options branches. The field-exit root models the
+  signed `0x1F65A` prompt variants, the E9 0..79 two-choice manager route, and
+  an explicit boundary for the unresolved 80..99 effect callback. Lua tests
+  cover the declared branch permutations; Debug CTests exercise both roots
+  through the field presenter. Saved-game restoration, the rare effect
+  handoff, and independent visuals remain open.
+
 The Lua graph tests cover branch fallback, unknown-condition boundaries,
 condition-filtered choices, cursor input, registered action result edges,
 pages, inline prompt text, and every declared successful outcome shape. The
-C++ runtime test advances all five real JSON graphs through their presenter
-and service yields and checks typed outcomes and ordered story effects. Debug
-and Release CTests also exercise them through the field dialogue presenter.
-Full physical route QA and
-independent Genesis comparison remain separate evidence; the reviewed
+C++ runtime test advances the five earlier route graphs through their
+presenter and service yields and checks typed outcomes and ordered story
+effects. Focused Debug CTests exercise both Stoker roots through the field
+dialogue presenter. Debug and Release coverage for all implemented graph
+routes remains in progress. Full physical route QA and independent Genesis
+comparison remain separate evidence; the reviewed
 longplay shows shared panel/menu examples but no matching Gates departure or
 Renraku/Fuchi first-entry sequence or Wylie's Gala Inn interaction.
