@@ -232,6 +232,10 @@ local speakers = {
                 title_key = "gunderson.question.answer",
                 continuation_key = "shared.more",
             },
+            ["vigore-alternate-response"] = {
+                title_key = "gunderson.question.vigore.alternate_response",
+                continuation_key = "shared.more",
+            },
             ["contacts-introduction"] = {
                 title_key = "gunderson.contacts.introduction",
                 continuation_key = "shared.more",
@@ -1078,6 +1082,13 @@ local menu_profiles = {
         },
         vigore_response = {
             title_key = "gunderson.question.vigore.response",
+            choice_label_keys = {
+                another_question = "gunderson.question.option.local",
+                different_subject = "gunderson.information.option.back",
+            },
+        },
+        vigore_alternate_followup = {
+            title_key = "gunderson.question.vigore.alternate_followup",
             choice_label_keys = {
                 another_question = "gunderson.question.option.local",
                 different_subject = "gunderson.information.option.back",

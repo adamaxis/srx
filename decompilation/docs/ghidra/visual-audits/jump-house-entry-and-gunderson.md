@@ -60,9 +60,13 @@ not Genesis goldens.
   descriptor `0x105270` with response text `0x106CD2`. Lua sets
   `game.state.vigore_search_pending` through the typed host fact and presents
   that response/follow-up menu. The bit-1 Errascoe path returns descriptor
-  `0x105288` with text `0x106929`; it is also represented in Lua. The
-  `FFFC27` bit-3 alternate Vigore response and descriptors `0x105244` /
-  `0x105258` remain unimplemented.
+  `0x105288` with text `0x106929`; it is also represented in Lua. When bit 26
+  is clear and `FFFC27` bit 3 is set, the Vigore choice uses descriptor
+  `0x105244` and text `0x1067AE`, continues through the `<MORE>` pointer
+  `0xFE5BF` to descriptor `0x105258`, and presents the title at `0x106878`
+  with the standard another-question/different-subject choices. This alternate
+  path does not set `vigore_search_pending`; the Lua dialogue and question
+  builder preserve that distinction.
 - The contact branch from the information descriptor `0x10517C` uses
   `0x1069ED` for its introduction and `0x105200` for the Decker offer. The
   offer choices are `0x103A7A` (accept) and `0x104817` (different subject);
@@ -117,8 +121,10 @@ Reviewed section-03 captures at frames 001050, 001200, 001350, 001500, 001650,
 - Frames 003000/003150 show the contract text; 003300 shows the generated
   salary offer; 003450 shows the acceptance result. Those work and offer
   screens remain absent from the native flow.
-- The longplay samples do not show the Decker contact branch. The dialogue
-  runtime captures twenty full 320x224 states, and the live field-entry QA
+- The longplay samples do not show either the alternate Vigore branch or the
+  Decker contact branch. The dialogue runtime captures twenty-three full
+  320x224 states, including the alternate Vigore option, response page, and
+  follow-up menu; the live field-entry QA
   captures fourteen more, including Gunderson's root, contact introduction,
   offer, paid page, repeat route, and insufficient-funds page. All fourteen
   field-entry captures match between Debug and Release by SHA-256. The full
@@ -155,7 +161,9 @@ duration. The contact branch has no independent capture in the supplied video.
    answer, follow-up, and alternate-root captures match their selected
    samples. Question frames 002100, 002200, 002550, and 002850 were compared
    directly against the numbered longplay. Debug and Release captures for
-   twenty dialogue states match byte-for-byte. The additional field-entry QA
+   twenty-three dialogue states match byte-for-byte. The alternate Vigore
+   captures were inspected as complete frames, but have no matching longplay
+   sample. The additional field-entry QA
    captures fourteen frames in Debug and Release; each pair matches by
    SHA-256. Contact introduction, offer, paid, repeat, and insufficient pages
    use the shared frame/portrait layout and clear previous choices. Their
@@ -169,7 +177,7 @@ duration. The contact branch has no independent capture in the supplied video.
    remains unverified.
 5. **Is there sound?** Entry/dialogue-specific sound requests and lifetimes
    have not been traced. Do not call these pages silent or audio-correct yet.
-6. **Are surrounding visuals and stale layers correct?** All twenty dialogue
+6. **Are surrounding visuals and stale layers correct?** All twenty-three dialogue
    captures were reviewed as complete 320x224 frames. Each new page replaces
    the previous text/choices using the shared portrait/panel; no old map, HUD,
    buttons, or selector is visible underneath. The entry handoff similarly
@@ -184,7 +192,7 @@ duration. The contact branch has no independent capture in the supplied video.
    nested contact pages replace the old text and choice rows, and the return
    route redraws the alternate parent menu without stale dialogue controls.
    The full-frame review shows no controls drawn over prior controls.
-9. **Was the whole relevant time window reviewed?** The test saves all twenty
+9. **Was the whole relevant time window reviewed?** The test saves all twenty-three
    discrete dialogue states, and the entry route separately covers collision,
    modal dismissal, transition checkpoints, and settled scene. The supplied
    longplay was reviewed at selected 30-fps moments rather than every source
@@ -202,11 +210,11 @@ duration. The contact branch has no independent capture in the supplied video.
   `decompilation/ghidra_conversion/build/conversion/qt/<config>/qt_runtime/field-jump-house-entry-qa/`.
 - `shadowrun_ghidra_field_dialogue_runtime` exercises the entry, root,
   information, topic menu, question chain, conditional Vigore/Errascoe pages,
-  and contact purchase/failure paths through the shared Lua presenter,
-  including the separate 999-nuyen unchanged-wallet case. Debug and Release
-  runs each capture twenty full 320x224 screens under
+  the bit-3 alternate Vigore response and follow-up, and contact
+  purchase/failure paths through the shared Lua presenter, including the
+  separate 999-nuyen unchanged-wallet case. Debug and Release runs each
+  capture twenty-three full 320x224 screens under
   `qt_runtime/jump-house-visual-audit/`.
-- Still required: the FFFC27 bit-3 alternate response; work-contract/quest
-  flow; source
-  audio and duration trace; actor placement and transition timing; and an
-  independent Genesis capture for the Decker contact screens.
+- Still required: work-contract/quest flow; source audio and duration trace;
+  actor placement and transition timing; and independent Genesis captures
+  for the alternate Vigore and Decker contact screens.

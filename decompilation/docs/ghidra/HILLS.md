@@ -343,29 +343,32 @@ page and, after A, resumes its numeric scene-13 route. The separate entry
 portrait `0x121EBC` matches frame 001200; profile `0x121E80` matches
 Gunderson in frame 001500. The initial root, information pages, topic selector,
 dynamic question selector, Johnson answer/follow-up, conditional Vigore and
-Errascoe branches, alternate root, and Decker contact purchase/failure route
-are bound through shared Lua content. ROM action `0x4D` deducts 1,000 nuyen
+Errascoe branches, the FFFC27 bit-3 alternate Vigore response/follow-up,
+alternate root, and Decker contact purchase/failure route are bound through
+shared Lua content. ROM action `0x4D` deducts 1,000 nuyen
 through the host wallet service; exact-1,000 and 999-nuyen cases, repeat
 contact selection, and full-screen confirmation/failure panels have Debug and
 Release QA. The field-entry route continues on the same runtime instance
 through the production Lua interaction and wallet service: it buys the
 contact from a QA-seeded 1,000 nuyen, then rejects the repeat purchase at zero.
 The separate dialogue-runtime test verifies that 999 remains unchanged.
-Twenty full-screen dialogue states and fourteen field-entry captures match
-between Debug and Release; the latter were inspected as complete 320x224
-screens. Question screens were compared against longplay frames 002100,
-002200, 002550, and 002850. The independent longplay has no Decker purchase
-sequence, so those new screens have host regression evidence only. The field
-entry route verifies ordinary collision, modal dismissal, transition, and a
-clean scene-13 redraw.
+Twenty-three full-screen dialogue states and fourteen field-entry captures
+match between Debug and Release; the latter were inspected as complete
+320x224 screens. Question screens were compared against longplay frames
+002100, 002200, 002550, and 002850. The independent longplay has no alternate
+Vigore branch or Decker purchase sequence, so those new screens have host
+regression evidence only. The field entry route verifies ordinary collision,
+modal dismissal, transition, and a clean scene-13 redraw.
 This hill remains partial: Debug/Release QA now walks into scene-13 event 30
 from the clear adjoining lane with ordinary Up input and opens Gunderson's Lua
 menu. Debug/Release ordinary Down QA from Scene 13's ROM profile spawn reaches
 event 0 and completes the null-table fallback into field scene 0. Both builds
-save matching full 320x224 captures and route.tsv. The FFFC27 alternate Vigore
-response, work/quest branches, remaining actor population, audio/timing, and
-independent Decker-branch visuals remain open. The static scene-0 destination
-does not establish a dynamic return map or an exit placement/facing rule. See
+save matching full 320x224 captures and route.tsv. The FFFC27 bit-3 alternate
+Vigore response and follow-up are now covered by the dialogue-runtime CTest
+and matching Debug/Release captures; independent Genesis visuals remain open.
+Work/quest branches, remaining actor population, audio/timing, and independent
+Decker-branch visuals also remain open. The static scene-0 destination does
+not establish a dynamic return map or an exit placement/facing rule. See
 [`Jump House entry and Gunderson audit`](visual-audits/jump-house-entry-and-gunderson.md).
 
 Scene 14's lower event-0 rectangles (records 7 and 8) now have a shared Lua

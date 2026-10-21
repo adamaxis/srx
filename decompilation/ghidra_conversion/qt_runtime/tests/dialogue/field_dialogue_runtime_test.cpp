@@ -860,8 +860,61 @@ int main() {
         return 103;
     }
 
+    // 0x22F90 reuses the Vigore label for a different branch when story bit
+    // 26 is clear and FFFC27 bit 3 is set. ROM descriptors 0x105244 and
+    // 0x105258 are a separate MORE page followed by the repeat-question menu;
+    // this response does not run action 0xE7 or arm the Rat's Nest search.
     gameplay_scripts.set_story_state({
         {"vigore_lead_available", false},
+        {"mr_johnsons_flag_bit_3", true},
+        {"vigore_search_pending", false},
+        {"errascoe_question_available", false},
+    });
+    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().options[1].source_label ==
+                "What do you know about a Johnson named Vigore?") ||
+        !expect(capture_jump_house("question-vigore-alternate-option"))) {
+        std::cerr << "FFFC27 bit 3 did not expose the alternate Vigore topic\n";
+        return 106;
+    }
+    if (!expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(gameplay_scripts.story_state().at(
+                    "vigore_search_pending") == false) ||
+        !expect(runtime.panel().text_segments[0].find("Hear about the new blood") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().has_more) ||
+        !expect(capture_jump_house("question-vigore-alternate-response"))) {
+        std::cerr << "alternate Vigore response did not use ROM page 0x105244\n";
+        return 107;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "pokin' around in the Rat's Nest") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().options[0].source_label ==
+                "I've got another question for you.") ||
+        !expect(gameplay_scripts.story_state().at(
+                    "vigore_search_pending") == false) ||
+        !expect(capture_jump_house("question-vigore-alternate-followup"))) {
+        std::cerr << "alternate Vigore response did not continue to ROM menu "
+                     "0x105258\n";
+        return 108;
+    }
+    runtime.close();
+
+    gameplay_scripts.set_story_state({
+        {"vigore_lead_available", false},
+        {"mr_johnsons_flag_bit_3", false},
         {"vigore_search_pending", false},
         {"errascoe_question_available", true},
     });

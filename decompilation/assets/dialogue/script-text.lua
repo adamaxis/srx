@@ -283,6 +283,7 @@ return {
         ["gunderson.question.answer"] = "Geeze, you are green!||A Johnson is your meal ticket if you're gonna be a shadowrunner.||Let's take me for example.||My name is Gunderson, but you should refer to me as Mr. Johnson, outta respect for my anonymity.",
         ["gunderson.question.followup"] = "I receive jobs from those who don't want to dirty their own hands.||I contract out those same jobs to runners like yourself.||It's a food chain, and you're the little fish.",
         ["gunderson.question.vigore.alternate_response"] = "Hear about the new blood, have you?||He's the new man on the streets.||His contracts seem just a little too good if you ask me.||His profits must be a serious shade of red with the rates he's offering!",
+        ["gunderson.question.vigore.alternate_followup"] = "Hmmmm.  Makes me wonder why he's been pokin' around in the Rat's Nest...|||Hey, are you thinkin' about making a deal with him?||After all we've been through?||That's gratitude!",
         ["gunderson.question.option.local"] = "I've got another question for you.",
         ["gunderson.question.prompt"] = "Hurry up and ask, then.",
         ["gunderson.question.option.vigore"] = "What do you know about a Johnson named Vigore?",

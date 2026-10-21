@@ -51,7 +51,11 @@ end
 
 local function question_choices()
     local choices = { "johnson" }
-    if game.state.vigore_lead_available then
+    local vigore_lead_available = game.state.vigore_lead_available == true
+    local vigore_alternate_response_available =
+        not vigore_lead_available and
+        game.state.mr_johnsons_flag_bit_3 == true
+    if vigore_lead_available or vigore_alternate_response_available then
         choices[#choices + 1] = "vigore"
     end
     if game.state.errascoe_question_available then
@@ -77,11 +81,22 @@ local function answer_questions()
                 return
             end
         elseif question == "vigore" then
-            -- ROM action 0xE7 sets the pending Rat's Nest search bit and
-            -- returns the follow-up prompt at 0x105270.
-            game.state.vigore_search_pending = true
-            if another_question_menu("vigore_response") ==
-               "different_subject" then
+            local response_menu
+            if game.state.vigore_lead_available == true then
+                -- ROM action 0xE7 sets the pending Rat's Nest search bit and
+                -- returns the follow-up prompt at 0x105270.
+                game.state.vigore_search_pending = true
+                response_menu = "vigore_response"
+            elseif game.state.mr_johnsons_flag_bit_3 == true then
+                -- When FFFC1E bit 26 is clear, FFFC27 bit 3 selects the
+                -- alternate response page at 0x105244, then the question
+                -- menu at 0x105258. It does not arm the Rat's Nest search.
+                game.ui.say("vigore-alternate-response")
+                response_menu = "vigore_alternate_followup"
+            else
+                return
+            end
+            if another_question_menu(response_menu) == "different_subject" then
                 return
             end
         elseif question == "errascoe" then
