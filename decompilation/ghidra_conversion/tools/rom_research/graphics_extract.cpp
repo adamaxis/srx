@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <initializer_list>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <map>
 #include <set>
@@ -705,12 +706,12 @@ public:
     explicit DialogueTextJsonReader(const std::string_view source)
         : source_(source) {}
 
-    std::map<std::string, std::string> read() {
+    std::vector<std::pair<std::string, std::string>> read() {
         skip_whitespace();
         expect('{');
         bool schema_found = false;
         bool texts_found = false;
-        std::map<std::string, std::string> texts;
+        std::vector<std::pair<std::string, std::string>> texts;
         skip_whitespace();
         while (peek() != '}') {
             const auto key = read_string();
@@ -894,8 +895,9 @@ private:
         return value;
     }
 
-    std::map<std::string, std::string> read_texts() {
-        std::map<std::string, std::string> result;
+    std::vector<std::pair<std::string, std::string>> read_texts() {
+        std::vector<std::pair<std::string, std::string>> result;
+        std::unordered_set<std::string> keys;
         expect('{');
         skip_whitespace();
         if (peek() == '}') {
@@ -908,9 +910,10 @@ private:
             expect(':');
             skip_whitespace();
             auto value = read_string();
-            if (!result.emplace(std::move(key), std::move(value)).second) {
+            if (!keys.insert(key).second) {
                 fail("duplicate text key");
             }
+            result.emplace_back(std::move(key), std::move(value));
             if (result.size() > 4096U) {
                 fail("text entry limit exceeded");
             }
@@ -928,7 +931,7 @@ private:
     std::size_t position_ = 0U;
 };
 
-std::map<std::string, std::string> read_dialogue_text_json(
+std::vector<std::pair<std::string, std::string>> read_dialogue_text_json(
     const std::filesystem::path& path) {
     std::error_code error;
     if (!std::filesystem::exists(path, error)) {
@@ -1088,6 +1091,7 @@ void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
         {"salish.owlfeather.page.status_more", 0x0F6A3FU},
         {"salish.owlfeather.page.status_topic", 0x0F6AF5U},
         {"salish.owlfeather.page.simple_task", 0x0F6BA2U},
+        {"salish.owlfeather.page.search_followup", 0x0F7190U},
         {"salish.owlfeather.page.task_result", 0x0F6CE8U},
         {"salish.owlfeather.page.return_offer", 0x0F6DB9U},
         {"salish.owlfeather.page.return_arrival", 0x0F6EB4U},
@@ -1129,8 +1133,8 @@ void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
         {"salish.red_buffalo.page.branch_16", 0x0F414EU},
         {"salish.red_buffalo.page.branch_17", 0x0F41A1U},
         {"salish.red_buffalo.page.branch_18", 0x0F4241U},
-        {"salish.red_buffalo.page.branch_19", 0x0F7152U},
-        {"salish.red_buffalo.page.branch_20", 0x0F4298U},
+        {"salish.owlfeather.page.farewell_more", 0x0F7152U},
+        {"salish.owlfeather.page.farewell", 0x0F4298U},
         {"salish.red_buffalo.page.branch_21", 0x0F8AB9U},
         {"salish.red_buffalo.page.branch_22", 0x0F8A88U},
         {"salish.red_buffalo.option.no_business", 0x0FBD5AU},
@@ -2113,8 +2117,47 @@ void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
     // catalog. New ROM-derived values replace old values by stable key while
     // keys owned by another importer remain available for the next pass.
     auto merged_texts = read_dialogue_text_json(path);
+    // These two pointers were previously given non-semantic Red Buffalo
+    // branch names even though they are Owlfeather's source farewell pages.
+    merged_texts.erase(
+        std::remove_if(merged_texts.begin(), merged_texts.end(),
+                       [](const auto& entry) {
+                           return entry.first ==
+                                      "salish.red_buffalo.page.branch_19" ||
+                                  entry.first ==
+                                      "salish.red_buffalo.page.branch_20";
+                       }),
+        merged_texts.end());
     for (const auto& [key, value] : generated_texts) {
-        merged_texts[key] = value;
+        const auto existing = std::find_if(
+            merged_texts.begin(), merged_texts.end(),
+            [&key](const auto& entry) { return entry.first == key; });
+        if (existing != merged_texts.end()) {
+            existing->second = value;
+            continue;
+        }
+
+        // Keep authored/imported catalog sections in their existing order.
+        // Insert a new key after its current two-part namespace when possible
+        // so a normal asset refresh does not alphabetize the entire document.
+        const auto namespace_end = key.find('.', key.find('.') + 1U);
+        const auto group = namespace_end == std::string::npos
+                               ? key
+                               : key.substr(0U, namespace_end);
+        auto insertion = merged_texts.end();
+        for (auto candidate = merged_texts.begin();
+             candidate != merged_texts.end(); ++candidate) {
+            const auto candidate_end = candidate->first.find(
+                '.', candidate->first.find('.') + 1U);
+            const auto candidate_group =
+                candidate_end == std::string::npos
+                    ? candidate->first
+                    : candidate->first.substr(0U, candidate_end);
+            if (candidate_group == group) {
+                insertion = std::next(candidate);
+            }
+        }
+        merged_texts.insert(insertion, {key, value});
     }
 
     std::ofstream output(path, std::ios::binary | std::ios::trunc);
