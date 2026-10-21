@@ -18,6 +18,23 @@ paths.
 These references establish that the traversal viewport and cyberdeck menu are
 separate screens.
 
+### System Map comparison (2026-10-21)
+
+I drove the active Qt Debug executable with the frame debugger through the
+ordinary Start-menu/deck route, selected System 15 in Pick System, waited
+through the 20-VBlank jack-in, then opened Map and Show Map. The full
+320x224 live capture at
+`build/conversion/qt/debug/matrix-live-system15-system-map-shown.bmp` was
+inspected beside independent Section 15 frame `004520`. The 14x10 grid bounds,
+cell spacing, six labels, and visible node positions align. The longplay has
+one extra revealed cell, consistent with its progressed map-memory state; this
+is not evidence of a different topology or a full-state match. Debug and
+Release `shadowrun_ghidra_gameplay_script_menu_route` CTests both pass and
+write the route's full-frame `qt_runtime/matrix-map-route-qa/actual.bmp`.
+The map screen is independently checked for geometry and visible cell
+placement; the separate live traversal viewport, actor/IC heartbeat, and
+field-return sequence remain open.
+
 Section 21 frames `004620` and `004680` are not traversal captures: the first
 is a Datastore action panel, and the second is black during a transition.
 The Sub-Processor Unit appears as a small green model at Section 21 frame

@@ -92,7 +92,12 @@ system entries, and clears them on a system change or fresh bootstrap. Analyze
 and node-action knowledge updates preserve the low color nibble. This transient
 RAM is not added to save data. Lua Debug/Release tests cover same-system
 retention, mode selection from a restored rank, and system-change clearing;
-the host route test covers the typed round trip.
+the host route test covers the typed round trip. The live frame-debugger route
+to System 15's System Map also matches independent Section 15 longplay frame
+`004520`: the full 320x224 grid, cell spacing, labels, and visible node
+positions align. The longplay shows one additional revealed cell from its
+prior play state, so this checks screen geometry and observed cells rather
+than asserting equal map memory.
 Cyberdeck chrome now uses the live Matrix palette override: ROM `0x17F80` /
 `0x566E2` copies sixteen words from `0xE2EBA` into CRAM line 1, replacing the
 initial line from `0xE2E5A`. The prior extractor used that initial line, which
