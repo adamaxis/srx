@@ -23,15 +23,22 @@ Undersound service paths remain open.
 
 `gameplay/world/entities/downtown_site_04_gates_undersound/links.tsv` carries
 the default event-table row and a higher-priority, story-gated service row.
-`building.lua` resolves the service task from that entity data. The
-`gates_undersound.lua` module checks the named location and field event,
-updates the source facts, and returns `field_return`. The native host opens
-the script task and owns the modal return lifecycle.
+`building.lua` resolves the service task from that entity data.
+`gates_undersound.lua` is a small route adapter into the JSON graph. The graph
+rechecks its named location/event/story precondition, begins trigger 15, shows
+the ROM-backed page, applies the two ordered FFFC30 writes, finishes the
+trigger, and returns typed `continue_in_place`. The generic field presenter
+owns page input; the outcome dispatcher suppresses the event-table activity
+and resumes the current field scene.
 
 ## Validation
 
 - `gates_undersound_tests.lua` checks both story-bit gates, alternate result,
-  one-shot flag changes, and the same-map return result.
+  one-shot flag changes, and the typed same-map outcome.
+- `dialogue_graph_tests.lua` covers reusable pages, choices, branches, actions,
+  typed outcomes, and unknown-condition boundaries. The C++ runtime and field
+  dialogue tests advance this graph through its page and verify the typed
+  presenter outcome.
 - `shadowrun_ghidra_conversion_qt_field_gates_undersound_qa` starts at
   `(0x3A00,0x0A00)`, enters record 45 with ordinary Up input, and verifies the
   event, title-service page, story bit 15, FFFC30 bits 26/27, and same-scene

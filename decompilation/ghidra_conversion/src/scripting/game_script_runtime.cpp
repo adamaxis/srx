@@ -14,6 +14,7 @@ extern "C" {
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <initializer_list>
 #include <iterator>
 #include <limits>
 #include <set>
@@ -339,6 +340,124 @@ bool valid_identifier(const std::string_view value) {
                       character == '_' || character == '-' ||
                       character == '.';
            });
+}
+
+bool outcome_has_only_fields(
+    lua_State* state, const int table_index,
+    const std::initializer_list<std::string_view> allowed_fields) {
+    const auto absolute_index = lua_absindex(state, table_index);
+    lua_pushnil(state);
+    while (lua_next(state, absolute_index) != 0) {
+        if (lua_type(state, -2) != LUA_TSTRING) {
+            lua_pop(state, 2);
+            return false;
+        }
+        std::size_t length = 0U;
+        const auto* key = lua_tolstring(state, -2, &length);
+        const std::string_view name = key == nullptr
+                                          ? std::string_view{}
+                                          : std::string_view(key, length);
+        const bool allowed = std::find(allowed_fields.begin(),
+                                       allowed_fields.end(), name) !=
+                             allowed_fields.end();
+        lua_pop(state, 1);
+        if (!allowed) {
+            lua_pop(state, 1);
+            return false;
+        }
+    }
+    return true;
+}
+
+std::optional<DialogueOutcome> read_dialogue_outcome(
+    lua_State* state, const int table_index) {
+    if (!lua_istable(state, table_index)) {
+        return std::nullopt;
+    }
+    const auto absolute_index = lua_absindex(state, table_index);
+    std::string type_name;
+    if (!read_field_string(state, absolute_index, "type", type_name)) {
+        return std::nullopt;
+    }
+    const auto type = dialogue_outcome_type_from_name(type_name);
+    if (!type.has_value()) {
+        return std::nullopt;
+    }
+
+    DialogueOutcome result{};
+    result.type = *type;
+    std::uint32_t scene_id = 0U;
+    switch (*type) {
+    case DialogueOutcomeType::continue_in_place:
+    case DialogueOutcomeType::resume_source_route:
+        if (!outcome_has_only_fields(state, absolute_index, {"type"})) {
+            return std::nullopt;
+        }
+        break;
+    case DialogueOutcomeType::return_to_origin:
+        if (!outcome_has_only_fields(state, absolute_index,
+                                     {"type", "returnPoint",
+                                      "returnPolicy"}) ||
+            !read_field_string(state, absolute_index, "returnPoint",
+                               result.destination_id) ||
+            !read_optional_field_string(state, absolute_index,
+                                        "returnPolicy",
+                                        result.return_policy)) {
+            return std::nullopt;
+        }
+        break;
+    case DialogueOutcomeType::enter_field_scene:
+        if (!outcome_has_only_fields(state, absolute_index,
+                                     {"type", "sceneId", "arrivalId"}) ||
+            !read_field_integer(state, absolute_index, "sceneId", 55U,
+                                scene_id) ||
+            !read_field_string(state, absolute_index, "arrivalId",
+                               result.arrival_id)) {
+            return std::nullopt;
+        }
+        result.scene_id = static_cast<std::uint8_t>(scene_id);
+        break;
+    case DialogueOutcomeType::enter_activity:
+        if (!outcome_has_only_fields(state, absolute_index,
+                                     {"type", "activityId"}) ||
+            !read_field_string(state, absolute_index, "activityId",
+                               result.destination_id)) {
+            return std::nullopt;
+        }
+        break;
+    case DialogueOutcomeType::open_service:
+        if (!outcome_has_only_fields(state, absolute_index,
+                                     {"type", "serviceId",
+                                      "returnPolicy"}) ||
+            !read_field_string(state, absolute_index, "serviceId",
+                               result.destination_id) ||
+            !read_field_string(state, absolute_index, "returnPolicy",
+                               result.return_policy)) {
+            return std::nullopt;
+        }
+        break;
+    case DialogueOutcomeType::play_cinematic:
+        if (!outcome_has_only_fields(state, absolute_index,
+                                     {"type", "cinematicId",
+                                      "returnPolicy"}) ||
+            !read_field_string(state, absolute_index, "cinematicId",
+                               result.destination_id) ||
+            !read_field_string(state, absolute_index, "returnPolicy",
+                               result.return_policy)) {
+            return std::nullopt;
+        }
+        break;
+    case DialogueOutcomeType::source_boundary:
+        if (!outcome_has_only_fields(state, absolute_index,
+                                     {"type", "reason"}) ||
+            !read_field_text(state, absolute_index, "reason",
+                             result.reason, 512U) ||
+            result.reason.empty()) {
+            return std::nullopt;
+        }
+        break;
+    }
+    return result;
 }
 
 bool valid_lua_module_name(const std::string_view value) {
@@ -3730,6 +3849,12 @@ struct GameScriptRuntime::Impl {
                     "gameplay script returned an invalid choice id");
             }
             step.result_id = std::move(result_id);
+        } else if (result_count == 1 && lua_istable(task_state, -1)) {
+            step.dialogue_outcome = read_dialogue_outcome(task_state, -1);
+            if (!step.dialogue_outcome.has_value()) {
+                return failed_task(
+                    "gameplay task returned an invalid typed dialogue outcome");
+            }
         } else if (result_count > 1 ||
                    (result_count == 1 &&
                     lua_type(task_state, -1) != LUA_TBOOLEAN &&
@@ -4652,6 +4777,7 @@ GameScriptRuntime::resolve_field_location_route(
     route.return_anchor = return_anchor;
     route.return_facing = return_facing;
     std::string resource_override_name;
+    std::string entry_continue_outcome_type_name;
     if (!read_optional_string("entry_dialogue_module",
                               route.entry_dialogue_module) ||
         !read_optional_string("entry_dialogue_function",
@@ -4668,6 +4794,8 @@ GameScriptRuntime::resolve_field_location_route(
                               route.entry_event_id) ||
         !read_optional_string("entry_continue_result_id",
                               route.entry_continue_result_id) ||
+        !read_optional_string("entry_continue_outcome_type",
+                              entry_continue_outcome_type_name) ||
         !read_optional_string("entry_resource_override",
                               resource_override_name) ||
         !read_optional_string("boundary_reason", route.boundary_reason) ||
@@ -4679,6 +4807,15 @@ GameScriptRuntime::resolve_field_location_route(
                             route.indexed_title_service) ||
         !read_location_task("field_exit_prompt", route.field_exit_prompt)) {
         return fail("building.lua route has invalid entry dialogue fields");
+    }
+    if (!entry_continue_outcome_type_name.empty()) {
+        route.entry_continue_outcome_type = dialogue_outcome_type_from_name(
+            entry_continue_outcome_type_name);
+        if (!route.entry_continue_outcome_type.has_value() ||
+            !route.entry_continue_result_id.empty()) {
+            return fail(
+                "building.lua route has an invalid or conflicting entry outcome");
+        }
     }
     if (resource_override_name.empty() || resource_override_name == "none" ||
         resource_override_name == "-") {
@@ -4746,7 +4883,8 @@ GameScriptRuntime::resolve_field_location_route(
         !route.entry_text_profile.empty() ||
         !route.entry_speaker_id.empty() ||
         !route.entry_event_id.empty() ||
-        !route.entry_continue_result_id.empty();
+        !route.entry_continue_result_id.empty() ||
+        route.entry_continue_outcome_type.has_value();
     if (has_entry_dialogue &&
         ((route.kind != FieldScriptRouteKind::area_event &&
           route.kind != FieldScriptRouteKind::dialogue) ||
@@ -4769,7 +4907,8 @@ GameScriptRuntime::resolve_field_location_route(
         (route.kind != FieldScriptRouteKind::area_event ||
          destination_mode != WorldActivityMode::resource_activity ||
          route.entry_dialogue_module.empty() ||
-         route.entry_continue_result_id.empty())) {
+         (route.entry_continue_result_id.empty() &&
+          !route.entry_continue_outcome_type.has_value()))) {
         return fail(
             "resource entry override needs an accepted resource-activity dialogue");
     }

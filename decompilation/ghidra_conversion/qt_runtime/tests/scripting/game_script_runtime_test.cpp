@@ -346,11 +346,117 @@ bool verify_package_delivery_field_events(
         "package run did not collect at origin, pay once at destination, and clear");
 }
 
+bool verify_dialogue_graph_outcomes(
+    const std::filesystem::path& script_directory,
+    const std::filesystem::path& dialogue_text) {
+    using namespace shadowrun::ghidra_conversion::scripting;
+
+    GameScriptRuntime scripts;
+    if (!scripts.load_package(script_directory, dialogue_text)) {
+        std::cerr << scripts.failure() << '\n';
+        return expect(false, "dialogue graph JSON package did not load");
+    }
+
+    scripts.set_location_context(
+        "building", "downtown_site_04_gates_undersound",
+        "gates.undersound", "gates_undersound_narrator");
+    scripts.set_field_mode_context(ScriptFieldModeContext{0U, 3U, 0});
+    scripts.set_story_state({
+        {"story_flag_bit_11", true},
+        {"story_flag_bit_15", false},
+        {"field_mode_effect_flag_bit_26", true},
+        {"field_mode_effect_flag_bit_27", false},
+    });
+    auto task = scripts.start_task(
+        "gates_undersound", "present_ogami_departure");
+    if (!expect(task.status == ScriptTaskStep::Status::
+                                   awaiting_native_operation &&
+                    task.operation.has_value() &&
+                    task.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    task.operation->dialogue.has_value() &&
+                    task.operation->dialogue->event_id == "entry",
+                "Gates graph did not present its source page")) {
+        std::cerr << "Gates task status=" << static_cast<int>(task.status)
+                  << " failure=" << scripts.failure();
+        if (task.dialogue_outcome.has_value()) {
+            std::cerr << " outcome=" << dialogue_outcome_type_name(
+                             task.dialogue_outcome->type)
+                      << " reason=" << task.dialogue_outcome->reason;
+        }
+        std::cerr << '\n';
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    const auto gates_state = scripts.story_state();
+    if (!expect(task.status == ScriptTaskStep::Status::completed &&
+                    task.dialogue_outcome.has_value() &&
+                    task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place &&
+                    gates_state.at("story_trigger_active_15") &&
+                    gates_state.at("story_flag_bit_15") &&
+                    !gates_state.at("field_mode_effect_flag_bit_26") &&
+                    gates_state.at("field_mode_effect_flag_bit_27"),
+                "Gates graph lost its ordered effects or typed outcome")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+
+    scripts.set_story_state({});
+    task = scripts.start_task(
+        "gates_undersound", "present_ogami_departure");
+    if (!expect(task.status == ScriptTaskStep::Status::completed &&
+                    task.dialogue_outcome.has_value() &&
+                    task.dialogue_outcome->type ==
+                        DialogueOutcomeType::source_boundary &&
+                    task.dialogue_outcome->reason.find(
+                        "condition_unknown") != std::string::npos,
+                "unknown graph gate did not return a typed source boundary")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+
+    scripts.set_location_context(
+        "building", "renraku_offices_frontage", "renraku.offices",
+        "renraku_offices_narrator");
+    scripts.set_field_mode_context(ScriptFieldModeContext{0U, 6U, 0});
+    scripts.set_story_state({
+        {"story_flag_bit_16", true},
+        {"story_flag_bit_12", false},
+    });
+    task = scripts.start_task(
+        "renraku_offices", "present_map_overlay_entry");
+    if (!expect(task.status == ScriptTaskStep::Status::
+                                   awaiting_native_operation &&
+                    task.operation.has_value() &&
+                    task.operation->type ==
+                        ScriptNativeOperation::Type::ui_say,
+                "Renraku graph did not present its source page")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    const auto renraku_state = scripts.story_state();
+    return expect(task.status == ScriptTaskStep::Status::completed &&
+                      task.dialogue_outcome.has_value() &&
+                      task.dialogue_outcome->type ==
+                          DialogueOutcomeType::resume_source_route &&
+                      renraku_state.at("story_trigger_active_12") &&
+                      !renraku_state.at("story_flag_bit_12"),
+                  "Renraku graph did not resume the selected source route");
+}
+
 } // namespace
 
 int main() {
     using namespace shadowrun::ghidra_conversion;
     using namespace shadowrun::ghidra_conversion::scripting;
+
+    if (!verify_dialogue_graph_outcomes(
+            SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
+            std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
+                "dialogue" / "script-text.json")) {
+        return 1;
+    }
 
     GameScriptRuntime scripts;
     if (!expect(scripts.load_package(
@@ -2059,8 +2165,9 @@ int main() {
                     "renraku_offices" &&
                 renraku_office_first_visit->entry_dialogue_function ==
                     "present_map_overlay_entry" &&
-                renraku_office_first_visit->entry_continue_result_id ==
-                    "enter_scene_35" &&
+                renraku_office_first_visit->entry_continue_outcome_type ==
+                    std::optional<DialogueOutcomeType>{
+                        DialogueOutcomeType::resume_source_route} &&
                 renraku_office_first_visit->entry_resource_override ==
                     FieldLocationResourceEntryOverride::
                         index_five_marker_zero &&

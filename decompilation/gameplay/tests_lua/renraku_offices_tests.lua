@@ -95,6 +95,13 @@ end
 game.content.speakers = load_dialogue_catalog("speakers")
 game.content.contacts = load_dialogue_catalog("contacts")
 game.content.menus = load_dialogue_catalog("menus")
+game.content.conditions = load_dialogue_catalog("conditions")
+game.content.conversations = {
+    gates_undersound = load_dialogue_catalog(
+        "conversations/gates_undersound"),
+    renraku_offices = load_dialogue_catalog(
+        "conversations/renraku_offices"),
+}
 
 local Dialogue = require("dialogue")
 local RenrakuOffices = require("renraku_offices")
@@ -114,7 +121,8 @@ assert(route.kind == "area_event" and route.area_event_target == 35)
 assert(route.entry_dialogue_module == "renraku_offices" and
        route.entry_dialogue_function == "present_map_overlay_entry" and
        route.entry_continue_result_id == "enter_scene_35")
-assert(RenrakuOffices.present_map_overlay_entry() == "enter_scene_35")
+local entry_outcome = RenrakuOffices.present_map_overlay_entry()
+assert(entry_outcome.type == "resume_source_route")
 assert(game.last_dialogue_event == "entry" and
        game.state.story_trigger_active_12 == true and
        game.state.story_flag_bit_12 == false)
@@ -129,7 +137,9 @@ local repeat_route = Building.resolve_field_location_route(context)
 assert(repeat_route.kind == "area_event" and
        repeat_route.area_event_target == 35 and
        repeat_route.entry_dialogue_module == nil)
-assert(RenrakuOffices.present_map_overlay_entry() == "denied")
+local repeat_outcome = RenrakuOffices.present_map_overlay_entry()
+assert(repeat_outcome.type == "source_boundary" and
+       repeat_outcome.reason:match("precondition:not_satisfied") ~= nil)
 
 game.state.story_flag_bit_12 = false
 game.state.story_flag_bit_16 = false
@@ -137,7 +147,9 @@ local pre_ito_route = Building.resolve_field_location_route(context)
 assert(pre_ito_route.kind == "area_event" and
        pre_ito_route.area_event_target == 35 and
        pre_ito_route.entry_dialogue_module == nil)
-assert(RenrakuOffices.present_map_overlay_entry() == "denied")
+local pre_ito_outcome = RenrakuOffices.present_map_overlay_entry()
+assert(pre_ito_outcome.type == "source_boundary" and
+       pre_ito_outcome.reason:match("precondition:not_satisfied") ~= nil)
 
 game.state.story_flag_bit_16 = true
 context.alternate_result = 1

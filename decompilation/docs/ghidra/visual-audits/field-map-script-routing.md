@@ -161,7 +161,7 @@ produce an explicit source boundary instead of silently falling through to
 the ROM event table. Entry passages use a separate `entry_condition_id` and
 named Lua task/location fields. The host preserves the typed destination
 during the modal and consumes it only when Lua returns the declared
-`entry_continue_result_id`. Jump House now uses this shared path: service 22's
+`entry_continue_result_id` or typed `entry_continue_outcome_type`. Jump House now uses this shared path: service 22's
 clear `FFF0D5` branch opens its ROM-derived Lua passage and then resumes scene
 13. Its ordinary-input QA checks the dialogue result and the clean destination
 redraw. Lua route tests cover story-fact and run-state variants, priority
@@ -176,10 +176,12 @@ events to their map tables. Five
 Scene-5 sites select resource-activity destination 35. The four Weapon's
 World, Wire-Masters, Merlin's Lore, and Microtronics links remain numeric-only;
 Renraku Offices now has a conditional title-service-12 arrival page when
-story bit 16 is set, bit 12 is clear, and alternate result is zero. Penumbra
+story bit 16 is set, bit 12 is clear, and alternate result is zero. Its JSON
+graph returns `resume_source_route`; the host then resumes the already selected
+activity-35 destination. Penumbra
 Fuchi similarly gets its title-service-14 cyber-heart entry page when bit 25
 is set, bit 14 is clear, and alternate result is zero. Both preserve their
-ROM event-table destinations (35 and 21) after the entry task returns.
+ROM event-table destinations (35 and 21) after their respective entry tasks.
 Gates Undersound's title service 15 now uses the same link mechanism: after
 bit 11 is set and bit 15 is clear, it shows the one-page Ogami departure text,
 clears FFFC30 bit 26, sets bit 27, marks bit 15, and returns to scene 0 even

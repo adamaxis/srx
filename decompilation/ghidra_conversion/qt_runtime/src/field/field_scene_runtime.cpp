@@ -15757,7 +15757,49 @@ void FieldSceneRuntime::advance_frame() {
             dialogue_input_locked
                 ? std::uint16_t{0U}
                 : field_controller_sample_state_.events);
-        if (result == FieldDialogueAdvanceResult::returned_to_field) {
+        if (result == FieldDialogueAdvanceResult::continue_in_place) {
+            const auto outcome = field_dialogue_.take_gameplay_task_outcome();
+            if (!outcome.has_value() ||
+                outcome->type !=
+                    scripting::DialogueOutcomeType::continue_in_place) {
+                source_boundary("field.dialogue.in_place_outcome_missing");
+                return;
+            }
+            hospital_service_session_active_ = false;
+            field_mode_entry_transition_pending_ = false;
+            field_mode_entry_destination_scene_.reset();
+            field_mode_entry_run_target_actor_group_.reset();
+            source_boundary("field.dialogue.continued_in_place");
+            advance_field_scene_transition_after_modal();
+            begin_field_modal_return_transition();
+        } else if (result ==
+                   FieldDialogueAdvanceResult::resume_source_route) {
+            const auto outcome = field_dialogue_.take_gameplay_task_outcome();
+            const bool outcome_matches_route =
+                active_field_script_route_.has_value() &&
+                active_field_script_route_->entry_continue_outcome_type &&
+                outcome.has_value() &&
+                outcome->type ==
+                    *active_field_script_route_->
+                         entry_continue_outcome_type;
+            if (!field_mode_entry_transition_pending_ ||
+                !outcome_matches_route) {
+                field_mode_entry_transition_pending_ = false;
+                field_mode_entry_destination_scene_.reset();
+                field_mode_entry_run_target_actor_group_.reset();
+                source_boundary(
+                    "field.entry.typed_outcome_did_not_match_route");
+                advance_field_scene_transition_after_modal();
+                begin_field_modal_return_transition();
+            } else {
+                source_boundary("field.entry.source_route_resumed");
+                if (!resume_field_mode_entry_route()) {
+                    source_boundary(
+                        "field.entry.area_event_route_resume_failed");
+                }
+                begin_field_modal_return_transition();
+            }
+        } else if (result == FieldDialogueAdvanceResult::returned_to_field) {
             hospital_service_session_active_ = false;
             source_boundary("field.dialogue.returned_to_field");
             if (field_mode_entry_transition_pending_) {

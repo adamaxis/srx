@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadowrun_ghidra/field/field_map_event_system_conversion.hpp"
+#include "shadowrun_ghidra/scripting/dialogue_outcome.hpp"
 
 #include <array>
 #include <filesystem>
@@ -1384,6 +1385,7 @@ struct ScriptTaskStep {
     Status status = Status::failed;
     std::optional<ScriptNativeOperation> operation;
     std::optional<std::string> result_id;
+    std::optional<DialogueOutcome> dialogue_outcome;
 };
 
 // Lua modules use the global game facade. game.state reads and writes the

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "renraku_offices.map_overlay_entry": {
+      "entryNode": "begin_trigger",
+      "precondition": "renraku_offices.map_overlay_entry_available",
+      "speakerId": "renraku_offices_narrator",
+      "textProfile": "renraku.offices",
+      "provenance": {
+        "romAddresses": ["0x54076", "0x110A2A", "0x1195CF", "0x1F5CA"],
+        "longplayEvidence": "The reviewed longplay provides shared dialogue presentation context, but no matching first-entry branch."
+      },
+      "nodes": {
+        "begin_trigger": {
+          "type": "action",
+          "actionId": "story.begin_trigger",
+          "arguments": { "triggerId": 12 },
+          "next": "entry_page",
+          "evidence": "0x53A78 publishes trigger 12 to FFDD64 before the indexed handler."
+        },
+        "entry_page": {
+          "type": "page",
+          "eventId": "entry",
+          "next": "resume_activity_route",
+          "evidence": "The handler loads root 0x110A2A; its first page begins at 0x1195CF."
+        },
+        "resume_activity_route": {
+          "type": "terminal",
+          "outcome": { "type": "resume_source_route" }
+        }
+      }
+    }
+  }
+}

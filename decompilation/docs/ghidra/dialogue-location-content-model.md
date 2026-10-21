@@ -2,10 +2,11 @@
 
 Status: design, source inventory, and staged implementation. The generated
 text catalog, speaker/menu/contact catalogs, and location condition catalog
-are JSON-backed. All 87 current entity link rows now reference named JSON
-conditions where needed. The conversation graph engine, typed terminal
-outcome bridge, and entity-owned JSON interaction catalogs remain pending.
-This does not claim every listed route is implemented or visually verified.
+are JSON-backed. All 87 current entity link rows reference named JSON
+conditions where needed. The Lua graph engine and typed outcome bridge now
+drive Gates Undersound's same-map service and Renraku's entry page. Remaining
+conversation routes and most host outcome dispatchers are pending; this does
+not claim every listed route is implemented or visually verified.
 
 ## Design goals
 
@@ -305,12 +306,11 @@ conditions, and outcome types must not depend on Qt JSON classes.
    and save/review a complete `actual.bmp`. Keep the status partial wherever
    independent longplay evidence or source work is still missing.
 
-The first JSON graph migration should be a vertical slice that exercises more
-than one terminal kind (for example an in-place service and an entry page that
-resumes the source route). That validates the outcome contract before moving
-larger quest trees such as Stoker, the Salish dialogues, and the contact
-services. Existing incomplete encounter commands, upstream quest producers,
-and unverified visual branches remain explicit work, not filled-in defaults.
+The first JSON graph migration is a vertical slice that exercises more than
+one terminal kind. Larger quest trees such as Stoker, the Salish dialogues,
+and contact services still need conversion. Existing incomplete encounter
+commands, upstream quest producers, and unverified visual branches remain
+explicit work, not filled-in defaults.
 
 ## Implemented condition slice
 
@@ -328,5 +328,44 @@ It returns `true`, `false`, or `unknown`. Unknown facts and unresolved
 same-priority routes become typed `source_boundary` route results, so they do
 not select a default event-table destination. Known false conditions still
 allow the source default route. The condition evaluator and the source-route
-boundary are covered by focused Lua and C++ tests; full conversation-graph and
-typed terminal-outcome behavior remains the next implementation slice.
+boundary are covered by focused Lua and C++ tests.
+
+## Implemented graph and outcome slice
+
+`dialogue_graph.lua` is a Lua-owned, object-oriented graph runner. Its bounded
+catalog validates node and edge references, named condition references,
+speaker/text bindings, ROM provenance, input contracts, and terminal payloads.
+Its session handles pages, ordered and condition-filtered choices, A/B/C and
+yes/no input, cursor-list input, ordered condition branches, registered named
+actions, and typed terminal outcomes. The host adapter yields the current
+page/menu to the existing presenter and returns controller facts. Effects are
+resolved by `dialogue_actions.lua`; JSON cannot call arbitrary Lua code.
+
+The C++ script boundary parses a discriminated `DialogueOutcome` value:
+`continue_in_place`, `resume_source_route`, `return_to_origin`,
+`enter_field_scene`, `enter_activity`, `open_service`, `play_cinematic`, and a
+diagnostic `source_boundary`. Route data can declare the expected typed result
+for a pre-entry page. The field presenter currently dispatches
+`continue_in_place` and `resume_source_route`; other successful outcome types
+stop at an explicit host boundary until their return, travel, service, and
+cinematic coordinators are source-traced and connected.
+
+Two source-backed graphs exercise that contract:
+
+- Gates Undersound trigger 15 performs the ordered trigger/page/effect-flag/
+  trigger-tail operations and returns `continue_in_place`, suppressing event
+  table row 3's resource activity 21.
+- Renraku title service 12 performs its trigger/page and returns
+  `resume_source_route`; the route link expects that type before loading the
+  already selected activity 35. Its old `enter_scene_35` result string has
+  been removed from this route.
+
+The Lua graph tests cover branch fallback, unknown-condition boundaries,
+condition-filtered choices, cursor input, registered action result edges,
+pages, and every declared successful outcome shape. The C++ runtime test
+advances both real JSON graphs through their page yield and checks their typed
+outcomes and ordered story effects. Debug CTest also exercises those graphs
+through the field dialogue presenter. Full physical route QA and independent
+Genesis comparison remain separate evidence; the reviewed longplay shows
+shared panel/menu examples but no matching Gates departure or Renraku
+first-entry sequence.

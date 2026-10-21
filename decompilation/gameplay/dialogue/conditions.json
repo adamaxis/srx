@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "conditions": {
+    "gates_undersound.ogami_departure_available": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "building" },
+          { "fact": "location.id", "op": "eq", "value": "downtown_site_04_gates_undersound" },
+          { "fact": "field.event_code", "op": "eq", "value": 3 },
+          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "story.story_flag_bit_11", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_15", "op": "eq", "value": false }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x54222", "0x53A78"],
+        "scope": "indexed_title_service_gate"
+      }
+    },
+    "renraku_offices.map_overlay_entry_available": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "building" },
+          { "fact": "location.id", "op": "eq", "value": "renraku_offices_frontage" },
+          { "fact": "field.event_code", "op": "eq", "value": 6 },
+          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "story.story_flag_bit_16", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_12", "op": "eq", "value": false }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x54076", "0x53A78"],
+        "scope": "indexed_title_service_gate"
+      }
+    }
+  }
+}

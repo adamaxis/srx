@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/scripting/dialogue_outcome.hpp"
 #include "shadowrun_ghidra/world/world_activity_mode.hpp"
 
 #include <array>
@@ -178,6 +179,8 @@ struct FieldScriptRoute {
     std::string entry_speaker_id;
     std::string entry_event_id;
     std::string entry_continue_result_id;
+    std::optional<scripting::DialogueOutcomeType>
+        entry_continue_outcome_type;
     FieldLocationResourceEntryOverride entry_resource_override =
         FieldLocationResourceEntryOverride::none;
     std::string boundary_reason;

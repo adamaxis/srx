@@ -352,6 +352,7 @@ bool FieldDialogueRuntime::start_script_task(
     const std::string_view module, const std::string_view function,
     const StokerMotelPromptId prompt) {
     last_gameplay_task_result_id_.reset();
+    last_gameplay_task_outcome_.reset();
     if (script_runtime_ == nullptr) {
         return open_source_boundary(
             "dialogue script has no gameplay script runtime");
@@ -366,6 +367,37 @@ bool FieldDialogueRuntime::start_script_task(
                 : script_runtime_->failure());
     }
     return present_script_operation(*task.operation, prompt);
+}
+
+std::optional<FieldDialogueAdvanceResult>
+FieldDialogueRuntime::resolve_typed_outcome(
+    const scripting::ScriptTaskStep& task) {
+    if (!task.dialogue_outcome.has_value()) {
+        return std::nullopt;
+    }
+    last_gameplay_task_outcome_ = task.dialogue_outcome;
+    close();
+    switch (task.dialogue_outcome->type) {
+    case scripting::DialogueOutcomeType::continue_in_place:
+        return FieldDialogueAdvanceResult::continue_in_place;
+    case scripting::DialogueOutcomeType::resume_source_route:
+        return FieldDialogueAdvanceResult::resume_source_route;
+    case scripting::DialogueOutcomeType::source_boundary:
+        open_source_boundary(task.dialogue_outcome->reason);
+        return FieldDialogueAdvanceResult::source_boundary;
+    case scripting::DialogueOutcomeType::return_to_origin:
+    case scripting::DialogueOutcomeType::enter_field_scene:
+    case scripting::DialogueOutcomeType::enter_activity:
+    case scripting::DialogueOutcomeType::open_service:
+    case scripting::DialogueOutcomeType::play_cinematic:
+        open_source_boundary(
+            "field dialogue outcome is not dispatched yet: " +
+            std::string(scripting::dialogue_outcome_type_name(
+                task.dialogue_outcome->type)));
+        return FieldDialogueAdvanceResult::source_boundary;
+    }
+    open_source_boundary("field dialogue returned an unknown typed outcome");
+    return FieldDialogueAdvanceResult::source_boundary;
 }
 
 bool FieldDialogueRuntime::present_script_operation(
@@ -766,6 +798,10 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         active_script_operation_.reset();
         if (task.status == scripting::ScriptTaskStep::Status::completed) {
             last_gameplay_task_result_id_ = task.result_id;
+            if (const auto outcome = resolve_typed_outcome(task);
+                outcome.has_value()) {
+                return *outcome;
+            }
             const bool hotel_options_requested =
                 task.result_id == std::optional<std::string>{"hotel-options"};
             const bool hospital_options_requested = task.result_id ==
@@ -908,6 +944,10 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         active_script_menu_.reset();
         hosted_choice_list_ = false;
         last_gameplay_task_result_id_ = task.result_id;
+        if (const auto outcome = resolve_typed_outcome(task);
+            outcome.has_value()) {
+            return *outcome;
+        }
         const bool returned_from_activity =
             task.result_id ==
             std::optional<std::string>{"return_from_world_activity"};
@@ -1158,6 +1198,10 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         active_script_menu_.reset();
         hosted_choice_list_ = false;
         last_gameplay_task_result_id_ = task.result_id;
+        if (const auto outcome = resolve_typed_outcome(task);
+            outcome.has_value()) {
+            return *outcome;
+        }
         const bool hotel_options_requested =
             task.result_id == std::optional<std::string>{"hotel-options"};
         const bool hospital_options_requested =
@@ -1409,6 +1453,13 @@ FieldDialogueRuntime::take_gameplay_task_result() {
     auto result = std::move(last_gameplay_task_result_id_);
     last_gameplay_task_result_id_.reset();
     return result;
+}
+
+std::optional<scripting::DialogueOutcome>
+FieldDialogueRuntime::take_gameplay_task_outcome() noexcept {
+    auto outcome = std::move(last_gameplay_task_outcome_);
+    last_gameplay_task_outcome_.reset();
+    return outcome;
 }
 
 bool FieldDialogueRuntime::uses_field_console_menu_layout() const noexcept {

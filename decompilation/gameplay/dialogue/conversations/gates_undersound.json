@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "gates_undersound.ogami_departure": {
+      "entryNode": "begin_trigger",
+      "precondition": "gates_undersound.ogami_departure_available",
+      "speakerId": "gates_undersound_narrator",
+      "textProfile": "gates.undersound",
+      "provenance": {
+        "romAddresses": ["0x54222", "0x1111DE", "0x113D46", "0x2196C"],
+        "longplayEvidence": "The reviewed longplay shows the shared page and menu shell, but no matching Ogami departure branch."
+      },
+      "nodes": {
+        "begin_trigger": {
+          "type": "action",
+          "actionId": "story.begin_trigger",
+          "arguments": { "triggerId": 15 },
+          "next": "departure_page",
+          "evidence": "0x53A78 publishes trigger 15 to FFDD64 before the indexed handler."
+        },
+        "departure_page": {
+          "type": "page",
+          "eventId": "entry",
+          "next": "clear_effect_flag_26",
+          "evidence": "The no-choice root at 0x1111DE displays its single page at 0x113D46."
+        },
+        "clear_effect_flag_26": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 26, "value": false },
+          "next": "set_effect_flag_27",
+          "evidence": "The service clears FFFC30 bit 26 after the page returns."
+        },
+        "set_effect_flag_27": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 27, "value": true },
+          "next": "finish_trigger",
+          "evidence": "The service sets FFFC30 bit 27 after the page returns."
+        },
+        "finish_trigger": {
+          "type": "action",
+          "actionId": "story.finish_trigger",
+          "arguments": { "triggerId": 15 },
+          "next": "continue_in_place",
+          "evidence": "The indexed handler calls 0x2196C at 0x5427A after dialogue."
+        },
+        "continue_in_place": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
+    }
+  }
+}

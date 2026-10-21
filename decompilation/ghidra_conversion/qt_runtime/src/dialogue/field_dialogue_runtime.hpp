@@ -25,6 +25,8 @@ enum class FieldDialogueAdvanceResult {
     waiting_for_controller,
     prompt_advanced,
     returned_to_field,
+    continue_in_place,
+    resume_source_route,
     returned_from_world_activity,
     taxi_selector_requested,
     phone_passage_requested,
@@ -119,6 +121,8 @@ public:
     std::optional<std::uint8_t> take_matrix_entry_system_id() noexcept;
     std::optional<std::uint8_t> take_matrix_entry_node_id() noexcept;
     std::optional<std::string> take_gameplay_task_result();
+    std::optional<scripting::DialogueOutcome>
+    take_gameplay_task_outcome() noexcept;
     bool uses_field_console_menu_layout() const noexcept;
     std::string_view field_console_menu_title() const noexcept;
     bool uses_hospital_menu_layout() const noexcept;
@@ -140,6 +144,8 @@ private:
     bool start_script_task(std::string_view module,
                            std::string_view function,
                            StokerMotelPromptId prompt);
+    std::optional<FieldDialogueAdvanceResult> resolve_typed_outcome(
+        const scripting::ScriptTaskStep& task);
     bool present_script_operation(
         const scripting::ScriptNativeOperation& operation,
         StokerMotelPromptId prompt, std::size_t service_depth = 0U);
@@ -165,6 +171,7 @@ private:
     std::optional<std::uint8_t> pending_matrix_entry_system_id_;
     std::optional<std::uint8_t> pending_matrix_entry_node_id_;
     std::optional<std::string> last_gameplay_task_result_id_;
+    std::optional<scripting::DialogueOutcome> last_gameplay_task_outcome_;
     StokerMotelArrivalCommandCallbacks arrival_command_callbacks_;
     std::function<std::optional<StokerMotelRoomPaymentOutcome>()>
         room_payment_callback_;

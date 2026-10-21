@@ -154,6 +154,65 @@ int main() {
         {"cyberspace_datajack_present", true},
     });
     runtime.set_script_runtime(&gameplay_scripts);
+
+    gameplay_scripts.set_story_state({
+        {"story_flag_bit_11", true},
+        {"story_flag_bit_15", false},
+        {"field_mode_effect_flag_bit_26", true},
+        {"field_mode_effect_flag_bit_27", false},
+    });
+    gameplay_scripts.set_location_context(
+        "building", "downtown_site_04_gates_undersound",
+        "gates.undersound", "gates_undersound_narrator");
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{0U, 3U, 0});
+    if (!expect(runtime.open_gameplay_task(
+                    "gates_undersound", "present_ogami_departure")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::continue_in_place)) {
+        std::cerr << "Gates graph did not complete as continue_in_place\n";
+        return 128;
+    }
+    const auto gates_outcome = runtime.take_gameplay_task_outcome();
+    if (!expect(gates_outcome.has_value() &&
+                gates_outcome->type ==
+                    scripting::DialogueOutcomeType::continue_in_place)) {
+        std::cerr << "Gates graph lost its typed outcome at the presenter\n";
+        return 129;
+    }
+
+    gameplay_scripts.set_story_state({
+        {"story_flag_bit_16", true},
+        {"story_flag_bit_12", false},
+    });
+    gameplay_scripts.set_location_context(
+        "building", "renraku_offices_frontage", "renraku.offices",
+        "renraku_offices_narrator");
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{0U, 6U, 0});
+    if (!expect(runtime.open_gameplay_task(
+                    "renraku_offices", "present_map_overlay_entry")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::resume_source_route)) {
+        std::cerr << "Renraku graph did not complete as resume_source_route\n";
+        return 130;
+    }
+    const auto renraku_outcome = runtime.take_gameplay_task_outcome();
+    if (!expect(renraku_outcome.has_value() &&
+                renraku_outcome->type ==
+                    scripting::DialogueOutcomeType::resume_source_route)) {
+        std::cerr << "Renraku graph lost its typed outcome at the presenter\n";
+        return 131;
+    }
+
+    gameplay_scripts.set_story_state({
+        {"vigore_lead_available", false},
+        {"vigore_search_pending", false},
+        {"errascoe_question_available", false},
+        {"cyberspace_deck_present", true},
+        {"cyberspace_mpcp_functional", true},
+        {"cyberspace_datajack_present", true},
+    });
     gameplay_scripts.set_location_context(
         "activity", "resource_scene", "field.activity", "", "", 26U);
     if (!expect(runtime.open_gameplay_task(

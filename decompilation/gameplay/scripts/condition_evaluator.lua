@@ -27,6 +27,7 @@ function FactProvider.new(options)
     options = options or {}
     return setmetatable({
         state = options.state,
+        location = options.location,
         run_registry = options.run_registry,
     }, FactProvider)
 end
@@ -43,11 +44,23 @@ function FactProvider:read(fact_name, context)
     end
 
     if fact_name:sub(1, 6) == "field." then
-        if type(context) ~= "table" then return unknown_fact end
         local key = fact_name:sub(7)
-        local value = context[key]
+        local source = type(context) == "table" and context or nil
+        if source == nil and type(game) == "table" then
+            source = game.field
+        end
+        if type(source) ~= "table" then return unknown_fact end
+        local value = source[key]
         if value == nil then return unknown_fact end
         return value
+    end
+
+    if fact_name:sub(1, 9) == "location." then
+        local location = self.location
+        if location == nil and type(game) == "table" then
+            location = game.location
+        end
+        return state_value(location, fact_name:sub(10))
     end
 
     local registry = self.run_registry
