@@ -1473,6 +1473,40 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                   QString::fromStdString(route.top_title));
     fields.insert(QStringLiteral("menu.route.text"),
                   QString::fromStdString(route.top_text));
+    fields.insert(QStringLiteral("menu.route.matrix.phase"),
+                  QString::fromStdString(route.top_matrix_phase));
+    fields.insert(QStringLiteral("menu.route.matrix.pending_action"),
+                  QString::fromStdString(route.top_matrix_pending_action));
+    if (route.top_matrix_in_alert.has_value()) {
+        fields.insert(QStringLiteral("menu.route.matrix.in_alert"),
+                      *route.top_matrix_in_alert);
+    }
+    fields.insert(QStringLiteral("menu.route.matrix.traversal.present"),
+                  route.top_matrix_traversal_view.has_value());
+    if (route.top_matrix_traversal_view.has_value()) {
+        const auto& traversal = *route.top_matrix_traversal_view;
+        fields.insert(
+            QStringLiteral("menu.route.matrix.traversal.world_effect_mode"),
+                      traversal.world_effect_mode);
+        fields.insert(
+            QStringLiteral("menu.route.matrix.traversal.world_effect_phase"),
+                      traversal.world_effect_phase);
+        fields.insert(
+            QStringLiteral("menu.route.matrix.traversal.entry_phase"),
+                      traversal.world_entry_phase);
+        fields.insert(
+            QStringLiteral("menu.route.matrix.traversal.setup_vblanks"),
+                      traversal.world_entry_setup_vblanks);
+        fields.insert(
+            QStringLiteral("menu.route.matrix.traversal.sequence_vblanks"),
+                      traversal.world_entry_sequence_vblanks);
+        fields.insert(
+            QStringLiteral("menu.route.matrix.traversal.sequence_duration"),
+                      traversal.world_entry_sequence_duration);
+        fields.insert(
+            QStringLiteral("menu.route.matrix.traversal.published_frame"),
+                      traversal.world_entry_published_frame);
+    }
     const auto insert_route_optional = [&fields](
         const QString& key, const std::optional<int> value) {
         if (value.has_value()) {

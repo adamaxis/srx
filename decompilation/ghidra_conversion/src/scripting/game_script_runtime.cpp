@@ -2075,6 +2075,22 @@ struct GameScriptRuntime::Impl {
                         read_optional(matrix_state_index, "previous_node");
                     menu_route_state.top_matrix_alert =
                         read_optional(matrix_state_index, "alert");
+                    lua_getfield(state, matrix_state_index, "phase");
+                    (void)read_string_allow_empty(
+                        state, -1, menu_route_state.top_matrix_phase);
+                    lua_pop(state, 1);
+                    lua_getfield(state, matrix_state_index,
+                                 "pending_action");
+                    (void)read_string_allow_empty(
+                        state, -1,
+                        menu_route_state.top_matrix_pending_action);
+                    lua_pop(state, 1);
+                    lua_getfield(state, matrix_state_index, "in_alert");
+                    if (lua_isboolean(state, -1)) {
+                        menu_route_state.top_matrix_in_alert =
+                            lua_toboolean(state, -1) != 0;
+                    }
+                    lua_pop(state, 1);
                 }
                 lua_pop(state, 1);
                 lua_getfield(state, screen_state_index,

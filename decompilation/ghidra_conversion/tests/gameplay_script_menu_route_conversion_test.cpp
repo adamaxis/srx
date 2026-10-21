@@ -1173,16 +1173,23 @@ int main() {
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kMatrixNodeAction &&
               route.top_option_labels == std::vector<std::string>{"Enter System"} &&
-              route.top_matrix_state_present && route.top_matrix_node == 0,
+              route.top_matrix_state_present && route.top_matrix_node == 0 &&
+              route.top_matrix_phase == "node" &&
+              route.top_matrix_in_alert == std::optional<bool>{false},
           "the controlled node-action route receives the active Lua Matrix state",
           failures);
     runtime.advance_menu_route(0x4000U); // Select Enter System.
     route = runtime.menu_route_snapshot();
-    check(route.top_screen == kMatrixNodeAction && route.top_title == "Enter System",
+    check(route.top_screen == kMatrixNodeAction &&
+              route.top_title == "Enter System" &&
+              route.top_matrix_phase == "link_select" &&
+              route.top_matrix_pending_action == "enter_system",
           "Enter System selects links without moving immediately", failures);
     runtime.advance_menu_route(0x4000U); // Confirm first ROM link.
     route = runtime.menu_route_snapshot();
     check(route.top_matrix_node == 4 && route.top_title == "CPU" &&
+              route.top_matrix_phase == "node" &&
+              route.top_matrix_pending_action.empty() &&
               route.top_option_labels == std::vector<std::string>{
                   "Go To Node", "Cancel Alert", "Crash System"},
           "link confirmation enters the source CPU node and its action list",
