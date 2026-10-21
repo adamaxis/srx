@@ -728,8 +728,16 @@ int main(int argc, char** argv) {
         }
         return 19;
     }
-    if (runtime.advance_controller_events(0x4000U) !=
-            FieldDialogueAdvanceResult::phone_passage_requested ||
+    const auto passage_advance = runtime.advance_controller_events(0x4000U);
+    const auto passage_outcome = runtime.take_gameplay_task_outcome();
+    if (passage_advance !=
+            FieldDialogueAdvanceResult::enter_field_scene_requested ||
+        !expect(passage_outcome.has_value() &&
+                    passage_outcome->type ==
+                        scripting::DialogueOutcomeType::enter_field_scene &&
+                    passage_outcome->scene_id == 6U &&
+                    passage_outcome->arrival_id == "rom_default",
+                "passage acknowledgement lost its typed scene-6 destination") ||
         !expect(!runtime.open(),
                 "passage acknowledgement left Sharkey's old panel on screen")) {
         std::cerr << runtime.failure() << '\n';

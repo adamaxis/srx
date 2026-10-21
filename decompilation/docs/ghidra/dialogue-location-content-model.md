@@ -77,7 +77,7 @@ are:
 | Continue in place | Gates, Red Buffalo, Owlfeather services | Close the interaction and keep the current scene/event context. Do not follow a raw event-table destination suppressed by the source handler. |
 | Resume pending route | Fuchi and Renraku entry pages | Close the page, then continue the already selected event-table route into the source activity. |
 | Return through the saved entrance | Hotel/building checkout and activity exit | Restore the saved origin scene, camera/door return point, and source-derived heading policy. |
-| Enter a named field scene | Sharkey travel; the Tarislar Tomb offer | Begin the typed scene transition with its destination and arrival state. |
+| Enter a named field scene | Sharkey's paid travel offers; the Tarislar Tomb offer | Validate the typed destination against the completed source service, then start the shared field-scene transition with its named ROM arrival policy. |
 | Enter an activity route | Office entries and other event-table destinations | Use the pending source route and its resource/activity entry setup. |
 | Open a host service | Hotel Options, Hospital Options, shops, taxi, Matrix | Hand off to a separately owned service screen and carry an explicit return policy. This is a yield/handoff, not an implicit dialogue return. |
 | Play a cinematic/sequence | Extensible outcome only | The type may be supported, but no surveyed building/phone dialogue terminal has been proven to play a movie. Do not assign one without a ROM trace. |
@@ -347,9 +347,10 @@ The C++ script boundary parses a discriminated `DialogueOutcome` value:
 `enter_field_scene`, `enter_activity`, `open_service`, `play_cinematic`, and a
 diagnostic `source_boundary`. Route data can declare the expected typed result
 for a pre-entry page. The field presenter currently dispatches
-`continue_in_place` and `resume_source_route`; other successful outcome types
-stop at an explicit host boundary until their return, travel, service, and
-cinematic coordinators are source-traced and connected.
+`continue_in_place`, `resume_source_route`, and the Sharkey travel form of
+`enter_field_scene`. Return, activity, service-screen, and cinematic outcomes
+still stop at an explicit host boundary until their coordinators are
+source-traced and connected.
 
 Three source-backed graphs exercise that contract:
 

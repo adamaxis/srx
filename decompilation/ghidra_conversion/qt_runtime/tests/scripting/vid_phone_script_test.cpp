@@ -302,8 +302,13 @@ bool test_sharkey_service_tree(GameScriptRuntime& scripts,
     }
     task = scripts.complete_native_operation(true);
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
-                    task.result_id == "field_phone_passage_requested",
-                "passage acknowledgement did not return a typed map request")) {
+                    task.dialogue_outcome.has_value() &&
+                    task.dialogue_outcome->type ==
+                        DialogueOutcomeType::enter_field_scene &&
+                    task.dialogue_outcome->scene_id == 9U &&
+                    task.dialogue_outcome->arrival_id == "rom_default" &&
+                    !task.result_id.has_value(),
+                "passage acknowledgement did not return a typed scene request")) {
         return false;
     }
 

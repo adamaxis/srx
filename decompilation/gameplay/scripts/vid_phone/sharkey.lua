@@ -37,7 +37,10 @@ local function passage(menu_id, passage_id)
         return "services"
     elseif result == "passage_requested" then
         say("passage_result")
-        return "field_phone_passage_requested"
+        return Passages.enter_field_scene_outcome(passage_id) or {
+            type = "source_boundary",
+            reason = "vid_phone:passage_destination_unresolved",
+        }
     elseif result == "unavailable" then
         return "vid_phone_service_state_unresolved"
     end

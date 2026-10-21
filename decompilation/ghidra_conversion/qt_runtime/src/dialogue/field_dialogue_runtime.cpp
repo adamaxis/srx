@@ -382,11 +382,12 @@ FieldDialogueRuntime::resolve_typed_outcome(
         return FieldDialogueAdvanceResult::continue_in_place;
     case scripting::DialogueOutcomeType::resume_source_route:
         return FieldDialogueAdvanceResult::resume_source_route;
+    case scripting::DialogueOutcomeType::enter_field_scene:
+        return FieldDialogueAdvanceResult::enter_field_scene_requested;
     case scripting::DialogueOutcomeType::source_boundary:
         open_source_boundary(task.dialogue_outcome->reason);
         return FieldDialogueAdvanceResult::source_boundary;
     case scripting::DialogueOutcomeType::return_to_origin:
-    case scripting::DialogueOutcomeType::enter_field_scene:
     case scripting::DialogueOutcomeType::enter_activity:
     case scripting::DialogueOutcomeType::open_service:
     case scripting::DialogueOutcomeType::play_cinematic:
@@ -809,8 +810,6 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             const bool medicine_lodge_wise_one_followup = task.result_id ==
                 std::optional<std::string>{
                     "medicine_lodge_wise_one_followup"};
-            const bool phone_passage_requested = task.result_id ==
-                std::optional<std::string>{"field_phone_passage_requested"};
             close();
             if (task.result_id == std::optional<std::string>{
                                     "tabatha_state_unavailable"}) {
@@ -853,9 +852,6 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
                 open_source_boundary(
                     "Wylie's Gala Inn room payment requires a resolved credstick balance");
                 return FieldDialogueAdvanceResult::source_boundary;
-            }
-            if (phone_passage_requested) {
-                return FieldDialogueAdvanceResult::phone_passage_requested;
             }
             if (medicine_lodge_wise_one_followup) {
                 return FieldDialogueAdvanceResult::
@@ -956,8 +952,6 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             std::optional<std::string>{"cyberspace_not_converted"};
         const bool taxi_selector_requested = task.result_id ==
             std::optional<std::string>{"taxi_selector_requested"};
-        const bool phone_passage_requested = task.result_id ==
-            std::optional<std::string>{"field_phone_passage_requested"};
         const bool hospital_options_requested = task.result_id ==
             std::optional<std::string>{"hospital-options"};
         const bool hospital_medical_attention_requested = task.result_id ==
@@ -1053,9 +1047,6 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         }
         if (taxi_selector_requested) {
             return FieldDialogueAdvanceResult::taxi_selector_requested;
-        }
-        if (phone_passage_requested) {
-            return FieldDialogueAdvanceResult::phone_passage_requested;
         }
         if (hospital_options_requested) {
             return FieldDialogueAdvanceResult::hospital_options_requested;
@@ -1214,8 +1205,6 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             std::optional<std::string>{"tabatha_state_unavailable"};
         const bool tabatha_ambush_unconverted = task.result_id ==
             std::optional<std::string>{"tabatha_ambush_unconverted"};
-        const bool phone_passage_requested = task.result_id ==
-            std::optional<std::string>{"field_phone_passage_requested"};
         close();
         if (phone_services_unconverted) {
             open_source_boundary(
@@ -1243,9 +1232,6 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             open_source_boundary(
                 "Wylie's Gala Inn room payment requires a resolved credstick balance");
             return FieldDialogueAdvanceResult::source_boundary;
-        }
-        if (phone_passage_requested) {
-            return FieldDialogueAdvanceResult::phone_passage_requested;
         }
         if (hotel_options_requested) {
             return FieldDialogueAdvanceResult::hotel_options_requested;

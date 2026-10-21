@@ -15945,9 +15945,21 @@ void FieldSceneRuntime::advance_frame() {
                 source_boundary("field.taxi.selector_requested");
             }
         } else if (result ==
-                   FieldDialogueAdvanceResult::phone_passage_requested) {
-            if (!field_phone_pending_destination_.has_value()) {
-                source_boundary("field.vid_phone.passage_destination_missing");
+                   FieldDialogueAdvanceResult::enter_field_scene_requested) {
+            const auto outcome =
+                field_dialogue_.take_gameplay_task_outcome();
+            const bool outcome_matches_service =
+                outcome.has_value() &&
+                outcome->type ==
+                    scripting::DialogueOutcomeType::enter_field_scene &&
+                outcome->arrival_id == "rom_default" &&
+                field_phone_pending_destination_.has_value() &&
+                outcome->scene_id ==
+                    *field_phone_pending_destination_;
+            if (!outcome_matches_service) {
+                field_phone_pending_destination_.reset();
+                source_boundary(
+                    "field.vid_phone.typed_scene_outcome_mismatch");
             } else if (field_elevator_scene_transition_.begin_fade_out()) {
                 field_phone_transition_active_ = true;
                 source_boundary(
