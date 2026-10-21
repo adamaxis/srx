@@ -590,15 +590,25 @@ Other model IDs and the source packet-to-visible projection remain open.
 
 The world-model palette selection is dynamic. `0x176EA` initially copies the
 four-line block at `0xE2E3A` into the palette shadow, and the world-model SAT
-attributes select palette line 0. During metadata refresh, `0x19DF2` reads the
-current node's security color from `FF1105`, multiplies it by `0x20`, and calls
-`0x19DD8`; `0x566D8` then copies 16 colors from `0xE2D52 + color*0x20` to
-`FFD87E`, replacing line 0. Live Matrix data uses security-color IDs 1..4,
-with source rows at `0xE2D72`, `0xE2D92`, `0xE2DB2`, and `0xE2DD2`. The earlier
-extractor incorrectly baked the initial gray palette `0xE2E3A` into every
-model. It now imports each of the six model patterns in all four active
-security colors, and the presenter selects the asset from Lua's typed
-`palette_theme`. The floor remains on its independent blue palette.
+attributes select palette line 0. During metadata refresh, `0x19DF2` checks
+the selected node's knowledge rank through `0x17C3C`. At rank zero it leaves
+the palette offset at zero; otherwise it reads the node's security color from
+`FF1105` and multiplies it by `0x20`. `0x566D8` then copies 16 colors from
+`0xE2D52 + offset` to `FFD87E`, replacing line 0. The row at `0xE2D52` is the
+neutral gray palette for an unknown node; live Matrix security-color IDs 1..4
+use rows `0xE2D72`, `0xE2D92`, `0xE2DB2`, and `0xE2DD2`. The earlier extractor
+incorrectly baked the initial gray palette `0xE2E3A` into every model. It now
+imports each of the six model patterns with the neutral row and all four
+security colors, and the presenter selects the row from Lua's typed
+`palette_theme` using the same knowledge gate. The floor remains on its
+independent blue palette.
+
+Section 15 frame `004800` shows `SPU ???` and `Ice Unknown`, so its model uses
+the rank-zero row even though the underlying node has a security color in the
+system record. The Lua rules test now checks row zero for that state and the
+security-color row after node knowledge is restored. A full-frame Active Alert
+comparison remains open; this change resolves the model palette selection,
+not the center effect or perspective placement.
 
 I reopened the independent Section 21 frames at full resolution. Frame `004830`
 shows the Sub-Processor Unit's faceted model in green; the old host comparison
@@ -616,9 +626,10 @@ entry streams, and same-state world-effect comparisons remain open.
 The mode selector at `0x1A908` calls `0x19B40`; the selector reads the current
 node's `+0x13` IC-combo code and applies `0xE31A7` under the `FFDF84` and
 `FFF0A0` gates. Lua's imported node data feeds that selector into the
-traversal view, and the presenter draws its extracted phase. The active-alert
-longplay state still needs a matched capture in the runtime. The asset match
-alone does not prove perspective placement or complete scene timing. All six
+traversal view, and the presenter draws its extracted phase. The rank-zero
+model palette now follows the source gate, but a matched full-frame Active
+Alert capture is still needed to validate the center effect and perspective
+placement. The asset match alone does not prove complete scene timing. All six
 source model identities are mapped; independent longplay comparisons currently
 anchor models 0 and 2. The other four models still lack independent visible-node
 anchors, and full projection behavior remains open. This corrects the earlier

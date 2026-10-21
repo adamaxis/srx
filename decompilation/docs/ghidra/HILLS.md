@@ -97,15 +97,16 @@ independent frame extents within two pixels at every anchor; the named image's
 facet shape and the source resampler remain unresolved. Both Matrix traversal
 CTests pass in Debug and Release.
 
-All six source model identities are mapped. The active importer emits all
-four ROM-selected security-color palettes for each model: `0x19DF2` reads
-`FF1105`, and `0x566D8` replaces CRAM line 0 from the matching `0xE2D52`
-record. Section 21 frames `004620` and `004680` are a node-action panel and
-black transition, not model-size samples. The System 2 SPU entry projection
-has independent object-bound checks across the source sequence, but the
-complete packet-to-screen conversion, facet appearance, and other model entry
-profiles remain open. Section 15 frame `004440` also anchors the settled
-System 1/node 0 Green-4 System Access model 0. Lua projects its primary
+All six source model identities are mapped. The active importer emits the
+neutral unknown-node palette plus all four ROM-selected security-color
+palettes for each model: `0x19DF2` selects row zero while the node rank is
+unknown, then reads `FF1105` for known nodes; `0x566D8` replaces CRAM line 0
+from the matching `0xE2D52` record. Section 21 frames `004620` and `004680`
+are a node-action panel and black transition, not model-size samples. The
+System 2 SPU entry projection has independent object-bound checks across the
+source sequence. Complete packet-to-screen conversion, facet appearance, and
+other model entry profiles remain open. Section 15 frame `004440` also anchors
+the settled System 1/node 0 Green-4 System Access model 0. Lua projects its primary
 179-VBlank endpoint from its 112x64 source canvas; Debug/Release QA matches
 the independent green bounds and largest-component silhouette (IoU 0.858).
 The host uses Medic-1 while the reference uses Analyze-2, so this compares
