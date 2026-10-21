@@ -216,20 +216,25 @@ The field initializer sets `+0x16=1`, selecting the partial-group layout
 builder at `0x26172` for this route; `0x2611C` is the full-group path. The
 upload is fixed at `0xE00` bytes for a 14x8 model or `0xF00` bytes for a 12x10
 model. `0x26172` builds 64 or 80 destination row-step words at `+0xAAC`.
-Handler 0 (`0x24E44`) clears `+0x24`, and the active `0x266E4` setup does not
-set it. In `0x24F28`, the vertical count is split into a first chunk of at most
-32 rows. With `+0x24` clear, the `0x25C84` branch returns after that chunk;
-each pass therefore consumes `min(+0x12, 32)` row-step words. The 386/410
-accumulator totals are not row-write counts and do not overrun the 64/80-entry
-table on this path. `+0x30` is copied to `+0x3C` and decremented per row, but
-its `0xFFxx` start does not stop this 32-row chunk. The routine then compares
-`+0x12` with the model's 64/80-pixel height through `+0x88`; for the final
-entry totals that remainder is negative, so `0x26074` returns without clearing
-the destination rows beyond the chunk. The upload buffer was initialized from
-the model first, so the final visible pattern combines the transformed chunk
-with preserved buffer contents. The complete transformed pixel pattern and
-entry scaling remain unresolved; do not treat the accumulator values as Qt
-dimensions or reproduce the source's packed-pixel routine in the host.
+
+The previous row-limit interpretation is withdrawn. Handler 0 (`0x24E44`)
+clears `+0x24`, and neither `0x266E4` nor the caller before `0x2679E` sets it.
+In `0x24F28`, a clear `+0x24` branches around the 32-row clamp at `0x25094`
+and takes the return path at `0x25C84`; that clamp and its continuation are
+used when `+0x24` is set. The old claim that the active route consumes
+`min(+0x12, 32)` rows and preserves the remaining initialized image was based
+on reading those branches backwards.
+
+The active initializer also sets `+0x14=1`. The `0x24F28` setup path clears
+`width_tiles * height_tiles * 32` bytes through `+0x1C`; at this call the
+destination is `FF8700`, so the output model buffer is cleared before the
+packed-pixel transform. The earlier statement that the remaining rows retain
+the model image is withdrawn. The compact stream's `+0x12` accumulator reaches
+410 while `0x26172` writes 80 row-step words. The exact interaction among this
+count, the `+0x30/+0x3C` loop limit, row-table reads, and destination addressing
+is unresolved. The transformed frame and source-derived screen placement stay
+open; the measured Lua canvas remains a visual calibration, not a ROM
+resampler implementation.
 
 The sprite path has separate transition and regular descriptor behavior.
 `0x1D1F4` and `0x1D280` set `FFDF8C` while the world-sequence reveal uses
