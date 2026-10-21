@@ -743,6 +743,25 @@ renderer output. The new captures were opened at full resolution; the footer
 and bottom scanlines remain present. This fixes the floor palette mismatch
 only; the complete viewport remains partial.
 
+### Settled System Access model extent calibration (2026-10-21)
+
+Section 15 frame `004440` shows the Green-4 System Access Network. The imported
+Matrix data identifies it as System 1/node 0, model 0, security color 2. Before
+calibration, the host's fallback placement produced green-dominant object
+bounds `(106,50,107x59)`; the independent frame measures `(108,50,105x57)`.
+The primary entry profile now records that measured settled endpoint at 179
+source VBlanks and the source model's 112x64 canvas. Lua projects it to
+`(106,48,110x62)`, which produces the same green-dominant bounds as the
+reference. Debug/Release traversal QA compares the largest connected green
+silhouette in the 120x76 model crop; its mask IoU is `0.858`.
+
+The capture and reference use different selected program labels (host
+Medic-1, reference Analyze-2), so this is a model-crop comparison, not a
+full-frame match. It calibrates only the settled Green-4 model canvas; other
+System Access colors and the primary stream's intermediate projection remain
+open. The host still scales the extracted model image rather than reproducing
+the ROM packed-pixel resampler or proving facet-level color fidelity.
+
 ## Status
 
 The System 2 SPU projection is visually calibrated, not derived from the ROM's

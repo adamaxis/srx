@@ -24291,30 +24291,32 @@ int main(int argc, char** argv) {
                     }
                     return bounds;
                 };
-                const auto green_model_mask = [](const QImage& image) {
-                    constexpr int kLeft = 110;
-                    constexpr int kTop = 45;
-                    constexpr int kWidth = 100;
-                    constexpr int kHeight = 67;
+                const auto green_model_mask = [](
+                    const QImage& image, const QRect& crop) {
                     struct Mask {
                         std::vector<std::uint8_t> pixels;
                         std::size_t count = 0U;
                     };
+                    if (crop.isEmpty() || !image.rect().contains(crop)) {
+                        return Mask{};
+                    }
+                    const int width = crop.width();
+                    const int height = crop.height();
                     Mask mask{std::vector<std::uint8_t>(
-                                  static_cast<std::size_t>(kWidth * kHeight),
+                                  static_cast<std::size_t>(width * height),
                                   0U),
                               0U};
                     std::vector<std::uint8_t> visited(mask.pixels.size(), 0U);
                     std::vector<std::size_t> largest;
-                    for (int y = 0; y < kHeight; ++y) {
-                        for (int x = 0; x < kWidth; ++x) {
+                    for (int y = 0; y < height; ++y) {
+                        for (int x = 0; x < width; ++x) {
                             const auto color = image.pixelColor(
-                                kLeft + x, kTop + y);
+                                crop.x() + x, crop.y() + y);
                             if (color.green() >= 15 &&
                                 color.green() >= 2 * color.red() &&
                                 color.green() >= 2 * color.blue()) {
                                 const auto index = static_cast<std::size_t>(
-                                    y * kWidth + x);
+                                    y * width + x);
                                 mask.pixels[index] = 1U;
                             }
                         }
@@ -24331,21 +24333,21 @@ int main(int argc, char** argv) {
                              cursor < component.size(); ++cursor) {
                             const auto index = component[cursor];
                             const auto x = static_cast<int>(
-                                index % static_cast<std::size_t>(kWidth));
+                                index % static_cast<std::size_t>(width));
                             const auto y = static_cast<int>(
-                                index / static_cast<std::size_t>(kWidth));
+                                index / static_cast<std::size_t>(width));
                             for (int offset_y = -1; offset_y <= 1;
                                  ++offset_y) {
                                 for (int offset_x = -1; offset_x <= 1;
                                      ++offset_x) {
                                     const auto next_x = x + offset_x;
                                     const auto next_y = y + offset_y;
-                                    if (next_x < 0 || next_x >= kWidth ||
-                                        next_y < 0 || next_y >= kHeight) {
+                                    if (next_x < 0 || next_x >= width ||
+                                        next_y < 0 || next_y >= height) {
                                         continue;
                                     }
                                     const auto next = static_cast<std::size_t>(
-                                        next_y * kWidth + next_x);
+                                        next_y * width + next_x);
                                     if (mask.pixels[next] != 0U &&
                                         visited[next] == 0U) {
                                         visited[next] = 1U;
@@ -24367,9 +24369,11 @@ int main(int argc, char** argv) {
                 };
                 const auto green_model_overlap = [&green_model_mask](
                     const QImage& actual,
-                    const QImage& reference) {
-                    const auto actual_mask = green_model_mask(actual);
-                    const auto reference_mask = green_model_mask(reference);
+                    const QImage& reference,
+                    const QRect& crop) {
+                    const auto actual_mask = green_model_mask(actual, crop);
+                    const auto reference_mask =
+                        green_model_mask(reference, crop);
                     if (actual_mask.pixels.size() !=
                             reference_mask.pixels.size() ||
                         actual_mask.count == 0U ||
@@ -24605,7 +24609,7 @@ int main(int argc, char** argv) {
                         const QImage reference(
                             QString::fromStdString(reference_path.string()));
                         const auto overlap = green_model_overlap(
-                            image, reference);
+                            image, reference, QRect(110, 45, 100, 67));
                         if (reference.size() !=
                                 QSize(kSceneWidth, kSceneHeight) ||
                             overlap < 0.80) {
@@ -24921,11 +24925,135 @@ int main(int argc, char** argv) {
                               << "\"\n";
                     return 3;
                 }
+
+                // Capture the independent Green-4 System Access Network
+                // reference route as a separate model profile. Unlike the
+                // compact SPU entry above, the primary stream currently uses
+                // the presenter's uncalibrated model-0 placement fallback.
+                std::vector<std::uint16_t> model0_audio_events;
+                std::vector<std::uint16_t> model0_audio_stops;
+                std::vector<std::string> model0_source_boundaries;
+                qt_runtime::FieldSceneRuntime model0_scene(
+                    [&model0_source_boundaries](
+                        const std::string_view boundary) {
+                        model0_source_boundaries.emplace_back(boundary);
+                    },
+                    [&model0_audio_events](const std::uint16_t event) {
+                        model0_audio_events.push_back(event);
+                    },
+                    [&model0_audio_stops](const std::uint16_t resource) {
+                        model0_audio_stops.push_back(resource);
+                    });
+                model0_scene.set_source_random_seed_for_dump(0x4000U);
+                model0_scene.set_field_world_frame_counter_for_dump(0x0200U);
+                if (!model0_scene.bootstrap(smoke_state)) {
+                    std::cerr << "Matrix model-0 QA: separate field runtime "
+                                 "did not bootstrap\n";
+                    return 3;
+                }
+                if (!model0_scene.open_matrix_traversal_for_dump(1U, 0U)) {
+                    std::cerr << "Matrix model-0 QA: System 1/node 0 route "
+                                 "did not open\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 20; ++frame) {
+                    model0_scene.advance_frame();
+                }
+                if (model0_scene.field_menu_route_screen_for_dump() !=
+                    static_cast<std::uint16_t>(srx::MenuScreen::CYBERDECK)) {
+                    std::cerr << "Matrix model-0 QA: jack-in did not reach "
+                                 "the deck loop\n";
+                    return 3;
+                }
+                tap_qa_controller_button(model0_scene, 0x80U); // Start.
+                route = model0_scene.field_menu_route_snapshot_for_dump();
+                for (int frame = 0;
+                     frame < 360 &&
+                     (!route.top_matrix_traversal_view.has_value() ||
+                      route.top_matrix_traversal_view->world_entry_phase != 2);
+                     ++frame) {
+                    model0_scene.advance_frame();
+                    route = model0_scene.field_menu_route_snapshot_for_dump();
+                }
+                const auto model0_output = output /
+                    "matrix-model0-green4-system-access.bmp";
+                const auto model0_image = save_qa_image(
+                    output, "matrix-model0-green4-system-access.bmp",
+                    render_qa_field(model0_scene))
+                    ? QImage(QString::fromStdString(model0_output.string()))
+                    : QImage{};
+                const auto repository_root =
+                    std::filesystem::weakly_canonical(asset_root)
+                        .parent_path().parent_path();
+                const auto model0_reference_path = repository_root /
+                    "video analysis" /
+                    "long_gameplay_video_rest_ffmpeg_30fps_320x224" /
+                    "section_15_source_2820-3120" / "frame_004440.png";
+                const QImage model0_reference(
+                    QString::fromStdString(
+                        model0_reference_path.string()));
+                const auto model0_host_bounds =
+                    green_model_bounds(model0_image);
+                const auto model0_reference_bounds =
+                    green_model_bounds(model0_reference);
+                const auto model0_mask_overlap = green_model_overlap(
+                    model0_image, model0_reference,
+                    QRect(100, 45, 120, 76));
+                if (model0_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::MATRIX_NODE_ACTION) ||
+                    !route.top_matrix_traversal_view.has_value() ||
+                    route.top_matrix_system_id != 1 ||
+                    route.top_matrix_node != 0 ||
+                    route.top_matrix_traversal_view->world_model_id !=
+                        scripting::ScriptMatrixWorldModelId::
+                            system_access_network ||
+                    route.top_matrix_traversal_view->palette_theme != 2 ||
+                    route.top_matrix_traversal_view->world_entry_phase != 2 ||
+                    route.top_matrix_traversal_view->model_canvas_x != 106 ||
+                    route.top_matrix_traversal_view->model_canvas_y != 48 ||
+                    route.top_matrix_traversal_view->model_canvas_width != 110 ||
+                    route.top_matrix_traversal_view->model_canvas_height != 62 ||
+                    !complete_frame(model0_image) ||
+                    model0_reference.size() !=
+                        QSize(kSceneWidth, kSceneHeight) ||
+                    model0_host_bounds.isNull() ||
+                    model0_reference_bounds.isNull() ||
+                    model0_host_bounds != model0_reference_bounds ||
+                    model0_mask_overlap < 0.80) {
+                    std::cerr << "Matrix model-0 QA: Green-4 System Access "
+                                 "route or full-frame reference capture is "
+                                 "invalid; host bounds="
+                              << model0_host_bounds.x() << ','
+                              << model0_host_bounds.y() << ' '
+                              << model0_host_bounds.width() << 'x'
+                              << model0_host_bounds.height()
+                              << " reference bounds="
+                              << model0_reference_bounds.x() << ','
+                              << model0_reference_bounds.y() << ' '
+                              << model0_reference_bounds.width() << 'x'
+                              << model0_reference_bounds.height() << '\n';
+                    std::cerr << "Matrix model-0 QA: mask overlap="
+                              << model0_mask_overlap << '\n';
+                    return 3;
+                }
                 std::cout << "field_matrix_traversal_entry_qa=passed "
                           << "system=2 node=2 setup_vblanks=61 "
                           << "entry_vblanks=239 publications=56 "
                           << "reference_frames=004730-004830,004800 "
                           << "full_320x224=1 footer_icons=1 "
+                          << "system_access_model0=1 "
+                          << "model0_host_bounds="
+                          << model0_host_bounds.x() << ','
+                          << model0_host_bounds.y() << ','
+                          << model0_host_bounds.width() << ','
+                          << model0_host_bounds.height() << ' '
+                          << "model0_reference_bounds="
+                          << model0_reference_bounds.x() << ','
+                          << model0_reference_bounds.y() << ','
+                          << model0_reference_bounds.width() << ','
+                          << model0_reference_bounds.height() << ' '
+                          << "model0_mask_iou=" << model0_mask_overlap << ' '
                           << "analyze_action=verified "
                           << "medic_action=verified "
                           << "degrade_action=verified\n";

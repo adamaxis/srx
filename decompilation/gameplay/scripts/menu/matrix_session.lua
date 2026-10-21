@@ -371,11 +371,12 @@ local function model_canvas_for_entry(state, entry)
     local scale_x = width / source.width
     local scale_y = height / source.height
     local round = function(value) return math.floor(value + 0.5) end
+    local canvas = profile.source_canvas or { width = 96, height = 80 }
     return {
         x = x - round(source.x * scale_x),
         y = y - round(source.y * scale_y),
-        width = round(96 * scale_x),
-        height = round(80 * scale_y),
+        width = round(canvas.width * scale_x),
+        height = round(canvas.height * scale_y),
     }
 end
 

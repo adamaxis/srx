@@ -11,6 +11,16 @@ return {
     setup_vblanks = 61,
     primary = {
         duration_vblanks = 179,
+        -- The primary 112x64 System Access Network image has one independent
+        -- settled Green-4 reference at Section 15 frame 004440. This is a
+        -- visual endpoint calibration, not a recovered ROM resampling rule.
+        model_id = 0,
+        palette_theme = 2,
+        source_canvas = { width = 112, height = 64 },
+        source_green_bounds = { x = 2, y = 2, width = 107, height = 59 },
+        projection_samples = {
+            { vblank = 179, x = 108, y = 50, width = 105, height = 57 },
+        },
         published_at_vblank = {
             3, 6, 9, 13, 16, 19, 23, 26, 29, 33, 36, 39, 43, 46,
             49, 53, 56, 59, 63, 66, 69, 73, 76, 79, 82, 85, 88, 91,
