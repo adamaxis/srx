@@ -39,6 +39,152 @@ local speakers = {
             },
         },
     },
+    tarislar_apartments_narrator = {
+        name = "Narration",
+        text_profile = "tarislar.garden.apartments.entry",
+        portrait_alias = "none",
+        events = {},
+    },
+    tarislar_city_inn_narrator = {
+        name = "Narration",
+        text_profile = "tarislar.city_inn",
+        portrait_alias = "none",
+        events = {},
+    },
+    wylie_gala_inn_narrator = {
+        name = "Narration",
+        text_profile = "penumbra.wylies_gala_inn",
+        portrait_alias = "none",
+        events = {
+            free_stay = {
+                title_key = "wylie.gala_inn.free_stay",
+                continuation_key = "",
+            },
+            package_after = {
+                title_key = "wylie.gala_inn.package_after",
+                continuation_key = "",
+            },
+            package_before = {
+                title_key = "wylie.gala_inn.package_before",
+                continuation_key = "",
+            },
+            room_paid = {
+                title_key = "stoker.motel.room.paid.title",
+                continuation_key = "",
+            },
+            room_insufficient = {
+                title_key = "stoker.motel.room.insufficient.title",
+                continuation_key = "",
+            },
+        },
+    },
+    david_owlfeather = {
+        name = "David Owlfeather",
+        text_profile = "salish.owlfeather",
+        portrait_alias = "dialogue.portraits.david.owlfeather",
+        events = {},
+    },
+    red_buffalo_woman = {
+        name = "Red Buffalo Woman",
+        text_profile = "salish.red_buffalo",
+        portrait_alias = "dialogue.portraits.red.buffalo.woman",
+        events = {},
+    },
+    spirit_eyes = {
+        name = "Spirit Eyes",
+        text_profile = "salish.spirit_eyes",
+        portrait_alias = "dialogue.portraits.spirit.eyes",
+        events = {},
+    },
+    licourtrix = {
+        name = "Licourtrix",
+        text_profile = "salish.spirit_eyes",
+        portrait_alias = "dialogue.portraits.licourtrix",
+        events = {},
+    },
+    renraku_offices_narrator = {
+        name = "Narration",
+        text_profile = "renraku.offices",
+        portrait_alias = "dialogue.portraits.renraku.offices.entry",
+        events = {
+            entry = {
+                title_key = "renraku.offices.page.entry",
+                continuation_key = "shared.more",
+            },
+        },
+    },
+    fuchi_offices_narrator = {
+        name = "Narration",
+        text_profile = "penumbra.fuchi",
+        portrait_alias = "dialogue.portraits.fuchi.offices.entry",
+        events = {
+            entry = {
+                title_key = "penumbra.fuchi.page.entry",
+                continuation_key = "shared.more",
+            },
+        },
+    },
+    gates_undersound_narrator = {
+        name = "Narration",
+        text_profile = "gates.undersound",
+        portrait_alias = "dialogue.portraits.gates.undersound.entry",
+        events = {
+            entry = {
+                title_key = "gates.undersound.page.entry",
+                continuation_key = "",
+            },
+        },
+    },
+    council_island_hospital_narrator = {
+        name = "Narration",
+        text_profile = "council_island_hospital",
+        portrait_alias = "none",
+        events = {
+            package_handoff = {
+                title_key = "council_island_hospital.entry.package_handoff",
+                continuation_key = "",
+            },
+            package_payment = {
+                title_key = "council_island_hospital.entry.package_payment",
+                continuation_key = "",
+            },
+            medical_attention_not_needed = {
+                title_key = "hospital.medical.not_needed",
+                continuation_key = "",
+            },
+            medical_attention_insufficient_funds = {
+                title_key = "hospital.medical.insufficient_funds",
+                continuation_key = "",
+            },
+        },
+    },
+    council_medicine_lodge_narrator = {
+        name = "Narration",
+        text_profile = "council_medicine_lodge",
+        portrait_alias = "none",
+        events = {
+            package_handoff = {
+                title_key = "council_medicine_lodge.entry.package_handoff",
+                continuation_key = "",
+            },
+            package_payment = {
+                title_key = "council_medicine_lodge.entry.package_payment",
+                continuation_key = "",
+            },
+            hire_shaman_response = {
+                title_key = "council_medicine_lodge.response.hire_shaman",
+                continuation_key = "",
+            },
+            farewell = {
+                title_key = "council_medicine_lodge.response.farewell",
+                continuation_key = "",
+            },
+            wise_one_followup = {
+                title_key = "council_medicine_lodge.response.wise_one",
+                continuation_key = "",
+            },
+        },
+    },
     jump_house_entry = {
         name = "The Jump House",
         text_profile = "jump_house.entry",
@@ -82,12 +228,65 @@ local speakers = {
                 title_key = "big-rhino.booth.entry",
                 continuation_key = "shared.more",
             },
+            repeat_booth_entry = {
+                title_key = "big-rhino.mortimer.repeat-booth-entry",
+                continuation_key = "shared.more",
+            },
             opening = {
                 title_key = "big-rhino.mortimer.opening",
                 continuation_key = "",
             },
+            repeat_opening = {
+                title_key = "big-rhino.mortimer.repeat-opening",
+                continuation_key = "",
+            },
             conditional_opening = {
                 title_key = "big-rhino.mortimer.conditional-opening",
+                continuation_key = "",
+            },
+            work_opening = {
+                title_key = "big-rhino.work.opening",
+                continuation_key = "shared.more",
+            },
+            information_opening = {
+                title_key = "big-rhino.information.opening",
+                continuation_key = "shared.more",
+            },
+            question_default = {
+                title_key = "big-rhino.information.question.default",
+                continuation_key = "shared.more",
+            },
+            leave = {
+                title_key = "big-rhino.leave",
+                continuation_key = "",
+            },
+        },
+    },
+    julius_strouther = {
+        name = "Julius Strouther",
+        text_profile = "matchstick.julius_strouther",
+        -- Scene 18's row at 0x12CC60 selects portrait profile 0x121EBC.
+        -- The same extracted portrait is used by the Jump House entry page.
+        portrait_alias = "dialogue.portraits.jump.house.entry",
+        events = {
+            booth_entry = {
+                title_key = "julius-strouther.booth-entry",
+                continuation_key = "shared.more",
+            },
+            work_opening = {
+                title_key = "julius-strouther.work.opening",
+                continuation_key = "shared.more",
+            },
+            contacts_opening = {
+                title_key = "julius-strouther.contacts.opening",
+                continuation_key = "shared.more",
+            },
+            question_default = {
+                title_key = "julius-strouther.question.default",
+                continuation_key = "shared.more",
+            },
+            leave = {
+                title_key = "julius-strouther.leave",
                 continuation_key = "",
             },
         },
@@ -231,12 +430,12 @@ local speakers = {
 -- descriptors and portrait profile. Contact access and call history live in
 -- FFFC2C; these rows provide readable content metadata.
 local vid_phone_contacts = {
-    { source_index = 0, id = "capt_quinton_jaymes", name = "Capt Quinton Jaymes", name_key = "pocket_secretary.notebook.contact.name.option.record_0", portrait_alias = "dialogue.portraits.vid.phone.capt.quinton.jaymes" },
-    { source_index = 1, id = "alesandro_hobbs", name = "Alesandro Hobbs", name_key = "pocket_secretary.notebook.contact.name.option.record_1", portrait_alias = "dialogue.portraits.vid.phone.alesandro.hobbs" },
-    { source_index = 2, id = "sharkey", name = "Sharkey", name_key = "pocket_secretary.notebook.contact.name.option.record_2", portrait_alias = "dialogue.portraits.vid.phone.sharkey" },
-    { source_index = 3, id = "kipp_david", name = "Kipp David", name_key = "pocket_secretary.notebook.contact.name.option.record_3", portrait_alias = "dialogue.portraits.vid.phone.kipp.david" },
-    { source_index = 4, id = "wilma_temmenhoff", name = "Wilma Temmenhoff", name_key = "pocket_secretary.notebook.contact.name.option.record_4", portrait_alias = "dialogue.portraits.vid.phone.wilma.temmenhoff" },
-    { source_index = 5, id = "macklemann", name = "Sgt. Macklemann", name_key = "pocket_secretary.notebook.contact.name.option.record_5", portrait_alias = "dialogue.portraits.vid.phone.macklemann" },
+    { source_index = 0, id = "capt_quinton_jaymes", name = "Capt Quinton Jaymes", name_key = "pocket_secretary.notebook.contact.name.option.record_0", portrait_alias = "dialogue.portraits.vid.phone.capt.quinton.jaymes", service_module = "vid_phone.capt_quinton_jaymes", service_function = "services" },
+    { source_index = 1, id = "alesandro_hobbs", name = "Alesandro Hobbs", name_key = "pocket_secretary.notebook.contact.name.option.record_1", portrait_alias = "dialogue.portraits.vid.phone.alesandro.hobbs", service_module = "vid_phone.alesandro_hobbs", service_function = "services" },
+    { source_index = 2, id = "sharkey", name = "Sharkey", name_key = "pocket_secretary.notebook.contact.name.option.record_2", portrait_alias = "dialogue.portraits.vid.phone.sharkey", service_module = "vid_phone.sharkey", service_function = "services" },
+    { source_index = 3, id = "kipp_david", name = "Kipp David", name_key = "pocket_secretary.notebook.contact.name.option.record_3", portrait_alias = "dialogue.portraits.vid.phone.kipp.david", service_module = "vid_phone.kipp_david", service_function = "services" },
+    { source_index = 4, id = "wilma_temmenhoff", name = "Wilma Temmenhoff", name_key = "pocket_secretary.notebook.contact.name.option.record_4", portrait_alias = "dialogue.portraits.vid.phone.wilma.temmenhoff", service_module = "vid_phone.wilma_temmenhoff", service_function = "services" },
+    { source_index = 5, id = "macklemann", name = "Sgt. Macklemann", name_key = "pocket_secretary.notebook.contact.name.option.record_5", portrait_alias = "dialogue.portraits.vid.phone.macklemann", service_module = "vid_phone.macklemann", service_function = "services" },
     { source_index = 6, id = "gregory_wilns", name = "Gregory Wilns", name_key = "pocket_secretary.notebook.contact.name.option.record_6", portrait_alias = "dialogue.portraits.vid.phone.gregory.wilns" },
     { source_index = 7, id = "mr_faradouchi", name = "Mr. Faradouchi", name_key = "pocket_secretary.notebook.contact.name.option.record_7", portrait_alias = "dialogue.portraits.vid.phone.mr.faradouchi", always_first = true, first_continuation = true, repeat_continuation = true },
     { source_index = 8, id = "agira_tetsumi", name = "Agira Tetsumi", name_key = "pocket_secretary.notebook.contact.name.option.record_8", portrait_alias = "dialogue.portraits.vid.phone.agira.tetsumi", always_first = true, first_continuation = true, repeat_continuation = true },
@@ -305,6 +504,391 @@ local menu_profiles = {
                 ito_passcode = "field.main_menu.passcodes.option.ito_passcode",
                 next_screen = "vid_phone.contact.page_next",
                 prior_screen = "vid_phone.contact.page_previous",
+            },
+        },
+    },
+    ["tarislar.garden.apartments.entry"] = {
+        arrival = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        penthouse = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        meeting = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        michael_topic = {
+            choice_label_keys = {
+                ask_about_michael = "tarislar.garden.apartments.option.ask_about_michael",
+            },
+        },
+        thon_topic = {
+            choice_label_keys = {
+                who_is_thon = "tarislar.garden.apartments.option.who_is_thon",
+            },
+        },
+        thon_explanation = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        thon_curse = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        renraku_topic = {
+            choice_label_keys = {
+                why_renraku = "tarislar.garden.apartments.option.why_renraku",
+            },
+        },
+        renraku_explanation = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        ito_response = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        ito_update = {
+            choice_label_keys = {
+                ito_killed = "tarislar.garden.apartments.option.ito_killed",
+            },
+        },
+        repeat_service = {
+            choice_label_keys = {
+                questions = "tarislar.garden.apartments.option.questions",
+                ito_killed = "tarislar.garden.apartments.option.ito_killed",
+                information = "tarislar.garden.apartments.option.information",
+            },
+        },
+        renraku_map = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        renraku_map_meaning = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        vigore_lead = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        vigore_report = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        vigore_explanation = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        both_maps_meaning = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        tomb_artifacts = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        harlequin_resolves = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        tomb_offer = {
+            choice_label_keys = {
+                yes = "tarislar.garden.apartments.option.tomb_yes",
+                no = "tarislar.garden.apartments.option.tomb_no",
+            },
+        },
+        tomb_declined = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        tomb_flight = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        tomb_walkie = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        tomb_good_luck = {
+            choice_label_keys = { more = "shared.more" },
+        },
+    },
+    ["council_island_hospital"] = {
+        hospital_service_offer = {
+            choice_label_keys = {
+                services = "council_island_hospital.option.services",
+                leave = "council_island_hospital.option.leave",
+            },
+        },
+        hospital_options = {
+            title_key = "hospital.options.title",
+            choice_label_keys = {
+                medical_attention = "hospital.options.medical_attention",
+                cyberware = "hospital.options.cyberware",
+                exit = "hospital.options.exit",
+            },
+        },
+        hospital_medical_attention = {
+            choice_label_keys = {
+                level_100 = "hospital.medical.row.100",
+                level_90 = "hospital.medical.row.90",
+                level_70 = "hospital.medical.row.70",
+                level_40 = "hospital.medical.row.40",
+            },
+        },
+        hospital_leave_confirmation = {
+            title_key = "hospital.leave.prompt",
+            choice_label_keys = {
+                yes = "ui.option.yes",
+                no = "ui.option.no",
+            },
+        },
+    },
+    ["council_medicine_lodge"] = {
+        medicine_lodge_service_offer = {
+            choice_label_keys = {
+                hire_shaman = "council_medicine_lodge.option.hire_shaman",
+                browse_store = "council_medicine_lodge.option.browse_store",
+                talk_later = "council_medicine_lodge.option.talk_later",
+                wise_one = "council_medicine_lodge.option.wise_one",
+            },
+        },
+    },
+    ["tarislar.city_inn"] = {
+        inn_service = {
+            title_key = "tarislar.city_inn.offer",
+            choice_label_keys = {
+                crash = "tarislar.city_inn.option.crash",
+                leave = "tarislar.city_inn.option.leave",
+                shale = "tarislar.city_inn.option.shale",
+                frosty = "tarislar.city_inn.option.frosty",
+            },
+        },
+        room_payment = {
+            title_key = "tarislar.city_inn.room",
+            choice_label_keys = {
+                pay = "tarislar.city_inn.option.pay",
+                decline = "tarislar.city_inn.option.decline",
+            },
+        },
+        shale_arrival = {
+            title_key = "tarislar.city_inn.shale.2",
+            choice_label_keys = {
+                about_michael = "tarislar.city_inn.option.about_michael",
+            },
+        },
+        shale_topics = {
+            title_key = "tarislar.city_inn.shale.caleb",
+            choice_label_keys = {
+                caleb = "tarislar.city_inn.option.caleb",
+                errascoe = "tarislar.city_inn.option.errascoe",
+            },
+        },
+        shale_other_topic = {
+            title_key = "tarislar.city_inn.shale.errascoe",
+            choice_label_keys = {
+                caleb = "tarislar.city_inn.option.caleb",
+                errascoe = "tarislar.city_inn.option.errascoe",
+            },
+        },
+        shale_followup = {
+            title_key = "tarislar.city_inn.shale.caleb_followup",
+            choice_label_keys = {
+                recruit = "tarislar.city_inn.option.recruit",
+                thanks = "tarislar.city_inn.option.thanks",
+            },
+        },
+        shale_more = {
+            choice_label_keys = { more = "shared.more" },
+        },
+    },
+    ["penumbra.wylies_gala_inn"] = {
+        inn_service = {
+            choice_label_keys = {
+                crash = "wylie.gala_inn.option.crash",
+                leave = "wylie.gala_inn.option.leave",
+            },
+        },
+        room_payment = {
+            choice_label_keys = {
+                pay = "wylie.gala_inn.option.pay",
+                leave = "wylie.gala_inn.option.leave",
+            },
+        },
+    },
+    ["salish.owlfeather"] = {
+        opening = {
+            choice_label_keys = {
+                lands = "salish.owlfeather.option.lands",
+                council = "salish.owlfeather.option.council",
+                brother = "salish.owlfeather.option.brother",
+            },
+        },
+        lands = {
+            choice_label_keys = {
+                rangers = "salish.owlfeather.option.rangers",
+                thanks = "salish.owlfeather.option.thanks",
+            },
+        },
+        rangers = {
+            choice_label_keys = {
+                villages = "salish.owlfeather.option.villages",
+                thanks = "salish.owlfeather.option.thanks",
+            },
+        },
+        villages = {
+            choice_label_keys = {
+                sinsearach = "salish.owlfeather.option.sinsearach",
+                thanks = "salish.owlfeather.option.thanks",
+            },
+        },
+        sinsearach = {
+            choice_label_keys = {
+                lands = "salish.owlfeather.option.lands",
+                council = "salish.owlfeather.option.council",
+                thanks = "salish.owlfeather.option.thanks",
+            },
+        },
+        council_more = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        council_topics = {
+            choice_label_keys = {
+                lands = "salish.owlfeather.option.lands",
+                council = "salish.owlfeather.option.council",
+                thanks = "salish.owlfeather.option.thanks",
+            },
+        },
+        brother_more = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        brother_status = {
+            choice_label_keys = {
+                learned = "salish.owlfeather.option.learned",
+            },
+        },
+        status_more = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        status_topic = {
+            choice_label_keys = {
+                like_who = "salish.owlfeather.option.like_who",
+            },
+        },
+        simple_task = {
+            choice_label_keys = {
+                task = "salish.owlfeather.option.simple_task",
+            },
+        },
+        task_result = {
+            choice_label_keys = {
+                lands = "salish.owlfeather.option.lands",
+                council = "salish.owlfeather.option.council",
+                thanks = "salish.owlfeather.option.thanks",
+            },
+        },
+        search_followup = {
+            choice_label_keys = {
+                lands = "salish.owlfeather.option.lands",
+                council = "salish.owlfeather.option.council",
+                later = "salish.owlfeather.option.later",
+            },
+        },
+        return_followup = {
+            choice_label_keys = {
+                freed = "salish.owlfeather.option.freed",
+            },
+        },
+        return_more = {
+            choice_label_keys = { more = "shared.more" },
+        },
+    },
+    ["salish.red_buffalo"] = {
+        introduction = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        gift = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        no_gift = {
+            choice_label_keys = {
+                no_business = "salish.red_buffalo.option.no_business",
+                more = "shared.more",
+            },
+        },
+        meeting = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        michael_topic = {
+            choice_label_keys = {
+                ask_about_michael = "tarislar.garden.apartments.option.ask_about_michael",
+            },
+        },
+        thon_topic = {
+            choice_label_keys = {
+                who_is_thon = "tarislar.garden.apartments.option.who_is_thon",
+            },
+        },
+        thon_explanation = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        thon_curse = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        renraku_topic = {
+            choice_label_keys = {
+                why_renraku = "tarislar.garden.apartments.option.why_renraku",
+            },
+        },
+        renraku_explanation = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        ito_update = {
+            choice_label_keys = {
+                ito_killed = "tarislar.garden.apartments.option.ito_killed",
+            },
+        },
+        ito_response = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        renraku_map = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        renraku_map_meaning = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        vigore_lead = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        vigore_report = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        vigore_explanation = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        both_maps_meaning = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        tomb_artifacts = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        harlequin_resolves = {
+            choice_label_keys = { more = "shared.more" },
+        },
+    },
+    ["salish.spirit_eyes"] = {
+        first_contact = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        serpent_more = {
+            choice_label_keys = { more = "shared.more" },
+        },
+        serpent_intentions = {
+            choice_label_keys = {
+                neighborhood = "salish.spirit_eyes.option.neighborhood",
+                scale = "salish.spirit_eyes.option.scale",
+            },
+        },
+        serpent_lie = {
+            choice_label_keys = {
+                neighborhood = "salish.spirit_eyes.option.neighborhood",
+                scale = "salish.spirit_eyes.option.scale",
+            },
+        },
+        serpent_thanks = {
+            choice_label_keys = {
+                thanks = "salish.spirit_eyes.option.thanks",
+            },
+        },
+        serpent_task = {
+            choice_label_keys = {
+                what = "salish.spirit_eyes.option.what",
             },
         },
     },
@@ -441,12 +1025,159 @@ local menu_profiles = {
                 leave = "big-rhino.option.leave",
             },
         },
+        repeat_opening = {
+            title_key = "big-rhino.mortimer.repeat-opening",
+            choice_label_keys = {
+                information = "big-rhino.option.information",
+                work = "big-rhino.option.work",
+                leave = "big-rhino.option.leave",
+            },
+        },
+        opening_after_information = {
+            title_key = "big-rhino.mortimer.after-information",
+            choice_label_keys = {
+                information = "big-rhino.option.information",
+                work = "big-rhino.option.work",
+                leave = "big-rhino.option.leave",
+            },
+        },
         conditional_opening = {
             title_key = "big-rhino.mortimer.conditional-opening",
             choice_label_keys = {
                 information = "big-rhino.option.information",
                 work = "big-rhino.option.work",
                 leave = "big-rhino.option.leave",
+            },
+        },
+        opening_after_run_return = {
+            title_key = "big-rhino.mortimer.conditional-opening",
+            choice_label_keys = {
+                information = "big-rhino.option.information",
+                work = "big-rhino.option.work",
+                leave = "big-rhino.option.leave",
+            },
+        },
+        information = {
+            title_key = "big-rhino.information.topics",
+            choice_label_keys = {
+                questions = "big-rhino.information.option.questions",
+                contacts = "big-rhino.information.option.contacts",
+                back = "big-rhino.information.option.back",
+            },
+        },
+        question_selection = {
+            title_key = "big-rhino.information.questions.prompt",
+            choice_label_keys = {
+                julius = "big-rhino.question.option.julius",
+                mako = "big-rhino.question.option.mako",
+                aragorn = "big-rhino.question.option.aragorn",
+            },
+        },
+        question_answer_followup = {
+            choice_label_keys = {
+                another_question = "big-rhino.question.option.another",
+                different_subject = "big-rhino.information.option.back",
+            },
+        },
+        contacts_offer = {
+            title_key = "big-rhino.contacts.offer",
+            choice_label_keys = {
+                accept = "big-rhino.contacts.option.accept",
+                back = "big-rhino.information.option.back",
+            },
+        },
+        contacts_purchased = {
+            title_key = "big-rhino.contacts.purchased",
+            choice_label_keys = {
+                information = "big-rhino.option.information",
+                work = "big-rhino.option.work",
+                leave = "big-rhino.option.leave",
+            },
+        },
+        contacts_insufficient = {
+            title_key = "big-rhino.contacts.insufficient",
+            choice_label_keys = {
+                information = "big-rhino.option.information",
+                work = "big-rhino.option.work",
+                leave = "big-rhino.option.leave",
+            },
+        },
+    },
+    ["matchstick.julius_strouther"] = {
+        opening = {
+            title_key = "julius-strouther.repeat-greeting",
+            choice_label_keys = {
+                information = "julius-strouther.option.information",
+                work = "julius-strouther.option.work",
+                leave = "julius-strouther.option.leave",
+            },
+        },
+        first_meeting = {
+            title_key = "julius-strouther.first-meeting",
+            choice_label_keys = {
+                information = "julius-strouther.option.information",
+                work = "julius-strouther.option.work",
+                leave = "julius-strouther.option.leave",
+            },
+        },
+        opening_after_information = {
+            title_key = "julius-strouther.after-information",
+            choice_label_keys = {
+                information = "julius-strouther.option.information",
+                work = "julius-strouther.option.work",
+                leave = "julius-strouther.option.leave",
+            },
+        },
+        after_run_return = {
+            title_key = "julius-strouther.run-return",
+            choice_label_keys = {
+                information = "julius-strouther.option.information",
+                work = "julius-strouther.option.work",
+                leave = "julius-strouther.option.leave",
+            },
+        },
+        information = {
+            title_key = "julius-strouther.information.opening",
+            choice_label_keys = {
+                questions = "julius-strouther.information.option.questions",
+                contacts = "julius-strouther.information.option.contacts",
+                back = "julius-strouther.information.option.back",
+            },
+        },
+        contacts_offer = {
+            title_key = "julius-strouther.contacts.offer",
+            choice_label_keys = {
+                accept = "julius-strouther.contacts.option.accept",
+                back = "julius-strouther.information.option.back",
+            },
+        },
+        contacts_purchased = {
+            title_key = "julius-strouther.contacts.purchased",
+            choice_label_keys = {
+                information = "julius-strouther.option.information",
+                work = "julius-strouther.option.work",
+                leave = "julius-strouther.option.leave",
+            },
+        },
+        contacts_insufficient = {
+            title_key = "julius-strouther.contacts.insufficient",
+            choice_label_keys = {
+                information = "julius-strouther.option.information",
+                work = "julius-strouther.option.work",
+                leave = "julius-strouther.option.leave",
+            },
+        },
+        question_selection = {
+            title_key = "julius-strouther.question.prompt",
+            choice_label_keys = {
+                caleb = "julius-strouther.question.option.about-caleb",
+                mortimer = "julius-strouther.question.option.about-mortimer",
+            },
+        },
+        question_answer_followup = {
+            choice_label_keys = {
+                another_question = "julius-strouther.question.option.another",
+                different_subject = "julius-strouther.information.option.back",
             },
         },
     },
@@ -1073,7 +1804,8 @@ function Dialogue.event_text_keys(speaker_id, text_profile, event_id)
     return speaker.events[event_id]
 end
 
-function Dialogue.menu_text_keys(speaker_id, text_profile, menu_id, choice_ids)
+function Dialogue.menu_text_keys(speaker_id, text_profile, menu_id, choice_ids,
+                                 inline_prompt)
     if speaker_id ~= "" then
         local speaker = speakers[speaker_id]
         if speaker == nil or speaker.text_profile ~= text_profile then
@@ -1094,11 +1826,14 @@ function Dialogue.menu_text_keys(speaker_id, text_profile, menu_id, choice_ids)
         end
         choice_label_keys[index] = label_key
     end
-    return {
-        title_key = menu.title_key,
+    local result = {
         choice_label_keys = choice_label_keys,
         layout = menu.layout or "standard",
     }
+    if inline_prompt ~= true then
+        result.title_key = menu.title_key
+    end
+    return result
 end
 
 Dialogue.runner_text_keys = runner_text_keys
@@ -1108,8 +1843,36 @@ Dialogue.vid_phone_contacts = vid_phone_contacts
 -- location's text profile. Building scripts remain generic; ROM-backed
 -- records supply the return context and optional first-visit facts.
 Dialogue.johnson_interaction_profiles = {
+    ["big-rhino.mortimer_reed"] = {
+        run_offer_context = E.RunOfferContext.BIG_RHINO,
+        information_flow = "big_rhino",
+        access_facts = { "mr_johnsons_flag_bit_2" },
+        -- ROM scene 11 selects 0x105544 on first contact and 0x105574
+        -- afterward. FFFC27 bit 2 is set by this scene branch and records
+        -- that Mortimer is now a known Johnson.
+        entry_seen_fact = "mr_johnsons_flag_bit_2",
+        entry_events = { "booth_entry" },
+        repeat_entry_events = { "repeat_booth_entry" },
+        repeat_root = "repeat_opening",
+        run_return_root = "opening_after_run_return",
+        -- ROM 0x215DA displays 0x108501 before offering a context-2 run.
+        work_opening_event = "work_opening",
+        leave_event = "leave",
+    },
+    ["matchstick.julius_strouther"] = {
+        run_offer_context = E.RunOfferContext.SCENE_18,
+        information_flow = "julius",
+        access_facts = { "mr_johnsons_flag_bit_1" },
+        first_visit_fact = "mr_johnsons_flag_bit_5",
+        first_visit_events = { "booth_entry" },
+        first_visit_root = "first_meeting",
+        run_return_root = "after_run_return",
+        work_opening_event = "work_opening",
+        leave_event = "leave",
+    },
     ["gunderson.jump_house"] = {
         run_offer_context = E.RunOfferContext.JUMP_HOUSE,
+        information_flow = "gunderson",
         -- ROM 0x106C99 "Well, ol' Gunderson's got a beauty for you." opens
         -- the work branch before the offer (bfa3908 always said it here).
         work_opening_event = "work-opening",
@@ -1118,6 +1881,17 @@ Dialogue.johnson_interaction_profiles = {
         run_offer_context = E.RunOfferContext.WANDERER,
         first_visit_fact = "wanderer_vigore_jarl_intro_seen",
         first_visit_events = { "first_impression", "first_meeting" },
+    },
+    ["icarus-descending.caleb_brightmore"] = {
+        run_offer_context = E.RunOfferContext.ICARUS_DESCENDING,
+        access_facts = { "mr_johnsons_flag_bit_4" },
+        first_visit_fact = "mr_johnsons_flag_bit_7",
+        first_visit_events = { "first_meeting", "first_meeting_continuation" },
+        first_visit_runner_progress_delta = 2,
+        first_visit_root = "first_meeting",
+        run_return_root = "post_run",
+        work_opening_event = "work_opening",
+        leave_event = "leave",
     },
 }
 

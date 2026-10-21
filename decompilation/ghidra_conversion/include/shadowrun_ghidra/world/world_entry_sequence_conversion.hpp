@@ -6,10 +6,24 @@
 
 namespace shadowrun::ghidra_conversion {
 
-struct WorldEntryCommandStream {
+enum class WorldEntryStepKind {
+    camera_adjustment,
+    delay,
+    render_frame,
+};
+
+struct WorldEntryStep {
+    WorldEntryStepKind kind = WorldEntryStepKind::render_frame;
+    std::int32_t camera_step_x = 0;
+    std::int32_t camera_step_y = 0;
+    std::uint16_t sample_count_x = 0;
+    std::uint16_t sample_count_y = 0;
+    std::uint16_t additional_wait_count = 0;
+};
+
+struct WorldEntrySequencePlan {
     std::uint16_t frame_count = 0;
-    std::vector<std::uint8_t> movement_commands;
-    std::vector<std::uint8_t> delays;
+    std::vector<WorldEntryStep> steps;
 };
 
 struct WorldEntrySequenceState {
@@ -23,8 +37,8 @@ struct WorldEntrySequenceState {
 };
 
 struct WorldEntrySequenceCallbacks {
-    std::function<WorldEntryCommandStream(bool compact_layout)>
-        select_command_stream;
+    std::function<WorldEntrySequencePlan(bool compact_layout)>
+        select_sequence_plan;
     std::function<void()> wait_for_vblank;
     std::function<void()> latch_controller_events;
     std::function<void()> advance_hud_sprite_audio_pulse;
@@ -37,11 +51,11 @@ struct WorldEntrySequenceCallbacks {
 
 enum class WorldEntrySequenceAction {
     completed,
-    invalid_stream,
+    invalid_plan,
 };
 
-// ROM 0x2679E: run the extracted world-entry command stream while preserving
-// source timing and the dispatch/transfer/sprite publication order.
+// ROM 0x2679E: apply a source-derived typed world-entry plan while preserving
+// source timing and dispatch/transfer/sprite publication order.
 WorldEntrySequenceAction run_world_entry_sequence(
     WorldEntrySequenceState& state,
     bool compact_layout,

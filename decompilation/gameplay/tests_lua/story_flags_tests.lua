@@ -23,7 +23,12 @@ game = { state = setmetatable({}, {
             return
         end
         local trig = name:match("^story_trigger_active_(%d+)$")
-        if trig and value then host.ffdd64 = tonumber(trig); return end
+        if trig then
+            local index = tonumber(trig)
+            if value then host.ffdd64 = index
+            elseif host.ffdd64 == index then host.ffdd64 = nil end
+            return
+        end
         error("unwritable fact " .. name)
     end,
 }) }
@@ -37,6 +42,16 @@ end
 
 reset(0, 5)
 check(S.active_trigger() == 5, "FFDD64 read back")
+S.begin_trigger(2)
+check(host.ffdd64 == 2 and S.active_trigger() == 2 and
+      game.state.story_trigger_active_5 == false,
+      "begin_trigger replaces the single FFDD64 index")
+S.mark_fixed(13)
+check(host.ffdd64 == 13 and S.active_trigger() == 13 and
+      game.state.story_trigger_active_2 == false,
+      "fixed story commands replace FFDD64 instead of accumulating indexes")
+
+reset(0, 5)
 check(S.apply_dialogue_command(0x15) == E.StoryFlag.SHAMAN_MET, "cmd15 sets the active trigger's bit")
 check(host.fffc1e == 1 << 5, "only bit 5 set")
 
@@ -56,10 +71,24 @@ check(S.apply_dialogue_command(0x46, { branch = 2 }) == E.StoryFlag.BOTH_MAPS_SH
 check(S.apply_dialogue_command(0x61) == E.StoryFlag.HOSPITAL_VISITED, "cmd61 fixed 0x19")
 check(S.apply_dialogue_command(0x30) == nil, "unrelated command leaves flags alone")
 
+reset(0, 21)
+check(S.apply_dialogue_command(0x44) == E.StoryFlag.FROSTY_MET,
+      "cmd44 marks Frosty met")
+check(host.fffc1e == 1 << E.StoryFlag.FROSTY_MET and host.ffdd64 == 21,
+      "cmd44 sets FFFC1E bit 30 without changing FFDD64")
+
 reset(0, nil)
 check(not pcall(S.mark_active_trigger), "missing FFDD64 is an error, not bit 0")
 check(S.is_set(31) == false and S.name(0) == "MOTEL_BILL_PAID", "name lookup")
 check(not pcall(S.set, 32), "bit range is checked")
+
+reset(0, nil)
+check(S.select_fixed_trigger(E.StoryFlag.SERPENT_SCALE_TAKEN) == 8 and
+      host.ffdd64 == 8 and host.fffc1e == 0,
+      "direct field activity selects FFDD64 without prematurely marking bit 8")
+check(S.apply_dialogue_command(0x1A) == 8 and
+      host.fffc1e == (1 << 8),
+      "active dialogue command marks the selected direct-activity trigger")
 
 for cmd, mark in pairs(S.DIALOGUE_COMMAND_MARKS) do
     if type(mark) == "number" then
@@ -72,6 +101,16 @@ local T = require("story_triggers")
 local rom = assert(io.open("decompilation/input/shadowrun_genesis_us.bin", "rb")):read("a")
 local function u16(a) return rom:byte(a + 1) << 8 | rom:byte(a + 2) end
 local function u32(a) return u16(a) << 16 | u16(a + 2) end
+do
+    local handler = u32(0x12CCB4 + 4 * 0x44)
+    check(handler == 0x21FD0, "cmd44 table entry resolves to ROM handler 0x21FD0")
+    check(u16(handler) == 0x2639 and u32(handler + 2) == 0xFFFC1E and
+          u16(handler + 6) == 0x08C3 and u16(handler + 8) == 30 and
+          u16(handler + 10) == 0x23C3 and u32(handler + 12) == 0xFFFC1E,
+          "cmd44 handler reads, sets bit 30, and writes FFFC1E")
+    check(u16(handler + 26) == 0x41F9 and u32(handler + 28) == 0xF57F8,
+          "cmd44 handler opens the Frosty meeting pages")
+end
 do
     local ok, live_count = true, 0
     for i = 0, T.COUNT - 1 do

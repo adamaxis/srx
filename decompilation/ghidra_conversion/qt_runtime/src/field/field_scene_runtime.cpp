@@ -10,6 +10,7 @@
 #include "shadowrun_ghidra/field/field_exit_orchestrator_conversion.hpp"
 #include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_service_conversion.hpp"
+#include "shadowrun_ghidra/field/field_action_progression_purchase_conversion.hpp"
 #include "shadowrun_ghidra/field/field_resource_sequence_conversion.hpp"
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 #include "shadowrun_ghidra/field/field_action_detail_text_conversion.hpp"
@@ -18,6 +19,7 @@
 #include "shadowrun_ghidra/field/stoker_motel_followup_commands_conversion.hpp"
 #include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
+#include "shadowrun_ghidra/session/runner_status_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
@@ -44,6 +46,7 @@
 
 #include <QPainter>
 #include <QColor>
+#include <QRegion>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
@@ -58,10 +61,17 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 namespace {
+
+constexpr std::array<std::array<int, 2>, 12> kHospitalRandomGridOrigins{{
+    {{40, 200}}, {{72, 200}}, {{184, 200}}, {{216, 200}},
+    {{40, 208}}, {{72, 208}}, {{184, 208}}, {{216, 208}},
+    {{56, 200}}, {{200, 200}}, {{56, 208}}, {{200, 208}},
+}};
 
 bool read_save_integer(const QJsonObject& object, const char* key,
                        const std::int64_t minimum,
@@ -329,9 +339,27 @@ constexpr std::uint16_t kInitialFieldSceneReference = 2U;
 // trigger index (story_trigger_active_<n>); see gameplay/scripts/story_flags.lua.
 constexpr std::string_view kStoryFlagBitPrefix = "story_flag_bit_";
 constexpr std::string_view kStoryTriggerActivePrefix = "story_trigger_active_";
+// Source FFFC30: field-mode story flags. This is distinct from the FFFC1E
+// world story flags and the FFFC34 mode-effect flags below.
+constexpr std::string_view kFieldModeFlagBitPrefix = "field_mode_flag_bit_";
+constexpr std::string_view kFieldModeEffectFlagBitPrefix =
+    "field_mode_effect_flag_bit_";
+// ROM FFFC40 is a separate field-activity fact word used by the Council
+// Island Spirit Eyes sequence. Keep it distinct from FFFC34 mode effects.
+constexpr std::string_view kFieldAuxiliaryFlagBitPrefix =
+    "field_auxiliary_flag_bit_";
+constexpr std::string_view kGroupItemFlagBitPrefix =
+    "group_item_flag_bit_";
+constexpr std::string_view kNotebookTipFlagBitPrefix =
+    "notebook_tip_flag_bit_";
+constexpr std::string_view kMrJohnsonsFlagBitPrefix =
+    "mr_johnsons_flag_bit_";
+constexpr std::string_view kRunnerInformationFlagBitPrefix =
+    "runner_information_bit_";
 
 std::optional<std::uint8_t> story_fact_bit_index(
-    const std::string_view name, const std::string_view prefix) {
+    const std::string_view name, const std::string_view prefix,
+    const unsigned bit_count = 32U) {
     if (name.size() <= prefix.size() ||
         name.substr(0U, prefix.size()) != prefix) {
         return std::nullopt;
@@ -341,7 +369,8 @@ std::optional<std::uint8_t> story_fact_bit_index(
     const auto parsed = std::from_chars(
         suffix.data(), suffix.data() + suffix.size(), index);
     if (parsed.ec != std::errc{} ||
-        parsed.ptr != suffix.data() + suffix.size() || index >= 32U) {
+        parsed.ptr != suffix.data() + suffix.size() || index >= bit_count ||
+        index > std::numeric_limits<std::uint8_t>::max()) {
         return std::nullopt;
     }
     return static_cast<std::uint8_t>(index);
@@ -712,6 +741,89 @@ void apply_purchase_state(const FieldActionPurchaseState& state,
     runner.ammo_clips = state.runner.special_action_count;
 }
 
+constexpr std::size_t kFieldSpellProgressionRecordCapacity = 8U;
+
+struct FieldShopProgressionInput {
+    FieldActionProgressionTables tables{};
+    FieldActionProgressionPurchaseState state{};
+};
+
+std::optional<FieldShopProgressionInput> make_field_shop_progression_input(
+    const ShopMenuController& menu, const RunnerRecordFields& runner,
+    const std::uint32_t funds, const MagicSpellTable& spell_table) {
+    const auto menu_mode = menu.menu_mode();
+    if (menu.shop() != ShopId::medicine_lodge ||
+        menu.selected_group() != ShopActionGroup::magic_spells ||
+        menu_mode < 3U || menu_mode > 5U ||
+        spell_table.entry_count > kFieldSpellProgressionRecordCapacity) {
+        return std::nullopt;
+    }
+
+    FieldShopProgressionInput result;
+    const auto mode_index = static_cast<std::size_t>(menu_mode - 3U);
+    const auto offer_count = menu.progression_offer_count(
+        ShopActionGroup::magic_spells);
+    if (offer_count >
+        result.tables.saved_selection_zero_by_menu_mode[mode_index].size()) {
+        return std::nullopt;
+    }
+    for (std::size_t index = 0U; index < offer_count; ++index) {
+        const auto offer = menu.progression_offer(
+            ShopActionGroup::magic_spells, index);
+        if (!offer.has_value()) {
+            return std::nullopt;
+        }
+        result.tables.saved_selection_zero_by_menu_mode[mode_index][index] = {
+            offer->action_code, offer->source_metadata, offer->base_cost};
+    }
+
+    result.state.menu_mode = menu_mode;
+    result.state.saved_selection = 0;
+    result.state.primary_cursor = static_cast<std::int8_t>(
+        menu.selected_cursor());
+    result.state.runner_archetype_status = static_cast<std::int8_t>(
+        runner.archetype_index);
+    // Source +0x7F is the active runner's spell progression ceiling.
+    result.state.runner_progression_limit =
+        static_cast<std::int8_t>(runner.auxiliary[0]);
+    result.state.funds = funds;
+    result.state.cost_context = ares_cost_context(menu_mode, runner);
+    result.state.ledger.source_record_count_word =
+        spell_table.entry_count == 0U
+            ? 0U
+            : static_cast<std::uint16_t>(spell_table.entry_count - 1U);
+    result.state.ledger.records.resize(
+        kFieldSpellProgressionRecordCapacity);
+    for (std::size_t index = 0U; index < spell_table.entry_count; ++index) {
+        result.state.ledger.records[index] = {
+            spell_table.entries[index].spell_code,
+            spell_table.entries[index].force_limit};
+    }
+    return result;
+}
+
+std::optional<MagicSpellTable> spell_table_from_field_progression(
+    const FieldActionProgressionPurchaseState& state) {
+    if (state.ledger.source_record_count_word >=
+        kFieldSpellProgressionRecordCapacity) {
+        return std::nullopt;
+    }
+    const auto entry_count = static_cast<std::size_t>(
+        state.ledger.source_record_count_word) + 1U;
+    if (entry_count > state.ledger.records.size() ||
+        entry_count > kMagicSpellTableEntryCapacity) {
+        return std::nullopt;
+    }
+    MagicSpellTable result{};
+    result.entry_count = static_cast<std::uint8_t>(entry_count);
+    for (std::size_t index = 0U; index < entry_count; ++index) {
+        result.entries[index] = {
+            state.ledger.records[index].action_code,
+            state.ledger.records[index].progression_level};
+    }
+    return result;
+}
+
 void apply_sale_state(const RunnerActionRemovalState& state,
                       RunnerRecordFields& runner) {
     runner.inventory_item_codes = state.runner.action_codes;
@@ -807,6 +919,7 @@ FieldSceneRuntime::FieldSceneRuntime(
               this->source_boundary(boundary);
           },
           source_audio_event_callback_, source_audio_stop_callback_) {
+    hospital_random_grid_cells_.fill(-1);
     field_dialogue_.set_script_runtime(&game_scripts_);
     field_interaction_.set_script_runtime(&game_scripts_);
     field_dialogue_.set_room_payment_callback([this]()
@@ -939,6 +1052,67 @@ FieldSceneRuntime::FieldSceneRuntime(
                 return "skill_" + std::to_string(
                     first_runner.skills[skill_index]);
             }
+            if (service_id == "field.mode_action") {
+                // ROM 0xC9EA routes Hospital Options B through the same
+                // 0x391A active-runner action used by the field controller.
+                if (source_audio_event_callback_) {
+                    source_audio_event_callback_(0x25U);
+                }
+                handle_field_mode_action_event();
+                return "applied";
+            }
+            if (service_id == "party.award_karma_2") {
+                if (!field_party_roster_.available()) {
+                    return std::nullopt;
+                }
+                for (auto& runner : field_party_roster_.records()) {
+                    runner.auxiliary[2U] = static_cast<std::uint8_t>(
+                        runner.auxiliary[2U] + 2U);
+                }
+                return "applied";
+            }
+            constexpr std::string_view kRunnerTripletPrefix =
+                "runner.adjust_source_byte_triplet_";
+            if (service_id.rfind(kRunnerTripletPrefix, 0U) == 0U) {
+                const auto delta_text = service_id.substr(
+                    kRunnerTripletPrefix.size());
+                unsigned delta = 0U;
+                const auto parsed = std::from_chars(
+                    delta_text.data(), delta_text.data() + delta_text.size(),
+                    delta);
+                if (delta_text.empty() || parsed.ec != std::errc{} ||
+                    parsed.ptr != delta_text.data() + delta_text.size() ||
+                    delta > 0xFFU ||
+                    !field_entity_action_phase_roll_counters_.has_value()) {
+                    return std::nullopt;
+                }
+                auto source_bytes =
+                    *field_entity_action_phase_roll_counters_;
+                adjust_runner_source_byte_triplet(
+                    source_bytes, static_cast<std::uint8_t>(delta));
+                field_entity_action_phase_roll_counters_ = source_bytes;
+                return "applied";
+            }
+            constexpr std::string_view kBuildingChargePrefix =
+                "building.charge_";
+            if (service_id.rfind(kBuildingChargePrefix, 0U) == 0U) {
+                const auto amount_text = service_id.substr(
+                    kBuildingChargePrefix.size());
+                std::uint32_t amount = 0U;
+                const auto parsed = std::from_chars(
+                    amount_text.data(),
+                    amount_text.data() + amount_text.size(), amount);
+                if (amount_text.empty() || parsed.ec != std::errc{} ||
+                    parsed.ptr != amount_text.data() + amount_text.size() ||
+                    !field_funds_.has_value()) {
+                    return std::nullopt;
+                }
+                if (*field_funds_ < amount) {
+                    return "insufficient";
+                }
+                *field_funds_ -= amount;
+                return "paid";
+            }
             // Passage destination and fare are authored in the Lua contact
             // data. The host validates the requested scene, applies the
             // wallet transaction, and schedules the shared scene transition.
@@ -1000,17 +1174,25 @@ FieldSceneRuntime::FieldSceneRuntime(
                                  std::string(*script_result)}
                            : std::nullopt;
             }
-            if (service_id != "johnson.purchase_decker_contact") {
+            std::uint32_t finder_fee = 0U;
+            if (service_id == "johnson.purchase_decker_contact" ||
+                service_id == "johnson.purchase_quinton_contact") {
+                finder_fee = 1000U;
+            } else if (service_id ==
+                       "johnson.purchase_alesandro_contact") {
+                // ROM command 0x50 at 0x221BA charges 1,500 nuyen for
+                // Mortimer Reed's Alesandro Hobbs contact.
+                finder_fee = 1500U;
+            } else {
                 return std::nullopt;
             }
             if (!field_funds_.has_value()) {
                 return std::nullopt;
             }
-            constexpr std::uint32_t kFinderFee = 1000U;
-            if (*field_funds_ < kFinderFee) {
+            if (*field_funds_ < finder_fee) {
                 return "insufficient";
             }
-            *field_funds_ -= kFinderFee;
+            *field_funds_ -= finder_fee;
             return "purchased";
         });
     configure_callbacks();
@@ -1044,6 +1226,104 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                   field_entity_.direction);
     fields.insert(QStringLiteral("field.player.target_heading"),
                   field_target_heading_);
+    fields.insert(QStringLiteral("field.route.active"),
+                  active_field_script_route_.has_value());
+    if (active_field_script_route_.has_value()) {
+        const auto& route = *active_field_script_route_;
+        const auto route_kind_name = [](const FieldScriptRouteKind kind) {
+            switch (kind) {
+            case FieldScriptRouteKind::dialogue:
+                return QStringLiteral("dialogue");
+            case FieldScriptRouteKind::field_service:
+                return QStringLiteral("field_service");
+            case FieldScriptRouteKind::area_event:
+                return QStringLiteral("area_event");
+            case FieldScriptRouteKind::no_route:
+                return QStringLiteral("no_route");
+            }
+            return QStringLiteral("unknown");
+        };
+        const auto script_name = [](const FieldScriptId script) {
+            switch (script) {
+            case FieldScriptId::lua_dialogue:
+                return QStringLiteral("lua_dialogue");
+            case FieldScriptId::lua_field_service:
+                return QStringLiteral("lua_field_service");
+            case FieldScriptId::host_field_service:
+                return QStringLiteral("host_field_service");
+            case FieldScriptId::area_event_table:
+                return QStringLiteral("area_event_table");
+            case FieldScriptId::none:
+                return QStringLiteral("none");
+            }
+            return QStringLiteral("unknown");
+        };
+        const auto destination_mode_name = [](
+            const std::optional<WorldActivityMode> mode) {
+            if (!mode.has_value()) {
+                return QStringLiteral("none");
+            }
+            switch (*mode) {
+            case WorldActivityMode::field:
+                return QStringLiteral("field");
+            case WorldActivityMode::resource_activity:
+                return QStringLiteral("resource_activity");
+            case WorldActivityMode::scripted_activity:
+                return QStringLiteral("scripted_activity");
+            case WorldActivityMode::halted:
+                return QStringLiteral("halted");
+            }
+            return QStringLiteral("unknown");
+        };
+        fields.insert(QStringLiteral("field.route.kind"),
+                      route_kind_name(route.kind));
+        fields.insert(QStringLiteral("field.route.script"),
+                      script_name(route.script));
+        fields.insert(QStringLiteral("field.route.event_code"),
+                      route.event_code);
+        fields.insert(QStringLiteral("field.route.target_scene"),
+                      route.area_event_target.has_value()
+                          ? QJsonValue(*route.area_event_target)
+                          : QJsonValue(QJsonValue::Null));
+        fields.insert(QStringLiteral("field.route.destination_mode"),
+                      destination_mode_name(
+                          route.area_event_destination_mode));
+        fields.insert(QStringLiteral("field.route.return_anchor"),
+                      route.return_anchor ==
+                              FieldLocationReturnAnchor::collision_probe_lead
+                          ? QStringLiteral("collision_probe_lead")
+                          : QStringLiteral("none"));
+        fields.insert(QStringLiteral("field.route.return_facing"),
+                      route.return_facing ==
+                              FieldLocationReturnFacing::face_away_from_entry
+                          ? QStringLiteral("face_away_from_entry")
+                          : QStringLiteral("preserve_entry_heading"));
+        fields.insert(QStringLiteral("field.route.entry_dialogue"),
+                      !route.entry_dialogue_module.empty());
+        fields.insert(QStringLiteral("field.route.entry_module"),
+                      QString::fromStdString(route.entry_dialogue_module));
+        fields.insert(QStringLiteral("field.route.entry_function"),
+                      QString::fromStdString(route.entry_dialogue_function));
+    } else {
+        fields.insert(QStringLiteral("field.route.kind"),
+                      QStringLiteral("none"));
+        fields.insert(QStringLiteral("field.route.script"),
+                      QStringLiteral("none"));
+        fields.insert(QStringLiteral("field.route.event_code"), 255);
+        fields.insert(QStringLiteral("field.route.target_scene"),
+                      QJsonValue(QJsonValue::Null));
+        fields.insert(QStringLiteral("field.route.destination_mode"),
+                      QStringLiteral("none"));
+        fields.insert(QStringLiteral("field.route.return_anchor"),
+                      QStringLiteral("none"));
+        fields.insert(QStringLiteral("field.route.return_facing"),
+                      QStringLiteral("preserve_entry_heading"));
+        fields.insert(QStringLiteral("field.route.entry_dialogue"), false);
+        fields.insert(QStringLiteral("field.route.entry_module"),
+                      QString());
+        fields.insert(QStringLiteral("field.route.entry_function"),
+                      QString());
+    }
     fields.insert(QStringLiteral("field.camera.x"),
                   state_.field_scene_buffers.camera_x);
     fields.insert(QStringLiteral("field.camera.y"),
@@ -1054,6 +1334,32 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                   static_cast<double>(field_world_encounter_sequence_));
     fields.insert(QStringLiteral("field.world.random_seed"),
                   field_random_seed_);
+    // The frame debugger exposes these typed host gates so a replay can show
+    // why a field frame is waiting. They are diagnostics, not a second game
+    // state representation and not ROM RAM reads.
+    fields.insert(QStringLiteral("field.debug.runtime_ready"), ready_);
+    fields.insert(QStringLiteral("field.debug.field_activity_lock"),
+                  field_runtime_state_.field_activity_lock);
+    fields.insert(QStringLiteral("field.debug.world_activity_countdown"),
+                  field_runtime_state_.world_activity_countdown);
+    fields.insert(QStringLiteral("field.debug.display_service_word"),
+                  field_runtime_state_.display_service_word);
+    fields.insert(QStringLiteral("field.debug.pending_scene_handler"),
+                  field_runtime_state_.pending_field_scene_handler);
+    fields.insert(QStringLiteral("field.debug.scene_transition_requested"),
+                  field_runtime_state_.field_transition_requested);
+    fields.insert(QStringLiteral("field.debug.opening_auto_walk"),
+                  field_opening_auto_walk_.active);
+    fields.insert(QStringLiteral("field.debug.interaction_transition"),
+                  field_movement_transition_state_.interaction_transition_pending);
+    fields.insert(QStringLiteral("field.debug.interaction_transition_timer"),
+                  field_movement_transition_state_.interaction_transition_timer);
+    fields.insert(QStringLiteral("field.debug.controller_port"),
+                  field_controller_port_byte_);
+    fields.insert(QStringLiteral("field.debug.controller_held"),
+                  field_controller_sample_state_.held);
+    fields.insert(QStringLiteral("field.debug.controller_events"),
+                  field_controller_sample_state_.events);
     fields.insert(QStringLiteral("field.ui.command_overview"),
                   command_overview_.open());
     fields.insert(QStringLiteral("field.ui.dialogue"),
@@ -1135,6 +1441,30 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                   QString::fromStdString(route.top_title));
     fields.insert(QStringLiteral("menu.route.text"),
                   QString::fromStdString(route.top_text));
+    const auto insert_route_optional = [&fields](
+        const QString& key, const std::optional<int> value) {
+        if (value.has_value()) {
+            fields.insert(key, *value);
+        }
+    };
+    insert_route_optional(QStringLiteral("menu.debug.route.program_index"),
+                          route.top_program_index);
+    insert_route_optional(QStringLiteral("menu.debug.route.program_slot"),
+                          route.top_program_slot);
+    insert_route_optional(QStringLiteral("menu.debug.route.program_choice"),
+                          route.top_program_choice);
+    if (route.top_enter_callback_present.has_value()) {
+        fields.insert(QStringLiteral("menu.debug.route.enter_callback_present"),
+                      *route.top_enter_callback_present);
+    }
+    if (route.top_enter_called.has_value()) {
+        fields.insert(QStringLiteral("menu.debug.route.enter_called"),
+                      *route.top_enter_called);
+    }
+    insert_route_optional(QStringLiteral("menu.debug.route.enter_transition"),
+                          route.top_enter_transition);
+    fields.insert(QStringLiteral("menu.debug.route.lua_failure"),
+                  QString::fromStdString(game_scripts_.failure()));
     const auto insert_optional = [&fields](const QString& key,
                                            const std::optional<int> value) {
         if (value.has_value()) {
@@ -1305,7 +1635,8 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
             field_collision_event_code_from_id(
                 field_movement_transition_state_.mode_event_code),
             event_metadata.event_table_available,
-            event_metadata.event_mode_table});
+            event_metadata.event_mode_table,
+            field_exit_alternate_result_});
     FieldScriptRoute event_route{};
     if (resolved_event_route.has_value()) {
         event_route = *resolved_event_route;
@@ -1313,13 +1644,24 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
         source_boundary("field.exit.building_route_script_failed");
     }
     active_field_script_route_ = event_route;
+    pending_field_return_anchor_ = event_route.return_anchor;
+    pending_field_return_facing_ = event_route.return_facing;
+    if (event_route.kind == FieldScriptRouteKind::area_event &&
+        event_route.area_event_target.has_value()) {
+        const auto selected_route_boundary =
+            std::string("field.exit.area_event_route_selected:event=") +
+            std::to_string(event_route.event_code) + ":scene=" +
+            std::to_string(*event_route.area_event_target);
+        source_boundary(selected_route_boundary);
+    }
 
     FieldExitOrchestratorCallbacks callbacks{};
     callbacks.select_mode_entry_resource = [this] {
         source_boundary("field.exit.select_mode_entry_resource");
     };
     callbacks.dispatch_world_effect =
-        [this, &runtime_state](FieldExitOrchestratorState& state) {
+        [this, &runtime_state, &event_route](
+            FieldExitOrchestratorState& state) {
             // ROM 0x1EEDC dispatches FFFBED through F3E56. The shared
             // bodyguard/package handler at 0x1EF2C compares the current map
             // and event with the selected run's origin/destination tuple.
@@ -1344,6 +1686,45 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     FieldWorldFactFlag::run_objective_active);
                 source_boundary("field.run.package_collected");
             } else if (run_event->action ==
+                       scripting::ScriptRunFieldEventAction::entry_dialogue) {
+                if (event_route.kind != FieldScriptRouteKind::area_event ||
+                    !event_route.area_event_target.has_value()) {
+                    source_boundary(
+                        "field.run.entry_dialogue_destination_missing");
+                    state.caller_exit_status = -1;
+                    return true;
+                }
+                game_scripts_.set_location_context(
+                    "field_map", "johnson_run_target", "field.world_event",
+                    "field_narrator");
+                if (!field_dialogue_.open_gameplay_task(
+                        run_event->dialogue_module,
+                        run_event->dialogue_function)) {
+                    source_boundary("field.run.entry_dialogue_open_failed");
+                    state.caller_exit_status = -1;
+                    return true;
+                }
+                // ROM 0x1F046/0x1F106 runs the target passage before the
+                // selected event-table destination is prepared. The host
+                // dialogue yields, so carry the already-resolved destination
+                // through the modal and resume it when the passage closes.
+                field_mode_entry_destination_scene_ =
+                    *event_route.area_event_target;
+                if (run_event->activity_scene_id == 15U &&
+                    run_event->actor_group_area != 0U &&
+                    run_event->actor_group_event != 0U &&
+                    run_event->actor_list_offset != 0U &&
+                    run_event->actor_resource_profile_offset != 0U) {
+                    field_mode_entry_run_target_actor_group_ = *run_event;
+                } else {
+                    field_mode_entry_run_target_actor_group_.reset();
+                }
+                field_mode_entry_transition_pending_ = true;
+                field_palette_fade_steps_ = 0U;
+                source_boundary("field.run.entry_dialogue_opened");
+                state.caller_exit_status = -1;
+                return true;
+            } else if (run_event->action ==
                        scripting::ScriptRunFieldEventAction::completed) {
                 // ROM 0x1EF2C selects result 1 and clears FFFC22 bit 9;
                 // 0x1F00A adds the negotiated amount and +0x8D progress to
@@ -1365,31 +1746,69 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     callbacks.run_indexed_title_services =
         [this, &runtime_state, &event_route](
             FieldExitOrchestratorState& state) {
-            // ROM 0x20484 handles the Redmond scene-2/event-4 doorway before
-            // the event-table scene transition. With FFF0D5 == 0 it selects
-            // the 0x121EBC portrait and text 0x110D1E, then resumes the saved
-            // route after the blocking prompt. The Qt dialogue yields, so
-            // keep that route typed until the page is dismissed.
-            if (runtime_state.scene_id == 2U &&
-                event_route.kind == FieldScriptRouteKind::area_event &&
-                event_route.event_code == static_cast<std::uint8_t>(
-                    FieldCollisionEventCode::event_4) &&
-                event_route.area_event_target ==
-                    std::optional<std::uint8_t>{13U} &&
-                field_exit_alternate_result_ == 0) {
+            if (event_route.indexed_title_service.has_value()) {
+                const auto& task = *event_route.indexed_title_service;
+                game_scripts_.set_field_mode_context(
+                    scripting::ScriptFieldModeContext{
+                        static_cast<std::uint8_t>(runtime_state.field_mode),
+                        event_route.event_code,
+                        field_exit_alternate_result_});
                 game_scripts_.set_location_context(
-                    "building", "jump_house", "jump_house.entry",
-                    "jump_house_entry");
+                    task.location_type, task.location_id,
+                    task.text_profile, task.speaker_id);
+                if (event_route.return_anchor !=
+                    FieldLocationReturnAnchor::none) {
+                    // ROM 0xBC36 records the collision-probe lead before a
+                    // field-exit service takes over. Mode/event routes use
+                    // this callback instead of open_field_location_dialogue.
+                    save_field_door_return_point();
+                }
                 if (!field_dialogue_.open_gameplay_task(
-                        "building", "present_entry_description")) {
+                        task.module, task.function)) {
                     source_boundary(
-                        "field.entry.jump_house_script_open_failed");
-                    return false;
+                        "field.location.indexed_title_service_open_failed");
+                    state.caller_exit_status = -1;
+                    return true;
+                }
+                field_palette_fade_steps_ = 0U;
+                source_boundary(
+                    "field.location.indexed_title_service_opened");
+                state.caller_exit_status = -1;
+                return true;
+            }
+
+            // ROM title services can display a location entry passage before
+            // the event-table destination. The Lua entity link supplies the
+            // task, location context, and state gate; retain the typed route
+            // while the host dialogue panel owns input.
+            if (event_route.kind == FieldScriptRouteKind::area_event &&
+                !event_route.entry_dialogue_module.empty()) {
+                if (!event_route.area_event_target.has_value()) {
+                    source_boundary(
+                        "field.entry.area_event_destination_missing");
+                    state.caller_exit_status = -1;
+                    return true;
+                }
+                game_scripts_.set_location_context(
+                    event_route.entry_location_type,
+                    event_route.entry_location_id,
+                    event_route.entry_text_profile,
+                    event_route.entry_speaker_id,
+                    event_route.entry_event_id);
+                if (!field_dialogue_.open_gameplay_task(
+                        event_route.entry_dialogue_module,
+                        event_route.entry_dialogue_function)) {
+                    source_boundary(
+                        "field.entry.location_dialogue_open_failed");
+                    state.caller_exit_status = -1;
+                    return true;
                 }
                 field_indexed_title_service_result_ = -1;
-                jump_house_entry_transition_pending_ = true;
+                field_mode_entry_destination_scene_ =
+                    *event_route.area_event_target;
+                field_mode_entry_transition_pending_ = true;
                 field_palette_fade_steps_ = 0U;
-                source_boundary("field.entry.jump_house_description_opened");
+                source_boundary("field.entry.location_dialogue_opened");
                 state.caller_exit_status = -1;
                 return true;
             }
@@ -1440,46 +1859,76 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 }
             }
 
-            // ROM 0x53A78 invokes indexed title service 0 before the generic
-            // 0x1F65A selector. Its Stoker service is active for scene 2,
-            // event 2 while FFFC1E bit 0 is clear and FFF0D5 is zero. Keep
-            // that story branch in the event path so repeat visits retain
-            // the package offer until collection is complete.
-            if (event_route.script !=
-                    FieldScriptId::stoker_motel_interaction ||
-                field_exit_alternate_result_ != 0) {
+            // Same-map dialogue interactions are data-owned route tasks.
+            // The selected link supplies the story handler, location context,
+            // state gate, and optional door-return policy; the host owns only
+            // the modal lifecycle and the saved field position.
+            if (event_route.kind != FieldScriptRouteKind::dialogue ||
+                event_route.script != FieldScriptId::lua_dialogue ||
+                event_route.entry_dialogue_module.empty() ||
+                event_route.entry_dialogue_function.empty()) {
                 return false;
             }
 
-            // B834 -> 0xBC36 saves the return point for this door event.
-            save_field_door_return_point();
             game_scripts_.set_location_context(
-                "motel", "stoker_motel", "stoker.motel", "stoker");
-            // michael_package.stoker_interaction publishes FFDD64 = 0
-            // through story_flags.begin_trigger before the conversation.
-            if (!field_dialogue_.open_stoker_interaction()) {
-                source_boundary("field.dialogue.stoker_story_script_failed");
+                event_route.entry_location_type,
+                event_route.entry_location_id,
+                event_route.entry_text_profile,
+                event_route.entry_speaker_id,
+                event_route.entry_event_id);
+            if (event_route.return_anchor !=
+                FieldLocationReturnAnchor::none) {
+                // ROM B834 -> BC36 records the active collision probe before
+                // the same-map dialogue takes ownership of input.
+                save_field_door_return_point();
+            }
+            if (!field_dialogue_.open_gameplay_task(
+                    event_route.entry_dialogue_module,
+                    event_route.entry_dialogue_function)) {
+                source_boundary("field.location.dialogue_task_open_failed");
                 state.caller_exit_status = -1;
                 return true;
             }
-            if ((field_exit_world_flags_ & 0x01U) != 0U &&
-                !(stoker_motel_story_state_.michael_debt_paid &&
-                  stoker_motel_story_state_.michael_package_collected)) {
-                // The payment flag is persistent in the ROM. If this session
-                // cannot restore the matching story state, leave the generic
-                // selector in control rather than inventing a phase. Preserve
-                // the script's first-entry fact update before cancelling it.
-                field_dialogue_.close();
-                return false;
-            }
             field_palette_fade_steps_ = 0U;
-            source_boundary("field.exit.prompt.display_palette_refreshed");
+            source_boundary("field.location.dialogue_task_opened");
             state.caller_exit_status = -1;
             return true;
         };
     callbacks.select_field_exit_prompt =
         [this, &runtime_state, &event_route](
             FieldExitOrchestratorState& state) {
+            if (event_route.field_exit_prompt.has_value()) {
+                const auto& task = *event_route.field_exit_prompt;
+                game_scripts_.set_field_mode_context(
+                    scripting::ScriptFieldModeContext{
+                        static_cast<std::uint8_t>(runtime_state.field_mode),
+                        event_route.event_code,
+                        field_exit_alternate_result_});
+                game_scripts_.set_location_context(
+                    task.location_type, task.location_id,
+                    task.text_profile, task.speaker_id);
+                if (event_route.return_anchor !=
+                    FieldLocationReturnAnchor::none) {
+                    // ROM 0xBC36 records the collision-probe lead before a
+                    // linked field-exit prompt takes over input.
+                    save_field_door_return_point();
+                }
+                if (!field_dialogue_.open_gameplay_task(
+                        task.module, task.function)) {
+                    source_boundary(
+                        "field.location.exit_prompt_open_failed");
+                    state.caller_exit_status = -1;
+                    return true;
+                }
+                // The ROM's 0x1F65A selector sets D6=-1 after this modal
+                // prompt. The linked scene-table byte is retained as source
+                // evidence; the Inn prompt itself never loads scene 53.
+                field_palette_fade_steps_ = 0U;
+                source_boundary("field.location.exit_prompt_opened");
+                state.caller_exit_status = -1;
+                return true;
+            }
+
             FieldExitPromptState prompt_state{};
             const auto dialogue_event_code =
                 event_route.kind == FieldScriptRouteKind::dialogue
@@ -1531,7 +1980,9 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     // Its text and optional alternate result are selected by the mode-text
     // provider below; other service routes remain explicit boundaries.
     const auto is_ares_shop_event = [&event_route] {
-        return event_route.script == FieldScriptId::ares_weapon_emporium;
+        return event_route.kind == FieldScriptRouteKind::field_service &&
+               event_route.script == FieldScriptId::host_field_service &&
+               event_route.field_service_id == "ares_weapon_emporium";
     };
     callbacks.prepare_field_mode_exit =
         [this, &runtime_state, &event_route, &is_ares_shop_event,
@@ -2511,7 +2962,9 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 "\tcombat_action_skill_83\tcombat_action_skill_84"
                 "\tcombat_auxiliary_roll_bonus"
                 "\tsource_action_slot\tsource_action_ammo"
-                "\tsource_action_counter") {
+                "\tsource_action_counter"
+                "\trun_target_area\trun_target_event"
+                "\trun_target_x\trun_target_y") {
         failure_ = "dynamic world-activity actor table header is invalid";
         return false;
     }
@@ -2531,7 +2984,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             while (std::getline(row, field, '\t')) {
                 fields.push_back(std::move(field));
             }
-            if (fields.size() != 71U) {
+            if (fields.size() != 75U) {
                 failure_ = "dynamic world-activity actor row is malformed";
                 return false;
             }
@@ -2543,13 +2996,22 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             const auto source_action_slot = std::stoul(fields[68]);
             const auto source_action_ammo = std::stoul(fields[69]);
             const auto source_action_counter = std::stoul(fields[70]);
+            const auto run_target_area = std::stoul(fields[71]);
+            const auto run_target_event = std::stoul(fields[72]);
+            const auto run_target_x = std::stoul(fields[73]);
+            const auto run_target_y = std::stoul(fields[74]);
             if (kind < 4U || kind > 14U || fields[13].empty() ||
                 physical_meter > 0xFFU ||
                 delay_primary_attribute > 0xFFU ||
                 delay_secondary_attribute > 0xFFU ||
                 delay_capability_flags > 0xFFFFU ||
                 source_action_slot > 0xFFU || source_action_ammo > 0xFFU ||
-                source_action_counter > 0xFFU) {
+                source_action_counter > 0xFFU || run_target_area > 55U ||
+                run_target_event > 0xFFU ||
+                run_target_x > 0xFFFFU || run_target_y > 0xFFFFU ||
+                ((run_target_area == 0U) != (run_target_event == 0U)) ||
+                ((run_target_area == 0U) !=
+                 (run_target_x == 0U && run_target_y == 0U))) {
                 failure_ = "dynamic world-activity actor identity is invalid";
                 return false;
             }
@@ -2628,7 +3090,11 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 parse_action_profile_number(fields[4]);
             const auto audio_event = parse_action_profile_number(fields[5]);
             const auto expected_audio_event = kind == 12U ? 0x55U : 0x4CU;
-            if (kind < 4U || kind > 14U || frame_count == 0U ||
+            // Conditional field-script actors include kind 3 (scene 15's
+            // ROM record at 0x170A2). Keep its extracted animation profile
+            // available even though the dynamic encounter census remains
+            // limited to kinds 4-14.
+            if (kind < 3U || kind > 14U || frame_count == 0U ||
                 frame_count > 8U || frame_increment == 0U ||
                 frame_increment > 0xFFFFU || frame_threshold == 0U ||
                 frame_threshold != 0x1000U ||
@@ -2706,7 +3172,10 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 parse_action_profile_number(fields[3]);
             const auto frame_threshold =
                 parse_action_profile_number(fields[4]);
-            if (kind < 4U || kind > 14U || frame_count == 0U ||
+            // Scene 15's conditional story actor is ROM kind 3. Its C042
+            // profile is valid source data even though dynamic encounter
+            // records remain constrained to kinds 4-14.
+            if (kind < 3U || kind > 14U || frame_count == 0U ||
                 frame_count > 8U || frame_increment == 0U ||
                 frame_increment > 0xFFFFU || frame_threshold != 0x1000U) {
                 failure_ = "actor item-action profile values are invalid";
@@ -2787,7 +3256,9 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 parse_action_profile_number(fields[5]);
             const auto down_audio_event =
                 parse_action_profile_number(fields[6]);
-            if (kind < 4U || kind > 14U || frame_count == 0U ||
+            // Keep the conditional scene-15 kind-3 source profile alongside
+            // the dynamic encounter profiles; it is not an encounter row.
+            if (kind < 3U || kind > 14U || frame_count == 0U ||
                 frame_count > 8U || frame_increment == 0U ||
                 frame_increment > 0xFFFFU || frame_threshold != 0x1000U ||
                 hurt_audio_event > 0xFFFFU || down_audio_event > 0xFFFFU) {
@@ -4246,6 +4717,24 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
 
     const auto& outcome = *pending_field_encounter_outcome_;
     const auto& profile = state_.field_scene_buffers.profile;
+    const bool source_positions_complete = std::all_of(
+        outcome.actors.begin(), outcome.actors.end(),
+        [](const auto& actor) {
+            return actor.run_target_spawn_x.has_value() &&
+                   actor.run_target_spawn_y.has_value();
+        });
+    const bool has_any_source_positions = std::any_of(
+        outcome.actors.begin(), outcome.actors.end(),
+        [](const auto& actor) {
+            return actor.run_target_spawn_x.has_value() ||
+                   actor.run_target_spawn_y.has_value();
+        });
+    if (has_any_source_positions && !source_positions_complete) {
+        failure_ = "ROM actor list has incomplete source placement records";
+        source_boundary("field.random_encounter.actor_position_unresolved");
+        pending_field_encounter_outcome_.reset();
+        return;
+    }
     WorldEffectEdgeCandidateState edge_state{};
     // ROM 0x1E302 reads FFDDC6/FFDDC8 as the live camera origin and
     // FFDDCE/FFDDD0 as the far map bounds. FieldSceneBuffers::profile begins
@@ -4257,30 +4746,30 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
     edge_state.origin_y = static_cast<std::uint16_t>(
         state_.field_scene_buffers.camera_y);
     edge_state.map_height = profile[5];
-    build_world_effect_edge_candidates(
-        edge_state,
-        {[this](const std::uint16_t x, const std::uint16_t y)
-             -> std::optional<std::uint8_t> {
-             // ROM 0x1E41E indexes FF1700 with world words shifted by nine.
-             // The shared terrain sampler accepts the source's normalized
-             // pixel coordinates (world >> 4), so normalize before reusing
-             // it here. Passing raw words sampled a different map region and
-             // incorrectly rejected all ten spawn candidates.
-             const auto sample = sample_terrain_collision_tiles(
-                 static_cast<std::uint16_t>(x >> 4U),
-                 static_cast<std::uint16_t>(y >> 4U), false,
-                 [this](const std::uint16_t tile_index) {
-                     const auto& map = state_.field_scene_buffers
-                                           .source_metadata
-                                           .terrain_collision_map;
-                     return tile_index < map.size()
-                         ? map[tile_index]
-                         : static_cast<std::uint8_t>(0x7FU);
-                 });
-             return sample.selected_value;
-         }});
+    if (!source_positions_complete) {
+        build_world_effect_edge_candidates(
+            edge_state,
+            {[this](const std::uint16_t x, const std::uint16_t y)
+                 -> std::optional<std::uint8_t> {
+                 // ROM 0x1E41E indexes FF1700 with world words shifted by
+                 // nine. The shared terrain sampler accepts normalized
+                 // pixel coordinates (world >> 4), so normalize here.
+                 const auto sample = sample_terrain_collision_tiles(
+                     static_cast<std::uint16_t>(x >> 4U),
+                     static_cast<std::uint16_t>(y >> 4U), false,
+                     [this](const std::uint16_t tile_index) {
+                         const auto& map = state_.field_scene_buffers
+                                               .source_metadata
+                                               .terrain_collision_map;
+                         return tile_index < map.size()
+                             ? map[tile_index]
+                             : static_cast<std::uint8_t>(0x7FU);
+                     });
+                 return sample.selected_value;
+             }});
+    }
 
-    if (edge_state.candidates.empty()) {
+    if (!source_positions_complete && edge_state.candidates.empty()) {
         source_boundary("field.random_encounter.no_open_edge_candidates");
         pending_field_encounter_outcome_.reset();
         return;
@@ -4301,8 +4790,9 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         }
     }
 
-    const auto actor_count = std::min(outcome.actors.size(),
-                                      edge_state.candidates.size());
+    const auto actor_count = source_positions_complete
+        ? outcome.actors.size()
+        : std::min(outcome.actors.size(), edge_state.candidates.size());
     std::size_t spawned = 0U;
     for (std::size_t index = 0U; index < actor_count; ++index) {
         std::array<std::uint8_t, 7> occupied_actor_slots{};
@@ -4352,9 +4842,16 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         actor.script_profile_id = source_actor.profile_id;
         actor.action_kind = source_actor.action_kind;
         actor.initial_action_code = source_actor.action_code;
-        actor.world_position = SceneRunnerPosition{
-            edge_state.candidates[index].first,
-            edge_state.candidates[index].second};
+        // Run-target descriptors at ROM 0x16A6A are paired with the actor
+        // template by 0x16A26. The actor service at 0x142DC reads their first
+        // two words directly as world X/Y; random encounters use edge picks.
+        actor.world_position = source_positions_complete
+            ? SceneRunnerPosition{
+                  *source_actor.run_target_spawn_x,
+                  *source_actor.run_target_spawn_y}
+            : SceneRunnerPosition{
+                  edge_state.candidates[index].first,
+                  edge_state.candidates[index].second};
         // The common record initializer at 0x7361A supplies +0x2E=0. The
         // ordered template record contributes the actor kind/action and art.
         actor.initial_heading = 0U;
@@ -4418,10 +4915,13 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
                           effect_slot));
         actor.temporary_world_encounter = true;
         actor.ordered_overrides = source_actor.ordered_overrides;
-        actor.initial_behavior_delay = outcome.scene_id == 0x37U
-            ? 0x28U
-            : static_cast<std::uint8_t>(
-                  advance_source_random_seed(field_random_seed_) & 0x0FU);
+        actor.initial_behavior_delay = source_positions_complete
+            ? 0U
+            : (outcome.scene_id == 0x37U
+                   ? 0x28U
+                   : static_cast<std::uint8_t>(
+                         advance_source_random_seed(field_random_seed_) &
+                         0x0FU));
         actor.animation_direction = 0U;
         actor.source_animation_selector = static_cast<std::uint16_t>(
             field_movement_direction_from_heading(actor.initial_heading) *
@@ -4944,9 +5444,256 @@ bool FieldSceneRuntime::load_command_overview_assets(
         !load_image(catalog,
                     "cyberspace.matrix.system.map.font",
                     matrix_map_font_) ||
-        matrix_map_font_.size() != QSize(128, 48)) {
-        failure_ = "Matrix source map background is unavailable";
+        matrix_map_font_.size() != QSize(128, 48) ||
+        !load_image(catalog, "cyberspace.matrix.cyberdeck.panel",
+                    matrix_cyberdeck_panel_) ||
+        matrix_cyberdeck_panel_.size() != QSize(320, 224) ||
+        !load_image(catalog,
+                    "cyberspace.matrix.cyberdeck.runner.detail.headers",
+                    matrix_cyberdeck_runner_detail_headers_) ||
+        matrix_cyberdeck_runner_detail_headers_.size() != QSize(320, 224) ||
+        !load_image(catalog,
+                    "cyberspace.matrix.cyberdeck.program.icon.empty",
+                    matrix_cyberdeck_empty_program_icon_) ||
+        matrix_cyberdeck_empty_program_icon_.size() != QSize(24, 16)) {
+        failure_ = "Matrix source artwork is unavailable";
         return false;
+    }
+    for (std::size_t theme = 0U;
+         theme < matrix_traversal_backgrounds_.size(); ++theme) {
+        const auto alias = "cyberspace.matrix.traversal.background.theme." +
+                           std::to_string(theme + 1U);
+        auto& background = matrix_traversal_backgrounds_[theme];
+        if (!load_image(catalog, alias, background) ||
+            background.size() != QSize(320, 224)) {
+            failure_ = "Matrix traversal background is unavailable: " + alias;
+            return false;
+        }
+    }
+    if (!load_image(catalog, "cyberspace.matrix.traversal.hud.frame",
+                    matrix_traversal_hud_frame_) ||
+        matrix_traversal_hud_frame_.size() != QSize(320, 224)) {
+        failure_ = "Matrix traversal HUD frame is unavailable";
+        return false;
+    }
+    for (std::size_t model = 0U; model < matrix_world_models_.size(); ++model) {
+        for (std::size_t security_color = 1U; security_color <= 4U;
+             ++security_color) {
+            const auto alias = "cyberspace.matrix.world.model." +
+                std::to_string(model) + ".security.color." +
+                std::to_string(security_color);
+            auto& image = matrix_world_models_[model][security_color - 1U];
+            const auto expected_size = model == 0U ? QSize(112, 64)
+                                                    : QSize(96, 80);
+            if (!load_image(catalog, alias, image) ||
+                image.size() != expected_size) {
+                failure_ = "Matrix world model is unavailable: " + alias;
+                return false;
+            }
+        }
+    }
+    if (!load_image(
+            catalog,
+            "cyberspace.matrix.traversal.runner.world.sequence.phase.4",
+            matrix_traversal_runner_entry_pose_) ||
+        matrix_traversal_runner_entry_pose_.size() != QSize(320, 224)) {
+        failure_ = "Matrix traversal entry runner pose is unavailable";
+        return false;
+    }
+    if (!load_image(
+            catalog,
+            "cyberspace.matrix.traversal.runner.action.phase.0",
+            matrix_traversal_runner_action_phase_0_) ||
+        matrix_traversal_runner_action_phase_0_.size() != QSize(320, 224) ||
+        !load_image(
+            catalog,
+            "cyberspace.matrix.traversal.runner.action.raised",
+            matrix_traversal_runner_action_phase_1_) ||
+        matrix_traversal_runner_action_phase_1_.size() != QSize(320, 224)) {
+        failure_ = "Matrix Analyze runner action poses are unavailable";
+        return false;
+    }
+    if (!load_image(catalog, "cyberspace.matrix.traversal.runner.idle",
+                    matrix_traversal_runner_idle_) ||
+        matrix_traversal_runner_idle_.size() != QSize(320, 224)) {
+        failure_ = "Matrix idle runner pose is unavailable";
+        return false;
+    }
+    for (std::size_t phase = 0U;
+         phase < matrix_traversal_analyze_rings_.size(); ++phase) {
+        const auto alias =
+            "cyberspace.matrix.traversal.analyze.ring.phase." +
+            std::to_string(phase);
+        auto& image = matrix_traversal_analyze_rings_[phase];
+        if (!load_image(catalog, alias, image) ||
+            image.size() != QSize(320, 224)) {
+            failure_ = "Matrix Analyze ring phase is unavailable: " + alias;
+            return false;
+        }
+    }
+    const auto load_matrix_world_effect_frames =
+        [this, &catalog](const std::string& alias_prefix,
+                         std::vector<QImage>& frames) {
+            std::vector<std::pair<std::size_t, std::string>> aliases;
+            for (const auto& record : catalog.records) {
+                const std::string_view alias(record.alias);
+                if (alias.size() <= alias_prefix.size() ||
+                    alias.compare(0, alias_prefix.size(), alias_prefix) != 0) {
+                    continue;
+                }
+                const auto suffix = alias.substr(alias_prefix.size());
+                std::size_t phase = 0U;
+                const auto parsed = std::from_chars(
+                    suffix.data(), suffix.data() + suffix.size(), phase);
+                if (parsed.ec != std::errc{} ||
+                    parsed.ptr != suffix.data() + suffix.size()) {
+                    failure_ = "Invalid Matrix world-effect asset alias: " +
+                               record.alias;
+                    return false;
+                }
+                aliases.emplace_back(phase, record.alias);
+            }
+            if (aliases.empty()) {
+                failure_ = "Matrix world-effect assets are unavailable: " +
+                           alias_prefix;
+                return false;
+            }
+            std::sort(aliases.begin(), aliases.end(),
+                      [](const auto& left, const auto& right) {
+                          return left.first < right.first;
+                      });
+            frames.clear();
+            frames.resize(aliases.back().first + 1U);
+            for (std::size_t index = 0U; index < aliases.size(); ++index) {
+                const auto phase = aliases[index].first;
+                if (phase != index ||
+                    !load_image(catalog, aliases[index].second,
+                                frames[phase]) ||
+                    frames[phase].size() != QSize(320, 224)) {
+                    failure_ = "Matrix world-effect phase is missing or has "
+                               "the wrong size: " + aliases[index].second;
+                    return false;
+                }
+            }
+            return true;
+        };
+    for (std::size_t mode = 0U;
+         mode < matrix_traversal_world_effect_modes_.size(); ++mode) {
+        const auto alias_prefix =
+            "cyberspace.matrix.traversal.world.effect.mode." +
+            std::to_string(mode) + ".phase.";
+        if (!load_matrix_world_effect_frames(
+                alias_prefix, matrix_traversal_world_effect_modes_[mode])) {
+            return false;
+        }
+    }
+    if (!load_matrix_world_effect_frames(
+            "cyberspace.matrix.traversal.world.effect.default.phase.",
+            matrix_traversal_world_effect_fallback_)) {
+        return false;
+    }
+    for (std::size_t phase = 0U;
+         phase < matrix_cyberdeck_backgrounds_.size(); ++phase) {
+        const auto suffix = phase == 0U
+            ? std::string{}
+            : ".phase." + std::to_string(phase);
+        const auto background_alias =
+            "cyberspace.matrix.cyberdeck.background" + suffix;
+        auto& background = matrix_cyberdeck_backgrounds_[phase];
+        if (!load_image(catalog, background_alias, background) ||
+            background.size() != QSize(320, 224)) {
+            failure_ = "Matrix deck palette background is unavailable: " +
+                       background_alias;
+            return false;
+        }
+        const auto cursor_alias =
+            "cyberspace.matrix.cyberdeck.cursor" + suffix;
+        auto& cursor = matrix_cyberdeck_cursors_[phase];
+        if (!load_image(catalog, cursor_alias, cursor) ||
+            cursor.size() != QSize(8, 8)) {
+            failure_ = "Matrix deck palette cursor is unavailable: " +
+                       cursor_alias;
+            return false;
+        }
+    }
+    for (std::size_t profile = 0U;
+         profile < matrix_node_backgrounds_.size(); ++profile) {
+        for (std::size_t theme = 1U;
+             theme <= matrix_node_backgrounds_[profile].size(); ++theme) {
+            const auto alias =
+                "cyberspace.matrix.node.background.profile." +
+                std::to_string(profile) + ".color." +
+                std::to_string(theme);
+            auto& background = matrix_node_backgrounds_[profile][theme - 1U];
+            if (!load_image(catalog, alias, background) ||
+                background.size() != QSize(320, 224)) {
+                failure_ = "Matrix node background is unavailable: " + alias;
+                return false;
+            }
+        }
+    }
+    for (std::size_t theme = 0U;
+         theme < matrix_node_action_cursors_.size(); ++theme) {
+        const auto alias =
+            "cyberspace.matrix.node.action.cursor.color." +
+            std::to_string(theme + 1U);
+        auto& cursor = matrix_node_action_cursors_[theme];
+        if (!load_image(catalog, alias, cursor) ||
+            cursor.size() != QSize(8, 8)) {
+            failure_ = "Matrix node-action cursor is unavailable: " + alias;
+            return false;
+        }
+    }
+    for (std::size_t row = 0U;
+         row < matrix_cyberdeck_selector_rows_.size(); ++row) {
+        for (std::size_t phase = 0U;
+             phase < matrix_cyberdeck_selector_rows_[row].size(); ++phase) {
+            const auto suffix = phase == 0U
+                ? std::string{}
+                : ".phase." + std::to_string(phase);
+            const auto alias =
+                "cyberspace.matrix.cyberdeck.selector.selected.row." +
+                std::to_string(row) + suffix;
+            auto& selector = matrix_cyberdeck_selector_rows_[row][phase];
+            if (!load_image(catalog, alias, selector) ||
+                selector.size() != QSize(320, 224)) {
+                failure_ = "Matrix deck selector artwork is unavailable: " +
+                           alias;
+                return false;
+            }
+        }
+    }
+    for (std::size_t icon = 0U;
+         icon < matrix_cyberdeck_program_icons_.size(); ++icon) {
+        const auto alias = "cyberspace.matrix.program.icon." +
+                           std::to_string(icon);
+        auto& image = matrix_cyberdeck_program_icons_[icon];
+        if (!load_image(catalog, alias, image) ||
+            image.size() != QSize(24, 16)) {
+            failure_ = "Matrix deck icon artwork is unavailable: " + alias;
+            return false;
+        }
+        const auto detail_alias = "cyberspace.matrix.detail.strip." +
+                                  std::to_string(icon);
+        auto& detail = matrix_cyberdeck_detail_strips_[icon];
+        if (!load_image(catalog, detail_alias, detail) ||
+            detail.size() != QSize(48, 8)) {
+            failure_ = "Matrix deck detail artwork is unavailable: " +
+                       detail_alias;
+            return false;
+        }
+    }
+    for (std::size_t status = 0U;
+         status < matrix_cyberdeck_footer_slot_status_.size(); ++status) {
+        const auto alias = "cyberspace.matrix.cyberdeck.footer.slot.status." +
+                           std::to_string(status);
+        auto& image = matrix_cyberdeck_footer_slot_status_[status];
+        if (!load_image(catalog, alias, image) ||
+            image.size() != QSize(24, 8)) {
+            failure_ = "Matrix deck footer status artwork is unavailable: " +
+                       alias;
+            return false;
+        }
     }
     for (std::size_t palette_line = 1U; palette_line <= 3U;
          ++palette_line) {
@@ -5600,9 +6347,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             const auto& active_metadata =
                 state_.field_scene_buffers.source_metadata;
             if (!active_metadata.available ||
-                !active_metadata.event_table_available ||
                 !field_session_source_assets_) {
-                source_boundary("field.world_activity.source_table_unavailable");
+                source_boundary("field.world_activity.source_scene_unavailable");
                 runtime.field_transition_requested = true;
                 return;
             }
@@ -5620,6 +6366,22 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 routed_destination_mode =
                     active_field_script_route_->area_event_destination_mode;
             }
+
+            const auto run_target_actor_group =
+                field_mode_entry_run_target_actor_group_;
+            const bool descriptors_pending =
+                run_target_actor_group.has_value() &&
+                run_target_actor_group->activity_scene_id == 15U &&
+                run_target_actor_group->actor_group_area != 0U &&
+                run_target_actor_group->actor_group_event != 0U &&
+                run_target_actor_group->actor_list_offset != 0U &&
+                run_target_actor_group->actor_resource_profile_offset != 0U;
+            if (run_target_actor_group.has_value() && !descriptors_pending) {
+                source_boundary(
+                    "field.world_activity.run_target_descriptor_facts_invalid");
+                runtime.field_transition_requested = true;
+                return;
+            }
             active_field_script_route_.reset();
             if (!selected_scene.has_value()) {
                 source_boundary(
@@ -5631,14 +6393,26 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             WorldActivityRoutineInput input{};
             input.initial_scene_id = *selected_scene;
             input.routed_destination_mode = routed_destination_mode;
-            input.scene_variant = runtime.field_mode;
+            input.mode_event_code =
+                field_movement_transition_state_.mode_event_code;
+            input.descriptors_pending = descriptors_pending;
             input.timeout_override = runtime.scene_runtime_state;
             input.world_flags = field_exit_world_flags_;
+            input.contact_flags = notebook_contacts_flags_;
+            input.primary_runner_marker =
+                field_party_roster_.primary_compact_marker();
+            input.secondary_runner_marker =
+                field_party_roster_.secondary_compact_marker();
+            populate_source_world_activity_route_tables(input);
             // 0x167AE clears FFF0C8 before the resource branch.
             input.default_resource_word = 0U;
 
             std::uint16_t preparation_scene = *selected_scene;
-            if (input.timeout_override != 0U) {
+            if (input.descriptors_pending) {
+                // ROM 0x16814 redirects the pending actor-list route to
+                // scene 15 before preparing the field buffers.
+                preparation_scene = 0x0FU;
+            } else if (input.timeout_override != 0U) {
                 preparation_scene = input.timeout_override == 1U
                                         ? 0x36U
                                         : 0x37U;
@@ -5657,11 +6431,60 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             }
 
             bool prepared = false;
+            std::optional<scripting::ScriptFieldEncounterOutcome>
+                run_target_actor_group_outcome;
             WorldActivityRoutineCallbacks activity_callbacks{};
             activity_callbacks.schedule_world_activity_timeout = [this] {
+                (void)schedule_world_activity_timeout(
+                    field_world_activity_timeout_state_);
+                world_frame_logic_state_.world_active =
+                    static_cast<std::uint16_t>(
+                        field_world_activity_timeout_state_.timeout_marker);
+                world_frame_logic_state_.cleanup_countdown =
+                    static_cast<std::int16_t>(
+                        field_world_activity_timeout_state_.timeout_frames);
                 source_boundary("field.world_activity.schedule_timeout");
             };
-            activity_callbacks.publish_world_activity_descriptors = [this] {
+            bool run_target_actor_group_resolved = false;
+            activity_callbacks.publish_world_activity_descriptors =
+                [this, &run_target_actor_group,
+                 &run_target_actor_group_resolved,
+                 &run_target_actor_group_outcome] {
+                if (!run_target_actor_group.has_value()) {
+                    source_boundary(
+                        "field.world_activity.descriptor_publish_without_group");
+                    return;
+                }
+                const auto outcome =
+                    game_scripts_.resolve_run_target_actor_group(
+                        run_target_actor_group->actor_group_area,
+                        run_target_actor_group->actor_group_event);
+                if (!outcome.has_value() ||
+                    outcome->kind != scripting::
+                        ScriptFieldEncounterOutcomeKind::
+                            dynamic_world_effect_sequence ||
+                    outcome->scene_id !=
+                        run_target_actor_group->activity_scene_id ||
+                    outcome->context_group !=
+                        run_target_actor_group->actor_group_area ||
+                    outcome->random_sum !=
+                        run_target_actor_group->actor_group_event ||
+                    outcome->actors.size() != 4U ||
+                    std::any_of(
+                        outcome->actors.begin(), outcome->actors.end(),
+                        [&run_target_actor_group](const auto& actor) {
+                            return actor.sequence_list_offset !=
+                                run_target_actor_group->actor_list_offset;
+                        })) {
+                    failure_ = game_scripts_.failure().empty()
+                        ? "ROM run-target actor descriptors do not match the selected list"
+                        : game_scripts_.failure();
+                    source_boundary(
+                        "field.world_activity.run_target_descriptors_unresolved");
+                    return;
+                }
+                run_target_actor_group_outcome = *outcome;
+                run_target_actor_group_resolved = true;
                 source_boundary("field.world_activity.publish_descriptors");
             };
             activity_callbacks.snapshot_scene_state = [this] {
@@ -5696,6 +6519,11 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             const auto source_scene_id = runtime.scene_id;
             const auto result = run_world_activity_routine(
                 input, world_activity_routine_state_, activity_callbacks);
+            if (notebook_contacts_flags_.has_value() &&
+                world_activity_routine_state_.contact_flags.has_value()) {
+                notebook_contacts_flags_ =
+                    world_activity_routine_state_.contact_flags;
+            }
             runtime.scene_id = world_activity_routine_state_.scene_id;
             field_world_activity_scene_entry_pending_ =
                 world_activity_routine_state_.scene_id != source_scene_id;
@@ -5710,6 +6538,27 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 source_boundary("field.world_activity.scene_prepare_unresolved");
                 runtime.field_transition_requested = true;
             }
+            if (descriptors_pending && prepared &&
+                run_target_actor_group_resolved &&
+                run_target_actor_group_outcome.has_value()) {
+                const auto expected_actor_count =
+                    run_target_actor_group_outcome->actors.size();
+                const auto previous_actor_count = field_default_actors_.size();
+                pending_field_encounter_outcome_ =
+                    std::move(run_target_actor_group_outcome);
+                spawn_field_world_effect_sequence();
+                if (field_default_actors_.size() - previous_actor_count !=
+                    expected_actor_count) {
+                    failure_ = "ROM run-target actor list was not fully published";
+                    source_boundary(
+                        "field.world_activity.run_target_actor_publish_incomplete");
+                    runtime.field_transition_requested = true;
+                }
+            } else if (descriptors_pending) {
+                source_boundary(
+                    "field.world_activity.run_target_actor_publish_failed");
+                runtime.field_transition_requested = true;
+            }
             if (result == WorldActivityResult::resource_activity_bound_unavailable ||
                 result ==
                     WorldActivityResult::resource_activity_random_input_unavailable ||
@@ -5717,6 +6566,10 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     WorldActivityResult::resource_activity_sample_out_of_range) {
                 source_boundary("field.world_activity.resource_selection_unresolved");
                 runtime.field_transition_requested = true;
+            }
+            if (result == WorldActivityResult::contact_flags_unavailable) {
+                source_boundary(
+                    "field.world_activity.scene_entry_contact_flags_unresolved");
             }
         };
     field_runtime_callbacks_.handle_world_activity_request =
@@ -5746,6 +6599,77 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         };
     field_runtime_callbacks_.initialize_field_scene_state =
         [this](integration::FieldRuntimeCoordinatorState& runtime) {
+            bool has_authored_area_destination =
+                active_field_script_route_.has_value() &&
+                active_field_script_route_->kind ==
+                    FieldScriptRouteKind::area_event &&
+                active_field_script_route_->area_event_target.has_value();
+            if (!has_authored_area_destination) {
+                const auto& event_metadata =
+                    state_.field_scene_buffers.source_metadata;
+                const auto route = game_scripts_.resolve_field_location_route(
+                    FieldScriptRouteContext{
+                        static_cast<std::uint8_t>(
+                            state_.field_scene_buffers.scene_reference),
+                        static_cast<std::uint8_t>(runtime.field_mode),
+                        field_collision_event_code_from_id(
+                            field_movement_transition_state_.mode_event_code),
+                        event_metadata.event_table_available,
+                        event_metadata.event_mode_table,
+                        field_exit_alternate_result_});
+                if (route.has_value() &&
+                    route->kind == FieldScriptRouteKind::area_event &&
+                    route->area_event_target.has_value()) {
+                    active_field_script_route_ = *route;
+                    pending_field_return_anchor_ = route->return_anchor;
+                    pending_field_return_facing_ = route->return_facing;
+                    has_authored_area_destination = true;
+                    source_boundary(
+                        "field.entry.area_event_route_resolved_by_scene_state");
+                }
+            }
+            if (has_authored_area_destination) {
+                const auto source_scene =
+                    state_.field_scene_buffers.scene_reference;
+                runtime.scene_id = source_scene;
+                runtime.field_mode =
+                    state_.field_scene_buffers.field_resource_mode;
+                runtime.scene_runtime_state = 0U;
+                runtime.field_scene_gate = 0U;
+                runtime.field_transition_requested = false;
+                if (!field_runtime_callbacks_.initialize_world_activity_mode) {
+                    runtime.field_transition_requested = true;
+                    source_boundary(
+                        "field.entry.area_event_initializer_unavailable");
+                    return;
+                }
+
+                field_runtime_callbacks_.initialize_world_activity_mode(
+                    runtime);
+                if (runtime.field_transition_requested) {
+                    source_boundary(
+                        "field.entry.area_event_initialization_failed");
+                    return;
+                }
+                const auto destination_scene = runtime.scene_id;
+                runtime.scene_refresh_marker = -1;
+                field_movement_transition_state_.scene_id =
+                    static_cast<std::uint8_t>(destination_scene);
+                world_frame_logic_state_.world_mode =
+                    static_cast<std::uint8_t>(destination_scene);
+                advance_field_scene_transition_after_modal();
+                if (state_.field_scene_buffers.scene_reference !=
+                    destination_scene) {
+                    runtime.field_transition_requested = true;
+                    source_boundary(
+                        "field.entry.area_event_reentry_failed");
+                    return;
+                }
+                field_mode_entry_run_target_actor_group_.reset();
+                source_boundary("field.entry.area_event_scene_entered");
+                return;
+            }
+
             if (!restore_world_activity_source_scene(runtime)) {
                 runtime.field_transition_requested = true;
             }
@@ -5805,34 +6729,26 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             MovementModeTransitionContinuation::none;
         if (continuation ==
             MovementModeTransitionContinuation::event_30_world_activity) {
-            const auto scene_reference =
-                state_.field_scene_buffers.scene_reference;
-            if (scene_reference == 19U) {
-                game_scripts_.set_location_context(
-                    "building", "jackals_lantern",
-                    "jackals_lantern.old_man",
-                    "jackals_lantern_old_man", "opening");
-                if (!field_dialogue_.open_gameplay_task(
-                        "field_events", "present_location_dialogue")) {
-                    source_boundary(
-                        "field.dialogue.jackals_lantern_event_failed");
-                } else {
-                    source_boundary(
-                        "field.dialogue.jackals_lantern_event_opened");
-                }
+            const auto& event_metadata =
+                state_.field_scene_buffers.source_metadata;
+            const auto route = game_scripts_.resolve_field_location_route(
+                FieldScriptRouteContext{
+                    static_cast<std::uint8_t>(
+                        state_.field_scene_buffers.scene_reference),
+                    state_.field_scene_buffers.field_resource_mode,
+                    FieldCollisionEventCode::event_30,
+                    event_metadata.event_table_available,
+                    event_metadata.event_mode_table,
+                    field_exit_alternate_result_});
+            if (!route.has_value()) {
+                source_boundary(
+                    "field.activity.event30_route_script_failed");
                 return integration::PendingFieldSceneHandlerResult::resumed_field;
             }
-            if (scene_reference != 13U && scene_reference != 14U) {
+            active_field_script_route_ = *route;
+            if (!open_field_location_dialogue(*route)) {
                 source_boundary(
-                    "field.activity.event30_scene_route_unresolved");
-                return integration::PendingFieldSceneHandlerResult::resumed_field;
-            }
-            if (!open_field_johnson_interaction()) {
-                source_boundary(
-                    "field.dialogue.johnson_script_open_failed");
-            } else {
-                source_boundary(
-                    "field.dialogue.johnson_interaction_opened");
+                    "field.activity.event30_location_dialogue_failed");
             }
             return integration::PendingFieldSceneHandlerResult::resumed_field;
         }
@@ -5871,6 +6787,41 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             } else {
                 source_boundary(
                     "field.activity.resource_main_menu_opened");
+            }
+            return integration::PendingFieldSceneHandlerResult::resumed_field;
+        }
+        if (continuation ==
+                MovementModeTransitionContinuation::event_27_world_activity ||
+            continuation ==
+                MovementModeTransitionContinuation::event_25_world_activity) {
+            const auto& event_metadata =
+                state_.field_scene_buffers.source_metadata;
+            const auto event_code = continuation ==
+                    MovementModeTransitionContinuation::event_27_world_activity
+                ? FieldCollisionEventCode::event_27
+                : FieldCollisionEventCode::event_25;
+            const auto route = game_scripts_.resolve_field_location_route(
+                FieldScriptRouteContext{
+                    static_cast<std::uint8_t>(
+                        state_.field_scene_buffers.scene_reference),
+                    state_.field_scene_buffers.field_resource_mode,
+                    event_code,
+                    event_metadata.event_table_available,
+                    event_metadata.event_mode_table,
+                    field_exit_alternate_result_});
+            if (!route.has_value()) {
+                source_boundary(continuation ==
+                        MovementModeTransitionContinuation::event_27_world_activity
+                    ? "field.activity.event27_route_script_failed"
+                    : "field.activity.event25_route_script_failed");
+                return integration::PendingFieldSceneHandlerResult::resumed_field;
+            }
+            active_field_script_route_ = *route;
+            if (!open_field_location_dialogue(*route)) {
+                source_boundary(continuation ==
+                        MovementModeTransitionContinuation::event_27_world_activity
+                    ? "field.activity.event27_location_dialogue_failed"
+                    : "field.activity.event25_location_dialogue_failed");
             }
             return integration::PendingFieldSceneHandlerResult::resumed_field;
         }
@@ -6021,6 +6972,12 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         };
     field_runtime_callbacks_.run_command_overview = [this] {
         open_command_overview();
+        if (command_overview_.open()) {
+            // The callback runs after this host frame's ordinary menu service
+            // point, so the opening frame itself is the first black frame.
+            command_overview_start_transition_frames_remaining_ = 26U;
+            command_overview_start_transition_black_frame_ = true;
+        }
     };
     field_runtime_callbacks_.service_audio_tick = [this] {
         source_boundary("field.runtime.command_audio_tick");
@@ -6114,6 +7071,33 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
     };
 }
 
+void FieldSceneRuntime::install_test_deck() {
+    // ROM 0x59B7E sets FF018F bit 0, FFFC28, and these FFFBBE fields.
+    cyberdeck_available_ = true;
+    if (field_runner_feature_flags_.has_value()) {
+        *field_runner_feature_flags_ |= 0x01U;
+    }
+    field_matrix_passcode_flags_ = 0x0FFEU;
+
+    auto deck = field_matrix_deck_record_.value_or(CyberdeckRecord{});
+    deck.mpcp = 6U;
+    deck.hardening = 1U;
+    // ROM 0x59B7E writes FFFBBE+2=0x00C8, +4=0x03E8, +6=0x32,
+    // +7=1, and +0x0D=0xFF. It then writes rating 4 to each of the twelve
+    // program bytes at +0x0E..+0x19.
+    deck.memory_megapulses = 0x00C8U;
+    deck.storage_megapulses = 1000U;
+    deck.load_io_speed = 0x32U;
+    deck.response = 1U;
+    deck.model_index = static_cast<std::int8_t>(-1);
+    std::array<std::uint8_t, 12> program_ratings{};
+    program_ratings.fill(4U);
+    deck.program_ratings = program_ratings;
+    // The ROM routine leaves persona, loaded programs, slot animation state,
+    // and stored files untouched. Preserve those existing typed fields.
+    field_matrix_deck_record_ = std::move(deck);
+}
+
 void FieldSceneRuntime::configure_field_menu_route() {
     scripting::ScriptMenuRouteBindings bindings;
     bindings.host.play_sound = [this](const std::uint16_t sound) {
@@ -6133,6 +7117,32 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.host.blank = [](const std::uint16_t) {};
     bindings.host.set_window = [](const std::uint16_t) {};
     bindings.host.set_screen = [this](const std::uint16_t screen) {
+        const auto matrix_entry_screen = static_cast<std::uint16_t>(
+            srx::MenuScreen::MATRIX_ENTRY);
+        const auto matrix_search_screen = static_cast<std::uint16_t>(
+            srx::MenuScreen::MATRIX_SEARCH);
+        const auto matrix_node_action_screen = static_cast<std::uint16_t>(
+            srx::MenuScreen::MATRIX_NODE_ACTION);
+        const auto command_screen = static_cast<std::uint16_t>(
+            srx::MenuScreen::COMMAND);
+        const auto debug_pick_system_screen = static_cast<std::uint16_t>(
+            srx::MenuScreen::DEBUG_PICK_SYSTEM);
+        if (screen == matrix_entry_screen ||
+            screen == matrix_search_screen ||
+            screen == matrix_node_action_screen) {
+            // A Matrix route may begin as a child of Pocket Secretary's
+            // developer Pick System flow. Mark the field compositor as
+            // Matrix-owned when that child enters, not only when Matrix
+            // Entry is the root menu screen. The flag stays set through the
+            // first Cyberdeck and node-action children until the route exits.
+            field_matrix_route_active_ = true;
+        } else if (screen == command_screen ||
+                   screen == debug_pick_system_screen) {
+            // Pull Plug can rebuild the active Command route instead of
+            // closing the menu tree. Do not leave the field compositor in
+            // the Matrix state after that rebuild.
+            field_matrix_route_active_ = false;
+        }
         const auto is_secretary_tree_screen = [](const std::uint16_t value) {
             switch (static_cast<srx::MenuScreen>(value)) {
             case srx::MenuScreen::POCKET_SECRETARY:
@@ -6504,6 +7514,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.game.set_nuyen = [this](const std::uint32_t amount) {
         field_funds_ = amount;
     };
+    bindings.game.nuyen = [this] { return field_funds_; };
     bindings.game.request_taxi_destination = [this](const int destination) {
         if (!field_taxi_route_active_ || destination < 0 || destination > 6 ||
             field_taxi_pending_destination_.has_value() ||
@@ -6523,40 +7534,13 @@ void FieldSceneRuntime::configure_field_menu_route() {
             debug_menu_unlocked_ ? 5U : 4U;
     };
     bindings.game.set_contact_flags = [this](const std::uint32_t flags) {
-        notebook_contacts_flags_ = flags & 0x03FFFFFFU;
+        // ROM 0x59C48 replaces the entire FFFC2C long with its fixed seed.
+        notebook_contacts_flags_ = flags;
     };
     bindings.game.set_walk_fast = [this] {
         field_walk_fast_enabled_ = true;
     };
-    bindings.game.install_test_deck = [this] {
-        // ROM 0x59B7E sets FF018F bit 0, FFFC28, and these FFFBBE fields.
-        cyberdeck_available_ = true;
-        if (field_runner_feature_flags_.has_value()) {
-            *field_runner_feature_flags_ |= 0x01U;
-        }
-        field_matrix_passcode_flags_ = 0x0FFEU;
-
-        auto deck = field_matrix_deck_record_.value_or(
-            CyberdeckRecord{});
-        deck.mpcp = 6U;
-        deck.hardening = 1U;
-        deck.memory_megapulses = 200U;
-        deck.storage_megapulses = 1000U;
-        deck.load_io_speed = 50U;
-        deck.response = 1U;
-        deck.model_index = static_cast<std::int8_t>(-1);
-        std::array<std::uint8_t, 12> program_ratings{};
-        program_ratings.fill(4U);
-        deck.program_ratings = program_ratings;
-        deck.active_programs = std::array<std::int8_t, 5>{{-1, -1, -1, -1, -1}};
-        std::array<CyberdeckDataFile, 5> data_files{};
-        for (auto& file : data_files) {
-            file.id = -1;
-            file.size = 0U;
-        }
-        deck.data_files = data_files;
-        field_matrix_deck_record_ = std::move(deck);
-    };
+    bindings.game.install_test_deck = [this] { install_test_deck(); };
     bindings.game.source_random_bound = [this](const int bound) {
         if (bound <= 0 || bound > 0xFFFF) {
             return 0;
@@ -6605,11 +7589,6 @@ void FieldSceneRuntime::configure_field_menu_route() {
         field_matrix_deck_mode_ = static_cast<std::int8_t>(
             std::clamp(saved_mode, -1, 1));
     };
-    bindings.game.deck_tick = [] {
-        // The field Cyberdeck route has no active Matrix session. The Matrix
-        // frame service is wired when the source passcode entry path opens a
-        // session; the offline deck grid has no timer state to advance.
-    };
     bindings.game.set_deck_mode = [this](const int mode) {
         field_matrix_deck_mode_ = static_cast<std::int8_t>(
             std::clamp(mode, -1, 1));
@@ -6624,6 +7603,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
     bindings.game.map_seen = [] { return 0; };
     bindings.game.matrix_world_state = [this] {
         scripting::ScriptMatrixWorldState world;
+        world.karma_counter = field_matrix_karma_counter_;
+        world.passive_ic_counter = field_matrix_passive_ic_counter_;
         world.field = field_matrix_field_state_;
         world.datastore = make_matrix_datastore_facts(
             notebook_tip_flags_, notebook_tip_flags_resolved_,
@@ -6643,6 +7624,12 @@ void FieldSceneRuntime::configure_field_menu_route() {
     };
     bindings.game.commit_matrix_world_state = [this](
         const scripting::ScriptMatrixWorldState& update) {
+        if (update.karma_counter.has_value()) {
+            field_matrix_karma_counter_ = update.karma_counter;
+        }
+        if (update.passive_ic_counter.has_value()) {
+            field_matrix_passive_ic_counter_ = update.passive_ic_counter;
+        }
         if (update.field.alarm.has_value()) {
             field_matrix_field_state_.alarm = update.field.alarm;
         }
@@ -6946,6 +7933,10 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
     QJsonObject party;
     party.insert(QStringLiteral("active_slot"),
                  static_cast<int>(field_party_roster_.active_slot()));
+    party.insert(QStringLiteral("primary_compact_marker"),
+                 field_party_roster_.primary_compact_marker());
+    party.insert(QStringLiteral("secondary_compact_marker"),
+                 field_party_roster_.secondary_compact_marker());
     party.insert(QStringLiteral("members"), members);
 
     QJsonObject story;
@@ -6959,6 +7950,8 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
                  static_cast<double>(field_exit_world_flags_));
     story.insert(QStringLiteral("mode_effect_flags"),
                  static_cast<double>(field_mode_effect_flags_));
+    story.insert(QStringLiteral("auxiliary_flags"),
+                 static_cast<double>(field_auxiliary_flags_));
     story.insert(QStringLiteral("render_effect_flags"),
                  static_cast<double>(field_render_effect_flags_));
     story.insert(QStringLiteral("dialogue_register"),
@@ -6981,6 +7974,14 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
                      : QJsonValue(QJsonValue::Null));
     story.insert(QStringLiteral("matrix_field_state"),
                  matrix_field_state_to_json(field_matrix_field_state_));
+    story.insert(QStringLiteral("karma_counter"),
+                 field_matrix_karma_counter_.has_value()
+                     ? QJsonValue(*field_matrix_karma_counter_)
+                     : QJsonValue(QJsonValue::Null));
+    story.insert(QStringLiteral("passive_ic_counter"),
+                 field_matrix_passive_ic_counter_.has_value()
+                     ? QJsonValue(*field_matrix_passive_ic_counter_)
+                     : QJsonValue(QJsonValue::Null));
     story.insert(QStringLiteral("cyberdeck_record"),
                  field_matrix_deck_record_.has_value()
                      ? QJsonValue(cyberdeck_record_to_json(
@@ -7070,12 +8071,15 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         std::array<bool, FieldPartyRosterRuntime::kSlotCount> active{};
         std::array<std::uint8_t, FieldPartyRosterRuntime::kSlotCount>
             portrait_families{};
+        std::uint8_t primary_compact_marker = 0xFFU;
+        std::uint8_t secondary_compact_marker = 0xFFU;
         std::size_t active_slot = 0U;
         bool funds_available = false;
         std::uint32_t funds = 0U;
         StokerMotelStoryState stoker{};
         std::uint32_t exit_world_flags = 0U;
         std::uint32_t mode_effect_flags = 0U;
+        std::uint32_t auxiliary_flags = 0U;
         std::uint32_t render_effect_flags = 0U;
         std::optional<std::uint8_t> dialogue_register;
         std::uint32_t map_event_flags = 0U;
@@ -7084,6 +8088,8 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         std::optional<CyberdeckRecord> cyberdeck_record;
         std::optional<std::uint16_t> matrix_passcode_flags;
         scripting::ScriptMatrixFieldState matrix_field_state;
+        std::optional<std::int8_t> karma_counter;
+        std::optional<std::int8_t> passive_ic_counter;
         std::optional<std::uint8_t> runner_feature_flags;
         bool walk_fast = false;
         bool current_run_available = false;
@@ -7141,6 +8147,20 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
                                FieldPartyRosterRuntime::kSlotCount - 1U),
                            numeric, error)) return false;
     restored.active_slot = static_cast<std::size_t>(numeric);
+    // Early local snapshots did not retain the ROM's compact party markers.
+    // Keep their absence explicit as the source sentinel rather than deriving
+    // an index from the currently displayed field slots.
+    if (party.contains(QStringLiteral("primary_compact_marker"))) {
+        if (!read_save_integer(party, "primary_compact_marker", 0, 0xFF,
+                               numeric, error)) return false;
+        restored.primary_compact_marker = static_cast<std::uint8_t>(numeric);
+    }
+    if (party.contains(QStringLiteral("secondary_compact_marker"))) {
+        if (!read_save_integer(party, "secondary_compact_marker", 0, 0xFF,
+                               numeric, error)) return false;
+        restored.secondary_compact_marker =
+            static_cast<std::uint8_t>(numeric);
+    }
     const auto members_value = party.value(QStringLiteral("members"));
     if (!members_value.isArray() ||
         members_value.toArray().size() !=
@@ -7251,6 +8271,12 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     if (!read_save_integer(story, "mode_effect_flags", 0, 0xFFFFFFFFLL,
                            numeric, error)) return false;
     restored.mode_effect_flags = static_cast<std::uint32_t>(numeric);
+    // Older local snapshots predate the typed FFFC40 fact word.
+    if (story.contains(QStringLiteral("auxiliary_flags"))) {
+        if (!read_save_integer(story, "auxiliary_flags", 0, 0xFFFFFFFFLL,
+                               numeric, error)) return false;
+        restored.auxiliary_flags = static_cast<std::uint32_t>(numeric);
+    }
     if (!read_save_integer(story, "render_effect_flags", 0, 0xFFFFFFFFLL,
                            numeric, error)) return false;
     restored.render_effect_flags = static_cast<std::uint32_t>(numeric);
@@ -7297,6 +8323,27 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         !read_optional_unsigned("notebook_shadowrunner_flags", 0xFFFF,
                                 restored.shadowrunner_flags)) {
         return false;
+    }
+    const auto karma_counter = story.value(QStringLiteral("karma_counter"));
+    if (karma_counter.isUndefined() || karma_counter.isNull()) {
+        restored.karma_counter.reset();
+    } else {
+        if (!read_save_integer(story, "karma_counter", -128, 127,
+                               numeric, error)) {
+            return false;
+        }
+        restored.karma_counter = static_cast<std::int8_t>(numeric);
+    }
+    const auto passive_ic_counter =
+        story.value(QStringLiteral("passive_ic_counter"));
+    if (passive_ic_counter.isUndefined() || passive_ic_counter.isNull()) {
+        restored.passive_ic_counter.reset();
+    } else {
+        if (!read_save_integer(story, "passive_ic_counter", -128, 127,
+                               numeric, error)) {
+            return false;
+        }
+        restored.passive_ic_counter = static_cast<std::int8_t>(numeric);
     }
     const auto cyberdeck = story.value(QStringLiteral("cyberdeck_available"));
     if (cyberdeck.isNull()) {
@@ -7404,7 +8451,8 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     }
     if (!field_party_roster_.restore_saved_party(
             restored.records, restored.names, restored.active,
-            restored.portrait_families, restored.active_slot)) {
+            restored.portrait_families, restored.primary_compact_marker,
+            restored.secondary_compact_marker, restored.active_slot)) {
         return fail(QStringLiteral("The saved party roster is invalid."));
     }
     field_magic_spell_table_overrides_ = restored.spell_table_overrides;
@@ -7414,6 +8462,7 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     stoker_motel_story_state_ = restored.stoker;
     field_exit_world_flags_ = restored.exit_world_flags;
     field_mode_effect_flags_ = restored.mode_effect_flags;
+    field_auxiliary_flags_ = restored.auxiliary_flags;
     field_render_effect_flags_ = restored.render_effect_flags;
     field_dialogue_register_ = restored.dialogue_register;
     field_map_event_state_flags_ = restored.map_event_flags;
@@ -7422,6 +8471,8 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     field_matrix_deck_record_ = restored.cyberdeck_record;
     field_matrix_passcode_flags_ = restored.matrix_passcode_flags;
     field_matrix_field_state_ = restored.matrix_field_state;
+    field_matrix_karma_counter_ = restored.karma_counter;
+    field_matrix_passive_ic_counter_ = restored.passive_ic_counter;
     field_runner_feature_flags_ = restored.runner_feature_flags;
     field_walk_fast_enabled_ = restored.walk_fast;
     notebook_current_run_available_ = restored.current_run_available;
@@ -8143,6 +9194,13 @@ void FieldSceneRuntime::open_command_overview(
          [](const CommandOverviewPreparationResult&) {},
          [](const CommandOverviewHudPanelPlan&) {},
          [](const CommandOverviewActionRefreshResult&) {}});
+    if (root_screen == static_cast<std::uint16_t>(
+                           srx::MenuScreen::CYBERWARE)) {
+        // A direct CYBERWARE root has no parent COMMAND route to supply its
+        // owning page. Seed the typed parent view from the ROM page identity
+        // before the wait screen's legacy presenter is opened.
+        command_overview_.sync_script_selection(4U, 0U);
+    }
     field_matrix_route_active_ =
         root_screen == static_cast<std::uint16_t>(
                            srx::MenuScreen::MATRIX_ENTRY) ||
@@ -9479,6 +10537,7 @@ bool FieldSceneRuntime::bootstrap(
     field_funds_.reset();
     field_walk_fast_enabled_ = false;
     field_matrix_field_state_ = scripting::ScriptMatrixFieldState{};
+    field_matrix_karma_counter_.reset();
     command_overview_magic_state_ = CommandOverviewMagicState::inactive;
     command_overview_magic_physical_defense_ = MagicDefenseStripView{};
     command_overview_magic_mana_defense_ = MagicDefenseStripView{};
@@ -9514,6 +10573,14 @@ bool FieldSceneRuntime::bootstrap(
             ? std::optional<std::array<std::uint8_t, 3>>{
                   std::array<std::uint8_t, 3>{}}
             : std::nullopt;
+    // ROM 0x00C2C clears FFF0CE during full initialization; the warm-reset
+    // short-clear path preserves it. A loaded save does not expose this byte.
+    field_matrix_karma_counter_ = restored_field_state == nullptr
+        ? std::optional<std::int8_t>{0}
+        : std::nullopt;
+    field_matrix_passive_ic_counter_ = restored_field_state == nullptr
+        ? std::optional<std::int8_t>{1}
+        : std::nullopt;
     pocket_secretary_ = PocketSecretaryMenuState{};
     dismiss_runner_ = DismissRunnerMenuState{};
     dismiss_runner_random_grid_effect_ = RandomGridEffectState{};
@@ -9594,9 +10661,9 @@ bool FieldSceneRuntime::bootstrap(
     // docs/24 R1: no host entropy. FFF9F8 keeps its boot value (cold_boot_source_random_seed, 0xFFFF with zeroed
     // work RAM) plus every title-screen draw, exactly as the ROM; the debugger records it in the SEEDS chunk.
     field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
-    jump_house_entry_transition_pending_ = false;
     field_mode_entry_transition_pending_ = false;
     field_mode_entry_destination_scene_.reset();
+    field_mode_entry_run_target_actor_group_.reset();
     field_indexed_title_service_result_ = 0;
     field_active_story_trigger_.reset();
     field_controller_sample_state_ = ControllerSampleState{};
@@ -9656,7 +10723,10 @@ bool FieldSceneRuntime::bootstrap(
     field_entity_behavior_flags_ = 0U;
     field_exit_alternate_result_ = 0;
     field_exit_world_flags_ = 0U;
+    // New Game seeds FFFC30 bit 0 at ROM 0x59C48.
+    field_mode_flags_ = 1U;
     field_mode_effect_flags_ = 0U;
+    field_auxiliary_flags_ = 0U;
     field_dialogue_register_ = restored_field_state == nullptr
         ? std::optional<std::uint8_t>{0U}
         : std::nullopt;
@@ -9707,6 +10777,15 @@ bool FieldSceneRuntime::bootstrap(
             if (name == "vid_phone_contacts_resolved") {
                 return notebook_contacts_flags_.has_value();
             }
+            if (name == "runner_feature_flag_bit_2") {
+                // Scene 3/event 1's ROM command EA tests FF018F bit 2 before
+                // choosing Wylie's free-stay page or the 50-nuyen offer.
+                // A restored save that lacks FF018F keeps this fact unknown.
+                if (!field_runner_feature_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                return (*field_runner_feature_flags_ & 0x04U) != 0U;
+            }
             constexpr std::string_view kPhoneContactPrefix =
                 "vid_phone_contact_";
             constexpr std::string_view kPhoneCalledPrefix =
@@ -9747,6 +10826,52 @@ bool FieldSceneRuntime::bootstrap(
             if (const auto bit = story_fact_bit_index(
                     name, kStoryFlagBitPrefix)) {
                 return (field_exit_world_flags_ & (1U << *bit)) != 0U;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kFieldModeFlagBitPrefix)) {
+                return (field_mode_flags_ & (1U << *bit)) != 0U;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kFieldModeEffectFlagBitPrefix)) {
+                // Source FFFC34: world/dialogue effect flags.
+                return (field_mode_effect_flags_ & (1U << *bit)) != 0U;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kFieldAuxiliaryFlagBitPrefix)) {
+                // Source FFFC40: Spirit Eyes quest activity markers.
+                return (field_auxiliary_flags_ & (1U << *bit)) != 0U;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kNotebookTipFlagBitPrefix, 96U)) {
+                if (*bit >= 96U || !notebook_tip_flags_resolved_) {
+                    return std::nullopt;
+                }
+                const auto group = static_cast<std::size_t>(*bit / 32U);
+                const auto mask = std::uint32_t{1U} << (*bit % 32U);
+                return (notebook_tip_flags_[group] & mask) != 0U;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kMrJohnsonsFlagBitPrefix, 8U)) {
+                if (*bit >= 8U || !notebook_referral_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                return (*notebook_referral_flags_ &
+                        static_cast<std::uint8_t>(1U << *bit)) != 0U;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kRunnerInformationFlagBitPrefix, 16U)) {
+                if (*bit >= 16U || !notebook_shadowrunner_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                return (*notebook_shadowrunner_flags_ &
+                        static_cast<std::uint16_t>(1U << *bit)) != 0U;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kGroupItemFlagBitPrefix)) {
+                if (*bit >= 15U || !group_item_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                return (*group_item_flags_ & (1U << *bit)) != 0U;
             }
             if (const auto trigger = story_fact_bit_index(
                     name, kStoryTriggerActivePrefix)) {
@@ -9829,6 +10954,76 @@ bool FieldSceneRuntime::bootstrap(
                 field_exit_world_flags_ = value
                     ? field_exit_world_flags_ | mask
                     : field_exit_world_flags_ & ~mask;
+                return true;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kFieldModeFlagBitPrefix)) {
+                const auto mask = std::uint32_t{1U} << *bit;
+                field_mode_flags_ = value
+                    ? field_mode_flags_ | mask
+                    : field_mode_flags_ & ~mask;
+                return true;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kFieldModeEffectFlagBitPrefix)) {
+                const auto mask = std::uint32_t{1U} << *bit;
+                field_mode_effect_flags_ = value
+                    ? field_mode_effect_flags_ | mask
+                    : field_mode_effect_flags_ & ~mask;
+                return true;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kFieldAuxiliaryFlagBitPrefix)) {
+                const auto mask = std::uint32_t{1U} << *bit;
+                field_auxiliary_flags_ = value
+                    ? field_auxiliary_flags_ | mask
+                    : field_auxiliary_flags_ & ~mask;
+                return true;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kNotebookTipFlagBitPrefix, 96U)) {
+                if (*bit >= 96U || !notebook_tip_flags_resolved_) {
+                    return false;
+                }
+                return set_notebook_tip_unlocked(*bit, value);
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kMrJohnsonsFlagBitPrefix, 8U)) {
+                if (*bit >= 8U || !notebook_referral_flags_.has_value()) {
+                    return false;
+                }
+                const auto mask = static_cast<std::uint8_t>(1U << *bit);
+                *notebook_referral_flags_ = value
+                    ? static_cast<std::uint8_t>(
+                          *notebook_referral_flags_ | mask)
+                    : static_cast<std::uint8_t>(
+                          *notebook_referral_flags_ &
+                          static_cast<std::uint8_t>(~mask));
+                return true;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kRunnerInformationFlagBitPrefix, 16U)) {
+                if (*bit >= 16U || !notebook_shadowrunner_flags_.has_value()) {
+                    return false;
+                }
+                const auto mask = static_cast<std::uint16_t>(1U << *bit);
+                *notebook_shadowrunner_flags_ = value
+                    ? static_cast<std::uint16_t>(
+                          *notebook_shadowrunner_flags_ | mask)
+                    : static_cast<std::uint16_t>(
+                          *notebook_shadowrunner_flags_ &
+                          static_cast<std::uint16_t>(~mask));
+                return true;
+            }
+            if (const auto bit = story_fact_bit_index(
+                    name, kGroupItemFlagBitPrefix)) {
+                if (*bit >= 15U || !group_item_flags_.has_value()) {
+                    return false;
+                }
+                const auto mask = std::uint32_t{1U} << *bit;
+                *group_item_flags_ = value
+                    ? *group_item_flags_ | mask
+                    : *group_item_flags_ & ~mask;
                 return true;
             }
             if (const auto trigger = story_fact_bit_index(
@@ -9949,10 +11144,6 @@ bool FieldSceneRuntime::bootstrap(
                 // (story_flags.finish_trigger) before this fact is written.
                 *group_item_flags_ |= group_item_flag_mask(
                     GroupItemFlag::landmark_map);
-                for (auto& record : field_party_roster_.records()) {
-                    record.auxiliary[2U] = static_cast<std::uint8_t>(
-                        record.auxiliary[2U] + 2U);
-                }
                 return true;
             }
             return false;
@@ -10274,9 +11465,9 @@ bool FieldSceneRuntime::bootstrap(
     // consumes that startup state to begin the ordinary heading-zero field
     // continuation (0xB574); a restored save never takes this branch.
     field_opening_auto_walk_ = FieldOpeningAutoWalkState{};
-    jump_house_entry_transition_pending_ = false;
     field_mode_entry_transition_pending_ = false;
     field_mode_entry_destination_scene_.reset();
+    field_mode_entry_run_target_actor_group_.reset();
     field_indexed_title_service_result_ = 0;
     field_active_story_trigger_.reset();
     field_runtime_state_ = integration::FieldRuntimeCoordinatorState{};
@@ -10528,6 +11719,10 @@ void FieldSceneRuntime::record_field_activity_start(
             MovementModeTransitionContinuation::event_30_world_activity ||
         continuation ==
             MovementModeTransitionContinuation::event_31_world_activity ||
+        continuation ==
+            MovementModeTransitionContinuation::event_27_world_activity ||
+        continuation ==
+            MovementModeTransitionContinuation::event_25_world_activity ||
         continuation ==
             MovementModeTransitionContinuation::event_29_world_activity) {
         field_runtime_state_.pending_field_scene_handler = true;
@@ -12761,10 +13956,15 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
         return false;
     }
 
-    const bool same_scene = !field_world_activity_scene_entry_pending_ &&
-                            state_.field_scene_buffers.initialized &&
+    // The world-activity routine prepares its destination scene before the
+    // outer scene-entry pass completes. That pass sets the pending marker and
+    // may ask for one more buffer refresh of the already prepared destination.
+    // Keep this activity's just-published actor records during that refresh.
+    const bool same_scene = state_.field_scene_buffers.initialized &&
                             state_.field_scene_buffers.scene_reference ==
                                 scene_reference;
+    const bool preserve_scene_entry_position =
+        same_scene && !field_world_activity_scene_entry_pending_;
     const auto prior_world_mode = field_movement_transition_state_.world_mode;
     const auto prior_camera_x = state_.field_scene_buffers.camera_x;
     const auto prior_camera_y = state_.field_scene_buffers.camera_y;
@@ -12775,9 +13975,15 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
         return false;
     }
 
-    if (same_scene) {
+    if (preserve_scene_entry_position) {
         // A 0x2BD2 same-scene refresh redraws the active scene without
         // resetting the controlled runner to its original entry position.
+        // The immediately repeated load after a world-activity selector is
+        // different: it is still the destination entry pass, and must retain
+        // the new scene's profile placements rather than the caller's map
+        // coordinates. The world-activity entry marker distinguishes those
+        // two cases while allowing already-published actor records to remain
+        // in place.
         next_buffers.camera_x = prior_camera_x;
         next_buffers.camera_y = prior_camera_y;
         if (field_entity_.active) {
@@ -12805,7 +14011,14 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
         initialize_default_field_actors(scene_reference);
         field_weapon_projectiles_.clear();
         field_weapon_slots_occupied_.fill(false);
-        field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
+        // 0x167AE may arm FFDF84/FFDF86 while selecting a new field scene.
+        // Its later 0x2BD2 re-entry prepares that scene again, but the timeout
+        // words survive in the ROM. The pending-scene marker distinguishes
+        // that final presentation pass from a fresh unrelated scene load.
+        if (!field_world_activity_scene_entry_pending_) {
+            field_world_activity_timeout_state_ =
+                WorldActivityTimeoutState{};
+        }
     }
     if (!same_scene && field_palette_fade_steps_ != 0U) {
         // The source scene-buffer load replaces the palette after the
@@ -12876,7 +14089,60 @@ void FieldSceneRuntime::snapshot_world_activity_source_scene() {
     snapshot.player_attack_pose = field_entity_attack_pose_active_;
     snapshot.player_attack_direction = field_entity_attack_direction_;
     snapshot.target_heading = field_target_heading_;
+    snapshot.return_anchor = pending_field_return_anchor_;
+    snapshot.return_facing = pending_field_return_facing_;
+
+    if (snapshot.return_anchor ==
+        FieldLocationReturnAnchor::collision_probe_lead) {
+        if (!field_collision_probe_state_.initialized) {
+            source_boundary("field.world_activity.return_probe_missing");
+            snapshot.return_anchor = FieldLocationReturnAnchor::none;
+        } else {
+            // ROM 0xBC36 writes the selected offset-bank lead point to
+            // FFDF44; 0x2F32/0x2FA4 copy that anchor into the runner records
+            // when the source field map is rebuilt.
+            const auto& anchor = field_collision_probe_state_.points[0U];
+            snapshot.controlled_actor.world_position =
+                SceneRunnerPosition{anchor.x, anchor.y};
+            snapshot.controlled_actor.projection.world_x = anchor.x;
+            snapshot.controlled_actor.projection.world_y = anchor.y;
+            snapshot.movement.position_x = anchor.x;
+            snapshot.movement.position_y = anchor.y;
+            snapshot.scene_buffers.camera_x =
+                field_collision_probe_state_.camera_x;
+            snapshot.scene_buffers.camera_y =
+                field_collision_probe_state_.camera_y;
+            snapshot.camera_follow.camera_x =
+                field_collision_probe_state_.camera_x;
+            snapshot.camera_follow.camera_y =
+                field_collision_probe_state_.camera_y;
+            snapshot.camera_follow.aligned_x =
+                static_cast<std::uint16_t>(
+                    field_collision_probe_state_.camera_x & 0xFF80U);
+            snapshot.camera_follow.aligned_y =
+                static_cast<std::uint16_t>(
+                    field_collision_probe_state_.camera_y & 0xFF80U);
+
+            if (snapshot.return_facing ==
+                FieldLocationReturnFacing::face_away_from_entry) {
+                const auto return_heading = static_cast<std::uint16_t>(
+                    snapshot.movement.heading ^ 0x8000U);
+                snapshot.movement.heading = return_heading;
+                snapshot.movement.animation_heading = return_heading;
+                snapshot.target_heading = return_heading;
+                snapshot.controlled_actor.direction =
+                    static_cast<std::uint8_t>(
+                        ((return_heading >> 14U) & 3U) * 2U);
+                snapshot.player_walking = false;
+                snapshot.player_attack_pose = false;
+                snapshot.player_animation_reset_pending = true;
+            }
+        }
+    }
     world_activity_return_snapshot_ = std::move(snapshot);
+    pending_field_return_anchor_ = FieldLocationReturnAnchor::none;
+    pending_field_return_facing_ =
+        FieldLocationReturnFacing::preserve_entry_heading;
 
     // ROM 0x16E30 retires pending entity effects and clears effect-slot
     // occupancy before the resource scene is prepared. Gun projectiles use
@@ -13079,52 +14345,6 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
     source_boundary("field.scene.transition.same_scene_reentered");
 }
 
-bool FieldSceneRuntime::resume_jump_house_entry_transition() {
-    if (!jump_house_entry_transition_pending_) {
-        return false;
-    }
-    jump_house_entry_transition_pending_ = false;
-
-    const auto initialize =
-        field_runtime_callbacks_.initialize_world_activity_mode;
-    if (!initialize) {
-        source_boundary("field.entry.jump_house_route_resume_unavailable");
-        return false;
-    }
-
-    // This is the synchronous tail that the ROM reaches after its blocking
-    // 0x20484 title-service prompt. The retained route still names scene 13;
-    // consume it through the same typed world-activity scene preparation used
-    // by ordinary field event-table transitions.
-    field_runtime_state_.scene_id =
-        state_.field_scene_buffers.scene_reference;
-    field_runtime_state_.field_mode =
-        state_.field_scene_buffers.field_resource_mode;
-    field_runtime_state_.scene_runtime_state = 0U;
-    field_runtime_state_.field_scene_gate = 0U;
-    field_runtime_state_.field_transition_requested = false;
-    initialize(field_runtime_state_);
-
-    if (field_runtime_state_.field_transition_requested ||
-        !state_.field_scene_buffers.initialized ||
-        state_.field_scene_buffers.scene_reference != 13U) {
-        source_boundary("field.entry.jump_house_scene_prepare_failed");
-        return false;
-    }
-
-    field_runtime_state_.scene_refresh_marker = -1;
-    field_movement_transition_state_.scene_id = 13U;
-    field_runtime_state_.scene_id = 13U;
-    world_frame_logic_state_.world_mode = 13U;
-    advance_field_scene_transition_after_modal();
-    if (state_.field_scene_buffers.scene_reference != 13U) {
-        source_boundary("field.entry.jump_house_scene_reentry_failed");
-        return false;
-    }
-    source_boundary("field.entry.jump_house_scene_entered");
-    return true;
-}
-
 bool FieldSceneRuntime::resume_field_mode_entry_route() {
     if (!field_mode_entry_transition_pending_ ||
         !field_mode_entry_destination_scene_.has_value()) {
@@ -13139,15 +14359,33 @@ bool FieldSceneRuntime::resume_field_mode_entry_route() {
         active_field_script_route_->area_event_target !=
             std::optional<std::uint8_t>{
                 static_cast<std::uint8_t>(expected_scene)}) {
-        source_boundary("field.mode_text.area_event_route_lost");
+        field_mode_entry_run_target_actor_group_.reset();
+        source_boundary("field.entry.area_event_route_lost");
+        return false;
+    }
+
+    const bool run_target_actor_group_pending =
+        field_mode_entry_run_target_actor_group_.has_value();
+    const auto expected_activity_scene = run_target_actor_group_pending
+        ? static_cast<std::uint16_t>(
+              field_mode_entry_run_target_actor_group_->activity_scene_id)
+        : expected_scene;
+    if (run_target_actor_group_pending &&
+        (field_mode_entry_run_target_actor_group_->activity_scene_id != 15U ||
+         field_mode_entry_run_target_actor_group_->actor_group_area !=
+             state_.field_scene_buffers.scene_reference ||
+         field_mode_entry_run_target_actor_group_->actor_group_event !=
+             active_field_script_route_->event_code)) {
+        field_mode_entry_run_target_actor_group_.reset();
+        source_boundary("field.entry.run_target_actor_group_route_mismatch");
         return false;
     }
 
     const auto initialize =
         field_runtime_callbacks_.initialize_world_activity_mode;
     if (!initialize) {
-        source_boundary(
-            "field.mode_text.area_event_route_resume_unavailable");
+        field_mode_entry_run_target_actor_group_.reset();
+        source_boundary("field.entry.area_event_route_resume_unavailable");
         return false;
     }
 
@@ -13159,10 +14397,11 @@ bool FieldSceneRuntime::resume_field_mode_entry_route() {
     field_runtime_state_.field_scene_gate = 0U;
     field_runtime_state_.field_transition_requested = false;
     initialize(field_runtime_state_);
+    field_mode_entry_run_target_actor_group_.reset();
 
     if (field_runtime_state_.field_transition_requested ||
-        field_runtime_state_.scene_id != expected_scene) {
-        source_boundary("field.mode_text.area_event_scene_prepare_failed");
+        field_runtime_state_.scene_id != expected_activity_scene) {
+        source_boundary("field.entry.area_event_scene_prepare_failed");
         return false;
     }
 
@@ -13172,11 +14411,12 @@ bool FieldSceneRuntime::resume_field_mode_entry_route() {
     world_frame_logic_state_.world_mode =
         static_cast<std::uint8_t>(field_runtime_state_.scene_id);
     advance_field_scene_transition_after_modal();
-    if (state_.field_scene_buffers.scene_reference != expected_scene) {
-        source_boundary("field.mode_text.area_event_scene_reentry_failed");
+    if (state_.field_scene_buffers.scene_reference !=
+        expected_activity_scene) {
+        source_boundary("field.entry.area_event_scene_reentry_failed");
         return false;
     }
-    source_boundary("field.mode_text.area_event_scene_entered");
+    source_boundary("field.entry.area_event_scene_entered");
     return true;
 }
 
@@ -13267,9 +14507,11 @@ void FieldSceneRuntime::save_field_door_return_point() {
     // ROM 0xBC36 has already expanded the selected 0xBD34 bank around the
     // contact position. Those three positions, rather than an inferred
     // heading-to-distance rule, are the source return placement.
-    if (!field_collision_probe_state_.initialized) {
+    if (pending_field_return_anchor_ !=
+            FieldLocationReturnAnchor::collision_probe_lead ||
+        !field_collision_probe_state_.initialized) {
         field_door_return_point_ = FieldDoorReturnPoint{};
-        source_boundary("field.door.return_source_position_missing");
+        source_boundary("field.door.return_policy_or_source_position_missing");
         return;
     }
     const auto heading = field_movement_state_.heading;
@@ -13277,10 +14519,13 @@ void FieldSceneRuntime::save_field_door_return_point() {
     field_door_return_point_.lead = SceneRunnerPosition{
         field_collision_probe_state_.points[0].x,
         field_collision_probe_state_.points[0].y};
-    // The event heading points into the doorway; the reload resumes with the
-    // opposite heading, so the runner faces away from it.
+    // The entity-owned link chooses whether to retain its entry heading or
+    // resume facing away from the doorway.
     field_door_return_point_.heading =
-        static_cast<std::uint16_t>(heading ^ 0x8000U);
+        pending_field_return_facing_ ==
+                FieldLocationReturnFacing::face_away_from_entry
+            ? static_cast<std::uint16_t>(heading ^ 0x8000U)
+            : heading;
     field_door_return_point_.camera_x =
         field_collision_probe_state_.camera_x;
     field_door_return_point_.camera_y =
@@ -13323,6 +14568,158 @@ void FieldSceneRuntime::begin_field_door_return() {
     source_boundary("field.door.return_started");
 }
 
+bool FieldSceneRuntime::begin_hospital_menu_task(
+    const std::string_view function) {
+    if (!hospital_service_session_active_) {
+        hospital_random_grid_effect_ = RandomGridEffectState{};
+        hospital_random_grid_cells_.fill(-1);
+        hospital_service_session_active_ = true;
+    }
+    field_palette_fade_steps_ = 0U;
+    if (!field_dialogue_.open_gameplay_task("council_island_hospital",
+                                            function)) {
+        hospital_service_session_active_ = false;
+        failure_ = "Council Island Hospital Lua menu task could not open";
+        source_boundary("field.hospital.lua_menu_task_failed");
+        return false;
+    }
+    source_boundary("field.hospital.lua_menu_task_opened");
+    return true;
+}
+
+void FieldSceneRuntime::advance_hospital_grid_effect() {
+    if (!field_dialogue_.uses_hospital_menu_layout()) {
+        return;
+    }
+    advance_random_grid_effect(
+        hospital_random_grid_effect_,
+        {[this](const std::uint16_t bound) {
+             const auto value =
+                 sample_source_random_bound(field_random_seed_, bound);
+             return static_cast<std::uint16_t>(value < 0 ? 0 : value);
+         },
+         [this](const RandomGridEffectPlan& plan) {
+             const auto location =
+                 plan.primary_source ==
+                         RandomGridPrimarySource::branch_zero_table
+                     ? static_cast<std::size_t>(plan.primary_entry_index)
+                     : 8U + static_cast<std::size_t>(
+                                plan.primary_entry_index);
+             const auto pattern =
+                 plan.variant_source == RandomGridVariantSource::
+                                           fixed_three_variant_resources
+                     ? static_cast<std::size_t>(plan.variant_entry_index)
+                     : 3U + static_cast<std::size_t>(
+                                plan.variant_entry_index);
+             if (location < hospital_random_grid_cells_.size() &&
+                 pattern < dismiss_runner_random_grid_patterns_.size()) {
+                 hospital_random_grid_cells_[location] =
+                     static_cast<std::int8_t>(pattern);
+             }
+         }});
+}
+
+void FieldSceneRuntime::paint_hospital_menu(QPainter& painter) const {
+    painter.fillRect(QRect(0, 0, 320, 224), Qt::black);
+    if (!pocket_secretary_background_.isNull()) {
+        painter.drawImage(0, 0, pocket_secretary_background_);
+    }
+    if (!pocket_secretary_grid_.isNull()) {
+        painter.drawImage(24, 24, pocket_secretary_grid_);
+    }
+    for (std::size_t location = 0;
+         location < hospital_random_grid_cells_.size(); ++location) {
+        const auto pattern = hospital_random_grid_cells_[location];
+        if (pattern < 0 ||
+            static_cast<std::size_t>(pattern) >=
+                dismiss_runner_random_grid_patterns_.size()) {
+            continue;
+        }
+        painter.drawImage(
+            kHospitalRandomGridOrigins[location][0],
+            kHospitalRandomGridOrigins[location][1],
+            dismiss_runner_random_grid_patterns_[
+                static_cast<std::size_t>(pattern)]);
+    }
+    painter.save();
+    painter.setClipRect(QRect(272, 0, 48, 224));
+    painter.drawImage(0, 0, field_hud_);
+    paint_field_hud_overlays(painter);
+    painter.restore();
+
+    const auto& panel = field_dialogue_.panel();
+    if (field_dialogue_.uses_hospital_medical_attention_layout()) {
+        for (std::size_t row = 0U;
+             row < panel.text_segment_count && row < 3U; ++row) {
+            const auto y = row < 2U
+                               ? 48 + static_cast<int>(row) * 8
+                               : 64;
+            const auto text = panel.text_segments[row];
+            const auto x = row < 2U
+                               ? 72
+                               : std::max(72, 232 -
+                                                   static_cast<int>(text.size()) * 8);
+            draw_hotel_menu_text(
+                painter, x, y, text,
+                HotelMenuPaletteLine::status_and_options);
+        }
+        for (std::size_t row = 0U; row < panel.option_count; ++row) {
+            const auto y = 80 + static_cast<int>(row) * 16;
+            draw_hotel_menu_text(
+                painter, 72, y, panel.options[row].source_label,
+                HotelMenuPaletteLine::status_and_options);
+            if (panel.cursor_selection && panel.selected_option == row &&
+                !hotel_options_cursor_.isNull()) {
+                painter.drawImage(72, y, hotel_options_cursor_);
+            }
+        }
+        return;
+    }
+
+    if (panel.option_count == 2U) {
+        for (std::size_t row = 0U;
+             row < panel.text_segment_count && row < 2U; ++row) {
+            draw_hotel_menu_text(
+                painter, 80, 72 + static_cast<int>(row) * 8,
+                panel.text_segments[row], HotelMenuPaletteLine::checkout);
+        }
+        for (std::size_t row = 0U; row < panel.option_count; ++row) {
+            draw_hotel_menu_text(
+                painter, 128, 96 + static_cast<int>(row) * 16,
+                panel.options[row].source_label,
+                HotelMenuPaletteLine::checkout);
+        }
+        if (panel.cursor_selection &&
+            !hotel_checkout_cursor_.isNull()) {
+            painter.drawImage(
+                104, 96 + static_cast<int>(panel.selected_option) * 16,
+                hotel_checkout_cursor_);
+        }
+        return;
+    }
+
+    if (panel.text_segment_count != 0U) {
+        draw_hotel_menu_text(painter, 72, 48, panel.text_segments[0],
+                             HotelMenuPaletteLine::status_and_options);
+    }
+    const auto* separator = game_scripts_.dialogue_text(
+        "hospital.options.separator");
+    if (separator != nullptr) {
+        draw_hotel_menu_text(painter, 72, 56, *separator,
+                             HotelMenuPaletteLine::status_and_options);
+    }
+    for (std::size_t row = 0U; row < panel.option_count; ++row) {
+        const auto y = 72 + static_cast<int>(row) * 16;
+        draw_hotel_menu_text(
+            painter, 72, y, panel.options[row].source_label,
+            HotelMenuPaletteLine::status_and_options);
+        if (panel.cursor_selection && panel.selected_option == row &&
+            !hotel_options_cursor_.isNull()) {
+            painter.drawImage(72, y, hotel_options_cursor_);
+        }
+    }
+}
+
 bool FieldSceneRuntime::advance_field_door_return() {
     ++field_door_return_frame_;
     // Inputs are not sampled while the scene reloads.
@@ -13352,6 +14749,12 @@ bool FieldSceneRuntime::advance_field_door_return() {
         field_door_return_active_ = false;
         field_door_return_modal_frame_ = QImage{};
         field_modal_return_blocked_inputs_ = 0U;
+        // The checkout return has restored the destination scene and is about
+        // to rejoin the recurring field coordinator. Release FFDFE8 here so
+        // its 0x0AEA Start gate can accept the next edge.
+        field_runtime_state_.display_service_word = 0U;
+        state_.display_service_word = 0U;
+        source_boundary("field.door.return_display_service_released");
         source_boundary("field.door.return_completed");
         return false;
     }
@@ -13472,19 +14875,27 @@ void FieldSceneRuntime::advance_frame() {
             source_boundary("field.mode_text_prompt.returned_to_caller");
             if (field_shop_route_pending_) {
                 field_shop_route_pending_ = false;
-                if (field_shop_definition_.has_value() &&
+                field_shop_active_definition_ = field_shop_definition_;
+                const auto script_menu =
+                    game_scripts_.open_shop_menu("ares_weapon_emporium");
+                if (field_shop_active_definition_.has_value() &&
+                    script_menu.has_value() &&
                     field_shop_menu_.open(
                         ShopId::ares_weapon_emporium,
-                        *field_shop_definition_,
-                        field_menu_text_.confirmation_choice_ids)) {
+                        *field_shop_active_definition_,
+                        field_menu_text_.confirmation_choice_ids) &&
+                    field_shop_menu_.apply_script_snapshot(*script_menu)
+                        .has_value()) {
                     source_boundary("field.shop.ares.opened");
                 } else {
+                    (void)game_scripts_.close_shop_menu();
+                    field_shop_active_definition_.reset();
                     source_boundary("field.shop.ares.open_failed");
                 }
             } else if (field_mode_entry_transition_pending_) {
                 if (!resume_field_mode_entry_route()) {
                     source_boundary(
-                        "field.mode_text.area_event_route_resume_failed");
+                        "field.entry.area_event_route_resume_failed");
                 }
                 begin_field_modal_return_transition();
             }
@@ -13492,6 +14903,7 @@ void FieldSceneRuntime::advance_frame() {
         return;
     }
     if (field_dialogue_.open()) {
+        advance_hospital_grid_effect();
         // The source prompt loop waits for a high-byte controller edge. The
         // host keeps that loop non-blocking and suspends field movement while
         // the common dialogue panel owns the current prompt.
@@ -13513,11 +14925,36 @@ void FieldSceneRuntime::advance_frame() {
                 ? std::uint16_t{0U}
                 : field_controller_sample_state_.events);
         if (result == FieldDialogueAdvanceResult::returned_to_field) {
+            hospital_service_session_active_ = false;
             source_boundary("field.dialogue.returned_to_field");
-            if (!resume_jump_house_entry_transition()) {
+            if (field_mode_entry_transition_pending_) {
+                const auto expected_result =
+                    active_field_script_route_.has_value()
+                        ? active_field_script_route_->
+                              entry_continue_result_id
+                        : std::string{};
+                const bool entry_allows_transition =
+                    expected_result.empty() ||
+                    field_dialogue_.take_gameplay_task_result() ==
+                        std::optional<std::string>{expected_result};
+                if (entry_allows_transition) {
+                    if (!resume_field_mode_entry_route()) {
+                        source_boundary(
+                            "field.entry.area_event_route_resume_failed");
+                    }
+                } else {
+                    field_mode_entry_transition_pending_ = false;
+                    field_mode_entry_destination_scene_.reset();
+                    field_mode_entry_run_target_actor_group_.reset();
+                    source_boundary(
+                        "field.entry.location_dialogue_denied_transition");
+                    advance_field_scene_transition_after_modal();
+                }
+                begin_field_modal_return_transition();
+            } else {
                 advance_field_scene_transition_after_modal();
+                begin_field_modal_return_transition();
             }
-            begin_field_modal_return_transition();
         } else if (result ==
                    FieldDialogueAdvanceResult::returned_from_world_activity) {
             if (!restore_world_activity_source_scene(field_runtime_state_)) {
@@ -13528,7 +14965,66 @@ void FieldSceneRuntime::advance_frame() {
             }
         } else if (result ==
                    FieldDialogueAdvanceResult::hotel_options_requested) {
+            // Room-payment tasks are an alternate mode service outcome. They
+            // enter Hotel Options without resuming a pending area-table
+            // destination such as the Inn's numeric scene-53 row.
+            field_mode_entry_transition_pending_ = false;
+            field_mode_entry_destination_scene_.reset();
+            field_mode_entry_run_target_actor_group_.reset();
             begin_hotel_menu();
+        } else if (result == FieldDialogueAdvanceResult::
+                       hospital_options_requested) {
+            field_mode_entry_transition_pending_ = false;
+            field_mode_entry_destination_scene_.reset();
+            field_mode_entry_run_target_actor_group_.reset();
+            (void)begin_hospital_menu_task("present_options");
+        } else if (result == FieldDialogueAdvanceResult::
+                       hospital_leave_confirmation_requested) {
+            (void)begin_hospital_menu_task("present_leave_confirmation");
+        } else if (result == FieldDialogueAdvanceResult::hospital_left) {
+            hospital_service_session_active_ = false;
+            begin_field_door_return();
+        } else if (result == FieldDialogueAdvanceResult::
+                       hospital_cyberware_requested) {
+            hospital_service_session_active_ = false;
+            open_command_overview(
+                static_cast<std::uint16_t>(srx::MenuScreen::CYBERWARE));
+            source_boundary("field.hospital.cyberware_opened");
+        } else if (result == FieldDialogueAdvanceResult::
+                       hospital_medical_attention_requested) {
+            (void)begin_hospital_menu_task("present_medical_attention");
+        } else if (result == FieldDialogueAdvanceResult::
+                       medicine_lodge_store_requested) {
+            field_shop_active_definition_ =
+                game_scripts_.shop_definition("medicine_lodge");
+            const auto script_menu =
+                game_scripts_.open_shop_menu("medicine_lodge");
+            if (field_shop_active_definition_.has_value() &&
+                script_menu.has_value() &&
+                field_shop_menu_.open(
+                    ShopId::medicine_lodge,
+                    *field_shop_active_definition_,
+                    field_menu_text_.confirmation_choice_ids) &&
+                field_shop_menu_.apply_script_snapshot(*script_menu)
+                    .has_value()) {
+                source_boundary("field.shop.medicine_lodge.opened");
+            } else {
+                (void)game_scripts_.close_shop_menu();
+                field_shop_active_definition_.reset();
+                source_boundary(
+                    "field.shop.medicine_lodge.definition_unavailable");
+                (void)field_dialogue_.present_source_boundary_for_host(
+                    "The ROM Medicine Lodge store definition could not be "
+                    "loaded from its Lua catalog.");
+            }
+        } else if (result == FieldDialogueAdvanceResult::
+                       medicine_lodge_wise_one_followup) {
+            field_pending_scene_profile_ =
+                kMedicineLodgeWiseOneEntryProfile0x1668A;
+            source_boundary(
+                "field.location.medicine_lodge_wise_one_profile_queued");
+            advance_field_scene_transition_after_modal();
+            begin_field_modal_return_transition();
         } else if (result ==
                    FieldDialogueAdvanceResult::matrix_entry_requested) {
             const auto system_id =
@@ -13586,6 +15082,16 @@ void FieldSceneRuntime::advance_frame() {
         return;
     }
     if (field_shop_menu_.is_open()) {
+        const auto shop_tag =
+            field_shop_menu_.shop() == ShopId::medicine_lodge
+                ? std::string_view{"medicine_lodge"}
+                : std::string_view{"ares"};
+        const auto shop_boundary = [this, shop_tag](
+                                       const std::string_view event) {
+            source_boundary(std::string("field.shop.") +
+                            std::string(shop_tag) + "." +
+                            std::string(event));
+        };
         // ROM 0x56AC0 services audio and new high-byte input inside its menu
         // loop. Keep that interaction modal so field movement cannot write
         // stale map pixels underneath the full-screen service presentation.
@@ -13599,7 +15105,7 @@ void FieldSceneRuntime::advance_frame() {
         if (field_shop_menu_.transaction_confirmation_open() ||
             field_shop_menu_.transaction_waiting_for_event()) {
             if (!field_funds_.has_value()) {
-                source_boundary("field.shop.ares.transaction_wallet_unavailable");
+                shop_boundary("transaction_wallet_unavailable");
                 field_shop_menu_.clear_pending_action();
                 return;
             }
@@ -13622,7 +15128,7 @@ void FieldSceneRuntime::advance_frame() {
                 if (source_audio_event_callback_) {
                     source_audio_event_callback_(0x25U);
                 }
-                source_boundary("field.shop.ares.confirmation_moved");
+                shop_boundary("confirmation_moved");
             } else if (confirmation_was_open &&
                        !field_shop_menu_.transaction_confirmation_open() &&
                        source_audio_event_callback_) {
@@ -13634,42 +15140,50 @@ void FieldSceneRuntime::advance_frame() {
                 apply_purchase_state(purchase_state, active_runner_record());
                 field_funds_ = purchase_state.funds;
                 refresh_field_hud_runner_slot();
-                source_boundary("field.shop.ares.purchase_applied");
+                shop_boundary("purchase_applied");
             } else if (transaction_event ==
                        ShopTransactionEvent::sale_applied) {
                 apply_sale_state(sale_state, active_runner_record());
                 field_funds_ = sale_state.funds;
                 refresh_field_hud_runner_slot();
-                source_boundary("field.shop.ares.sale_applied");
+                shop_boundary("sale_applied");
             } else if (transaction_event ==
                        ShopTransactionEvent::message_shown) {
-                source_boundary("field.shop.ares.transaction_message");
+                shop_boundary("transaction_message");
             } else if (transaction_event ==
                        ShopTransactionEvent::cancelled) {
-                source_boundary("field.shop.ares.transaction_cancelled");
+                shop_boundary("transaction_cancelled");
             } else if (transaction_event ==
                        ShopTransactionEvent::message_dismissed) {
-                source_boundary("field.shop.ares.message_dismissed");
+                shop_boundary("message_dismissed");
             } else if (transaction_event ==
                        ShopTransactionEvent::unresolved) {
-                source_boundary("field.shop.ares.transaction_unresolved");
+                shop_boundary("transaction_unresolved");
             }
             return;
         }
-        const auto menu_event = field_shop_menu_.advance(
+        const auto script_state = game_scripts_.advance_shop_menu(
             field_controller_sample_state_.events);
+        const auto applied = script_state.has_value()
+            ? field_shop_menu_.apply_script_snapshot(*script_state)
+            : std::optional<ShopMenuEvent>{};
+        if (!applied.has_value()) {
+            shop_boundary("lua_menu_state_unavailable");
+            return;
+        }
+        const auto menu_event = *applied;
         switch (menu_event) {
         case ShopMenuEvent::selection_moved:
             if (source_audio_event_callback_) {
                 source_audio_event_callback_(0x25U);
             }
-            source_boundary("field.shop.ares.selection_moved");
+            shop_boundary("selection_moved");
             break;
         case ShopMenuEvent::panel_changed:
             if (source_audio_event_callback_) {
                 source_audio_event_callback_(0x25U);
             }
-            source_boundary("field.shop.ares.panel_changed");
+            shop_boundary("panel_changed");
             break;
         case ShopMenuEvent::purchase_selected:
             if (source_audio_event_callback_) {
@@ -13688,14 +15202,14 @@ void FieldSceneRuntime::advance_frame() {
                         cost_context, purchase_state,
                         item_base_cost_lookup());
                 if (transaction_event == ShopTransactionEvent::message_shown) {
-                    source_boundary("field.shop.ares.purchase_preflight_message");
+                    shop_boundary("purchase_preflight_message");
                 } else if (transaction_event ==
                            ShopTransactionEvent::unresolved) {
-                    source_boundary("field.shop.ares.purchase_unresolved");
+                    shop_boundary("purchase_unresolved");
                 }
             } else {
                 field_shop_menu_.clear_pending_action();
-                source_boundary("field.shop.ares.purchase_state_unavailable");
+                shop_boundary("purchase_state_unavailable");
             }
             break;
         case ShopMenuEvent::sale_selected:
@@ -13711,27 +15225,122 @@ void FieldSceneRuntime::advance_frame() {
                 const auto transaction_event = field_shop_menu_.begin_sale(
                     cost_context, sale_state, item_resale_base_lookup());
                 if (transaction_event == ShopTransactionEvent::message_shown) {
-                    source_boundary("field.shop.ares.sale_preflight_message");
+                    shop_boundary("sale_preflight_message");
                 } else if (transaction_event ==
                            ShopTransactionEvent::action_ignored) {
-                    source_boundary("field.shop.ares.sale_empty_slot");
+                    shop_boundary("sale_empty_slot");
                 } else if (transaction_event ==
                            ShopTransactionEvent::unresolved) {
-                    source_boundary("field.shop.ares.sale_unresolved");
+                    shop_boundary("sale_unresolved");
                 }
             } else {
                 field_shop_menu_.clear_pending_action();
-                source_boundary("field.shop.ares.sale_wallet_unavailable");
+                shop_boundary("sale_wallet_unavailable");
+            }
+            break;
+        case ShopMenuEvent::progression_selected:
+            if (!field_shop_menu_.pending_action().has_value() ||
+                !field_shop_menu_.pending_action()->progression_offer.has_value() ||
+                !field_funds_.has_value()) {
+                shop_boundary("progression_state_unavailable");
+                field_shop_menu_.finish_action();
+                break;
+            }
+            {
+                const auto table_index = active_runner_record().magic_table_index;
+                const auto* const source_table =
+                    field_magic_spell_table(table_index);
+                if (source_table == nullptr ||
+                    table_index >= field_magic_spell_table_overrides_.size()) {
+                    shop_boundary("progression_spell_table_unavailable");
+                    field_shop_menu_.finish_action();
+                    break;
+                }
+                auto progression = make_field_shop_progression_input(
+                    field_shop_menu_, active_runner_record(), *field_funds_,
+                    *source_table);
+                if (!progression.has_value()) {
+                    shop_boundary("progression_source_state_unavailable");
+                    field_shop_menu_.finish_action();
+                    break;
+                }
+                const auto quote = prepare_field_action_progression_quote(
+                    progression->tables, progression->state);
+                if (quote.result ==
+                    FieldActionProgressionQuoteResult::quoted) {
+                    const auto purchase_result =
+                        purchase_field_action_progression(
+                            progression->tables, progression->state);
+                    if (purchase_result ==
+                        FieldActionProgressionPurchaseResult::applied) {
+                        const auto updated_table =
+                            spell_table_from_field_progression(
+                                progression->state);
+                        if (!updated_table.has_value()) {
+                            shop_boundary("progression_table_write_unavailable");
+                        } else {
+                            field_magic_spell_table_overrides_[table_index] =
+                                *updated_table;
+                            field_funds_ = progression->state.funds;
+                            refresh_field_hud_runner_slot();
+                            shop_boundary("progression_applied");
+                        }
+                        field_shop_menu_.finish_action();
+                    } else if (purchase_result ==
+                               FieldActionProgressionPurchaseResult::
+                                   insufficient_funds) {
+                        field_shop_menu_.show_progression_message(
+                            ShopTransactionMessage::insufficient_funds);
+                        shop_boundary("progression_insufficient_funds");
+                    } else if (purchase_result ==
+                               FieldActionProgressionPurchaseResult::
+                                   runner_unavailable) {
+                        field_shop_menu_.show_progression_message(
+                            ShopTransactionMessage::training_unavailable);
+                        shop_boundary("progression_runner_unavailable");
+                    } else {
+                        shop_boundary("progression_purchase_boundary");
+                        field_shop_menu_.finish_action();
+                    }
+                } else if (quote.result ==
+                           FieldActionProgressionQuoteResult::
+                               runner_unavailable) {
+                    field_shop_menu_.show_progression_message(
+                        ShopTransactionMessage::training_unavailable);
+                    shop_boundary("progression_runner_unavailable");
+                } else if (quote.result ==
+                           FieldActionProgressionQuoteResult::
+                               progression_limit) {
+                    shop_boundary("progression_limit");
+                    field_shop_menu_.finish_action();
+                } else if (quote.result ==
+                           FieldActionProgressionQuoteResult::
+                               offer_unavailable) {
+                    shop_boundary("progression_offer_unavailable");
+                    field_shop_menu_.finish_action();
+                } else {
+                    shop_boundary("progression_quote_unavailable");
+                    field_shop_menu_.finish_action();
+                }
             }
             break;
         case ShopMenuEvent::offer_unavailable:
-            source_boundary("field.shop.ares.offer_unavailable");
+            shop_boundary("offer_unavailable");
             break;
         case ShopMenuEvent::source_action_boundary:
             if (source_audio_event_callback_) {
                 source_audio_event_callback_(0x24U);
             }
-            source_boundary("field.shop.ares.action_boundary");
+            shop_boundary("action_boundary");
+            {
+                const auto reset_state = game_scripts_.reset_shop_menu();
+                if (!reset_state.has_value() ||
+                    !field_shop_menu_.apply_script_snapshot(*reset_state)
+                         .has_value()) {
+                    shop_boundary("lua_menu_reset_unavailable");
+                    return;
+                }
+            }
             field_shop_menu_.finish_action();
             break;
         case ShopMenuEvent::active_runner_change_requested:
@@ -13740,13 +15349,14 @@ void FieldSceneRuntime::advance_frame() {
             }
             handle_field_mode_action_event();
             refresh_field_hud_runner_slot();
-            source_boundary("field.shop.ares.active_runner_changed");
+            shop_boundary("active_runner_changed");
             break;
         case ShopMenuEvent::returned_to_field:
             field_shop_route_pending_ = false;
             state_.display_service_word = 0U;
             field_runtime_state_.display_service_word = 0U;
-            source_boundary("field.shop.ares.returned_to_field");
+            field_shop_active_definition_.reset();
+            shop_boundary("returned_to_field");
             break;
         case ShopMenuEvent::no_change:
             break;
@@ -13754,6 +15364,13 @@ void FieldSceneRuntime::advance_frame() {
         return;
     }
     if (command_overview_.open()) {
+        if (command_overview_start_transition_frames_remaining_ != 0U) {
+            command_overview_start_transition_black_frame_ = true;
+            --command_overview_start_transition_frames_remaining_;
+            source_boundary("field.command_overview.start_black_frame");
+            return;
+        }
+        command_overview_start_transition_black_frame_ = false;
         // This is the non-blocking host form of the source command loop's
         // wait/latch/sample sequence. Field movement and world services stay
         // suspended until Start returns from the overview.
@@ -14236,6 +15853,8 @@ void FieldSceneRuntime::advance_frame() {
             // all later Start edges and the menu can only open once.
             state_.display_service_word = 0U;
             field_runtime_state_.display_service_word = 0U;
+            command_overview_start_transition_frames_remaining_ = 0U;
+            command_overview_start_transition_black_frame_ = false;
             source_boundary("field.command_overview.returned_to_field");
             command_overview_inventory_action_ = InventoryActionMenuState{};
             command_overview_selected_inventory_item_.reset();
@@ -14346,7 +15965,39 @@ bool FieldSceneRuntime::open_command_overview_for_dump() {
     advance_frame();
     set_controller_port_byte(static_cast<std::uint8_t>(
         field_controller_port_byte_ & static_cast<std::uint8_t>(~0x80U)));
+    while (command_overview_start_transition_black_frame_ ||
+           command_overview_start_transition_frames_remaining_ != 0U) {
+        advance_frame();
+    }
     return command_overview_.open();
+}
+
+bool FieldSceneRuntime::open_hospital_menu_for_dump(
+    const std::string_view function) {
+    if (!ready_ || (function != "present_options" &&
+                    function != "present_leave_confirmation" &&
+                    function != "present_medical_attention")) {
+        return false;
+    }
+    if (function == "present_medical_attention") {
+        auto& runner = active_runner_record();
+        runner.archetype_index = 2U;
+        runner.attributes[0] = 6U;
+        runner.attributes[5] = 6U;
+        runner.delay_meter = 3U;
+        runner.behavior_meter = 3U;
+        field_funds_ = 1000U;
+        refresh_field_hud_runner_slot();
+    }
+    field_mode_entry_transition_pending_ = false;
+    field_mode_entry_destination_scene_.reset();
+    hospital_service_session_active_ = false;
+    game_scripts_.set_location_context(
+        "building", "council_island_hospital",
+        "council_island_hospital", "council_island_hospital_narrator");
+    game_scripts_.set_field_mode_context(
+        scripting::ScriptFieldModeContext{4U, 4U, 0});
+    return begin_hospital_menu_task(function);
 }
 
 bool FieldSceneRuntime::open_ordinary_field_terminal_for_dump(
@@ -14359,6 +16010,177 @@ bool FieldSceneRuntime::open_ordinary_field_terminal_for_dump(
         "activity", "field_terminal", "field.main_menu");
     return field_dialogue_.open_gameplay_task(
         "field_activities", "ordinary_field_terminal");
+}
+
+bool FieldSceneRuntime::seed_cyberspace_access_for_dump() {
+    if (!ready_) {
+        return false;
+    }
+    install_test_deck();
+    // The field script checks the active runner's source Datajack bit before
+    // opening Cyberspace. QA supplies that ROM-defined access condition.
+    active_runner_record().cyberware_flags |= 0x0001U;
+    return true;
+}
+
+bool FieldSceneRuntime::seed_cyberdeck_reference_frame_for_dump() {
+    if (!ready_ || !cyberdeck_available_) {
+        return false;
+    }
+
+    // Visual fixture from independent longplay frame 004220: Attack 3 is
+    // selected; Attack, Medic, Deception, and Analyze are available; loaded
+    // Deception + Analyze consume 2 + 3 Mp from a 15 Mp deck. Only the
+    // selected Attack rating is printed in this frame; Medic uses the
+    // smallest nonzero value because its exact rating is not visible.
+    auto deck = field_matrix_deck_record_.value_or(CyberdeckRecord{});
+    deck.memory_megapulses = 15U;
+    deck.load_io_speed = 10U;
+    std::array<std::uint8_t, 12U> ratings{};
+    ratings[0U] = 3U;
+    ratings[4U] = 1U;
+    ratings[9U] = 1U;
+    ratings[11U] = 1U;
+    deck.program_ratings = ratings;
+    deck.active_programs = std::array<std::int8_t, 5U>{
+        9, 11, -1, -1, -1};
+    field_matrix_deck_record_ = std::move(deck);
+    field_matrix_program_slots_ = {};
+    return true;
+}
+
+bool FieldSceneRuntime::seed_cyberdeck_pull_plug_reference_for_dump() {
+    if (!ready_ || !cyberdeck_available_ ||
+        !field_matrix_deck_record_.has_value()) {
+        return false;
+    }
+
+    // Independent longplay frame 005400 shows Deception and Attack in the
+    // first two active slots while the Pull Plug prompt is open.
+    field_matrix_deck_record_->active_programs =
+        std::array<std::int8_t, 5U>{9, 0, -1, -1, -1};
+    return true;
+}
+
+bool FieldSceneRuntime::open_matrix_traversal_for_dump(
+    const std::uint8_t system_id, const std::uint8_t node_id) {
+    if (!ready_ || system_id > 24U || !seed_cyberspace_access_for_dump()) {
+        return false;
+    }
+
+    // Independent Section 21 traversal fixture: Medic-1 and Analyze-2 are
+    // installed in the first two footer cells, both fully loaded and ready.
+    auto deck = field_matrix_deck_record_.value_or(CyberdeckRecord{});
+    deck.memory_megapulses = 15U;
+    deck.load_io_speed = 10U;
+    std::array<std::uint8_t, 12U> ratings{};
+    ratings[4U] = 1U;
+    ratings[11U] = 2U;
+    deck.program_ratings = ratings;
+    deck.active_programs =
+        std::array<std::int8_t, 5U>{4, 11, -1, -1, -1};
+    field_matrix_deck_record_ = std::move(deck);
+    field_matrix_program_slots_.fill(
+        scripting::ScriptCyberdeckProgramSlot{});
+
+    scripting::ScriptMenuRouteStartArguments arguments{};
+    arguments.matrix_system_id = system_id;
+    arguments.matrix_node_id = node_id;
+    arguments.matrix_node_ic_condition = 0U;
+    arguments.return_to_field = true;
+    open_command_overview(
+        static_cast<std::uint16_t>(srx::MenuScreen::MATRIX_ENTRY),
+        std::move(arguments));
+    return menu_route_active_ &&
+           menu_route_screen_ == static_cast<std::uint16_t>(
+                                     srx::MenuScreen::MATRIX_ENTRY);
+}
+
+bool FieldSceneRuntime::seed_matrix_degrade_action_for_dump() {
+    if (!ready_ || !field_matrix_deck_record_.has_value() ||
+        !field_matrix_route_active_ ||
+        menu_route_screen_ != static_cast<std::uint16_t>(
+                                  srx::MenuScreen::MATRIX_NODE_ACTION)) {
+        return false;
+    }
+
+    auto& deck = *field_matrix_deck_record_;
+    auto ratings = deck.program_ratings.value_or(
+        std::array<std::uint8_t, 12U>{});
+    ratings[2U] = 3U;
+    deck.program_ratings = ratings;
+    auto active = deck.active_programs.value_or(
+        std::array<std::int8_t, 5U>{{-1, -1, -1, -1, -1}});
+    active[0U] = 2;
+    deck.active_programs = active;
+    field_matrix_program_slots_[0U] =
+        scripting::ScriptCyberdeckProgramSlot{};
+    return true;
+}
+
+bool FieldSceneRuntime::seed_run_target_for_dump(
+    const std::string_view run_id, const std::uint8_t map_id,
+    const std::uint8_t event_id) {
+    if (!ready_) {
+        return false;
+    }
+
+    std::string category;
+    std::string objective;
+    std::string completion_condition;
+    if (run_id == "employee_recruitment") {
+        category = "extraction";
+        objective = "recruit_the_selected_employee";
+        completion_condition = "return_to_johnson_after_the_recruitment";
+    } else if (run_id == "package_recovery") {
+        category = "recovery";
+        objective = "recover_the_client_package";
+        completion_condition = "return_the_recovered_package_to_the_johnson";
+    } else if (run_id == "gang_contract") {
+        const bool rom_target =
+            (map_id == 1U && event_id == 9U) ||
+            (map_id == 2U && event_id == 9U) ||
+            (map_id == 3U && event_id == 4U);
+        if (!rom_target) {
+            return false;
+        }
+        category = "gang";
+        objective = "resolve_the_selected_gang_contract";
+        completion_condition =
+            "return_to_the_johnson_after_the_gang_contract";
+    } else {
+        return false;
+    }
+
+    using PersistentValue = scripting::ScriptPersistentValue;
+    const auto scalar = [](auto value) {
+        PersistentValue result{};
+        result.value = value;
+        return result;
+    };
+    const PersistentValue target{PersistentValue::Object{
+        {"area_id", scalar(std::int64_t{map_id})},
+        {"location_id", scalar(std::int64_t{event_id})},
+    }};
+    const PersistentValue route{PersistentValue::Object{
+        {"target", target},
+    }};
+    const PersistentValue active_offer{PersistentValue::Object{
+        {"id", scalar(std::string(run_id))},
+        {"category", scalar(category)},
+        {"objective", scalar(objective)},
+        {"completion_condition", scalar(completion_condition)},
+        {"runner_progress_delta", scalar(std::int64_t{0})},
+        {"route", route},
+    }};
+    const PersistentValue registry_state{PersistentValue::Object{
+        {"schema_version", scalar(std::int64_t{1})},
+        {"current_offer", scalar(std::monostate{})},
+        {"active_offer", active_offer},
+        {"last_completed_offer", scalar(std::monostate{})},
+        {"last_offer_result", scalar(std::string("accepted"))},
+    }};
+    return game_scripts_.restore_run_registry_state(registry_state);
 }
 
 bool FieldSceneRuntime::open_taxi_selector_for_dump(
@@ -14436,51 +16258,99 @@ bool FieldSceneRuntime::open_gunderson_interaction() {
     return open_field_johnson_interaction();
 }
 
+bool FieldSceneRuntime::open_field_location_dialogue(
+    const FieldScriptRoute& route) {
+    if (!ready_ || route.kind != FieldScriptRouteKind::dialogue ||
+        route.script != FieldScriptId::lua_dialogue ||
+        route.entry_dialogue_module.empty() ||
+        route.entry_dialogue_function.empty() ||
+        route.entry_location_type.empty() ||
+        route.entry_location_id.empty()) {
+        return false;
+    }
+
+    game_scripts_.set_location_context(
+        route.entry_location_type, route.entry_location_id,
+        route.entry_text_profile, route.entry_speaker_id,
+        route.entry_event_id);
+    game_scripts_.set_field_mode_context(scripting::ScriptFieldModeContext{
+        state_.field_scene_buffers.field_resource_mode,
+        route.event_code,
+        field_exit_alternate_result_});
+
+    if (route.entry_dialogue_module == "johnson") {
+        const auto context = game_scripts_.johnson_interaction_context(
+            route.entry_text_profile);
+        if (!context.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.run.johnson_profile_unresolved");
+            return false;
+        }
+        const auto run_return =
+            game_scripts_.resolve_active_run_johnson_return(*context);
+        if (!run_return.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.run.johnson_return_script_failed");
+            return false;
+        }
+        if (run_return->action ==
+            scripting::ScriptRunJohnsonReturnAction::completed) {
+            if (!field_funds_.has_value() ||
+                !field_party_roster_.available()) {
+                failure_ =
+                    "completed run return has no field wallet or runner roster";
+                source_boundary(
+                    "field.run.johnson_return_host_state_unresolved");
+                return false;
+            }
+            *field_funds_ += run_return->reward_nuyen;
+            for (auto& runner : field_party_roster_.records()) {
+                runner.auxiliary[2] = static_cast<std::uint8_t>(
+                    runner.auxiliary[2] +
+                    run_return->runner_progress_delta);
+            }
+            field_exit_world_flags_ &= ~field_flag_mask(
+                FieldWorldFactFlag::run_objective_active);
+            refresh_field_hud_runner_slot();
+            source_boundary("field.run.johnson_return_completed");
+        }
+    }
+
+    if (route.return_anchor != FieldLocationReturnAnchor::none) {
+        save_field_door_return_point();
+    }
+    if (!field_dialogue_.open_gameplay_task(
+            route.entry_dialogue_module,
+            route.entry_dialogue_function)) {
+        source_boundary("field.location.dialogue_task_open_failed");
+        return false;
+    }
+    field_palette_fade_steps_ = 0U;
+    source_boundary("field.location.dialogue_task_opened");
+    return true;
+}
+
 bool FieldSceneRuntime::open_field_johnson_interaction() {
     if (!ready_) {
         return false;
     }
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    std::uint8_t run_offer_context = 0U;
-    if (scene_reference == 13U) {
-        run_offer_context = static_cast<std::uint8_t>(
-            srx::v(srx::RunOfferContext::JUMP_HOUSE));
-        game_scripts_.set_location_context(
-            "building", "jump_house", "gunderson.jump_house", "gunderson");
-    } else if (scene_reference == 14U) {
-        run_offer_context = static_cast<std::uint8_t>(
-            srx::v(srx::RunOfferContext::WANDERER));
-        game_scripts_.set_location_context(
-            "building", "wanderer", "wanderer.vigore_jarl", "vigore_jarl");
-    } else {
-        return false;
-    }
-
-    const auto run_return = game_scripts_.resolve_active_run_johnson_return(
-        run_offer_context);
-    if (!run_return.has_value()) {
+    const auto& event_metadata =
+        state_.field_scene_buffers.source_metadata;
+    const auto route = game_scripts_.resolve_field_location_route(
+        FieldScriptRouteContext{
+            static_cast<std::uint8_t>(
+                state_.field_scene_buffers.scene_reference),
+            state_.field_scene_buffers.field_resource_mode,
+            FieldCollisionEventCode::event_30,
+            event_metadata.event_table_available,
+            event_metadata.event_mode_table,
+            field_exit_alternate_result_});
+    if (!route.has_value()) {
         failure_ = game_scripts_.failure();
-        source_boundary("field.run.johnson_return_script_failed");
         return false;
     }
-    if (run_return->action ==
-        scripting::ScriptRunJohnsonReturnAction::completed) {
-        if (!field_funds_.has_value() || !field_party_roster_.available()) {
-            failure_ = "completed run return has no field wallet or runner roster";
-            source_boundary("field.run.johnson_return_host_state_unresolved");
-            return false;
-        }
-        *field_funds_ += run_return->reward_nuyen;
-        for (auto& runner : field_party_roster_.records()) {
-            runner.auxiliary[2] = static_cast<std::uint8_t>(
-                runner.auxiliary[2] + run_return->runner_progress_delta);
-        }
-        field_exit_world_flags_ &= ~field_flag_mask(
-            FieldWorldFactFlag::run_objective_active);
-        refresh_field_hud_runner_slot();
-        source_boundary("field.run.johnson_return_completed");
-    }
-    return field_dialogue_.open_gameplay_task("johnson", "interaction");
+    active_field_script_route_ = *route;
+    return open_field_location_dialogue(*route);
 }
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
@@ -15593,56 +17463,46 @@ FieldActionBaseCostLookup FieldSceneRuntime::item_resale_base_lookup() const {
 }
 
 void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
-    if (field_service_background_.isNull()) {
+    if (field_service_background_.isNull() ||
+        !field_shop_active_definition_.has_value()) {
         return;
     }
     painter.drawImage(0, 0, field_service_background_);
 
-    // 0x56AC0 selects Ares title record 1 from the extracted source table.
-    // The full-screen service asset replaces the preceding dialogue and map;
-    // dynamic labels, item art, icons, and runner HUD are layered once over it.
-    draw_command_overview_text(painter, 64, 16,
-                               field_menu_text_.field_service_titles[1]);
+    // The Lua service definition chooses the ROM title and category labels;
+    // this presenter places those named text records over shared service art.
+    const auto* title = game_scripts_.dialogue_text(
+        field_shop_active_definition_->title_key);
+    if (title != nullptr) {
+        draw_command_overview_text(painter, 64, 16, *title);
+    }
     const auto group = field_shop_menu_.selected_group();
-    const auto group_index = static_cast<std::size_t>(group);
+    const auto group_index = field_shop_menu_.selected_group_index();
+    if (group_index >= field_shop_active_definition_->groups.size()) {
+        return;
+    }
+    const auto& group_definition =
+        field_shop_active_definition_->groups[group_index];
+    const bool sell_group = group_definition.id == "sell";
+    const bool progression_group =
+        !group_definition.progression_offers.empty();
     if (group_index < field_service_tab_images_.size()) {
         painter.drawImage(64, 128, field_service_tab_images_[group_index]);
     }
-    std::size_t first_title = 0U;
-    switch (group) {
-    case ShopActionGroup::weapons:
-        first_title = 0U;
-        break;
-    case ShopActionGroup::other_items:
-        first_title = 4U;
-        break;
-    case ShopActionGroup::armor:
-        first_title = 2U;
-        break;
-    case ShopActionGroup::source_action_3:
-        first_title = 6U;
-        break;
-    case ShopActionGroup::source_action_4:
-        first_title = 8U;
-        break;
-    case ShopActionGroup::sell:
-        first_title = 10U;
-        break;
-    }
-
-    const auto& action_titles = field_menu_text_.field_service_action_titles;
-    if (first_title + 1U < action_titles.size()) {
-        if (field_shop_menu_.offers_panel_active()) {
+    if (field_shop_menu_.offers_panel_active()) {
             const bool transaction_replaces_detail =
                 field_shop_menu_.transaction_confirmation_open() ||
                 field_shop_menu_.transaction_message() !=
                     ShopTransactionMessage::none;
             const auto cursor = field_shop_menu_.selected_cursor();
-            const auto selected_offer = group == ShopActionGroup::sell
+            const auto selected_offer = sell_group || progression_group
                 ? std::optional<FieldActionCostRecord>{}
                 : field_shop_menu_.offer(group, cursor);
+            const auto selected_progression_offer = progression_group
+                ? field_shop_menu_.progression_offer(group, cursor)
+                : std::optional<scripting::ScriptShopProgressionOffer>{};
             std::uint8_t selected_item_code = 0U;
-            if (group == ShopActionGroup::sell) {
+            if (sell_group) {
                 if (cursor < active_runner_record().inventory_item_codes.size()) {
                     selected_item_code =
                         active_runner_record().inventory_item_codes[cursor];
@@ -15652,6 +17512,96 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                            static_cast<std::uint8_t>('E')) {
                 selected_item_code = static_cast<std::uint8_t>(
                     selected_offer->type + 1U);
+            }
+
+            if (progression_group && selected_progression_offer.has_value()) {
+                // ROM 0x57D7E uses the offer byte directly as the D4EA0 row
+                // index for its name, details, and glyph.
+                const auto spell_code = static_cast<std::size_t>(
+                    selected_progression_offer->action_code);
+                std::optional<FieldActionProgressionQuoteOutcome>
+                    progression_quote;
+                const auto* const spell_table = field_magic_spell_table(
+                    active_runner_record().magic_table_index);
+                if (!transaction_replaces_detail && spell_table != nullptr) {
+                    auto progression = make_field_shop_progression_input(
+                        field_shop_menu_, active_runner_record(),
+                        field_funds_.value_or(0U), *spell_table);
+                    if (progression.has_value()) {
+                        progression_quote =
+                            prepare_field_action_progression_quote(
+                                progression->tables, progression->state);
+                    }
+                }
+
+                const bool runner_unavailable = progression_quote.has_value() &&
+                    progression_quote->result ==
+                        FieldActionProgressionQuoteResult::runner_unavailable;
+                if (!runner_unavailable &&
+                    spell_code < command_overview_magic_spell_icons_.size()) {
+                    painter.drawImage(
+                        128, 32,
+                        command_overview_magic_spell_icons_[spell_code]);
+                }
+                if (!runner_unavailable &&
+                    spell_code < field_menu_text_.magic_spell_names.size()) {
+                    draw_command_overview_text(
+                        painter, 104, 144,
+                        field_menu_text_.magic_spell_names[spell_code]);
+                }
+                if (!transaction_replaces_detail && !runner_unavailable &&
+                    spell_code <
+                        field_menu_text_.magic_spell_descriptions.size()) {
+                    draw_command_overview_text(
+                        painter, 24, 56,
+                        field_menu_text_.magic_spell_descriptions[spell_code]);
+                }
+
+                if (!transaction_replaces_detail &&
+                    progression_quote.has_value()) {
+                    const auto draw_shop_text = [this, &painter](
+                        const std::string& key, const int x, const int y) {
+                        const auto* text = game_scripts_.dialogue_text(key);
+                        if (text != nullptr) {
+                            draw_command_overview_text(painter, x, y, *text);
+                        }
+                    };
+                    switch (progression_quote->result) {
+                    case FieldActionProgressionQuoteResult::runner_unavailable:
+                        draw_shop_text(
+                            field_shop_active_definition_->text_keys
+                                .progression_training_unavailable,
+                            64, 88);
+                        break;
+                    case FieldActionProgressionQuoteResult::progression_limit:
+                        draw_shop_text(
+                            field_shop_active_definition_->text_keys
+                                .progression_maximum_level,
+                            64, 104);
+                        break;
+                    case FieldActionProgressionQuoteResult::quoted:
+                        draw_shop_text(
+                            field_shop_active_definition_->text_keys
+                                .progression_level_label,
+                            112, 64);
+                        draw_command_overview_number(
+                            painter, command_overview_font_, 160, 64,
+                            progression_quote->quote->next_progression_level);
+                        draw_shop_text(
+                            field_shop_active_definition_->text_keys
+                                .progression_cost_heading,
+                            56, 112);
+                        draw_command_overview_number(
+                            painter, command_overview_font_, 208, 112,
+                            progression_quote->quote->cost,
+                            NumericVisualAlignment::right, true);
+                        break;
+                    case FieldActionProgressionQuoteResult::invalid_offer_selection:
+                    case FieldActionProgressionQuoteResult::missing_record_slot:
+                    case FieldActionProgressionQuoteResult::offer_unavailable:
+                        break;
+                    }
+                }
             }
 
             if (selected_offer.has_value() &&
@@ -15772,8 +17722,8 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                     }
                 }
 
-                if (!transaction_replaces_detail &&
-                    group != ShopActionGroup::sell &&
+                if (!transaction_replaces_detail && !sell_group &&
+                    !progression_group &&
                     selected_offer.has_value()) {
                     draw_command_overview_text(
                         painter, 80, 112,
@@ -15788,22 +17738,39 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                         NumericVisualAlignment::right, true);
                 }
             }
-        } else {
-            draw_command_overview_text(painter, 64, 144,
-                                       action_titles[first_title]);
-            draw_command_overview_text(painter, 64, 152,
-                                       action_titles[first_title + 1U]);
+    } else {
+        for (std::size_t row = 0; row < group_definition.title_keys.size();
+             ++row) {
+            const auto* heading = game_scripts_.dialogue_text(
+                group_definition.title_keys[row]);
+            if (heading != nullptr) {
+                draw_command_overview_text(
+                    painter, 64, 144 + static_cast<int>(row) * 8, *heading);
+            }
         }
     }
 
     const auto stock_group = field_shop_menu_.offers_panel_active()
         ? group
         : field_shop_menu_.displayed_offer_group();
-    const auto count = stock_group == ShopActionGroup::sell
+    const auto stock_group_index =
+        field_shop_menu_.offers_panel_active()
+            ? field_shop_menu_.selected_group_index()
+            : field_shop_menu_.displayed_offer_group_index();
+    const bool stock_is_sell =
+        stock_group_index < field_shop_active_definition_->groups.size() &&
+        field_shop_active_definition_->groups[stock_group_index].id == "sell";
+    const bool stock_is_progression =
+        stock_group_index < field_shop_active_definition_->groups.size() &&
+        !field_shop_active_definition_->groups[stock_group_index]
+             .progression_offers.empty();
+    const auto count = stock_is_sell
         ? active_runner_record().inventory_item_codes.size()
-        : field_shop_menu_.offer_count(stock_group);
+        : stock_is_progression
+              ? field_shop_menu_.progression_offer_count(stock_group)
+              : field_shop_menu_.offer_count(stock_group);
     for (std::size_t index = 0; index < count && index < 8U; ++index) {
-        if (stock_group == ShopActionGroup::sell) {
+        if (stock_is_sell) {
             const auto item_code =
                 active_runner_record().inventory_item_codes[index];
             if (item_code > 0U &&
@@ -15811,6 +17778,21 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                 painter.drawImage(
                     16 + static_cast<int>(index) * 32, 168,
                     command_overview_inventory_icons_[item_code - 1U][0]);
+            }
+            continue;
+        }
+        if (stock_is_progression) {
+            const auto offer =
+                field_shop_menu_.progression_offer(stock_group, index);
+            if (!offer.has_value()) {
+                continue;
+            }
+            const auto spell_code = static_cast<std::size_t>(
+                offer->action_code);
+            if (spell_code < command_overview_magic_spell_icons_.size()) {
+                painter.drawImage(
+                    16 + static_cast<int>(index) * 32, 168,
+                    command_overview_magic_spell_icons_[spell_code]);
             }
             continue;
         }
@@ -15838,7 +17820,7 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
         // warm-yellow pixel around that footprint; the surrounding 32x24
         // cell and neighboring controls remain clear.
         const auto cursor = field_shop_menu_.selected_cursor();
-        const auto selectable = group != ShopActionGroup::sell ||
+        const auto selectable = !sell_group ||
             (cursor < active_runner_record().inventory_item_codes.size() &&
              active_runner_record().inventory_item_codes[cursor] != 0U);
         if (selectable && cursor < count && cursor < 8U) {
@@ -15867,7 +17849,7 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
     if (field_shop_menu_.transaction_confirmation_open()) {
         draw_command_overview_text(
             painter, 24, 80, field_menu_text_.shop_transaction_prompt);
-        if (group == ShopActionGroup::sell) {
+        if (sell_group) {
             draw_command_overview_text(
                 painter, 56, 88, field_menu_text_.shop_sale_quote_heading);
             draw_command_overview_number(
@@ -15904,6 +17886,15 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
             draw_command_overview_text(
                 painter, 48, 96, field_menu_text_.shop_protected_sale);
             break;
+        case ShopTransactionMessage::training_unavailable: {
+            const auto* message = game_scripts_.dialogue_text(
+                field_shop_active_definition_->text_keys
+                    .progression_training_unavailable);
+            if (message != nullptr) {
+                draw_command_overview_text(painter, 64, 88, *message);
+            }
+            break;
+        }
         case ShopTransactionMessage::none:
             break;
         }
@@ -16868,11 +18859,12 @@ void FieldSceneRuntime::paint_command_overview_magic(
 }
 
 void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
-    painter.fillRect(0, 0, 320, 224, Qt::black);
     if (!command_overview_.open()) {
+        painter.fillRect(0, 0, 320, 224, Qt::black);
         return;
     }
     if (magic_spell_interface_open()) {
+        painter.fillRect(0, 0, 320, 224, Qt::black);
         // The ROM cleared the previous command Plane A before writing Magic.
         // Transparent cells expose the cleared/black underlay; the HUD plane
         // remains a separate pass in paint().
@@ -16880,10 +18872,16 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         return;
     }
     if (command_overview_attributes_skills_.is_open()) {
+        painter.fillRect(0, 0, 320, 224, Qt::black);
         paint_attributes_skills_menu(
             painter, command_overview_attributes_skills_.controller());
         return;
     }
+    const auto routed_screen = static_cast<srx::MenuScreen>(
+        menu_route_screen_);
+    const bool matrix_search = field_matrix_route_active_ &&
+        routed_screen == srx::MenuScreen::MATRIX_SEARCH;
+    painter.fillRect(0, 0, 320, 224, Qt::black);
     if (field_taxi_route_active_ &&
         menu_route_screen_ == static_cast<std::uint16_t>(
                                  srx::MenuScreen::TAXI_SELECTOR)) {
@@ -16940,10 +18938,14 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         // markers advance eight pixels per row, leaving one blank row
         // between options. C376 writes its right cursor tile at C3A2, x=136;
         // C1320 maps tile 0x05FF to the source lowercase-x glyph.
-        painter.drawImage(0, 0, pocket_secretary_background_);
-        // ROM 0xC3E6 fills 28x21 name words from C186; this direct asset is
-        // the extracted C1320 space tile repeated with palette line 3.
-        painter.drawImage(24, 24, pocket_secretary_grid_);
+        if (matrix_search) {
+            // The console is an overlay on the field; restore the map and HUD
+            // outside the central frame after laying down its opaque art.
+            paint_field_console_background(painter);
+        } else {
+            painter.drawImage(0, 0, pocket_secretary_background_);
+            painter.drawImage(24, 24, pocket_secretary_grid_);
+        }
         // ROM 0xE660's C13E8/C13F8 destinations map to these twelve 8x8
         // cells in the lower shared frame. Each call replaces one adjacent
         // 16x8 pair; all previous pairs remain until the panel is rebuilt.
@@ -16968,8 +18970,6 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     static_cast<std::size_t>(pattern)]);
         }
         const auto routed_menu = game_scripts_.menu_route_snapshot();
-        const auto routed_screen = static_cast<srx::MenuScreen>(
-            menu_route_screen_);
         if (field_matrix_route_active_ &&
             routed_screen == srx::MenuScreen::MATRIX_ENTRY) {
             // 0xE47A leaves the shared interface while it plays the jack-in
@@ -16980,9 +18980,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         }
         if (field_matrix_route_active_ &&
             routed_screen == srx::MenuScreen::MATRIX_SEARCH) {
-            // The source search loop writes two text rows and repeatedly
-            // replaces its changing decimal permutation while it runs.
-            painter.fillRect(QRect(0, 0, 320, 224), Qt::black);
+            // The source search loop writes the message inside the field
+            // console, then repeatedly replaces its decimal permutation.
             std::array<std::string_view, 3> lines{};
             std::size_t line_count = 0U;
             std::size_t start = 0U;
@@ -16997,14 +18996,29 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 if (end == std::string::npos) break;
                 start = end + 1U;
             }
+            const auto draw_centered = [this, &painter](
+                                           const int y,
+                                           const std::string_view text) {
+                const auto x = 136 -
+                    static_cast<int>(text.size()) * 4;
+                draw_command_overview_text(painter, x, y, text);
+            };
+            bool first_line_wrapped = false;
             if (line_count > 0U) {
-                draw_command_overview_text(painter, 56, 88, lines[0]);
+                const auto split = lines[0].rfind(' ', 18U);
+                if (split != std::string_view::npos) {
+                    draw_centered(56, lines[0].substr(0U, split));
+                    draw_centered(64, lines[0].substr(split + 1U));
+                    first_line_wrapped = true;
+                } else {
+                    draw_centered(56, lines[0]);
+                }
             }
             if (line_count > 1U) {
-                draw_command_overview_text(painter, 64, 104, lines[1]);
+                draw_centered(first_line_wrapped ? 80 : 72, lines[1]);
             }
             if (line_count > 2U) {
-                draw_command_overview_text(painter, 104, 120, lines[2]);
+                draw_centered(120, lines[2]);
             }
             return;
         }
@@ -17034,8 +19048,37 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             return;
         }
         if (routed_screen == srx::MenuScreen::MATRIX_NODE_ACTION &&
-            paint_matrix_node_action_panel(painter, matrix_map_font_,
-                                           routed_menu)) {
+            paint_matrix_traversal_view(
+                painter, matrix_traversal_backgrounds_, matrix_world_models_,
+                matrix_traversal_world_effect_modes_,
+                matrix_traversal_world_effect_fallback_,
+                matrix_traversal_hud_frame_,
+                matrix_traversal_runner_entry_pose_,
+                matrix_traversal_runner_action_phase_0_,
+                matrix_traversal_runner_action_phase_1_,
+                matrix_traversal_runner_idle_,
+                matrix_traversal_analyze_rings_, matrix_map_font_,
+                matrix_cyberdeck_program_icons_,
+                matrix_cyberdeck_empty_program_icon_,
+                matrix_cyberdeck_footer_slot_status_, routed_menu)) {
+            return;
+        }
+        if (routed_screen == srx::MenuScreen::MATRIX_NODE_ACTION &&
+            [&]() {
+                const auto& status = routed_menu.top_matrix_node_status;
+                const auto profile = static_cast<std::size_t>(
+                    status.has_value()
+                        ? std::clamp(status->background_profile, 0, 4)
+                        : 0);
+                const auto theme = static_cast<std::size_t>(
+                    status.has_value()
+                        ? std::clamp(status->palette_theme, 1, 4) - 1
+                        : 0);
+                return paint_matrix_node_action_panel(
+                    painter, matrix_map_font_,
+                    matrix_node_backgrounds_[profile][theme],
+                    matrix_node_action_cursors_[theme], routed_menu);
+            }()) {
             return;
         }
         if (routed_screen == srx::MenuScreen::DECK_MAP &&
@@ -17054,105 +19097,392 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             routed_screen == srx::MenuScreen::DECK_STORAGE ||
             routed_screen == srx::MenuScreen::DECK_MAP;
         if (cyberdeck_route) {
-            // Rebuild the full child panel before drawing its controls. This
-            // prevents the Pocket Secretary buttons from showing through.
-            const QColor background(3, 12, 22);
-            const QColor panel(7, 27, 39);
-            const QColor edge(28, 117, 137);
-            const QColor selector(196, 190, 39);
-            painter.fillRect(QRect(0, 0, 320, 224), background);
-            painter.fillRect(QRect(12, 12, 296, 200), panel);
-            painter.setPen(edge);
-            painter.drawRect(QRect(12, 12, 295, 199));
-            draw_command_overview_text(
-                painter, 24, 24,
-                routed_menu.top_title.empty()
-                    ? std::string_view("Cyberdeck")
-                    : std::string_view(routed_menu.top_title));
-            painter.fillRect(QRect(20, 40, 280, 1), edge);
-
-            const auto draw_text_lines = [this, &painter](
-                                             const int x, const int y,
-                                             const std::string& text,
-                                             const int max_lines,
-                                             const int line_height = 16) {
+            const auto draw_matrix_text = [this, &painter](
+                                              const int x, const int y,
+                                              const std::string_view value) {
+                auto current_x = x;
+                for (const auto character : value) {
+                    const auto code = static_cast<unsigned char>(character);
+                    if (code < 0x20U || code > 0x7EU) {
+                        current_x += 8;
+                        continue;
+                    }
+                    const auto glyph = static_cast<int>(code - 0x20U);
+                    painter.drawImage(
+                        QPoint(current_x, y), matrix_map_font_,
+                        QRect((glyph % 16) * 8, (glyph / 16) * 8, 8, 8));
+                    current_x += 8;
+                }
+            };
+            const auto draw_matrix_compact_text = [this, &painter](
+                                                      const int x,
+                                                      const int y,
+                                                      const std::string_view value) {
+                auto current_x = x;
+                for (const auto character : value) {
+                    const auto code = static_cast<unsigned char>(character);
+                    if (code < 0x20U || code > 0x7EU) {
+                        current_x += 5;
+                        continue;
+                    }
+                    const auto glyph = static_cast<int>(code - 0x20U);
+                    painter.drawImage(
+                        QPoint(current_x, y), matrix_map_font_,
+                        QRect((glyph % 16) * 8, (glyph / 16) * 8, 8, 8));
+                    current_x += 5;
+                }
+            };
+            const auto draw_matrix_rows = [&draw_matrix_text](
+                                              const int x, const int y,
+                                              const std::string& text,
+                                              const int line_height,
+                                              const int max_lines) {
                 std::size_t start = 0U;
                 int line = 0;
                 while (start <= text.size() && line < max_lines) {
                     const auto end = text.find('|', start);
-                    const auto value = text.substr(
-                        start, end == std::string::npos
-                                   ? std::string::npos
-                                   : end - start);
-                    draw_command_overview_text(
-                        painter, x, y + line * line_height, value);
+                    draw_matrix_text(
+                        x, y + line * line_height,
+                        std::string_view(text).substr(
+                            start, end == std::string::npos
+                                       ? std::string::npos
+                                       : end - start));
                     ++line;
                     if (end == std::string::npos) break;
                     start = end + 1U;
                 }
             };
+            const auto draw_wrapped_matrix_description =
+                [&draw_matrix_text](const int x, const int y,
+                                    const std::string& text) {
+                    constexpr std::size_t kColumns = 18U;
+                    std::size_t start = 0U;
+                    int line = 0;
+                    while (start <= text.size() && line < 12) {
+                        const auto end = text.find('|', start);
+                        auto remaining = std::string_view(text).substr(
+                            start, end == std::string::npos
+                                       ? std::string::npos
+                                       : end - start);
+                        while (!remaining.empty() && line < 12) {
+                            if (remaining.size() <= kColumns) {
+                                draw_matrix_text(x, y + line * 8, remaining);
+                                ++line;
+                                break;
+                            }
+                            auto split = remaining.rfind(' ', kColumns);
+                            if (split == std::string_view::npos || split == 0U) {
+                                split = kColumns;
+                            }
+                            draw_matrix_text(x, y + line * 8,
+                                             remaining.substr(0U, split));
+                            remaining.remove_prefix(
+                                split + (split < remaining.size() &&
+                                                 remaining[split] == ' '
+                                             ? 1U
+                                             : 0U));
+                            ++line;
+                        }
+                        if (end == std::string::npos) break;
+                        start = end + 1U;
+                        if (line < 12 && start == text.size()) {
+                            ++line;
+                        }
+                    }
+                };
 
-            if (!routed_menu.top_text.empty()) {
-                // Plain-rts ROM messages remain until another redraw. Clear
-                // the control area so the text never overlaps stale buttons.
-                painter.fillRect(QRect(20, 44, 280, 156), panel);
-                const auto map_lines = routed_screen ==
-                                           srx::MenuScreen::DECK_MAP &&
-                                       std::count(routed_menu.top_text.begin(),
-                                                  routed_menu.top_text.end(),
-                                                  '|') == 9;
-                if (map_lines) {
-                    draw_text_lines(104, 52, routed_menu.top_text, 10, 12);
+            // 0x18282 writes D9C96 to Plane B and 0x182A6 adds the D8316 HUD
+            // footer. These ROM streams are composed offline into a named
+            // full-screen background; the host does not decode them here.
+            const auto deck_palette_phase = static_cast<std::size_t>(
+                std::clamp(
+                    routed_menu.top_matrix_deck_palette_phase.value_or(0),
+                    0, 3));
+            painter.fillRect(QRect(0, 0, 320, 224), QColor(Qt::black));
+            // The source-composed Plane-B art contains the opaque deck frame
+            // and detail window. Keep the panel-grid underlay beneath it; the
+            // source text, selected icon, and cursor are layered above both.
+            painter.drawImage(0, 0, matrix_cyberdeck_panel_);
+            painter.drawImage(
+                0, 0, matrix_cyberdeck_backgrounds_[deck_palette_phase]);
+
+            if (routed_screen == srx::MenuScreen::CYBERDECK ||
+                routed_screen == srx::MenuScreen::PULL_PLUG) {
+                // 0x17708 writes the five 3x2 installed/empty slot records
+                // at y=184, then 0x19856 writes each 3-tile status strip at
+                // y=208. The five slots begin at x=80 with 48-pixel spacing.
+                // The ROM's 0x1822C pull-plug prompt redraws its text over the
+                // existing deck screen without replacing this footer.
+                if (routed_menu.top_matrix_deck_active_programs_present) {
+                    for (std::size_t slot = 0U; slot < 5U; ++slot) {
+                        const auto program = routed_menu
+                                                 .top_matrix_deck_active_programs[
+                                                     slot];
+                        const auto& image = program >= 0 && program < 12
+                            ? matrix_cyberdeck_program_icons_[
+                                  static_cast<std::size_t>(program)]
+                            : matrix_cyberdeck_empty_program_icon_;
+                        painter.drawImage(
+                            80 + static_cast<int>(slot) * 48, 184, image);
+                    }
+                }
+                if (routed_menu
+                        .top_matrix_deck_program_slot_status_present) {
+                    for (std::size_t slot = 0U; slot < 5U; ++slot) {
+                        const auto status = routed_menu
+                                                .top_matrix_deck_program_slot_status[
+                                                    slot];
+                        if (status >=
+                            matrix_cyberdeck_footer_slot_status_.size()) {
+                            continue;
+                        }
+                        painter.drawImage(
+                            80 + static_cast<int>(slot) * 48, 208,
+                            matrix_cyberdeck_footer_slot_status_[status]);
+                    }
+                }
+
+                // ROM 0x17708's D8316 footer already contains the silver
+                // portrait in this 4x4 cell. Keep the ROM-composed background
+                // art intact; the field-menu runner preview is unrelated art.
+            }
+
+            const auto column = std::clamp(
+                routed_menu.top_column.value_or(0), 0, 3);
+            const auto row = std::clamp(routed_menu.top_row.value_or(0), 0, 3);
+            const auto selected = static_cast<std::size_t>(row * 4 + column);
+            const bool has_deck_info =
+                routed_menu.top_matrix_run_info.has_value() ||
+                routed_menu.top_matrix_deck_stats.has_value();
+            if (routed_screen == srx::MenuScreen::PULL_PLUG) {
+                // The source enters 0x18450 from the selected grid cell and
+                // leaves the 0x189D8 Command row, its icons, and the selected
+                // Pull Plug cursor visible while the prompt is active.
+                constexpr int kPullPlugGridRow = 3;
+                constexpr int kPullPlugGridColumn = 3;
+                painter.drawImage(
+                    0, 0,
+                    matrix_cyberdeck_selector_rows_[kPullPlugGridRow]
+                                                       [deck_palette_phase]);
+                for (std::size_t index = 0U;
+                     index < matrix_cyberdeck_program_icons_.size(); ++index) {
+                    if (index < 12U &&
+                        (!routed_menu
+                              .top_matrix_deck_program_ratings_present ||
+                         routed_menu
+                                 .top_matrix_deck_program_ratings[index] == 0U)) {
+                        continue;
+                    }
+                    painter.drawImage(
+                        16 + static_cast<int>(index % 4U) * 32,
+                        24 + static_cast<int>(index / 4U) * 40,
+                        matrix_cyberdeck_program_icons_[index]);
+                }
+                painter.drawImage(
+                    12 + kPullPlugGridColumn * 32,
+                    20 + kPullPlugGridRow * 40,
+                    matrix_cyberdeck_cursors_[deck_palette_phase]);
+            }
+            if (routed_screen == srx::MenuScreen::CYBERDECK &&
+                !has_deck_info) {
+                // ROM 0x189D8 writes the selected row's 9-tile strip. The
+                // icon grid is 3x2 tiles with 32x40 pixel cell spacing.
+                painter.drawImage(
+                    0, 0,
+                    matrix_cyberdeck_selector_rows_[
+                        static_cast<std::size_t>(row)][deck_palette_phase]);
+                for (std::size_t index = 0U;
+                     index < matrix_cyberdeck_program_icons_.size(); ++index) {
+                    if (index < 12U &&
+                        (!routed_menu
+                              .top_matrix_deck_program_ratings_present ||
+                         routed_menu
+                                 .top_matrix_deck_program_ratings[index] == 0U)) {
+                        continue;
+                    }
+                    painter.drawImage(
+                        16 + static_cast<int>(index % 4U) * 32,
+                        24 + static_cast<int>(index / 4U) * 40,
+                        matrix_cyberdeck_program_icons_[index]);
+                }
+
+                const bool selected_program_available =
+                    selected >= 12U ||
+                    (routed_menu
+                         .top_matrix_deck_program_ratings_present &&
+                     routed_menu
+                             .top_matrix_deck_program_ratings[selected] != 0U);
+                if (!routed_menu.top_text.empty()) {
+                    draw_matrix_rows(176, 64, routed_menu.top_text, 8, 14);
+                } else if (selected_program_available) {
+                    painter.drawImage(
+                        184, 16, matrix_cyberdeck_program_icons_[selected]);
+                    if (selected < 12U) {
+                        if (selected < routed_menu.top_option_labels.size()) {
+                            draw_matrix_compact_text(
+                                216, 24,
+                                routed_menu.top_option_labels[selected]);
+                            if (routed_menu
+                                    .top_matrix_deck_program_ratings_present) {
+                                draw_matrix_text(
+                                    264, 24,
+                                    std::to_string(routed_menu
+                                                       .top_matrix_deck_program_ratings[
+                                                           selected]));
+                            }
+                        }
+                        if (routed_menu
+                                .top_matrix_deck_program_detail_values_present) {
+                            constexpr std::array<int, 3> kValueX{{272, 272,
+                                                                 256}};
+                            for (std::size_t line = 0U;
+                                 line < routed_menu
+                                            .top_matrix_deck_program_detail_values
+                                            .size();
+                                 ++line) {
+                                draw_matrix_text(
+                                    kValueX[line],
+                                    40 + static_cast<int>(line) * 8,
+                                    routed_menu
+                                        .top_matrix_deck_program_detail_values[
+                                            line]);
+                            }
+                        }
+                    } else if (selected < routed_menu.top_option_labels.size()) {
+                        draw_matrix_compact_text(
+                            216, 24,
+                            routed_menu.top_option_labels[selected]);
+                    }
+                    if (selected < 12U) {
+                        if (routed_menu
+                                .top_matrix_deck_detail_labels_present) {
+                            for (std::size_t line = 0U;
+                                 line < routed_menu
+                                           .top_matrix_deck_detail_labels.size();
+                                 ++line) {
+                                draw_matrix_text(
+                                    152, 40 + static_cast<int>(line) * 8,
+                                    routed_menu
+                                        .top_matrix_deck_detail_labels[line]);
+                            }
+                        }
+                        if (routed_menu
+                                .top_matrix_deck_runner_detail_labels_present) {
+                            for (std::size_t line = 0U;
+                                 line < routed_menu
+                                            .top_matrix_deck_runner_detail_labels
+                                            .size();
+                                 ++line) {
+                                draw_matrix_compact_text(
+                                    152, 72 + static_cast<int>(line) * 8,
+                                    routed_menu
+                                        .top_matrix_deck_runner_detail_labels[
+                                            line]);
+                            }
+                        }
+                        if (routed_menu
+                                .top_matrix_deck_runner_details_present) {
+                            for (std::size_t line = 0U;
+                                 line < routed_menu
+                                           .top_matrix_deck_runner_details.size();
+                                 ++line) {
+                                draw_matrix_text(
+                                    208, 72 + static_cast<int>(line) * 8,
+                                    routed_menu
+                                        .top_matrix_deck_runner_details[line]);
+                            }
+                        }
+                    }
+                    draw_wrapped_matrix_description(
+                        160, 96,
+                        routed_menu.top_matrix_deck_description);
                 } else {
-                    draw_text_lines(28, 56, routed_menu.top_text, 8);
+                    draw_matrix_rows(176, 64,
+                                     std::string("  Empty|Utility Slot"),
+                                     8, 2);
+                }
+                painter.drawImage(12 + column * 32, 20 + row * 40,
+                                  matrix_cyberdeck_cursors_[deck_palette_phase]);
+                return;
+            }
+
+            if (routed_screen == srx::MenuScreen::PULL_PLUG) {
+                // ROM 0x1846E writes the optional Black IC warning at Plane A
+                // $C228 (x=160,y=32); 0x18480 writes the question at $C426
+                // (x=152,y=64); and 0x18492 writes Yes/No at $C638
+                // (x=224,y=96), with 16-pixel row spacing. 0xC376 places the
+                // green text cursor at $C632 (x=200,y=96+16*FFF0DC).
+                std::string prompt = routed_menu.top_title;
+                const auto warning_separator = prompt.find(
+                    "|Do you really want|");
+                if (prompt.compare(0U, 8U, "WARNING:") == 0 &&
+                    warning_separator != std::string::npos) {
+                    draw_matrix_rows(
+                        160, 32,
+                        prompt.substr(0U, warning_separator), 8, 2);
+                    prompt.erase(0U, warning_separator + 1U);
+                }
+                draw_matrix_rows(152, 64, prompt, 8, 2);
+                for (std::size_t option = 0U;
+                     option < routed_menu.top_option_labels.size() &&
+                     option < 2U;
+                     ++option) {
+                    const auto y = 96 + static_cast<int>(option) * 16;
+                    if (routed_menu.top_row == static_cast<int>(option)) {
+                        draw_matrix_text(200, y, ">");
+                    }
+                    draw_matrix_text(224, y,
+                                     routed_menu.top_option_labels[option]);
                 }
                 return;
             }
 
-            if (routed_screen == srx::MenuScreen::CYBERDECK) {
-                constexpr int cell_width = 68;
-                constexpr int cell_height = 34;
-                for (std::size_t index = 0;
-                     index < routed_menu.top_option_labels.size() &&
-                     index < 16U;
-                     ++index) {
-                    const auto column = static_cast<int>(index % 4U);
-                    const auto row = static_cast<int>(index / 4U);
-                    const auto x = 18 + column * 72;
-                    const auto y = 48 + row * 38;
-                    const bool selected =
-                        routed_menu.top_column.value_or(0) == column &&
-                        routed_menu.top_row.value_or(0) == row;
-                    painter.fillRect(QRect(x, y, cell_width, cell_height),
-                                     QColor(5, 18, 29));
-                    painter.setPen(selected ? selector : edge);
-                    painter.drawRect(QRect(x, y, cell_width - 1,
-                                           cell_height - 1));
-                    draw_command_overview_text(
-                        painter, x + 4, y + 13,
-                        routed_menu.top_option_labels[index]);
-                }
-                const char* const mode = field_matrix_deck_mode_ < 0
-                                             ? "Attack mode"
-                                         : field_matrix_deck_mode_ > 0
-                                             ? "Defense mode"
-                                             : "Balanced mode";
-                draw_command_overview_text(painter, 24, 202, mode);
+            if (routed_menu.top_matrix_run_info.has_value()) {
+                (void)paint_matrix_run_info_text(
+                    painter, matrix_map_font_, routed_menu);
+                return;
+            }
+            if (routed_menu.top_matrix_deck_stats.has_value()) {
+                (void)paint_matrix_deck_stats_text(
+                    painter, matrix_map_font_, routed_menu);
+                return;
+            }
+            if (!routed_menu.top_text.empty()) {
+                const bool map_lines =
+                    routed_screen == srx::MenuScreen::DECK_MAP &&
+                    std::count(routed_menu.top_text.begin(),
+                               routed_menu.top_text.end(), '|') == 9;
+                draw_matrix_rows(map_lines ? 104 : 176,
+                                 map_lines ? 52 : 64,
+                                 routed_menu.top_text,
+                                 map_lines ? 12 : 8,
+                                 map_lines ? 10 : 16);
                 return;
             }
 
-            for (std::size_t row = 0;
-                 row < routed_menu.top_option_labels.size() && row < 8U;
-                 ++row) {
-                const auto y = 56 + static_cast<int>(row) * 18;
-                if (routed_menu.top_row == static_cast<int>(row)) {
-                    painter.fillRect(QRect(20, y - 3, 280, 17),
-                                     QColor(12, 43, 51));
-                    painter.fillRect(QRect(20, y - 3, 1, 17), selector);
+            const bool cyber_info_selector =
+                routed_screen == srx::MenuScreen::DECK_CYBERINFO;
+            if (cyber_info_selector) {
+                // ROM 0x18AB0 reads 0xE3886 at $C32C. Its 0x80 row
+                // control places '[' plus the 12-glyph rule at y=56. The
+                // following controls put Deck Stats and Run Info at y=72/88.
+                draw_matrix_text(176, 56,
+                                 std::string("[") + std::string(12U, '\\'));
+            }
+            if (!routed_menu.top_title.empty()) {
+                draw_matrix_text(176, 48, routed_menu.top_title);
+            }
+            for (std::size_t option = 0U;
+                 option < routed_menu.top_option_labels.size() && option < 8U;
+                 ++option) {
+                const auto y = (cyber_info_selector ? 72 : 80) +
+                               static_cast<int>(option) * 16;
+                if (routed_menu.top_row == static_cast<int>(option)) {
+                    draw_matrix_text(cyber_info_selector ? 176 : 160,
+                                     y, "> ");
                 }
-                draw_command_overview_text(
-                    painter, 28, y,
-                    routed_menu.top_option_labels[row]);
+                draw_matrix_text(176, y,
+                                 routed_menu.top_option_labels[option]);
             }
             return;
         }
@@ -18354,11 +20684,50 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
         return;
     }
     if (field_dialogue_.open()) {
-        field_dialogue_.paint(painter);
+        if (field_dialogue_.uses_hospital_menu_layout()) {
+            paint_hospital_menu(painter);
+        } else if (field_dialogue_.uses_field_console_menu_layout()) {
+            paint_field_console_background(painter);
+
+            const auto& panel = field_dialogue_.panel();
+            const auto title = field_dialogue_.field_console_menu_title();
+            const auto title_y = panel.compact_cursor_list ? 32 : 48;
+            const auto rows_y = panel.compact_cursor_list ? 48 : 72;
+            if (!title.empty()) {
+                const auto title_x = 136 -
+                    static_cast<int>(title.size()) * 4;
+                draw_command_overview_text(painter, title_x, title_y, title);
+                const auto underline_width = std::min<int>(
+                    static_cast<int>(title.size()) * 8 - 16, 80);
+                if (underline_width > 0) {
+                    const auto underline_x = 136 - underline_width / 2;
+                    painter.setPen(QColor(0, 255, 0));
+                    for (int x = underline_x; x < underline_x + underline_width;
+                         x += 4) {
+                        painter.drawPoint(x, title_y + 10);
+                    }
+                }
+            }
+            for (std::size_t row = 0U; row < panel.option_count; ++row) {
+                const auto y = rows_y + static_cast<int>(row) * 16;
+                if (panel.cursor_selection && panel.selected_option == row) {
+                    draw_command_overview_text(painter, 80, y, ">");
+                }
+                draw_command_overview_text(
+                    painter, 96, y, panel.options[row].source_label);
+            }
+        } else {
+            field_dialogue_.paint(painter);
+        }
         apply_palette_fade();
         return;
     }
     if (command_overview_.open()) {
+        if (command_overview_start_transition_black_frame_) {
+            scene_painter.end();
+            target_painter.drawImage(0, 0, scene);
+            return;
+        }
         paint_command_overview(painter);
         if (command_overview_attributes_skills_.is_open()) {
             apply_palette_fade();
@@ -18399,6 +20768,19 @@ std::size_t FieldSceneRuntime::default_actor_count_for_dump() const noexcept {
         field_default_actors_.begin(), field_default_actors_.end(),
         [scene_reference](const DefaultFieldActorPresentation& actor) {
             return actor.active && actor.scene_reference == scene_reference;
+        }));
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+std::size_t FieldSceneRuntime::dynamic_world_actor_count_for_dump() const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    return static_cast<std::size_t>(std::count_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference](const DefaultFieldActorPresentation& actor) {
+            return actor.active && actor.temporary_world_encounter &&
+                   actor.scene_reference == scene_reference;
         }));
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
@@ -19004,6 +21386,26 @@ std::size_t FieldSceneRuntime::visible_default_actor_count_for_dump() const {
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 
+
+void FieldSceneRuntime::paint_field_console_background(
+    QPainter& painter) const {
+    painter.drawImage(0, 0, pocket_secretary_background_);
+    painter.drawImage(24, 24, pocket_secretary_grid_);
+
+    // Cyberspace uses the silver console as an overlay on the field. The
+    // extracted Pocket Secretary bitmap is opaque outside that console, so
+    // redraw the field only in the exposed screen regions after the frame.
+    QRegion exposed(QRect(0, 0, 320, 224));
+    exposed -= QRegion(QRect(6, 7, 261, 178));
+    // The source keeps two compact terminal controls over the field beneath
+    // the window: the console icon and the small map/route control.
+    exposed -= QRegion(QRect(146, 184, 38, 26));
+    exposed -= QRegion(QRect(216, 184, 32, 26));
+    painter.save();
+    painter.setClipRegion(exposed);
+    paint_field_scene(painter);
+    painter.restore();
+}
 
 void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
     const auto& scene = state_.field_scene_buffers;

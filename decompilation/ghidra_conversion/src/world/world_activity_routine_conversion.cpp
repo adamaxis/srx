@@ -42,6 +42,26 @@ std::optional<std::uint16_t> resolve_world_activity_scene_id(
     return static_cast<std::uint16_t>(event_mode_table[mode_event_code]);
 }
 
+void populate_source_world_activity_route_tables(
+    WorldActivityRoutineInput& input) {
+    // ROM 0xEEFE supplies the per-scene runner values. The comparison uses
+    // value + 1 against FFFC0C/FFFC0D. Scene 10 is selected separately from
+    // FFFBF9 below; its table byte is not used by the source branch.
+    static constexpr std::array<std::int8_t, 11> kRunnerSlotsByScene{{
+        4, 1, 0, 6, 3, 9, 5, 7, 8, 0, 0x4E,
+    }};
+    // ROM pointer table 0x16FD4, scenes 10 through 20. Scene 12's zero
+    // pointer is an intentional field-only result. Scene 20's nonzero row is
+    // retained even though its preceding FFFC2C gate returns first.
+    static constexpr std::array<bool, 11> kWorldScriptAvailable{{
+        true, true, false, true, true, true, true, true, true, true, true,
+    }};
+    input.runner_slot_by_scene.assign(kRunnerSlotsByScene.begin(),
+                                      kRunnerSlotsByScene.end());
+    input.world_script_available.assign(kWorldScriptAvailable.begin(),
+                                        kWorldScriptAvailable.end());
+}
+
 WorldActivityResult run_world_activity_routine(
     const WorldActivityRoutineInput& input,
     WorldActivityRoutineState& state,
@@ -49,6 +69,7 @@ WorldActivityResult run_world_activity_routine(
     state = WorldActivityRoutineState{};
     state.scene_id = input.initial_scene_id;
     state.world_flags = input.world_flags;
+    state.contact_flags = input.contact_flags;
 
     if (input.timeout_override != 0U) {
         state.timeout_requested = true;
@@ -143,11 +164,19 @@ WorldActivityResult run_world_activity_routine(
     }
 
     if (state.scene_id == 0x14U) {
-        if ((state.world_flags & (std::uint32_t{1U} << 26U)) == 0U) {
+        // ROM 0x1689A tests FFFC2C bit 26 here. FFFC1E remains the distinct
+        // story-progress word used by the scene-13/15 gates below.
+        constexpr std::uint32_t kSceneTwentyEntryFlag =
+            std::uint32_t{1U} << 26U;
+        if (!state.contact_flags.has_value()) {
             clear_effect_words(state);
-            return WorldActivityResult::blocked_by_scene_gate;
+            return WorldActivityResult::contact_flags_unavailable;
         }
-        state.world_flags &= ~(std::uint32_t{1U} << 26U);
+        if ((*state.contact_flags & kSceneTwentyEntryFlag) == 0U) {
+            clear_effect_words(state);
+            return WorldActivityResult::field_ready;
+        }
+        *state.contact_flags &= ~kSceneTwentyEntryFlag;
         state.timeout_requested = true;
         if (callbacks.schedule_world_activity_timeout) {
             callbacks.schedule_world_activity_timeout();
@@ -157,19 +186,27 @@ WorldActivityResult run_world_activity_routine(
     }
 
     if (state.scene_id == 0x0DU &&
-        (input.mode_flags & (std::uint32_t{1U} << 19U)) == 0U) {
+        (input.world_flags & (std::uint32_t{1U} << 19U)) == 0U) {
         clear_effect_words(state);
         return WorldActivityResult::blocked_by_scene_gate;
     }
     if (state.scene_id == 0x0FU &&
-        (input.mode_flags & (std::uint32_t{1U} << 29U)) == 0U) {
+        (input.world_flags & (std::uint32_t{1U} << 29U)) == 0U) {
         clear_effect_words(state);
         return WorldActivityResult::blocked_by_scene_gate;
     }
 
+    // Scene IDs 0..9 are ordinary field maps. The ROM's world-script
+    // selection table begins at scene 10 (0x16FD4), so these destinations
+    // enter field mode directly instead of indexing that script table.
+    if (state.scene_id < 0x0AU) {
+        clear_effect_words(state);
+        return WorldActivityResult::field_ready;
+    }
+
     std::int8_t runner_slot = 0;
     if (state.scene_id == 0x0AU) {
-        runner_slot = input.scene_variant == 6U ? 2 : 4;
+        runner_slot = input.mode_event_code == 6U ? 2 : 4;
     } else if (state.scene_id >= 0x0AU) {
         const auto index = static_cast<std::size_t>(state.scene_id - 0x0AU);
         if (index >= input.runner_slot_by_scene.size()) {
@@ -186,8 +223,10 @@ WorldActivityResult run_world_activity_routine(
     }
 
     if (state.scene_id == 0x0AU) {
-        state.selected_scene_ten_variant_script = input.scene_variant == 6U;
-        state.selected_world_script = input.scene_variant == 6U ? 0U : 1U;
+        state.selected_scene_ten_variant_script =
+            input.mode_event_code == 6U;
+        state.selected_world_script =
+            input.mode_event_code == 6U ? 0U : 1U;
         clear_effect_words(state);
         return WorldActivityResult::world_script_selected;
     }

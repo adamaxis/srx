@@ -1,7 +1,131 @@
--- Shop content describes the ROM's service-title and action-heading tables,
--- plus available stock. Native presenters own layout, focus, input cadence,
--- and transactions.
+-- Shop content and selection behavior come from the ROM service tables.
+-- Native presenters draw these Lua-owned states and apply typed transactions.
 local Shop = {}
+
+local function menu_snapshot(menu, open, event)
+    return {
+        open = open,
+        shop_id = menu.shop_id,
+        menu_mode = menu.menu_mode,
+        menu_result = menu.menu_result,
+        action_cursor = menu.action_cursor,
+        action_panel = menu.action_panel,
+        selected_action = menu.selected_action,
+        event = event,
+    }
+end
+
+function Shop.open_menu(shop_id)
+    local definition = Shop.catalog[shop_id]
+    assert(definition ~= nil, "unknown shop menu: " .. tostring(shop_id))
+    assert(#definition.groups > 0 and #definition.groups <= 8,
+        "shop menu has an invalid ROM action count")
+    local menu = {
+        shop_id = shop_id,
+        menu_mode = definition.menu_mode,
+        menu_result = definition.menu_result,
+        action_cursor = 0,
+        action_panel = 0,
+        selected_action = 0,
+    }
+    game.shop_menu = menu
+    return menu_snapshot(menu, true, "opened")
+end
+
+function Shop.advance_menu(controller_events)
+    local menu = assert(game.shop_menu, "shop menu is not open")
+    local definition = assert(Shop.catalog[menu.shop_id],
+        "active shop menu definition is missing")
+    local function snapshot(event)
+        return menu_snapshot(menu, true, event)
+    end
+    local function move_cursor(delta)
+        local maximum = menu.action_panel == 0
+            and (menu.menu_result == 0 and 3 or 5)
+            or 7
+        local candidate = menu.action_cursor + delta
+        if candidate < 0 then
+            candidate = 0
+        elseif candidate > maximum then
+            candidate = maximum
+        end
+        if candidate == menu.action_cursor then
+            return snapshot("no_change")
+        end
+        menu.action_cursor = candidate
+        if menu.action_panel == 0 then
+            menu.selected_action = candidate
+        end
+        return snapshot("selection_moved")
+    end
+    local function move_panel(delta)
+        local candidate = menu.action_panel + delta
+        if candidate < 0 or candidate > 1 then
+            return snapshot("no_change")
+        end
+        if candidate == menu.action_panel then
+            return snapshot("no_change")
+        end
+        menu.action_panel = candidate
+        menu.action_cursor = 0
+        if candidate == 0 then
+            menu.selected_action = 0
+        end
+        return snapshot("panel_changed")
+    end
+
+    -- Source input priority follows 0x56AC0: cursor, panel, confirm,
+    -- runner-menu setup, then return to the field caller.
+    if (controller_events & 0x0400) ~= 0 then
+        return move_cursor(-1)
+    elseif (controller_events & 0x0100) ~= 0 then
+        return move_panel(-1)
+    elseif (controller_events & 0x0800) ~= 0 then
+        return move_cursor(1)
+    elseif (controller_events & 0x0200) ~= 0 then
+        return move_panel(1)
+    elseif (controller_events & (0x4000 | 0x1000)) ~= 0 then
+        if menu.action_panel == 0 then
+            menu.selected_action = menu.action_cursor
+            return snapshot("no_change")
+        end
+        local group = definition.groups[menu.selected_action + 1]
+        if group == nil then
+            return snapshot("source_action_boundary")
+        elseif group.id == "sell" then
+            return snapshot("sale_selected")
+        elseif #group.progression_offers > 0 then
+            return snapshot(group.progression_offers[menu.action_cursor + 1]
+                and "progression_selected" or "offer_unavailable")
+        elseif #group.offers > 0 then
+            return snapshot(group.offers[menu.action_cursor + 1]
+                and "purchase_selected" or "offer_unavailable")
+        end
+        return snapshot("source_action_boundary")
+    elseif (controller_events & 0x2000) ~= 0 then
+        menu.action_cursor = 0
+        menu.action_panel = 0
+        menu.selected_action = 0
+        return snapshot("active_runner_change_requested")
+    elseif (controller_events & 0x8000) ~= 0 then
+        local closed = menu_snapshot(menu, false, "returned_to_field")
+        game.shop_menu = nil
+        return closed
+    end
+    return snapshot("no_change")
+end
+
+function Shop.reset_menu()
+    local menu = assert(game.shop_menu, "shop menu is not open")
+    menu.action_cursor = 0
+    menu.action_panel = 0
+    menu.selected_action = 0
+    return menu_snapshot(menu, true, "no_change")
+end
+
+function Shop.close_menu()
+    game.shop_menu = nil
+end
 
 local function service_title(id)
     return "shop.service.option." .. id
@@ -83,16 +207,28 @@ local function offer(kind, value, quantity)
     }
 end
 
-local function group(id, first_title_key, second_title_key, offers)
+local function progression_offer(action_code, source_metadata, base_cost)
+    return {
+        action_code = action_code,
+        source_metadata = source_metadata,
+        base_cost = base_cost,
+    }
+end
+
+local function group(id, first_title_key, second_title_key, offers,
+                     progression_offers)
     return {
         id = id,
         title_keys = { first_title_key, second_title_key },
         offers = offers or {},
+        progression_offers = progression_offers or {},
     }
 end
 
 Shop.catalog = {
     ares_weapon_emporium = {
+        menu_mode = 1,
+        menu_result = -1,
         title_key = service_title("ares_weapon_emporium"),
         text_keys = {
             universal_clips_title = "shop.universal_clips.title",
@@ -104,6 +240,10 @@ Shop.catalog = {
             protected_sale = "shop.transaction.protected_sale",
             sale_quote_heading = "shop.transaction.sale_quote_heading",
             purchase_price_heading = "shop.transaction.purchase_price_heading",
+            progression_training_unavailable = "shop.progression.training_unavailable",
+            progression_maximum_level = "shop.progression.maximum_level",
+            progression_cost_heading = "shop.progression.cost_heading",
+            progression_level_label = "shop.progression.level_label",
         },
         -- Keep these six groups in the order used by the ROM selector.
         groups = {
@@ -141,6 +281,57 @@ Shop.catalog = {
                 action_heading("ares_firearm_accessories_to_accessorize")),
             group("sell", action_heading("ares_sell_item_from"),
                   action_heading("ares_sell_inventory")),
+        },
+    },
+    medicine_lodge = {
+        menu_mode = 3,
+        menu_result = 0,
+        title_key = service_title("medicine_lodge"),
+        text_keys = {
+            universal_clips_title = "shop.universal_clips.title",
+            universal_clips_description = "shop.universal_clips.description",
+            transaction_prompt = "shop.transaction.prompt",
+            no_inventory_slot = "shop.transaction.no_inventory_slot",
+            insufficient_funds = "shop.transaction.insufficient_funds",
+            special_action_limit = "shop.transaction.special_action_limit",
+            protected_sale = "shop.transaction.protected_sale",
+            sale_quote_heading = "shop.transaction.sale_quote_heading",
+            purchase_price_heading = "shop.transaction.purchase_price_heading",
+            progression_training_unavailable = "shop.progression.training_unavailable",
+            progression_maximum_level = "shop.progression.maximum_level",
+            progression_cost_heading = "shop.progression.cost_heading",
+            progression_level_label = "shop.progression.level_label",
+        },
+        -- Result zero selects the four ROM heading pairs at 0x1AAAA7.
+        -- Group zero is the mode-three spell progression list at 0x1AAF40.
+        -- Groups one and two are three-byte item offers from 0x1AAEF8 and
+        -- 0x1AAEB0; their raw bytes stay separate from spell progression.
+        groups = {
+            group("magic_spells",
+                  action_heading("magic_spells_display"),
+                  action_heading("magic_spells"), {}, {
+                progression_offer(0x03, 0x06, 1000),
+                progression_offer(0x04, 0x06, 1000),
+                progression_offer(0x0C, 0x06, 1000),
+                progression_offer(0x05, 0x06, 1000),
+                progression_offer(0x0B, 0x06, 1000),
+            }),
+            group("magic_items",
+                  action_heading("magic_items_display"),
+                  action_heading("magic_items"), {
+                offer(0x12, 0x0A, 0x00),
+                offer(0x26, 0x04, 0x14),
+            }),
+            group("magic_foci",
+                  action_heading("magic_foci_display"),
+                  action_heading("magic_foci"), {
+                offer(0x1B, 0x02, 0x00),
+                offer(0x1B, 0x03, 0x14),
+                offer(0x1C, 0x02, 0x00),
+                offer(0x1C, 0x03, 0x14),
+            }),
+            group("sell", action_heading("sell_item_from_secondary"),
+                  action_heading("sell_inventory_secondary")),
         },
     },
 }

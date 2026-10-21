@@ -1,3 +1,3 @@
 interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
-rom_event_10	32	32	32	32	building.resolve_field_location_route	ROM record 10 at 0x1D5B0C	Exact event-30 cell at map pixel (288,32); this half of the booth entrance selects the same Mortimer Reed profile.
-rom_event_11	0	32	32	32	building.resolve_field_location_route	ROM record 11 at 0x1D5B16	Exact event-30 cell at map pixel (256,32); this half of the booth entrance selects the same Mortimer Reed profile.
+rom_event_10	32	32	32	32	johnson.interaction	ROM record 10 at 0x1D5B0C	Exact event-30 cell at map pixel (288,32); shared route data selects the Mortimer Reed profile and context-2 run offers.
+rom_event_11	0	32	32	32	johnson.interaction	ROM record 11 at 0x1D5B16	Exact event-30 cell at map pixel (256,32); shared route data selects the Mortimer Reed profile and context-2 run offers.

@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+club_penumbra_unidentified_contact	Unidentified old man	interaction_region	ROM scene-17 event-30 record 10 at 0x1D63B4 selects the shared 0x20990 default dialogue branch; the record identifies no proper name.	jackals_lantern.old_man	jackals_lantern_old_man	-

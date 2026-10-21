@@ -15,6 +15,7 @@ enum class WorldActivityResult {
     field_ready,
     existing_activity_still_active,
     blocked_by_scene_gate,
+    contact_flags_unavailable,
     timeout_scheduled,
     resource_activity_ready,
     resource_activity_bound_unavailable,
@@ -37,12 +38,14 @@ struct WorldActivityRoutineInput {
     // ROM event-table value. Source-internal transitions leave this empty and
     // use the ROM-derived scene-range classifier below.
     std::optional<WorldActivityMode> routed_destination_mode;
-    std::uint8_t scene_variant = 0;
+    // ROM FFFBF9 is the selected field-event/mode-table index consumed by
+    // 0x167AE. Scene 10 uses value 6 to select its alternate runner/list row.
+    std::uint8_t mode_event_code = 0;
     std::uint8_t timeout_override = 0;
     bool descriptors_pending = false;
     bool existing_activity = false;
-    std::uint32_t world_flags = 0;
-    std::uint32_t mode_flags = 0;
+    std::uint32_t world_flags = 0; // FFFC1E story flags
+    std::optional<std::uint32_t> contact_flags; // FFFC2C contacts and scene flags
     std::uint8_t primary_runner_marker = 0xFFU;
     std::uint8_t secondary_runner_marker = 0xFFU;
     std::vector<std::int8_t> runner_slot_by_scene;
@@ -61,6 +64,7 @@ struct WorldActivityRoutineState {
     std::uint16_t scene_id = 0;
     WorldActivityMode mode = WorldActivityMode::field;
     std::uint32_t world_flags = 0;
+    std::optional<std::uint32_t> contact_flags;
     std::uint16_t resource_random_index_bound = 0; // FFF0C6
     std::uint16_t selected_resource_random_index = 0; // FFE12C
     std::uint8_t resource_marker_ordinal = 0; // FFE185
@@ -94,6 +98,12 @@ struct WorldActivityRoutineCallbacks {
 std::optional<std::uint16_t> resolve_world_activity_scene_id(
     std::uint8_t mode_event_code,
     const std::array<std::uint8_t, 32>& event_mode_table);
+
+// Populate the one-time typed import of the selector tables at 0xEEFE and
+// 0x16FD4. These are host values; no ROM address arithmetic is performed at
+// runtime.
+void populate_source_world_activity_route_tables(
+    WorldActivityRoutineInput& input);
 
 // ROM 0x167AE: choose the current scene/activity branch, perform the source
 // flag gates, select a runner-dependent world script, and prepare the

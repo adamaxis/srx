@@ -134,6 +134,15 @@ constexpr std::array<std::uint16_t, 8> kFieldSceneVariantProfile0x3212{{
 constexpr std::array<std::uint16_t, 8> kFieldSceneVariantProfile0x3222{{
     0x6CF0U, 0x2400U, 0x7880U, 0x2B00U, 0x7880U, 0x2B00U, 0x7880U, 0x2B00U}};
 
+// ROM 0x21992 publishes this eight-word placement to FFE114 before the
+// Medicine Lodge's quest-gated "most wise one" response. The source text at
+// 0x1118DA directs the player outside the door to the left; the next full
+// field-scene entry consumes the pending camera and runner placement.
+constexpr std::array<std::uint16_t, 8>
+    kMedicineLodgeWiseOneEntryProfile0x1668A{{
+        0x5000U, 0x0000U, 0x5B00U, 0x0880U, 0x5B80U, 0x0900U, 0x5C00U,
+        0x0980U}};
+
 struct FieldSceneVariantState {
     std::uint8_t field_mode = 0; // FFFBF9
     std::uint16_t scene_id = 0; // FFDDC4

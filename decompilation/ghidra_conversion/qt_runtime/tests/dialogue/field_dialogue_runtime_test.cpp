@@ -121,6 +121,12 @@ int main() {
     StokerMotelRoomPaymentOutcome room_payment_outcome{};
     std::uint32_t decker_contact_funds = 1000U;
     std::size_t decker_contact_purchase_calls = 0U;
+    std::uint32_t julius_contact_funds = 1000U;
+    std::size_t julius_contact_purchase_calls = 0U;
+    std::uint32_t mortimer_contact_funds = 1500U;
+    std::size_t mortimer_contact_purchase_calls = 0U;
+    std::uint32_t inn_funds = 30U;
+    std::size_t inn_source_triplet_updates = 0U;
     std::array<std::string_view, 6> run_random_services{{
         "random.bounded_8", "runner.negotiation_skill",
         "random.bounded_4", "random.bounded_10", "random.bounded_12",
@@ -174,6 +180,9 @@ int main() {
     });
     runtime.set_native_script_service_callback(
         [&decker_contact_funds, &decker_contact_purchase_calls,
+         &julius_contact_funds, &julius_contact_purchase_calls,
+         &mortimer_contact_funds, &mortimer_contact_purchase_calls,
+         &inn_funds, &inn_source_triplet_updates,
          &run_random_services, &run_random_results, &run_random_call](
             const std::string_view service_id) -> std::optional<std::string> {
             if (service_id.rfind("random.bounded_", 0U) == 0U ||
@@ -183,6 +192,35 @@ int main() {
                     return std::nullopt;
                 }
                 return std::string(run_random_results[run_random_call++]);
+            }
+            if (service_id == "building.charge_30") {
+                if (inn_funds < 30U) {
+                    return "insufficient";
+                }
+                inn_funds -= 30U;
+                return "paid";
+            }
+            if (service_id == "runner.adjust_source_byte_triplet_1") {
+                ++inn_source_triplet_updates;
+                return "applied";
+            }
+            if (service_id == "johnson.purchase_quinton_contact") {
+                ++julius_contact_purchase_calls;
+                constexpr std::uint32_t kFinderFee = 1000U;
+                if (julius_contact_funds < kFinderFee) {
+                    return "insufficient";
+                }
+                julius_contact_funds -= kFinderFee;
+                return "purchased";
+            }
+            if (service_id == "johnson.purchase_alesandro_contact") {
+                ++mortimer_contact_purchase_calls;
+                constexpr std::uint32_t kFinderFee = 1500U;
+                if (mortimer_contact_funds < kFinderFee) {
+                    return "insufficient";
+                }
+                mortimer_contact_funds -= kFinderFee;
+                return "purchased";
             }
             if (service_id != "johnson.purchase_decker_contact") {
                 return std::nullopt;
@@ -198,6 +236,423 @@ int main() {
     if (!expect(runtime.load_assets(assets.catalog))) {
         return 2;
     }
+    const auto capture_tarislar_inn = [&runtime](
+                                           const std::string_view scene) {
+        const auto output_dir =
+            std::filesystem::current_path() /
+            "tarislar-city-inn-visual-audit" /
+            std::filesystem::path(scene);
+        std::filesystem::create_directories(output_dir);
+        QImage image(320, 224, QImage::Format_ARGB32_Premultiplied);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        runtime.paint(painter);
+        painter.end();
+        return image.save(QString::fromStdWString(
+                              (output_dir / "actual.bmp").wstring()),
+                          "BMP");
+    };
+
+    gameplay_scripts.set_story_state({
+        {"story_flag_bit_0", true},
+        {"story_flag_bit_1", false},
+        {"story_flag_bit_13", false},
+        {"story_flag_bit_30", false},
+    });
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{1U, 1U, 0});
+    gameplay_scripts.set_location_context(
+        "building", "puyallup_site_03_tarislar_city_inn",
+        "tarislar.city_inn", "tarislar_city_inn_narrator");
+    if (!expect(runtime.open_gameplay_task(
+                    "tarislar_city_inn", "present_indexed_title_service")) ||
+        !expect(runtime.panel().source_complete) ||
+        !expect(runtime.panel().text_segments[0].find("Tarislar City Inn") !=
+                std::string_view::npos) ||
+        !expect(capture_tarislar_inn("indexed-intro")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().options[0].source_label ==
+                "Just looking for a place to crash.") ||
+        !expect(capture_tarislar_inn("service-options"))) {
+        std::cerr << "Tarislar City Inn service prompt did not resolve its ROM text and labels\n";
+        return 120;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().options[0].source_label ==
+                "Easy money, chummer.  I'll pay.") ||
+        !expect(capture_tarislar_inn("room-payment")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(inn_funds == 0U) ||
+        !expect(runtime.panel().text_segments[0].find("own towels") !=
+                std::string_view::npos) ||
+        !expect(capture_tarislar_inn("room-paid")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::hotel_options_requested) ||
+        !expect(runtime.take_gameplay_task_result() ==
+                std::optional<std::string>{"hotel-options"})) {
+        std::cerr << "Tarislar City Inn room transaction did not route paid checkout to Hotel Options\n";
+        return 121;
+    }
+
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{4U, 4U, 0});
+    gameplay_scripts.set_location_context(
+        "building", "council_island_hospital",
+        "council_island_hospital", "council_island_hospital_narrator");
+    const auto hospital_panel_contains = [&runtime](
+                                             const std::string_view text) {
+        const auto& panel = runtime.panel();
+        for (std::size_t index = 0; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    if (!expect(runtime.open_gameplay_task(
+                    "council_island_hospital",
+                    "present_field_exit_prompt")) ||
+        !expect(runtime.panel().source_complete) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "Council Island Hospital") != std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().options[0].source_label ==
+                "I am in need of your services.") ||
+        !expect(runtime.panel().options[1].source_label ==
+                "Neg on that, chum.")) {
+        std::cerr << "Council Island Hospital default offer did not resolve its ROM text and choices\n";
+        return 124;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                    FieldDialogueAdvanceResult::hospital_options_requested) ||
+        !expect(runtime.take_gameplay_task_result() ==
+                std::optional<std::string>{"hospital-options"})) {
+        std::cerr << "Council Island Hospital service choice did not hand off to Hospital Options\n";
+        return 124;
+    }
+
+    if (!expect(runtime.open_gameplay_task(
+                    "council_island_hospital", "present_options")) ||
+        !expect(runtime.uses_hospital_menu_layout()) ||
+        !expect(runtime.panel().cursor_selection) ||
+        !expect(runtime.panel().selected_option == 0U) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().text_segments[0] == " Hospital Options") ||
+        !expect(runtime.advance_controller_events(0x0200U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().selected_option == 1U) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::hospital_cyberware_requested) ||
+        !expect(runtime.take_gameplay_task_result() ==
+                std::optional<std::string>{
+                    "hospital_cyberware_requested"})) {
+        std::cerr << "Council Island Hospital options did not present a Lua-owned cursor screen or dispatch Cyberware\n";
+        return 124;
+    }
+    if (!runtime.open_gameplay_task(
+            "council_island_hospital", "present_options")) {
+        std::cerr << "Hospital Options could not reopen before Exit\n";
+        return 124;
+    }
+    const auto hospital_exit_first_down =
+        runtime.advance_controller_events(0x0200U);
+    const auto hospital_exit_second_down =
+        runtime.advance_controller_events(0x0200U);
+    if (hospital_exit_first_down != FieldDialogueAdvanceResult::prompt_advanced ||
+        hospital_exit_second_down != FieldDialogueAdvanceResult::prompt_advanced) {
+        std::cerr << "Hospital Exit selection moves returned "
+                  << static_cast<int>(hospital_exit_first_down) << ", "
+                  << static_cast<int>(hospital_exit_second_down) << '\n';
+        return 124;
+    }
+    const auto hospital_exit_result =
+        runtime.advance_controller_events(0x4000U);
+    const auto hospital_exit_id = runtime.take_gameplay_task_result();
+    if (hospital_exit_result !=
+            FieldDialogueAdvanceResult::hospital_leave_confirmation_requested ||
+        hospital_exit_id != std::optional<std::string>{
+                                "hospital_leave_confirmation_requested"}) {
+        std::cerr << "Hospital Exit handoff returned "
+                  << static_cast<int>(hospital_exit_result) << " id='"
+                  << (hospital_exit_id.has_value() ? *hospital_exit_id : "<none>")
+                  << "'\n";
+        return 124;
+    }
+    const bool hospital_leave_open = runtime.open_gameplay_task(
+        "council_island_hospital", "present_leave_confirmation");
+    if (!hospital_leave_open || !runtime.uses_hospital_menu_layout() ||
+        runtime.panel().selected_option != 1U ||
+        runtime.panel().text_segments[0] != "Do you wish to" ||
+        runtime.panel().text_segments[1] != "leave the hospital?" ||
+        runtime.panel().option_count != 2U) {
+        std::cerr << "hospital leave task opened=" << hospital_leave_open
+                  << " panel=" << runtime.open()
+                  << " layout=" << runtime.uses_hospital_menu_layout()
+                  << " options=" << runtime.panel().option_count
+                  << " selection=" << runtime.panel().selected_option
+                  << " segments=" << runtime.panel().text_segment_count
+                  << " first='"
+                  << (runtime.panel().text_segment_count > 0U
+                          ? runtime.panel().text_segments[0]
+                          : std::string_view{})
+                  << "' second='"
+                  << (runtime.panel().text_segment_count > 1U
+                          ? runtime.panel().text_segments[1]
+                          : std::string_view{})
+                  << "' boundary='"
+                  << runtime.panel().source_boundary_reason << "'\n";
+        return 124;
+    }
+    const auto hospital_no_advance =
+        runtime.advance_controller_events(0x4000U);
+    if (hospital_no_advance !=
+        FieldDialogueAdvanceResult::hospital_options_requested) {
+        std::cerr << "Hospital No advance result="
+                  << static_cast<int>(hospital_no_advance) << " open="
+                  << runtime.open() << " boundary='"
+                  << runtime.panel().source_boundary_reason << "'\n";
+        return 124;
+    }
+    const auto hospital_no_result = runtime.take_gameplay_task_result();
+    if (hospital_no_result != std::optional<std::string>{"hospital-options"}) {
+        std::cerr << "Hospital No selected result='"
+                  << (hospital_no_result.has_value() ? *hospital_no_result : "<none>")
+                  << "' open=" << runtime.open() << " layout="
+                  << runtime.uses_hospital_menu_layout() << " options="
+                  << runtime.panel().option_count << " selected="
+                  << runtime.panel().selected_option << '\n';
+        return 124;
+    }
+    if (!expect(runtime.open_gameplay_task(
+                    "council_island_hospital",
+                    "present_leave_confirmation")) ||
+        !expect(runtime.advance_controller_events(0x0100U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::hospital_left) ||
+        !expect(runtime.take_gameplay_task_result() ==
+                std::optional<std::string>{"hospital_left"})) {
+        std::cerr << "Council Island Hospital Yes path did not return its typed leave result\n";
+        return 124;
+    }
+
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{4U, 4U, -1});
+    if (!expect(runtime.open_gameplay_task(
+                    "council_island_hospital",
+                    "present_field_exit_prompt")) ||
+        !expect(hospital_panel_contains("Here, take it")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(runtime.take_gameplay_task_result() ==
+                std::optional<std::string>{"field_return"})) {
+        std::cerr << "Council Island Hospital negative alternate did not show the package handoff and return\n";
+        return 124;
+    }
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{4U, 4U, 1});
+    if (!expect(runtime.open_gameplay_task(
+                    "council_island_hospital",
+                    "present_field_exit_prompt")) ||
+        !expect(hospital_panel_contains("Thank you for the delivery")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(runtime.take_gameplay_task_result() ==
+                std::optional<std::string>{"field_return"})) {
+        std::cerr << "Council Island Hospital positive alternate did not show the payment text and return\n";
+        return 124;
+    }
+
+    gameplay_scripts.set_location_context(
+        "building", "council_medicine_lodge", "council_medicine_lodge",
+        "council_medicine_lodge_narrator");
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{4U, 3U, 0});
+    gameplay_scripts.set_story_state({
+        {"story_flag_bit_4", false},
+        {"runner_information_bit_4", false},
+    });
+    if (!expect(runtime.open_gameplay_task(
+                    "council_medicine_lodge",
+                    "present_field_exit_prompt")) ||
+        !expect(runtime.panel().source_complete) ||
+        !expect(hospital_panel_contains("Chief Running Stream")) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().options[0U].source_label ==
+                "I'm looking to hire a good shaman.  Can you help me?") ||
+        !expect(runtime.panel().options[1U].source_label ==
+                "May I browse your store, chu.. uh, Chief?") ||
+        !expect(runtime.panel().options[2U].source_label ==
+                "I'll talk to you later, chum.")) {
+        std::cerr << "Council Medicine Lodge did not resolve its default ROM offer and choices\n";
+        return 125;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                    FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(hospital_panel_contains("Walking Bear")) ||
+        !expect(gameplay_scripts.story_state().at(
+                    "runner_information_bit_4") == true) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(runtime.take_gameplay_task_result() ==
+                std::optional<std::string>{"field_return"})) {
+        std::cerr << "Council Medicine Lodge hire choice did not set the runner-information bit and return after the ROM referral\n";
+        return 125;
+    }
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{4U, 3U, -1});
+    if (!expect(runtime.open_gameplay_task(
+                    "council_medicine_lodge",
+                    "present_field_exit_prompt")) ||
+        !expect(hospital_panel_contains("hands you a package")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(runtime.take_gameplay_task_result() ==
+                std::optional<std::string>{"field_return"})) {
+        std::cerr << "Council Medicine Lodge negative alternate did not show the ROM package handoff and return\n";
+        return 125;
+    }
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{4U, 3U, 1});
+    if (!expect(runtime.open_gameplay_task(
+                    "council_medicine_lodge",
+                    "present_field_exit_prompt")) ||
+        !expect(hospital_panel_contains("exchanges the package for nuyen")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(runtime.take_gameplay_task_result() ==
+                std::optional<std::string>{"field_return"})) {
+        std::cerr << "Council Medicine Lodge positive alternate did not show the ROM package payment and return\n";
+        return 125;
+    }
+
+    inn_funds = 29U;
+    gameplay_scripts.set_story_state({
+        {"story_flag_bit_0", true},
+        {"story_flag_bit_1", false},
+        {"story_flag_bit_13", false},
+        {"story_flag_bit_30", false},
+    });
+    gameplay_scripts.set_location_context(
+        "building", "puyallup_site_03_tarislar_city_inn",
+        "tarislar.city_inn", "tarislar_city_inn_narrator");
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{1U, 1U, 0});
+    if (!runtime.open_gameplay_task(
+            "tarislar_city_inn", "present_indexed_title_service")) {
+        std::cerr << "Tarislar City Inn could not open its insufficient-funds route: "
+                  << runtime.panel().source_boundary_reason << '\n';
+        return 122;
+    }
+    for (std::size_t advance = 0U; advance < 3U; ++advance) {
+        const auto result = runtime.advance_controller_events(0x4000U);
+        if (result != FieldDialogueAdvanceResult::prompt_advanced) {
+            std::cerr << "Tarislar City Inn insufficient-funds advance "
+                      << advance << " returned " << static_cast<int>(result)
+                      << "; panel="
+                      << runtime.panel().source_boundary_reason << '\n';
+            return 122;
+        }
+    }
+    if (inn_funds != 29U) {
+        std::cerr << "Tarislar City Inn charged funds it could not afford: "
+                  << inn_funds << '\n';
+        return 122;
+    }
+    if (runtime.panel().text_segments[0].find("low on creds") ==
+        std::string_view::npos) {
+        std::cerr << "Tarislar City Inn showed the wrong insufficient-funds page: "
+                  << runtime.panel().text_segments[0] << '\n';
+        return 122;
+    }
+    if (!capture_tarislar_inn("room-insufficient")) {
+        std::cerr << "Tarislar City Inn could not capture its insufficient-funds page\n";
+        return 122;
+    }
+    const auto insufficient_return = runtime.advance_controller_events(0x4000U);
+    if (insufficient_return != FieldDialogueAdvanceResult::returned_to_field ||
+        runtime.take_gameplay_task_result() !=
+            std::optional<std::string>{"field_return"}) {
+        std::cerr << "Tarislar City Inn did not return after the insufficient-funds page: "
+                  << static_cast<int>(insufficient_return) << '\n';
+        return 122;
+    }
+
+    gameplay_scripts.set_story_state({
+        {"story_flag_bit_0", true},
+        {"story_flag_bit_1", false},
+        {"story_flag_bit_13", false},
+        {"story_flag_bit_30", false},
+    });
+    gameplay_scripts.set_location_context(
+        "building", "puyallup_site_03_tarislar_city_inn",
+        "tarislar.city_inn", "tarislar_city_inn_narrator");
+    std::size_t inn_advance_count = 0U;
+    const auto advance_inn_dialogue = [&runtime, &inn_advance_count](
+                                         const std::uint16_t input) {
+        ++inn_advance_count;
+        const auto result = runtime.advance_controller_events(input);
+        if (result != FieldDialogueAdvanceResult::prompt_advanced &&
+            result != FieldDialogueAdvanceResult::source_boundary) {
+            std::cerr << "Inn dialogue advance " << inn_advance_count
+                      << " returned "
+                      << static_cast<int>(result) << "; panel="
+                      << runtime.panel().source_boundary_reason << "; first text="
+                      << runtime.panel().text_segments[0] << '\n';
+        }
+        return result;
+    };
+    if (!expect(runtime.open_gameplay_task(
+                    "tarislar_city_inn", "present_indexed_title_service")) ||
+        !expect(advance_inn_dialogue(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(advance_inn_dialogue(0x2000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(advance_inn_dialogue(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(advance_inn_dialogue(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(advance_inn_dialogue(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(inn_source_triplet_updates == 1U) ||
+        !expect(advance_inn_dialogue(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(advance_inn_dialogue(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(advance_inn_dialogue(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(advance_inn_dialogue(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(advance_inn_dialogue(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(advance_inn_dialogue(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(advance_inn_dialogue(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(advance_inn_dialogue(0x4000U) ==
+                FieldDialogueAdvanceResult::source_boundary) ||
+        !expect(runtime.panel().kind == DialoguePanelKind::source_boundary) ||
+        !expect(runtime.panel().source_boundary_reason.find("0x4B") !=
+                std::string_view::npos) ||
+        !expect(capture_tarislar_inn("tabatha-encounter-boundary")) ||
+        !expect(runtime.take_gameplay_task_result() ==
+                std::optional<std::string>{"tabatha_ambush_unconverted"})) {
+        std::cerr << "Tarislar City Inn did not stop at its unresolved ROM encounter handoff\n";
+        return 123;
+    }
+    runtime.close();
+    boundary = {};
+    gameplay_scripts.set_story_state({
+        {"vigore_lead_available", false},
+        {"vigore_search_pending", false},
+        {"errascoe_question_available", false},
+    });
 
     // The entry service and the booth conversation are separate source
     // states with separate ROM portraits. Exercise the script package through
@@ -234,6 +689,11 @@ int main() {
     if (!expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::returned_to_field) ||
         !expect(!runtime.open())) {
+        return 91;
+    }
+    if (!expect(runtime.take_gameplay_task_result() ==
+                std::optional<std::string>{"shown"})) {
+        std::cerr << "entry dialogue task did not retain its Lua result id\n";
         return 91;
     }
 
@@ -511,6 +971,301 @@ int main() {
                      "or missed the ROM fallback descriptor\n";
         return 107;
     }
+
+    const auto capture_julius = [&runtime](const std::string_view scene) {
+        const auto output_dir = std::filesystem::current_path() /
+            "julius-strouther-visual-audit" / std::filesystem::path(scene);
+        std::filesystem::create_directories(output_dir);
+        QImage image(320, 224, QImage::Format_ARGB32_Premultiplied);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        runtime.paint(painter);
+        painter.end();
+        return image.save(QString::fromStdWString(
+                              (output_dir / "actual.bmp").wstring()),
+                          "BMP");
+    };
+    gameplay_scripts.set_story_state({
+        {"mr_johnsons_flag_bit_2", true},
+        {"mr_johnsons_flag_bit_4", true},
+        {"mr_johnsons_flag_bit_5", false},
+        {"vid_phone_contact_0", false},
+    });
+    gameplay_scripts.set_location_context(
+        "building", "julius_strouther_booth",
+        "matchstick.julius_strouther", "julius_strouther");
+    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+        !expect(runtime.panel().portrait_alias ==
+                "dialogue.portraits.jump.house.entry") ||
+        !expect(runtime.panel().text_segments[0].find("You enter the booth") !=
+                std::string_view::npos) ||
+        !expect(capture_julius("first-visit-introduction")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "Let's get one thing straight") != std::string_view::npos) ||
+        !expect(runtime.panel().options[0].source_label ==
+                "I'm looking for some information.") ||
+        !expect(capture_julius("first-meeting-root"))) {
+        std::cerr << "Julius first visit did not render its ROM entry and first-meeting root\n";
+        return 108;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "I would be happy to tell you") != std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(capture_julius("information-topics")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().options[0].source_label ==
+                "What can you tell me about Caleb Brightmore?") ||
+        !expect(runtime.panel().options[1].source_label ==
+                "Have you heard of a Johnson named Mortimer Reed?") ||
+        !expect(capture_julius("gated-question-selection"))) {
+        std::cerr << "Julius information and question rows did not match ROM gates\n";
+        return 109;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "Caleb is strictly uptown") != std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(capture_julius("caleb-answer")) ||
+        !expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "Spell it out for me") != std::string_view::npos) ||
+        !expect(capture_julius("different-subject-root"))) {
+        std::cerr << "Julius answer follow-up did not return to the source root\n";
+        return 110;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "I can connect you to a ex-mercenary") !=
+                std::string_view::npos) ||
+        !expect(capture_julius("contact-introduction")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "Treat him right") != std::string_view::npos) ||
+        !expect(capture_julius("contact-offer")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(julius_contact_purchase_calls == 1U) ||
+        !expect(julius_contact_funds == 0U) ||
+        !expect(gameplay_scripts.story_state().at("vid_phone_contact_0")) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "transfers your nuyen") != std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(capture_julius("contact-purchased"))) {
+        std::cerr << "Julius Quinton-contact purchase did not charge, set FFFC2C, and redraw\n";
+        return 111;
+    }
+    if (!expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0] == "Bye.") ||
+        !expect(capture_julius("leave")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(!runtime.open())) {
+        std::cerr << "Julius leave option did not use the ROM farewell and close cleanly\n";
+        return 112;
+    }
+
+    julius_contact_funds = 999U;
+    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "looks up from his pocket computer") != std::string_view::npos) ||
+        !expect(capture_julius("repeat-visit")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(julius_contact_purchase_calls == 2U) ||
+        !expect(julius_contact_funds == 999U) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "checks your account balance") != std::string_view::npos) ||
+        !expect(capture_julius("contact-insufficient")) ||
+        !expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(!runtime.open())) {
+        std::cerr << "Julius repeat/insufficient-funds branch changed the wallet or missed its ROM text\n";
+        return 113;
+    }
+
+    const auto capture_big_rhino = [&runtime](const std::string_view scene) {
+        const auto output_dir = std::filesystem::current_path() /
+            "big-rhino-mortimer-visual-audit" / std::filesystem::path(scene);
+        std::filesystem::create_directories(output_dir);
+        QImage image(320, 224, QImage::Format_ARGB32_Premultiplied);
+        image.fill(Qt::black);
+        QPainter painter(&image);
+        runtime.paint(painter);
+        painter.end();
+        return image.save(QString::fromStdWString(
+                              (output_dir / "actual.bmp").wstring()),
+                          "BMP");
+    };
+    const auto mortimer_panel_contains = [&runtime](
+        const std::string_view needle) {
+        for (std::size_t index = 0U;
+             index < runtime.panel().text_segment_count; ++index) {
+            if (runtime.panel().text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    // The Vid-Phone contact starts clear here so command 0x50's FFFC2C write
+    // can be asserted; fresh New Game seeds contact bit 1 at 0x59C48.
+    gameplay_scripts.set_story_state({
+        {"mr_johnsons_flag_bit_1", true},
+        {"mr_johnsons_flag_bit_2", false},
+        {"story_flag_bit_2", true},
+        {"story_flag_bit_3", false},
+        {"story_flag_bit_10", true},
+        {"story_flag_bit_11", false},
+        {"field_mode_flag_bit_11", true},
+        {"field_mode_flag_bit_12", false},
+        {"field_mode_flag_bit_21", false},
+        {"vid_phone_contact_1", false},
+    });
+    gameplay_scripts.set_location_context(
+        "building", "big_rhino_dark_booth", "big-rhino.mortimer_reed",
+        "mortimer_reed");
+    gameplay_scripts.set_field_mode_context(
+        scripting::ScriptFieldModeContext{11U, 30U, 0});
+    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+        !expect(runtime.panel().portrait_alias ==
+                "dialogue.portraits.mortimer.reed") ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "You move into the booth") != std::string_view::npos) ||
+        !expect(capture_big_rhino("first-booth-entry")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "Well, what have we here") != std::string_view::npos) ||
+        !expect(capture_big_rhino("first-root")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "I hate to give anything away") != std::string_view::npos) ||
+        !expect(capture_big_rhino("information-opening")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "valuable contact") != std::string_view::npos) ||
+        !expect(capture_big_rhino("information-categories")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().options[0].source_label.find("Julius") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().options[1].source_label.find("Mako") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().options[2].source_label.find("Aragorn") !=
+                std::string_view::npos) ||
+        !expect(capture_big_rhino("gated-question-list"))) {
+        std::cerr << "Mortimer's first visit or dynamic question menu did not match ROM data\n";
+        return 114;
+    }
+    if (!expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "no-account dwarf") != std::string_view::npos) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(capture_big_rhino("julius-answer")) ||
+        !expect(runtime.advance_controller_events(0x1000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "valuable contact") != std::string_view::npos) ||
+        !expect(capture_big_rhino("question-back-to-categories"))) {
+        std::cerr << "Mortimer question response did not return to information categories\n";
+        return 115;
+    }
+    const auto mortimer_contact_choice =
+        runtime.advance_controller_events(0x1000U);
+    if (!expect(capture_big_rhino("contact-choice-state")) ||
+        !expect(mortimer_contact_choice ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().option_count == 2U) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "Corporate acquaintance") != std::string_view::npos) ||
+        !expect(runtime.panel().options[0].source_label.find("pay") !=
+                std::string_view::npos) ||
+        !expect(capture_big_rhino("contact-offer"))) {
+        std::cerr << "Mortimer contact offer did not render its ROM terms\n";
+        return 116;
+    }
+    const auto mortimer_purchase_result =
+        runtime.advance_controller_events(0x4000U);
+    capture_big_rhino("contact-purchase-result-state");
+    if (!expect(mortimer_purchase_result ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(mortimer_contact_purchase_calls == 1U) ||
+        !expect(mortimer_contact_funds == 0U) ||
+        !expect(gameplay_scripts.story_state().at("vid_phone_contact_1")) ||
+        !expect(runtime.panel().option_count == 3U) ||
+        !expect(mortimer_panel_contains("Allesandro Hobbs")) ||
+        !expect(capture_big_rhino("contact-purchased"))) {
+        std::cerr << "Mortimer's $1,500 Alesandro purchase did not set FFFC2C bit 1 and render the ROM result\n";
+        return 116;
+    }
+    if (!expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "I'll check you later") != std::string_view::npos) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(!runtime.open())) {
+        std::cerr << "Mortimer's $1,500 Alesandro purchase did not set FFFC2C bit 1 and return cleanly\n";
+        return 116;
+    }
+    if (!expect(runtime.open_gameplay_task("johnson", "interaction")) ||
+        !expect(mortimer_panel_contains("Long time no-see")) ||
+        !expect(capture_big_rhino("repeat-booth-entry")) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "Stick with me, buddy") != std::string_view::npos) ||
+        !expect(capture_big_rhino("repeat-root")) ||
+        !expect(runtime.advance_controller_events(0x2000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "I'll check you later") != std::string_view::npos) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::returned_to_field) ||
+        !expect(!runtime.open())) {
+        std::cerr << "Mortimer's repeat-visit pages did not match ROM descriptors\n";
+        return 117;
+    }
+
+    gameplay_scripts.set_story_state({
+        {"vigore_lead_available", false},
+        {"vigore_search_pending", false},
+        {"errascoe_question_available", false},
+    });
+    gameplay_scripts.set_location_context(
+        "building", "jump_house", "gunderson.jump_house", "gunderson");
 
     // Context zero consumes the ROM selection and Negotiation rolls before
     // route generation. The run-specific Lua flow then presents the source
@@ -1236,6 +1991,18 @@ int main() {
                 std::string_view::npos) ||
         !expect(runtime.panel().option_count == 0U) ||
         !expect(!runtime.panel().returns_to_field)) {
+        std::cerr << "debt debug open=" << runtime.open()
+                  << " result=" << static_cast<int>(debt_payment_outcome.result)
+                  << " funds=" << debt_payment_outcome.remaining_funds
+                  << " referral=" << static_cast<int>(
+                         debt_payment_state.followup_state.referral_flags)
+                  << " debt-paid=" << gameplay_scripts.story_state().at(
+                         "michael_debt_paid")
+                  << " package-collected=" << gameplay_scripts.story_state().at(
+                         "michael_package_collected")
+                  << " text=" << runtime.panel().text_segments[0]
+                  << " options=" << runtime.panel().option_count
+                  << " returns=" << runtime.panel().returns_to_field << '\n';
         return 65;
     }
     scene.fill(Qt::magenta);

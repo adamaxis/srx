@@ -21,12 +21,11 @@ struct FieldActionProgressionOffer {
     std::uint16_t base_cost = 0;
 };
 
-// 0x1AAEB0 and 0x1AAEF8 each provide the fixed-selection families.  The
-// 0x1AAF40 family is three 0x20-byte blocks selected by menu mode 3..5; each
-// block contains eight four-byte offer records.
+// ROM 0x57D7E selects the progression offers only from 0x1AAF40. It is three
+// 0x20-byte blocks selected by menu mode 3..5; each block contains eight
+// four-byte records. The nearby 0x1AAEB0 and 0x1AAEF8 tables are separate
+// three-byte inventory offer records used by the other result-zero tabs.
 struct FieldActionProgressionTables {
-    std::array<FieldActionProgressionOffer, 18> saved_selection_two_or_more{};
-    std::array<FieldActionProgressionOffer, 18> saved_selection_one{};
     std::array<std::array<FieldActionProgressionOffer, 8>, 3>
         saved_selection_zero_by_menu_mode{};
 };

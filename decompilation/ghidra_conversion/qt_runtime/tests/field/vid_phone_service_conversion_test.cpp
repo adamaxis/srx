@@ -159,16 +159,20 @@ int main() {
         return 4;
     }
 
+    constexpr std::uint32_t kSceneTwentyEntryFlag = 1U << 26U;
+    constexpr std::uint32_t kHollywoodAccessFlag = 1U << 28U;
     funds = 2800U;
-    contacts = 0U;
+    contacts = kSceneTwentyEntryFlag | kHollywoodAccessFlag;
     result = apply_vid_phone_service(
         VidPhoneServiceAction::hire_sharkey,
         funds, items, phases, contacts);
     const auto sharkey_mask = static_cast<std::uint32_t>(
         1U << static_cast<unsigned>(VidPhoneContactIndex::sharkey));
     if (!expect(result == VidPhoneServiceResult::hired && funds == 0U &&
-                    contacts == sharkey_mask,
-                "rigger introduction did not charge 2800 and unlock Sharkey")) {
+                    contacts == (kSceneTwentyEntryFlag |
+                                 kHollywoodAccessFlag | sharkey_mask),
+                "rigger introduction did not charge 2800, unlock Sharkey, "
+                "and preserve FFFC2C scene/access flags")) {
         return 5;
     }
 
@@ -498,13 +502,15 @@ int main() {
 
     std::array<std::uint8_t, 8> item_codes{};
     std::array<std::uint8_t, 8> item_phases{};
-    std::optional<std::uint32_t> badge_flags = 1U << 5U;
+    std::optional<std::uint32_t> badge_flags =
+        (1U << 5U) | kSceneTwentyEntryFlag;
     funds = 4999U;
     auto badge = apply_vid_phone_service(
         VidPhoneServiceAction::issue_hollywood_badge, funds, item_codes,
         item_phases, badge_flags);
     if (!expect(badge == VidPhoneServiceResult::insufficient_funds &&
-                    funds == 4999U && badge_flags == (1U << 5U) &&
+                    funds == 4999U &&
+                    badge_flags == ((1U << 5U) | kSceneTwentyEntryFlag) &&
                     vid_phone_service_script_result(badge) == "insufficient",
                 "short Hollywood badge funds changed the wallet or flags")) {
         return 37;
@@ -514,7 +520,8 @@ int main() {
         VidPhoneServiceAction::issue_hollywood_badge, funds, item_codes,
         item_phases, badge_flags);
     if (!expect(badge == VidPhoneServiceResult::hired && funds == 0U &&
-                    badge_flags == ((1U << 5U) | (1U << 28U)) &&
+                    badge_flags == ((1U << 5U) | kSceneTwentyEntryFlag |
+                                    kHollywoodAccessFlag) &&
                     vid_phone_service_script_result(badge) == "hired",
                 "Hollywood badge did not charge 5,000 and set FFFC2C bit 28")) {
         return 38;

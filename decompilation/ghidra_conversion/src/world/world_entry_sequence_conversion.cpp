@@ -1,5 +1,7 @@
 #include "shadowrun_ghidra/world/world_entry_sequence_conversion.hpp"
 
+#include <algorithm>
+
 namespace shadowrun::ghidra_conversion {
 
 namespace {
@@ -28,41 +30,52 @@ WorldEntrySequenceAction run_world_entry_sequence(
     WorldEntrySequenceState& state,
     const bool compact_layout,
     const WorldEntrySequenceCallbacks& callbacks) {
+    const auto plan = callbacks.select_sequence_plan
+        ? callbacks.select_sequence_plan(compact_layout)
+        : WorldEntrySequencePlan{};
+    const auto render_frames = static_cast<std::uint16_t>(std::count_if(
+        plan.steps.begin(), plan.steps.end(), [](const WorldEntryStep& step) {
+            return step.kind == WorldEntryStepKind::render_frame;
+        }));
+    if (render_frames != plan.frame_count) {
+        return WorldEntrySequenceAction::invalid_plan;
+    }
+
     state.animation_marker = -1;
-    const auto stream = callbacks.select_command_stream
-        ? callbacks.select_command_stream(compact_layout)
-        : WorldEntryCommandStream{};
-    std::size_t command_cursor = 0U;
-    std::size_t delay_cursor = 0U;
     std::uint16_t completed_frames = 0U;
+    bool begin_service_cycle = true;
 
-    while (completed_frames < stream.frame_count) {
-        run_timing_cycle(callbacks, 2U);
-        if (command_cursor >= stream.movement_commands.size()) {
-            return WorldEntrySequenceAction::invalid_stream;
+    for (const auto& step : plan.steps) {
+        if (begin_service_cycle) {
+            run_timing_cycle(callbacks, 2U);
         }
+        begin_service_cycle = true;
 
-        const auto command = stream.movement_commands[command_cursor++];
-        if ((command & 0x80U) != 0U) {
-            state.world_origin_x -= static_cast<std::int32_t>((command >> 4U) & 7U);
-            state.world_origin_y -= static_cast<std::int32_t>(command & 7U);
+        if (step.kind == WorldEntryStepKind::camera_adjustment) {
+            state.world_origin_x -= step.camera_step_x;
+            state.world_origin_y -= step.camera_step_y;
+            // ROM 0x26834 clears D5 and branches to 0x267F0, so DBF waits
+            // once before the next command. It skips the 0x267EE setup that
+            // would start another three-VBlank cycle.
+            run_timing_cycle(callbacks, 0U);
+            begin_service_cycle = false;
             continue;
         }
 
-        state.accumulated_x += static_cast<std::int32_t>(command >> 4U);
-        if (command_cursor >= stream.movement_commands.size()) {
-            return WorldEntrySequenceAction::invalid_stream;
-        }
-        const auto vertical = stream.movement_commands[command_cursor++];
-        if (vertical == 0U) {
-            if (delay_cursor >= stream.delays.size()) {
-                return WorldEntrySequenceAction::invalid_stream;
-            }
-            run_timing_cycle(callbacks, stream.delays[delay_cursor++]);
+        if (step.kind == WorldEntryStepKind::delay) {
+            run_timing_cycle(callbacks, step.additional_wait_count);
+            // ROM 0x26848 branches to 0x267F0, past the moveq that starts
+            // the normal three-VBlank service cycle. Once this delay expires,
+            // the next command is consumed immediately.
+            begin_service_cycle = false;
             continue;
         }
 
-        state.accumulated_y += static_cast<std::int32_t>(vertical & 0x0FU);
+        // Offline ROM analysis resolves each packed sample into these typed
+        // counts. Runtime rendering consumes the plan without decoding ROM
+        // command bytes.
+        state.accumulated_x += step.sample_count_x;
+        state.accumulated_y += step.sample_count_y;
         if (callbacks.dispatch_frame_buffer) {
             callbacks.dispatch_frame_buffer();
         }
@@ -79,7 +92,9 @@ WorldEntrySequenceAction run_world_entry_sequence(
         state.sprite_records_pending = true;
         ++completed_frames;
     }
-    return WorldEntrySequenceAction::completed;
+    return completed_frames == plan.frame_count
+        ? WorldEntrySequenceAction::completed
+        : WorldEntrySequenceAction::invalid_plan;
 }
 
 } // namespace shadowrun::ghidra_conversion

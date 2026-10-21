@@ -3,12 +3,24 @@
 local FieldActivities = {}
 local Dialogue = require("dialogue")
 local MatrixPasscodes = require("data.matrix_passcodes")
-local CaptQuintonJaymes = require("vid_phone.capt_quinton_jaymes")
-local AlesandroHobbs = require("vid_phone.alesandro_hobbs")
-local Sharkey = require("vid_phone.sharkey")
-local KippDavid = require("vid_phone.kipp_david")
-local WilmaTemmenhoff = require("vid_phone.wilma_temmenhoff")
-local Macklemann = require("vid_phone.macklemann")
+
+-- Resolve each contact's source-backed Lua service tree while this module is
+-- initialized. The contact list supplies the module/function association;
+-- dispatch during a yielded task then uses the already-resolved handler.
+local phone_service_handlers = {}
+for _, contact in ipairs(Dialogue.vid_phone_contacts) do
+    local service_module = contact.service_module
+    local service_function = contact.service_function
+    if type(service_module) == "string" and service_module ~= "" and
+       type(service_function) == "string" and service_function ~= "" then
+        local service_tree = require(service_module)
+        local handler = service_tree[service_function]
+        assert(type(handler) == "function",
+            "Vid-Phone contact names a missing Lua service handler: " ..
+            service_module .. "." .. service_function)
+        phone_service_handlers[contact.id] = handler
+    end
+end
 
 local function run_cursor_menu(menu_id, choices, initial_selection,
                                speaker_id, text_profile)
@@ -65,6 +77,14 @@ local function phone_call_finished()
     return "phone_call_finished"
 end
 
+local function call_contact_services(contact)
+    local handler = phone_service_handlers[contact.id]
+    if type(handler) ~= "function" then
+        return "phone_services_not_converted"
+    end
+    return handler()
+end
+
 local function call_contact(contact)
     local called_fact = "vid_phone_called_" .. contact.source_index
     local first_call = game.state[called_fact] ~= true
@@ -97,20 +117,7 @@ local function call_contact(contact)
         "call_" .. contact.id .. "_" .. call_kind,
         { "services", "goodbye" }, contact.speaker_id, "field.vid_phone")
     if choice == "services" then
-        if contact.id == "capt_quinton_jaymes" then
-            return CaptQuintonJaymes.services()
-        elseif contact.id == "alesandro_hobbs" then
-            return AlesandroHobbs.services()
-        elseif contact.id == "sharkey" then
-            return Sharkey.services()
-        elseif contact.id == "kipp_david" then
-            return KippDavid.services()
-        elseif contact.id == "wilma_temmenhoff" then
-            return WilmaTemmenhoff.services()
-        elseif contact.id == "macklemann" then
-            return Macklemann.services()
-        end
-        return "phone_services_not_converted"
+        return call_contact_services(contact)
     end
     return phone_call_finished()
 end

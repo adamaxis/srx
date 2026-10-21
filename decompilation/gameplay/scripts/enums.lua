@@ -214,9 +214,11 @@ E.ClipTradeCommand = { INCREASE = 2, DECREASE = 3, TRADE = 4, CHANGE_RECIPIENT =
 E.DebugOption = { NUYEN = 0, SPELLS = 1, TEST_DECK = 2, PICK_SYSTEM = 3, HEAL_ALL = 4, KARMA = 5, CONTACTS = 6, WALK_FAST = 7 }  -- table 0x1D90C0 [C]
 E.SaveLoadOption = { SAVE = 0, LOAD = 1 }   -- 0xC2600 rows [C]
 E.PocketOption = { NOTEBOOK = 0, GROUP_ITEMS = 1, CYBERDECK = 2, DISMISS_RUNNER = 3, SAVE_LOAD = 4, DEBUG = 5 } -- table 0xC1400; 5 = debug menu 0x599DA (FFF101) [C]
--- FFFC2C contact long: bit n unlocks Vid-Phone contact n. 0xE506 loads FFFC2C and
--- 0xF5F4 walks name table 0xC66AC / pointer table 0x109682 with BTST.L D1,D0 for
--- D1 = 0..12 [C]. Names follow dialogue.lua vid_phone_contacts (source_index).
+-- FFFC2C state long: bits 0..12 unlock Vid-Phone contacts. 0xE506 loads the
+-- full word and 0xF5F4 scans only indices 0..12 [C]; high bits remain active
+-- state (scene-20 entry bit 26, Hollywood access bit 28) and must be preserved
+-- when setting an individual contact. Names follow dialogue.lua
+-- vid_phone_contacts (source_index).
 E.VidPhoneContact = {
     CAPT_QUINTON_JAYMES = 0, ALESANDRO_HOBBS = 1, SHARKEY = 2, KIPP_DAVID = 3,
     WILMA_TEMMENHOFF = 4, MACKLEMANN = 5, GREGORY_WILNS = 6, MR_FARADOUCHI = 7,
@@ -251,7 +253,7 @@ E.StoryFlag = {
   SHAMAN_MET           = 5,  -- cmd15 from F4BD8 (FFDD64=5 @0x53D8E) [C]
   SHAMAN_ITEM4_GIVEN   = 6,  -- 0x53DD0 consumes Group Item 4 -> F4C34 [C]
   SHAMAN_PELT_GIVEN    = 7,  -- 0x53E38 consumes Hell Hound Pelt -> F4C3C; cmd40 0x21F46 is FFFC34 (tool bug) [C]
-  SERPENT_SCALE_TAKEN  = 8,  -- FFDD64=8 @0x53F00, jsr 0x2196C @0x53F50, F4C44 strike team; FFFC22 bit2 [C]
+  SERPENT_SCALE_TAKEN  = 8,  -- FFDD64=8 @0x53F00; 0x53F50 sets FFFC1E bit8 and clears FFFC22 bit2. The source that grants the later Feathered Scale item flag is unresolved [C]
   SHAMAN_TASKS_DONE    = 9,  -- 0x53EA8 consumes Feathered Scale -> F4C04 [C]
   MICHAEL_ALIAS_LEARNED = 10, -- cmd2B (needs b1) -> F5414 "came in using the name Owlfeather" [C site][H name]
   MAKO_DEFEATED        = 11, -- 0x53FFC encounter 0x1E628 cleared -> F4CA8 "Mako lies unconscious" [C]

@@ -31,6 +31,11 @@ function RedmondBarrens.run_vigore_search()
     -- FFFC1E bit FFDD64 (22, LANDMARK_MAP_TAKEN) [C].
     StoryFlags.finish_trigger(E.StoryFlag.LANDMARK_MAP_TAKEN)
     game.state.vigore_search_completed = true
+    -- 0x54652 calls the shared 0x59C34 helper with D0=2 after publishing the
+    -- landmark map. Keep the party reward as a typed host service so the Lua
+    -- story flow selects when it occurs and the host only updates runner data.
+    local reward = game.services.call("party", "award_karma_2")
+    if reward ~= "applied" then return "reward_unavailable" end
     return "completed"
 end
 

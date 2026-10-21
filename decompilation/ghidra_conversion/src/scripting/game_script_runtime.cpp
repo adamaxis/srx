@@ -39,7 +39,11 @@ constexpr std::size_t kMaximumItemCatalogEntries = 50U;
 constexpr std::size_t kMaximumItemDetailTextEntries = 32U;
 constexpr std::size_t kMaximumIdentifierLength = 96U;
 constexpr std::size_t kMaximumStoryFacts = 4096U;
-constexpr std::size_t kMaximumDialogueTextEntries = 1024U;
+// The direct ROM text catalog already exceeds the old 1024-entry ceiling as
+// more location and menu records are imported. Keep the parser bound above
+// the complete host asset catalog instead of turning valid extracted text
+// into a gameplay bootstrap failure.
+constexpr std::size_t kMaximumDialogueTextEntries = 4096U;
 constexpr std::size_t kMaximumDialogueTextBytes = 8192U;
 constexpr int kScriptInstructionBudget = 100000;
 
@@ -226,6 +230,40 @@ bool read_field_signed_integer(lua_State* state, const int table_index,
     }
     lua_pop(state, 1);
     return valid;
+}
+
+bool valid_identifier(std::string_view value);
+
+bool read_shop_menu_snapshot(lua_State* state, const int table_index,
+                             ScriptShopMenuSnapshot& snapshot) {
+    std::uint32_t menu_mode = 0U;
+    std::uint32_t action_cursor = 0U;
+    std::uint32_t action_panel = 0U;
+    std::uint32_t selected_action = 0U;
+    int menu_result = 0;
+    if (!read_field_boolean(state, table_index, "open", snapshot.open) ||
+        !read_field_string(state, table_index, "shop_id", snapshot.shop_id) ||
+        !valid_identifier(snapshot.shop_id) ||
+        !read_field_integer(state, table_index, "menu_mode", 0xFFU,
+                            menu_mode) ||
+        !read_field_signed_integer(state, table_index, "menu_result",
+                                   -0x80, 0x7F, menu_result) ||
+        !read_field_integer(state, table_index, "action_cursor", 7U,
+                            action_cursor) ||
+        !read_field_integer(state, table_index, "action_panel", 1U,
+                            action_panel) ||
+        !read_field_integer(state, table_index, "selected_action", 7U,
+                            selected_action) ||
+        !read_field_string(state, table_index, "event", snapshot.event) ||
+        !valid_identifier(snapshot.event)) {
+        return false;
+    }
+    snapshot.menu_mode = static_cast<std::uint8_t>(menu_mode);
+    snapshot.menu_result = static_cast<std::int8_t>(menu_result);
+    snapshot.action_cursor = static_cast<std::uint8_t>(action_cursor);
+    snapshot.action_panel = static_cast<std::uint8_t>(action_panel);
+    snapshot.selected_action = static_cast<std::uint8_t>(selected_action);
+    return true;
 }
 
 std::string collision_event_name(const FieldCollisionEventCode event_code) {
@@ -530,8 +568,23 @@ bool parse_menu_choices(lua_State* state, const int index,
          ++choice_index) {
         lua_rawgeti(state, index, static_cast<lua_Integer>(choice_index));
         ScriptMenuChoice choice;
-        const bool valid = read_string(state, -1, choice.id) &&
-                           valid_identifier(choice.id);
+        bool valid = false;
+        if (lua_istable(state, -1)) {
+            const auto choice_record = lua_absindex(state, -1);
+            valid = read_field_string(state, choice_record, "id", choice.id) &&
+                    read_field_string(state, choice_record, "label",
+                                      choice.inline_label) &&
+                    !choice.inline_label.empty() &&
+                    choice.inline_label.size() <= 160U &&
+                    std::none_of(
+                        choice.inline_label.begin(),
+                        choice.inline_label.end(), [](const unsigned char ch) {
+                            return ch < 0x20U || ch == 0x7FU;
+                        });
+        } else {
+            valid = read_string(state, -1, choice.id);
+        }
+        valid = valid && valid_identifier(choice.id);
         lua_pop(state, 1);
         if (!valid || !choice_ids.insert(choice.id).second) {
             return false;
@@ -791,6 +844,7 @@ struct GameScriptRuntime::Impl {
         cyberdeck_available,
         notebook_boundary,
         consume_debug_unlock,
+        nuyen,
         set_nuyen,
         request_taxi_destination,
         set_contact_flags,
@@ -798,7 +852,6 @@ struct GameScriptRuntime::Impl {
         install_test_deck,
         deck_enter,
         deck_leave,
-        deck_tick,
         set_deck_mode,
         matrix_online,
         matrix_node,
@@ -1401,10 +1454,6 @@ struct GameScriptRuntime::Impl {
             return dispatch_cyberdeck_menu_binding(
                 lua, self->menu_route_bindings.game,
                 CyberdeckMenuBinding::leave);
-        case MenuBinding::deck_tick:
-            return dispatch_cyberdeck_menu_binding(
-                lua, self->menu_route_bindings.game,
-                CyberdeckMenuBinding::tick);
         case MenuBinding::set_deck_mode:
             return dispatch_cyberdeck_menu_binding(
                 lua, self->menu_route_bindings.game,
@@ -1444,7 +1493,7 @@ struct GameScriptRuntime::Impl {
         case MenuBinding::deck_slots:
             return dispatch_cyberdeck_menu_binding(
                 lua, self->menu_route_bindings.game,
-                CyberdeckMenuBinding::slots);
+                CyberdeckMenuBinding::program_slots);
         case MenuBinding::deck_commit:
             return dispatch_cyberdeck_menu_binding(
                 lua, self->menu_route_bindings.game,
@@ -1453,6 +1502,17 @@ struct GameScriptRuntime::Impl {
             return dispatch_cyberdeck_menu_binding(
                 lua, self->menu_route_bindings.game,
                 CyberdeckMenuBinding::program_unloaded);
+        case MenuBinding::nuyen: {
+            const auto funds = self->menu_route_bindings.game.nuyen
+                                   ? self->menu_route_bindings.game.nuyen()
+                                   : std::nullopt;
+            if (funds.has_value()) {
+                lua_pushinteger(lua, static_cast<lua_Integer>(*funds));
+            } else {
+                lua_pushnil(lua);
+            }
+            return 1;
+        }
         case MenuBinding::set_nuyen:
             if (self->menu_route_bindings.game.set_nuyen) {
                 self->menu_route_bindings.game.set_nuyen(
@@ -1578,6 +1638,7 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::notebook_facts);
         add_menu_binding(state, table_index, "cyberdeck_available",
                          MenuBinding::cyberdeck_available);
+        add_menu_binding(state, table_index, "nuyen", MenuBinding::nuyen);
         add_menu_binding(state, table_index, "set_nuyen",
                          MenuBinding::set_nuyen);
         add_menu_binding(state, table_index, "request_taxi_destination",
@@ -1594,8 +1655,6 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::deck_enter);
         add_menu_binding(state, table_index, "deck_leave",
                          MenuBinding::deck_leave);
-        add_menu_binding(state, table_index, "deck_tick",
-                         MenuBinding::deck_tick);
         add_menu_binding(state, table_index, "set_deck_mode",
                          MenuBinding::set_deck_mode);
         add_menu_binding(state, table_index, "matrix_online",
@@ -1690,6 +1749,30 @@ struct GameScriptRuntime::Impl {
             lua_pop(lua, 1);
             return values;
         };
+        const auto read_string_array = [lua](
+            const int table_index, const char* name,
+            const std::size_t maximum_count) {
+            std::vector<std::string> values;
+            lua_getfield(lua, table_index, name);
+            if (lua_istable(lua, -1)) {
+                const auto array_index = lua_absindex(lua, -1);
+                const auto count = std::min<std::size_t>(
+                    static_cast<std::size_t>(lua_rawlen(lua, array_index)),
+                    maximum_count);
+                values.reserve(count);
+                for (std::size_t index = 0U; index < count; ++index) {
+                    lua_rawgeti(lua, array_index,
+                                static_cast<lua_Integer>(index + 1U));
+                    std::string value;
+                    if (read_string(lua, -1, value)) {
+                        values.push_back(std::move(value));
+                    }
+                    lua_pop(lua, 1);
+                }
+            }
+            lua_pop(lua, 1);
+            return values;
+        };
         lua_getfield(state, route_index, "top");
         lua_pushvalue(state, route_index);
         if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
@@ -1700,6 +1783,20 @@ struct GameScriptRuntime::Impl {
         }
         if (lua_istable(state, -1)) {
             const auto entry_index = lua_absindex(state, -1);
+            lua_getfield(state, entry_index, "debug_enter_callback_present");
+            if (lua_isboolean(state, -1)) {
+                menu_route_state.top_enter_callback_present =
+                    lua_toboolean(state, -1) != 0;
+            }
+            lua_pop(state, 1);
+            lua_getfield(state, entry_index, "debug_enter_called");
+            if (lua_isboolean(state, -1)) {
+                menu_route_state.top_enter_called =
+                    lua_toboolean(state, -1) != 0;
+            }
+            lua_pop(state, 1);
+            menu_route_state.top_enter_transition =
+                read_optional(entry_index, "debug_enter_transition");
             lua_getfield(state, entry_index, "screen");
             if (lua_isinteger(state, -1)) {
                 menu_route_state.top_screen = static_cast<std::uint16_t>(
@@ -1714,6 +1811,52 @@ struct GameScriptRuntime::Impl {
                 lua_pop(state, 1);
                 (void)read_field_text(state, screen_state_index, "text",
                                       menu_route_state.top_text);
+                (void)read_field_text(
+                    state, screen_state_index, "description",
+                    menu_route_state.top_matrix_deck_description);
+                const auto detail_labels = read_string_array(
+                    screen_state_index, "program_detail_labels", 3U);
+                if (detail_labels.size() ==
+                    menu_route_state.top_matrix_deck_detail_labels.size()) {
+                    std::copy(detail_labels.begin(), detail_labels.end(),
+                              menu_route_state.top_matrix_deck_detail_labels.begin());
+                    menu_route_state.top_matrix_deck_detail_labels_present =
+                        true;
+                }
+                const auto detail_values = read_string_array(
+                    screen_state_index, "program_detail_values", 3U);
+                if (detail_values.size() ==
+                    menu_route_state.top_matrix_deck_program_detail_values
+                        .size()) {
+                    std::copy(
+                        detail_values.begin(), detail_values.end(),
+                        menu_route_state
+                            .top_matrix_deck_program_detail_values.begin());
+                    menu_route_state
+                        .top_matrix_deck_program_detail_values_present = true;
+                }
+                const auto runner_detail_labels = read_string_array(
+                    screen_state_index, "runner_detail_labels", 2U);
+                if (runner_detail_labels.size() ==
+                    menu_route_state.top_matrix_deck_runner_detail_labels
+                        .size()) {
+                    std::copy(
+                        runner_detail_labels.begin(),
+                        runner_detail_labels.end(),
+                        menu_route_state
+                            .top_matrix_deck_runner_detail_labels.begin());
+                    menu_route_state
+                        .top_matrix_deck_runner_detail_labels_present = true;
+                }
+                const auto runner_details = read_string_array(
+                    screen_state_index, "runner_detail_lines", 2U);
+                if (runner_details.size() ==
+                    menu_route_state.top_matrix_deck_runner_details.size()) {
+                    std::copy(runner_details.begin(), runner_details.end(),
+                              menu_route_state.top_matrix_deck_runner_details.begin());
+                    menu_route_state.top_matrix_deck_runner_details_present =
+                        true;
+                }
                 lua_getfield(state, screen_state_index, "labels");
                 if (lua_istable(state, -1)) {
                     const auto labels_index = lua_absindex(state, -1);
@@ -1738,11 +1881,114 @@ struct GameScriptRuntime::Impl {
                     read_optional_alias(screen_state_index, "col", "column");
                 menu_route_state.top_row =
                     read_optional(screen_state_index, "row");
+                const auto deck_palette_phase =
+                    read_optional(screen_state_index,
+                                  "deck_palette_phase");
+                if (deck_palette_phase.has_value() &&
+                    *deck_palette_phase >= 0 && *deck_palette_phase < 4) {
+                    menu_route_state.top_matrix_deck_palette_phase =
+                        deck_palette_phase;
+                }
+                lua_getfield(state, screen_state_index, "program_ratings");
+                if (lua_istable(state, -1)) {
+                    const auto ratings_index = lua_absindex(state, -1);
+                    bool complete_ratings = true;
+                    for (std::size_t index = 0U;
+                         index < menu_route_state
+                                     .top_matrix_deck_program_ratings.size();
+                         ++index) {
+                        lua_rawgeti(state, ratings_index,
+                                    static_cast<lua_Integer>(index));
+                        if (!lua_isinteger(state, -1)) {
+                            complete_ratings = false;
+                        } else {
+                            const auto rating = lua_tointeger(state, -1);
+                            if (rating < 0 || rating > 0xFF) {
+                                complete_ratings = false;
+                            } else {
+                                menu_route_state
+                                    .top_matrix_deck_program_ratings[index] =
+                                    static_cast<std::uint8_t>(rating);
+                            }
+                        }
+                        lua_pop(state, 1);
+                    }
+                    menu_route_state
+                        .top_matrix_deck_program_ratings_present =
+                        complete_ratings;
+                }
+                lua_pop(state, 1);
+                lua_getfield(state, screen_state_index,
+                             "active_programs");
+                if (lua_istable(state, -1)) {
+                    const auto active_index = lua_absindex(state, -1);
+                    bool complete_active = true;
+                    for (std::size_t index = 0U;
+                         index < menu_route_state
+                                     .top_matrix_deck_active_programs.size();
+                         ++index) {
+                        lua_rawgeti(state, active_index,
+                                    static_cast<lua_Integer>(index));
+                        if (!lua_isinteger(state, -1)) {
+                            complete_active = false;
+                        } else {
+                            const auto program = lua_tointeger(state, -1);
+                            if (program < -1 || program > 11) {
+                                complete_active = false;
+                            } else {
+                                menu_route_state
+                                    .top_matrix_deck_active_programs[index] =
+                                    static_cast<std::int8_t>(program);
+                            }
+                        }
+                        lua_pop(state, 1);
+                    }
+                    menu_route_state
+                        .top_matrix_deck_active_programs_present =
+                        complete_active;
+                }
+                lua_pop(state, 1);
+                lua_getfield(state, screen_state_index,
+                             "program_slot_status");
+                if (lua_istable(state, -1)) {
+                    const auto status_index = lua_absindex(state, -1);
+                    bool complete_status = true;
+                    for (std::size_t index = 0U;
+                         index < menu_route_state
+                                     .top_matrix_deck_program_slot_status.size();
+                         ++index) {
+                        lua_rawgeti(state, status_index,
+                                    static_cast<lua_Integer>(index));
+                        if (!lua_isinteger(state, -1)) {
+                            complete_status = false;
+                        } else {
+                            const auto status = lua_tointeger(state, -1);
+                            if (status < 0 || status > 6) {
+                                complete_status = false;
+                            } else {
+                                menu_route_state
+                                    .top_matrix_deck_program_slot_status[index] =
+                                    static_cast<std::uint8_t>(status);
+                            }
+                        }
+                        lua_pop(state, 1);
+                    }
+                    menu_route_state
+                        .top_matrix_deck_program_slot_status_present =
+                        complete_status;
+                }
+                lua_pop(state, 1);
                 menu_route_state.top_page =
                     read_optional(screen_state_index, "page");
                 menu_route_state.top_selection =
                     read_optional_alias(screen_state_index, "selection",
                                         "selector");
+                menu_route_state.top_program_index =
+                    read_optional(screen_state_index, "p");
+                menu_route_state.top_program_slot =
+                    read_optional(screen_state_index, "slot");
+                menu_route_state.top_program_choice =
+                    read_optional(screen_state_index, "choice");
                 lua_getfield(state, screen_state_index, "caption_visible");
                 if (lua_isboolean(state, -1)) {
                     menu_route_state.top_caption_visible =
@@ -1786,7 +2032,8 @@ struct GameScriptRuntime::Impl {
                     ScriptMatrixNodeStatusView status;
                     lua_getfield(state, status_index, "file_class_label");
                     const bool has_file_class =
-                        read_string(state, -1, status.file_class_label);
+                        read_string_allow_empty(
+                            state, -1, status.file_class_label);
                     lua_pop(state, 1);
                     lua_getfield(state, status_index, "alert_band_label");
                     const bool has_alert_band =
@@ -1794,13 +2041,370 @@ struct GameScriptRuntime::Impl {
                     lua_pop(state, 1);
                     const auto action_difficulty =
                         read_optional(status_index, "action_difficulty");
+                    const auto background_profile =
+                        read_optional(status_index, "background_profile");
+                    const auto palette_theme =
+                        read_optional(status_index, "palette_theme");
+                    const auto world_model_id =
+                        read_optional(status_index, "world_model_id");
                     if (has_file_class && has_alert_band &&
                         action_difficulty.has_value() &&
-                        *action_difficulty >= 0 &&
-                        *action_difficulty <= 255) {
+                        // Lua leaves the class label empty and uses -1 while
+                        // node details are hidden below the ROM knowledge
+                        // threshold. Preserve its palette/model fields so
+                        // traversal can still render the world view.
+                        *action_difficulty >= -1 &&
+                        *action_difficulty <= 255 &&
+                        background_profile.has_value() &&
+                        *background_profile >= 0 &&
+                        *background_profile <= 4 &&
+                        palette_theme.has_value() &&
+                        *palette_theme >= 1 && *palette_theme <= 4 &&
+                        world_model_id.has_value() &&
+                        *world_model_id >= 0 && *world_model_id <= 5) {
                         status.action_difficulty = *action_difficulty;
+                        status.background_profile = *background_profile;
+                        status.palette_theme = *palette_theme;
+                        status.world_model_id =
+                            static_cast<ScriptMatrixWorldModelId>(
+                                *world_model_id);
                         menu_route_state.top_matrix_node_status =
                             std::move(status);
+                    }
+                }
+                lua_pop(state, 1);
+                lua_getfield(state, screen_state_index,
+                             "matrix_traversal_view");
+                if (lua_istable(state, -1)) {
+                    const auto view_index = lua_absindex(state, -1);
+                    ScriptMatrixTraversalView view;
+                    const auto world_model_id =
+                        read_optional(view_index, "world_model_id");
+                    const auto palette_theme =
+                        read_optional(view_index, "palette_theme");
+                    const auto world_effect_mode =
+                        read_optional(view_index, "world_effect_mode");
+                    const auto world_effect_phase =
+                        read_optional(view_index, "world_effect_phase");
+                    const auto action_mode =
+                        read_optional(view_index, "action_mode");
+                    const auto analyze_effect_phase =
+                        read_optional(view_index, "analyze_effect_phase");
+                    const auto analyze_runner_phase =
+                        read_optional(view_index, "analyze_runner_phase");
+                    const auto world_entry_phase =
+                        read_optional(view_index, "world_entry_phase");
+                    const auto world_entry_setup_vblanks =
+                        read_optional(view_index,
+                                      "world_entry_setup_vblanks");
+                    const auto world_entry_sequence_vblanks =
+                        read_optional(view_index,
+                                      "world_entry_sequence_vblanks");
+                    const auto world_entry_sequence_duration =
+                        read_optional(view_index,
+                                      "world_entry_sequence_duration");
+                    const auto world_entry_published_frame =
+                        read_optional(view_index,
+                                      "world_entry_published_frame");
+                    const auto model_canvas_x =
+                        read_optional(view_index, "model_canvas_x");
+                    const auto model_canvas_y =
+                        read_optional(view_index, "model_canvas_y");
+                    const auto model_canvas_width =
+                        read_optional(view_index, "model_canvas_width");
+                    const auto model_canvas_height =
+                        read_optional(view_index, "model_canvas_height");
+                    const auto knowledge_rank =
+                        read_optional(view_index, "knowledge_rank");
+                    const auto action_difficulty =
+                        read_optional(view_index, "action_difficulty");
+                    const auto ice_rating_column =
+                        read_optional(view_index, "ice_rating_column");
+                    const auto second_ice_rating_column =
+                        read_optional(view_index,
+                                      "second_ice_rating_column");
+                    lua_getfield(state, view_index, "function_label");
+                    const bool has_function_label =
+                        read_string_allow_empty(state, -1,
+                                                view.function_label);
+                    lua_pop(state, 1);
+                    lua_getfield(state, view_index, "file_class_label");
+                    const bool has_file_class =
+                        read_string_allow_empty(state, -1,
+                                                view.file_class_label);
+                    lua_pop(state, 1);
+                    lua_getfield(state, view_index, "alert_band_label");
+                    const bool has_alert_band =
+                        read_string_allow_empty(state, -1,
+                                                view.alert_band_label);
+                    lua_pop(state, 1);
+                    lua_getfield(state, view_index, "ice_label");
+                    const bool has_ice_label =
+                        read_string_allow_empty(state, -1, view.ice_label);
+                    lua_pop(state, 1);
+                    lua_getfield(state, view_index, "ice_rating_label");
+                    const bool has_ice_rating_label =
+                        read_string_allow_empty(state, -1,
+                                                view.ice_rating_label);
+                    lua_pop(state, 1);
+                    lua_getfield(state, view_index, "second_ice_label");
+                    const bool has_second_ice_label =
+                        read_string_allow_empty(state, -1,
+                                                view.second_ice_label);
+                    lua_pop(state, 1);
+                    lua_getfield(state, view_index,
+                                 "second_ice_rating_label");
+                    const bool has_second_ice_rating_label =
+                        read_string_allow_empty(
+                        state, -1, view.second_ice_rating_label);
+                    lua_pop(state, 1);
+                    lua_getfield(state, view_index,
+                                 "action_difficulty_label");
+                    const bool has_action_difficulty_label =
+                        read_string_allow_empty(
+                        state, -1, view.action_difficulty_label);
+                    lua_pop(state, 1);
+                    lua_getfield(state, view_index, "alert_label");
+                    const bool has_alert_label =
+                        read_string_allow_empty(state, -1,
+                                                view.alert_label);
+                    lua_pop(state, 1);
+                    lua_getfield(state, view_index,
+                                 "active_program_label");
+                    const bool has_active_program_label =
+                        read_string_allow_empty(state, -1,
+                                                view.active_program_label);
+                    lua_pop(state, 1);
+                    lua_getfield(state, view_index,
+                                 "active_program_status_label");
+                    const bool has_active_program_status_label =
+                        read_string_allow_empty(
+                            state, -1,
+                            view.active_program_status_label);
+                    lua_pop(state, 1);
+                    if (world_model_id.has_value() &&
+                        *world_model_id >= 0 && *world_model_id <= 5 &&
+                        palette_theme.has_value() &&
+                        *palette_theme >= 1 && *palette_theme <= 4 &&
+                        world_effect_mode.has_value() &&
+                        (*world_effect_mode == -1 ||
+                         (*world_effect_mode >= 0 &&
+                          *world_effect_mode <= 8) ||
+                         *world_effect_mode == 0x45) &&
+                        world_effect_phase.has_value() &&
+                        *world_effect_phase >= 0 &&
+                        *world_effect_phase <= 27 &&
+                        action_mode.has_value() && *action_mode >= -1 &&
+                        *action_mode <= 1 &&
+                        analyze_effect_phase.has_value() &&
+                        *analyze_effect_phase >= -1 &&
+                        *analyze_effect_phase <= 3 &&
+                        analyze_runner_phase.has_value() &&
+                        *analyze_runner_phase >= -1 &&
+                        *analyze_runner_phase <= 2 &&
+                        world_entry_phase.has_value() &&
+                        *world_entry_phase >= 0 && *world_entry_phase <= 2 &&
+                        world_entry_setup_vblanks.has_value() &&
+                        *world_entry_setup_vblanks >= 0 &&
+                        *world_entry_setup_vblanks <= 61 &&
+                        world_entry_sequence_vblanks.has_value() &&
+                        *world_entry_sequence_vblanks >= 0 &&
+                        *world_entry_sequence_vblanks <= 239 &&
+                        world_entry_sequence_duration.has_value() &&
+                        (*world_entry_sequence_duration == 0 ||
+                         *world_entry_sequence_duration == 179 ||
+                         *world_entry_sequence_duration == 239) &&
+                        world_entry_published_frame.has_value() &&
+                        *world_entry_published_frame >= 0 &&
+                        *world_entry_published_frame <= 56 &&
+                        model_canvas_x.has_value() &&
+                        *model_canvas_x >= 0 && *model_canvas_x < 320 &&
+                        model_canvas_y.has_value() &&
+                        *model_canvas_y >= 0 && *model_canvas_y < 224 &&
+                        model_canvas_width.has_value() &&
+                        *model_canvas_width >= 0 &&
+                        *model_canvas_width <= 320 &&
+                        model_canvas_height.has_value() &&
+                        *model_canvas_height >= 0 &&
+                        *model_canvas_height <= 224 &&
+                        ((*model_canvas_width == 0 &&
+                          *model_canvas_height == 0) ||
+                         (*model_canvas_width > 0 &&
+                          *model_canvas_height > 0 &&
+                          *model_canvas_x + *model_canvas_width <= 320 &&
+                          *model_canvas_y + *model_canvas_height <= 224)) &&
+                        knowledge_rank.has_value() &&
+                        *knowledge_rank >= 0 && *knowledge_rank <= 0x0F &&
+                        action_difficulty.has_value() &&
+                        *action_difficulty >= -1 &&
+                        *action_difficulty <= 255 &&
+                        ice_rating_column.has_value() &&
+                        *ice_rating_column >= 0 &&
+                        *ice_rating_column <= 15 &&
+                        second_ice_rating_column.has_value() &&
+                        *second_ice_rating_column >= 0 &&
+                        *second_ice_rating_column <= 15 &&
+                        has_function_label && has_file_class &&
+                        has_alert_band && has_ice_label &&
+                        has_ice_rating_label && has_second_ice_label &&
+                        has_second_ice_rating_label &&
+                        has_action_difficulty_label && has_alert_label &&
+                        has_active_program_label &&
+                        has_active_program_status_label) {
+                        view.world_model_id =
+                            static_cast<ScriptMatrixWorldModelId>(
+                                *world_model_id);
+                        view.palette_theme = *palette_theme;
+                        view.world_effect_mode = *world_effect_mode;
+                        view.world_effect_phase = *world_effect_phase;
+                        view.action_mode = *action_mode;
+                        view.analyze_effect_phase = *analyze_effect_phase;
+                        view.analyze_runner_phase = *analyze_runner_phase;
+                        view.world_entry_phase = *world_entry_phase;
+                        view.world_entry_setup_vblanks =
+                            *world_entry_setup_vblanks;
+                        view.world_entry_sequence_vblanks =
+                            *world_entry_sequence_vblanks;
+                        view.world_entry_sequence_duration =
+                            *world_entry_sequence_duration;
+                        view.world_entry_published_frame =
+                            *world_entry_published_frame;
+                        view.model_canvas_x = *model_canvas_x;
+                        view.model_canvas_y = *model_canvas_y;
+                        view.model_canvas_width = *model_canvas_width;
+                        view.model_canvas_height = *model_canvas_height;
+                        view.knowledge_rank = *knowledge_rank;
+                        view.action_difficulty = *action_difficulty;
+                        view.ice_rating_column = *ice_rating_column;
+                        view.second_ice_rating_column =
+                            *second_ice_rating_column;
+                        menu_route_state.top_matrix_traversal_view =
+                            std::move(view);
+                    }
+                }
+                lua_pop(state, 1);
+                lua_getfield(state, screen_state_index,
+                             "matrix_run_info");
+                if (lua_istable(state, -1)) {
+                    const auto info_index = lua_absindex(state, -1);
+                    std::string kind;
+                    lua_getfield(state, info_index, "kind");
+                    const bool has_kind = read_string(state, -1, kind);
+                    lua_pop(state, 1);
+
+                    ScriptMatrixRunInfoView info;
+                    if (has_kind && kind == "no_run") {
+                        info.kind = ScriptMatrixRunInfoKind::no_run;
+                        lua_getfield(state, info_index, "message");
+                        if (read_string(state, -1, info.message)) {
+                            menu_route_state.top_matrix_run_info =
+                                std::move(info);
+                        }
+                        lua_pop(state, 1);
+                    } else if (has_kind && kind == "complete") {
+                        info.kind = ScriptMatrixRunInfoKind::complete;
+                        lua_getfield(state, info_index, "message");
+                        if (read_string(state, -1, info.message)) {
+                            menu_route_state.top_matrix_run_info =
+                                std::move(info);
+                        }
+                        lua_pop(state, 1);
+                    } else if (has_kind && kind == "active") {
+                        info.kind = ScriptMatrixRunInfoKind::active;
+                        lua_getfield(state, info_index, "node_label");
+                        const bool has_node_label =
+                            read_string(state, -1, info.node_label);
+                        lua_pop(state, 1);
+                        lua_getfield(state, info_index, "node");
+                        const bool has_node =
+                            read_string(state, -1, info.node);
+                        lua_pop(state, 1);
+                        lua_getfield(state, info_index, "function_label");
+                        const bool has_function_label =
+                            read_string(state, -1, info.function_label);
+                        lua_pop(state, 1);
+                        lua_getfield(state, info_index, "node_function");
+                        const bool has_node_function =
+                            read_string(state, -1, info.node_function);
+                        lua_pop(state, 1);
+                        lua_getfield(state, info_index, "action_label");
+                        const bool has_action_label =
+                            read_string(state, -1, info.action_label);
+                        lua_pop(state, 1);
+                        lua_getfield(state, info_index, "action");
+                        const bool has_action =
+                            read_string(state, -1, info.action);
+                        lua_pop(state, 1);
+                        if (has_node_label && has_node &&
+                            has_function_label && has_node_function &&
+                            has_action_label && has_action) {
+                            menu_route_state.top_matrix_run_info =
+                                std::move(info);
+                        }
+                    }
+                }
+                lua_pop(state, 1);
+                lua_getfield(state, screen_state_index,
+                             "matrix_deck_stats");
+                if (lua_istable(state, -1)) {
+                    const auto stats_index = lua_absindex(state, -1);
+                    ScriptMatrixDeckStatsView stats;
+                    lua_getfield(state, stats_index, "manufacturer");
+                    const bool has_manufacturer =
+                        read_string(state, -1, stats.manufacturer);
+                    lua_pop(state, 1);
+                    lua_getfield(state, stats_index, "model");
+                    const bool has_model = read_string(state, -1, stats.model);
+                    lua_pop(state, 1);
+
+                    bool has_labels = true;
+                    lua_getfield(state, stats_index, "labels");
+                    if (lua_istable(state, -1)) {
+                        const auto labels_index = lua_absindex(state, -1);
+                        for (std::size_t index = 0;
+                             index < stats.labels.size(); ++index) {
+                            lua_rawgeti(state, labels_index,
+                                        static_cast<lua_Integer>(index + 1U));
+                            has_labels = read_string(
+                                             state, -1, stats.labels[index]) &&
+                                         has_labels;
+                            lua_pop(state, 1);
+                        }
+                    } else {
+                        has_labels = false;
+                    }
+                    lua_pop(state, 1);
+
+                    bool has_values = true;
+                    lua_getfield(state, stats_index, "values");
+                    if (lua_istable(state, -1)) {
+                        const auto values_index = lua_absindex(state, -1);
+                        for (std::size_t index = 0;
+                             index < stats.values.size(); ++index) {
+                            lua_rawgeti(state, values_index,
+                                        static_cast<lua_Integer>(index + 1U));
+                            int is_integer = 0;
+                            const auto value = lua_tointegerx(
+                                state, -1, &is_integer);
+                            const bool valid =
+                                is_integer != 0 && value >= 0 &&
+                                value <= 0xFFFF;
+                            has_values = valid && has_values;
+                            if (valid) {
+                                stats.values[index] =
+                                    static_cast<unsigned int>(value);
+                            }
+                            lua_pop(state, 1);
+                        }
+                    } else {
+                        has_values = false;
+                    }
+                    lua_pop(state, 1);
+
+                    if (has_manufacturer && has_model && has_labels &&
+                        has_values) {
+                        menu_route_state.top_matrix_deck_stats =
+                            std::move(stats);
                     }
                 }
                 lua_pop(state, 1);
@@ -2735,6 +3339,55 @@ struct GameScriptRuntime::Impl {
         return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
     }
 
+    static int ui_prompt_text_key(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        if (self == nullptr || self->task_state != lua ||
+            self->task_waiting || self->pending_task_operation.has_value() ||
+            self->active_native_operation.has_value()) {
+            if (self != nullptr) {
+                self->bridge_failure =
+                    "game.ui.prompt_text_key must run inside an active task";
+            }
+            lua_pushnil(lua);
+            return 1;
+        }
+
+        std::string menu_id;
+        std::string text_key;
+        ScriptMenuDefinition menu{};
+        if (!read_string(lua, 1, menu_id) ||
+            !valid_identifier(menu_id) ||
+            !read_string(lua, 2, text_key) ||
+            !valid_identifier(text_key) ||
+            !valid_identifier(self->location_text_profile) ||
+            !parse_menu_choices(lua, 3, menu_id,
+                                self->location_text_profile,
+                                self->location_speaker_id, menu,
+                                kMaximumMenuChoices)) {
+            self->bridge_failure =
+                "game.ui.prompt_text_key expects a menu name, ROM text key, and unique stable choice ids in a profiled speaker location";
+            lua_pushnil(lua);
+            return 1;
+        }
+        const auto text = self->dialogue_texts.find(text_key);
+        if (text == self->dialogue_texts.end() || text->second.empty() ||
+            text->second.size() > kMaximumDialogueTextBytes) {
+            self->bridge_failure =
+                "game.ui.prompt_text_key could not resolve a bounded ROM dialogue text key";
+            lua_pushnil(lua);
+            return 1;
+        }
+
+        menu.inline_text = text->second;
+        menu.inline_prompt = true;
+        ScriptNativeOperation operation{};
+        operation.type = ScriptNativeOperation::Type::ui_menu;
+        operation.menu = std::move(menu);
+        self->pending_task_operation = std::move(operation);
+        self->task_waiting = true;
+        return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
+    }
+
     static int ui_cursor_menu(lua_State* lua) {
         auto* self = from_upvalue(lua);
         if (self == nullptr || self->task_state != lua ||
@@ -2751,26 +3404,43 @@ struct GameScriptRuntime::Impl {
         std::string menu_id;
         std::string speaker_id = self->location_speaker_id;
         std::string text_profile = self->location_text_profile;
+        std::string inline_text;
         ScriptMenuDefinition menu{};
-        const bool valid_selection = lua_isinteger(lua, 3) != 0 &&
-            lua_tointeger(lua, 3) >= 1 &&
-            lua_tointeger(lua, 3) <=
-                static_cast<lua_Integer>(kMaximumMenuChoices);
+        const auto choice_count = lua_istable(lua, 2)
+                                      ? lua_rawlen(lua, 2)
+                                      : std::size_t{0U};
+        const auto requested_selection = lua_isinteger(lua, 3) != 0
+                                             ? lua_tointeger(lua, 3)
+                                             : static_cast<lua_Integer>(-1);
+        const bool valid_selection =
+            choice_count == 0U
+                ? requested_selection == 0
+                : requested_selection >= 1 &&
+                      requested_selection <= static_cast<lua_Integer>(
+                                                  kMaximumMenuChoices);
         const bool valid_speaker = lua_gettop(lua) < 4 ||
             (read_string_allow_empty(lua, 4, speaker_id) &&
              (speaker_id.empty() || valid_identifier(speaker_id)));
         const bool valid_profile = lua_gettop(lua) < 5 ||
             (read_string(lua, 5, text_profile) &&
              valid_identifier(text_profile));
+        const bool valid_inline_text = lua_gettop(lua) < 6 ||
+            (read_string_allow_empty(lua, 6, inline_text) &&
+             inline_text.size() <= 1024U &&
+             std::none_of(inline_text.begin(), inline_text.end(),
+                          [](const unsigned char ch) {
+                              return ch < 0x20U || ch == 0x7FU;
+                          }));
         if (!read_string(lua, 1, menu_id) ||
             !valid_identifier(menu_id) || !valid_selection ||
-            !valid_speaker || !valid_profile ||
+            !valid_speaker || !valid_profile || !valid_inline_text ||
             !valid_identifier(text_profile) ||
             !parse_menu_choices(lua, 2, menu_id, text_profile, speaker_id,
                                 menu,
                                 kMaximumMenuChoices) ||
-            lua_tointeger(lua, 3) >
-                static_cast<lua_Integer>(menu.choices.size())) {
+            (choice_count != 0U &&
+             requested_selection >
+                 static_cast<lua_Integer>(menu.choices.size()))) {
             self->bridge_failure =
                 "game.ui.cursor_menu expects a menu name, choices, and a valid one-based selection in a profiled location";
             lua_pushnil(lua);
@@ -2778,8 +3448,12 @@ struct GameScriptRuntime::Impl {
         }
 
         menu.input_mode = ScriptMenuInputMode::cursor;
-        menu.selected_index = static_cast<std::size_t>(
-            lua_tointeger(lua, 3) - 1);
+        menu.selected_index = choice_count == 0U
+                                  ? 0U
+                                  : static_cast<std::size_t>(
+                                        requested_selection - 1);
+        menu.inline_prompt = !inline_text.empty();
+        menu.inline_text = std::move(inline_text);
         ScriptNativeOperation operation{};
         operation.type = ScriptNativeOperation::Type::ui_menu;
         operation.menu = std::move(menu);
@@ -3023,6 +3697,20 @@ struct GameScriptRuntime::Impl {
         modules_reference = luaL_ref(state, LUA_REGISTRYINDEX);
 
         lua_newtable(state);
+        const auto gameplay_game_index = lua_absindex(state, -1);
+        // Gameplay tasks and the field-menu route share these typed runner
+        // and wallet host services. Lua owns treatment choices and updates;
+        // the callbacks only read or commit the authoritative field records.
+        add_menu_binding(state, gameplay_game_index, "party",
+                         MenuBinding::party);
+        add_menu_binding(state, gameplay_game_index, "active_slot",
+                         MenuBinding::active_slot);
+        add_menu_binding(state, gameplay_game_index, "commit_party",
+                         MenuBinding::commit_party);
+        add_menu_binding(state, gameplay_game_index, "nuyen",
+                         MenuBinding::nuyen);
+        add_menu_binding(state, gameplay_game_index, "set_nuyen",
+                         MenuBinding::set_nuyen);
         lua_newtable(state); // game.actors registry; Lua owns actor behavior state
         lua_setfield(state, -2, "actors");
         lua_newtable(state); // Independently-authored run scripts register here.
@@ -3067,6 +3755,9 @@ struct GameScriptRuntime::Impl {
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, ui_prompt_text, 1);
         lua_setfield(state, -2, "prompt_text");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, ui_prompt_text_key, 1);
+        lua_setfield(state, -2, "prompt_text_key");
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, ui_cursor_menu, 1);
         lua_setfield(state, -2, "cursor_menu");
@@ -3312,8 +4003,22 @@ bool GameScriptRuntime::load_package(
             if (!valid_key || !valid_identifier(key) || !valid_text ||
                 parsed_texts.size() >= kMaximumDialogueTextEntries) {
                 lua_pop(state, 2);
-                return fail_dialogue(
-                    "dialogue text script contains an invalid key or value");
+                std::string message =
+                    "dialogue text script contains an invalid entry";
+                if (valid_key) {
+                    message += " at key '" + key + "'";
+                } else {
+                    message += ": key is not a string";
+                }
+                if (valid_key && !valid_identifier(key)) {
+                    message += ": key is not a valid identifier";
+                } else if (!valid_text) {
+                    message += ": value is not a bounded string";
+                } else if (parsed_texts.size() >=
+                           kMaximumDialogueTextEntries) {
+                    message += ": entry limit exceeded";
+                }
+                return fail_dialogue(message);
             }
             if (!parsed_texts.emplace(
                     std::move(key), std::string(text, text_length)).second) {
@@ -3382,6 +4087,8 @@ GameScriptRuntime::resolve_field_location_route(
     lua_setfield(state, input_index, "event_code");
     lua_pushinteger(state, event_code_value);
     lua_setfield(state, input_index, "event_index");
+    lua_pushinteger(state, context.alternate_result);
+    lua_setfield(state, input_index, "alternate_result");
     lua_pushboolean(state, context.event_table_available);
     lua_setfield(state, input_index, "event_table_available");
     lua_createtable(state,
@@ -3451,22 +4158,160 @@ GameScriptRuntime::resolve_field_location_route(
         lua_pop(state, 1);
     }
 
+    auto return_anchor = FieldLocationReturnAnchor::none;
+    lua_getfield(state, result_index, "return_anchor");
+    if (!lua_isnil(state, -1)) {
+        std::string anchor_name;
+        const bool valid = read_string(state, -1, anchor_name);
+        lua_pop(state, 1);
+        if (!valid) {
+            return fail("building.lua route has an invalid return anchor");
+        }
+        if (anchor_name == "" || anchor_name == "none") {
+            return_anchor = FieldLocationReturnAnchor::none;
+        } else if (anchor_name == "collision_probe_lead") {
+            return_anchor =
+                FieldLocationReturnAnchor::collision_probe_lead;
+        } else {
+            return fail("building.lua route returned an unknown return anchor");
+        }
+    } else {
+        lua_pop(state, 1);
+    }
+
+    auto return_facing =
+        FieldLocationReturnFacing::preserve_entry_heading;
+    lua_getfield(state, result_index, "return_facing");
+    if (!lua_isnil(state, -1)) {
+        std::string facing_name;
+        const bool valid = read_string(state, -1, facing_name);
+        lua_pop(state, 1);
+        if (!valid) {
+            return fail("building.lua route has an invalid return facing");
+        }
+        if (facing_name == "" || facing_name == "preserve_entry_heading") {
+            return_facing =
+                FieldLocationReturnFacing::preserve_entry_heading;
+        } else if (facing_name == "face_away_from_entry") {
+            return_facing = FieldLocationReturnFacing::face_away_from_entry;
+        } else {
+            return fail("building.lua route returned an unknown return facing");
+        }
+    } else {
+        lua_pop(state, 1);
+    }
+
+    const auto read_optional_string =
+        [state, result_index](const char* name, std::string& value) {
+            lua_getfield(state, result_index, name);
+            if (lua_isnil(state, -1)) {
+                lua_pop(state, 1);
+                value.clear();
+                return true;
+            }
+            if (lua_type(state, -1) != LUA_TSTRING) {
+                lua_pop(state, 1);
+                return false;
+            }
+            std::size_t length = 0U;
+            const auto* bytes = lua_tolstring(state, -1, &length);
+            value.assign(bytes, length);
+            lua_pop(state, 1);
+            return true;
+        };
+
+    const auto read_location_task =
+        [state, result_index](const char* name,
+                             std::optional<FieldLocationScriptTask>& task) {
+            lua_getfield(state, result_index, name);
+            if (lua_isnil(state, -1)) {
+                lua_pop(state, 1);
+                task.reset();
+                return true;
+            }
+            if (!lua_istable(state, -1)) {
+                lua_pop(state, 1);
+                return false;
+            }
+            const auto table_index = lua_absindex(state, -1);
+            const auto read_required =
+                [state, table_index](const char* field, std::string& value) {
+                    lua_getfield(state, table_index, field);
+                    if (lua_type(state, -1) != LUA_TSTRING) {
+                        lua_pop(state, 1);
+                        return false;
+                    }
+                    std::size_t length = 0U;
+                    const auto* bytes = lua_tolstring(state, -1, &length);
+                    value.assign(bytes, length);
+                    lua_pop(state, 1);
+                    return !value.empty();
+                };
+            FieldLocationScriptTask parsed{};
+            const bool valid =
+                read_required("module", parsed.module) &&
+                read_required("function_name", parsed.function) &&
+                read_required("location_type", parsed.location_type) &&
+                read_required("location_id", parsed.location_id) &&
+                read_required("text_profile", parsed.text_profile) &&
+                read_required("speaker_id", parsed.speaker_id);
+            lua_pop(state, 1);
+            if (!valid) {
+                return false;
+            }
+            task = std::move(parsed);
+            return true;
+        };
+
     FieldScriptRoute route{};
     route.event_code = field_collision_event_value(event_code);
     route.area_event_target = target_scene;
     route.area_event_destination_mode = destination_mode;
+    route.return_anchor = return_anchor;
+    route.return_facing = return_facing;
+    if (!read_optional_string("entry_dialogue_module",
+                              route.entry_dialogue_module) ||
+        !read_optional_string("entry_dialogue_function",
+                              route.entry_dialogue_function) ||
+        !read_optional_string("entry_location_type",
+                              route.entry_location_type) ||
+        !read_optional_string("entry_location_id",
+                              route.entry_location_id) ||
+        !read_optional_string("entry_text_profile",
+                              route.entry_text_profile) ||
+        !read_optional_string("entry_speaker_id",
+                              route.entry_speaker_id) ||
+        !read_optional_string("entry_event_id",
+                              route.entry_event_id) ||
+        !read_optional_string("entry_continue_result_id",
+                              route.entry_continue_result_id) ||
+        !read_optional_string("field_service_id",
+                              route.field_service_id) ||
+        !read_location_task("indexed_title_service",
+                            route.indexed_title_service) ||
+        !read_location_task("field_exit_prompt", route.field_exit_prompt)) {
+        return fail("building.lua route has invalid entry dialogue fields");
+    }
     const bool no_target = !target_scene.has_value();
     if (kind_name == "no_route" && script_name == "none" && no_target) {
         route.kind = FieldScriptRouteKind::no_route;
         route.script = FieldScriptId::none;
     } else if (kind_name == "dialogue" &&
-               script_name == "stoker_motel_interaction" && no_target) {
+               script_name == "lua_dialogue" && no_target &&
+               !route.entry_dialogue_module.empty() &&
+               !route.entry_dialogue_function.empty()) {
         route.kind = FieldScriptRouteKind::dialogue;
-        route.script = FieldScriptId::stoker_motel_interaction;
+        route.script = FieldScriptId::lua_dialogue;
     } else if (kind_name == "field_service" &&
-               script_name == "ares_weapon_emporium" && no_target) {
+               script_name == "host_field_service" && no_target &&
+               !route.field_service_id.empty()) {
         route.kind = FieldScriptRouteKind::field_service;
-        route.script = FieldScriptId::ares_weapon_emporium;
+        route.script = FieldScriptId::host_field_service;
+    } else if (kind_name == "field_service" &&
+               script_name == "lua_field_service" && no_target &&
+               route.indexed_title_service.has_value()) {
+        route.kind = FieldScriptRouteKind::field_service;
+        route.script = FieldScriptId::lua_field_service;
     } else if (kind_name == "area_event" &&
                script_name == "area_event_table" && target_scene &&
                destination_mode.has_value()) {
@@ -3474,6 +4319,38 @@ GameScriptRuntime::resolve_field_location_route(
         route.script = FieldScriptId::area_event_table;
     } else {
         return fail("building.lua route returned an unknown action");
+    }
+
+    const bool has_entry_dialogue =
+        !route.entry_dialogue_module.empty() ||
+        !route.entry_dialogue_function.empty() ||
+        !route.entry_location_type.empty() ||
+        !route.entry_location_id.empty() ||
+        !route.entry_text_profile.empty() ||
+        !route.entry_speaker_id.empty() ||
+        !route.entry_event_id.empty() ||
+        !route.entry_continue_result_id.empty();
+    if (has_entry_dialogue &&
+        ((route.kind != FieldScriptRouteKind::area_event &&
+          route.kind != FieldScriptRouteKind::dialogue) ||
+         (route.kind == FieldScriptRouteKind::area_event && no_target) ||
+         (route.kind == FieldScriptRouteKind::dialogue && !no_target) ||
+         route.entry_dialogue_module.empty() ||
+         route.entry_dialogue_function.empty() ||
+         route.entry_location_type.empty() ||
+         route.entry_location_id.empty())) {
+        return fail("building.lua route has incomplete entry dialogue data");
+    }
+
+    if ((route.indexed_title_service.has_value() &&
+         (route.kind != FieldScriptRouteKind::field_service ||
+          route.script != FieldScriptId::lua_field_service)) ||
+        (route.field_exit_prompt.has_value() &&
+         route.kind != FieldScriptRouteKind::area_event) ||
+        (!route.field_service_id.empty() &&
+         (route.kind != FieldScriptRouteKind::field_service ||
+          route.script != FieldScriptId::host_field_service))) {
+        return fail("building.lua route has a misplaced location script task");
     }
 
     lua_settop(state, stack_base);
@@ -3517,8 +4394,15 @@ GameScriptRuntime::resolve_active_run_field_event(
     const auto result_index = lua_absindex(state, -1);
     std::string action_name;
     std::string run_id;
+    std::string dialogue_module;
+    std::string dialogue_function;
     std::uint32_t reward_nuyen = 0U;
     std::uint32_t progress_delta = 0U;
+    std::optional<std::uint32_t> actor_group_area;
+    std::optional<std::uint32_t> actor_group_event;
+    std::optional<std::uint32_t> activity_scene_id;
+    std::optional<std::uint32_t> actor_list_offset;
+    std::optional<std::uint32_t> actor_resource_profile_offset;
     if (!read_field_string(state, result_index, "action", action_name) ||
         !read_field_string(state, result_index, "run_id", run_id) ||
         !valid_identifier(run_id) ||
@@ -3536,6 +4420,43 @@ GameScriptRuntime::resolve_active_run_field_event(
         decision.action = ScriptRunFieldEventAction::objective_advanced;
     } else if (action_name == "completed") {
         decision.action = ScriptRunFieldEventAction::completed;
+    } else if (action_name == "entry_dialogue") {
+        decision.action = ScriptRunFieldEventAction::entry_dialogue;
+        if (!read_field_string(state, result_index, "dialogue_module",
+                               dialogue_module) ||
+            !valid_identifier(dialogue_module) ||
+            !read_field_string(state, result_index, "dialogue_function",
+                               dialogue_function) ||
+            !valid_identifier(dialogue_function)) {
+            return fail("run field-event dialogue task is invalid");
+        }
+        if (!read_optional_field_u32(state, result_index, "actor_group_area",
+                                     55U, actor_group_area) ||
+            !read_optional_field_u32(state, result_index, "actor_group_event",
+                                     0xFFU, actor_group_event) ||
+            !read_optional_field_u32(state, result_index, "activity_scene_id",
+                                     55U, activity_scene_id) ||
+            !read_optional_field_u32(state, result_index, "actor_list_offset",
+                                     0x1FFFFFU, actor_list_offset) ||
+            !read_optional_field_u32(
+                state, result_index, "actor_resource_profile",
+                0x1FFFFFU, actor_resource_profile_offset)) {
+            return fail("run field-event actor activity facts are invalid");
+        }
+        const bool has_actor_group = actor_group_area.has_value() ||
+                                     actor_group_event.has_value() ||
+                                     activity_scene_id.has_value() ||
+                                     actor_list_offset.has_value() ||
+                                     actor_resource_profile_offset.has_value();
+        if (has_actor_group &&
+            (!actor_group_area.has_value() || *actor_group_area == 0U ||
+             !actor_group_event.has_value() || *actor_group_event == 0U ||
+             !activity_scene_id.has_value() || *activity_scene_id != 15U ||
+             !actor_list_offset.has_value() || *actor_list_offset == 0U ||
+             !actor_resource_profile_offset.has_value() ||
+             *actor_resource_profile_offset == 0U)) {
+            return fail("run field-event actor activity is incomplete");
+        }
     } else {
         return fail("run field-event decision has an unknown action");
     }
@@ -3547,6 +4468,17 @@ GameScriptRuntime::resolve_active_run_field_event(
     decision.reward_nuyen = reward_nuyen;
     decision.runner_progress_delta =
         static_cast<std::uint8_t>(progress_delta);
+    decision.dialogue_module = std::move(dialogue_module);
+    decision.dialogue_function = std::move(dialogue_function);
+    decision.actor_group_area = static_cast<std::uint8_t>(
+        actor_group_area.value_or(0U));
+    decision.actor_group_event = static_cast<std::uint8_t>(
+        actor_group_event.value_or(0U));
+    decision.activity_scene_id = static_cast<std::uint8_t>(
+        activity_scene_id.value_or(0U));
+    decision.actor_list_offset = actor_list_offset.value_or(0U);
+    decision.actor_resource_profile_offset =
+        actor_resource_profile_offset.value_or(0U);
 
     lua_settop(state, stack_base);
     impl_->failure.clear();
@@ -3692,6 +4624,41 @@ GameScriptRuntime::resolve_active_run_johnson_return(
     lua_settop(state, stack_base);
     impl_->failure.clear();
     return decision;
+}
+
+std::optional<std::uint8_t> GameScriptRuntime::johnson_interaction_context(
+    const std::string_view text_profile) {
+    auto* state = impl_->state;
+    if (state == nullptr || !valid_identifier(text_profile)) {
+        impl_->failure = "Johnson interaction profile is unavailable";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<std::uint8_t> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("dialogue")) {
+        return fail("dialogue.lua module is missing");
+    }
+    lua_getfield(state, -1, "johnson_interaction_profiles");
+    if (!lua_istable(state, -1)) {
+        return fail("dialogue Johnson interaction profiles are missing");
+    }
+    lua_getfield(state, -1, std::string(text_profile).c_str());
+    if (!lua_istable(state, -1)) {
+        return fail("location has no Johnson interaction profile");
+    }
+    lua_getfield(state, -1, "run_offer_context");
+    std::uint32_t context = 0U;
+    if (!read_integer(state, -1, 0xFFU, context)) {
+        return fail("Johnson interaction profile has no valid run context");
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return static_cast<std::uint8_t>(context);
 }
 
 std::optional<ScriptPersistentValue>
@@ -3946,7 +4913,7 @@ std::optional<std::uint16_t> GameScriptRuntime::resolve_elevator_destination(
         return fail("building.lua elevator-destination function is missing");
     }
 
-    lua_createtable(state, 0, 3);
+    lua_createtable(state, 0, 5);
     const auto input_index = lua_absindex(state, -1);
     lua_createtable(state, static_cast<int>(group.scene_ids.size()), 0);
     const auto floors_index = lua_absindex(state, -1);
@@ -4105,6 +5072,14 @@ std::optional<ScriptFieldEncounterOutcome>
 GameScriptRuntime::resolve_field_encounter(
     const std::uint16_t scene_id, const std::uint8_t first_roll,
     const std::uint8_t second_roll) {
+    return resolve_field_encounter_impl(scene_id, first_roll, second_roll,
+                                        false);
+}
+
+std::optional<ScriptFieldEncounterOutcome>
+GameScriptRuntime::resolve_field_encounter_impl(
+    const std::uint16_t scene_id, const std::uint8_t first_roll,
+    const std::uint8_t second_roll, const bool run_target_actor_group) {
     auto* state = impl_->state;
     if (state == nullptr) {
         impl_->failure = "Lua runtime is unavailable for field encounters";
@@ -4117,23 +5092,36 @@ GameScriptRuntime::resolve_field_encounter(
         impl_->failure = std::string(reason);
         return std::nullopt;
     };
-    if (scene_id > 55U || first_roll > 4U || second_roll > 4U) {
+    if ((!run_target_actor_group &&
+         (scene_id > 55U || first_roll > 4U || second_roll > 4U)) ||
+        (run_target_actor_group &&
+         (first_roll == 0U || first_roll > 55U || second_roll == 0U))) {
         return fail("field encounter request is outside the ROM table bounds");
     }
     if (!impl_->push_module("field_encounters")) {
         return fail("field_encounters.lua module is missing");
     }
-    lua_getfield(state, -1, "resolve");
+    const auto* resolver_name = run_target_actor_group
+        ? "resolve_run_target_actor_group"
+        : "resolve";
+    lua_getfield(state, -1, resolver_name);
     if (!lua_isfunction(state, -1)) {
-        return fail("field_encounters.resolve is missing");
+        return fail(std::string("field_encounters.") + resolver_name +
+                    " is missing");
     }
     lua_remove(state, -2);
-    lua_pushinteger(state, scene_id);
-    lua_pushinteger(state, first_roll);
-    lua_pushinteger(state, second_roll);
+    if (run_target_actor_group) {
+        lua_pushinteger(state, first_roll);
+        lua_pushinteger(state, second_roll);
+    } else {
+        lua_pushinteger(state, scene_id);
+        lua_pushinteger(state, first_roll);
+        lua_pushinteger(state, second_roll);
+    }
     ScopedInstructionBudget instruction_budget(state);
-    if (lua_pcall(state, 3, 1, 0) != LUA_OK) {
-        return fail("field_encounters.resolve failed");
+    if (lua_pcall(state, run_target_actor_group ? 2 : 3, 1, 0) != LUA_OK) {
+        return fail(std::string("field_encounters.") + resolver_name +
+                    " failed");
     }
     if (lua_isnil(state, -1)) {
         lua_settop(state, stack_base);
@@ -4141,7 +5129,8 @@ GameScriptRuntime::resolve_field_encounter(
         return std::nullopt;
     }
     if (!lua_istable(state, -1)) {
-        return fail("field_encounters.resolve returned a non-record result");
+        return fail(std::string("field_encounters.") + resolver_name +
+                    " returned a non-record result");
     }
 
     const auto result_index = lua_absindex(state, -1);
@@ -4155,11 +5144,16 @@ GameScriptRuntime::resolve_field_encounter(
                             parsed_scene) ||
         !read_field_integer(state, result_index, "context_group", 15U,
                             context_group) ||
-        !read_field_integer(state, result_index, "random_sum", 8U,
+        !read_field_integer(state, result_index, "random_sum",
+                            run_target_actor_group ? 0xFFU : 8U,
                             random_sum) ||
-        parsed_scene != scene_id ||
-        random_sum != static_cast<std::uint32_t>(first_roll + second_roll)) {
-        return fail("field_encounters.resolve returned invalid selector facts");
+        parsed_scene != (run_target_actor_group ? 15U : scene_id) ||
+        (run_target_actor_group && context_group != first_roll) ||
+        random_sum != (run_target_actor_group
+                           ? second_roll
+                           : static_cast<std::uint32_t>(first_roll + second_roll))) {
+        return fail(std::string("field_encounters.") + resolver_name +
+                    " returned invalid selector facts");
     }
     if (kind_name == "dialogue_event") {
         outcome.kind = ScriptFieldEncounterOutcomeKind::dialogue_event;
@@ -4167,7 +5161,8 @@ GameScriptRuntime::resolve_field_encounter(
         outcome.kind =
             ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence;
     } else {
-        return fail("field_encounters.resolve returned an unknown outcome kind");
+        return fail(std::string("field_encounters.") + resolver_name +
+                    " returned an unknown outcome kind");
     }
     outcome.scene_id = static_cast<std::uint16_t>(parsed_scene);
     outcome.context_group = static_cast<std::uint8_t>(context_group);
@@ -4243,6 +5238,8 @@ GameScriptRuntime::resolve_field_encounter(
             std::uint32_t delay_primary_attribute = 0U;
             std::uint32_t delay_secondary_attribute = 0U;
             std::uint32_t delay_capability_flags = 0U;
+            std::optional<std::uint32_t> run_target_spawn_x;
+            std::optional<std::uint32_t> run_target_spawn_y;
             std::string action_kind;
             bool valid_actor =
                 read_field_integer(state, actor_index, "source_order", 31U,
@@ -4284,7 +5281,7 @@ GameScriptRuntime::resolve_field_encounter(
                                   actor.sprite_stem) &&
                 valid_identifier(actor.sprite_stem) &&
                 read_field_integer(state, actor_index, "tagged_template",
-                                   0x1FFFFFU, tagged_template) &&
+                                   0xFFFFFFFFU, tagged_template) &&
                 read_field_integer(state, actor_index, "template_offset",
                                    0x1FFFFFU, template_offset) &&
                 read_field_integer(state, actor_index,
@@ -4297,7 +5294,11 @@ GameScriptRuntime::resolve_field_encounter(
                                    "delay_capability_flags", 0xFFFFU,
                                    delay_capability_flags) &&
                 read_field_text(state, actor_index, "ordered_overrides",
-                                actor.ordered_overrides, 512U);
+                                actor.ordered_overrides, 512U) &&
+                read_optional_field_u32(state, actor_index, "spawn_x",
+                                        0xFFFFU, run_target_spawn_x) &&
+                read_optional_field_u32(state, actor_index, "spawn_y",
+                                        0xFFFFU, run_target_spawn_y);
             lua_getfield(state, actor_index, "combatant");
             if (!lua_istable(state, -1)) {
                 valid_actor = false;
@@ -4316,7 +5317,7 @@ GameScriptRuntime::resolve_field_encounter(
                 };
                 std::uint32_t cyberware_flags = 0U;
                 std::uint32_t profile_index = 0U;
-                valid_actor =
+                bool valid_combatant =
                     read_combat_byte("interaction_flags",
                                      actor.combatant.interaction_flags) &&
                     read_combat_byte("physical_meter",
@@ -4357,7 +5358,7 @@ GameScriptRuntime::resolve_field_encounter(
                     read_field_integer(state, combat_index,
                                        "linked_action_profile_index",
                                        0xFFFFU, profile_index);
-                if (valid_actor) {
+                if (valid_combatant) {
                     actor.combatant.race_or_state =
                         static_cast<std::int8_t>(signed_combat_value);
                     actor.combatant.cyberware_flags =
@@ -4391,7 +5392,7 @@ GameScriptRuntime::resolve_field_encounter(
                         lua_pop(state, 1);
                         return true;
                     };
-                    valid_actor =
+                    valid_combatant =
                         read_combat_array("action_skills",
                                           actor.combatant.action_skills) &&
                         read_combat_array("item_codes",
@@ -4402,10 +5403,27 @@ GameScriptRuntime::resolve_field_encounter(
                             "action_phase_extension",
                             actor.combatant.action_phase_extension);
                 }
+                valid_actor = valid_actor && valid_combatant;
             }
             lua_pop(state, 1);
-            if (!valid_actor || source_order != index) {
-                return fail("dynamic world encounter actor row is incomplete or unordered");
+            const bool has_run_target_spawn =
+                run_target_spawn_x.has_value() &&
+                run_target_spawn_y.has_value();
+            if (!valid_actor || source_order != index ||
+                (run_target_spawn_x.has_value() !=
+                 run_target_spawn_y.has_value()) ||
+                (run_target_actor_group && !has_run_target_spawn)) {
+                return fail(
+                    "dynamic world encounter actor row is incomplete or unordered "
+                    "(valid=" + std::to_string(valid_actor) +
+                    ", source_order=" + std::to_string(source_order) +
+                    ", expected_order=" + std::to_string(index) +
+                    ", spawn_x=" + (run_target_spawn_x.has_value()
+                                         ? std::to_string(*run_target_spawn_x)
+                                         : std::string("nil")) +
+                    ", spawn_y=" + (run_target_spawn_y.has_value()
+                                         ? std::to_string(*run_target_spawn_y)
+                                         : std::string("nil")) + ")");
             }
             if (action_kind == "none") {
                 actor.action_kind = ScriptActorActionKind::none;
@@ -4419,6 +5437,12 @@ GameScriptRuntime::resolve_field_encounter(
             actor.source_order = static_cast<std::uint16_t>(source_order);
             actor.selection_cell_offset = selection_cell_offset;
             actor.sequence_list_offset = sequence_list_offset;
+            if (has_run_target_spawn) {
+                actor.run_target_spawn_x = static_cast<std::uint16_t>(
+                    *run_target_spawn_x);
+                actor.run_target_spawn_y = static_cast<std::uint16_t>(
+                    *run_target_spawn_y);
+            }
             actor.entity_kind = static_cast<std::uint16_t>(entity_kind);
             actor.action_code = static_cast<std::uint8_t>(action_code);
             actor.source_action_slot =
@@ -4453,6 +5477,12 @@ GameScriptRuntime::resolve_field_encounter(
     lua_settop(state, stack_base);
     impl_->failure.clear();
     return outcome;
+}
+
+std::optional<ScriptFieldEncounterOutcome>
+GameScriptRuntime::resolve_run_target_actor_group(
+    const std::uint8_t area_id, const std::uint8_t event_id) {
+    return resolve_field_encounter_impl(0U, area_id, event_id, true);
 }
 
 std::optional<std::uint16_t> GameScriptRuntime::scene_music(
@@ -4668,11 +5698,19 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
     const auto definition_index = lua_absindex(state, -1);
     ScriptShopDefinition definition;
     definition.id = std::string(shop_id);
+    std::uint32_t menu_mode = 0U;
+    int menu_result = 0;
     if (!read_field_string(state, definition_index, "title_key",
                            definition.title_key) ||
-        !valid_identifier(definition.title_key)) {
-        return fail("shop catalog title key is invalid");
+        !valid_identifier(definition.title_key) ||
+        !read_field_integer(state, definition_index, "menu_mode", 0xFFU,
+                            menu_mode) ||
+        !read_field_signed_integer(state, definition_index, "menu_result",
+                                   -0x80, 0x7F, menu_result)) {
+        return fail("shop catalog title or source mode/result is invalid");
     }
+    definition.menu_mode = static_cast<std::uint8_t>(menu_mode);
+    definition.menu_result = static_cast<std::int8_t>(menu_result);
     lua_getfield(state, definition_index, "text_keys");
     if (!lua_istable(state, -1)) {
         return fail("shop catalog text_keys must be a table");
@@ -4701,7 +5739,15 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
         read_text_key("sale_quote_heading",
                       definition.text_keys.sale_quote_heading) &&
         read_text_key("purchase_price_heading",
-                      definition.text_keys.purchase_price_heading);
+                      definition.text_keys.purchase_price_heading) &&
+        read_text_key("progression_training_unavailable",
+                      definition.text_keys.progression_training_unavailable) &&
+        read_text_key("progression_maximum_level",
+                      definition.text_keys.progression_maximum_level) &&
+        read_text_key("progression_cost_heading",
+                      definition.text_keys.progression_cost_heading) &&
+        read_text_key("progression_level_label",
+                      definition.text_keys.progression_level_label);
     lua_pop(state, 1);
     if (!text_keys_valid) {
         return fail("shop catalog transaction text keys are incomplete");
@@ -4791,6 +5837,48 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
                 static_cast<std::uint8_t>(quantity)});
         }
         lua_pop(state, 1);
+
+        lua_getfield(state, group_table, "progression_offers");
+        if (!lua_istable(state, -1)) {
+            return fail(
+                "shop offer group must contain a progression_offers array");
+        }
+        const auto progression_offers_index = lua_absindex(state, -1);
+        const auto progression_offer_count =
+            lua_rawlen(state, progression_offers_index);
+        if (progression_offer_count > kMaximumShopOffers) {
+            return fail(
+                "shop offer group exceeds the eight-slot progression panel");
+        }
+        group.progression_offers.reserve(progression_offer_count);
+        for (std::size_t offer_index = 1U;
+             offer_index <= progression_offer_count; ++offer_index) {
+            lua_rawgeti(state, progression_offers_index,
+                        static_cast<lua_Integer>(offer_index));
+            if (!lua_istable(state, -1)) {
+                return fail("progression offer is not a record table");
+            }
+            const auto offer_table = lua_absindex(state, -1);
+            std::uint32_t action_code = 0U;
+            std::uint32_t source_metadata = 0U;
+            std::uint32_t base_cost = 0U;
+            const bool valid =
+                read_field_integer(state, offer_table, "action_code", 0xFFU,
+                                   action_code) &&
+                read_field_integer(state, offer_table, "source_metadata",
+                                   0xFFU, source_metadata) &&
+                read_field_integer(state, offer_table, "base_cost", 0xFFFFU,
+                                   base_cost);
+            lua_pop(state, 1);
+            if (!valid) {
+                return fail("progression offer has invalid source fields");
+            }
+            group.progression_offers.push_back(ScriptShopProgressionOffer{
+                static_cast<std::uint8_t>(action_code),
+                static_cast<std::uint8_t>(source_metadata),
+                static_cast<std::uint16_t>(base_cost)});
+        }
+        lua_pop(state, 1);
         lua_pop(state, 1);
         definition.groups.push_back(std::move(group));
     }
@@ -4798,6 +5886,143 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
     lua_settop(state, stack_base);
     impl_->failure.clear();
     return definition;
+}
+
+std::optional<ScriptShopMenuSnapshot> GameScriptRuntime::open_shop_menu(
+    const std::string_view shop_id) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for shop menus";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptShopMenuSnapshot> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!valid_identifier(shop_id) || !impl_->push_module("shop")) {
+        return fail("shop.lua module or shop identifier is invalid");
+    }
+    lua_getfield(state, -1, "open_menu");
+    if (!lua_isfunction(state, -1)) {
+        return fail("shop.lua menu opener is missing");
+    }
+    lua_remove(state, -2);
+    lua_pushlstring(state, shop_id.data(), shop_id.size());
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("shop.lua menu opener failed: " + stack_error(state));
+    }
+    ScriptShopMenuSnapshot snapshot;
+    if (!lua_istable(state, -1) ||
+        !read_shop_menu_snapshot(state, -1, snapshot) || !snapshot.open ||
+        snapshot.shop_id != shop_id || snapshot.event != "opened") {
+        return fail("shop.lua menu opener returned invalid state");
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return snapshot;
+}
+
+std::optional<ScriptShopMenuSnapshot> GameScriptRuntime::advance_shop_menu(
+    const std::uint16_t controller_events) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for shop menus";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptShopMenuSnapshot> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("shop")) {
+        return fail("shop.lua module is unavailable for menu input");
+    }
+    lua_getfield(state, -1, "advance_menu");
+    if (!lua_isfunction(state, -1)) {
+        return fail("shop.lua menu input handler is missing");
+    }
+    lua_remove(state, -2);
+    lua_pushinteger(state, controller_events);
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("shop.lua menu input handler failed: " +
+                    stack_error(state));
+    }
+    ScriptShopMenuSnapshot snapshot;
+    if (!lua_istable(state, -1) ||
+        !read_shop_menu_snapshot(state, -1, snapshot)) {
+        return fail("shop.lua menu input handler returned invalid state");
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return snapshot;
+}
+
+std::optional<ScriptShopMenuSnapshot> GameScriptRuntime::reset_shop_menu() {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for shop menus";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptShopMenuSnapshot> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("shop")) {
+        return fail("shop.lua module is unavailable for menu reset");
+    }
+    lua_getfield(state, -1, "reset_menu");
+    if (!lua_isfunction(state, -1)) {
+        return fail("shop.lua menu reset is missing");
+    }
+    lua_remove(state, -2);
+    if (lua_pcall(state, 0, 1, 0) != LUA_OK) {
+        return fail("shop.lua menu reset failed: " + stack_error(state));
+    }
+    ScriptShopMenuSnapshot snapshot;
+    if (!lua_istable(state, -1) ||
+        !read_shop_menu_snapshot(state, -1, snapshot) || !snapshot.open) {
+        return fail("shop.lua menu reset returned invalid state");
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return snapshot;
+}
+
+bool GameScriptRuntime::close_shop_menu() {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for shop menus";
+        return false;
+    }
+    const auto stack_base = lua_gettop(state);
+    if (!impl_->push_module("shop")) {
+        impl_->failure = "shop.lua module is unavailable for menu close";
+        return false;
+    }
+    lua_getfield(state, -1, "close_menu");
+    if (!lua_isfunction(state, -1)) {
+        lua_settop(state, stack_base);
+        impl_->failure = "shop.lua menu close is missing";
+        return false;
+    }
+    lua_remove(state, -2);
+    if (lua_pcall(state, 0, 0, 0) != LUA_OK) {
+        const auto message = stack_error(state);
+        lua_settop(state, stack_base);
+        impl_->failure = "shop.lua menu close failed: " + message;
+        return false;
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return true;
 }
 
 std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
@@ -7880,8 +9105,9 @@ std::optional<ScriptMenuDefinition> GameScriptRuntime::resolve_dialogue_menu(
         lua_pushlstring(state, choice_id.data(), choice_id.size());
         lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
     }
+    lua_pushboolean(state, menu.inline_prompt ? 1 : 0);
     ScopedInstructionBudget instruction_budget(state);
-    if (lua_pcall(state, 4, 1, 0) != LUA_OK) {
+    if (lua_pcall(state, 5, 1, 0) != LUA_OK) {
         impl_->failure = "dialogue.menu_text_keys: " + stack_error(state);
         lua_pop(state, 1);
         return std::nullopt;
@@ -8078,6 +9304,15 @@ bool GameScriptRuntime::open_menu_route(
     if (start_arguments.matrix_system_id.has_value()) {
         lua_pushinteger(state, *start_arguments.matrix_system_id);
         lua_setfield(state, -2, "system_id");
+    }
+    if (start_arguments.matrix_node_id.has_value()) {
+        lua_pushinteger(state, *start_arguments.matrix_node_id);
+        lua_setfield(state, -2, "node_id");
+    }
+    if (start_arguments.matrix_node_ic_condition.has_value()) {
+        lua_pushinteger(state,
+                        *start_arguments.matrix_node_ic_condition);
+        lua_setfield(state, -2, "node_ic_condition");
     }
     if (start_arguments.taxi_current_region.has_value()) {
         lua_pushinteger(state, *start_arguments.taxi_current_region);

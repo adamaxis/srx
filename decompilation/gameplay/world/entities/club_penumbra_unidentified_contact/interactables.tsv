@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_30	0	32	32	32	field_events.present_location_dialogue	event_30	Exact scene-17 ROM record 10 at 0x1D63B4; raw bounds x=0x0000..0x001F and y=0x0020..0x003F.

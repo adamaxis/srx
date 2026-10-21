@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+julius_strouther_booth	Julius Strouther's booth	structure	Scene 18 event-30 record 9 at 0x1D5E38 covers map pixels (288,32) through (319,63). The scene-18 branch at ROM 0x20990 selects offer context 1 and portrait profile 0x121EBC.	matchstick.julius_strouther	julius_strouther	-

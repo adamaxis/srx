@@ -43,10 +43,36 @@ function EmployeeRecruitment.present_offer()
     return game.runs.registry.resolve_current_offer("yes")
 end
 
-function EmployeeRecruitment.resolve_field_event()
-    -- The ROM's target contact and event-30 run settlement have not been
-    -- connected to the field event facts yet.
+function EmployeeRecruitment.resolve_field_event(offer, map_id, event_id)
+    local route = type(offer) == "table" and offer.route or nil
+    local target = type(route) == "table" and route.target or nil
+    if type(target) ~= "table" or
+       type(target.area_id) ~= "number" or
+       type(target.location_id) ~= "number" then
+        return { action = "no_action" }
+    end
+
+    -- ROM 0x1F106 compares FFFBF8/FFFBF9 with FFFBEE/FFFBEF. For the
+    -- Renraku initializer, 0x1E7D0 sets that pair to area 5/event 6.
+    if map_id == target.area_id and event_id == target.location_id then
+        return {
+            action = "entry_dialogue",
+            dialogue_module = "run_employee_recruitment",
+            dialogue_function = "present_target_entry",
+        }
+    end
     return { action = "no_action" }
+end
+
+function EmployeeRecruitment.present_target_entry()
+    local offer = game.runs.registry.active_offer
+    assert(offer ~= nil and offer.id == "employee_recruitment")
+    -- ROM text at 0xFE169, with its 0x80 row breaks and one 0xFF page end.
+    game.ui.say_text(
+        "<You create a diversion and slip into the office building.>\n\n" ..
+        "Now comes the hard part.\n\n" ..
+        "Finding your quarry and escaping with everyone intact!>", false)
+    return "shown"
 end
 
 return EmployeeRecruitment

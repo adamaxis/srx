@@ -224,8 +224,21 @@ function Registry.resolve_field_event(map_id, event_id)
     assert(type(result) == "table" and
            (result.action == "no_action" or
             result.action == "objective_advanced" or
-            result.action == "completed"),
+            result.action == "completed" or
+            result.action == "entry_dialogue"),
         "run field-event handler returned an invalid action")
+
+    local dialogue_module = ""
+    local dialogue_function = ""
+    if result.action == "entry_dialogue" then
+        dialogue_module = result.dialogue_module
+        dialogue_function = result.dialogue_function
+        assert(type(dialogue_module) == "string" and
+               dialogue_module:match("^[%a_][%w_]*$") ~= nil and
+               type(dialogue_function) == "string" and
+               dialogue_function:match("^[%a_][%w_]*$") ~= nil,
+            "run field-event dialogue must name a Lua task")
+    end
 
     local decision = {
         action = result.action,
@@ -233,6 +246,41 @@ function Registry.resolve_field_event(map_id, event_id)
         reward_nuyen = result.reward_nuyen or 0,
         runner_progress_delta = offer.runner_progress_delta or 0,
     }
+    if result.action == "entry_dialogue" then
+        decision.dialogue_module = dialogue_module
+        decision.dialogue_function = dialogue_function
+        local has_actor_group = result.actor_group_area ~= nil or
+            result.actor_group_event ~= nil or
+            result.activity_scene_id ~= nil or
+            result.actor_list_offset ~= nil or
+            result.actor_resource_profile ~= nil
+        if has_actor_group then
+            assert(type(result.actor_group_area) == "number" and
+                   result.actor_group_area >= 1 and
+                   result.actor_group_area <= 55 and
+                   result.actor_group_area % 1 == 0 and
+                   type(result.actor_group_event) == "number" and
+                   result.actor_group_event >= 1 and
+                   result.actor_group_event <= 255 and
+                   result.actor_group_event % 1 == 0 and
+                   result.activity_scene_id == 15 and
+                   type(result.actor_list_offset) == "number" and
+                   result.actor_list_offset > 0 and
+                   result.actor_list_offset <= 0x1FFFFF and
+                   result.actor_list_offset % 1 == 0 and
+                   type(result.actor_resource_profile) == "number" and
+                   result.actor_resource_profile > 0 and
+                   result.actor_resource_profile <= 0x1FFFFF and
+                   result.actor_resource_profile % 1 == 0,
+                "run field-event actor activity metadata is incomplete")
+            decision.actor_group_area = result.actor_group_area
+            decision.actor_group_event = result.actor_group_event
+            decision.activity_scene_id = result.activity_scene_id
+            decision.actor_list_offset = result.actor_list_offset
+            decision.actor_resource_profile =
+                result.actor_resource_profile
+        end
+    end
     assert(type(decision.reward_nuyen) == "number" and
            decision.reward_nuyen >= 0 and decision.reward_nuyen % 1 == 0 and
            decision.reward_nuyen <= 0xFFFFFFFF,

@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_25	0	0	32	32	field_events.resolve_collision	ROM event 25 at 0x1D54B0	Exact source event-cell bounds from field-map-trigger-records.tsv; the handler's contextual gate is preserved by the event resolver.

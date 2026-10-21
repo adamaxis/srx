@@ -305,10 +305,12 @@ int main() {
         }
         check(std::filesystem::file_size(path) == 44U + 10U * kAudioSamplesPerFrame * 4U,
               "WAV holds a 44-byte header and 10 x 735 stereo frames");
-        std::ifstream file(path, std::ios::binary);
-        char riff[4] = {};
-        file.read(riff, 4);
-        check(std::string(riff, 4) == "RIFF", "WAV RIFF header");
+        {
+            std::ifstream file(path, std::ios::binary);
+            char riff[4] = {};
+            file.read(riff, 4);
+            check(std::string(riff, 4) == "RIFF", "WAV RIFF header");
+        }
         std::filesystem::remove(path);
     }
 

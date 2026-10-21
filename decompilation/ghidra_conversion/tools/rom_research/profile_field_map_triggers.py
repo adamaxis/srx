@@ -53,7 +53,19 @@ def event_handler(event: int, scene: int) -> tuple[str, str, str]:
             "0xB7B8; 0x1F5CA; 0x1FA78",
             "field_events.lua; GameScriptRuntime; FieldActionRuntime; building.lua; FieldSceneRuntime",
         )
-    if 2 <= event <= 5:
+    if scene == 4 and event == 3:
+        return (
+            "field_mode_4_3_medicine_lodge_service",
+            "0xB7B8; 0x1FCF2; 0x56AC0",
+            "field_events.lua; GameScriptRuntime; FieldSceneRuntime; council_medicine_lodge.lua",
+        )
+    if scene == 4 and event == 4:
+        return (
+            "field_mode_4_4_hospital_service",
+            "0xB7B8; 0x1FA02",
+            "field_events.lua; GameScriptRuntime; FieldSceneRuntime; council_island_hospital.lua",
+        )
+    if 2 <= event <= 5 and (scene == 20 or 21 <= scene <= 43):
         return (
             "conditional_electromagnetic_lock",
             "0xB7B8; 0x20E48",
@@ -114,15 +126,27 @@ def table_route_description(scene: int, event: int, table: bytes) -> tuple[str, 
     """Describe the table lookup without treating every byte as a doorway."""
     if scene == 2 and event in (2, 11):
         return "bypassed_by_scene2_story_or_service_route", "table byte is diagnostic only"
+    if scene == 4 and event == 3:
+        return "bypassed_by_field_mode_4_3_medicine_lodge_service", "same-map service; table byte is diagnostic only"
+    if scene == 4 and event == 4:
+        return "bypassed_by_field_mode_4_4_hospital_service", "same-map hospital prompt; table byte is diagnostic only"
     if event in (0x18, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F):
         return "bypassed_by_direct_B7B8_continuation", "direct event continuation"
     if event == 0x19:
         return "contextual_event25_or_event8_rewrite", "0x19 only when FFFC10=0x13; otherwise table index 0x08"
-    if 2 <= event <= 5:
+    # 0xB7B8 shares these event IDs with the maglock prompt only in scene 20
+    # or while FFDF40 selects resource-activity mode (scene IDs 21..43).
+    # Ordinary field maps 0..19 publish the event to their event table.
+    if 2 <= event <= 5 and (scene == 20 or 21 <= scene <= 43):
         if table:
             return f"conditional_maglock_else_table_index_0x{event:02X}", describe_target(table[event])
         return "conditional_maglock_else_no_table", "no event table on generic fallthrough"
     if not table:
+        if event == 0:
+            return (
+                "null_event_table_index_0x00",
+                "ROM address 0x000000 byte 0x00 selects field scene 0x00",
+            )
         return "no_event_table", "unresolved generic route"
     return f"event_table_index_0x{event:02X}", describe_target(table[event])
 
@@ -131,8 +155,10 @@ def describe_target(value: int) -> str:
     if value <= 0x14:
         if value == 0x14:
             return "field scene 0x14; 0x167AE flag/timeout gate applies"
-        if value in (0x0D, 0x0F):
-            return f"field scene 0x{value:02X}; source flag gate applies"
+        if value == 0x0D:
+            return "field scene 0x0D; 0x167AE world-script selection checks FFFC1E bit 19"
+        if value == 0x0F:
+            return "field scene 0x0F; 0x167AE world-script selection checks FFFC1E bit 29"
         return f"field scene 0x{value:02X}"
     if value < 0x2C:
         return f"resource activity scene 0x{value:02X}"
@@ -142,6 +168,11 @@ def describe_target(value: int) -> str:
 
 
 def physical_qa_route(scene: int, record_index: int, event: int) -> str:
+    if scene == 13 and record_index in (9, 10):
+        return (
+            "Debug/Release ordinary Down route enters field scene 0; "
+            "see Jump House entry and Gunderson audit"
+        )
     if scene == 2 and record_index in (89, 90):
         return "New Game physical route; C0/event 0 selects scene 0x14"
     if scene == 2 and record_index == 91:
@@ -186,7 +217,7 @@ def main() -> int:
     )
     parser.add_argument("--assets", type=Path, default=repo / "assets")
     parser.add_argument(
-        "--docs", type=Path, default=repo / "docs/ghidra/ghidra"
+        "--docs", type=Path, default=repo / "docs/ghidra"
     )
     args = parser.parse_args()
 

@@ -1,0 +1,2 @@
+interaction_id	local_x	local_y	width	height	lua_handler	source_event	evidence
+rom_event_30	0	0	32	32	field_events.present_location_dialogue	event_30	Exact contact region from scene-19 record 12 at 0x1D5F50.

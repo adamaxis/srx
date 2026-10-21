@@ -52,6 +52,23 @@ int main() {
         return 3;
     }
 
+    auto medicine_lodge_profile =
+        std::optional<std::array<std::uint16_t, 8>>{
+            kMedicineLodgeWiseOneEntryProfile0x1668A};
+    apply_scene_profile_selection(state, medicine_lodge_profile, defaults);
+    if (!expect(state.camera_x == 0x5000U && state.camera_y == 0x0000U &&
+                state.runner_positions[0].x == 0x5B00U &&
+                state.runner_positions[0].y == 0x0880U &&
+                state.runner_positions[1].x == 0x5B80U &&
+                state.runner_positions[1].y == 0x0900U &&
+                state.runner_positions[2].x == 0x5C00U &&
+                state.runner_positions[2].y == 0x0980U &&
+                state.camera_transition_x == -1 &&
+                state.camera_transition_y == -1 &&
+                !medicine_lodge_profile.has_value())) {
+        return 19;
+    }
+
     SceneResourceCursorState cursor{0, 0};
     copy_scene_resource_cursor(cursor, SceneResourceProfileFields{-3, 0x4567U});
     if (!expect(cursor.cursor == -3 && cursor.resource_index == 0x4567U)) {

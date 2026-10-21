@@ -232,8 +232,9 @@ inline VidPhoneServiceResult apply_vid_phone_service(
         *funds -= contact_offer->first;
         const auto contact_mask = static_cast<std::uint32_t>(
             1U << static_cast<unsigned>(contact_offer->second));
-        *notebook_contacts_flags =
-            (*notebook_contacts_flags | contact_mask) & 0x03FFFFFFU;
+        // The ROM sets only the selected low contact bit and writes back the
+        // full FFFC2C long. Preserve its unrelated high scene/access flags.
+        *notebook_contacts_flags |= contact_mask;
         return VidPhoneServiceResult::hired;
     }
 

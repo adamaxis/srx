@@ -40,6 +40,7 @@
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 #include "shadowrun_ghidra/integration/startup_integration_conversion.hpp"
 #include "shadowrun_ghidra/menus/menu_transfer_batch_conversion.hpp"
+#include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_table_conversion.hpp"
 #include "shadowrun_ghidra/world/world_entity_conversion.hpp"
 #include "shadowrun_ghidra/world/world_effect_batch_conversion.hpp"
@@ -290,6 +291,7 @@ public:
     QJsonObject debug_inspection_fields() const;
     void paint_field_scene_for_dump(QPainter& painter) const;
     std::size_t default_actor_count_for_dump() const noexcept;
+    std::size_t dynamic_world_actor_count_for_dump() const noexcept;
     std::size_t visible_default_actor_count_for_dump() const;
     std::vector<SceneRunnerPosition>
     active_default_actor_positions_for_dump() const;
@@ -342,11 +344,46 @@ public:
         std::uint16_t source_order, std::uint8_t physical_meter) noexcept;
     bool open_command_overview_for_dump();
 #ifdef SHADOWRUN_QT_QA_DRIVER
+    bool open_hospital_menu_for_dump(std::string_view function);
     bool open_ordinary_field_terminal_for_dump(
         std::uint32_t contact_flags, std::uint32_t funds);
+    bool seed_cyberspace_access_for_dump();
+    bool seed_cyberdeck_reference_frame_for_dump();
+    bool seed_cyberdeck_pull_plug_reference_for_dump();
+    bool open_matrix_traversal_for_dump(std::uint8_t system_id,
+                                        std::uint8_t node_id);
+    bool seed_matrix_degrade_action_for_dump();
+    bool seed_run_target_for_dump(std::string_view run_id,
+                                  std::uint8_t map_id,
+                                  std::uint8_t event_id);
+    bool field_dialogue_uses_console_layout_for_dump() const noexcept {
+        return field_dialogue_.uses_field_console_menu_layout();
+    }
+    bool field_dialogue_uses_hospital_layout_for_dump() const noexcept {
+        return field_dialogue_.uses_hospital_menu_layout();
+    }
+    bool field_dialogue_uses_hospital_medical_attention_layout_for_dump()
+        const noexcept {
+        return field_dialogue_.uses_hospital_medical_attention_layout();
+    }
+    bool matrix_search_route_active_for_dump() const noexcept {
+        return field_matrix_route_active_ &&
+            menu_route_screen_ == static_cast<std::uint16_t>(
+                                      srx::MenuScreen::MATRIX_SEARCH);
+    }
+    std::uint16_t field_menu_route_screen_for_dump() const noexcept {
+        return menu_route_screen_;
+    }
+    scripting::ScriptMenuRouteSnapshot
+    field_menu_route_snapshot_for_dump() const noexcept {
+        return game_scripts_.menu_route_snapshot();
+    }
     bool open_taxi_selector_for_dump(std::uint8_t current_region);
     // Injects the stale parent action-row condition for a visual overlap probe.
     void set_inventory_action_overlay_probe_for_dump(bool active) noexcept;
+    CollisionProbeState field_collision_probe_state_for_dump() const noexcept {
+        return field_collision_probe_state_;
+    }
 #endif
     bool open_attributes_skills_for_dump();
     bool attributes_skills_menu_open() const noexcept {
@@ -646,6 +683,12 @@ public:
     }
     bool begin_ares_shop_event_for_dump();
     bool shop_menu_open() const noexcept { return field_shop_menu_.is_open(); }
+    std::uint8_t shop_menu_mode() const noexcept {
+        return field_shop_menu_.menu_mode();
+    }
+    std::int8_t shop_menu_result() const noexcept {
+        return field_shop_menu_.menu_result();
+    }
     ShopActionGroup shop_menu_group() const noexcept {
         return field_shop_menu_.selected_group();
     }
@@ -685,6 +728,18 @@ public:
     }
     void set_field_funds_for_dump(const std::uint32_t funds) noexcept {
         field_funds_ = funds;
+    }
+    std::optional<QJsonObject> capture_game_save_snapshot_for_dump(
+        QString* error) {
+        return capture_game_save_snapshot(error);
+    }
+    bool restore_game_save_snapshot_for_dump(
+        const QJsonObject& snapshot, QString* error) {
+        return restore_game_save_snapshot(snapshot, error);
+    }
+    const MagicSpellTable* field_magic_spell_table_for_dump(
+        const std::uint16_t table_index) const noexcept {
+        return field_magic_spell_table(table_index);
     }
     const FieldCommandOverviewView& command_overview_view() const noexcept {
         return command_overview_.view();
@@ -1005,6 +1060,14 @@ public:
     bool notebook_tip_flags_resolved() const noexcept {
         return notebook_tip_flags_resolved_;
     }
+    // Physical-entry QA can combine a positional checkpoint with the known
+    // New Game Notebook tip seed without pretending an arbitrary loaded save
+    // has resolved tip data.
+    void seed_notebook_tip_flags_for_qa(
+        std::array<std::uint32_t, 3> flags) noexcept {
+        notebook_tip_flags_ = flags;
+        notebook_tip_flags_resolved_ = true;
+    }
     // Story event writers use the same typed source bit order as F9A4. This
     // adapter currently seeds fresh New Game; save restoration must supply
     // the full three-longword state before mutating individual tips.
@@ -1019,10 +1082,32 @@ public:
         notebook_referral_flags_ = static_cast<std::uint8_t>(flags & 0x1FU);
         return true;
     }
+    // QA may combine a restored positional checkpoint with the known New Game
+    // FFFC27 seed. Production save restoration still leaves this state unknown.
+    void seed_notebook_referral_flags_for_qa(std::uint8_t flags) noexcept {
+        notebook_referral_flags_ = flags;
+    }
+    std::optional<std::array<std::uint8_t, 3>>
+    runner_source_byte_triplet_for_dump() const noexcept {
+        return field_entity_action_phase_roll_counters_;
+    }
+    void seed_runner_source_byte_triplet_for_qa(
+        std::array<std::uint8_t, 3> source_bytes) noexcept {
+        field_entity_action_phase_roll_counters_ = source_bytes;
+    }
     bool set_notebook_contact_flags_for_dump(std::uint32_t flags) noexcept {
         if (!notebook_contacts_flags_.has_value()) return false;
-        notebook_contacts_flags_ = flags & 0x03FFFFFFU;
+        // FFFC2C is a full state long. Its low bits unlock phone contacts,
+        // while higher bits also carry field transitions such as the
+        // Scene-20 entry marker at bit 26 and Macklemann's access flag at 28.
+        notebook_contacts_flags_ = flags;
         return true;
+    }
+    // QA may combine a restored positional checkpoint with a known fresh-run
+    // contact seed from ROM startup 0x59C48. Production save restoration must
+    // continue to leave unknown contact state unresolved.
+    void seed_notebook_contact_flags_for_qa(std::uint32_t flags) noexcept {
+        notebook_contacts_flags_ = flags;
     }
     std::optional<std::uint32_t> notebook_contact_flags_for_dump() const noexcept {
         return notebook_contacts_flags_;
@@ -1032,6 +1117,14 @@ public:
         notebook_shadowrunner_flags_ =
             static_cast<std::uint16_t>(flags & 0x03FFU);
         return true;
+    }
+    void seed_notebook_shadowrunner_flags_for_dump(
+        std::uint16_t flags) noexcept {
+        // A QA map checkpoint can use New Game's runner record without
+        // restoring Notebook RAM. New Game clears FFFC2A, so the harness can
+        // explicitly seed that known source-zero value.
+        notebook_shadowrunner_flags_ =
+            static_cast<std::uint16_t>(flags & 0x03FFU);
     }
     // QA seam for the source FFFC22 catalog branch. Normal play obtains this
     // word from quest-item event handling, which is not connected yet.
@@ -1045,11 +1138,35 @@ public:
         field_mode_effect_flags_ |=
             field_flag_mask(FieldTitleServiceFlag::redmond_vigore_search_pending);
     }
+    bool set_story_flag_for_dump(std::uint8_t bit, bool value) noexcept {
+        if (bit >= 32U) return false;
+        const auto mask = std::uint32_t{1U} << bit;
+        field_exit_world_flags_ = value
+            ? field_exit_world_flags_ | mask
+            : field_exit_world_flags_ & ~mask;
+        return true;
+    }
+    void set_compact_runner_markers_for_dump(
+        std::uint8_t primary_marker,
+        std::uint8_t secondary_marker) noexcept {
+        field_party_roster_.set_compact_markers_for_dump(
+            primary_marker, secondary_marker);
+    }
     std::uint32_t field_mode_effect_flags_for_dump() const noexcept {
         return field_mode_effect_flags_;
     }
+    std::uint32_t field_mode_flags_for_dump() const noexcept {
+        return field_mode_flags_;
+    }
+    std::uint32_t field_auxiliary_flags_for_dump() const noexcept {
+        return field_auxiliary_flags_;
+    }
     std::uint32_t field_world_fact_flags_for_dump() const noexcept {
         return field_exit_world_flags_;
+    }
+    std::optional<std::array<std::uint16_t, 8>>
+    field_pending_scene_profile_for_dump() const noexcept {
+        return field_pending_scene_profile_;
     }
     std::uint32_t field_render_effect_flags_for_dump() const noexcept {
         return field_render_effect_flags_;
@@ -1229,6 +1346,7 @@ private:
     struct DefaultActorSpriteView;
     FieldInteractionAdvanceResult advance_field_interaction(
         std::uint16_t event_word);
+    void install_test_deck();
     void configure_callbacks();
     void configure_runtime_coordinator_callbacks();
     std::optional<scripting::ScriptActorBehaviorDecision>
@@ -1251,6 +1369,8 @@ private:
         integration::FieldRuntimeCoordinatorState& runtime_state);
     bool open_gunderson_interaction();
     bool open_field_johnson_interaction();
+    bool open_field_location_dialogue(
+        const FieldScriptRoute& route);
     bool project_field_world_interaction();
     void update_source_field_camera();
     void service_pending_field_viewports();
@@ -1261,7 +1381,6 @@ private:
     bool restore_world_activity_source_scene(
         integration::FieldRuntimeCoordinatorState& runtime_state);
     bool resume_field_mode_entry_route();
-    bool resume_jump_house_entry_transition();
     void begin_field_modal_return_transition();
     void handle_field_map_event_activations(
         const std::vector<FieldMapEventActivation>& activations);
@@ -1275,6 +1394,7 @@ private:
     bool repaint_field_map_cell(std::size_t cell);
     std::size_t apply_world_effect_layer_writes(
         bool layer_b_target, const std::vector<MapWordWrite>& writes);
+    void paint_field_console_background(QPainter& painter) const;
     void record_field_activity_start(
         MovementModeTransitionContinuation continuation);
     std::int16_t evaluate_field_collision(std::uint16_t candidate_x,
@@ -1359,6 +1479,9 @@ private:
         FieldCollisionEventCode event_code);
     void advance_field_elevator_selector();
     void advance_field_elevator_scene_transition();
+    bool begin_hospital_menu_task(std::string_view function);
+    void advance_hospital_grid_effect();
+    void paint_hospital_menu(QPainter& painter) const;
     bool transition_to_field_destination(
         std::uint16_t scene_reference,
         FieldDestinationTransitionRoute route);
@@ -1625,6 +1748,10 @@ private:
         bool player_attack_pose = false;
         std::uint8_t player_attack_direction = 0U;
         std::uint16_t target_heading = 0U;
+        FieldLocationReturnAnchor return_anchor =
+            FieldLocationReturnAnchor::none;
+        FieldLocationReturnFacing return_facing =
+            FieldLocationReturnFacing::preserve_entry_heading;
     };
 
     struct DefaultActorSpriteView {
@@ -1665,6 +1792,10 @@ private:
     WorldFrameLogicCallbacks world_frame_logic_callbacks_;
     FieldViewportState viewport_state_;
     FieldCommandOverviewBridge command_overview_;
+    // The ROM disables the display while preparing the command overview.
+    // Grok's emulator trace observed 27 black host frames before it returns.
+    std::uint8_t command_overview_start_transition_frames_remaining_ = 0U;
+    bool command_overview_start_transition_black_frame_ = false;
     CommandMenuKarmaViewRuntime command_overview_attributes_skills_{};
     HotelKarmaUpgradeRuntime hotel_karma_skills_{};
     std::uint32_t hotel_karma_load_frames_ = 0U;
@@ -1676,8 +1807,15 @@ private:
     std::optional<scripting::ScriptMenuRouteSnapshot::MagicView>
         menu_route_magic_view_;
     std::optional<scripting::ScriptShopDefinition> field_shop_definition_;
+    std::optional<scripting::ScriptShopDefinition>
+        field_shop_active_definition_;
     FieldDialogueRuntime field_dialogue_;
     HotelMenuRuntime hotel_menu_{};
+    // E660 advances while Hospital Options and its confirmation are open.
+    // This state only decorates the screen; Lua owns the cursor and action.
+    RandomGridEffectState hospital_random_grid_effect_{};
+    std::array<std::int8_t, 12> hospital_random_grid_cells_{};
+    bool hospital_service_session_active_ = false;
     HotelMenuContent hotel_menu_content_{};
     PocketSecretaryMenuContent pocket_secretary_menu_content_{};
     FieldModeTextRuntime field_mode_text_{};
@@ -1743,7 +1881,28 @@ private:
     QImage command_overview_magic_panel_background_;
     QImage matrix_map_background_;
     QImage matrix_map_font_;
+    std::array<QImage, 4> matrix_cyberdeck_backgrounds_{};
+    QImage matrix_cyberdeck_panel_;
+    QImage matrix_cyberdeck_runner_detail_headers_;
+    std::array<QImage, 4> matrix_cyberdeck_cursors_{};
+    QImage matrix_cyberdeck_empty_program_icon_;
+    std::array<std::array<QImage, 4>, 5> matrix_node_backgrounds_{};
+    std::array<QImage, 4> matrix_node_action_cursors_{};
+    std::array<std::array<QImage, 4>, 4> matrix_cyberdeck_selector_rows_{};
+    std::array<QImage, 16> matrix_cyberdeck_program_icons_{};
+    std::array<QImage, 16> matrix_cyberdeck_detail_strips_{};
+    std::array<QImage, 7> matrix_cyberdeck_footer_slot_status_{};
     std::array<QImage, 4> matrix_map_tile_atlases_{};
+    std::array<QImage, 4> matrix_traversal_backgrounds_{};
+    std::array<std::array<QImage, 4>, 6> matrix_world_models_{};
+    std::array<std::vector<QImage>, 9> matrix_traversal_world_effect_modes_{};
+    std::vector<QImage> matrix_traversal_world_effect_fallback_;
+    QImage matrix_traversal_hud_frame_;
+    QImage matrix_traversal_runner_entry_pose_;
+    QImage matrix_traversal_runner_action_phase_0_;
+    QImage matrix_traversal_runner_action_phase_1_;
+    QImage matrix_traversal_runner_idle_;
+    std::array<QImage, 4> matrix_traversal_analyze_rings_{};
     std::array<QImage, kMagicSpellTextCount> command_overview_magic_spell_icons_{};
     std::array<QImage, 4> command_overview_magic_cursor_frames_{};
     std::array<QImage, 5> command_overview_magic_posture_bars_{};
@@ -1835,6 +1994,11 @@ private:
     // Matrix node actions mutate field/world facts through Lua. The active
     // Matrix run record belongs to the Lua run registry and its save state.
     scripting::ScriptMatrixFieldState field_matrix_field_state_{};
+    // ROM FFF0CE: shared karma rollover state. New Game clears it, and loaded
+    // source state stays unknown until the save adapter restores this byte.
+    std::optional<std::int8_t> field_matrix_karma_counter_;
+    // ROM FFF0A3: field setup seeds 1 at 0x174FC; Attack and Slow clear it.
+    std::optional<std::int8_t> field_matrix_passive_ic_counter_;
     // FFFC28 and the known fields of FFFBBE. The save adapter does not yet
     // restore these source values, so loaded sessions retain unknown state.
     std::optional<std::uint16_t> field_matrix_passcode_flags_;
@@ -1936,11 +2100,16 @@ private:
     // handler has consumed its pending state.
     EntityMovementModeTransitionResult last_field_movement_transition_result_{};
     std::optional<FieldScriptRoute> active_field_script_route_;
-    // The ROM blocks inside scene-2/event-4's indexed title service. The Qt
-    // modal yields across frames, so retain the selected area route and resume
-    // its scene-entry tail only after the player dismisses the entry page.
-    bool jump_house_entry_transition_pending_ = false;
+    FieldLocationReturnAnchor pending_field_return_anchor_ =
+        FieldLocationReturnAnchor::none;
+    FieldLocationReturnFacing pending_field_return_facing_ =
+        FieldLocationReturnFacing::preserve_entry_heading;
+    // The ROM blocks inside selected area-event entry dialogues. The Qt modal
+    // yields across frames, so retain the typed destination and resume its
+    // scene-entry tail only after the player dismisses the entry page.
     bool field_mode_entry_transition_pending_ = false;
+    std::optional<scripting::ScriptRunFieldEventDecision>
+        field_mode_entry_run_target_actor_group_;
     bool field_matrix_route_active_ = false;
     bool field_taxi_route_active_ = false;
     bool matrix_return_to_field_on_close_ = false;
@@ -2007,8 +2176,8 @@ private:
     std::uint16_t field_collision_marker_index_ = 0;
     FieldCameraFollowState field_camera_follow_{};
     bool field_camera_alignment_ready_ = false;
-    // FFE114 when 0x1651E selects the scene-4 interaction record. 0x2B34
-    // consumes it on the next scene entry.
+    // FFE114 is a pending typed scene-entry placement published by map or
+    // dialogue events. 0x2B34 consumes it on the next full scene entry.
     std::optional<std::array<std::uint16_t, 8>> field_pending_scene_profile_;
     std::uint8_t field_controller_nibble_ = 0;
     std::uint8_t field_controller_port_byte_ = 0;
@@ -2021,9 +2190,14 @@ private:
     std::uint8_t field_entity_behavior_flags_ = 0;
     std::int8_t field_exit_alternate_result_ = 0;
     std::uint32_t field_exit_world_flags_ = 0;
+    // Typed counterpart for source FFFC30, separate from FFFC1E and FFFC34.
+    std::uint32_t field_mode_flags_ = 1U;
     // Typed counterparts for the field story-service registers. These remain
     // session state until the save adapter restores their source facts.
     std::uint32_t field_mode_effect_flags_ = 0;
+    // ROM FFFC40: separate world-activity facts, including Spirit Eyes
+    // component-request markers at bits 0..2.
+    std::uint32_t field_auxiliary_flags_ = 0;
     // FFFC27 bit 6 records the first Vigore/Jarl booth introduction.
     std::optional<std::uint8_t> field_dialogue_register_{0U};
     std::uint32_t field_render_effect_flags_ = 0;

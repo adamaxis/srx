@@ -622,11 +622,43 @@ private:
         fields.insert(QStringLiteral("app.paused"), frame_stepper_.paused());
         fields.insert(QStringLiteral("app.replay_diverged"),
                       replay_diverged_);
+        // Keep the title coordinator inspectable in the host debugger. These
+        // are converted host state fields, not ROM RAM reads. Exclude them
+        // from the session fingerprint below so recordings made before these
+        // diagnostics were added remain replay-compatible.
+        fields.insert(QStringLiteral("app.title.logo_columns"),
+                      title_loop_.logo.columns_revealed);
+        fields.insert(QStringLiteral("app.title.prompt_frames_remaining"),
+                      title_loop_.prompt.frames_remaining);
+        fields.insert(QStringLiteral("app.title.prompt_finished"),
+                      title_loop_.prompt.finished);
+        fields.insert(QStringLiteral("app.title.start_latched"),
+                      title_loop_.controller_events.start_latched);
+        fields.insert(QStringLiteral("app.title.activity_timer"),
+                      title_loop_.controller_events.activity_timer);
+        fields.insert(QStringLiteral("app.title.input_history_count"),
+                      static_cast<double>(title_loop_.input_history.count));
+        fields.insert(QStringLiteral("app.title.exit_fade_active"),
+                      title_loop_.exit_palette_fade.active);
+        fields.insert(QStringLiteral("app.title.exit_fade_passes"),
+                      title_loop_.exit_palette_fade.passes_completed);
+        fields.insert(QStringLiteral("app.title.mode_entry_active"),
+                      title_mode_entry_service_.active);
+        fields.insert(QStringLiteral("app.title.mode_entry_transactions"),
+                      title_mode_entry_service_.transactions_started);
         return fields;
     }
 
     std::uint64_t current_debug_inspection_fingerprint() const {
-        return debug_inspection_fingerprint(debug_inspection_fields());
+        auto fingerprint_fields = debug_inspection_fields();
+        for (const auto& key : fingerprint_fields.keys()) {
+            if (key.startsWith(QStringLiteral("app.title.")) ||
+                key.startsWith(QStringLiteral("field.debug.")) ||
+                key.startsWith(QStringLiteral("menu.debug."))) {
+                fingerprint_fields.remove(key);
+            }
+        }
+        return debug_inspection_fingerprint(fingerprint_fields);
     }
 
     void apply_pending_remote_keys() {

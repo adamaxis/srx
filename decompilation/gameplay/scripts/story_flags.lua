@@ -28,7 +28,7 @@ local BIT_MASK = StoryFlags.BIT_COUNT - 1
 -- Command -> marking behaviour, from table 0x12CCB4 [C].
 --   "active" = set bit FFDD64
 --   number   = load FFDD64 with that index, then set it
---   table    = the handler picks one of the listed indices on a branch
+--   table    = direct bit mark, or the handler picks an index on a branch
 StoryFlags.DIALOGUE_COMMAND_MARKS = {
     [0x05] = "active_on_paid_branch", -- 0x213FA; bsr 0x2196C at 0x21410
     [0x15] = "active",                -- 0x218B2
@@ -42,6 +42,7 @@ StoryFlags.DIALOGUE_COMMAND_MARKS = {
     [0x1D] = "active",                -- 0x21962
     [0x37] = E.StoryFlag.GILLIAN_INITIATION,   -- 0x21E08: FFDD64 = 0x14
     [0x40] = E.StoryFlag.POST_ITO_BRIEFED,     -- 0x21F32: FFDD64 = 0x1C
+    [0x44] = { direct = E.StoryFlag.FROSTY_MET }, -- 0x21FD0: direct FFFC1E bit 30 write
     [0x46] = { E.StoryFlag.RENRAKU_MAP_SHOWN, E.StoryFlag.BOTH_MAPS_SHOWN }, -- 0x22018
     [0x47] = { E.StoryFlag.RENRAKU_MAP_SHOWN, E.StoryFlag.BOTH_MAPS_SHOWN }, -- 0x22072
     [0x61] = E.StoryFlag.HOSPITAL_VISITED,     -- 0x22648: FFDD64 = 0x19
@@ -61,6 +62,13 @@ end
 
 local function bit_fact(flag)
     return "story_flag_bit_" .. tostring(checked_bit(flag))
+end
+
+local function select_active_trigger(index)
+    checked_bit(index)
+    -- FFDD64 is a word register. Writing the new true fact replaces its
+    -- current index in the host adapter; the ROM has no clear operation.
+    game.state["story_trigger_active_" .. index] = true
 end
 
 -- Readable E.StoryFlag name for a bit, or nil when the bit is unnamed.
@@ -99,9 +107,16 @@ end
 
 -- Fixed-index handlers: MOVE.L #index,FFDD64 then 0x2196C.
 function StoryFlags.mark_fixed(flag)
-    checked_bit(flag)
-    game.state["story_trigger_active_" .. flag] = true
+    select_active_trigger(flag)
     StoryFlags.set(flag)
+    return flag
+end
+
+-- Direct world-activity handlers may assign FFDD64 to an index that is not
+-- in the 23-entry 0x53A78 trigger table. This records that fixed index without
+-- marking its FFFC1E bit; the activity can apply 0x2196C after its dialogue.
+function StoryFlags.select_fixed_trigger(flag)
+    select_active_trigger(flag)
     return flag
 end
 
@@ -121,6 +136,10 @@ function StoryFlags.apply_dialogue_command(command, options)
         end
         return StoryFlags.mark_active_trigger()
     elseif type(mark) == "table" then
+        if mark.direct ~= nil then
+            StoryFlags.set(mark.direct)
+            return mark.direct
+        end
         local flag = mark[options.branch]
         assert(flag ~= nil, "two-way story command needs branch 1 or 2")
         return StoryFlags.mark_fixed(flag)
@@ -133,7 +152,7 @@ end
 function StoryFlags.begin_trigger(index)
     assert(Triggers.is_live(index),
         "FFDD64 only holds a live 0x15FD5C trigger index")
-    game.state["story_trigger_active_" .. index] = true
+    select_active_trigger(index)
     return index
 end
 

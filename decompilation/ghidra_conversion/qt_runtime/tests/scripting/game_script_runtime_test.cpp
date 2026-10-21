@@ -434,6 +434,61 @@ int main() {
         return 1;
     }
 
+    struct RunTargetActorGroupCase {
+        std::uint8_t area_id;
+        std::uint8_t event_id;
+        std::uint32_t actor_list_offset;
+    };
+    constexpr std::array<RunTargetActorGroupCase, 3> run_target_groups{{
+        {1U, 9U, 0x1D6D4AU},
+        {2U, 9U, 0x1D6D5EU},
+        {3U, 4U, 0x1D6D72U},
+    }};
+    constexpr std::array<std::array<std::uint16_t, 2>, 4>
+        run_target_spawn_positions{{
+            {0x0700U, 0x0380U},
+            {0x0C00U, 0x0380U},
+            {0x1100U, 0x0500U},
+            {0x1100U, 0x0A80U},
+        }};
+    for (const auto& group : run_target_groups) {
+        const auto actors = scripts.resolve_run_target_actor_group(
+            group.area_id, group.event_id);
+        bool actors_in_source_order = actors.has_value() &&
+                                      actors->actors.size() == 4U;
+        if (actors_in_source_order) {
+            for (std::size_t index = 0U; index < actors->actors.size(); ++index) {
+                const auto& actor = actors->actors[index];
+                actors_in_source_order = actors_in_source_order &&
+                    actor.sequence_list_offset == group.actor_list_offset &&
+                    !actor.profile_id.empty() && !actor.sprite_stem.empty() &&
+                    actor.run_target_spawn_x ==
+                        run_target_spawn_positions[index][0] &&
+                    actor.run_target_spawn_y ==
+                        run_target_spawn_positions[index][1] &&
+                    actor.source_order == index;
+            }
+        }
+        if (!expect(
+                actors.has_value() &&
+                    actors->kind == ScriptFieldEncounterOutcomeKind::
+                        dynamic_world_effect_sequence &&
+                    actors->scene_id == 15U &&
+                    actors->context_group == group.area_id &&
+                    actors->random_sum == group.event_id &&
+                    actors->actors.size() == 4U &&
+                    actors_in_source_order,
+                "ROM run-target actor group did not preserve its ordered source list")) {
+            std::cerr << scripts.failure() << '\n';
+            return 1;
+        }
+    }
+    if (!expect(
+            !scripts.resolve_run_target_actor_group(2U, 8U).has_value(),
+            "non-target map event resolved a gang-contract actor group")) {
+        return 1;
+    }
+
     ScriptFieldEncounterTriggerInput encounter_trigger{};
     encounter_trigger.scene_id = 2U;
     encounter_trigger.frame_counter = 10U;
@@ -802,10 +857,23 @@ int main() {
     scene2_location.event_table[0] = 20U;
     scene2_location.event_table[1] = 26U;
     scene2_location.event_table[2] = 26U;
+    scene2_location.event_table[4] = 13U;
     scene2_location.event_table[11] = 51U;
     scene2_location.event_code = FieldCollisionEventCode::event_2;
+    scripts.set_story_state({{"story_flag_bit_0", false}});
     const auto stoker_route =
         scripts.resolve_field_location_route(scene2_location);
+    scripts.set_story_state({{"story_flag_bit_0", true}});
+    const auto stoker_paid_route =
+        scripts.resolve_field_location_route(scene2_location);
+    scripts.set_story_state({});
+    scene2_location.event_code = FieldCollisionEventCode::event_4;
+    const auto jump_house_route =
+        scripts.resolve_field_location_route(scene2_location);
+    scene2_location.alternate_result = 1;
+    const auto jump_house_alternate_route =
+        scripts.resolve_field_location_route(scene2_location);
+    scene2_location.alternate_result = 0;
     scene2_location.event_code = FieldCollisionEventCode::event_11;
     const auto ares_route =
         scripts.resolve_field_location_route(scene2_location);
@@ -818,6 +886,721 @@ int main() {
     scene2_location.event_code = FieldCollisionEventCode::no_event;
     const auto missing_event_route =
         scripts.resolve_field_location_route(scene2_location);
+
+    const auto resolve_event30_location = [&scripts](
+        const std::uint8_t scene_id) {
+        FieldScriptRouteContext context{};
+        context.scene_id = scene_id;
+        context.event_code = FieldCollisionEventCode::event_30;
+        return scripts.resolve_field_location_route(context);
+    };
+    const auto restaurant_event30 = resolve_event30_location(10U);
+    const auto jump_house_event30 = resolve_event30_location(13U);
+    const auto wanderer_event30 = resolve_event30_location(14U);
+    const auto big_rhino_event30 = resolve_event30_location(11U);
+    const auto julius_event30 = resolve_event30_location(18U);
+    const auto jackals_lantern_event30 = resolve_event30_location(19U);
+    const auto club_penumbra_event30 = resolve_event30_location(17U);
+    FieldScriptRouteContext club_penumbra_exterior{};
+    club_penumbra_exterior.scene_id = 3U;
+    club_penumbra_exterior.event_code = FieldCollisionEventCode::event_0;
+    club_penumbra_exterior.event_table_available = true;
+    club_penumbra_exterior.event_table[0] = 17U;
+    const auto club_penumbra_exterior_route =
+        scripts.resolve_field_location_route(club_penumbra_exterior);
+    FieldScriptRouteContext scene13_south_exit{};
+    scene13_south_exit.scene_id = 13U;
+    scene13_south_exit.event_code = FieldCollisionEventCode::event_0;
+    scene13_south_exit.event_table_available = false;
+    const auto scene13_south_exit_route =
+        scripts.resolve_field_location_route(scene13_south_exit);
+    if (!expect(
+            scene13_south_exit_route.has_value() &&
+                scene13_south_exit_route->kind ==
+                    FieldScriptRouteKind::area_event &&
+                scene13_south_exit_route->script ==
+                    FieldScriptId::area_event_table &&
+                scene13_south_exit_route->area_event_target == 0U &&
+                scene13_south_exit_route->area_event_destination_mode ==
+                    WorldActivityMode::field &&
+                scene13_south_exit_route->entry_dialogue_module.empty(),
+            "Scene 13's null-table event 0 did not select its authored scene-0 route")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    scripts.set_story_state({{"story_flag_bit_10", false}});
+    const auto icarus_blocked_event30 = resolve_event30_location(12U);
+    if (!expect(
+            restaurant_event30.has_value() &&
+                restaurant_event30->kind == FieldScriptRouteKind::dialogue &&
+                restaurant_event30->entry_dialogue_module == "field_events" &&
+                restaurant_event30->entry_dialogue_function ==
+                    "present_location_dialogue" &&
+                restaurant_event30->entry_location_id ==
+                    "council_friendship_restaurant" &&
+                restaurant_event30->entry_event_id == "opening" &&
+                jump_house_event30.has_value() &&
+                jump_house_event30->entry_dialogue_module == "johnson" &&
+                jump_house_event30->entry_dialogue_function == "interaction" &&
+                jump_house_event30->entry_text_profile ==
+                    "gunderson.jump_house" &&
+                wanderer_event30.has_value() &&
+                wanderer_event30->entry_dialogue_module == "johnson" &&
+                wanderer_event30->entry_text_profile ==
+                    "wanderer.vigore_jarl" &&
+                big_rhino_event30.has_value() &&
+                big_rhino_event30->kind == FieldScriptRouteKind::dialogue &&
+                big_rhino_event30->entry_dialogue_module == "johnson" &&
+                big_rhino_event30->entry_dialogue_function == "interaction" &&
+                big_rhino_event30->entry_text_profile ==
+                    "big-rhino.mortimer_reed" &&
+                julius_event30.has_value() &&
+                julius_event30->kind == FieldScriptRouteKind::dialogue &&
+                julius_event30->entry_dialogue_module == "johnson" &&
+                julius_event30->entry_dialogue_function == "interaction" &&
+                julius_event30->entry_location_id ==
+                    "julius_strouther_booth" &&
+                julius_event30->entry_text_profile ==
+                    "matchstick.julius_strouther" &&
+                julius_event30->entry_speaker_id == "julius_strouther" &&
+                jackals_lantern_event30.has_value() &&
+                jackals_lantern_event30->entry_dialogue_module ==
+                    "field_events" &&
+                jackals_lantern_event30->entry_event_id == "opening" &&
+                club_penumbra_event30.has_value() &&
+                club_penumbra_event30->kind ==
+                    FieldScriptRouteKind::dialogue &&
+                club_penumbra_event30->entry_dialogue_module ==
+                    "field_events" &&
+                club_penumbra_event30->entry_text_profile ==
+                    "jackals_lantern.old_man" &&
+                club_penumbra_event30->entry_location_id ==
+                    "club_penumbra" &&
+                club_penumbra_event30->entry_event_id == "opening" &&
+                club_penumbra_exterior_route.has_value() &&
+                club_penumbra_exterior_route->kind ==
+                    FieldScriptRouteKind::area_event &&
+                club_penumbra_exterior_route->area_event_target == 17U &&
+                club_penumbra_exterior_route->entry_dialogue_module.empty() &&
+                !club_penumbra_exterior_route->indexed_title_service.has_value() &&
+                icarus_blocked_event30.has_value() &&
+                icarus_blocked_event30->kind ==
+                    FieldScriptRouteKind::dialogue &&
+                icarus_blocked_event30->entry_dialogue_module ==
+                    "icarus_descending" &&
+                icarus_blocked_event30->entry_dialogue_function ==
+                    "present_access_blocked" &&
+                icarus_blocked_event30->entry_event_id == "access_blocked",
+            "scene-specific event-30 contacts did not resolve from Lua entity links")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
+    scripts.set_field_mode_context(ScriptFieldModeContext{17U, 30U, 0});
+    scripts.set_location_context(
+        "building", club_penumbra_event30->entry_location_id,
+        club_penumbra_event30->entry_text_profile,
+        club_penumbra_event30->entry_speaker_id,
+        club_penumbra_event30->entry_event_id);
+    auto club_penumbra_contact_task =
+        scripts.start_task("field_events", "present_location_dialogue");
+    if (!expect(
+            club_penumbra_contact_task.status ==
+                    ScriptTaskStep::Status::awaiting_native_operation &&
+                club_penumbra_contact_task.operation.has_value() &&
+                club_penumbra_contact_task.operation->dialogue.has_value() &&
+                club_penumbra_contact_task.operation->dialogue->speaker_id ==
+                    "jackals_lantern_old_man" &&
+                club_penumbra_contact_task.operation->dialogue->text_profile ==
+                    "jackals_lantern.old_man" &&
+                club_penumbra_contact_task.operation->dialogue->event_id ==
+                    "opening",
+            "Club Penumbra event-30 link did not select the source default dialogue page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    club_penumbra_contact_task = scripts.complete_native_operation(true);
+    if (!expect(
+            club_penumbra_contact_task.status ==
+                    ScriptTaskStep::Status::completed &&
+                club_penumbra_contact_task.result_id ==
+                    std::optional<std::string>{"shown"},
+            "Club Penumbra event-30 dialogue did not complete after its single source page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
+    scripts.set_location_context(
+        "building", "icarus_descending_booth",
+        "icarus-descending.caleb_brightmore", "caleb_brightmore",
+        "access_blocked");
+    scripts.set_field_mode_context(ScriptFieldModeContext{1U, 30U, 0});
+    auto icarus_blocked_task = scripts.start_task(
+        "icarus_descending", "present_access_blocked");
+    if (!expect(
+            icarus_blocked_task.status ==
+                ScriptTaskStep::Status::awaiting_native_operation &&
+                icarus_blocked_task.operation.has_value() &&
+                icarus_blocked_task.operation->type ==
+                    ScriptNativeOperation::Type::ui_say &&
+                icarus_blocked_task.operation->dialogue.has_value() &&
+                icarus_blocked_task.operation->dialogue->speaker_id ==
+                    "caleb_brightmore" &&
+                icarus_blocked_task.operation->dialogue->text_profile ==
+                    "icarus-descending.caleb_brightmore" &&
+                icarus_blocked_task.operation->dialogue->event_id ==
+                    "access_blocked",
+            "Icarus blocked-entry task did not select Caleb's ROM page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    icarus_blocked_task = scripts.complete_native_operation(true);
+    if (!expect(icarus_blocked_task.status ==
+                        ScriptTaskStep::Status::completed &&
+                    icarus_blocked_task.result_id ==
+                        std::optional<std::string>{"field_return"} &&
+                    scripts.story_state().at("story_flag_bit_10") == false,
+                "Icarus blocked-entry dialogue did not return without state changes")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_10", true},
+        {"mr_johnsons_flag_bit_4", false},
+        {"mr_johnsons_flag_bit_7", false},
+    });
+    const auto icarus_accessible_event30 = resolve_event30_location(12U);
+    if (!expect(icarus_accessible_event30.has_value() &&
+                    icarus_accessible_event30->kind ==
+                        FieldScriptRouteKind::dialogue &&
+                    icarus_accessible_event30->entry_dialogue_module ==
+                        "johnson" &&
+                    icarus_accessible_event30->entry_dialogue_function ==
+                        "interaction" &&
+                    icarus_accessible_event30->entry_text_profile ==
+                        "icarus-descending.caleb_brightmore",
+                "Icarus accessible branch did not resolve the Caleb Johnson task")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    scripts.set_location_context(
+        "building", "icarus_descending_booth",
+        "icarus-descending.caleb_brightmore", "caleb_brightmore");
+    scripts.set_field_mode_context(ScriptFieldModeContext{1U, 30U, 0});
+    auto caleb_first_meeting =
+        scripts.start_task("johnson", "interaction");
+    if (!expect(caleb_first_meeting.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    caleb_first_meeting.operation.has_value() &&
+                    caleb_first_meeting.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    caleb_first_meeting.operation->service_id ==
+                        "runner.adjust_source_byte_triplet_2",
+                "Caleb first visit did not apply the ROM +2 runner progress effect")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    caleb_first_meeting =
+        scripts.complete_native_service_result("applied");
+    if (!expect(caleb_first_meeting.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    caleb_first_meeting.operation.has_value() &&
+                    caleb_first_meeting.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    caleb_first_meeting.operation->dialogue.has_value() &&
+                    caleb_first_meeting.operation->dialogue->event_id ==
+                        "first_meeting",
+                "Caleb first visit did not open its ROM first-meeting page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    caleb_first_meeting = scripts.complete_native_operation(true);
+    if (!expect(caleb_first_meeting.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    caleb_first_meeting.operation.has_value() &&
+                    caleb_first_meeting.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    caleb_first_meeting.operation->dialogue.has_value() &&
+                    caleb_first_meeting.operation->dialogue->event_id ==
+                        "first_meeting_continuation",
+                "Caleb first meeting lost its ROM continuation page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    caleb_first_meeting = scripts.complete_native_operation(true);
+    if (!expect(caleb_first_meeting.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    caleb_first_meeting.operation.has_value() &&
+                    caleb_first_meeting.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    caleb_first_meeting.operation->menu.has_value() &&
+                    caleb_first_meeting.operation->menu->id ==
+                        "first_meeting" &&
+                    caleb_first_meeting.operation->menu->choices.size() == 3U,
+                "Caleb first-meeting page did not lead into the source root choices")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    caleb_first_meeting =
+        scripts.complete_native_menu_choice("leave");
+    if (!expect(caleb_first_meeting.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    caleb_first_meeting.operation.has_value() &&
+                    caleb_first_meeting.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    caleb_first_meeting.operation->dialogue.has_value() &&
+                    caleb_first_meeting.operation->dialogue->event_id ==
+                        "leave",
+                "Caleb Leave choice omitted its source farewell page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    caleb_first_meeting = scripts.complete_native_operation(true);
+    if (!expect(caleb_first_meeting.status ==
+                        ScriptTaskStep::Status::completed &&
+                    caleb_first_meeting.result_id ==
+                        std::optional<std::string>{"leave"} &&
+                    scripts.story_state().at("mr_johnsons_flag_bit_4") &&
+                    scripts.story_state().at("mr_johnsons_flag_bit_7"),
+                "Caleb first contact did not persist the ROM contact and visit bits")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
+    scripts.set_story_state({
+        {"mr_johnsons_flag_bit_2", true},
+        {"mr_johnsons_flag_bit_4", true},
+        {"mr_johnsons_flag_bit_5", false},
+        {"vid_phone_contact_0", false},
+    });
+    scripts.set_location_context(
+        "building", "julius_strouther_booth",
+        "matchstick.julius_strouther", "julius_strouther");
+    scripts.set_field_mode_context(ScriptFieldModeContext{18U, 30U, 0});
+    auto julius_task = scripts.start_task("johnson", "interaction");
+    if (!expect(julius_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    julius_task.operation.has_value() &&
+                    julius_task.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    julius_task.operation->dialogue.has_value() &&
+                    julius_task.operation->dialogue->speaker_id ==
+                        "julius_strouther" &&
+                    julius_task.operation->dialogue->event_id ==
+                        "booth_entry",
+                "Julius first visit did not present the ROM booth introduction")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_operation(true);
+    if (!expect(julius_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    julius_task.operation.has_value() &&
+                    julius_task.operation->menu.has_value() &&
+                    julius_task.operation->menu->id == "first_meeting" &&
+                    scripts.story_state().at("mr_johnsons_flag_bit_1") &&
+                    scripts.story_state().at("mr_johnsons_flag_bit_5"),
+                "Julius first visit did not set FFFC27 and select its first-meeting root")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_menu_choice("information");
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->menu.has_value() &&
+                    julius_task.operation->menu->id == "information",
+                "Julius information action did not open its ROM topic menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_menu_choice("questions");
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->menu.has_value() &&
+                    julius_task.operation->menu->id == "question_selection" &&
+                    julius_task.operation->menu->choices.size() == 2U &&
+                    julius_task.operation->menu->choices[0].id == "caleb" &&
+                    julius_task.operation->menu->choices[1].id == "mortimer",
+                "Julius question list did not follow the Caleb/Mortimer story-bit gates")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_menu_choice("caleb");
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->menu.has_value() &&
+                    julius_task.operation->menu->id ==
+                        "question_answer_followup" &&
+                    julius_task.operation->menu->inline_prompt &&
+                    julius_task.operation->menu->inline_text.find(
+                        "Caleb is strictly uptown.") != std::string::npos,
+                "Julius Caleb answer did not retain its ROM answer and follow-up choices")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_menu_choice("another_question");
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->menu.has_value() &&
+                    julius_task.operation->menu->id == "question_selection",
+                "Julius another-question choice did not rebuild the gated list")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_menu_choice("mortimer");
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->menu.has_value() &&
+                    julius_task.operation->menu->id ==
+                        "question_answer_followup" &&
+                    julius_task.operation->menu->inline_text.find(
+                        "major thorn in my side") != std::string::npos,
+                "Julius Mortimer answer did not use its ROM response text")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_menu_choice("different_subject");
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->menu.has_value() &&
+                    julius_task.operation->menu->id ==
+                        "opening_after_information",
+                "Julius different-subject choice did not return to the ROM root")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_menu_choice("information");
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->menu.has_value() &&
+                    julius_task.operation->menu->id == "information",
+                "Julius could not revisit his information menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_menu_choice("contacts");
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->dialogue.has_value() &&
+                    julius_task.operation->dialogue->event_id ==
+                        "contacts_opening",
+                "Julius contact branch did not present the source contact offer")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_operation(true);
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->menu.has_value() &&
+                    julius_task.operation->menu->id == "contacts_offer",
+                "Julius contact introduction did not lead to the purchase prompt")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_menu_choice("accept");
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    julius_task.operation->service_id ==
+                        "johnson.purchase_quinton_contact",
+                "Julius contact purchase did not request the typed host transaction")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_service_result("purchased");
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->menu.has_value() &&
+                    julius_task.operation->menu->id == "contacts_purchased" &&
+                    scripts.story_state().at("vid_phone_contact_0"),
+                "Julius purchase did not write FFFC2C and present its source result")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_menu_choice("leave");
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->dialogue.has_value() &&
+                    julius_task.operation->dialogue->event_id == "leave",
+                "Julius leave choice omitted the ROM farewell")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_operation(true);
+    if (!expect(julius_task.status == ScriptTaskStep::Status::completed &&
+                    julius_task.result_id ==
+                        std::optional<std::string>{"leave"},
+                "Julius contact task did not finish cleanly")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
+    scripts.set_story_state({
+        {"mr_johnsons_flag_bit_2", false},
+        {"mr_johnsons_flag_bit_4", false},
+        {"mr_johnsons_flag_bit_5", true},
+    });
+    julius_task = scripts.start_task("johnson", "interaction");
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->menu.has_value() &&
+                    julius_task.operation->menu->id == "opening",
+                "Julius repeat visit did not select the repeat root")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_menu_choice("information");
+    julius_task = scripts.complete_native_menu_choice("questions");
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->dialogue.has_value() &&
+                    julius_task.operation->dialogue->event_id ==
+                        "question_default",
+                "Julius exposed questions whose FFFC27 gates were clear")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_operation(true);
+    julius_task = scripts.complete_native_menu_choice("leave");
+    if (!expect(julius_task.operation.has_value() &&
+                    julius_task.operation->dialogue.has_value() &&
+                    julius_task.operation->dialogue->event_id == "leave",
+                "Julius no-question branch did not return to the root")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    julius_task = scripts.complete_native_operation(true);
+    if (!expect(julius_task.status == ScriptTaskStep::Status::completed,
+                "Julius no-question branch did not complete cleanly")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
+    // Synthetic clear-contact state isolates command 0x50's write. The fresh
+    // New Game FFFC2C seed already includes Alesandro's bit 1.
+    scripts.set_story_state({
+        {"mr_johnsons_flag_bit_1", true},
+        {"mr_johnsons_flag_bit_2", false},
+        {"story_flag_bit_2", true},
+        {"story_flag_bit_3", false},
+        {"story_flag_bit_10", true},
+        {"story_flag_bit_11", false},
+        {"field_mode_flag_bit_11", true},
+        {"field_mode_flag_bit_12", false},
+        {"field_mode_flag_bit_21", false},
+        {"vid_phone_contact_1", false},
+    });
+    scripts.set_location_context(
+        "building", "big_rhino_dark_booth", "big-rhino.mortimer_reed",
+        "mortimer_reed");
+    scripts.set_field_mode_context(ScriptFieldModeContext{11U, 30U, 0});
+    auto mortimer_task = scripts.start_task("johnson", "interaction");
+    if (!expect(mortimer_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    mortimer_task.operation->dialogue.has_value() &&
+                    mortimer_task.operation->dialogue->event_id ==
+                        "booth_entry",
+                "Mortimer first visit omitted ROM descriptor 0x105544")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_operation(true);
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->menu.has_value() &&
+                    mortimer_task.operation->menu->id == "opening" &&
+                    scripts.story_state().at("mr_johnsons_flag_bit_2"),
+                "Mortimer first entry did not set his contact bit and root")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_menu_choice("information");
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->dialogue.has_value() &&
+                    mortimer_task.operation->dialogue->event_id ==
+                        "information_opening",
+                "Mortimer information branch omitted ROM text 0x107FA9")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_operation(true);
+    mortimer_task = scripts.complete_native_menu_choice("questions");
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->menu.has_value() &&
+                    mortimer_task.operation->menu->id == "question_selection" &&
+                    mortimer_task.operation->menu->choices.size() == 3U &&
+                    mortimer_task.operation->menu->choices[0].id == "julius" &&
+                    mortimer_task.operation->menu->choices[1].id == "mako" &&
+                    mortimer_task.operation->menu->choices[2].id == "aragorn",
+                "Mortimer question list did not use the ROM story-bit gates")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_menu_choice("mako");
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->menu.has_value() &&
+                    mortimer_task.operation->menu->id ==
+                        "question_answer_followup" &&
+                    mortimer_task.operation->menu->inline_text.find(
+                        "Mako") != std::string::npos &&
+                    scripts.story_state().at(
+                        "field_mode_flag_bit_21"),
+                "Mortimer's Mako answer did not use ROM text/effect bit")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_menu_choice("another_question");
+    mortimer_task = scripts.complete_native_menu_choice("aragorn");
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->menu.has_value() &&
+                    mortimer_task.operation->menu->id ==
+                        "question_answer_followup" &&
+                    mortimer_task.operation->menu->inline_text.find(
+                        "Mitsuhama") != std::string::npos &&
+                    !scripts.story_state().at(
+                        "field_mode_flag_bit_11") &&
+                    scripts.story_state().at(
+                        "field_mode_flag_bit_12"),
+                "Mortimer's Aragorn answer did not apply the ROM bit writes")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_menu_choice("different_subject");
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->menu.has_value() &&
+                    mortimer_task.operation->menu->id == "information",
+                "Mortimer question back action did not return to information categories")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_menu_choice("back");
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->menu.has_value() &&
+                    mortimer_task.operation->menu->id ==
+                        "opening_after_information",
+                "Mortimer information return did not select the ROM root")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_menu_choice("information");
+    mortimer_task = scripts.complete_native_operation(true);
+    mortimer_task = scripts.complete_native_menu_choice("contacts");
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->menu.has_value() &&
+                    mortimer_task.operation->menu->id == "contacts_offer" &&
+                    mortimer_task.operation->menu->choices.size() == 2U,
+                "Mortimer information contacts did not reach the $1,500 offer")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_menu_choice("accept");
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    mortimer_task.operation->service_id ==
+                        "johnson.purchase_alesandro_contact",
+                "Mortimer contact did not call the typed purchase service")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_service_result("purchased");
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->menu.has_value() &&
+                    mortimer_task.operation->menu->id == "contacts_purchased" &&
+                    scripts.story_state().at("vid_phone_contact_1"),
+                "Mortimer contact success did not set FFFC2C bit 1")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_menu_choice("leave");
+    mortimer_task = scripts.complete_native_operation(true);
+    if (!expect(mortimer_task.status == ScriptTaskStep::Status::completed &&
+                    mortimer_task.result_id ==
+                        std::optional<std::string>{"leave"},
+                "Mortimer contact task did not finish after the source farewell")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
+    scripts.set_story_state({
+        {"mr_johnsons_flag_bit_1", false},
+        {"mr_johnsons_flag_bit_2", true},
+        {"story_flag_bit_2", false},
+        {"story_flag_bit_3", false},
+        {"story_flag_bit_10", false},
+        {"story_flag_bit_11", false},
+        {"field_mode_flag_bit_11", false},
+        {"field_mode_flag_bit_12", false},
+        {"field_mode_flag_bit_21", false},
+        {"vid_phone_contact_1", false},
+    });
+    mortimer_task = scripts.start_task("johnson", "interaction");
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->dialogue.has_value() &&
+                    mortimer_task.operation->dialogue->event_id ==
+                        "repeat_booth_entry",
+                "Mortimer repeat entry omitted ROM descriptor 0x105574")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_operation(true);
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->menu.has_value() &&
+                    mortimer_task.operation->menu->id == "repeat_opening",
+                "Mortimer repeat entry did not select descriptor 0x105588")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_menu_choice("information");
+    mortimer_task = scripts.complete_native_operation(true);
+    mortimer_task = scripts.complete_native_menu_choice("questions");
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->dialogue.has_value() &&
+                    mortimer_task.operation->dialogue->event_id ==
+                        "question_default",
+                "Mortimer showed gated questions without matching run flags")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_operation(true);
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->menu.has_value() &&
+                    mortimer_task.operation->menu->id == "information" &&
+                    mortimer_task.operation->menu->choices.size() == 3U,
+                "Mortimer empty-question response did not return to categories")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_menu_choice("contacts");
+    mortimer_task = scripts.complete_native_menu_choice("accept");
+    mortimer_task = scripts.complete_native_service_result("insufficient");
+    if (!expect(mortimer_task.operation.has_value() &&
+                    mortimer_task.operation->menu.has_value() &&
+                    mortimer_task.operation->menu->id == "contacts_insufficient" &&
+                    !scripts.story_state().at("vid_phone_contact_1"),
+                "Mortimer insufficient-funds branch changed contact state")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+    mortimer_task = scripts.complete_native_menu_choice("leave");
+    mortimer_task = scripts.complete_native_operation(true);
+    if (!expect(mortimer_task.status == ScriptTaskStep::Status::completed,
+                "Mortimer insufficient-funds path did not finish cleanly")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
+
+    scripts.set_story_state({});
+
+    const auto jump_house_context =
+        scripts.johnson_interaction_context("gunderson.jump_house");
+    const auto wanderer_context =
+        scripts.johnson_interaction_context("wanderer.vigore_jarl");
+    const auto big_rhino_context =
+        scripts.johnson_interaction_context("big-rhino.mortimer_reed");
+    const auto caleb_context = scripts.johnson_interaction_context(
+        "icarus-descending.caleb_brightmore");
+    const auto julius_context = scripts.johnson_interaction_context(
+        "matchstick.julius_strouther");
+    if (!expect(jump_house_context == std::optional<std::uint8_t>{0U} &&
+                    wanderer_context == std::optional<std::uint8_t>{3U} &&
+                    big_rhino_context == std::optional<std::uint8_t>{2U} &&
+                    caleb_context == std::optional<std::uint8_t>{4U} &&
+                    julius_context == std::optional<std::uint8_t>{1U},
+                "Johnson return context was not selected by its Lua profile")) {
+        std::cerr << scripts.failure() << '\n';
+        return 13;
+    }
 
     FieldScriptRouteContext unmapped_location{};
     unmapped_location.scene_id = 20U;
@@ -863,25 +1646,212 @@ int main() {
         route_has_destination_mode(56U, WorldActivityMode::halted) &&
         route_has_destination_mode(255U, WorldActivityMode::halted);
 
+    FieldScriptRouteContext renraku_office_route{};
+    renraku_office_route.scene_id = 5U;
+    renraku_office_route.field_mode = 1U;
+    renraku_office_route.event_code = FieldCollisionEventCode::event_6;
+    renraku_office_route.event_table_available = true;
+    renraku_office_route.event_table[6U] = 35U;
+    const auto renraku_office =
+        scripts.resolve_field_location_route(renraku_office_route);
+    scripts.set_story_state({
+        {"story_flag_bit_16", true},
+        {"story_flag_bit_12", false},
+    });
+    const auto renraku_office_first_visit =
+        scripts.resolve_field_location_route(renraku_office_route);
+    scripts.set_story_state({
+        {"story_flag_bit_16", true},
+        {"story_flag_bit_12", true},
+    });
+    const auto renraku_office_repeat_visit =
+        scripts.resolve_field_location_route(renraku_office_route);
+    scripts.set_story_state({});
+    FieldScriptRouteContext fuchi_office_route{};
+    fuchi_office_route.scene_id = 3U;
+    fuchi_office_route.field_mode = 1U;
+    fuchi_office_route.event_code = FieldCollisionEventCode::event_2;
+    fuchi_office_route.event_table_available = true;
+    fuchi_office_route.event_table[2U] = 21U;
+    scripts.set_story_state({
+        {"story_flag_bit_25", true},
+        {"story_flag_bit_14", false},
+    });
+    const auto fuchi_office_first_visit =
+        scripts.resolve_field_location_route(fuchi_office_route);
+    scripts.set_story_state({
+        {"story_flag_bit_25", true},
+        {"story_flag_bit_14", true},
+    });
+    const auto fuchi_office_repeat_visit =
+        scripts.resolve_field_location_route(fuchi_office_route);
+    scripts.set_story_state({});
+    FieldScriptRouteContext gates_undersound_route{};
+    gates_undersound_route.scene_id = 0U;
+    gates_undersound_route.field_mode = 0U;
+    gates_undersound_route.event_code = FieldCollisionEventCode::event_3;
+    gates_undersound_route.event_table_available = true;
+    gates_undersound_route.event_table[3U] = 21U;
+    scripts.set_story_state({
+        {"story_flag_bit_11", true},
+        {"story_flag_bit_15", false},
+    });
+    const auto gates_undersound_first_visit =
+        scripts.resolve_field_location_route(gates_undersound_route);
+    scripts.set_story_state({
+        {"story_flag_bit_11", false},
+        {"story_flag_bit_15", false},
+    });
+    const auto gates_undersound_pre_mako =
+        scripts.resolve_field_location_route(gates_undersound_route);
+    scripts.set_story_state({});
+
+    struct AuthoredLocationRouteCase {
+        std::uint8_t scene_id;
+        std::uint8_t event_id;
+        std::uint8_t destination_scene;
+        WorldActivityMode destination_mode;
+        bool expect_door_return_policy = true;
+    };
+    // Scene 6/event 0 and event 1 are ROM indexed-title-service overrides;
+    // their Lua tasks are asserted below instead of as generic table routes.
+    constexpr std::array<AuthoredLocationRouteCase, 46>
+        kAuthoredLocationRouteCases{{
+            {0U, 0U, 21U, WorldActivityMode::resource_activity},
+            {0U, 1U, 12U, WorldActivityMode::field},
+            {0U, 6U, 10U, WorldActivityMode::field},
+            {0U, 7U, 21U, WorldActivityMode::resource_activity},
+            {0U, 8U, 50U, WorldActivityMode::scripted_activity},
+            {0U, 9U, 51U, WorldActivityMode::scripted_activity},
+            {1U, 0U, 14U, WorldActivityMode::field},
+            {1U, 1U, 53U, WorldActivityMode::scripted_activity},
+            {1U, 6U, 13U, WorldActivityMode::field},
+            {1U, 8U, 50U, WorldActivityMode::scripted_activity},
+            {1U, 9U, 13U, WorldActivityMode::field},
+            {1U, 10U, 51U, WorldActivityMode::scripted_activity},
+            {1U, 11U, 52U, WorldActivityMode::scripted_activity},
+            {2U, 7U, 26U, WorldActivityMode::resource_activity},
+            {3U, 0U, 17U, WorldActivityMode::field},
+            {3U, 1U, 13U, WorldActivityMode::field},
+            {3U, 6U, 41U, WorldActivityMode::resource_activity},
+            {3U, 7U, 51U, WorldActivityMode::scripted_activity},
+            {3U, 8U, 52U, WorldActivityMode::scripted_activity},
+            {3U, 9U, 53U, WorldActivityMode::scripted_activity},
+            {4U, 0U, 13U, WorldActivityMode::field},
+            {4U, 1U, 10U, WorldActivityMode::field},
+            // This side event is near the Medicine Lodge, but the ROM/site
+            // audit has not established it as a doorway.
+            {4U, 6U, 0U, WorldActivityMode::field, false},
+            {5U, 1U, 16U, WorldActivityMode::field},
+            {5U, 2U, 35U, WorldActivityMode::resource_activity},
+            {5U, 3U, 35U, WorldActivityMode::resource_activity},
+            {5U, 4U, 35U, WorldActivityMode::resource_activity},
+            {5U, 5U, 35U, WorldActivityMode::resource_activity},
+            {5U, 6U, 35U, WorldActivityMode::resource_activity},
+            {7U, 0U, 13U, WorldActivityMode::field},
+            {0U, 2U, 18U, WorldActivityMode::field},
+            {0U, 3U, 21U, WorldActivityMode::resource_activity},
+            {0U, 4U, 30U, WorldActivityMode::resource_activity},
+            {0U, 5U, 21U, WorldActivityMode::resource_activity},
+            {1U, 2U, 26U, WorldActivityMode::resource_activity},
+            {1U, 3U, 13U, WorldActivityMode::field},
+            {1U, 4U, 15U, WorldActivityMode::field},
+            {1U, 5U, 13U, WorldActivityMode::field},
+            {2U, 3U, 26U, WorldActivityMode::resource_activity},
+            {3U, 2U, 21U, WorldActivityMode::resource_activity},
+            {3U, 3U, 30U, WorldActivityMode::resource_activity},
+            {3U, 4U, 13U, WorldActivityMode::field},
+            {3U, 5U, 11U, WorldActivityMode::field},
+            {4U, 2U, 13U, WorldActivityMode::field},
+            {4U, 4U, 13U, WorldActivityMode::field},
+            {4U, 5U, 13U, WorldActivityMode::field},
+        }};
+    bool authored_location_routes_match = true;
+    for (const auto& route_case : kAuthoredLocationRouteCases) {
+        FieldScriptRouteContext route_context{};
+        route_context.scene_id = route_case.scene_id;
+        route_context.event_code =
+            field_collision_event_code_from_id(route_case.event_id);
+        route_context.event_table_available = true;
+        route_context.event_table[route_case.event_id] =
+            route_case.destination_scene;
+        const auto route = scripts.resolve_field_location_route(route_context);
+        authored_location_routes_match =
+            route.has_value() &&
+            route->kind == FieldScriptRouteKind::area_event &&
+            route->script == FieldScriptId::area_event_table &&
+            route->area_event_target == route_case.destination_scene &&
+            route->area_event_destination_mode ==
+                route_case.destination_mode &&
+            route->return_anchor ==
+                (route_case.expect_door_return_policy
+                     ? FieldLocationReturnAnchor::collision_probe_lead
+                     : FieldLocationReturnAnchor::none) &&
+            route->return_facing ==
+                (route_case.expect_door_return_policy
+                     ? FieldLocationReturnFacing::face_away_from_entry
+                     : FieldLocationReturnFacing::
+                           preserve_entry_heading) &&
+            authored_location_routes_match;
+    }
+
     if (!expect(
             stoker_route.has_value() &&
                 stoker_route->kind == FieldScriptRouteKind::dialogue &&
-                stoker_route->script ==
-                    FieldScriptId::stoker_motel_interaction &&
+                stoker_route->script == FieldScriptId::lua_dialogue &&
                 !stoker_route->area_event_target.has_value() &&
+                stoker_route->entry_dialogue_module == "michael_package" &&
+                stoker_route->entry_dialogue_function == "stoker_interaction" &&
+                stoker_route->entry_location_type == "motel" &&
+                stoker_route->entry_location_id == "stoker_motel" &&
+                stoker_route->entry_text_profile == "stoker.motel" &&
+                stoker_route->entry_speaker_id == "stoker" &&
+                stoker_route->return_anchor ==
+                    FieldLocationReturnAnchor::collision_probe_lead &&
+                stoker_route->return_facing ==
+                    FieldLocationReturnFacing::face_away_from_entry &&
+                stoker_paid_route.has_value() &&
+                stoker_paid_route->kind ==
+                    FieldScriptRouteKind::area_event &&
+                stoker_paid_route->area_event_target == 26U &&
+                jump_house_route.has_value() &&
+                jump_house_route->kind == FieldScriptRouteKind::area_event &&
+                jump_house_route->area_event_target == 13U &&
+                jump_house_route->entry_dialogue_module == "building" &&
+                jump_house_route->entry_dialogue_function ==
+                    "present_entry_description" &&
+                jump_house_route->entry_location_type == "building" &&
+                jump_house_route->entry_location_id == "jump_house" &&
+                jump_house_route->entry_text_profile == "jump_house.entry" &&
+                jump_house_route->entry_speaker_id == "jump_house_entry" &&
+                jump_house_route->entry_continue_result_id == "shown" &&
+                jump_house_alternate_route.has_value() &&
+                jump_house_alternate_route->area_event_target == 13U &&
+                jump_house_alternate_route->entry_dialogue_module.empty() &&
                 ares_route.has_value() &&
                 ares_route->kind == FieldScriptRouteKind::field_service &&
-                ares_route->script == FieldScriptId::ares_weapon_emporium &&
+                ares_route->script == FieldScriptId::host_field_service &&
+                ares_route->field_service_id == "ares_weapon_emporium" &&
+                ares_route->return_anchor ==
+                    FieldLocationReturnAnchor::none &&
                 scene20_route.has_value() &&
                 scene20_route->kind == FieldScriptRouteKind::area_event &&
                 scene20_route->area_event_target == 20U &&
                 scene20_route->area_event_destination_mode ==
                     WorldActivityMode::field &&
+                scene20_route->return_anchor ==
+                    FieldLocationReturnAnchor::collision_probe_lead &&
+                scene20_route->return_facing ==
+                    FieldLocationReturnFacing::face_away_from_entry &&
                 scene26_route.has_value() &&
                 scene26_route->kind == FieldScriptRouteKind::area_event &&
                 scene26_route->area_event_target == 26U &&
                 scene26_route->area_event_destination_mode ==
                     WorldActivityMode::resource_activity &&
+                scene26_route->return_anchor ==
+                    FieldLocationReturnAnchor::collision_probe_lead &&
+                scene26_route->return_facing ==
+                    FieldLocationReturnFacing::face_away_from_entry &&
                 missing_event_route.has_value() &&
                 missing_event_route->kind == FieldScriptRouteKind::no_route &&
                 missing_event_route->event_code == 255U &&
@@ -895,7 +1865,50 @@ int main() {
                     WorldActivityMode::field &&
                 missing_table_route.has_value() &&
                 missing_table_route->kind == FieldScriptRouteKind::no_route &&
-                destination_ranges_match,
+                destination_ranges_match &&
+                renraku_office.has_value() &&
+                renraku_office->kind == FieldScriptRouteKind::area_event &&
+                renraku_office->area_event_target == 35U &&
+                renraku_office->area_event_destination_mode ==
+                    WorldActivityMode::resource_activity &&
+                renraku_office_first_visit.has_value() &&
+                renraku_office_first_visit->area_event_target == 35U &&
+                renraku_office_first_visit->entry_dialogue_module ==
+                    "renraku_offices" &&
+                renraku_office_first_visit->entry_dialogue_function ==
+                    "present_map_overlay_entry" &&
+                renraku_office_first_visit->entry_continue_result_id ==
+                    "enter_scene_35" &&
+                renraku_office_repeat_visit.has_value() &&
+                renraku_office_repeat_visit->area_event_target == 35U &&
+                renraku_office_repeat_visit->entry_dialogue_module.empty() &&
+                fuchi_office_first_visit.has_value() &&
+                fuchi_office_first_visit->area_event_target == 21U &&
+                fuchi_office_first_visit->entry_dialogue_module ==
+                    "fuchi_offices" &&
+                fuchi_office_first_visit->entry_dialogue_function ==
+                    "present_cyberheart_entry" &&
+                fuchi_office_first_visit->entry_continue_result_id ==
+                    "enter_scene_21" &&
+                fuchi_office_repeat_visit.has_value() &&
+                fuchi_office_repeat_visit->area_event_target == 21U &&
+                fuchi_office_repeat_visit->entry_dialogue_module.empty() &&
+                gates_undersound_first_visit.has_value() &&
+                gates_undersound_first_visit->kind ==
+                    FieldScriptRouteKind::field_service &&
+                gates_undersound_first_visit->script ==
+                    FieldScriptId::lua_field_service &&
+                !gates_undersound_first_visit->area_event_target.has_value() &&
+                gates_undersound_first_visit->indexed_title_service.has_value() &&
+                gates_undersound_first_visit->indexed_title_service->module ==
+                    "gates_undersound" &&
+                gates_undersound_first_visit->indexed_title_service->function ==
+                    "present_ogami_departure" &&
+                gates_undersound_pre_mako.has_value() &&
+                gates_undersound_pre_mako->kind ==
+                    FieldScriptRouteKind::area_event &&
+                gates_undersound_pre_mako->area_event_target == 21U &&
+                authored_location_routes_match,
             "Lua did not resolve ROM-backed field location routes and destination modes")) {
         std::cerr << scripts.failure() << '\n';
         return 2;
@@ -1141,6 +2154,35 @@ int main() {
                     "FFE17F must bypass each event-2-through-5 maglock prompt")) {
             std::cerr << scripts.failure() << '\n';
             return 19;
+        }
+    }
+    for (const auto event_code : maglock_events) {
+        collision_input = collision(event_code, 4U);
+        collision_input.world_mode = 1U; // 0x167AE field-scene mode
+        collision_input.maglocks_disabled = false;
+        collision_decision =
+            scripts.resolve_field_collision_event(collision_input);
+        if (!expect(collision_decision.has_value() &&
+                        collision_decision->action ==
+                            FieldMapEventAction::project_world_interaction &&
+                        collision_decision->mode_event_code_published,
+                    "field-scene event codes 2..5 must reach the event table, not the maglock prompt")) {
+            std::cerr << scripts.failure() << '\n';
+            return 21;
+        }
+
+        collision_input = collision(event_code, 21U);
+        collision_input.world_mode = 2U; // 0x167AE resource-activity mode
+        collision_input.maglocks_disabled = false;
+        collision_decision =
+            scripts.resolve_field_collision_event(collision_input);
+        if (!expect(collision_decision.has_value() &&
+                        collision_decision->action ==
+                            FieldMapEventAction::begin_maglock_interaction &&
+                        !collision_decision->mode_event_code_published,
+                    "resource-mode event codes 2..5 must enter the conditional maglock prompt")) {
+            std::cerr << scripts.failure() << '\n';
+            return 22;
         }
     }
     collision_input = collision(FieldCollisionEventCode::event_24);
@@ -3148,6 +4190,10 @@ int main() {
          CatalogDecision::unarmed},
         {"weenr2_k08_item01", 8U, ScriptActorActionKind::item, 1U,
          CatalogDecision::item_gated},
+        {"yakuza_weenr_k08_item0a", 8U, ScriptActorActionKind::item, 10U,
+         CatalogDecision::item_gated},
+        {"mafia_eye5r_k07_item0c", 7U, ScriptActorActionKind::item, 12U,
+         CatalogDecision::item_gated},
         {"elven_mage_k06_spell09", 6U, ScriptActorActionKind::spell, 9U,
          CatalogDecision::spell},
         {"gator_shaman_k09_spell02", 9U, ScriptActorActionKind::spell, 2U,
@@ -3260,7 +4306,7 @@ int main() {
     };
     bool catalog_ids_match =
         catalog_file_ok && catalog_seen.size() == catalog_profile_count &&
-        catalog_profile_count == 19U;
+        catalog_profile_count == 21U;
     if (catalog_ids_match) {
         for (const auto& seen : catalog_seen) {
             const auto* row = catalog_row_for(seen.profile_id);
@@ -3276,7 +4322,7 @@ int main() {
         }
     }
     if (!expect(catalog_ids_match,
-                "dynamic-world catalog no longer has the 19 "
+                "dynamic-world catalog no longer has the 21 "
                 "profile/action pairs")) {
         std::cerr << catalog_path.string() << " unique="
                   << catalog_seen.size() << '\n';
@@ -5241,11 +6287,26 @@ int main() {
         scripts.dialogue_text("stoker.motel.arrival.title");
     const auto* fifth_floor_text =
         scripts.dialogue_text("field.security-terminal.floor.4");
+    const auto* renraku_entry_text =
+        scripts.dialogue_text("renraku.offices.page.entry");
+    const auto* fuchi_entry_text =
+        scripts.dialogue_text("penumbra.fuchi.page.entry");
+    const auto* gates_entry_text =
+        scripts.dialogue_text("gates.undersound.page.entry");
     if (!expect(arrival_text != nullptr &&
                     arrival_text->find("Stoker's Coffin Motel") !=
                         std::string::npos &&
                     fifth_floor_text != nullptr &&
                     fifth_floor_text->find("fifth floor.") !=
+                        std::string::npos &&
+                    renraku_entry_text != nullptr &&
+                    renraku_entry_text->find("past the foyer") !=
+                        std::string::npos &&
+                    fuchi_entry_text != nullptr &&
+                    fuchi_entry_text->find("cyber-heart") !=
+                        std::string::npos &&
+                    gates_entry_text != nullptr &&
+                    gates_entry_text->find("Mr. Ogami") !=
                         std::string::npos,
                 "ROM-derived Lua dialogue content did not load")) {
         std::cerr << scripts.failure() << '\n';
@@ -6291,6 +7352,116 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
+    const auto medicine_lodge = scripts.shop_definition("medicine_lodge");
+    if (!expect(medicine_lodge.has_value() &&
+                    medicine_lodge->menu_mode == 3U &&
+                    medicine_lodge->menu_result == 0 &&
+                    medicine_lodge->groups.size() == 4U,
+                "Medicine Lodge Lua catalog lost ROM mode/result headings") ||
+        !expect(medicine_lodge->text_keys
+                        .progression_training_unavailable ==
+                    "shop.progression.training_unavailable",
+                "Medicine Lodge training-unavailable key differs from ROM") ||
+        !expect(medicine_lodge->text_keys.progression_maximum_level ==
+                    "shop.progression.maximum_level",
+                "Medicine Lodge maximum-level key differs from ROM") ||
+        !expect(medicine_lodge->text_keys.progression_cost_heading ==
+                    "shop.progression.cost_heading" &&
+                    medicine_lodge->text_keys.progression_level_label ==
+                        "shop.progression.level_label",
+                "Medicine Lodge progression label keys differ from ROM") ||
+        !expect(medicine_lodge->groups[0].id == "magic_spells" &&
+                    medicine_lodge->groups[0].progression_offers.size() == 5U &&
+                    medicine_lodge->groups[0].progression_offers[0].action_code ==
+                        0x03U &&
+                    medicine_lodge->groups[0].progression_offers[2].action_code ==
+                        0x0CU &&
+                    medicine_lodge->groups[0].progression_offers[4].action_code ==
+                        0x0BU &&
+                    medicine_lodge->groups[0].progression_offers[0].source_metadata ==
+                        0x06U &&
+                    medicine_lodge->groups[0].progression_offers[0].base_cost ==
+                        1000U,
+                "Medicine Lodge spell rows differ from ROM 0x1AAF40") ||
+        !expect(medicine_lodge->groups[1].id == "magic_items" &&
+                    medicine_lodge->groups[1].offers.size() == 2U &&
+                    medicine_lodge->groups[1].offers[0].type == 0x12U &&
+                    medicine_lodge->groups[1].offers[1].type == 0x26U &&
+                    medicine_lodge->groups[1].offers[1].quantity == 0x14U &&
+                    medicine_lodge->groups[2].id == "magic_foci" &&
+                    medicine_lodge->groups[2].offers.size() == 4U &&
+                    medicine_lodge->groups[2].offers[0].type == 0x1BU &&
+                    medicine_lodge->groups[2].offers[1].value == 0x03U &&
+                    medicine_lodge->groups[2].offers[3].quantity == 0x14U &&
+                    medicine_lodge->groups[3].id == "sell" &&
+                    medicine_lodge->groups[3].offers.empty(),
+                "Medicine Lodge item rows differ from ROM 0x1AAEF8/0x1AAEB0")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    auto medicine_menu = scripts.open_shop_menu("medicine_lodge");
+    if (!expect(medicine_menu.has_value() && medicine_menu->open &&
+                    medicine_menu->shop_id == "medicine_lodge" &&
+                    medicine_menu->menu_mode == 3U &&
+                    medicine_menu->menu_result == 0 &&
+                    medicine_menu->event == "opened",
+                "Lua did not open Medicine Lodge mode 3/result 0 state")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    medicine_menu = scripts.advance_shop_menu(0x0200U);
+    if (!expect(medicine_menu.has_value() &&
+                    medicine_menu->event == "panel_changed" &&
+                    medicine_menu->action_panel == 1U &&
+                    medicine_menu->action_cursor == 0U &&
+                    medicine_menu->selected_action == 0U,
+                "Lua did not own the Medicine Lodge offer-panel transition")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    medicine_menu = scripts.advance_shop_menu(0x4000U);
+    if (!expect(medicine_menu.has_value() &&
+                    medicine_menu->event == "progression_selected" &&
+                    medicine_menu->action_panel == 1U,
+                "Lua did not route the first Medicine Lodge spell selection")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    medicine_menu = scripts.reset_shop_menu();
+    if (!expect(medicine_menu.has_value() && medicine_menu->open &&
+                    medicine_menu->action_cursor == 0U &&
+                    medicine_menu->action_panel == 0U &&
+                    medicine_menu->selected_action == 0U,
+                "Lua did not reset the active shop-menu selection")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    medicine_menu = scripts.advance_shop_menu(0x0800U);
+    if (!expect(medicine_menu.has_value() &&
+                    medicine_menu->event == "selection_moved" &&
+                    medicine_menu->action_cursor == 1U &&
+                    medicine_menu->selected_action == 1U,
+                "Lua category navigation did not select Magic Items")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    medicine_menu = scripts.advance_shop_menu(0x0200U);
+    medicine_menu = scripts.advance_shop_menu(0x4000U);
+    if (!expect(medicine_menu.has_value() &&
+                    medicine_menu->event == "purchase_selected" &&
+                    medicine_menu->selected_action == 1U,
+                "Lua did not route Medicine Lodge item purchase selection")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    medicine_menu = scripts.advance_shop_menu(0x8000U);
+    if (!expect(medicine_menu.has_value() && !medicine_menu->open &&
+                    medicine_menu->event == "returned_to_field" &&
+                    scripts.close_shop_menu(),
+                "Lua shop-menu state did not return cleanly to the field")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
     const auto* ares_title = scripts.dialogue_text(shop->title_key);
     const auto* transaction_prompt =
         scripts.dialogue_text(shop->text_keys.transaction_prompt);
@@ -7141,6 +8312,18 @@ int main() {
         }
         vigore_search = scripts.complete_native_operation(true);
     }
+    if (!expect(vigore_search.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    vigore_search.operation.has_value() &&
+                    vigore_search.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    vigore_search.operation->service_id ==
+                        "party.award_karma_2",
+                "Lua Redmond event did not request its source +2 Karma reward")) {
+        std::cerr << scripts.failure() << '\n';
+        return 16;
+    }
+    vigore_search = scripts.complete_native_service_result("applied");
     if (!expect(vigore_search.status == ScriptTaskStep::Status::completed &&
                     vigore_search.result_id ==
                         std::optional<std::string>{"completed"} &&
@@ -7148,6 +8331,1718 @@ int main() {
                 "Lua Redmond event did not publish completion after its last page")) {
         std::cerr << scripts.failure() << '\n';
         return 16;
+    }
+
+    constexpr std::string_view kTarislarCityInnLocation =
+        "puyallup_site_03_tarislar_city_inn";
+    scripts.set_story_state({
+        {"story_flag_bit_0", true},
+        {"story_flag_bit_1", false},
+        {"story_flag_bit_13", false},
+        {"story_flag_bit_30", false},
+    });
+    scripts.set_location_context(
+        "building", kTarislarCityInnLocation, "tarislar.city_inn",
+        "tarislar_city_inn_narrator");
+    scripts.set_field_mode_context(ScriptFieldModeContext{1U, 1U, 0});
+    FieldScriptRouteContext inn_context{};
+    inn_context.scene_id = 1U;
+    inn_context.field_mode = 1U;
+    inn_context.event_code = FieldCollisionEventCode::event_1;
+    inn_context.event_table_available = true;
+    inn_context.event_table[1U] = 53U;
+    inn_context.alternate_result = 0;
+    const auto inn_title_service =
+        scripts.resolve_field_location_route(inn_context);
+    if (!expect(inn_title_service.has_value() &&
+                    inn_title_service->kind ==
+                        FieldScriptRouteKind::field_service &&
+                    inn_title_service->script ==
+                        FieldScriptId::lua_field_service &&
+                    inn_title_service->indexed_title_service.has_value() &&
+                    inn_title_service->indexed_title_service->module ==
+                        "tarislar_city_inn" &&
+                    inn_title_service->indexed_title_service->function ==
+                        "present_indexed_title_service" &&
+                    inn_title_service->indexed_title_service->location_id ==
+                        kTarislarCityInnLocation,
+                "Lua did not select the Inn's indexed title-service task")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    auto inn_default_route_context = inn_context;
+    inn_default_route_context.alternate_result = 1;
+    const auto inn_default_route =
+        scripts.resolve_field_location_route(inn_default_route_context);
+    if (!expect(inn_default_route.has_value() &&
+                    inn_default_route->kind ==
+                        FieldScriptRouteKind::area_event &&
+                    inn_default_route->area_event_target ==
+                        std::optional<std::uint8_t>{53U} &&
+                    inn_default_route->field_exit_prompt.has_value() &&
+                    inn_default_route->field_exit_prompt->module ==
+                        "tarislar_city_inn" &&
+                    inn_default_route->field_exit_prompt->function ==
+                        "present_field_exit_prompt" &&
+                    scripts.dialogue_text("tarislar.city_inn.entry") !=
+                        nullptr &&
+                    scripts.dialogue_text("tarislar.city_inn.option.shale") !=
+                        nullptr,
+                "Inn default route lost its ROM event byte, Lua prompt task, or regenerated text")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    auto inn_task = scripts.start_task(
+        "tarislar_city_inn", "present_indexed_title_service");
+    if (!expect(inn_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    inn_task.operation.has_value() &&
+                    inn_task.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    inn_task.operation->menu.has_value() &&
+                    inn_task.operation->menu->id == "shale_more" &&
+                    scripts.story_state().at("story_trigger_active_1"),
+                "Inn service did not open its intro under story trigger 1")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    inn_task = scripts.complete_native_menu_choice("more");
+    if (!expect(inn_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    inn_task.operation.has_value() &&
+                    inn_task.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    inn_task.operation->menu.has_value() &&
+                    inn_task.operation->menu->id == "inn_service" &&
+                    inn_task.operation->menu->choices.size() == 3U,
+                "Inn service did not expose crash, leave, and Tabatha choices")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    const auto inn_service_menu = scripts.resolve_dialogue_menu(
+        *inn_task.operation->menu);
+    if (!expect(inn_service_menu.has_value() &&
+                    inn_service_menu->title_key.empty() &&
+                    inn_service_menu->choices.size() == 3U,
+                "Inn service choices do not resolve for its inline source prompt")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    const auto* inn_offer_text =
+        scripts.dialogue_text("tarislar.city_inn.offer");
+    if (!expect(inn_offer_text != nullptr &&
+                    inn_task.operation->menu->inline_prompt &&
+                    inn_task.operation->menu->inline_text == *inn_offer_text,
+                "Inn inline service prompt differs from its regenerated ROM text")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    inn_task = scripts.complete_native_menu_choice("leave");
+    if (!expect(inn_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    inn_task.operation.has_value() &&
+                    inn_task.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    inn_task.operation->dialogue.has_value() &&
+                    inn_task.operation->dialogue->inline_text ==
+                        "I'll be seeing you, chum.",
+                "Inn leave choice did not produce the source farewell")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    inn_task = scripts.complete_native_operation(true);
+    if (!expect(inn_task.status == ScriptTaskStep::Status::completed &&
+                    inn_task.result_id ==
+                        std::optional<std::string>{"field_return"},
+                "Inn service did not return to the field after leaving")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    constexpr std::string_view kWylieGalaInnLocation =
+        "penumbra_site_09_wylies_gala_inn";
+    scripts.set_location_context(
+        "building", kWylieGalaInnLocation, "penumbra.wylies_gala_inn",
+        "wylie_gala_inn_narrator");
+    FieldScriptRouteContext wylie_context{};
+    wylie_context.scene_id = 3U;
+    wylie_context.field_mode = 3U;
+    wylie_context.event_code = FieldCollisionEventCode::event_1;
+    wylie_context.event_table_available = true;
+    wylie_context.event_table[1U] = 13U;
+    const auto wylie_route = scripts.resolve_field_location_route(
+        wylie_context);
+    if (!expect(wylie_route.has_value() &&
+                    wylie_route->kind == FieldScriptRouteKind::area_event &&
+                    wylie_route->area_event_target ==
+                        std::optional<std::uint8_t>{13U} &&
+                    wylie_route->field_exit_prompt.has_value() &&
+                    wylie_route->field_exit_prompt->module ==
+                        "wylie_gala_inn" &&
+                    wylie_route->field_exit_prompt->function ==
+                        "present_field_exit_prompt" &&
+                    wylie_route->field_exit_prompt->location_id ==
+                        kWylieGalaInnLocation &&
+                    scripts.dialogue_text("wylie.gala_inn.entry") != nullptr &&
+                    scripts.dialogue_text("wylie.gala_inn.room") != nullptr &&
+                    scripts.dialogue_text("wylie.gala_inn.free_stay") != nullptr,
+                "Wylie's Gala Inn lost its ROM table evidence, Lua prompt, or extracted source text")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+
+    scripts.set_field_mode_context(ScriptFieldModeContext{3U, 1U, 0});
+    scripts.set_story_state({{"runner_feature_flag_bit_2", false}});
+    auto wylie_task = scripts.start_task(
+        "wylie_gala_inn", "present_field_exit_prompt");
+    if (!expect(wylie_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    wylie_task.operation.has_value() &&
+                    wylie_task.operation->menu.has_value() &&
+                    wylie_task.operation->menu->id == "inn_service" &&
+                    wylie_task.operation->menu->choices.size() == 2U &&
+                    wylie_task.operation->menu->inline_text ==
+                        *scripts.dialogue_text("wylie.gala_inn.entry"),
+                "Wylie's Gala Inn did not open the extracted entry prompt")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+    const auto wylie_entry_menu = scripts.resolve_dialogue_menu(
+        *wylie_task.operation->menu);
+    if (!expect(wylie_entry_menu.has_value() &&
+                    wylie_entry_menu->choices.size() == 2U &&
+                    wylie_entry_menu->choices[0].label_key ==
+                        "wylie.gala_inn.option.crash" &&
+                    wylie_entry_menu->choices[1].label_key ==
+                        "wylie.gala_inn.option.leave",
+                "Wylie's Gala Inn entry choice labels do not resolve from ROM text")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+    wylie_task = scripts.complete_native_menu_choice("crash");
+    if (!expect(wylie_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    wylie_task.operation.has_value() &&
+                    wylie_task.operation->menu.has_value() &&
+                    wylie_task.operation->menu->id == "room_payment" &&
+                    wylie_task.operation->menu->inline_text ==
+                        *scripts.dialogue_text("wylie.gala_inn.room"),
+                "Wylie's Gala Inn did not select the 50-nuyen offer when FF018F bit 2 is clear")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+    const auto wylie_payment_menu = scripts.resolve_dialogue_menu(
+        *wylie_task.operation->menu);
+    if (!expect(wylie_payment_menu.has_value() &&
+                    wylie_payment_menu->choices.size() == 2U &&
+                    wylie_payment_menu->choices[0].label_key ==
+                        "wylie.gala_inn.option.pay" &&
+                    wylie_payment_menu->choices[1].label_key ==
+                        "wylie.gala_inn.option.leave",
+                "Wylie's Gala Inn payment choices do not resolve from ROM text")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+    wylie_task = scripts.complete_native_menu_choice("pay");
+    if (!expect(wylie_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    wylie_task.operation.has_value() &&
+                    wylie_task.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    wylie_task.operation->service_id == "building.charge_50",
+                "Wylie's Gala Inn did not request its source 50-nuyen charge")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+    wylie_task = scripts.complete_native_service_result("paid");
+    const auto wylie_paid_text = scripts.dialogue_event_text_keys(
+        "wylie_gala_inn_narrator", "penumbra.wylies_gala_inn", "room_paid");
+    if (!expect(wylie_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    wylie_task.operation.has_value() &&
+                    wylie_task.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    wylie_task.operation->dialogue.has_value() &&
+                    wylie_task.operation->dialogue->event_id == "room_paid" &&
+                    wylie_paid_text.has_value() &&
+                    wylie_paid_text->title_key ==
+                        "stoker.motel.room.paid.title" &&
+                    scripts.dialogue_text(wylie_paid_text->title_key) != nullptr,
+                "Wylie's successful charge did not select the ROM's shared paid-stay text")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+    wylie_task = scripts.complete_native_operation(true);
+    if (!expect(wylie_task.status == ScriptTaskStep::Status::completed &&
+                    wylie_task.result_id ==
+                        std::optional<std::string>{"hotel-options"},
+                "Wylie's paid stay did not transfer to the Hotel Options screen")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+
+    scripts.set_story_state({{"runner_feature_flag_bit_2", true}});
+    wylie_task = scripts.start_task(
+        "wylie_gala_inn", "present_field_exit_prompt");
+    if (!expect(wylie_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    wylie_task.operation.has_value() &&
+                    wylie_task.operation->menu.has_value(),
+                "Wylie's free-stay path did not open its entry menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+    wylie_task = scripts.complete_native_menu_choice("crash");
+    const auto wylie_free_stay_text = scripts.dialogue_event_text_keys(
+        "wylie_gala_inn_narrator", "penumbra.wylies_gala_inn", "free_stay");
+    if (!expect(wylie_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    wylie_task.operation.has_value() &&
+                    wylie_task.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    wylie_task.operation->dialogue.has_value() &&
+                    wylie_task.operation->dialogue->event_id == "free_stay" &&
+                    wylie_free_stay_text.has_value() &&
+                    wylie_free_stay_text->title_key ==
+                        "wylie.gala_inn.free_stay" &&
+                    scripts.dialogue_text(wylie_free_stay_text->title_key) !=
+                        nullptr,
+                "FF018F bit 2 did not select Wylie's free-stay text")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+    wylie_task = scripts.complete_native_operation(true);
+    if (!expect(wylie_task.status == ScriptTaskStep::Status::completed &&
+                    wylie_task.result_id ==
+                        std::optional<std::string>{"hotel-options"},
+                "Wylie's free stay did not transfer to the Hotel Options screen")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+
+    scripts.set_story_state({});
+    wylie_task = scripts.start_task(
+        "wylie_gala_inn", "present_field_exit_prompt");
+    if (!expect(wylie_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    wylie_task.operation.has_value(),
+                "Wylie's unknown FF018F test could not open its entry menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+    wylie_task = scripts.complete_native_menu_choice("crash");
+    if (!expect(wylie_task.status == ScriptTaskStep::Status::completed &&
+                    wylie_task.result_id == std::optional<std::string>{
+                        "wylie_feature_state_unavailable"},
+                "Wylie's Inn guessed an unresolved restored runner-status bit")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+
+    constexpr std::string_view kOwlfeatherLocation =
+        "salish_owlfeather_ranger_lodge";
+    scripts.set_location_context("building", kOwlfeatherLocation,
+                                 "salish.owlfeather", "david_owlfeather");
+    scripts.set_field_mode_context(ScriptFieldModeContext{6U, 0U, 0});
+    FieldScriptRouteContext owlfeather_context{};
+    owlfeather_context.scene_id = 6U;
+    owlfeather_context.field_mode = 6U;
+    owlfeather_context.event_code = FieldCollisionEventCode::event_0;
+    owlfeather_context.event_table_available = true;
+    owlfeather_context.event_table[0U] = 13U;
+    owlfeather_context.alternate_result = 0;
+    scripts.set_story_state({
+        {"story_flag_bit_1", true},
+        {"story_flag_bit_2", false},
+        {"story_flag_bit_3", false},
+        {"story_flag_bit_4", false},
+    });
+    auto owlfeather_route =
+        scripts.resolve_field_location_route(owlfeather_context);
+    if (!expect(owlfeather_route.has_value() &&
+                    owlfeather_route->kind ==
+                        FieldScriptRouteKind::field_service &&
+                    owlfeather_route->indexed_title_service.has_value() &&
+                    owlfeather_route->indexed_title_service->module ==
+                        "salish_owlfeather" &&
+                    owlfeather_route->indexed_title_service->function ==
+                        "present_first_contact" &&
+                    owlfeather_route->indexed_title_service->speaker_id ==
+                        "david_owlfeather" &&
+                    scripts.dialogue_text(
+                        "salish.owlfeather.option.brother") != nullptr,
+                "Owlfeather's first source-gated building service was not loaded from entity Lua")) {
+        std::cerr << scripts.failure() << '\n';
+        std::cerr << "Owlfeather route debug: present="
+                  << owlfeather_route.has_value();
+        if (owlfeather_route.has_value()) {
+            std::cerr << " kind="
+                      << static_cast<int>(owlfeather_route->kind)
+                      << " script="
+                      << static_cast<int>(owlfeather_route->script)
+                      << " service="
+                      << owlfeather_route->indexed_title_service.has_value();
+            if (owlfeather_route->indexed_title_service.has_value()) {
+                std::cerr << " module="
+                          << owlfeather_route->indexed_title_service->module
+                          << " function="
+                          << owlfeather_route->indexed_title_service->function
+                          << " speaker="
+                          << owlfeather_route->indexed_title_service->speaker_id;
+            }
+        }
+        std::cerr << " label="
+                  << (scripts.dialogue_text(
+                          "salish.owlfeather.option.brother") != nullptr)
+                  << '\n';
+        return 17;
+    }
+    scripts.set_story_state({
+        {"story_flag_bit_1", false},
+        {"story_flag_bit_2", true},
+        {"story_flag_bit_3", false},
+        {"story_flag_bit_4", false},
+    });
+    owlfeather_route = scripts.resolve_field_location_route(owlfeather_context);
+    if (!expect(owlfeather_route.has_value() &&
+                    owlfeather_route->indexed_title_service.has_value() &&
+                    owlfeather_route->indexed_title_service->function ==
+                        "present_search_followup",
+                "Owlfeather's second ROM story gate did not select the search follow-up")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    scripts.set_story_state({
+        {"story_flag_bit_2", false},
+        {"story_flag_bit_3", true},
+        {"story_flag_bit_4", false},
+    });
+    owlfeather_route = scripts.resolve_field_location_route(owlfeather_context);
+    if (!expect(owlfeather_route.has_value() &&
+                    owlfeather_route->indexed_title_service.has_value() &&
+                    owlfeather_route->indexed_title_service->function ==
+                        "present_return_followup",
+                "Owlfeather's third ROM story gate did not select the return follow-up")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    scripts.set_story_state({
+        {"story_flag_bit_1", false},
+        {"story_flag_bit_2", false},
+        {"story_flag_bit_3", false},
+        {"story_flag_bit_4", false},
+    });
+    owlfeather_route = scripts.resolve_field_location_route(owlfeather_context);
+    if (!expect(owlfeather_route.has_value() &&
+                    owlfeather_route->kind ==
+                        FieldScriptRouteKind::area_event &&
+                    owlfeather_route->area_event_target ==
+                        std::optional<std::uint8_t>{13U} &&
+                    owlfeather_route->return_anchor ==
+                        FieldLocationReturnAnchor::collision_probe_lead &&
+                    owlfeather_route->return_facing ==
+                        FieldLocationReturnFacing::face_away_from_entry,
+                "Owlfeather's ungated visit did not preserve its event-table destination and ROM return placement")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_1", true},
+        {"story_flag_bit_2", false},
+        {"story_flag_bit_3", false},
+        {"story_flag_bit_4", false},
+        {"field_mode_effect_flag_bit_8", true},
+        {"field_mode_effect_flag_bit_9", true},
+    });
+    auto owlfeather_task =
+        scripts.start_task("salish_owlfeather", "present_first_contact");
+    if (!expect(owlfeather_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    owlfeather_task.operation.has_value() &&
+                    owlfeather_task.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    owlfeather_task.operation->menu.has_value() &&
+                    owlfeather_task.operation->menu->id == "opening" &&
+                    scripts.story_state().at("story_trigger_active_2"),
+                "Owlfeather's title service did not open its ROM opening under trigger 2")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    auto owlfeather_opening_menu = scripts.resolve_dialogue_menu(
+        *owlfeather_task.operation->menu);
+    if (!expect(owlfeather_opening_menu.has_value() &&
+                    owlfeather_opening_menu->choices.size() == 3U &&
+                    owlfeather_opening_menu->choices[2].label_key ==
+                        "salish.owlfeather.option.brother",
+                "Owlfeather's three ROM opening choices did not resolve")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    owlfeather_task = scripts.complete_native_menu_choice("brother");
+    if (!expect(owlfeather_task.operation.has_value() &&
+                    owlfeather_task.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    owlfeather_task.operation->service_id ==
+                        "runner.adjust_source_byte_triplet_1",
+                "Owlfeather's command 0x17 omitted the D0=1 runner adjustment")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    owlfeather_task = scripts.complete_native_service_result("applied");
+    if (!expect(owlfeather_task.operation.has_value() &&
+                    owlfeather_task.operation->menu.has_value() &&
+                    owlfeather_task.operation->menu->id == "brother_more" &&
+                    scripts.story_state().at("story_flag_bit_2") &&
+                    !scripts.story_state().at("field_mode_effect_flag_bit_8") &&
+                    !scripts.story_state().at("field_mode_effect_flag_bit_9"),
+                "Owlfeather's brother option did not mark bit 2 and present the holopix response")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    owlfeather_task = scripts.complete_native_menu_choice("more");
+    owlfeather_task = scripts.complete_native_menu_choice("learned");
+    owlfeather_task = scripts.complete_native_menu_choice("more");
+    owlfeather_task = scripts.complete_native_menu_choice("like_who");
+    owlfeather_task = scripts.complete_native_menu_choice("task");
+    owlfeather_task = scripts.complete_native_menu_choice("thanks");
+    owlfeather_task = scripts.complete_native_operation(true);
+    owlfeather_task = scripts.complete_native_operation(true);
+    if (!expect(owlfeather_task.status == ScriptTaskStep::Status::completed &&
+                    owlfeather_task.result_id ==
+                        std::optional<std::string>{"field_return"} &&
+                    scripts.story_state().at("field_mode_effect_flag_bit_10"),
+                "Owlfeather's ROM dialogue graph did not finish its task branch and effect bit 10")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    constexpr std::string_view kRedBuffaloLocation =
+        "salish_red_buffalo_lodge";
+    scripts.set_location_context("building", kRedBuffaloLocation,
+                                 "salish.red_buffalo", "red_buffalo_woman");
+    scripts.set_field_mode_context(ScriptFieldModeContext{6U, 1U, 0});
+    FieldScriptRouteContext red_buffalo_context{};
+    red_buffalo_context.scene_id = 6U;
+    red_buffalo_context.field_mode = 6U;
+    red_buffalo_context.event_code = FieldCollisionEventCode::event_1;
+    red_buffalo_context.event_table_available = true;
+    red_buffalo_context.event_table[1U] = 13U;
+    red_buffalo_context.alternate_result = 0;
+    scripts.set_story_state({
+        {"story_flag_bit_17", true},
+        {"story_flag_bit_18", false},
+    });
+    const auto red_buffalo_route =
+        scripts.resolve_field_location_route(red_buffalo_context);
+    if (!expect(red_buffalo_route.has_value() &&
+                    red_buffalo_route->kind ==
+                        FieldScriptRouteKind::field_service &&
+                    red_buffalo_route->indexed_title_service.has_value() &&
+                    red_buffalo_route->indexed_title_service->module ==
+                        "salish_red_buffalo" &&
+                    red_buffalo_route->indexed_title_service->function ==
+                        "present_indexed_title_service" &&
+                    scripts.dialogue_text(
+                        "salish.red_buffalo.option.no_business") != nullptr,
+                "Red Buffalo's scene-6/event-1 handler did not suppress its event-table transition")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    auto red_buffalo_task = scripts.start_task(
+        "salish_red_buffalo", "present_indexed_title_service");
+    red_buffalo_task = scripts.complete_native_menu_choice("more");
+    red_buffalo_task = scripts.complete_native_menu_choice("more");
+    if (!expect(red_buffalo_task.status == ScriptTaskStep::Status::completed &&
+                    red_buffalo_task.result_id ==
+                        std::optional<std::string>{"field_return"} &&
+                    scripts.story_state().at("story_flag_bit_18") &&
+                    scripts.story_state().at("story_trigger_active_18") &&
+                    scripts.story_state().at("notebook_tip_flag_bit_5") &&
+                    !scripts.story_state().at("notebook_tip_flag_bit_6") &&
+                    !scripts.story_state().at("field_mode_effect_flag_bit_29") &&
+                    scripts.story_state().at("field_mode_effect_flag_bit_30"),
+                "Red Buffalo's gated gift branch did not update its source completion facts")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_30", true},
+        {"story_flag_bit_21", false},
+    });
+    constexpr std::string_view kTarislarLocation =
+        "puyallup_site_02_tarislar_garden_apartments";
+    scripts.set_location_context(
+        "building", kTarislarLocation, "tarislar.garden.apartments.entry",
+        "tarislar_apartments_narrator");
+    FieldScriptRouteContext tarislar_context{};
+    tarislar_context.scene_id = 1U;
+    tarislar_context.field_mode = 1U;
+    tarislar_context.event_code = FieldCollisionEventCode::event_7;
+    tarislar_context.event_table_available = true;
+    tarislar_context.event_table[7U] = 13U;
+    tarislar_context.alternate_result = 0;
+    const auto tarislar_first_entry =
+        scripts.resolve_field_location_route(tarislar_context);
+    if (!expect(tarislar_first_entry.has_value() &&
+                    tarislar_first_entry->kind ==
+                        FieldScriptRouteKind::area_event &&
+                    tarislar_first_entry->area_event_target ==
+                        std::optional<std::uint8_t>{54U} &&
+                    tarislar_first_entry->area_event_destination_mode ==
+                        WorldActivityMode::scripted_activity &&
+                    tarislar_first_entry->entry_dialogue_module ==
+                        "tarislar_apartments" &&
+                    tarislar_first_entry->entry_dialogue_function ==
+                        "present_first_entry" &&
+                    tarislar_first_entry->entry_continue_result_id ==
+                        "enter_scene_54",
+                "Lua did not select Tarislar' source-gated first-entry route")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_context.alternate_result = -1;
+    const auto tarislar_alternate =
+        scripts.resolve_field_location_route(tarislar_context);
+    if (!expect(tarislar_alternate.has_value() &&
+                    tarislar_alternate->area_event_target ==
+                        std::optional<std::uint8_t>{13U} &&
+                    tarislar_alternate->entry_dialogue_module.empty(),
+                "Tarislar override ignored its FFF0D5 alternate-result gate")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    tarislar_context.alternate_result = 0;
+    scripts.set_field_mode_context(ScriptFieldModeContext{1U, 7U, 0});
+    scripts.set_story_state({
+        {"story_flag_bit_16", true},
+        {"story_flag_bit_21", true},
+        {"story_flag_bit_26", false},
+        {"story_flag_bit_27", false},
+        {"story_flag_bit_28", true},
+        {"story_flag_bit_30", true},
+        {"group_item_flag_bit_8", false},
+    });
+    const auto tarislar_repeat_route =
+        scripts.resolve_field_location_route(tarislar_context);
+    if (!expect(tarislar_repeat_route.has_value() &&
+                    tarislar_repeat_route->area_event_target ==
+                        std::optional<std::uint8_t>{13U} &&
+                    tarislar_repeat_route->entry_dialogue_module ==
+                        "tarislar_apartments" &&
+                    tarislar_repeat_route->entry_dialogue_function ==
+                        "present_repeat_service" &&
+                    tarislar_repeat_route->entry_continue_result_id ==
+                        "enter_scene_13" &&
+                    scripts.dialogue_text(
+                        "tarislar.garden.apartments.option.questions") !=
+                        nullptr,
+                "Tarislar repeat visit did not select its source-gated same-map service and ROM option label")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_context.alternate_result = 1;
+    scripts.set_field_mode_context(ScriptFieldModeContext{1U, 7U, 1});
+    const auto tarislar_repeat_alternate =
+        scripts.resolve_field_location_route(tarislar_context);
+    if (!expect(tarislar_repeat_alternate.has_value() &&
+                    tarislar_repeat_alternate->area_event_target ==
+                        std::optional<std::uint8_t>{13U} &&
+                    tarislar_repeat_alternate->entry_dialogue_module.empty(),
+                "Tarislar repeat route ignored nonzero FFF0D5")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_context.alternate_result = 0;
+    scripts.set_field_mode_context(ScriptFieldModeContext{1U, 7U, 0});
+    scripts.set_story_state({
+        {"story_flag_bit_21", true},
+        {"story_flag_bit_30", false},
+    });
+    const auto tarislar_repeat_before_frosty =
+        scripts.resolve_field_location_route(tarislar_context);
+    if (!expect(tarislar_repeat_before_frosty.has_value() &&
+                    tarislar_repeat_before_frosty->area_event_target ==
+                        std::optional<std::uint8_t>{13U} &&
+                    tarislar_repeat_before_frosty->entry_dialogue_function ==
+                        "present_guarded_entry",
+                "Tarislar repeat override bypassed the Frosty bit-30 gate")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    scripts.set_story_state({
+        {"story_flag_bit_16", true},
+        {"story_flag_bit_21", true},
+        {"story_flag_bit_26", false},
+        {"story_flag_bit_27", false},
+        {"story_flag_bit_28", true},
+        {"story_flag_bit_30", true},
+        {"group_item_flag_bit_8", false},
+    });
+    auto tarislar_repeat = scripts.start_task(
+        "tarislar_apartments", "present_repeat_service");
+    if (!expect(tarislar_repeat.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_repeat.operation.has_value() &&
+                    tarislar_repeat.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    tarislar_repeat.operation->menu.has_value() &&
+                    tarislar_repeat.operation->menu->id == "repeat_service" &&
+                    tarislar_repeat.operation->menu->inline_text ==
+                        "Hello again, Joshua.||||You have bought my time with your pain.||||Spend it as you wish." &&
+                    tarislar_repeat.operation->menu->choices.size() == 1U &&
+                    tarislar_repeat.operation->menu->choices.front().id ==
+                        "questions",
+                "Tarislar repeat service did not use the ROM greeting and question-only gate")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_repeat = scripts.complete_native_menu_choice("questions");
+    if (!expect(tarislar_repeat.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_repeat.operation.has_value() &&
+                    tarislar_repeat.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    tarislar_repeat.operation->dialogue.has_value() &&
+                    tarislar_repeat.operation->dialogue->inline_text ==
+                        "I have no new information at this time.||"
+                        "My resources are spread too thin, but that shouldn't concern you.||"
+                        "For now, you are on your own.",
+                "Tarislar repeat questions branch lost ROM node 0xFC222")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_repeat = scripts.complete_native_operation(true);
+    if (!expect(tarislar_repeat.status == ScriptTaskStep::Status::completed &&
+                    tarislar_repeat.result_id ==
+                        std::optional<std::string>{"left"},
+                "Tarislar repeat service requested a field-scene transition")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_30", true},
+        {"story_flag_bit_21", false},
+    });
+    auto tarislar_dialogue = scripts.start_task(
+        "tarislar_apartments", "present_first_entry");
+    if (!expect(tarislar_dialogue.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_dialogue.operation.has_value() &&
+                    tarislar_dialogue.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    tarislar_dialogue.operation->service_id ==
+                        "party.award_karma_2",
+                "Tarislar first-entry Lua task did not request the ROM +2 Karma service")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_dialogue =
+        scripts.complete_native_service_result("applied");
+    constexpr std::array<std::string_view, 9U> tarislar_prompt_texts{{
+        "<You enter the Tarlisar Garden Apartments.||Two elves carrying sub-machine guns greet you at the door.||They say nothing but motion you to follow them.||They lead you into the elevator, and you ride to the top floor.>",
+        "<Passing even more armed elves, you enter the penthouse.||Inside you face a bizarre sight.||There stands an elf, his face tatooed like a clown; however, his expression reflects his serious nature.||This must be Harlequin.>",
+        "So we meet.||I guess you would eventually have found me, given your resources and abilities.||As you have probably guessed, I've been keeping an eye on you since you first arrived in Seattle.",
+        "You've acquired quite a reputation in your short time here, yet your original mission remains unfulfilled.||I will help you if I can.",
+        "Your brother's death is made worse by the fact that it was wholly avoidable.||I underestimated Thon, and he punished me by destroying those in my employ.||I apologize for Michael's death.",
+        "Thon is a what, not a who.||It is a free spirit, an elemental who's summoner was killed.||Thon is older than most and with age comes power, considerable power in Thon's case.",
+        "But Thon is cursed.||He must replenish his life force or his form in this world will eventually cease to exist.||Thon seeks out magical artifacts and, in a ritual of destruction, absorbs their energies!",
+        "Currently, Thon's energy is waning.||But make no mistake!  He is still very powerful and quite dangerous.||But to save on expenditure of his energies, he now uses much outside help and avoids direct confrontations.",
+        "Renraku became involved with Thon through Vigore, who was casting about for corporate support.||Renraku assigned Mako to the project, but he was easily blinded by the promise of power and became Thon's unwitting pawn.",
+    }};
+    constexpr std::array<std::string_view, 9U> tarislar_menu_ids{{
+        "arrival", "penthouse", "meeting", "michael_topic", "thon_topic",
+        "thon_explanation", "thon_curse", "renraku_topic",
+        "renraku_explanation",
+    }};
+    constexpr std::array<std::string_view, 9U> tarislar_choice_ids{{
+        "more", "more", "more", "ask_about_michael", "who_is_thon",
+        "more", "more", "why_renraku", "more",
+    }};
+    for (std::size_t page = 0U;
+         page < tarislar_prompt_texts.size(); ++page) {
+        const auto& operation = tarislar_dialogue.operation;
+        if (!expect(tarislar_dialogue.status ==
+                            ScriptTaskStep::Status::awaiting_native_operation &&
+                        operation.has_value() &&
+                        operation->type ==
+                            ScriptNativeOperation::Type::ui_menu &&
+                        operation->menu.has_value() &&
+                        operation->menu->inline_prompt &&
+                        operation->menu->id == tarislar_menu_ids[page] &&
+                        operation->menu->speaker_id ==
+                            "tarislar_apartments_narrator" &&
+                        operation->menu->inline_text ==
+                            tarislar_prompt_texts[page] &&
+                        operation->menu->choices.size() == 1U &&
+                        operation->menu->choices.front().id ==
+                            tarislar_choice_ids[page],
+                    "Tarislar ROM prompt chain lost its source page or option")) {
+            std::cerr << scripts.failure() << '\n';
+            return 17;
+        }
+        if (page == 0U &&
+            (!scripts.story_state().at("story_flag_bit_21") ||
+             !scripts.story_state().at("story_trigger_active_21"))) {
+            std::cerr << scripts.failure() << '\n';
+            return 17;
+        }
+        tarislar_dialogue = scripts.complete_native_menu_choice(
+            tarislar_choice_ids[page]);
+        if (page == 0U &&
+            (!scripts.story_state().at("field_mode_effect_flag_bit_5") ||
+             !scripts.story_state().at("field_mode_effect_flag_bit_6"))) {
+            std::cerr << scripts.failure() << '\n';
+            return 17;
+        }
+    }
+    if (!expect(tarislar_dialogue.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_dialogue.operation.has_value() &&
+                    tarislar_dialogue.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    tarislar_dialogue.operation->dialogue.has_value() &&
+                    tarislar_dialogue.operation->dialogue->inline_text ==
+                        "After Thon fragged his relationship with Renraku, Mako was replaced.||"
+                        "Ito Ogami is a legendary player of hardball.||"
+                        "I've managed to keep him and Renraku off my trail so far.",
+                "Tarislar first-entry path did not follow command 0x40 to its guarded response")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    if (!scripts.story_state().at("field_mode_effect_flag_bit_7")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_dialogue = scripts.complete_native_operation(true);
+    if (!expect(tarislar_dialogue.status ==
+                        ScriptTaskStep::Status::completed &&
+                    tarislar_dialogue.result_id ==
+                        std::optional<std::string>{"left"},
+                "Tarislar first-entry conversation requested an unearned scene transition")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_30", true},
+        {"story_flag_bit_21", true},
+        {"story_flag_bit_16", true},
+        {"story_flag_bit_28", true},
+        {"story_flag_bit_26", true},
+        {"story_flag_bit_27", true},
+    });
+    const auto tarislar_tomb_route =
+        scripts.resolve_field_location_route(tarislar_context);
+    if (!expect(tarislar_tomb_route.has_value() &&
+                    tarislar_tomb_route->area_event_target ==
+                        std::optional<std::uint8_t>{54U} &&
+                    tarislar_tomb_route->entry_dialogue_function ==
+                        "present_tomb_departure" &&
+                    tarislar_tomb_route->entry_continue_result_id ==
+                        "enter_scene_54",
+                "Tarislar repeat entry did not select the fully gated tomb offer")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    const auto check_tomb_prompt = [&](const ScriptTaskStep& step,
+                                       const std::string_view prompt_id,
+                                       const std::string_view body,
+                                       const std::vector<std::string_view>& choices) {
+        return step.status == ScriptTaskStep::Status::awaiting_native_operation &&
+               step.operation.has_value() &&
+               step.operation->type == ScriptNativeOperation::Type::ui_menu &&
+               step.operation->menu.has_value() &&
+               step.operation->menu->inline_prompt &&
+               step.operation->menu->id == prompt_id &&
+               step.operation->menu->inline_text == body &&
+               step.operation->menu->choices.size() == choices.size() &&
+               std::equal(choices.begin(), choices.end(),
+                          step.operation->menu->choices.begin(),
+                          [](const std::string_view expected,
+                             const ScriptMenuChoice& actual) {
+                              return actual.id == expected;
+                          });
+    };
+    constexpr std::string_view kTarislarTombOffer =
+        "Are you prepared for the trip to Ellisia's tomb?";
+    auto tarislar_tomb = scripts.start_task(
+        "tarislar_apartments", "present_tomb_departure");
+    if (!expect(check_tomb_prompt(tarislar_tomb, "tomb_offer",
+                                  kTarislarTombOffer,
+                                  {"yes", "no"}),
+                "Tarislar tomb offer lost its ROM question or Yes/No choices")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_tomb = scripts.complete_native_menu_choice("no");
+    if (!expect(tarislar_tomb.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_tomb.operation.has_value() &&
+                    tarislar_tomb.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    tarislar_tomb.operation->menu.has_value() &&
+                    tarislar_tomb.operation->menu->id == "tomb_declined" &&
+                    tarislar_tomb.operation->menu->inline_text ==
+                        "As we sit here, Thon may already be at Ellisia's tomb.||"
+                        "Joshua, you must go now to assemble a team to destroy Thon.||"
+                        "We now have very little time, so equip your team well and when you return here I will have arranged for your transport to the Tomb." &&
+                    tarislar_tomb.operation->menu->choices.size() == 1U &&
+                    tarislar_tomb.operation->menu->choices.front().id ==
+                        "more",
+                "Tarislar No branch lost the ROM refusal response")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_tomb = scripts.complete_native_menu_choice("more");
+    if (!expect(tarislar_tomb.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_tomb.operation.has_value() &&
+                    tarislar_tomb.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    tarislar_tomb.operation->dialogue.has_value() &&
+                    tarislar_tomb.operation->dialogue->inline_text ==
+                        "<Harlequin fixes you with his piercing gaze.>||"
+                        "I beseech you.  Thon must be stopped and an elven myth preserved.||"
+                        "I'll prepare things on this end for your return.",
+                "Tarislar No branch lost Harlequin's source follow-up")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_tomb = scripts.complete_native_operation(true);
+    if (!expect(tarislar_tomb.status == ScriptTaskStep::Status::completed &&
+                    tarislar_tomb.result_id ==
+                        std::optional<std::string>{"left"},
+                "Tarislar No branch entered scene 54")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    tarislar_tomb = scripts.start_task(
+        "tarislar_apartments", "present_tomb_departure");
+    if (!expect(check_tomb_prompt(tarislar_tomb, "tomb_offer",
+                                  kTarislarTombOffer,
+                                  {"yes", "no"}),
+                "Tarislar Yes branch did not reopen the tomb offer")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_tomb = scripts.complete_native_menu_choice("yes");
+    constexpr std::array<std::string_view, 3U> tarislar_tomb_pages{{
+        "<Harlequin takes you to a sleek VTOL craft whose body bristles with communications and jamming devices.||"
+        "A harried ride with Harlequin at the stick takes you to the entrance of Ellisia's tomb.>",
+        "<Harlequin gives you a hands-free walkie-talkie.>||"
+        "What happens in the tomb is up to you.  I'll take care of things out here.||"
+        "<Harlequin holds up a hand to stifle your questions and ushers you to the tomb.>",
+        "Good luck, my friend.  May we meet again.||"
+        "<You take a deep breath of fresh air and a last look at the forest.||"
+        "Nodding to Harlequin, you turn and walk into the tomb's antechamber, noticing that the stone doors were literally ripped from the entrance...",
+    }};
+    constexpr std::array<std::string_view, 3U> tarislar_tomb_page_ids{{
+        "tomb_flight", "tomb_walkie", "tomb_good_luck",
+    }};
+    for (std::size_t page = 0U; page < tarislar_tomb_pages.size(); ++page) {
+        if (!expect(check_tomb_prompt(
+                        tarislar_tomb, tarislar_tomb_page_ids[page],
+                        tarislar_tomb_pages[page], {"more"}),
+                    "Tarislar Yes branch lost its ROM departure sequence")) {
+            std::cerr << scripts.failure() << '\n';
+            return 17;
+        }
+        tarislar_tomb = scripts.complete_native_menu_choice("more");
+    }
+    if (!expect(tarislar_tomb.status == ScriptTaskStep::Status::completed &&
+                    tarislar_tomb.result_id ==
+                        std::optional<std::string>{"enter_scene_54"},
+                "Tarislar Yes branch did not authorize scene 54 after the ROM sequence")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_30", false},
+        {"story_flag_bit_21", false},
+    });
+    auto tarislar_guard_route =
+        scripts.resolve_field_location_route(tarislar_context);
+    if (!expect(tarislar_guard_route.has_value() &&
+                    tarislar_guard_route->kind ==
+                        FieldScriptRouteKind::area_event &&
+                    tarislar_guard_route->area_event_target ==
+                        std::optional<std::uint8_t>{13U} &&
+                    tarislar_guard_route->entry_dialogue_function ==
+                        "present_guarded_entry" &&
+                    tarislar_guard_route->entry_continue_result_id ==
+                        "enter_scene_13",
+                "Lua did not select Tarislar's guarded no-entry passage")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    constexpr std::array<std::string_view, 3> tarislar_guard_pages{{
+        "<You enter the Tarislar Garden Apartments.>\n\n"
+        "<You are greeted by elves carrying sub-machine guns!>\n\n"
+        "<One of the elves points the weapon at your face.>",
+        "I don't think you have any business here, do you chummer?",
+        "<Thinking over how quickly they could cut you to ribbons, you "
+        "agree you don't have any reason to be here, and quickly leave.>",
+    }};
+    auto tarislar_guard = scripts.start_task(
+        "tarislar_apartments", "present_guarded_entry");
+    for (std::size_t page = 0U; page < tarislar_guard_pages.size(); ++page) {
+        if (!expect(tarislar_guard.status ==
+                            ScriptTaskStep::Status::awaiting_native_operation &&
+                        tarislar_guard.operation.has_value() &&
+                        tarislar_guard.operation->type ==
+                            ScriptNativeOperation::Type::ui_say &&
+                        tarislar_guard.operation->dialogue.has_value() &&
+                        tarislar_guard.operation->dialogue->speaker_id ==
+                            "tarislar_apartments_narrator" &&
+                        tarislar_guard.operation->dialogue->inline_text ==
+                            tarislar_guard_pages[page] &&
+                        tarislar_guard.operation->dialogue->continuation_key ==
+                            (page + 1U < tarislar_guard_pages.size()
+                                 ? "shared.more"
+                                 : ""),
+                    "Tarislar guard task did not preserve its ROM page order or waits")) {
+            std::cerr << scripts.failure() << '\n';
+            return 17;
+        }
+        tarislar_guard = scripts.complete_native_operation(true);
+    }
+    if (!expect(tarislar_guard.status ==
+                        ScriptTaskStep::Status::completed &&
+                    tarislar_guard.result_id ==
+                        std::optional<std::string>{"left"} &&
+                    scripts.story_state().at("story_flag_bit_30") == false &&
+                    scripts.story_state().at("story_flag_bit_21") == false,
+                "Tarislar guard task did not leave the story flags unchanged")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    constexpr std::string_view kCouncilHospital =
+        "council_island_hospital";
+    scripts.set_location_context(
+        "building", kCouncilHospital, "council_island_hospital",
+        "council_island_hospital_narrator");
+    FieldScriptRouteContext hospital_context{};
+    hospital_context.scene_id = 4U;
+    hospital_context.field_mode = 4U;
+    hospital_context.event_code = FieldCollisionEventCode::event_4;
+    hospital_context.event_table_available = true;
+    hospital_context.event_table[4U] = 13U;
+    const auto hospital_route =
+        scripts.resolve_field_location_route(hospital_context);
+    if (!expect(hospital_route.has_value() &&
+                    hospital_route->kind == FieldScriptRouteKind::area_event &&
+                    hospital_route->area_event_target ==
+                        std::optional<std::uint8_t>{13U} &&
+                    hospital_route->field_exit_prompt.has_value() &&
+                    hospital_route->field_exit_prompt->module ==
+                        "council_island_hospital" &&
+                    hospital_route->field_exit_prompt->function ==
+                        "present_field_exit_prompt" &&
+                    scripts.dialogue_text(
+                        "council_island_hospital.entry.default") != nullptr &&
+                    scripts.dialogue_text(
+                        "council_island_hospital.entry.package_handoff") !=
+                        nullptr &&
+                    scripts.dialogue_text(
+                        "council_island_hospital.entry.package_payment") !=
+                        nullptr,
+                "Hospital route lost its event-table evidence, Lua prompt, or regenerated ROM text")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    constexpr std::string_view kSpiritEyesSite =
+        "council_spirit_eyes_site";
+    scripts.set_location_context(
+        "site", kSpiritEyesSite, "salish.spirit_eyes", "spirit_eyes");
+    FieldScriptRouteContext spirit_eyes_context{};
+    spirit_eyes_context.scene_id = 4U;
+    spirit_eyes_context.field_mode = 4U;
+    spirit_eyes_context.event_code = FieldCollisionEventCode::event_27;
+    spirit_eyes_context.event_table_available = true;
+    const auto spirit_eyes_route =
+        scripts.resolve_field_location_route(spirit_eyes_context);
+    if (!expect(spirit_eyes_route.has_value() &&
+                    spirit_eyes_route->kind == FieldScriptRouteKind::dialogue &&
+                    spirit_eyes_route->entry_dialogue_module ==
+                        "salish_spirit_eyes" &&
+                    spirit_eyes_route->entry_dialogue_function == "present" &&
+                    spirit_eyes_route->entry_location_id == kSpiritEyesSite,
+                "Spirit Eyes event 27 did not resolve from its entity-owned Lua link")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    scripts.set_field_mode_context(ScriptFieldModeContext{4U, 27U, 0});
+    scripts.set_story_state({
+        {"story_flag_bit_5", false},
+        {"story_flag_bit_6", false},
+        {"field_mode_effect_flag_bit_14", true},
+        {"field_mode_effect_flag_bit_15", false},
+        {"field_mode_effect_flag_bit_16", false},
+        {"field_auxiliary_flag_bit_0", false},
+        {"group_item_flag_bit_4", false},
+    });
+    auto spirit_eyes_task = scripts.start_task(
+        "salish_spirit_eyes", "present");
+    const auto spirit_eyes_menu =
+        spirit_eyes_task.operation.has_value()
+            ? spirit_eyes_task.operation->menu
+            : std::optional<ScriptMenuDefinition>{};
+    const auto resolved_spirit_eyes_menu = spirit_eyes_menu.has_value()
+        ? scripts.resolve_dialogue_menu(*spirit_eyes_menu)
+        : std::optional<ScriptMenuDefinition>{};
+    if (!expect(spirit_eyes_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    spirit_eyes_menu.has_value() &&
+                    spirit_eyes_menu->inline_prompt &&
+                    spirit_eyes_menu->id == "first_contact" &&
+                    resolved_spirit_eyes_menu.has_value() &&
+                    resolved_spirit_eyes_menu->choices.size() == 1U &&
+                    resolved_spirit_eyes_menu->choices[0].label_key ==
+                        "shared.more" &&
+                    scripts.story_state().at("story_flag_bit_5") &&
+                    scripts.story_state().at(
+                        "field_auxiliary_flag_bit_0"),
+                "Spirit Eyes first-contact task lost its ROM text menu or FFFC40 state")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    spirit_eyes_task = scripts.complete_native_menu_choice("more");
+    if (!expect(spirit_eyes_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    spirit_eyes_task.operation.has_value() &&
+                    spirit_eyes_task.operation->dialogue.has_value() &&
+                    spirit_eyes_task.operation->dialogue->inline_text.find(
+                        "horn of a gargoyle") != std::string::npos &&
+                    scripts.story_state().at("story_flag_bit_5"),
+                "Spirit Eyes first-contact continuation did not request the gargoyle horn")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    spirit_eyes_task = scripts.complete_native_operation(true);
+    if (!expect(spirit_eyes_task.status ==
+                        ScriptTaskStep::Status::completed &&
+                    spirit_eyes_task.result_id ==
+                        std::optional<std::string>{"field_return"},
+                "Spirit Eyes horn request did not return to the field")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    constexpr std::string_view kCouncilMedicineLodge =
+        "council_medicine_lodge";
+    scripts.set_location_context(
+        "building", kCouncilMedicineLodge, kCouncilMedicineLodge,
+        "council_medicine_lodge_narrator");
+    FieldScriptRouteContext medicine_lodge_context{};
+    medicine_lodge_context.scene_id = 4U;
+    medicine_lodge_context.field_mode = 4U;
+    medicine_lodge_context.event_code = FieldCollisionEventCode::event_3;
+    medicine_lodge_context.event_table_available = true;
+    medicine_lodge_context.event_table[3U] = 13U;
+    const auto medicine_lodge_route =
+        scripts.resolve_field_location_route(medicine_lodge_context);
+    if (!expect(medicine_lodge_route.has_value() &&
+                    medicine_lodge_route->kind ==
+                        FieldScriptRouteKind::area_event &&
+                    medicine_lodge_route->area_event_target ==
+                        std::optional<std::uint8_t>{13U} &&
+                    medicine_lodge_route->field_exit_prompt.has_value() &&
+                    medicine_lodge_route->field_exit_prompt->module ==
+                        "council_medicine_lodge" &&
+                    medicine_lodge_route->field_exit_prompt->function ==
+                        "present_field_exit_prompt" &&
+                    medicine_lodge_route->field_exit_prompt->location_id ==
+                        "council_medicine_lodge" &&
+                    scripts.dialogue_text(
+                        "council_medicine_lodge.entry.default") != nullptr &&
+                    scripts.dialogue_text(
+                        "council_medicine_lodge.option.wise_one") != nullptr,
+                "Medicine Lodge route lost its scene-4 event-3 Lua prompt or source dialogue")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    scripts.set_field_mode_context(ScriptFieldModeContext{4U, 3U, 0});
+    scripts.set_story_state({
+        {"story_flag_bit_4", false},
+        {"runner_information_bit_4", false},
+    });
+    auto medicine_lodge_task = scripts.start_task(
+        "council_medicine_lodge", "present_field_exit_prompt");
+    const auto* medicine_lodge_offer = scripts.dialogue_text(
+        "council_medicine_lodge.entry.default");
+    const auto medicine_lodge_menu =
+        medicine_lodge_task.operation.has_value()
+            ? medicine_lodge_task.operation->menu
+            : std::optional<ScriptMenuDefinition>{};
+    const auto resolved_medicine_lodge_menu =
+        medicine_lodge_menu.has_value()
+            ? scripts.resolve_dialogue_menu(*medicine_lodge_menu)
+            : std::optional<ScriptMenuDefinition>{};
+    if (!expect(medicine_lodge_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    medicine_lodge_menu.has_value() &&
+                    medicine_lodge_menu->inline_prompt &&
+                    medicine_lodge_offer != nullptr &&
+                    medicine_lodge_menu->inline_text ==
+                        *medicine_lodge_offer &&
+                    resolved_medicine_lodge_menu.has_value() &&
+                    resolved_medicine_lodge_menu->choices.size() == 3U &&
+                    resolved_medicine_lodge_menu->choices[0].label_key ==
+                        "council_medicine_lodge.option.hire_shaman" &&
+                    resolved_medicine_lodge_menu->choices[1].label_key ==
+                        "council_medicine_lodge.option.browse_store" &&
+                    resolved_medicine_lodge_menu->choices[2].label_key ==
+                        "council_medicine_lodge.option.talk_later",
+                "Medicine Lodge did not resolve the default three-choice ROM prompt")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    medicine_lodge_task =
+        scripts.complete_native_menu_choice("hire_shaman");
+    if (!expect(medicine_lodge_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    medicine_lodge_task.operation.has_value() &&
+                    medicine_lodge_task.operation->dialogue.has_value() &&
+                    medicine_lodge_task.operation->dialogue->event_id ==
+                        "hire_shaman_response" &&
+                    scripts.story_state().at(
+                        "runner_information_bit_4") == true,
+                "Medicine Lodge hire-shaman choice did not set runner info or yield the ROM referral page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    medicine_lodge_task = scripts.complete_native_operation(true);
+    if (!expect(medicine_lodge_task.status ==
+                        ScriptTaskStep::Status::completed &&
+                    medicine_lodge_task.result_id ==
+                        std::optional<std::string>{"field_return"},
+                "Medicine Lodge referral did not return to the source field map")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    const auto verify_medicine_lodge_alternate =
+        [&scripts](const std::int8_t alternate_result,
+                   const std::string_view event_id,
+                   const std::string_view text_key) {
+            scripts.set_field_mode_context(
+                ScriptFieldModeContext{4U, 3U, alternate_result});
+            auto task = scripts.start_task(
+                "council_medicine_lodge", "present_field_exit_prompt");
+            const auto* text = scripts.dialogue_text(text_key);
+            if (!expect(task.status ==
+                            ScriptTaskStep::Status::awaiting_native_operation &&
+                        task.operation.has_value() &&
+                        task.operation->dialogue.has_value() &&
+                        task.operation->dialogue->event_id == event_id &&
+                        text != nullptr && !text->empty(),
+                        "Medicine Lodge alternate result did not yield its ROM dialogue page")) {
+                std::cerr << scripts.failure() << '\n';
+                return false;
+            }
+            task = scripts.complete_native_operation(true);
+            return expect(task.status == ScriptTaskStep::Status::completed &&
+                              task.result_id ==
+                                  std::optional<std::string>{"field_return"},
+                          "Medicine Lodge alternate result did not return to the source field map");
+        };
+    if (!verify_medicine_lodge_alternate(
+            -1, "package_handoff",
+            "council_medicine_lodge.entry.package_handoff") ||
+        !verify_medicine_lodge_alternate(
+            1, "package_payment",
+            "council_medicine_lodge.entry.package_payment")) {
+        return 18;
+    }
+
+    scripts.set_location_context(
+        "building", kCouncilHospital, "council_island_hospital",
+        "council_island_hospital_narrator");
+    scripts.set_field_mode_context(ScriptFieldModeContext{4U, 4U, 0});
+    auto hospital_task = scripts.start_task(
+        "council_island_hospital", "present_field_exit_prompt");
+    const auto* hospital_offer = scripts.dialogue_text(
+        "council_island_hospital.entry.default");
+    if (!expect(hospital_offer != nullptr &&
+                    hospital_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    hospital_task.operation.has_value() &&
+                    hospital_task.operation->menu.has_value() &&
+                    hospital_task.operation->menu->id ==
+                        "hospital_service_offer" &&
+                    hospital_task.operation->menu->inline_prompt &&
+                    hospital_task.operation->menu->inline_text ==
+                        *hospital_offer &&
+                    hospital_task.operation->menu->choices.size() == 2U,
+                "Hospital default root did not present the ROM service offer and its two choices")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    const auto hospital_menu = scripts.resolve_dialogue_menu(
+        *hospital_task.operation->menu);
+    if (!expect(hospital_menu.has_value() &&
+                    hospital_menu->choices.size() == 2U &&
+                    hospital_menu->choices[0].label_key ==
+                        "council_island_hospital.option.services" &&
+                    hospital_menu->choices[1].label_key ==
+                        "council_island_hospital.option.leave",
+                "Hospital service choice labels did not resolve from the ROM text catalog")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    hospital_task = scripts.complete_native_menu_choice("leave");
+    if (!expect(hospital_task.status == ScriptTaskStep::Status::completed &&
+                    hospital_task.result_id ==
+                        std::optional<std::string>{"field_return"},
+                "Hospital leave choice did not return to the same field map")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    hospital_task = scripts.start_task(
+        "council_island_hospital", "present_field_exit_prompt");
+    hospital_task = scripts.complete_native_menu_choice("services");
+    if (!expect(hospital_task.status == ScriptTaskStep::Status::completed &&
+                    hospital_task.result_id ==
+                        std::optional<std::string>{"hospital-options"},
+                "Hospital service choice did not route into Hospital Options")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    scripts.set_field_mode_context(ScriptFieldModeContext{4U, 4U, 0});
+    hospital_task = scripts.start_task(
+        "council_island_hospital", "present_options");
+    auto hospital_options_menu = hospital_task.operation.has_value()
+        ? hospital_task.operation->menu
+        : std::optional<ScriptMenuDefinition>{};
+    if (!expect(hospital_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    hospital_options_menu.has_value() &&
+                    hospital_options_menu->input_mode ==
+                        ScriptMenuInputMode::cursor &&
+                    hospital_options_menu->selected_index == 0U &&
+                    hospital_options_menu->choices.size() == 3U,
+                "Hospital Options did not start on Medical Attn. with its ROM title and three-row cursor menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    const auto hospital_options_text = scripts.resolve_dialogue_menu(
+        *hospital_options_menu);
+    const auto* hospital_title = scripts.dialogue_text(
+        "hospital.options.title");
+    const auto* hospital_medical = scripts.dialogue_text(
+        "hospital.options.medical_attention");
+    const auto* hospital_cyberware = scripts.dialogue_text(
+        "hospital.options.cyberware");
+    const auto* hospital_exit = scripts.dialogue_text(
+        "hospital.options.exit");
+    if (!expect(hospital_options_text.has_value() &&
+                    hospital_options_text->choices.size() == 3U &&
+                    hospital_options_text->title_key ==
+                        "hospital.options.title" &&
+                    hospital_options_text->choices[0].label_key ==
+                        "hospital.options.medical_attention" &&
+                    hospital_options_text->choices[1].label_key ==
+                        "hospital.options.cyberware" &&
+                    hospital_options_text->choices[2].label_key ==
+                        "hospital.options.exit" &&
+                    hospital_title != nullptr &&
+                    *hospital_title == " Hospital Options" &&
+                    hospital_medical != nullptr &&
+                    *hospital_medical == "Medical Attn." &&
+                    hospital_cyberware != nullptr &&
+                    *hospital_cyberware == "Cyberware" &&
+                    hospital_exit != nullptr && *hospital_exit == "Exit",
+                "Hospital Options labels do not match the ROM text records")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    hospital_task = scripts.complete_native_menu_input("down");
+    if (!expect(hospital_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    hospital_task.operation.has_value() &&
+                    hospital_task.operation->menu.has_value() &&
+                    hospital_task.operation->menu->selected_index == 1U,
+                "Hospital cursor movement did not select Cyberware in Lua")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    hospital_task = scripts.complete_native_menu_input("confirm");
+    if (!expect(hospital_task.status == ScriptTaskStep::Status::completed &&
+                    hospital_task.result_id == std::optional<std::string>{
+                        "hospital_cyberware_requested"},
+                "Hospital Cyberware selection did not return its typed route id")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    hospital_task = scripts.start_task(
+        "council_island_hospital", "present_options");
+    hospital_task = scripts.complete_native_menu_input("down");
+    hospital_task = scripts.complete_native_menu_input("down");
+    hospital_task = scripts.complete_native_menu_input("confirm");
+    if (!expect(hospital_task.status == ScriptTaskStep::Status::completed &&
+                    hospital_task.result_id == std::optional<std::string>{
+                        "hospital_leave_confirmation_requested"},
+                "Hospital Exit selection did not open the leave confirmation")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    hospital_task = scripts.start_task(
+        "council_island_hospital", "present_leave_confirmation");
+    auto hospital_leave_menu = hospital_task.operation.has_value()
+        ? hospital_task.operation->menu
+        : std::optional<ScriptMenuDefinition>{};
+    const auto* hospital_leave_prompt = scripts.dialogue_text(
+        "hospital.leave.prompt");
+    if (!expect(hospital_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    hospital_leave_menu.has_value() &&
+                    hospital_leave_menu->selected_index == 1U &&
+                    hospital_leave_prompt != nullptr &&
+                    *hospital_leave_prompt ==
+                        "Do you wish to|leave the hospital?",
+                "Hospital leave confirmation did not show the ROM question with No selected")) {
+        std::cerr << "hospital leave script status="
+                  << static_cast<unsigned>(hospital_task.status)
+                  << " menu=" << hospital_leave_menu.has_value();
+        if (hospital_leave_menu.has_value()) {
+            std::cerr << " selection=" << hospital_leave_menu->selected_index
+                      << " input=" << static_cast<unsigned>(
+                             hospital_leave_menu->input_mode)
+                      << " text_profile=" << hospital_leave_menu->text_profile;
+        }
+        std::cerr << " prompt="
+                  << (hospital_leave_prompt != nullptr
+                          ? *hospital_leave_prompt
+                          : std::string("missing"))
+                  << " failure=" << scripts.failure() << '\n';
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    const auto hospital_leave_text = scripts.resolve_dialogue_menu(
+        *hospital_leave_menu);
+    if (!expect(hospital_leave_text.has_value() &&
+                    hospital_leave_text->title_key ==
+                        "hospital.leave.prompt" &&
+                    hospital_leave_text->choices.size() == 2U &&
+                    hospital_leave_text->choices[0].label_key ==
+                        "ui.option.yes" &&
+                    hospital_leave_text->choices[1].label_key ==
+                        "ui.option.no",
+                "Hospital leave question and Yes/No labels did not resolve through the ROM text profile")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    hospital_task = scripts.complete_native_menu_input("cancel");
+    if (!expect(hospital_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    hospital_task.operation.has_value() &&
+                    hospital_task.operation->menu.has_value() &&
+                    hospital_task.operation->menu->selected_index == 1U,
+                "Hospital leave prompt accepted Start or lost its default No selection")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    hospital_task = scripts.complete_native_menu_input("confirm");
+    if (!expect(hospital_task.status == ScriptTaskStep::Status::completed &&
+                    hospital_task.result_id ==
+                        std::optional<std::string>{"hospital-options"},
+                "Hospital No choice did not return to Hospital Options")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    hospital_task = scripts.start_task(
+        "council_island_hospital", "present_leave_confirmation");
+    hospital_task = scripts.complete_native_menu_input("up");
+    hospital_task = scripts.complete_native_menu_input("confirm");
+    if (!expect(hospital_task.status == ScriptTaskStep::Status::completed &&
+                    hospital_task.result_id ==
+                        std::optional<std::string>{"hospital_left"},
+                "Hospital Yes choice did not return the leave-hospital route")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    scripts.set_field_mode_context(ScriptFieldModeContext{4U, 4U, -1});
+    hospital_task = scripts.start_task(
+        "council_island_hospital", "present_field_exit_prompt");
+    if (!expect(hospital_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    hospital_task.operation.has_value() &&
+                    hospital_task.operation->dialogue.has_value() &&
+                    hospital_task.operation->dialogue->event_id ==
+                        "package_handoff",
+                "Negative Hospital result did not select the package handoff text root")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    hospital_task = scripts.complete_native_operation(true);
+    if (!expect(hospital_task.status == ScriptTaskStep::Status::completed &&
+                    hospital_task.result_id ==
+                        std::optional<std::string>{"field_return"},
+                "Hospital package handoff did not return to the current map")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    scripts.set_field_mode_context(ScriptFieldModeContext{4U, 4U, 1});
+    hospital_task = scripts.start_task(
+        "council_island_hospital", "present_field_exit_prompt");
+    if (!expect(hospital_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    hospital_task.operation.has_value() &&
+                    hospital_task.operation->dialogue.has_value() &&
+                    hospital_task.operation->dialogue->event_id ==
+                        "package_payment",
+                "Positive Hospital result did not select the payment text root")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    hospital_task = scripts.complete_native_operation(true);
+    if (!expect(hospital_task.status == ScriptTaskStep::Status::completed &&
+                    hospital_task.result_id ==
+                        std::optional<std::string>{"field_return"},
+                "Hospital package payment did not return to the current map")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    GameScriptRuntime hospital_medical_scripts;
+    if (!expect(hospital_medical_scripts.load_package(
+                    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
+                    std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
+                        "dialogue" / "script-text.lua"),
+                "hospital medical Lua package did not load")) {
+        std::cerr << hospital_medical_scripts.failure() << '\n';
+        return 19;
+    }
+    std::array<ScriptMenuPartyMember, 3> hospital_party{};
+    hospital_party[0].archetype = 2U;
+    hospital_party[0].physical = 3U;
+    hospital_party[0].stun = 3U;
+    hospital_party[0].attributes[0] = 6U;
+    hospital_party[0].attributes[5] = 6U;
+    std::uint32_t hospital_funds = 1000U;
+    std::size_t hospital_commits = 0U;
+    ScriptMenuRouteBindings hospital_bindings{};
+    hospital_bindings.game.party = [&hospital_party] {
+        return hospital_party;
+    };
+    hospital_bindings.game.active_slot = [] { return 0; };
+    hospital_bindings.game.nuyen = [&hospital_funds] {
+        return std::optional<std::uint32_t>{hospital_funds};
+    };
+    hospital_bindings.game.set_nuyen = [&hospital_funds](
+                                               const std::uint32_t funds) {
+        hospital_funds = funds;
+    };
+    hospital_bindings.game.commit_party = [&hospital_party,
+                                           &hospital_commits](
+        const std::array<ScriptMenuPartyMember, 3>& party) {
+        hospital_party = party;
+        ++hospital_commits;
+    };
+    hospital_medical_scripts.set_menu_route_bindings(
+        std::move(hospital_bindings));
+    hospital_medical_scripts.set_location_context(
+        "building", kCouncilHospital, "council_island_hospital",
+        "council_island_hospital_narrator");
+    hospital_medical_scripts.set_field_mode_context(
+        ScriptFieldModeContext{4U, 4U, 0});
+
+    auto hospital_options_task = hospital_medical_scripts.start_task(
+        "council_island_hospital", "present_options");
+    if (!expect(hospital_options_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    hospital_options_task.operation.has_value() &&
+                    hospital_options_task.operation->menu.has_value() &&
+                    hospital_options_task.operation->menu->id ==
+                        "hospital_options" &&
+                    hospital_options_task.operation->menu->selected_index ==
+                        0U,
+                "Hospital Options did not open on Medical Attention")) {
+        std::cerr << hospital_medical_scripts.failure() << '\n';
+        return 19;
+    }
+    hospital_options_task =
+        hospital_medical_scripts.complete_native_menu_input("cancel");
+    if (!expect(hospital_options_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    hospital_options_task.operation.has_value() &&
+                    hospital_options_task.operation->menu.has_value() &&
+                    hospital_options_task.operation->menu->selected_index ==
+                        0U,
+                "Hospital Options Start input escaped the ROM menu loop")) {
+        std::cerr << hospital_medical_scripts.failure() << '\n';
+        return 19;
+    }
+    hospital_options_task =
+        hospital_medical_scripts.complete_native_menu_input("down");
+    hospital_options_task =
+        hospital_medical_scripts.complete_native_menu_input("back");
+    if (!expect(hospital_options_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    hospital_options_task.operation.has_value() &&
+                    hospital_options_task.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    hospital_options_task.operation->service_id ==
+                        "field.mode_action",
+                "Hospital Options B did not dispatch the shared field action")) {
+        std::cerr << hospital_medical_scripts.failure() << '\n';
+        return 19;
+    }
+    hospital_options_task = hospital_medical_scripts.complete_native_service_result(
+        "applied");
+    if (!expect(hospital_options_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    hospital_options_task.operation.has_value() &&
+                    hospital_options_task.operation->menu.has_value() &&
+                    hospital_options_task.operation->menu->id ==
+                        "hospital_options" &&
+                    hospital_options_task.operation->menu->selected_index ==
+                        1U,
+                "Hospital runner selection did not return to the same menu row")) {
+        std::cerr << hospital_medical_scripts.failure() << '\n';
+        return 19;
+    }
+    hospital_options_task =
+        hospital_medical_scripts.complete_native_menu_input("confirm");
+    if (!expect(hospital_options_task.status ==
+                        ScriptTaskStep::Status::completed &&
+                    hospital_options_task.result_id ==
+                        std::optional<std::string>{
+                            "hospital_cyberware_requested"},
+                "Hospital Options lost its cursor target after runner selection")) {
+        std::cerr << hospital_medical_scripts.failure() << '\n';
+        return 19;
+    }
+
+    auto medical_task = hospital_medical_scripts.start_task(
+        "council_island_hospital", "present_medical_attention");
+    const auto medical_menu = medical_task.operation.has_value()
+        ? medical_task.operation->menu
+        : std::optional<ScriptMenuDefinition>{};
+    const auto resolved_medical_menu = medical_menu.has_value()
+        ? hospital_medical_scripts.resolve_dialogue_menu(*medical_menu)
+        : std::optional<ScriptMenuDefinition>{};
+    if (!expect(medical_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    medical_menu.has_value() &&
+                    medical_menu->inline_prompt &&
+                    medical_menu->inline_text ==
+                        " Choose level of|medical attention.|$1000" &&
+                    medical_menu->choices.size() == 4U &&
+                    medical_menu->choices[0].id == "level_100" &&
+                    medical_menu->choices[0].inline_label == "260" &&
+                    medical_menu->choices[1].inline_label == "240" &&
+                    medical_menu->choices[2].inline_label == "230" &&
+                    medical_menu->choices[3].inline_label == "200" &&
+                    resolved_medical_menu.has_value() &&
+                    resolved_medical_menu->choices[0].label_key ==
+                        "hospital.medical.row.100" &&
+                    hospital_medical_scripts.dialogue_text(
+                        "hospital.medical.row.100") != nullptr,
+                "Hospital Medical Attention did not build its source-priced four-row Lua menu")) {
+        std::cerr << hospital_medical_scripts.failure() << '\n';
+        return 19;
+    }
+    medical_task = hospital_medical_scripts.complete_native_menu_input("down");
+    medical_task = hospital_medical_scripts.complete_native_menu_input("down");
+    medical_task = hospital_medical_scripts.complete_native_menu_input("confirm");
+    if (!expect(medical_task.status == ScriptTaskStep::Status::completed &&
+                    medical_task.result_id ==
+                        std::optional<std::string>{"hospital-options"} &&
+                    hospital_funds == 770U && hospital_commits == 1U &&
+                    hospital_party[0].physical == 7U &&
+                    hospital_party[0].stun == 10U,
+                "Hospital 70-percent treatment did not charge its cumulative price and commit its recovery values")) {
+        std::cerr << hospital_medical_scripts.failure() << '\n';
+        return 19;
+    }
+
+    hospital_party[0].physical = 3U;
+    hospital_party[0].stun = 3U;
+    hospital_funds = 10U;
+    medical_task = hospital_medical_scripts.start_task(
+        "council_island_hospital", "present_medical_attention");
+    medical_task = hospital_medical_scripts.complete_native_menu_input(
+        "confirm");
+    if (!expect(medical_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    medical_task.operation.has_value() &&
+                    medical_task.operation->dialogue.has_value() &&
+                    medical_task.operation->dialogue->event_id ==
+                        "medical_attention_insufficient_funds" &&
+                    hospital_funds == 10U &&
+                    hospital_party[0].physical == 3U,
+                "Hospital insufficient-funds selection changed state instead of presenting its ROM response")) {
+        std::cerr << hospital_medical_scripts.failure() << '\n';
+        return 19;
+    }
+    medical_task = hospital_medical_scripts.complete_native_operation(true);
+    if (!expect(medical_task.status == ScriptTaskStep::Status::completed &&
+                    medical_task.result_id ==
+                        std::optional<std::string>{"hospital-options"},
+                "Hospital insufficient-funds response did not return to its options screen")) {
+        std::cerr << hospital_medical_scripts.failure() << '\n';
+        return 19;
+    }
+
+    hospital_party[0].physical = 10U;
+    hospital_party[0].stun = 10U;
+    hospital_funds = 1000U;
+    medical_task = hospital_medical_scripts.start_task(
+        "council_island_hospital", "present_medical_attention");
+    if (!expect(medical_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    medical_task.operation.has_value() &&
+                    medical_task.operation->dialogue.has_value() &&
+                    medical_task.operation->dialogue->event_id ==
+                        "medical_attention_not_needed",
+                "Hospital did not apply the ROM fully-recovered check")) {
+        std::cerr << hospital_medical_scripts.failure() << '\n';
+        return 19;
+    }
+    medical_task = hospital_medical_scripts.complete_native_operation(true);
+    if (!expect(medical_task.status == ScriptTaskStep::Status::completed &&
+                    medical_task.result_id ==
+                        std::optional<std::string>{"hospital-options"},
+                "Hospital fully-recovered response did not return to its options screen")) {
+        std::cerr << hospital_medical_scripts.failure() << '\n';
+        return 19;
+    }
+
+    hospital_party[0].physical = 9U;
+    hospital_party[0].stun = 3U;
+    medical_task = hospital_medical_scripts.start_task(
+        "council_island_hospital", "present_medical_attention");
+    if (!expect(medical_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    medical_task.operation.has_value() &&
+                    medical_task.operation->menu.has_value() &&
+                    medical_task.operation->menu->choices.empty() &&
+                    medical_task.operation->menu->selected_index == 0U,
+                "Hospital no-treatment state did not preserve its empty source menu")) {
+        std::cerr << hospital_medical_scripts.failure() << '\n';
+        return 19;
+    }
+    medical_task = hospital_medical_scripts.complete_native_menu_input("back");
+    if (!expect(medical_task.status == ScriptTaskStep::Status::completed &&
+                    medical_task.result_id ==
+                        std::optional<std::string>{"hospital-options"},
+                "Hospital empty treatment screen did not return on B")) {
+        std::cerr << hospital_medical_scripts.failure() << '\n';
+        return 19;
     }
     return 0;
 }

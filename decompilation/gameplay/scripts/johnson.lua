@@ -3,17 +3,37 @@
 -- owns the reusable conversation flow.
 local Johnson = {}
 
-local function present_location_intro()
-    local profile = game.modules.dialogue.johnson_interaction_profiles[
-        game.location.text_profile]
-    if profile == nil or profile.first_visit_fact == nil or
+local function present_location_intro(profile, entry_seen_before)
+    if profile == nil then
+        return false
+    end
+    if profile.entry_seen_fact ~= nil then
+        local event_ids = entry_seen_before and
+            profile.repeat_entry_events or profile.entry_events
+        for _, event_id in ipairs(event_ids or {}) do
+            game.ui.say(event_id)
+        end
+        return not entry_seen_before
+    end
+    if profile.first_visit_fact == nil or
        game.state[profile.first_visit_fact] ~= false then
-        return
+        return false
+    end
+    if profile.first_visit_runner_progress_delta ~= nil then
+        local delta = profile.first_visit_runner_progress_delta
+        assert(type(delta) == "number" and delta >= 0 and delta <= 0xFF and
+               delta % 1 == 0,
+            "Johnson first-visit progress delta must be a byte")
+        assert(game.services.call(
+            "runner", "adjust_source_byte_triplet_" .. tostring(delta)) ==
+                "applied",
+            "Johnson first-visit source progress could not be applied")
     end
     for _, event_id in ipairs(profile.first_visit_events) do
         game.ui.say(event_id)
     end
     game.state[profile.first_visit_fact] = true
+    return true
 end
 
 local function present_work_offer()
@@ -127,11 +147,166 @@ local function present_information(root_menu)
     end
 end
 
+local function present_julius_questions()
+    while true do
+        local choices = {}
+        if game.state.mr_johnsons_flag_bit_4 then
+            choices[#choices + 1] = "caleb"
+        end
+        if game.state.mr_johnsons_flag_bit_2 then
+            choices[#choices + 1] = "mortimer"
+        end
+        if #choices == 0 then
+            game.ui.say("question_default")
+            return
+        end
+
+        local topic = game.ui.menu("question_selection", choices)
+        local answer_key
+        if topic == "caleb" then
+            answer_key = "julius-strouther.question.caleb"
+        elseif topic == "mortimer" then
+            answer_key = "julius-strouther.question.mortimer"
+        else
+            return
+        end
+        if game.ui.prompt_text_key(
+                "question_answer_followup", answer_key,
+                { "another_question", "different_subject" }) ==
+           "different_subject" then
+            return
+        end
+    end
+end
+
+local function present_julius_information()
+    while true do
+        local topic = game.ui.menu("information",
+            { "questions", "contacts", "back" })
+        if topic == "questions" then
+            present_julius_questions()
+            return "back"
+        elseif topic == "contacts" then
+            game.ui.say("contacts_opening")
+            if game.ui.menu("contacts_offer", { "accept", "back" }) ~=
+               "accept" then
+                return "back"
+            end
+            local purchase = game.services.call(
+                "johnson", "purchase_quinton_contact")
+            if purchase == "purchased" then
+                -- ROM command 0x2218E charges 1,000 nuyen and sets FFFC2C
+                -- bit 0, the Captain Quinton contact row.
+                game.state.vid_phone_contact_0 = true
+                return "contacts_purchased"
+            elseif purchase == "insufficient" then
+                local fallback = game.ui.menu("contacts_insufficient",
+                    { "information", "work", "leave" })
+                if fallback == "information" then
+                    -- The insufficient-funds descriptor returns to the
+                    -- information category without reopening the root.
+                elseif fallback == "work" or fallback == "leave" then
+                    return fallback
+                else
+                    return "back"
+                end
+            else
+                error("Julius contact purchase returned an unknown result")
+            end
+        else
+            return "back"
+        end
+    end
+end
+
+local function present_mortimer_questions()
+    while true do
+        local choices = {}
+        if game.state.mr_johnsons_flag_bit_1 then
+            choices[#choices + 1] = "julius"
+        end
+        if game.state.story_flag_bit_10 and
+           not game.state.story_flag_bit_11 then
+            choices[#choices + 1] = "mako"
+        end
+        if game.state.story_flag_bit_2 and
+           not game.state.story_flag_bit_3 then
+            choices[#choices + 1] = "aragorn"
+        end
+        if #choices == 0 then
+            game.ui.say("question_default")
+            return "categories"
+        end
+
+        local topic = game.ui.menu("question_selection", choices)
+        local answer_key
+        if topic == "julius" then
+            answer_key = "big-rhino.information.question.julius"
+        elseif topic == "mako" then
+            answer_key = "big-rhino.information.question.mako"
+            -- ROM action 0x8E at 0x23222 records the Mako lead in FFFC30.
+            game.state.field_mode_flag_bit_21 = true
+        elseif topic == "aragorn" then
+            answer_key = "big-rhino.information.question.aragorn"
+            -- ROM action 0x8F at 0x2323A clears bit 11 and sets bit 12.
+            game.state.field_mode_flag_bit_11 = false
+            game.state.field_mode_flag_bit_12 = true
+        else
+            return "categories"
+        end
+
+        if game.ui.prompt_text_key(
+                "question_answer_followup", answer_key,
+                { "another_question", "different_subject" }) ==
+           "different_subject" then
+            return "categories"
+        end
+    end
+end
+
+local function present_mortimer_information()
+    game.ui.say("information_opening")
+    while true do
+        local topic = game.ui.menu("information",
+            { "questions", "contacts", "back" })
+        if topic == "questions" then
+            present_mortimer_questions()
+        elseif topic == "contacts" then
+            if game.ui.menu("contacts_offer", { "accept", "back" }) ==
+               "accept" then
+                local purchase = game.services.call(
+                    "johnson", "purchase_alesandro_contact")
+                if purchase == "purchased" then
+                    -- ROM command 0x50 charges 1,500 and sets FFFC2C bit 1.
+                    game.state.vid_phone_contact_1 = true
+                    return "contacts_purchased"
+                elseif purchase == "insufficient" then
+                    return "contacts_insufficient"
+                end
+                error("Mortimer contact purchase returned an unknown result")
+            end
+        else
+            return "back"
+        end
+    end
+end
+
 function Johnson.interaction()
     local profile = game.modules.dialogue.johnson_interaction_profiles[
         game.location.text_profile]
+    local entry_seen_before = profile ~= nil and
+        profile.entry_seen_fact ~= nil and
+        game.state[profile.entry_seen_fact] == true
+    if profile ~= nil then
+        for _, fact in ipairs(profile.access_facts or {}) do
+            assert(type(fact) == "string" and fact ~= "",
+                "Johnson access fact must name a story-state field")
+            game.state[fact] = true
+        end
+    end
     local returned_run = profile ~= nil and profile.run_offer_context ~= nil
         and game.runs.registry.take_pending_johnson_return() or nil
+    local first_visit = false
     if returned_run ~= nil then
         assert(returned_run.context == profile.run_offer_context,
             "pending run return belongs to another Johnson context")
@@ -141,28 +316,53 @@ function Johnson.interaction()
             "completed run has no Johnson-return presentation")
         run.present_completion(returned_run)
     else
-        present_location_intro()
+        first_visit = present_location_intro(profile, entry_seen_before)
     end
     local root_menu = returned_run ~= nil
-        and "opening_after_run_return" or "opening"
+        and (profile.run_return_root or "opening_after_run_return") or
+        (first_visit and (profile.first_visit_root or "opening") or
+        (entry_seen_before and (profile.repeat_root or "opening") or
+         "opening"))
     while true do
         local choice = game.ui.menu(root_menu,
             { "information", "work", "leave" })
 
         if choice == "leave" then
+            if profile ~= nil and profile.leave_event ~= nil then
+                game.ui.say(profile.leave_event)
+            end
             return choice
         elseif choice == "information" then
-            local information_result = present_information(root_menu)
+            if profile == nil then
+                return "information_unresolved"
+            end
+            local information_result
+            if profile.information_flow == "gunderson" then
+                information_result = present_information(root_menu)
+            elseif profile.information_flow == "julius" then
+                information_result = present_julius_information()
+            elseif profile.information_flow == "big_rhino" then
+                information_result = present_mortimer_information()
+            else
+                return "information_unresolved"
+            end
             if information_result == "leave" then
+                if profile.leave_event ~= nil then
+                    game.ui.say(profile.leave_event)
+                end
                 return information_result
             elseif information_result == "work" then
                 if present_work_offer() == "accepted" then
                     return "accepted"
                 end
+            elseif information_result == "contacts_purchased" or
+                   information_result == "contacts_insufficient" then
+                root_menu = information_result
+            else
+                -- ROM main-dialogue descriptors 0x10545C and 0x10514C
+                -- resume the shared root after an information branch.
+                root_menu = "opening_after_information"
             end
-            -- ROM descriptor 0x10514C supplies a different title after an
-            -- information branch, while retaining the same A/B/C labels.
-            root_menu = "opening_after_information"
         elseif choice == "work" then
             if present_work_offer() == "accepted" then
                 return "accepted"

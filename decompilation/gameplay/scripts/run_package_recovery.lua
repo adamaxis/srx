@@ -35,10 +35,37 @@ function PackageRecovery.present_offer()
         offer, "for recovering the package.")
 end
 
-function PackageRecovery.resolve_field_event()
-    -- Source item pickup and return-to-Johnson success are not connected to
-    -- this field-event API yet; do not mark a map event as a completion.
+function PackageRecovery.resolve_field_event(offer, map_id, event_id)
+    local route = type(offer) == "table" and offer.route or nil
+    local target = type(route) == "table" and route.target or nil
+    if type(target) ~= "table" or
+       type(target.area_id) ~= "number" or
+       type(target.location_id) ~= "number" then
+        return { action = "no_action" }
+    end
+
+    -- ROM 0x1F046 matches FFFBF8/FFFBF9 to FFFBEE/FFFBEF before showing
+    -- the package-recovery entry passage at 0xFDF90.
+    if map_id == target.area_id and event_id == target.location_id then
+        return {
+            action = "entry_dialogue",
+            dialogue_module = "run_package_recovery",
+            dialogue_function = "present_target_entry",
+        }
+    end
     return { action = "no_action" }
+end
+
+function PackageRecovery.present_target_entry()
+    local offer = game.runs.registry.active_offer
+    assert(offer ~= nil and offer.id == "package_recovery")
+    -- ROM 0xFDF90; the descriptor uses 0xFE5BF for its MORE indicator.
+    game.ui.say_text(
+        "<You walk into the reception area and single out a lone suit " ..
+        "standing off to the side.>\n\n" ..
+        "You give him a quick jab in the solar plexus and he drops, " ..
+        "wheezing and clutching his chest.>", true)
+    return "shown"
 end
 
 return PackageRecovery

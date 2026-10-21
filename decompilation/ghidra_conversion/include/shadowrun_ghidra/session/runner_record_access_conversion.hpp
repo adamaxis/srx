@@ -106,8 +106,8 @@ struct RunnerRecordFields {
     std::array<std::uint8_t, kRunnerRecordAttributeCount> attributes{};
     std::array<std::uint8_t, kRunnerRecordSkillCount> skills{};
     // Auxiliary source bytes remain positional unless a caller has a proven
-    // meaning. ROM 0x59C34 adds the story-service Karma reward to index 2,
-    // which is the live-record byte at +0x8D.
+    // meaning. The live-record byte at +0x8D is the displayed Karma value;
+    // ROM 0x59C34 adds D0 to it for each of the three runner records.
     std::array<std::uint8_t, kRunnerRecordAuxiliaryCount> auxiliary{};
 };
 

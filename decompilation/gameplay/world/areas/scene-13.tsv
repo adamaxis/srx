@@ -9,3 +9,4 @@ scene13_center_table_01	shared_scene13_booth_table	128	176
 scene13_center_table_02	shared_scene13_booth_table	192	176
 scene13_east_inset	shared_scene13_east_inset	288	112
 scene13_barrel_stack	shared_scene13_barrel_stack	256	160
+scene13_south_edge_exit	shared_scene13_south_exit	64	224

@@ -16,6 +16,110 @@ local function content()
     return value
 end
 
+local function actor_from_row(row)
+    local actor = {
+        source_order = row.source_order,
+        selection_cell_offset = row.selection_cell_offset,
+        sequence_list_offset = row.sequence_list_offset,
+        actor_name = row.actor_name,
+        profile_id = row.profile_id,
+        entity_kind = row.entity_kind,
+        action_kind = row.action_kind,
+        action_code = row.action_code,
+        source_action_slot = row.source_action_slot,
+        source_action_ammo = row.source_action_ammo,
+        source_action_counter = row.source_action_counter,
+        source_interaction_flags = row.source_interaction_flags,
+        physical_meter = row.physical_meter,
+        palette_line = row.palette_line,
+        sprite_stem = row.sprite_stem,
+        tagged_template = row.tagged_template,
+        template_offset = row.template_offset,
+        ordered_overrides = row.ordered_overrides,
+        delay_primary_attribute = row.delay_primary_attribute,
+        delay_secondary_attribute = row.delay_secondary_attribute,
+        delay_capability_flags = row.delay_capability_flags,
+        combatant = {
+            interaction_flags = row.source_interaction_flags,
+            cyberware_flags = row.combat_cyberware_flags,
+            physical_meter = row.physical_meter,
+            mental_meter = row.combat_mental_meter,
+            posture = row.combat_posture,
+            command_attribute_77 = row.combat_attribute_77,
+            command_attribute_78 = row.combat_attribute_78,
+            command_attribute_79 = row.combat_attribute_79,
+            command_attribute_7b = row.combat_attribute_7b,
+            command_attribute_7c = row.combat_attribute_7c,
+            command_attribute_85 = row.combat_attribute_85,
+            item18_base = row.combat_item18_base,
+            armor_index = row.combat_armor_index,
+            race_or_state = row.combat_race_or_state,
+            class_code = row.combat_class_code,
+            equipped_action_code = row.action_code,
+            action_result = 0,
+            action_profile_modifier_flags = row.combat_modifier_flags_df,
+            linked_action_profile_index = row.combat_profile_index_a0,
+            auxiliary_roll_bonus = row.combat_auxiliary_roll_bonus,
+            action_skills = {
+                row.combat_action_skill_81,
+                row.combat_action_skill_82,
+                row.combat_action_skill_83,
+                row.combat_action_skill_84,
+            },
+            action_phase_extension = {
+                row.combat_action_phase_76,
+                row.combat_action_phase_77,
+                row.combat_action_phase_78,
+                row.combat_action_phase_79,
+                row.combat_action_phase_7a,
+                row.combat_action_phase_7b,
+                row.combat_action_phase_7c,
+                row.combat_action_phase_7d,
+                row.combat_action_phase_7e,
+                row.combat_action_phase_7f,
+            },
+            item_codes = {
+                row.combat_item_code_0,
+                row.combat_item_code_1,
+                row.combat_item_code_2,
+                row.combat_item_code_3,
+                row.combat_item_code_4,
+                row.combat_item_code_5,
+                row.combat_item_code_6,
+                row.combat_item_code_7,
+            },
+            item_phases = {
+                row.combat_item_phase_0,
+                row.combat_item_phase_1,
+                row.combat_item_phase_2,
+                row.combat_item_phase_3,
+                row.combat_item_phase_4,
+                row.combat_item_phase_5,
+                row.combat_item_phase_6,
+                row.combat_item_phase_7,
+            },
+        },
+    }
+    if (row.run_target_area or 0) ~= 0 then
+        actor.spawn_x = row.run_target_x
+        actor.spawn_y = row.run_target_y
+    end
+    return actor
+end
+
+local function ordered_actor_rows(data, predicate)
+    local actors = {}
+    for _, row in ipairs(data.dynamic_world_activity_actors or {}) do
+        if predicate(row) then
+            actors[#actors + 1] = actor_from_row(row)
+        end
+    end
+    table.sort(actors, function(left, right)
+        return left.source_order < right.source_order
+    end)
+    return actors
+end
+
 -- ROM 0x1E166 owns the encounter attempt policy. The host supplies typed
 -- world facts and performs the source PRNG draw only when this function asks
 -- for one, so blocked/not-due field passes do not consume random state.
@@ -106,98 +210,9 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
     end
 
     local actors = {}
-    for _, row in ipairs(data.dynamic_world_activity_actors or {}) do
-        if row.scene == scene_id and row.random_sum == sum then
-            actors[#actors + 1] = {
-                source_order = row.source_order,
-                selection_cell_offset = row.selection_cell_offset,
-                sequence_list_offset = row.sequence_list_offset,
-                actor_name = row.actor_name,
-                profile_id = row.profile_id,
-                entity_kind = row.entity_kind,
-                action_kind = row.action_kind,
-                action_code = row.action_code,
-                source_action_slot = row.source_action_slot,
-                source_action_ammo = row.source_action_ammo,
-                source_action_counter = row.source_action_counter,
-                source_interaction_flags = row.source_interaction_flags,
-                physical_meter = row.physical_meter,
-                palette_line = row.palette_line,
-                sprite_stem = row.sprite_stem,
-                tagged_template = row.tagged_template,
-                template_offset = row.template_offset,
-                ordered_overrides = row.ordered_overrides,
-                delay_primary_attribute = row.delay_primary_attribute,
-                delay_secondary_attribute = row.delay_secondary_attribute,
-                delay_capability_flags = row.delay_capability_flags,
-                combatant = {
-                    interaction_flags = row.source_interaction_flags,
-                    cyberware_flags = row.combat_cyberware_flags,
-                    physical_meter = row.physical_meter,
-                    mental_meter = row.combat_mental_meter,
-                    posture = row.combat_posture,
-                    command_attribute_77 = row.combat_attribute_77,
-                    command_attribute_78 = row.combat_attribute_78,
-                    command_attribute_79 = row.combat_attribute_79,
-                    command_attribute_7b = row.combat_attribute_7b,
-                    command_attribute_7c = row.combat_attribute_7c,
-                    command_attribute_85 = row.combat_attribute_85,
-                    item18_base = row.combat_item18_base,
-                    armor_index = row.combat_armor_index,
-                    race_or_state = row.combat_race_or_state,
-                    class_code = row.combat_class_code,
-                    equipped_action_code = row.action_code,
-                    action_result = 0,
-                    action_profile_modifier_flags =
-                        row.combat_modifier_flags_df,
-                    linked_action_profile_index =
-                        row.combat_profile_index_a0,
-                    auxiliary_roll_bonus =
-                        row.combat_auxiliary_roll_bonus,
-                    action_skills = {
-                        row.combat_action_skill_81,
-                        row.combat_action_skill_82,
-                        row.combat_action_skill_83,
-                        row.combat_action_skill_84,
-                    },
-                    action_phase_extension = {
-                        row.combat_action_phase_76,
-                        row.combat_action_phase_77,
-                        row.combat_action_phase_78,
-                        row.combat_action_phase_79,
-                        row.combat_action_phase_7a,
-                        row.combat_action_phase_7b,
-                        row.combat_action_phase_7c,
-                        row.combat_action_phase_7d,
-                        row.combat_action_phase_7e,
-                        row.combat_action_phase_7f,
-                    },
-                    item_codes = {
-                        row.combat_item_code_0,
-                        row.combat_item_code_1,
-                        row.combat_item_code_2,
-                        row.combat_item_code_3,
-                        row.combat_item_code_4,
-                        row.combat_item_code_5,
-                        row.combat_item_code_6,
-                        row.combat_item_code_7,
-                    },
-                    item_phases = {
-                        row.combat_item_phase_0,
-                        row.combat_item_phase_1,
-                        row.combat_item_phase_2,
-                        row.combat_item_phase_3,
-                        row.combat_item_phase_4,
-                        row.combat_item_phase_5,
-                        row.combat_item_phase_6,
-                        row.combat_item_phase_7,
-                    },
-                },
-            }
-        end
-    end
-    table.sort(actors, function(left, right)
-        return left.source_order < right.source_order
+    actors = ordered_actor_rows(data, function(row)
+        return (row.run_target_area or 0) == 0 and
+               row.scene == scene_id and row.random_sum == sum
     end)
     if #actors == 0 then
         return nil
@@ -208,6 +223,35 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
         context_group = selected.context_group,
         random_sum = sum,
         event_name = selected.event_name,
+        opening_text = "",
+        choice_1 = "",
+        choice_2 = "",
+        choice_3 = "",
+        actors = actors,
+    }
+end
+
+function Encounters.resolve_run_target_actor_group(area_id, event_id)
+    if not integer(area_id, 0, 55) or not integer(event_id, 0, 255) then
+        return nil
+    end
+    local data = content()
+    if data == nil then
+        return nil
+    end
+    local actors = ordered_actor_rows(data, function(row)
+        return row.run_target_area == area_id and
+               row.run_target_event == event_id
+    end)
+    if #actors == 0 then
+        return nil
+    end
+    return {
+        kind = "dynamic_world_effect_sequence",
+        scene = 15,
+        context_group = area_id,
+        random_sum = event_id,
+        event_name = "gang_contract_target",
         opening_text = "",
         choice_1 = "",
         choice_2 = "",

@@ -64,34 +64,75 @@ function World.events_in_scene(scene_id)
 end
 
 -- A location link binds a ROM collision event to the entity it belongs to.
--- The rows live beside the reusable entity profile, while the router remains
--- generic. Only source-verified links are authored here; unmapped events keep
--- using the ROM event table supplied by the host.
-function World.location_link_for_event(scene_id, event_code)
+-- More than one row may describe the same entrance when route conditions
+-- select different source-verified outcomes. The Lua route policy resolves
+-- those variants; the world index only returns their authored data.
+function World.location_links_for_event(scene_id, event_code)
     if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
        type(event_code) ~= "string" then
-        return nil
+        return {}
     end
-    local result
+    local result = {}
     for _, instance in ipairs(World.instances_in_scene(scene_id)) do
         local entity = World.entity(instance.entity_id)
         for _, link in ipairs(entity and entity.links or {}) do
             if link.source_scene == scene_id and
                link.source_event == event_code then
-                if result ~= nil then
-                    -- Duplicate event bindings make the location ambiguous.
-                    -- Do not silently pick whichever entity loaded first.
-                    return nil
-                end
-                result = link
+                result[#result + 1] = link
             end
         end
     end
     return result
 end
 
+-- Keep the unique-link convenience API for callers that do not need
+-- conditional variants. Ambiguous bindings remain unresolved here.
+function World.location_link_for_event(scene_id, event_code)
+    local links = World.location_links_for_event(scene_id, event_code)
+    if #links == 1 then return links[1] end
+    return nil
+end
+
 function World.actor_spawns_in_scene(scene_id)
     return records_in_scene("actor_spawns", scene_id)
+end
+
+-- Return the ROM-selected conditional population as ordinary host actor
+-- descriptors. The selector index is resolved by the field activity policy;
+-- this lookup consumes extracted scene/list data and never follows ROM
+-- pointers at runtime. Entries with script_index -1 are event-driven lists
+-- consumed by their own activity route.
+function World.world_activity_actors_for_script(scene_id, script_index)
+    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
+       type(script_index) ~= "number" or script_index % 1 ~= 0 or
+       script_index < 0 then
+        return {}
+    end
+    local rows = content().world_activity_actor_lists or {}
+    local result = {}
+    for _, row in ipairs(rows) do
+        if row.scene == scene_id and row.script_index == script_index then
+            result[#result + 1] = {
+                id = "world_activity:" .. scene_id .. ":" .. script_index ..
+                    ":" .. row.source_order,
+                source_order = row.source_order,
+                name = row.actor_name,
+                entity_kind = row.entity_kind,
+                palette_line = row.palette_line,
+                sprite = row.sprite_stem,
+                x = row.world_x,
+                y = row.world_y,
+                heading = row.initial_heading,
+                action_kind = row.action_kind,
+                action_code = row.action_code,
+                ordered_overrides = row.ordered_overrides,
+            }
+        end
+    end
+    table.sort(result, function(left, right)
+        return left.source_order < right.source_order
+    end)
+    return result
 end
 
 function World.encounter_regions_in_scene(scene_id)

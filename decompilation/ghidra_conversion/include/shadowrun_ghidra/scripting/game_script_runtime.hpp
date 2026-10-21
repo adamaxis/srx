@@ -37,6 +37,10 @@ struct ScriptPersistentValue {
 struct ScriptMenuChoice {
     std::string id;
     std::string label_key;
+    // Optional per-task presentation text for content whose visible label
+    // includes live gameplay values (for example hospital prices). Stable
+    // choice IDs and selection policy remain Lua-owned.
+    std::string inline_label;
 };
 
 enum class ScriptMenuInputMode : std::uint8_t {
@@ -173,9 +177,11 @@ struct ScriptCyberdeckRecord {
 };
 
 struct ScriptCyberdeckProgramSlot {
-    std::uint8_t status = 0U;
-    std::uint16_t timer = 0U;
-    std::uint8_t phase = 0U;
+    // ROM 0x177B0 initializes FFF0ED to 6 and FFF0E8 to 1; the former is
+    // the footer readiness icon, and the latter selects "Ready..." at E2FBE.
+    std::uint8_t status = 6U;
+    std::uint16_t timer = 1U;
+    std::uint8_t phase = 1U;
 };
 
 struct ScriptMatrixNodeFacts {
@@ -227,6 +233,11 @@ struct ScriptMatrixWorldState {
     ScriptMatrixFieldState field;
     std::vector<ScriptMatrixFieldActorState> actors;
     std::optional<ScriptMatrixDatastoreFacts> datastore;
+    // ROM FFF0CE is shared by Matrix node effects and field action services.
+    // Signed-byte semantics determine when its karma rollover fires.
+    std::optional<std::int8_t> karma_counter;
+    // ROM FFF0A3 is reset by the Attack and Slow program handlers.
+    std::optional<std::int8_t> passive_ic_counter;
 };
 
 struct ScriptMenuRouteGame {
@@ -251,6 +262,7 @@ struct ScriptMenuRouteGame {
     std::function<bool(int)> save_game;
     std::function<bool(int)> load_game;
     std::function<int(int)> save_status;
+    std::function<std::optional<std::uint32_t>()> nuyen;
     std::function<void(std::uint32_t)> set_nuyen;
     std::function<bool(int)> request_taxi_destination;
     std::function<void()> consume_debug_unlock;
@@ -267,7 +279,6 @@ struct ScriptMenuRouteGame {
     std::function<std::optional<bool>()> cyberdeck_available;
     std::function<int()> deck_enter;
     std::function<void(int)> deck_leave;
-    std::function<void()> deck_tick;
     std::function<void(int)> set_deck_mode;
     std::function<bool()> matrix_online;
     std::function<std::optional<ScriptMatrixNodeFacts>()> matrix_node;
@@ -292,6 +303,10 @@ struct ScriptMenuRouteBindings {
 
 struct ScriptMenuRouteStartArguments {
     std::optional<std::uint8_t> matrix_system_id;
+    // Optional source-node seed used by deterministic full-frame QA starts.
+    std::optional<std::uint8_t> matrix_node_id;
+    // Optional current IC condition for a progressed Matrix snapshot.
+    std::optional<std::uint8_t> matrix_node_ic_condition;
     std::optional<std::uint8_t> taxi_current_region;
     bool return_to_field = false;
 };
@@ -300,10 +315,89 @@ struct ScriptMatrixMapCellVisual {
     std::array<std::uint16_t, 4> tile_words{};
 };
 
+enum class ScriptMatrixWorldModelId : std::uint8_t {
+    system_access_network = 0U,
+    central_processing_unit = 1U,
+    sub_processor_unit = 2U,
+    input_output_port = 3U,
+    datastore = 4U,
+    slave_module = 5U,
+};
+
 struct ScriptMatrixNodeStatusView {
     std::string file_class_label;
     std::string alert_band_label;
     int action_difficulty = 0;
+    int background_profile = 0;
+    int palette_theme = 1;
+    ScriptMatrixWorldModelId world_model_id =
+        ScriptMatrixWorldModelId::system_access_network;
+};
+
+struct ScriptMatrixTraversalView {
+    ScriptMatrixWorldModelId world_model_id =
+        ScriptMatrixWorldModelId::system_access_network;
+    int palette_theme = 1;
+    // 0x1A908 selects an IC mode 0..8, -1 selects the 0x1AA10 fallback,
+    // and 0x45 suppresses this world-effect layer.
+    int world_effect_mode = 0x45;
+    int world_effect_phase = 0;
+    // ROM 0x199D6 copies C/A/B confirmation into FFF0B7 (-1/0/1).
+    int action_mode = 0;
+      // Analyze's FFE00C countdown selects one of four paired ring layers;
+      // the attached behavior-A runner changes pose after five service calls.
+      int analyze_effect_phase = -1;
+      int analyze_runner_phase = -1;
+    // Lua owns the 61-VBlank setup and the selected 179/239-VBlank entry
+    // profile. Qt only presents the resulting source-timed model canvas.
+    int world_entry_phase = 2;
+    int world_entry_setup_vblanks = 0;
+    int world_entry_sequence_vblanks = 0;
+    int world_entry_sequence_duration = 0;
+    int world_entry_published_frame = 0;
+    int model_canvas_x = 0;
+    int model_canvas_y = 0;
+    int model_canvas_width = 0;
+    int model_canvas_height = 0;
+    int knowledge_rank = 0;
+    std::string function_label;
+    std::string file_class_label;
+    std::string alert_band_label;
+    int action_difficulty = -1;
+    std::string action_difficulty_label;
+    std::string ice_label;
+    std::string ice_rating_label;
+    int ice_rating_column = 0;
+    std::string second_ice_label;
+    std::string second_ice_rating_label;
+    int second_ice_rating_column = 0;
+    std::string alert_label;
+    std::string active_program_label;
+    std::string active_program_status_label;
+};
+
+enum class ScriptMatrixRunInfoKind : std::uint8_t {
+    no_run,
+    complete,
+    active,
+};
+
+struct ScriptMatrixRunInfoView {
+    ScriptMatrixRunInfoKind kind = ScriptMatrixRunInfoKind::no_run;
+    std::string message;
+    std::string node_label;
+    std::string node;
+    std::string function_label;
+    std::string node_function;
+    std::string action_label;
+    std::string action;
+};
+
+struct ScriptMatrixDeckStatsView {
+    std::string manufacturer;
+    std::string model;
+    std::array<std::string, 10> labels{};
+    std::array<unsigned int, 10> values{};
 };
 
 struct ScriptMenuRouteSnapshot {
@@ -317,6 +411,12 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_column;
     std::optional<int> top_row;
     std::optional<int> top_selection;
+    std::optional<int> top_program_index;
+    std::optional<int> top_program_slot;
+    std::optional<int> top_program_choice;
+    std::optional<bool> top_enter_callback_present;
+    std::optional<bool> top_enter_called;
+    std::optional<int> top_enter_transition;
     std::optional<bool> top_caption_visible;
     std::optional<int> top_command;
     std::optional<int> top_quantity;
@@ -337,6 +437,26 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_matrix_previous_node;
     std::optional<int> top_matrix_alert;
     std::optional<ScriptMatrixNodeStatusView> top_matrix_node_status;
+    std::optional<ScriptMatrixTraversalView> top_matrix_traversal_view;
+    std::optional<ScriptMatrixRunInfoView> top_matrix_run_info;
+    std::optional<ScriptMatrixDeckStatsView> top_matrix_deck_stats;
+    std::string top_matrix_deck_description;
+    bool top_matrix_deck_detail_labels_present = false;
+    std::array<std::string, 3> top_matrix_deck_detail_labels{};
+    bool top_matrix_deck_program_detail_values_present = false;
+    std::array<std::string, 3> top_matrix_deck_program_detail_values{};
+    bool top_matrix_deck_runner_detail_labels_present = false;
+    std::array<std::string, 2> top_matrix_deck_runner_detail_labels{};
+    bool top_matrix_deck_runner_details_present = false;
+    std::array<std::string, 2> top_matrix_deck_runner_details{};
+    bool top_matrix_deck_program_ratings_present = false;
+    std::array<std::uint8_t, 12> top_matrix_deck_program_ratings{};
+    bool top_matrix_deck_active_programs_present = false;
+    std::array<std::int8_t, 5> top_matrix_deck_active_programs{{
+        -1, -1, -1, -1, -1}};
+    bool top_matrix_deck_program_slot_status_present = false;
+    std::array<std::uint8_t, 5> top_matrix_deck_program_slot_status{};
+    std::optional<int> top_matrix_deck_palette_phase;
     std::optional<int> top_matrix_countdown;
     std::optional<int> top_matrix_transition_fade_step;
     bool top_matrix_map_cells_present = false;
@@ -397,10 +517,17 @@ struct ScriptShopOffer {
     std::uint8_t quantity = 0;
 };
 
+struct ScriptShopProgressionOffer {
+    std::uint8_t action_code = 0;
+    std::uint8_t source_metadata = 0;
+    std::uint16_t base_cost = 0;
+};
+
 struct ScriptShopOfferGroup {
     std::string id;
     std::array<std::string, 2> title_keys{};
     std::vector<ScriptShopOffer> offers;
+    std::vector<ScriptShopProgressionOffer> progression_offers;
 };
 
 struct ScriptShopTextKeys {
@@ -413,13 +540,30 @@ struct ScriptShopTextKeys {
     std::string protected_sale;
     std::string sale_quote_heading;
     std::string purchase_price_heading;
+    std::string progression_training_unavailable;
+    std::string progression_maximum_level;
+    std::string progression_cost_heading;
+    std::string progression_level_label;
 };
 
 struct ScriptShopDefinition {
     std::string id;
     std::string title_key;
+    std::uint8_t menu_mode = 0; // ROM FFF0B6
+    std::int8_t menu_result = 0; // ROM FFF0B7
     ScriptShopTextKeys text_keys;
     std::vector<ScriptShopOfferGroup> groups;
+};
+
+struct ScriptShopMenuSnapshot {
+    bool open = false;
+    std::string shop_id;
+    std::uint8_t menu_mode = 0U;
+    std::int8_t menu_result = 0;
+    std::uint8_t action_cursor = 0U;
+    std::uint8_t action_panel = 0U;
+    std::uint8_t selected_action = 0U;
+    std::string event;
 };
 
 struct ScriptWeaponTemplate {
@@ -508,6 +652,7 @@ enum class ScriptRunFieldEventAction : std::uint8_t {
     no_action,
     objective_advanced,
     completed,
+    entry_dialogue,
 };
 
 struct ScriptRunFieldEventDecision {
@@ -516,6 +661,13 @@ struct ScriptRunFieldEventDecision {
     std::string run_id;
     std::uint32_t reward_nuyen = 0;
     std::uint8_t runner_progress_delta = 0;
+    std::string dialogue_module;
+    std::string dialogue_function;
+    std::uint8_t actor_group_area = 0;
+    std::uint8_t actor_group_event = 0;
+    std::uint8_t activity_scene_id = 0;
+    std::uint32_t actor_list_offset = 0;
+    std::uint32_t actor_resource_profile_offset = 0;
 };
 
 struct ScriptActorDefeatFacts {
@@ -707,6 +859,8 @@ struct ScriptFieldEncounterActor {
     std::uint16_t source_order = 0;
     std::uint32_t selection_cell_offset = 0;
     std::uint32_t sequence_list_offset = 0;
+    std::optional<std::uint16_t> run_target_spawn_x;
+    std::optional<std::uint16_t> run_target_spawn_y;
     std::string actor_name;
     std::string profile_id;
     std::uint16_t entity_kind = 0;
@@ -1186,6 +1340,8 @@ public:
     resolve_active_run_actor_defeat(const ScriptActorDefeatFacts& facts);
     std::optional<ScriptRunJohnsonReturnDecision>
     resolve_active_run_johnson_return(std::uint8_t context);
+    std::optional<std::uint8_t> johnson_interaction_context(
+        std::string_view text_profile);
     std::optional<ScriptPersistentValue> save_run_registry_state();
     bool validate_run_registry_state(const ScriptPersistentValue& state);
     bool restore_run_registry_state(const ScriptPersistentValue& state);
@@ -1200,6 +1356,9 @@ public:
     std::optional<ScriptFieldEncounterOutcome> resolve_field_encounter(
         std::uint16_t scene_id, std::uint8_t first_roll,
         std::uint8_t second_roll);
+    std::optional<ScriptFieldEncounterOutcome>
+    resolve_run_target_actor_group(std::uint8_t area_id,
+                                   std::uint8_t event_id);
     // audio.lua scene_music: the music id Lua selects on scene init from
     // scene profile word +0x40 (FFDE06). nullopt = no music / failure.
     std::optional<std::uint16_t> scene_music(std::uint16_t scene_id,
@@ -1241,6 +1400,12 @@ public:
         ScriptMenuDefinition menu);
     std::optional<ScriptShopDefinition> shop_definition(
         std::string_view shop_id);
+    std::optional<ScriptShopMenuSnapshot> open_shop_menu(
+        std::string_view shop_id);
+    std::optional<ScriptShopMenuSnapshot> advance_shop_menu(
+        std::uint16_t controller_events);
+    std::optional<ScriptShopMenuSnapshot> reset_shop_menu();
+    bool close_shop_menu();
     std::optional<ScriptItemCatalog> item_catalog();
     ScriptTaskStep start_task(
         std::string_view module, std::string_view function);
@@ -1266,6 +1431,11 @@ public:
     const std::string& failure() const noexcept;
 
 private:
+    std::optional<ScriptFieldEncounterOutcome>
+    resolve_field_encounter_impl(std::uint16_t scene_id,
+                                 std::uint8_t first_roll,
+                                 std::uint8_t second_roll,
+                                 bool run_target_actor_group);
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };

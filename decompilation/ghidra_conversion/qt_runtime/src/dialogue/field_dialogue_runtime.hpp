@@ -31,6 +31,13 @@ enum class FieldDialogueAdvanceResult {
     matrix_entry_requested,
     matrix_search_requested,
     hotel_options_requested,
+    hospital_options_requested,
+    hospital_medical_attention_requested,
+    hospital_cyberware_requested,
+    hospital_leave_confirmation_requested,
+    hospital_left,
+    medicine_lodge_store_requested,
+    medicine_lodge_wise_one_followup,
     source_boundary,
 };
 
@@ -98,6 +105,7 @@ public:
         const StokerMotelStoryState& story_state);
     bool open_gameplay_task(std::string_view module,
                             std::string_view function);
+    bool present_source_boundary_for_host(std::string reason);
 
     FieldDialogueAdvanceResult advance_controller_events(
         std::uint16_t event_word);
@@ -109,6 +117,11 @@ public:
         return panel_.open && input_lockout_frames_ != 0U;
     }
     std::optional<std::uint8_t> take_matrix_entry_system_id() noexcept;
+    std::optional<std::string> take_gameplay_task_result();
+    bool uses_field_console_menu_layout() const noexcept;
+    std::string_view field_console_menu_title() const noexcept;
+    bool uses_hospital_menu_layout() const noexcept;
+    bool uses_hospital_medical_attention_layout() const noexcept;
 
     void close() noexcept;
     bool open() const noexcept { return panel_.open; }
@@ -149,6 +162,7 @@ private:
     bool script_task_waiting_ = false;
     std::uint8_t input_lockout_frames_ = 0U;
     std::optional<std::uint8_t> pending_matrix_entry_system_id_;
+    std::optional<std::string> last_gameplay_task_result_id_;
     StokerMotelArrivalCommandCallbacks arrival_command_callbacks_;
     std::function<std::optional<StokerMotelRoomPaymentOutcome>()>
         room_payment_callback_;

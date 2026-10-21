@@ -1,0 +1,2 @@
+entity_id	name	category	evidence	content_profile	speaker_id	shop_profile
+shared_scene13_south_exit	South-edge field transition	structure	ROM scene-13 event-0 collision records 9/10 at 0x1B3CE4 and 0x1B3CEE cover cells (2,7) and (3,7). The region is a scene transition; no separate visible object is inferred.	-	-	-

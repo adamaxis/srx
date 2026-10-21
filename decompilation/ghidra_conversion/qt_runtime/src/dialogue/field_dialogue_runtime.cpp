@@ -205,6 +205,11 @@ bool FieldDialogueRuntime::open_gameplay_task(
                              StokerMotelPromptId::source_boundary);
 }
 
+bool FieldDialogueRuntime::present_source_boundary_for_host(
+    std::string reason) {
+    return open_source_boundary(std::move(reason));
+}
+
 #ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldDialogueRuntime::open_stoker_interaction_for_dump(
     const StokerMotelStoryState& story_state) {
@@ -346,6 +351,7 @@ bool FieldDialogueRuntime::open_stoker_prompt(
 bool FieldDialogueRuntime::start_script_task(
     const std::string_view module, const std::string_view function,
     const StokerMotelPromptId prompt) {
+    last_gameplay_task_result_id_.reset();
     if (script_runtime_ == nullptr) {
         return open_source_boundary(
             "dialogue script has no gameplay script runtime");
@@ -449,6 +455,18 @@ bool FieldDialogueRuntime::present_script_operation(
                     ? "dialogue script menu has no Lua content mapping"
                     : script_runtime_->failure());
         }
+        for (auto& choice : active_script_menu_->choices) {
+            if (choice.inline_label.empty()) {
+                continue;
+            }
+            const auto* source_label =
+                script_runtime_->dialogue_text(choice.label_key);
+            if (source_label == nullptr || source_label->empty()) {
+                return open_source_boundary(
+                    "Lua menu inline label has no ROM label text");
+            }
+            choice.inline_label = *source_label + choice.inline_label;
+        }
         const auto& menu = *active_script_menu_;
         active_speaker_profile_.reset();
         std::optional<DialogueSpeakerPresentation> speaker;
@@ -465,16 +483,41 @@ bool FieldDialogueRuntime::present_script_operation(
             }
             speaker = present_speaker(*active_speaker_profile_);
         }
+        constexpr std::string_view kInlineChoicePrefix = "\x1Finline:";
         const DialogueTextResolver resolver =
-            [this](const std::string_view alias) {
+            [this, kInlineChoicePrefix](
+                const std::string_view alias) -> std::string_view {
+                if (alias.size() >= kInlineChoicePrefix.size() &&
+                    alias.compare(0U, kInlineChoicePrefix.size(),
+                                  kInlineChoicePrefix) == 0 &&
+                    active_script_menu_.has_value()) {
+                    const auto choice_id =
+                        alias.substr(kInlineChoicePrefix.size());
+                    const auto choice = std::find_if(
+                        active_script_menu_->choices.begin(),
+                        active_script_menu_->choices.end(),
+                        [choice_id](const auto& candidate) {
+                            return candidate.id == choice_id;
+                        });
+                    if (choice != active_script_menu_->choices.end()) {
+                        return choice->inline_label;
+                    }
+                }
                 return resolve_text(alias);
             };
         std::vector<std::pair<std::string, std::string>> choices;
         choices.reserve(menu.choices.size());
         for (const auto& choice : menu.choices) {
-            choices.emplace_back(choice.id, choice.label_key);
+            if (choice.inline_label.empty()) {
+                choices.emplace_back(choice.id, choice.label_key);
+            } else {
+                choices.emplace_back(
+                    choice.id,
+                    std::string(kInlineChoicePrefix) + choice.id);
+            }
         }
         if (menu.input_mode == scripting::ScriptMenuInputMode::cursor &&
+            !menu.choices.empty() &&
             menu.selected_index >= menu.choices.size()) {
             return open_source_boundary(
                 "Lua cursor menu selected an index outside its choices");
@@ -722,16 +765,52 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         script_task_waiting_ = false;
         active_script_operation_.reset();
         if (task.status == scripting::ScriptTaskStep::Status::completed) {
+            last_gameplay_task_result_id_ = task.result_id;
             const bool hotel_options_requested =
                 task.result_id == std::optional<std::string>{"hotel-options"};
+            const bool hospital_options_requested = task.result_id ==
+                std::optional<std::string>{"hospital-options"};
+            const bool medicine_lodge_wise_one_followup = task.result_id ==
+                std::optional<std::string>{
+                    "medicine_lodge_wise_one_followup"};
             const bool phone_passage_requested = task.result_id ==
                 std::optional<std::string>{"field_phone_passage_requested"};
             close();
+            if (task.result_id == std::optional<std::string>{
+                                    "tabatha_state_unavailable"}) {
+                open_source_boundary(
+                    "Tarislar City Inn could not apply Tabatha's ROM state changes");
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
+            if (task.result_id == std::optional<std::string>{
+                                    "tabatha_ambush_unconverted"}) {
+                open_source_boundary(
+                    "Tarislar City Inn attack handoff reaches encounter commands 0x4B, 0x4C, and 0x20, which are not converted yet");
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
+            if (task.result_id == std::optional<std::string>{
+                                    "wylie_feature_state_unavailable"}) {
+                open_source_boundary(
+                    "Wylie's Gala Inn free-stay branch requires runner status byte FF018F, which this restored save does not provide");
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
+            if (task.result_id == std::optional<std::string>{
+                                    "wylie_payment_unavailable"}) {
+                open_source_boundary(
+                    "Wylie's Gala Inn room payment requires a resolved credstick balance");
+                return FieldDialogueAdvanceResult::source_boundary;
+            }
             if (phone_passage_requested) {
                 return FieldDialogueAdvanceResult::phone_passage_requested;
             }
+            if (medicine_lodge_wise_one_followup) {
+                return FieldDialogueAdvanceResult::
+                    medicine_lodge_wise_one_followup;
+            }
             return hotel_options_requested
                        ? FieldDialogueAdvanceResult::hotel_options_requested
+                   : hospital_options_requested
+                       ? FieldDialogueAdvanceResult::hospital_options_requested
                        : FieldDialogueAdvanceResult::returned_to_field;
         }
         open_source_boundary(
@@ -746,7 +825,15 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         const bool vid_phone_contact_menu =
             active_script_menu_->id == "contacts" &&
             active_script_menu_->text_profile == "field.vid_phone";
-        if ((event_word & kControllerUpEvent) != 0U) {
+        if (active_script_menu_->choices.empty()) {
+            if ((event_word & kControllerBEvent) != 0U) {
+                input_id = "back";
+            } else {
+                // The source medical screen may have no treatment rows. In
+                // that state only its B-button return is actionable.
+                return FieldDialogueAdvanceResult::waiting_for_controller;
+            }
+        } else if ((event_word & kControllerUpEvent) != 0U) {
             input_id = "up";
         } else if ((event_word & kControllerDownEvent) != 0U) {
             input_id = "down";
@@ -801,7 +888,8 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         script_task_waiting_ = false;
         active_script_operation_.reset();
         active_script_menu_.reset();
-    hosted_choice_list_ = false;
+        hosted_choice_list_ = false;
+        last_gameplay_task_result_id_ = task.result_id;
         const bool returned_from_activity =
             task.result_id ==
             std::optional<std::string>{"return_from_world_activity"};
@@ -812,6 +900,23 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             std::optional<std::string>{"taxi_selector_requested"};
         const bool phone_passage_requested = task.result_id ==
             std::optional<std::string>{"field_phone_passage_requested"};
+        const bool hospital_options_requested = task.result_id ==
+            std::optional<std::string>{"hospital-options"};
+        const bool hospital_medical_attention_requested = task.result_id ==
+            std::optional<std::string>{
+                "hospital_medical_attention_requested"};
+        const bool hospital_cyberware_requested = task.result_id ==
+            std::optional<std::string>{"hospital_cyberware_requested"};
+        const bool hospital_leave_confirmation_requested = task.result_id ==
+            std::optional<std::string>{
+                "hospital_leave_confirmation_requested"};
+        const bool hospital_left = task.result_id ==
+            std::optional<std::string>{"hospital_left"};
+        const bool medicine_lodge_store_requested = task.result_id ==
+            std::optional<std::string>{"medicine_lodge_store_requested"};
+        const bool medicine_lodge_wise_one_followup = task.result_id ==
+            std::optional<std::string>{
+                "medicine_lodge_wise_one_followup"};
         const bool unresolved_phone_flags = task.result_id ==
             std::optional<std::string>{"phone_contacts_flags_unresolved"};
         const bool unresolved_cyberspace_facts = task.result_id ==
@@ -853,6 +958,31 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         }
         if (phone_passage_requested) {
             return FieldDialogueAdvanceResult::phone_passage_requested;
+        }
+        if (hospital_options_requested) {
+            return FieldDialogueAdvanceResult::hospital_options_requested;
+        }
+        if (hospital_medical_attention_requested) {
+            return FieldDialogueAdvanceResult::
+                hospital_medical_attention_requested;
+        }
+        if (hospital_cyberware_requested) {
+            return FieldDialogueAdvanceResult::hospital_cyberware_requested;
+        }
+        if (hospital_leave_confirmation_requested) {
+            return FieldDialogueAdvanceResult::
+                hospital_leave_confirmation_requested;
+        }
+        if (hospital_left) {
+            return FieldDialogueAdvanceResult::hospital_left;
+        }
+        if (medicine_lodge_store_requested) {
+            return FieldDialogueAdvanceResult::
+                medicine_lodge_store_requested;
+        }
+        if (medicine_lodge_wise_one_followup) {
+            return FieldDialogueAdvanceResult::
+                medicine_lodge_wise_one_followup;
         }
         if (matrix_entry_system_id.has_value()) {
             return FieldDialogueAdvanceResult::matrix_entry_requested;
@@ -957,11 +1087,20 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         script_task_waiting_ = false;
         active_script_operation_.reset();
         active_script_menu_.reset();
-    hosted_choice_list_ = false;
+        hosted_choice_list_ = false;
+        last_gameplay_task_result_id_ = task.result_id;
         const bool hotel_options_requested =
             task.result_id == std::optional<std::string>{"hotel-options"};
+        const bool hospital_options_requested =
+            task.result_id == std::optional<std::string>{"hospital-options"};
+        const bool medicine_lodge_store_requested = task.result_id ==
+            std::optional<std::string>{"medicine_lodge_store_requested"};
         const bool phone_services_unconverted = task.result_id ==
             std::optional<std::string>{"phone_services_not_converted"};
+        const bool tabatha_state_unavailable = task.result_id ==
+            std::optional<std::string>{"tabatha_state_unavailable"};
+        const bool tabatha_ambush_unconverted = task.result_id ==
+            std::optional<std::string>{"tabatha_ambush_unconverted"};
         const bool phone_passage_requested = task.result_id ==
             std::optional<std::string>{"field_phone_passage_requested"};
         close();
@@ -970,12 +1109,42 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
                 "This contact's service transactions are not converted yet");
             return FieldDialogueAdvanceResult::source_boundary;
         }
+        if (tabatha_state_unavailable) {
+            open_source_boundary(
+                "Tarislar City Inn could not apply Tabatha's ROM state changes");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        if (tabatha_ambush_unconverted) {
+            open_source_boundary(
+                "Tarislar City Inn attack handoff reaches encounter commands 0x4B, 0x4C, and 0x20, which are not converted yet");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        if (task.result_id == std::optional<std::string>{
+                                "wylie_feature_state_unavailable"}) {
+            open_source_boundary(
+                "Wylie's Gala Inn free-stay branch requires runner status byte FF018F, which this restored save does not provide");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
+        if (task.result_id == std::optional<std::string>{
+                                "wylie_payment_unavailable"}) {
+            open_source_boundary(
+                "Wylie's Gala Inn room payment requires a resolved credstick balance");
+            return FieldDialogueAdvanceResult::source_boundary;
+        }
         if (phone_passage_requested) {
             return FieldDialogueAdvanceResult::phone_passage_requested;
         }
-        return hotel_options_requested
-                   ? FieldDialogueAdvanceResult::hotel_options_requested
-                   : FieldDialogueAdvanceResult::returned_to_field;
+        if (hotel_options_requested) {
+            return FieldDialogueAdvanceResult::hotel_options_requested;
+        }
+        if (hospital_options_requested) {
+            return FieldDialogueAdvanceResult::hospital_options_requested;
+        }
+        if (medicine_lodge_store_requested) {
+            return FieldDialogueAdvanceResult::
+                medicine_lodge_store_requested;
+        }
+        return FieldDialogueAdvanceResult::returned_to_field;
     } else {
         command = stoker_motel_prompt_command(active_prompt_, option_index);
     }
@@ -1156,6 +1325,46 @@ FieldDialogueRuntime::take_matrix_entry_system_id() noexcept {
     auto requested = pending_matrix_entry_system_id_;
     pending_matrix_entry_system_id_.reset();
     return requested;
+}
+
+std::optional<std::string>
+FieldDialogueRuntime::take_gameplay_task_result() {
+    auto result = std::move(last_gameplay_task_result_id_);
+    last_gameplay_task_result_id_.reset();
+    return result;
+}
+
+bool FieldDialogueRuntime::uses_field_console_menu_layout() const noexcept {
+    if (!panel_.open || !active_script_menu_.has_value() ||
+        !active_script_menu_->speaker_id.empty()) {
+        return false;
+    }
+    const auto& id = active_script_menu_->id;
+    return id == "ordinary" || id == "cyberspace" || id == "passcodes";
+}
+
+std::string_view FieldDialogueRuntime::field_console_menu_title() const noexcept {
+    return uses_field_console_menu_layout() && panel_.text_segment_count != 0U
+               ? panel_.text_segments[0]
+               : std::string_view{};
+}
+
+bool FieldDialogueRuntime::uses_hospital_menu_layout() const noexcept {
+    if (!panel_.open || !active_script_menu_.has_value() ||
+        active_script_menu_->text_profile != "council_island_hospital") {
+        return false;
+    }
+    const auto& id = active_script_menu_->id;
+    return id == "hospital_options" ||
+           id == "hospital_medical_attention" ||
+           id == "hospital_leave_confirmation";
+}
+
+bool FieldDialogueRuntime::uses_hospital_medical_attention_layout()
+    const noexcept {
+    return panel_.open && active_script_menu_.has_value() &&
+           active_script_menu_->text_profile == "council_island_hospital" &&
+           active_script_menu_->id == "hospital_medical_attention";
 }
 
 void FieldDialogueRuntime::paint(QPainter& painter) const {
