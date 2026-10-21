@@ -8294,7 +8294,13 @@ void FieldSceneRuntime::configure_field_menu_route() {
         return std::nullopt;
     };
     bindings.game.alert = [] { return -1; };
-    bindings.game.world_effect_gate_negative = [] { return false; };
+    bindings.game.world_effect_gate_negative = [this] {
+        // FFDF84 is shared by the field timeout/world-activity helper and
+        // Matrix. The field runtime keeps the signed source word here; Matrix
+        // tests its sign at 0x19B40 rather than treating any active timeout as
+        // a negative gate.
+        return field_world_activity_timeout_state_.timeout_marker < 0;
+    };
     bindings.game.map_seen = [] { return 0; };
     bindings.game.matrix_world_state = [this] {
         scripting::ScriptMatrixWorldState world;
@@ -16821,6 +16827,10 @@ bool FieldSceneRuntime::open_matrix_traversal_for_dump(
     arguments.matrix_system_id = system_id;
     arguments.matrix_node_id = node_id;
     arguments.matrix_node_ic_condition = 0U;
+    // The Section 21 capture is a previously explored node. ROM FFFB30 keeps
+    // its rank across the 0x181F8 direct Matrix entry, so seed rank 4 before
+    // the entry animation rather than deriving it from the test traversal.
+    arguments.matrix_node_knowledge_rank = 4U;
     arguments.return_to_field = true;
     open_command_overview(
         static_cast<std::uint16_t>(srx::MenuScreen::MATRIX_ENTRY),

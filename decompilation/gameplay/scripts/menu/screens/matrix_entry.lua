@@ -17,6 +17,7 @@ function M.new(args)
         system_id = args.system_id,
         node_id = args.node_id,
         node_ic_condition = args.node_ic_condition,
+        node_knowledge_rank = args.node_knowledge_rank,
         return_to_field = args.return_to_field == true,
         wait_frames = 20,
         title = "",
@@ -51,7 +52,7 @@ function M.input(st, events, ctx)
     local started, matrix_state = MatrixSession.begin(
         system_id, world.field and world.field.alarm, st.node_id,
         st.node_ic_condition,
-        world_effect_gate_negative(ctx.game))
+        world_effect_gate_negative(ctx.game), st.node_knowledge_rank)
     if not started then
         return { transition = T.EXIT, result = { system_unavailable = true } }
     end

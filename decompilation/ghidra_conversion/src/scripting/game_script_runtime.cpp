@@ -9747,7 +9747,7 @@ bool GameScriptRuntime::open_menu_route(
     }
     lua_pushvalue(state, route_index);
     lua_pushinteger(state, static_cast<lua_Integer>(root_screen));
-    lua_createtable(state, 0, 3);
+    lua_createtable(state, 0, 6);
     if (start_arguments.matrix_system_id.has_value()) {
         lua_pushinteger(state, *start_arguments.matrix_system_id);
         lua_setfield(state, -2, "system_id");
@@ -9760,6 +9760,11 @@ bool GameScriptRuntime::open_menu_route(
         lua_pushinteger(state,
                         *start_arguments.matrix_node_ic_condition);
         lua_setfield(state, -2, "node_ic_condition");
+    }
+    if (start_arguments.matrix_node_knowledge_rank.has_value()) {
+        lua_pushinteger(state,
+                        *start_arguments.matrix_node_knowledge_rank);
+        lua_setfield(state, -2, "node_knowledge_rank");
     }
     if (start_arguments.taxi_current_region.has_value()) {
         lua_pushinteger(state, *start_arguments.taxi_current_region);

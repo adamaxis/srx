@@ -832,8 +832,10 @@ before the clear. The nearby `FFDF40` branch writes `0xFF` to `FFE171` at
 hypothesis that the next outer pass preserves the negative `FFDF84` marker.
 The field traversal path enters after the `0x174E4` clear. The direct menu
 entry at `0x181F8` does not itself clear `FFDF84`, so it must receive the
-current value from its host; the Qt host callback is still a false-valued
-stub and direct-entry gate fidelity remains open. The controller path
+current value from its host. The Qt binding now reads the signed field
+timeout marker maintained by the `0x1DBAA` world-activity path; the Matrix
+traversal QA creates a Scene 2 encounter through that source-backed state and
+checks that the negative sign reaches Lua on direct entry. The controller path
 `0x1A370` -> `0x561E8` -> `0x56116` does not run between initial mode setup and
 the node-action handoff: while `0x1D2E6` reports the entry sequence incomplete,
 `0x1ADE6` branches to `0x1AFC0` before the `0x1AF74` controller call; when the

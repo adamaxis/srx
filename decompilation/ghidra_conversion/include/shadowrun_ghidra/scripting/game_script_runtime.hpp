@@ -307,6 +307,8 @@ struct ScriptMenuRouteStartArguments {
     std::optional<std::uint8_t> matrix_node_id;
     // Optional current IC condition for a progressed Matrix snapshot.
     std::optional<std::uint8_t> matrix_node_ic_condition;
+    // Optional FFFB30 high-nibble seed for a progressed Matrix QA snapshot.
+    std::optional<std::uint8_t> matrix_node_knowledge_rank;
     std::optional<std::uint8_t> taxi_current_region;
     bool return_to_field = false;
 };

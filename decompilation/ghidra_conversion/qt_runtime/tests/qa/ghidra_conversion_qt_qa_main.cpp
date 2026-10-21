@@ -24447,6 +24447,7 @@ int main(int argc, char** argv) {
                                    sub_processor_unit &&
                            view.palette_theme == 2 &&
                            view.function_label == "SPU" &&
+                           view.knowledge_rank == 4 &&
                            view.alert_band_label == " Green-" &&
                            view.action_difficulty_label == "3" &&
                            view.file_class_label == " Data Routing " &&
@@ -24631,10 +24632,19 @@ int main(int argc, char** argv) {
                     final_route.top_matrix_traversal_view
                             ->world_entry_published_frame != 56 ||
                     final_route.top_matrix_traversal_view
-                            ->world_entry_sequence_vblanks != 239) {
+                            ->world_entry_sequence_vblanks != 239 ||
+                    final_route.top_matrix_traversal_view
+                            ->knowledge_rank != 4 ||
+                    final_route.top_matrix_traversal_view->palette_theme != 2 ||
+                    final_route.top_matrix_traversal_view->alert_band_label !=
+                        " Green-" ||
+                    final_route.top_matrix_traversal_view
+                            ->action_difficulty_label != "3" ||
+                    final_route.top_matrix_traversal_view->file_class_label !=
+                        " Data Routing ") {
                     std::cerr << "Matrix traversal entry QA: compact source "
-                                 "stream did not settle on publication 56 "
-                                 "at VBlank 239\n";
+                                 "stream or 0x54662 knowledge publication did "
+                                 "not settle at VBlank 239\n";
                     return 3;
                 }
                 const auto actual_image = capture("actual");
@@ -25037,6 +25047,75 @@ int main(int argc, char** argv) {
                               << model0_mask_overlap << '\n';
                     return 3;
                 }
+
+                // FFDF84 is a signed world-activity marker shared with the
+                // field timeout service. Seed a ROM-defined Scene 2 encounter
+                // through the normal typed field state, then verify that the
+                // direct 0x181F8 Matrix route receives its negative sign via
+                // the FieldSceneRuntime-to-Lua binding.
+                std::vector<std::string> gate_source_boundaries;
+                qt_runtime::FieldSceneRuntime gate_scene(
+                    [&gate_source_boundaries](
+                        const std::string_view boundary) {
+                        gate_source_boundaries.emplace_back(boundary);
+                    });
+                gate_scene.set_source_random_seed_for_dump(0x4000U);
+                gate_scene.set_field_world_frame_counter_for_dump(0x0200U);
+                if (!gate_scene.bootstrap_for_scene_dump(smoke_state, 2U)) {
+                    std::cerr << "Matrix gate QA: Scene 2 bootstrap failed: "
+                              << gate_scene.failure() << '\n';
+                    return 3;
+                }
+                const auto gate_encounter_spawned =
+                    gate_scene.resolve_and_spawn_field_encounter_for_dump(
+                        1U, 2U, 0x1234U);
+                if (gate_encounter_spawned != 2U ||
+                    gate_scene.world_activity_timeout_for_dump()
+                            .timeout_marker >= 0) {
+                    std::cerr << "Matrix gate QA: source encounter did not "
+                                 "publish FFDF84=-1; spawned="
+                              << gate_encounter_spawned << " marker="
+                              << gate_scene.world_activity_timeout_for_dump()
+                                     .timeout_marker
+                              << '\n';
+                    return 3;
+                }
+                if (!gate_scene.open_matrix_traversal_for_dump(2U, 2U)) {
+                    std::cerr << "Matrix gate QA: Matrix route did not open "
+                                 "after the source encounter\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 20; ++frame) {
+                    gate_scene.advance_frame();
+                }
+                if (gate_scene.field_menu_route_screen_for_dump() !=
+                    static_cast<std::uint16_t>(srx::MenuScreen::CYBERDECK)) {
+                    std::cerr << "Matrix gate QA: jack-in did not reach the "
+                                 "Cyberdeck screen\n";
+                    return 3;
+                }
+                tap_qa_controller_button(gate_scene, 0x80U); // Start.
+                const auto gate_route =
+                    gate_scene.field_menu_route_snapshot_for_dump();
+                if (gate_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::MATRIX_NODE_ACTION) ||
+                    gate_route.top_matrix_world_effect_gate_negative != true) {
+                    std::cerr << "Matrix gate QA: Lua did not receive the "
+                                 "negative FFDF84 sign; route="
+                              << gate_scene.field_menu_route_screen_for_dump()
+                              << " gate="
+                              << (gate_route
+                                          .top_matrix_world_effect_gate_negative
+                                      .has_value()
+                                      ? (*gate_route
+                                                  .top_matrix_world_effect_gate_negative
+                                             ? "true"
+                                             : "false")
+                                      : "missing")
+                              << '\n';
+                    return 3;
+                }
                 std::cout << "field_matrix_traversal_entry_qa=passed "
                           << "system=2 node=2 setup_vblanks=61 "
                           << "entry_vblanks=239 publications=56 "
@@ -25056,7 +25135,8 @@ int main(int argc, char** argv) {
                           << "model0_mask_iou=" << model0_mask_overlap << ' '
                           << "analyze_action=verified "
                           << "medic_action=verified "
-                          << "degrade_action=verified\n";
+                          << "degrade_action=verified "
+                          << "world_effect_gate_negative=verified\n";
                 return 0;
             }
             if (field_matrix_cyber_info_qa_path.has_value()) {

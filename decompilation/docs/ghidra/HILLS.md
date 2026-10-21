@@ -75,8 +75,10 @@ writing `FFDF84`; Lua now tracks the world-effect gate separately. The
 entry sequence, then the blocking `0x54662` action loop begins. Profile and
 effect services during that sequence can still call `0x1B706` -> `0x1A908`
 directly when their flags are set; that activation has not been resolved for
-the live route. The direct `0x181F8` menu path needs a live host value for
-`FFDF84`; the current Qt callback is a false-valued stub.
+the live route. The direct `0x181F8` menu path now receives the signed
+`FFDF84` marker from the field timeout state; a Scene 2 ROM encounter QA path
+verifies the negative value reaches Lua when Matrix opens. The live visual
+mode and phase remain open.
 Cyberdeck chrome now uses the live Matrix palette override: ROM `0x17F80` /
 `0x566E2` copies sixteen words from `0xE2EBA` into CRAM line 1, replacing the
 initial line from `0xE2E5A`. The prior extractor used that initial line, which

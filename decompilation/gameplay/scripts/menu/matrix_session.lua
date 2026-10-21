@@ -53,7 +53,8 @@ end
 
 function M.begin(system_id, field_alarm, initial_node_id,
                  initial_node_ic_condition,
-                 initial_world_effect_gate_negative)
+                 initial_world_effect_gate_negative,
+                 initial_node_knowledge_rank)
     local source = Systems[system_id]
     if type(source) ~= "table" then return false end
 
@@ -81,6 +82,13 @@ function M.begin(system_id, field_alarm, initial_node_id,
     end
     if initial_world_effect_gate_negative ~= nil and
        type(initial_world_effect_gate_negative) ~= "boolean" then
+        return false
+    end
+    if initial_node_knowledge_rank ~= nil and
+       (type(initial_node_knowledge_rank) ~= "number" or
+        initial_node_knowledge_rank % 1 ~= 0 or
+        initial_node_knowledge_rank < 0 or
+        initial_node_knowledge_rank > 4) then
         return false
     end
     local selected_node_id = initial_node_id or 0
@@ -120,6 +128,14 @@ function M.begin(system_id, field_alarm, initial_node_id,
         -- per-cell knowledge rank instead of deriving it from visibility.
         knowledge_ranks = {},
     }
+    -- FFFB30 survives the direct 0x181F8 Matrix entry. A caller with a
+    -- restored source record can provide this node's existing high nibble;
+    -- the ordinary gameplay path leaves it unset until the source action
+    -- loop publishes or updates knowledge.
+    if initial_node_knowledge_rank ~= nil then
+        state.knowledge_ranks[selected_node.y * Rules.W + selected_node.x] =
+            initial_node_knowledge_rank
+    end
     state.known = Rules.reveal(map, state.known,
                               selected_node.x, selected_node.y)
     remember_node_colour(state, selected_node_id)
