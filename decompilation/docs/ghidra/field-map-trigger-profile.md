@@ -456,8 +456,9 @@ portrait, and retains per-contact call-history state. ROM-rooted service
 trees are implemented for Capt. Quinton, Alesandro, Sharkey, Kipp David,
 Wilma Temmenhoff, Sgt. Macklemann, and Gregory Wilns, including wallet,
 inventory, contact-flag, deck-record, and map-destination effects. Quinton,
-Alesandro, Sharkey, Kipp, and Wilma use the reusable JSON conversation graph;
-the other converted contact services still use procedural Lua. The menu
+Alesandro, Sharkey, Kipp, Wilma, and Macklemann use the reusable JSON
+conversation graph; Gregory's converted contact service still uses procedural
+Lua. The menu
 is rooted at `0x1096F4`, with Firepower and Contacts nodes at `0x109750` and
 `0x109780`. Other contact-specific service paths remain unresolved.
 Cyberspace checks deck,

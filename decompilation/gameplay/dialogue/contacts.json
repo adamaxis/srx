@@ -162,7 +162,11 @@
         "textKey": "vid_phone.contact.macklemann.repeat_call",
         "continuation": false
       },
-      "service": { "module": "vid_phone.macklemann", "function": "services" }
+      "service": {
+        "module": "vid_phone.macklemann",
+        "graphId": "vid_phone.macklemann.services",
+        "graphScope": "services"
+      }
     },
     {
       "sourceIndex": 6,

@@ -8,11 +8,11 @@ Gates Undersound's same-map service, the Renraku and Fuchi gated entry pages,
 Tarislar City Inn, Wylie's Gala Inn, and the two Stoker entry roots. The field
 host dispatches the `hotel.options` and `hospital.options` service IDs.
 Captain Quinton's first/repeat call and complete service tree is a JSON graph;
-Alesandro's, Sharkey's, Kipp's, and Wilma's service trees are also JSON-backed.
-Their Lua modules register named host actions. Macklemann and Gregory's service
-trees remain procedural. Remaining conversation routes and other service
-outcome dispatchers are pending; this does not claim every listed route is
-implemented or visually verified.
+Alesandro's, Sharkey's, Kipp's, Wilma's, and Macklemann's service trees are
+also JSON-backed. Their Lua modules register named host actions. Gregory's
+service tree remains procedural. Remaining conversation routes and other
+service outcome dispatchers are pending; this does not claim every listed route
+is implemented or visually verified.
 
 ## Design goals
 
@@ -125,12 +125,13 @@ entry.
 Later longplay frames also show dialogue presentation variants: section 05
 frame 001440 (Max portrait/text page), section 14 frame 006630 (Henry portrait
 with Yes/No rows), and section 23 frame 001770 (A/B services/goodbye choice).
-Section 32 frame 001500 shows the Big Rhino/steak portrait asset used by the
-Macklemann profile. These frames support the shared panel/portrait/choice
-model. There is no matching complete Vid-Phone call sequence in the longplay;
-the ROM call descriptors and handler paths, not those isolated frames, define
-the contact permutations. Longplay timestamps and holds are visual sequence
-anchors, not ROM frame timing.
+Section 32 frame 001500 is Big Rhino restaurant dialogue. Its steak portrait
+matches the reused art assigned to Macklemann's profile, so it supports that
+portrait only, not his Vid-Phone choices or outcomes. The other listed frames
+support the shared panel/portrait/choice model. The longplay has no matching
+complete Vid-Phone call sequence; ROM call descriptors and handler paths
+define the contact permutations. Longplay timestamps and holds are visual
+sequence anchors, not ROM frame timing.
 
 ## Vid-Phone permutation inventory
 
@@ -143,10 +144,10 @@ multi-page first/repeat message, a Services/Goodbye menu, or a contact-specific
 service graph.
 
 Seven contacts have source-derived service implementations: Captain Quinton,
-Alesandro, Sharkey, Kipp, Wilma, Macklemann, and Gregory. Five flows are now
+Alesandro, Sharkey, Kipp, Wilma, Macklemann, and Gregory. Six flows are now
 JSON graphs: Quinton's complete first/repeat call and service flow, plus
-Alesandro's, Sharkey's, Kipp's, and Wilma's service flows. Macklemann and
-Gregory's service flows remain procedural Lua modules pending migration. The
+Alesandro's, Sharkey's, Kipp's, Wilma's, and Macklemann's service flows.
+Gregory's service flow remains a procedural Lua module pending migration. The
 traced result permutations include:
 
 - Information-only topics and multi-page lessons, with return-to-services or

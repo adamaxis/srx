@@ -297,8 +297,14 @@ destinations. Panel QA captures the offer, download, and sign-off. No matching
 independent call frame or physical Wilma-service route is identified, so the
 visual hill remains partial. Sgt. Macklemann's record at `0x10BFAC` follows
 command `0x76`: 5,000 nuyen sets `FFFC2C` bit 28 for the Hollywood gate and
-does not set contact bit 5. His information pages return to the service menu;
-Goodbye disconnects. The panel QA captures the badge offer and the gate line.
+does not set contact bit 5. His JSON graph owns both information trees, their
+Services/Goodbye routes, the Hollywood offer, and its insufficient/success
+pages; Lua registers only the badge transaction. The graph permutation suite
+covers all menu edges and transaction results, while the typed-service test
+checks the charge, gate flag, and unchanged contact bit. Debug/Release script,
+service, and panel CTests pass. The panel captures are internal regression
+artifacts; no matching independent call frame or physical Macklemann-service
+route is identified, so the visual hill remains partial.
 Gregory Wilns's record at `0x10C7FA` now opens the Lua tree at `0x10C838`.
 The four-page paranormal-creature lesson returns to Services; command `0x77`
 charges 4,000 and sets `FF018F` bit 7 for the 25% Ares shop discount, and

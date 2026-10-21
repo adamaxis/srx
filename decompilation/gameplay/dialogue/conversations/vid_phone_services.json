@@ -792,6 +792,124 @@
           "outcome": { "type": "continue_in_place" }
         }
       }
+    },
+    "vid_phone.macklemann.services": {
+      "entryNode": "services",
+      "speakerId": "vid_phone_macklemann",
+      "textProfile": "field.vid_phone",
+      "provenance": {
+        "romAddresses": [
+          "0x10BFAC", "0x10BFD2", "0x10C12C", "0x10C293",
+          "0x10C36F", "0x10C41D", "0x10C4D2", "0x10C5B4",
+          "0x10C665", "0x10C6ED", "0x10C20A", "0x10A7C4",
+          "0x10C799", "0x22BF6"
+        ],
+        "scope": "macklemann_security_avoid_and_hollywood_badge_services"
+      },
+      "nodes": {
+        "services": {
+          "type": "choice",
+          "menuId": "macklemann_services",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "security", "next": "security_levels" },
+            { "id": "avoid", "next": "avoid_invisibility" },
+            { "id": "hollywood", "next": "hollywood_offer" }
+          ]
+        },
+        "security_levels": {
+          "type": "choice",
+          "menuId": "macklemann_security_levels",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "security_patrols" }
+          ]
+        },
+        "security_patrols": {
+          "type": "choice",
+          "menuId": "macklemann_security_patrols",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "security_pass" }
+          ]
+        },
+        "security_pass": {
+          "type": "choice",
+          "menuId": "macklemann_security_pass",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "disconnected" }
+          ]
+        },
+        "avoid_invisibility": {
+          "type": "choice",
+          "menuId": "macklemann_avoid_invisibility",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "avoid_cameras" }
+          ]
+        },
+        "avoid_cameras": {
+          "type": "choice",
+          "menuId": "macklemann_avoid_cameras",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "avoid_decker" }
+          ]
+        },
+        "avoid_decker": {
+          "type": "choice",
+          "menuId": "macklemann_avoid_decker",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "disconnected" }
+          ]
+        },
+        "hollywood_offer": {
+          "type": "choice",
+          "menuId": "macklemann_hollywood_offer",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "yes", "next": "issue_badge" },
+            { "id": "goodbye", "next": "disconnected" }
+          ]
+        },
+        "issue_badge": {
+          "type": "action",
+          "actionId": "vid_phone.issue_hollywood_badge",
+          "results": {
+            "hired": "gate",
+            "insufficient": "insufficient_funds",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "disconnected": {
+          "type": "page",
+          "eventId": "disconnected",
+          "next": "finished"
+        },
+        "gate": {
+          "type": "page",
+          "eventId": "gate",
+          "next": "finished"
+        },
+        "insufficient_funds": {
+          "type": "page",
+          "eventId": "insufficient_funds",
+          "next": "finished"
+        },
+        "service_boundary": {
+          "type": "source_boundary",
+          "reason": "Macklemann's Hollywood badge transaction returned an unavailable or unrecognized source result."
+        },
+        "finished": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
     }
   }
 }
