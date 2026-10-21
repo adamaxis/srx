@@ -8,8 +8,9 @@ Gates Undersound's same-map service, the Renraku and Fuchi gated entry pages,
 Tarislar City Inn, Wylie's Gala Inn, and the two Stoker entry roots. The field
 host dispatches the `hotel.options` and `hospital.options` service IDs.
 Captain Quinton's first/repeat call and complete service tree is a JSON graph;
-Alesandro's service tree is also JSON-backed. Their Lua modules register named
-host actions. Five other contact service trees remain procedural. Remaining
+Alesandro's and Sharkey's service trees are also JSON-backed. Their Lua modules
+register named host actions. Four other contact service trees remain
+procedural. Remaining
 conversation routes and other service outcome
 dispatchers are pending; this does not claim every listed route is implemented
 or visually verified.
@@ -143,10 +144,10 @@ multi-page first/repeat message, a Services/Goodbye menu, or a contact-specific
 service graph.
 
 Seven contacts have source-derived service implementations: Captain Quinton,
-Alesandro, Sharkey, Kipp, Wilma, Macklemann, and Gregory. Quinton's complete
-first/repeat call and service flow is now a JSON graph; Alesandro's service
-flow is a second graph. The other five service flows remain procedural Lua
-modules pending migration. The traced result
+Alesandro, Sharkey, Kipp, Wilma, Macklemann, and Gregory. Three flows are now
+JSON graphs: Quinton's complete first/repeat call and service flow, plus
+Alesandro's and Sharkey's service flows. The other four service flows remain
+procedural Lua modules pending migration. The traced result
 permutations include:
 
 - Information-only topics and multi-page lessons, with return-to-services or
@@ -304,8 +305,9 @@ conditions, and outcome types must not depend on Qt JSON classes.
    and consumers reference stable text keys. Extracted strings remain
    extractor-owned.
 3. **Implemented for shared catalogs:** speaker, menu, and 13-contact data are
-   JSON-backed. Captain Quinton's full call flow and Alesandro's service flow
-   use JSON graphs; five other contact service flows remain procedural Lua.
+   JSON-backed. Captain Quinton's full call flow and Alesandro's and Sharkey's
+   service flows use JSON graphs; four other contact service flows remain
+   procedural Lua.
 4. **Implemented with explicit host boundaries:** the reusable Lua graph and
    condition engines and typed `DialogueOutcome` union are active. The host
    dispatches only connected outcome families; return, other activity/service,
@@ -329,8 +331,8 @@ The first JSON graph migration was a vertical slice that exercises more than
 one terminal kind. Stoker's indexed service and signed field-exit prompt now
 use separate JSON graph roots. The remaining Stoker work is source coverage
 for the 80..99 effect callback, saved-game fact restoration, and independent
-visual checks. Quinton's call graph and Alesandro's service graph are
-converted; five other contact service flows and the Salish dialogues still
+visual checks. Quinton's call graph and Alesandro's and Sharkey's service
+graphs are converted; four other contact service flows and the Salish dialogues still
 need conversion. Existing
 incomplete encounter commands, upstream quest producers, and unverified visual
 branches remain explicit work, not filled-in defaults.

@@ -81,7 +81,11 @@
         "textKey": "vid_phone.contact.sharkey.repeat_call",
         "continuation": false
       },
-      "service": { "module": "vid_phone.sharkey", "function": "services" }
+      "service": {
+        "module": "vid_phone.sharkey",
+        "graphId": "vid_phone.sharkey.services",
+        "graphScope": "services"
+      }
     },
     {
       "sourceIndex": 3,

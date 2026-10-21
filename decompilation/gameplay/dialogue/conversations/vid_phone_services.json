@@ -351,6 +351,137 @@
           "outcome": { "type": "continue_in_place" }
         }
       }
+    },
+    "vid_phone.sharkey.services": {
+      "entryNode": "services",
+      "speakerId": "vid_phone_sharkey",
+      "textProfile": "field.vid_phone",
+      "provenance": {
+        "romAddresses": ["0x10A7F2"],
+        "scope": "sharkey_commands_0x6E_to_0x70"
+      },
+      "nodes": {
+        "services": {
+          "type": "choice",
+          "menuId": "sharkey_services",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "pass_salish", "next": "salish_offer" },
+            { "id": "pass_sinsearach", "next": "sinsearach_offer" },
+            { "id": "smart_goggles", "next": "smart_goggles_offer" }
+          ]
+        },
+        "salish_offer": {
+          "type": "choice",
+          "menuId": "sharkey_salish_passage",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "pay_for_passage", "next": "request_salish_passage" },
+            { "id": "return_to_services", "next": "services" },
+            { "id": "other_subject", "next": "finished" }
+          ]
+        },
+        "request_salish_passage": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_salish_passage",
+          "results": {
+            "passage_requested": "salish_passage_result",
+            "insufficient": "insufficient_funds",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "salish_passage_result": {
+          "type": "page",
+          "eventId": "passage_result",
+          "next": "enter_scene_6"
+        },
+        "enter_scene_6": {
+          "type": "terminal",
+          "outcome": {
+            "type": "enter_field_scene",
+            "sceneId": 6,
+            "arrivalId": "rom_default"
+          }
+        },
+        "sinsearach_offer": {
+          "type": "choice",
+          "menuId": "sharkey_sinsearach_passage",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "pay_for_passage", "next": "request_sinsearach_passage" },
+            { "id": "return_to_services", "next": "services" },
+            { "id": "other_subject", "next": "finished" }
+          ]
+        },
+        "request_sinsearach_passage": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_sinsearach_passage",
+          "results": {
+            "passage_requested": "sinsearach_passage_result",
+            "insufficient": "insufficient_funds",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "sinsearach_passage_result": {
+          "type": "page",
+          "eventId": "passage_result",
+          "next": "enter_scene_9"
+        },
+        "enter_scene_9": {
+          "type": "terminal",
+          "outcome": {
+            "type": "enter_field_scene",
+            "sceneId": 9,
+            "arrivalId": "rom_default"
+          }
+        },
+        "smart_goggles_offer": {
+          "type": "choice",
+          "menuId": "sharkey_smart_goggles_offer",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "confirm_purchase", "next": "purchase_smart_goggles" },
+            { "id": "return_to_services", "next": "services" },
+            { "id": "other_subject", "next": "finished" }
+          ]
+        },
+        "purchase_smart_goggles": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_smart_goggles",
+          "results": {
+            "purchased": "smart_goggles_result",
+            "insufficient": "insufficient_funds",
+            "out_of_stock": "smart_goggles_inventory_full",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "insufficient_funds": {
+          "type": "page",
+          "eventId": "insufficient_funds",
+          "next": "services"
+        },
+        "smart_goggles_result": {
+          "type": "page",
+          "eventId": "smart_goggles_result",
+          "next": "services"
+        },
+        "smart_goggles_inventory_full": {
+          "type": "page",
+          "eventId": "smart_goggles_inventory_full",
+          "next": "services"
+        },
+        "service_boundary": {
+          "type": "source_boundary",
+          "reason": "Sharkey's host transaction returned an unavailable or unrecognized source result."
+        },
+        "finished": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
     }
   }
 }

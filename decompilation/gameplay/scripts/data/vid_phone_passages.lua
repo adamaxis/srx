@@ -19,19 +19,4 @@ function M.service_action(passage_id)
            ".fare_" .. tostring(passage.fare)
 end
 
-function M.enter_field_scene_outcome(passage_id)
-    local passage = M[passage_id]
-    if type(passage) ~= "table" or
-       type(passage.destination_scene) ~= "number" or
-       passage.destination_scene % 1 ~= 0 or
-       passage.destination_scene < 0 or passage.destination_scene > 55 then
-        return nil
-    end
-    return {
-        type = "enter_field_scene",
-        sceneId = passage.destination_scene,
-        arrivalId = "rom_default",
-    }
-end
-
 return M

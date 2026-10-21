@@ -104,15 +104,20 @@ Weller information routes, Firepower purchases, and Sharkey hiring result
 branches. `conditions.json` selects first versus repeat call from the ROM
 call-history fact; `contacts.json` links the contact to the graph. The Lua
 module `vid_phone/capt_quinton_jaymes.lua` registers named host effects for the
-call-history write and typed wallet/inventory/contact transactions. The other
-five contact service trees remain procedural and still need their ROM
-permutations traced and migrated.
+call-history write and typed wallet/inventory/contact transactions.
 
 Alesandro's service tree is the second Vid-Phone graph in the same JSON
 catalog. His `contacts.json` record keeps the shared call-history/menu flow in
 the common caller, then selects the service graph. The Lua action module only
 forwards the two passkey purchases and Macklemann contact purchase to typed
 host transactions; JSON owns the information pages, result menus, and edges.
+
+Sharkey's service tree is the third Vid-Phone graph. JSON owns the two fare
+offers, Smart Goggles choice, insufficient-funds and inventory outcomes, and
+the separate Scene 6 and Scene 9 travel terminals. `vid_phone/sharkey.lua`
+only translates named graph actions to the shared typed service API, using
+`data/vid_phone_passages.lua` for the ROM fare and destination facts. Four
+contact service trees remain procedural: Kipp, Wilma, Macklemann, and Gregory.
 
 The Ares Weapon Emporium stock is declared in `gameplay/scripts/shop.lua`.
 The script groups offers under stable category names; `GameScriptRuntime`
