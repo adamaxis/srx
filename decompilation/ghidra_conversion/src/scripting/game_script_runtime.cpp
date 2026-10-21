@@ -6805,6 +6805,8 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "movement_heading_override");
     lua_pushboolean(state, context.dynamic_world_encounter_actor);
     lua_setfield(state, -2, "dynamic_world_encounter_actor");
+    lua_pushboolean(state, context.world_activity_script_actor);
+    lua_setfield(state, -2, "world_activity_script_actor");
     if (context.source_record_slot.has_value()) {
         lua_pushinteger(state, *context.source_record_slot);
     } else {

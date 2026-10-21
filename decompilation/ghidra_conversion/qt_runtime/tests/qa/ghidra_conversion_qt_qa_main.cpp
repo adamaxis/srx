@@ -10546,6 +10546,318 @@ int run_scene15_old_man_contact_qa(
     return 0;
 }
 
+int run_scene1_underground93_story_gate_qa(
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Underground 93 entry QA: could not clear output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Underground 93 entry QA: could not create output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    struct StoryGateCase {
+        bool heart_delivered;
+        const char* directory;
+    };
+    constexpr std::array<StoryGateCase, 2U> kCases{{
+        {false, "heart-not-delivered"},
+        {true, "heart-delivered"},
+    }};
+    constexpr std::size_t kEntranceRecordIndex = 70U;
+    constexpr std::uint32_t kEntranceRecordAddress = 0x17D9C0U;
+    constexpr std::uint8_t kEntranceEvent = 4U;
+    constexpr std::uint16_t kDestinationScene = 15U;
+    constexpr SceneRunnerPosition kApproachStart{
+        816U * 16U, 560U * 16U};
+
+    for (const auto& test_case : kCases) {
+        const auto case_output = output / test_case.directory;
+        std::filesystem::create_directories(case_output, output_error);
+        if (output_error) {
+            std::cerr << "Underground 93 entry QA: could not create case "
+                      << test_case.directory << ": "
+                      << output_error.message() << '\n';
+            return 3;
+        }
+
+        std::vector<std::string> boundaries;
+        std::vector<std::uint16_t> audio_events;
+        FieldSceneRuntime field_scene(
+            [&boundaries](const std::string_view boundary) {
+                boundaries.emplace_back(boundary);
+            },
+            [&audio_events](const std::uint16_t event) {
+                audio_events.push_back(event);
+            });
+        field_scene.set_source_random_seed_for_dump(0x4000U);
+        field_scene.set_field_world_frame_counter_for_dump(0x0200U);
+        if (!field_scene.bootstrap_for_scene_dump(startup_state, 1U)) {
+            std::cerr << "Underground 93 entry QA: Scene 1 bootstrap failed: "
+                      << field_scene.failure() << '\n';
+            return 3;
+        }
+        if (!field_scene.set_story_flag_for_dump(
+                29U, test_case.heart_delivered)) {
+            std::cerr << "Underground 93 entry QA: could not seed the ROM "
+                         "Heart Delivered fact\n";
+            return 3;
+        }
+        field_scene.set_field_funds_for_dump(0U);
+        // Scene 15's source list is suppressed only for compact marker 10.
+        field_scene.set_compact_runner_markers_for_dump(1U, 0xFFU);
+
+        const auto& source_metadata =
+            field_scene.state().field_scene_buffers.source_metadata;
+        const bool source_record_matches =
+            source_metadata.terrain_collision_rectangles.size() >
+                kEntranceRecordIndex &&
+            source_metadata.terrain_collision_rectangles[
+                kEntranceRecordIndex].left == 0x0320U &&
+            source_metadata.terrain_collision_rectangles[
+                kEntranceRecordIndex].right == 0x033FU &&
+            source_metadata.terrain_collision_rectangles[
+                kEntranceRecordIndex].top == 0x0200U &&
+            source_metadata.terrain_collision_rectangles[
+                kEntranceRecordIndex].bottom == 0x021FU &&
+            source_metadata.terrain_collision_rectangles[
+                kEntranceRecordIndex].value == 0x00C4U &&
+            source_metadata.event_table_available &&
+            source_metadata.event_mode_table.size() > kEntranceEvent &&
+            source_metadata.event_mode_table[kEntranceEvent] ==
+                kDestinationScene;
+        if (!source_record_matches) {
+            std::cerr << "Underground 93 entry QA: ROM record 70/event 4 or "
+                         "event-table row 4 did not match\n";
+            return 3;
+        }
+
+        field_scene.set_field_entity_world_position_for_dump(
+            kApproachStart.x, kApproachStart.y);
+        field_scene.set_field_camera_world_position_for_dump(
+            0x2900U, 0x1E80U);
+        const auto render = [&field_scene] {
+            return render_qa_field(field_scene);
+        };
+        const auto save = [&case_output, &asset_root](
+                              const std::string_view name,
+                              const QImage& image) {
+            return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+                   field_hud_chrome_survives(image, asset_root) &&
+                   image.save(QString::fromStdWString(
+                       (case_output / std::string(name)).wstring()));
+        };
+
+        std::ofstream trace(case_output / "route.tsv", std::ios::trunc);
+        if (!trace) {
+            std::cerr << "Underground 93 entry QA: could not create route.tsv\n";
+            return 3;
+        }
+        trace << "heart_delivered\tstage\ttick\tscene\tx_fixed\ty_fixed"
+                 "\tevent\tmode_event\tdialogue_open\tfunds\tworld_script"
+                 "\tscript_actors\tactor_profile\tactor_x\tactor_y\n";
+        const auto write_state = [&trace, &field_scene, &test_case](
+                                     const std::string_view stage,
+                                     const std::uint16_t tick) {
+            const auto position = field_scene.field_entity_world_position();
+            const auto& world = field_scene.world_activity_state_for_dump();
+            const auto dispatch = field_scene
+                                      .field_map_event_system_for_dump()
+                                      .last_collision_dispatch();
+            const auto actor = field_scene
+                .world_activity_script_actor_position_for_dump(0U);
+            const auto profile = field_scene
+                .world_activity_script_actor_profile_for_dump(0U);
+            trace << test_case.heart_delivered << '\t' << stage << '\t'
+                  << tick << '\t'
+                  << field_scene.field_scene_reference_for_dump() << '\t'
+                  << position.x << '\t' << position.y << '\t'
+                  << (dispatch.has_value()
+                          ? static_cast<unsigned>(
+                                dispatch->decision.event_code)
+                          : 255U)
+                  << '\t' << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << '\t' << field_scene.dialogue_open() << '\t'
+                  << field_scene.field_funds_for_dump().value_or(0U) << '\t'
+                  << (world.selected_world_script.has_value()
+                          ? std::to_string(*world.selected_world_script)
+                          : "-")
+                  << '\t'
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << '\t' << (profile.has_value() ? *profile : "-") << '\t'
+                  << (actor.has_value() ? actor->x : 0U) << '\t'
+                  << (actor.has_value() ? actor->y : 0U) << '\n';
+            trace.flush();
+        };
+
+        const auto approach = render();
+        if (!save("approach-start.bmp", approach)) {
+            std::cerr << "Underground 93 entry QA: approach frame failed\n";
+            return 3;
+        }
+        write_state("approach-start", 0U);
+
+        bool entrance_contact = false;
+        std::uint16_t contact_tick = 0U;
+        field_scene.set_controller_nibble(0x01U); // ordinary Up
+        for (std::uint16_t tick = 1U; tick <= 80U; ++tick) {
+            field_scene.advance_frame();
+            const auto& dispatch = field_scene
+                .field_map_event_system_for_dump()
+                .last_collision_dispatch();
+            if (dispatch.has_value() &&
+                dispatch->decision.source_event_code ==
+                    FieldCollisionEventCode::event_4) {
+                entrance_contact = true;
+                contact_tick = tick;
+                if (!save("event-4-contact.bmp", render())) {
+                    field_scene.set_controller_nibble(0U);
+                    std::cerr << "Underground 93 entry QA: contact frame failed\n";
+                    return 3;
+                }
+                write_state("event-4-contact", tick);
+                break;
+            }
+            if (field_scene.field_scene_reference_for_dump() != 1U ||
+                field_scene.dialogue_open()) {
+                field_scene.set_controller_nibble(0U);
+                std::cerr << "Underground 93 entry QA: route left Scene 1 "
+                             "before record 70 contact\n";
+                return 3;
+            }
+        }
+        field_scene.set_controller_nibble(0U);
+        if (!entrance_contact || contact_tick == 0U ||
+            field_scene.field_mode_event_code_for_dump() != kEntranceEvent ||
+            field_scene.dialogue_open() ||
+            field_scene.field_map_event_system_for_dump()
+                    .collision_dispatch_count() != 1U) {
+            std::cerr << "Underground 93 entry QA: ordinary Up did not reach "
+                         "one ROM event-4 collision (found="
+                      << entrance_contact << ", mode_event="
+                      << static_cast<unsigned>(
+                             field_scene.field_mode_event_code_for_dump())
+                      << ")\n";
+            return 3;
+        }
+
+        for (std::uint16_t tick = 1U;
+             tick <= 180U &&
+             field_scene.field_scene_reference_for_dump() == 1U;
+             ++tick) {
+            field_scene.advance_frame();
+            write_state("entry-transition", tick);
+        }
+
+        if (test_case.heart_delivered) {
+            for (std::uint8_t service = 0U;
+                 service < 8U &&
+                 field_scene.world_activity_script_actor_count_for_dump() == 0U &&
+                 field_scene.field_scene_reference_for_dump() ==
+                     kDestinationScene;
+                 ++service) {
+                field_scene.advance_frame();
+            }
+        }
+
+        const auto& destination_metadata =
+            field_scene.state().field_scene_buffers.source_metadata;
+        const auto destination_position =
+            field_scene.field_entity_world_position();
+        const auto& world = field_scene.world_activity_state_for_dump();
+        const auto actor_position = field_scene
+            .world_activity_script_actor_position_for_dump(0U);
+        const auto actor_profile = field_scene
+            .world_activity_script_actor_profile_for_dump(0U);
+        const bool expected_script = test_case.heart_delivered;
+        const bool actor_state_matches = expected_script
+            ? world.selected_world_script == 5U &&
+                  field_scene.world_activity_script_actor_count_for_dump() == 1U &&
+                  actor_position.has_value() && actor_position->x == 896U &&
+                  actor_position->y == 2688U && actor_profile.has_value() &&
+                  *actor_profile == "lone11_k03_item03"
+            : !world.selected_world_script.has_value() &&
+                  field_scene.world_activity_script_actor_count_for_dump() == 0U &&
+                  !actor_position.has_value() && !actor_profile.has_value();
+        const bool route_boundary_observed = std::find(
+            boundaries.begin(), boundaries.end(),
+            "field.exit.area_event_route_selected:event=4:scene=15") !=
+            boundaries.end();
+        const auto actual = render();
+        const auto destination_spawn_position =
+            destination_metadata.initial_field_records.empty()
+                ? SceneRunnerPosition{}
+                : destination_metadata.initial_field_records.front();
+        if (field_scene.field_scene_reference_for_dump() !=
+                kDestinationScene ||
+            destination_spawn_position.x != 0x0500U ||
+            destination_spawn_position.y != 0x0BC0U ||
+            destination_position.x != destination_spawn_position.x ||
+            destination_position.y != destination_spawn_position.y ||
+            field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_mode_text_open_for_dump() ||
+            !route_boundary_observed || !actor_state_matches ||
+            field_scene.field_funds_for_dump() != 0U ||
+            field_scene.field_world_fact_flags_for_dump() !=
+                (test_case.heart_delivered
+                     ? (std::uint32_t{1U} << 29U)
+                     : 0U) ||
+            !save("actual.bmp", actual) || !audio_events.empty()) {
+            std::cerr << "Underground 93 actor boundaries:";
+            for (const auto& boundary : boundaries) {
+                if (boundary.find("field.world_activity.script_actor_") !=
+                    std::string::npos) {
+                    std::cerr << ' ' << boundary;
+                }
+            }
+            std::cerr << "\nUnderground 93 runtime failure: "
+                      << field_scene.failure() << '\n';
+            std::cerr << "Underground 93 entry QA: event 4 did not load Scene "
+                         "15 with the source story gate (heart_delivered="
+                      << test_case.heart_delivered << ", scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", spawn=" << destination_spawn_position.x << ','
+                      << destination_spawn_position.y << ", player="
+                      << destination_position.x << ',' << destination_position.y
+                      << ", script="
+                      << (world.selected_world_script.has_value()
+                              ? std::to_string(*world.selected_world_script)
+                              : "none")
+                      << ", actors="
+                      << field_scene.world_activity_script_actor_count_for_dump()
+                      << ", funds="
+                      << field_scene.field_funds_for_dump().value_or(0U)
+                      << ", route_boundary=" << route_boundary_observed << ")\n";
+            return 3;
+        }
+        write_state("destination", 181U);
+        trace << "source\trom_record=0x" << std::hex
+              << kEntranceRecordAddress << std::dec
+              << "\tdestination_scene=15\theart_delivered="
+              << test_case.heart_delivered
+              << "\tfunds=0\tentry_dialogue=none\n";
+        if (!trace) {
+            return 3;
+        }
+    }
+
+    std::cout << "underground_93_story_gate_qa=passed record=70 "
+                 "event=4 destination_scene=15 zero_funds=loaded "
+                 "heart_delivered_controls_one_script_actor captures=320x224 "
+              << "artifacts=" << output.string() << '\n';
+    return 0;
+}
+
 bool run_scene2_object_bounds_four_side_lookup_qa(
     const FieldSceneSourceMetadata& metadata,
     const std::filesystem::path& output) {
@@ -25407,6 +25719,12 @@ int main(int argc, char** argv) {
                         smoke_state, asset_root,
                         *field_movement_qa_path /
                             "scene15-old-man-contact") != 0) {
+                    return 3;
+                }
+                if (run_scene1_underground93_story_gate_qa(
+                        smoke_state, asset_root,
+                        *field_movement_qa_path /
+                            "underground-93-story-gate") != 0) {
                     return 3;
                 }
                 if (run_low_code_object_bounds_census_qa(

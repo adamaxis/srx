@@ -3787,6 +3787,9 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         DefaultFieldActorPresentation actor{};
         actor.active = true;
         actor.world_activity_script_actor = true;
+        // The new slot is live even though its ROM spawn-state byte is kept
+        // separately for Lua behavior and presentation.
+        actor.source_record_flags = 0x01U;
         actor.scene_reference = scene_reference;
         actor.source_order = source_actor.source_order;
         actor.source_record_slot = static_cast<FieldWorldActorSlot>(
@@ -3881,6 +3884,8 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             true,
         };
         context.dynamic_world_encounter_actor = true;
+        context.world_activity_script_actor =
+            actor.world_activity_script_actor;
         context.combatant = actor.combatant;
         context.source_actor_posture = actor.combatant.posture;
         context.source_record_flags = actor.source_record_flags;
@@ -4012,6 +4017,8 @@ void FieldSceneRuntime::advance_default_field_actors() {
         }
         if (dynamic_world_actor) {
             context.dynamic_world_encounter_actor = true;
+            context.world_activity_script_actor =
+                actor.world_activity_script_actor;
             context.source_record_flags = actor.source_record_flags;
             context.source_interaction_flags =
                 actor.source_interaction_flags;
@@ -13937,6 +13944,8 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         if (actor.temporary_world_encounter ||
             actor.world_activity_script_actor) {
             context.dynamic_world_encounter_actor = true;
+            context.world_activity_script_actor =
+                actor.world_activity_script_actor;
             context.combatant = actor.combatant;
             context.source_actor_posture = actor.combatant.posture;
             context.source_record_flags = actor.source_record_flags;

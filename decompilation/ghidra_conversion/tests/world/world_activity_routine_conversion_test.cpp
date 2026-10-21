@@ -276,6 +276,51 @@ int main() {
         return 25;
     }
 
+    WorldActivityRoutineInput scene_fifteen_closed_gate_input{};
+    scene_fifteen_closed_gate_input.initial_scene_id = 0x0FU;
+    scene_fifteen_closed_gate_input.world_flags = 0U;
+    scene_fifteen_closed_gate_input.primary_runner_marker = 1U;
+    scene_fifteen_closed_gate_input.secondary_runner_marker = 0xFFU;
+    populate_source_world_activity_route_tables(
+        scene_fifteen_closed_gate_input);
+    WorldActivityRoutineState scene_fifteen_closed_gate_state{};
+    if (!expect(run_world_activity_routine(
+                    scene_fifteen_closed_gate_input,
+                    scene_fifteen_closed_gate_state) ==
+                    WorldActivityResult::blocked_by_scene_gate &&
+                scene_fifteen_closed_gate_state.scene_id == 0x0FU &&
+                scene_fifteen_closed_gate_state.field_scene_prepared &&
+                !scene_fifteen_closed_gate_state.selected_world_script
+                     .has_value())) {
+        return 29;
+    }
+
+    auto scene_fifteen_heart_delivered_input =
+        scene_fifteen_closed_gate_input;
+    scene_fifteen_heart_delivered_input.world_flags =
+        std::uint32_t{1U} << 29U;
+    WorldActivityRoutineState scene_fifteen_heart_delivered_state{};
+    if (!expect(run_world_activity_routine(
+                    scene_fifteen_heart_delivered_input,
+                    scene_fifteen_heart_delivered_state) ==
+                    WorldActivityResult::world_script_selected &&
+                scene_fifteen_heart_delivered_state.scene_id == 0x0FU &&
+                scene_fifteen_heart_delivered_state.selected_world_script ==
+                    5U)) {
+        return 30;
+    }
+
+    scene_fifteen_heart_delivered_input.primary_runner_marker = 10U;
+    WorldActivityRoutineState scene_fifteen_marker_match_state{};
+    if (!expect(run_world_activity_routine(
+                    scene_fifteen_heart_delivered_input,
+                    scene_fifteen_marker_match_state) ==
+                    WorldActivityResult::field_ready &&
+                !scene_fifteen_marker_match_state.selected_world_script
+                     .has_value())) {
+        return 31;
+    }
+
     WorldActivityRoutineInput secondary_runner_scene_thirteen_input{};
     secondary_runner_scene_thirteen_input.initial_scene_id = 0x0DU;
     secondary_runner_scene_thirteen_input.world_flags =

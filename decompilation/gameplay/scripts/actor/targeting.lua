@@ -58,8 +58,10 @@ local function dynamic_encounter_profile(context)
     end
     local entity_kind = tonumber(kind_hex, 16)
     local action_code = tonumber(action_hex, 16)
+    local minimum_entity_kind = context.world_activity_script_actor == true
+        and 3 or 4
     if entity_kind == nil or action_code == nil or
-       entity_kind < 4 or entity_kind > 14 or
+       entity_kind < minimum_entity_kind or entity_kind > 14 or
        entity_kind ~= context.entity_kind or
        action_kind ~= context.action_kind or
        action_code ~= context.action_code then

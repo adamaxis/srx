@@ -1176,6 +1176,9 @@ struct ScriptActorBehaviorContext {
     // measured target facts from the native geometry query. Lua chooses the
     // behavior; the host does not infer a target from screen proximity.
     bool dynamic_world_encounter_actor = false;
+    // ROM world-activity script lists may create non-encounter actors in the
+    // same runtime pool. Keep that provenance explicit for Lua profile rules.
+    bool world_activity_script_actor = false;
     std::optional<std::uint8_t> source_record_slot;
     std::uint8_t source_record_flags = 0;
     std::uint8_t source_interaction_flags = 0;
