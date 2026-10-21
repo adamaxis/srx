@@ -118,6 +118,12 @@ presented from typed Lua state. The nine `0x1A9CE` world-effect modes and the
 `0x1AA10` default record import 82 individually named phase overlays using
 CRAM line 1 at `0xE2E5A`. Lua selects the mode from the node IC table and alert
 state and advances the source cadence; the runtime draws the selected asset.
+Section 15 now has a presenter-only Active Alert comparison for the rank-zero
+System 15/node 13 SPU: all six mode-3 phases render as complete 320x224 frames
+against independent frame `004800`; the best candidate has full-frame mean
+RGB error `9.653`, and its bottom band was inspected intact. Lua separately
+checks the alert gate. This does not establish the live route's exact phase or
+the following `004810`/`004818` sequence.
 Analyze and Medic now run from the selected deck slot through the traced Lua
 rules. The ROM maps C/A/B to attack/balanced/defense, and the source priority
 checks C before A. Medic applies its rating roll to persona condition, capped

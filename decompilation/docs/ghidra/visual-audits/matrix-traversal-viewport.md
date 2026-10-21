@@ -797,8 +797,18 @@ Active Alert and clears it when the alert is canceled. Lua QA verifies that
 this exact node remains visually unknown while selecting mode 3. Matrix entry
 still clears `FFDF84` independently of an initial field alert (`0x174E4`);
 only a later active-alert probe retains the marker, as in `0x56116`. This
-proves the source mode selection and host state transition; full-frame phase
-timing and overlay placement against the independent capture are still open.
+proves the source mode selection and host state transition. A separate
+presenter QA now constructs the typed rank-zero System 15/node 13 SPU view,
+renders all six named mode-3 phases through the production presenter, and
+compares each full 320x224 output against Section 15 frame `004800`. Phase 5
+is the closest candidate: mean absolute RGB error is `11.647` in the central
+96x84 viewport, `9.653` across the full frame, and `9.635` in the bottom 48
+rows. The complete `actual.bmp` was inspected beside the independent capture;
+the shell, HUD, runner, rings, blue floor, and footer are present. This is a
+presenter comparison from an explicit typed snapshot, while Lua separately
+tests the alert gate. It does not establish the live route's exact phase at
+frame `004800`; the changing central effect in `004810` and `004818` and the
+alert-to-effect timing remain open.
 
 ## Status
 
