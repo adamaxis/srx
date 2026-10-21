@@ -2,8 +2,6 @@ package.path = "decompilation/gameplay/scripts/?.lua;" ..
     "decompilation/gameplay/scripts/?/init.lua;" .. package.path
 
 local Building = require("building")
-local Dialogue = require("dialogue")
-local Boris = require("boris_greenhouse")
 
 local area_link = {
     source_scene = 2,
@@ -75,6 +73,9 @@ local function new_game(choices, flags, funds)
                 },
             },
         },
+        content = { location_conditions = {
+            schemaVersion = 1, conditions = {},
+        } },
     }
     game.ui.prompt_text_key = function(menu_id, text_key, choice_ids)
         game.seen_pages[#game.seen_pages + 1] = {
@@ -115,6 +116,19 @@ local context = {
 }
 
 local state = new_game({ "more", "later" })
+local Json = require("json")
+local function load_dialogue_catalog(name)
+    local file = assert(io.open(
+        "decompilation/gameplay/dialogue/" .. name .. ".json", "rb"))
+    local source = file:read("*a")
+    file:close()
+    return Json.decode(source)
+end
+game.content.speakers = load_dialogue_catalog("speakers")
+game.content.contacts = load_dialogue_catalog("contacts")
+game.content.menus = load_dialogue_catalog("menus")
+local Dialogue = require("dialogue")
+local Boris = require("boris_greenhouse")
 local route = Building.resolve_field_location_route(context)
 assert(route.kind == "field_service" and route.script == "lua_field_service")
 assert(route.indexed_title_service and

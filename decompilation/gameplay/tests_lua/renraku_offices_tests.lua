@@ -2,8 +2,15 @@ package.path = "decompilation/gameplay/scripts/?.lua;" ..
     "decompilation/gameplay/scripts/?/init.lua;" .. package.path
 
 local Building = require("building")
-local Dialogue = require("dialogue")
-local RenrakuOffices = require("renraku_offices")
+
+local condition_definitions = {}
+local function equal(fact, value)
+    return { fact = fact, op = "eq", value = value }
+end
+local function condition(id, clauses)
+    condition_definitions[id] = { all = clauses }
+    return id
+end
 
 local base_link = {
     source_scene = 5,
@@ -22,10 +29,16 @@ local gated_entry = {
     destination_scene = 35,
     destination_mode = "resource_activity",
     route_priority = 10,
-    route_conditions =
-        "story_flag_bit_16=true;story_flag_bit_12=false;alternate_result=0",
-    entry_conditions = "story_flag_bit_16=true;story_flag_bit_12=false",
-    entry_alternate_result = 0,
+    route_condition_id = condition("test.renraku.route", {
+        equal("story.story_flag_bit_16", true),
+        equal("story.story_flag_bit_12", false),
+        equal("field.alternate_result", 0),
+    }),
+    entry_condition_id = condition("test.renraku.entry", {
+        equal("story.story_flag_bit_16", true),
+        equal("story.story_flag_bit_12", false),
+        equal("field.alternate_result", 0),
+    }),
     entry_dialogue_module = "renraku_offices",
     entry_dialogue_function = "present_map_overlay_entry",
     entry_location_type = "building",
@@ -60,6 +73,9 @@ game = {
             },
         },
     },
+    content = { location_conditions = {
+        schemaVersion = 1, conditions = condition_definitions,
+    } },
     ui = {
         say = function(event_id)
             game.last_dialogue_event = event_id
@@ -67,6 +83,21 @@ game = {
         end,
     },
 }
+
+local Json = require("json")
+local function load_dialogue_catalog(name)
+    local file = assert(io.open(
+        "decompilation/gameplay/dialogue/" .. name .. ".json", "rb"))
+    local source = file:read("*a")
+    file:close()
+    return Json.decode(source)
+end
+game.content.speakers = load_dialogue_catalog("speakers")
+game.content.contacts = load_dialogue_catalog("contacts")
+game.content.menus = load_dialogue_catalog("menus")
+
+local Dialogue = require("dialogue")
+local RenrakuOffices = require("renraku_offices")
 
 local context = {
     scene_id = 5,

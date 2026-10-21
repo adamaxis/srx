@@ -1250,6 +1250,8 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                 return QStringLiteral("area_event");
             case FieldScriptRouteKind::source_activity_return:
                 return QStringLiteral("source_activity_return");
+            case FieldScriptRouteKind::source_boundary:
+                return QStringLiteral("source_boundary");
             case FieldScriptRouteKind::no_route:
                 return QStringLiteral("no_route");
             }
@@ -1267,6 +1269,8 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                 return QStringLiteral("area_event_table");
             case FieldScriptId::source_activity_return:
                 return QStringLiteral("source_activity_return");
+            case FieldScriptId::source_boundary:
+                return QStringLiteral("source_boundary");
             case FieldScriptId::none:
                 return QStringLiteral("none");
             }
@@ -1736,6 +1740,8 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     } else if (event_route.kind ==
                FieldScriptRouteKind::source_activity_return) {
         source_boundary("field.exit.resource_activity_return_selected");
+    } else if (event_route.kind == FieldScriptRouteKind::source_boundary) {
+        source_boundary(event_route.boundary_reason);
     }
 
     FieldExitOrchestratorCallbacks callbacks{};
@@ -1829,6 +1835,10 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     callbacks.run_indexed_title_services =
         [this, &runtime_state, &event_route](
             FieldExitOrchestratorState& state) {
+            if (event_route.kind == FieldScriptRouteKind::source_boundary) {
+                state.caller_exit_status = -1;
+                return true;
+            }
             if (event_route.route_preparation.has_value()) {
                 const auto& preparation = *event_route.route_preparation;
                 game_scripts_.set_field_mode_context(
@@ -7359,6 +7369,12 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                         active_field_script_route_ = *route;
                         source_boundary(
                             "field.exit.resource_activity_return_selected");
+                    } else if (route->kind ==
+                               FieldScriptRouteKind::source_boundary) {
+                        active_field_script_route_ = *route;
+                        runtime.field_transition_requested = true;
+                        source_boundary(route->boundary_reason);
+                        return;
                     }
                 }
             }
@@ -17106,6 +17122,10 @@ bool FieldSceneRuntime::open_gunderson_interaction() {
 
 bool FieldSceneRuntime::open_field_location_dialogue(
     const FieldScriptRoute& route) {
+    if (route.kind == FieldScriptRouteKind::source_boundary) {
+        source_boundary(route.boundary_reason);
+        return false;
+    }
     if (!ready_ || route.kind != FieldScriptRouteKind::dialogue ||
         route.script != FieldScriptId::lua_dialogue ||
         route.entry_dialogue_module.empty() ||

@@ -34,10 +34,11 @@ but it supplies no default Freya map actor.
 The generic location-dialogue task now binds this event through the Lua entity
 link at `gameplay/world/entities/club_penumbra_unidentified_contact/links.tsv`.
 The scene-17 area record places the contact at the exact ROM rectangle. It
-uses the shared old-man text profile and has no `route_conditions`, matching
-the handler's ungated branch. The exterior route remains a separate link on
-the Penumbra site entity and continues to validate destination 17 against the
-active ROM event-table row.
+uses the shared old-man text profile and has no route condition reference in
+`gameplay/dialogue/location_conditions.json`, matching the handler's ungated
+branch. The exterior route remains a separate link on the Penumbra site
+entity and continues to validate destination 17 against the active ROM
+event-table row.
 
 ## Verification boundary
 

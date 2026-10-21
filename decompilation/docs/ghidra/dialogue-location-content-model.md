@@ -1,8 +1,11 @@
 # Dialogue and location interaction content model
 
-Status: design and source inventory. This records the behavior and data
-boundaries to use before migrating the current Lua/TSV dialogue paths. It does
-not claim that every listed route is implemented or visually verified.
+Status: design, source inventory, and staged implementation. The generated
+text catalog, speaker/menu/contact catalogs, and location condition catalog
+are JSON-backed. All 87 current entity link rows now reference named JSON
+conditions where needed. The conversation graph engine, typed terminal
+outcome bridge, and entity-owned JSON interaction catalogs remain pending.
+This does not claim every listed route is implemented or visually verified.
 
 ## Design goals
 
@@ -308,3 +311,22 @@ resumes the source route). That validates the outcome contract before moving
 larger quest trees such as Stoker, the Salish dialogues, and the contact
 services. Existing incomplete encounter commands, upstream quest producers,
 and unverified visual branches remain explicit work, not filled-in defaults.
+
+## Implemented condition slice
+
+`gameplay/dialogue/location_conditions.json` now contains versioned, stable-ID
+condition definitions for every nontrivial gate in the 87 current entity link
+rows. The corresponding `links.tsv` rows carry `route_condition_id` and
+`entry_condition_id` references; semicolon conditions, the separate entry
+alternate-result field, and building-interaction mode gates have been removed
+from those route records. Existing source addresses and branch evidence stay
+with the link row.
+
+`condition_evaluator.lua` evaluates the `all`, `any`, `not`, `eq`, `ne`, `lt`,
+`lte`, `gt`, `gte`, and `in` forms against Lua state and typed route context.
+It returns `true`, `false`, or `unknown`. Unknown facts and unresolved
+same-priority routes become typed `source_boundary` route results, so they do
+not select a default event-table destination. Known false conditions still
+allow the source default route. The condition evaluator and the source-route
+boundary are covered by focused Lua and C++ tests; full conversation-graph and
+typed terminal-outcome behavior remains the next implementation slice.

@@ -1,0 +1,611 @@
+{
+  "schemaVersion": 1,
+  "conditions": {
+    "downtown_site_04_gates_undersound.ogami_departure_service.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_11",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_15",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "downtown_site_04_gates_undersound",
+        "linkId": "ogami_departure_service",
+        "scope": "route"
+      }
+    },
+    "icarus_descending_booth.rom_event_11_blocked.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_10",
+          "op": "eq",
+          "value": false
+        }
+      ],
+      "provenance": {
+        "entityId": "icarus_descending_booth",
+        "linkId": "rom_event_11_blocked",
+        "scope": "route"
+      }
+    },
+    "icarus_descending_booth.rom_event_11_blocked.entry": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_10",
+          "op": "eq",
+          "value": false
+        }
+      ],
+      "provenance": {
+        "entityId": "icarus_descending_booth",
+        "linkId": "rom_event_11_blocked",
+        "scope": "entry"
+      }
+    },
+    "icarus_descending_booth.rom_event_11_accessible.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_10",
+          "op": "eq",
+          "value": true
+        }
+      ],
+      "provenance": {
+        "entityId": "icarus_descending_booth",
+        "linkId": "rom_event_11_accessible",
+        "scope": "route"
+      }
+    },
+    "icarus_descending_booth.rom_event_11_accessible.entry": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_10",
+          "op": "eq",
+          "value": true
+        }
+      ],
+      "provenance": {
+        "entityId": "icarus_descending_booth",
+        "linkId": "rom_event_11_accessible",
+        "scope": "entry"
+      }
+    },
+    "penumbra_site_02_fuchi.cyberheart_entry.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_25",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_14",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "penumbra_site_02_fuchi",
+        "linkId": "cyberheart_entry",
+        "scope": "route"
+      }
+    },
+    "penumbra_site_02_fuchi.cyberheart_entry.entry": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_25",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_14",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "penumbra_site_02_fuchi",
+        "linkId": "cyberheart_entry",
+        "scope": "entry"
+      }
+    },
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_positive_alternate_result.route": {
+      "all": [
+        {
+          "fact": "field.alternate_result",
+          "op": "gt",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "puyallup_site_02_tarislar_garden_apartments",
+        "linkId": "rom_event_07_positive_alternate_result",
+        "scope": "route"
+      }
+    },
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_positive_alternate_result.entry": {
+      "all": [
+        {
+          "fact": "field.alternate_result",
+          "op": "gt",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "puyallup_site_02_tarislar_garden_apartments",
+        "linkId": "rom_event_07_positive_alternate_result",
+        "scope": "entry"
+      }
+    },
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_negative_alternate_result.route": {
+      "all": [
+        {
+          "fact": "field.alternate_result",
+          "op": "lt",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "puyallup_site_02_tarislar_garden_apartments",
+        "linkId": "rom_event_07_negative_alternate_result",
+        "scope": "route"
+      }
+    },
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_negative_alternate_result.entry": {
+      "all": [
+        {
+          "fact": "field.alternate_result",
+          "op": "lt",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "puyallup_site_02_tarislar_garden_apartments",
+        "linkId": "rom_event_07_negative_alternate_result",
+        "scope": "entry"
+      }
+    },
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_first_authorized_visit.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_30",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_21",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "puyallup_site_02_tarislar_garden_apartments",
+        "linkId": "rom_event_07_first_authorized_visit",
+        "scope": "route"
+      }
+    },
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_first_authorized_visit.entry": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_30",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_21",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "puyallup_site_02_tarislar_garden_apartments",
+        "linkId": "rom_event_07_first_authorized_visit",
+        "scope": "entry"
+      }
+    },
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_repeat_service.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_30",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_21",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "puyallup_site_02_tarislar_garden_apartments",
+        "linkId": "rom_event_07_repeat_service",
+        "scope": "route"
+      }
+    },
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_repeat_service.entry": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_30",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_21",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "puyallup_site_02_tarislar_garden_apartments",
+        "linkId": "rom_event_07_repeat_service",
+        "scope": "entry"
+      }
+    },
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_tomb_departure.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_30",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_21",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_16",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_28",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_26",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_27",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "puyallup_site_02_tarislar_garden_apartments",
+        "linkId": "rom_event_07_tomb_departure",
+        "scope": "route"
+      }
+    },
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_tomb_departure.entry": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_30",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_21",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_16",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_28",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_26",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_27",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "puyallup_site_02_tarislar_garden_apartments",
+        "linkId": "rom_event_07_tomb_departure",
+        "scope": "entry"
+      }
+    },
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_guarded_visit.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_30",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "puyallup_site_02_tarislar_garden_apartments",
+        "linkId": "rom_event_07_guarded_visit",
+        "scope": "route"
+      }
+    },
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_guarded_visit.entry": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_30",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "puyallup_site_02_tarislar_garden_apartments",
+        "linkId": "rom_event_07_guarded_visit",
+        "scope": "entry"
+      }
+    },
+    "puyallup_site_03_tarislar_city_inn.rom_event_01_paid_stay_and_shale_service.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_0",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_1",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "puyallup_site_03_tarislar_city_inn",
+        "linkId": "rom_event_01_paid_stay_and_shale_service",
+        "scope": "route"
+      }
+    },
+    "renraku_offices_frontage.renraku_map_overlay_entry.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_16",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_12",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "renraku_offices_frontage",
+        "linkId": "renraku_map_overlay_entry",
+        "scope": "route"
+      }
+    },
+    "renraku_offices_frontage.renraku_map_overlay_entry.entry": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_16",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_12",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "renraku_offices_frontage",
+        "linkId": "renraku_map_overlay_entry",
+        "scope": "entry"
+      }
+    },
+    "salish_owlfeather_ranger_lodge.owlfeather_first_contact.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_1",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_2",
+          "op": "eq",
+          "value": false
+        }
+      ],
+      "provenance": {
+        "entityId": "salish_owlfeather_ranger_lodge",
+        "linkId": "owlfeather_first_contact",
+        "scope": "route"
+      }
+    },
+    "salish_owlfeather_ranger_lodge.owlfeather_search_followup.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_2",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_3",
+          "op": "eq",
+          "value": false
+        }
+      ],
+      "provenance": {
+        "entityId": "salish_owlfeather_ranger_lodge",
+        "linkId": "owlfeather_search_followup",
+        "scope": "route"
+      }
+    },
+    "salish_owlfeather_ranger_lodge.owlfeather_return_followup.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_3",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_4",
+          "op": "eq",
+          "value": false
+        }
+      ],
+      "provenance": {
+        "entityId": "salish_owlfeather_ranger_lodge",
+        "linkId": "owlfeather_return_followup",
+        "scope": "route"
+      }
+    },
+    "stoker_coffin_motel.rom_event_02.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_0",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        },
+        {
+          "fact": "field.building_interaction_mode",
+          "op": "eq",
+          "value": true
+        }
+      ],
+      "provenance": {
+        "entityId": "stoker_coffin_motel",
+        "linkId": "rom_event_02",
+        "scope": "route"
+      }
+    },
+    "stoker_coffin_motel.rom_event_02.entry": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_0",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "stoker_coffin_motel",
+        "linkId": "rom_event_02",
+        "scope": "entry"
+      }
+    },
+    "jump_house_frontage.rom_event_04.entry": {
+      "all": [
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "jump_house_frontage",
+        "linkId": "rom_event_04",
+        "scope": "entry"
+      }
+    },
+    "ares_weapon_emporium.rom_event_11.route": {
+      "all": [
+        {
+          "fact": "field.building_interaction_mode",
+          "op": "eq",
+          "value": true
+        }
+      ],
+      "provenance": {
+        "entityId": "ares_weapon_emporium",
+        "linkId": "rom_event_11",
+        "scope": "route"
+      }
+    }
+  }
+}

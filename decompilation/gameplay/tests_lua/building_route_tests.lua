@@ -14,6 +14,14 @@ local base_link = {
     return_anchor = "collision_probe_lead",
     return_facing = "face_away_from_entry",
 }
+local condition_definitions = {}
+local function equal(fact, value)
+    return { fact = fact, op = "eq", value = value }
+end
+local function condition(id, clauses)
+    condition_definitions[id] = { all = clauses }
+    return id
+end
 local gated_link = {
     source_scene = 1,
     source_event = "event_7",
@@ -24,9 +32,13 @@ local gated_link = {
     route_priority = 5,
     return_anchor = "collision_probe_lead",
     return_facing = "face_away_from_entry",
-    route_conditions =
-        "story_flag_bit_30=true;active_run=package_recovery",
-    entry_conditions = "story_flag_bit_21=false",
+    route_condition_id = condition("test.gated.route", {
+        equal("story.story_flag_bit_30", true),
+        equal("run.active_id", "package_recovery"),
+    }),
+    entry_condition_id = condition("test.gated.entry", {
+        equal("story.story_flag_bit_21", false),
+    }),
     entry_dialogue_module = "building",
     entry_dialogue_function = "present_entry_description",
     entry_location_type = "building",
@@ -59,6 +71,10 @@ game = {
             },
         },
     },
+    content = {
+        location_conditions = { schemaVersion = 1,
+                                conditions = condition_definitions },
+    },
 }
 
 local context = {
@@ -82,6 +98,59 @@ assert(gated.entry_continue_result_id == "continue")
 assert(gated.return_anchor == "collision_probe_lead")
 assert(gated.return_facing == "face_away_from_entry")
 
+local unknown_gate = {
+    source_scene = 1,
+    source_event = "event_7",
+    route_kind = "area_event",
+    script = "area_event_table",
+    destination_scene = 26,
+    destination_mode = "field",
+    route_priority = 10,
+    route_condition_id = condition("test.unknown.route", {
+        equal("story.unimplemented_source_fact", true),
+    }),
+}
+game.modules.world_content_data.entities.source_test.links = {
+    base_link, unknown_gate,
+}
+local unresolved_route = Building.resolve_field_location_route(context)
+assert(unresolved_route.kind == "source_boundary" and
+       unresolved_route.boundary_reason:match("condition_unknown") ~= nil and
+       unresolved_route.boundary_reason:match("story.unimplemented_source_fact") ~= nil)
+
+unknown_gate.route_priority = -1
+local known_higher_priority = Building.resolve_field_location_route(context)
+assert(known_higher_priority.kind == "area_event" and
+       known_higher_priority.area_event_target == 13)
+
+local unknown_entry = {
+    source_scene = 1,
+    source_event = "event_7",
+    route_kind = "area_event",
+    script = "area_event_table",
+    destination_scene = 13,
+    destination_mode = "field",
+    route_priority = 10,
+    entry_condition_id = condition("test.unknown.entry", {
+        equal("story.unimplemented_entry_fact", false),
+    }),
+    entry_dialogue_module = "building",
+    entry_dialogue_function = "present_entry_description",
+    entry_location_type = "building",
+    entry_location_id = "unknown_entry_test",
+}
+game.modules.world_content_data.entities.source_test.links = {
+    unknown_entry,
+}
+local unresolved_entry = Building.resolve_field_location_route(context)
+assert(unresolved_entry.kind == "source_boundary" and
+       unresolved_entry.boundary_reason:match("condition_unknown") ~= nil and
+       unresolved_entry.boundary_reason:match("story.unimplemented_entry_fact") ~= nil)
+
+game.modules.world_content_data.entities.source_test.links = {
+    base_link, gated_link,
+}
+
 game.active_run = "none"
 local no_active_run = Building.resolve_field_location_route(context)
 assert(no_active_run.kind == "area_event" and
@@ -97,19 +166,23 @@ assert(default_route.entry_dialogue_module == nil)
 
 game.state.story_flag_bit_30 = true
 game.state.story_flag_bit_21 = true
-gated_link.route_conditions = "current_run=employee_recruitment"
+gated_link.route_condition_id = condition("test.gated.current_run", {
+    equal("run.current_offer_id", "employee_recruitment"),
+})
 local repeat_visit = Building.resolve_field_location_route(context)
 assert(repeat_visit.kind == "area_event" and
        repeat_visit.area_event_target == 13)
 assert(repeat_visit.entry_dialogue_module == nil)
 
 game.state.story_flag_bit_21 = false
-gated_link.route_conditions =
-    "story_flag_bit_30=true;active_run=package_recovery"
+gated_link.route_condition_id = condition("test.gated.route", {
+    equal("story.story_flag_bit_30", true),
+    equal("run.active_id", "package_recovery"),
+})
 gated_link.route_priority = 0
 local ambiguous = Building.resolve_field_location_route(context)
-assert(ambiguous.kind == "area_event" and
-       ambiguous.area_event_target == 13)
+assert(ambiguous.kind == "source_boundary" and
+       ambiguous.boundary_reason:match("route_ambiguous") ~= nil)
 assert(ambiguous.entry_dialogue_module == nil)
 
 local override_link = {
@@ -123,10 +196,16 @@ local override_link = {
     route_priority = 10,
     return_anchor = "collision_probe_lead",
     return_facing = "face_away_from_entry",
-    route_conditions =
-        "story_flag_bit_30=true;story_flag_bit_21=false;alternate_result=0",
-    entry_conditions = "story_flag_bit_30=true;story_flag_bit_21=false",
-    entry_alternate_result = 0,
+    route_condition_id = condition("test.first_entry.route", {
+        equal("story.story_flag_bit_30", true),
+        equal("story.story_flag_bit_21", false),
+        equal("field.alternate_result", 0),
+    }),
+    entry_condition_id = condition("test.first_entry.entry", {
+        equal("story.story_flag_bit_30", true),
+        equal("story.story_flag_bit_21", false),
+        equal("field.alternate_result", 0),
+    }),
     entry_dialogue_module = "tarislar_apartments",
     entry_dialogue_function = "present_first_entry",
     entry_location_type = "building",
@@ -159,16 +238,24 @@ local tomb_link = {
     destination_mode = "scripted_activity",
     source_table_destination = 13,
     route_priority = 10,
-    route_conditions =
-        "story_flag_bit_30=true;story_flag_bit_21=true;" ..
-        "story_flag_bit_16=true;story_flag_bit_28=true;" ..
-        "story_flag_bit_26=true;story_flag_bit_27=true;" ..
-        "alternate_result=0",
-    entry_conditions =
-        "story_flag_bit_30=true;story_flag_bit_21=true;" ..
-        "story_flag_bit_16=true;story_flag_bit_28=true;" ..
-        "story_flag_bit_26=true;story_flag_bit_27=true",
-    entry_alternate_result = 0,
+    route_condition_id = condition("test.tomb.route", {
+        equal("story.story_flag_bit_30", true),
+        equal("story.story_flag_bit_21", true),
+        equal("story.story_flag_bit_16", true),
+        equal("story.story_flag_bit_28", true),
+        equal("story.story_flag_bit_26", true),
+        equal("story.story_flag_bit_27", true),
+        equal("field.alternate_result", 0),
+    }),
+    entry_condition_id = condition("test.tomb.entry", {
+        equal("story.story_flag_bit_30", true),
+        equal("story.story_flag_bit_21", true),
+        equal("story.story_flag_bit_16", true),
+        equal("story.story_flag_bit_28", true),
+        equal("story.story_flag_bit_26", true),
+        equal("story.story_flag_bit_27", true),
+        equal("field.alternate_result", 0),
+    }),
     entry_dialogue_module = "tarislar_apartments",
     entry_dialogue_function = "present_tomb_departure",
     entry_location_type = "building",
@@ -212,9 +299,14 @@ local guarded_link = {
     destination_mode = "field",
     source_table_destination = 13,
     route_priority = 10,
-    route_conditions = "story_flag_bit_30=false;alternate_result=0",
-    entry_conditions = "story_flag_bit_30=false",
-    entry_alternate_result = 0,
+    route_condition_id = condition("test.guarded.route", {
+        equal("story.story_flag_bit_30", false),
+        equal("field.alternate_result", 0),
+    }),
+    entry_condition_id = condition("test.guarded.entry", {
+        equal("story.story_flag_bit_30", false),
+        equal("field.alternate_result", 0),
+    }),
     entry_dialogue_module = "tarislar_apartments",
     entry_dialogue_function = "present_guarded_entry",
     entry_location_type = "building",
@@ -284,8 +376,11 @@ game.modules.world_content_data.entities.source_test.links = {
         route_kind = "field_service",
         script = "lua_field_service",
         route_priority = 10,
-        route_conditions =
-            "story_flag_bit_0=true;story_flag_bit_1=false;alternate_result=0",
+        route_condition_id = condition("test.inn.route", {
+            equal("story.story_flag_bit_0", true),
+            equal("story.story_flag_bit_1", false),
+            equal("field.alternate_result", 0),
+        }),
         indexed_title_service_module = "tarislar_city_inn",
         indexed_title_service_function = "present_indexed_title_service",
         location_type = inn_location.location_type,
@@ -338,11 +433,17 @@ local motel_link = {
     route_kind = "dialogue",
     script = "lua_dialogue",
     route_priority = 0,
-    route_conditions = "story_flag_bit_0=false;alternate_result=0",
-    requires_mode = "building_interaction",
+    route_condition_id = condition("test.motel.route", {
+        equal("story.story_flag_bit_0", false),
+        equal("field.alternate_result", 0),
+        equal("field.building_interaction_mode", true),
+    }),
     return_anchor = "collision_probe_lead",
     return_facing = "face_away_from_entry",
-    entry_conditions = "story_flag_bit_0=false;alternate_result=0",
+    entry_condition_id = condition("test.motel.entry", {
+        equal("story.story_flag_bit_0", false),
+        equal("field.alternate_result", 0),
+    }),
     entry_dialogue_module = "michael_package",
     entry_dialogue_function = "stoker_interaction",
     entry_location_type = "motel",

@@ -152,19 +152,20 @@ entity set is not a complete route census. In particular, the ROM census's
 doors or reversible links.
 
 The reusable route model now supports several source-confirmed outcomes for
-one event. Entity `links.tsv` rows may use `route_priority` and a
-`route_conditions` conjunction over Lua state facts and active/current run
-IDs; equal-priority matches stay unresolved and fall back to the ROM event
-table. Entry passages use
-`entry_conditions`, `entry_alternate_result`, and named Lua task/location
-fields. An optional `entry_continue_result_id` lets the task return to the
-source map when a guard or quest dialogue denies entry. The host preserves the
-typed destination during the modal and consumes it only when Lua returns the
-declared result. Jump House now uses this shared path: service 22's clear
-`FFF0D5` branch opens its ROM-derived Lua passage and then resumes scene 13.
-Its ordinary-input QA checks the dialogue result and the clean destination
+one event. Entity `links.tsv` rows use `route_priority` and stable condition
+IDs that resolve through `gameplay/dialogue/location_conditions.json`.
+Conditions cover story facts, active/current runs, alternate results, and the
+building-interaction mode. Missing facts evaluate to `unknown`; an unknown
+candidate that could outrank the known route and equal-priority true matches
+produce an explicit source boundary instead of silently falling through to
+the ROM event table. Entry passages use a separate `entry_condition_id` and
+named Lua task/location fields. The host preserves the typed destination
+during the modal and consumes it only when Lua returns the declared
+`entry_continue_result_id`. Jump House now uses this shared path: service 22's
+clear `FFF0D5` branch opens its ROM-derived Lua passage and then resumes scene
+13. Its ordinary-input QA checks the dialogue result and the clean destination
 redraw. Lua route tests cover story-fact and run-state variants, priority
-ties, and entry task selection.
+ties, unknown-fact boundaries, and entry task selection.
 
 The entity sweep now has 68 explicit Lua link rows in 57 entity files across
 scenes 0-7: 57 event-table routes, three Tarislar service-21 overrides, seven

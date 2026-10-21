@@ -98,6 +98,7 @@ enum class FieldScriptId {
     host_field_service,
     area_event_table,
     source_activity_return,
+    source_boundary,
 };
 
 enum class FieldScriptRouteKind {
@@ -106,6 +107,7 @@ enum class FieldScriptRouteKind {
     field_service,
     area_event,
     source_activity_return,
+    source_boundary,
 };
 
 // Location entities may declare how a field transition restores its source
@@ -178,6 +180,7 @@ struct FieldScriptRoute {
     std::string entry_continue_result_id;
     FieldLocationResourceEntryOverride entry_resource_override =
         FieldLocationResourceEntryOverride::none;
+    std::string boundary_reason;
     std::string field_service_id;
     // Synchronous Lua policy that may update transient world facts before an
     // area-event route continues. It does not own the modal or transition.

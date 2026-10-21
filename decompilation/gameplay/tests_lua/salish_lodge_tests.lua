@@ -21,6 +21,7 @@ end
 
 local state_facts = {}
 local active_story_trigger
+local condition_definitions = {}
 game = {
     state = setmetatable({}, {
         __index = function(_, name)
@@ -52,6 +53,9 @@ game = {
     field = { mode = 6, event_code = 0, alternate_result = 0 },
     location = { type = "building", id = "salish_owlfeather_ranger_lodge" },
     modules = { world_content_data = { entities = {}, areas = {} } },
+    content = { location_conditions = {
+        schemaVersion = 1, conditions = condition_definitions,
+    } },
     ui = {
         prompt_text = select_choice,
         say_text = function(text, continuation)
@@ -65,6 +69,14 @@ game = {
         end,
     },
 }
+
+local function equal(fact, value)
+    return { fact = fact, op = "eq", value = value }
+end
+local function condition(id, clauses)
+    condition_definitions[id] = { all = clauses }
+    return id
+end
 
 local function bind_entity(scene, entity_id, links)
     game.modules.world_content_data.entities = {
@@ -97,7 +109,10 @@ local owl_links = {
         source_scene = 6, source_event = "event_0",
         route_kind = "field_service", script = "lua_field_service",
         route_priority = 30,
-        route_conditions = "story_flag_bit_1=true;story_flag_bit_2=false",
+        route_condition_id = condition("test.owlfeather.first", {
+            equal("story.story_flag_bit_1", true),
+            equal("story.story_flag_bit_2", false),
+        }),
         indexed_title_service_module = "salish_owlfeather",
         indexed_title_service_function = "present_first_contact",
         location_type = "building", location_id = "salish_owlfeather_ranger_lodge",
@@ -107,7 +122,10 @@ local owl_links = {
         source_scene = 6, source_event = "event_0",
         route_kind = "field_service", script = "lua_field_service",
         route_priority = 20,
-        route_conditions = "story_flag_bit_2=true;story_flag_bit_3=false",
+        route_condition_id = condition("test.owlfeather.search", {
+            equal("story.story_flag_bit_2", true),
+            equal("story.story_flag_bit_3", false),
+        }),
         indexed_title_service_module = "salish_owlfeather",
         indexed_title_service_function = "present_search_followup",
         location_type = "building", location_id = "salish_owlfeather_ranger_lodge",
@@ -117,7 +135,10 @@ local owl_links = {
         source_scene = 6, source_event = "event_0",
         route_kind = "field_service", script = "lua_field_service",
         route_priority = 10,
-        route_conditions = "story_flag_bit_3=true;story_flag_bit_4=false",
+        route_condition_id = condition("test.owlfeather.return", {
+            equal("story.story_flag_bit_3", true),
+            equal("story.story_flag_bit_4", false),
+        }),
         indexed_title_service_module = "salish_owlfeather",
         indexed_title_service_function = "present_return_followup",
         location_type = "building", location_id = "salish_owlfeather_ranger_lodge",

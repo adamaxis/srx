@@ -4,6 +4,10 @@
 -- places or inventing an interior.
 local Building = {}
 local World = require("world_content")
+local ConditionEvaluator = require("condition_evaluator")
+local condition_evaluator = ConditionEvaluator.new(
+    ConditionEvaluator.FactProvider.new())
+local validated_condition_catalog
 
 local route_kind = {
     no_route = "no_route",
@@ -12,6 +16,7 @@ local route_kind = {
     area_event = "area_event",
     area_event_override = "area_event_override",
     source_activity_return = "source_activity_return",
+    source_boundary = "source_boundary",
 }
 
 local route_script = {
@@ -20,6 +25,7 @@ local route_script = {
     lua_dialogue = "lua_dialogue",
     host_field_service = "host_field_service",
     source_activity_return = "source_activity_return",
+    source_boundary = "source_boundary",
 }
 
 local destination_mode = {
@@ -54,6 +60,51 @@ local function no_route(event_code)
     }
 end
 
+local function source_boundary(event_code, reason)
+    return {
+        kind = route_kind.source_boundary,
+        script = route_script.source_boundary,
+        event_code = event_code,
+        boundary_reason = reason,
+    }
+end
+
+local function condition_result(condition_id, context)
+    if condition_id == nil or condition_id == "" or condition_id == "-" then
+        return condition_evaluator:evaluate(nil, context)
+    end
+    assert(type(condition_id) == "string",
+        "location condition reference must be a string")
+    local content = type(game) == "table" and game.content or nil
+    local catalog = type(content) == "table" and
+        content.location_conditions or nil
+    local definitions = type(catalog) == "table" and catalog.conditions or nil
+    assert(type(catalog) == "table" and catalog.schemaVersion == 1 and
+           type(definitions) == "table",
+        "location condition catalog has an unsupported schema")
+    if validated_condition_catalog ~= catalog then
+        for id, expression in pairs(definitions) do
+            assert(type(id) == "string" and id ~= "" and
+                   type(expression) == "table",
+                "location condition catalog has an invalid definition")
+            ConditionEvaluator.validate(expression)
+        end
+        validated_condition_catalog = catalog
+    end
+    assert(type(definitions[condition_id]) == "table",
+        "location link references an unknown condition: " .. condition_id)
+    return condition_evaluator:evaluate(definitions[condition_id], context)
+end
+
+local function unresolved_condition_reason(link, scope, result)
+    local link_identity = link.link_id or link.id or
+        link[scope .. "_condition_id"] or "unnamed"
+    local identity = (link.entity_id or "location") .. "." ..
+        link_identity .. "." .. scope
+    return "location.condition_unknown:" .. identity .. ":" ..
+        table.concat(result.unknown_facts or {}, ",")
+end
+
 local function return_fields(link)
     local anchor = link.return_anchor
     local facing = link.return_facing
@@ -63,89 +114,27 @@ local function return_fields(link)
     }
 end
 
--- Link conditions are small declarative conjunctions over authoritative Lua
--- state facts, for example "story_flag_bit_30=true;story_flag_bit_21=false",
--- or a run state such as "active_run=package_recovery". Separate rows with
--- different priorities represent source-backed branches.
-local function condition_matches(clause, context)
-    local active_run = clause:match("^active_run=([a-z0-9_]+)$")
-    if active_run ~= nil then
-        local registry = game.runs and game.runs.registry
-        assert(type(registry) == "table" and
-               type(registry.active_run_id) == "function",
-            "location link active-run condition needs run_registry")
-        return registry.active_run_id() == active_run
-    end
-    local current_run = clause:match("^current_run=([a-z0-9_]+)$")
-    if current_run ~= nil then
-        local registry = game.runs and game.runs.registry
-        assert(type(registry) == "table" and
-               type(registry.current_offer_id) == "function",
-            "location link current-run condition needs run_registry")
-        return registry.current_offer_id() == current_run
-    end
-
-    local alternate_result = clause:match("^alternate_result=(-?%d+)$")
-    if alternate_result ~= nil then
-        return type(context) == "table" and
-            context.alternate_result == tonumber(alternate_result)
-    end
-    local alternate_result_sign = clause:match("^alternate_result=(%a+)$")
-    if alternate_result_sign == "positive" or
-       alternate_result_sign == "negative" then
-        if type(context) ~= "table" or
-           type(context.alternate_result) ~= "number" then
-            return false
-        end
-        if alternate_result_sign == "positive" then
-            return context.alternate_result > 0
-        end
-        return context.alternate_result < 0
-    end
-
-    local fact, expected = clause:match("^([a-z][a-z0-9_]*)=(%a+)$")
-    assert(fact ~= nil and (expected == "true" or expected == "false"),
-        "location link condition must name a boolean fact or run id")
-    return type(game.state) == "table" and
-        game.state[fact] == (expected == "true")
-end
-
-local function conditions_match(encoded, context)
-    if encoded == nil or encoded == "" or encoded == "-" then
-        return true
-    end
-    assert(type(encoded) == "string" and
-           encoded:sub(1, 1) ~= ";" and
-           encoded:sub(-1) ~= ";" and
-           not encoded:find(";;", 1, true),
-        "location link has malformed conditions")
-    for clause in encoded:gmatch("[^;]+") do
-        if not condition_matches(clause, context) then
-            return false
-        end
-    end
-    return true
-end
-
 local function link_matches_context(link, context)
-    local requires_mode = link.requires_mode
-    if requires_mode ~= nil and requires_mode ~= "" and
-       not (requires_mode == "building_interaction" and
-            context.building_interaction_mode) then
-        return false
-    end
-    return conditions_match(link.route_conditions, context)
+    return condition_result(link.route_condition_id, context)
 end
 
 local function selected_link(links, context)
     local selected
     local selected_priority
     local ambiguous = false
+    local unresolved = {}
     for _, link in ipairs(links) do
-        if link_matches_context(link, context) then
-            local priority = link.route_priority or 0
-            assert(type(priority) == "number" and priority % 1 == 0,
-                "location link priority must be an integer")
+        local evaluation = link_matches_context(link, context)
+        local priority = link.route_priority or 0
+        assert(type(priority) == "number" and priority % 1 == 0,
+            "location link priority must be an integer")
+        if evaluation.status == ConditionEvaluator.Status.unknown then
+            unresolved[#unresolved + 1] = {
+                priority = priority,
+                reason = unresolved_condition_reason(
+                    link, "route", evaluation),
+            }
+        elseif evaluation.status == ConditionEvaluator.Status.true_value then
             if selected == nil or priority > selected_priority then
                 selected = link
                 selected_priority = priority
@@ -155,7 +144,16 @@ local function selected_link(links, context)
             end
         end
     end
-    if ambiguous then return nil end
+    if ambiguous then
+        return nil, "location.route_ambiguous:" ..
+            (selected.entity_id or "location") .. "." ..
+            (selected.link_id or selected.id or "unnamed")
+    end
+    for _, candidate in ipairs(unresolved) do
+        if selected == nil or candidate.priority >= selected_priority then
+            return nil, candidate.reason
+        end
+    end
     return selected
 end
 
@@ -171,14 +169,12 @@ local function entry_dialogue_fields(link, context)
            location_id ~= "" and location_id ~= "-",
         "location entry dialogue has incomplete task/location data")
 
-    local alternate = link.entry_alternate_result
-    if alternate ~= nil and alternate ~= "" and alternate ~= "-" then
-        local parsed = tonumber(alternate)
-        assert(parsed ~= nil and parsed % 1 == 0,
-            "location entry alternate result must be an integer")
-        if context.alternate_result ~= parsed then return {} end
+    local condition = condition_result(link.entry_condition_id, context)
+    if condition.status == ConditionEvaluator.Status.false_value then
+        return {}
+    elseif condition.status == ConditionEvaluator.Status.unknown then
+        return nil, unresolved_condition_reason(link, "entry", condition)
     end
-    if not conditions_match(link.entry_conditions, context) then return {} end
 
     local text_profile = link.entry_text_profile or ""
     local speaker_id = link.entry_speaker_id or ""
@@ -206,10 +202,14 @@ local function entry_dialogue_fields(link, context)
 end
 
 local function add_entry_dialogue(route, link, context)
-    for name, value in pairs(entry_dialogue_fields(link, context)) do
+    local fields, boundary_reason = entry_dialogue_fields(link, context)
+    if boundary_reason ~= nil then
+        return source_boundary(route.event_code, boundary_reason), true
+    end
+    for name, value in pairs(fields) do
         route[name] = value
     end
-    return route
+    return route, false
 end
 
 local function location_script_task(link, prefix)
@@ -291,19 +291,24 @@ function Building.resolve_field_location_route(context)
         return no_route("event_0")
     end
 
-    local link = selected_link(World.location_links_for_event(
-        context.scene_id, context.event_code), context)
+    local link, unresolved_reason = selected_link(
+        World.location_links_for_event(context.scene_id, context.event_code),
+        context)
+    if unresolved_reason ~= nil then
+        return source_boundary(context.event_code, unresolved_reason)
+    end
     if link ~= nil then
         -- Entity-owned Lua link data describes the interaction. Ordinary
         -- area destinations are accepted only when they agree with the
         -- current map's imported ROM event-table byte.
         if link.route_kind == route_kind.dialogue and
            link.script == route_script.lua_dialogue then
-            local route = add_entry_dialogue({
+            local route, is_boundary = add_entry_dialogue({
                 kind = route_kind.dialogue,
                 script = route_script.lua_dialogue,
                 event_code = context.event_code,
             }, link, context)
+            if is_boundary then return route end
             assert(route.entry_dialogue_module ~= nil,
                 "Lua dialogue link must provide a gated dialogue task")
             local return_policy = return_fields(link)
@@ -350,7 +355,7 @@ function Building.resolve_field_location_route(context)
                 mode = classify_area_event_destination(
                     link.destination_scene)
             end
-            local route = add_entry_dialogue({
+            local route, is_boundary = add_entry_dialogue({
                 kind = route_kind.area_event,
                 script = route_script.map_event_table,
                 event_code = context.event_code,
@@ -359,6 +364,7 @@ function Building.resolve_field_location_route(context)
                 return_anchor = return_policy.return_anchor,
                 return_facing = return_policy.return_facing,
             }, link, context)
+            if is_boundary then return route end
             return add_location_script_tasks(route, link)
         end
     end

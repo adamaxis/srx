@@ -4670,6 +4670,7 @@ GameScriptRuntime::resolve_field_location_route(
                               route.entry_continue_result_id) ||
         !read_optional_string("entry_resource_override",
                               resource_override_name) ||
+        !read_optional_string("boundary_reason", route.boundary_reason) ||
         !read_optional_string("field_service_id",
                               route.field_service_id) ||
         !read_location_task("route_preparation",
@@ -4728,6 +4729,11 @@ GameScriptRuntime::resolve_field_location_route(
                !context.event_table_available) {
         route.kind = FieldScriptRouteKind::source_activity_return;
         route.script = FieldScriptId::source_activity_return;
+    } else if (kind_name == "source_boundary" &&
+               script_name == "source_boundary" && no_target &&
+               !route.boundary_reason.empty()) {
+        route.kind = FieldScriptRouteKind::source_boundary;
+        route.script = FieldScriptId::source_boundary;
     } else {
         return fail("building.lua route returned an unknown action");
     }
@@ -4751,6 +4757,11 @@ GameScriptRuntime::resolve_field_location_route(
          route.entry_location_type.empty() ||
          route.entry_location_id.empty())) {
         return fail("building.lua route has incomplete entry dialogue data");
+    }
+
+    if (!route.boundary_reason.empty() &&
+        route.kind != FieldScriptRouteKind::source_boundary) {
+        return fail("building.lua route misplaced its source boundary reason");
     }
 
     if (route.entry_resource_override !=

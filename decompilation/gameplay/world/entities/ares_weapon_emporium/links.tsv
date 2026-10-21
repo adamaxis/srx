@@ -1,2 +1,2 @@
-link_id	source_scene	source_event	route_kind	script	destination_scene	destination_mode	field_service_id	route_priority	route_conditions	requires_mode	return_anchor	return_facing	evidence
-rom_event_11	2	event_11	field_service	host_field_service	-		ares_weapon_emporium	0		building_interaction			ROM scene 2 collision record 92 at 0x173142, raw 0x00CB; 0x1FA78 selects the Ares service prompt and A opens the shop on scene 2.
+link_id	source_scene	source_event	route_kind	script	destination_scene	destination_mode	field_service_id	route_priority	route_condition_id	return_anchor	return_facing	evidence
+rom_event_11	2	event_11	field_service	host_field_service	-		ares_weapon_emporium	0	ares_weapon_emporium.rom_event_11.route			ROM scene 2 collision record 92 at 0x173142, raw 0x00CB; 0x1FA78 selects the Ares service prompt and A opens the shop on scene 2.

@@ -78,7 +78,14 @@ function World.location_links_for_event(scene_id, event_code)
         for _, link in ipairs(entity and entity.links or {}) do
             if link.source_scene == scene_id and
                link.source_event == event_code then
-                result[#result + 1] = link
+                local resolved_link = {}
+                for key, value in pairs(link) do
+                    resolved_link[key] = value
+                end
+                resolved_link.entity_id = entity.id
+                resolved_link.link_id = link.link_id or link.id
+                resolved_link.instance_id = instance.instance_id
+                result[#result + 1] = resolved_link
             end
         end
     end

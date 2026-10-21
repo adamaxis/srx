@@ -1,2 +1,2 @@
-link_id	source_scene	source_event	route_kind	script	destination_scene	destination_mode	requires_mode	return_anchor	return_facing	evidence
-rom_event_01	2	event_1	area_event	area_event_table	26	resource_activity		collision_probe_lead	face_away_from_entry	ROM scene 2 collision record 93 at 0x17314C; event-table row 1 at 0x172CDD selects numeric resource-activity scene 26.
+link_id	source_scene	source_event	route_kind	script	destination_scene	destination_mode	return_anchor	return_facing	evidence
+rom_event_01	2	event_1	area_event	area_event_table	26	resource_activity	collision_probe_lead	face_away_from_entry	ROM scene 2 collision record 93 at 0x17314C; event-table row 1 at 0x172CDD selects numeric resource-activity scene 26.

@@ -2,8 +2,15 @@ package.path = "decompilation/gameplay/scripts/?.lua;" ..
     "decompilation/gameplay/scripts/?/init.lua;" .. package.path
 
 local Building = require("building")
-local Dialogue = require("dialogue")
-local GatesUndersound = require("gates_undersound")
+
+local condition_definitions = {}
+local function equal(fact, value)
+    return { fact = fact, op = "eq", value = value }
+end
+local function condition(id, clauses)
+    condition_definitions[id] = { all = clauses }
+    return id
+end
 
 local base_link = {
     source_scene = 0,
@@ -20,8 +27,11 @@ local service_link = {
     route_kind = "field_service",
     script = "lua_field_service",
     route_priority = 10,
-    route_conditions =
-        "story_flag_bit_11=true;story_flag_bit_15=false;alternate_result=0",
+    route_condition_id = condition("test.gates.route", {
+        equal("story.story_flag_bit_11", true),
+        equal("story.story_flag_bit_15", false),
+        equal("field.alternate_result", 0),
+    }),
     indexed_title_service_module = "gates_undersound",
     indexed_title_service_function = "present_ogami_departure",
     location_type = "building",
@@ -62,7 +72,25 @@ game = {
             },
         },
     },
+    content = { location_conditions = {
+        schemaVersion = 1, conditions = condition_definitions,
+    } },
 }
+
+local Json = require("json")
+local function load_dialogue_catalog(name)
+    local file = assert(io.open(
+        "decompilation/gameplay/dialogue/" .. name .. ".json", "rb"))
+    local source = file:read("*a")
+    file:close()
+    return Json.decode(source)
+end
+game.content.speakers = load_dialogue_catalog("speakers")
+game.content.contacts = load_dialogue_catalog("contacts")
+game.content.menus = load_dialogue_catalog("menus")
+
+local Dialogue = require("dialogue")
+local GatesUndersound = require("gates_undersound")
 
 local context = {
     scene_id = 0,

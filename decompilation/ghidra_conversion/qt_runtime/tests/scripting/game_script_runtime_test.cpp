@@ -1918,6 +1918,12 @@ int main() {
             {4U, 4U, 13U, WorldActivityMode::field},
             {4U, 5U, 13U, WorldActivityMode::field},
         }};
+    StoryFacts known_clear_story_flags;
+    for (unsigned bit = 0U; bit < 32U; ++bit) {
+        known_clear_story_flags["story_flag_bit_" + std::to_string(bit)] =
+            false;
+    }
+    scripts.set_story_state(known_clear_story_flags);
     bool authored_location_routes_match = true;
     for (const auto& route_case : kAuthoredLocationRouteCases) {
         FieldScriptRouteContext route_context{};
@@ -1945,6 +1951,26 @@ int main() {
                      : FieldLocationReturnFacing::
                            preserve_entry_heading) &&
             authored_location_routes_match;
+        if (!authored_location_routes_match) {
+            std::cerr << "authored route mismatch scene="
+                      << static_cast<unsigned>(route_case.scene_id)
+                      << " event=" << static_cast<unsigned>(route_case.event_id)
+                      << " route_kind="
+                      << (route.has_value()
+                              ? static_cast<unsigned>(route->kind)
+                              : 999U)
+                      << " target="
+                      << (route.has_value() &&
+                                  route->area_event_target.has_value()
+                              ? static_cast<unsigned>(
+                                    *route->area_event_target)
+                              : 999U)
+                      << " boundary="
+                      << (route.has_value() ? route->boundary_reason
+                                            : std::string{})
+                      << '\n';
+            break;
+        }
     }
 
     if (!expect(
@@ -2023,10 +2049,10 @@ int main() {
                 missing_table_route->kind == FieldScriptRouteKind::no_route &&
                 destination_ranges_match &&
                 renraku_office.has_value() &&
-                renraku_office->kind == FieldScriptRouteKind::area_event &&
-                renraku_office->area_event_target == 35U &&
-                renraku_office->area_event_destination_mode ==
-                    WorldActivityMode::resource_activity &&
+                renraku_office->kind ==
+                    FieldScriptRouteKind::source_boundary &&
+                renraku_office->boundary_reason.find(
+                    "location.condition_unknown") != std::string::npos &&
                 renraku_office_first_visit.has_value() &&
                 renraku_office_first_visit->area_event_target == 35U &&
                 renraku_office_first_visit->entry_dialogue_module ==
@@ -2076,6 +2102,53 @@ int main() {
                 gates_undersound_pre_mako->area_event_target == 21U &&
                 authored_location_routes_match,
             "Lua did not resolve ROM-backed field location routes and destination modes")) {
+        const auto dump_route = [](const char* label,
+                                   const std::optional<FieldScriptRoute>& route) {
+            std::cerr << label << "=";
+            if (!route.has_value()) {
+                std::cerr << "missing\n";
+                return;
+            }
+            std::cerr << static_cast<unsigned>(route->kind)
+                      << " script=" << static_cast<unsigned>(route->script)
+                      << " target="
+                      << (route->area_event_target.has_value()
+                              ? static_cast<unsigned>(
+                                    *route->area_event_target)
+                              : 999U)
+                      << " entry=" << route->entry_dialogue_module << '.'
+                      << route->entry_dialogue_function
+                      << " result=" << route->entry_continue_result_id
+                      << " resource_override="
+                      << static_cast<unsigned>(route->entry_resource_override)
+                      << " service=" << route->field_service_id
+                      << " title_service="
+                      << (route->indexed_title_service.has_value()
+                              ? route->indexed_title_service->module + "." +
+                                    route->indexed_title_service->function
+                              : std::string{})
+                      << " boundary=" << route->boundary_reason << '\n';
+        };
+        dump_route("stoker", stoker_route);
+        dump_route("stoker_paid", stoker_paid_route);
+        dump_route("jump_house", jump_house_route);
+        dump_route("jump_house_alt", jump_house_alternate_route);
+        dump_route("ares", ares_route);
+        dump_route("scene20", scene20_route);
+        dump_route("scene26", scene26_route);
+        dump_route("renraku", renraku_office);
+        dump_route("renraku_first", renraku_office_first_visit);
+        dump_route("renraku_repeat", renraku_office_repeat_visit);
+        dump_route("fuchi_first", fuchi_office_first_visit);
+        dump_route("fuchi_repeat", fuchi_office_repeat_visit);
+        dump_route("gates_first", gates_undersound_first_visit);
+        dump_route("gates_pre_mako", gates_undersound_pre_mako);
+        dump_route("missing_event", missing_event_route);
+        dump_route("unmapped", unmapped_route);
+        dump_route("other_map", other_map_route);
+        dump_route("missing_table", missing_table_route);
+        std::cerr << "authored_location_routes_match="
+                  << authored_location_routes_match << '\n';
         std::cerr << scripts.failure() << '\n';
         return 2;
     }
@@ -9075,6 +9148,7 @@ int main() {
         return 17;
     }
     scripts.set_story_state({
+        {"story_flag_bit_1", false},
         {"story_flag_bit_2", false},
         {"story_flag_bit_3", true},
         {"story_flag_bit_4", false},

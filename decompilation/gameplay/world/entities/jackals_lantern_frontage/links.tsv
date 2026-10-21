@@ -1,2 +1,2 @@
-link_id	source_scene	source_event	route_kind	script	destination_scene	destination_mode	requires_mode	return_anchor	return_facing	evidence
-rom_event_05	2	event_5	area_event	area_event_table	19	field		collision_probe_lead	face_away_from_entry	ROM scene 2 collision record 86 at 0x173106; event-table row 5 selects numeric field scene 19.
+link_id	source_scene	source_event	route_kind	script	destination_scene	destination_mode	return_anchor	return_facing	evidence
+rom_event_05	2	event_5	area_event	area_event_table	19	field	collision_probe_lead	face_away_from_entry	ROM scene 2 collision record 86 at 0x173106; event-table row 5 selects numeric field scene 19.
