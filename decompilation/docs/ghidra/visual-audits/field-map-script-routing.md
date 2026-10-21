@@ -197,6 +197,31 @@ route requires story bits 30, 21, 16, 28, 26, and 27 plus alternate result 0.
 The repeat information branch, upstream Frosty choice, pending-descriptor
 override, and scene-54 completion/return remain open.
 
+### Puyallup Ork Gang contract target
+
+Scene 1 records 76 and 77 (`0x17D9FC` and `0x17DA06`) are separate event-9
+rectangles at the Ork Gang Hideout. Their shared event-table row 9 at
+`0x17D629` selects Scene 13 when no exact active run target intercepts the
+route. ROM `0x1F086` compares the current area/event pair in FFFBF8/FFFBF9
+against the selected gang-contract target in FFFBEE/FFFBF. For Puyallup
+area 1/event 9, it queues actor-list `0x1D6D4A` with resource profile
+`0x122054` and presents the passage from text `0xFE0DE` (descriptor
+`0xFDE26`). The pending descriptors then override the generic Scene-13 route
+and select Scene 15. `run_gang_contract.lua` owns the target match, passage
+task, and actor-group data; the entity link remains the reusable Scene-13
+fallback and records return policy.
+
+`shadowrun_ghidra_conversion_qt_field_puyallup_ork_gang_contract_entry_qa`
+physically reaches the rectangles with ordinary Up input in Debug and Release.
+Record 76 with an exact area-1/event-9 target shows the passage and enters
+Scene 15 with four actors. Record 77 with an active area-2/event-9 target and
+record 76 with no active contract both follow row 9 to Scene 13 without the
+passage. The 13 generated files match across builds by SHA-256; the 320x224
+contact, passage, and destination captures were inspected at full resolution.
+These are host captures, not independent Genesis comparisons. The active
+record-77 match, gang fight result, reward settlement, and independent visual
+reference remain open. See the [Ork Gang target-entry audit](puyallup-ork-gang-contract-entry.md).
+
 The named-route sweep still has source-profiled gaps. Scene-1 Tarislar Garden
 Apartments has indexed service 21 and story-bit gates. The first-authorized
 conversation, guarded leave path, and gated tomb-departure Yes route are

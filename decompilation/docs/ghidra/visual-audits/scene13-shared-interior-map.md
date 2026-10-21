@@ -22,6 +22,14 @@ scene 0. The work-contract branch remains unresolved.
   actor gate. Its dedicated Debug/Release route QA verifies the source
   rectangle and transition; it does not establish a clinic menu or treatment
   interaction.
+- Puyallup records 76/77/event 9 (guide crosswalk: the Ork Gang Hideout) use
+  Scene 13 as the ordinary event-table route. ROM `0x1F086` intercepts an
+  active gang-contract target matching area 1/event 9, presents the entry
+  passage from `0xFE0DE`, and selects the Scene-15 actor group instead. A
+  different-area active target and no active run both follow Scene 13. The
+  Debug/Release physical QA checks the matching branch at record 76 and the
+  mismatched branch at adjacent record 77; it does not complete the gang fight
+  or reward path.
 - Scene 13 has no default map actors. The Gunderson portrait selected by event
   30 is dialogue art, not a resident sprite.
 - Scene 13 records 11 and 12 (`0x1B3CF8`, `0x1B3D02`) are adjacent event-30

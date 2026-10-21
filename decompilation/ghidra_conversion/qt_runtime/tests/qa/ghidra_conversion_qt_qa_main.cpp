@@ -11203,6 +11203,286 @@ int run_scene1_ilene_gated_entry_qa(
     return 0;
 }
 
+int run_scene1_ork_gang_contract_entry_qa(
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    struct RouteCase {
+        std::string_view name;
+        std::size_t record_index;
+        std::uint32_t record_address;
+        std::uint16_t left;
+        std::uint16_t right;
+        SceneRunnerPosition start;
+        bool seed_active_run;
+        std::uint8_t run_target_area;
+        bool expect_entry_dialogue;
+        std::uint16_t expected_scene;
+    };
+    constexpr std::array<RouteCase, 3U> kCases{{
+        {"active-puyallup-gang-contract", 76U, 0x17D9FCU, 0x02A0U,
+         0x02BFU, {688U * 16U, 1296U * 16U}, true, 1U, true, 15U},
+        {"active-contract-targets-another-area", 77U, 0x17DA06U,
+         0x0320U, 0x033FU, {816U * 16U, 1296U * 16U}, true, 2U, false,
+         13U},
+        {"no-active-contract", 76U, 0x17D9FCU, 0x02A0U, 0x02BFU,
+         {688U * 16U, 1296U * 16U}, false, 0U, false, 13U},
+    }};
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Puyallup Ork Gang route QA: could not clear prior output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) return 3;
+
+    for (const auto& test_case : kCases) {
+        const auto case_output = output / test_case.name;
+        std::filesystem::create_directories(case_output, output_error);
+        if (output_error) return 3;
+
+        std::vector<std::string> boundaries;
+        std::vector<std::uint16_t> audio_events;
+        FieldSceneRuntime field_scene(
+            [&boundaries](const std::string_view boundary) {
+                boundaries.emplace_back(boundary);
+            },
+            [&audio_events](const std::uint16_t event) {
+                audio_events.push_back(event);
+            });
+        field_scene.set_source_random_seed_for_dump(0x4000U);
+        field_scene.set_field_world_frame_counter_for_dump(0x0200U);
+        if (!field_scene.bootstrap_for_scene_dump(startup_state, 1U)) {
+            std::cerr << "Puyallup Ork Gang route QA: Scene 1 bootstrap failed: "
+                      << field_scene.failure() << '\n';
+            return 3;
+        }
+        if (test_case.seed_active_run &&
+            !field_scene.seed_run_target_for_dump(
+                "gang_contract", test_case.run_target_area, 9U)) {
+            std::cerr << "Puyallup Ork Gang route QA: could not seed run target "
+                      << static_cast<unsigned>(test_case.run_target_area)
+                      << ":9\n";
+            return 3;
+        }
+        if (!field_scene.set_story_flag_for_dump(19U, false)) {
+            std::cerr << "Puyallup Ork Gang route QA: could not clear ILENE_MET\n";
+            return 3;
+        }
+        field_scene.set_field_funds_for_dump(0U);
+        field_scene.set_compact_runner_markers_for_dump(1U, 0xFFU);
+
+        const auto& metadata =
+            field_scene.state().field_scene_buffers.source_metadata;
+        if (metadata.terrain_collision_rectangles.size() <=
+                test_case.record_index ||
+            metadata.terrain_collision_rectangles[test_case.record_index].left !=
+                test_case.left ||
+            metadata.terrain_collision_rectangles[test_case.record_index].right !=
+                test_case.right ||
+            metadata.terrain_collision_rectangles[test_case.record_index].top !=
+                0x04E0U ||
+            metadata.terrain_collision_rectangles[test_case.record_index].bottom !=
+                0x04FFU ||
+            metadata.terrain_collision_rectangles[test_case.record_index].value !=
+                0x00C9U ||
+            !metadata.event_table_available ||
+            metadata.event_mode_table.size() <= 9U ||
+            metadata.event_mode_table[9U] != 13U) {
+            std::cerr << "Puyallup Ork Gang route QA: source record or row 9 "
+                         "does not match ROM\n";
+            return 3;
+        }
+
+        field_scene.set_field_entity_world_position_for_dump(
+            test_case.start.x, test_case.start.y);
+        const auto camera_x = static_cast<std::uint16_t>(
+            test_case.start.x - 112U * 16U);
+        const auto camera_y = static_cast<std::uint16_t>(
+            test_case.start.y - 112U * 16U);
+        field_scene.set_field_camera_world_position_for_dump(
+            camera_x, camera_y);
+        const auto render = [&field_scene] {
+            return render_qa_field(field_scene);
+        };
+        const auto save = [&case_output, &render](
+                              const std::string_view name) {
+            const auto image = render();
+            return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+                   image.save(QString::fromStdWString(
+                       (case_output / std::string(name)).wstring()));
+        };
+        std::ofstream trace(case_output / "route.tsv", std::ios::trunc);
+        if (!trace) return 3;
+        trace << "case\tframe\tscene\tx\ty\tevent\tmode_event"
+                 "\tdialogue\tactivity_scene\tactivity_mode\tactors\n";
+        std::uint32_t frame = 0U;
+        const auto write_state = [&] (const std::string_view stage) {
+            const auto position = field_scene.field_entity_world_position();
+            const auto& activity = field_scene.world_activity_state_for_dump();
+            trace << stage << '\t' << frame << '\t'
+                  << field_scene.field_scene_reference_for_dump() << '\t'
+                  << position.x << '\t' << position.y << '\t'
+                  << static_cast<unsigned>(
+                         field_scene.field_terrain_collision_code_for_dump())
+                  << '\t' << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << '\t' << field_scene.dialogue_open() << '\t'
+                  << activity.scene_id << '\t'
+                  << static_cast<unsigned>(activity.mode) << '\t'
+                  << field_scene.dynamic_world_actor_count_for_dump() << '\n';
+            trace.flush();
+            return static_cast<bool>(trace);
+        };
+        const auto step = [&](const std::uint8_t input,
+                              const std::string_view stage) {
+            field_scene.set_controller_nibble(input);
+            field_scene.advance_frame();
+            ++frame;
+            return write_state(stage);
+        };
+        if (!save("approach-start.bmp")) return 3;
+        for (std::uint16_t tick = 0U;
+             tick < 64U &&
+             field_scene.field_mode_event_code_for_dump() != 9U &&
+             !field_scene.dialogue_open() &&
+             field_scene.field_scene_reference_for_dump() == 1U;
+             ++tick) {
+            if (!step(0x01U, "ordinary-up")) return 3;
+        }
+        field_scene.set_controller_nibble(0U);
+        const auto& collision =
+            field_scene.last_field_movement_transition_for_dump();
+        if (collision.event_code != FieldCollisionEventCode::event_9 ||
+            !collision.mode_event_code_published ||
+            field_scene.field_mode_event_code_for_dump() != 9U ||
+            !save("event9-contact.bmp")) {
+            std::cerr << "Puyallup Ork Gang route QA: ordinary Up did not reach "
+                         "the selected ROM event-9 rectangle (record="
+                      << test_case.record_index << ", scene="
+                      << field_scene.field_scene_reference_for_dump() << ", x="
+                      << field_scene.field_entity_world_position().x
+                      << ", y=" << field_scene.field_entity_world_position().y
+                      << ", event=" << static_cast<unsigned>(
+                             field_scene.field_mode_event_code_for_dump())
+                      << ", failure=" << field_scene.failure() << ")\n";
+            return 3;
+        }
+        if (!write_state("event9-published")) return 3;
+
+        if (test_case.expect_entry_dialogue) {
+            for (std::uint16_t tick = 0U;
+                 tick < 180U && !field_scene.dialogue_open() &&
+                 field_scene.field_scene_reference_for_dump() == 1U;
+                 ++tick) {
+                if (!step(0U, "wait-for-gang-passage")) return 3;
+            }
+            std::string passage;
+            const auto& panel = field_scene.dialogue_panel();
+            for (std::size_t segment = 0U;
+                 segment < panel.text_segment_count; ++segment) {
+                passage.append(panel.text_segments[segment]);
+                passage.push_back('\n');
+            }
+            if (!field_scene.dialogue_open() ||
+                passage.find("Slot off, frag-face!!!") == std::string::npos ||
+                passage.find("Guess what happens next.") == std::string::npos ||
+                !save("gang-contract-entry-dialogue.bmp")) {
+                std::cerr << "Puyallup Ork Gang route QA: active matching run "
+                             "did not show the ROM entry passage (text="
+                          << passage << ")\n";
+                return 3;
+            }
+            if (!write_state("gang-contract-entry-dialogue")) return 3;
+            for (std::uint8_t wait = 0U;
+                 wait < 60U && field_scene.dialogue_input_locked(); ++wait) {
+                if (!step(0U, "dialogue-input-wait")) return 3;
+            }
+            if (field_scene.dialogue_open()) {
+                field_scene.set_controller_port_byte(0x40U);
+                field_scene.advance_frame();
+                ++frame;
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                ++frame;
+                if (!write_state("passage-dismissed")) return 3;
+            }
+        }
+
+        for (std::uint16_t tick = 0U;
+             tick < 240U &&
+             (field_scene.field_scene_reference_for_dump() == 1U ||
+              field_scene.field_transition_pending_for_dump() ||
+              field_scene.field_interaction_transition_active_for_dump() ||
+              field_scene.field_modal_return_transition_frames_for_dump() != 0U);
+             ++tick) {
+            if (!step(0U, "entry-transition")) return 3;
+        }
+
+        const auto& activity = field_scene.world_activity_state_for_dump();
+        const auto expected_actors =
+            test_case.expect_entry_dialogue ? 4U : 0U;
+        const auto entry_dialogue_boundary = std::find(
+            boundaries.begin(), boundaries.end(),
+            "field.run.entry_dialogue_opened");
+        const auto descriptors_published = std::find(
+            boundaries.begin(), boundaries.end(),
+            "field.world_activity.publish_descriptors");
+        const auto actual = render();
+        if (field_scene.field_scene_reference_for_dump() !=
+                test_case.expected_scene ||
+            activity.scene_id != test_case.expected_scene ||
+            field_scene.dialogue_open() ||
+            field_scene.field_interaction_open() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dynamic_world_actor_count_for_dump() !=
+                expected_actors ||
+            (test_case.expect_entry_dialogue &&
+             (activity.mode != WorldActivityMode::field ||
+              entry_dialogue_boundary == boundaries.end() ||
+              descriptors_published == boundaries.end())) ||
+            (!test_case.expect_entry_dialogue &&
+             entry_dialogue_boundary != boundaries.end()) ||
+            field_scene.field_funds_for_dump() != 0U ||
+            actual.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !field_hud_chrome_survives(actual, asset_root) ||
+            !actual.save(QString::fromStdWString(
+                (case_output / "actual.bmp").wstring()))) {
+            std::cerr << "Puyallup Ork Gang route QA: wrong gated/fallback "
+                         "result for " << test_case.name << " (scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", activity=" << activity.scene_id
+                      << ", actors="
+                      << field_scene.dynamic_world_actor_count_for_dump()
+                      << ", entry-dialogue="
+                      << (entry_dialogue_boundary != boundaries.end())
+                      << ", descriptors="
+                      << (descriptors_published != boundaries.end())
+                      << ", failure=" << field_scene.failure() << ")\n";
+            return 3;
+        }
+        if (!write_state("actual")) return 3;
+        trace << "source\trecord=0x" << std::hex
+              << test_case.record_address << std::dec
+              << "\tevent=9\tactive_run="
+              << (test_case.seed_active_run ? "gang_contract" : "none")
+              << "\trun_target_area="
+              << static_cast<unsigned>(test_case.run_target_area)
+              << "\tentry_dialogue="
+              << (test_case.expect_entry_dialogue ? "rom_passage" : "none")
+              << "\tdestination=" << test_case.expected_scene << '\n';
+        if (!trace) return 3;
+    }
+
+    std::cout << "field_scene1_ork_gang_contract_entry_qa=passed "
+                 "event9_active_match=dialogue_then_scene15_four_actors "
+                 "mismatch_and_no_run=scene13 artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 bool run_scene2_object_bounds_four_side_lookup_qa(
     const FieldSceneSourceMetadata& metadata,
     const std::filesystem::path& output) {
@@ -21370,6 +21650,8 @@ int main(int argc, char** argv) {
             field_riannons_magic_shop_entry_qa_path;
         std::optional<std::filesystem::path>
             field_dr_bobs_clinic_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_puyallup_ork_gang_contract_entry_qa_path;
         std::optional<std::filesystem::path> field_transition_qa_path;
         std::optional<std::filesystem::path> field_world_activity_qa_path;
         bool field_audio_qa = false;
@@ -21568,6 +21850,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_dr_bobs_clinic_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-puyallup-ork-gang-contract-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_puyallup_ork_gang_contract_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-transition-qa" &&
@@ -22940,6 +23229,11 @@ int main(int argc, char** argv) {
                 [&field_audio_stops](const std::uint16_t resource) {
                     field_audio_stops.push_back(resource);
                 });
+            if (field_puyallup_ork_gang_contract_entry_qa_path.has_value()) {
+                return run_scene1_ork_gang_contract_entry_qa(
+                    smoke_state, asset_root,
+                    *field_puyallup_ork_gang_contract_entry_qa_path);
+            }
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_motel_street_collision_qa_path.has_value() ||
                 field_movement_qa_path.has_value() ||
