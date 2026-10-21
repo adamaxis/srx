@@ -822,6 +822,19 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene34_matrix_ent
                  --field-scene34-matrix-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene34-matrix-entry-qa")
 
+function(add_resource_scene_matrix_entry_qa scene_id)
+    add_shadowrun_qt_qa_case(
+        shadowrun_ghidra_conversion_qt_field_scene${scene_id}_matrix_entry_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --field-resource-scene-matrix-entry-qa
+        "${scene_id}"
+        "${CMAKE_CURRENT_BINARY_DIR}/field-scene${scene_id}-matrix-entry-qa")
+endfunction()
+
+foreach(scene_id IN ITEMS 36 37 38 39 40 41 42 43)
+    add_resource_scene_matrix_entry_qa(${scene_id})
+endforeach()
+
 # Enter the 21/22/23/24 group from scene 25, follow source selector handoffs
 # through each member-scene event-29 trigger, then test scene 22's event-31
 # Matrix route from its adjacent cell.

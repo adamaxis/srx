@@ -316,6 +316,23 @@ def physical_qa_route(scene: int, record_index: int, event: int) -> str:
             "the adjacent cell, then ordinary Up opens the resource Main "
             "Menu and Cyberspace enters system 20/node 14"
         )
+    matrix_checkpoint_routes = {
+        (36, 131): (21, 4),
+        (37, 131): (21, 8),
+        (38, 132): (21, 19),
+        (39, 71): (21, 20),
+        (40, 88): (21, 18),
+        (41, 105): (23, 21),
+        (42, 100): (23, 9),
+        (43, 100): (23, 11),
+    }
+    if event == 0x1F and (scene, record_index) in matrix_checkpoint_routes:
+        system_id, node_id = matrix_checkpoint_routes[(scene, record_index)]
+        return (
+            f"Debug/Release from the Scene-{scene} descriptor checkpoint; QA "
+            f"seeds the adjacent cell, then ordinary Up opens the resource "
+            f"Main Menu and Cyberspace enters system {system_id}/node {node_id}"
+        )
     if scene == 26 and record_index == 126 and event == 0x1F:
         return (
             "Debug/Release joined event-1 route; QA seeds the adjacent cell, "

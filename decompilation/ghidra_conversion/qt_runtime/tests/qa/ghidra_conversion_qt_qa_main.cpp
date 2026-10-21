@@ -18915,6 +18915,37 @@ struct FieldGatedBuildingEntryQaSpec {
     bool verify_resource_matrix_entry = false;
 };
 
+struct ResourceSceneMatrixEntryQaSpec {
+    std::size_t trigger_record;
+    std::uint8_t matrix_system;
+    std::uint8_t matrix_node;
+    std::uint16_t adjacent_x;
+    std::uint16_t adjacent_y;
+};
+
+std::optional<ResourceSceneMatrixEntryQaSpec>
+resource_scene_matrix_entry_qa_spec(const std::uint8_t scene_id) {
+    switch (scene_id) {
+    case 36U: return ResourceSceneMatrixEntryQaSpec{
+        131U, 0x15U, 0x04U, 0x0030U, 0x00A0U};
+    case 37U: return ResourceSceneMatrixEntryQaSpec{
+        131U, 0x15U, 0x08U, 0x0030U, 0x00A0U};
+    case 38U: return ResourceSceneMatrixEntryQaSpec{
+        132U, 0x15U, 0x13U, 0x0110U, 0x0040U};
+    case 39U: return ResourceSceneMatrixEntryQaSpec{
+        71U, 0x15U, 0x14U, 0x0130U, 0x0100U};
+    case 40U: return ResourceSceneMatrixEntryQaSpec{
+        88U, 0x15U, 0x12U, 0x0090U, 0x0320U};
+    case 41U: return ResourceSceneMatrixEntryQaSpec{
+        105U, 0x17U, 0x15U, 0x0390U, 0x0480U};
+    case 42U: return ResourceSceneMatrixEntryQaSpec{
+        100U, 0x17U, 0x09U, 0x02F0U, 0x0100U};
+    case 43U: return ResourceSceneMatrixEntryQaSpec{
+        100U, 0x17U, 0x0BU, 0x02F0U, 0x0100U};
+    default: return std::nullopt;
+    }
+}
+
 int run_resource_scene_matrix_entry_menu_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
@@ -22943,6 +22974,7 @@ int main(int argc, char** argv) {
         bool field_scene32_matrix_entry_qa = false;
         bool field_scene33_matrix_entry_qa = false;
         bool field_scene34_matrix_entry_qa = false;
+        bool field_resource_scene_matrix_entry_qa = false;
         bool field_elevator_scene25_matrix24_qa = false;
         bool field_elevator_scene25_matrix23_qa = false;
         bool field_elevator_scene34_group_roundtrip_qa = false;
@@ -23526,6 +23558,21 @@ int main(int argc, char** argv) {
                 field_elevator_nonmember_entry_qa_path =
                     std::filesystem::path(argv[++index]);
                 field_scene34_matrix_entry_qa = true;
+            }
+            if (std::string(argv[index]) ==
+                    "--field-resource-scene-matrix-entry-qa" &&
+                index + 2 < argc) {
+                const auto scene_id = std::stoul(argv[++index], nullptr, 10);
+                if (scene_id > 0xFFU) {
+                    std::cerr << "Resource-scene Matrix QA: invalid scene id\n";
+                    return 3;
+                }
+                field_smoke = true;
+                field_elevator_nonmember_entry_scene =
+                    static_cast<std::uint16_t>(scene_id);
+                field_elevator_nonmember_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+                field_resource_scene_matrix_entry_qa = true;
             }
             if (std::string(argv[index]) ==
                     "--field-elevator-scene25-matrix23-entry-qa" &&
@@ -28276,6 +28323,36 @@ int main(int argc, char** argv) {
                     return run_resource_scene_matrix_entry_menu_qa(
                         field_scene, matrix_output, 34U, 103U, 0x14U, 0x0EU,
                         0x0290U, 0x00C0U);
+                }
+                if (field_resource_scene_matrix_entry_qa) {
+                    const auto scene_id = static_cast<std::uint8_t>(
+                        *field_elevator_nonmember_entry_scene);
+                    const auto spec =
+                        resource_scene_matrix_entry_qa_spec(scene_id);
+                    if (!spec.has_value()) {
+                        std::cerr << "Resource-scene Matrix QA: no "
+                                     "checkpoint spec for scene "
+                                  << static_cast<unsigned>(scene_id) << '\n';
+                        return 3;
+                    }
+                    const auto matrix_output =
+                        *field_elevator_nonmember_entry_qa_path /
+                        ("scene" + std::to_string(scene_id) +
+                         "-resource-matrix-entry");
+                    std::error_code matrix_output_error;
+                    std::filesystem::create_directories(
+                        matrix_output, matrix_output_error);
+                    if (matrix_output_error) {
+                        std::cerr << "Resource-scene Matrix QA: could not "
+                                     "create capture folder: "
+                                  << matrix_output_error.message() << '\n';
+                        return 3;
+                    }
+                    return run_resource_scene_matrix_entry_menu_qa(
+                        field_scene, matrix_output, scene_id,
+                        spec->trigger_record, spec->matrix_system,
+                        spec->matrix_node, spec->adjacent_x,
+                        spec->adjacent_y);
                 }
                 auto route_status = run_scene_route(
                     *field_elevator_nonmember_entry_scene,

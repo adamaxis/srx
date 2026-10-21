@@ -498,7 +498,7 @@ source boundary. Physical-input QA now confirms Scene 21 record 121 and Scene
 22 record 136 reach Matrix system 22/node 13, Scene 23 record 159 reaches
 system 22/node 6, Scene 24 record 136 reaches system 22/node 8, Scene 25
 record 124 reaches system 22/node 15, Scene 26 record 126 reaches system
-24/node 22, Scene 28 record 135 reaches system 24/node 9, and Scene 29 record 135 reaches system 24/node 26. Scenes 30, 31, and 32 records 101, 103, and 117 reach system 20/nodes 7, 2, and 9; Scene 33 record 117 reaches system 20/node 24, and Scene 34 record 103 reaches system 20/node 14. The other 10 target rows have Lua
+24/node 22, Scene 28 record 135 reaches system 24/node 9, and Scene 29 record 135 reaches system 24/node 26. Scenes 30, 31, and 32 records 101, 103, and 117 reach system 20/nodes 7, 2, and 9; Scene 33 record 117 reaches system 20/node 24, and Scene 34 record 103 reaches system 20/node 14. Scenes 36-40 records 131, 131, 132, 71, and 88 reach system 21/nodes 4, 8, 19, 20, and 18; Scenes 41-43 records 105, 100, and 100 reach system 23/nodes 21, 9, and 11. The other 2 target rows have Lua
 mapping coverage but still need their own physical routes before claiming
 them independently defended.
 
@@ -514,10 +514,10 @@ physically reaches the Scene-0 terminal-to-Vid-Phone route, the Scene-21
 record-121, Scene-22 record-136, Scene-23 record-159, Scene-24 record-136,
 Scene-25 record-124, Scene-26 record-126, Scene-28 record-135, and
 Scene-29 record-135, Scene-30 record-101, Scene-31 record-103, Scene-32 record-117,
-Scene-33 record-117, and Scene-34 record-103 resource-scene Matrix routes.
+Scene-33 record-117, Scene-34 record-103, and Scene-36 through Scene-43 event-31 resource-scene Matrix routes.
 These routes check that the Matrix session keeps its ROM-seeded system/node
 target after the source entry wait. They do not certify the full Matrix visual
-system, the other 10 resource-scene event-31 routes, or contact-specific
+system, the other 2 resource-scene event-31 routes, or contact-specific
 service transactions. The map-viewer preview remains a readable content and
 ordering aid, not pixel-fidelity proof.
 The scene-6 default actor list is empty. The guide's named people therefore
@@ -665,18 +665,40 @@ enums rather than ROM address interpretation.
   event `0x1F`) starts at the descriptor checkpoint. The QA seeds the adjacent
   southern cell and crosses it with ordinary Up to reach system 20/node 14.
 
+  Scene 36 record 131 (`0x1DD074`, x `0x0020..0x003F`, y `0x0080..0x009F`,
+  event `0x1F`) starts at the descriptor checkpoint. The QA seeds the adjacent
+  southern cell and crosses it with ordinary Up to reach system 21/node 4.
+
+  Scene 37 record 131 shares source rectangle `0x1DD074` and reaches system
+  21/node 8 from its descriptor checkpoint with the same adjacent-cell QA.
+  Scene 38 record 132 (`0x1DD79E`, x `0x0100..0x011F`, y `0x0020..0x003F`,
+  event `0x1F`) reaches system 21/node 19. Scene 39 record 71 (`0x1DDCA2`, x
+  `0x0120..0x013F`, y `0x00E0..0x00FF`, event `0x1F`) reaches system
+  21/node 20. Scene 40 record 88 (`0x1DE1C6`, x `0x0080..0x009F`, y
+  `0x0300..0x031F`, event `0x1F`) reaches system 21/node 18. Each starts at
+  its descriptor checkpoint; QA seeds the adjacent southern cell and crosses
+  the record with ordinary Up.
+
+  Scene 41 record 105 (`0x1DE7BC`, x `0x0380..0x039F`, y `0x0460..0x047F`,
+  event `0x1F`) reaches system 23/node 21. Scene 42 and Scene 43 record 100
+  share source rectangle `0x1DEDC2` (`x 0x02E0..0x02FF`, `y 0x00E0..0x00FF`)
+  and reach system 23/nodes 9 and 11 respectively. These descriptor-checkpoint
+  tests seed the adjacent southern cell and cross with ordinary Up.
+
   Scene 26 record 126 (`0x1D9E5A`, x/y `0x0200..0x021F`, event `0x1F`) has a
   physical-input QA route: the QA seeds the adjacent cell, then ordinary Up
   opens Lua's resource
   `Main Menu`; Down selects `Exit`; A restores the captured Scene-2 field
   state. A second ordinary-input QA chooses Cyberspace and checks that the
   Matrix session receives system 24/node 22. These routes physically defend
-  the direct Matrix entry paths in Scenes 21, 22, 23, 24, 25, 26, 28, 29, 30, 31, 32, 33, and 34;
-  the other 10 rows in the 21-through-43 target table have Lua mapping coverage. The
+  the direct Matrix entry paths in Scenes 21, 22, 23, 24, 25, 26, 28, 29, 30, 31, 32, 33, 34, and 36-43;
+  the other 2 rows in the 21-through-43 target table have Lua mapping coverage. The
   ordinary four-choice task and taxi/phone/Matrix handlers are connected in
   Qt, with physical-input coverage for Scene-0 Vid-Phone and these resource
-  Cyberspace choices. Other resource-scene event-31 paths, events 26, 28, and
-  30, and the ordinary terminal cursor graphic remain unresolved. The final
+  Cyberspace choices. Other resource-scene event-31 paths, events 26, 28, and 30, and the ordinary
+  terminal cursor graphic remain unresolved. Scene 27 and Scene 35 have Lua
+  target rows but no event-31 collision rectangles in the generated ROM
+  profile, so a direct physical trigger path has not been established. The final
   item path in the Spirit Eyes ritual now has a traced producer and consumer:
   Scene-47 handler `0x53F50` sets Group Item bit 2, and Scene-4 handler
   `0x53E98` consumes it before setting story bit 9.
