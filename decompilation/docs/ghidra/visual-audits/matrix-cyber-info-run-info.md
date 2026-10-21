@@ -59,6 +59,27 @@ QA checks the retained source assets in full 320x224 frames for all three
 views. This is a source-backed regression check; it does not by itself prove
 independent Genesis pixel fidelity.
 
+### Loaded-program prompt
+
+ROM `0x19238` calls `0x18998` to redraw the right panel beginning at `$C628`
+while leaving the selected parent row, program grid, top detail panel, and
+`0x17708` footer in place. The stream at `0xE3859` contains
+`Program is already`, a `0x80` row advance, and `loaded in memory.`; ROM
+`0xC0DA` treats `0x80` as the next tile row and `0xFF` as the stream end. The
+separate streams at `0xE3823`, `0xE382E`, and `0xE387E` begin at `$C72E`,
+`$C7AA`, and `$C8BA`.
+
+The typed Lua child state preserves the parent Analyze program name and detail
+panel while publishing the current ratings, loaded programs, and slot statuses.
+The presenter keeps that panel and parent deck chrome visible, then places the
+prompt lines at `(160,96/104)`, the erase question at `(184,112)` and
+`(168,120)`, and the Yes/No rows at `(232,136/152)`. `FFF0DC` defaults to 1,
+so the cursor is at `(200,152)`. The CyberInfo route QA writes
+`deck-program-prompt/actual.bmp` and checks the first and last glyph cells at
+each traced origin, the parent Analyze icon/details, grid, and full footer in
+both configurations. Debug and Release captures have matching hashes. No
+independent Genesis frame of this prompt is currently available.
+
 ## Change
 
 Lua now returns a typed Run Info view for all three `FFF0E3` branches. The Qt

@@ -31,10 +31,13 @@ function Program.new(args)
     local deck_palette = args.deck_palette or DeckPalette.new()
     return { p = D.index(args.col, args.row), choice = 1,
              matrix_state = args.matrix_state,
+             deck_parent_col = args.deck_parent_col or args.col,
+             deck_parent_row = args.deck_parent_row or args.row,
              deck_palette = deck_palette,
              deck_palette_phase = DeckPalette.phase(deck_palette) }
 end
 function Program.enter(st, ctx)
+    Cyberdeck.prepare_program_child_surface(st, ctx)
     local g = ctx.game
     if st.p < 0 or st.p >= D.PROGRAMS then
         return { transition = T.POP, result = {} }
@@ -45,7 +48,9 @@ function Program.enter(st, ctx)
     end
     st.slot = D.loaded_slot(record, st.p)
     if st.slot then
-        st.title = "Program is already loaded in memory."
+        -- ROM 0x1927A streams 0xE3859 into $C628. Its 0x80 control byte
+        -- advances one text row between these two prompt lines.
+        st.title = "Program is already|loaded in memory.|Erase from|active memory?"
         st.labels = { "Yes", "No" }
         st.row = st.choice
         ctx.redraw(R.MESSAGE)
@@ -65,6 +70,7 @@ end
 function Program.input(st, events, ctx)
     tick_palette(st, ctx)
     service_program_loading(st, ctx)
+    Cyberdeck.prepare_program_child_surface(st, ctx)
     if st.slot then
         if events & (P.UP | P.DOWN) ~= 0 then
             st.choice = 1 - st.choice

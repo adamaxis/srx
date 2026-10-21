@@ -19626,7 +19626,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
 
             if (routed_screen == srx::MenuScreen::CYBERDECK ||
                 routed_screen == srx::MenuScreen::PULL_PLUG ||
-                routed_screen == srx::MenuScreen::DECK_CYBERINFO) {
+                routed_screen == srx::MenuScreen::DECK_CYBERINFO ||
+                routed_screen == srx::MenuScreen::DECK_PROGRAM) {
                 // 0x17708 writes the five 3x2 installed/empty slot records
                 // at y=184, then 0x19856 writes each 3-tile status strip at
                 // y=208. The five slots begin at x=80 with 48-pixel spacing.
@@ -19732,6 +19733,13 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 draw_retained_deck_grid(
                     routed_menu.top_matrix_deck_parent_row.value_or(3));
             }
+            if (routed_screen == srx::MenuScreen::DECK_PROGRAM) {
+                // ROM 0x19238 calls 0x18998 to redraw the right panel at
+                // $C628; the selected parent grid row and 0x17708 footer
+                // remain visible while the loaded-program prompt is active.
+                draw_retained_deck_grid(
+                    routed_menu.top_matrix_deck_parent_row.value_or(0));
+            }
             if (routed_screen == srx::MenuScreen::CYBERDECK &&
                 has_deck_info) {
                 // The Run Info and Deck Stats branches return from 0x18AA6
@@ -19769,7 +19777,18 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                          .top_matrix_deck_program_ratings_present &&
                      routed_menu
                              .top_matrix_deck_program_ratings[selected] != 0U);
-                if (!routed_menu.top_text.empty()) {
+                if (routed_menu.top_text == "No available slots!" ||
+                    routed_menu.top_text == "No available memory!") {
+                    // ROM 0x19238 writes the first line from 0xE383D at
+                    // $C628 and the second line from 0xE384A/0xE3851 at
+                    // $C6A8.
+                    draw_matrix_text(160, 96, "No available");
+                    draw_matrix_text(
+                        160, 104,
+                        routed_menu.top_text == "No available slots!"
+                            ? "slots!"
+                            : "memory!");
+                } else if (!routed_menu.top_text.empty()) {
                     draw_matrix_rows(176, 64, routed_menu.top_text, 8, 14);
                 } else if (selected_program_available) {
                     painter.drawImage(
@@ -19889,6 +19908,106 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                         draw_matrix_text(200, y, ">");
                     }
                     draw_matrix_text(224, y,
+                                     routed_menu.top_option_labels[option]);
+                }
+                return;
+            }
+
+            if (routed_screen == srx::MenuScreen::DECK_PROGRAM) {
+                // ROM 0x19238 reads the prompt at 0xE3859 into $C628 (the
+                // embedded 0x80 advances to its second line), then streams
+                // 0xE3823, 0xE382E, and 0xE387E into $C72E, $C7AA, and $C8BA.
+                // The text origins are (160,96/104), (184,112), (168,120),
+                // and (232,136/152). FFF0DC starts at 1, so No is selected.
+                const auto program = routed_menu.top_program_index.value_or(-1);
+                if (program >= 0 &&
+                    static_cast<std::size_t>(program) <
+                        matrix_cyberdeck_program_icons_.size()) {
+                    painter.drawImage(
+                        184, 16,
+                        matrix_cyberdeck_program_icons_[
+                            static_cast<std::size_t>(program)]);
+                    if (routed_menu
+                            .top_matrix_deck_parent_program_name_present) {
+                        draw_matrix_compact_text(
+                            216, 24,
+                            routed_menu.top_matrix_deck_parent_program_name);
+                    }
+                    if (program < 12 &&
+                        routed_menu
+                            .top_matrix_deck_program_ratings_present) {
+                        draw_matrix_text(
+                            264, 24,
+                            std::to_string(routed_menu
+                                               .top_matrix_deck_program_ratings[
+                                                   static_cast<std::size_t>(program)]));
+                    }
+                    if (routed_menu
+                            .top_matrix_deck_detail_labels_present) {
+                        for (std::size_t line = 0U;
+                             line < routed_menu
+                                        .top_matrix_deck_detail_labels.size();
+                             ++line) {
+                            draw_matrix_text(
+                                152, 40 + static_cast<int>(line) * 8,
+                                routed_menu
+                                    .top_matrix_deck_detail_labels[line]);
+                        }
+                    }
+                    if (routed_menu
+                            .top_matrix_deck_program_detail_values_present) {
+                        constexpr std::array<int, 3> kValueX{{272, 272, 256}};
+                        for (std::size_t line = 0U;
+                             line < routed_menu
+                                        .top_matrix_deck_program_detail_values
+                                        .size();
+                             ++line) {
+                            draw_matrix_text(
+                                kValueX[line],
+                                40 + static_cast<int>(line) * 8,
+                                routed_menu
+                                    .top_matrix_deck_program_detail_values[line]);
+                        }
+                    }
+                    if (routed_menu
+                            .top_matrix_deck_runner_detail_labels_present) {
+                        for (std::size_t line = 0U;
+                             line < routed_menu
+                                        .top_matrix_deck_runner_detail_labels
+                                        .size();
+                             ++line) {
+                            draw_matrix_compact_text(
+                                152, 72 + static_cast<int>(line) * 8,
+                                routed_menu
+                                    .top_matrix_deck_runner_detail_labels[line]);
+                        }
+                    }
+                    if (routed_menu
+                            .top_matrix_deck_runner_details_present) {
+                        for (std::size_t line = 0U;
+                             line < routed_menu
+                                        .top_matrix_deck_runner_details.size();
+                             ++line) {
+                            draw_matrix_text(
+                                208, 72 + static_cast<int>(line) * 8,
+                                routed_menu
+                                    .top_matrix_deck_runner_details[line]);
+                        }
+                    }
+                }
+                draw_matrix_text(160, 96, "Program is already");
+                draw_matrix_text(160, 104, "loaded in memory.");
+                draw_matrix_text(184, 112, "Erase from");
+                draw_matrix_text(168, 120, "active memory?");
+                for (std::size_t option = 0U;
+                     option < routed_menu.top_option_labels.size() &&
+                     option < 2U;
+                     ++option) {
+                    const auto y = 136 + static_cast<int>(option) * 16;
+                    if (routed_menu.top_row == static_cast<int>(option)) {
+                        draw_matrix_text(200, y, ">");
+                    }
+                    draw_matrix_text(232, y,
                                      routed_menu.top_option_labels[option]);
                 }
                 return;

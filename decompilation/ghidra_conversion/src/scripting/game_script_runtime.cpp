@@ -1885,6 +1885,14 @@ struct GameScriptRuntime::Impl {
                     read_optional(screen_state_index, "deck_parent_col");
                 menu_route_state.top_matrix_deck_parent_row =
                     read_optional(screen_state_index, "deck_parent_row");
+                lua_getfield(state, screen_state_index,
+                             "deck_parent_program_name");
+                menu_route_state
+                    .top_matrix_deck_parent_program_name_present =
+                    read_string(
+                        state, -1,
+                        menu_route_state.top_matrix_deck_parent_program_name);
+                lua_pop(state, 1);
                 const auto deck_palette_phase =
                     read_optional(screen_state_index,
                                   "deck_palette_phase");

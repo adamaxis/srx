@@ -25,6 +25,19 @@ place. Lua now passes that parent row plus live deck artwork state to the
 presenter; CyberInfo, Run Info, and Deck Stats QA checks the retained assets in
 full frames. The Cyberdeck hill remains partial pending broader Matrix visual
 and action coverage.
+The loaded-program prompt at `0x19238` also redraws only the right panel,
+starting at `$C628`; the selected program detail panel above it and the parent
+grid/footer remain visible. Lua carries the parent program's name, rating, and
+detail values into the child screen. The `0xE3859` stream advances one text row
+on `0x80`, so the two message lines begin at `(160,96)` and `(160,104)`; the
+question, options, and default-No cursor follow at `(184,112)`, `(168,120)`,
+`(232,136/152)`, and `(200,152)`. The Debug/Release
+`shadowrun_ghidra_conversion_qt_field_matrix_cyber_info_qa` test writes the
+full-frame `deck-program-prompt/actual.bmp` and checks both prompt glyph bounds,
+the retained Analyze detail panel, selected row, installed icons, footer, and
+No default. I inspected both 320x224 captures; their SHA-256 hashes match.
+There is no independent Genesis capture of this prompt, so this remains
+source-position and regression evidence rather than independent pixel proof.
 The row-3/column-3 Pull Plug prompt now retains the selected Command grid and
 footer. ROM `0x1846E` / `0x18480` / `0x18492` place the optional warning,
 question, and Yes/No rows at `$C228`, `$C426`, and `$C638`; `$C632` places the

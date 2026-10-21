@@ -43,9 +43,9 @@ M.GRID_DESCRIPTIONS = {
 local function update_description(st)
     st.description = M.GRID_DESCRIPTIONS[D.index(st.col, st.row) + 1]
 end
-local function update_program_details(st, record)
+local function update_program_details(st, record, program)
     st.runner_detail_labels = D.RUNNER_DETAIL_LABELS
-    local program = D.index(st.col, st.row)
+    program = program or D.index(st.col, st.row)
     if program >= D.PROGRAMS then
         st.program_detail_values = nil
         return
@@ -83,6 +83,21 @@ local function update_program_art_state(st, ctx)
     return changed, record
 end
 M.update_program_art_state = update_program_art_state
+
+function M.prepare_program_child_surface(st, ctx)
+    local _, record = update_program_art_state(st, ctx)
+    local program = st.p
+    st.deck_parent_program_name = D.PROGRAM_NAMES[program]
+    st.program_detail_labels = D.PROGRAM_DETAIL_LABELS
+    update_program_details(st, record, program)
+
+    local run = MatrixSession.world_state(ctx.game).run
+    if run == nil or (run.state or 0) >= 0 then
+        st.runner_detail_lines = D.NO_ACTIVE_RUN_DETAILS
+    else
+        st.runner_detail_lines = nil
+    end
+end
 
 local function service_program_loading(st, ctx)
     if not MatrixSession.is_online(st.matrix_state) then return false end
@@ -232,7 +247,7 @@ function M.input(st, events, ctx)
     g.set_deck_mode(MODE[btn])
     if st.matrix_state then st.matrix_state.mode = RESULT_MODE[btn] end
     st.text = nil
-    if st.row ~= M.PLUG_ROW then return { transition = T.PUSH, screen = E.MenuScreen.DECK_PROGRAM, args = { col = st.col, row = st.row, deck_palette = st.deck_palette, matrix_state = st.matrix_state } } end
+    if st.row ~= M.PLUG_ROW then return { transition = T.PUSH, screen = E.MenuScreen.DECK_PROGRAM, args = { col = st.col, row = st.row, deck_palette = st.deck_palette, matrix_state = st.matrix_state, deck_parent_col = st.col, deck_parent_row = st.row } } end
     if st.col == M.PLUG_COL then
         if not online(st, ctx) then return end
         local node = MatrixSession.current_node(st.matrix_state) or g.matrix_node()

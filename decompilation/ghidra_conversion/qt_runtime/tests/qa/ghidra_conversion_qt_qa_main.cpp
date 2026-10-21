@@ -24496,6 +24496,125 @@ int main(int argc, char** argv) {
                                  "footer\n";
                     return 3;
                 }
+                // The source 0x19238 prompt is reachable by selecting the
+                // already-loaded Analyze program from the retained grid.
+                tap_qa_controller_button(field_scene, 0x01U); // Up to row 2.
+                for (int column = 0; column < 3; ++column) {
+                    tap_qa_controller_button(field_scene, 0x08U);
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::DECK_PROGRAM) ||
+                    route.top_title !=
+                        "Program is already|loaded in memory.|Erase from|active memory?" ||
+                    route.top_option_labels !=
+                        std::vector<std::string>{"Yes", "No"} ||
+                    route.top_row != 1 ||
+                    route.top_program_index != 11 ||
+                    route.top_matrix_deck_parent_column != 3 ||
+                    route.top_matrix_deck_parent_row != 2 ||
+                    !route.top_matrix_deck_parent_program_name_present ||
+                    route.top_matrix_deck_parent_program_name != "Analyze" ||
+                    !route.top_matrix_deck_detail_labels_present ||
+                    route.top_matrix_deck_detail_labels !=
+                        std::array<std::string, 3>{
+                            "Size. . . . . .  Mp",
+                            "Free Memory . .  Mp",
+                            "Load Time . .  Secs"} ||
+                    !route.top_matrix_deck_program_detail_values_present ||
+                    route.top_matrix_deck_program_detail_values !=
+                        std::array<std::string, 3>{"3", "10", "1"} ||
+                    !route.top_matrix_deck_program_ratings_present ||
+                    route.top_matrix_deck_program_ratings !=
+                        kExpectedCyberdeckRatings ||
+                    !route.top_matrix_deck_active_programs_present ||
+                    route.top_matrix_deck_active_programs !=
+                        kExpectedCyberdeckActivePrograms ||
+                    !route.top_matrix_deck_program_slot_status_present ||
+                    route.top_matrix_deck_program_slot_status !=
+                        kExpectedCyberdeckSlotStatus) {
+                    std::cerr << "Matrix CyberInfo QA: loaded-program prompt "
+                                 "lost its parent deck surface or No default\n";
+                    return 3;
+                }
+                const auto program_prompt_image =
+                    capture("program-loaded-prompt");
+                const auto program_prompt_dump =
+                    output / "deck-program-prompt";
+                std::filesystem::create_directories(program_prompt_dump);
+                if (!retained_deck_surface_matches(
+                        program_prompt_image,
+                        route.top_matrix_deck_palette_phase.value_or(0), 2,
+                        route.top_matrix_deck_program_ratings,
+                        route.top_matrix_deck_active_programs,
+                        route.top_matrix_deck_program_slot_status) ||
+                    !source_pixels_match_at(
+                        program_prompt_image, 184, 16,
+                        "cyberspace/matrix/program-icon-11.bmp") ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(216, 24, 48, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(264, 24, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(152, 40, 112, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(272, 40, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(152, 48, 120, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(272, 48, 16, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(152, 56, 104, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(256, 56, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(160, 96, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(296, 96, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(160, 104, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(288, 104, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(184, 112, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(256, 112, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(168, 120, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(272, 120, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(232, 136, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(248, 136, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(200, 152, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(232, 152, 8, 8)) ||
+                    !has_matrix_green(program_prompt_image,
+                                      QRect(240, 152, 8, 8)) ||
+                    !save_qa_image(program_prompt_dump, "actual.bmp",
+                                   program_prompt_image)) {
+                    std::cerr << "Matrix CyberInfo QA: loaded-program prompt "
+                                 "does not match ROM text, cursor, grid, or "
+                                 "footer positions, or could not write actual.bmp\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // Keep loaded.
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(srx::MenuScreen::CYBERDECK) ||
+                    !field_scene.field_menu_route_snapshot_for_dump()
+                         .top_row.has_value()) {
+                    std::cerr << "Matrix CyberInfo QA: No did not return to "
+                                 "the selected Cyberdeck program\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x02U); // Row 3.
+                for (int column = 0; column < 3; ++column) {
+                    tap_qa_controller_button(field_scene, 0x04U);
+                }
                 // The ROM returns to the selected Command row after Deck
                 // Stats. Move to row 3/column 3 and capture the separate
                 // pull-plug prompt shown by longplay frame 005400.
