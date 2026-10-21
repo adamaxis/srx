@@ -108,7 +108,11 @@
         "textKey": "vid_phone.contact.kipp_david.repeat_call",
         "continuation": false
       },
-      "service": { "module": "vid_phone.kipp_david", "function": "services" }
+      "service": {
+        "module": "vid_phone.kipp_david",
+        "graphId": "vid_phone.kipp_david.services",
+        "graphScope": "services"
+      }
     },
     {
       "sourceIndex": 4,

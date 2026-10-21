@@ -482,6 +482,167 @@
           "outcome": { "type": "continue_in_place" }
         }
       }
+    },
+    "vid_phone.kipp_david.services": {
+      "entryNode": "intro",
+      "speakerId": "vid_phone_kipp_david",
+      "textProfile": "field.vid_phone",
+      "provenance": {
+        "romAddresses": [
+          "0x10AD8A", "0x10AFAC", "0x10B033", "0x10B236", "0x10B278",
+          "0x10B379", "0x10B468", "0x10B540", "0x10B614", "0x10B635",
+          "0x22A54", "0x22A9E", "0x22AF4"
+        ],
+        "scope": "kipp_service_pages_and_commands_0x71_to_0x73"
+      },
+      "nodes": {
+        "intro": {
+          "type": "choice",
+          "menuId": "kipp_intro",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "services" }
+          ]
+        },
+        "services": {
+          "type": "choice",
+          "menuId": "kipp_services",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "matrix", "next": "matrix_intro" },
+            { "id": "programs", "next": "program_intro" },
+            { "id": "cyberdeck", "next": "deck_offer" }
+          ]
+        },
+        "matrix_intro": {
+          "type": "choice",
+          "menuId": "kipp_matrix_intro",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "matrix_corps" }
+          ]
+        },
+        "matrix_corps": {
+          "type": "choice",
+          "menuId": "kipp_matrix_corps",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "matrix_result" }
+          ]
+        },
+        "matrix_result": {
+          "type": "choice",
+          "menuId": "kipp_matrix_result",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "intro" },
+            { "id": "goodbye", "next": "finished" }
+          ]
+        },
+        "program_intro": {
+          "type": "choice",
+          "menuId": "kipp_program_intro",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "program_details" }
+          ]
+        },
+        "program_details": {
+          "type": "choice",
+          "menuId": "kipp_program_details",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "program_offer" }
+          ]
+        },
+        "program_offer": {
+          "type": "choice",
+          "menuId": "kipp_program_offer",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "buy_rebound", "next": "purchase_rebound" },
+            { "id": "buy_degrade", "next": "purchase_degrade" },
+            { "id": "different_subject", "next": "intro" }
+          ]
+        },
+        "purchase_rebound": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_rebound",
+          "results": {
+            "program_installed": "program_result",
+            "insufficient": "insufficient_funds",
+            "storage_full": "storage_full",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "purchase_degrade": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_degrade",
+          "results": {
+            "program_installed": "program_result",
+            "insufficient": "insufficient_funds",
+            "storage_full": "storage_full",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "program_result": {
+          "type": "choice",
+          "menuId": "kipp_program_result",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "intro" },
+            { "id": "goodbye", "next": "finished" }
+          ]
+        },
+        "storage_full": {
+          "type": "choice",
+          "menuId": "kipp_storage_full",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "intro" },
+            { "id": "goodbye", "next": "finished" }
+          ]
+        },
+        "deck_offer": {
+          "type": "choice",
+          "menuId": "kipp_deck_offer",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "pay_for_deck", "next": "purchase_excalibur" },
+            { "id": "different_subject", "next": "intro" }
+          ]
+        },
+        "purchase_excalibur": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_excalibur",
+          "results": {
+            "deck_installed": "disconnected",
+            "insufficient": "insufficient_funds",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "insufficient_funds": {
+          "type": "page",
+          "eventId": "insufficient_funds",
+          "next": "finished"
+        },
+        "disconnected": {
+          "type": "page",
+          "eventId": "disconnected",
+          "next": "finished"
+        },
+        "service_boundary": {
+          "type": "source_boundary",
+          "reason": "Kipp's host transaction returned an unavailable or unrecognized source result."
+        },
+        "finished": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
     }
   }
 }

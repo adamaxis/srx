@@ -257,7 +257,7 @@ choices, and result edges; Lua submits the three typed host transactions. The
 direct Lua permutation suite and Debug/Release script/panel CTests cover the
 graph branches and render through screen 34. Alesandro's shared portrait
 appears in section 23 frame 001770, but no complete matching call sequence was
-found in the reviewed longplay. Four other contact service trees remain
+found in the reviewed longplay. Three other contact service trees remain
 procedural.
 
 Sharkey's ROM contact record at `0x10A7F2`
@@ -275,12 +275,18 @@ acknowledges each result, and captures both fade/load routes into Scenes 6 and
 frame at camera `(0x0A00, 0x0280)`; the host runs ROM `0x08C0`'s 31 camera
 passes before `0x12F6`, and the QA requires that runner anchor on the field.
 It also exercises the Smart Goggles success/full-inventory branches and
-checks clean terminal redraws. Kipp David's record at `0x10AD8A` now follows
-commands `0x71`-`0x73`: 185,000 nuyen writes the Fairlight Excalibur bytes at
+checks clean terminal redraws. Kipp David's record at `0x10AD8A` now has a
+JSON service graph for its information pages, offer choices, result branches,
+service loops, and call terminal. Lua only registers the purchase actions.
+Commands `0x71`-`0x73`: 185,000 nuyen writes the Fairlight Excalibur bytes at
 `FFFBBE` (model 4, MPCP 12, Hardening 5, memory 500, storage 1000, load 100,
 response 3) and does not set `FF018F`; Rebound and Degrade cost 30,000, pass
 the rating-4 storage check at `0x19538`, and store rating 6. The panel QA
-captures his service menu, the deck offer, and the disconnect. Wilma
+captures his service menu, the deck offer, and the disconnect. The pure-Lua
+permutation suite covers the Matrix loop, both programs, deck success/failure,
+service returns, and unavailable boundaries. Section 33 frame 000690 confirms
+the portrait art only; no full Vid-Phone call sequence or physical Kipp-service
+route appears in the reviewed longplay. Wilma
 Temmenhoff's record at `0x10B71E` follows commands `0x74`/`0x75`: both charge
 5,000, accept storage sized as rating 3, and store rating 3 for Rebound and
 Degrade. Her result nodes send Services back to the credstick page and

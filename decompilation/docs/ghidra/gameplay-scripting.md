@@ -116,8 +116,14 @@ Sharkey's service tree is the third Vid-Phone graph. JSON owns the two fare
 offers, Smart Goggles choice, insufficient-funds and inventory outcomes, and
 the separate Scene 6 and Scene 9 travel terminals. `vid_phone/sharkey.lua`
 only translates named graph actions to the shared typed service API, using
-`data/vid_phone_passages.lua` for the ROM fare and destination facts. Four
-contact service trees remain procedural: Kipp, Wilma, Macklemann, and Gregory.
+`data/vid_phone_passages.lua` for the ROM fare and destination facts.
+
+Kipp's service tree is the fourth Vid-Phone graph. It stores his Matrix lesson,
+program and cyberdeck offers, transaction outcomes, service loops, and call
+terminal in JSON. `vid_phone/kipp_david.lua` only translates the three named
+purchase actions; the shared deck service retains the ROM's prices, storage
+check, program ratings, and Excalibur fields. Three contact service trees
+remain procedural: Wilma, Macklemann, and Gregory.
 
 The Ares Weapon Emporium stock is declared in `gameplay/scripts/shop.lua`.
 The script groups offers under stable category names; `GameScriptRuntime`
