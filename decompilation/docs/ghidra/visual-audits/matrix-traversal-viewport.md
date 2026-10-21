@@ -756,9 +756,13 @@ only; the complete viewport remains partial.
 
 ### Settled System Access model extent calibration (2026-10-21)
 
-Section 15 frame `004440` shows the Green-4 System Access Network. The imported
-Matrix data identifies it as System 1/node 0, model 0, security color 2. Before
-calibration, the host's fallback placement produced green-dominant object
+Section 15 frame `004440` shows a Green-4 System Access Network labeled
+`Unlisted` and `No Ice`. Its full status identifies zero-based ROM system 15,
+node 0: function 0, file class 14, security color 2/rating 4, no IC, with a
+direct link to node 13. The separate host model-0 crop QA uses System 1/node 0
+as a model profile example; that route shares the model ID and security color
+but does not match the longplay topology. Before calibration, the host's
+fallback placement produced green-dominant object
 bounds `(106,50,107x59)`; the independent frame measures `(108,50,105x57)`.
 The primary entry profile now records that measured settled endpoint at 179
 source VBlanks and the source model's 112x64 canvas. Lua projects it to
@@ -772,6 +776,29 @@ full-frame match. It calibrates only the settled Green-4 model canvas; other
 System Access colors and the primary stream's intermediate projection remain
 open. The host still scales the extracted model image rather than reproducing
 the ROM packed-pixel resampler or proving facet-level color fidelity.
+
+### Section 15 active-alert SPU effect selection (2026-10-21)
+
+The Section 15 sequence is now tied to the ROM node records rather than the
+similar-looking System Access QA fixture. Frame `004440` shows zero-based ROM
+system 15/node 0 (table entry `0x15DBC0`, node block `0x15E9C6`: function 0,
+class 14/Unlisted, color 2, rating 4, no IC). Its links include node 13. That
+record at `0x15EACA` is an SPU (function 2), class 35, color 2, rating 5, and
+IC combo 3. Frames `004740` and `004760`
+show the unknown SPU under No Alert; frame `004800` shows Active Alert, keeps
+`Ice Unknown`, and displays the small amber center effect.
+
+`0x19B40` returns UNSEEN for a rank-zero node while `FFDF84` is clear. When
+`FFDF84` is negative it reads the node's `+0x13` combo and indexes `0xE31A7`;
+System 15/node 13's combo-3 entry at `0xE31AD` is `{3, 0xFF}`. `0x1A908`
+selects mode 3 and `0x1AA40` advances its six phase images at seven-VBlank
+cadence. The alert-probe route now keeps the typed `in_alert` marker set for
+Active Alert and clears it when the alert is canceled. Lua QA verifies that
+this exact node remains visually unknown while selecting mode 3. Matrix entry
+still clears `FFDF84` independently of an initial field alert (`0x174E4`);
+only a later active-alert probe retains the marker, as in `0x56116`. This
+proves the source mode selection and host state transition; full-frame phase
+timing and overlay placement against the independent capture are still open.
 
 ## Status
 

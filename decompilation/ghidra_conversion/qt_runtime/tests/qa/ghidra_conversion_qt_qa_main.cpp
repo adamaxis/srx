@@ -24926,10 +24926,10 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                // Capture the independent Green-4 System Access Network
-                // reference route as a separate model profile. Unlike the
-                // compact SPU entry above, the primary stream currently uses
-                // the presenter's uncalibrated model-0 placement fallback.
+                // Use the Green-4 reference only for model-0 crop calibration.
+                // Its full status maps to System 15/node 0; this separate
+                // System 1 route shares the model id and color, not topology.
+                // The primary stream still uses the model-0 placement fallback.
                 std::vector<std::uint16_t> model0_audio_events;
                 std::vector<std::uint16_t> model0_audio_stops;
                 std::vector<std::string> model0_source_boundaries;
