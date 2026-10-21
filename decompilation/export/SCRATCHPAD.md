@@ -487,9 +487,9 @@ one typed conversion slice:
 
 | ROM entry | Caller | Recovered behavior | Typed conversion |
 | --- | --- | --- | --- |
-| `0x56434` | `0x19E32 run_menu_selection_service` | Clears `FFF0A3`, subtracts the service delta from selected record `+0x0F`, and applies the source overflow-aware `SUB.B`/`BGT` expiry test before decrementing `FFF0CE` by two; a negative rollover resets it to `0x0F` and increments `FF018D`, `FF028D`, and `FF038D`. | `advance_menu_selection_service_timer()` |
-| `0x56482` | `0x19EA6 run_menu_selection_variant` | Clears `FFF0A3`, subtracts the variant delta from selected record `+0x10`, clears the selected menu record on signed-byte expiry, then uses the same phase-counter rollover. | `advance_menu_selection_variant_timer()` |
-| `0x564D6` | `0x19F18 run_menu_progression_variant` | Halves D1 with a logical shift, clamps the delta to one, subtracts it from selected record `+0x06`, and clamps that timing byte to two. | `reduce_menu_progression_timing()` |
+| `0x56434` | `0x19E32 field menu service; Matrix Attack entry `0x1B734` | Shared selected-record tail. Clears `FFF0A3`, subtracts D1 from selected record `+0x0F`, and applies source `SUB.B`/`BGT` expiry semantics. On expiry it clears `+0x0F`, decrements `FFF0CE` by two, then on signed-negative rollover resets it to `0x0F` and increments `FF018D`, `FF028D`, and `FF038D`. | Field: `advance_menu_selection_service_timer()`; Matrix: `MatrixCombat.attack()` |
+| `0x56482` | `0x19EA6 field menu variant; Matrix Slow entry `0x1B696` | Shared selected-record tail. Clears `FFF0A3`, subtracts D1 from `+0x10`, and uses source `BPL` expiry semantics. A negative result clears `+0x10` and selected `+0x0F`, then applies the same `FFF0CE` Karma rollover. | Field: `advance_menu_selection_variant_timer()`; Matrix: `MatrixCombat.slow()` |
+| `0x564D6` | `0x19F18 field menu progression; Matrix Degrade entry `0x1B81A` | Halves D1 with a logical shift, clamps the delta to one, subtracts it from selected record `+0x06`, and clamps that byte to two. | Field: `reduce_menu_progression_timing()`; Matrix: `MatrixCombat.degrade()` |
 
 The conversion keeps audio-frame initialization and selected-record clearing
 as callbacks. The record vector and phase counters are host state, not a ROM
@@ -699,13 +699,14 @@ The result-zero action branch at `0x56E5A` is now represented by
 `0x57D7E` is represented separately by
 `prepare_field_action_progression_quote()`, which publishes the typed pending
 record slot, action code, and discounted cost consumed by the purchase branch.
-The three source offer families are explicit typed tables:
-`0x1AAEB0` for saved selections two and above, `0x1AAEF8` for saved
-selection one, and the three menu-mode blocks at `0x1AAF40` for saved
-selection zero. Saved selections 0, 1, and 2 all enter this application path;
-only selection 3 diverts to the separate removal leaf. Each four-byte offer contributes its signed action marker and
-base cost; the source byte at offer `+1` is retained as metadata because this
-purchase path does not consume it.
+The quote/purchase pair consumes the eight four-byte progression offers at
+`0x1AAF40 + (menu_mode - 3) * 0x20`; the source dispatcher reaches this pair
+only for result-zero saved selection 0. Saved selections 1 and 2 are separate
+three-byte inventory-offer families at `0x1AAEF8` and `0x1AAEB0`, consumed by
+`0x5794E`; selection 3 enters the separate inventory-removal leaf. They are
+not alternate progression-record tables. The typed progression conversion
+now rejects those other saved selections instead of interpreting the
+three-byte inventory rows as four-byte action/level costs.
 
 The conversion searches a typed runner progression ledger instead of carrying
 the `FFF0C2` pointer; its leading word is the source's last DBF-scanned slot
@@ -847,11 +848,11 @@ the common eight-record loop. Cursor 3 instead writes the six-plus-two grid
 batches, and later cursors transfer the glyph row. In the zero-result branch,
 cursor 3 uses the glyph row; cursor 0 enters the dynamic
 `0x1AAF40 + (menu_mode - 3) * 0x20` table after the source
-`CMP.B #1`/`BMI`, while the other cursors select the fixed `0x1AAEB0` table,
-the `0x1AAEF8` selection-one table, or the `0x58B1E` glyph-row path before
-scanning markers. The conversion now carries those table choices as typed
-callbacks and supplies separate extracted marker rows; it no longer silently
-reuses one array for all three negative-result cases.
+`CMP.B #1`/`BMI`; cursor 1 selects
+`0x1AAEF8 + (menu_mode - 3) * 0x18`, and cursor 2 selects
+`0x1AAEB0 + (menu_mode - 3) * 0x18`. Cursor 3 uses the `0x58B1E`
+inventory-glyph path. The conversion carries the selected source-table family
+and mode-derived row index as typed callback data.
 
 The same `0x587DA` audit preserves the source N flag for every byte boundary:
 negative-result cursors 0..2 use the three dedicated tables only when the

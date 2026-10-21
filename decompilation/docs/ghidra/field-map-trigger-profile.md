@@ -72,12 +72,15 @@ the named collision assets and indexed by per-scene counts/pointers.
 The event table has 32 bytes, but a direct branch can bypass the matching
 table byte. The inventory keeps both the raw byte at that index and the
 dispatcher decision visible so the byte is not mistaken for a destination.
-Timeout and pending-descriptor state can also replace the selected value before
-scene preparation. `0x167AE` classifies the generic table value as follows:
+Event IDs 2-5 enter the shared maglock branch only in Scene 20 or resource
+activity mode (scene IDs 21-43); ordinary field scenes publish those IDs to
+their event tables. Timeout and pending-descriptor state can also replace the
+selected value before scene preparation. `0x167AE` classifies the generic
+table value as follows:
 
 | Table byte | ROM meaning |
 |---|---|
-| `0x00..0x14` | Field scene ID. Scene `0x14` has a separate flag/timeout gate; scenes `0x0D` and `0x0F` also have source flag checks. |
+| `0x00..0x14` | Field scene ID. Scene `0x14` has a separate FFFC2C bit-26 scene-entry action that clears the bit and schedules a timeout when set; it does not block or replace the destination. Scene `0x0D` checks FFFC1E bit 19 and scene `0x0F` checks bit 29 before selecting their additional world-script path; the field map is prepared before those checks. |
 | `0x15..0x2B` | Resource-activity scene ID. Its profile supplies the random-index bound and resource cursor. |
 | `0x2C..0x37` | Scripted-activity scene ID. |
 | `0x38..0xFF` | Outside the accepted scene ranges; the source routine halts at its range guard. |
@@ -118,23 +121,62 @@ the ROM classifies as resource activity; none of those bytes says “office.”
 
 | Starting map/record | ROM event and route | Result established by ROM | Current Lua/native connection |
 |---|---|---|---|
-| Scene 1, record 67 at `0x17D9A2`, raw `0x00C7`, event 7 | Event-table row 7 at `0x17D620` defaults to `0x0D`; indexed title service 21 at `0x5447E` runs before generic route selection | The service handles field mode 1/event 7. `FFF0D5` selects one of two package-text paths; it does not gate the service. With it clear, `FFFC1E` bit 30 and bit 21 select the guarded, first-entry, or repeat passage. First entry sets bit 21 and adds 2 to three actor phase counters. A nonzero `FFF0CC` result sets `FFE186=1`; since event 7 is below 8, the main loop jumps directly to selector `0x167AE` without changing the marker, which selects scene 54. Pending `FFE162` descriptors take precedence and select scene 15. The scene-55/Tomb routine `0x20938` is not reached on this event-7 marker-1 branch. Dispatcher index `0x44` reaches `0x21FD0`, which sets bit 30 and loads profile `0x121F4C` alongside text beginning “You are taken to Frosty”; the upstream choice route remains unconnected. | Not connected in `building.lua` or the live indexed-title service. The trigger record and site crosswalk are source-profiled only; no physical-input QA or `actual.bmp` exists. See [the Tarislar route audit](visual-audits/puyallup-tarislar-apartments.md). |
-| Scene 2, records 89/90 at `0x173124` / `0x17312E`, raw `0x00C0`, event 0 | Scene 2 event-table row 0 at `0x172CDC` is `0x14` | Selects numeric field scene 20; entry then encounters the scene-20 interaction geometry. No place-name is inferred from the byte. | `building.lua` selects ROM row 0 and `run_world_activity_routine` loads scene 20; physical New Game route reaches record 117. |
-| Scene 2, record 85 at `0x1730FC`, raw `0x00C4`, event 4 | Conditional-maglock dispatcher falls back to event-table row 4 at `0x172CE0` (scene `0x0D`); indexed title service 22 selects entry descriptor `0x110D1E -> 0x116C12` at `0x20484..0x204C6` when `FFF0D5` is clear | Mike's marker 1 labels Jump House and Gunderson. Frame 001200 independently shows the location description and its portrait before the scene-13 map. The ROM stores numeric scene and trigger values, not the building name. | `building.lua` opens the generic Lua entry task. The route retains the typed scene-13 destination until ordinary A dismisses the description. Debug CTest `shadowrun_ghidra_conversion_qt_field_jump_house_entry_qa` starts at `(0x1D00,0x0A00)`, enters record 85 with normal Up movement, and captures contact, entry, transition start/midpoint, and a clean scene-13 `actual.bmp`. This is controlled ordinary-input route QA, not a complete New Game playthrough. Sound, destination actor placement, Release QA, and independent timing remain open. See [Jump House entry and Gunderson audit](visual-audits/jump-house-entry-and-gunderson.md). |
+| Scene 1, record 67 at `0x17D9A2`, raw `0x00C7`, event 7 | Event-table row 7 at `0x17D620` defaults to `0x0D`; indexed title service 21 at `0x5447E` runs before generic route selection | Title service 21 checks FFF0D5 and FFFC1E story bits before the generic event route. First authorized entry requires bits 30/21 = 1/0, marks bit 21, and calls `0x59C34` with D0=2 for +2 Karma; this conversation does not set FFF0CC and returns to scene 1. Service 21 repeat first presents greeting FC111; bits 16/28/26/27 and FFFC22 item bits 8/7 gate its questions, Ito response, map-information, and tomb branches. Its Yes command `0xE4` calls `0x24954`, sets FFF0CC, and selects scene 54 only when bits 30, 21, 16, 28, 26, and 27 and alternate result 0 match. Pending descriptors can override to scene 15. Marker 2 remains a separate scene-55 Tomb route. | Lua entity links keep the first-authorized conversation on scene 1, add the repeat-information task, and add a separate tomb-offer override gated by bits 30/21/16/28/26/27 and alternate result 0. Its Yes task follows the three ROM travel pages and resumes scene 54; No follows the preparation and Harlequin pages and returns to scene 1. The guarded path also returns to scene 1. Debug/Release physical-input CTests exercise the first visit, guard, repeat information, and tomb routes and save whole-screen actual.bmp files; script QA checks both tomb choices. The upstream Frosty choice, pending-descriptor override, and scene-54 exit/return remain open. See [the Tarislar route audit](visual-audits/puyallup-tarislar-apartments.md). |
+| Scene 2, records 89/90 at `0x173124` / `0x17312E`, raw `0x00C0`, event 0 | Scene 2 event-table row 0 at `0x172CDC` is `0x14` | Selects numeric field scene 20 unconditionally; no place-name is inferred from the byte. In `0x167AE`, scene entry separately tests FFFC2C bit 26 at `0x1689A`: if set, it clears the bit and calls `0x1DBAA`; this does not change scene 20. The bit's meaning and producer remain unresolved. | `building.lua` selects ROM row 0 and the typed world-activity routine loads scene 20. Debug/Release physical QA covers ordinary entry with the bit clear and seeded bit-26 consumption with the timeout retained through final scene re-entry; both save whole-screen `actual.bmp`. |
+| Scene 2, record 85 at `0x1730FC`, raw `0x00C4`, event 4 | Ordinary field mode publishes event 4 to event-table row 4 at `0x172CE0` (scene `0x0D`); it does not enter the conditional-maglock branch. Indexed title service 22 selects entry descriptor `0x110D1E -> 0x116C12` at `0x20484..0x204C6` when `FFF0D5` is clear. | Mike's marker 1 labels Jump House and Gunderson. Frame 001200 independently shows the location description and its portrait before the scene-13 map. The ROM stores numeric scene and trigger values, not the building name. | `building.lua` opens the generic Lua entry task. The route retains the typed scene-13 destination until ordinary A dismisses the description. Debug CTest `shadowrun_ghidra_conversion_qt_field_jump_house_entry_qa` starts at `(0x1D00,0x0A00)`, enters record 85 with normal Up movement, and captures contact, entry, transition start/midpoint, and a clean scene-13 `actual.bmp`. This is controlled ordinary-input route QA, not a complete New Game playthrough. Sound, destination actor placement, Release QA, and independent timing remain open. See [Jump House entry and Gunderson audit](visual-audits/jump-house-entry-and-gunderson.md). |
 | Scene 2, record 91 at `0x173138`, raw `0x00C2`, event 2 | Story route override, despite table row 2 being `0x1A` | The completed New Game opening leaves `FFE18B` set; after field warmup, the normal movement continuation heads to this collision without controller input. The route opens Stoker arrival dialogue in scene 2. Hotel/karma interactions remain in scene 2; this is not a separate Stoker interior. Later entry phases depend on `FFFC1E` and the typed debt/package story state. | `building.lua` selects the same-map Stoker dialogue route; indexed title service and shared motel/quest scripts resolve arrival, manager offer, debt/payment handoff, and ordinary-motel state. Debug/Release QA connects New Game arrival through payment/handoff and clean return using a 250-nuyen test wallet. Typed story tests cover the unpaid repeat offer and completed-story ordinary motel. Restored-save story state and a physical repeat-entry route remain open. |
-| Scene 19, record 12 at `0x1D5F50`, raw `0x019E`, event 30 | `0xB7B8` -> `0x20990`; Scene 19 misses the special scene cases and reaches `0x20C78` | The fallback loads portrait profile `0x121E5C` and prompt record `0xF3FAC`. Its title pointer `0xF3FBC` is the unnamed old-man narrative. The first-choice pointer is `0xFFFFFFFF`; `0x1F3C4` waits for controller input and returns command `0xFB` without a menu. The map rectangle is pixels X `0..31`, Y `32..63`; descriptor fallback spawn is `(208,204)`, outside it. This is a separate contact event, not proof of an automatic map-entry scene. | `field_events.lua` now presents the location's Lua speaker/event context through the shared dialogue runtime; `dialogue.lua` binds the unnamed speaker, ROM text, and portrait. The map viewer shows the interaction, route, and content preview. Physical input QA and the incoming transition's coordinate override remain open. |
+| Scene 19, record 12 at `0x1D5F50`, raw `0x019E`, event 30 | `0xB7B8` -> `0x20990`; Scene 19 misses the special scene cases and reaches `0x20C78` | The fallback loads portrait profile `0x121E5C` and prompt record `0xF3FAC`. Its title pointer `0xF3FBC` is the unnamed old-man narrative. The first-choice pointer is `0xFFFFFFFF`; `0x1F3C4` waits for controller input and returns command `0xFB` without a menu. The map rectangle is pixels X `0..31`, Y `32..63`; descriptor fallback spawn is `(208,204)`, outside it. This is a separate contact event, not proof of an automatic map-entry scene. | `field_events.lua` presents the location's Lua speaker/event context through the shared dialogue runtime; `dialogue.lua` binds the unnamed speaker, ROM text, and portrait. The map viewer shows the interaction, route, and content preview. A scene-19 interaction-region entity carries a Lua link to the shared location-dialogue handler. Debug and Release physical-input QA confirms that descriptor spawn `(208,204)` opens no automatic passage, ordinary Up from the south approach reaches record 12, and the Lua handler presents the ROM portrait/text with no choices before returning to Scene 19 after the 60-frame fade. All eight full-screen captures match across builds and were reviewed at original resolution. Debug/Release physical-input QA now walks ordinary Up from the Scene-2 south approach into event 5. A source-route boundary records the Lua-selected Scene-19 destination; the transition loads the descriptor fallback spawn (208,204) with no entry dialogue. This confirms the ordinary event-table route only; other incoming overrides and an independent Genesis passage frame remain open. |
 | Scene 2, record 92 at `0x173142`, raw `0x00CB`, event 11 | Service route override, despite table row 11 being `0x33` | Opens the Ares service prompt; A opens the shop. | Connected to field-mode service and shop; physical scene-2 route has QA coverage. |
 | Scene 2, record 93 at `0x17314C`, raw `0x00C1`, event 1 | Scene 2 event-table row 1 at `0x172CDD` is `0x1A` | Selects resource-activity scene 26. The coordinate crosswalk matches Redmond map marker 8, Little Chiba; ROM contract area-2 location index 1 is also named Little Chiba. The numeric scene byte itself does not say “office.” | `building.lua` selects ROM row 1 and the world-activity coordinator enters scene 26. The end-to-end terminal path uses explicit QA fixtures for passkey, skill, and PRNG. |
 | Scene 2, record 97 at `0x173174`, raw `0x00C7`, event 7 | Indexed title service 22 at `0x545B6` runs before generic route selection; event-table row 7 at `0x172CE3` is `0x1A`, but the special service returns in Scene 2 | Mike's Redmond map marker 9 Rat's Nest aligns with this rectangle, a secondary name crosswalk rather than a ROM-stored label. The service requires scene 2/event 7, alternate result 0, `FFFC34` bit 13 set, and consumed bit 10 clear. It consumes the prerequisite, marks bit 10 and the Landmark Map group item, awards +2 Karma to each runner record, and displays ROM text records `0x117193`, `0x117266`, and `0x117314`. Source `D6=-1` suppresses the generic transition. Menu action `0xE7` / handler `0x249A4` sets the bit-13 prerequisite after the conditional `FFFC1E` bit-26 question. ROM writers `0x22018` and `0x22072` for bit 26 are identified from `FFFC22` dialogue conditions; the live Harlequin choice/menu route remains unconnected. | Lua handles the three pages; `FieldSceneRuntime` binds prerequisite/one-shot/item/Karma facts and applies the ROM award on script completion. Debug/Release QA uses ordinary Up input from `(0x1B00,0x4600)`, but seeds bit 13. It checks the pages, award, one-shot flags, 60-frame host return, and whole-screen replacement. The end-to-end lead remains partial and no independent Rat's Nest Genesis capture is identified. Record 96 shares the service but is not the strong marker-9 geometry match. See [the seven-question visual audit](visual-audits/scene2-redmond-vigore-search.md). |
 | Scene 2, record 96 at `0x17316A`, raw `0x00C7`, event 7 | Same event-table row and indexed title service as record 97 | Bounds `x=0x02E0..0x02FF`, `y=0x04A0..0x04BF` align away from Rat's Nest marker 9 on the Mike's map overlay; ROM still sends it through the same event-7 service. | Shares the Lua and typed native handler. Its specific named location and physical approach remain unresolved. |
-| Scene 13, records 9/10 at `0x1B3CE4` / `0x1B3CEE`, raw `0x0080`, event 0 | No event table; event-0 collision routing | Two rectangles at cells `(2,7)` and `(3,7)` are near the lower-left doorway on the extracted scene image. The independent longplay shows the interior, but the exact source exit/interaction semantics and return destination still need tracing. | No Lua route or focused physical-input QA. Do not assume these rectangles return to scene 2 until the ROM exit path is identified. |
-| Scene 13, records 11/12 at `0x1B3CF8` / `0x1B3D02`, raw `0x019E`, event 30 | Direct continuation `0xB7B8 -> 0x20990`; scene-13 branch chooses mode row 0 from `0x12CC50` and initial prompt `0x105114` | Two event-30 rectangles are at cells `(0,1)` and `(1,1)`. Profile `0x121E80` decodes to a 56x72 portrait matching Gunderson in frame `section_03/frame_001500`. The root labels point to `0x104051`, `0x103A3A`, and `0x104FEB`. Information descriptor `0x10517C` routes questions to builder `0x22F90` and contacts through `0x1051EC` to offer descriptor `0x105200`. Action `0x4D` at `0x22136` debits 1,000 nuyen via `0x21A4E`, returning paid descriptor `0x1052A0` or low-funds descriptor `0x1051D0`; FFFC2C bit 4 is not a unique contact-acquired flag because New Game seeds it at `0x59C48`. | `FieldSceneRuntime` routes the continuation through `johnson.interaction`; Lua owns portrait/menu copy, questions, contact purchase/failure, and repeat contact route. Debug/Release dialogue QA captures twenty full-screen states, including the 999-nuyen boundary. The scene-2/event-4 route continues on the same runtime through the production wallet service for a 1,000-nuyen purchase and unfunded repeat, with fourteen matching full-screen Debug/Release captures. The contact branch lacks an independent Genesis frame. Ordinary movement into event 30 is not yet QA-covered. The FFFC27 alternate Vigore response, work contract/quest, sound, and event-0 exit remain open. See [Jump House entry and Gunderson audit](visual-audits/jump-house-entry-and-gunderson.md). |
+| Scene 13, records 9/10 at `0x1B3CE4` / `0x1B3CEE`, raw `0x0080`, event 0 | Profile `0x1B3C06 + 0x4E` is a null event-table pointer; the generic event-0 selector at `0x167AE` reads ROM byte `0x000000 = 0`, selecting field scene 0 | Two rectangles at cells `(2,7)` and `(3,7)` are at the south map edge, near the doorway in the extracted scene image. This is a static scene-0 destination; it does not identify scene 0 as the prior caller map or establish a door-relative spawn/facing rule. | The South-edge field transition entity has an authored Lua `area_event_override` link. The resolver consumes this one-time source-derived destination without emulating null-pointer arithmetic. Debug/Release ordinary-Down QA enters scene 0 and saves full 320x224 frames with matching SHA-256 values. No dialogue or quest/run gate is selected by this event-0 branch. |
+| Scene 13, records 11/12 at `0x1B3CF8` / `0x1B3D02`, raw `0x019E`, event 30 | Direct continuation `0xB7B8 -> 0x20990`; scene-13 branch chooses mode row 0 from `0x12CC50` and initial prompt `0x105114` | Two event-30 rectangles are at cells `(0,1)` and `(1,1)`. Profile `0x121E80` decodes to a 56x72 portrait matching Gunderson in frame `section_03/frame_001500`. The root labels point to `0x104051`, `0x103A3A`, and `0x104FEB`. Information descriptor `0x10517C` routes questions to builder `0x22F90` and contacts through `0x1051EC` to offer descriptor `0x105200`. Action `0x4D` at `0x22136` debits 1,000 nuyen via `0x21A4E`, returning paid descriptor `0x1052A0` or low-funds descriptor `0x1051D0`; FFFC2C bit 4 is not a unique contact-acquired flag because New Game seeds it at `0x59C48`. | The scene-13 booth link selects `johnson.interaction` through the shared Lua location-route resolver; Lua owns portrait/menu copy, questions, contact purchase/failure, and repeat contact route. Debug/Release dialogue QA captures twenty full-screen states, including the 999-nuyen boundary. The scene-2/event-4 route continues on the same runtime through the production wallet service for a 1,000-nuyen purchase and unfunded repeat, with fourteen matching full-screen Debug/Release captures. The contact branch lacks an independent Genesis frame. Ordinary movement into event 30 is not yet QA-covered. The FFFC27 alternate Vigore response, work contract/quest, sound, and independent contact visuals remain open. Event-0 exit now has a Lua route; physical QA remains open. See [Jump House entry and Gunderson audit](visual-audits/jump-house-entry-and-gunderson.md). |
 | Scene 20, record 117 at `0x1D9724`, raw `0x0082`, event 2 | `field_events.lua` selects the maglock action under the scene/world-mode gate | Electromagnetic-lock prompt. A successful passkey/electronics path changes collision cell 483 from `0x82` to `0x81` after result acknowledgement. | Lua selects the action; `FieldInteractionRuntime` executes it. Several physical branches have Debug/Release route coverage. Story acquisition and exact independent Genesis prompt/result captures remain open. |
 | Scene 26, record 117 at `0x1D9E00`, raw `0x00A2`, event 2; record 110 at `0x1D9DBA`, raw `0x0082`, event 2 | Same conditional electromagnetic-lock continuation | Successful passkey action updates the sampled passage cells (`0xA2 -> 0xA1` and `0x82 -> 0x81`), after which ordinary movement crosses the lanes. | Connected to the shared maglock handling; physical route QA covers both gates with QA-seeded passkey state. |
 | Scene 26, records 124/125 at `0x1D9E46` / `0x1D9E50`, raw `0x00D8`, event `0x18` | Direct `0x20EC2` branch | Security Terminal prompt. Its outcome is a separate world-activity result path, not an elevator and not the scene-2 event-1 destination. | Prompt and joined physical route are connected. Source result handling has focused QA; story item/skill state and independent Genesis result capture remain open. |
 | Scenes 21-25, 26-29, 30-34, 35-40, and 41-43; event `0x1D` (`0xDD` raw) | `field_events.lua` selects the event-29 floor-selector action; `building.lua` resolves entry action, entry floor, and selected child scene from the extracted source groups | Groups are `[21,22,23,24]`, `[26,27,28]`, `[30,31,32,33]`, `[35,36,37,38,39]`, and `[41,42]`. Trigger scenes 25, 29, 34, 40, and 43 are not members of their child groups. Destinations remain numeric scene IDs. | Lua owns the elevator entry decision and destination lookup; the typed native selector owns input state/timing and the host loads the chosen scene. Debug and Release script tests and successful group routes are listed in [the elevator audit](visual-audits/field-elevator-selector.md). Physical approach probes currently fail in scenes 28 and 36; ordinary resource entry and saved-floor restoration remain open. |
 | Scene 4, record 96 at `0x15BDF6`, raw `0x00DB`, event `0x1B` | `field_events.lua` selects the event-27 world-activity continuation | Source selects the event-27 continuation; the table row is bypassed. Its complete downstream behavior is not established. | Lua selects the typed continuation; Qt has no corresponding pending field-scene handler binding yet. |
 | Scene 47, record 62 at `0x1D54B0`, raw `0x00B9`, event `0x19` | If `FFFC10 == 0x13`, direct `0x53EFA`; otherwise rewrite the collision result to `0x00A8`/event 8 | The route depends on field-transition context. The raw event-table row 25 is not a fixed destination; the rewrite path continues as event 8. | Typed dispatcher branch exists. This scene/context route is not physically exercised in the current Qt field runtime. |
+
+### Newly connected quest-gated building interactions
+
+Two previously numeric-only building destinations now use the existing
+entity-link entry-task path. Scene 5 record 46 (`0x067C36`, event 6) invokes
+title service 12 (`0x54076`) only with story bit 16 set, bit 12 clear, and
+alternate result zero. It loads root `0x110A2A` and portrait profile
+`0x121E2C`, then leaves D6 at zero so event-table row 6 still selects activity
+35. Lua displays the extracted `0x1195CF` opening and returns the declared
+`enter_scene_35` result.
+
+Scene 3 record 97 (`0x18ABA0`, event 2) invokes title service 14
+(`0x54152`) only with story bit 25 set, bit 14 clear, and alternate result
+zero. It loads root `0x11B7F4` and portrait profile `0x122090`, then leaves D6
+at zero so event-table row 2 still selects activity 21. Lua displays the
+extracted `0x11C213` Fuchi entry page and returns `enter_scene_21`. Lua and
+route-resolver tests cover both gate variants. Renraku now also has Debug and
+Release physical-input QA: ordinary Up reaches record 46, the extracted page
+shows the correct portrait and MORE prompt, and A resumes activity 35. The
+full-screen captures are under `field-renraku-offices-qa/`; the activity-35
+capture confirms the route resumes after the page. Fuchi now has Debug and
+Release physical-input QA too: ordinary Up reaches record 97/event 2, the
+gated Fuchi page shows its extracted logo portrait and MORE prompt, and A
+resumes activity 21. Its full-screen captures are under
+`field-fuchi-offices-qa/`. FFE184/FFE187 effects and the eventual building
+return routes remain open; independent Genesis captures are unavailable for
+both pages. See [the Renraku route audit](visual-audits/renraku-offices-scene5-event6.md)
+and [the Fuchi route audit](visual-audits/fuchi-offices-scene3-event2.md).
+
+Scene 0 record 45 (`0x0D57A0`, event 3) invokes title service 15
+(`0x54222`) only when story bit 11 is set, bit 15 is clear, and alternate
+result is zero. Its root `0x1111DE` uses portrait profile `0x121FC4`; the
+first visible option pointer is `0xFFFFFFFF`, so the shared prompt returns
+after the single `0x113D46` Ogami-departure page. Lua then clears FFFC30 bit
+26, sets bit 27, marks trigger 15, and returns to scene 0, suppressing the
+generic activity-21 event route. Debug/Release physical QA starts at
+`(0x3A00,0x0A00)`, enters record 45 with ordinary Up input, checks the page and
+one-shot state, and captures `actual.bmp` plus the restored scene-0 frame. See
+[the Gates Undersound audit](visual-audits/gates-undersound-title-service.md).
 
 ### Puyallup / Tarislar Garden Apartments crosswalk
 
@@ -159,14 +201,18 @@ The source path is:
    action loads profile `0x121F4C` and the text chain beginning at `0xF57F8`.
    The first text says “You are taken to Frosty”; this associates the profile
    with Frosty in context, though the extracted profile has no name label. The
-   complete Frosty choice graph and its live action-44 route are not connected.
+   Lua `StoryFlags` now maps command `0x44` to a direct bit-30 write, and its
+   test checks the command-table pointer and handler opcodes. The live caller
+   and route remain unconnected. Code at `0x53EA8` also writes prerequisite
+   bit 9 and opens `0xF4C04`; its caller and item/quest conditions have not
+   been identified, and no Lua path currently writes bit 9.
 4. `FFF0D5` is not a gate: when nonzero the service chooses a separate text
    path at `0x15FF20` or `0x15FF28` based on its sign. When it is zero and bit
    30 is clear, service 21 selects the armed-guard copy beginning at
    `0xFBCC7`, followed by the challenge at `0xFBD5A` and leave narration at
    `0xFBD94`. With bit 30 set and bit 21 clear, it sets bit 21 through
-   `0x2196C`, adds 2 to each of the three `FF018D`/`FF028D`/`FF038D` phase
-   counters through `0x59C34`, and selects first-entry copy beginning at
+   `0x2196C`, adds 2 to each of the three `FF018D`/`FF028D`/`FF038D` +0x8D Karma
+   bytes through `0x59C34`, and selects first-entry copy beginning at
    `0xFBE12`.
 5. After the shared prompt runner `0x1F246`, the service tests `FFF0CC`.
    A nonzero marker sets `FFE186=1` and leaves `D6=0`; otherwise it sets
@@ -183,11 +229,10 @@ The source path is:
 
 No screenshot-based scene-name claim should be made from the extracted map
 alone. The site map image has not yet been aligned to scene 1's coordinates,
-and the entry dialogue has no physical Qt QA. Keep the route source-profiled
-but unimplemented until the event-specific `FFE162` state is bound, the
-text/action state and actor phase counters are connected, scene 54's entry,
-activity, exit, and return are traced, and full-screen replacement and clean
-redraw are captured.
+and the entry dialogue has no physical Qt QA. Keep the route partial. The
+guard/repeat variants, event-specific `FFE162` state, upstream Frosty
+action-44 route, scene 54 activity/exit/return, and physical full-screen
+replacement and clean-redraw QA remain open.
 
 ### Reported Little Chiba / Redmond elevator transition
 
@@ -292,11 +337,14 @@ to record 110 are source-matched and covered; exact ROM facing remains open.
 ## Event-table values in maps 0-9
 
 Only scene profiles 0-9 carry event tables. The following lists show the raw
-bytes referenced by event-bearing rectangles. Codes 2-5 can take the
-conditional maglock branch before a table lookup; codes `0x18..0x1F` take
-direct branches, with event `0x19` rewriting to event 8 when its context check
-fails. Scene-2 event 2 and 11 also have story/service overrides. For other
-generic fallthroughs the byte is consumed by the field/world-activity route.
+bytes referenced by event-bearing rectangles. Event codes 2-5 take the
+conditional maglock branch only in Scene 20 or resource-activity mode
+(scenes 21-43). Ordinary field scenes 0-19 publish those codes to their event
+tables, except where a scene-specific service handles the event first.
+Codes `0x18..0x1F` take direct branches, with event `0x19` rewriting to event
+8 when its context check fails. Scene-2 events 2 and 11 and scene-4 events 3
+and 4 also have source-specific service routes. For other generic fallthroughs
+the byte is consumed by the field/world-activity route.
 Values are listed as `event=table-byte`; use the per-record TSV to locate
 every rectangle and its coordinates.
 
@@ -333,8 +381,23 @@ That reuse means the Scene-6 table result alone does not establish a unique
 room, speaker, interior script, or return route. `0x167AE` checks
 `FFFC1E` bit 19 before selecting Scene 13's additional world script; the flag's
 quest meaning and that script's content are not linked to these five Scene-6
-triggers. Related Notebook entries for Owlfeather and Red Buffalo Woman remain
-quest references, not confirmed entry-dialogue text.
+triggers. For record 193/event 0, indexed title service 2 at `0x53B78` checks
+`FFFC1E` bits 1/2, opens Owlfeather's `0xF4B68` first-contact dialogue, and
+consumes the event before the default scene-13 route. Physical-input QA confirms
+the opening dialogue and the C-choice brother page; it does not cover the
+closed gate, the other opening choices, or the complete return. See the
+[Owlfeather route audit](visual-audits/owlfeather-scene6-event0.md).
+
+For record 194/event 1, indexed title service 18 at `0x54322` also suppresses
+the event-table scene-13 route. It selects the gift page at `0xF4DB8` when
+`FFFC1E` bit 17 is set and bit 18 is clear; otherwise it follows the no-gift
+root at `0xF4DCC`. The gift completion sets trigger bit 18 through `0x2196C`,
+sets/clears Notebook tip bits 5/6, changes field effect bits 29/30, and returns
+to Scene 6. Debug/Release physical QA reaches the record by ordinary movement
+and checks the gated dialogue, state writes, and completed same-map return.
+Other Scene-6 records, physical post-Ito/map-item coverage through this entry,
+and an independent Genesis dialogue capture remain open. See the
+[Red Buffalo route audit](visual-audits/red-buffalo-scene6-event1.md).
 
 Scene-6 record 189 at `0x14C0E0` is event `0x1F`; it bypasses the event table
 and sets the direct continuation at `0x0DB26`. In ordinary field mode
@@ -354,9 +417,10 @@ Cyberspace checks deck,
 MPCP, and datajack facts before showing Enter Passcode / System Search / Exit;
 known passcodes enter their selected system, while System Search follows the
 ROM's eleven permutation rounds and random system choice. The Matrix entry
-script waits 20 frames, builds the typed session, and replaces itself with the
-Matrix node-action route. `FFDF40` nonzero still follows the separate
-scene-specific branch.
+script waits 20 frames, builds the typed session, and enters the deck/program
+loop at ROM `0x181F8`/`0x1822C`. The node-action route represents the separate
+world-mode path at `0x54662`, not the initial jack-in screen. `FFDF40` nonzero
+still follows the separate scene-specific branch.
 
 `FieldSceneRuntime` now connects the normal event-31 continuation to the Lua
 four-choice task. Call Taxi uses `0xD4456` / `0xD445D` for the seven region and
@@ -411,9 +475,18 @@ The four table bytes at `0x1B4E76` select field scene 13. The subsequent
 `0x167AE` selector returns before choosing a path when FFFC1E bit 19 is clear;
 when set, scene-index 3 resolves runner value 6 and compares marker 7 against
 the primary and secondary runner markers. A match retains field scene 13;
-otherwise the script pointer at `0x1706C` is selected. This source trace does
-not establish the flag's narrative meaning, script dialogue, or a distinct
-cave interior. Scene 9's default actor list is empty. The feathered gate
+otherwise script index 3 selects the list at `0x1706C`. Its one record uses
+template `0x172CA` and position data at `0x17082`: actor name `lone11`, kind
+10, palette line 1, item action 3, position `(0x1100, 0x0300)`, heading
+`0xC000`, and ordered overrides `+0x2E=0xC0`, `+0x9E=0x10`. The extracted
+`world-activity-actors.tsv` preserves that row; Lua exposes the selected list
+through `World.world_activity_actors_for_script(13, 3)`. Physical-input QA
+also reaches scene 13 with bit 19 set and both runner markers clear, then
+checks that the typed selector chooses index 3. The selected actor is not yet
+materialized by the live field population/render path, so the scene remains
+partial. `ILENE_MET` is the host flag name; this source trace does not
+establish its narrative meaning, the list's dialogue, or a distinct cave
+interior. Scene 9's default actor list is empty. The feathered gate
 monument, fence panels, and two visually matching timber bridges are authored
 as scenery entities in `gameplay/world/areas/scene-09.tsv`; static rocks and
 trees are not classified as people.
@@ -446,17 +519,25 @@ enums rather than ROM address interpretation.
   coverage. The remaining coordinates are profiled, but their physical
   reachability is not thereby proven.
 - `FieldSceneRuntime::record_field_activity_start` connects maglock,
-  Security Terminal, event 29, the ordinary event-31 terminal, and the
-  Scene-26 event-31 resource main menu.
+  Security Terminal, events 25 and 27, event 29, the ordinary event-31
+  terminal, and the Scene-26 event-31 resource main menu. Scene-4 record 96
+  (`0x15BDF6`, event 27) now routes through its entity-owned Spirit Eyes Lua
+  link; ordinary-Up Debug/Release QA checks the raw `0xFFDB` dispatch and the
+  first-contact/horn-request screens. This continuation starts its activity
+  without publishing a new `FFFBF9` mode-event byte, matching the early ROM
+  branch. Scene-47 event 25 now has a Lua route for the context-`0x13` direct
+  continuation, but the contextual physical-input route and the complete
+  conversation graph remain untested.
   Scene 26 record 126 (`0x1D9E5A`, x/y `0x0200..0x021F`, event `0x1F`) has a
   physical-input QA route: Up from the adjacent cell opens Lua's resource
   `Main Menu`; Down selects `Exit`; A restores the captured Scene-2 field
   state. This verifies only the Scene-26 special-mode path. The normal-mode
   four-choice task and taxi/phone/Matrix handlers are connected in Qt, but a
   physical-input route from a map's event-31 trigger through the ordinary menu
-  remains untested. Other scene-specific event-31 paths, events 26-28 and 30,
-  context-dependent event 25, and the ordinary terminal cursor graphic remain
-  unresolved.
+  remains untested. Other scene-specific event-31 paths, events 26, 28, and
+  30, and the ordinary terminal cursor graphic remain unresolved. The final
+  item producer in the Spirit Eyes ritual is also unresolved: the Scene-47
+  handler clears Group Item bit 2 after the dialogue, and no grant was found.
 - Scene 2 event 0 and event 1 have numeric targets `0x14` and `0x1A` in the
   event table. `0x1A` is resource activity according to `0x167AE`; it is not a
   ROM place-name, so this profile does not label it “office.” The source route

@@ -2,10 +2,12 @@
 
 Status: **partial**. All five ROM offer tables and source initializer variants
 now produce Lua-owned offers, including the three Matrix difficulty variants.
-The connected New Game offer uses context 0, and the shared Wanderer Johnson
-interaction uses context 3. Contexts 1, 2, and 4 are data-backed but their
-location-specific conversation routes are not wired; scene 18's context-1
-speaker is not yet identified.
+The location routes are wired for New Game/context 0, Julius/context 1,
+Mortimer/context 2, Wanderer/context 3, and Caleb/context 4. Julius's gated
+questions and Quinton contact are implemented; Mortimer's gated information
+and $1,500 Alesandro contact are implemented. Caleb's information/contact
+branch, context-specific run returns beyond the connected Ghoul Bounty path,
+and non-Ghoul context-2 settlement remain open.
 Field completion remains incomplete for ghoul, escort, gang, recovery,
 recruitment, and Matrix return-to-Johnson paths; package delivery is the only
 connected completion route.
@@ -36,12 +38,31 @@ both the source initializer and canonical handler ID.
 - The registry chooses a source row from the selected context and dispatches
   to dedicated Lua modules for canonical run types 0 through 6. New Game still
   uses context 0.
-- New Game selects context 0, and the connected Wanderer interaction selects
-  context 3. The other contexts remain available in the typed source table,
-  but their location-specific Johnson branches are not yet connected.
+- New Game selects context 0; the scene-18, scene-11, scene-14, and scene-12
+  Johnson profiles select contexts 1 through 4. Their work branches read the
+  same typed offer tables; each location's dialogue and question gates stay in
+  its Lua content profile.
 - Gang targets and descriptions use `0xF3E7A` and `0xF36FA`. Recovery and
   recruitment use the four-site, two-site, or fixed Renraku target records in
   `0xF3E6E`/`0xF3E76`; client and presentation rolls remain in Lua state.
+- The type-3 handler at `0x1F086` compares the field area/event with the
+  selected offer target. On a match it selects one of the three source actor
+  lists (`0x1D6D4A`, `0x1D6D5E`, or `0x1D6D72`) and resource profiles, then
+  displays the entry stream at `0xFE0DE` through descriptor `0xFDE26` before
+  the area event continues. Lua now gates and presents that passage only at
+  the accepted offer's exact tuple. Scene 2/event 9 is thereby confirmed as a
+  Halloweeners contract target; the contract data still does not prove a
+  named building identity for the shared destination scene. Event-table row 9
+  still contains scene 26, but pending actor descriptors make the world
+  activity selector override that destination to field scene 15.
+  `shadowrun_ghidra_conversion_qt_field_scene2_gang_contract_entry_qa` now
+  uses ordinary Up input from the open lane south of ROM record 94, verifies
+  event 9, checks the full entry text, dismisses it, then enters scene 15 and
+  publishes all four ordered target actors at the positions read from the
+  six-byte records at `0x16A6A`. Debug/Release output is in
+  `qt_runtime/field-scene2-gang-contract-entry-qa/` (`route.tsv`, four
+  full-frame BMPs). The scene-15 actor handoff is connected; combat results,
+  payout, and an independent Genesis comparison remain open.
 - Matrix generation follows `0x1ED2C`: objective index, one of its eligible
   systems, retry until that system matches the initializer's difficulty band,
   then file size 10/20/30. Named objective text and system names use the

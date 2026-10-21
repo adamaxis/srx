@@ -1,8 +1,11 @@
 # The Big Rhino (field scene 11)
 
-Status: partial. The field map now has visual entity annotations and a
-source-linked Mortimer Reed entry profile in the map viewer. The live Qt route
-does not yet run the full scene-11 conversation or its work/quest choices.
+Status: partial. Both event-30 cells now route to Mortimer Reed's shared Lua
+Johnson interaction. The work choice opens the ROM's context-2 offer table.
+The information branch now follows the ROM's question gates and flag writes,
+and its $1,500 Alesandro contact uses a typed wallet transaction. Context-2
+non-Ghoul run settlement remains open; the independent first-entry/question
+comparison is also open.
 
 ## ROM trace
 
@@ -19,6 +22,12 @@ does not yet run the full scene-11 conversation or its work/quest choices.
   continuation, then links to `0x105558`. That menu title is `0x107DE0`; its
   three source labels are `0x104051` (information), `0x103A3A` (work), and
   `0x104FEB` (leave).
+- The work choice's command `0x0D` selects the context-2 callback `0x215DA`.
+  With no active run, it displays text `0x108501` before selecting one of the
+  eight offer records at `0xF3EBC`. The Lua location profile now uses the
+  existing ROM-derived Big Rhino offer table and the extracted work-opening
+  text. Its eight run rows remain shared data; they are not rebuilt in the
+  building script.
 - The dispatcher at `0x20AFC` selects conditional descriptor `0x10596C` when
   `FFFBEC` is negative, `FFFC1C` bit 7 is set, and the low byte of `FFFBEC`
   matches the active dialogue slot. That descriptor begins at `0x105B7A` with
@@ -46,9 +55,11 @@ does not yet run the full scene-11 conversation or its work/quest choices.
 3. **Are the visuals correct?** The source map composite and priority plane
    were inspected separately. Furniture bodies, foreground lamp pixels,
    plant pots, and plant foliage use separate parts where the source planes
-   distinguish them. The `0x121FF4` portrait was decoded at 56x72. There is no
-   independent Big Rhino dialogue frame in the inspected longplay evidence, so
-   the portrait and conversation layout have not been called Genesis-matched.
+   distinguish them. The `0x121FF4` portrait was decoded at 56x72. I inspected
+   the active Qt contact-offer and paid-result captures beside the independent
+   longplay frames at original resolution; portrait placement, panel bounds,
+   text wrapping, and option positions agree. Independent captures for the
+   first-entry and information-question pages remain open.
 4. **Is anything animated?** The map fixtures are static. The source actor list
    is empty, and the event-30 dialogue dispatch does not add a standing actor.
    No new animation cadence was inferred for the scenery. A complete trace of
@@ -60,12 +71,26 @@ does not yet run the full scene-11 conversation or its work/quest choices.
    composed map, priority overlay, route bounds, map profile, and audio profile
    as separate evidence layers. Entity previews are selection-driven; this
    slice adds no gameplay buttons or overlays over existing controls.
-7. **Do multiple frames support the interpretation?** No independent
-   gameplay frames of Mortimer's booth interaction were identified. The map
-   geometry and trigger placement are supported by extracted ROM resources and
-   the numeric event rectangles; the guide supplies a location-name
-   cross-check only.
+7. **Do multiple frames support the interpretation?** The inspected contact
+   offer is visible in
+   `video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_23_source_5220-5520/frame_000000.png`.
+   `frame_000150.png` shows the purchase result with Alesandro Hobbs in the
+   Pocket Secretary. Both are independent game captures; they corroborate the
+   portrait, offer copy, panel layout, option placement, and purchase result.
+   Booth-entry and question pages still need matching independent captures.
 
-The next source pass should trace the information and work branches selected
-from `0x105558`, including any run offer, state write, and return path, before
-the dialogue is connected to the live Qt field session.
+The information path from `0x105558` now plays `0x107FA9`, opens the category
+page at `0x108049`, and builds Julius, Mako, and Aragorn questions from the
+ROM gates in `0x2317A`. Mako's `0x23222` action sets FFFC30 bit 21; Aragorn's
+`0x2323A` action clears bit 11 and sets bit 12. Contact purchase command
+`0x50` at `0x221BA` charges 1,500 nuyen and sets FFFC2C bit 1. Fresh New Game
+already seeds that bit in `0x1C7F`, so the write does not prove a unique
+contact acquisition for Alesandro Hobbs. The shared Lua interaction and host
+wallet transaction are covered by Debug/Release script and full-screen
+dialogue tests, with `actual.bmp` captures under
+`qt_runtime/big-rhino-mortimer-visual-audit/`. A new Debug/Release
+physical-input CTest walks ordinary Up into event 30 and captures the first
+page and three-choice root under `qt_runtime/field-big-rhino-entry-qa/`; the
+Debug and Release captures match by SHA-256 and were inspected. No separate
+Big Rhino menu implementation is used. Context-2 non-Ghoul run settlement and
+independent first-entry/question visuals remain open.

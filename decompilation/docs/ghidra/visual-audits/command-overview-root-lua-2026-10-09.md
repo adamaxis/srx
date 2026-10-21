@@ -116,3 +116,22 @@ field runtime. Debug and Release captures are internal conversion evidence;
 they do not establish independent Genesis pixel fidelity. The remaining child
 screen adapters and independent Genesis command/posture sequence are still
 open.
+
+## 2026-10-18 checkout return and Start load
+
+The Stoker checkout route now verifies that the returned field clears the
+coordinator's `FFDFE8` display-service word before the next Start edge. The
+physical Hotel QA opens Start after the checkout return, records 27 complete
+320x224 black frames, verifies the command overview appears on the following
+frame, then closes it with Start and checks the field redraw and cleared gate.
+Its named captures are under `field-hotel-qa/checkout-start-black/`,
+`checkout-start-command-overview/actual.bmp`, and
+`checkout-start-return/actual.bmp`.
+
+ROM `0x10D30` switches the display off while preparing the command overview
+and switches it back on after setup. The 27-frame interval is the emulator
+observation reported in the handoff; the traced routine has no explicit
+27-VBlank loop, so the host transition models that observed interval. The
+Debug/Release route test checks the host transition and its return behavior.
+No independent Genesis capture of the Start menu or checkout sequence is in
+the reviewed material, so the visual hill remains partial.

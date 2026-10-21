@@ -37,9 +37,23 @@ not paint over the alert band or difficulty.
 - The complete 320x224 dump was inspected. Title, file class, band plus
   difficulty, and the action choices occupy distinct rows; the old compact
   stack under the top-left title is gone.
-- The supplied longplay has no Matrix node-action frame. This proves the
-  corrected host placement against the ROM draw addresses, but does not
-  independently verify the full Matrix screen appearance.
+- The original System 0 CPU fixture was not a valid comparison for the
+  longplay. The documented `matrix_node_id` seed was passed through C++ but
+  discarded by the Lua screen. The route now forwards that seed and the
+  optional IC condition into the typed Matrix session.
+- A source-matched System 2, node 1 fixture writes
+  `system-2-dead-projects-datastore.bmp`: Datastore, Dead Projects, Green-3,
+  and the actions Leave Node / Transfer Data / Erase. This matches the screen
+  content in longplay Section 21 frame `004620`. The complete 320x224 host
+  frame was inspected beside the independent compressed frame; the panel
+  geometry, rows, green grid, and labels align. The selected marker is now the
+  ROM right-arrow tile `$5FF`: `0xC0C2` uploads the font beginning at `$5AB`,
+  and `0xC376` writes `$85FF` for the selected row. Four offline assets use the
+  security-color palette line selected at `0x566D8`; the host restores the
+  tile's palette-zero transparency while compositing. This replaces the
+  incorrect ASCII `>` marker. Debug and Release captures are pixel-identical,
+  and the focused route CTest passes in both configurations. This remains a
+  visual cross-check against compressed video, not a raw-pixel golden.
 
-Status: partial. The full Matrix viewport, its source graphics, and an
-independent Genesis capture remain open.
+Status: partial. The full Matrix viewport and other node/status combinations
+remain open.

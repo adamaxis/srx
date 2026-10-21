@@ -34,6 +34,28 @@ resource scene `0x1A`; neither source labels the scene-26 map an office. The
 map's exact interior identity and any site-specific speaker/dialogue remain
 unverified.
 
+### Johnson run target at Little Chiba
+
+ROM `0x1EEDC` dispatches the active run handler before the ordinary indexed
+field-entry route. In the run table at `0xF3E56`, canonical type 4 selects
+`0x1F046` and type 5 selects `0x1F106`. Both handlers compare the current
+map/event pair (`FFFBF8/FFFBF9`) with the active target (`FFFBEE/FFFBEF`). A
+match selects the corresponding entry passage (`0xFDE0A` for type 4,
+`0xFDE2E` for type 5), then the field exit resumes the map's event-table
+destination after the dialogue closes. Little Chiba's pair is map 2/event 1,
+and its event-table destination remains scene 26.
+
+The physical QA seeds a type-4 or type-5 active offer with that exact target,
+walks into scene-2 collision record 93 using ordinary input, checks the
+matching passage, dismisses it with A, and verifies resource scene 26 loads.
+The full 320x224 dialogue and destination frames are in
+`field-scene26-package-recovery-entry-qa/` and
+`field-scene26-johnson-run-entry-qa/`; Debug and Release tests pass. The
+standard offer target pools at `0xF3E6E` and `0xF3E76`, plus the fixed Renraku
+target, do not generate map 2/event 1. This QA therefore verifies the ROM's
+pair-matched handler and transition path, not normal offer generation for
+Little Chiba. It does not establish independent Genesis pixel fidelity.
+
 The Qt test is
 `shadowrun_ghidra_conversion_qt_field_scene26_event1_entry_qa`. Debug and
 Release each produce 15 full 320x224 BMP captures in
@@ -98,7 +120,9 @@ contains no runtime audio events.
   it exercises the existing typed collision and world-activity path.
 - **Behavior implemented and checked:** normal input traverses the source
   doorway geometry, publishes event 1, selects row 1, and loads scene 26 as a
-  resource activity. Debug and Release focused CTests pass.
+  resource activity. Seeded type-4 and type-5 active target pairs show their
+  respective entry passages before the same transition. Debug and Release
+  focused CTests pass.
 - **Independently visually checked:** section-03 frames 000029-000048 support
   the scene-2 map and HUD at the spawn. No matching Genesis frames for this
   exact route or destination entry were found.

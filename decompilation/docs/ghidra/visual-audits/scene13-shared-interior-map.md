@@ -1,8 +1,9 @@
 # Scene 13 shared interior map
 
 Status: partial. The map viewer now has named visual entities for the room
-fixtures and source-linked Gunderson interaction. The work-contract branch and
-scene-13 event-0 return route are still unresolved.
+fixtures and source-linked Gunderson interaction. Debug and Release physical
+input QA verifies the scene-13 south-edge event-0 route into numeric field
+scene 0. The work-contract branch remains unresolved.
 
 ## Source profile
 
@@ -20,9 +21,13 @@ scene-13 event-0 return route are still unresolved.
   information/question/contact branches, including the 1,000-nuyen Decker
   contact check. The work contract is not connected yet.
 - Scene 13 records 9 and 10 (`0x1B3CE4`, `0x1B3CEE`) are event-0 cells at
-  `(64,224)` and `(96,224)`, outside the visible map's 224-pixel height. Their
-  exit/return behavior and destination are unresolved; the viewer retains their
-  source rows without naming a doorway or destination.
+  `(64,224)` and `(96,224)`, at the south edge of the map. The profile's event
+  table pointer is null; the generic selector at `0x167AE` reads ROM byte 0,
+  selecting numeric field scene 0. Lua records this as a static area-event
+  override. Debug and Release ordinary-Down QA reaches scene 0 from the Scene
+  13 profile spawn and saves full 320x224 frames; matching captures have the
+  same SHA-256. The trace does not identify scene 0 as the prior caller map or
+  establish a door-relative spawn/facing rule.
 - Other district maps also have ROM routes to numeric scene 13. The viewer
   calls it a shared interior map and shows incoming routes individually; the
   Jump House name is a route cross-reference, not a universal scene identity.
@@ -35,8 +40,10 @@ scene-13 event-0 return route are still unresolved.
    extracted map pixels.
 2. **Does the look reflect behavior?** Event 30 is attached to the northwest
    booth, where the source branch selects Gunderson. Scene 13 has no default
-   actor records, so no NPC body is placed in the room. The event-0 cells stay
-   unresolved.
+   actor records, so no NPC body is placed in the room. The event-0 cells select
+   field scene 0 through the null-table fallback; they have no traced dialogue.
+   The runner enters at Scene 13's source profile position and walks south to
+   those cells during physical QA.
 3. **Are the visuals correct?** The room composite and priority plane are
    treated separately. Counter rail, table lamps, and the inset's bright edge
    are priority parts; no single rectangle is used to label the whole floor.
@@ -56,6 +63,6 @@ scene-13 event-0 return route are still unresolved.
    portrait/panel behavior, not the map's full object contours or every
    incoming route into shared scene 13.
 
-The next pass should trace event-0's callers and return placement, complete the
-Gunderson work-contract state flow, and profile the remaining shared map
-destinations before assigning them building names.
+The next pass should complete the Gunderson work-contract state flow and
+profile the remaining shared map destinations before assigning them building
+names.

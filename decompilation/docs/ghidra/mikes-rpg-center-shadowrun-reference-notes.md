@@ -414,14 +414,12 @@ site does not say the motel has a dedicated interior map.
   writers and Harlequin choices to the live Johnson-menu option at `0x1045B0`
   and action `0xE7`. The downstream event-7 pages and award run after the
   prerequisite is present; current QA seeds that prerequisite.
-- Finish the source-profiled Jump House script: ordinary-movement QA for
-  scene-13/event-30; full question/contact/work flows and their state/wallet
-  effects; entry and work audio/timing; and the unknown event-0 exit route.
+- Finish the source-profiled Jump House script: full question/contact/work
+  flows and their state/wallet effects; entry and work audio/timing. Scene-13
+  event-30 and event-0 physical routes now have Debug/Release QA.
   The first work contract composes location/message records around `0xF2196`,
   `0xF21DD`, and `0xF23B2..0xF241F`; its formatted salary prompt is at
   `0x1060E0` or `0x106171` according to the source branch.
-- Trace scene-13 event-0 records 9/10 before implementing the exit route and
-  its return destination.
 - Profile the other scene-2 event rectangles against the same map image and
   label only correspondences supported by both geometry and ROM paths.
 - The site provides no button/menu layout or animation timing evidence. The

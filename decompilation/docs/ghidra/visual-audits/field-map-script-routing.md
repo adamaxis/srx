@@ -27,14 +27,29 @@ records.
 |---|---|---|
 | Scene 2, collision value `0xC2` at ROM `0x173138`, field mode 2/event 2 | `building.lua` location route, then Lua story/menu package | `0x1F65A` selects the generic Stoker arrival dialogue; Lua resolves first/repeat/ordinary story state and supplies manager choices; native handlers apply selected actions |
 | Scene 2, collision value `0xCB` at ROM `0x173142`, field mode 2/event 11 | Ares service script | `0x1FA78` selects the Ares mode-text prompt; A opens the shop and Start returns |
-| Scene 2, paired collision values `0xC0` at ROM `0x173124` and `0x17312E`, event 0 | `building.lua` reads the active map's ROM event table | Row 0 in `0x172CDC` selects numeric scene `0x14` (scene 20); the identifier does not supply a place-name |
-| Scene 20, record 110 at `0x1D96DE`, raw `0x00C0`, event 0 | Scene-`0x14` generic interaction | No event-table destination exists. `0xB7B8` -> `0x1651E` returns carry on zero event and begins the normal field transition; `0x16E30`, `0x2FA4`, and `0x2F32` preserve/restore the source scene context and actor anchors. Debug/Release QA reaches the record with eight ordinary Left updates around adjacent record 109's `0x7F` wall, then held Up; the first raw C0 sample is followed by the zero-event dispatch on the next service update. The route returns to the saved Scene 2 doorway contact, then held Down clears the retry latch before fresh Right. Exact ROM-facing restoration remains open. |
+| Scene 2, paired collision values `0xC0` at ROM `0x173124` and `0x17312E`, event 0 | `building.lua` reads the active map's ROM event table | Row 0 in `0x172CDC` unconditionally selects numeric scene `0x14` (scene 20); the identifier does not supply a place-name. `0x167AE` separately checks FFFC2C bit 26 at `0x1689A`; when set, it clears the bit and schedules `0x1DBAA`'s timeout without changing the destination. |
+| Scene 20, record 110 at `0x1D96DE`, raw `0x00C0`, event 0 | Scene-`0x14` generic interaction | No event-table destination exists. `0xB7B8` -> `0x1651E` returns carry on zero event and begins the normal field transition; `0x16E30`, `0x2FA4`, and `0x2F32` preserve/restore the source scene context and actor anchors. Debug/Release QA reaches the record with eight ordinary Left updates around adjacent record 109's `0x7F` wall, then held Up; the first raw C0 sample is followed by the zero-event dispatch on the next service update. On return, the route restores the Lua-selected source collision-probe lead anchor at (3884,10700), 350 source position units (21.875 map pixels) beyond the contact at (3884,10350), outside the expanded trigger envelope. scene2-c0-return-source.tsv records the selected bank and positions; the CTest asserts that the runner resumes with the opposite of the entry heading. ROM 0xBC36/0xBD34 and 0x2F32 support the anchor and camera. The opposite-facing choice is the requested route policy; no independent Genesis capture confirms that heading write. Held Down clears the retry latch before fresh Right. |
 | Scene 2, collision value `0xC1` at ROM `0x17314C`, event 1 | `building.lua` reads the ROM event table and passes the target to the world-activity service | Row 1 in `0x172CDC` selects numeric scene `0x1A` (scene 26); its resource bundle has bound 3 |
 | Scene 26-29 family, paired `0xDD` collision rectangles, event 29 | `building.lua` resolves the source child group and selected destination; native code presents the selector and transition | `0x58D94` calls `0x58DE0`; the typed child scene group contains scenes 26, 27, and 28. Debug/Release physical QA covers scene 26->28 and the later scene-28 trigger after the source activity timeout expires. This is separate from the Stoker scene-2 event-2 dialogue route; map identity remains open |
 | Scene 20, collision value `0x82` at ROM `0x1D9724`, event 2 | Building interaction continuation | The electromagnetic-lock handler `0x20E48` opens its generic prompt. Physical QA covers quality-2 passkey success, quality-1 insufficiency, Samurai no-skill result, Decker no-kit partial result, and Decker kit-assisted success. The no-kit roll reduces selection 2->1 without sound/map change; physical recontact reloads selection 2 through `0xB994`. A QA-seeded item `0x15` plus source-seeded three-roll success then requests `0x4B`; `0x2BD2` changes map index 483 from `0x82` to `0x81` only after the result is acknowledged. No-skill/partial/insufficient branches preserve the map and add no action sound. Kit acquisition and other passkey qualities remain open. Seed 0 now follows the ordinary scene-20 zero-roll branch: the alert page is static for 30 frames, selection/inventory/map stay unchanged, and ROM 0x1E04A schedules timeout marker -1 for 0x78 frames without a scene-20 sound request. A field frame hands world_active=0xFFFF to the 0x1DE00 entity-target selector; its downstream actor/effect boundary remains unresolved. Exact independent maglock visuals remain open. |
 | Scene 26, collision record 117 (`0xA2`) at ROM `0x1D9E00`, world-mode-2 event 2 | Generic electromagnetic-lock continuation and passkey action | `0xB7B8` reaches `0x20E48`; descriptor-route CTest seeds active runner item `0x14`/quality 2, verifies sound `0x4B`, and checks sampled map index 712 changes `0xA2` to `0xA1` before ordinary Right input crosses the passage. Traversal clears that marker from the active collision buffer |
 | Scene 26, collision record 110 (`0x82`) at ROM `0x1D9DBA`, event 2; then `0xD8` records 124/125 at `0x1D9E46`, event `0x18` | Shared maglock continuation followed by typed Security Terminal continuation | The same live passkey changes sampled map index 525 from `0x82` to `0x81`; ordinary input follows the collision grid around the `0x7E` wall into the D8 lane. `0xB7B8` requires two negative samples and selects `0x20EC2`; the descriptor-spawn route opens the Electronics/Walk Away prompt. A separate checkpoint QA remains as focused coverage |
 | Any remaining in-range map-table event | Active map's own event table | The selected row is passed to the existing world-activity coordinator; missing/out-of-range tables remain unresolved |
+
+## Scene-20 entry marker and timeout
+
+The Hollywood Correctional doorway is not quest-gated: Scene 2's event-table
+row 0 always selects field Scene 20. After the destination profile loads,
+`0x167AE` checks FFFC2C bit 26 at `0x1689A`. If set, it clears only that bit
+and calls `0x1DBAA` to arm the 120-frame timeout; it does not replace or block
+Scene 20. The host now reads FFFC2C separately from FFFC1E, preserves the
+timeout across the final `0x2BD2` scene re-entry, and leaves the bit's story
+meaning and producer unresolved. Debug/Release CTest
+`shadowrun_ghidra_conversion_qt_field_scene20_entry_gate_qa` exercises the
+ordinary Scene-2 doorway with bit 26 seeded, verifies the bit is consumed and
+the timeout remains armed, and writes a full-screen `actual.bmp`. The existing
+physical-entry QA covers the clear-bit case. The image was inspected as a
+native render; no independent Genesis capture of this route has been identified.
 
 The first Stoker approach is automatic. `0x59C5E` sets `FFE18B` before the New
 Game opening. The field entry at `0x075E` initializes the ordinary scene-2 map
@@ -126,20 +141,87 @@ resource scene 26, Ghoul Warehouse event 8 to numeric scripted scene 52,
 Hollywood Correctional Facility event 0 to scene 20 when the source table
 selects it, and Little Chiba's event 1 to numeric resource scene 26. The
 destination bytes are cross-checked against the imported ROM table at runtime.
-Event 3's conditional maglock, event 7's conditional Vigore handler, and
-unresolved/guide-only site identities remain on their existing source route;
-this initial entity set is not a complete route census. In particular, the
-ROM census's 892 rows are event-bearing collision rectangles, not 892
-independently proven doors or reversible links.
+Scene-2 event 3 also publishes to its event-table row in ordinary field mode;
+it does not invoke the conditional maglock. Scene-4 events 3 and 4 have
+separate Medicine Lodge and Hospital service routes. The shared conditional
+maglock branch for event codes 2-5 applies in Scene 20 and resource-activity
+scenes 21-43. Event 7 has its conditional Vigore handler, and unresolved or
+guide-only site identities remain on their existing source route. This initial
+entity set is not a complete route census. In particular, the ROM census's
+892 rows are event-bearing collision rectangles, not 892 independently proven
+doors or reversible links.
 
-The Stoker hotel checkout retains its dedicated ROM return path. Its saved
-lead position and camera now come from the already-expanded `0xBC36` probe
-triplet / `0xBD34` offset bank, rather than a hand-authored four-heading offset
-table. The current code resumes with the opposite heading. The available
-route evidence does not yet establish that heading against an independent
-Genesis capture, and this Stoker-specific return must not be generalized to
-other maps. Generic field/resource activity returns still use their captured
-source-scene snapshot; other building exit paths remain open.
+The reusable route model now supports several source-confirmed outcomes for
+one event. Entity `links.tsv` rows may use `route_priority` and a
+`route_conditions` conjunction over Lua state facts and active/current run
+IDs; equal-priority matches stay unresolved and fall back to the ROM event
+table. Entry passages use
+`entry_conditions`, `entry_alternate_result`, and named Lua task/location
+fields. An optional `entry_continue_result_id` lets the task return to the
+source map when a guard or quest dialogue denies entry. The host preserves the
+typed destination during the modal and consumes it only when Lua returns the
+declared result. Jump House now uses this shared path: service 22's clear
+`FFF0D5` branch opens its ROM-derived Lua passage and then resumes scene 13.
+Its ordinary-input QA checks the dialogue result and the clean destination
+redraw. Lua route tests cover story-fact and run-state variants, priority
+ties, and entry task selection.
+
+The entity sweep now has 68 explicit Lua link rows in 57 entity files across
+scenes 0-7: 57 event-table routes, three Tarislar service-21 overrides, seven
+field services, and one same-map dialogue route. Event IDs 2-5 alone do not
+identify a maglock route: `0xB7B8` selects the lock prompt only in Scene 20 or
+resource-activity mode (scene IDs 21-43). Field scenes 0-19 publish those
+events to their map tables. Five
+Scene-5 sites select resource-activity destination 35. The four Weapon's
+World, Wire-Masters, Merlin's Lore, and Microtronics links remain numeric-only;
+Renraku Offices now has a conditional title-service-12 arrival page when
+story bit 16 is set, bit 12 is clear, and alternate result is zero. Penumbra
+Fuchi similarly gets its title-service-14 cyber-heart entry page when bit 25
+is set, bit 14 is clear, and alternate result is zero. Both preserve their
+ROM event-table destinations (35 and 21) after the entry task returns.
+Gates Undersound's title service 15 now uses the same link mechanism: after
+bit 11 is set and bit 15 is clear, it shows the one-page Ogami departure text,
+clears FFFC30 bit 26, sets bit 27, marks bit 15, and returns to scene 0 even
+though the generic event-table row points to activity 21.
+Another link records Scene 7's longhouse event-0 destination as field scene
+13; the guide's Stark label does not establish the room or speaker. Each
+ordinary area row is joined to an exact `interactables.tsv` ROM record and its
+event-table byte; the route resolver checks that byte before selecting the
+authored numeric target. These additions cover only the traced entry pages:
+the remaining prompt branches, FFE184/FFE187 side effects, and physical field
+approach/destination checks are open. The four Scene-5 stores still need
+their shop catalogs and activity return behavior. Scene-1 Tarislar now has physical QA for its first-authorized
+Harlequin conversation, its guarded leave branch, and its gated tomb-departure
+Yes route into scene 54. The first conversation returns to scene 1; the tomb
+route requires story bits 30, 21, 16, 28, 26, and 27 plus alternate result 0.
+The repeat information branch, upstream Frosty choice, pending-descriptor
+override, and scene-54 completion/return remain open.
+
+The named-route sweep still has source-profiled gaps. Scene-1 Tarislar Garden
+Apartments has indexed service 21 and story-bit gates. The first-authorized
+conversation, guarded leave path, and gated tomb-departure Yes route are
+Lua-backed and physically QA-covered. The repeat information branch, upstream
+Frosty action, pending descriptor override, and scene-54 return are not fully
+connected. Other map-guide labels often have only a numeric event-table
+destination; the guide name does not establish an interior dialogue. The
+per-scene route manifests now reflect the `0xB7B8` mode gate instead of
+inferring a maglock from event IDs 2-5 alone. See the [Tarislar audit](puyallup-tarislar-apartments.md)
+and each `scene-NN-site-routes.tsv` manifest before adding a location row.
+
+The entity-owned `links.tsv` rows now carry return-anchor and return-facing
+policy for all 60 traced map-transition variants across scenes 0-7, except
+Scene 4/event 6, whose connection to the Medicine Lodge remains unresolved.
+For links marked `collision_probe_lead`, the field coordinator captures the
+already-expanded 0xBC36/0xBD34 point 0 and its camera before leaving. Activity
+returns apply that anchor to the restored source-scene snapshot; the shared
+Lua route policy turns the runner away from the entrance. Scene-2 C0 -> scene
+20 returns from contact (3884,10350) to (3884,10700). The ROM trace establishes
+the position/camera anchor; the heading flip is the requested host policy and
+is not claimed as a recovered ROM write. Debug and Release route tests assert
+the typed policies, and the physical Scene-2 return tests cover the contact
+and restored field view. No independent Genesis capture verifies the return
+heading. The 892 event-bearing collision rectangles are not 892 proven doors;
+untraced reverse links and the other scene maps remain open.
 
 The scene-2 C1 route is exercised from the New Game spawn with normal
 controller input. It walks east through the open southern lane, then north

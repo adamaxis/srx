@@ -1,8 +1,11 @@
 # Icarus Descending (field scene 12)
 
-Status: partial. The map viewer now has source-linked room fixtures and the
-Caleb Brightmore text/portrait profile. The native game route does not yet run
-the complete Icarus conversation, contact purchase, or job branches.
+Status: partial. The map viewer has source-linked room fixtures and Caleb's
+text/portrait profile. Both the bodyguard rejection and the accessible Caleb
+branch now use the scene entity's Lua link. The first-meeting, repeat, and
+post-run conversation roots are connected through the shared Johnson system;
+the information/contact branch, full run outcome, and an independent Genesis
+capture of the scene remain open.
 
 ## ROM and route trace
 
@@ -18,6 +21,40 @@ the complete Icarus conversation, contact purchase, or job branches.
   the bit clear, it displays descriptor `0x1056A4` / text `0x108796`, where
   two bodyguards block the booth. With the bit set, the branch uses dialogue
   slot 4 and profile sprite `0x121E98` for Caleb Brightmore.
+- The bit-clear branch now resolves through the reusable scene-entity link on
+  `icarus_descending_booth` to the Lua task
+  `icarus_descending.present_access_blocked`. The task checks event 30 and bit
+  10 again, then presents the bodyguard-blocked page without changing story
+  state. The embedded script-runtime test covers route selection and text. The
+  physical-input QA reaches this branch from south of the event rectangle with
+  ordinary Up movement and checks that the access bit, referral flags, and
+  runner counters stay unchanged.
+- With bit 10 set, the same entity link selects `johnson.interaction` and
+  Caleb's location profile. ROM `0x20A78..0x20AA4` sets FFFC27 bits 4 and 7
+  and applies `+2` to each of the three runner source-byte records on first
+  contact. Lua records those bits as the access/contact and first-visit facts,
+  presents the two first-meeting pages, then opens the three-choice root.
+  Repeat visits use the regular opening; the source post-run gate selects the
+  post-run root. The work choice reaches the shared offer system with context
+  4 and Caleb's source work-opening page.
+- `shadowrun_gameplay_script_runtime_qa` now verifies the accessible route,
+  first-visit service request, both pages, root choices, leave page, persisted
+  facts, and context 4 in Debug and Release. This is script-runtime coverage;
+  the dedicated physical-entry CTest below covers the accessible event path.
+- `shadowrun_ghidra_conversion_qt_field_icarus_caleb_entry_qa` starts south of
+  the ROM rectangle, sets the known access fact and New Game FFFC27/counter
+  values, then uses ordinary Up input. It verifies the first page, Caleb's
+  continuation, three-choice root, FFFC27 bits 4/7, and all three source-byte
+  counters at +2. Debug and Release capture the complete 320x224 pages and
+  root under `qt_runtime/field-icarus-caleb-entry-qa/`; matching file hashes
+  confirm deterministic host output. I inspected the full Debug and Release
+  captures.
+- `shadowrun_ghidra_conversion_qt_field_icarus_blocked_entry_qa` uses the same
+  physical checkpoint with FFFC1E bit 10 clear. Debug and Release reach the
+  bodyguard page through normal movement, verify the clear gate and unchanged
+  FFFC27/runner counters, and write complete 320x224 `access-blocked` and
+  `actual` captures. I inspected both configurations; their capture hashes
+  match.
 - The dispatcher selects first-meeting descriptors `0x1056AC` / `0x1056F8`
   and text `0x10863E` / `0x1086C6`, a repeat opening at `0x1056C0` / `0x108886`,
   or the conditional post-run descriptor `0x1059A4` / text `0x105C55`. The
@@ -63,6 +100,9 @@ the complete Icarus conversation, contact purchase, or job branches.
    no second independent gameplay frame of this room in the currently reviewed
    evidence, so repeated-frame visual corroboration remains pending.
 
-The next source pass should trace the Caleb information/work choice commands,
-contact purchase outcomes, and the meaning/writers of the two state gates
-before connecting those branches to the native runtime.
+The first/repeat/post-run conversation entry and work-offer handoff are
+connected. The information choice's contacts offer, its 2,000-nuyen purchase
+result, work acceptance/run settlement, and the meaning/writers for the entry
+and post-run gates still need ROM tracing and outcome tests. The physical
+captures are host regressions; no independent Genesis frame of this encounter
+has been identified. The two floor records remain unresolved.

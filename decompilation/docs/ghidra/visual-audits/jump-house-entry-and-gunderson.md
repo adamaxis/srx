@@ -4,8 +4,11 @@ Status: partial. The scene-2 entry description is connected to the live field
 route and has ordinary-input QA. Scene-13 event 30 opens the Lua Johnson
 interaction. The baseline question chain, source-gated Vigore/Errascoe
 branches, and Decker contact purchase are connected through the shared Lua
-presenter. The live event-30 movement trigger, work-contract transaction,
-and scene-13 exit remain open.
+presenter. Debug and Release ordinary-input QA now covers event 30 and the
+Scene-13 south-edge event-0 route into field scene 0. The work-contract
+transaction and independent contact-screen comparison remain open. Event 0
+does not prove a dynamic return to the prior map or an exit placement/facing
+override.
 
 ROM values and control flow below are primary. Mike's map supplies a
 human-readable location label; section-03 longplay frames supply independent
@@ -203,7 +206,7 @@ duration. The contact branch has no independent capture in the supplied video.
   including the separate 999-nuyen unchanged-wallet case. Debug and Release
   runs each capture twenty full 320x224 screens under
   `qt_runtime/jump-house-visual-audit/`.
-- Still required: ordinary-input QA for scene-13 event 30; the FFFC27 bit-3
-  alternate response; work-contract/quest flow; event-0 exit trace; source
+- Still required: the FFFC27 bit-3 alternate response; work-contract/quest
+  flow; source
   audio and duration trace; actor placement and transition timing; and an
   independent Genesis capture for the Decker contact screens.
