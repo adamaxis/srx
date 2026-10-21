@@ -17,6 +17,11 @@ scene 0. The work-contract branch remains unresolved.
   `lone11_k0a_item03` at `(4352,768)`; the flag does not gate either entrance.
   This route evidence does not establish that the shared room is a named shop
   interior or that the Lua service-title key opens a shop catalog.
+- Puyallup record 74/event 6 (guide crosswalk: Dr. Bob's Quickstitch Clinic)
+  also selects Scene 13 with the same zero-fund/no-dialogue behavior and bit-19
+  actor gate. Its dedicated Debug/Release route QA verifies the source
+  rectangle and transition; it does not establish a clinic menu or treatment
+  interaction.
 - Scene 13 has no default map actors. The Gunderson portrait selected by event
   30 is dialogue art, not a resident sprite.
 - Scene 13 records 11 and 12 (`0x1B3CF8`, `0x1B3D02`) are adjacent event-30

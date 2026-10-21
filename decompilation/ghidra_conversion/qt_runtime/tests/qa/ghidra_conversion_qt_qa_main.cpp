@@ -10878,6 +10878,9 @@ constexpr Scene1IleneGateEntrance kCrimeMallIleneGateEntrance{
 constexpr Scene1IleneGateEntrance kRiannonsIleneGateEntrance{
     "Riannon's Magic Shop", 72U, 0x17D9D4U, 3U, 13U, 0x0060U,
     0x007FU, 0x0380U, 0x039FU, 0x00C3U, {112U * 16U, 936U * 16U}};
+constexpr Scene1IleneGateEntrance kDrBobsIleneGateEntrance{
+    "Dr. Bob's Quickstitch Clinic", 74U, 0x17D9E8U, 6U, 13U, 0x0520U,
+    0x053FU, 0x0380U, 0x039FU, 0x00C6U, {1328U * 16U, 936U * 16U}};
 
 int run_scene1_ilene_gated_entry_qa(
     const StartupIntegrationState& startup_state,
@@ -21365,6 +21368,8 @@ int main(int argc, char** argv) {
             field_crime_mall_ilene_gate_qa_path;
         std::optional<std::filesystem::path>
             field_riannons_magic_shop_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_dr_bobs_clinic_entry_qa_path;
         std::optional<std::filesystem::path> field_transition_qa_path;
         std::optional<std::filesystem::path> field_world_activity_qa_path;
         bool field_audio_qa = false;
@@ -21556,6 +21561,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_riannons_magic_shop_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-dr-bobs-clinic-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_dr_bobs_clinic_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-transition-qa" &&
@@ -22933,6 +22945,7 @@ int main(int argc, char** argv) {
                 field_movement_qa_path.has_value() ||
                 field_crime_mall_ilene_gate_qa_path.has_value() ||
                 field_riannons_magic_shop_entry_qa_path.has_value() ||
+                field_dr_bobs_clinic_entry_qa_path.has_value() ||
                 field_matrix_cyber_info_qa_path.has_value() ||
                 field_matrix_traversal_entry_qa_path.has_value() ||
                 field_wylie_gala_inn_qa_path.has_value() ||
@@ -22959,15 +22972,20 @@ int main(int argc, char** argv) {
                 return 3;
             }
             if (field_crime_mall_ilene_gate_qa_path.has_value() ||
-                field_riannons_magic_shop_entry_qa_path.has_value()) {
+                field_riannons_magic_shop_entry_qa_path.has_value() ||
+                field_dr_bobs_clinic_entry_qa_path.has_value()) {
                 const auto& path =
                     field_crime_mall_ilene_gate_qa_path.has_value()
                         ? *field_crime_mall_ilene_gate_qa_path
-                        : *field_riannons_magic_shop_entry_qa_path;
+                        : field_riannons_magic_shop_entry_qa_path.has_value()
+                        ? *field_riannons_magic_shop_entry_qa_path
+                        : *field_dr_bobs_clinic_entry_qa_path;
                 const auto& entrance =
                     field_crime_mall_ilene_gate_qa_path.has_value()
                         ? kCrimeMallIleneGateEntrance
-                        : kRiannonsIleneGateEntrance;
+                        : field_riannons_magic_shop_entry_qa_path.has_value()
+                        ? kRiannonsIleneGateEntrance
+                        : kDrBobsIleneGateEntrance;
                 return run_scene1_ilene_gated_entry_qa(
                     smoke_state, asset_root,
                     path, entrance);

@@ -413,6 +413,13 @@ add_shadowrun_qt_qa_case(
     --field-riannons-magic-shop-entry-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-riannons-magic-shop-entry-qa")
 
+# The clinic's event-6 doorway is another source-routed entrance to Scene 13.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_dr_bobs_clinic_entry_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-dr-bobs-clinic-entry-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-dr-bobs-clinic-entry-qa")
+
 # Every accepted collision is policy-routed through field_events.lua; the
 # native event system records the typed result and still supports scoped
 # scene-entry and actor-within-scope rules.
