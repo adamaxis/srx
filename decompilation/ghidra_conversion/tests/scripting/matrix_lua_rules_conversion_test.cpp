@@ -79,6 +79,8 @@ eq(Session.program_mode_from_buttons(E.Pad.C | E.Pad.A),
 eq(Session.program_mode_from_buttons(E.Pad.A | E.Pad.B),
    E.MatrixModeResult.BALANCED, "ROM A takes priority over simultaneous B")
 
+-- Keep these Matrix rule fixtures scoped so later cases can declare locals.
+do
 local function run_matrix_medic(roll_result)
     local record = {
         active = { [0] = Programs.P.MEDIC, [1] = -1, [2] = -1,
@@ -1278,6 +1280,7 @@ eq(expired, true, "zero shroud expires")
 local x, y = Programs.dump_jitter(0x8185)
 eq(x, -5, "dump jitter signed x")
 eq(y, -1, "dump jitter signed y")
+end
 
 -- A type-six objective is projected from the Lua run registry into the
 -- Matrix action transaction, then saved with that active offer.
@@ -1380,7 +1383,11 @@ local random_call = 0
 local random_rolls = { 7 }
 game = {
     modules = { run_support = Support },
-    runs = { registry = Registry, matrix_objective = MatrixRun },
+    runs = {
+        registry = Registry,
+        matrix_objective = MatrixRun,
+        matrix_objective_probe = run_probe,
+    },
     services = {
         call = function(service, operation)
             if service == "runner" and operation == "negotiation_skill" then
