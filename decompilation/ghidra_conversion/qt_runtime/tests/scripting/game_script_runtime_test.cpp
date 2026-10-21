@@ -366,6 +366,10 @@ int main() {
         scripts.world_activity_actors_for_script(13U, 2U);
     const auto ilene_pending_list =
         scripts.world_activity_actors_for_source_list(20U, 0xA8CCU);
+    const auto ilene_selected_pending_list =
+        scripts.pending_world_activity_actor_list_for_scene(20U, false, true);
+    const auto ilene_blocked_pending_list =
+        scripts.pending_world_activity_actor_list_for_scene(20U, true, true);
     if (!expect(
             ilene_gate_actors.has_value() &&
                 ilene_gate_actors->size() == 1U &&
@@ -435,7 +439,10 @@ int main() {
                 ilene_pending_list->front().ordered_overrides ==
                     "0x9E=0x20,0x2E=0x80,0x9E=0x8" &&
                 ilene_pending_list->front().source_spawn_state_flags ==
-                    0x08U,
+                    0x08U &&
+                ilene_selected_pending_list == 0xA8CCU &&
+                !ilene_blocked_pending_list.has_value() &&
+                scripts.failure().empty(),
             "Lua did not return the typed ROM scene actor lists")) {
         std::cerr << "scene script actor lookup: " << scripts.failure()
                   << '\n';

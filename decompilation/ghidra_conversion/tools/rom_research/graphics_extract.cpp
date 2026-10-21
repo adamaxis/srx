@@ -6669,6 +6669,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint32_t list_offset;
         std::string list_id;
         std::string activation_rule;
+        std::int8_t world_effect_active_gate = -1;
+        std::int8_t pending_world_effect_gate = -1;
     };
     struct WorldActivityActorTemplateFacts {
         std::uint8_t source_spawn_state_flags = 0U;
@@ -6723,6 +6725,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint16_t heading;
         std::string overrides;
         std::string activation_rule;
+        std::int8_t world_effect_active_gate = -1;
+        std::int8_t pending_world_effect_gate = -1;
         WorldActivityActorTemplateFacts template_facts;
     };
     const std::array<WorldActivityActorList, 14> kWorldActivityActorLists{{
@@ -6747,7 +6751,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         {0x13U, 9, 0x16FFCU, "scene_19_script",
          "0x167AE: neither runner marker is 1"},
         {0x14U, -1, 0xA8CCU, "scene_20_ilene_pending_list",
-         "0xA800: FFE180 clear and FFE182 set"},
+         "0xA800: FFE180 clear and FFE182 set", 0, 1},
         {0x2FU, -1, 0x1E552U, "mode_13_entry",
          "0x2CE0 mode 0x13 transition, with FFFC1E bit 8 clear"},
         {0x2FU, -1, 0x1E5C4U, "pending_list_1e5c4",
@@ -6908,6 +6912,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 heading,
                 first_override ? "-" : overrides.str(),
                 list.activation_rule,
+                list.world_effect_active_gate,
+                list.pending_world_effect_gate,
                 template_facts,
             });
             cursor = next_record;
@@ -6960,6 +6966,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                  "\tsource_action_ammo\tsource_action_counter"
                  "\tpalette_line\tworld_x\tworld_y\tinitial_heading"
                  "\tordered_overrides\tactivation_rule"
+                 "\tworld_effect_active_gate\tpending_world_effect_gate"
                  "\tsource_spawn_state_flags\tsource_interaction_flags"
                  "\tphysical_meter\tdelay_primary_attribute"
                  "\tdelay_secondary_attribute\tdelay_capability_flags"
@@ -7007,6 +7014,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                   << actor.world_x << '\t' << actor.world_y << '\t'
                   << actor.heading << '\t' << actor.overrides << '\t'
                   << actor.activation_rule << '\t'
+                  << static_cast<int>(actor.world_effect_active_gate) << '\t'
+                  << static_cast<int>(actor.pending_world_effect_gate) << '\t'
                   << static_cast<unsigned>(
                          actor.template_facts.source_spawn_state_flags) << '\t'
                   << static_cast<unsigned>(

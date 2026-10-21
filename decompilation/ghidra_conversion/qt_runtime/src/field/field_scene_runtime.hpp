@@ -299,6 +299,9 @@ public:
     std::optional<std::string>
     world_activity_script_actor_profile_for_dump(
         std::uint16_t source_order) const;
+    std::optional<FieldWorldActorSlot>
+    world_activity_script_actor_record_slot_for_dump(
+        std::uint16_t source_order) const noexcept;
     std::size_t visible_default_actor_count_for_dump() const;
     std::vector<SceneRunnerPosition>
     active_default_actor_positions_for_dump() const;
@@ -2223,6 +2226,9 @@ private:
     // FFE182 selects the ROM's pending entity-list handoff. It is transient
     // field state and is not part of the persistent story/save flags.
     bool field_pending_world_effect_ = false;
+    // FFE180 suppresses pending-list selection while a higher-priority
+    // world effect is active.
+    bool field_world_effect_active_ = false;
     // ROM FFFC40: separate world-activity facts, including Spirit Eyes
     // component-request markers at bits 0..2.
     std::uint32_t field_auxiliary_flags_ = 0;

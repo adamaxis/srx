@@ -5878,13 +5878,20 @@ int run_field_scene20_physical_entry_qa(
         field_scene.state().field_scene_buffers.source_metadata;
     const auto expected_scene20_position =
         scene20_metadata.initial_field_records[0U];
+    const bool ilene_pending_list =
+        path == Scene20PhysicalEntryQaPath::ilene_prerequisite;
     if (field_scene.default_actor_count_for_dump() != 7U ||
-        field_scene.visible_default_actor_count_for_dump() != 2U) {
+        (!ilene_pending_list &&
+         field_scene.visible_default_actor_count_for_dump() != 2U) ||
+        (ilene_pending_list &&
+         field_scene.world_activity_script_actor_count_for_dump() != 1U)) {
         std::cerr << "Scene-20 physical-entry QA: source-slot-limited default "
-                     "actor population did not match (loaded="
+                     "and pending actor population did not match (loaded="
                   << field_scene.default_actor_count_for_dump()
                   << ", on-screen="
                   << field_scene.visible_default_actor_count_for_dump()
+                  << ", activity="
+                  << field_scene.world_activity_script_actor_count_for_dump()
                   << ")\n";
         return 3;
     }
@@ -5912,21 +5919,62 @@ int run_field_scene20_physical_entry_qa(
     }
     write_state("scene20-entry");
     if (path == Scene20PhysicalEntryQaPath::ilene_prerequisite) {
+        const auto actor_position =
+            field_scene.world_activity_script_actor_position_for_dump(0U);
+        const auto actor_profile =
+            field_scene.world_activity_script_actor_profile_for_dump(0U);
+        const auto actor_slot =
+            field_scene.world_activity_script_actor_record_slot_for_dump(0U);
+        const auto first_default_slot =
+            field_scene.default_actor_record_slot_for_dump(0U);
         const auto route_preparations = std::count(
             source_boundaries.begin(), source_boundaries.end(),
             std::string("field.location.route_preparation_completed"));
+        const auto pending_list_publications = std::count(
+            source_boundaries.begin(), source_boundaries.end(),
+            std::string(
+                "field.world_activity.script_actor_published_from_rom_list"));
+        const auto pending_lists_queued = std::count(
+            source_boundaries.begin(), source_boundaries.end(),
+            std::string("field.world_activity.pending_actor_list_queued"));
         if (!field_scene.pending_world_effect_for_dump() ||
-            route_preparations != 1 || !save("actual")) {
+            route_preparations != 1 || pending_lists_queued != 1 ||
+            pending_list_publications != 1 || !actor_position.has_value() ||
+            actor_position->x != 0x0E80U ||
+            actor_position->y != 0x0700U ||
+            actor_profile != std::optional<std::string>{
+                                 "lone11_k0a_item03"} ||
+            actor_slot != FieldWorldActorSlot::slot_3 ||
+            first_default_slot != FieldWorldActorSlot::slot_4 ||
+            !save("actual")) {
             std::cerr << "Scene-20 Ilene QA: service 19 did not arm FFE182 "
+                         "and publish its source list before scene defaults "
                          "through the physical scene-2/event-0 route "
                          "(pending="
                       << field_scene.pending_world_effect_for_dump()
-                      << ", preparations=" << route_preparations << ")\n";
+                      << ", preparations=" << route_preparations
+                      << ", queued=" << pending_lists_queued
+                      << ", published=" << pending_list_publications
+                      << ", actor="
+                      << (actor_position.has_value()
+                              ? std::to_string(actor_position->x) + "," +
+                                    std::to_string(actor_position->y)
+                              : std::string{"missing"})
+                      << ", slot="
+                      << (actor_slot.has_value()
+                              ? static_cast<unsigned>(*actor_slot)
+                              : 0U)
+                      << ", default0="
+                      << (first_default_slot.has_value()
+                              ? static_cast<unsigned>(*first_default_slot)
+                              : 0U)
+                      << ")\n";
             return 3;
         }
         std::cout << "field_scene20_ilene_prerequisite_qa=passed "
                   << "scene=20 service=19 marker=FFE182 "
                   << "preparations=" << route_preparations
+                  << " pending_list=0xA8CC actor_slot=3 default_first_slot=4"
                   << " artifacts=" << output.string() << '\n';
         return 0;
     }

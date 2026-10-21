@@ -76,8 +76,11 @@ catalog's source policy explicitly authorizes a correction.
   preparation and writes transient `pending_world_effect` state for FFE182.
   Debug/Release physical-input QA verifies it fires once on the scene-2/event-0
   route and still enters scene 20, writing a full-screen `actual.bmp`. ROM-byte
-  tests cover the remaining source path, but pending-list spawning, actor-pair
-  contact, and the activity are not yet connected to the active runtime.
+  tests cover the remaining source path. The generated A8CC row now carries
+  FFE180/FFE182 gates, and active scene initialization selects and publishes
+  its actor before the default list. Debug/Release physical QA verifies the
+  actor profile, source position, and slot order. Actor-pair contact and the
+  Ilene activity remain unimplemented.
 - Prerequisite: the code at `0x53EA8` sets `FFFC1E` bit 9 and opens text
   record `0xF4C04` ("You have completed your tasks, young warrior"). The
   Spirit Eyes event-27 Lua route now models that completion gate after first

@@ -5156,6 +5156,57 @@ GameScriptRuntime::world_activity_actors_for_source_list(
         "world_activity_actors_for_source_list");
 }
 
+std::optional<std::uint32_t>
+GameScriptRuntime::pending_world_activity_actor_list_for_scene(
+    const std::uint16_t scene_id, const bool world_effect_active,
+    const bool pending_world_effect) {
+    auto* state = impl_->state;
+    if (state == nullptr || scene_id > 55U) {
+        impl_->failure =
+            "pending world-activity scene is outside source bounds";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<std::uint32_t> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("world_content")) {
+        return fail("gameplay script module is missing: world_content");
+    }
+    lua_getfield(state, -1,
+                 "pending_world_activity_actor_list_for_scene");
+    if (!lua_isfunction(state, -1)) {
+        return fail(
+            "world_content.pending_world_activity_actor_list_for_scene is missing");
+    }
+    lua_remove(state, -2);
+    lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
+    lua_pushboolean(state, world_effect_active);
+    lua_pushboolean(state, pending_world_effect);
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 3, 1, 0) != LUA_OK) {
+        return fail(
+            "world_content.pending_world_activity_actor_list_for_scene: " +
+            stack_error(state));
+    }
+    if (lua_isnil(state, -1)) {
+        lua_settop(state, stack_base);
+        impl_->failure.clear();
+        return std::nullopt;
+    }
+    std::uint32_t list_offset = 0U;
+    if (!read_integer(state, -1, 0x1FFFFFU, list_offset)) {
+        return fail(
+            "world-content pending actor-list selector returned an invalid offset");
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return list_offset;
+}
+
 std::optional<std::vector<ScriptWorldActivityActor>>
 GameScriptRuntime::world_activity_actors_for_selector(
     const std::uint16_t scene_id, const std::string_view selector_field,

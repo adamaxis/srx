@@ -49,6 +49,8 @@ game = {
                     ordered_overrides = "0x9E=0x20,0x2E=0x80,0x9E=0x8",
                     template_offset = 0x172CA,
                     position_offset = 0xA8E4,
+                    world_effect_active_gate = 0,
+                    pending_world_effect_gate = 1,
                 },
             },
         },
@@ -77,6 +79,15 @@ assert(#pending == 1 and
        "source-list lookup did not preserve the pending Ilene actor")
 assert(#World.world_activity_actors_for_source_list(20, 0x1E5C4) == 0,
        "source-list lookup crossed scene/list boundaries")
+assert(World.pending_world_activity_actor_list_for_scene(20, false, true) ==
+           0xA8CC and
+       World.pending_world_activity_actor_list_for_scene(20, true, true) ==
+           nil and
+       World.pending_world_activity_actor_list_for_scene(20, false, false) ==
+           nil and
+       World.pending_world_activity_actor_list_for_scene(47, false, true) ==
+           nil,
+       "pending actor-list selector ignored its extracted marker gates")
 assert(#World.world_activity_actors_for_script(47, -1) == 0,
        "event-driven actor lists leaked into script selection")
 assert(#World.world_activity_actors_for_script("13", 3) == 0,

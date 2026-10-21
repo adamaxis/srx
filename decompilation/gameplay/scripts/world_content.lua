@@ -231,6 +231,34 @@ function World.world_activity_actors_for_source_list(scene_id, list_offset)
                                              list_offset)
 end
 
+-- Resolve coordinator-installed lists through their extracted transient
+-- marker gates. Lists without typed gates remain owned by their route.
+function World.pending_world_activity_actor_list_for_scene(
+    scene_id, world_effect_active, pending_world_effect)
+    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
+       type(world_effect_active) ~= "boolean" or
+       type(pending_world_effect) ~= "boolean" then
+        return nil
+    end
+    local selected_list_offset = nil
+    for _, row in ipairs(content().world_activity_actor_lists or {}) do
+        local active_gate = row.world_effect_active_gate
+        local pending_gate = row.pending_world_effect_gate
+        if row.scene == scene_id and row.script_index < 0 and
+           type(active_gate) == "number" and active_gate >= 0 and
+           type(pending_gate) == "number" and pending_gate >= 0 and
+           (active_gate == 1) == world_effect_active and
+           (pending_gate == 1) == pending_world_effect then
+            if selected_list_offset ~= nil and
+               selected_list_offset ~= row.list_offset then
+                error("ambiguous pending world-activity actor lists")
+            end
+            selected_list_offset = row.list_offset
+        end
+    end
+    return selected_list_offset
+end
+
 function World.encounter_regions_in_scene(scene_id)
     return records_in_scene("encounter_regions", scene_id)
 end

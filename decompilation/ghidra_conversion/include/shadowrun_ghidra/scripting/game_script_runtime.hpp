@@ -1417,6 +1417,10 @@ public:
     std::optional<std::vector<ScriptWorldActivityActor>>
     world_activity_actors_for_source_list(std::uint16_t scene_id,
                                           std::uint32_t list_offset);
+    std::optional<std::uint32_t>
+    pending_world_activity_actor_list_for_scene(
+        std::uint16_t scene_id, bool world_effect_active,
+        bool pending_world_effect);
     std::optional<ScriptFieldEncounterOutcome>
     resolve_run_target_actor_group(std::uint8_t area_id,
                                    std::uint8_t event_id);

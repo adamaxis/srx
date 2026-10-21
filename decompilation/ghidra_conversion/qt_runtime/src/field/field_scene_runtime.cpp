@@ -1344,6 +1344,8 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                   field_world_frame_counter_);
     fields.insert(QStringLiteral("field.world.pending_effect"),
                   field_pending_world_effect_);
+    fields.insert(QStringLiteral("field.world.active_effect"),
+                  field_world_effect_active_);
     fields.insert(QStringLiteral("field.world.encounter_sequence"),
                   static_cast<double>(field_world_encounter_sequence_));
     fields.insert(QStringLiteral("field.world.random_seed"),
@@ -3682,6 +3684,8 @@ void FieldSceneRuntime::initialize_default_field_actors(
     field_entity_target_owner_ = EntityServiceTargetOwner{};
     field_entity_target_records_.assign(16U, EntityServiceTargetRecord{});
     pending_field_encounter_outcome_.reset();
+    pending_world_activity_script_actors_.clear();
+    pending_world_activity_script_actor_scene_.reset();
 
     for (auto& actor : field_default_actors_) {
         actor.active = false;
@@ -3696,15 +3700,56 @@ void FieldSceneRuntime::initialize_default_field_actors(
         actor.ai_weapon_item_id.reset();
     }
 
-    std::size_t next_source_slot = 0U;
+    const auto selected_pending_list =
+        game_scripts_.pending_world_activity_actor_list_for_scene(
+            scene_reference, field_world_effect_active_,
+            field_pending_world_effect_);
+    if (!selected_pending_list.has_value() &&
+        !game_scripts_.failure().empty()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.world_activity.pending_list_selection_failed");
+    } else if (selected_pending_list.has_value()) {
+        auto actors = game_scripts_.world_activity_actors_for_source_list(
+            scene_reference, *selected_pending_list);
+        if (!actors.has_value() || actors->empty()) {
+            failure_ = game_scripts_.failure().empty()
+                ? "selected pending world-activity list has no extracted actors"
+                : game_scripts_.failure();
+            source_boundary("field.world_activity.pending_list_unresolved");
+        } else if (actors->size() > kFieldWorldActorSlots.size()) {
+            failure_ =
+                "selected pending world-activity list exceeds live actor slots";
+            source_boundary("field.world_activity.pending_list_slot_overflow");
+        } else {
+            pending_world_activity_script_actor_scene_ = scene_reference;
+            pending_world_activity_script_actors_ = std::move(*actors);
+            source_boundary("field.world_activity.pending_actor_list_queued");
+        }
+    }
+    const auto pending_actor_slot_count =
+        pending_world_activity_script_actors_.size();
+    // 0x43B6 drains the selected list before the default list. Publish now so
+    // its actor takes the lowest live record and advances the shared PRNG
+    // before defaults initialize their delay bytes.
+    publish_pending_world_activity_script_actors(scene_reference);
+
+    // ROM 0x43B6 drains pending lists before the default list, so their
+    // descriptors reserve the first ordinary records and shorten the later
+    // default population when the seven-record pool fills.
+    std::size_t next_source_slot =
+        pending_actor_slot_count;
     for (auto& actor : field_default_actors_) {
+        if (actor.temporary_world_encounter ||
+            actor.world_activity_script_actor) {
+            continue;
+        }
         if (actor.scene_reference != scene_reference) {
             continue;
         }
         // For this default-list-only projection, 0x1A342's seven ordinary
         // actor slots are available as 3..9. 0x4466 stops at the first row
         // that cannot allocate; later rows remain definitions, not actors.
-        // Earlier 0xA800 pending-list occupancy is a separate open boundary.
+        // Earlier 0xA800 pending-list occupancy is reserved above.
         if (next_source_slot >= kFieldWorldActorSlots.size()) {
             continue;
         }
@@ -3841,9 +3886,13 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         actor.source_record_slot = static_cast<FieldWorldActorSlot>(
             std::distance(occupied_actor_slots.begin(), actor_slot) + 3);
         actor.entity_kind = source_actor.entity_kind;
+        const auto actor_source_key = source_actor.script_index >= 0
+            ? "world_script_" +
+                  std::to_string(source_actor.script_index)
+            : "world_list_" + std::to_string(source_actor.list_offset);
         actor.actor_instance_id =
             "field_scene_" + std::to_string(scene_reference) +
-            "_world_script_" + std::to_string(source_actor.script_index) +
+            "_" + actor_source_key +
             "_actor_" + std::to_string(source_actor.source_order);
         actor.script_profile_id = source_actor.profile_id;
         actor.action_kind = source_actor.action_kind;
@@ -11185,6 +11234,7 @@ bool FieldSceneRuntime::bootstrap(
     field_mode_flags_ = 1U;
     field_mode_effect_flags_ = 0U;
     field_pending_world_effect_ = false;
+    field_world_effect_active_ = false;
     field_auxiliary_flags_ = 0U;
     field_dialogue_register_ = restored_field_state == nullptr
         ? std::optional<std::uint8_t>{0U}
@@ -11345,6 +11395,9 @@ bool FieldSceneRuntime::bootstrap(
             if (name == "pending_world_effect") {
                 return field_pending_world_effect_;
             }
+            if (name == "world_effect_active") {
+                return field_world_effect_active_;
+            }
             if (name == "michael_debt_paid") {
                 return stoker_motel_story_state_.michael_debt_paid;
             }
@@ -11504,6 +11557,10 @@ bool FieldSceneRuntime::bootstrap(
             }
             if (name == "pending_world_effect") {
                 field_pending_world_effect_ = value;
+                return true;
+            }
+            if (name == "world_effect_active") {
+                field_world_effect_active_ = value;
                 return true;
             }
             if (name == "michael_debt_paid") {
@@ -21596,6 +21653,26 @@ FieldSceneRuntime::world_activity_script_actor_profile_for_dump(
     return actor == field_default_actors_.end()
         ? std::nullopt
         : std::optional<std::string>{actor->script_profile_id};
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<FieldWorldActorSlot>
+FieldSceneRuntime::world_activity_script_actor_record_slot_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.active && candidate.world_activity_script_actor &&
+                   candidate.scene_reference == scene_reference &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+        ? std::nullopt
+        : actor->source_record_slot;
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 
