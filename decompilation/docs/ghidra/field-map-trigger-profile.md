@@ -494,10 +494,10 @@ active-runner datajack facts. Their source comparisons are `FF018F` bit 0,
 `FFFBBE` nonzero, and bit 0 of the active runner record at `FFFC04 + 0x90`;
 the runtime's field facts read the live deck record and cyberware bit rather
 than duplicating those RAM addresses. Missing prerequisite data remains a
-source boundary. Scene-26 physical-input QA now confirms the direct target
-reaches Matrix system 24/node 22; the other 22 target rows have Lua mapping
-coverage but still need their own physical routes before claiming them
-independently defended.
+source boundary. Physical-input QA now confirms Scene 21 record 121 reaches
+Matrix system 22/node 13, and Scene 26 record 126 reaches system 24/node 22.
+The other 21 target rows have Lua mapping coverage but still need their own
+physical routes before claiming them independently defended.
 
 `FieldSceneRuntime` now connects the normal event-31 continuation to the Lua
 four-choice task. Call Taxi uses `0xD4456` / `0xD445D` for the seven region and
@@ -507,12 +507,14 @@ screen, clean return on the current region, and a completed Downtown scene-0
 arrival after fade-in. Vid-Phone page/call screens and Matrix script screens
 have focused route tests and 320x224 dumps; the phone runtime checks both
 Sharkey passage destinations and item outcomes. Separate ordinary-input QA
-physically reaches the Scene-0 terminal-to-Vid-Phone route and the Scene-26
-resource-scene Matrix route. The latter checks that the Matrix session keeps
-system 24/node 22 after the source entry wait. These checks do not certify the
-full Matrix visual system, other resource-scene event-31 routes, or
-contact-specific service transactions. The map-viewer preview remains a
-readable content and ordering aid, not pixel-fidelity proof.
+physically reaches the Scene-0 terminal-to-Vid-Phone route, the Scene-21
+record-121 resource-scene Matrix route, and the Scene-26 record-126
+resource-scene Matrix route. The resource routes check that the Matrix session
+keeps its ROM-seeded system/node target after the source entry wait. These
+checks do not certify the full Matrix visual system, the other 21
+resource-scene event-31 routes, or contact-specific service transactions. The
+map-viewer preview remains a readable content and ordering aid, not
+pixel-fidelity proof.
 The scene-6 default actor list is empty. The guide's named people therefore
 remain site cross-references until their actor service and gated placements
 are source-traced; they are not populated as scenery residents. See the
@@ -612,16 +614,18 @@ enums rather than ROM address interpretation.
   branch. Scene-47 event 25 now has a Lua route for the context-`0x13` direct
   continuation, but the contextual physical-input route and the complete
   conversation graph remain untested.
-  Scene 26 record 126 (`0x1D9E5A`, x/y `0x0200..0x021F`, event `0x1F`) has a
+  Scene 21 record 121 (`0x1D7A20`, x `0x00E0..0x00FF`, y `0x00C0..0x00DF`,
+  event `0x1F`) now has a physical-input route after gated Fuchi entry: Up
+  from the adjacent southern cell opens Lua's resource `Main Menu`, and
+  Cyberspace enters system 22/node 13. Scene 26 record 126
+  (`0x1D9E5A`, x/y `0x0200..0x021F`, event `0x1F`) has a
   physical-input QA route: Up from the adjacent cell opens Lua's resource
   `Main Menu`; Down selects `Exit`; A restores the captured Scene-2 field
   state. A second ordinary-input QA chooses Cyberspace and checks the Matrix
-  session snapshot receives system 24/node 22. This physically defends only
-  the Scene-26 special-mode path; the full 21–43 node/system table has Lua
+  session snapshot receives system 24/node 22. Together, these routes physically defend
+  the direct Matrix entry paths in Scenes 21 and 26; the full 21–43 node/system table has Lua
   mapping coverage. The normal-mode
-  four-choice task and taxi/phone/Matrix handlers are connected in Qt, but a
-  physical-input route from a map's event-31 trigger through the ordinary menu
-  remains untested. Other scene-specific event-31 paths, events 26, 28, and
+  four-choice task and taxi/phone/Matrix handlers are connected in Qt, with physical-input coverage for Scene-0 Vid-Phone and the resource-scene Cyberspace choices. Other scene-specific event-31 paths, events 26, 28, and
   30, and the ordinary terminal cursor graphic remain unresolved. The final
   item path in the Spirit Eyes ritual now has a traced producer and consumer:
   Scene-47 handler `0x53F50` sets Group Item bit 2, and Scene-4 handler

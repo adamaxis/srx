@@ -18912,7 +18912,127 @@ struct FieldGatedBuildingEntryQaSpec {
     std::uint16_t activity_exit_rectangle_top = 0U;
     std::uint16_t activity_exit_rectangle_bottom = 0U;
     std::uint16_t activity_exit_collision_code = 0U;
+    bool verify_resource_matrix_entry = false;
 };
+
+int run_resource_scene_matrix_entry_menu_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::uint8_t scene_id,
+    const std::size_t trigger_record,
+    const std::uint8_t expected_system,
+    const std::uint8_t expected_node,
+    const std::uint16_t trigger_x,
+    const std::uint16_t trigger_y) {
+    const auto& rectangles = field_scene.state()
+        .field_scene_buffers.source_metadata.terrain_collision_rectangles;
+    if (field_scene.field_scene_reference_for_dump() != scene_id ||
+        rectangles.size() <= trigger_record ||
+        rectangles[trigger_record].value != 0x00DFU ||
+        !field_scene.seed_cyberspace_access_for_dump() ||
+        !field_scene.seed_cyberdeck_reference_frame_for_dump()) {
+        std::cerr << "Resource-scene Matrix QA: scene/trigger source record "
+                     "or cyberware fixture did not match\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] {
+        return render_qa_field(field_scene);
+    };
+    const auto save = [&output, &render](const std::string_view name) {
+        const auto image = render();
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+            image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()));
+    };
+    for (std::uint8_t frame = 0U; frame < 90U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    field_scene.set_field_entity_world_position_for_dump(
+        static_cast<std::uint16_t>(trigger_x << 4U),
+        static_cast<std::uint16_t>(trigger_y << 4U));
+    for (std::uint8_t frame = 0U;
+         frame < 48U && !field_scene.dialogue_open(); ++frame) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up
+        field_scene.advance_frame();
+        if (field_scene.last_field_movement_transition_for_dump().event_code ==
+            FieldCollisionEventCode::event_31) {
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    for (std::uint8_t frame = 0U;
+         frame < 5U && !field_scene.dialogue_open(); ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const auto& main_menu = field_scene.dialogue_panel();
+    if (!field_scene.dialogue_open() || !main_menu.cursor_selection ||
+        main_menu.text_segment_count == 0U ||
+        main_menu.text_segments[0] != "Main Menu" ||
+        main_menu.option_count != 2U ||
+        main_menu.options[0].source_label != "Cyberspace" ||
+        main_menu.options[1].source_label != "Exit" ||
+        !save("resource-scene-main-menu")) {
+        const auto position = field_scene.field_entity_world_position();
+        const auto& movement =
+            field_scene.last_field_movement_transition_for_dump();
+        std::cerr << "Resource-scene Matrix QA: ordinary Up did not open the "
+                     "two-choice Main Menu in scene "
+                  << static_cast<unsigned>(scene_id)
+                  << " (dialogue=" << field_scene.dialogue_open()
+                  << ", event=" << static_cast<unsigned>(movement.event_code)
+                  << ", continuation="
+                  << static_cast<unsigned>(movement.continuation)
+                  << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << std::dec << ", mode_event="
+                  << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", position=" << position.x << ',' << position.y
+                  << ")\n";
+        return 3;
+    }
+
+    field_scene.set_controller_port_byte(0x40U); // Confirm Cyberspace.
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
+        field_scene.advance_frame();
+    }
+    const auto route = field_scene.field_menu_route_snapshot_for_dump();
+    const auto expected_screen = static_cast<std::uint16_t>(
+        srx::MenuScreen::CYBERDECK);
+    if (field_scene.dialogue_open() || !route.top_matrix_state_present ||
+        route.top_matrix_system_id != expected_system ||
+        route.top_matrix_node != expected_node ||
+        field_scene.field_menu_route_screen_for_dump() != expected_screen ||
+        !save("matrix-resource-target-actual")) {
+        std::cerr << "Resource-scene Matrix QA: scene "
+                  << static_cast<unsigned>(scene_id)
+                  << " entered the wrong Matrix target (system="
+                  << (route.top_matrix_system_id.has_value()
+                          ? std::to_string(*route.top_matrix_system_id)
+                          : "<missing>")
+                  << ", node="
+                  << (route.top_matrix_node.has_value()
+                          ? std::to_string(*route.top_matrix_node)
+                          : "<missing>") << ")\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "matrix-route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "scene\ttrigger_record\ttrigger_event\tchoice\tmatrix_system\t"
+             "matrix_node\tmatrix_screen\n"
+          << static_cast<unsigned>(scene_id) << '\t' << trigger_record
+          << "\t0x1F\tcyberspace\t"
+          << static_cast<unsigned>(expected_system) << '\t'
+          << static_cast<unsigned>(expected_node) << '\t'
+          << field_scene.field_menu_route_screen_for_dump() << '\n';
+    return 0;
+}
 
 int run_field_gated_building_entry_qa(
     FieldSceneRuntime& field_scene,
@@ -19105,6 +19225,18 @@ int run_field_gated_building_entry_qa(
                   << ", transition_finished=" << transition_finished
                   << ")\n";
         return 3;
+    }
+
+    if (route.verify_resource_matrix_entry) {
+        if (run_resource_scene_matrix_entry_menu_qa(
+                field_scene, output, 21U, 121U, 0x16U, 0x0DU,
+                0x00F0U, 0x00F0U) != 0) {
+            return 3;
+        }
+        std::cout << "field_fuchi_resource_matrix_entry_qa=passed "
+                     "scene=21 record=121 target_system=22 node=13 "
+                     "artifacts=" << output.string() << '\n';
+        return 0;
     }
 
     // Resource-scene event 0x00 follows the ordinary 0xB7B8 -> 0x1651E
@@ -22749,6 +22881,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_fuchi_offices_qa_path;
         std::optional<std::filesystem::path>
+            field_fuchi_matrix_entry_qa_path;
+        std::optional<std::filesystem::path>
             field_penumbra_lone_star_qa_path;
         std::optional<std::filesystem::path>
             field_tarislar_guarded_entry_qa_path;
@@ -23077,6 +23211,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_fuchi_offices_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-fuchi-matrix-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_fuchi_matrix_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -24128,7 +24269,8 @@ int main(int argc, char** argv) {
                 checkpoint.active_runner_slot = 0U;
                 smoke_state.restored_field_state = std::move(checkpoint);
             }
-            if (field_fuchi_offices_qa_path.has_value()) {
+            if (field_fuchi_offices_qa_path.has_value() ||
+                field_fuchi_matrix_entry_qa_path.has_value()) {
                 const auto scene3 = integration::make_field_scene_input(
                     *smoke_state.field_session_source_assets, 3U);
                 if (!scene3.has_value() ||
@@ -27658,6 +27800,24 @@ int main(int argc, char** argv) {
                         "dialogue.portraits.fuchi.offices.entry", 2U, 3U,
                         102U, 0x4500U, 0x4A00U,
                         0x0440U, 0x045FU, 0x04C0U, 0x04DFU, 0x0080U});
+            }
+            if (field_fuchi_matrix_entry_qa_path.has_value()) {
+                return run_field_gated_building_entry_qa(
+                    field_scene, asset_root,
+                    *field_fuchi_matrix_entry_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    FieldGatedBuildingEntryQaSpec{
+                        "Penumbra Fuchi Matrix route", 3U, 97U,
+                        0x0800U, 0x1700U,
+                        0x0080U, 0x009FU, 0x0140U, 0x015FU, 0x00C2U, 2U,
+                        25U, 14U, 14U, 21U, "activity-21",
+                        "story_flag_bit_25=1,story_flag_bit_14=0,alternate_result=0",
+                        "enter Fuchi just prior to their closing",
+                        "Now to find that cyber-heart",
+                        "dialogue.portraits.fuchi.offices.entry", 2U, 3U,
+                        102U, 0x4500U, 0x4A00U,
+                        0x0440U, 0x045FU, 0x04C0U, 0x04DFU, 0x0080U,
+                        true});
             }
             if (field_penumbra_lone_star_qa_path.has_value()) {
                 return run_field_penumbra_lone_star_entry_qa(

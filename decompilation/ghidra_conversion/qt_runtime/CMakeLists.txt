@@ -616,6 +616,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_fuchi_offices_qa
                  --field-fuchi-offices-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-fuchi-offices-qa")
 
+# Enter the gated Fuchi office, then physically reach its event-31 Main Menu
+# and check the ROM-seeded Matrix target for resource scene 21.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_fuchi_matrix_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-fuchi-matrix-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-fuchi-matrix-entry-qa")
+
 # Enter resource scene 26, reach its event-31 menu through ordinary movement,
 # and verify the ROM-seeded Matrix system/node survive the Lua handoff.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_resource_matrix_entry_qa
