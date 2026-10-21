@@ -52,14 +52,24 @@ catalog's source policy explicitly authorizes a correction.
   `FFF0CC` clear, sets `D6=-1`, and suppresses event-table row 7's scene-13
   transition. The Lua entity links now select the signed branch by result sign
   and retain the numeric scene-13 destination as its suppressed route.
-- Story access: handler `0x21FD0` (dispatcher index `0x44`) sets `FFFC1E` bit 30,
-  loads profile `0x121F4C`, and starts text chain `0xF57F8`. The first text
-  record is “You are taken to Frosty.” The associated extracted profile is a
-  56x72 portrait; the source context indicates it belongs to Frosty, but the
-  profile itself has no name label. `story_flags.lua` now maps command `0x44`
-  to a direct bit-30 write; the Lua source test checks the ROM command-table
-  pointer and handler instructions. The dialogue's caller and live location
-  route remain unconnected.
+- State-selected story dialogue: command `0x34` at table `0x12CCB4` points to
+  handler `0x21CE4`; its selection block begins at `0x21D00`. With story bits
+  13, 17, 18, 19, and 20 set, Group Item bit 5 clear, and story bit 30 clear,
+  the handler returns group `0xF57E4`, whose text at `0xFB535` says Lady
+  Gillian greets Joshua. Command `0x44` is separate: handler `0x21FD0` sets
+  story bit 30, loads profile `0x121F4C`, and opens group `0xF57F8`, whose
+  first text at `0xFB6C8` says Joshua is taken to Frosty. The Lua source test
+  checks the command-table entries and ROM branch bytes. These source roots
+  are identified, but their live world-object caller and location route remain
+  unconnected.
+- Ilene prerequisite: Scene-2/event-0 service 19 at `0x543A2` requires story
+  bits 18/19 = 1/0, `FFF0D5=0`, `FFFC34` bit 0 clear, and `FFFC38` bit 12 set.
+  It arms `FFE182` and leaves event-table row 0's Scene-20 destination live.
+  After a Scene-20 world-object contact, `0xED92` consumes that marker and
+  selects activity `0x54402`; the activity adds 2 Karma per runner, sets story
+  bit 19, and opens group `0x115ECC`. Its first text at `0x115F10` names Ilene.
+  ROM-byte tests now cover this intermediate gate and completion, but the
+  conditional activity is not yet wired into the active runtime.
 - Prerequisite: the code at `0x53EA8` sets `FFFC1E` bit 9 and opens text
   record `0xF4C04` ("You have completed your tasks, young warrior"). The
   Spirit Eyes event-27 Lua route now models that completion gate after first
@@ -171,9 +181,11 @@ destination, and no reverse route has been added.
 
 ## Next implementation evidence needed
 
-- Trace the live caller and location route for the upstream Frosty command
-  `0x44`; its direct bit-30 effect is now represented by `StoryFlags` and
-  checked against the ROM handler.
+- Wire and physically verify the source-confirmed Ilene continuation without
+  flattening it into an unconditional Scene-20 entry. Then trace the live
+  world-object caller for command `0x34`'s Lady Gillian root and command
+  `0x44`'s Frosty handoff. Preserve the verified command distinction: `0x34`
+  selects `0xF57E4`; `0x44` sets bit 30 and opens `0xF57F8`.
 - Trace the complete `0xF4C44` dialogue and the world-context route that
   selects Scene-47 event-25 continuation `0x53EFA`; its item grant and the
   Spirit Eyes bit-9 consumer are now connected in Lua.

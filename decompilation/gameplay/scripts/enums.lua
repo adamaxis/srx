@@ -264,7 +264,7 @@ E.StoryFlag = {
   ITO_FIGHT_WON        = 16, -- 0x54286 encounter 0x1E5C4 cleared: +10000 nuyen, FFFC28 b11, Ito screen 0x5D1B4 [C]
   RITUAL_OF_BINDING    = 17, -- cmd1B @0x21902 -> F563C Sinsearach "Ritual of Binding"; FFFC22 +6; no invoking node in dump [C site][H name]
   RED_BUFFALO_WOMAN    = 18, -- trigger 18 tail -> F4DB8; never cleared (0x1F8B4/cmd61 are FFFC34) [C]
-  ILENE_MET            = 19, -- only setter 0x54412 trigger19 -> 115ECC; 0x1F8B8/cmd61 were FFFC34 (tool bug, fixed) [C site][H name]
+  ILENE_MET            = 19, -- service19 @0x543A2 arms FFE182; scene-20 activity 0x54402 opens 0x115ECC/Ilene text and marks trigger19 [C]
   GILLIAN_INITIATION   = 20, -- cmd37 @0x21E58 FFDD64=0x14 (F56CC) [C]
   GARDEN_APTS_ENTERED  = 21, -- trigger21 (1/7, needs b30) 0x5456E -> F4DF4 Tarlisar Garden Apartments [C]
   LANDMARK_MAP_TAKEN   = 22, -- trigger22 tail -> F4E5C (Vigore area), FFFC22 +7 Landmark Map [C]

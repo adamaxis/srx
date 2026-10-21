@@ -112,6 +112,60 @@ do
           "cmd44 handler opens the Frosty meeting pages")
 end
 do
+    local handler = u32(0x12CCB4 + 4 * 0x34)
+    check(handler == 0x21CE4,
+          "cmd34 table entry resolves to the Sinsearach state selector")
+    check(u16(0x21CEA) == 0x0801 and u16(0x21CEC) == 0x000D and
+          u16(0x21D10) == 0x0801 and u16(0x21D12) == 0x0011 and
+          u16(0x21D18) == 0x0801 and u16(0x21D1A) == 0x0012 and
+          u16(0x21D20) == 0x0800 and u16(0x21D22) == 0x0005 and
+          u16(0x21D28) == 0x0801 and u16(0x21D2A) == 0x0013 and
+          u16(0x21D30) == 0x0801 and u16(0x21D32) == 0x0014 and
+          u16(0x21D38) == 0x0801 and u16(0x21D3A) == 0x001E and
+          u16(0x21D48) == 0x41F9 and u32(0x21D4A) == 0xF57E4,
+          "cmd34 checks bit13, story bits17/18/19/20/30, and item bit5 before root F57E4")
+    check(u32(0x12CCB4 + 4 * 0x35) == 0x21DCC,
+          "cmd35 is the separate 0x21DCC response handler")
+end
+do
+    check(u32(0x15FD5C + 4 * 19) == 0x543A2,
+          "indexed title service 19 resolves to the Ilene prerequisite gate")
+    check(u16(0x543A2) == 0x0801 and u16(0x543A4) == 0x0012 and
+          u16(0x543AA) == 0x0801 and u16(0x543AC) == 0x0013 and
+          u16(0x543B2) == 0x0C39 and u16(0x543B4) == 0x0002 and
+          u32(0x543B6) == 0xFFFBF8 and
+          u16(0x543BE) == 0x0C39 and u16(0x543C0) == 0x0000 and
+          u32(0x543C2) == 0xFFFBF9 and u16(0x543CA) == 0x4A39 and
+          u32(0x543CC) == 0xFFF0D5 and
+          u16(0x543D4) == 0x2239 and u32(0x543D6) == 0xFFFC34 and
+          u16(0x543DA) == 0x0801 and u16(0x543DC) == 0x0000 and
+          u16(0x543E2) == 0x2239 and u32(0x543E4) == 0xFFFC38 and
+          u16(0x543E8) == 0x0801 and u16(0x543EA) == 0x000C and
+          u16(0x543F8) == 0x13FC and u16(0x543FA) == 0x00FF and
+          u32(0x543FC) == 0xFFE182,
+          "service19 gates on bits18/19, Scene2/event0, FFF0D5, FFFC34 bit0, and FFFC38 bit12 before arming FFE182")
+    check(u16(0xED92) == 0x4A39 and u32(0xED94) == 0xFFE182 and
+          u16(0xED9C) == 0x4239 and u32(0xED9E) == 0xFFE182 and
+          u16(0xEDA2) == 0x23FC and u32(0xEDA4) == 0x54402 and
+          u32(0xEDA8) == 0xFFDD2C,
+          "world-object contact consumes FFE182 and selects activity 0x54402")
+    check(u16(0x54402) == 0x303C and u16(0x54404) == 2 and
+          u16(0x54406) == 0x4EB9 and u32(0x54408) == 0x59C34 and
+          u16(0x54412) == 0x08C1 and u16(0x54414) == 0x0013 and
+          u16(0x54416) == 0x23C1 and u32(0x54418) == 0xFFFC1E and
+          u16(0x5441C) == 0x2639 and u32(0x5441E) == 0xFFFC30 and
+          u16(0x54426) == 0x23C3 and u32(0x54428) == 0xFFFC30 and
+          u16(0x54432) == 0x0883 and u16(0x54434) == 0x0000 and
+          u16(0x54436) == 0x08C3 and u16(0x54438) == 0x0001 and
+          u16(0x5443A) == 0x23C3 and u32(0x5443C) == 0xFFFC34 and
+          u16(0x54446) == 0x0883 and u16(0x54448) == 0x000C and
+          u16(0x5444A) == 0x0883 and u16(0x5444C) == 0x000D and
+          u16(0x5444E) == 0x23C3 and u32(0x54450) == 0xFFFC38 and
+          u16(0x54464) == 0x41F9 and u32(0x54466) == 0x115ECC and
+          u16(0x5446A) == 0x4BF9 and u32(0x5446C) == 0x122048,
+          "Ilene activity awards two Karma, marks bit19, updates ritual facts, and opens group 115ECC")
+end
+do
     local ok, live_count = true, 0
     for i = 0, T.COUNT - 1 do
         local h = u32(T.TABLE + 4 * i)
