@@ -216,6 +216,7 @@ target_compile_definitions(shadowrun_gameplay_script_menu_route_test PRIVATE
     SHADOWRUN_MATRIX_MAP_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
     SHADOWRUN_MATRIX_MAP_ARTIFACT_DIR="${CMAKE_CURRENT_BINARY_DIR}/matrix-map-route-qa"
     SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR="${CMAKE_CURRENT_BINARY_DIR}/matrix-node-action-route-qa"
+    SHADOWRUN_MATRIX_CYBER_INFO_ARTIFACT_DIR="${CMAKE_CURRENT_BINARY_DIR}/matrix-cyber-info-qa"
     SHADOWRUN_MATRIX_MAP_QT_TEST=1)
 add_test(NAME shadowrun_ghidra_gameplay_script_menu_route
          COMMAND shadowrun_gameplay_script_menu_route_test)
@@ -476,12 +477,115 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_spell_effect_qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-spell-effect-qa")
 
 # Start one cell south of the ROM's Jump House trigger, walk into record 85
-# using normal movement, dismiss its Lua-owned entry narration with A, and
-# verify the retained scene-13 route completes with a clean 320x224 redraw.
+# using normal movement, dismiss its Lua-owned entry narration with A, verify
+# the retained scene-13 route, then walk south into its null-table event-0
+# transition and confirm the source-selected scene-0 destination.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_jump_house_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-jump-house-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-jump-house-entry-qa")
+
+# Enter the Big Rhino booth with ordinary movement and verify the ROM-selected
+# Mortimer Reed first-visit page, portrait, and three-choice root.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_big_rhino_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-big-rhino-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-big-rhino-entry-qa")
+
+# Enter Icarus Descending through its scene-12/event-30 rectangle with normal
+# Up input and the ROM access flag, then capture Caleb's first meeting.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_icarus_caleb_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-icarus-caleb-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-icarus-caleb-entry-qa")
+
+# Use the same physical event record with FFFC1E bit 10 clear. The Lua link
+# must show the ROM bodyguard rejection and leave the quest state untouched.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_icarus_blocked_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-icarus-blocked-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-icarus-blocked-entry-qa")
+
+# Enter scene-1 record 67 through ordinary movement with the source bit-30
+# fixture, then verify service 21's first-entry conversation and field return.
+# Scene 54 is selected only by the later, quest-gated tomb-departure choice.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_first_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-first-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-first-entry-qa")
+
+# Seed the completed Ito briefing and Renraku map item, then enter record 67
+# by normal movement to defend the ROM-gated repeat-service page and map path.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_repeat_service_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-repeat-service-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-repeat-service-qa")
+
+# Seed the pre-Frosty story state and verify service 21's guarded passage
+# returns Joshua to scene 1 without applying the first-entry transition.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_guarded_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-guarded-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-guarded-entry-qa")
+
+# Enter scene-1 record 68 through ordinary Up movement with title service 1's
+# source flags, then confirm its Lua-owned intro, choices, same-map leave, and
+# clean return without taking the table's numeric scene-53 route.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_city_inn_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-city-inn-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-city-inn-qa")
+
+# Walk into Wylie's Gala Inn on Scene 3 and exercise the paid room prompt. Its
+# ROM event-table value is scene 13, but the dialog consumes that destination
+# and opens Hotel Options on the same map after the 50-nuyen payment.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_wylie_gala_inn_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-wylie-gala-inn-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-wylie-gala-inn-qa")
+
+# Reach Gates Undersound's source event-3 frontage, exercise gated title
+# service 15, and verify the one-page Ogami departure result returns to scene 0.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_gates_undersound_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-gates-undersound-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-gates-undersound-qa")
+
+# Enter Renraku's scene-5/event-6 record through ordinary movement and verify
+# the ROM-gated entry page resumes the event table's resource activity 35.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_renraku_offices_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-renraku-offices-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-renraku-offices-qa")
+
+# Exercise Fuchi's conditional maglock frontage and title-service-14 entry to
+# resource activity 21 using ordinary field movement.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_fuchi_offices_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-fuchi-offices-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-fuchi-offices-qa")
+
+# Enter the source-confirmed Penumbra Lone Star frontage through its ordinary
+# event-6 route and verify the numeric resource-activity destination 41.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_lone_star_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-penumbra-lone-star-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-lone-star-entry-qa")
+
+# Seed the ROM's completed Harlequin/Ito/map gates, walk into record 67 with
+# ordinary Up input, accept the Yes prompt, and verify the three travel pages
+# before the route enters scene 54.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_tomb_departure_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-tomb-departure-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-tomb-departure-qa")
+
+# Select No on the same ROM gate set and prove the task-result guard keeps the
+# retained scene-1 route instead of loading scene 54.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_tomb_decline_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-tomb-decline-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-tomb-decline-qa")
 
 # The completed New Game opening starts the source heading-zero automatic walk
 # from the scene-2 spawn. It reaches the motel doorway's source C2 collision,
@@ -527,6 +631,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene20_physical_e
                  --field-scene20-physical-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-physical-entry-qa")
 
+# Seed the source's FFFC2C scene-entry marker, reach Scene 20 through the
+# ordinary Scene-2 doorway, and verify the host consumes bit 26 and schedules
+# the same 0x78-frame timeout as ROM 0x1689A/0x1DBAA.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene20_entry_gate_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene20-entry-gate-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-entry-gate-qa")
+
 # Scene 20 record 110 is a source C0/event-0 contact with no event-table row.
 # Enter through Scene 2's physical C0 route, then walk around the adjacent
 # 0x7F rectangle with ordinary Left and Up input. Keep Up held through the
@@ -544,6 +656,27 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene26_event1_ent
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene26-event1-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene26-event1-entry-qa")
+
+# A ROM-valid type-5 run targeting Little Chiba shows its diversion passage
+# before resuming the same event-table transition into resource scene 26.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene26_johnson_run_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene26-johnson-run-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene26-johnson-run-entry-qa")
+
+# The type-4 package-recovery passage uses the same matched-target ordering.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene26_package_recovery_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene26-package-recovery-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene26-package-recovery-entry-qa")
+
+# Scene-2 event 9 is the ROM-valid Halloweeners contract target. Ordinary
+# movement must publish event 9, show the ROM response passage, then resume the
+# event-table route into resource scene 26.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene2_gang_contract_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene2-gang-contract-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene2-gang-contract-entry-qa")
 
 # Continue the ordinary-input event-table route into scene 26, cross its ROM
 # event-29 elevator trigger, animate the two independently tracked floor
@@ -740,6 +873,25 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_vid_phone_passage_
                  --field-vid-phone-passage-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-vid-phone-passage-qa")
 
+# Follow the ordinary field terminal through System Search and the ROM
+# jack-in wait, then capture complete field-runtime frames for the initial
+# Cyberdeck, CyberInfo, Run Info, Deck Stats, and Pull Plug screens. Pull Plug
+# is checked against the live deck grid/footer and source-position prompt.
+# The full framebuffer checks include the bottom scanline so a text-only or
+# cropped artifact cannot be mistaken for a screen capture.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_matrix_cyber_info_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-matrix-cyber-info-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-matrix-cyber-info-qa")
+
+# Drive the ROM-timed Matrix entry stream from a deterministic System 2 SPU
+# state. Full 320x224 captures at each visual anchor protect the model growth,
+# bottom footer, and source-derived setup/entry durations.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_matrix_traversal_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-matrix-traversal-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-matrix-traversal-entry-qa")
+
 # The runner summary uses the equipped item's Lua-backed name/category before
 # its ROM-indexed damage and power rows. Keep that shared menu panel covered by
 # a full-frame artifact with the default equipped Model 101T fixture.
@@ -859,6 +1011,121 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_dialogue_debt_paym
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-dialogue-dump debt-payment-insufficient
                  "${CMAKE_CURRENT_BINARY_DIR}/field-dialogue-qa/debt-payment-insufficient/actual.bmp")
+
+# Hospital Options is a ROM field-mode screen hosted by the Lua menu task.
+# Save both the three-row menu and its No-default leave confirmation as named
+# full-frame artifacts after checking the content and selected-row state.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hospital_options_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hospital-menu-dump options
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-hospital-qa/options/actual.bmp")
+
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hospital_leave_confirmation_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hospital-menu-dump leave-confirmation
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-hospital-qa/leave-confirmation/actual.bmp")
+
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hospital_medical_attention_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hospital-menu-dump medical-attention
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-hospital-qa/medical-attention/actual.bmp")
+
+# Exercise the scene-4 hospital location link through a real collision, then
+# select Services and verify the Lua-owned Hospital Options screen opens.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hospital_physical_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hospital-physical-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-hospital-physical-entry-qa")
+
+# Enter scene-4 record 88 with ordinary Up and verify the ROM-gated Medicine
+# Lodge offer and its Lua-owned Running Stream response on the same field map.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_medicine_lodge_physical_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-medicine-lodge-physical-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-medicine-lodge-physical-entry-qa")
+
+# Follow the quest-gated Wise One choice and verify command 0x1F queues its
+# ROM-derived scene-entry placement while returning to the same field map.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_medicine_lodge_wise_one_physical_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-medicine-lodge-wise-one-physical-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-medicine-lodge-wise-one-physical-entry-qa")
+
+# Walk into the Spirit Eyes site through scene-4 record 96/event 27 and check
+# the first-contact Lua dialogue against the physical ROM collision route.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_spirit_eyes_physical_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-spirit-eyes-physical-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-spirit-eyes-physical-entry-qa")
+
+# Walk into the quest-gated Owlfeather lodge through Scene-6 record 193 and
+# verify the ROM title service opens its Lua dialogue and portrait.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_owlfeather_physical_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-owlfeather-physical-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-owlfeather-physical-entry-qa")
+
+# Walk into Owlfeather's lodge after Aragorn is found, verify trigger 4's
+# returned-brother dialogue graph, and confirm its same-map trigger tail.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_owlfeather_return_followup_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-owlfeather-return-followup-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-owlfeather-return-followup-qa")
+
+# Exercise Owlfeather's search follow-up after trigger 2, then take the
+# ROM's Later choice and verify the two farewell pages return to Scene 6.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_owlfeather_search_followup_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-owlfeather-search-followup-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-owlfeather-search-followup-qa")
+
+# With the Inn clue absent, record 193 must skip Owlfeather's indexed dialogue
+# service and follow the ROM event-table destination into scene 13.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_owlfeather_closed_gate_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-owlfeather-closed-gate-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-owlfeather-closed-gate-qa")
+
+# Set Ilene's story flag with no runner marker 7; the Scene-13 selector must
+# select its conditional actor-list entry after the field event-table route.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_owlfeather_ilene_gate_script_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-owlfeather-ilene-gate-script-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-owlfeather-ilene-gate-script-qa")
+
+# Check the two information-only choices on Owlfeather's first prompt, including
+# their source farewell pages and same-map return without setting story bit 2.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_owlfeather_opening_land_choice_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-owlfeather-opening-land-choice-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-owlfeather-opening-land-choice-qa")
+
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_owlfeather_opening_council_choice_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-owlfeather-opening-council-choice-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-owlfeather-opening-council-choice-qa")
+
+# Walk into Red Buffalo Woman's lodge through Scene-6 record 194 and verify
+# title service 18 gates the gift on story bit 17, then updates its source flags.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_red_buffalo_physical_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-red-buffalo-physical-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-red-buffalo-physical-entry-qa")
+
+# Reach the same Scene-6 collision through ordinary Up with the Ritual of
+# Binding gate clear, select More with ordinary B, follow the ROM's first
+# Harlequin topic chain, and verify the no-Ito return to the source map.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_red_buffalo_no_gift_more_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-red-buffalo-no-gift-more-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-red-buffalo-no-gift-more-qa")
+
+# Enter the ordinary field terminal through Scene-0 record 62/event 31,
+# choose Vid-Phone and Captain Quinton, then verify return to the menu.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_vid_phone_physical_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-vid-phone-physical-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-vid-phone-physical-entry-qa")
 
 # The Ares title-only mode-text prompt is a separate presenter from the
 # Stoker/NPC route. This diagnostic dump exercises its source-selected text,

@@ -5,7 +5,15 @@
 #include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 
+#include <QJsonArray>
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <filesystem>
+#include <iostream>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -2807,7 +2815,8 @@ int run_field_scene26_event1_physical_entry_qa(
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
-    const std::vector<std::string>& source_boundaries);
+    const std::vector<std::string>& source_boundaries,
+    std::string_view johnson_run_target = {});
 
 int run_scene26_table_collision_qa(
     FieldSceneRuntime& field_scene,
@@ -3916,6 +3925,242 @@ int run_field_scene26_maglock_descriptor_route_qa(
                  "terminal_prompt=source_event_0x18 "
                  "frames=" << frame
               << " artifacts=" << output.string() << '\n';
+    return 0;
+}
+
+int run_scene2_event9_gang_contract_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    field_scene.set_source_random_seed_for_dump(0U);
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-2 event-9 gang-contract QA: could not clear prior output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-2 event-9 gang-contract QA: could not create output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kTargetRecord = 94U;
+    constexpr std::uint32_t kTargetRecordAddress = 0x173156U;
+    constexpr std::uint8_t kTargetEventIndex = 9U;
+    constexpr std::uint8_t kEventTableRouteScene = 0x1AU;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    if (field_scene.field_scene_reference_for_dump() != 2U ||
+        metadata.terrain_collision_rectangles.size() <= kTargetRecord ||
+        metadata.terrain_collision_rectangles[kTargetRecord].left != 0x0680U ||
+        metadata.terrain_collision_rectangles[kTargetRecord].right != 0x069FU ||
+        metadata.terrain_collision_rectangles[kTargetRecord].top != 0x0480U ||
+        metadata.terrain_collision_rectangles[kTargetRecord].bottom != 0x049FU ||
+        metadata.terrain_collision_rectangles[kTargetRecord].value != 0x00C9U ||
+        !metadata.event_table_available ||
+        metadata.event_mode_table[kTargetEventIndex] !=
+            kEventTableRouteScene) {
+        std::cerr << "Scene-2 event-9 gang-contract QA: ROM record 94 or "
+                     "event-table row 9 does not match (scene="
+                  << field_scene.field_scene_reference_for_dump() << ")\n";
+        return 3;
+    }
+    if (!field_scene.seed_run_target_for_dump("gang_contract", 2U, 9U)) {
+        std::cerr << "Scene-2 event-9 gang-contract QA: could not seed the "
+                     "ROM-valid active contract target tuple\n";
+        return 3;
+    }
+
+    // The 0x7F wall rectangle covers the target's north side. Its event-9
+    // rectangle occupies the south half of that wall; approach from the open
+    // row below it with ordinary Up input, as the ROM collision map requires.
+    field_scene.set_field_entity_world_position_for_dump(0x6900U, 0x4A00U);
+    field_scene.set_field_camera_world_position_for_dump(0x6900U, 0x4A00U);
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&render, &output](const std::string_view name) {
+        const auto image = render();
+        const auto path = output / (std::string(name) + ".bmp");
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !image.save(QString::fromStdWString(path.wstring()))) {
+            std::cerr << "Scene-2 event-9 gang-contract QA: could not save "
+                      << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) {
+        std::cerr << "Scene-2 event-9 gang-contract QA: could not create route.tsv\n";
+        return 3;
+    }
+    trace << "stage\tframe\tscene\tx\ty\tcollision\tmode_event"
+             "\ttransition_event\tinteraction\tdialogue\tactivity_scene"
+             "\tactivity_mode\tdynamic_world_actors\taudio_events\n";
+    std::uint32_t frame = 0U;
+    const auto write_state = [&] (const std::string_view stage) {
+        const auto position = field_scene.field_entity_world_position();
+        const auto& transition =
+            field_scene.last_field_movement_transition_for_dump();
+        const auto& activity = field_scene.world_activity_state_for_dump();
+        trace << stage << '\t' << frame << '\t'
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << position.x << '\t' << position.y << '\t'
+              << field_scene.field_terrain_collision_code_for_dump() << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump()) << '\t'
+              << static_cast<unsigned>(transition.event_code) << '\t'
+              << field_scene.field_interaction_open() << '\t'
+              << field_scene.dialogue_open() << '\t' << activity.scene_id
+              << '\t' << static_cast<unsigned>(activity.mode) << '\t'
+              << field_scene.dynamic_world_actor_count_for_dump() << '\t'
+              << field_audio_events.size() << '\n';
+        trace.flush();
+    };
+    const auto step = [&](const std::uint8_t input) {
+        field_scene.set_controller_nibble(input);
+        field_scene.advance_frame();
+        ++frame;
+        write_state("contact");
+    };
+    if (!save("approach")) return 3;
+    for (std::uint16_t tick = 0U;
+         tick < 64U && field_scene.field_mode_event_code_for_dump() != 9U &&
+         !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 2U;
+         ++tick) {
+        step(0x01U); // ordinary Up into the south half of the source wall
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto& transition =
+        field_scene.last_field_movement_transition_for_dump();
+    if (transition.event_code != FieldCollisionEventCode::event_9 ||
+        !transition.mode_event_code_published ||
+        field_scene.field_mode_event_code_for_dump() != 9U) {
+        const auto position = field_scene.field_entity_world_position();
+        std::cerr << "Scene-2 event-9 gang-contract QA: ordinary Down did not "
+                     "publish record-94 event 9 (position="
+                  << position.x << ',' << position.y << ", event="
+                  << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+    if (!save("event9-contact")) return 3;
+    write_state("event9-published");
+
+    for (std::uint16_t settle = 0U;
+         settle < 180U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 2U;
+         ++settle) {
+        step(0U);
+    }
+    const auto& panel = field_scene.dialogue_panel();
+    std::string run_text;
+    for (std::size_t segment = 0U; segment < panel.text_segment_count;
+         ++segment) {
+        run_text.append(panel.text_segments[segment]);
+        run_text.push_back('\n');
+    }
+    if (!field_scene.dialogue_open() ||
+        run_text.find("Slot off, frag-face!!!") == std::string::npos ||
+        run_text.find("Guess what happens next.") == std::string::npos ||
+        !save("gang-contract-entry-dialogue")) {
+        std::cerr << "Scene-2 event-9 gang-contract QA: matched active offer "
+                     "did not show the ROM entry passage (dialogue="
+                  << field_scene.dialogue_open() << ", text=" << run_text
+                  << ")\n";
+        return 3;
+    }
+    write_state("gang-contract-entry-dialogue");
+
+    for (std::uint8_t wait = 0U;
+         wait < 60U && field_scene.dialogue_input_locked(); ++wait) {
+        step(0U);
+    }
+    if (field_scene.dialogue_open()) {
+        field_scene.set_controller_port_byte(0x40U);
+        field_scene.advance_frame();
+        ++frame;
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+    }
+    if (field_scene.dialogue_open()) {
+        std::cerr << "Scene-2 event-9 gang-contract QA: A did not close the "
+                     "entry passage\n";
+        return 3;
+    }
+    for (std::uint16_t settle = 0U;
+         settle < 240U &&
+         (field_scene.field_scene_reference_for_dump() == 2U ||
+          field_scene.field_transition_pending_for_dump() ||
+          field_scene.field_interaction_transition_active_for_dump() ||
+          field_scene.field_modal_return_transition_frames_for_dump() != 0U);
+         ++settle) {
+        step(0U);
+    }
+    const auto& activity = field_scene.world_activity_state_for_dump();
+    const auto entry_opened = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.run.entry_dialogue_opened");
+    const auto activity_prepared = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.world_activity.scene_prepared");
+    const auto descriptors_published = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.world_activity.publish_descriptors");
+    const auto actor_spawn_events = static_cast<std::size_t>(std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.random_encounter.actor_spawned_from_rom_list"));
+    if (field_scene.field_scene_reference_for_dump() != 15U ||
+        activity.scene_id != 15U ||
+        activity.mode != WorldActivityMode::field ||
+        field_scene.dynamic_world_actor_count_for_dump() != 4U ||
+        field_scene.dialogue_open() || entry_opened == source_boundaries.end() ||
+        activity_prepared == source_boundaries.end() ||
+        descriptors_published == source_boundaries.end() ||
+        actor_spawn_events != 4U || !save("actual")) {
+        std::cerr << "Scene-2 event-9 gang-contract QA: ROM actor-list route "
+                     "did not enter scene 15 with all four actors (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", activity=" << activity.scene_id
+                  << ", dynamic_actors="
+                  << field_scene.dynamic_world_actor_count_for_dump()
+                  << ", actor_spawn_events=" << actor_spawn_events
+                  << ", entry_opened="
+                  << (entry_opened != source_boundaries.end())
+                  << ", descriptors_published="
+                  << (descriptors_published != source_boundaries.end())
+                  << ", scene_prepared="
+                  << (activity_prepared != source_boundaries.end())
+                  << ", scene_prepare_unresolved="
+                  << (std::find(source_boundaries.begin(),
+                                source_boundaries.end(),
+                                "field.world_activity.scene_prepare_unresolved") !=
+                      source_boundaries.end())
+                  << ", actor_publish_failed="
+                  << (std::find(source_boundaries.begin(),
+                                source_boundaries.end(),
+                                "field.world_activity.run_target_actor_publish_failed") !=
+                      source_boundaries.end())
+                  << ", actor_descriptors_unresolved="
+                  << (std::find(source_boundaries.begin(),
+                                source_boundaries.end(),
+                                "field.world_activity.run_target_descriptors_unresolved") !=
+                      source_boundaries.end())
+                  << ", runtime_failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+    write_state("scene15-gang-actor-group");
+    std::cout << "field_scene2_gang_contract_entry_qa=passed "
+                 "target=scene2-event9 event_table_scene=scene26 "
+                 "actor_group_scene=scene15 actors=4 "
+                 "dialogue-before-transition=yes artifacts="
+              << output.string() << '\n';
     return 0;
 }
 
@@ -5288,6 +5533,7 @@ int run_field_ares_collision_shop_qa(
 
 enum class Scene20PhysicalEntryQaPath : std::uint8_t {
     c0_exit_lifetime,
+    entry_pending_flag,
     walk_away,
     grenade_unavailable,
     passkey_success,
@@ -5347,6 +5593,15 @@ int run_field_scene20_physical_entry_qa(
         std::cerr << "Scene-20 physical-entry QA: New Game state, paired C0 "
                      "doorway records, or event-table destination is wrong\n";
         return 3;
+    }
+
+    if (path == Scene20PhysicalEntryQaPath::entry_pending_flag) {
+        constexpr std::uint32_t kSceneTwentyEntryFlag =
+            std::uint32_t{1U} << 26U;
+        const auto contact_flags =
+            field_scene.notebook_contact_flags_for_dump();
+        field_scene.seed_notebook_contact_flags_for_qa(
+            contact_flags.value_or(0U) | kSceneTwentyEntryFlag);
     }
 
     std::optional<std::size_t> seeded_passkey_slot;
@@ -5574,6 +5829,8 @@ int run_field_scene20_physical_entry_qa(
         field_scene.field_entity_world_position();
     const auto scene2_return_heading =
         field_scene.field_entity_heading_for_dump();
+    const auto scene2_return_probe =
+        field_scene.field_collision_probe_state_for_dump();
     write_state("doorway-contact");
     field_scene.set_controller_nibble(0U);
 
@@ -5641,6 +5898,35 @@ int run_field_scene20_physical_entry_qa(
         return 3;
     }
     write_state("scene20-entry");
+    if (path == Scene20PhysicalEntryQaPath::entry_pending_flag) {
+        constexpr std::uint32_t kSceneTwentyEntryFlag =
+            std::uint32_t{1U} << 26U;
+        const auto contact_flags =
+            field_scene.notebook_contact_flags_for_dump();
+        const auto& timeout = field_scene.world_activity_timeout_for_dump();
+        if (!contact_flags.has_value() ||
+            (*contact_flags & kSceneTwentyEntryFlag) != 0U ||
+            timeout.scene_id != 0x14U || timeout.timeout_marker != -1 ||
+            timeout.timeout_frames == 0U ||
+            timeout.timeout_frames > 0x0078U || !save("actual")) {
+            std::cerr << "Scene-20 entry-gate QA: FFFC2C bit 26 was not "
+                         "consumed with its 120-frame timeout (scene="
+                      << timeout.scene_id << ", marker="
+                      << timeout.timeout_marker << ", frames="
+                      << timeout.timeout_frames << ", contacts="
+                      << (contact_flags.has_value()
+                              ? *contact_flags
+                              : 0U)
+                      << ")\n";
+            return 3;
+        }
+        write_state("entry-gate-consumed");
+        std::cout << "Scene-20 entry-gate QA: ordinary scene-2 doorway "
+                     "loaded Scene 20, consumed FFFC2C bit 26, and armed "
+                     "the ROM 0x78-frame timeout; artifacts="
+                  << output.string() << '\n';
+        return 0;
+    }
     if (seeded_passkey_slot.has_value()) {
         write_state("fixture-passkey-seeded-in-active-runner");
     }
@@ -6132,23 +6418,53 @@ int run_field_scene20_physical_entry_qa(
         }
         const auto returned_contact =
             field_scene.field_entity_world_position();
+        const auto expected_return_heading = static_cast<std::uint16_t>(
+            scene2_return_heading ^ 0x8000U);
+        const auto return_x =
+            static_cast<std::uint32_t>(returned_contact.x) >> 4U;
+        const auto return_y =
+            static_cast<std::uint32_t>(returned_contact.y) >> 4U;
+        const bool return_anchor_overlaps_c0_envelope =
+            return_x + 12U >= 0x00D4U && return_x <= 0x012BU + 12U &&
+            return_y + 7U >= 0x0259U && return_y <= 0x0286U + 7U;
+        {
+            std::ofstream return_probe_trace(
+                output / "scene2-c0-return-source.tsv", std::ios::trunc);
+            if (!return_probe_trace) {
+                return 3;
+            }
+            return_probe_trace
+                << "probe_initialized\tselected_bank\tcontact_x\tcontact_y\t"
+                   "return_x\treturn_y\treturn_heading\n"
+                << scene2_return_probe.initialized << '\t'
+                << static_cast<unsigned>(
+                       scene2_return_probe.selected_offset_bank)
+                << '\t' << scene2_return_position.x << '\t'
+                << scene2_return_position.y << '\t'
+                << scene2_return_probe.points[0U].x << '\t'
+                << scene2_return_probe.points[0U].y << '\t'
+                << expected_return_heading << '\n';
+        }
         if (!write_exit_state("post-transition-settle", "none") ||
             !save("scene20-c0-post-transition-settle")) {
             return 3;
         }
         if (!scene2_is_live() ||
-            returned_contact.x != scene2_return_position.x ||
-            returned_contact.y != scene2_return_position.y ||
+            !scene2_return_probe.initialized ||
+            returned_contact.x != scene2_return_probe.points[0U].x ||
+            returned_contact.y != scene2_return_probe.points[0U].y ||
+            return_anchor_overlaps_c0_envelope ||
             field_scene.field_entity_heading_for_dump() !=
-                scene2_return_heading ||
+                expected_return_heading ||
             field_scene.field_map_event_system_for_dump()
                     .collision_dispatch_count() != dispatches_at_door ||
             !field_hud_chrome_survives(render(), asset_root) ||
             count_playfield_lit(render()) < 100U ||
             !write_exit_state("scene2-return", "none") ||
-            !save("scene20-c0-scene2-return")) {
+            !save("scene20-c0-scene2-return") || !save("actual")) {
             std::cerr << "Scene-20 C0 QA: event 0 did not restore the "
-                         "source scene-2 contact position and facing\n";
+                         "Lua-selected source collision-probe anchor and "
+                         "away-facing pose\n";
             return 3;
         }
 
@@ -6222,7 +6538,8 @@ int run_field_scene20_physical_entry_qa(
         const auto actual = render();
         if (!scene2_is_live() ||
             !field_hud_chrome_survives(actual, asset_root) ||
-            count_playfield_lit(actual) < 100U || !save("actual")) {
+            count_playfield_lit(actual) < 100U ||
+            !save("scene20-c0-fresh-field")) {
             return 3;
         }
         exit_trace.close();
@@ -6231,9 +6548,13 @@ int run_field_scene20_physical_entry_qa(
                   << " event=0 destination=source-scene="
                   << field_scene.field_scene_reference_for_dump()
                   << " scene20_contact=" << door_contact.x << ','
-                  << door_contact.y << " source_return="
+                  << door_contact.y << " source_contact="
                   << scene2_return_position.x << ','
-                  << scene2_return_position.y << " dispatches="
+                  << scene2_return_position.y << " return_anchor="
+                  << returned_contact.x << ',' << returned_contact.y
+                  << " return_heading=0x" << std::hex
+                  << expected_return_heading << std::dec
+                  << " dispatches="
                   << dispatches_before_door << "->" << dispatches_at_door
                   << " held_down=16 fresh_right=8"
                   << " artifacts=" << output.string() << '\n';
@@ -7896,7 +8217,8 @@ int run_field_scene26_event1_physical_entry_qa(
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
-    const std::vector<std::string>& source_boundaries) {
+    const std::vector<std::string>& source_boundaries,
+    const std::string_view johnson_run_target) {
     // The real runtime seeds from its own startup entropy. Pin the source PRNG
     // only for this screenshot route so Debug and Release capture the same
     // resource variant.
@@ -7944,6 +8266,13 @@ int run_field_scene26_event1_physical_entry_qa(
                   << ", position=" << initial_position.x << ','
                   << initial_position.y << ", records="
                   << entry_records.size() << ")\n";
+        return 3;
+    }
+    if (!johnson_run_target.empty() &&
+        !field_scene.seed_run_target_for_dump(
+            johnson_run_target, 2U, 1U)) {
+        std::cerr << "Scene-26 Johnson run-entry QA: could not seed the "
+                     "ROM-valid run target tuple (map 2, event 1)\n";
         return 3;
     }
 
@@ -8185,6 +8514,121 @@ int run_field_scene26_event1_physical_entry_qa(
         write_state(name);
     }
 
+    if (!johnson_run_target.empty()) {
+        for (std::uint16_t settle = 0U;
+             settle < 180U && !field_scene.dialogue_open() &&
+             field_scene.field_scene_reference_for_dump() == 2U;
+             ++settle) {
+            step(0U);
+        }
+        const auto& run_panel = field_scene.dialogue_panel();
+        std::string run_text;
+        for (std::size_t segment = 0U;
+             segment < run_panel.text_segment_count; ++segment) {
+            run_text.append(run_panel.text_segments[segment]);
+            run_text.push_back('\n');
+        }
+        const bool employee_recruitment =
+            johnson_run_target == "employee_recruitment";
+        const auto first_run_phrase = employee_recruitment
+            ? std::string_view{"diversion"}
+            : std::string_view{"reception area"};
+        const auto final_run_phrase = employee_recruitment
+            ? std::string_view{"Finding your quarry"}
+            : std::string_view{"wheezing"};
+        if (!field_scene.dialogue_open() ||
+            field_scene.field_mode_text_open_for_dump() ||
+            field_scene.field_scene_reference_for_dump() != 2U ||
+            run_text.find(first_run_phrase) == std::string::npos ||
+            run_text.find(final_run_phrase) == std::string::npos ||
+            !save("johnson-run-entry-dialogue")) {
+            std::cerr << "Scene-26 Johnson run-entry QA: the matched "
+                         "type-4/type-5 "
+                         "target did not show the ROM diversion passage "
+                         "before transitioning (scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", dialogue=" << field_scene.dialogue_open()
+                      << ", mode_text="
+                      << field_scene.field_mode_text_open_for_dump()
+                      << ", text=" << run_text << ")\n";
+            return 3;
+        }
+        write_state("johnson-run-entry-dialogue");
+
+        for (std::uint8_t page = 0U;
+             page < 8U && field_scene.dialogue_open(); ++page) {
+            for (std::uint8_t wait = 0U;
+                 wait < 60U && field_scene.dialogue_input_locked(); ++wait) {
+                step(0U);
+            }
+            if (!field_scene.dialogue_open()) {
+                break;
+            }
+            field_scene.set_controller_port_byte(0x40U);
+            field_scene.advance_frame();
+            ++frame;
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+            ++frame;
+        }
+        if (field_scene.dialogue_open()) {
+            std::cerr << "Scene-26 Johnson run-entry QA: the diversion "
+                         "passage did not close after ordinary A input\n";
+            return 3;
+        }
+        for (std::uint16_t settle = 0U;
+             settle < 180U &&
+             (field_scene.field_scene_reference_for_dump() == 2U ||
+              field_scene.field_transition_pending_for_dump() ||
+              field_scene.field_interaction_transition_active_for_dump() ||
+              field_scene.field_modal_return_transition_frames_for_dump() !=
+                  0U);
+             ++settle) {
+            step(0U);
+        }
+        const auto& run_destination =
+            field_scene.state().field_scene_buffers.source_metadata;
+        const auto& run_activity =
+            field_scene.world_activity_state_for_dump();
+        const auto run_entry_opened = std::find(
+            source_boundaries.begin(), source_boundaries.end(),
+            "field.run.entry_dialogue_opened");
+        const auto activity_prepared = std::find(
+            source_boundaries.begin(), source_boundaries.end(),
+            "field.world_activity.scene_prepared");
+        if (field_scene.field_scene_reference_for_dump() !=
+                kDestinationScene ||
+            run_activity.scene_id != kDestinationScene ||
+            run_activity.mode != WorldActivityMode::resource_activity ||
+            run_destination.event_table_available ||
+            field_scene.dialogue_open() ||
+            field_scene.field_mode_text_open_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            run_entry_opened == source_boundaries.end() ||
+            activity_prepared == source_boundaries.end() ||
+            !save("johnson-run-scene26")) {
+            std::cerr << "Scene-26 Johnson run-entry QA: the destination "
+                         "event-table route did not resume after the run "
+                         "dialogue (scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", activity=" << run_activity.scene_id
+                      << ", mode="
+                      << static_cast<unsigned>(run_activity.mode)
+                      << ")\n";
+            return 3;
+        }
+        write_state("johnson-run-scene26");
+        if (!save("actual")) {
+            return 3;
+        }
+        std::cout << "field_scene26_johnson_run_entry=passed "
+                     "run_id=" << johnson_run_target
+                  << " target=scene2-event1 destination=scene26 "
+                     "dialogue-before-transition=yes artifacts="
+                  << output.string() << '\n';
+        return 0;
+    }
+
     for (std::uint16_t settle = 0U;
          settle < 180U &&
          field_scene.field_scene_reference_for_dump() == 2U &&
@@ -8331,7 +8775,7 @@ int run_field_scene26_event1_physical_entry_qa(
         "field.mode_text.area_event_entry_opened");
     const auto resumed_route = std::find(
         source_boundaries.begin(), source_boundaries.end(),
-        "field.mode_text.area_event_scene_entered");
+        "field.entry.area_event_scene_entered");
     const auto scene_prepared = std::find(
         source_boundaries.begin(), source_boundaries.end(),
         "field.world_activity.scene_prepared");
@@ -9282,6 +9726,553 @@ int run_scene19_table_collision_qa(
     std::cout << "scene19_table_collision_qa=passed routes=" << kRoutes.size()
               << " records=8,9 rom=0x1D5F28,0x1D5F32 longplay="
                  "section_09:006990,007035 artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
+int run_scene2_jackals_lantern_entry_qa(
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-2 Jackal's Lantern QA: could not clear prior output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-2 Jackal's Lantern QA: could not create output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    std::vector<std::string> boundaries;
+    std::vector<std::uint16_t> audio_events;
+    FieldSceneRuntime field_scene(
+        [&boundaries](const std::string_view boundary) {
+            boundaries.emplace_back(boundary);
+        },
+        [&audio_events](const std::uint16_t event) {
+            audio_events.push_back(event);
+        });
+    field_scene.set_source_random_seed_for_dump(0U);
+    if (!field_scene.bootstrap_for_scene_dump(startup_state, 2U)) {
+        std::cerr << "Scene-2 Jackal's Lantern QA: bootstrap failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kEntranceRecordIndex = 86U;
+    constexpr std::uint32_t kEntranceRecordAddress = 0x173106U;
+    constexpr std::uint8_t kEntranceEventIndex = 5U;
+    constexpr std::uint8_t kDestinationScene = 19U;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const bool source_record_matches =
+        field_scene.field_scene_reference_for_dump() == 2U &&
+        metadata.terrain_collision_rectangles.size() >
+            kEntranceRecordIndex &&
+        metadata.terrain_collision_rectangles[kEntranceRecordIndex].left ==
+            0x02C0U &&
+        metadata.terrain_collision_rectangles[kEntranceRecordIndex].right ==
+            0x02DFU &&
+        metadata.terrain_collision_rectangles[kEntranceRecordIndex].top ==
+            0x0080U &&
+        metadata.terrain_collision_rectangles[kEntranceRecordIndex].bottom ==
+            0x009FU &&
+        metadata.terrain_collision_rectangles[kEntranceRecordIndex].value ==
+            0xC5U &&
+        metadata.event_table_available &&
+        metadata.event_mode_table.size() > kEntranceEventIndex &&
+        metadata.event_mode_table[kEntranceEventIndex] ==
+            kDestinationScene;
+    if (!source_record_matches) {
+        std::cerr << "Scene-2 Jackal's Lantern QA: ROM entrance record "
+                     "0x173106 or event-table row 5 did not match\n";
+        return 3;
+    }
+
+    // Use the open south approach below ROM collision record 86. The event is
+    // entered through ordinary Up movement and the imported event table; no
+    // scene or destination setter participates in this route.
+    constexpr SceneRunnerPosition kApproachStart{0x2D00U, 0x0B00U};
+    field_scene.set_field_entity_world_position_for_dump(
+        kApproachStart.x, kApproachStart.y);
+    field_scene.set_field_camera_world_position_for_dump(0x2300U, 0x0400U);
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&output, &asset_root, &render](
+                          const std::string_view name,
+                          const bool require_hud = true) {
+        const auto image = render();
+        const auto path = output / (std::string(name) + ".bmp");
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (require_hud && !field_hud_chrome_survives(image, asset_root)) ||
+            !image.save(QString::fromStdWString(path.wstring()))) {
+            std::cerr << "Scene-2 Jackal's Lantern QA: full-screen capture "
+                         "failed for " << name << '\n';
+            return false;
+        }
+        return true;
+    };
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) {
+        std::cerr << "Scene-2 Jackal's Lantern QA: could not create route.tsv\n";
+        return 3;
+    }
+    trace << "stage\ttick\tscene\tx_fixed\ty_fixed\tevent\tmode_event"
+             "\ttransition_pending\tdialogue_open\toptions\n";
+    std::uint16_t tick = 0U;
+    const auto write_state = [&] (const std::string_view stage) {
+        const auto position = field_scene.field_entity_world_position();
+        const auto& dispatch = field_scene.field_map_event_system_for_dump()
+                                   .last_collision_dispatch();
+        trace << stage << '\t' << tick << '\t'
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << position.x << '\t' << position.y << '\t'
+              << (dispatch.has_value()
+                      ? static_cast<unsigned>(dispatch->decision.event_code)
+                      : 255U)
+              << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump())
+              << '\t' << field_scene.field_transition_pending_for_dump()
+              << '\t' << field_scene.dialogue_open() << '\t'
+              << field_scene.dialogue_panel().option_count
+              << '\n';
+        trace.flush();
+    };
+
+    if (!save("approach-start")) {
+        return 3;
+    }
+    write_state("approach-start");
+    bool entrance_contact = false;
+    std::uint16_t contact_tick = 0U;
+    SceneRunnerPosition contact_position{};
+    field_scene.set_controller_nibble(0x01U); // ordinary Up
+    for (tick = 1U; tick <= 80U; ++tick) {
+        field_scene.advance_frame();
+        const auto& dispatch = field_scene.field_map_event_system_for_dump()
+                                   .last_collision_dispatch();
+        const bool event_five = dispatch.has_value() &&
+            dispatch->decision.source_event_code ==
+                FieldCollisionEventCode::event_5;
+        if (event_five) {
+            entrance_contact = true;
+            contact_tick = tick;
+            contact_position = field_scene.field_entity_world_position();
+            write_state("event-5-contact");
+            if (!save("event-5-contact")) {
+                return 3;
+            }
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    if (!entrance_contact || contact_tick == 0U ||
+        field_scene.field_mode_event_code_for_dump() != kEntranceEventIndex ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open()) {
+        const auto position = field_scene.field_entity_world_position();
+        std::cerr << "Scene-2 Jackal's Lantern QA: normal Up did not publish "
+                     "the ROM event-5 route (contact=" << entrance_contact
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", position=" << position.x << ',' << position.y << ")\n";
+        return 3;
+    }
+    const auto contact_x = static_cast<std::uint16_t>(
+        contact_position.x >> 4U);
+    const auto contact_y = static_cast<std::uint16_t>(
+        contact_position.y >> 4U);
+    if (contact_x < 0x02B4U || contact_x > 0x02EBU ||
+        contact_y < 0x0074U || contact_y > 0x00ABU) {
+        std::cerr << "Scene-2 Jackal's Lantern QA: event contact did not "
+                     "remain beside record 86 (" << contact_x << ','
+                  << contact_y << ")\n";
+        return 3;
+    }
+
+    constexpr std::array<std::uint16_t, 4> kFadeCheckpoints{1U, 8U, 16U, 17U};
+    for (const auto checkpoint : kFadeCheckpoints) {
+        while (tick < contact_tick + checkpoint &&
+               field_scene.field_scene_reference_for_dump() == 2U) {
+            field_scene.advance_frame();
+            ++tick;
+        }
+        if (field_scene.field_scene_reference_for_dump() == 2U) {
+            const auto name = "entry-transition-" +
+                (checkpoint < 10U ? std::string("0") : std::string()) +
+                std::to_string(checkpoint);
+            write_state(name);
+            if (!save(name, false)) {
+                return 3;
+            }
+        }
+    }
+    for (std::uint16_t settle = 0U;
+         settle < 180U &&
+         field_scene.field_scene_reference_for_dump() == 2U;
+         ++settle) {
+        field_scene.advance_frame();
+        ++tick;
+    }
+
+    const bool lua_area_link_observed = std::find(
+        boundaries.begin(), boundaries.end(),
+        "field.exit.area_event_route_selected:event=5:scene=19") !=
+        boundaries.end();
+
+    const auto& destination_metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto destination_spawn =
+        destination_metadata.initial_field_records.empty()
+            ? SceneRunnerPosition{}
+            : destination_metadata.initial_field_records[0U];
+    const auto destination_position =
+        field_scene.field_entity_world_position();
+    const auto destination_frame = render();
+    if (field_scene.field_scene_reference_for_dump() != kDestinationScene ||
+        destination_spawn.x != 0x0D00U || destination_spawn.y != 0x0CC0U ||
+        destination_position.x != destination_spawn.x ||
+        destination_position.y != destination_spawn.y ||
+        destination_metadata.terrain_collision_rectangles.size() <= 12U ||
+        destination_metadata.terrain_collision_rectangles[12U].value != 0x9EU ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.field_mode_text_open_for_dump() ||
+        field_scene.shop_menu_open() ||
+        field_scene.field_transition_pending_for_dump() ||
+        field_scene.field_interaction_transition_active_for_dump() ||
+        !lua_area_link_observed ||
+        destination_frame.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !field_hud_chrome_survives(destination_frame, asset_root) ||
+        count_playfield_lit(destination_frame) < 100U ||
+        !save("scene19-entry") || !save("actual")) {
+        std::cerr << "Scene-2 Jackal's Lantern QA: event 5 did not load "
+                     "Scene 19 at descriptor spawn (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", position=" << destination_position.x << ','
+                  << destination_position.y << ", spawn="
+                  << destination_spawn.x << ',' << destination_spawn.y
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", lua_area_link_observed="
+                  << lua_area_link_observed << ")\n";
+        return 3;
+    }
+    tick = static_cast<std::uint16_t>(tick + 1U);
+    write_state("scene19-entry");
+    trace << "source\trom_record=0x" << std::hex
+          << kEntranceRecordAddress << std::dec
+          << "\tdestination=19\tspawn=208,204\tentry_dialogue=none\n";
+    if (!trace) {
+        return 3;
+    }
+    std::ofstream boundary_trace(output / "source-boundaries.tsv",
+                                 std::ios::trunc);
+    if (!boundary_trace) {
+        return 3;
+    }
+    boundary_trace << "sequence\tboundary\n";
+    for (std::size_t index = 0U; index < boundaries.size(); ++index) {
+        boundary_trace << index << '\t' << boundaries[index] << '\n';
+    }
+    if (!boundary_trace) {
+        return 3;
+    }
+    std::cout << "scene2_jackals_lantern_entry_qa=passed record=86 "
+                 "event=5 destination_scene=19 spawn=208,204 "
+                 "entry_dialogue=none captures=320x224 artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
+int run_scene19_old_man_contact_qa(
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-19 old-man QA: could not clear prior output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Scene-19 old-man QA: could not create output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    std::vector<std::string> boundaries;
+    std::vector<std::uint16_t> audio_events;
+    FieldSceneRuntime field_scene(
+        [&boundaries](const std::string_view boundary) {
+            boundaries.emplace_back(boundary);
+        },
+        [&audio_events](const std::uint16_t event) {
+            audio_events.push_back(event);
+        });
+    field_scene.set_source_random_seed_for_dump(0x4000U);
+    field_scene.set_field_world_frame_counter_for_dump(0x0200U);
+    if (!field_scene.bootstrap_for_scene_dump(startup_state, 19U)) {
+        std::cerr << "Scene-19 old-man QA: bootstrap failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    constexpr std::uint16_t kEventRecordIndex = 12U;
+    constexpr std::uint32_t kEventRecordAddress = 0x1D5F50U;
+    const bool source_spawn_matches =
+        metadata.initial_field_records[0U].x == 0x0D00U &&
+        metadata.initial_field_records[0U].y == 0x0CC0U &&
+        field_scene.field_entity_world_position().x == 0x0D00U &&
+        field_scene.field_entity_world_position().y == 0x0CC0U;
+    const bool source_event_record_matches =
+        metadata.terrain_collision_rectangles.size() > kEventRecordIndex &&
+        metadata.terrain_collision_rectangles[kEventRecordIndex].left == 0U &&
+        metadata.terrain_collision_rectangles[kEventRecordIndex].right == 31U &&
+        metadata.terrain_collision_rectangles[kEventRecordIndex].top == 32U &&
+        metadata.terrain_collision_rectangles[kEventRecordIndex].bottom == 63U &&
+        metadata.terrain_collision_rectangles[kEventRecordIndex].value == 0x9EU;
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&output, &asset_root](const std::string_view name,
+                                             const QImage& image) {
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+               field_hud_chrome_survives(image, asset_root) &&
+               image.save(QString::fromStdWString(
+                   (output / std::string(name)).wstring()));
+    };
+    if (!source_spawn_matches || !source_event_record_matches ||
+        field_scene.dialogue_open() || !save("scene-entry.bmp", render())) {
+        std::cerr << "Scene-19 old-man QA: ROM descriptor/trigger or scene-entry "
+                     "state diverged (spawn="
+                  << field_scene.field_entity_world_position().x << ','
+                  << field_scene.field_entity_world_position().y
+                  << ", source_spawn=" << source_spawn_matches
+                  << ", source_trigger=" << source_event_record_matches
+                  << ", dialogue_on_entry=" << field_scene.dialogue_open()
+                  << ")\n";
+        return 3;
+    }
+
+    // The descriptor fallback spawn is (208,204), outside the contact region.
+    // The ROM's 0x7F border blocks the west approach; the event-30 rectangle
+    // overlays its western half and is reached from the open lane south of it.
+    // Begin at (16,80), then use normal Up input through the boundary.
+    field_scene.set_field_entity_world_position_for_dump(16U * 16U,
+                                                          80U * 16U);
+    field_scene.set_field_camera_world_position_for_dump(0U, 0U);
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) {
+        std::cerr << "Scene-19 old-man QA: route log could not be opened\n";
+        return 3;
+    }
+    trace << "stage\ttick\tscene\tx_fixed\ty_fixed\tevent\tmode_event"
+             "\tdialogue_open\ttext_segments\toptions\n";
+    trace << "scene-entry\t0\t19\t" << 0x0D00U << '\t' << 0x0CC0U
+          << "\t-\t-\t0\t0\t0\n";
+    if (!save("approach-start.bmp", render())) {
+        std::cerr << "Scene-19 old-man QA: approach frame failed\n";
+        return 3;
+    }
+
+    bool event_contact = false;
+    std::uint16_t contact_tick = 0U;
+    SceneRunnerPosition contact_position{};
+    field_scene.set_controller_nibble(0x01U); // ordinary Up
+    for (std::uint16_t tick = 1U; tick <= 80U; ++tick) {
+        field_scene.advance_frame();
+        const auto position = field_scene.field_entity_world_position();
+        const auto& dispatch =
+            field_scene.field_map_event_system_for_dump().last_collision_dispatch();
+        const bool event_30 = dispatch.has_value() &&
+            dispatch->decision.source_event_code ==
+                FieldCollisionEventCode::event_30;
+        trace << "approach\t" << tick << '\t'
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << position.x << '\t' << position.y << '\t'
+              << (dispatch.has_value()
+                      ? static_cast<unsigned>(dispatch->decision.event_code)
+                      : 255U)
+              << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump())
+              << '\t' << field_scene.dialogue_open() << '\t'
+              << field_scene.dialogue_panel().text_segment_count << '\t'
+              << field_scene.dialogue_panel().option_count << '\n';
+        if (event_30) {
+            event_contact = true;
+            contact_tick = tick;
+            contact_position = position;
+            const auto contact_frame = render();
+            if (contact_frame.size() != QSize(kSceneWidth, kSceneHeight) ||
+                !contact_frame.save(QString::fromStdWString(
+                    (output / "event-30-contact.bmp").wstring()))) {
+                field_scene.set_controller_nibble(0U);
+                std::cerr << "Scene-19 old-man QA: event contact frame failed\n";
+                return 3;
+            }
+            break;
+        }
+        if (field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 19U) {
+            field_scene.set_controller_nibble(0U);
+            std::cerr << "Scene-19 old-man QA: left the expected field route "
+                         "before contact\n";
+            return 3;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    if (!event_contact ||
+        field_scene.field_map_event_system_for_dump().collision_dispatch_count() !=
+            1U) {
+        std::cerr << "Scene-19 old-man QA: ordinary Up did not publish one "
+                     "ROM event-30 contact from the source region (found="
+                  << event_contact << ", dispatches="
+                  << field_scene.field_map_event_system_for_dump()
+                         .collision_dispatch_count()
+                  << ", pos=" << contact_position.x << ','
+                  << contact_position.y << ")\n";
+        return 3;
+    }
+
+    bool dialogue_opened = false;
+    for (std::uint16_t tick = 1U; tick <= 240U; ++tick) {
+        field_scene.advance_frame();
+        if (field_scene.dialogue_open()) {
+            dialogue_opened = true;
+            const auto& panel = field_scene.dialogue_panel();
+            const bool expected_old_man_text = panel.text_segment_count > 0U &&
+                panel.text_segments[0U].find(
+                    "old man flashes his gums at you.") !=
+                    std::string_view::npos;
+            const bool expected_profile =
+                panel.actor_name == "Unidentified old man" &&
+                panel.portrait_alias ==
+                    "dialogue.portraits.jackals.lantern.old.man";
+            const auto dialogue_image = render();
+            const bool dialogue_image_saved =
+                dialogue_image.size() == QSize(kSceneWidth, kSceneHeight) &&
+                dialogue_image.save(QString::fromStdWString(
+                    (output / "old-man-dialogue.bmp").wstring()));
+            if (!expected_old_man_text || !expected_profile ||
+                panel.option_count != 0U || !panel.source_complete ||
+                !dialogue_image_saved) {
+                std::cerr << "Scene-19 old-man QA: event 30 did not present "
+                             "the ROM passage/profile without choices (text="
+                          << (panel.text_segment_count > 0U
+                                  ? panel.text_segments[0U]
+                                  : std::string_view{})
+                          << ", speaker=" << panel.actor_name
+                          << ", portrait=" << panel.portrait_alias
+                          << ", options=" << panel.option_count
+                          << ", source_complete=" << panel.source_complete
+                          << ", text_match=" << expected_old_man_text
+                          << ", profile_match=" << expected_profile
+                          << ", image_saved=" << dialogue_image_saved
+                          << ")\n";
+                return 3;
+            }
+            trace << "dialogue-open\t" << tick << '\t'
+                  << field_scene.field_scene_reference_for_dump() << '\t'
+                  << field_scene.field_entity_world_position().x << '\t'
+                  << field_scene.field_entity_world_position().y
+                  << "\t30\t30\t1\t" << panel.text_segment_count << '\t'
+                  << panel.option_count << '\n';
+            break;
+        }
+    }
+    if (!dialogue_opened ||
+        std::find(boundaries.begin(), boundaries.end(),
+                  "field.activity.event30_route_script_failed") !=
+            boundaries.end() ||
+        std::find(boundaries.begin(), boundaries.end(),
+                  "field.location.dialogue_task_opened") == boundaries.end()) {
+        std::cerr << "Scene-19 old-man QA: ROM event 30 did not reach the Lua "
+                     "location dialogue (opened=" << dialogue_opened << ")\n";
+        return 3;
+    }
+
+    for (std::uint16_t tick = 0U;
+         tick < 120U && field_scene.dialogue_input_locked(); ++tick) {
+        field_scene.advance_frame();
+    }
+    field_scene.set_controller_port_byte(0x40U); // ordinary A dismiss
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    for (std::uint16_t tick = 0U;
+         tick < 120U && field_scene.dialogue_open(); ++tick) {
+        field_scene.advance_frame();
+    }
+    const auto return_start = render();
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 19U ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 60U ||
+        return_start.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !return_start.save(QString::fromStdWString(
+            (output / "return-transition-start.bmp").wstring()))) {
+        std::cerr << "Scene-19 old-man QA: A did not begin the source-scene "
+                     "return fade (dialogue="
+                  << field_scene.dialogue_open() << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", fade_frames="
+                  << static_cast<unsigned>(
+                         field_scene.field_modal_return_transition_frames_for_dump())
+                  << ")\n";
+        return 3;
+    }
+    for (std::uint8_t frame = 0U; frame < 60U; ++frame) {
+        field_scene.advance_frame();
+        if (frame == 29U || frame == 59U) {
+            const auto transition_frame = render();
+            const auto name = frame == 29U
+                ? "return-transition-midpoint.bmp"
+                : "return-transition-complete.bmp";
+            if (transition_frame.size() != QSize(kSceneWidth, kSceneHeight) ||
+                !transition_frame.save(QString::fromStdWString(
+                    (output / name).wstring()))) {
+                std::cerr << "Scene-19 old-man QA: return fade frame failed at "
+                          << static_cast<unsigned>(frame) << '\n';
+                return 3;
+            }
+        }
+    }
+    const auto returned = render();
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 19U ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        field_scene.field_palette_fade_steps_for_dump() != 0U ||
+        !field_hud_chrome_survives(returned, asset_root) ||
+        count_playfield_lit(returned) < 100U ||
+        !save("actual.bmp", returned) || !audio_events.empty()) {
+        std::cerr << "Scene-19 old-man QA: completed return did not redraw the "
+                     "same field scene cleanly (dialogue="
+                  << field_scene.dialogue_open() << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", fade_frames="
+                  << static_cast<unsigned>(
+                         field_scene.field_modal_return_transition_frames_for_dump())
+                  << ", palette_steps="
+                  << static_cast<unsigned>(
+                         field_scene.field_palette_fade_steps_for_dump())
+                  << ", audio_events=" << audio_events.size() << ")\n";
+        return 3;
+    }
+    trace << "returned-to-field\t" << contact_tick << "\t19\t"
+          << field_scene.field_entity_world_position().x << '\t'
+          << field_scene.field_entity_world_position().y
+          << "\t30\t30\t0\t0\t0\n";
+    trace.flush();
+    std::cout << "scene19_old_man_contact_qa=passed rom=0x" << std::hex
+              << kEventRecordAddress << std::dec << " spawn=208,204 contact="
+              << contact_position.x << ',' << contact_position.y
+              << " tick=" << contact_tick
+              << " debugger_ready=ordinary-input-field-runtime artifacts="
               << output.string() << '\n';
     return 0;
 }
@@ -12363,7 +13354,16 @@ int run_field_stoker_collision_to_dialogue_qa(
                   << (field_scene.field_transition_pending_for_dump()
                           ? "yes"
                           : "no")
-                  << ")\n";
+                  << ") boundaries=";
+        for (const auto& boundary : source_boundaries) {
+            if (boundary.find("field.exit") != std::string::npos ||
+                boundary.find("field.location") != std::string::npos ||
+                boundary.find("field.dialogue") != std::string::npos ||
+                boundary.find("map_event") != std::string::npos) {
+                std::cerr << boundary << ',';
+            }
+        }
+        std::cerr << '\n';
         return 3;
     }
     const auto auto_walk_consumed_after = std::count(
@@ -12479,7 +13479,24 @@ int run_field_stoker_collision_to_dialogue_qa(
         arrival.continuation_label.find("< MORE >") == std::string_view::npos ||
         !save_frame("stoker-arrival-dialogue", false)) {
         std::cerr << "Stoker collision QA: normal contact did not select the "
-                     "source Stoker arrival record in the shared dialogue panel\n";
+                     "source Stoker arrival record in the shared dialogue panel"
+                  << " (open=" << arrival.open
+                  << ", complete=" << arrival.source_complete
+                  << ", actor_kind=" << static_cast<unsigned>(arrival.actor_kind)
+                  << ", actor=\"" << arrival.actor_name
+                  << "\", portrait=\"" << arrival.portrait_alias
+                  << "\", segments=" << arrival.text_segment_count
+                  << ", more=" << arrival.has_more
+                  << ", options=" << arrival.option_count
+                  << ", opening_seen="
+                  << field_scene.stoker_motel_story_state_for_dump()
+                         .opening_dialogue_seen
+                  << ", continuation=\"" << arrival.continuation_label
+                  << "\", text=";
+        for (std::size_t index = 0; index < arrival.text_segment_count; ++index) {
+            std::cerr << "[" << arrival.text_segments[index] << "]";
+        }
+        std::cerr << '\n';
         return 3;
     }
     const auto arrival_image = render_field();
@@ -14006,6 +15023,303 @@ int run_field_scene2_motel_street_collision_qa(
     return 0;
 }
 
+int run_field_icarus_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries,
+    const bool access_granted) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Icarus Caleb QA: could not clear prior captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Icarus Caleb QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    if (field_scene.field_scene_reference_for_dump() != 12U ||
+        field_scene.field_entity_world_position().x != 16U * 16U ||
+        field_scene.field_entity_world_position().y != 80U * 16U ||
+        !field_scene.set_story_flag_for_dump(10U, access_granted)) {
+        std::cerr << "Icarus Caleb QA: scene-12 checkpoint or access gate "
+                     "does not match the ROM route\n";
+        return 3;
+    }
+    // This positional save fixture leaves FFFC27 unresolved; ROM New Game
+    // startup supplies zero before event 30 writes Caleb's contact bits.
+    field_scene.seed_notebook_referral_flags_for_qa(0U);
+    // ROM New Game also zeroes the three FF018D/FF028D/FF038D counters.
+    field_scene.seed_runner_source_byte_triplet_for_qa({0U, 0U, 0U});
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name) {
+        const auto image = render();
+        const auto path = output / (std::string(name) + ".bmp");
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !image.save(QString::fromStdWString(path.wstring()))) {
+            std::cerr << "Icarus Caleb QA: full-screen capture failed for "
+                      << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    const auto panel_contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count;
+             ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    if (!save("spawn")) {
+        return 3;
+    }
+
+    const auto opened_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.dialogue_task_opened"));
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 90U && !field_scene.dialogue_open();
+         ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into record 11
+        field_scene.advance_frame();
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto contact = field_scene.field_entity_world_position();
+    const auto& first_page = field_scene.dialogue_panel();
+    const auto first_page_opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.dialogue_task_opened"));
+    const auto first_page_image_saved =
+        save(access_granted ? "first-meeting" : "access-blocked");
+    if (!access_granted) {
+        const auto flags = field_scene.notebook_referral_flags_for_dump();
+        const auto counters =
+            field_scene.runner_source_byte_triplet_for_dump();
+        if (movement_ticks == 0U || movement_ticks >= 90U ||
+            field_scene.field_scene_reference_for_dump() != 12U ||
+            !field_scene.dialogue_open() ||
+            first_page.actor_name != "Caleb Brightmore" ||
+            first_page.option_count != 0U ||
+            !panel_contains("Two elven bodyguards") ||
+            !panel_contains("block your passage") ||
+            first_page.portrait_alias !=
+                "dialogue.portraits.caleb.brightmore" ||
+            first_page_opened != opened_before + 1 ||
+            (field_scene.field_world_fact_flags_for_dump() &
+             (std::uint32_t{1U} << 10U)) != 0U ||
+            flags != std::optional<std::uint8_t>{0U} ||
+            counters !=
+                std::optional<std::array<std::uint8_t, 3>>{{0U, 0U, 0U}} ||
+            !first_page_image_saved || !save("actual")) {
+            std::cerr << "Icarus Caleb QA: clear access flag did not show the "
+                         "ROM bodyguard block without state changes (ticks="
+                      << movement_ticks << ", scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", dialogue=" << field_scene.dialogue_open()
+                      << ", speaker='" << first_page.actor_name
+                      << "', options=" << first_page.option_count
+                      << ", task_opened=" << first_page_opened - opened_before
+                      << ", failure='" << field_scene.failure() << "')\n";
+            return 3;
+        }
+        std::cout << "field_icarus_blocked_entry_qa=passed scene=12 event=30 "
+                     "movement=ordinary-up gate=story-flag-10-clear "
+                     "bodyguard-page=shown state=unchanged frames="
+                  << movement_ticks << " artifacts=" << output.string()
+                  << '\n';
+        return 0;
+    }
+    if (movement_ticks == 0U || movement_ticks >= 90U ||
+        field_scene.field_scene_reference_for_dump() != 12U ||
+        !field_scene.dialogue_open() ||
+        first_page.actor_name != "Caleb Brightmore" ||
+        first_page.option_count != 1U || !first_page.has_more ||
+        !panel_contains("In the dark booth") ||
+        first_page.portrait_alias !=
+            "dialogue.portraits.caleb.brightmore" ||
+        first_page_opened != opened_before + 1 || !first_page_image_saved) {
+        std::cerr << "Icarus Caleb QA: ordinary Up did not resolve scene-12 "
+                     "event 30 through the accessible Lua Johnson link "
+                     "(ticks=" << movement_ticks << ", contact="
+                  << contact.x << ',' << contact.y << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", speaker='" << first_page.actor_name
+                  << "', portrait='" << first_page.portrait_alias
+                  << "', options=" << first_page.option_count
+                  << ", task_opened=" << first_page_opened - opened_before
+                  << ", referral_flags=";
+        if (const auto flags = field_scene.notebook_referral_flags_for_dump()) {
+            std::cerr << static_cast<unsigned>(*flags);
+        } else {
+            std::cerr << "unresolved";
+        }
+        std::cerr << ", failure='" << field_scene.failure()
+                  << ", text=";
+        for (std::size_t index = 0U; index < first_page.text_segment_count;
+             ++index) {
+            std::cerr << '[' << first_page.text_segments[index] << ']';
+        }
+        std::cerr << ")\n";
+        return 3;
+    }
+
+    if (field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
+            FieldDialogueAdvanceResult::prompt_advanced ||
+        !field_scene.dialogue_open() ||
+        !panel_contains("I'm Caleb Brightmore") ||
+        field_scene.dialogue_panel().option_count != 0U ||
+        !save("first-meeting-continuation")) {
+        std::cerr << "Icarus Caleb QA: first-meeting page did not continue to "
+                     "the source Caleb introduction\n";
+        return 3;
+    }
+    if (field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
+            FieldDialogueAdvanceResult::prompt_advanced ||
+        !field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        field_scene.notebook_referral_flags_for_dump() !=
+            std::optional<std::uint8_t>{0x90U} ||
+        field_scene.runner_source_byte_triplet_for_dump() !=
+            std::optional<std::array<std::uint8_t, 3>>{{2U, 2U, 2U}} ||
+        !save("johnson-root") || !save("actual")) {
+        std::cerr << "Icarus Caleb QA: first-meeting conversation did not "
+                     "open its three-choice Lua root\n";
+        return 3;
+    }
+
+    std::cout << "field_icarus_caleb_entry_qa=passed scene=12 event=30 "
+                 "movement=ordinary-up gate=story-flag-10 portrait=Caleb "
+                 "first-meeting=2-pages root-choices=3 frames="
+              << movement_ticks << " artifacts=" << output.string() << '\n';
+    return 0;
+}
+
+int run_field_big_rhino_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Big Rhino entry QA: could not clear prior captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Big Rhino entry QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    if (field_scene.field_scene_reference_for_dump() != 11U ||
+        field_scene.field_entity_world_position().x != 288U * 16U ||
+        field_scene.field_entity_world_position().y != 96U * 16U) {
+        std::cerr << "Big Rhino entry QA: scene-11 checkpoint does not start "
+                     "south of the ROM event-30 booth cells\n";
+        return 3;
+    }
+
+    // Fresh New Game clears FFFC27 before the first Mortimer visit. This
+    // positional fixture restores location only, so supply the traced seed.
+    field_scene.seed_notebook_referral_flags_for_qa(0U);
+    const auto save = [&field_scene, &output](const std::string_view name) {
+        const auto image = render_qa_field(field_scene);
+        const auto path = output / (std::string(name) + ".bmp");
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+               image.save(QString::fromStdWString(path.wstring()));
+    };
+    const auto panel_contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count;
+             ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    if (!save("spawn")) {
+        std::cerr << "Big Rhino entry QA: could not save the starting frame\n";
+        return 3;
+    }
+    const auto opened_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.dialogue_task_opened"));
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 90U && !field_scene.dialogue_open();
+         ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into event 30
+        field_scene.advance_frame();
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto contact = field_scene.field_entity_world_position();
+    const auto& entry = field_scene.dialogue_panel();
+    const auto opened_after = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.dialogue_task_opened"));
+    if (movement_ticks == 0U || movement_ticks >= 90U ||
+        field_scene.field_scene_reference_for_dump() != 11U ||
+        !field_scene.dialogue_open() || entry.actor_name != "Mortimer Reed" ||
+        entry.portrait_alias != "dialogue.portraits.mortimer.reed" ||
+        entry.option_count != 1U || !entry.has_more ||
+        !panel_contains("You move into the booth") ||
+        opened_after != opened_before + 1 || !save("first-booth-entry")) {
+        std::cerr << "Big Rhino entry QA: ordinary Up did not resolve scene-11 "
+                     "event 30 to Mortimer's first ROM page (ticks="
+                  << movement_ticks << ", contact=" << contact.x << ','
+                  << contact.y << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", speaker='" << entry.actor_name << "', portrait='"
+                  << entry.portrait_alias << "', event-opened="
+                  << opened_after - opened_before << ", options="
+                  << static_cast<unsigned>(entry.option_count)
+                  << ", more=" << entry.has_more << ", text=";
+        for (std::size_t index = 0U; index < entry.text_segment_count;
+             ++index) {
+            std::cerr << '[' << entry.text_segments[index] << ']';
+        }
+        std::cerr << ", failure='" << field_scene.failure() << "')\n";
+        return 3;
+    }
+    if (field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
+            FieldDialogueAdvanceResult::prompt_advanced ||
+        !field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !panel_contains("Well, what have we here") ||
+        field_scene.notebook_referral_flags_for_dump() !=
+            std::optional<std::uint8_t>{0x04U} ||
+        !save("johnson-root") || !save("actual")) {
+        std::cerr << "Big Rhino entry QA: the first page did not open the "
+                     "three-choice ROM root and set the Johnson flag\n";
+        return 3;
+    }
+    std::ofstream route(output / "route.tsv", std::ios::trunc);
+    if (!route) {
+        std::cerr << "Big Rhino entry QA: could not write route trace\n";
+        return 3;
+    }
+    route << "scene\tevent\tinput\tmovement_ticks\tcontact_x\tcontact_y\t"
+             "speaker\troot_choices\treferral_flags\n"
+          << "11\t30\tordinary_up\t" << movement_ticks << '\t'
+          << contact.x << '\t' << contact.y << "\tMortimer Reed\t3\t0x04\n";
+    std::cout << "field_big_rhino_entry_qa=passed scene=11 event=30 "
+                 "movement=ordinary-up speaker=Mortimer-Reed "
+                 "first-entry=root-choices-3 captures=" << output.string()
+              << '\n';
+    return 0;
+}
+
 int run_field_jump_house_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -14137,7 +15451,7 @@ int run_field_jump_house_entry_qa(
     }
     const auto entry_opened = std::count(
         source_boundaries.begin(), source_boundaries.end(),
-        std::string("field.entry.jump_house_description_opened"));
+        std::string("field.entry.location_dialogue_opened"));
     if (entry_opened != 1) {
         std::cerr << "Jump House entry QA: indexed ROM service did not open "
                      "exactly one entry page\n";
@@ -14164,22 +15478,48 @@ int run_field_jump_house_entry_qa(
         }
     }
     const auto final_image = render();
+    const auto final_checkpoint_path = output / "scene13-transition-final.bmp";
+    if (!final_image.save(
+            QString::fromStdWString(final_checkpoint_path.wstring()))) {
+        std::cerr << "Jump House entry QA: could not save final scene-13 "
+                     "transition checkpoint\n";
+        return 3;
+    }
+    const auto final_hud_visible =
+        field_hud_chrome_survives(final_image, asset_root);
+    const auto final_playfield_lit = count_playfield_lit(final_image);
+    const auto final_player = field_scene.field_entity_world_position();
+    const auto& destination_spawn =
+        field_scene.state().field_scene_buffers.source_metadata
+            .initial_field_records[0U];
     const auto entered_scene = std::count(
         source_boundaries.begin(), source_boundaries.end(),
-        std::string("field.entry.jump_house_scene_entered"));
+        std::string("field.entry.area_event_scene_entered"));
     const bool clean_scene =
         field_scene.field_scene_reference_for_dump() == kJumpHouseScene &&
         !field_scene.dialogue_open() && !field_scene.field_interaction_open() &&
         field_scene.field_modal_return_transition_frames_for_dump() == 0U &&
         field_scene.field_palette_fade_steps_for_dump() == 0U &&
         field_scene.field_entity_visible_for_dump() &&
-        field_hud_chrome_survives(final_image, asset_root) &&
-        count_playfield_lit(final_image) >= 100U;
+        final_hud_visible && final_playfield_lit >= 100U;
     if (!clean_scene || entered_scene != 1 || !save("actual", true)) {
         std::cerr << "Jump House entry QA: scene 13 did not finish with a "
                      "clean full-screen field redraw (scene="
                   << field_scene.field_scene_reference_for_dump()
-                  << ", entered=" << entered_scene << ")\n";
+                  << ", entered=" << entered_scene
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", interaction=" << field_scene.field_interaction_open()
+                  << ", fade=" << static_cast<unsigned>(
+                         field_scene.field_palette_fade_steps_for_dump())
+                  << ", actor_visible="
+                  << field_scene.field_entity_visible_for_dump()
+                  << ", hud=" << final_hud_visible
+                  << ", lit=" << final_playfield_lit
+                  << ", player=" << final_player.x << ',' << final_player.y
+                  << ", profile_spawn=" << destination_spawn.x << ','
+                  << destination_spawn.y << ", camera="
+                  << field_scene.state().field_scene_buffers.camera_x << ','
+                  << field_scene.state().field_scene_buffers.camera_y << ")\n";
         return 3;
     }
 
@@ -14247,17 +15587,166 @@ int run_field_jump_house_entry_qa(
         return 3;
     }
 
+    const auto event30_opened_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.dialogue_task_opened"));
+    // Use the clear metatile immediately south of the two ROM event-30 cells
+    // (records 11-12 at x=0..63, y=32..63). Normal Up input must still contact
+    // the source collision and resolve the booth's entity-owned Lua link.
+    field_scene.set_field_entity_world_position_for_dump(32U * 16U,
+                                                        80U * 16U);
+    const auto event30_start = field_scene.field_entity_world_position();
+    if (!save("gunderson-event30-approach-start", true)) {
+        return 3;
+    }
+    std::uint16_t event30_movement_ticks = 0U;
+    for (; event30_movement_ticks < 90U && !field_scene.dialogue_open();
+         ++event30_movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up to booth
+        field_scene.advance_frame();
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto event30_contact = field_scene.field_entity_world_position();
+    if (event30_movement_ticks == 0U || event30_movement_ticks >= 90U ||
+        field_scene.field_scene_reference_for_dump() != kJumpHouseScene ||
+        !field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().actor_name != "Gunderson" ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   std::string("field.location.dialogue_task_opened")) !=
+            event30_opened_before + 1 ||
+        !save("gunderson-event30-physical-contact", false)) {
+        std::cerr << "Jump House entry QA: ordinary Up did not resolve scene-13 "
+                     "event 30 through its Lua booth link (ticks="
+                  << event30_movement_ticks << ", start=" << event30_start.x
+                  << ',' << event30_start.y << ", contact="
+                  << event30_contact.x << ',' << event30_contact.y
+                  << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", dialogue=" << field_scene.dialogue_open() << ")\n";
+        return 3;
+    }
+    if (field_scene.advance_stoker_dialogue_for_dump(0x2000U) !=
+            FieldDialogueAdvanceResult::returned_to_field ||
+        field_scene.dialogue_open()) {
+        std::cerr << "Jump House entry QA: Gunderson leave command did not "
+                     "resume the field after the physical event-30 route\n";
+        return 3;
+    }
+
+    // Scene-13 records 9/10 cover x=64..127, y=224..255. Their profile has
+    // no event-table pointer; source analysis establishes the static event-0
+    // selector result as ROM byte 0 -> field scene 0. Start one cell north of
+    // that collision and use ordinary Down movement to exercise the authored
+    // Lua override through the production field transition path.
+    field_scene.set_field_entity_world_position_for_dump(80U * 16U,
+                                                        208U * 16U);
+    const auto event0_start = field_scene.field_entity_world_position();
+    const auto event0_boundary_start = source_boundaries.size();
+    if (!save("scene13-event0-approach-start", true)) {
+        return 3;
+    }
+    std::uint16_t event0_movement_ticks = 0U;
+    for (; event0_movement_ticks < 90U &&
+           field_scene.field_scene_reference_for_dump() == kJumpHouseScene &&
+           !field_scene.field_transition_pending_for_dump();
+         ++event0_movement_ticks) {
+        field_scene.set_controller_nibble(0x02U); // ordinary Down to south edge
+        field_scene.advance_frame();
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto event0_contact = field_scene.field_entity_world_position();
+    if (event0_movement_ticks == 0U || event0_movement_ticks >= 90U ||
+        field_scene.field_mode_event_code_for_dump() != 0U ||
+        field_scene.field_scene_reference_for_dump() != kJumpHouseScene ||
+        !field_scene.field_transition_pending_for_dump() ||
+        !save("scene13-event0-contact", std::nullopt)) {
+        std::cerr << "Jump House entry QA: ordinary Down did not contact "
+                     "Scene-13 event 0 through its Lua route (ticks="
+                  << event0_movement_ticks << ", start=" << event0_start.x
+                  << ',' << event0_start.y << ", contact="
+                  << event0_contact.x << ',' << event0_contact.y
+                  << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", transition="
+                  << field_scene.field_transition_pending_for_dump()
+                  << ")\n";
+        for (std::size_t index = event0_boundary_start;
+             index < source_boundaries.size(); ++index) {
+            const auto& boundary = source_boundaries[index];
+            if (boundary.find("field.exit.") != std::string::npos ||
+                boundary.find("field.entry.") != std::string::npos ||
+                boundary.find("field.world_activity.") != std::string::npos ||
+                boundary.find("field.scene.transition.") !=
+                    std::string::npos) {
+                std::cerr << "  boundary=" << boundary << '\n';
+            }
+        }
+        return 3;
+    }
+    for (std::uint16_t settle = 0U;
+         settle < 120U &&
+         (field_scene.field_scene_reference_for_dump() != 0U ||
+          field_scene.field_transition_pending_for_dump() ||
+          field_scene.field_modal_return_transition_frames_for_dump() != 0U);
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto event0_final_image = render();
+    if (field_scene.field_scene_reference_for_dump() != 0U ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.field_transition_pending_for_dump() ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        !field_hud_chrome_survives(event0_final_image, asset_root) ||
+        count_playfield_lit(event0_final_image) < 100U ||
+        !save("scene0-exit-actual", true)) {
+        std::cerr << "Jump House entry QA: Scene-13 event 0 did not finish as "
+                     "a clean field-scene-0 transition (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", pending="
+                  << field_scene.field_transition_pending_for_dump()
+                  << ")\n";
+        for (std::size_t index = event0_boundary_start;
+             index < source_boundaries.size(); ++index) {
+            const auto& boundary = source_boundaries[index];
+            if (boundary.find("field.exit.") != std::string::npos ||
+                boundary.find("field.entry.") != std::string::npos ||
+                boundary.find("field.world_activity.") != std::string::npos ||
+                boundary.find("field.scene.transition.") !=
+                    std::string::npos) {
+                std::cerr << "  boundary=" << boundary << '\n';
+            }
+        }
+        return 3;
+    }
+
     std::ofstream route(output / "route.tsv", std::ios::trunc);
     if (!route) {
         return 3;
     }
     route << "trigger_record\tcollision\tevent\tdestination_scene\t"
-             "movement_ticks\taudio_requests\tcontact_wallet_after_purchase\n"
+             "movement_ticks\taudio_requests\tcontact_wallet_after_purchase\t"
+             "event30_record\tevent30_movement_ticks\tevent30_start_x\t"
+             "event30_start_y\tevent30_contact_x\tevent30_contact_y\t"
+             "event0_records\tevent0_start_x\tevent0_start_y\t"
+             "event0_contact_x\tevent0_contact_y\tevent0_movement_ticks\t"
+             "event0_destination_scene\n"
           << "85\t0x00C4\t4\t13\t" << movement_ticks << '\t'
-          << field_audio_events.size() << "\t0\n";
+          << field_audio_events.size() << "\t0\t11\t"
+          << event30_movement_ticks << '\t' << event30_start.x << '\t'
+          << event30_start.y << '\t' << event30_contact.x << '\t'
+          << event30_contact.y << "\t9,10\t" << event0_start.x << '\t'
+          << event0_start.y << '\t' << event0_contact.x << '\t'
+          << event0_contact.y << '\t' << event0_movement_ticks << "\t0\n";
     std::cout << "field_jump_house_entry_qa=passed record=85 event=4 "
                  "movement=ordinary-up entry=lua dismissal=ordinary-A "
-                 "destination_scene=13 clean_redraw=yes audio_requests="
+                 "destination_scene=13 event30_record=11 "
+                 "event30=ordinary-up+Lua-link event0_records=9,10 "
+                 "event0=ordinary-down+Lua-link destination_scene=0 "
+                 "clean_redraw=yes audio_requests="
               << field_audio_events.size() << " artifacts=" << output.string()
               << '\n';
     return 0;
@@ -14581,6 +16070,4333 @@ int run_field_redmond_vigore_search_qa(
     return 0;
 }
 
+int run_field_tarislar_first_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Tarislar QA: could not clear prior captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Tarislar QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kTarislarRecord = 67U;
+    constexpr std::uint16_t kTarislarCollision = 0x00C7U;
+    constexpr std::uint8_t kTarislarEvent = 7U;
+    constexpr std::uint16_t kStartX = 0x2E00U;
+    constexpr std::uint16_t kStartY = 0x0D00U;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& rectangles = metadata.terrain_collision_rectangles;
+    const auto& initial = field_scene.field_entity_world_position();
+    if (field_scene.field_scene_reference_for_dump() != 1U ||
+        initial.x != kStartX || initial.y != kStartY ||
+        rectangles.size() <= kTarislarRecord ||
+        rectangles[kTarislarRecord].left != 0x02E0U ||
+        rectangles[kTarislarRecord].right != 0x02FFU ||
+        rectangles[kTarislarRecord].top != 0x00A0U ||
+        rectangles[kTarislarRecord].bottom != 0x00BFU ||
+        rectangles[kTarislarRecord].value != kTarislarCollision ||
+        !field_scene.set_story_flag_for_dump(30U, true) ||
+        !field_scene.set_story_flag_for_dump(21U, false)) {
+        std::cerr << "Tarislar QA: source scene, record 67, story fixture, or "
+                     "pre-trigger coordinates do not match\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_field_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) !=
+                 *expect_field_hud) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()))) {
+            std::cerr << "Tarislar QA: could not capture " << name << '\n';
+            return false;
+        }
+        return true;
+    };
+
+    const auto& karma_before_records = field_scene.field_party_records_for_dump();
+    std::vector<std::uint8_t> karma_before;
+    karma_before.reserve(karma_before_records.size());
+    for (const auto& record : karma_before_records) {
+        karma_before.push_back(record.auxiliary[2U]);
+    }
+    const auto audio_before = field_audio_events.size();
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace || !save("spawn", true)) {
+        return 3;
+    }
+    trace << "phase\tframe\tinput\tscene\tx\ty\tevent\tdialogue\tkarma_delta\n";
+    const auto record_trace = [&](const std::string_view phase,
+                                  const std::uint16_t frame,
+                                  const std::uint8_t input) {
+        const auto position = field_scene.field_entity_world_position();
+        const auto& records = field_scene.field_party_records_for_dump();
+        const auto delta = !records.empty() && !karma_before.empty()
+            ? static_cast<unsigned>(static_cast<std::uint8_t>(
+                  records.front().auxiliary[2U] - karma_before.front()))
+            : 0U;
+        trace << phase << '\t' << frame << '\t'
+              << static_cast<unsigned>(input) << '\t'
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << position.x << '\t' << position.y << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump()) << '\t'
+              << (field_scene.dialogue_open() ? 1 : 0) << '\t' << delta << '\n';
+    };
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U && !field_scene.dialogue_open();
+         ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into record 67
+        field_scene.advance_frame();
+        if (field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_scene_reference_for_dump() != 1U) {
+            ++movement_ticks;
+            break;
+        }
+        record_trace("approach", movement_ticks + 1U, 0x01U);
+    }
+    field_scene.set_controller_nibble(0U);
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_terrain_collision_code_for_dump() != 0xFFC7U ||
+        field_scene.field_projected_code_for_dump() != 0xFFC7U ||
+        field_scene.field_mode_event_code_for_dump() != kTarislarEvent) {
+        std::cerr << "Tarislar QA: ordinary Up input did not reach record 67 "
+                  << "(ticks=" << movement_ticks << ", scene="
+                  << field_scene.field_scene_reference_for_dump() << ", x="
+                  << field_scene.field_entity_world_position().x << ", y="
+                  << field_scene.field_entity_world_position().y
+                  << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", event=" << std::dec << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+    if (!save("doorway-contact", std::nullopt)) return 3;
+
+    for (std::uint8_t settle = 0U;
+         settle < 100U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 1U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto entry_opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.location_dialogue_opened"));
+    const auto& rewarded_records = field_scene.field_party_records_for_dump();
+    bool party_reward_matches = rewarded_records.size() == karma_before.size();
+    for (std::size_t i = 0U;
+         party_reward_matches && i < rewarded_records.size(); ++i) {
+        party_reward_matches = static_cast<std::uint8_t>(
+            rewarded_records[i].auxiliary[2U] - karma_before[i]) == 2U;
+    }
+    constexpr std::array<std::string_view, 9U> prompt_snippets{{
+        "Tarlisar Garden Apartments", "Passing even more armed elves",
+        "So we meet.", "You've acquired quite a reputation",
+        "Your brother's death", "Thon is a what, not a who.",
+        "But Thon is cursed.", "Currently, Thon's energy is waning.",
+        "Renraku became involved with Thon",
+    }};
+    constexpr std::array<std::string_view, 9U> option_snippets{{
+        "MORE", "MORE", "MORE", "Tell me what you know about my brother",
+        "Who is Thon?", "MORE", "MORE", "Why is Renraku involved?",
+        "MORE",
+    }};
+    bool prompts_passed = true;
+    for (std::size_t page = 0U; page < prompt_snippets.size(); ++page) {
+        const auto& prompt = field_scene.dialogue_panel();
+        bool has_snippet = false;
+        bool has_expected_option = false;
+        for (std::size_t index = 0U;
+             index < prompt.text_segment_count; ++index) {
+            has_snippet = has_snippet ||
+                prompt.text_segments[index].find(prompt_snippets[page]) !=
+                    std::string_view::npos;
+        }
+        for (std::size_t index = 0U; index < prompt.option_count; ++index) {
+            has_expected_option = has_expected_option ||
+                prompt.options[index].source_label.find(option_snippets[page]) !=
+                    std::string_view::npos;
+        }
+        std::ostringstream frame_name;
+        frame_name << "first-entry-prompt-" << page;
+        const auto image = render();
+        if (!field_scene.dialogue_open() || !prompt.source_complete ||
+            prompt.option_count != 1U || !has_snippet ||
+            !has_expected_option ||
+            prompt.portrait_alias != "none" ||
+            field_hud_chrome_survives(image, asset_root) ||
+            !image.save(QString::fromStdWString(
+                (output / (frame_name.str() + ".bmp")).wstring()))) {
+            prompts_passed = false;
+            std::cerr << "Tarislar QA: ROM prompt " << page
+                      << " did not show its source body and MORE option; "
+                      << "open=" << field_scene.dialogue_open()
+                      << " complete=" << prompt.source_complete
+                      << " options=" << prompt.option_count
+                      << " body=" << has_snippet
+                      << " option_label=" << has_expected_option
+                      << " boundary=" << prompt.source_boundary_reason
+                      << '\n';
+            break;
+        }
+        record_trace("prompt", static_cast<std::uint16_t>(page), 0U);
+        tap_qa_controller_button(field_scene, 0x40U);
+    }
+    for (std::uint8_t settle = 0U;
+         prompts_passed && settle < 100U && !field_scene.dialogue_open();
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto& closing = field_scene.dialogue_panel();
+    bool has_closing_response = false;
+    for (std::size_t index = 0U; index < closing.text_segment_count; ++index) {
+        has_closing_response = has_closing_response ||
+            closing.text_segments[index].find("Ito Ogami is a legendary") !=
+                std::string_view::npos;
+    }
+    if (!prompts_passed || !field_scene.dialogue_open() ||
+        !closing.source_complete || closing.option_count != 0U ||
+        !has_closing_response ||
+        (field_scene.field_mode_effect_flags_for_dump() & 0x00E0U) !=
+            0x00E0U ||
+        entry_opened != 1 || !party_reward_matches ||
+        (field_scene.field_world_fact_flags_for_dump() & (1U << 21U)) == 0U ||
+        !save("first-entry-final-response", false)) {
+        std::cerr << "Tarislar QA: prompt chain or closing response failed: dialogue="
+                  << field_scene.dialogue_open() << " scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " complete=" << closing.source_complete
+                  << " options=" << static_cast<unsigned>(closing.option_count)
+                  << " closing=" << has_closing_response
+                  << " effect_flags=0x" << std::hex
+                  << field_scene.field_mode_effect_flags_for_dump() << std::dec
+                  << " service_opened=" << entry_opened
+                  << " party_reward=" << party_reward_matches
+                  << " bit21="
+                  << ((field_scene.field_world_fact_flags_for_dump() >>
+                       21U) & 1U)
+                  << " source_boundaries=";
+        for (const auto& boundary : source_boundaries) {
+            if (boundary.find("field.entry.") != std::string::npos ||
+                boundary.find("field.exit.") != std::string::npos ||
+                boundary.find("field.world_activity.") != std::string::npos) {
+                std::cerr << boundary << ',';
+            }
+        }
+        std::cerr << "\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U);
+    for (std::uint8_t fade_frame = 0U;
+         fade_frame < 60U &&
+         field_scene.field_modal_return_transition_frames_for_dump() != 0U;
+         ++fade_frame) {
+        field_scene.advance_frame();
+        const auto remaining = static_cast<unsigned>(
+            field_scene.field_modal_return_transition_frames_for_dump());
+        const auto expected_fade_steps = static_cast<std::uint8_t>(
+            (remaining * 9U + 30U) / 60U);
+        if (field_scene.dialogue_open() ||
+            field_scene.field_palette_fade_steps_for_dump() !=
+                expected_fade_steps) {
+            std::cerr << "Tarislar QA: modal return fade disagreed with its "
+                         "60-frame host transition at frame "
+                      << static_cast<unsigned>(fade_frame + 1U)
+                      << " remaining=" << remaining << " fade="
+                      << static_cast<unsigned>(
+                             field_scene.field_palette_fade_steps_for_dump())
+                      << '\n';
+            return 3;
+        }
+    }
+    const auto final_image = render();
+    const auto scene_entered = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.area_event_scene_entered"));
+    const auto final_saved = save("actual", true);
+    if (field_scene.field_scene_reference_for_dump() != 1U ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.field_transition_pending_for_dump() ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        field_scene.field_palette_fade_steps_for_dump() != 0U ||
+        !field_hud_chrome_survives(final_image, asset_root) ||
+        count_playfield_lit(final_image) < 100U || scene_entered != 0 ||
+        field_audio_events.size() != audio_before || !final_saved) {
+        std::cerr << "Tarislar QA: the first-visit dialogue incorrectly left "
+                     "the field map or failed to restore it (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << " dialogue=" << field_scene.dialogue_open()
+                  << " interaction=" << field_scene.field_interaction_open()
+                  << " pending="
+                  << field_scene.field_transition_pending_for_dump()
+                  << " modal_frames=" << static_cast<unsigned>(
+                         field_scene.field_modal_return_transition_frames_for_dump())
+                  << " hud=" << field_hud_chrome_survives(final_image, asset_root)
+                  << " lit=" << count_playfield_lit(final_image)
+                  << " entered=" << scene_entered
+                  << " audio_delta=" << (field_audio_events.size() - audio_before)
+                  << " saved=" << final_saved << ")\n";
+        return 3;
+    }
+    trace << "result\t" << movement_ticks << "\t0\t1\t" << kStartX << '\t'
+          << kStartY << "\t7\t0\t2\n";
+    trace.close();
+    if (!trace) return 3;
+    std::cout << "field_tarislar_first_entry_qa=passed record=67 event=7 "
+                 "bit30-gate=yes bit21-set=yes party_karma_delta=2 "
+                 "dialogue_prompts=9 effect_bits=5,6,7 scene_transition=no "
+                 "field_redraw=yes audio_requests=0 "
+                 "artifacts=" << output.string() << '\n';
+    return 0;
+}
+
+int run_field_tarislar_city_inn_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Tarislar City Inn QA: could not clear prior captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Tarislar City Inn QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kCityInnRecord = 68U;
+    constexpr std::uint16_t kCityInnCollision = 0x00C1U;
+    constexpr std::uint8_t kCityInnEvent = 1U;
+    constexpr std::uint16_t kStartX = 0x5400U;
+    constexpr std::uint16_t kStartY = 0x0D00U;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& rectangles = metadata.terrain_collision_rectangles;
+    const auto& initial = field_scene.field_entity_world_position();
+    if (field_scene.field_scene_reference_for_dump() != 1U ||
+        initial.x != kStartX || initial.y != kStartY ||
+        rectangles.size() <= kCityInnRecord ||
+        rectangles[kCityInnRecord].left != 0x0540U ||
+        rectangles[kCityInnRecord].right != 0x055FU ||
+        rectangles[kCityInnRecord].top != 0x00A0U ||
+        rectangles[kCityInnRecord].bottom != 0x00BFU ||
+        rectangles[kCityInnRecord].value != kCityInnCollision ||
+        !field_scene.set_story_flag_for_dump(0U, true) ||
+        !field_scene.set_story_flag_for_dump(1U, false)) {
+        std::cerr << "Tarislar City Inn QA: scene-1 checkpoint, ROM record 68, "
+                     "or service-1 story gate did not match\n";
+        return 3;
+    }
+    field_scene.set_field_funds_for_dump(1000U);
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_field_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) !=
+                 *expect_field_hud) ||
+            (expect_field_hud == std::optional<bool>{true} &&
+             count_playfield_lit(image) < 100U) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()))) {
+            std::cerr << "Tarislar City Inn QA: full-frame capture failed for "
+                      << name << '\n';
+            return false;
+        }
+        return true;
+    };
+
+    if (!save("spawn", true)) return 3;
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into record 68
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 1U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_terrain_collision_code_for_dump() != 0xFFC1U ||
+        field_scene.field_projected_code_for_dump() != 0xFFC1U ||
+        field_scene.field_mode_event_code_for_dump() != kCityInnEvent ||
+        !field_scene.field_interaction_transition_active_for_dump() ||
+        !save("doorway-contact", std::nullopt)) {
+        std::cerr << "Tarislar City Inn QA: ordinary Up input did not contact "
+                     "record 68/event 1 (ticks=" << movement_ticks
+                  << ", position="
+                  << field_scene.field_entity_world_position().x << ','
+                  << field_scene.field_entity_world_position().y
+                  << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t settle = 0U;
+         settle < 100U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 1U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto service_opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.indexed_title_service_opened"));
+    const auto& intro = field_scene.dialogue_panel();
+    const bool intro_has_more = intro.option_count == 1U &&
+        intro.options[0U].source_label.find("MORE") !=
+            std::string_view::npos;
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 1U ||
+        !intro.source_complete || !intro_has_more ||
+        !contains("Tarislar City Inn caters") ||
+        service_opened != 1 || !save("actual", false)) {
+        std::cerr << "Tarislar City Inn QA: record 68 did not open title "
+                     "service 1's source-gated Lua introduction (opened="
+                  << service_opened << ", dialogue="
+                  << field_scene.dialogue_open() << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", text=" << contains("Tarislar City Inn caters")
+                  << ", more=" << intro_has_more
+                  << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: finish intro page
+    const auto& choices = field_scene.dialogue_panel();
+    bool has_leave = false;
+    for (std::size_t index = 0U; index < choices.option_count; ++index) {
+        has_leave = has_leave ||
+            choices.options[index].source_label.find("talk to you later") !=
+                std::string_view::npos;
+    }
+    if (!field_scene.dialogue_open() || choices.option_count != 3U ||
+        !has_leave || !contains("You need a place to stay") ||
+        !save("service-options", false)) {
+        std::cerr << "Tarislar City Inn QA: intro did not advance to the "
+                     "source three-choice service menu\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x10U); // B: choose Leave
+    const bool farewell_text = contains("I'll be seeing you, chum");
+    const bool farewell_saved = save("farewell", false);
+    if (!field_scene.dialogue_open() || !farewell_text || !farewell_saved) {
+        std::cerr << "Tarislar City Inn QA: Leave did not show its source "
+                     "farewell response (open=" << field_scene.dialogue_open()
+                  << ", text=" << farewell_text
+                  << ", saved=" << farewell_saved
+                  << ", options=" << static_cast<unsigned>(
+                         field_scene.dialogue_panel().option_count)
+                  << ", boundary=\""
+                  << field_scene.dialogue_panel().source_boundary_reason
+                  << "\", segments=";
+        for (std::size_t index = 0U;
+             index < field_scene.dialogue_panel().text_segment_count; ++index) {
+            std::cerr << '['
+                      << field_scene.dialogue_panel().text_segments[index]
+                      << ']';
+        }
+        std::cerr << ")\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: return to same field map
+    const bool return_dialogue_closed = !field_scene.dialogue_open();
+    const auto return_scene = field_scene.field_scene_reference_for_dump();
+    const auto return_frames =
+        field_scene.field_modal_return_transition_frames_for_dump();
+    const bool transition_finished =
+        finish_field_modal_return_transition(field_scene);
+    const bool return_frame_saved = save("field-return", true);
+    const auto funds_after = field_scene.field_funds_for_dump();
+    if (!return_dialogue_closed || return_scene != 1U ||
+        // The A edge that closes the page also services the first modal-return
+        // frame, so the next observable counter value is 59.
+        return_frames != 59U || !transition_finished || !return_frame_saved ||
+        funds_after != std::optional<std::uint32_t>{1000U}) {
+        std::cerr << "Tarislar City Inn QA: Leave did not return to the same "
+                     "field map without an unintended scene load or charge "
+                  << "(dialogue_closed=" << return_dialogue_closed
+                  << ", scene=" << return_scene
+                  << ", frames=" << static_cast<unsigned>(return_frames)
+                  << ", transition_finished=" << transition_finished
+                  << ", frame_saved=" << return_frame_saved
+                  << ", funds="
+                  << (funds_after.has_value()
+                          ? std::to_string(*funds_after)
+                          : std::string("unknown"))
+                  << ")\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "record\tevent\tservice\tgate\tmovement_ticks\tresult\taudio_requests\n"
+          << "68\t1\t1\tstory_bit_0=1,story_bit_1=0\t"
+          << movement_ticks << "\tsame_scene_leave\t"
+          << field_audio_events.size() << '\n';
+    std::cout << "field_tarislar_city_inn_qa=passed record=68 event=1 "
+                 "service=1 gate=story_bit_0:1,story_bit_1:0 "
+                 "result=same_scene_leave artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
+int run_field_wylie_gala_inn_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Wylie's Gala Inn QA: could not clear prior captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Wylie's Gala Inn QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kRecord = 99U;
+    constexpr std::uint16_t kCollision = 0x00C1U;
+    constexpr std::uint8_t kEvent = 1U;
+    constexpr std::uint16_t kStartX = 0x2100U;
+    constexpr std::uint16_t kStartY = 0x3F00U;
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    if (field_scene.field_scene_reference_for_dump() != 3U ||
+        rectangles.size() <= kRecord ||
+        rectangles[kRecord].left != 0x0200U ||
+        rectangles[kRecord].right != 0x021FU ||
+        rectangles[kRecord].top != 0x03A0U ||
+        rectangles[kRecord].bottom != 0x03BFU ||
+        rectangles[kRecord].value != kCollision) {
+        std::cerr << "Wylie's Gala Inn QA: scene-3 source record 99 did not "
+                     "match the ROM profile\n";
+        return 3;
+    }
+
+    // Start in the clear lane south of the source rectangle. The ordinary
+    // Up walk is the route under test; the position is not a route shortcut.
+    field_scene.set_field_entity_world_position_for_dump(kStartX, kStartY);
+    field_scene.set_field_camera_world_position_for_dump(0x1680U, 0x3800U);
+    field_scene.set_field_funds_for_dump(50U);
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_field_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) !=
+                 *expect_field_hud) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()))) {
+            std::cerr << "Wylie's Gala Inn QA: full-frame capture failed for "
+                      << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    if (!save("spawn", true)) return 3;
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up to record 99
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.hotel_menu_open() ||
+            field_scene.field_scene_reference_for_dump() != 3U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_scene_reference_for_dump() != 3U ||
+        field_scene.field_terrain_collision_code_for_dump() != 0xFFC1U ||
+        field_scene.field_projected_code_for_dump() != 0xFFC1U ||
+        field_scene.field_mode_event_code_for_dump() != kEvent ||
+        !field_scene.field_interaction_transition_active_for_dump()) {
+        std::cerr << "Wylie's Gala Inn QA: ordinary Up did not contact "
+                     "scene-3 record 99/event 1 (ticks=" << movement_ticks
+                  << ", position="
+                  << field_scene.field_entity_world_position().x << ','
+                  << field_scene.field_entity_world_position().y
+                  << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t settle = 0U;
+         settle < 120U && !field_scene.dialogue_open() &&
+         !field_scene.hotel_menu_open() &&
+         field_scene.field_scene_reference_for_dump() == 3U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto& inn_prompt = field_scene.dialogue_panel();
+    const bool has_crash_and_leave = inn_prompt.option_count == 2U &&
+        inn_prompt.options[0U].source_label.find("place to crash") !=
+            std::string_view::npos &&
+        inn_prompt.options[1U].source_label.find("talk to you later") !=
+            std::string_view::npos;
+    const auto prompt_opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.exit_prompt_opened"));
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 3U ||
+        !contains("Wylie's Gala Inn") || !has_crash_and_leave ||
+        prompt_opened == 0 || !save("actual", std::nullopt)) {
+        std::cerr << "Wylie's Gala Inn QA: record 99 did not open its "
+                     "ROM-backed service prompt (dialogue="
+                  << field_scene.dialogue_open() << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", text=" << contains("Wylie's Gala Inn")
+                  << ", choices=" << has_crash_and_leave
+                  << ", task_opened=" << prompt_opened << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: request a room
+    const auto& payment_prompt = field_scene.dialogue_panel();
+    const bool pay_choice = payment_prompt.option_count == 2U &&
+        payment_prompt.options[0U].source_label.find("I'll pay") !=
+            std::string_view::npos;
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 3U ||
+        !contains("50$") || !pay_choice ||
+        !save("room-payment", std::nullopt)) {
+        std::cerr << "Wylie's Gala Inn QA: Crash did not open the "
+                     "50-nuyen source payment prompt\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: choose Pay
+    const bool paid_text = contains("Hope you brought");
+    if (!field_scene.dialogue_open() || !paid_text ||
+        field_scene.field_scene_reference_for_dump() != 3U ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{0U} ||
+        !save("room-paid", std::nullopt)) {
+        std::cerr << "Wylie's Gala Inn QA: the 50-nuyen payment branch did "
+                     "not debit the wallet and show paid feedback\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: acknowledge paid text
+    if (field_scene.dialogue_open() || !field_scene.hotel_menu_open() ||
+        field_scene.field_scene_reference_for_dump() != 3U ||
+        field_scene.hotel_menu_phase() != HotelMenuPhase::entity_status) {
+        std::cerr << "Wylie's Gala Inn QA: paid room did not open the "
+                     "same-map Hotel status service\n";
+        return 3;
+    }
+    for (int frame = 0; frame < 3; ++frame) {
+        field_scene.advance_frame();
+    }
+    const auto hotel_status = render();
+    if (!hotel_status.save(QString::fromStdWString(
+            (output / "hotel-status.bmp").wstring())) ||
+        hotel_status.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !image_has_green_ink(hotel_status, 24, 72, 240, 24)) {
+        std::cerr << "Wylie's Gala Inn QA: Hotel status page did not render "
+                     "its source text in a full 320x224 frame\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: acknowledge status
+    if (field_scene.hotel_menu_phase() != HotelMenuPhase::options ||
+        field_scene.hotel_option_selection() != 0U) {
+        std::cerr << "Wylie's Gala Inn QA: status acknowledgement did not "
+                     "open Hotel Options\n";
+        return 3;
+    }
+    for (int frame = 0; frame < 3; ++frame) {
+        field_scene.advance_frame();
+    }
+    const auto hotel_options = render();
+    if (hotel_options.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !image_has_green_ink(hotel_options, 88, 72, 160, 8) ||
+        !image_has_green_ink(hotel_options, 88, 88, 160, 8) ||
+        !image_region_has_color(hotel_options, 88, 72, 160, 8,
+                                QColor(36, 219, 36)) ||
+        image_has_green_ink(hotel_options, 32, 40, 240, 8) ||
+        !hotel_options.save(QString::fromStdWString(
+            (output / "hotel-options.bmp").wstring()))) {
+        std::cerr << "Wylie's Gala Inn QA: Hotel Options page did not "
+                     "render its selected and unselected rows\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "scene\trecord\tevent\tstart_x\tstart_y\tmovement_ticks\t"
+             "wallet_before\twallet_after\tresult\n"
+          << "3\t99\t1\t" << kStartX << '\t' << kStartY << '\t'
+          << movement_ticks << "\t50\t0\tpaid_same_map_hotel_options\n";
+    trace.close();
+    if (!trace) return 3;
+    std::cout << "field_wylie_gala_inn_qa=passed scene=3 record=99 event=1 "
+                 "payment=50 destination=none hotel_options=same_map "
+                 "artifacts=" << output.string() << '\n';
+    return 0;
+}
+
+int run_field_gates_undersound_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Gates Undersound QA: could not clear prior captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Gates Undersound QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kGatesRecord = 45U;
+    constexpr std::uint16_t kGatesCollision = 0x00C3U;
+    constexpr std::uint8_t kGatesEvent = 3U;
+    constexpr std::uint16_t kStartX = 0x3A00U;
+    constexpr std::uint16_t kStartY = 0x0A00U;
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    if (field_scene.field_scene_reference_for_dump() != 0U ||
+        field_scene.field_entity_world_position().x != kStartX ||
+        field_scene.field_entity_world_position().y != kStartY ||
+        rectangles.size() <= kGatesRecord ||
+        rectangles[kGatesRecord].left != 0x03A0U ||
+        rectangles[kGatesRecord].right != 0x03BFU ||
+        rectangles[kGatesRecord].top != 0x0060U ||
+        rectangles[kGatesRecord].bottom != 0x007FU ||
+        rectangles[kGatesRecord].value != kGatesCollision ||
+        !field_scene.set_story_flag_for_dump(11U, true) ||
+        !field_scene.set_story_flag_for_dump(15U, false)) {
+        std::cerr << "Gates Undersound QA: scene-0 checkpoint, ROM record 45, "
+                     "or service-15 story gate did not match\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_field_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) !=
+                 *expect_field_hud) ||
+            (expect_field_hud == std::optional<bool>{true} &&
+             count_playfield_lit(image) < 100U) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()))) {
+            std::cerr << "Gates Undersound QA: full-frame capture failed for "
+                      << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    if (!save("spawn", true)) return 3;
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 60U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up to record 45
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 0U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    if (movement_ticks == 0U || movement_ticks >= 60U ||
+        field_scene.field_terrain_collision_code_for_dump() != 0xFFC3U ||
+        field_scene.field_projected_code_for_dump() != 0xFFC3U ||
+        field_scene.field_mode_event_code_for_dump() != kGatesEvent ||
+        !field_scene.field_interaction_transition_active_for_dump() ||
+        !save("doorway-contact", std::nullopt)) {
+        std::cerr << "Gates Undersound QA: ordinary Up did not contact "
+                     "record 45/event 3 (ticks=" << movement_ticks
+                  << ", position="
+                  << field_scene.field_entity_world_position().x << ','
+                  << field_scene.field_entity_world_position().y
+                  << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", event=" << std::dec << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t settle = 0U;
+         settle < 100U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 0U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto title_service_opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.indexed_title_service_opened"));
+    const auto& page = field_scene.dialogue_panel();
+    const bool source_page = contains("Mr. Ogami just left for his meeting") &&
+        contains("private car was headed for Matchsticks") &&
+        page.portrait_alias ==
+            "dialogue.portraits.gates.undersound.entry";
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 0U ||
+        !page.source_complete || page.option_count != 0U || !source_page ||
+        title_service_opened != 1 || !save("actual", false)) {
+        std::cerr << "Gates Undersound QA: record 45 did not open title "
+                     "service 15's one-page departure narrative (opened="
+                  << title_service_opened << ", dialogue="
+                  << field_scene.dialogue_open() << ", text=" << source_page
+                  << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: dismiss source page
+    const auto return_frames =
+        field_scene.field_modal_return_transition_frames_for_dump();
+    const bool dialogue_closed = !field_scene.dialogue_open();
+    const auto scene_after = field_scene.field_scene_reference_for_dump();
+    const auto story_flags = field_scene.field_world_fact_flags_for_dump();
+    const auto effect_flags = field_scene.field_mode_effect_flags_for_dump();
+    const bool transition_finished =
+        finish_field_modal_return_transition(field_scene);
+    const bool field_frame_saved = save("field-return", true);
+    if (!dialogue_closed || scene_after != 0U || return_frames != 59U ||
+        ((story_flags >> 15U) & 1U) == 0U ||
+        ((effect_flags >> 26U) & 1U) != 0U ||
+        ((effect_flags >> 27U) & 1U) == 0U ||
+        !transition_finished || !field_frame_saved) {
+        std::cerr << "Gates Undersound QA: dismissing the source page did not "
+                     "finish the same-map one-shot service (closed="
+                  << dialogue_closed << ", scene=" << scene_after
+                  << ", frames=" << static_cast<unsigned>(return_frames)
+                  << ", story_bit_15=" << ((story_flags >> 15U) & 1U)
+                  << ", effect_bits_26_27=0x" << std::hex
+                  << ((effect_flags >> 26U) & 0x3U) << std::dec
+                  << ")\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "record\tevent\tservice\tgate\tmovement_ticks\tresult\taudio_requests\n"
+          << "45\t3\t15\tstory_bit_11=1,story_bit_15=0\t"
+          << movement_ticks << "\tsame_scene_one_shot\t"
+          << field_audio_events.size() << '\n';
+    std::cout << "field_gates_undersound_qa=passed record=45 event=3 "
+                 "service=15 gate=story_bit_11:1,story_bit_15:0 "
+                 "result=same_scene_one_shot artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
+struct FieldGatedBuildingEntryQaSpec {
+    std::string_view location_name;
+    std::uint16_t source_scene = 0U;
+    std::size_t record_index = 0U;
+    std::uint16_t start_x = 0U;
+    std::uint16_t start_y = 0U;
+    std::uint16_t rectangle_left = 0U;
+    std::uint16_t rectangle_right = 0U;
+    std::uint16_t rectangle_top = 0U;
+    std::uint16_t rectangle_bottom = 0U;
+    std::uint16_t collision_code = 0U;
+    std::uint8_t event_code = 0U;
+    std::uint8_t required_story_flag = 0U;
+    std::uint8_t clear_story_flag = 0U;
+    std::uint8_t title_service = 0U;
+    std::uint16_t destination_scene = 0U;
+    std::string_view destination_capture;
+    std::string_view gate_description;
+    std::string_view expected_text_first;
+    std::string_view expected_text_last;
+    std::string_view portrait_alias;
+};
+
+int run_field_gated_building_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries,
+    const FieldGatedBuildingEntryQaSpec& route) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << route.location_name
+                  << " QA: could not clear prior captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << route.location_name
+                  << " QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    if (field_scene.field_scene_reference_for_dump() != route.source_scene ||
+        field_scene.field_entity_world_position().x != route.start_x ||
+        field_scene.field_entity_world_position().y != route.start_y ||
+        rectangles.size() <= route.record_index ||
+        rectangles[route.record_index].left != route.rectangle_left ||
+        rectangles[route.record_index].right != route.rectangle_right ||
+        rectangles[route.record_index].top != route.rectangle_top ||
+        rectangles[route.record_index].bottom != route.rectangle_bottom ||
+        rectangles[route.record_index].value != route.collision_code ||
+        !field_scene.set_story_flag_for_dump(
+            route.required_story_flag, true) ||
+        !field_scene.set_story_flag_for_dump(route.clear_story_flag, false)) {
+        std::cerr << route.location_name
+                  << " QA: source checkpoint, collision rectangle, or "
+                     "title-service story gate did not match\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_field_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) !=
+                 *expect_field_hud) ||
+            (expect_field_hud == std::optional<bool>{true} &&
+             count_playfield_lit(image) < 100U) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()))) {
+            std::cerr << route.location_name
+                      << " QA: full-frame capture failed for " << name
+                      << '\n';
+            return false;
+        }
+        return true;
+    };
+    if (!save("spawn", true)) return 3;
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up to frontage
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() !=
+                route.source_scene) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto expected_collision = static_cast<std::uint16_t>(
+        0xFF00U | route.collision_code);
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_terrain_collision_code_for_dump() !=
+            expected_collision ||
+        field_scene.field_projected_code_for_dump() != expected_collision ||
+        field_scene.field_mode_event_code_for_dump() != route.event_code ||
+        !field_scene.field_interaction_transition_active_for_dump() ||
+        !save("doorway-contact", std::nullopt)) {
+        std::cerr << route.location_name
+                  << " QA: ordinary Up did not contact record "
+                  << route.record_index << "/event "
+                  << static_cast<unsigned>(route.event_code)
+                  << " (ticks=" << movement_ticks
+                  << ", position="
+                  << field_scene.field_entity_world_position().x << ','
+                  << field_scene.field_entity_world_position().y
+                  << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t settle = 0U;
+         settle < 120U && !field_scene.dialogue_open() &&
+        field_scene.field_scene_reference_for_dump() == route.source_scene;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto entry_dialogue_opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.location_dialogue_opened"));
+    const auto& page = field_scene.dialogue_panel();
+    const bool has_more = page.option_count == 1U &&
+        page.options[0U].source_label.find("MORE") !=
+            std::string_view::npos;
+    const bool entry_text = contains(route.expected_text_first) &&
+        contains(route.expected_text_last);
+    const bool portrait_matches = page.portrait_alias == route.portrait_alias;
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != route.source_scene ||
+        !page.source_complete || !has_more || !entry_text ||
+        !portrait_matches || entry_dialogue_opened != 1 ||
+        !save("actual", false)) {
+        std::cerr << route.location_name
+                  << " QA: record " << route.record_index
+                  << " did not open the shared Lua route's extracted entry "
+                     "page (opened="
+                  << entry_dialogue_opened << ", dialogue="
+                  << field_scene.dialogue_open() << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", text=" << entry_text << ", more=" << has_more
+                  << ", portrait=" << portrait_matches << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: accept entry passage
+    const auto return_frames =
+        field_scene.field_modal_return_transition_frames_for_dump();
+    const bool dialogue_closed = !field_scene.dialogue_open();
+    const auto destination_scene = field_scene.field_scene_reference_for_dump();
+    const auto destination_mode = field_scene.field_runtime_state_for_dump()
+                                     .field_mode;
+    const auto transition_finished =
+        finish_field_modal_return_transition(field_scene);
+    const bool activity_frame_saved =
+        save(route.destination_capture, std::nullopt);
+    if (!dialogue_closed || destination_scene != route.destination_scene ||
+        destination_mode != route.destination_scene || return_frames != 59U ||
+        !transition_finished || !activity_frame_saved ||
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   std::string("field.entry.area_event_scene_entered")) != 1) {
+        std::cerr << route.location_name
+                  << " QA: dismissing the entry page did not resume its "
+                     "event-table destination (closed="
+                  << dialogue_closed << ", scene=" << destination_scene
+                  << ", mode=" << destination_mode << ", frames="
+                  << static_cast<unsigned>(return_frames)
+                  << ", transition_finished=" << transition_finished
+                  << ")\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "record\tevent\tservice\tgate\tmovement_ticks\tresult\taudio_requests\n"
+          << route.record_index << '\t'
+          << static_cast<unsigned>(route.event_code) << '\t'
+          << static_cast<unsigned>(route.title_service) << '\t'
+          << route.gate_description << '\t' << movement_ticks
+          << "\tresource_activity_" << route.destination_scene << '\t'
+          << field_audio_events.size() << '\n';
+    std::cout << "field_gated_building_entry_qa=passed location="
+              << route.location_name << " record=" << route.record_index
+              << " event=" << static_cast<unsigned>(route.event_code)
+              << " service=" << static_cast<unsigned>(route.title_service)
+              << " destination=" << route.destination_scene
+              << " artifacts=" << output.string() << '\n';
+    return 0;
+}
+
+int run_field_penumbra_lone_star_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    field_scene.set_source_random_seed_for_dump(0U);
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Penumbra Lone Star entry QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Penumbra Lone Star entry QA: could not create captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kRecord = 96U;
+    constexpr std::uint8_t kEvent = 6U;
+    constexpr std::uint16_t kDestination = 41U;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& rectangles = metadata.terrain_collision_rectangles;
+    const auto start = field_scene.field_entity_world_position();
+    if (field_scene.field_scene_reference_for_dump() != 3U ||
+        start.x != 0x7000U || start.y != 0x0700U ||
+        rectangles.size() <= kRecord ||
+        rectangles[kRecord].left != 0x0700U ||
+        rectangles[kRecord].right != 0x071FU ||
+        rectangles[kRecord].top != 0x0040U ||
+        rectangles[kRecord].bottom != 0x005FU ||
+        rectangles[kRecord].value != 0x00C6U ||
+        !metadata.event_table_available ||
+        metadata.event_mode_table[kEvent] != kDestination) {
+        std::cerr << "Penumbra Lone Star entry QA: Scene-3 checkpoint, "
+                     "ROM record 96, or event-table row 6 does not match\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()))) {
+            std::cerr << "Penumbra Lone Star entry QA: failed to save "
+                      << "full-frame " << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    if (!save("spawn")) return 3;
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up
+        field_scene.advance_frame();
+        if (field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_scene_reference_for_dump() != 3U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto expected_collision = static_cast<std::uint16_t>(0xFF00U | 0xC6U);
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_terrain_collision_code_for_dump() !=
+            expected_collision ||
+        field_scene.field_projected_code_for_dump() != expected_collision ||
+        field_scene.field_mode_event_code_for_dump() != kEvent ||
+        !save("doorway-contact")) {
+        std::cerr << "Penumbra Lone Star entry QA: ordinary Up did not "
+                     "contact scene-3 record 96/event 6 (ticks="
+                  << movement_ticks << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+
+    std::uint16_t settle_frames = 0U;
+    for (; settle_frames < 240U; ++settle_frames) {
+        if (field_scene.field_scene_reference_for_dump() == kDestination &&
+            !field_scene.field_transition_pending_for_dump() &&
+            !field_scene.field_interaction_transition_active_for_dump()) {
+            break;
+        }
+        field_scene.advance_frame();
+    }
+    const auto& activity = field_scene.world_activity_state_for_dump();
+    const auto actual = render();
+    if (field_scene.field_scene_reference_for_dump() != kDestination ||
+        activity.scene_id != kDestination ||
+        activity.mode != WorldActivityMode::resource_activity ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.field_mode_text_open_for_dump() ||
+        field_scene.shop_menu_open() ||
+        field_scene.field_transition_pending_for_dump() ||
+        field_scene.field_interaction_transition_active_for_dump() ||
+        actual.size() != QSize(kSceneWidth, kSceneHeight) ||
+        count_playfield_lit(actual) < 100U || !save("actual")) {
+        std::cerr << "Penumbra Lone Star entry QA: source event 6 did not "
+                     "settle in resource activity scene 41 (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", activity_scene=" << activity.scene_id
+                  << ", activity_mode=" << static_cast<unsigned>(activity.mode)
+                  << ", settle_frames=" << settle_frames << ")\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "rom_record\tevent\trom_destination\tmode\tmovement_ticks"
+             "\tsettle_frames\n"
+          << kRecord << '\t' << static_cast<unsigned>(kEvent) << '\t'
+          << kDestination << "\tresource_activity\t" << movement_ticks
+          << '\t' << settle_frames << '\n';
+    std::cout << "field_penumbra_lone_star_entry_qa=passed record=96 "
+                 "event=6 destination=resource_activity_41 artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
+int run_field_hospital_physical_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Council Island Hospital QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Council Island Hospital QA: could not create captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kHospitalRecord = 93U;
+    constexpr std::uint16_t kHospitalCollision = 0x00C4U;
+    constexpr std::uint8_t kHospitalEvent = 4U;
+    constexpr std::uint16_t kStartX = 0x6A00U;
+    constexpr std::uint16_t kStartY = 0x3A00U;
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    if (field_scene.field_scene_reference_for_dump() != 4U ||
+        field_scene.field_entity_world_position().x != kStartX ||
+        field_scene.field_entity_world_position().y != kStartY ||
+        rectangles.size() <= kHospitalRecord ||
+        rectangles[kHospitalRecord].left != 0x06A0U ||
+        rectangles[kHospitalRecord].right != 0x06BFU ||
+        rectangles[kHospitalRecord].top != 0x0360U ||
+        rectangles[kHospitalRecord].bottom != 0x037FU ||
+        rectangles[kHospitalRecord].value != kHospitalCollision) {
+        std::cerr << "Council Island Hospital QA: scene-4 checkpoint or ROM "
+                     "record 93 does not match\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_field_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) !=
+                 *expect_field_hud) ||
+            (expect_field_hud == std::optional<bool>{true} &&
+             count_playfield_lit(image) < 100U) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()))) {
+            std::cerr << "Council Island Hospital QA: full-frame capture "
+                         "failed for " << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    if (!save("spawn", true)) return 3;
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into the door
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 4U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto hospital_entry_position =
+        field_scene.field_entity_world_position();
+    const auto hospital_entry_heading =
+        field_scene.field_entity_heading_for_dump();
+    const auto expected_collision = static_cast<std::uint16_t>(
+        0xFF00U | kHospitalCollision);
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_terrain_collision_code_for_dump() !=
+            expected_collision ||
+        field_scene.field_projected_code_for_dump() != expected_collision ||
+        field_scene.field_mode_event_code_for_dump() != kHospitalEvent ||
+        !field_scene.field_interaction_transition_active_for_dump() ||
+        !save("doorway-contact", std::nullopt)) {
+        std::cerr << "Council Island Hospital QA: ordinary Up did not reach "
+                     "record 93/event 4 (ticks=" << movement_ticks
+                  << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t settle = 0U;
+         settle < 100U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 4U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto exit_prompt_opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.exit_prompt_opened"));
+    const auto& entry = field_scene.dialogue_panel();
+    const bool entry_text = contains("Council Island Hospital") &&
+        contains("May I be of service?");
+    const bool entry_choices = entry.option_count == 2U &&
+        entry.options[0U].source_label.find("need of your services") !=
+            std::string_view::npos &&
+        entry.options[1U].source_label.find("Neg on that") !=
+            std::string_view::npos;
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 4U ||
+        !entry.source_complete || !entry_text || !entry_choices ||
+        exit_prompt_opened != 1 || !save("actual", false)) {
+        std::cerr << "Council Island Hospital QA: collision did not open the "
+                     "source default field prompt (opened="
+                  << exit_prompt_opened << ", dialogue="
+                  << field_scene.dialogue_open() << ", text=" << entry_text
+                  << ", choices=" << entry_choices << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: select Services
+    const auto& options = field_scene.dialogue_panel();
+    const bool options_open = field_scene.dialogue_open() &&
+        field_scene.field_dialogue_uses_hospital_layout_for_dump() &&
+        options.option_count == 3U &&
+        options.text_segments[0U] == " Hospital Options" &&
+        options.options[0U].source_label == "Medical Attn." &&
+        options.options[1U].source_label == "Cyberware" &&
+        options.options[2U].source_label == "Exit" &&
+        options.selected_option == 0U;
+    if (!options_open ||
+        field_scene.field_scene_reference_for_dump() != 4U ||
+        field_scene.field_runtime_state_for_dump().field_mode != 4U ||
+        !save("hospital-options", std::nullopt)) {
+        std::cerr << "Council Island Hospital QA: Services did not open the "
+                     "Lua-owned same-map Hospital Options screen (open="
+                  << field_scene.dialogue_open() << ", layout="
+                  << field_scene.field_dialogue_uses_hospital_layout_for_dump()
+                  << ", choices="
+                  << static_cast<unsigned>(options.option_count)
+                  << ", title="
+                  << (options.text_segment_count > 0U
+                          ? options.text_segments[0U]
+                          : std::string_view{})
+                  << ", selection="
+                  << static_cast<unsigned>(options.selected_option) << ")\n";
+        return 3;
+    }
+
+    const auto hospital_probe =
+        field_scene.field_collision_probe_state_for_dump();
+    const auto boundary_count = [&source_boundaries](
+                                    const std::string_view name) {
+        return std::count(source_boundaries.begin(), source_boundaries.end(),
+                          std::string(name));
+    };
+    const auto hospital_options_are_open = [&field_scene] {
+        const auto& panel = field_scene.dialogue_panel();
+        return field_scene.dialogue_open() &&
+            field_scene.field_dialogue_uses_hospital_layout_for_dump() &&
+            panel.option_count == 3U && panel.text_segment_count > 0U &&
+            panel.text_segments[0U] == " Hospital Options" &&
+            panel.options[0U].source_label == "Medical Attn." &&
+            panel.options[1U].source_label == "Cyberware" &&
+            panel.options[2U].source_label == "Exit" &&
+            panel.selected_option == 0U;
+    };
+    const auto leave_confirmation_is_open = [&field_scene](
+                                                const std::uint8_t selection) {
+        const auto& panel = field_scene.dialogue_panel();
+        return field_scene.dialogue_open() &&
+            field_scene.field_dialogue_uses_hospital_layout_for_dump() &&
+            panel.source_complete && panel.option_count == 2U &&
+            panel.text_segment_count == 2U &&
+            panel.text_segments[0U] == "Do you wish to" &&
+            panel.text_segments[1U] == "leave the hospital?" &&
+            panel.options[0U].source_label == "Yes" &&
+            panel.options[1U].source_label == "No" &&
+            panel.selected_option == selection;
+    };
+    if (!hospital_probe.initialized ||
+        boundary_count("field.door.return_point_saved") != 1) {
+        std::cerr << "Council Island Hospital QA: route did not save its "
+                     "ROM collision-probe return anchor (initialized="
+                  << hospital_probe.initialized << ", saved="
+                  << boundary_count("field.door.return_point_saved")
+                  << ")\n";
+        return 3;
+    }
+
+    // Exit opens the ROM 0xCE7C prompt, initially selecting No. Start is
+    // ignored by that loop; confirming No returns to Hospital Options.
+    tap_qa_controller_button(field_scene, 0x02U); // Down: Cyberware.
+    tap_qa_controller_button(field_scene, 0x02U); // Down: Exit.
+    tap_qa_controller_button(field_scene, 0x40U); // A: open Yes/No prompt.
+    if (!leave_confirmation_is_open(1U) ||
+        field_scene.field_scene_reference_for_dump() != 4U ||
+        !save("leave-confirmation", std::nullopt)) {
+        std::cerr << "Council Island Hospital QA: Exit did not open the "
+                     "source Yes/No prompt with No selected\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x80U); // Start is ignored.
+    if (!leave_confirmation_is_open(1U) ||
+        !save("leave-confirmation-after-start", std::nullopt)) {
+        std::cerr << "Council Island Hospital QA: Start accepted or changed "
+                     "the leave prompt\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: confirm default No.
+    if (!hospital_options_are_open() ||
+        field_scene.field_scene_reference_for_dump() != 4U ||
+        !save("hospital-options-after-no", std::nullopt)) {
+        std::cerr << "Council Island Hospital QA: No did not return to "
+                     "Hospital Options\n";
+        return 3;
+    }
+
+    // Reopen Exit, move from No to Yes, and follow the same-map door return.
+    tap_qa_controller_button(field_scene, 0x02U);
+    tap_qa_controller_button(field_scene, 0x02U);
+    tap_qa_controller_button(field_scene, 0x40U);
+    if (!leave_confirmation_is_open(1U)) {
+        std::cerr << "Council Island Hospital QA: second Exit prompt did "
+                     "not default to No\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x01U); // Up: select Yes.
+    if (!leave_confirmation_is_open(0U) ||
+        !save("leave-confirmation-yes", std::nullopt)) {
+        std::cerr << "Council Island Hospital QA: Up did not select Yes\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: confirm Yes.
+    const auto returned_at_confirm =
+        field_scene.field_entity_world_position();
+    const auto expected_return_heading = static_cast<std::uint16_t>(
+        hospital_entry_heading ^ 0x8000U);
+    const bool return_started =
+        boundary_count("field.door.return_started") == 1;
+    if (field_scene.dialogue_open() ||
+        !field_scene.field_door_return_active() ||
+        field_scene.field_scene_reference_for_dump() != 4U ||
+        returned_at_confirm.x != hospital_probe.points[0U].x ||
+        returned_at_confirm.y != hospital_probe.points[0U].y ||
+        field_scene.field_entity_heading_for_dump() !=
+            expected_return_heading ||
+        field_scene.field_entity_animation_heading_for_dump() !=
+            expected_return_heading ||
+        field_scene.field_entity_target_heading_for_dump() !=
+            expected_return_heading ||
+        !return_started || !save("leave-confirmed", std::nullopt)) {
+        std::cerr << "Council Island Hospital QA: Yes did not restore the "
+                     "collision-probe lead point and away-facing pose "
+                     "(probe=" << hospital_probe.initialized
+                  << ", return=" << returned_at_confirm.x << ','
+                  << returned_at_confirm.y << ", expected="
+                  << hospital_probe.points[0U].x << ','
+                  << hospital_probe.points[0U].y << ", heading=0x"
+                  << std::hex << field_scene.field_entity_heading_for_dump()
+                  << ", expected=0x" << expected_return_heading << std::dec
+                  << ", active=" << field_scene.field_door_return_active()
+                  << ")\n";
+        return 3;
+    }
+
+    // The source reload keeps input masked for the measured checkout-return
+    // interval (also exercised by the Hotel checkout route QA).
+    std::uint32_t door_return_frames = 0U;
+    while (field_scene.field_door_return_active() &&
+           door_return_frames < 400U) {
+        field_scene.advance_frame();
+        ++door_return_frames;
+    }
+    const auto returned_field_position =
+        field_scene.field_entity_world_position();
+    if (door_return_frames != 131U ||
+        field_scene.field_door_return_active() || field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 4U ||
+        returned_field_position.x != hospital_probe.points[0U].x ||
+        returned_field_position.y != hospital_probe.points[0U].y ||
+        field_scene.field_entity_heading_for_dump() !=
+            expected_return_heading ||
+        field_scene.field_entity_animation_heading_for_dump() !=
+            expected_return_heading ||
+        field_scene.field_entity_target_heading_for_dump() !=
+            expected_return_heading ||
+        boundary_count("field.door.return_completed") != 1 ||
+        !save("field-return-after-hospital-exit", true)) {
+        std::cerr << "Council Island Hospital QA: field door return did not "
+                     "complete at its ROM collision-probe point after 131 "
+                     "frames (frames=" << door_return_frames
+                  << ", active=" << field_scene.field_door_return_active()
+                  << ", scene="
+                  << static_cast<unsigned>(
+                         field_scene.field_scene_reference_for_dump())
+                  << ", position=" << returned_field_position.x << ','
+                  << returned_field_position.y << ", heading=0x" << std::hex
+                  << field_scene.field_entity_heading_for_dump() << std::dec
+                  << ")\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "record\tevent\tservice\tgate\tmovement_ticks\tentry_x\t"
+             "entry_y\tentry_heading\tprobe_initialized\treturn_x\t"
+             "return_y\treturn_heading\treturn_frames\tresult\t"
+             "audio_requests\n"
+          << "93\t4\tfield_exit_prompt\talternate_result=0\t"
+          << movement_ticks << '\t' << hospital_entry_position.x << '\t'
+          << hospital_entry_position.y << '\t' << hospital_entry_heading
+          << '\t' << hospital_probe.initialized << '\t'
+          << hospital_probe.points[0U].x << '\t'
+          << hospital_probe.points[0U].y << '\t' << expected_return_heading
+          << '\t' << door_return_frames
+          << "\tsame_scene_hospital_options_and_field_return\t"
+          << field_audio_events.size() << '\n';
+    std::cout << "field_hospital_physical_entry_qa=passed record=93 event=4 "
+                 "result=same_scene_hospital_options_and_field_return "
+                 "return_frames=" << door_return_frames << " artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
+int run_field_medicine_lodge_physical_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries,
+    const bool wise_one_profile_branch = false) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Medicine Lodge QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Medicine Lodge QA: could not create captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kMedicineLodgeRecord = 88U;
+    constexpr std::uint16_t kMedicineLodgeCollision = 0x00C3U;
+    constexpr std::uint8_t kMedicineLodgeEvent = 3U;
+    constexpr std::uint16_t kStartX = 0x5000U;
+    constexpr std::uint16_t kStartY = 0x0800U;
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    if (field_scene.field_scene_reference_for_dump() != 4U ||
+        field_scene.field_entity_world_position().x != kStartX ||
+        field_scene.field_entity_world_position().y != kStartY ||
+        rectangles.size() <= kMedicineLodgeRecord ||
+        rectangles[kMedicineLodgeRecord].left != 0x0500U ||
+        rectangles[kMedicineLodgeRecord].right != 0x051FU ||
+        rectangles[kMedicineLodgeRecord].top != 0x0040U ||
+        rectangles[kMedicineLodgeRecord].bottom != 0x005FU ||
+        rectangles[kMedicineLodgeRecord].value != kMedicineLodgeCollision) {
+        std::cerr << "Medicine Lodge QA: scene-4 checkpoint or ROM "
+                     "record 88 does not match\n";
+        return 3;
+    }
+    // This QA uses a map-only restore checkpoint with Joshua's New Game
+    // record. New Game clears FFFC2A, so seed the omitted Notebook word to the
+    // source-zero state before exercising command 0xF0.
+    field_scene.seed_notebook_shadowrunner_flags_for_dump(0U);
+    if (wise_one_profile_branch &&
+        !field_scene.set_story_flag_for_dump(4U, true)) {
+        std::cerr << "Medicine Lodge QA: story bit 4 could not be seeded\n";
+        return 3;
+    }
+    auto progression_runner = field_scene.active_runner_record();
+    progression_runner.archetype_index = 0U;
+    progression_runner.magic_table_index = 0U;
+    progression_runner.auxiliary[0] = 6U; // source +0x7F progression ceiling
+    progression_runner.skills[11] = 0U;
+    field_scene.install_party_member_for_dump(
+        0U, progression_runner, "Joshua");
+    field_scene.set_field_funds_for_dump(10000U);
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_field_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) !=
+                 *expect_field_hud) ||
+            (expect_field_hud == std::optional<bool>{true} &&
+             count_playfield_lit(image) < 100U) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()))) {
+            std::cerr << "Medicine Lodge QA: full-frame capture failed for "
+                      << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    if (!save("spawn", true)) return 3;
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into record 88
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 4U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto expected_collision = static_cast<std::uint16_t>(
+        0xFF00U | kMedicineLodgeCollision);
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_terrain_collision_code_for_dump() !=
+            expected_collision ||
+        field_scene.field_projected_code_for_dump() != expected_collision ||
+        field_scene.field_mode_event_code_for_dump() != kMedicineLodgeEvent ||
+        !field_scene.field_interaction_transition_active_for_dump() ||
+        !save("doorway-contact", std::nullopt)) {
+        std::cerr << "Medicine Lodge QA: ordinary Up did not reach "
+                     "record 88/event 3 (ticks=" << movement_ticks
+                  << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t settle = 0U;
+         settle < 100U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 4U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto& offer = field_scene.dialogue_panel();
+    const auto exit_prompt_opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.exit_prompt_opened"));
+    const bool offer_text = contains("Chief Running Stream");
+    const bool third_choice_matches = wise_one_profile_branch
+        ? offer.options[2U].source_label ==
+              "I wish to speak with your \"most wise one\"."
+        : offer.options[2U].source_label == "I'll talk to you later, chum.";
+    const bool offer_choices = offer.option_count == 3U &&
+        offer.options[0U].source_label ==
+            "I'm looking to hire a good shaman.  Can you help me?" &&
+        offer.options[1U].source_label ==
+            "May I browse your store, chu.. uh, Chief?" &&
+        third_choice_matches;
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 4U ||
+        field_scene.field_runtime_state_for_dump().field_mode != 4U ||
+        !offer.source_complete || !offer_text || !offer_choices ||
+        exit_prompt_opened != 1 || !save("offer-root", false)) {
+        std::cerr << "Medicine Lodge QA: collision did not open the default "
+                     "ROM offer (opened=" << exit_prompt_opened
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", text=" << offer_text << ", choices=" << offer_choices
+                  << ")\n";
+        return 3;
+    }
+
+    if (wise_one_profile_branch) {
+        tap_qa_controller_button(field_scene, 0x20U); // C: most wise one.
+        for (std::uint8_t settle = 0U;
+             settle < 100U &&
+             !contains("outside the door to your left"); ++settle) {
+            field_scene.advance_frame();
+        }
+        if (!field_scene.dialogue_open() ||
+            !contains("outside the door to your left") ||
+            !save("wise-one-direction", false)) {
+            std::cerr << "Medicine Lodge QA: quest-gated Wise One response "
+                         "did not reach the source direction text\n";
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x40U); // A: close response.
+        for (std::uint8_t settle = 0U;
+             settle < 100U && field_scene.dialogue_open(); ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto pending_profile =
+            field_scene.field_pending_scene_profile_for_dump();
+        const bool profile_queued = pending_profile ==
+            std::optional<std::array<std::uint16_t, 8>>{
+                kMedicineLodgeWiseOneEntryProfile0x1668A};
+        const auto placed_runner = field_scene.field_entity_world_position();
+        const bool profile_applied = !pending_profile.has_value() &&
+            placed_runner.x == 0x5B00U && placed_runner.y == 0x0880U;
+        const auto profile_handoff_count = std::count(
+            source_boundaries.begin(), source_boundaries.end(),
+            std::string(
+                "field.location.medicine_lodge_wise_one_profile_queued"));
+        if (field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 4U ||
+            !profile_applied ||
+            profile_handoff_count != 1 ||
+            !save("field-return", std::nullopt)) {
+            std::cerr << "Medicine Lodge QA: command 0x1F did not queue the "
+                         "ROM scene-entry profile (dialogue="
+                      << field_scene.dialogue_open() << ", scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", queued=" << profile_queued
+                      << ", applied=" << profile_applied
+                      << ", position=" << placed_runner.x << ','
+                      << placed_runner.y << ", handoff="
+                      << profile_handoff_count << ")\n";
+            return 3;
+        }
+        std::ofstream trace(output / "route.tsv", std::ios::trunc);
+        if (!trace) return 3;
+        trace << "record\tevent\tgate\tchoice\tresult\n"
+              << "88\t3\tstory_flag_bit_4=1\twise_one\t"
+                 "same_scene_profile_0x1668A_applied_at_0x5B00_0x0880\n";
+        std::cout << "field_medicine_lodge_wise_one_physical_entry_qa=passed "
+                     "record=88 event=3 profile=0x1668A "
+                     "artifacts=" << output.string() << '\n';
+        return 0;
+    }
+
+    tap_qa_controller_button(field_scene, 0x10U); // B: browse the store
+    const auto service_opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.shop.medicine_lodge.opened"));
+    const auto service_root = render();
+    if (field_scene.dialogue_open() || !field_scene.shop_menu_open() ||
+        field_scene.shop_menu_mode() != 3U ||
+        field_scene.shop_menu_result() != 0 ||
+        field_scene.shop_menu_group() != ShopActionGroup::magic_spells ||
+        field_scene.shop_menu_offers_active() || service_opened != 1 ||
+        service_root.size() != QSize(kSceneWidth, kSceneHeight) ||
+        count_playfield_lit(service_root) < 100U ||
+        !save("actual", false)) {
+        std::cerr << "Medicine Lodge QA: Store did not open the ROM mode-3, "
+                     "result-zero Lua service menu (dialogue="
+                  << field_scene.dialogue_open() << ", open="
+                  << field_scene.shop_menu_open() << ", mode="
+                  << static_cast<unsigned>(field_scene.shop_menu_mode())
+                  << ", result=" << static_cast<int>(
+                         field_scene.shop_menu_result())
+                  << ", group=" << static_cast<int>(
+                         field_scene.shop_menu_group())
+                  << ", offers=" << field_scene.shop_menu_offers_active()
+                  << ", boundary=" << service_opened << ")\n";
+        return 3;
+    }
+
+    constexpr std::array<ShopActionGroup, 3U> kFollowingServiceGroups{{
+        ShopActionGroup::magic_items,
+        ShopActionGroup::magic_foci,
+        ShopActionGroup::sell,
+    }};
+    constexpr std::array<std::string_view, 3U> kFollowingCaptureNames{{
+        "magic-items-category",
+        "magic-foci-category",
+        "sell-category",
+    }};
+    for (std::size_t index = 0U;
+         index < kFollowingServiceGroups.size(); ++index) {
+        tap_qa_controller_button(field_scene, 0x08U); // Right: next category
+        if (field_scene.shop_menu_group() != kFollowingServiceGroups[index] ||
+            field_scene.shop_menu_offers_active() ||
+            !save(kFollowingCaptureNames[index], false)) {
+            std::cerr << "Medicine Lodge QA: ROM category cursor failed at "
+                      << kFollowingCaptureNames[index] << '\n';
+            return 3;
+        }
+    }
+
+    for (std::size_t index = 0U;
+         index < kFollowingServiceGroups.size(); ++index) {
+        tap_qa_controller_button(field_scene, 0x04U); // Left: previous category
+    }
+    if (field_scene.shop_menu_group() != ShopActionGroup::magic_spells) {
+        std::cerr << "Medicine Lodge QA: category cursor did not return to spells\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x02U); // Down: spell offers
+    if (!field_scene.shop_menu_offers_active() ||
+        field_scene.shop_menu_cursor() != 0U || !save("spell-offer", false)) {
+        std::cerr << "Medicine Lodge QA: spell detail panel did not select "
+                     "the first Lua progression offer\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: buy the selected level
+    const auto* const spell_table =
+        field_scene.field_magic_spell_table_for_dump(0U);
+    std::optional<MagicSpellTableEntry> learned_spell;
+    if (spell_table != nullptr &&
+        spell_table->entry_count <= spell_table->entries.size()) {
+        const auto found = std::find_if(
+            spell_table->entries.begin(),
+            spell_table->entries.begin() + spell_table->entry_count,
+            [](const MagicSpellTableEntry& entry) {
+                return entry.spell_code == 3U;
+            });
+        if (found != spell_table->entries.begin() + spell_table->entry_count) {
+            learned_spell = *found;
+        }
+    }
+    if (!field_scene.shop_menu_open() ||
+        field_scene.shop_transaction_waiting_for_event() ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{8000U} ||
+        !learned_spell.has_value() || learned_spell->force_limit != 2U ||
+        !save("spell-purchased", false)) {
+        std::cerr << "Medicine Lodge QA: ROM spell purchase did not advance "
+                     "the selected runner's spell row\n";
+        return 3;
+    }
+
+    const auto inventory_has_action = [&field_scene](
+                                          const std::uint8_t code,
+                                          const std::uint8_t companion) {
+        const auto runner = field_scene.active_runner_record();
+        for (std::size_t slot = 0U;
+             slot < runner.inventory_item_codes.size() &&
+             slot < runner.inventory_phase_bytes.size(); ++slot) {
+            if (runner.inventory_item_codes[slot] == code &&
+                runner.inventory_phase_bytes[slot] == companion) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // Exercise the ROM's normal action/category/detail/confirmation path for
+    // the first Magic Items offer (record 0x12, value 0x0A).
+    tap_qa_controller_button(field_scene, 0x01U); // Left: category panel.
+    tap_qa_controller_button(field_scene, 0x08U); // Next category: Magic Items.
+    if (field_scene.shop_menu_group() != ShopActionGroup::magic_items ||
+        field_scene.shop_menu_offers_active() ||
+        !save("magic-items-category-selected", false)) {
+        std::cerr << "Medicine Lodge QA: Magic Items category did not select\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x02U); // Down: first item offer.
+    if (!field_scene.shop_menu_offers_active() ||
+        field_scene.shop_menu_cursor() != 0U ||
+        !save("magic-item-offer", false)) {
+        std::cerr << "Medicine Lodge QA: first Magic Items offer did not open\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: open confirmation.
+    if (!field_scene.shop_transaction_confirmation_open() ||
+        !save("magic-item-confirmation", false)) {
+        std::cerr << "Medicine Lodge QA: item confirmation did not open\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x01U); // Up: choose Yes from No.
+    if (!field_scene.shop_transaction_confirmation_open() ||
+        field_scene.shop_transaction_confirmation().selected_option != 0U ||
+        !save("magic-item-confirmation-yes", false)) {
+        std::cerr << "Medicine Lodge QA: item confirmation did not select Yes\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: accept Yes.
+    if (field_scene.shop_transaction_confirmation_open() ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{7500U} ||
+        !inventory_has_action(0x13U, 0x0AU) ||
+        !save("magic-item-purchased", false)) {
+        std::cerr << "Medicine Lodge QA: first Magic Items offer did not "
+                     "apply its ROM action record and 500 nuyen cost "
+                     "(confirmation="
+                  << field_scene.shop_transaction_confirmation_open()
+                  << ", funds="
+                  << field_scene.field_funds_for_dump().value_or(0U)
+                  << ", item=" << inventory_has_action(0x13U, 0x0AU)
+                  << ")\n";
+        return 3;
+    }
+
+    // Return to the category panel and select the first Magic Foci offer
+    // (record 0x1B, value 0x02); its ROM catalog price is 4000 nuyen.
+    tap_qa_controller_button(field_scene, 0x01U); // Left: category panel.
+    tap_qa_controller_button(field_scene, 0x08U); // Next category: Magic Items.
+    tap_qa_controller_button(field_scene, 0x08U); // Next category: Magic Foci.
+    if (field_scene.shop_menu_group() != ShopActionGroup::magic_foci ||
+        field_scene.shop_menu_offers_active() ||
+        !save("magic-foci-category-selected", false)) {
+        std::cerr << "Medicine Lodge QA: Magic Foci category did not select\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x02U); // Down: first focus offer.
+    if (!field_scene.shop_menu_offers_active() ||
+        field_scene.shop_menu_cursor() != 0U ||
+        !save("magic-focus-offer", false)) {
+        std::cerr << "Medicine Lodge QA: first Magic Foci offer did not open\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: open confirmation.
+    if (!field_scene.shop_transaction_confirmation_open() ||
+        !save("magic-focus-confirmation", false)) {
+        std::cerr << "Medicine Lodge QA: focus confirmation did not open\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x01U); // Up: choose Yes from No.
+    if (!field_scene.shop_transaction_confirmation_open() ||
+        field_scene.shop_transaction_confirmation().selected_option != 0U ||
+        !save("magic-focus-confirmation-yes", false)) {
+        std::cerr << "Medicine Lodge QA: focus confirmation did not select Yes\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: accept Yes.
+    if (field_scene.shop_transaction_confirmation_open() ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{3500U} ||
+        !inventory_has_action(0x1CU, 0x02U) ||
+        !save("magic-focus-purchased", false)) {
+        std::cerr << "Medicine Lodge QA: first Magic Foci offer did not "
+                     "apply its ROM action record and 4000 nuyen cost\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x80U); // Start: return to field
+    if (field_scene.shop_menu_open() ||
+        field_scene.field_scene_reference_for_dump() != 4U ||
+        !save("field-return", true)) {
+        std::cerr << "Medicine Lodge QA: Start did not return to the same field map\n";
+        return 3;
+    }
+
+    QString snapshot_error;
+    const auto purchased_snapshot =
+        field_scene.capture_game_save_snapshot_for_dump(&snapshot_error);
+    if (!purchased_snapshot.has_value()) {
+        std::cerr << "Medicine Lodge QA: could not capture the purchased spell: "
+                  << snapshot_error.toStdString() << '\n';
+        return 3;
+    }
+    auto normalized_snapshot = *purchased_snapshot;
+    auto saved_scene = normalized_snapshot.value(
+        QStringLiteral("scene")).toObject();
+    // This route starts from a map-only QA checkpoint with world mode zero.
+    // Persisted field saves require the normal interaction mode for scene 4.
+    saved_scene.insert(QStringLiteral("mode"), 1);
+    normalized_snapshot.insert(QStringLiteral("scene"), saved_scene);
+    auto spell_tables = normalized_snapshot.value(
+        QStringLiteral("spell_tables")).toArray();
+    if (spell_tables.isEmpty() || !spell_tables.at(0).isObject()) {
+        std::cerr << "Medicine Lodge QA: save snapshot omitted the spell table\n";
+        return 3;
+    }
+    auto first_table = spell_tables.at(0).toObject();
+    auto saved_entries = first_table.value(
+        QStringLiteral("entries")).toArray();
+    qsizetype invisibility_entry = -1;
+    for (qsizetype index = 0; index < saved_entries.size(); ++index) {
+        const auto entry = saved_entries.at(index).toObject();
+        if (entry.value(QStringLiteral("code")).toInt(-1) == 3) {
+            invisibility_entry = index;
+            if (entry.value(QStringLiteral("force_limit")).toInt(-1) != 2) {
+                invisibility_entry = -1;
+            }
+            break;
+        }
+    }
+    if (invisibility_entry < 0) {
+        std::cerr << "Medicine Lodge QA: save snapshot lost the purchased spell level\n";
+        return 3;
+    }
+    const auto current_spell_force = [&field_scene]()
+        -> std::optional<std::uint8_t> {
+        const auto* const table =
+            field_scene.field_magic_spell_table_for_dump(0U);
+        if (table == nullptr || table->entry_count > table->entries.size()) {
+            return std::nullopt;
+        }
+        const auto found = std::find_if(
+            table->entries.begin(),
+            table->entries.begin() + table->entry_count,
+            [](const MagicSpellTableEntry& entry) {
+                return entry.spell_code == 3U;
+            });
+        return found == table->entries.begin() + table->entry_count
+            ? std::nullopt
+            : std::optional<std::uint8_t>{found->force_limit};
+    };
+
+    // Restore a deliberately lowered copy first, then the captured purchase.
+    // This proves both that the serialized row is authoritative and that a
+    // second restore reinstates the bought force and wallet.
+    auto lowered_snapshot = normalized_snapshot;
+    auto lowered_entries = saved_entries;
+    auto lowered_spell = lowered_entries.at(invisibility_entry).toObject();
+    lowered_spell.insert(QStringLiteral("force_limit"), 1);
+    lowered_entries.replace(invisibility_entry, lowered_spell);
+    first_table.insert(QStringLiteral("entries"), lowered_entries);
+    spell_tables.replace(0, first_table);
+    lowered_snapshot.insert(QStringLiteral("spell_tables"), spell_tables);
+    if (!field_scene.restore_game_save_snapshot_for_dump(
+            lowered_snapshot, &snapshot_error)) {
+        std::cerr << "Medicine Lodge QA: lowered spell snapshot did not restore: "
+                  << snapshot_error.toStdString() << '\n';
+        return 3;
+    }
+    if (current_spell_force() != std::optional<std::uint8_t>{1U} ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{3500U} ||
+        !inventory_has_action(0x13U, 0x0AU) ||
+        !inventory_has_action(0x1CU, 0x02U)) {
+        std::cerr << "Medicine Lodge QA: lowered spell snapshot state was not restored\n";
+        return 3;
+    }
+    if (!field_scene.restore_game_save_snapshot_for_dump(
+            normalized_snapshot, &snapshot_error)) {
+        std::cerr << "Medicine Lodge QA: purchased spell snapshot did not restore: "
+                  << snapshot_error.toStdString() << '\n';
+        return 3;
+    }
+    if (current_spell_force() != std::optional<std::uint8_t>{2U} ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{3500U} ||
+        !inventory_has_action(0x13U, 0x0AU) ||
+        !inventory_has_action(0x1CU, 0x02U) ||
+        field_scene.field_scene_reference_for_dump() != 4U ||
+        !save("spell-save-restored", true)) {
+        std::cerr << "Medicine Lodge QA: save did not restore purchased spell and funds\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "record\tevent\tservice\tgate\tmovement_ticks\tresult\taudio_requests\n"
+          << "88\t3\tfield_exit_prompt\tstory_flag_bit_4=0,alternate_result=0\t"
+          << movement_ticks << "\tsame_scene_medicine_lodge_mode3_spell_item_focus_purchases\t"
+          << field_audio_events.size() << '\n';
+    std::cout << "field_medicine_lodge_physical_entry_qa=passed "
+                 "record=88 event=3 result=mode3_spell_item_focus_purchases "
+                 "artifacts=" << output.string() << '\n';
+    return 0;
+}
+
+int run_field_spirit_eyes_physical_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Spirit Eyes QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Spirit Eyes QA: could not create captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kSpiritEyesRecord = 96U;
+    constexpr std::uint16_t kSpiritEyesCollision = 0x00DBU;
+    constexpr std::uint16_t kStartX = 0x6D00U;
+    constexpr std::uint16_t kStartY = 0x0B00U;
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    if (field_scene.field_scene_reference_for_dump() != 4U ||
+        field_scene.field_entity_world_position().x != kStartX ||
+        field_scene.field_entity_world_position().y != kStartY ||
+        rectangles.size() <= kSpiritEyesRecord ||
+        rectangles[kSpiritEyesRecord].left != 0x06C0U ||
+        rectangles[kSpiritEyesRecord].right != 0x06DFU ||
+        rectangles[kSpiritEyesRecord].top != 0x0080U ||
+        rectangles[kSpiritEyesRecord].bottom != 0x009FU ||
+        rectangles[kSpiritEyesRecord].value != kSpiritEyesCollision) {
+        std::cerr << "Spirit Eyes QA: scene-4 checkpoint or ROM record 96 "
+                     "does not match\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_field_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) !=
+                 *expect_field_hud) ||
+            (expect_field_hud == std::optional<bool>{true} &&
+             count_playfield_lit(image) < 100U) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()))) {
+            std::cerr << "Spirit Eyes QA: full-frame capture failed for "
+                      << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    if (!save("spawn", true)) return 3;
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into event 27
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 4U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto expected_collision = static_cast<std::uint16_t>(
+        0xFF00U | kSpiritEyesCollision);
+    const auto contact_position = field_scene.field_entity_world_position();
+    const auto& collision_dispatch =
+        field_scene.field_map_event_system_for_dump().last_collision_dispatch();
+    (void)save("event-contact", std::nullopt);
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_projected_code_for_dump() != expected_collision ||
+        !collision_dispatch.has_value() ||
+        collision_dispatch->input.raw_collision_code != expected_collision ||
+        collision_dispatch->decision.source_event_code !=
+            FieldCollisionEventCode::event_27 ||
+        collision_dispatch->decision.action !=
+            FieldMapEventAction::begin_event_27_activity) {
+        std::cerr << "Spirit Eyes QA: ordinary Up did not reach record 96/event "
+                     "27 (ticks=" << movement_ticks << ", collision=0x"
+                  << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", position=0x" << std::hex << contact_position.x
+                  << ",0x" << contact_position.y << std::dec
+                  << ", dispatch=" << collision_dispatch.has_value();
+        if (collision_dispatch.has_value()) {
+            std::cerr << ", raw=0x" << std::hex
+                      << collision_dispatch->input.raw_collision_code
+                      << std::dec << ", source_event="
+                      << static_cast<unsigned>(
+                             collision_dispatch->decision.source_event_code)
+                      << ", action=" << static_cast<unsigned>(
+                             collision_dispatch->decision.action);
+        }
+        std::cerr << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t settle = 0U;
+         settle < 100U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 4U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto& introduction = field_scene.dialogue_panel();
+    const auto opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.dialogue_task_opened"));
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 4U ||
+        field_scene.field_runtime_state_for_dump().field_mode != 4U ||
+        !introduction.source_complete ||
+        introduction.option_count != 1U ||
+        introduction.options[0U].source_label != "|          < MORE >" ||
+        !contains("ancient AmerIndian") ||
+        field_scene.field_world_fact_flags_for_dump() != (1U << 5U) ||
+        field_scene.field_auxiliary_flags_for_dump() != 1U ||
+        introduction.portrait_alias !=
+            "dialogue.portraits.spirit.eyes" ||
+        opened != 1 || !save("first-contact", false) ||
+        !save("actual", false)) {
+        std::cerr << "Spirit Eyes QA: event 27 did not open first contact "
+                     "with the traced story/FFFC40 state (dialogue="
+                  << field_scene.dialogue_open() << ", opened=" << opened
+                  << ", text=" << contains("ancient AmerIndian")
+                  << ", story=0x" << std::hex
+                  << field_scene.field_world_fact_flags_for_dump()
+                  << ", auxiliary=0x"
+                  << field_scene.field_auxiliary_flags_for_dump() << std::dec
+                  << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: continue to horn request
+    if (!field_scene.dialogue_open() || !contains("gargoyle") ||
+        !save("horn-request", false)) {
+        std::cerr << "Spirit Eyes QA: first-contact More did not reveal the "
+                     "source gargoyle-horn request\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "record\tevent\tcontinuation\tgate\tmovement_ticks\tresult\taudio_requests\n"
+          << "96\t27\t0x53D5A\tstory_flag_bit_5=0\t"
+          << movement_ticks << "\tfirst_contact_then_horn_request\t"
+          << field_audio_events.size() << '\n';
+    std::cout << "field_spirit_eyes_physical_entry_qa=passed "
+                 "record=96 event=27 result=first_contact_horn_request "
+                 "artifacts=" << output.string() << '\n';
+    return 0;
+}
+
+int run_field_owlfeather_physical_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries,
+    const bool return_followup_qa = false,
+    const bool search_followup_qa = false,
+    const bool closed_gate_qa = false,
+    const bool opening_land_choice_qa = false,
+    const bool opening_council_choice_qa = false,
+    const bool ilene_gate_script_qa = false) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Owlfeather QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Owlfeather QA: could not create captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kOwlfeatherRecord = 193U;
+    constexpr std::uint16_t kOwlfeatherCollision = 0x00C0U;
+    constexpr std::uint16_t kStartX = 0x5500U;
+    constexpr std::uint16_t kStartY = 0x5000U;
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    if (field_scene.field_scene_reference_for_dump() != 6U ||
+        field_scene.field_entity_world_position().x != kStartX ||
+        field_scene.field_entity_world_position().y != kStartY ||
+        rectangles.size() <= kOwlfeatherRecord ||
+        rectangles[kOwlfeatherRecord].left != 0x0540U ||
+        rectangles[kOwlfeatherRecord].right != 0x055FU ||
+        rectangles[kOwlfeatherRecord].top != 0x04E0U ||
+        rectangles[kOwlfeatherRecord].bottom != 0x04FFU ||
+        rectangles[kOwlfeatherRecord].value != kOwlfeatherCollision ||
+        !field_scene.set_story_flag_for_dump(
+            return_followup_qa ? 3U : (search_followup_qa ? 2U : 1U),
+            !(closed_gate_qa || ilene_gate_script_qa)) ||
+        !field_scene.set_story_flag_for_dump(
+            return_followup_qa ? 4U : (search_followup_qa ? 3U : 2U),
+            false)) {
+        std::cerr << "Owlfeather QA: scene-6 checkpoint, ROM record 193, or "
+                     "source title-service gate did not match\n";
+        return 3;
+    }
+    if (ilene_gate_script_qa &&
+        (!field_scene.set_story_flag_for_dump(19U, true))) {
+        std::cerr << "Owlfeather QA: could not seed FFFC1E bit 19\n";
+        return 3;
+    }
+    if (ilene_gate_script_qa) {
+        field_scene.set_compact_runner_markers_for_dump(0xFFU, 0xFFU);
+    }
+    // The positional checkpoint is restored-state data; seed the source's
+    // New Game zero triplet so command 0x17 can apply its runner adjustment.
+    field_scene.seed_runner_source_byte_triplet_for_qa({0U, 0U, 0U});
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_field_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) !=
+                 *expect_field_hud) ||
+            (expect_field_hud == std::optional<bool>{true} &&
+             count_playfield_lit(image) < 100U) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()))) {
+            std::cerr << "Owlfeather QA: full-frame capture failed for "
+                      << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    if (!save("spawn", true)) return 3;
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into record 193
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 6U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto expected_collision = static_cast<std::uint16_t>(
+        0xFF00U | kOwlfeatherCollision);
+    const auto& collision_dispatch =
+        field_scene.field_map_event_system_for_dump().last_collision_dispatch();
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_terrain_collision_code_for_dump() !=
+            expected_collision ||
+        field_scene.field_projected_code_for_dump() != expected_collision ||
+        field_scene.field_mode_event_code_for_dump() != 0U ||
+        !field_scene.field_interaction_transition_active_for_dump() ||
+        !collision_dispatch.has_value() ||
+        collision_dispatch->input.raw_collision_code != expected_collision ||
+        !save("doorway-contact", std::nullopt)) {
+        std::cerr << "Owlfeather QA: ordinary Up did not reach ROM record "
+                     "193/event 0 (ticks=" << movement_ticks
+                  << ", terrain=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+
+    if (closed_gate_qa || ilene_gate_script_qa) {
+        for (std::uint8_t settle = 0U;
+             settle < 120U && field_scene.field_scene_reference_for_dump() == 6U &&
+             !field_scene.dialogue_open(); ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto transition_frames =
+            field_scene.field_modal_return_transition_frames_for_dump();
+        const auto opened_services = std::count(
+            source_boundaries.begin(), source_boundaries.end(),
+            std::string("field.location.indexed_title_service_opened"));
+        const auto& world_activity =
+            field_scene.world_activity_state_for_dump();
+        const bool script_selected =
+            world_activity.selected_world_script == 3U;
+        const auto destination_image = render();
+        if (field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 13U ||
+            transition_frames != 0U ||
+            opened_services != 0 ||
+            field_scene.field_interaction_open() ||
+            (ilene_gate_script_qa && !script_selected) ||
+            (closed_gate_qa && script_selected) ||
+            (ilene_gate_script_qa &&
+             (field_scene.field_world_fact_flags_for_dump() &
+              (std::uint32_t{1U} << 19U)) == 0U) ||
+            !field_scene.field_entity_visible_for_dump() ||
+            !field_hud_chrome_survives(destination_image, asset_root) ||
+            count_playfield_lit(destination_image) < 100U ||
+            !save("actual", true)) {
+            std::cerr << "Owlfeather world-gate QA: event 0 did not resolve "
+                         "its scene-13 route (scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", transition_frames="
+                      << static_cast<unsigned>(transition_frames)
+                      << ", services=" << opened_services
+                      << ", selected_script=" << script_selected
+                      << ", dialogue=" << field_scene.dialogue_open()
+                      << ", failure=" << field_scene.failure() << ")\n";
+            return 3;
+        }
+        std::ofstream trace(output / "route.tsv", std::ios::trunc);
+        if (!trace) return 3;
+        trace << "record\tevent\tgate\tresult\tdestination\t"
+                 "transition_frames\n"
+              << "193\t0\tbit_1=0,bit_2=0\tevent_table\t13\t"
+              << static_cast<unsigned>(transition_frames) << '\n';
+        std::ofstream script_trace(output / "world-script.tsv",
+                                   std::ios::trunc);
+        if (!script_trace) return 3;
+        script_trace << "scene\tstory_bit_19\tprimary_marker\t"
+                        "secondary_marker\tselected_script\n"
+                     << "13\t" << (ilene_gate_script_qa ? 1 : 0)
+                     << "\t0xFF\t0xFF\t"
+                     << (script_selected ? 3 : -1) << '\n';
+        std::cout << "field_owlfeather_world_gate_qa=passed record=193 "
+                     "event=0 destination_scene=13 selected_script="
+                  << (script_selected ? 3 : -1) << " artifacts="
+                  << output.string() << '\n';
+        return 0;
+    }
+
+    for (std::uint8_t settle = 0U;
+         settle < 120U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 6U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto& panel = field_scene.dialogue_panel();
+    const auto opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.indexed_title_service_opened"));
+    const auto flags = field_scene.field_world_fact_flags_for_dump();
+    const auto effects = field_scene.field_mode_effect_flags_for_dump();
+    if (search_followup_qa) {
+        const bool prompt_matches = contains("Still no luck") &&
+            contains("keep searching") && contains("Aragorn is alive") &&
+            panel.option_count == 3U && panel.source_complete &&
+            panel.portrait_alias == "dialogue.portraits.david.owlfeather";
+        if (!field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 6U ||
+            !prompt_matches || (flags & (1U << 2U)) == 0U ||
+            (flags & (1U << 3U)) != 0U ||
+            (effects & (1U << 9U)) != 0U || opened != 1 ||
+            !save("actual", false)) {
+            std::cerr << "Owlfeather search QA: Scene-6 event 0 did not open "
+                         "service 3 under story bits 2=1, 3=0 (dialogue="
+                      << field_scene.dialogue_open() << ", prompt="
+                      << prompt_matches << ", flags=0x" << std::hex << flags
+                      << ", effects=0x" << effects << std::dec
+                      << ", opened=" << opened << ")\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x20U); // C: Later.
+        for (std::uint8_t settle = 0U;
+             settle < 120U && !contains("Sure thing"); ++settle) {
+            field_scene.advance_frame();
+        }
+        if (!field_scene.dialogue_open() || !contains("Sure thing") ||
+            !save("later-response", false)) {
+            std::cerr << "Owlfeather search QA: the Later choice did not show "
+                         "its farewell More page (dialogue="
+                      << field_scene.dialogue_open() << ", failure="
+                      << field_scene.failure() << ")\n";
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x40U); // A: More.
+        for (std::uint8_t settle = 0U;
+             settle < 120U &&
+             !contains("Farewell, and may the spirits guide you");
+             ++settle) {
+            field_scene.advance_frame();
+        }
+        const bool closing_page = field_scene.dialogue_open() &&
+            contains("Farewell, and may the spirits guide you");
+        if (!closing_page || !save("farewell-closing", false)) {
+            std::cerr << "Owlfeather search QA: closing farewell page did not "
+                         "follow the Later response (dialogue="
+                      << field_scene.dialogue_open() << ", closing="
+                      << closing_page << ", failure="
+                      << field_scene.failure() << ")\n";
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x40U); // A: close farewell.
+        for (std::uint8_t settle = 0U;
+             settle < 120U && field_scene.dialogue_open(); ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto result_flags = field_scene.field_world_fact_flags_for_dump();
+        const auto result_effects =
+            field_scene.field_mode_effect_flags_for_dump();
+        const auto return_frames =
+            field_scene.field_modal_return_transition_frames_for_dump();
+        const bool returned_cleanly = !field_scene.dialogue_open() &&
+            field_scene.field_scene_reference_for_dump() == 6U &&
+            (result_flags & (1U << 2U)) != 0U &&
+            (result_flags & (1U << 3U)) == 0U &&
+            (result_effects & (1U << 9U)) == 0U;
+        if (!returned_cleanly ||
+            (return_frames != 0U &&
+             !finish_field_modal_return_transition(field_scene)) ||
+            !save("same-map-return", true)) {
+            std::cerr << "Owlfeather search QA: Later did not return cleanly "
+                         "to Scene 6 (closed="
+                      << !field_scene.dialogue_open() << ", scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", flags=0x" << std::hex << result_flags
+                      << ", effects=0x" << result_effects << std::dec
+                      << ", return_frames="
+                      << static_cast<unsigned>(return_frames) << ")\n";
+            return 3;
+        }
+
+        std::ofstream trace(output / "route.tsv", std::ios::trunc);
+        if (!trace) return 3;
+        trace << "record\tevent\tservice\tgate\tchoice\t"
+                 "entry_story_flags\tresult_story_flags\t"
+                 "entry_mode_effect_flags\tresult_mode_effect_flags\t"
+                 "destination\n"
+              << "193\t0\t3\tbit_2=1,bit_3=0\tlater\t0x"
+              << std::hex << flags << "\t0x" << result_flags << "\t0x"
+              << effects << "\t0x" << result_effects
+              << "\tsame_scene_6\n";
+        std::cout << "field_owlfeather_search_followup_qa=passed record=193 "
+                     "event=0 service=3 later=completed "
+                     "artifacts=" << output.string() << '\n';
+        return 0;
+    }
+
+    if (return_followup_qa) {
+        const bool prompt_matches = contains("Still no luck") &&
+            contains("keep searching") && contains("Aragorn is alive") &&
+            panel.option_count == 1U && panel.source_complete &&
+            panel.portrait_alias == "dialogue.portraits.david.owlfeather";
+        if (!field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 6U ||
+            !prompt_matches || (flags & (1U << 3U)) == 0U ||
+            (flags & (1U << 4U)) != 0U || opened != 1 ||
+            !save("actual", false)) {
+            std::cerr << "Owlfeather return QA: Scene-6 event 0 did not open "
+                         "service 4 under story bits 3=1, 4=0 (dialogue="
+                      << field_scene.dialogue_open() << ", prompt="
+                      << prompt_matches << ", flags=0x" << std::hex << flags
+                      << std::dec << ", opened=" << opened << ")\n";
+            return 3;
+        }
+
+        struct ReturnPage {
+            std::string_view text;
+            std::string_view capture;
+        };
+        constexpr std::array<ReturnPage, 4U> pages{{
+            {"station doors swing wide", "returned-arrival"},
+            {"quickly clasps Aragorn", "embrace"},
+            {"welcome back to our land", "welcome-back"},
+            {"must forgive him", "spirit-eyes-referral"},
+        }};
+        tap_qa_controller_button(field_scene, 0x40U); // A: accept freed.
+        for (const auto& page : pages) {
+            for (std::uint8_t settle = 0U;
+                 settle < 120U && !contains(page.text); ++settle) {
+                field_scene.advance_frame();
+            }
+            if (!field_scene.dialogue_open() || !contains(page.text) ||
+                !save(page.capture, false)) {
+                std::cerr << "Owlfeather return QA: returned-brother graph "
+                             "did not reach page " << page.capture
+                          << " (text=" << page.text << ", dialogue="
+                          << field_scene.dialogue_open() << ", failure="
+                          << field_scene.failure() << ")\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x40U); // A: More.
+        }
+
+        for (std::uint8_t settle = 0U;
+             settle < 120U && !contains("Go to the Medicine Lodge");
+             ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto& result_panel = field_scene.dialogue_panel();
+        const bool referral_menu = field_scene.dialogue_open() &&
+            contains("Go to the Medicine Lodge") &&
+            contains("most wise one") && result_panel.option_count == 3U;
+        if (!referral_menu || !save("medicine-lodge-referral", false)) {
+            std::cerr << "Owlfeather return QA: final Medicine Lodge referral "
+                         "menu did not open (menu=" << referral_menu
+                      << ", options=" << result_panel.option_count
+                      << ", failure=" << field_scene.failure() << ")\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x20U); // C: Thanks.
+        for (std::uint8_t settle = 0U;
+             settle < 120U &&
+             !contains("Sure thing") &&
+             !contains("Farewell, and may the spirits guide you");
+             ++settle) {
+            field_scene.advance_frame();
+        }
+        if (!field_scene.dialogue_open() ||
+            (!contains("Sure thing") &&
+             !contains("Farewell, and may the spirits guide you")) ||
+            !save("thanks-response", false)) {
+            std::cerr << "Owlfeather return QA: Thanks did not enter the "
+                         "ROM farewell pages (dialogue="
+                      << field_scene.dialogue_open() << ", failure="
+                      << field_scene.failure() << ")\n";
+            return 3;
+        }
+        if (contains("Sure thing")) {
+            tap_qa_controller_button(field_scene, 0x40U); // A: More.
+            for (std::uint8_t settle = 0U;
+                 settle < 120U &&
+                 !contains("Farewell, and may the spirits guide you");
+                 ++settle) {
+                field_scene.advance_frame();
+            }
+        }
+        const bool closing_page =
+            field_scene.dialogue_open() &&
+            contains("Farewell, and may the spirits guide you");
+        if (!closing_page || !save("farewell-closing", false)) {
+            std::cerr << "Owlfeather return QA: closing farewell page did not "
+                         "follow the Thanks response (dialogue="
+                      << field_scene.dialogue_open() << ", closing="
+                      << closing_page << ", failure="
+                      << field_scene.failure() << ")\n";
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x40U); // A: close farewell.
+        for (std::uint8_t settle = 0U;
+             settle < 120U && field_scene.dialogue_open(); ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto result_flags = field_scene.field_world_fact_flags_for_dump();
+        const auto result_effects =
+            field_scene.field_mode_effect_flags_for_dump();
+        const auto return_frames =
+            field_scene.field_modal_return_transition_frames_for_dump();
+        const bool returned_cleanly = !field_scene.dialogue_open() &&
+            field_scene.field_scene_reference_for_dump() == 6U &&
+            (result_flags & (1U << 3U)) != 0U &&
+            (result_flags & (1U << 4U)) != 0U &&
+            (result_effects & ((1U << 8U) | (1U << 9U) |
+                               (1U << 10U) | (1U << 13U))) == 0U &&
+            (result_effects & (1U << 14U)) != 0U;
+        if (!returned_cleanly ||
+            (return_frames != 0U &&
+             !finish_field_modal_return_transition(field_scene)) ||
+            !save("same-map-return", true)) {
+            std::cerr << "Owlfeather return QA: service 4 did not complete "
+                         "its trigger tail and return to Scene 6 (closed="
+                      << !field_scene.dialogue_open() << ", scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", flags=0x" << std::hex << result_flags
+                      << ", effects=0x" << result_effects << std::dec
+                      << ", return_frames="
+                      << static_cast<unsigned>(return_frames) << ")\n";
+            return 3;
+        }
+
+        std::ofstream trace(output / "route.tsv", std::ios::trunc);
+        if (!trace) return 3;
+        trace << "record\tevent\tservice\tgate\tbranch\t"
+                 "entry_story_flags\tresult_story_flags\t"
+                 "entry_mode_effect_flags\tresult_mode_effect_flags\t"
+                 "destination\n"
+              << "193\t0\t4\tbit_3=1,bit_4=0\treturned_brother\t0x"
+              << std::hex << flags << "\t0x" << result_flags << "\t0x"
+              << effects << "\t0x" << result_effects
+              << "\tsame_scene_6\n";
+        std::cout << "field_owlfeather_return_followup_qa=passed record=193 "
+                     "event=0 service=4 returned_brother=completed "
+                     "artifacts=" << output.string() << '\n';
+        return 0;
+    }
+
+    const bool choices_match = panel.option_count == 3U &&
+        panel.options[0U].source_label.find("AmerIndian Lands") !=
+            std::string_view::npos &&
+        panel.options[2U].source_label.find("my brother Michael") !=
+            std::string_view::npos;
+    const bool opening_text = contains("tribal council building") &&
+                              contains("D. Owlfeather");
+    const bool opening_saved = save("actual", false);
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 6U ||
+        !panel.source_complete || !choices_match ||
+        !opening_text ||
+        panel.portrait_alias != "dialogue.portraits.david.owlfeather" ||
+        (flags & (1U << 2U)) != 0U ||
+        (effects & ((1U << 8U) | (1U << 9U))) != 0U || opened != 1 ||
+        !opening_saved) {
+        std::cerr << "Owlfeather QA: event 0 did not open the source-gated "
+                     "Lua title-service dialogue (dialogue="
+                  << field_scene.dialogue_open() << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", choices=" << choices_match
+                  << ", text=" << opening_text
+                  << ", complete=" << panel.source_complete
+                  << ", portrait="
+                  << (panel.portrait_alias ==
+                      "dialogue.portraits.david.owlfeather")
+                  << ", choice_flag_unchanged="
+                  << ((flags & (1U << 2U)) == 0U)
+                  << ", effects_cleared="
+                  << ((effects & ((1U << 8U) | (1U << 9U))) == 0U)
+                  << ", opened=" << opened << ")\n";
+        return 3;
+    }
+
+    if (opening_land_choice_qa || opening_council_choice_qa) {
+        const bool land_choice = opening_land_choice_qa;
+        tap_qa_controller_button(field_scene,
+                                 land_choice ? 0x40U : 0x10U);
+        if (!land_choice) {
+            for (std::uint8_t settle = 0U;
+                 settle < 120U && !contains("beauty of nature"); ++settle) {
+                field_scene.advance_frame();
+            }
+            const auto& council_page = field_scene.dialogue_panel();
+            if (!field_scene.dialogue_open() ||
+                !contains("beauty of nature") ||
+                council_page.option_count != 1U ||
+                !save("council-introduction", false)) {
+                std::cerr << "Owlfeather council QA: B did not open the "
+                             "source Council Island page\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x40U); // A: More.
+            for (std::uint8_t settle = 0U;
+                 settle < 120U && !contains("Passport Lodge"); ++settle) {
+                field_scene.advance_frame();
+            }
+        } else {
+            for (std::uint8_t settle = 0U;
+                 settle < 120U &&
+                 !contains("north-western tribal lands"); ++settle) {
+                field_scene.advance_frame();
+            }
+        }
+
+        const auto& topics = field_scene.dialogue_panel();
+        const bool topics_match = land_choice
+            ? field_scene.dialogue_open() &&
+                  contains("north-western tribal lands") &&
+                  topics.option_count == 2U
+            : field_scene.dialogue_open() &&
+                  contains("Passport Lodge") &&
+                  contains("Ork Embassy") && topics.option_count == 3U;
+        if (!topics_match || !topics.source_complete ||
+            (field_scene.field_world_fact_flags_for_dump() & (1U << 2U)) != 0U ||
+            !save(land_choice ? "land-topics" : "council-topics", false)) {
+            std::cerr << "Owlfeather opening-choice QA: information topics "
+                         "did not match the selected branch\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene,
+                                 land_choice ? 0x10U : 0x20U);
+        for (std::uint8_t settle = 0U;
+             settle < 120U && !contains("Sure thing"); ++settle) {
+            field_scene.advance_frame();
+        }
+        if (!field_scene.dialogue_open() || !contains("Sure thing") ||
+            !save("thanks-response", false)) {
+            std::cerr << "Owlfeather opening-choice QA: Thanks did not enter "
+                         "the source farewell pages\n";
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x40U); // A: More.
+        for (std::uint8_t settle = 0U;
+             settle < 120U &&
+             !contains("Farewell, and may the spirits guide you");
+             ++settle) {
+            field_scene.advance_frame();
+        }
+        if (!field_scene.dialogue_open() ||
+            !contains("Farewell, and may the spirits guide you") ||
+            !save("farewell", false)) {
+            std::cerr << "Owlfeather opening-choice QA: closing farewell "
+                         "page was not reached\n";
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x40U); // A: close farewell.
+        for (std::uint8_t settle = 0U;
+             settle < 120U && field_scene.dialogue_open(); ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto final_flags = field_scene.field_world_fact_flags_for_dump();
+        const auto final_effects =
+            field_scene.field_mode_effect_flags_for_dump();
+        const auto return_frames =
+            field_scene.field_modal_return_transition_frames_for_dump();
+        if (field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 6U ||
+            (final_flags & (1U << 2U)) != 0U ||
+            (final_effects & ((1U << 8U) | (1U << 9U))) != 0U ||
+            return_frames == 0U || return_frames > 60U ||
+            !finish_field_modal_return_transition(field_scene) ||
+            !save("same-map-return", true)) {
+            std::cerr << "Owlfeather opening-choice QA: information-only "
+                         "branch did not return to Scene 6 cleanly (closed="
+                      << !field_scene.dialogue_open() << ", scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", story=0x" << std::hex << final_flags
+                      << ", effects=0x" << final_effects << std::dec
+                      << ", fade_frames="
+                      << static_cast<unsigned>(return_frames) << ")\n";
+            return 3;
+        }
+        std::ofstream trace(output / "route.tsv", std::ios::trunc);
+        if (!trace) return 3;
+        trace << "record\tevent\tchoice\tresult_story_flags\t"
+                 "result_mode_effect_flags\tdestination\n"
+              << "193\t0\t" << (land_choice ? "lands" : "council")
+              << "_then_thanks\t0x" << std::hex << final_flags << "\t0x"
+              << final_effects << "\tsame_scene_6\n";
+        std::cout << "field_owlfeather_opening_"
+                  << (land_choice ? "land" : "council")
+                  << "_choice_qa=passed record=193 event=0 "
+                     "result=same_scene_6 artifacts="
+                  << output.string() << '\n';
+        return 0;
+    }
+
+    tap_qa_controller_button(field_scene, 0x20U); // C: choose brother
+    for (std::uint8_t settle = 0U;
+         settle < 120U &&
+         (!contains("brief synopsis") ||
+          (field_scene.field_world_fact_flags_for_dump() & (1U << 2U)) == 0U);
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto brother_flags =
+        field_scene.field_world_fact_flags_for_dump();
+    const bool brother_page = contains("brief synopsis") &&
+                              contains("Owlfeather seems very disturbed");
+    const bool brother_response_saved = save("brother-response", false);
+    if (!field_scene.dialogue_open() || !brother_page ||
+        (brother_flags & (1U << 2U)) == 0U ||
+        (field_scene.field_mode_effect_flags_for_dump() &
+         ((1U << 8U) | (1U << 9U))) != 0U ||
+        !brother_response_saved) {
+        std::cerr << "Owlfeather QA: choosing the brother topic did not apply "
+                     "dialogue command 0x17 (dialogue="
+                  << field_scene.dialogue_open() << ", page=" << brother_page
+                  << ", selected="
+                  << static_cast<unsigned>(
+                         field_scene.dialogue_panel().selected_option)
+                  << ", story_bit_2="
+                  << ((brother_flags & (1U << 2U)) != 0U)
+                  << ", failure=" << field_scene.failure()
+                  << ", text=";
+        for (std::size_t index = 0U;
+             index < field_scene.dialogue_panel().text_segment_count; ++index) {
+            std::cerr << '['
+                      << field_scene.dialogue_panel().text_segments[index]
+                      << ']';
+        }
+        std::cerr << ")\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "record\tevent\tservice\tgate\tmovement_ticks\t"
+             "destination\tentry_story_flags\tentry_mode_effect_flags\t"
+             "after_choice_story_flags\tafter_choice_mode_effect_flags\n"
+          << "193\t0\t2\tbit_1=1,bit_2=0_until_brother_choice\t"
+          << movement_ticks << "\tfield_service_dialogue\t0x" << std::hex
+          << flags << "\t0x" << effects << "\t0x" << brother_flags
+          << "\t0x" << field_scene.field_mode_effect_flags_for_dump()
+          << '\n';
+    std::cout << "field_owlfeather_physical_entry_qa=passed "
+                 "record=193 event=0 service=2 gated_dialogue=opened "
+                 "artifacts=" << output.string() << '\n';
+    return 0;
+}
+
+int run_field_red_buffalo_physical_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries,
+    const bool exercise_no_gift_more_branch = false) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Red Buffalo QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Red Buffalo QA: could not create captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kRedBuffaloRecord = 194U;
+    constexpr std::uint16_t kRedBuffaloCollision = 0x00C1U;
+    constexpr std::uint16_t kStartX = 0x6100U;
+    constexpr std::uint16_t kStartY = 0x4100U;
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    // The positional checkpoint uses the New Game runner record, so restore
+    // the matching known New Game Notebook tip words for this service test.
+    field_scene.seed_notebook_tip_flags_for_qa({{1U, 0U, 0U}});
+    if (field_scene.field_scene_reference_for_dump() != 6U ||
+        field_scene.field_entity_world_position().x != kStartX ||
+        field_scene.field_entity_world_position().y != kStartY ||
+        rectangles.size() <= kRedBuffaloRecord ||
+        rectangles[kRedBuffaloRecord].left != 0x0600U ||
+        rectangles[kRedBuffaloRecord].right != 0x061FU ||
+        rectangles[kRedBuffaloRecord].top != 0x03E0U ||
+        rectangles[kRedBuffaloRecord].bottom != 0x03FFU ||
+        rectangles[kRedBuffaloRecord].value != kRedBuffaloCollision ||
+        !field_scene.set_story_flag_for_dump(
+            17U, !exercise_no_gift_more_branch) ||
+        !field_scene.set_story_flag_for_dump(18U, false)) {
+        std::cerr << "Red Buffalo QA: scene-6 checkpoint, ROM record 194, or "
+                     "source gift gate did not match\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        const bool correctly_sized =
+            image.size() == QSize(kSceneWidth, kSceneHeight);
+        const bool image_saved = correctly_sized && image.save(
+            QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()));
+        const bool hud_matches = !expect_field_hud.has_value() ||
+            field_hud_chrome_survives(image, asset_root) ==
+                *expect_field_hud;
+        const auto lit_pixels = count_playfield_lit(image);
+        if (!image_saved || !hud_matches ||
+            (expect_field_hud == std::optional<bool>{true} &&
+             lit_pixels < 100U)) {
+            std::cerr << "Red Buffalo QA: full-frame capture failed for "
+                      << name << " (size=" << correctly_sized
+                      << ", saved=" << image_saved
+                      << ", hud=" << hud_matches
+                      << ", lit=" << lit_pixels << ")\n";
+            return false;
+        }
+        return true;
+    };
+    if (!save("spawn", true)) return 3;
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into record 194
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 6U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto expected_collision = static_cast<std::uint16_t>(
+        0xFF00U | kRedBuffaloCollision);
+    const auto& collision_dispatch =
+        field_scene.field_map_event_system_for_dump().last_collision_dispatch();
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_terrain_collision_code_for_dump() !=
+            expected_collision ||
+        field_scene.field_projected_code_for_dump() != expected_collision ||
+        field_scene.field_mode_event_code_for_dump() != 1U ||
+        !field_scene.field_interaction_transition_active_for_dump() ||
+        !collision_dispatch.has_value() ||
+        collision_dispatch->input.raw_collision_code != expected_collision ||
+        !save("doorway-contact", std::nullopt)) {
+        std::cerr << "Red Buffalo QA: ordinary Up did not reach ROM record "
+                     "194/event 1 (ticks=" << movement_ticks
+                  << ", terrain=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t settle = 0U;
+         settle < 120U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 6U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto& panel = field_scene.dialogue_panel();
+    const auto opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.indexed_title_service_opened"));
+    const auto opening_flags = field_scene.field_world_fact_flags_for_dump();
+    const bool introduction = contains("Red Buffalo Woman") &&
+                              contains("lone AmerIndian woman");
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 6U ||
+        !panel.source_complete || panel.option_count != 1U ||
+        panel.portrait_alias != "dialogue.portraits.red.buffalo.woman" ||
+        !introduction || (opening_flags & (1U << 18U)) != 0U || opened != 1 ||
+        !save("actual", false)) {
+        std::cerr << "Red Buffalo QA: event 1 did not open the first-contact "
+                     "title service (dialogue="
+                  << field_scene.dialogue_open() << ", text=" << introduction
+                  << ", portrait="
+                  << (panel.portrait_alias ==
+                      "dialogue.portraits.red.buffalo.woman")
+                  << ", visited_flag_still_clear="
+                  << ((opening_flags & (1U << 18U)) == 0U)
+                  << ", opened=" << opened << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: next source page
+    if (exercise_no_gift_more_branch) {
+        for (std::uint8_t settle = 0U;
+             settle < 120U && !contains("nothing to offer you"); ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto& no_gift_panel = field_scene.dialogue_panel();
+        if (!field_scene.dialogue_open() ||
+            !contains("nothing to offer you") ||
+            no_gift_panel.option_count != 2U ||
+            !save("no-gift-prompt", false)) {
+            std::cerr << "Red Buffalo no-gift QA: bit 17 clear did not open "
+                         "the two-choice ROM prompt\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x10U); // B selects More
+        for (std::uint8_t settle = 0U;
+             settle < 120U && !contains("enter the penthouse"); ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto no_gift_flags =
+            field_scene.field_world_fact_flags_for_dump();
+        if (!field_scene.dialogue_open() ||
+            !contains("enter the penthouse") ||
+            !contains("This must be Harlequin") ||
+            (no_gift_flags & (1U << 18U)) != 0U ||
+            !save("more-response", false)) {
+            std::cerr << "Red Buffalo no-gift QA: More did not show the "
+                         "penthouse/Harlequin response without marking the "
+                         "gift trigger (dialogue="
+                      << field_scene.dialogue_open()
+                      << ", penthouse=" << contains("enter the penthouse")
+                      << ", harlequin=" << contains("This must be Harlequin")
+                      << ", gift_flag=" << ((no_gift_flags & (1U << 18U)) != 0U)
+                      << ", panel_kind=" << static_cast<unsigned>(
+                             field_scene.dialogue_panel().kind)
+                      << ", options=" << field_scene.dialogue_panel().option_count
+                      << ", complete="
+                      << field_scene.dialogue_panel().source_complete
+                      << ", text={";
+            for (std::size_t index = 0U;
+                 index < field_scene.dialogue_panel().text_segment_count;
+                 ++index) {
+                if (index != 0U) std::cerr << '|';
+                std::cerr << field_scene.dialogue_panel().text_segments[index];
+            }
+            std::cerr << "}, failure=" << field_scene.failure() << ")\n";
+            return 3;
+        }
+
+        const std::array<std::pair<std::string_view, std::string_view>, 7U>
+            harlequin_pages{{
+                {"So we meet", "harlequin-meeting"},
+                {"You've acquired quite a reputation", "michael-topic"},
+                {"Your brother's death", "thon-topic"},
+                {"Thon is a what, not a who", "thon-explanation"},
+                {"But Thon is cursed", "thon-curse"},
+                {"Currently, Thon's energy is waning", "renraku-topic"},
+                {"Renraku became involved with Thon", "renraku-explanation"},
+            }};
+        for (std::size_t page = 0U; page < harlequin_pages.size(); ++page) {
+            // The first A edge dismisses the penthouse page and opens the
+            // first Harlequin continuation node at ROM 0xF58C0. Later edges
+            // select the one-choice source prompts.
+            tap_qa_controller_button(field_scene, 0x40U);
+            for (std::uint8_t settle = 0U;
+                 settle < 120U &&
+                 !contains(harlequin_pages[page].first); ++settle) {
+                field_scene.advance_frame();
+            }
+            if (!field_scene.dialogue_open() ||
+                !contains(harlequin_pages[page].first) ||
+                !save(harlequin_pages[page].second, false)) {
+                std::cerr << "Red Buffalo no-gift QA: Harlequin graph did "
+                             "not reach page " << page << " (expected="
+                          << harlequin_pages[page].first << ", dialogue="
+                          << field_scene.dialogue_open() << ", options="
+                          << field_scene.dialogue_panel().option_count
+                          << ", failure=" << field_scene.failure() << ")\n";
+                return 3;
+            }
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U);
+        for (std::uint8_t settle = 0U;
+             settle < 120U &&
+             !contains("After Thon fragged his relationship with Renraku");
+             ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto effects_after_harlequin =
+            field_scene.field_mode_effect_flags_for_dump();
+        if (!field_scene.dialogue_open() ||
+            !contains("After Thon fragged his relationship with Renraku") ||
+            (effects_after_harlequin & (1U << 7U)) == 0U ||
+            !save("renraku-update", false)) {
+            std::cerr << "Red Buffalo no-gift QA: ROM no-Ito branch did "
+                         "not show its Renraku update or set effect bit 7\n";
+            return 3;
+        }
+
+        const auto return_boundary_start = source_boundaries.size();
+        tap_qa_controller_button(field_scene, 0x40U); // A: dismiss response
+        for (std::uint8_t settle = 0U;
+             settle < 120U && field_scene.dialogue_open(); ++settle) {
+            field_scene.advance_frame();
+        }
+        for (std::uint8_t settle = 0U;
+             settle < 120U &&
+             field_scene.field_modal_return_transition_frames_for_dump() != 0U;
+             ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto result_flags = field_scene.field_world_fact_flags_for_dump();
+        const auto result_effects =
+            field_scene.field_mode_effect_flags_for_dump();
+        if (field_scene.dialogue_open() ||
+            field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+            field_scene.field_scene_reference_for_dump() != 6U ||
+            (result_flags & (1U << 18U)) != 0U ||
+            (result_flags & (1U << 16U)) != 0U ||
+            (result_effects & (1U << 7U)) == 0U ||
+            !save("same-map-return", true)) {
+            std::cerr << "Red Buffalo no-gift QA: penthouse response did not "
+                         "return cleanly through the no-Ito branch to Scene 6\n";
+            return 3;
+        }
+
+        std::ofstream trace(output / "route.tsv", std::ios::trunc);
+        if (!trace) return 3;
+        trace << "record\tevent\tservice\tgate\tbranch\t"
+                 "entry_story_flags\tresult_story_flags\t"
+                 "result_field_effect_flags\tdestination\n"
+              << "194\t1\t18\tbit_17=0,bit_18=0\tmore\t0x"
+              << std::hex << no_gift_flags << "\t0x" << result_flags
+              << "\t0x" << result_effects << "\tsame_scene_6\n";
+        std::cout << "field_red_buffalo_physical_entry_qa=passed record=194 "
+                     "event=1 service=18 no_gift_more=completed "
+                     "artifacts=" << output.string() << '\n';
+        return 0;
+    }
+
+    for (std::uint8_t settle = 0U;
+         settle < 120U && !contains("Please deliver my gift"); ++settle) {
+        field_scene.advance_frame();
+    }
+    const bool gift_page = contains("Please deliver my gift") &&
+                           contains("Lady Gillian");
+    if (!field_scene.dialogue_open() || !gift_page ||
+        !save("gift-response", false)) {
+        std::cerr << "Red Buffalo QA: A did not advance to the gated gift page\n";
+        return 3;
+    }
+
+    const auto return_boundary_start = source_boundaries.size();
+    tap_qa_controller_button(field_scene, 0x40U); // A: accept the source page
+    for (std::uint8_t settle = 0U;
+         settle < 120U && field_scene.dialogue_open(); ++settle) {
+        field_scene.advance_frame();
+    }
+    // The modal closes before the field palette has finished its 60-frame
+    // return fade. Follow its native transition counter to zero.
+    for (std::uint8_t settle = 0U;
+         settle < 120U &&
+         field_scene.field_modal_return_transition_frames_for_dump() != 0U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto result_flags = field_scene.field_world_fact_flags_for_dump();
+    const auto notebook_flags = field_scene.notebook_story_flags_for_dump();
+    const auto effects = field_scene.field_mode_effect_flags_for_dump();
+    const bool notebook_result = notebook_flags.has_value() &&
+        ((*notebook_flags & (1U << 5U)) != 0U) &&
+        ((*notebook_flags & (1U << 6U)) == 0U);
+    const bool effect_result = (effects & (1U << 29U)) == 0U &&
+                               (effects & (1U << 30U)) != 0U;
+    if (field_scene.dialogue_open() ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        field_scene.field_scene_reference_for_dump() != 6U ||
+        (result_flags & (1U << 18U)) == 0U || !notebook_result ||
+        !effect_result || !save("same-map-return", true)) {
+        std::cerr << "Red Buffalo QA: completing the gift conversation did "
+                     "not commit its gated story state or same-map return "
+                     "(dialogue=" << field_scene.dialogue_open()
+                  << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", trigger18="
+                  << ((result_flags & (1U << 18U)) != 0U)
+                  << ", notebook=" << notebook_result
+                  << ", effects=" << effect_result
+                  << ", return_prompt_opens="
+                  << std::count(
+                         source_boundaries.begin() +
+                             static_cast<std::ptrdiff_t>(return_boundary_start),
+                         source_boundaries.end(),
+                         std::string("field.location.indexed_title_service_opened"))
+                  << ", panel_kind="
+                  << static_cast<unsigned>(field_scene.dialogue_panel().kind)
+                  << ", options="
+                  << field_scene.dialogue_panel().option_count
+                  << ", source_complete="
+                  << field_scene.dialogue_panel().source_complete
+                  << ", source_boundary="
+                  << field_scene.dialogue_panel().source_boundary_reason
+                  << ", portrait="
+                  << field_scene.dialogue_panel().portrait_alias
+                  << ", failure=" << field_scene.failure() << ", boundaries={";
+        for (std::size_t index = return_boundary_start;
+             index < source_boundaries.size(); ++index) {
+            if (index != return_boundary_start) std::cerr << ',';
+            std::cerr << source_boundaries[index];
+        }
+        std::cerr << "}, text=";
+        for (std::size_t index = 0U;
+             index < field_scene.dialogue_panel().text_segment_count; ++index) {
+            std::cerr << '['
+                      << field_scene.dialogue_panel().text_segments[index]
+                      << ']';
+        }
+        std::cerr << ")\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "record\tevent\tservice\tgate\tmovement_ticks\t"
+             "entry_story_flags\tresult_story_flags\t"
+             "notebook_tip_flags\tmode_effect_flags\tdestination\n"
+          << "194\t1\t18\tbit_17=1,bit_18=0\t" << movement_ticks
+          << "\t0x" << std::hex << opening_flags << "\t0x" << result_flags
+          << "\t0x" << *notebook_flags << "\t0x" << effects
+          << "\tsame_scene_6\n";
+    std::cout << "field_red_buffalo_physical_entry_qa=passed record=194 "
+                 "event=1 service=18 gated_gift=completed "
+                 "artifacts=" << output.string() << '\n';
+    return 0;
+}
+
+int run_field_vid_phone_physical_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Vid-Phone physical-entry QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) return 3;
+
+    constexpr std::size_t kTerminalRecord = 62U;
+    constexpr std::uint16_t kStartX = 0x1800U;
+    constexpr std::uint16_t kStartY = 0x0A00U;
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    const auto& initial = field_scene.field_entity_world_position();
+    if (field_scene.field_scene_reference_for_dump() != 0U ||
+        initial.x != kStartX || initial.y != kStartY ||
+        rectangles.size() <= kTerminalRecord ||
+        rectangles[kTerminalRecord].left != 0x0180U ||
+        rectangles[kTerminalRecord].right != 0x019FU ||
+        rectangles[kTerminalRecord].top != 0x0060U ||
+        rectangles[kTerminalRecord].bottom != 0x007FU ||
+        rectangles[kTerminalRecord].value != 0x00DFU) {
+        std::cerr << "Vid-Phone physical-entry QA: scene-0 checkpoint, ROM "
+                     "event-31 rectangle, or New Game contact flags do not "
+                     "match; scene="
+                  << static_cast<unsigned>(
+                         field_scene.field_scene_reference_for_dump())
+                  << " position=" << std::hex << initial.x << ',' << initial.y
+                  << " contacts=";
+        if (field_scene.notebook_contact_flags_for_dump().has_value()) {
+            std::cerr << "0x" << *field_scene.notebook_contact_flags_for_dump();
+        } else {
+            std::cerr << "unresolved";
+        }
+        std::cerr << std::dec << " rectangles=" << rectangles.size();
+        if (rectangles.size() > kTerminalRecord) {
+            const auto& rectangle = rectangles[kTerminalRecord];
+            std::cerr << " record=" << std::hex << rectangle.left << ".."
+                      << rectangle.right << '/' << rectangle.top << ".."
+                      << rectangle.bottom << " value=0x" << static_cast<unsigned>(rectangle.value)
+                      << std::dec;
+        }
+        std::cerr << '\n';
+        return 3;
+    }
+    field_scene.seed_notebook_contact_flags_for_qa(0x1C7FU);
+    if (field_scene.notebook_contact_flags_for_dump() !=
+        std::optional<std::uint32_t>{0x1C7FU}) {
+        std::cerr << "Vid-Phone physical-entry QA: ROM New Game contact "
+                     "fixture did not seed\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&render, &output](const std::string_view name) {
+        const auto image = render();
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+               image.save(QString::fromStdWString(
+                   (output / (std::string(name) + ".bmp")).wstring()));
+    };
+    const auto panel_contains = [&field_scene](const std::string_view text) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(text) != std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    if (!save("spawn")) return 3;
+    bool reached_terminal = false;
+    std::uint16_t movement_frames = 0U;
+    for (; movement_frames < 96U && !field_scene.dialogue_open();
+         ++movement_frames) {
+        field_scene.set_controller_nibble(0x01U); // Ordinary Up.
+        field_scene.advance_frame();
+        const auto& transition =
+            field_scene.last_field_movement_transition_for_dump();
+        if (transition.event_code == FieldCollisionEventCode::event_31) {
+            reached_terminal = true;
+            ++movement_frames;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    for (std::uint8_t settle = 0U;
+         settle < 90U && !field_scene.dialogue_open(); ++settle) {
+        field_scene.advance_frame();
+    }
+
+    const auto& terminal = field_scene.dialogue_panel();
+    const bool terminal_matches =
+        field_scene.dialogue_open() && terminal.cursor_selection &&
+        terminal.option_count == 4U && terminal.selected_option == 0U &&
+        panel_contains("Main Menu") &&
+        terminal.options[0U].source_label == "Call Taxi" &&
+        terminal.options[1U].source_label == "Vid-Phone" &&
+        terminal.options[2U].source_label == "Cyberspace" &&
+        terminal.options[3U].source_label == "Exit";
+    if (!reached_terminal || !terminal_matches ||
+        !save("field-terminal")) {
+        std::cerr << "Vid-Phone physical-entry QA: ordinary Up did not reach "
+                     "Scene-0 event-31 terminal record 62; event="
+                  << static_cast<unsigned>(
+                         field_scene.last_field_movement_transition_for_dump()
+                             .event_code)
+                  << " movement_frames=" << movement_frames
+                  << " dialogue=" << field_scene.dialogue_open()
+                  << " options=" << static_cast<unsigned>(
+                         terminal.option_count)
+                  << '\n';
+        return 3;
+    }
+    const auto original_terminal_image = render();
+
+    tap_qa_controller_button(field_scene, 0x02U); // Select Vid-Phone.
+    tap_qa_controller_button(field_scene, 0x40U);
+    const auto& contacts = field_scene.dialogue_panel();
+    const bool contacts_match =
+        field_scene.dialogue_open() && contacts.cursor_selection &&
+        contacts.option_count >= 1U &&
+        contacts.options[0U].source_label.find("Quinton") !=
+            std::string::npos;
+    if (!contacts_match || !save("contact-list")) {
+        std::cerr << "Vid-Phone physical-entry QA: Lua contact filter did not "
+                     "show the ROM's first available contact\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // Call Captain Quinton.
+    const auto& first_call = field_scene.dialogue_panel();
+    if (!field_scene.dialogue_open() ||
+        first_call.portrait_alias !=
+            "dialogue.portraits.vid.phone.capt.quinton.jaymes" ||
+        !panel_contains("Who the drek are you") ||
+        first_call.cursor_selection ||
+        first_call.option_count != 2U ||
+        !save("actual") || !save("first-contact-call")) {
+        std::cerr << "Vid-Phone physical-entry QA: selected contact did not "
+                     "open its source first-call dialogue and portrait\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x10U); // B: Goodbye.
+    const auto returned_terminal_image = render();
+    const auto& returned_terminal = field_scene.dialogue_panel();
+    const bool terminal_redraw_matches =
+        returned_terminal_image == original_terminal_image;
+    if (!field_scene.dialogue_open() || !terminal_redraw_matches ||
+        !save("terminal-restored")) {
+        std::cerr << "Vid-Phone physical-entry QA: phone return did not "
+                     "restore the ordinary terminal cleanly; open="
+                  << field_scene.dialogue_open()
+                  << " options=" << static_cast<unsigned>(
+                         returned_terminal.option_count)
+                  << " selected=" << returned_terminal.selected_option
+                  << " title=";
+        if (returned_terminal.text_segment_count != 0U) {
+            std::cerr << returned_terminal.text_segments[0U];
+        }
+        std::cerr << " redraw_equal=" << terminal_redraw_matches << '\n';
+        (void)save("terminal-return-failure");
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x02U);
+    tap_qa_controller_button(field_scene, 0x02U);
+    tap_qa_controller_button(field_scene, 0x02U);
+    tap_qa_controller_button(field_scene, 0x40U); // Exit terminal.
+    for (std::uint8_t frame = 0U;
+         frame < 120U &&
+         field_scene.field_modal_return_transition_frames_for_dump() != 0U;
+         ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const auto returned_field_image = render();
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 0U ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        !field_hud_chrome_survives(returned_field_image, asset_root) ||
+        count_playfield_lit(returned_field_image) < 100U ||
+        !save("field-return")) {
+        std::cerr << "Vid-Phone physical-entry QA: Exit did not restore a "
+                     "clean Scene-0 field view\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "scene\trecord\taddress\tevent\tstart_x\tstart_y"
+             "\tmovement_frames\tcontact_flags\tresult\n"
+          << "0\t62\t0x0D584A\t31\t0x1800\t0x0A00\t"
+          << movement_frames << "\t0x1C7F\tcontact_returned_to_terminal\n";
+    std::cout << "field_vid_phone_physical_entry_qa=passed scene=0 "
+                 "record=62 event=31 contact=quinton clean_return=1 "
+                 "actual.bmp=" << output.string() << '\n';
+    return 0;
+}
+
+int run_field_tarislar_guarded_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Tarislar guard QA: could not clear prior captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Tarislar guard QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kTarislarRecord = 67U;
+    constexpr std::uint16_t kStartX = 0x2E00U;
+    constexpr std::uint16_t kStartY = 0x0D00U;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& rectangles = metadata.terrain_collision_rectangles;
+    const auto& initial = field_scene.field_entity_world_position();
+    if (field_scene.field_scene_reference_for_dump() != 1U ||
+        initial.x != kStartX || initial.y != kStartY ||
+        rectangles.size() <= kTarislarRecord ||
+        rectangles[kTarislarRecord].left != 0x02E0U ||
+        rectangles[kTarislarRecord].right != 0x02FFU ||
+        rectangles[kTarislarRecord].top != 0x00A0U ||
+        rectangles[kTarislarRecord].bottom != 0x00BFU ||
+        rectangles[kTarislarRecord].value != 0x00C7U ||
+        !field_scene.set_story_flag_for_dump(30U, false) ||
+        !field_scene.set_story_flag_for_dump(21U, false)) {
+        std::cerr << "Tarislar guard QA: scene, record 67, story fixture, or "
+                     "spawn does not match\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        const auto path = output / (std::string(name) + ".bmp");
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_field_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) !=
+                 *expect_field_hud) ||
+            !image.save(QString::fromStdWString(path.wstring()))) {
+            std::cerr << "Tarislar guard QA: could not capture " << name
+                      << '\n';
+            return false;
+        }
+        return true;
+    };
+    const auto contains_text = [](const DialoguePanelView& panel,
+                                  const std::string_view needle) {
+        for (std::size_t i = 0U; i < panel.text_segment_count; ++i) {
+            if (panel.text_segments[i].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    const auto& party_before = field_scene.field_party_records_for_dump();
+    std::vector<std::uint8_t> karma_before;
+    karma_before.reserve(party_before.size());
+    for (const auto& record : party_before) {
+        karma_before.push_back(record.auxiliary[2U]);
+    }
+    const auto audio_before = field_audio_events.size();
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace || !save("spawn", true)) return 3;
+    trace << "phase\tframe\tinput\tscene\tx\ty\tevent\tdialogue\t"
+             "karma_delta\n";
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U && !field_scene.dialogue_open();
+         ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U);
+        field_scene.advance_frame();
+        const auto position = field_scene.field_entity_world_position();
+        trace << "approach\t" << movement_ticks + 1U << "\t1\t"
+              << field_scene.field_scene_reference_for_dump() << '\t'
+              << position.x << '\t' << position.y << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_mode_event_code_for_dump())
+              << '\t' << (field_scene.dialogue_open() ? 1 : 0) << "\t0\n";
+        if (field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_scene_reference_for_dump() != 1U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_terrain_collision_code_for_dump() != 0xFFC7U ||
+        field_scene.field_projected_code_for_dump() != 0xFFC7U ||
+        field_scene.field_mode_event_code_for_dump() != 7U ||
+        !save("doorway-contact", std::nullopt)) {
+        std::cerr << "Tarislar guard QA: ordinary Up input missed record 67 "
+                     "or event 7\n";
+        return 3;
+    }
+
+    for (std::uint8_t settle = 0U;
+         settle < 100U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 1U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto check_page = [&](const std::string_view file,
+                                const std::string_view required_text,
+                                const bool has_more) {
+        const auto& panel = field_scene.dialogue_panel();
+        const auto image = render();
+        const bool text_match = contains_text(panel, required_text);
+        const bool hud_hidden =
+            !field_hud_chrome_survives(image, asset_root);
+        const bool green_ink = image_has_green_ink(
+            image, 88, 16, 216, 120);
+        const bool saved = save(file, false);
+        const bool valid = field_scene.dialogue_open() &&
+            field_scene.field_scene_reference_for_dump() == 1U &&
+            panel.source_complete &&
+            panel.option_count == (has_more ? 1U : 0U) &&
+            panel.portrait_alias == "none" && panel.has_more == has_more &&
+            text_match && hud_hidden && green_ink && saved;
+        if (!valid) {
+            std::cerr << "Tarislar guard QA: source page check failed for "
+                      << file << " (open=" << field_scene.dialogue_open()
+                      << ", scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", complete=" << panel.source_complete
+                      << ", more=" << panel.has_more
+                      << ", text=" << text_match
+                      << ", hud_hidden=" << hud_hidden
+                      << ", green_ink=" << green_ink
+                      << ", saved=" << saved
+                      << ", options=" << static_cast<unsigned>(panel.option_count)
+                      << ", more_matches=" << (panel.has_more == has_more)
+                      << ", portrait=" << panel.portrait_alias
+                      << ", required=" << required_text << ", segments=";
+            for (std::size_t i = 0U; i < panel.text_segment_count; ++i) {
+                std::cerr << '[' << panel.text_segments[i] << ']';
+            }
+            std::cerr << ")\n";
+        }
+        return valid;
+    };
+    if (!check_page("guard-page-0", "weapon at your face", true)) return 3;
+    const auto entry_opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.location_dialogue_opened"));
+    if (entry_opened != 1 ||
+        (field_scene.field_world_fact_flags_for_dump() &
+         ((1U << 30U) | (1U << 21U))) != 0U) {
+        std::cerr << "Tarislar guard QA: wrong title service or story flags\n";
+        return 3;
+    }
+
+    const auto advance_guard_page = [&field_scene] {
+        settle_qa_dialogue_input(field_scene);
+        field_scene.set_controller_port_byte(0x40U);
+        field_scene.advance_frame();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    };
+    advance_guard_page();
+    if (!check_page("guard-page-1", "any business here", true)) return 3;
+    advance_guard_page();
+    if (!check_page("guard-page-2", "quickly leave", false)) return 3;
+    advance_guard_page();
+
+    const auto& party_after = field_scene.field_party_records_for_dump();
+    bool karma_unchanged = party_after.size() == karma_before.size();
+    for (std::size_t i = 0U; karma_unchanged && i < party_after.size(); ++i) {
+        karma_unchanged = party_after[i].auxiliary[2U] == karma_before[i];
+    }
+    const auto denied_transition = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.location_dialogue_denied_transition"));
+    const auto return_frames = static_cast<std::uint8_t>(
+        field_scene.field_modal_return_transition_frames_for_dump());
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 1U ||
+        return_frames == 0U || return_frames > 60U ||
+        denied_transition != 1 || !karma_unchanged ||
+        (field_scene.field_world_fact_flags_for_dump() &
+         ((1U << 30U) | (1U << 21U))) != 0U ||
+        field_audio_events.size() != audio_before) {
+        std::cerr << "Tarislar guard QA: the leave passage changed story, "
+                     "Karma, audio, or map destination (dialogue="
+                  << field_scene.dialogue_open() << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", return_frames="
+                  << static_cast<unsigned>(field_scene
+                           .field_modal_return_transition_frames_for_dump())
+                  << ", denied=" << denied_transition
+                  << ", karma_unchanged=" << karma_unchanged
+                  << ", flags=0x" << std::hex
+                  << field_scene.field_world_fact_flags_for_dump() << std::dec
+                  << ", audio=" << field_audio_events.size()
+                  << "/" << audio_before << ")\n";
+        return 3;
+    }
+    if (!save("guard-return-start", std::nullopt)) return 3;
+    for (std::uint8_t frame = 0U; frame < return_frames; ++frame) {
+        field_scene.advance_frame();
+        if (frame == return_frames / 2U &&
+            !save("guard-return-midpoint", std::nullopt)) {
+            return 3;
+        }
+    }
+    const auto final_image = render();
+    const auto scene_entered = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.area_event_scene_entered"));
+    if (field_scene.field_scene_reference_for_dump() != 1U ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        field_scene.field_palette_fade_steps_for_dump() != 0U ||
+        !field_hud_chrome_survives(final_image, asset_root) ||
+        count_playfield_lit(final_image) < 100U || scene_entered != 0 ||
+        !save("actual", true)) {
+        std::cerr << "Tarislar guard QA: the exit passage did not return to a "
+                     "clean scene-1 field redraw\n";
+        return 3;
+    }
+    trace << "result\t" << movement_ticks
+          << "\t64\t1\t" << kStartX << '\t' << kStartY
+          << "\t7\t0\t0\n";
+    trace.close();
+    if (!trace) return 3;
+    std::cout << "field_tarislar_guarded_entry_qa=passed record=67 event=7 "
+                 "frosty_met=no pages=3 karma_delta=0 destination_scene=1 "
+                 "clean_redraw=yes audio_requests=0 artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
+int run_field_tarislar_repeat_service_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) return 3;
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) return 3;
+
+    constexpr std::size_t kTarislarRecord = 67U;
+    constexpr std::uint16_t kTarislarCollision = 0x00C7U;
+    constexpr std::uint8_t kTarislarEvent = 7U;
+    constexpr std::uint16_t kStartX = 0x2E00U;
+    constexpr std::uint16_t kStartY = 0x0D00U;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& rectangles = metadata.terrain_collision_rectangles;
+    const auto& initial = field_scene.field_entity_world_position();
+    if (field_scene.field_scene_reference_for_dump() != 1U ||
+        initial.x != kStartX || initial.y != kStartY ||
+        rectangles.size() <= kTarislarRecord ||
+        rectangles[kTarislarRecord].left != 0x02E0U ||
+        rectangles[kTarislarRecord].right != 0x02FFU ||
+        rectangles[kTarislarRecord].top != 0x00A0U ||
+        rectangles[kTarislarRecord].bottom != 0x00BFU ||
+        rectangles[kTarislarRecord].value != kTarislarCollision ||
+        !field_scene.set_story_flag_for_dump(30U, true) ||
+        !field_scene.set_story_flag_for_dump(21U, true) ||
+        !field_scene.set_story_flag_for_dump(16U, true) ||
+        !field_scene.set_story_flag_for_dump(28U, true) ||
+        !field_scene.set_story_flag_for_dump(26U, false) ||
+        !field_scene.set_story_flag_for_dump(27U, false)) {
+        std::cerr << "Tarislar repeat QA: scene, record 67, or story fixture "
+                     "does not match the ROM route; scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " spawn=(" << initial.x << ',' << initial.y << ")"
+                  << " records=" << rectangles.size();
+        if (rectangles.size() > kTarislarRecord) {
+            const auto& record = rectangles[kTarislarRecord];
+            std::cerr << " record67=(" << record.left << ',' << record.right
+                      << ',' << record.top << ',' << record.bottom << ",0x"
+                      << std::hex << record.value << std::dec << ')';
+        }
+        std::cerr << '\n';
+        return 3;
+    }
+    // FFFC22 bit 8 is the Renraku map, the first repeat-service information
+    // branch after the Ito briefing. Bit 7 remains clear for this capture.
+    field_scene.set_group_item_flags_for_dump(1U << 8U);
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto capture = [&](const std::string_view name) {
+        const auto image = render();
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+            image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()));
+    };
+    if (!capture("spawn")) return 3;
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U && !field_scene.dialogue_open();
+         ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U);
+        field_scene.advance_frame();
+        if (field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_scene_reference_for_dump() != 1U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    for (std::uint8_t settle = 0U;
+         settle < 100U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 1U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+
+    const auto& service = field_scene.dialogue_panel();
+    bool has_greeting = false;
+    bool has_information = false;
+    for (std::size_t index = 0U; index < service.text_segment_count; ++index) {
+        has_greeting = has_greeting ||
+            service.text_segments[index].find("Hello again, Joshua.") !=
+                std::string_view::npos;
+    }
+    for (std::size_t index = 0U; index < service.option_count; ++index) {
+        has_information = has_information ||
+            service.options[index].source_label.find(
+                "I have some information for you.") != std::string_view::npos;
+    }
+    const auto entry_opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.location_dialogue_opened"));
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_terrain_collision_code_for_dump() != 0xFFC7U ||
+        field_scene.field_projected_code_for_dump() != 0xFFC7U ||
+        field_scene.field_mode_event_code_for_dump() != kTarislarEvent ||
+        field_scene.field_scene_reference_for_dump() != 1U ||
+        !field_scene.dialogue_open() || !service.source_complete ||
+        service.option_count != 1U || !has_greeting || !has_information ||
+        service.portrait_alias != "none" || entry_opened != 1 ||
+        field_hud_chrome_survives(render(), asset_root) ||
+        !capture("repeat-service")) {
+        std::cerr << "Tarislar repeat QA: ordinary movement did not show the "
+                     "source greeting and one gated information choice; ticks="
+                  << movement_ticks << " dialogue="
+                  << field_scene.dialogue_open() << " options="
+                  << static_cast<unsigned>(service.option_count)
+                  << " greeting=" << has_greeting
+                  << " information=" << has_information
+                  << " entry_opened=" << entry_opened << '\n';
+        return 3;
+    }
+
+    const auto audio_before = field_audio_events.size();
+    tap_qa_controller_button(field_scene, 0x40U); // A: request information.
+    bool has_renraku_map = false;
+    for (std::uint8_t settle = 0U; settle < 100U; ++settle) {
+        const auto& page = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < page.text_segment_count; ++index) {
+            has_renraku_map = has_renraku_map ||
+                page.text_segments[index].find(
+                    "You show Harlequin the map you retrieved from Renraku.") !=
+                    std::string_view::npos;
+        }
+        if (has_renraku_map) break;
+        field_scene.advance_frame();
+    }
+    const auto& map_page = field_scene.dialogue_panel();
+    bool has_more = false;
+    for (std::size_t index = 0U; index < map_page.option_count; ++index) {
+        has_more = has_more || map_page.options[index].source_label.find(
+            "MORE") != std::string_view::npos;
+    }
+    const auto flags = field_scene.field_world_fact_flags_for_dump();
+    if (!field_scene.dialogue_open() || !map_page.source_complete ||
+        map_page.option_count != 1U || !has_renraku_map || !has_more ||
+        (flags & (1U << 26U)) == 0U ||
+        field_scene.field_scene_reference_for_dump() != 1U ||
+        field_audio_events.size() != audio_before ||
+        !capture("renraku-map")) {
+        std::cerr << "Tarislar repeat QA: information choice did not open "
+                     "the Renraku map page and set source bit 26\n";
+        return 3;
+    }
+
+    const auto panel_has_text = [&field_scene](const std::string_view text) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto advance_to_page = [&](const std::string_view text,
+                                     const std::string_view artifact,
+                                     const std::size_t expected_options) {
+        tap_qa_controller_button(field_scene, 0x40U);
+        for (std::uint8_t settle = 0U; settle < 100U; ++settle) {
+            if (panel_has_text(text)) {
+                const auto& page = field_scene.dialogue_panel();
+                return field_scene.dialogue_open() && page.source_complete &&
+                       page.option_count == expected_options &&
+                       capture(artifact);
+            }
+            field_scene.advance_frame();
+        }
+        return false;
+    };
+    constexpr std::array<std::string_view, 4U> followup_text{{
+        "This shows the location of Ellisia's tomb",
+        "Earlier, I mentioned Vigore.",
+        "Harlequin frowns when he hears of your contact with them.",
+        "Vigore is Thon's most trusted lieutenant",
+    }};
+    constexpr std::array<std::string_view, 4U> followup_artifacts{{
+        "map-meaning", "vigore-lead", "vigore-report", "vigore-explanation",
+    }};
+    for (std::size_t page = 0U; page < followup_text.size(); ++page) {
+        if (!advance_to_page(followup_text[page], followup_artifacts[page],
+                             1U)) {
+            std::cerr << "Tarislar repeat QA: ROM map-information page "
+                      << page << " did not follow its MORE choice\n";
+            return 3;
+        }
+    }
+    if (!advance_to_page(
+            "Seek out Vigore and Jarl; they are the weak link in the chain.",
+            "vigore-closing", 0U)) {
+        std::cerr << "Tarislar repeat QA: final same-map service response was "
+                     "not shown\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U);
+    for (std::uint8_t settle = 0U;
+         settle < 120U &&
+         (field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+          field_scene.field_modal_return_transition_frames_for_dump() != 0U);
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto return_guard = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.location_dialogue_denied_transition"));
+    const auto scene_entered = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.area_event_scene_entered"));
+    const auto returned = render();
+    if (field_scene.field_scene_reference_for_dump() != 1U ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        field_scene.field_palette_fade_steps_for_dump() != 0U ||
+        return_guard != 1 || scene_entered != 0 ||
+        !field_hud_chrome_survives(returned, asset_root) ||
+        count_playfield_lit(returned) < 100U ||
+        field_audio_events.size() != audio_before || !capture("actual")) {
+        std::cerr << "Tarislar repeat QA: closing the same-map service did not "
+                     "return to a clean scene-1 redraw; scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " dialogue=" << field_scene.dialogue_open()
+                  << " return_guard=" << return_guard
+                  << " scene_entered=" << scene_entered << '\n';
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "scene\tevent\trecord\tstory_gates\tgroup_item_gates\t"
+             "destination\tresult\n"
+          << "1\t7\t67\t30,21,16,28\t8\t1\tmap_26_set_same_map_return\n";
+    trace.close();
+    if (!trace) return 3;
+    std::cout << "field_tarislar_repeat_service_qa=passed record=67 event=7 "
+                 "gates=30,21,16,28 group_item=8 map_bit=26 scene=1 "
+                 "clean_return=yes actual.bmp=" << output.string() << '\n';
+    return 0;
+}
+
+int run_field_tarislar_tomb_departure_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries,
+    const bool take_trip) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) return 3;
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) return 3;
+
+    constexpr std::size_t kTarislarRecord = 67U;
+    constexpr std::uint16_t kTarislarCollision = 0x00C7U;
+    constexpr std::uint8_t kTarislarEvent = 7U;
+    constexpr std::uint16_t kStartX = 0x2E00U;
+    constexpr std::uint16_t kStartY = 0x0D00U;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto& rectangles = metadata.terrain_collision_rectangles;
+    if (field_scene.field_scene_reference_for_dump() != 1U ||
+        field_scene.field_entity_world_position().x != kStartX ||
+        field_scene.field_entity_world_position().y != kStartY ||
+        rectangles.size() <= kTarislarRecord ||
+        rectangles[kTarislarRecord].left != 0x02E0U ||
+        rectangles[kTarislarRecord].right != 0x02FFU ||
+        rectangles[kTarislarRecord].top != 0x00A0U ||
+        rectangles[kTarislarRecord].bottom != 0x00BFU ||
+        rectangles[kTarislarRecord].value != kTarislarCollision) {
+        std::cerr << "Tarislar tomb QA: scene, spawn, or record 67 differs "
+                     "from the ROM fixture\n";
+        return 3;
+    }
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto capture = [&](const std::string_view name) {
+        const auto image = render();
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+            image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()));
+    };
+    const auto audio_before = field_audio_events.size();
+    if (!capture("spawn")) return 3;
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U && !field_scene.dialogue_open();
+         ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U);
+        field_scene.advance_frame();
+        if (field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_scene_reference_for_dump() != 1U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    for (std::uint8_t settle = 0U;
+         settle < 100U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 1U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto& offer = field_scene.dialogue_panel();
+    bool has_question = false;
+    bool has_yes = false;
+    bool has_no = false;
+    for (std::size_t i = 0U; i < offer.text_segment_count; ++i) {
+        has_question = has_question ||
+            offer.text_segments[i].find(
+                "Are you prepared for the trip to Ellisia's tomb?") !=
+                std::string_view::npos;
+    }
+    for (std::size_t i = 0U; i < offer.option_count; ++i) {
+        has_yes = has_yes ||
+            offer.options[i].source_label.find("Yes") != std::string_view::npos;
+        has_no = has_no ||
+            offer.options[i].source_label.find("No.") != std::string_view::npos;
+    }
+    const bool offer_saved = capture("tomb-offer");
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_terrain_collision_code_for_dump() != 0xFFC7U ||
+        field_scene.field_projected_code_for_dump() != 0xFFC7U ||
+        field_scene.field_mode_event_code_for_dump() != kTarislarEvent ||
+        !field_scene.dialogue_open() || !offer.source_complete ||
+        offer.option_count != 2U || !has_question || !has_yes ||
+        !has_no ||
+        !offer_saved) {
+        std::cerr << "Tarislar tomb QA: ordinary entry did not show the "
+                     "ROM gated Yes/No offer; ticks=" << movement_ticks
+                  << " scene=" << field_scene.field_scene_reference_for_dump()
+                  << " dialogue=" << field_scene.dialogue_open()
+                  << " options=" << static_cast<unsigned>(offer.option_count)
+                  << " question=" << has_question << " yes=" << has_yes
+                  << " no=" << has_no << " labels=";
+        for (std::size_t i = 0U; i < offer.option_count; ++i) {
+            std::cerr << '[' << offer.options[i].source_label << ']';
+        }
+        std::cerr << '\n';
+        return 3;
+    }
+
+    if (!take_trip) {
+        if (!capture("tomb-no-choice")) {
+            return 3;
+        }
+        // The prompt assigns its two options directly to A and B; this is
+        // not a cursor menu.
+        tap_qa_controller_button(field_scene, 0x10U);
+        for (std::uint8_t settle = 0U;
+             settle < 100U && !field_scene.dialogue_open(); ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto& preparation = field_scene.dialogue_panel();
+        bool has_preparation = false;
+        for (std::size_t i = 0U; i < preparation.text_segment_count; ++i) {
+            has_preparation = has_preparation ||
+                preparation.text_segments[i].find(
+                    "you must go now to assemble a team") !=
+                    std::string_view::npos;
+        }
+        const bool preparation_saved = capture("tomb-no-preparation");
+        if (!field_scene.dialogue_open() || !preparation.source_complete ||
+            preparation.option_count != 1U || !has_preparation ||
+            preparation.options[0U].source_label.find("MORE") ==
+                std::string_view::npos || !preparation_saved) {
+            std::cerr << "Tarislar tomb No QA: preparation page did not follow "
+                         "the ROM No choice; open="
+                      << field_scene.dialogue_open()
+                      << " complete=" << preparation.source_complete
+                      << " options=" << static_cast<unsigned>(
+                             preparation.option_count)
+                      << " body=" << has_preparation
+                      << " saved=" << preparation_saved << " text=";
+            for (std::size_t i = 0U; i < preparation.text_segment_count; ++i) {
+                std::cerr << '[' << preparation.text_segments[i] << ']';
+            }
+            std::cerr << " boundaries=";
+            for (const auto& boundary : source_boundaries) {
+                if (boundary.find("field.entry.") != std::string::npos) {
+                    std::cerr << boundary << ',';
+                }
+            }
+            std::cerr << '\n';
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x40U);
+        for (std::uint8_t settle = 0U;
+             settle < 100U && !field_scene.dialogue_open(); ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto& final_response = field_scene.dialogue_panel();
+        bool has_final_response = false;
+        for (std::size_t i = 0U; i < final_response.text_segment_count; ++i) {
+            has_final_response = has_final_response ||
+                final_response.text_segments[i].find(
+                    "I'll prepare things on this end for your return.") !=
+                    std::string_view::npos;
+        }
+        if (!field_scene.dialogue_open() || !final_response.source_complete ||
+            final_response.option_count != 0U || !has_final_response ||
+            !capture("tomb-no-final-response")) {
+            std::cerr << "Tarislar tomb No QA: final ROM response did not close "
+                         "without another menu choice\n";
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x40U);
+        for (std::uint8_t settle = 0U;
+             settle < 100U &&
+             (field_scene.dialogue_open() ||
+              field_scene.field_interaction_open());
+             ++settle) {
+            field_scene.advance_frame();
+        }
+        for (std::uint8_t fade = 0U;
+             fade < 60U &&
+             field_scene.field_modal_return_transition_frames_for_dump() != 0U;
+             ++fade) {
+            field_scene.advance_frame();
+        }
+        const auto no_image = render();
+        const auto no_scene_entered = std::count(
+            source_boundaries.begin(), source_boundaries.end(),
+            std::string("field.entry.area_event_scene_entered"));
+        if (field_scene.field_scene_reference_for_dump() != 1U ||
+            field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+            !field_hud_chrome_survives(no_image, asset_root) ||
+            count_playfield_lit(no_image) < 100U || no_scene_entered != 0 ||
+            field_audio_events.size() != audio_before || !capture("actual")) {
+            std::cerr << "Tarislar tomb No QA: No incorrectly resumed scene 54 "
+                         "or failed to redraw scene 1\n";
+            return 3;
+        }
+        std::cout << "field_tarislar_tomb_departure_qa=passed decision=no "
+                     "destination=scene-1 actual.bmp=" << output.string()
+                  << '\n';
+        return 0;
+    }
+
+    constexpr std::array<std::string_view, 3U> page_texts{{
+        "Harlequin takes you to a sleek VTOL craft",
+        "Harlequin gives you a hands-free walkie-talkie",
+        "Good luck, my friend.  May we meet again.",
+    }};
+    constexpr std::array<std::string_view, 3U> page_names{{
+        "tomb-flight", "tomb-walkie", "tomb-good-luck",
+    }};
+    for (std::size_t page = 0U; page < page_texts.size(); ++page) {
+        tap_qa_controller_button(field_scene, 0x40U);
+        for (std::uint8_t settle = 0U;
+             settle < 100U && !field_scene.dialogue_open(); ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto& prompt = field_scene.dialogue_panel();
+        bool contains_text = false;
+        for (std::size_t i = 0U; i < prompt.text_segment_count; ++i) {
+            contains_text = contains_text ||
+                prompt.text_segments[i].find(page_texts[page]) !=
+                    std::string_view::npos;
+        }
+        if (!field_scene.dialogue_open() || !prompt.source_complete ||
+            prompt.option_count != 1U || !contains_text ||
+            prompt.options[0U].source_label.find("MORE") ==
+                std::string_view::npos || !capture(page_names[page])) {
+            std::cerr << "Tarislar tomb QA: source travel page " << page
+                      << " is missing its body or MORE choice\n";
+            return 3;
+        }
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U);
+    for (std::uint8_t settle = 0U;
+         settle < 100U &&
+         (field_scene.dialogue_open() || field_scene.field_interaction_open()) &&
+         field_scene.field_scene_reference_for_dump() == 1U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    for (std::uint8_t fade = 0U;
+         fade < 60U &&
+         field_scene.field_modal_return_transition_frames_for_dump() != 0U;
+         ++fade) {
+        field_scene.advance_frame();
+    }
+    const auto image = render();
+    const auto entered_scene = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.area_event_scene_entered"));
+    if (field_scene.field_scene_reference_for_dump() != 54U ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.field_transition_pending_for_dump() ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        !field_hud_chrome_survives(image, asset_root) ||
+        count_playfield_lit(image) < 100U || entered_scene != 1 ||
+        field_audio_events.size() != audio_before || !capture("actual")) {
+        std::cerr << "Tarislar tomb QA: Yes did not resume the source scene-54 "
+                     "route after the travel pages; scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " entered=" << entered_scene
+                  << " dialogue=" << field_scene.dialogue_open()
+                  << " modal_frames=" << static_cast<unsigned>(
+                         field_scene.field_modal_return_transition_frames_for_dump())
+                  << " hud=" << field_hud_chrome_survives(image, asset_root)
+                  << " lit=" << count_playfield_lit(image) << '\n';
+        return 3;
+    }
+    std::cout << "field_tarislar_tomb_departure_qa=passed scene=1 event=7 "
+                 "gates=30,21,16,28,26,27 decision=yes "
+                 "destination=54 actual.bmp=" << output.string() << '\n';
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -14611,11 +20427,41 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_jump_house_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_big_rhino_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_icarus_caleb_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_icarus_blocked_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_tarislar_first_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_tarislar_repeat_service_qa_path;
+        std::optional<std::filesystem::path>
+            field_tarislar_city_inn_qa_path;
+        std::optional<std::filesystem::path>
+            field_wylie_gala_inn_qa_path;
+        std::optional<std::filesystem::path>
+            field_gates_undersound_qa_path;
+        std::optional<std::filesystem::path>
+            field_renraku_offices_qa_path;
+        std::optional<std::filesystem::path>
+            field_fuchi_offices_qa_path;
+        std::optional<std::filesystem::path>
+            field_penumbra_lone_star_qa_path;
+        std::optional<std::filesystem::path>
+            field_tarislar_guarded_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_tarislar_tomb_departure_qa_path;
+        std::optional<std::filesystem::path>
+            field_tarislar_tomb_decline_qa_path;
+        std::optional<std::filesystem::path>
             field_stoker_collision_to_dialogue_qa_path;
         std::optional<std::filesystem::path>
             field_ares_collision_shop_qa_path;
         std::optional<std::filesystem::path>
             field_scene20_physical_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_scene20_entry_gate_qa_path;
         std::optional<std::filesystem::path>
             field_scene20_c0_exit_qa_path;
         std::optional<std::filesystem::path>
@@ -14630,6 +20476,12 @@ int main(int argc, char** argv) {
             field_scene20_electronics_trials_qa_path;
         std::optional<std::filesystem::path>
             field_scene26_event1_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_scene26_johnson_run_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_scene26_package_recovery_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_scene2_gang_contract_entry_qa_path;
         std::optional<std::filesystem::path>
             field_scene26_event1_terminal_qa_path;
         std::optional<std::filesystem::path>
@@ -14656,6 +20508,10 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_taxi_dump_path;
         std::optional<std::filesystem::path>
             field_vid_phone_passage_qa_path;
+        std::optional<std::filesystem::path>
+            field_matrix_cyber_info_qa_path;
+        std::optional<std::filesystem::path>
+            field_matrix_traversal_entry_qa_path;
         std::optional<std::uint8_t> field_command_page;
         std::optional<std::filesystem::path> field_cyberware_dump_path;
         std::optional<std::filesystem::path> field_secretary_dump_path;
@@ -14674,6 +20530,29 @@ int main(int argc, char** argv) {
         std::optional<std::string> field_archetype_name;
         std::optional<std::string> field_dialogue_dump_prompt;
         std::optional<std::filesystem::path> field_dialogue_dump_path;
+        std::optional<std::string> field_hospital_menu_dump_variant;
+        std::optional<std::filesystem::path> field_hospital_menu_dump_path;
+        std::optional<std::filesystem::path>
+            field_hospital_physical_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_medicine_lodge_physical_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_medicine_lodge_wise_one_physical_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_spirit_eyes_physical_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_owlfeather_physical_entry_qa_path;
+        bool field_owlfeather_return_followup_qa = false;
+        bool field_owlfeather_search_followup_qa = false;
+        bool field_owlfeather_closed_gate_qa = false;
+        bool field_owlfeather_ilene_gate_script_qa = false;
+        bool field_owlfeather_opening_land_choice_qa = false;
+        bool field_owlfeather_opening_council_choice_qa = false;
+        std::optional<std::filesystem::path>
+            field_red_buffalo_physical_entry_qa_path;
+        bool field_red_buffalo_no_gift_more_qa = false;
+        std::optional<std::filesystem::path>
+            field_vid_phone_physical_entry_qa_path;
         std::optional<std::string> field_mode_text_dump_variant;
         std::optional<std::filesystem::path> field_mode_text_dump_path;
         std::optional<std::string> field_interaction_dump_variant;
@@ -14702,85 +20581,6 @@ int main(int argc, char** argv) {
         std::optional<std::uint32_t> opening_dump_end;
         std::optional<std::filesystem::path> opening_dump_directory;
         for (int index = 1; index < argc; ++index) {
-            if (std::string(argv[index]) == "--help") {
-                std::cout
-                    << "usage: shadowrun_ghidra_conversion_qt"
-                       " [--assets <assets>] [--field-smoke]"
-                       " [--field-smoke-move-right] [--field-dump <file>]"
-                       " [--field-movement-qa <output-dir>]"
-                       " [--field-transition-qa <output-dir>]"
-                       " [--field-world-activity-qa <output-dir>]"
-                       " [--field-random-encounter-spawn-qa <output-dir>]"
-                       " [--field-hound-close-effect-qa <output-dir>]"
-                       " [--field-spell-effect-qa <output-dir>]"
-                       " [--field-redmond-vigore-search-qa <output-dir>]"
-                       " [--field-jump-house-entry-qa <output-dir>]"
-                       " [--field-stoker-collision-to-dialogue-qa <output-dir>]"
-                       " [--field-ares-collision-shop-qa <output-dir>]"
-                       " [--field-scene20-physical-entry-qa <output-dir>]"
-                       " [--field-scene20-passkey-qa <output-dir>]"
-                       " [--field-scene26-event1-entry-qa <output-dir>]"
-                       " [--field-scene26-event1-terminal-qa <output-dir>]"
-                       " [--field-elevator-physical-entry-qa <output-dir>]"
-                       " [--field-scene26-maglock-descriptor-route-qa <output-dir>]"
-                       " [--field-elevator-scene25-entry-qa <output-dir>]"
-                       " [--field-elevator-scene29-entry-qa <output-dir>]"
-                       " [--field-elevator-scene34-entry-qa <output-dir>]"
-                       " [--field-elevator-scene34-group-roundtrip-qa <output-dir>]"
-                       " [--field-elevator-scene40-entry-qa <output-dir>]"
-                       " [--field-elevator-scene25-group-roundtrip-qa <output-dir>]"
-                       " [--field-elevator-scene40-group-roundtrip-qa <output-dir>]"
-                       " [--field-elevator-scene43-group-roundtrip-qa <output-dir>]"
-                       " [--field-security-terminal-physical-entry-qa <output-dir>]"
-                       " [--field-stoker-collision-qa <output-dir>]"
-                       " [--field-scene2-motel-street-collision-qa <output-dir>]"
-                       " [--field-command-dump <file>]"
-                       " [--field-taxi-dump <file>]"
-                       " [--field-vid-phone-passage-qa <output-dir>]"
-                       " [--field-command-page <0..6>]"
-                       " [--field-cyberware-dump <file>]"
-                       " [--field-cyberware-empty-qa]"
-                       " [--field-action-dump <output-dir>]"
-                       " [--field-player-action-dump <output-dir>]"
-                       " [--field-first-aid-dump <output-dir>]"
-                       " [--field-automatic-use-dump <output-dir>]"
-                       " [--field-inventory-trade-dump <output-dir>]"
-                       " [--field-clips-dump <output-dir>]"
-                       " [--field-shop-dump <output-dir>]"
-                       " [--field-magic-dump <output-dir>]"
-                       " [--field-magic-spell-dump <output-dir>]"
-                       " [--field-attributes-skills-dump <output-dir>]"
-                       " [--field-archetype <samurai|decker|gator>]"
-                       " [--field-hud-qa <output-dir>]"
-                       " [--field-hotel-qa <output-dir>]"
-                       " [--field-command-reopen-smoke]"
-                       " [--field-dialogue-dump <prompt> <file>]"
-                       " [--field-mode-text-dump <variant> <file>]"
-                       " [--field-interaction-dump <variant> <file>]"
-                       " [--boot-dump-frame <frame> <file>]"
-                       " [--boot-fasa-qa <output-dir>]"
-                       " [--startup-dump <stage> <selection> <frame> <file>]"
-                       " [--startup-qa <output-dir>]"
-                       " [--title-idle-restart-qa <output-dir>]"
-                       " [--full-intro-capture <archetype-0..2> "
-                       "<title-idle-frames> <output-dir>]"
-                       " [--opening-rotor-qa <output-dir>]"
-                       " [--opening-landing-qa <output-dir>]"
-                       " [--opening-start-skip-qa <output-dir>]"
-                       " [--opening-wilderness-pan-qa <output-dir>]"
-                       " [--opening-ambush-flash-qa <output-dir>]"
-                       " [--opening-death-layer-qa <output-dir>]"
-                       " [--opening-trivid-layer-qa <output-dir>]"
-                       " [--intro-to-field-smoke]\n";
-                return 0;
-            }
-            if (std::string(argv[index]) == "--field-smoke") {
-                field_smoke = true;
-            }
-            if (std::string(argv[index]) == "--field-smoke-move-right") {
-                field_smoke = true;
-                field_smoke_move_right = true;
-            }
             if (std::string(argv[index]) == "--field-movement-qa" &&
                 index + 1 < argc) {
                 field_smoke = true;
@@ -14858,6 +20658,104 @@ int main(int argc, char** argv) {
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
+                    "--field-big-rhino-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_big_rhino_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-icarus-caleb-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_icarus_caleb_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-icarus-blocked-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_icarus_blocked_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-tarislar-first-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_tarislar_first_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-tarislar-city-inn-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_tarislar_city_inn_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-wylie-gala-inn-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_wylie_gala_inn_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-gates-undersound-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_gates_undersound_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-renraku-offices-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_renraku_offices_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-fuchi-offices-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_fuchi_offices_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-penumbra-lone-star-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_penumbra_lone_star_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-tarislar-repeat-service-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_tarislar_repeat_service_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-tarislar-guarded-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_tarislar_guarded_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-tarislar-tomb-departure-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_tarislar_tomb_departure_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-tarislar-tomb-decline-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_tarislar_tomb_decline_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
                     "--field-stoker-collision-to-dialogue-qa" &&
                 index + 1 < argc) {
                 field_smoke = true;
@@ -14876,6 +20774,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene20_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene20-entry-gate-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene20_entry_gate_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -14924,6 +20829,27 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene26_event1_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene26-johnson-run-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene26_johnson_run_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene26-package-recovery-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene26_package_recovery_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene2-gang-contract-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene2_gang_contract_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -15072,6 +20998,20 @@ int main(int argc, char** argv) {
                 field_vid_phone_passage_qa_path =
                     std::filesystem::path(argv[++index]);
             }
+            if (std::string(argv[index]) ==
+                    "--field-matrix-cyber-info-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_matrix_cyber_info_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-matrix-traversal-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_matrix_traversal_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
             if (std::string(argv[index]) == "--field-action-dump" &&
                 index + 1 < argc) {
                 field_smoke = true;
@@ -15182,6 +21122,116 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_dialogue_dump_prompt = std::string(argv[++index]);
                 field_dialogue_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-hospital-menu-dump" &&
+                index + 2 < argc) {
+                field_smoke = true;
+                field_hospital_menu_dump_variant =
+                    std::string(argv[++index]);
+                field_hospital_menu_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-hospital-physical-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_hospital_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-medicine-lodge-physical-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_medicine_lodge_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-medicine-lodge-wise-one-physical-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_medicine_lodge_wise_one_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-spirit-eyes-physical-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_spirit_eyes_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-owlfeather-physical-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_owlfeather_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-owlfeather-return-followup-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_owlfeather_return_followup_qa = true;
+                field_owlfeather_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-owlfeather-search-followup-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_owlfeather_search_followup_qa = true;
+                field_owlfeather_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-owlfeather-closed-gate-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_owlfeather_closed_gate_qa = true;
+                field_owlfeather_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-owlfeather-ilene-gate-script-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_owlfeather_ilene_gate_script_qa = true;
+                field_owlfeather_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-owlfeather-opening-land-choice-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_owlfeather_opening_land_choice_qa = true;
+                field_owlfeather_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-owlfeather-opening-council-choice-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_owlfeather_opening_council_choice_qa = true;
+                field_owlfeather_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if ((std::string(argv[index]) ==
+                     "--field-red-buffalo-physical-entry-qa" ||
+                 std::string(argv[index]) ==
+                     "--field-red-buffalo-no-gift-more-qa") &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_red_buffalo_no_gift_more_qa =
+                    std::string(argv[index]) ==
+                    "--field-red-buffalo-no-gift-more-qa";
+                field_red_buffalo_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-vid-phone-physical-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_vid_phone_physical_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-mode-text-dump" &&
@@ -15442,6 +21492,350 @@ int main(int argc, char** argv) {
                 checkpoint.active_runner_slot = 0U;
                 smoke_state.restored_field_state = std::move(checkpoint);
             }
+            if (field_icarus_caleb_entry_qa_path.has_value() ||
+                field_icarus_blocked_entry_qa_path.has_value()) {
+                const auto scene12 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 12U);
+                if (!scene12.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Icarus Caleb QA: scene-12 source or New "
+                                 "Game runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 12U;
+                // ROM event 30 record 11 covers pixels X 0..31 and Y 32..63.
+                // Start south of it and contact with ordinary Up movement.
+                checkpoint.camera_x = 16U * 16U;
+                checkpoint.camera_y = 80U * 16U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene12->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] = RestoredRunnerPosition{
+                    checkpoint.camera_x, checkpoint.camera_y};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
+            if (field_big_rhino_entry_qa_path.has_value()) {
+                const auto scene11 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 11U);
+                if (!scene11.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Big Rhino entry QA: scene-11 source or New "
+                                 "Game runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 11U;
+                // Event-30 records 10 and 11 cover map X=256..319,
+                // Y=32..63. Start south of that booth corridor and move up.
+                checkpoint.camera_x = 288U * 16U;
+                checkpoint.camera_y = 96U * 16U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene11->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] = RestoredRunnerPosition{
+                    checkpoint.camera_x, checkpoint.camera_y};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
+            if (field_tarislar_first_entry_qa_path.has_value() ||
+                field_tarislar_repeat_service_qa_path.has_value() ||
+                field_tarislar_city_inn_qa_path.has_value() ||
+                field_tarislar_guarded_entry_qa_path.has_value() ||
+                field_tarislar_tomb_departure_qa_path.has_value() ||
+                field_tarislar_tomb_decline_qa_path.has_value()) {
+                const auto scene1 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 1U);
+                if (!scene1.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Tarislar QA: scene-1 source or New Game "
+                                 "runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 1U;
+                // Begin below record 67 at the Tarislar frontage. Ordinary
+                // Up input must contact its ROM collision rectangle.
+                const auto city_inn_checkpoint =
+                    field_tarislar_city_inn_qa_path.has_value();
+                checkpoint.camera_x = city_inn_checkpoint
+                    ? 0x5400U
+                    : 0x2E00U;
+                checkpoint.camera_y = 0x0D00U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene1->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] = RestoredRunnerPosition{
+                    checkpoint.camera_x, checkpoint.camera_y};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
+            if (field_gates_undersound_qa_path.has_value()) {
+                const auto scene0 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 0U);
+                if (!scene0.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Gates Undersound QA: scene-0 source or "
+                                 "New Game runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 0U;
+                // Start south of record 45; normal Up movement performs the
+                // collision, field-event, title-service, and modal handoff.
+                checkpoint.camera_x = 0x3A00U;
+                checkpoint.camera_y = 0x0A00U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene0->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] =
+                    RestoredRunnerPosition{0x3A00U, 0x0A00U};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
+            if (field_vid_phone_physical_entry_qa_path.has_value()) {
+                const auto scene0 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 0U);
+                if (!scene0.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Vid-Phone physical-entry QA: scene-0 source "
+                                 "or New Game runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 0U;
+                // Record 62 at 0x0D584A occupies x=0x180..0x19F,
+                // y=0x060..0x07F. Start directly south and enter with Up.
+                checkpoint.camera_x = 0x1800U;
+                checkpoint.camera_y = 0x0A00U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene0->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] = RestoredRunnerPosition{
+                    checkpoint.camera_x, checkpoint.camera_y};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
+            if (field_renraku_offices_qa_path.has_value()) {
+                const auto scene5 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 5U);
+                if (!scene5.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Renraku Offices QA: scene-5 source or "
+                                 "New Game runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 5U;
+                // Start south of ROM record 46. Ordinary Up movement must
+                // contact the source C6 rectangle before service 12 runs.
+                checkpoint.camera_x = 0x2600U;
+                checkpoint.camera_y = 0x0D00U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene5->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] =
+                    RestoredRunnerPosition{0x2600U, 0x0D00U};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
+            if (field_fuchi_offices_qa_path.has_value()) {
+                const auto scene3 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 3U);
+                if (!scene3.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Fuchi Offices QA: scene-3 source or "
+                                 "New Game runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 3U;
+                // Start south of ROM record 97; Up must hit the C2 event-2
+                // frontage before title service 14 runs.
+                checkpoint.camera_x = 0x0800U;
+                checkpoint.camera_y = 0x1700U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene3->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] =
+                    RestoredRunnerPosition{0x0800U, 0x1700U};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
+            if (field_penumbra_lone_star_qa_path.has_value()) {
+                const auto scene3 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 3U);
+                if (!scene3.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Penumbra Lone Star QA: scene-3 source or "
+                                 "New Game runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 3U;
+                // Start 17 source map units south of scene-3 record 96.
+                checkpoint.camera_x = 0x7000U;
+                checkpoint.camera_y = 0x0700U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene3->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] = RestoredRunnerPosition{
+                    checkpoint.camera_x, checkpoint.camera_y};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
+            if (field_hospital_physical_entry_qa_path.has_value() ||
+                field_medicine_lodge_physical_entry_qa_path.has_value() ||
+                field_medicine_lodge_wise_one_physical_entry_qa_path.has_value() ||
+                field_spirit_eyes_physical_entry_qa_path.has_value()) {
+                const auto scene4 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 4U);
+                if (!scene4.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Council Island building QA: scene-4 source "
+                                 "or New Game runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 4U;
+                // Begin below the selected Scene-4 source record so ordinary
+                // Up traverses collision, event dispatch, and Lua routing.
+                const bool medicine_lodge_entry =
+                    field_medicine_lodge_physical_entry_qa_path.has_value() ||
+                    field_medicine_lodge_wise_one_physical_entry_qa_path
+                        .has_value();
+                const bool spirit_eyes_entry =
+                    field_spirit_eyes_physical_entry_qa_path.has_value();
+                checkpoint.camera_x = spirit_eyes_entry
+                    ? 0x6D00U
+                    : (medicine_lodge_entry ? 0x5000U : 0x6A00U);
+                checkpoint.camera_y = spirit_eyes_entry
+                    ? 0x0B00U
+                    : (medicine_lodge_entry ? 0x0800U : 0x3A00U);
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene4->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] = RestoredRunnerPosition{
+                    checkpoint.camera_x, checkpoint.camera_y};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
+            if (field_owlfeather_physical_entry_qa_path.has_value()) {
+                const auto scene6 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 6U);
+                if (!scene6.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Owlfeather QA: scene-6 source or New Game "
+                                 "runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 6U;
+                // Begin immediately south of source collision record 193 so
+                // ordinary Up reaches the quest-gated title-service route.
+                checkpoint.camera_x = 0x5500U;
+                checkpoint.camera_y = 0x5000U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene6->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] =
+                    RestoredRunnerPosition{checkpoint.camera_x,
+                                           checkpoint.camera_y};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
+            if (field_red_buffalo_physical_entry_qa_path.has_value()) {
+                const auto scene6 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 6U);
+                if (!scene6.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Red Buffalo QA: scene-6 source or New Game "
+                                 "runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 6U;
+                // Begin south of event-1 record 194; two ordinary Up steps
+                // reach the ROM collision bounds at x=0x600..0x61F,
+                // y=0x3E0..0x3FF.
+                checkpoint.camera_x = 0x6100U;
+                checkpoint.camera_y = 0x4100U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene6->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] =
+                    RestoredRunnerPosition{checkpoint.camera_x,
+                                           checkpoint.camera_y};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
             if (field_security_terminal_physical_entry_qa_path.has_value()) {
                 if (!smoke_state.field_session_source_assets.has_value() ||
                     !smoke_state.joshua_selection.has_value()) {
@@ -15565,7 +21959,15 @@ int main(int argc, char** argv) {
                 });
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_motel_street_collision_qa_path.has_value() ||
-                field_movement_qa_path.has_value()) {
+                field_movement_qa_path.has_value() ||
+                field_matrix_cyber_info_qa_path.has_value() ||
+                field_matrix_traversal_entry_qa_path.has_value() ||
+                field_wylie_gala_inn_qa_path.has_value() ||
+                field_tarislar_first_entry_qa_path.has_value() ||
+                field_tarislar_repeat_service_qa_path.has_value() ||
+                field_tarislar_guarded_entry_qa_path.has_value() ||
+                field_tarislar_tomb_departure_qa_path.has_value() ||
+                field_tarislar_tomb_decline_qa_path.has_value()) {
                 // The movement/collision QA routes need the same source tick
                 // and actor services as play, but deterministic world
                 // activity. Use a seeded encounter miss and start away from
@@ -15576,14 +21978,1341 @@ int main(int argc, char** argv) {
                 field_scene.set_source_random_seed_for_dump(0x4000U);
                 field_scene.set_field_world_frame_counter_for_dump(0x0200U);
             }
-            if (!field_scene.bootstrap(smoke_state)) {
+            const auto bootstrapped = field_wylie_gala_inn_qa_path.has_value()
+                ? field_scene.bootstrap_for_scene_dump(smoke_state, 3U)
+                : field_scene.bootstrap(smoke_state);
+            if (!bootstrapped) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
+            }
+            if (field_tarislar_first_entry_qa_path.has_value() ||
+                field_tarislar_repeat_service_qa_path.has_value() ||
+                field_tarislar_guarded_entry_qa_path.has_value() ||
+                field_tarislar_tomb_departure_qa_path.has_value() ||
+                field_tarislar_tomb_decline_qa_path.has_value()) {
+                const bool repeat_visit =
+                    field_tarislar_repeat_service_qa_path.has_value();
+                const bool tomb_departure =
+                    field_tarislar_tomb_departure_qa_path.has_value() ||
+                    field_tarislar_tomb_decline_qa_path.has_value();
+                const bool guarded_visit =
+                    field_tarislar_guarded_entry_qa_path.has_value();
+                if (!field_scene.set_story_flag_for_dump(
+                        30U, !guarded_visit) ||
+                    !field_scene.set_story_flag_for_dump(
+                        21U, tomb_departure || repeat_visit) ||
+                    !field_scene.set_story_flag_for_dump(
+                        16U, tomb_departure || repeat_visit) ||
+                    !field_scene.set_story_flag_for_dump(
+                        28U, tomb_departure || repeat_visit) ||
+                    !field_scene.set_story_flag_for_dump(
+                        26U, tomb_departure) ||
+                    !field_scene.set_story_flag_for_dump(
+                        27U, tomb_departure)) {
+                    std::cerr << "Tarislar QA: could not seed source story "
+                                 "gates\n";
+                    return 3;
+                }
+                if (repeat_visit) {
+                    field_scene.set_group_item_flags_for_dump(1U << 8U);
+                }
             }
             // Per-route QA event assertions begin after field startup. Actor
             // entry cues during the 31 bootstrap ticks are checked by the
             // scene-actor route and must not masquerade as input-driven audio.
             field_audio_events.clear();
+            if (field_matrix_traversal_entry_qa_path.has_value()) {
+                const auto output = *field_matrix_traversal_entry_qa_path;
+                std::filesystem::create_directories(output);
+                std::error_code clear_error;
+                clear_qa_bitmap_artifacts(output, clear_error);
+                if (clear_error) {
+                    std::cerr << "Matrix traversal entry QA: could not "
+                                 "clear old captures: "
+                              << clear_error.message() << '\n';
+                    return 3;
+                }
+                const auto capture = [&field_scene, &output](
+                                         const std::string_view name) {
+                    const auto image = render_qa_field(field_scene);
+                    return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+                           save_qa_image(output,
+                                         std::string(name) + ".bmp", image)
+                        ? image
+                        : QImage{};
+                };
+                const auto complete_frame = [](const QImage& image) {
+                    if (image.size() != QSize(kSceneWidth, kSceneHeight)) {
+                        return false;
+                    }
+                    int bottom_band_ink = 0;
+                    int bottom_edge_ink = 0;
+                    for (int y = 192; y < image.height(); ++y) {
+                        for (int x = 0; x < image.width(); ++x) {
+                            if (image.pixelColor(x, y) != QColor(Qt::black)) {
+                                ++bottom_band_ink;
+                                if (y == image.height() - 1) {
+                                    ++bottom_edge_ink;
+                                }
+                            }
+                        }
+                    }
+                    return bottom_band_ink >= 1000 && bottom_edge_ink >= 64;
+                };
+                const auto green_model_bounds = [](const QImage& image) {
+                    QRect bounds;
+                    int min_x = image.width();
+                    int min_y = image.height();
+                    int max_x = -1;
+                    int max_y = -1;
+                    for (int y = 38; y < 120; ++y) {
+                        for (int x = 100; x < 220; ++x) {
+                            const auto color = image.pixelColor(x, y);
+                            if (color.red() < 20 && color.green() >= 15 &&
+                                color.green() < 200 && color.blue() < 20) {
+                                min_x = std::min(min_x, x);
+                                min_y = std::min(min_y, y);
+                                max_x = std::max(max_x, x);
+                                max_y = std::max(max_y, y);
+                            }
+                        }
+                    }
+                    if (max_x >= min_x && max_y >= min_y) {
+                        bounds = QRect(min_x, min_y,
+                                       max_x - min_x + 1,
+                                       max_y - min_y + 1);
+                    }
+                    return bounds;
+                };
+                const auto silver_runner_bounds = [](const QImage& image) {
+                    int min_x = image.width();
+                    int min_y = image.height();
+                    int max_x = -1;
+                    int max_y = -1;
+                    for (int y = 118; y < 176; ++y) {
+                        for (int x = 50; x < 270; ++x) {
+                            const auto color = image.pixelColor(x, y);
+                            if (color.red() >= 160 && color.green() >= 160 &&
+                                color.blue() >= 160) {
+                                min_x = std::min(min_x, x);
+                                min_y = std::min(min_y, y);
+                                max_x = std::max(max_x, x);
+                                max_y = std::max(max_y, y);
+                            }
+                        }
+                    }
+                    return max_x >= min_x && max_y >= min_y
+                        ? QRect(min_x, min_y, max_x - min_x + 1,
+                                max_y - min_y + 1)
+                        : QRect{};
+                };
+                if (!field_scene.open_matrix_traversal_for_dump(2U, 2U)) {
+                    std::cerr << "Matrix traversal entry QA: deterministic "
+                                 "System 2/node 2 route did not open\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 20; ++frame) {
+                    field_scene.advance_frame();
+                }
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                    static_cast<std::uint16_t>(srx::MenuScreen::CYBERDECK)) {
+                    std::cerr << "Matrix traversal entry QA: ROM jack-in "
+                                 "did not reach the deck loop\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x80U); // Start
+                auto route = field_scene.field_menu_route_snapshot_for_dump();
+                const auto valid_reference_route = [&route]() {
+                    if (route.top_matrix_system_id != 2 ||
+                        route.top_matrix_node != 2 ||
+                        !route.top_matrix_traversal_view.has_value()) {
+                        return false;
+                    }
+                    const auto& view = *route.top_matrix_traversal_view;
+                    return view.world_model_id ==
+                               scripting::ScriptMatrixWorldModelId::
+                                   sub_processor_unit &&
+                           view.palette_theme == 2 &&
+                           view.function_label == "SPU" &&
+                           view.alert_band_label == " Green-" &&
+                           view.action_difficulty_label == "3" &&
+                           view.file_class_label == " Data Routing " &&
+                           view.ice_label == "Ice Suppressed" &&
+                           view.active_program_label == "Medic-1" &&
+                           view.active_program_status_label ==
+                               "Ready...     " &&
+                           view.world_entry_phase == 0 &&
+                           view.world_entry_setup_vblanks == 1 &&
+                           view.world_entry_sequence_duration == 239 &&
+                           view.model_canvas_width == 0 &&
+                           route.top_matrix_deck_active_programs_present &&
+                           route.top_matrix_deck_program_slot_status_present;
+                };
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::MATRIX_NODE_ACTION) ||
+                    !valid_reference_route()) {
+                    std::cerr << "Matrix traversal entry QA: typed System "
+                                 "2/node 2 HUD, footer, or 239-VBlank route "
+                                 "state did not match the reference\n";
+                    std::cerr << "screen="
+                              << field_scene.field_menu_route_screen_for_dump()
+                              << " system="
+                              << (route.top_matrix_system_id.has_value()
+                                      ? std::to_string(
+                                            *route.top_matrix_system_id)
+                                      : std::string("nil"))
+                              << " node="
+                              << (route.top_matrix_node.has_value()
+                                      ? std::to_string(*route.top_matrix_node)
+                                      : std::string("nil"))
+                              << '\n';
+                    if (route.top_matrix_traversal_view.has_value()) {
+                        const auto& view =
+                            *route.top_matrix_traversal_view;
+                        std::cerr << "model="
+                                  << static_cast<int>(view.world_model_id)
+                                  << " theme=" << view.palette_theme
+                                  << " function=\"" << view.function_label
+                                  << "\" band=\"" << view.alert_band_label
+                                  << "\" file=\"" << view.file_class_label
+                                  << "\" ice=\"" << view.ice_label
+                                  << "\" program=\""
+                                  << view.active_program_label
+                                  << "\" status=\""
+                                  << view.active_program_status_label
+                                  << "\" phase=" << view.world_entry_phase
+                                  << " setup="
+                                  << view.world_entry_setup_vblanks
+                                  << " duration="
+                                  << view.world_entry_sequence_duration
+                                  << "\n";
+                    } else {
+                        std::cerr << "traversal view is absent\n";
+                    }
+                    return 3;
+                }
+                auto setup_image = capture("matrix-traversal-setup");
+                if (!complete_frame(setup_image) ||
+                    !green_model_bounds(setup_image).isNull()) {
+                    std::cerr << "Matrix traversal entry QA: setup frame "
+                                 "is cropped or shows the model before the "
+                                 "entry stream\n";
+                    return 3;
+                }
+                // The Start edge that leaves the deck services one VBlank in
+                // the newly entered traversal route.
+                for (int frame = 0; frame < 60; ++frame) {
+                    field_scene.advance_frame();
+                }
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                if (!route.top_matrix_traversal_view.has_value() ||
+                    route.top_matrix_traversal_view->world_entry_phase != 1 ||
+                    route.top_matrix_traversal_view
+                            ->world_entry_setup_vblanks != 61 ||
+                    route.top_matrix_traversal_view
+                            ->world_entry_sequence_vblanks != 0) {
+                    std::cerr << "Matrix traversal entry QA: 61-VBlank "
+                                 "setup duration is wrong\n";
+                    return 3;
+                }
+                auto entry_start_image = capture("matrix-entry-stream-start");
+                if (!complete_frame(entry_start_image) ||
+                    !green_model_bounds(entry_start_image).isNull()) {
+                    std::cerr << "Matrix traversal entry QA: stream-start "
+                                 "frame is cropped or prematurely shows the "
+                                 "model\n";
+                    return 3;
+                }
+
+                struct EntryAnchor {
+                    int vblank;
+                    int source_frame;
+                    QRect expected_green_bounds;
+                };
+                constexpr std::array<EntryAnchor, 11> kEntryAnchors{{
+                    {40, 4730, QRect(159, 100, 3, 3)},
+                    {60, 4740, QRect(156, 99, 8, 6)},
+                    {80, 4750, QRect(154, 93, 14, 15)},
+                    {100, 4760, QRect(150, 88, 22, 21)},
+                    {120, 4770, QRect(148, 82, 26, 27)},
+                    {140, 4780, QRect(144, 74, 32, 36)},
+                    {160, 4790, QRect(140, 67, 40, 43)},
+                    {180, 4800, QRect(136, 60, 46, 51)},
+                    {200, 4810, QRect(130, 53, 58, 57)},
+                    {220, 4820, QRect(126, 45, 62, 62)},
+                    {239, 4830, QRect(122, 38, 74, 67)},
+                }};
+                int current_vblank = 0;
+                for (const auto& anchor : kEntryAnchors) {
+                    while (current_vblank < anchor.vblank) {
+                        field_scene.advance_frame();
+                        ++current_vblank;
+                    }
+                    route = field_scene.field_menu_route_snapshot_for_dump();
+                    if (!route.top_matrix_traversal_view.has_value() ||
+                        route.top_matrix_traversal_view
+                                ->world_entry_sequence_vblanks !=
+                            anchor.vblank) {
+                        std::cerr << "Matrix traversal entry QA: Lua source "
+                                     "tick did not reach VBlank "
+                                  << anchor.vblank << '\n';
+                        return 3;
+                    }
+                    const auto image = capture(
+                        "matrix-entry-frame-" +
+                        std::to_string(anchor.source_frame));
+                    const auto actual = green_model_bounds(image);
+                    const auto& expected = anchor.expected_green_bounds;
+                    if (!complete_frame(image) || actual.isNull() ||
+                        std::abs(actual.x() - expected.x()) > 2 ||
+                        std::abs(actual.y() - expected.y()) > 2 ||
+                        std::abs(actual.width() - expected.width()) > 2 ||
+                        std::abs(actual.height() - expected.height()) > 2) {
+                        std::cerr << "Matrix traversal entry QA: source "
+                                     "frame " << anchor.source_frame
+                                  << " model bounds " << actual.x() << ','
+                                  << actual.y() << ' ' << actual.width() << 'x'
+                                  << actual.height() << " differ from the "
+                                     "independent full-frame bounds "
+                                  << expected.x() << ',' << expected.y() << ' '
+                                  << expected.width() << 'x'
+                                  << expected.height() << '\n';
+                        return 3;
+                    }
+                }
+                const auto final_route =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                if (!final_route.top_matrix_traversal_view.has_value() ||
+                    final_route.top_matrix_traversal_view
+                            ->world_entry_phase != 2 ||
+                    final_route.top_matrix_traversal_view
+                            ->world_entry_published_frame != 56 ||
+                    final_route.top_matrix_traversal_view
+                            ->world_entry_sequence_vblanks != 239) {
+                    std::cerr << "Matrix traversal entry QA: compact source "
+                                 "stream did not settle on publication 56 "
+                                 "at VBlank 239\n";
+                    return 3;
+                }
+                const auto actual_image = capture("actual");
+                const auto runner_bounds = silver_runner_bounds(actual_image);
+                const auto icon_matches = [&asset_root, &actual_image](
+                                              const int program,
+                                              const int x) {
+                    const QImage icon(QString::fromStdString(
+                        (asset_root / "cyberspace" / "matrix" /
+                         ("program-icon-" + std::to_string(program) +
+                          ".bmp")).string()));
+                    if (icon.size() != QSize(24, 16) ||
+                        actual_image.size() !=
+                            QSize(kSceneWidth, kSceneHeight)) {
+                        return false;
+                    }
+                    for (int y = 0; y < icon.height(); ++y) {
+                        for (int offset = 0; offset < icon.width(); ++offset) {
+                            if (icon.pixelColor(offset, y).alpha() != 0 &&
+                                actual_image.pixelColor(x + offset, 184 + y) !=
+                                    icon.pixelColor(offset, y)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
+                if (!complete_frame(actual_image) || runner_bounds.isNull() ||
+                    runner_bounds.x() > 90 ||
+                    runner_bounds.x() + runner_bounds.width() - 1 < 230 ||
+                    runner_bounds.y() > 121 ||
+                    runner_bounds.y() + runner_bounds.height() - 1 < 172 ||
+                    !icon_matches(4, 80) || !icon_matches(11, 128)) {
+                    std::cerr << "Matrix traversal entry QA: settled "
+                                 "320x224 frame, full-width silver runner, or "
+                                 "Medic/Analyze footer icons do not match; "
+                              << "runner bounds=" << runner_bounds.x() << ','
+                              << runner_bounds.y() << ' '
+                              << runner_bounds.width() << 'x'
+                              << runner_bounds.height() << '\n';
+                    return 3;
+                }
+
+                tap_qa_controller_button(field_scene, 0x08U); // Right: Analyze
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                if (!route.top_matrix_traversal_view.has_value() ||
+                    route.top_matrix_traversal_view
+                            ->active_program_label != "Analyze-2" ||
+                    route.top_matrix_traversal_view
+                            ->active_program_status_label !=
+                        "Ready...     ") {
+                    std::cerr << "Matrix Analyze QA: right input did not "
+                                 "select the loaded Analyze-2 slot\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // A: Analyze
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                if (!route.top_matrix_traversal_view.has_value() ||
+                    route.top_matrix_traversal_view
+                            ->analyze_effect_phase != 3 ||
+                    route.top_matrix_traversal_view
+                            ->analyze_runner_phase != 0 ||
+                    route.top_matrix_traversal_view->action_mode != 0) {
+                    std::cerr << "Matrix Analyze QA: initial profile calls "
+                                 "did not retain the bent-arm pose and "
+                                 "source-selected ring phase, or A did not "
+                                 "select balanced mode\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 16; ++frame) {
+                    field_scene.advance_frame();
+                }
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                if (!route.top_matrix_traversal_view.has_value() ||
+                    route.top_matrix_traversal_view
+                            ->analyze_effect_phase != 3 ||
+                    route.top_matrix_traversal_view
+                            ->analyze_runner_phase != 1) {
+                    std::cerr << "Matrix Analyze QA: source-timed action "
+                                 "did not reach raised pose/ring phase 3; "
+                              << "ring="
+                              << (route.top_matrix_traversal_view.has_value()
+                                      ? route.top_matrix_traversal_view
+                                            ->analyze_effect_phase
+                                      : -99)
+                              << " runner="
+                              << (route.top_matrix_traversal_view.has_value()
+                                      ? route.top_matrix_traversal_view
+                                            ->analyze_runner_phase
+                                      : -99)
+                              << '\n';
+                    return 3;
+                }
+                const auto analyze_action_image =
+                    capture("matrix-analyze-action-phase-3");
+                const QImage analyze_rings(QString::fromStdString(
+                    (asset_root / "cyberspace" / "matrix" /
+                     "traversal-analyze-ring-phase-3.png").string()));
+                const QImage analyze_runner(QString::fromStdString(
+                    (asset_root / "cyberspace" / "matrix" /
+                     "traversal-runner-action-raised.png").string()));
+                const QImage analyze_idle_runner(QString::fromStdString(
+                    (asset_root / "cyberspace" / "matrix" /
+                     "traversal-runner-idle.png").string()));
+                const auto alpha_bounds = [](const QImage& image,
+                                             const int first_x,
+                                             const int last_x) {
+                    int min_x = image.width();
+                    int min_y = image.height();
+                    int max_x = -1;
+                    int max_y = -1;
+                    for (int y = 0; y < image.height(); ++y) {
+                        for (int x = first_x; x < last_x; ++x) {
+                            if (image.pixelColor(x, y).alpha() == 0) continue;
+                            min_x = std::min(min_x, x);
+                            min_y = std::min(min_y, y);
+                            max_x = std::max(max_x, x);
+                            max_y = std::max(max_y, y);
+                        }
+                    }
+                    return max_x >= min_x && max_y >= min_y
+                        ? QRect(min_x, min_y, max_x - min_x + 1,
+                                max_y - min_y + 1)
+                        : QRect{};
+                };
+                const auto opaque_layer_matches = [](
+                    const QImage& actual, const QImage& expected,
+                    const QImage* later_overlay) {
+                    if (actual.size() != expected.size() ||
+                        actual.size() != QSize(kSceneWidth, kSceneHeight)) {
+                        return false;
+                    }
+                    int compared = 0;
+                    for (int y = 0; y < actual.height(); ++y) {
+                        for (int x = 0; x < actual.width(); ++x) {
+                            if (expected.pixelColor(x, y).alpha() != 255 ||
+                                (later_overlay != nullptr &&
+                                 later_overlay->pixelColor(x, y).alpha() != 0)) {
+                                continue;
+                            }
+                            ++compared;
+                            if (actual.pixelColor(x, y) !=
+                                expected.pixelColor(x, y)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return compared > 0;
+                };
+                const auto left_ring_bounds =
+                    alpha_bounds(analyze_rings, 0, 160);
+                const auto right_ring_bounds =
+                    alpha_bounds(analyze_rings, 160, 320);
+                if (!complete_frame(analyze_action_image) ||
+                    analyze_rings.size() != QSize(kSceneWidth, kSceneHeight) ||
+                    analyze_runner.size() != QSize(kSceneWidth, kSceneHeight) ||
+                    left_ring_bounds != QRect(75, 90, 42, 41) ||
+                    right_ring_bounds != QRect(201, 90, 42, 41) ||
+                    !opaque_layer_matches(analyze_action_image,
+                                          analyze_rings, nullptr) ||
+                    !opaque_layer_matches(analyze_action_image,
+                                          analyze_runner, &analyze_rings)) {
+                    std::cerr << "Matrix Analyze QA: hand rings or raised "
+                                 "runner do not match the independent "
+                                 "Section 15 frame 004800 geometry; left="
+                              << left_ring_bounds.x() << ','
+                              << left_ring_bounds.y() << ' '
+                              << left_ring_bounds.width() << 'x'
+                              << left_ring_bounds.height() << " right="
+                              << right_ring_bounds.x() << ','
+                              << right_ring_bounds.y() << ' '
+                              << right_ring_bounds.width() << 'x'
+                              << right_ring_bounds.height() << '\n';
+                    return 3;
+                }
+                for (int frame = 0; frame < 42; ++frame) {
+                    field_scene.advance_frame();
+                }
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                if (!route.top_matrix_traversal_view.has_value() ||
+                    route.top_matrix_traversal_view
+                            ->analyze_effect_phase != 0 ||
+                    route.top_matrix_traversal_view
+                            ->analyze_runner_phase != 1 ||
+                    route.top_matrix_traversal_view
+                            ->active_program_status_label !=
+                        "Ready...     ") {
+                    std::cerr << "Matrix Analyze QA: the profile did not "
+                                 "remain active through source tick 60\n";
+                    return 3;
+                }
+                field_scene.advance_frame();
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                const auto analyze_complete_image =
+                    capture("matrix-analyze-action-complete");
+                if (!route.top_matrix_traversal_view.has_value() ||
+                    route.top_matrix_traversal_view
+                            ->analyze_effect_phase != -1 ||
+                    route.top_matrix_traversal_view
+                            ->analyze_runner_phase != 2 ||
+                    route.top_matrix_traversal_view
+                            ->knowledge_rank < 4 ||
+                    route.top_matrix_traversal_view
+                            ->knowledge_rank > 7 ||
+                    route.top_matrix_traversal_view
+                            ->action_difficulty_label != "3" ||
+                    (route.top_matrix_traversal_view
+                             ->active_program_status_label !=
+                         " Resisted!!  ") ||
+                    !complete_frame(analyze_complete_image) ||
+                    analyze_idle_runner.size() !=
+                        QSize(kSceneWidth, kSceneHeight) ||
+                    !opaque_layer_matches(analyze_complete_image,
+                                          analyze_idle_runner, nullptr)) {
+                    std::cerr << "Matrix Analyze QA: 61-tick profile "
+                                 "transition did not settle to its ROM "
+                                 "result state\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x04U); // Left: Medic
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                if (!route.top_matrix_traversal_view.has_value() ||
+                    route.top_matrix_traversal_view
+                            ->active_program_label != "Medic-1" ||
+                    route.top_matrix_traversal_view
+                            ->active_program_status_label != "Ready...     ") {
+                    std::cerr << "Matrix Medic QA: left input did not select "
+                                 "the loaded Medic-1 slot\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // A: Medic
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                const auto medic_result_image =
+                    capture("matrix-medic-action-result");
+                const bool medic_result_published =
+                    route.top_matrix_traversal_view.has_value() &&
+                    route.top_matrix_traversal_view
+                            ->active_program_label == "Medic-1" &&
+                    (route.top_matrix_traversal_view
+                             ->active_program_status_label ==
+                         " Success!!   " ||
+                     route.top_matrix_traversal_view
+                             ->active_program_status_label ==
+                         " Failure!!   ") &&
+                    route.top_matrix_traversal_view->action_mode == 0;
+                if (!medic_result_published ||
+                    !complete_frame(medic_result_image)) {
+                    std::cerr << "Matrix Medic QA: source program dispatch "
+                                 "did not publish its result on a complete "
+                                 "320x224 Matrix frame\n";
+                    return 3;
+                }
+                if (!field_scene.seed_matrix_degrade_action_for_dump()) {
+                    std::cerr << "Matrix Degrade QA: could not seed a loaded "
+                                 "Degrade-3 program in the active slot\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // A: Degrade
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                const auto degrade_result_image =
+                    capture("matrix-degrade-action-result");
+                const auto degrade_result_status = route.top_matrix_traversal_view
+                    ? route.top_matrix_traversal_view
+                          ->active_program_status_label
+                    : std::string{};
+                const bool degrade_result_published =
+                    route.top_matrix_traversal_view.has_value() &&
+                    route.top_matrix_traversal_view
+                            ->active_program_label == "Degrade-3" &&
+                    (degrade_result_status == " Failure!!   " ||
+                     degrade_result_status == " Evaded!     " ||
+                     degrade_result_status == "   HIT!!!    ") &&
+                    route.top_matrix_traversal_view->action_mode == 0;
+                const auto expected_security =
+                    degrade_result_status == "   HIT!!!    " ? "2" : "3";
+                if (!degrade_result_published ||
+                    route.top_matrix_traversal_view
+                            ->action_difficulty_label != expected_security ||
+                    !complete_frame(degrade_result_image)) {
+                    std::cerr << "Matrix Degrade QA: source result, node "
+                                 "security, or full 320x224 frame is wrong; "
+                              << "status=\"" << degrade_result_status
+                              << "\" security=\""
+                              << (route.top_matrix_traversal_view.has_value()
+                                      ? route.top_matrix_traversal_view
+                                            ->action_difficulty_label
+                                      : std::string("missing"))
+                              << "\"\n";
+                    return 3;
+                }
+                std::cout << "field_matrix_traversal_entry_qa=passed "
+                          << "system=2 node=2 setup_vblanks=61 "
+                          << "entry_vblanks=239 publications=56 "
+                          << "reference_frames=004730-004830,004800 "
+                          << "full_320x224=1 footer_icons=1 "
+                          << "analyze_action=verified "
+                          << "medic_action=verified "
+                          << "degrade_action=verified\n";
+                return 0;
+            }
+            if (field_matrix_cyber_info_qa_path.has_value()) {
+                const auto output = *field_matrix_cyber_info_qa_path;
+                std::filesystem::create_directories(output);
+                std::error_code clear_error;
+                clear_qa_bitmap_artifacts(output, clear_error);
+                if (clear_error) {
+                    std::cerr << "Matrix CyberInfo QA: could not clear old "
+                                 "captures: "
+                              << clear_error.message() << '\n';
+                    return 3;
+                }
+                const auto capture = [&field_scene, &output](
+                                         const std::string_view name) {
+                    const auto image = render_qa_field(field_scene);
+                    return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+                           save_qa_image(output,
+                                         std::string(name) + ".bmp", image)
+                        ? image
+                        : QImage{};
+                };
+                const auto full_cyberdeck_frame = [](const QImage& image) {
+                    if (image.size() != QSize(kSceneWidth, kSceneHeight)) {
+                        return false;
+                    }
+                    int lower_band_ink = 0;
+                    int bottom_edge_ink = 0;
+                    for (int y = 192; y < image.height(); ++y) {
+                        for (int x = 0; x < image.width(); ++x) {
+                            if (image.pixelColor(x, y) != QColor(Qt::black)) {
+                                ++lower_band_ink;
+                                if (y == image.height() - 1) {
+                                    ++bottom_edge_ink;
+                                }
+                            }
+                        }
+                    }
+                    // The ROM footer is a metallic frame with nonuniform
+                    // rivets and slots along the bottom scanline. Check that
+                    // the final 32 rows contain the complete footer instead
+                    // of requiring every bottom pixel to share one color.
+                    return lower_band_ink >= 1000 && bottom_edge_ink >= 64;
+                };
+                std::array<QImage, 4> cyberdeck_source_backgrounds{};
+                for (std::size_t phase = 0U;
+                     phase < cyberdeck_source_backgrounds.size(); ++phase) {
+                    const auto filename = phase == 0U
+                        ? "cyberdeck-background.bmp"
+                        : "cyberdeck-background-phase-" +
+                              std::to_string(phase) + ".bmp";
+                    cyberdeck_source_backgrounds[phase] = QImage(
+                        QString::fromStdString(
+                            (asset_root / "cyberspace" / "matrix" /
+                             filename).string()));
+                }
+                const auto source_background_for_phase =
+                    [&cyberdeck_source_backgrounds](const int phase)
+                        -> const QImage& {
+                    return cyberdeck_source_backgrounds[
+                        static_cast<std::size_t>(std::clamp(phase, 0, 3))];
+                };
+                const auto child_has_no_program_grid =
+                    [&source_background_for_phase](const QImage& image,
+                                                   const int phase) {
+                    const auto& source_background =
+                        source_background_for_phase(phase);
+                    if (source_background.size() !=
+                            QSize(kSceneWidth, kSceneHeight) ||
+                        image.size() != QSize(kSceneWidth, kSceneHeight)) {
+                        return false;
+                    }
+                    // ROM child screens keep the Plane-B Cyberdeck backdrop.
+                    // Their Run Info and Deck Stats text begins at x=160; the
+                    // upper 176 pixels must match the static base with no
+                    // Cyberdeck selector, program icons, or cursor left over.
+                    // The common renderer intentionally keeps the live
+                    // runner portrait and loaded-slot footer below this area.
+                    for (int y = 0; y < 176; ++y) {
+                        for (int x = 0; x < 152; ++x) {
+                            if (image.pixelColor(x, y) !=
+                                source_background.pixelColor(x, y)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
+                if (field_scene.field_scene_reference_for_dump() != 2U ||
+                    !field_scene.seed_cyberspace_access_for_dump() ||
+                    !field_scene.seed_cyberdeck_reference_frame_for_dump() ||
+                    !field_scene.open_ordinary_field_terminal_for_dump(
+                        1U << 2U, 12000U) ||
+                    !field_scene.dialogue_open() ||
+                    !field_scene.field_dialogue_uses_console_layout_for_dump()) {
+                    std::cerr << "Matrix CyberInfo QA: ordinary field "
+                                 "terminal did not open\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x02U);
+                tap_qa_controller_button(field_scene, 0x02U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x02U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (!field_scene.matrix_search_route_active_for_dump()) {
+                    std::cerr << "Matrix CyberInfo QA: terminal did not "
+                                 "enter System Search\n";
+                    return 3;
+                }
+                std::uint32_t search_frames = 0U;
+                while (field_scene.matrix_search_route_active_for_dump() &&
+                       search_frames < 500U) {
+                    field_scene.advance_frame();
+                    ++search_frames;
+                }
+                if (field_scene.matrix_search_route_active_for_dump() ||
+                    field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::MATRIX_ENTRY)) {
+                    std::cerr << "Matrix CyberInfo QA: System Search did not "
+                                 "select a system after its source wait; "
+                              << "frames=" << search_frames
+                              << " search="
+                              << field_scene.matrix_search_route_active_for_dump()
+                              << " screen="
+                              << field_scene.field_menu_route_screen_for_dump()
+                              << '\n';
+                    return 3;
+                }
+                for (std::uint32_t frame = 0U; frame < 20U; ++frame) {
+                    field_scene.advance_frame();
+                }
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                    static_cast<std::uint16_t>(
+                        srx::MenuScreen::CYBERDECK)) {
+                    std::cerr << "Matrix CyberInfo QA: the 20-frame jack-in "
+                                 "did not enter the 0x181F8 deck loop\n";
+                    return 3;
+                }
+                auto cyberdeck_image = capture("cyberdeck");
+                const auto cyberdeck_route =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                const auto initial_palette_phase =
+                    cyberdeck_route.top_matrix_deck_palette_phase;
+                const auto& cyberdeck_source_background =
+                    source_background_for_phase(
+                        initial_palette_phase.value_or(0));
+                // 0x17F80 -> 0x566E2 replaces CRAM line 1 from 0xE2EBA.
+                // This border pixel at (6,12) uses palette entry 10
+                // (0x0A40), RGB (0,73,182); the initial palette at 0xE2E5A
+                // incorrectly made the deck chrome green/yellow.
+                if (!initial_palette_phase.has_value() ||
+                    *initial_palette_phase != 0 ||
+                    cyberdeck_source_background.size() !=
+                        QSize(kSceneWidth, kSceneHeight) ||
+                    cyberdeck_source_background.pixelColor(6, 12) !=
+                        QColor(0, 73, 182) ||
+                    !full_cyberdeck_frame(cyberdeck_image)) {
+                    std::cerr << "Matrix CyberInfo QA: Cyberdeck image is "
+                                 "using the wrong live palette, cropped, or "
+                                 "its lower edge is blank\n";
+                    return 3;
+                }
+                constexpr std::array<std::uint8_t, 12>
+                    kExpectedCyberdeckRatings{{3U, 0U, 0U, 0U, 1U, 0U,
+                                               0U, 0U, 0U, 1U, 0U, 1U}};
+                constexpr std::array<std::int8_t, 5>
+                    kExpectedCyberdeckActivePrograms{{9, 11, -1, -1, -1}};
+                constexpr std::array<std::uint8_t, 5>
+                    kExpectedCyberdeckSlotStatus{{6U, 6U, 6U, 6U, 6U}};
+                const auto has_matrix_green = [](const QImage& image,
+                                                  const QRect bounds) {
+                    if (image.size() !=
+                        QSize(kSceneWidth, kSceneHeight)) {
+                        return false;
+                    }
+                    for (int y = bounds.y();
+                         y < bounds.y() + bounds.height(); ++y) {
+                        for (int x = bounds.x();
+                             x < bounds.x() + bounds.width(); ++x) {
+                            if (image.pixelColor(x, y) ==
+                                QColor(36, 219, 36)) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+                const auto source_pixels_match_at =
+                    [&asset_root](
+                        const QImage& image,
+                        const int x, const int y,
+                        const std::filesystem::path& relative_asset) {
+                        const QImage source(QString::fromStdString(
+                            (asset_root / relative_asset).string()));
+                        if (source.isNull() ||
+                            image.size() != QSize(kSceneWidth, kSceneHeight) ||
+                            x < 0 || y < 0 ||
+                            x + source.width() > image.width() ||
+                            y + source.height() > image.height()) {
+                            return false;
+                        }
+                        bool found_opaque_pixel = false;
+                        for (int source_y = 0; source_y < source.height();
+                             ++source_y) {
+                            for (int source_x = 0; source_x < source.width();
+                                 ++source_x) {
+                                const auto pixel =
+                                    source.pixelColor(source_x, source_y);
+                                if (pixel.alpha() == 0) continue;
+                                found_opaque_pixel = true;
+                                if (image.pixelColor(
+                                        x + source_x, y + source_y) != pixel) {
+                                    return false;
+                                }
+                            }
+                        }
+                        return found_opaque_pixel;
+                    };
+                bool palette_phase_assets_match =
+                    initial_palette_phase == 0 &&
+                    source_pixels_match_at(
+                        cyberdeck_image, 12, 20,
+                        "cyberspace/matrix/cyberdeck-cursor.bmp") &&
+                    source_pixels_match_at(
+                        cyberdeck_image, 0, 0,
+                        "cyberspace/matrix/"
+                        "cyberdeck-selector-selected-row-0.bmp");
+                for (int phase = 1; phase < 4; ++phase) {
+                    bool phase_reached = false;
+                    for (std::uint32_t frame = 0U; frame < 5U; ++frame) {
+                        const auto route =
+                            field_scene.field_menu_route_snapshot_for_dump();
+                        if (route.top_matrix_deck_palette_phase == phase) {
+                            phase_reached = true;
+                            break;
+                        }
+                        field_scene.advance_frame();
+                    }
+                    const auto route =
+                        field_scene.field_menu_route_snapshot_for_dump();
+                    phase_reached = phase_reached ||
+                        route.top_matrix_deck_palette_phase == phase;
+                    const auto phase_image = capture(
+                        "cyberdeck-palette-phase-" + std::to_string(phase));
+                    const auto phase_background_path =
+                        std::filesystem::path("cyberspace/matrix") /
+                        ("cyberdeck-background-phase-" +
+                         std::to_string(phase) + ".bmp");
+                    const auto phase_cursor_path =
+                        std::filesystem::path("cyberspace/matrix") /
+                        ("cyberdeck-cursor-phase-" +
+                         std::to_string(phase) + ".bmp");
+                    const auto phase_selector_path =
+                        std::filesystem::path("cyberspace/matrix") /
+                        ("cyberdeck-selector-selected-row-0-phase-" +
+                         std::to_string(phase) + ".bmp");
+                    palette_phase_assets_match =
+                        palette_phase_assets_match && phase_reached &&
+                        route.top_matrix_deck_palette_phase == phase &&
+                        phase_image.size() == QSize(kSceneWidth, kSceneHeight) &&
+                        phase_image.pixelColor(6, 12) ==
+                            source_background_for_phase(phase).pixelColor(6, 12) &&
+                        source_pixels_match_at(phase_image, 12, 20,
+                                               phase_cursor_path) &&
+                        source_pixels_match_at(phase_image, 0, 0,
+                                               phase_selector_path);
+                }
+                if (!palette_phase_assets_match) {
+                    std::cerr << "Matrix CyberInfo QA: ROM palette cycle did "
+                                 "not advance through and render its three "
+                                 "noninitial background/cursor/selector phases\n";
+                    return 3;
+                }
+                bool deck_grid_icons_match = true;
+                for (int program = 0; program < 16; ++program) {
+                    if (program < 12 &&
+                        kExpectedCyberdeckRatings[
+                            static_cast<std::size_t>(program)] == 0U) {
+                        continue;
+                    }
+                    const int x = 16 + (program % 4) * 32;
+                    const int y = 24 + (program / 4) * 40;
+                    deck_grid_icons_match = deck_grid_icons_match &&
+                        source_pixels_match_at(
+                            cyberdeck_image,
+                            x, y,
+                            std::filesystem::path("cyberspace/matrix") /
+                                ("program-icon-" + std::to_string(program) +
+                                 ".bmp"));
+                }
+                deck_grid_icons_match = deck_grid_icons_match &&
+                    source_pixels_match_at(
+                        cyberdeck_image,
+                        184, 16,
+                        "cyberspace/matrix/program-icon-0.bmp");
+                bool footer_slot_icons_match = true;
+                for (std::size_t slot = 0U;
+                     slot < kExpectedCyberdeckActivePrograms.size(); ++slot) {
+                    const auto program =
+                        kExpectedCyberdeckActivePrograms[slot];
+                    const auto icon_name = program >= 0
+                        ? "program-icon-" + std::to_string(program) + ".bmp"
+                        : "cyberdeck-program-icon-empty.bmp";
+                    footer_slot_icons_match = footer_slot_icons_match &&
+                        source_pixels_match_at(
+                            cyberdeck_image,
+                            80 + static_cast<int>(slot) * 48, 184,
+                            std::filesystem::path("cyberspace/matrix") /
+                                icon_name);
+                }
+                bool footer_slot_status_matches = true;
+                for (int slot = 0; slot < 5; ++slot) {
+                    footer_slot_status_matches =
+                        footer_slot_status_matches && source_pixels_match_at(
+                            cyberdeck_image,
+                            80 + slot * 48, 208,
+                            "cyberspace/matrix/"
+                            "cyberdeck-footer-slot-status-6.bmp");
+                }
+                const auto runner_face_matches = [&]() {
+                    if (cyberdeck_source_background.size() !=
+                        QSize(kSceneWidth, kSceneHeight)) {
+                        return false;
+                    }
+                    for (int y = 184; y < 216; ++y) {
+                        for (int x = 16; x < 48; ++x) {
+                            if (cyberdeck_image.pixelColor(x, y) !=
+                                cyberdeck_source_background.pixelColor(x, y)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                }();
+                if (!cyberdeck_route.top_matrix_deck_detail_labels_present ||
+                    cyberdeck_route.top_matrix_deck_detail_labels !=
+                        std::array<std::string, 3>{
+                            "Size. . . . . .  Mp",
+                            "Free Memory . .  Mp",
+                            "Load Time . .  Secs"} ||
+                    !cyberdeck_route
+                         .top_matrix_deck_program_detail_values_present ||
+                    cyberdeck_route
+                            .top_matrix_deck_program_detail_values !=
+                        std::array<std::string, 3>{"18", "10", "2"} ||
+                    !cyberdeck_route
+                         .top_matrix_deck_program_ratings_present ||
+                    cyberdeck_route
+                            .top_matrix_deck_program_ratings !=
+                        kExpectedCyberdeckRatings ||
+                    !cyberdeck_route
+                         .top_matrix_deck_active_programs_present ||
+                    cyberdeck_route
+                            .top_matrix_deck_active_programs !=
+                        kExpectedCyberdeckActivePrograms ||
+                    !cyberdeck_route
+                         .top_matrix_deck_program_slot_status_present ||
+                    cyberdeck_route
+                            .top_matrix_deck_program_slot_status !=
+                        kExpectedCyberdeckSlotStatus ||
+                    !deck_grid_icons_match ||
+                    !footer_slot_icons_match ||
+                    !footer_slot_status_matches || !runner_face_matches ||
+                    !cyberdeck_route
+                         .top_matrix_deck_runner_detail_labels_present ||
+                    cyberdeck_route.top_matrix_deck_runner_detail_labels !=
+                        std::array<std::string, 2>{"Success", "Defense"} ||
+                    !cyberdeck_route.top_matrix_deck_runner_details_present ||
+                    cyberdeck_route.top_matrix_deck_runner_details !=
+                        std::array<std::string, 2>{"Unknown", "Unknown"} ||
+                    !has_matrix_green(cyberdeck_image, QRect(216, 24, 40, 8)) ||
+                    !has_matrix_green(cyberdeck_image, QRect(264, 24, 8, 8)) ||
+                    !has_matrix_green(cyberdeck_image, QRect(152, 40, 152, 8)) ||
+                    !has_matrix_green(cyberdeck_image, QRect(152, 48, 152, 8)) ||
+                    !has_matrix_green(cyberdeck_image, QRect(152, 56, 152, 8)) ||
+                    !has_matrix_green(cyberdeck_image, QRect(272, 40, 32, 8)) ||
+                    !has_matrix_green(cyberdeck_image, QRect(272, 48, 32, 8)) ||
+                    !has_matrix_green(cyberdeck_image, QRect(256, 56, 48, 8)) ||
+                    !has_matrix_green(cyberdeck_image, QRect(152, 72, 40, 8)) ||
+                    !has_matrix_green(cyberdeck_image, QRect(152, 80, 40, 8)) ||
+                    !has_matrix_green(cyberdeck_image, QRect(208, 72, 56, 8)) ||
+                    !has_matrix_green(cyberdeck_image, QRect(208, 80, 56, 8))) {
+                    std::cerr << "Matrix CyberInfo QA: Cyberdeck omitted "
+                                 "ROM detail text or grid/footer artwork, or "
+                                 "placed its graphics incorrectly\n";
+                    return 3;
+                }
+                for (int row = 0; row < 3; ++row) {
+                    tap_qa_controller_button(field_scene, 0x02U);
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto cyber_info_route =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::DECK_CYBERINFO) ||
+                    cyber_info_route.top_title != "  Cyberdeck Info" ||
+                    cyber_info_route.top_option_labels !=
+                        std::vector<std::string>{
+                            "  Deck Stats", "  Run Info"}) {
+                    std::cerr << "Matrix CyberInfo QA: CyberInfo choices "
+                                 "did not open from the deck grid\n";
+                    return 3;
+                }
+                const auto cyber_info_image = capture("cyber-info");
+                if (cyber_info_image.isNull()) {
+                    std::cerr << "Matrix CyberInfo QA: CyberInfo image was "
+                                 "not captured at 320x224\n";
+                    return 3;
+                }
+                const auto cyber_info_has_green =
+                    [&cyber_info_image](const QRect bounds) {
+                    if (cyber_info_image.size() !=
+                        QSize(kSceneWidth, kSceneHeight)) {
+                        return false;
+                    }
+                    for (int y = bounds.y();
+                         y < bounds.y() + bounds.height(); ++y) {
+                        for (int x = bounds.x();
+                             x < bounds.x() + bounds.width(); ++x) {
+                            if (cyber_info_image.pixelColor(x, y) ==
+                                QColor(36, 219, 36)) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+                if (!cyber_info_has_green(QRect(296, 48, 8, 8)) ||
+                    !cyber_info_has_green(QRect(176, 56, 8, 8)) ||
+                    !cyber_info_has_green(QRect(272, 56, 8, 8)) ||
+                    !cyber_info_has_green(QRect(192, 72, 80, 8)) ||
+                    !cyber_info_has_green(QRect(192, 88, 64, 8)) ||
+                    !cyber_info_has_green(QRect(176, 72, 8, 8))) {
+                    std::cerr << "Matrix CyberInfo QA: ROM-padded title, "
+                                 "separator, choices, or cursor is missing "
+                                 "from its source row\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x02U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                auto route = field_scene.field_menu_route_snapshot_for_dump();
+                if (!route.top_matrix_run_info.has_value() ||
+                    route.top_matrix_run_info->kind !=
+                        scripting::ScriptMatrixRunInfoKind::no_run) {
+                    std::cerr << "Matrix CyberInfo QA: field Run Info did not "
+                                 "return the typed no-run branch\n";
+                    return 3;
+                }
+                auto run_info_image = capture("actual");
+                if (!full_cyberdeck_frame(run_info_image)) {
+                    std::cerr << "Matrix CyberInfo QA: actual.bmp does not "
+                                 "contain the complete 320x224 screen\n";
+                    return 3;
+                }
+                if (!child_has_no_program_grid(
+                        run_info_image,
+                        route.top_matrix_deck_palette_phase.value_or(0))) {
+                    std::cerr << "Matrix CyberInfo QA: Run Info did not "
+                                 "retain the source Plane-B backdrop cleanly\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                if (!route.top_matrix_deck_stats.has_value()) {
+                    std::cerr << "Matrix CyberInfo QA: Deck Stats did not "
+                                 "return the live Lua record\n";
+                    return 3;
+                }
+                const auto deck_stats_image = capture("deck-stats");
+                if (!full_cyberdeck_frame(deck_stats_image)) {
+                    std::cerr << "Matrix CyberInfo QA: Deck Stats image is "
+                                 "cropped or its lower edge is blank\n";
+                    return 3;
+                }
+                if (!child_has_no_program_grid(
+                        deck_stats_image,
+                        route.top_matrix_deck_palette_phase.value_or(0))) {
+                    std::cerr << "Matrix CyberInfo QA: Deck Stats did not "
+                                 "retain the source Plane-B backdrop cleanly\n";
+                    return 3;
+                }
+                // The ROM returns to the selected Command row after Deck
+                // Stats. Move to row 3/column 3 and capture the separate
+                // pull-plug prompt shown by longplay frame 005400.
+                if (!field_scene
+                         .seed_cyberdeck_pull_plug_reference_for_dump()) {
+                    std::cerr << "Matrix CyberInfo QA: could not seed the "
+                                 "frame-005400 active-program footer\n";
+                    return 3;
+                }
+                for (int column = 0; column < 3; ++column) {
+                    tap_qa_controller_button(field_scene, 0x08U);
+                }
+                tap_qa_controller_button(field_scene, 0x0040U);
+                const auto pull_plug_route =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                const auto pull_plug_screen =
+                    field_scene.field_menu_route_screen_for_dump();
+                if (pull_plug_screen != static_cast<std::uint16_t>(
+                                            srx::MenuScreen::PULL_PLUG) ||
+                    pull_plug_route.top_title !=
+                        "Do you really want|to pull the plug?" ||
+                    pull_plug_route.top_option_labels !=
+                        std::vector<std::string>{"Yes", "No"} ||
+                    pull_plug_route.top_row != 1 ||
+                    !pull_plug_route
+                         .top_matrix_deck_active_programs_present ||
+                    pull_plug_route.top_matrix_deck_active_programs !=
+                        std::array<std::int8_t, 5>{9, 0, -1, -1, -1} ||
+                    !pull_plug_route
+                         .top_matrix_deck_program_slot_status_present) {
+                    std::cerr << "Matrix CyberInfo QA: Pull Plug lost its "
+                                 "ROM prompt state or active deck footer\n";
+                    return 3;
+                }
+                const auto pull_plug_image = capture("pull-plug");
+                constexpr std::array<std::int8_t, 5>
+                    kPullPlugReferencePrograms{{9, 0, -1, -1, -1}};
+                bool pull_plug_footer_matches = source_pixels_match_at(
+                    pull_plug_image, 112, 144,
+                    "cyberspace/matrix/program-icon-15.bmp");
+                for (std::size_t slot = 0U;
+                     slot < kPullPlugReferencePrograms.size(); ++slot) {
+                    const auto program =
+                        kPullPlugReferencePrograms[slot];
+                    const auto icon_name = program >= 0
+                        ? "program-icon-" + std::to_string(program) + ".bmp"
+                        : "cyberdeck-program-icon-empty.bmp";
+                    pull_plug_footer_matches = pull_plug_footer_matches &&
+                        source_pixels_match_at(
+                            pull_plug_image,
+                            80 + static_cast<int>(slot) * 48, 184,
+                            std::filesystem::path("cyberspace/matrix") /
+                                icon_name);
+                }
+                bool pull_plug_status_matches = true;
+                for (int slot = 0; slot < 5; ++slot) {
+                    pull_plug_status_matches =
+                        pull_plug_status_matches && source_pixels_match_at(
+                            pull_plug_image, 80 + slot * 48, 208,
+                            "cyberspace/matrix/"
+                            "cyberdeck-footer-slot-status-6.bmp");
+                }
+                if (!full_cyberdeck_frame(pull_plug_image) ||
+                    !pull_plug_footer_matches ||
+                    !pull_plug_status_matches ||
+                    !has_matrix_green(pull_plug_image,
+                                      QRect(152, 64, 160, 8)) ||
+                    !has_matrix_green(pull_plug_image,
+                                      QRect(152, 72, 136, 8)) ||
+                    !has_matrix_green(pull_plug_image,
+                                      QRect(224, 96, 24, 8)) ||
+                    !has_matrix_green(pull_plug_image,
+                                      QRect(200, 112, 8, 8)) ||
+                    !has_matrix_green(pull_plug_image,
+                                      QRect(224, 112, 24, 8))) {
+                    std::cerr << "Matrix CyberInfo QA: Pull Plug does not "
+                                 "match ROM prompt, icon, footer, or full-frame "
+                                 "placement\n";
+                    return 3;
+                }
+
+                // The ROM's first deck loop returns through the world-mode
+                // traversal before the node-action loop. Exercise that live
+                // route and retain a complete 320x224 artifact for visual
+                // review, including the lower HUD/footer rows.
+                tap_qa_controller_button(field_scene, 0x40U); // A: keep running
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                    static_cast<std::uint16_t>(srx::MenuScreen::CYBERDECK)) {
+                    std::cerr << "Matrix traversal QA: No did not return to "
+                                 "the active deck\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x80U); // Start
+                auto traversal_route =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                for (int frame = 0;
+                     frame < 360 &&
+                     (!traversal_route.top_matrix_traversal_view.has_value() ||
+                      traversal_route.top_matrix_traversal_view
+                              ->world_entry_phase != 2);
+                     ++frame) {
+                    field_scene.advance_frame();
+                    traversal_route =
+                        field_scene.field_menu_route_snapshot_for_dump();
+                }
+                const bool traversal_entry_settled =
+                    traversal_route.top_matrix_traversal_view.has_value() &&
+                    traversal_route.top_matrix_traversal_view
+                            ->world_entry_phase == 2;
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::MATRIX_NODE_ACTION) ||
+                    !traversal_entry_settled ||
+                    !traversal_route.top_matrix_node_status.has_value() ||
+                    !traversal_route.top_matrix_traversal_view.has_value() ||
+                    traversal_route.top_matrix_traversal_view->world_model_id !=
+                        traversal_route.top_matrix_node_status->world_model_id ||
+                    traversal_route.top_matrix_traversal_view->palette_theme <
+                        1U ||
+                    traversal_route.top_matrix_traversal_view->palette_theme >
+                        4U ||
+                    traversal_route.top_matrix_traversal_view
+                            ->knowledge_rank != 4 ||
+                    traversal_route.top_matrix_traversal_view
+                        ->function_label.empty() ||
+                    (!traversal_route.top_matrix_traversal_view
+                          ->active_program_label.empty() &&
+                     traversal_route.top_matrix_traversal_view
+                         ->active_program_status_label != "Ready...     ") ||
+                    !traversal_route.top_matrix_deck_active_programs_present ||
+                    !traversal_route.top_matrix_deck_program_slot_status_present) {
+                    std::cerr << "Matrix traversal QA: the post-deck route "
+                                 "lost its typed node, world model, or deck "
+                                 "footer state\n";
+                    if (traversal_route.top_matrix_traversal_view.has_value()) {
+                        const auto& view =
+                            *traversal_route.top_matrix_traversal_view;
+                        std::cerr << "Matrix traversal view: rank="
+                                  << view.knowledge_rank
+                                  << " program=\"" << view.active_program_label
+                                  << "\" status=\""
+                                  << view.active_program_status_label << "\"\n";
+                    } else {
+                        std::cerr << "Matrix traversal view is absent\n";
+                    }
+                    return 3;
+                }
+                const auto traversal_image = capture("matrix-traversal");
+                const auto floor_grid_reference_pixel =
+                    traversal_image.pixelColor(15, 160);
+                const auto traversal_hud_asset = QImage(QString::fromStdString(
+                    (asset_root / "cyberspace" / "matrix" /
+                     "traversal-hud-frame.png").string()));
+                const auto& traversal_view =
+                    *traversal_route.top_matrix_traversal_view;
+                const auto model_id = static_cast<std::size_t>(
+                    traversal_view.world_model_id);
+                const auto model_asset = QImage(QString::fromStdString(
+                    (asset_root / "cyberspace" / "matrix" /
+                     ("world-model-" + std::to_string(model_id) +
+                      "-security-color-" +
+                      std::to_string(traversal_view.palette_theme) + ".png"))
+                        .string()));
+                const auto model_origin = model_id == 0U
+                    ? QPoint(104, 48)
+                    : QPoint(110, 28);
+                std::size_t model_clear_pixels = 0U;
+                std::size_t model_clear_exact_pixels = 0U;
+                if (!model_asset.isNull()) {
+                    for (int y = 0; y < model_asset.height(); ++y) {
+                        // This route deliberately includes an active ROM
+                        // world-effect sprite over the model center. Check
+                        // only the unobscured top and bottom bands here; the
+                        // full traversal capture is inspected separately.
+                        // The active sprite touches two pixels at the edge of
+                        // those bands, so retain a four-pixel raster tolerance
+                        // while requiring over 99 percent of the model pixels.
+                        const bool clear_model_band = y < 15 || y >= 46;
+                        if (!clear_model_band) continue;
+                        for (int x = 0; x < model_asset.width(); ++x) {
+                            const auto expected = model_asset.pixelColor(x, y);
+                            if (expected.alpha() == 0) continue;
+                            ++model_clear_pixels;
+                            if (traversal_image.pixelColor(
+                                    model_origin.x() + x,
+                                    model_origin.y() + y) == expected) {
+                                ++model_clear_exact_pixels;
+                            }
+                        }
+                    }
+                }
+                if (traversal_image.size() !=
+                        QSize(kSceneWidth, kSceneHeight) ||
+                    !full_cyberdeck_frame(traversal_image) ||
+                    traversal_hud_asset.size() !=
+                        QSize(kSceneWidth, kSceneHeight) ||
+                    traversal_hud_asset.pixelColor(17, 39) !=
+                        QColor(36, 219, 36) ||
+                    traversal_hud_asset.pixelColor(177, 39) !=
+                        QColor(36, 219, 36) ||
+                    traversal_image.pixelColor(17, 39) !=
+                        traversal_hud_asset.pixelColor(17, 39) ||
+                    traversal_image.pixelColor(177, 39) !=
+                        traversal_hud_asset.pixelColor(177, 39) ||
+                    model_clear_pixels < 1000U ||
+                    model_clear_exact_pixels + 4U < model_clear_pixels ||
+                    floor_grid_reference_pixel.blue() <=
+                        std::max(floor_grid_reference_pixel.red(),
+                                 floor_grid_reference_pixel.green()) + 64) {
+                    std::cerr << "Matrix traversal QA: entry did not settle, "
+                                 "frame is cropped, HUD frame is missing, "
+                                 "missing its footer, has the wrong selected "
+                                 "model asset, or the floor does not retain "
+                                 "the blue ROM traversal palette; "
+                              << "clear_model_pixels="
+                              << model_clear_exact_pixels << '/'
+                              << model_clear_pixels << " model_id=" << model_id
+                              << " security_color="
+                              << traversal_view.palette_theme
+                              << " entry_phase="
+                              << traversal_view.world_entry_phase
+                              << " canvas="
+                              << traversal_view.model_canvas_x << ','
+                              << traversal_view.model_canvas_y << ','
+                              << traversal_view.model_canvas_width << ','
+                              << traversal_view.model_canvas_height << '\n';
+                    return 3;
+                }
+
+                std::cout << "field_matrix_cyber_info_qa=passed "
+                          << "search_frames=" << search_frames
+                          << " deck_reference_frames=004220,005400 "
+                          << " full_320x224_frames=multiple "
+                          << "no_child_grid_overlap=1 "
+                          << "pull_plug_frame=1 "
+                          << "matrix_traversal_frame=1\n";
+                return 0;
+            }
             if (field_vid_phone_passage_qa_path.has_value()) {
                 const auto output = *field_vid_phone_passage_qa_path;
                 std::filesystem::create_directories(output);
@@ -15601,15 +23330,89 @@ int main(int argc, char** argv) {
                         output, std::string(name) + ".bmp",
                         render_qa_field(field_scene));
                 };
+                const auto has_green_ink = [](
+                                               const QImage& image,
+                                               const QRect bounds) {
+                    for (int y = bounds.y();
+                         y < bounds.y() + bounds.height(); ++y) {
+                        for (int x = bounds.x();
+                             x < bounds.x() + bounds.width(); ++x) {
+                            const auto color = image.pixelColor(x, y);
+                            if (color.green() > 150 && color.red() < 40 &&
+                                color.blue() < 40) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
                 if (field_scene.field_scene_reference_for_dump() != 2U ||
+                    !field_scene.seed_cyberspace_access_for_dump() ||
                     !field_scene.open_ordinary_field_terminal_for_dump(
                         1U << 2U, 12000U) ||
                     !field_scene.dialogue_open() ||
+                    !field_scene.field_dialogue_uses_console_layout_for_dump() ||
                     field_scene.dialogue_panel().option_count != 4U ||
                     field_scene.dialogue_panel().selected_option != 0U ||
                     !capture("01-field-terminal")) {
                     std::cerr << "Vid-Phone passage QA: normal field terminal "
                                  "did not open with its four source choices\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x02U);
+                tap_qa_controller_button(field_scene, 0x02U);
+                if (field_scene.dialogue_panel().selected_option != 2U) {
+                    std::cerr << "Vid-Phone passage QA: Down did not select "
+                                 "the Cyberspace row\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (!field_scene.dialogue_open() ||
+                    !field_scene.field_dialogue_uses_console_layout_for_dump() ||
+                    field_scene.dialogue_panel().option_count != 3U ||
+                    field_scene.dialogue_panel().selected_option != 0U ||
+                    field_scene.dialogue_panel().text_segment_count == 0U ||
+                    field_scene.dialogue_panel().text_segments[0] !=
+                        "Cyberspace" ||
+                    !capture("02-cyberspace-menu")) {
+                    std::cerr << "Vid-Phone passage QA: Cyberspace did not "
+                                 "open through the ordinary Lua terminal menu\n";
+                    return 3;
+                }
+                const auto cyberspace_pixels = render_qa_field(field_scene);
+                if (!has_green_ink(cyberspace_pixels, QRect(96, 48, 80, 8)) ||
+                    !has_green_ink(cyberspace_pixels, QRect(96, 58, 64, 1)) ||
+                    !has_green_ink(cyberspace_pixels, QRect(80, 72, 8, 8)) ||
+                    !has_green_ink(cyberspace_pixels, QRect(96, 72, 120, 8)) ||
+                    !has_green_ink(cyberspace_pixels, QRect(96, 88, 104, 8))) {
+                    std::cerr << "Vid-Phone passage QA: Cyberspace pixels did "
+                                 "not occupy the title, underline, cursor, and "
+                                 "two option rows\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x02U);
+                if (field_scene.dialogue_panel().selected_option != 1U ||
+                    !capture("03-cyberspace-search-selected")) {
+                    std::cerr << "Vid-Phone passage QA: Cyberspace cursor did "
+                                 "not move onto System Search\n";
+                    return 3;
+                }
+                const auto selected_cyberspace_pixels =
+                    render_qa_field(field_scene);
+                if (!has_green_ink(selected_cyberspace_pixels,
+                                   QRect(80, 88, 8, 8))) {
+                    std::cerr << "Vid-Phone passage QA: selected System Search "
+                                 "cursor pixels were not drawn on row two\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x10U);
+                if (!field_scene.dialogue_open() ||
+                    !field_scene.field_dialogue_uses_console_layout_for_dump() ||
+                    field_scene.dialogue_panel().option_count != 4U ||
+                    field_scene.dialogue_panel().selected_option != 0U ||
+                    !capture("04-field-terminal-after-cyberspace")) {
+                    std::cerr << "Vid-Phone passage QA: cancelling Cyberspace "
+                                 "did not restore the ordinary terminal menu\n";
                     return 3;
                 }
                 tap_qa_controller_button(field_scene, 0x02U);
@@ -16111,9 +23914,59 @@ int main(int argc, char** argv) {
                               << '\n';
                     return 3;
                 }
+                if (!field_scene.open_ordinary_field_terminal_for_dump(
+                        kSharkeyAndCallHistoryFlags, 1000U) ||
+                    field_scene.dialogue_panel().option_count != 4U) {
+                    std::cerr << "Vid-Phone passage QA: could not reopen the "
+                                 "ordinary terminal for Matrix search\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x02U);
+                tap_qa_controller_button(field_scene, 0x02U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (!field_scene.dialogue_open() ||
+                    !field_scene.field_dialogue_uses_console_layout_for_dump() ||
+                    field_scene.dialogue_panel().option_count != 3U ||
+                    field_scene.dialogue_panel().text_segment_count == 0U ||
+                    field_scene.dialogue_panel().text_segments[0] !=
+                        "Cyberspace") {
+                    std::cerr << "Vid-Phone passage QA: Lua terminal route did "
+                                 "not return to the Cyberspace menu\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x02U);
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto matrix_search = render_qa_field(field_scene);
+                QImage blank_matrix_search(
+                    kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+                blank_matrix_search.fill(Qt::black);
+                const bool matrix_search_saved = save_qa_image(
+                    output, "actual-matrix-search.bmp", matrix_search);
+                if (field_scene.dialogue_open() ||
+                    !field_scene.matrix_search_route_active_for_dump() ||
+                    matrix_search.isNull() ||
+                    matrix_search.size() != QSize(kSceneWidth, kSceneHeight) ||
+                    matrix_search == blank_matrix_search ||
+                    !field_hud_chrome_survives(matrix_search, asset_root) ||
+                    !has_green_ink(matrix_search, QRect(72, 56, 128, 8)) ||
+                    !has_green_ink(matrix_search, QRect(92, 64, 88, 8)) ||
+                    !has_green_ink(matrix_search, QRect(56, 80, 160, 8)) ||
+                    !matrix_search_saved) {
+                    std::cerr << "Vid-Phone passage QA: System Search did not "
+                                 "retain the field console frame and HUD; "
+                                 "dialogue=" << field_scene.dialogue_open()
+                              << " route="
+                              << field_scene.matrix_search_route_active_for_dump()
+                              << " hud=" << field_hud_chrome_survives(
+                                     matrix_search, asset_root)
+                              << '\n';
+                    return 3;
+                }
                 std::cout << "field_vid_phone_passage_qa=passed scene=6 "
                           << "scene9_wallet=1000 goggles=22 "
                           << "inventory_full_preserved=1 "
+                          << "cyberspace_menu=console-layout "
+                          << "matrix_search=console-hud "
                           << "scene9_runner_active="
                           << field_scene.field_entity_active_for_dump()
                           << " scene9_runner_visible="
@@ -16217,6 +24070,150 @@ int main(int argc, char** argv) {
                     *field_jump_house_entry_qa_path,
                     field_audio_events, field_source_boundaries);
             }
+            if (field_big_rhino_entry_qa_path.has_value()) {
+                return run_field_big_rhino_entry_qa(
+                    field_scene, *field_big_rhino_entry_qa_path,
+                    field_source_boundaries);
+            }
+            if (field_icarus_caleb_entry_qa_path.has_value()) {
+                return run_field_icarus_entry_qa(
+                    field_scene, *field_icarus_caleb_entry_qa_path,
+                    field_source_boundaries, true);
+            }
+            if (field_icarus_blocked_entry_qa_path.has_value()) {
+                return run_field_icarus_entry_qa(
+                    field_scene, *field_icarus_blocked_entry_qa_path,
+                    field_source_boundaries, false);
+            }
+            if (field_tarislar_first_entry_qa_path.has_value()) {
+                return run_field_tarislar_first_entry_qa(
+                    field_scene, asset_root,
+                    *field_tarislar_first_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_tarislar_city_inn_qa_path.has_value()) {
+                return run_field_tarislar_city_inn_qa(
+                    field_scene, asset_root,
+                    *field_tarislar_city_inn_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_wylie_gala_inn_qa_path.has_value()) {
+                return run_field_wylie_gala_inn_qa(
+                    field_scene, asset_root,
+                    *field_wylie_gala_inn_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_gates_undersound_qa_path.has_value()) {
+                return run_field_gates_undersound_qa(
+                    field_scene, asset_root,
+                    *field_gates_undersound_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_renraku_offices_qa_path.has_value()) {
+                return run_field_gated_building_entry_qa(
+                    field_scene, asset_root,
+                    *field_renraku_offices_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    FieldGatedBuildingEntryQaSpec{
+                        "Renraku Offices", 5U, 46U, 0x2600U, 0x0D00U,
+                        0x0260U, 0x027FU, 0x00A0U, 0x00BFU, 0x00C6U, 6U,
+                        16U, 12U, 12U, 35U, "activity-35",
+                        "story_flag_bit_16=1,story_flag_bit_12=0,alternate_result=0",
+                        "make it past the foyer",
+                        "Finding out what Renraku knows about this whole mess",
+                        "dialogue.portraits.renraku.offices.entry"});
+            }
+            if (field_fuchi_offices_qa_path.has_value()) {
+                return run_field_gated_building_entry_qa(
+                    field_scene, asset_root,
+                    *field_fuchi_offices_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    FieldGatedBuildingEntryQaSpec{
+                        "Penumbra Fuchi", 3U, 97U, 0x0800U, 0x1700U,
+                        0x0080U, 0x009FU, 0x0140U, 0x015FU, 0x00C2U, 2U,
+                        25U, 14U, 14U, 21U, "activity-21",
+                        "story_flag_bit_25=1,story_flag_bit_14=0,alternate_result=0",
+                        "enter Fuchi just prior to their closing",
+                        "Now to find that cyber-heart",
+                        "dialogue.portraits.fuchi.offices.entry"});
+            }
+            if (field_penumbra_lone_star_qa_path.has_value()) {
+                return run_field_penumbra_lone_star_entry_qa(
+                    field_scene, asset_root,
+                    *field_penumbra_lone_star_qa_path);
+            }
+            if (field_hospital_physical_entry_qa_path.has_value()) {
+                return run_field_hospital_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_hospital_physical_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_medicine_lodge_physical_entry_qa_path.has_value()) {
+                return run_field_medicine_lodge_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_medicine_lodge_physical_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_medicine_lodge_wise_one_physical_entry_qa_path.has_value()) {
+                return run_field_medicine_lodge_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_medicine_lodge_wise_one_physical_entry_qa_path,
+                    field_audio_events, field_source_boundaries, true);
+            }
+            if (field_spirit_eyes_physical_entry_qa_path.has_value()) {
+                return run_field_spirit_eyes_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_spirit_eyes_physical_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_owlfeather_physical_entry_qa_path.has_value()) {
+                return run_field_owlfeather_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_owlfeather_physical_entry_qa_path,
+                    field_source_boundaries,
+                    field_owlfeather_return_followup_qa,
+                    field_owlfeather_search_followup_qa,
+                    field_owlfeather_closed_gate_qa,
+                    field_owlfeather_opening_land_choice_qa,
+                    field_owlfeather_opening_council_choice_qa,
+                    field_owlfeather_ilene_gate_script_qa);
+            }
+            if (field_red_buffalo_physical_entry_qa_path.has_value()) {
+                return run_field_red_buffalo_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_red_buffalo_physical_entry_qa_path,
+                    field_source_boundaries,
+                    field_red_buffalo_no_gift_more_qa);
+            }
+            if (field_vid_phone_physical_entry_qa_path.has_value()) {
+                return run_field_vid_phone_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_vid_phone_physical_entry_qa_path);
+            }
+            if (field_tarislar_repeat_service_qa_path.has_value()) {
+                return run_field_tarislar_repeat_service_qa(
+                    field_scene, asset_root,
+                    *field_tarislar_repeat_service_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_tarislar_guarded_entry_qa_path.has_value()) {
+                return run_field_tarislar_guarded_entry_qa(
+                    field_scene, asset_root,
+                    *field_tarislar_guarded_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_tarislar_tomb_departure_qa_path.has_value()) {
+                return run_field_tarislar_tomb_departure_qa(
+                    field_scene, asset_root,
+                    *field_tarislar_tomb_departure_qa_path,
+                    field_audio_events, field_source_boundaries, true);
+            }
+            if (field_tarislar_tomb_decline_qa_path.has_value()) {
+                return run_field_tarislar_tomb_departure_qa(
+                    field_scene, asset_root,
+                    *field_tarislar_tomb_decline_qa_path,
+                    field_audio_events, field_source_boundaries, false);
+            }
             if (field_stoker_collision_to_dialogue_qa_path.has_value()) {
                 return run_field_stoker_collision_to_dialogue_qa(
                     field_scene, asset_root,
@@ -16234,6 +24231,13 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_scene20_physical_entry_qa_path,
                     field_audio_events, field_source_boundaries);
+            }
+            if (field_scene20_entry_gate_qa_path.has_value()) {
+                return run_field_scene20_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_scene20_entry_gate_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    Scene20PhysicalEntryQaPath::entry_pending_flag);
             }
             if (field_scene20_c0_exit_qa_path.has_value()) {
                 return run_field_scene20_physical_entry_qa(
@@ -16275,6 +24279,26 @@ int main(int argc, char** argv) {
                     *field_scene20_electronics_trials_qa_path,
                     field_audio_events, field_source_boundaries,
                     Scene20PhysicalEntryQaPath::electronics_trials);
+            }
+            if (field_scene2_gang_contract_entry_qa_path.has_value()) {
+                return run_scene2_event9_gang_contract_entry_qa(
+                    field_scene,
+                    *field_scene2_gang_contract_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_scene26_package_recovery_entry_qa_path.has_value()) {
+                return run_field_scene26_event1_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_scene26_package_recovery_entry_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    "package_recovery");
+            }
+            if (field_scene26_johnson_run_entry_qa_path.has_value()) {
+                return run_field_scene26_event1_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_scene26_johnson_run_entry_qa_path,
+                    field_audio_events, field_source_boundaries,
+                    "employee_recruitment");
             }
             if (field_scene26_event1_entry_qa_path.has_value()) {
                 const auto entry_result =
@@ -17068,6 +25092,18 @@ int main(int argc, char** argv) {
                     0) {
                     return 3;
                 }
+                if (run_scene2_jackals_lantern_entry_qa(
+                        smoke_state, asset_root,
+                        *field_movement_qa_path /
+                            "scene2-jackals-lantern-entry") != 0) {
+                    return 3;
+                }
+                if (run_scene19_old_man_contact_qa(
+                        smoke_state, asset_root,
+                        *field_movement_qa_path /
+                            "scene19-old-man-contact") != 0) {
+                    return 3;
+                }
                 if (run_low_code_object_bounds_census_qa(
                         smoke_state, asset_root,
                         *field_movement_qa_path / "object-bounds-census") !=
@@ -17820,6 +25856,13 @@ int main(int argc, char** argv) {
                     !field_scene.command_overview_open()) {
                     std::cerr << "field player action dump: ordinary Start input did not open the command menu\n";
                     return 3;
+                }
+                // The opening Start frame is followed by 26 ROM black
+                // frames. press_field_input() has already advanced the
+                // first countdown frame on key release; finish the remaining
+                // 25 before sending navigation, which the source wait ignores.
+                for (int frame = 0; frame < 25; ++frame) {
+                    field_scene.advance_frame();
                 }
                 for (int move = 0;
                      move < 7 &&
@@ -18688,6 +26731,151 @@ int main(int argc, char** argv) {
                 std::cout << "field_command_reopen=passed\n";
                 return 0;
             }
+            if (field_hospital_menu_dump_variant.has_value() &&
+                field_hospital_menu_dump_path.has_value()) {
+                const bool options_screen =
+                    *field_hospital_menu_dump_variant == "options";
+                const bool leave_confirmation =
+                    *field_hospital_menu_dump_variant ==
+                    "leave-confirmation";
+                const bool medical_attention =
+                    *field_hospital_menu_dump_variant ==
+                    "medical-attention";
+                if (!options_screen && !leave_confirmation &&
+                    !medical_attention) {
+                    std::cerr << "hospital menu dump: unknown variant '"
+                              << *field_hospital_menu_dump_variant << "'\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0U);
+                field_scene.set_source_random_seed_for_dump(0x5A17U);
+                const bool opened = field_scene.open_hospital_menu_for_dump(
+                    options_screen
+                        ? "present_options"
+                        : leave_confirmation
+                              ? "present_leave_confirmation"
+                              : "present_medical_attention");
+                const auto& panel = field_scene.dialogue_panel();
+                const bool content_matches = options_screen
+                    ? panel.option_count == 3U &&
+                          panel.text_segments[0] == " Hospital Options" &&
+                          panel.options[0].source_label == "Medical Attn." &&
+                          panel.options[1].source_label == "Cyberware" &&
+                          panel.options[2].source_label == "Exit" &&
+                          panel.selected_option == 0U
+                    : leave_confirmation
+                          ? panel.option_count == 2U &&
+                          panel.text_segment_count == 2U &&
+                          panel.text_segments[0] == "Do you wish to" &&
+                          panel.text_segments[1] ==
+                              "leave the hospital?" &&
+                          panel.options[0].source_label == "Yes" &&
+                          panel.options[1].source_label == "No" &&
+                          panel.selected_option == 1U
+                    : medical_attention
+                          ? panel.option_count == 4U &&
+                                panel.text_segment_count == 3U &&
+                                panel.text_segments[0] == " Choose level of" &&
+                                panel.text_segments[1] ==
+                                    "medical attention." &&
+                                panel.text_segments[2] == "$1000" &&
+                                panel.options[0].source_label.find("100%") !=
+                                    std::string_view::npos &&
+                                panel.options[0].source_label.find("260") !=
+                                    std::string_view::npos &&
+                                panel.options[1].source_label.find("240") !=
+                                    std::string_view::npos &&
+                                panel.options[2].source_label.find("230") !=
+                                    std::string_view::npos &&
+                                panel.options[3].source_label.find("200") !=
+                                    std::string_view::npos &&
+                                panel.selected_option == 0U
+                          : false;
+                if (!opened || !field_scene.dialogue_open() ||
+                    !field_scene.field_dialogue_uses_hospital_layout_for_dump() ||
+                    (medical_attention &&
+                     !field_scene.field_dialogue_uses_hospital_medical_attention_layout_for_dump()) ||
+                    !content_matches) {
+                    std::cerr << "hospital menu dump: Lua menu, ROM labels, or default selection mismatch"
+                              << " opened=" << opened
+                              << " layout=" <<
+                                     field_scene.field_dialogue_uses_hospital_layout_for_dump()
+                              << " medical_layout="
+                              << field_scene.field_dialogue_uses_hospital_medical_attention_layout_for_dump()
+                              << " title=" <<
+                                     (panel.text_segment_count != 0U
+                                          ? panel.text_segments[0]
+                                          : std::string_view{})
+                              << " rows=" << panel.option_count
+                              << " selection=" << panel.selected_option
+                              << " boundary=" << panel.source_boundary_reason
+                              << "\n";
+                    return 3;
+                }
+                if (options_screen) {
+                    tap_qa_controller_button(field_scene, 0x80U);
+                    if (!field_scene.dialogue_open() ||
+                        panel.selected_option != 0U) {
+                        std::cerr << "hospital menu dump: Start left Hospital Options despite the ROM wait path\n";
+                        return 3;
+                    }
+                    tap_qa_controller_button(field_scene, 0x02U);
+                    if (panel.selected_option != 1U) {
+                        std::cerr << "hospital menu dump: Down did not select Cyberware before the field action\n";
+                        return 3;
+                    }
+                    tap_qa_controller_button(field_scene, 0x10U);
+                    if (!field_scene.dialogue_open() ||
+                        !field_scene.field_dialogue_uses_hospital_layout_for_dump() ||
+                        panel.selected_option != 1U) {
+                        std::cerr << "hospital menu dump: B did not run the field action and return to the same cursor row\n";
+                        return 3;
+                    }
+                    QImage runner_action_scene(
+                        kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+                    runner_action_scene.fill(Qt::black);
+                    QPainter runner_action_painter(&runner_action_scene);
+                    field_scene.paint(runner_action_painter);
+                    runner_action_painter.end();
+                    const auto runner_action_path =
+                        field_hospital_menu_dump_path->parent_path() /
+                        "runner-action-return.bmp";
+                    if (!runner_action_scene.save(QString::fromStdWString(
+                            runner_action_path.wstring()))) {
+                        std::cerr << "hospital menu dump: could not write runner-action-return.bmp\n";
+                        return 3;
+                    }
+                    tap_qa_controller_button(field_scene, 0x01U);
+                    if (panel.selected_option != 0U) {
+                        std::cerr << "hospital menu dump: Up did not restore the default option after the runner action\n";
+                        return 3;
+                    }
+                }
+                for (std::size_t frame = 0U; frame < 30U; ++frame) {
+                    field_scene.advance_frame();
+                }
+                QImage hospital_scene(kSceneWidth, kSceneHeight,
+                                      QImage::Format_RGB32);
+                hospital_scene.fill(Qt::black);
+                QPainter hospital_painter(&hospital_scene);
+                field_scene.paint(hospital_painter);
+                hospital_painter.end();
+                if (field_hospital_menu_dump_path->has_parent_path()) {
+                    std::filesystem::create_directories(
+                        field_hospital_menu_dump_path->parent_path());
+                }
+                if (!hospital_scene.save(QString::fromStdWString(
+                        field_hospital_menu_dump_path->wstring()))) {
+                    std::cerr << "hospital menu dump: could not write "
+                              << field_hospital_menu_dump_path->string()
+                              << '\n';
+                    return 3;
+                }
+                std::cout << "hospital_menu_dump=written variant="
+                          << *field_hospital_menu_dump_variant << " path="
+                          << field_hospital_menu_dump_path->string() << '\n';
+                return 0;
+            }
             if (field_dialogue_dump_prompt.has_value() &&
                 field_dialogue_dump_path.has_value()) {
                 const bool arrival_result =
@@ -19324,6 +27512,20 @@ int main(int argc, char** argv) {
                 QImage black_reference(kSceneWidth, kSceneHeight,
                                        QImage::Format_RGB32);
                 black_reference.fill(Qt::black);
+                const auto same_pixels = [](const QImage& left,
+                                             const QImage& right) {
+                    if (left.size() != right.size()) {
+                        return false;
+                    }
+                    for (int y = 0; y < left.height(); ++y) {
+                        for (int x = 0; x < left.width(); ++x) {
+                            if (left.pixel(x, y) != right.pixel(x, y)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
                 // 0x10952 clears Planes A/B and the SAT only; the window
                 // plane keeps the field HUD column [C: emulator].
                 if (!image_region_differs(status, black_reference,
@@ -19733,6 +27935,74 @@ int main(int argc, char** argv) {
                 }
                 mark_route("hotel-checkout-returned-to-field",
                            "B on Yes; 30 idle frames");
+                if (field_scene.field_runtime_state_for_dump()
+                        .display_service_word != 0U) {
+                    std::cerr << "field Hotel QA: checkout left the Start-menu display-service gate set\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0x80U);
+                advance_field_frame();
+                field_scene.set_controller_port_byte(0U);
+                if (!field_scene.command_overview_open()) {
+                    std::cerr << "field Hotel QA: Start did not open the command overview after checkout\n";
+                    return 3;
+                }
+                auto command_black = capture(
+                    output / "checkout-start-black" / "frame-01.bmp");
+                if (command_black.isNull() ||
+                    !same_pixels(command_black, black_reference)) {
+                    std::cerr << "field Hotel QA: the first command-overview load frame was not black\n";
+                    return 3;
+                }
+                for (std::uint32_t frame = 2U; frame <= 27U; ++frame) {
+                    advance_field_frame();
+                    auto frame_name = std::to_string(frame);
+                    if (frame_name.size() < 2U) {
+                        frame_name.insert(0U, 2U - frame_name.size(), '0');
+                    }
+                    command_black = capture(
+                        output / "checkout-start-black" /
+                        ("frame-" + frame_name + ".bmp"));
+                    if (command_black.isNull() ||
+                        !same_pixels(command_black, black_reference)) {
+                        std::cerr << "field Hotel QA: command-overview load frame "
+                                  << frame << " was not black\n";
+                        return 3;
+                    }
+                }
+                advance_field_frame();
+                const auto checkout_command_overview = capture(
+                    output / "checkout-start-command-overview" /
+                    "actual.bmp");
+                if (checkout_command_overview.isNull() ||
+                    !image_region_differs(checkout_command_overview,
+                                          black_reference, 0, 0, 320, 224)) {
+                    std::cerr << "field Hotel QA: command overview did not appear after 27 black frames\n";
+                    return 3;
+                }
+                mark_route("command-overview-after-checkout",
+                           "Start; 27 black frames");
+                press_button(0x80U);
+                const auto checkout_start_return = capture(
+                    output / "checkout-start-return" / "actual.bmp");
+                QImage checkout_start_field_only(
+                    kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+                checkout_start_field_only.fill(Qt::black);
+                QPainter checkout_start_field_painter(
+                    &checkout_start_field_only);
+                field_scene.paint_field_scene_for_dump(
+                    checkout_start_field_painter);
+                checkout_start_field_painter.end();
+                if (field_scene.command_overview_open() ||
+                    field_scene.field_runtime_state_for_dump()
+                            .display_service_word != 0U ||
+                    checkout_start_return.isNull() ||
+                    !same_pixels(checkout_start_return,
+                                 checkout_start_field_only)) {
+                    std::cerr << "field Hotel QA: the post-checkout Start menu did not close cleanly or release its display-service gate\n";
+                    return 3;
+                }
+                mark_route("command-overview-returned-to-field", "Start");
                 route.close();
                 if (sequence_capture_failed) {
                     std::cerr << "field Hotel QA: one or more sequential full-screen frames could not be written\n";
