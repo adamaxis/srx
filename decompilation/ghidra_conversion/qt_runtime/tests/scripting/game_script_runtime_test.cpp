@@ -9153,8 +9153,12 @@ int main() {
     }
     wylie_task = scripts.complete_native_operation(true);
     if (!expect(wylie_task.status == ScriptTaskStep::Status::completed &&
-                    wylie_task.result_id ==
-                        std::optional<std::string>{"hotel-options"},
+                    wylie_task.dialogue_outcome.has_value() &&
+                    wylie_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::open_service &&
+                    wylie_task.dialogue_outcome->destination_id ==
+                        "hotel.options" &&
+                    wylie_task.dialogue_outcome->return_policy == "origin",
                 "Wylie's paid stay did not transfer to the Hotel Options screen")) {
         std::cerr << scripts.failure() << '\n';
         return 19;
@@ -9192,8 +9196,12 @@ int main() {
     }
     wylie_task = scripts.complete_native_operation(true);
     if (!expect(wylie_task.status == ScriptTaskStep::Status::completed &&
-                    wylie_task.result_id ==
-                        std::optional<std::string>{"hotel-options"},
+                    wylie_task.dialogue_outcome.has_value() &&
+                    wylie_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::open_service &&
+                    wylie_task.dialogue_outcome->destination_id ==
+                        "hotel.options" &&
+                    wylie_task.dialogue_outcome->return_policy == "origin",
                 "Wylie's free stay did not transfer to the Hotel Options screen")) {
         std::cerr << scripts.failure() << '\n';
         return 19;
@@ -9211,8 +9219,12 @@ int main() {
     }
     wylie_task = scripts.complete_native_menu_choice("crash");
     if (!expect(wylie_task.status == ScriptTaskStep::Status::completed &&
-                    wylie_task.result_id == std::optional<std::string>{
-                        "wylie_feature_state_unavailable"},
+                    wylie_task.dialogue_outcome.has_value() &&
+                    wylie_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::source_boundary &&
+                    wylie_task.dialogue_outcome->reason.find(
+                        "story.runner_feature_flag_bit_2") !=
+                        std::string::npos,
                 "Wylie's Inn guessed an unresolved restored runner-status bit")) {
         std::cerr << scripts.failure() << '\n';
         return 19;

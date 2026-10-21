@@ -3561,15 +3561,32 @@ struct GameScriptRuntime::Impl {
 
         std::string menu_id;
         std::string text_key;
+        std::string speaker_id = self->location_speaker_id;
+        std::string text_profile = self->location_text_profile;
         ScriptMenuDefinition menu{};
+        if (lua_gettop(lua) >= 4 &&
+            (!read_string_allow_empty(lua, 4, speaker_id) ||
+             (!speaker_id.empty() && !valid_identifier(speaker_id)))) {
+            self->bridge_failure =
+                "game.ui.prompt_text_key optional speaker id must be an identifier";
+            lua_pushnil(lua);
+            return 1;
+        }
+        if (lua_gettop(lua) >= 5 &&
+            (!read_string(lua, 5, text_profile) ||
+             !valid_identifier(text_profile))) {
+            self->bridge_failure =
+                "game.ui.prompt_text_key optional text profile must be an identifier";
+            lua_pushnil(lua);
+            return 1;
+        }
         if (!read_string(lua, 1, menu_id) ||
             !valid_identifier(menu_id) ||
             !read_string(lua, 2, text_key) ||
             !valid_identifier(text_key) ||
-            !valid_identifier(self->location_text_profile) ||
-            !parse_menu_choices(lua, 3, menu_id,
-                                self->location_text_profile,
-                                self->location_speaker_id, menu,
+            !valid_identifier(text_profile) ||
+            !parse_menu_choices(lua, 3, menu_id, text_profile,
+                                speaker_id, menu,
                                 kMaximumMenuChoices)) {
             self->bridge_failure =
                 "game.ui.prompt_text_key expects a menu name, ROM text key, and unique stable choice ids in a profiled speaker location";

@@ -156,6 +156,19 @@ local function validate_graph(graph_id, graph, conditions)
                    is_array(node.choices) and #node.choices > 0 and
                    #node.choices <= MAX_CHOICES,
                 owner .. " has an invalid choice input contract")
+            if node.promptTextKey ~= nil then
+                assert(is_identifier(node.promptTextKey) and
+                       node.inputContract ~= "cursor_list",
+                    owner .. " has an invalid inline prompt text key")
+            end
+            if node.speakerId ~= nil then
+                assert(is_identifier(node.speakerId),
+                    owner .. " has an invalid speaker")
+            end
+            if node.textProfile ~= nil then
+                assert(is_identifier(node.textProfile),
+                    owner .. " has an invalid text profile")
+            end
             if node.inputContract == "buttons_abc" then
                 assert(#node.choices <= 3,
                     owner .. " exceeds the A/B/C choice limit")
@@ -488,6 +501,11 @@ function DialogueGraph.run(graph_id, registered_actions)
             if node.inputContract == "cursor_list" then
                 return game.ui.cursor_menu(
                     node.menuId, choice_ids, selected_index,
+                    speaker_id, text_profile)
+            end
+            if node.promptTextKey ~= nil then
+                return game.ui.prompt_text_key(
+                    node.menuId, node.promptTextKey, choice_ids,
                     speaker_id, text_profile)
             end
             return game.ui.menu(

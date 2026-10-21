@@ -64,6 +64,47 @@
         "romAddresses": ["0x53B16", "0x53A78"],
         "scope": "indexed_title_service_gate"
       }
+    },
+    "wylie_gala_inn.room_service_context": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "building" },
+          { "fact": "location.id", "op": "eq", "value": "penumbra_site_09_wylies_gala_inn" },
+          { "fact": "field.mode", "op": "eq", "value": 3 },
+          { "fact": "field.event_code", "op": "eq", "value": 1 }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x1F77C", "0x18ABB4"],
+        "scope": "field_exit_service_context"
+      }
+    },
+    "wylie_gala_inn.package_delivery_complete": {
+      "expression": {
+        "fact": "field.alternate_result", "op": "gt", "value": 0
+      },
+      "provenance": {
+        "romAddresses": ["0x1F77C", "0xF49E0"],
+        "scope": "positive_signed_run_result"
+      }
+    },
+    "wylie_gala_inn.package_delivery_pending": {
+      "expression": {
+        "fact": "field.alternate_result", "op": "lt", "value": 0
+      },
+      "provenance": {
+        "romAddresses": ["0x1F77C", "0xF4A50"],
+        "scope": "negative_signed_run_result"
+      }
+    },
+    "wylie_gala_inn.free_stay_available": {
+      "expression": {
+        "fact": "story.runner_feature_flag_bit_2", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0x249FA", "0x114EF5"],
+        "scope": "runner_feature_flag_bit_2"
+      }
     }
   }
 }

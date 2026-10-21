@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "wylie_gala_inn.room_service": {
+      "entryNode": "run_result",
+      "precondition": "wylie_gala_inn.room_service_context",
+      "speakerId": "wylie_gala_inn_narrator",
+      "textProfile": "penumbra.wylies_gala_inn",
+      "provenance": {
+        "romAddresses": [
+          "0x1F77C", "0xF4A18", "0xF49E0", "0xF4A50",
+          "0x249FA", "0x114EF5", "0x114E66", "0x21458", "0x1F816"
+        ],
+        "scope": "signed_package_branches_and_room_service"
+      },
+      "nodes": {
+        "run_result": {
+          "type": "branch",
+          "cases": [
+            {
+              "when": "wylie_gala_inn.package_delivery_complete",
+              "next": "package_after"
+            },
+            {
+              "when": "wylie_gala_inn.package_delivery_pending",
+              "next": "package_before"
+            }
+          ],
+          "fallback": "inn_service"
+        },
+        "package_after": {
+          "type": "page",
+          "eventId": "package_after",
+          "next": "stay_on_map"
+        },
+        "package_before": {
+          "type": "page",
+          "eventId": "package_before",
+          "next": "stay_on_map"
+        },
+        "inn_service": {
+          "type": "choice",
+          "menuId": "inn_service",
+          "promptTextKey": "wylie.gala_inn.entry",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "crash", "next": "free_stay_gate" },
+            { "id": "leave", "next": "stay_on_map" }
+          ]
+        },
+        "free_stay_gate": {
+          "type": "branch",
+          "cases": [
+            {
+              "when": "wylie_gala_inn.free_stay_available",
+              "next": "free_stay"
+            }
+          ],
+          "fallback": "room_payment"
+        },
+        "free_stay": {
+          "type": "page",
+          "eventId": "free_stay",
+          "next": "hotel_options"
+        },
+        "room_payment": {
+          "type": "choice",
+          "menuId": "room_payment",
+          "promptTextKey": "wylie.gala_inn.room",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "pay", "next": "charge_room" },
+            { "id": "leave", "next": "stay_on_map" }
+          ]
+        },
+        "charge_room": {
+          "type": "action",
+          "actionId": "building.charge_amount",
+          "arguments": { "amount": 50 },
+          "results": {
+            "paid": "room_paid",
+            "insufficient": "room_insufficient",
+            "service_unavailable": "payment_boundary"
+          },
+          "evidence": "ROM command 0x06 charges active price FFF10D; Wylie's selector sets it to 50 before this prompt."
+        },
+        "room_paid": {
+          "type": "page",
+          "eventId": "room_paid",
+          "next": "hotel_options"
+        },
+        "room_insufficient": {
+          "type": "page",
+          "eventId": "room_insufficient",
+          "next": "stay_on_map"
+        },
+        "payment_boundary": {
+          "type": "source_boundary",
+          "reason": "ROM payment command 0x06 did not return a recognized wallet result."
+        },
+        "hotel_options": {
+          "type": "terminal",
+          "outcome": {
+            "type": "open_service",
+            "serviceId": "hotel.options",
+            "returnPolicy": "origin"
+          }
+        },
+        "stay_on_map": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
+    }
+  }
+}

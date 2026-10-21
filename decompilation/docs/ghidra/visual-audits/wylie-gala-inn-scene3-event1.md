@@ -17,9 +17,28 @@ after a successful payment or free stay. The signed run-result branches select
 the package text roots at `0xF49E0` and `0xF4A50`.
 
 The link profile is `gameplay/world/entities/penumbra_site_09_wylies_gala_inn/links.tsv`.
-`wylie_gala_inn.lua` owns the prompt choices and results; the generic typed
-building service performs the wallet transaction, and the existing Hotel
-runtime presents status and options.
+`conversations/wylie_gala_inn.json` owns the pages, inline prompts, condition
+branches, payment edge, and typed outcome. The location's Lua module only
+starts that graph. The generic typed building service performs the wallet
+transaction, and the existing Hotel runtime presents status and options.
+
+## Branch inventory
+
+| Source state/input | Result |
+| --- | --- |
+| Signed run result greater than zero | Show the completed-package page, then continue on the same map. |
+| Signed run result less than zero | Show the pending-package page, then continue on the same map. |
+| Signed run result equals zero; choose Leave | Continue on the same map without opening a service. |
+| Signed run result equals zero; choose Crash; `FF018F` bit 2 set | Show the free-stay page, then open Hotel Options with `origin` return policy. |
+| Choose Crash; bit 2 clear; choose Leave at the room prompt | Continue on the same map without charging. |
+| Choose Crash; bit 2 clear; choose Pay; wallet charge succeeds | Charge 50 nuyen, show shared paid-stay text, then open Hotel Options with `origin` return policy. |
+| Choose Crash; bit 2 clear; choose Pay; funds are insufficient | Show shared insufficient-funds text, then continue on the same map. |
+| Required signed result or runner status bit is absent | Return an explicit source boundary; do not assume zero or false. |
+| The typed wallet service returns an unrecognized result | Return an explicit source boundary. |
+
+The opening and room prompts are each rendered inline with their choices, as
+the ROM does; the JSON graph does not split either prompt into a separate text
+page and menu.
 
 ## Runtime evidence
 
@@ -33,15 +52,18 @@ page. The images are full 320x224 captures:
 - Release: `build/conversion/qt/release/qt_runtime/field-wylie-gala-inn-qa/`
 - Debug: `build/conversion/qt/debug/qt_runtime/field-wylie-gala-inn-qa/`
 
-The Lua suite also checks Leave, insufficient funds, free stay from runner
-status bit 2, unknown restored status, and both signed run-result text branches.
-The paid physical route and the shared Hotel menu are internal runtime
-regression evidence. No matching independent Genesis capture of this inn
-interaction has been identified, so the visual hill remains partial.
+Lua graph tests cover both signed run-result pages, a missing run result,
+zero-result entry, Leave at both prompts, paid and insufficient wallet results,
+free stay, missing runner status, an unrecognized wallet result, and an
+invalid location/mode precondition. C++ runtime tests check the typed hotel
+outcome and source-boundary values. The paid physical route and shared Hotel
+menu are internal runtime regression evidence. No matching independent
+Genesis capture of this inn interaction has been identified, so the visual
+hill remains partial.
 
 ## Open coverage
 
 The other scene-3 building services and their story/run-gated branches remain
-separate routes. This QA does not establish that all buildings have complete
-entry transitions, nor does it cover every wallet, restored-save, or run-result
-state through physical Qt input.
+separate routes. Physical Qt input currently covers the paid path; the other
+permutations are graph/runtime tests, not physical-input captures. This QA does
+not establish that all buildings have complete entry transitions.

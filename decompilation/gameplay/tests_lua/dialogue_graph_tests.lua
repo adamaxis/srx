@@ -81,6 +81,18 @@ local document = {
             second_result = { type = "terminal",
                               outcome = { type = "resume_source_route" } },
         }),
+        ["test.inline_prompt"] = graph("prompt", {
+            prompt = {
+                type = "choice", menuId = "test_inline_menu",
+                promptTextKey = "test.inline_prompt.text",
+                speakerId = "inline_prompt_speaker",
+                textProfile = "test.inline_prompt_profile",
+                inputContract = "buttons_abc",
+                choices = { { id = "take_room", next = "done" } },
+            },
+            done = { type = "terminal",
+                     outcome = { type = "continue_in_place" } },
+        }),
         ["test.cursor"] = graph("menu", {
             menu = {
                 type = "choice", menuId = "test_cursor",
@@ -188,6 +200,41 @@ assert(outcome.type == "play_cinematic" and
        presented_pages[#presented_pages].event_id == "page_one" and
        presented_pages[#presented_pages].speaker_id == "test_speaker")
 
+local previous_game = game
+local inline_prompt_call
+game = {
+    content = {
+        conversations = { graph_tests = document },
+        conditions = condition_document,
+    },
+    field = {},
+    state = {},
+    ui = {
+        prompt_text_key = function(menu_id, text_key, choice_ids,
+                                   speaker_id, text_profile)
+            inline_prompt_call = {
+                menu_id = menu_id,
+                text_key = text_key,
+                choices = choice_ids,
+                speaker_id = speaker_id,
+                text_profile = text_profile,
+            }
+            return "take_room"
+        end,
+        menu = function()
+            error("inline prompt incorrectly used the catalog-title menu")
+        end,
+    },
+}
+outcome = DialogueGraph.run("test.inline_prompt")
+assert(outcome.type == "continue_in_place" and
+       inline_prompt_call.menu_id == "test_inline_menu" and
+       inline_prompt_call.text_key == "test.inline_prompt.text" and
+       inline_prompt_call.choices[1] == "take_room" and
+       inline_prompt_call.speaker_id == "inline_prompt_speaker" and
+       inline_prompt_call.text_profile == "test.inline_prompt_profile")
+game = previous_game
+
 outcome = session:run("test.unknown")
 assert(outcome.type == "source_boundary" and
        outcome.reason:match("story.not_loaded") ~= nil)
@@ -212,6 +259,22 @@ invalid = pcall(function()
             done = { type = "terminal",
                      outcome = { type = "continue_in_place",
                                  resultId = "legacy-result" } },
+        }),
+    } }, condition_document)
+end)
+assert(not invalid)
+
+invalid = pcall(function()
+    DialogueGraph.Catalog.new({ schemaVersion = 1, graphs = {
+        broken = graph("prompt", {
+            prompt = {
+                type = "choice", menuId = "inline_cursor",
+                promptTextKey = "test.inline_prompt.text",
+                inputContract = "cursor_list", cancelNext = "done",
+                choices = { { id = "take_room", next = "done" } },
+            },
+            done = { type = "terminal",
+                     outcome = { type = "continue_in_place" } },
         }),
     } }, condition_document)
 end)

@@ -4,11 +4,11 @@ Status: design, source inventory, and staged implementation. The generated
 text catalog, speaker/menu/contact catalogs, and location condition catalog
 are JSON-backed. All 87 current entity link rows reference named JSON
 conditions where needed. The Lua graph engine and typed outcome bridge now
-drive Gates Undersound's same-map service plus the Renraku and Fuchi gated
-entry pages, plus the Tarislar City Inn paid-stay graph. The field host now
-dispatches the `hotel.options` and `hospital.options` service IDs. Remaining
-conversation routes and other service outcome dispatchers are pending; this
-does not claim every listed route is implemented or visually verified.
+drive Gates Undersound's same-map service, the Renraku and Fuchi gated entry
+pages, Tarislar City Inn, and Wylie's Gala Inn. The field host dispatches the
+`hotel.options` and `hospital.options` service IDs. Remaining conversation
+routes and other service outcome dispatchers are pending; this does not claim
+every listed route is implemented or visually verified.
 
 ## Design goals
 
@@ -232,7 +232,9 @@ nodes, and ROM provenance. Nodes are limited to reusable forms:
 - `page`: text key, optional portrait/speaker override, continuation input,
   and next node.
 - `choice`: ordered choices with stable IDs, label keys, optional `when`,
-  input contract (`buttons_abc`, `cursor_list`, or `yes_no`), and edges.
+  input contract (`buttons_abc`, `cursor_list`, or `yes_no`), and edges. A
+  choice may name `promptTextKey` when the ROM presents its text and choices
+  together in one inline prompt; ordinary choices use their catalog title.
 - `branch`: ordered condition cases and a required explicit fallback.
 - `action`: ordered registered Lua effects or a yielded typed host service.
 - `terminal`: exactly one typed outcome after all ordered effects complete.
@@ -353,7 +355,7 @@ named `hotel.options`/`hospital.options` service screens. Return, activity,
 other service-screen, and cinematic outcomes still stop at an explicit host
 boundary until their coordinators are source-traced and connected.
 
-Three source-backed graphs exercise that contract:
+Five source-backed graphs exercise that contract:
 
 - Gates Undersound trigger 15 performs the ordered trigger/page/effect-flag/
   trigger-tail operations and returns `continue_in_place`, suppressing event
@@ -375,13 +377,21 @@ Three source-backed graphs exercise that contract:
   FieldScene QA separately checks physical entry/Leave and exercises the
   production hotel dispatcher through a controlled typed-outcome seam, so it
   does not claim one end-to-end paid field transaction.
+- Wylie's Gala Inn service 1 is a JSON graph with its signed run-result pages,
+  inline entry and room prompts, runner-status free-stay gate, 50-nuyen wallet
+  action, and paid/insufficient branches. Successful paid or free paths return
+  typed `open_service hotel.options` with `origin`; same-map choices return
+  `continue_in_place`. Debug/Release tests cover each graph permutation, and
+  physical QA walks to the inn and completes the paid path through Hotel
+  Options. Independent Genesis visuals remain unavailable.
 
 The Lua graph tests cover branch fallback, unknown-condition boundaries,
 condition-filtered choices, cursor input, registered action result edges,
-pages, and every declared successful outcome shape. The C++ runtime test
-advances all three real JSON graphs through their page yield and checks their
-typed outcomes and ordered story effects. Debug and Release CTests also
-exercise them through the field dialogue presenter. Full physical route QA and
+pages, inline prompt text, and every declared successful outcome shape. The
+C++ runtime test advances all five real JSON graphs through their presenter
+and service yields and checks typed outcomes and ordered story effects. Debug
+and Release CTests also exercise them through the field dialogue presenter.
+Full physical route QA and
 independent Genesis comparison remain separate evidence; the reviewed
 longplay shows shared panel/menu examples but no matching Gates departure or
-Renraku/Fuchi first-entry sequence.
+Renraku/Fuchi first-entry sequence or Wylie's Gala Inn interaction.
