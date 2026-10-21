@@ -785,6 +785,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene25_matrix_ent
                  --field-scene25-matrix-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene25-matrix-entry-qa")
 
+# Start from the Scene-28 descriptor checkpoint and cross its event-31 record
+# 135 from the adjacent cell to verify the Lua-seeded Matrix target.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene28_matrix_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene28-matrix-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene28-matrix-entry-qa")
+
 # Enter the 21/22/23/24 group from scene 25, follow source selector handoffs
 # through each member-scene event-29 trigger, then test scene 22's event-31
 # Matrix route from its adjacent cell.
