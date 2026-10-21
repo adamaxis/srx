@@ -302,6 +302,9 @@ public:
     std::optional<FieldWorldActorSlot>
     world_activity_script_actor_record_slot_for_dump(
         std::uint16_t source_order) const noexcept;
+    std::optional<std::uint8_t>
+    world_activity_script_actor_behavior_flags_for_dump(
+        std::uint16_t source_order) const noexcept;
     std::size_t visible_default_actor_count_for_dump() const;
     std::vector<SceneRunnerPosition>
     active_default_actor_positions_for_dump() const;
@@ -1439,6 +1442,8 @@ private:
         const ConversionAssetCatalog& catalog);
     void initialize_default_field_actors(std::uint16_t scene_reference);
     void advance_default_field_actors();
+    void resolve_default_actor_proximity(
+        DefaultFieldActorPresentation& actor);
     void publish_pending_world_activity_script_actors(
         std::uint16_t scene_reference);
     void service_dynamic_actor_weapon_action(

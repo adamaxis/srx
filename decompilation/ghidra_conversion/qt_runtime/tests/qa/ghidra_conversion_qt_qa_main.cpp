@@ -5971,8 +5971,169 @@ int run_field_scene20_physical_entry_qa(
                       << ")\n";
             return 3;
         }
+        const auto actor_activity_flags =
+            field_scene.world_activity_script_actor_behavior_flags_for_dump(
+                0U);
+        const auto player_flags =
+            field_scene.field_entity_behavior_flags_for_dump();
+        const auto karma_before_records =
+            field_scene.field_party_records_for_dump();
+        std::array<std::uint8_t, 3> karma_before{};
+        for (std::size_t slot = 0U; slot < karma_before.size(); ++slot) {
+            karma_before[slot] = karma_before_records[slot].auxiliary[2U];
+        }
+        if (!actor_activity_flags.has_value() ||
+            (*actor_activity_flags & 0x80U) != 0U ||
+            (player_flags & 0x02U) == 0U ||
+            (field_scene.field_world_fact_flags_for_dump() &
+             (std::uint32_t{1U} << 19U)) != 0U) {
+            std::cerr << "Scene-20 Ilene QA: initial contact facts do not "
+                         "match the ROM actor and runner records\n";
+            return 3;
+        }
+
+        // The pair uses the ROM's ordinary +/-0x40 axis window. A runner one
+        // full 0x100-unit step away must leave the pending handoff untouched.
+        field_scene.set_controller_port_byte(0U);
+        field_scene.set_field_entity_world_position_for_dump(
+            static_cast<std::uint16_t>(actor_position->x + 0x0100U),
+            actor_position->y);
+        field_scene.advance_frame();
+        const auto far_records = field_scene.field_party_records_for_dump();
+        const auto far_actor_flags =
+            field_scene.world_activity_script_actor_behavior_flags_for_dump(
+                0U);
+        const bool far_karma_unchanged =
+            std::equal(karma_before.begin(), karma_before.end(),
+                       far_records.begin(),
+                       [](const std::uint8_t before,
+                          const RunnerRecordFields& after) {
+                           return before == after.auxiliary[2U];
+                       });
+        if (field_scene.dialogue_open() ||
+            !field_scene.pending_world_effect_for_dump() ||
+            !far_actor_flags.has_value() ||
+            (*far_actor_flags & 0x80U) != 0U || !far_karma_unchanged ||
+            (field_scene.field_world_fact_flags_for_dump() &
+             (std::uint32_t{1U} << 19U)) != 0U) {
+            std::cerr << "Scene-20 Ilene QA: a distant runner consumed "
+                         "FFE182 or applied the contact reward\n";
+            return 3;
+        }
+        write_state("ilene-out-of-range");
+
+        // Contact Ilene through the same actor-pair window, then validate the
+        // Lua task's dialogue and its ROM 0x54402 story/reward writes.
+        field_scene.set_field_entity_world_position_for_dump(
+            actor_position->x, actor_position->y);
+        for (std::uint16_t attempt = 0U;
+             attempt < 120U && !field_scene.dialogue_open(); ++attempt) {
+            field_scene.advance_frame();
+            ++frame;
+        }
+        const auto panel = field_scene.dialogue_panel();
+        const auto contact_records = field_scene.field_party_records_for_dump();
+        const auto contact_actor_flags =
+            field_scene.world_activity_script_actor_behavior_flags_for_dump(
+                0U);
+        const std::array<std::string_view, 5> expected_rows{{
+            "Ilene gracefully leaps into a cat-like fighting stance as you enter.",
+            "",
+            "You briefly explain your involvement with the Sinsearach and your purpose for being here.",
+            "",
+            "She smiles and reaches under her cot, pulling out a crude, but workable homemade pistol.",
+        }};
+        const bool dialogue_matches =
+            panel.open && panel.text_segment_count == expected_rows.size() &&
+            std::equal(expected_rows.begin(), expected_rows.end(),
+                       panel.text_segments.begin());
+        const bool karma_matches = std::equal(
+            karma_before.begin(), karma_before.end(), contact_records.begin(),
+            [](const std::uint8_t before, const RunnerRecordFields& after) {
+                return static_cast<std::uint8_t>(before + 2U) ==
+                       after.auxiliary[2U];
+            });
+        constexpr auto kFieldModeBit31 = std::uint32_t{1U} << 31U;
+        constexpr auto kFieldModeEffectBit0 = std::uint32_t{1U} << 0U;
+        constexpr auto kFieldModeEffectBit1 = std::uint32_t{1U} << 1U;
+        constexpr auto kAuxiliaryBit12 = std::uint32_t{1U} << 12U;
+        constexpr auto kAuxiliaryBit13 = std::uint32_t{1U} << 13U;
+        if (!field_scene.dialogue_open() || !dialogue_matches ||
+            field_scene.pending_world_effect_for_dump() ||
+            !contact_actor_flags.has_value() ||
+            (*contact_actor_flags & 0x80U) == 0U || !karma_matches ||
+            (field_scene.field_world_fact_flags_for_dump() &
+             (std::uint32_t{1U} << 19U)) == 0U ||
+            (field_scene.field_mode_flags_for_dump() & kFieldModeBit31) != 0U ||
+            (field_scene.field_mode_effect_flags_for_dump() &
+             kFieldModeEffectBit0) != 0U ||
+            (field_scene.field_mode_effect_flags_for_dump() &
+             kFieldModeEffectBit1) == 0U ||
+            (field_scene.field_auxiliary_flags_for_dump() &
+             (kAuxiliaryBit12 | kAuxiliaryBit13)) != 0U ||
+            !save_image("ilene-contact", render())) {
+            std::cerr << "Scene-20 Ilene QA: source contact did not launch "
+                         "the expected Lua dialogue and state transition "
+                      << "(dialogue=" << field_scene.dialogue_open()
+                      << ", pages=" << panel.text_segment_count
+                      << ", pending="
+                      << field_scene.pending_world_effect_for_dump()
+                      << ", actor_flags="
+                      << (contact_actor_flags.has_value()
+                              ? static_cast<unsigned>(*contact_actor_flags)
+                              : 256U)
+                      << ", karma=" << karma_matches
+                      << ", story="
+                      << ((field_scene.field_world_fact_flags_for_dump() &
+                           (std::uint32_t{1U} << 19U)) != 0U)
+                      << ", boundaries="
+                      << std::count(source_boundaries.begin(),
+                                    source_boundaries.end(),
+                                    std::string(
+                                        "field.entities.resolve_proximity"))
+                      << ")\n";
+            return 3;
+        }
+        write_state("ilene-contact");
+
+        for (std::uint8_t wait = 0U;
+             wait < 120U && field_scene.dialogue_input_locked(); ++wait) {
+            field_scene.advance_frame();
+            ++frame;
+        }
+        field_scene.set_controller_port_byte(0x40U); // ordinary A dismisses
+        field_scene.advance_frame();
+        ++frame;
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        const auto after_close_records =
+            field_scene.field_party_records_for_dump();
+        const auto after_close_actor_flags =
+            field_scene.world_activity_script_actor_behavior_flags_for_dump(
+                0U);
+        const bool karma_applied_once = std::equal(
+            karma_before.begin(), karma_before.end(),
+            after_close_records.begin(),
+            [](const std::uint8_t before, const RunnerRecordFields& after) {
+                return static_cast<std::uint8_t>(before + 2U) ==
+                       after.auxiliary[2U];
+            });
+        if (field_scene.dialogue_open() || !karma_applied_once ||
+            !after_close_actor_flags.has_value() ||
+            (*after_close_actor_flags & 0x80U) == 0U ||
+            (std::count(source_boundaries.begin(), source_boundaries.end(),
+                        std::string(
+                            "field.world_activity.ilene_contact_opened")) !=
+             1)) {
+            std::cerr << "Scene-20 Ilene QA: dialogue close repeated the "
+                         "activity or failed to retain its one-shot actor bit\n";
+            return 3;
+        }
         std::cout << "field_scene20_ilene_prerequisite_qa=passed "
                   << "scene=20 service=19 marker=FFE182 "
+                  << "contact=ROM_pair_window activity=0x54402 "
+                  << "karma_delta=2 text_rows=5 one_shot=+0xB0.bit7 "
                   << "preparations=" << route_preparations
                   << " pending_list=0xA8CC actor_slot=3 default_first_slot=4"
                   << " artifacts=" << output.string() << '\n';

@@ -14,6 +14,8 @@ struct EntityProximityRecord {
     std::uint16_t y = 0;                    // source record +0x04
     std::uint8_t entity_flags = 0;          // source record +0x10
     std::uint8_t collision_flags = 0;       // source record +0x11
+    std::uint8_t special_flags = 0;          // source record +0x9E
+    std::uint8_t activity_flags = 0;         // source record +0xB0
     std::uint16_t behavior_value = 0;       // source record +0x38
     std::optional<std::size_t> primary_link;   // source record +0xA2
     std::optional<std::size_t> secondary_link; // source record +0xAC

@@ -115,6 +115,32 @@ int main() {
     }
 
     current = {};
+    current.special_flags = 0x08U;
+    candidate = {};
+    candidate.entity_flags = 0x03U;
+    EntityPairCollisionWorldState pending_world{};
+    pending_world.pending_world_effect = true;
+    int pending_calls = 0;
+    const auto pending = resolve_entity_pair_collision_event(
+        current, candidate, pending_world,
+        {{}, [&] { ++pending_calls; }});
+    if (!pending.normal_activity_requested ||
+        pending.flagged_entity !=
+            std::optional<EntityPairActor>(EntityPairActor::current) ||
+        (current.activity_flags & 0x80U) == 0U || pending_calls != 1 ||
+        pending.handler !=
+            EntityPairActivityHandler::pending_world_effect_collision ||
+        pending_world.pending_world_effect) {
+        return 9;
+    }
+    const auto pending_again = resolve_entity_pair_collision_event(
+        current, candidate, pending_world,
+        {{}, [&] { ++pending_calls; }});
+    if (pending_again.normal_activity_requested || pending_calls != 1) {
+        return 10;
+    }
+
+    current = {};
     current.entity_flags = 0x02U;
     candidate = {};
     candidate.special_flags = 0x10U;

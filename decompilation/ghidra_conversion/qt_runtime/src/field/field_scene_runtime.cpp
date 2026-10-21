@@ -5,6 +5,7 @@
 
 #include "shadowrun_ghidra/audio/audio_command_batch_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_proximity_collision_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_route_primitives_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_scene_runtime_preparation_conversion.hpp"
 #include "shadowrun_ghidra/field/field_exit_orchestrator_conversion.hpp"
@@ -1404,6 +1405,21 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
         fields.insert(prefix + QStringLiteral("kind"), actor.entity_kind);
         fields.insert(prefix + QStringLiteral("source_order"),
                       actor.source_order);
+        fields.insert(prefix + QStringLiteral("record_slot"),
+                      actor.source_record_slot.has_value()
+                          ? QJsonValue(static_cast<int>(
+                                *actor.source_record_slot))
+                          : QJsonValue(QJsonValue::Null));
+        fields.insert(prefix + QStringLiteral("entity_flags"),
+                      actor.source_record_flags); // source +0x10
+        fields.insert(prefix + QStringLiteral("collision_flags"),
+                      actor.source_interaction_flags); // source +0x11
+        fields.insert(prefix + QStringLiteral("special_flags"),
+                      actor.source_spawn_state_flags); // source +0x9E
+        fields.insert(prefix + QStringLiteral("activity_flags"),
+                      actor.source_behavior_flags); // source +0xB0
+        fields.insert(prefix + QStringLiteral("world_activity_script_actor"),
+                      actor.world_activity_script_actor);
         fields.insert(prefix + QStringLiteral("x"), actor.world_position.x);
         fields.insert(prefix + QStringLiteral("y"), actor.world_position.y);
         fields.insert(prefix + QStringLiteral("action"),
@@ -4741,6 +4757,143 @@ void FieldSceneRuntime::advance_default_field_actors() {
             *decision->source_action_dispatch == "item_spawn_requested") {
             service_dynamic_actor_weapon_action(actor, context, *decision);
         }
+        resolve_default_actor_proximity(actor);
+    }
+}
+
+void FieldSceneRuntime::resolve_default_actor_proximity(
+    DefaultFieldActorPresentation& actor) {
+    constexpr std::uint16_t kSceneTwenty = 0x0014U;
+    constexpr std::uint8_t kIleneContactFlag = 0x08U;
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    // ROM 0xA8CC publishes this Scene-20 actor with +0x9E bit 3. Keep the
+    // interaction eligible only while that ROM-derived record and FFE182's
+    // pending-list handoff are both present.
+    if (!actor.active || !actor.world_activity_script_actor ||
+        actor.scene_reference != scene_reference ||
+        scene_reference != kSceneTwenty ||
+        (actor.source_spawn_state_flags & kIleneContactFlag) == 0U ||
+        !actor.source_record_slot.has_value() || !field_entity_.active ||
+        field_dialogue_.open()) {
+        return;
+    }
+
+    const auto make_proximity_record = [](
+        const DefaultFieldActorPresentation& source) {
+        EntityProximityRecord record{};
+        record.x = source.world_position.x;
+        record.y = source.world_position.y;
+        record.entity_flags = source.source_record_flags;
+        record.collision_flags = source.source_interaction_flags;
+        record.special_flags = source.source_spawn_state_flags;
+        record.activity_flags = source.source_behavior_flags;
+        return record;
+    };
+    std::vector<EntityProximityRecord> records;
+    std::vector<DefaultFieldActorPresentation*> record_actors;
+    records.push_back(make_proximity_record(actor));
+    record_actors.push_back(&actor);
+
+    // Preserve the FF0400..FF0900 record order before appending FF0A00. The
+    // proximity routine advances the source PRNG after every resolved pair,
+    // even when that pair is not the player contact that starts the activity.
+    std::vector<DefaultFieldActorPresentation*> later_actors;
+    const auto current_slot =
+        static_cast<std::size_t>(*actor.source_record_slot);
+    for (auto& candidate : field_default_actors_) {
+        if (!candidate.active || candidate.scene_reference != scene_reference ||
+            !candidate.source_record_slot.has_value()) {
+            continue;
+        }
+        const auto candidate_slot =
+            static_cast<std::size_t>(*candidate.source_record_slot);
+        if (candidate_slot > current_slot && candidate_slot <= 9U) {
+            later_actors.push_back(&candidate);
+        }
+    }
+    std::sort(later_actors.begin(), later_actors.end(),
+              [](const auto* left, const auto* right) {
+                  return static_cast<std::size_t>(
+                             *left->source_record_slot) <
+                         static_cast<std::size_t>(
+                             *right->source_record_slot);
+              });
+    for (auto* candidate : later_actors) {
+        records.push_back(make_proximity_record(*candidate));
+        record_actors.push_back(candidate);
+    }
+
+    // The runner is the later player record in the source service order.
+    // +0x10 bit 0 marks the live record; its high byte carries the interaction
+    // eligibility bits updated by the runner selection service.
+    EntityProximityRecord player_record{};
+    player_record.x = field_entity_.world_position.x;
+    player_record.y = field_entity_.world_position.y;
+    player_record.entity_flags = static_cast<std::uint8_t>(
+        0x01U | field_entity_behavior_flags_);
+    player_record.player_record = true;
+    records.push_back(player_record);
+
+    EntityPairCollisionWorldState world{};
+    world.activity_in_progress = field_runtime_state_.field_activity_lock;
+    world.world_effect_active = field_world_effect_active_;
+    world.pending_world_effect = field_pending_world_effect_;
+    world.scene_activity_id = scene_reference;
+    world.field_mode = field_movement_transition_state_.mode_event_code;
+
+    const auto proximity = resolve_entity_proximity_interactions(
+        records, 0U,
+        {[this, &records, &world](EntityProximityRecord& current,
+                                 EntityProximityRecord& candidate) {
+             EntityPairCollisionEntity current_entity{
+                 current.special_flags, current.entity_flags,
+                 current.activity_flags};
+             EntityPairCollisionEntity candidate_entity{
+                 candidate.special_flags, candidate.entity_flags,
+                 candidate.activity_flags};
+             const auto collision = resolve_entity_pair_collision_event(
+                 current_entity, candidate_entity, world,
+                 {{}, [this] {
+                      if (field_dialogue_.open()) {
+                          return;
+                      }
+                      game_scripts_.set_location_context(
+                          "field_map", "scene_20_ilene",
+                          "field.world_event", "field_narrator");
+                      begin_world_activity(field_world_activity_state_, 0U);
+                      world_frame_logic_state_.resource_countdown =
+                          field_world_activity_state_.timeout;
+                      if (!field_dialogue_.open_gameplay_task(
+                              "ilene", "complete_scene_20_activity")) {
+                          failure_ = field_dialogue_.failure().empty()
+                              ? "Ilene contact task could not be opened"
+                              : field_dialogue_.failure();
+                          source_boundary(
+                              "field.world_activity.ilene_contact_open_failed");
+                          return;
+                      }
+                      source_boundary(
+                          "field.world_activity.ilene_contact_opened");
+                  }});
+             current.activity_flags = current_entity.activity_flags;
+             candidate.activity_flags = candidate_entity.activity_flags;
+             if (collision.normal_activity_requested &&
+                 collision.handler ==
+                     EntityPairActivityHandler::pending_world_effect_collision) {
+                 source_boundary("field.entities.ilene_contact_resolved");
+             }
+         },
+         [this] { return advance_source_random_seed(field_random_seed_); }});
+    for (std::size_t index = 0U; index < record_actors.size(); ++index) {
+        record_actors[index]->source_interaction_flags =
+            records[index].collision_flags;
+        record_actors[index]->source_behavior_flags =
+            records[index].activity_flags;
+    }
+    field_pending_world_effect_ = world.pending_world_effect;
+    field_world_effect_active_ = world.world_effect_active;
+    if (proximity.pairs_resolved != 0U) {
+        source_boundary("field.entities.resolve_proximity");
     }
 }
 
@@ -21673,6 +21826,26 @@ FieldSceneRuntime::world_activity_script_actor_record_slot_for_dump(
     return actor == field_default_actors_.end()
         ? std::nullopt
         : actor->source_record_slot;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<std::uint8_t>
+FieldSceneRuntime::world_activity_script_actor_behavior_flags_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.active && candidate.world_activity_script_actor &&
+                   candidate.scene_reference == scene_reference &&
+                   candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+        ? std::nullopt
+        : std::optional<std::uint8_t>{actor->source_behavior_flags};
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 
