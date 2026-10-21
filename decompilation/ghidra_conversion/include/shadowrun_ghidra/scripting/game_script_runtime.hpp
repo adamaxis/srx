@@ -283,7 +283,7 @@ struct ScriptMenuRouteGame {
     std::function<bool()> matrix_online;
     std::function<std::optional<ScriptMatrixNodeFacts>()> matrix_node;
     std::function<int()> alert;
-    std::function<bool()> in_alert;
+    std::function<bool()> world_effect_gate_negative;
     std::function<int()> map_seen;
     std::function<ScriptMatrixWorldState()> matrix_world_state;
     std::function<void(const ScriptMatrixWorldState&)>
@@ -440,7 +440,7 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_matrix_alert;
     std::string top_matrix_phase;
     std::string top_matrix_pending_action;
-    std::optional<bool> top_matrix_in_alert;
+    std::optional<bool> top_matrix_world_effect_gate_negative;
     std::optional<ScriptMatrixNodeStatusView> top_matrix_node_status;
     std::optional<ScriptMatrixTraversalView> top_matrix_traversal_view;
     std::optional<ScriptMatrixRunInfoView> top_matrix_run_info;

@@ -52,7 +52,8 @@ local function remember_node_colour(state, node_id)
 end
 
 function M.begin(system_id, field_alarm, initial_node_id,
-                 initial_node_ic_condition)
+                 initial_node_ic_condition,
+                 initial_world_effect_gate_negative)
     local source = Systems[system_id]
     if type(source) ~= "table" then return false end
 
@@ -76,6 +77,10 @@ function M.begin(system_id, field_alarm, initial_node_id,
         initial_node_ic_condition % 1 ~= 0 or
         initial_node_ic_condition < 0 or
         initial_node_ic_condition > 0x7F) then
+        return false
+    end
+    if initial_world_effect_gate_negative ~= nil and
+       type(initial_world_effect_gate_negative) ~= "boolean" then
         return false
     end
     local selected_node_id = initial_node_id or 0
@@ -104,8 +109,11 @@ function M.begin(system_id, field_alarm, initial_node_id,
         alert = Rules.initial_alert(field_alarm),
         attempts = 0,
         overload_armed = true,
-        -- 0x174E4 clears FFDF84 on entry, independently of FFE16F's alert.
-        in_alert = false,
+        -- 0x19B40 tests the sign of FFDF84 independently from FFF0A0.
+        -- Traversal entry receives the value cleared by 0x174E4; direct
+        -- Matrix entry can supply the current host world fact.
+        world_effect_gate_negative =
+            initial_world_effect_gate_negative == true,
         known = {},
         map_colours = {},
         -- FFFB30 is indexed by map cell. Keep its high nibble as a typed
@@ -282,9 +290,16 @@ function M.current_node_knowledge(state)
     return (state.knowledge_ranks or {})[node.y * Rules.W + node.x] or 0
 end
 
-function M.begin_world_entry(state)
+function M.begin_world_entry(state, world_effect_gate_negative)
     if type(state) ~= "table" or state.phase ~= "node" then
         return false
+    end
+    if world_effect_gate_negative ~= nil and
+       type(world_effect_gate_negative) ~= "boolean" then
+        return false
+    end
+    if world_effect_gate_negative ~= nil then
+        state.world_effect_gate_negative = world_effect_gate_negative
     end
     local node = M.current_node(state)
     if not node then return false end
@@ -393,8 +408,9 @@ world_effect_animation = function(state, node, rank)
     -- installs that mode record, or the 1AA10 fallback for an unseen node.
     -- The ROM stores this selection in FFE0BC; later alert/rank changes do
     -- not select a new mode until 0x1A908 runs again.
-    local mode = Rules.ic_type(node, state.alert or Rules.NONE,
-                               state.in_alert == true, rank)
+    local mode = Rules.ic_type(
+        node, state.alert or Rules.NONE,
+        state.world_effect_gate_negative == true, rank)
     local animation = state.world_effect_animation
     if type(animation) ~= "table" then
         local record = mode == Rules.UNSEEN and WORLD_EFFECT_MODES.default or

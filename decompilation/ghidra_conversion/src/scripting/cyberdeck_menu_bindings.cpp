@@ -444,8 +444,9 @@ int dispatch_cyberdeck_menu_binding(
     case CyberdeckMenuBinding::alert:
         lua_pushinteger(lua, game.alert ? game.alert() : -1);
         return 1;
-    case CyberdeckMenuBinding::in_alert:
-        lua_pushboolean(lua, game.in_alert && game.in_alert());
+    case CyberdeckMenuBinding::world_effect_gate_negative:
+        lua_pushboolean(lua, game.world_effect_gate_negative &&
+                                  game.world_effect_gate_negative());
         return 1;
     case CyberdeckMenuBinding::map_seen:
         lua_pushinteger(lua, game.map_seen ? game.map_seen() : 0);

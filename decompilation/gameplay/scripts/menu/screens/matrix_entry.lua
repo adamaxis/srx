@@ -6,6 +6,11 @@ local MatrixSession = require("menu.matrix_session")
 local M = { window = E.WindowPlane.OFF }
 local R, T = E.MenuRegion, E.MenuTransition
 
+local function world_effect_gate_negative(game)
+    if type(game.world_effect_gate_negative) ~= "function" then return nil end
+    return game.world_effect_gate_negative() == true
+end
+
 function M.new(args)
     args = args or {}
     return {
@@ -45,7 +50,8 @@ function M.input(st, events, ctx)
 
     local started, matrix_state = MatrixSession.begin(
         system_id, world.field and world.field.alarm, st.node_id,
-        st.node_ic_condition)
+        st.node_ic_condition,
+        world_effect_gate_negative(ctx.game))
     if not started then
         return { transition = T.EXIT, result = { system_unavailable = true } }
     end

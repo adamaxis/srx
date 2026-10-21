@@ -13,7 +13,7 @@ enum class CyberdeckMenuBinding {
     matrix_online,
     matrix_node,
     alert,
-    in_alert,
+    world_effect_gate_negative,
     map_seen,
     matrix_world_state,
     commit_matrix_world_state,

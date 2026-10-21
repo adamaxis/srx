@@ -856,7 +856,7 @@ struct GameScriptRuntime::Impl {
         matrix_online,
         matrix_node,
         alert,
-        in_alert,
+        world_effect_gate_negative,
         map_seen,
         matrix_world_state,
         commit_matrix_world_state,
@@ -1470,10 +1470,10 @@ struct GameScriptRuntime::Impl {
             return dispatch_cyberdeck_menu_binding(
                 lua, self->menu_route_bindings.game,
                 CyberdeckMenuBinding::alert);
-        case MenuBinding::in_alert:
+        case MenuBinding::world_effect_gate_negative:
             return dispatch_cyberdeck_menu_binding(
                 lua, self->menu_route_bindings.game,
-                CyberdeckMenuBinding::in_alert);
+                CyberdeckMenuBinding::world_effect_gate_negative);
         case MenuBinding::map_seen:
             return dispatch_cyberdeck_menu_binding(
                 lua, self->menu_route_bindings.game,
@@ -1662,8 +1662,9 @@ struct GameScriptRuntime::Impl {
         add_menu_binding(state, table_index, "matrix_node",
                          MenuBinding::matrix_node);
         add_menu_binding(state, table_index, "alert", MenuBinding::alert);
-        add_menu_binding(state, table_index, "in_alert",
-                         MenuBinding::in_alert);
+        add_menu_binding(state, table_index,
+                         "world_effect_gate_negative",
+                         MenuBinding::world_effect_gate_negative);
         add_menu_binding(state, table_index, "map_seen",
                          MenuBinding::map_seen);
         add_menu_binding(state, table_index, "matrix_world_state",
@@ -2085,9 +2086,11 @@ struct GameScriptRuntime::Impl {
                         state, -1,
                         menu_route_state.top_matrix_pending_action);
                     lua_pop(state, 1);
-                    lua_getfield(state, matrix_state_index, "in_alert");
+                    lua_getfield(state, matrix_state_index,
+                                 "world_effect_gate_negative");
                     if (lua_isboolean(state, -1)) {
-                        menu_route_state.top_matrix_in_alert =
+                        menu_route_state
+                            .top_matrix_world_effect_gate_negative =
                             lua_toboolean(state, -1) != 0;
                     }
                     lua_pop(state, 1);

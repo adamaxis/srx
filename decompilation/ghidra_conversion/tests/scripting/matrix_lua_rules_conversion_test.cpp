@@ -572,8 +572,8 @@ eq(Session.traversal_view(active_spu_state).world_effect_mode, MX.UNSEEN,
 MatrixNodeAction.input(alert_screen, 0, alert_context)
 eq(active_spu_state.alert, MX.ACTIVE,
     "ROM random-alert event runs after the world-entry handoff")
-eq(active_spu_state.in_alert, true,
-    "Active Alert retains the FFDF84 IC-world-effect gate")
+eq(active_spu_state.world_effect_gate_negative, false,
+    "0x54A8E raises FFF0A0 without changing the FFDF84 gate")
 eq(alert_screen.message_delay_frames, 25,
     "ROM alert notice starts its 25-VBlank wait after entry")
 for _ = 1, 25 do MatrixNodeAction.input(alert_screen, 0, alert_context) end
@@ -594,10 +594,17 @@ eq(active_spu_view.world_effect_mode, MX.UNSEEN,
     "the node-action alert does not replace the mode stored at 0x1A908")
 eq(Session.begin_world_entry(active_spu_state), true,
     "a later source entry initializes a fresh world-effect record")
-eq(Session.traversal_view(active_spu_state).world_effect_mode, 3,
-    "System 15/node 13 selects Blaster mode when the entry sees FFDF84")
-eq(Session.traversal_view(active_spu_state).world_effect_phase, 0,
+eq(Session.traversal_view(active_spu_state).world_effect_mode, MX.UNSEEN,
+    "Active Alert alone does not make 0x19B40 read the hidden node's IC")
+local gate_started, gate_session = Session.begin(15, false, 13, nil, true)
+eq(gate_started, true, "direct Matrix entry accepts a typed FFDF84 gate fact")
+eq(Session.begin_world_entry(gate_session), true,
+    "the explicit negative-gate fixture initializes a fresh effect record")
+eq(Session.traversal_view(gate_session).world_effect_mode, 3,
+    "System 15/node 13 selects Blaster mode when FFDF84 is negative")
+eq(Session.traversal_view(gate_session).world_effect_phase, 0,
     "fresh mode selection resets the entry phase")
+Session.finish(gate_session)
 active_spu_state.phase = "link_select"
 active_spu_state.link_cursor = 0
 MatrixNodeAction.input(alert_screen, E.Pad.A, alert_context)
@@ -699,8 +706,8 @@ local alarm_started, alarm_session = Session.begin(0, true)
 eq(alarm_started, true, "alarm-backed Matrix session starts")
 eq(alarm_session.alert, MX.ACTIVE,
    "FFE16F seeds an active Matrix alert on entry")
-eq(alarm_session.in_alert, false,
-   "0x174E4 clears FFDF84 independently of the initial alert")
+eq(alarm_session.world_effect_gate_negative, false,
+   "the typed Matrix session keeps FFDF84 separate from its initial alert")
 eq(alarm_session.attempts, 0,
    "Matrix action-attempt counter starts at zero")
 eq(alarm_session.overload_armed, true,
@@ -1100,11 +1107,15 @@ local nodes = {
 eq(Move.goto_right(nodes, 0, 0), 1, "CPU node navigation skips current")
 eq(Move.goto_commit(nodes, 0, 1), 1, "linked jump preserves previous node")
 eq(Move.goto_commit(nodes, 0, 0), 0, "unlinked jump has no retreat point")
-local cancelled_alert_state = { alert = 0, in_alert = true }
+local cancelled_alert_state = {
+    alert = 0, world_effect_gate_negative = true,
+}
 local cancelled = Actions.cancel_alert(cancelled_alert_state)
 eq(cancelled.text, Actions.TEXT.ALERT_CANCELLED, "cancel active alert text")
-eq(cancelled_alert_state.in_alert, false,
-   "Cancel Alert clears the FFDF84 IC-world-effect gate")
+eq(cancelled_alert_state.alert, MX.NONE,
+   "0x54AEA Cancel Alert writes FFF0A0 to No Alert")
+eq(cancelled_alert_state.world_effect_gate_negative, true,
+   "0x54AEA leaves the independent FFDF84 gate untouched")
 local run = { state = -1, objective = 5, value = 0, size = 30,
     fc28 = 1, fc1c = 0 }
 local found = Actions.search(run, { class = 5 }, {}, decker, deck, nil,

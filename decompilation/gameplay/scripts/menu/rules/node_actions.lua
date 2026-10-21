@@ -33,7 +33,6 @@ end
 function M.cancel_alert(st)
     if st.alert >= 0 then
         st.alert = -1
-        st.in_alert = false
         return { text = M.TEXT.ALERT_CANCELLED, redraw = true }
     end
     return { text = M.TEXT.NO_ALERTS }

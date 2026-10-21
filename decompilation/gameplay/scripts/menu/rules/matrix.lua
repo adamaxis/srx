@@ -33,14 +33,15 @@ M.IC_TABLE = { [0] =
     {0,4},{0,5},{1,4},{1,5},{2,4},{2,5},{3,4},{3,5},{8,4},{8,5},
 } -- Codes 0..26, both bytes copied from ROM 0xE31A7.
 local function layered(code, alert) return alert > 0 and code >= 7 and code < 0x11 end
--- 0x19B40: IC type of the current node. map_seen = FFFB30[FFF102] >> 4 (0x17C3C); in_alert = FFDF84 < 0.
-function M.ic_type(node, alert, in_alert, map_seen)
+-- 0x19B40: IC type of the current node. map_seen = FFFB30[FFF102] >> 4 (0x17C3C);
+-- world_effect_gate_negative = FFDF84 < 0. FFF0A0 alert and FFDF84 are separate.
+function M.ic_type(node, alert, world_effect_gate_negative, map_seen)
     local code = node.ic_code
     if node.ic_condition <= 0 or node.ic_condition >= 0x80 or
        type(code) ~= "number" or code < 0 or code > 26 then
         return M.NO_IC
     end -- signed BLE/BMI guards at 0x19B58/0x19B64; table ends after code 26.
-    if not in_alert and map_seen <= 0 then return M.UNSEEN end
+    if not world_effect_gate_negative and map_seen <= 0 then return M.UNSEEN end
     local types = M.IC_TABLE[code]
     if not types then return M.NO_IC end
     return types[layered(code, alert) and 2 or 1]

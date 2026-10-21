@@ -106,6 +106,7 @@ void verify_cyberdeck_file_value_bridge(int& failures) {
     source.files[0] = {4, 20, -1};
     source.files[1] = {9, 30, 12};
     game.deck_record = [&source] { return source; };
+    game.world_effect_gate_negative = [] { return true; };
     std::array<ScriptCyberdeckProgramSlot, 5> source_slots{};
     source_slots[0] = {2U, 33U, 4U};
     game.deck_slots = [&source_slots] { return source_slots; };
@@ -128,6 +129,13 @@ void verify_cyberdeck_file_value_bridge(int& failures) {
     const auto objective_value = lua_tointegerx(lua, -1, &is_integer);
     check(is_integer != 0 && objective_value == -1,
           "Lua receives the signed objective marker from the Cyberdeck record",
+          failures);
+    lua_settop(lua, 0);
+
+    dispatch_cyberdeck_menu_binding(
+        lua, game, CyberdeckMenuBinding::world_effect_gate_negative);
+    check(lua_isboolean(lua, -1) != 0 && lua_toboolean(lua, -1) != 0,
+          "Lua receives the signed FFDF84 gate as a separate world fact",
           failures);
     lua_settop(lua, 0);
 
@@ -1175,7 +1183,8 @@ int main() {
               route.top_option_labels == std::vector<std::string>{"Enter System"} &&
               route.top_matrix_state_present && route.top_matrix_node == 0 &&
               route.top_matrix_phase == "node" &&
-              route.top_matrix_in_alert == std::optional<bool>{false},
+              route.top_matrix_world_effect_gate_negative ==
+                  std::optional<bool>{false},
           "the controlled node-action route receives the active Lua Matrix state",
           failures);
     runtime.advance_menu_route(0x4000U); // Select Enter System.

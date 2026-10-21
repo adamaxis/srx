@@ -1477,9 +1477,10 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                   QString::fromStdString(route.top_matrix_phase));
     fields.insert(QStringLiteral("menu.route.matrix.pending_action"),
                   QString::fromStdString(route.top_matrix_pending_action));
-    if (route.top_matrix_in_alert.has_value()) {
-        fields.insert(QStringLiteral("menu.route.matrix.in_alert"),
-                      *route.top_matrix_in_alert);
+    if (route.top_matrix_world_effect_gate_negative.has_value()) {
+        fields.insert(
+            QStringLiteral("menu.route.matrix.world_effect_gate_negative"),
+            *route.top_matrix_world_effect_gate_negative);
     }
     fields.insert(QStringLiteral("menu.route.matrix.traversal.present"),
                   route.top_matrix_traversal_view.has_value());
@@ -8293,7 +8294,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
         return std::nullopt;
     };
     bindings.game.alert = [] { return -1; };
-    bindings.game.in_alert = [] { return false; };
+    bindings.game.world_effect_gate_negative = [] { return false; };
     bindings.game.map_seen = [] { return 0; };
     bindings.game.matrix_world_state = [this] {
         scripting::ScriptMatrixWorldState world;

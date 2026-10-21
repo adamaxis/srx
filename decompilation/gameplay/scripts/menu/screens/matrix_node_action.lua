@@ -13,6 +13,11 @@ local MatrixPrograms = require("menu.rules.matrix_programs")
 local M = { window = E.WindowPlane.OFF }
 local CONFIRM = P.A | P.B | P.C
 
+local function world_effect_gate_negative(game)
+    if type(game.world_effect_gate_negative) ~= "function" then return nil end
+    return game.world_effect_gate_negative() == true
+end
+
 local function refresh(st)
     st.matrix_node_status = nil
     st.matrix_traversal_view = nil
@@ -363,10 +368,8 @@ local function show_random_alert(st, ctx)
     local alert, overload = MatrixRules.raise_alert(
         previous, 1, state.overload_armed)
     state.alert = alert
-    -- 0x1B706 arms FFDF84 before the Matrix alert probe. 0x56116 clears
-    -- that marker below Active Alert and reinitializes the world effect while
-    -- it remains active, allowing 0x19B40 to select hidden-node IC art.
-    state.in_alert = alert == MatrixRules.ACTIVE
+    -- 0x54A8E changes FFF0A0 through 0x1989A. It does not write FFDF84;
+    -- 0x54662's alert probe leaves the independently tracked world gate alone.
     -- 0x1989A returns from its overload branch before the FFE189 sound-latch
     -- check; the overload path has no separate alert SFX.
     if not overload and alert ~= previous then
@@ -424,7 +427,8 @@ function M.enter(st, ctx)
             local world = MatrixSession.world_state(ctx.game)
             local started, matrix_state = MatrixSession.begin(
                 st.system_id, world.field and world.field.alarm,
-                st.node_id, st.node_ic_condition)
+                st.node_id, st.node_ic_condition,
+                world_effect_gate_negative(ctx.game))
             if started then st.matrix_state = matrix_state end
         end
     end
@@ -433,7 +437,7 @@ function M.enter(st, ctx)
     end
     if st.traversal_view then
         st.world_entry_pending = MatrixSession.begin_world_entry(
-            st.matrix_state)
+            st.matrix_state, world_effect_gate_negative(ctx.game))
         if st.world_entry_pending then
             update_deck_view(st, ctx)
             refresh(st)
@@ -850,7 +854,8 @@ function M.input(st, events, ctx)
     if events & CONFIRM ~= 0 and
        MatrixSession.commit_node_selection(state) then
         if st.traversal_view then
-            st.world_entry_pending = MatrixSession.begin_world_entry(state)
+            st.world_entry_pending = MatrixSession.begin_world_entry(
+                state, world_effect_gate_negative(ctx.game))
             if st.world_entry_pending then
                 update_deck_view(st, ctx)
                 st.row = 0

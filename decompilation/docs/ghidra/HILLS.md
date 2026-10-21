@@ -68,9 +68,12 @@ setup, 238 effect service calls, deferred alert, and held action-screen
 phase. The typed mode-3 fixture predicts phase 4 at handoff, while phase 5 is
 the closest presenter match for longplay frame `004800`; the live visual mode
 and phase remain open. ROM bytes confirm `0x1745E` clears `FFDF84` on every
-outer pass, and its `FFDF40` branch writes the separate `FFE171` byte. The
-possible `0x1A370` -> `0x561E8` -> `0x56116` mode-reselection path and its gate
-state are not represented by the current Lua entry latch.
+outer pass, and its `FFDF40` branch writes the separate `FFE171` byte. Alert
+changes at `0x54A8E` and Cancel Alert at `0x54AEA` change `FFF0A0` without
+writing `FFDF84`; Lua now tracks the world-effect gate separately. The
+possible `0x1A370` -> `0x561E8` -> `0x56116` mode-reselection path is still
+not represented. The direct `0x181F8` menu path needs a live host value for
+`FFDF84`; the current Qt callback is a false-valued stub.
 Cyberdeck chrome now uses the live Matrix palette override: ROM `0x17F80` /
 `0x566E2` copies sixteen words from `0xE2EBA` into CRAM line 1, replacing the
 initial line from `0xE2E5A`. The prior extractor used that initial line, which

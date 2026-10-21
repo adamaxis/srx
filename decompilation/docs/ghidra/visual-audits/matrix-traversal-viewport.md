@@ -822,22 +822,23 @@ System 15/node 13 reaction index 15 selects `-2` from `0x1A4EA`, so cadence 7
 reloads 5 (six serviced VBlanks per later phase). The blocking `0x54662`
 node-action loop does not tick the stored world effect. It draws the node
 before the first `0x54A8E` random-alert probe, whose notice waits 25 VBlanks
-plus input. The `0x54A8E` alert itself does not reselect the effect record;
-subsequent `0x1A908` calls can. Lua QA covers the fallback and a typed fixture
-with the negative `FFDF84` gate set. Separately, `0x1745E` clears `FFDF84` at
-`0x174E4` on every outer pass: its `0x1768C`
-backedge returns to `0x174C6`, before the clear. The nearby `FFDF40` branch
-writes `0xFF` to `FFE171` at `0x17524`, a separate terrain-copy gate. This
-rules out the earlier hypothesis that the next outer pass preserves the
-negative `FFDF84` marker. A later controller reselection is still possible
-through `0x1A370` -> `0x561E8` -> `0x56116` when its gate, countdown, and
-alert-state conditions pass; `0x54A8E` itself only updates alert through
-`0x1989A`. The current Lua route still conflates its `in_alert` input with
-the negative `FFDF84` gate, so the rank-zero fallback and mode-3 cases below
-are typed fixtures, not a proven live mode transition. The typed mode-3
-fixture predicts phase 4 after 238 service calls. Lua holds its initial mode
-through the node-action loop; whether a source-side reselection occurs before
-that handoff remains open. A separate
+plus input. The probe updates `FFF0A0` through `0x1989A`; it does not write
+`FFDF84`. The separate Cancel Alert action at `0x54AEA` writes `FFF0A0=-1`
+and also leaves `FFDF84` untouched. Lua now tracks `world_effect_gate_negative`
+separately from alert state. Separately, `0x1745E` clears `FFDF84` at
+`0x174E4` on every outer pass: its `0x1768C` backedge returns to `0x174C6`,
+before the clear. The nearby `FFDF40` branch writes `0xFF` to `FFE171` at
+`0x17524`, a separate terrain-copy gate. This rules out the earlier
+hypothesis that the next outer pass preserves the negative `FFDF84` marker.
+The field traversal path enters after the `0x174E4` clear. The direct menu
+entry at `0x181F8` does not itself clear `FFDF84`, so it must receive the
+current value from its host; the Qt host callback is still a false-valued
+stub and direct-entry gate fidelity remains open. A later controller
+reselection is possible through `0x1A370` -> `0x561E8` -> `0x56116` when its
+gate, countdown, and alert-state conditions pass. The typed mode-3 fixture
+predicts phase 4 after 238 service calls. Lua holds its selected mode through
+the node-action loop; whether and when the controller reselection path runs on
+the live route remains open. A separate
 presenter QA now constructs the typed rank-zero System 15/node 13 SPU view,
 renders all six named mode-3 phases through the production presenter, and
 compares each full 320x224 output against Section 15 frame `004800`. Phase 5

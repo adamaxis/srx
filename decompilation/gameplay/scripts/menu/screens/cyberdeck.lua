@@ -257,9 +257,16 @@ function M.input(st, events, ctx)
         local alert = MatrixSession.is_online(st.matrix_state) and
                       MatrixSession.alert(st.matrix_state) or
                       g.alert()
+        local gate_negative
+        if MatrixSession.is_online(st.matrix_state) then
+            gate_negative = st.matrix_state.world_effect_gate_negative == true
+        elseif type(g.world_effect_gate_negative) == "function" then
+            gate_negative = g.world_effect_gate_negative() == true
+        else
+            gate_negative = false
+        end
         local black = MX.ic_type(node, alert,
-                                 MatrixSession.is_online(st.matrix_state) or
-                                     g.in_alert(),
+                                 gate_negative,
                                  MatrixSession.is_online(st.matrix_state) and 1 or
                                      g.map_seen()) == M.BLACK_IC and
                       g.in_combat() -- 0x19B40 == 8 && FFDF84
