@@ -19079,6 +19079,12 @@ int run_field_gated_building_entry_qa(
         field_scene.field_interaction_transition_active_for_dump() ||
         field_scene.field_transition_pending_for_dump() ||
         std::count(source_boundaries.begin(), source_boundaries.end(),
+                   std::string(
+                       "field.exit.resource_activity_return_selected")) != 1 ||
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   std::string(
+                       "field.exit.resource_activity_return_applied")) != 1 ||
+        std::count(source_boundaries.begin(), source_boundaries.end(),
                    std::string("field.world_activity.source_scene_restored")) !=
             1) {
         std::cerr << route.location_name
@@ -19090,13 +19096,34 @@ int run_field_gated_building_entry_qa(
                   << return_probe.points[0U].x << ','
                   << return_probe.points[0U].y << ", heading=0x"
                   << std::hex << return_heading << ", expected=0x"
-                  << expected_return_heading << std::dec << ")\n";
+                  << expected_return_heading << std::dec
+                  << ", saved=" << source_field_return_saved
+                  << ", transition_active="
+                  << field_scene.field_interaction_transition_active_for_dump()
+                  << ", transition_pending="
+                  << field_scene.field_transition_pending_for_dump()
+                  << ", selected="
+                  << std::count(source_boundaries.begin(),
+                                source_boundaries.end(),
+                                std::string(
+                                    "field.exit.resource_activity_return_selected"))
+                  << ", applied="
+                  << std::count(source_boundaries.begin(),
+                                source_boundaries.end(),
+                                std::string(
+                                    "field.exit.resource_activity_return_applied"))
+                  << ", restored="
+                  << std::count(source_boundaries.begin(),
+                                source_boundaries.end(),
+                                std::string(
+                                    "field.world_activity.source_scene_restored"))
+                  << ")\n";
         return 3;
     }
 
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) return 3;
-    trace << "record\tevent\tservice\tgate\tentry_movement_ticks\tresult\tresource_index\tmarker_ordinal\texit_record\texit_event\texit_movement_ticks\treturn_x\treturn_y\treturn_heading\taudio_requests\n"
+    trace << "record\tevent\tservice\tgate\tentry_movement_ticks\tresult\tresource_index\tmarker_ordinal\texit_record\texit_event\texit_route\texit_movement_ticks\treturn_x\treturn_y\treturn_heading\taudio_requests\n"
           << route.record_index << '\t'
           << static_cast<unsigned>(route.event_code) << '\t'
           << static_cast<unsigned>(route.title_service) << '\t'
@@ -19104,7 +19131,8 @@ int run_field_gated_building_entry_qa(
           << "\tresource_activity_" << route.destination_scene << '\t'
           << activity.selected_resource_random_index << '\t'
           << static_cast<unsigned>(activity.resource_marker_ordinal) << '\t'
-          << route.activity_exit_record_index << "\t0\t"
+          << route.activity_exit_record_index
+          << "\t0\tsource_activity_return\t"
           << activity_exit_ticks << '\t'
           << return_position.x << '\t' << return_position.y << '\t'
           << return_heading << '\t'

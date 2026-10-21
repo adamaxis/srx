@@ -11,6 +11,7 @@ local route_kind = {
     field_service = "field_service",
     area_event = "area_event",
     area_event_override = "area_event_override",
+    source_activity_return = "source_activity_return",
 }
 
 local route_script = {
@@ -18,6 +19,7 @@ local route_script = {
     map_event_table = "area_event_table",
     lua_dialogue = "lua_dialogue",
     host_field_service = "host_field_service",
+    source_activity_return = "source_activity_return",
 }
 
 local destination_mode = {
@@ -359,6 +361,19 @@ function Building.resolve_field_location_route(context)
             }, link, context)
             return add_location_script_tasks(route, link)
         end
+    end
+
+    -- ROM resource scenes have no event table. Their zero-event collision
+    -- starts the generic field transition, which returns through the saved
+    -- source scene context rather than selecting a fixed map number.
+    if context.scene_id >= 21 and context.scene_id <= 43 and
+       context.event_code == "event_0" and
+       context.event_table_available == false then
+        return {
+            kind = route_kind.source_activity_return,
+            script = route_script.source_activity_return,
+            event_code = context.event_code,
+        }
     end
 
     if context.event_table_available ~= true or

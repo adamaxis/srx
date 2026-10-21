@@ -351,17 +351,21 @@ collision record publishes event 0. With `FFDF40=2`, `0xB7B8` calls `0x1651E`;
 the zero-event path returns carry and starts the normal 16-count field
 transition. The destination is the saved source field context: `0x16E30`
 captures it on activity entry and `0x2F32` restores the scene and actor
-anchors on return. No event-table byte names a fixed destination.
+anchors on return. No event-table byte names a fixed destination. The Lua
+field-route policy now returns the typed `source_activity_return` action for
+event 0 in these null-table activity scenes; the field coordinator applies the
+saved context only after that route is selected.
 
 Debug/Release CTest `shadowrun_ghidra_conversion_qt_field_renraku_offices_qa`
 enters Scene-35 record 121 at `0x1DC8AE`; the matching Fuchi route
 `shadowrun_ghidra_conversion_qt_field_fuchi_offices_qa` enters Scene-21 record
 102 at `0x1D7962`. Both records are `0x0080` event-0 collision cells. Each QA
 seeds the adjacent cell and enters the ROM cell with ordinary Down input. The
-shared transition restores the captured source scene at its collision-probe
-lead and heading `0x8000`; Debug/Release route traces and full 320x224 captures
-match. These runs establish those two exits, not every resource-scene return
-record. Independent Genesis interior/exit captures are unavailable.
+Lua selects `source_activity_return`, then the shared transition restores the
+captured source scene at its collision-probe lead and heading `0x8000`;
+Debug/Release route traces and full 320x224 captures match. These runs
+establish those two exits, not every resource-scene return record. Independent
+Genesis interior/exit captures are unavailable.
 
 ## Event-table values in maps 0-9
 

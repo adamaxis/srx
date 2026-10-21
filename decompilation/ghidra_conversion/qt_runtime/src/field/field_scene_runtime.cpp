@@ -1239,6 +1239,8 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                 return QStringLiteral("field_service");
             case FieldScriptRouteKind::area_event:
                 return QStringLiteral("area_event");
+            case FieldScriptRouteKind::source_activity_return:
+                return QStringLiteral("source_activity_return");
             case FieldScriptRouteKind::no_route:
                 return QStringLiteral("no_route");
             }
@@ -1254,6 +1256,8 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                 return QStringLiteral("host_field_service");
             case FieldScriptId::area_event_table:
                 return QStringLiteral("area_event_table");
+            case FieldScriptId::source_activity_return:
+                return QStringLiteral("source_activity_return");
             case FieldScriptId::none:
                 return QStringLiteral("none");
             }
@@ -1720,6 +1724,9 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
             std::to_string(event_route.event_code) + ":scene=" +
             std::to_string(*event_route.area_event_target);
         source_boundary(selected_route_boundary);
+    } else if (event_route.kind ==
+               FieldScriptRouteKind::source_activity_return) {
+        source_boundary("field.exit.resource_activity_return_selected");
     }
 
     FieldExitOrchestratorCallbacks callbacks{};
@@ -7329,15 +7336,21 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                         event_metadata.event_table_available,
                         event_metadata.event_mode_table,
                         field_exit_alternate_result_});
-                if (route.has_value() &&
-                    route->kind == FieldScriptRouteKind::area_event &&
-                    route->area_event_target.has_value()) {
-                    active_field_script_route_ = *route;
-                    pending_field_return_anchor_ = route->return_anchor;
-                    pending_field_return_facing_ = route->return_facing;
-                    has_authored_area_destination = true;
-                    source_boundary(
-                        "field.entry.area_event_route_resolved_by_scene_state");
+                if (route.has_value()) {
+                    if (route->kind == FieldScriptRouteKind::area_event &&
+                        route->area_event_target.has_value()) {
+                        active_field_script_route_ = *route;
+                        pending_field_return_anchor_ = route->return_anchor;
+                        pending_field_return_facing_ = route->return_facing;
+                        has_authored_area_destination = true;
+                        source_boundary(
+                            "field.entry.area_event_route_resolved_by_scene_state");
+                    } else if (route->kind ==
+                               FieldScriptRouteKind::source_activity_return) {
+                        active_field_script_route_ = *route;
+                        source_boundary(
+                            "field.exit.resource_activity_return_selected");
+                    }
                 }
             }
             if (has_authored_area_destination) {
@@ -7379,6 +7392,20 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 }
                 field_mode_entry_run_target_actor_group_.reset();
                 source_boundary("field.entry.area_event_scene_entered");
+                return;
+            }
+
+            if (active_field_script_route_.has_value() &&
+                active_field_script_route_->kind ==
+                    FieldScriptRouteKind::source_activity_return) {
+                if (!restore_world_activity_source_scene(runtime)) {
+                    runtime.field_transition_requested = true;
+                    source_boundary(
+                        "field.exit.resource_activity_return_snapshot_missing");
+                } else {
+                    source_boundary(
+                        "field.exit.resource_activity_return_applied");
+                }
                 return;
             }
 

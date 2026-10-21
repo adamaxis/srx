@@ -192,9 +192,10 @@ the remaining prompt branches are open. Renraku/Fuchi links now encode the
 FFE184 index/marker overrides and their Debug/Release physical-entry QA checks the
 resulting resource state. Debug/Release ordinary Down routes now reach
 Renraku activity-35 record 121/event 0 and Fuchi activity-21 record 102/event
-0. The shared resource transition restores the source scene at the captured
-ROM collision-probe lead with heading `0x8000`; both route traces and all
-full-screen captures match across builds. These exit checks seed an adjacent
+0. Lua explicitly selects the typed `source_activity_return` route for these
+null-table resource exits. The shared resource transition then restores the
+source scene at the captured ROM collision-probe lead with heading `0x8000`;
+both route traces and all full-screen captures match across builds. These exit checks seed an adjacent
 activity cell, and independent Genesis interior/exit visuals remain open. The
 four Scene-5 stores still need
 their shop catalogs and activity return behavior. Scene-1 Tarislar now has physical QA for its first-authorized

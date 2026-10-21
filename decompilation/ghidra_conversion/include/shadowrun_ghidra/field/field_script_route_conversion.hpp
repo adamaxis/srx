@@ -97,6 +97,7 @@ enum class FieldScriptId {
     lua_field_service,
     host_field_service,
     area_event_table,
+    source_activity_return,
 };
 
 enum class FieldScriptRouteKind {
@@ -104,6 +105,7 @@ enum class FieldScriptRouteKind {
     dialogue,
     field_service,
     area_event,
+    source_activity_return,
 };
 
 // Location entities may declare how a field transition restores its source

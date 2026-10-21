@@ -4409,6 +4409,14 @@ GameScriptRuntime::resolve_field_location_route(
                destination_mode.has_value()) {
         route.kind = FieldScriptRouteKind::area_event;
         route.script = FieldScriptId::area_event_table;
+    } else if (kind_name == "source_activity_return" &&
+               script_name == "source_activity_return" && no_target &&
+               !destination_mode.has_value() &&
+               context.scene_id >= 21U && context.scene_id <= 43U &&
+               context.event_code == FieldCollisionEventCode::event_0 &&
+               !context.event_table_available) {
+        route.kind = FieldScriptRouteKind::source_activity_return;
+        route.script = FieldScriptId::source_activity_return;
     } else {
         return fail("building.lua route returned an unknown action");
     }

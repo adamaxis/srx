@@ -1017,6 +1017,67 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
+    FieldScriptRouteContext fuchi_activity_exit{};
+    fuchi_activity_exit.scene_id = 21U;
+    fuchi_activity_exit.event_code = FieldCollisionEventCode::event_0;
+    fuchi_activity_exit.event_table_available = false;
+    const auto fuchi_activity_exit_route =
+        scripts.resolve_field_location_route(fuchi_activity_exit);
+    FieldScriptRouteContext renraku_activity_exit = fuchi_activity_exit;
+    renraku_activity_exit.scene_id = 35U;
+    const auto renraku_activity_exit_route =
+        scripts.resolve_field_location_route(renraku_activity_exit);
+    FieldScriptRouteContext resource_exit_with_table = fuchi_activity_exit;
+    resource_exit_with_table.event_table_available = true;
+    resource_exit_with_table.event_table[0U] = 0U;
+    const auto resource_exit_with_table_route =
+        scripts.resolve_field_location_route(resource_exit_with_table);
+    FieldScriptRouteContext field_scene_null_exit = fuchi_activity_exit;
+    field_scene_null_exit.scene_id = 20U;
+    const auto field_scene_null_exit_route =
+        scripts.resolve_field_location_route(field_scene_null_exit);
+    if (!expect(
+            fuchi_activity_exit_route.has_value() &&
+                fuchi_activity_exit_route->kind ==
+                    FieldScriptRouteKind::source_activity_return &&
+                fuchi_activity_exit_route->script ==
+                    FieldScriptId::source_activity_return &&
+                !fuchi_activity_exit_route->area_event_target.has_value() &&
+                renraku_activity_exit_route.has_value() &&
+                renraku_activity_exit_route->kind ==
+                    FieldScriptRouteKind::source_activity_return &&
+                resource_exit_with_table_route.has_value() &&
+                resource_exit_with_table_route->kind ==
+                    FieldScriptRouteKind::area_event &&
+                resource_exit_with_table_route->area_event_target == 0U &&
+                field_scene_null_exit_route.has_value() &&
+                field_scene_null_exit_route->kind ==
+                    FieldScriptRouteKind::no_route,
+            "Lua did not select a source-context return only for null-table resource event 0")) {
+        std::cerr << scripts.failure() << '\n';
+        std::cerr << "route kinds: fuchi="
+                  << (fuchi_activity_exit_route.has_value()
+                          ? static_cast<unsigned>(
+                                fuchi_activity_exit_route->kind)
+                          : 99U)
+                  << ", renraku="
+                  << (renraku_activity_exit_route.has_value()
+                          ? static_cast<unsigned>(
+                                renraku_activity_exit_route->kind)
+                          : 99U)
+                  << ", table="
+                  << (resource_exit_with_table_route.has_value()
+                          ? static_cast<unsigned>(
+                                resource_exit_with_table_route->kind)
+                          : 99U)
+                  << ", null-field="
+                  << (field_scene_null_exit_route.has_value()
+                          ? static_cast<unsigned>(
+                                field_scene_null_exit_route->kind)
+                          : 99U)
+                  << '\n';
+        return 13;
+    }
     scripts.set_story_state({{"story_flag_bit_10", false}});
     const auto icarus_blocked_event30 = resolve_event30_location(12U);
     if (!expect(
