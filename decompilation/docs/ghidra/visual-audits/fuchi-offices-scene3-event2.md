@@ -31,5 +31,15 @@ The full-screen Debug `actual.bmp` and `activity-21.bmp` were inspected. The
 entry page shows the Fuchi logo portrait and its complete MORE prompt; the
 activity-21 scene loads after A. This validates the host route and capture
 dimensions, not visual equivalence to an independent Genesis capture. No
-independent Genesis frame is available. The FFE187 effect-context behavior
-and the building's eventual return route remain separate open work.
+independent Genesis frame is available.
+
+## Resource entry context
+
+The ROM sets transient FFE187 on the gated title-service path at `0x54152`.
+Resource setup at `0x167AE` consumes it by selecting resource index 2 and
+marker ordinal 3, then clears the effect context. The conditional Lua link now
+records `entry_resource_override=index_two_marker_three`; the host carries it
+with the typed scene-21 route and applies it only after the `enter_scene_21`
+dialogue result resumes the route. Debug and Release physical-entry QA now
+asserts the resulting index and marker along with the activity capture. The
+activity return route and independent Genesis evidence remain open.

@@ -32,5 +32,15 @@ The full-screen Debug `actual.bmp` and `activity-35.bmp` were inspected. The
 dialogue panel shows the full lower text pane and the MORE prompt; activity 35
 loads after the prompt. This validates the host route and capture dimensions,
 not visual equivalence to an independent Genesis capture. No independent
-Genesis frame is available. The FFE184 effect-context behavior and the
-building's eventual return route remain separate open work.
+Genesis frame is available.
+
+## Resource entry context
+
+The ROM sets transient FFE184 on the gated title-service path at `0x54076`.
+Resource setup at `0x167AE` consumes it by selecting resource index 5 and
+marker ordinal 0, then clears the effect context. The conditional Lua link now
+records `entry_resource_override=index_five_marker_zero`; the host carries it
+with the typed scene-35 route and applies it only after the `enter_scene_35`
+dialogue result resumes the route. Debug and Release physical-entry QA now
+asserts the resulting index and marker along with the activity capture. The
+activity return route and independent Genesis evidence remain open.
