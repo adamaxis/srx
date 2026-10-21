@@ -22935,6 +22935,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_elevator_nonmember_entry_qa_path;
         bool field_elevator_scene25_group_roundtrip_qa = false;
+        bool field_elevator_scene25_matrix_entry_qa = false;
         bool field_elevator_scene25_matrix24_qa = false;
         bool field_elevator_scene25_matrix23_qa = false;
         bool field_elevator_scene34_group_roundtrip_qa = false;
@@ -23446,6 +23447,15 @@ int main(int argc, char** argv) {
                     std::filesystem::path(argv[++index]);
                 field_elevator_scene25_group_roundtrip_qa = true;
                 field_elevator_scene25_matrix24_qa = true;
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene25-matrix-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_elevator_nonmember_entry_scene = 25U;
+                field_elevator_nonmember_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+                field_elevator_scene25_matrix_entry_qa = true;
             }
             if (std::string(argv[index]) ==
                     "--field-elevator-scene25-matrix23-entry-qa" &&
@@ -28061,6 +28071,23 @@ int main(int argc, char** argv) {
                             field_audio_events, field_source_boundaries,
                             destination_floor_override);
                     };
+                if (field_elevator_scene25_matrix_entry_qa) {
+                    const auto matrix_output =
+                        *field_elevator_nonmember_entry_qa_path /
+                        "scene25-resource-matrix-entry";
+                    std::error_code matrix_output_error;
+                    std::filesystem::create_directories(
+                        matrix_output, matrix_output_error);
+                    if (matrix_output_error) {
+                        std::cerr << "Scene-25 Matrix QA: could not "
+                                     "create capture folder: "
+                                  << matrix_output_error.message() << '\n';
+                        return 3;
+                    }
+                    return run_resource_scene_matrix_entry_menu_qa(
+                        field_scene, matrix_output, 25U, 124U, 0x16U, 0x0FU,
+                        0x01B0U, 0x0050U);
+                }
                 auto route_status = run_scene_route(
                     *field_elevator_nonmember_entry_scene,
                     *field_elevator_nonmember_entry_qa_path);
