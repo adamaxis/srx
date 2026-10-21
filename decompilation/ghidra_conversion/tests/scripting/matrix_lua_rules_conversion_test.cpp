@@ -53,8 +53,11 @@ local Move = require("menu.rules.matrix_move")
 local Actions = require("menu.rules.node_actions")
 local Programs = require("menu.rules.matrix_programs")
 local Systems = require("data.matrix_systems")
+local HUD = require("data.matrix_hud_labels")
 local Session = require("menu.matrix_session")
 local Cyberdeck = require("menu.screens.cyberdeck")
+local MatrixNodeAction = require("menu.screens.matrix_node_action")
+local DeckPalette = require("menu.deck_palette")
 local MatrixText = require("menu.rules.matrix_text")
 local SpecialDatastore = require("menu.rules.datastore_special")
 
@@ -63,6 +66,380 @@ local function eq(actual, expected, label)
     assert(actual == expected,
         (label .. ": expected %s, got %s"):format(tostring(expected), tostring(actual)))
     checks = checks + 1
+end
+
+eq(Session.program_mode_from_buttons(E.Pad.C), E.MatrixModeResult.ATTACK,
+   "ROM C button selects attack pool mode")
+eq(Session.program_mode_from_buttons(E.Pad.A), E.MatrixModeResult.BALANCED,
+   "ROM A button selects balanced pool mode")
+eq(Session.program_mode_from_buttons(E.Pad.B), E.MatrixModeResult.DEFENSE,
+   "ROM B button selects defense pool mode")
+eq(Session.program_mode_from_buttons(E.Pad.C | E.Pad.A),
+   E.MatrixModeResult.ATTACK, "ROM C takes priority over simultaneous A")
+eq(Session.program_mode_from_buttons(E.Pad.A | E.Pad.B),
+   E.MatrixModeResult.BALANCED, "ROM A takes priority over simultaneous B")
+
+local function run_matrix_medic(roll_result)
+    local record = {
+        active = { [0] = Programs.P.MEDIC, [1] = -1, [2] = -1,
+                   [3] = -1, [4] = -1 },
+        ratings = { [Programs.P.MEDIC] = 3 },
+        persona_condition = 4,
+    }
+    local slots = {
+        [0] = { status = 6, phase = 1, timer = 0 },
+        [1] = { status = 6, phase = 1, timer = 0 },
+        [2] = { status = 6, phase = 1, timer = 0 },
+        [3] = { status = 6, phase = 1, timer = 0 },
+        [4] = { status = 6, phase = 1, timer = 0 },
+    }
+    local state = {
+        phase = "node", current_node = 0, selected_program_slot = 0,
+        nodes = { [0] = { function_id = 0, file_class_id = 0, colour = 1,
+                          security = 3, x = 0, y = 0, ic_condition = 0,
+                          ic_code = 0 } },
+        alert = MX.NONE, mode = MX.NONE,
+    }
+    local commits, roll_dice, roll_tn = 0, nil, nil
+    local context = {
+        game = {
+            deck_record = function() return record end,
+            deck_slots = function() return slots end,
+            deck_commit = function(next_record, next_slots)
+                record, slots = next_record, next_slots
+                commits = commits + 1
+            end,
+            roll_successes = function(dice, target)
+                roll_dice, roll_tn = dice, target
+                return roll_result
+            end,
+        },
+        redraw = function() end,
+        sound = function() end,
+        host = {},
+    }
+    local screen = MatrixNodeAction.new({ matrix_state = state })
+    MatrixNodeAction.enter(screen, context)
+    MatrixNodeAction.input(screen, E.Pad.A, context)
+    return record, slots, state, screen, commits, roll_dice, roll_tn
+end
+
+local medic_record, medic_slots, medic_state, medic_screen, medic_commits,
+      medic_dice, medic_tn = run_matrix_medic(3)
+eq(medic_dice, 3, "Medic rolls its loaded program rating")
+eq(medic_tn, 6, "Medic target number uses current persona condition")
+eq(medic_record.persona_condition, 7,
+   "active Matrix Medic commits persona recovery to the deck record")
+eq(medic_slots[0].phase, 6,
+   "successful Matrix Medic publishes the ROM success status")
+eq(medic_state.mode, E.MatrixModeResult.BALANCED,
+   "active Matrix Medic routes A through the ROM balanced mode")
+eq(medic_commits, 1, "active Matrix Medic commits its changed deck state")
+
+local failed_medic_record, failed_medic_slots, _, _, failed_medic_commits,
+      failed_medic_dice, failed_medic_tn = run_matrix_medic(0)
+eq(failed_medic_dice, 3, "failed Matrix Medic still rolls the loaded rating")
+eq(failed_medic_tn, 6, "failed Matrix Medic preserves the source target")
+eq(failed_medic_record.persona_condition, 4,
+   "failed Matrix Medic leaves persona condition unchanged")
+eq(failed_medic_slots[0].phase, 7,
+   "failed Matrix Medic publishes the ROM failure status")
+eq(failed_medic_record.active[0], Programs.P.MEDIC,
+   "failed Matrix Medic does not unload its program")
+eq(failed_medic_commits, 1,
+   "failed Matrix Medic commits the updated program status")
+
+local function test_matrix_degrade_route()
+local knowledge_state = {
+    current_node = 0, nodes = { [0] = { x = 0, y = 0 } },
+    knowledge_ranks = {},
+}
+eq(Session.set_current_node_knowledge(knowledge_state, 4), true,
+   "node entry replaces the prior knowledge nibble with four")
+eq(Session.merge_current_node_knowledge(knowledge_state, 1), true,
+   "Analyze ORs new knowledge into the existing source nibble")
+eq(Session.current_node_knowledge(knowledge_state), 5,
+   "Analyze retains the entry marker while adding its result bit")
+eq(Session.merge_current_node_knowledge(knowledge_state, 2), true,
+   "later Analyze results continue merging into the same node byte")
+eq(Session.current_node_knowledge(knowledge_state), 7,
+   "knowledge rank preserves the ROM bitwise-OR representation")
+
+local function run_matrix_degrade(roll_results)
+    local record = {
+        mpcp = 8, response = 2, persona = { [2] = 1 },
+        active = { [0] = C.PROGRAM.DEGRADE, [1] = -1, [2] = -1,
+                   [3] = -1, [4] = -1 },
+        ratings = { [C.PROGRAM.DEGRADE] = 3 },
+    }
+    local slots = {
+        [0] = { status = 6, phase = 1, timer = 0 },
+        [1] = { status = 6, phase = 1, timer = 0 },
+        [2] = { status = 6, phase = 1, timer = 0 },
+        [3] = { status = 6, phase = 1, timer = 0 },
+        [4] = { status = 6, phase = 1, timer = 0 },
+    }
+    local runner = {
+        attributes = { [1] = 8, [4] = 4 }, skills = { [7] = 7 },
+    }
+    local state = {
+        phase = "node", current_node = 0, selected_program_slot = 0,
+        nodes = { [0] = { function_id = 0, file_class_id = 0, colour = 1,
+                          security = 4, x = 0, y = 0, ic_condition = 1,
+                          ic_code = 3, ic_rating = 1, ic_rating2 = 1,
+                          ic_reaction = 3 } },
+        alert = MX.NONE, mode = MX.NONE,
+    }
+    local calls, rolls, commits = 0, {}, 0
+    local context = {
+        game = {
+            party = function() return { [0] = runner } end,
+            active_slot = function() return 0 end,
+            deck_record = function() return record end,
+            deck_slots = function() return slots end,
+            deck_commit = function(next_record, next_slots)
+                record, slots = next_record, next_slots
+                commits = commits + 1
+            end,
+            roll_successes = function(dice, target)
+                calls = calls + 1
+                rolls[calls] = { dice = dice, target = target }
+                return roll_results[calls]
+            end,
+        },
+        redraw = function() end,
+        sound = function() end,
+        host = {},
+    }
+    local screen = MatrixNodeAction.new({ matrix_state = state })
+    MatrixNodeAction.enter(screen, context)
+    MatrixNodeAction.input(screen, E.Pad.A, context)
+    return record, slots, state, calls, rolls, commits
+end
+
+local degrade_record, degrade_slots, degrade_state, degrade_calls,
+      degrade_rolls, degrade_commits = run_matrix_degrade({ 4, 1 })
+eq(degrade_calls, 2, "Degrade runs decker and IC opposition rolls")
+eq(degrade_rolls[1].dice, 6, "Degrade uses the ROM program dice pool")
+eq(degrade_rolls[1].target, 4, "Degrade uses node security as its target")
+eq(degrade_rolls[2].dice, 1, "Degrade opposes with active IC rating")
+eq(degrade_rolls[2].target, 2, "Degrade opposition uses persona Evasion")
+eq(degrade_state.mode, E.MatrixModeResult.BALANCED,
+   "active Matrix Degrade routes A through the ROM balanced mode")
+eq(degrade_state.nodes[0].security, 3,
+   "successful Degrade lowers security by half net successes")
+eq(degrade_slots[0].phase, C.RESULT.SUCCESS,
+   "successful Degrade publishes the ROM success status")
+eq(degrade_record.active[0], C.PROGRAM.DEGRADE,
+   "successful Degrade keeps the loaded program")
+eq(degrade_commits, 1,
+   "active Matrix Degrade commits its result status")
+
+local _, blocked_slots, blocked_state, blocked_calls =
+    run_matrix_degrade({ 1, 1 })
+eq(blocked_calls, 2, "blocked Degrade still resolves IC opposition")
+eq(blocked_state.nodes[0].security, 4,
+   "blocked Degrade leaves node security unchanged")
+eq(blocked_slots[0].phase, C.RESULT.BLOCKED,
+   "blocked Degrade publishes the ROM blocked status")
+
+local failed_degrade, failed_slots, failed_state, failed_calls =
+    run_matrix_degrade({ 0 })
+eq(failed_calls, 1, "failed Degrade skips the IC opposition roll")
+eq(failed_state.nodes[0].security, 4,
+   "failed Degrade leaves node security unchanged")
+eq(failed_slots[0].phase, C.RESULT.FAIL,
+   "failed Degrade publishes the ROM failure status")
+eq(failed_degrade.active[0], C.PROGRAM.DEGRADE,
+   "failed Degrade retains its loaded program")
+end
+test_matrix_degrade_route()
+
+do
+local function run_matrix_combat_program_route(program, condition, reaction,
+                                               counter, roll_results)
+    local record = {
+        mpcp = 8, response = 2, persona = { [2] = 1 },
+        active = { [0] = program, [1] = -1, [2] = -1,
+                   [3] = -1, [4] = -1 },
+        ratings = { [program] = 3 },
+    }
+    local slots = {
+        [0] = { status = 6, phase = 1, timer = 0 },
+        [1] = { status = 6, phase = 1, timer = 0 },
+        [2] = { status = 6, phase = 1, timer = 0 },
+        [3] = { status = 6, phase = 1, timer = 0 },
+        [4] = { status = 6, phase = 1, timer = 0 },
+    }
+    local party = {
+        [0] = { karma = 1, attributes = { [1] = 8, [4] = 4 },
+                skills = { [7] = 7 } },
+        [1] = { karma = 4 },
+        [2] = { karma = 255 },
+    }
+    local state = {
+        phase = "node", current_node = 0, selected_program_slot = 0,
+        nodes = { [0] = { function_id = 0, file_class_id = 0, colour = 1,
+                          security = 4, x = 0, y = 0,
+                          ic_condition = condition, ic_reaction = reaction,
+                          ic_code = 3, ic_rating = 1, ic_rating2 = 0 } },
+        alert = MX.NONE, mode = MX.NONE,
+    }
+    local world = { karma_counter = counter, passive_ic_counter = -3 }
+    local calls, roll_index = 0, 0
+    local party_commits, world_commits = 0, 0
+    local context = {
+        game = {
+            party = function() return party end,
+            active_slot = function() return 0 end,
+            deck_record = function() return record end,
+            deck_slots = function() return slots end,
+            deck_commit = function(next_record, next_slots)
+                record, slots = next_record, next_slots
+                calls = calls + 1
+            end,
+            commit_party = function(next_party)
+                party = next_party
+                party_commits = party_commits + 1
+            end,
+            matrix_world_state = function() return world end,
+            commit_matrix_world_state = function(next_world)
+                world = next_world
+                world_commits = world_commits + 1
+            end,
+            roll_successes = function()
+                roll_index = roll_index + 1
+                return roll_results[roll_index]
+            end,
+        },
+        redraw = function() end,
+        sound = function() end,
+        host = {},
+    }
+    local screen = MatrixNodeAction.new({ matrix_state = state })
+    MatrixNodeAction.enter(screen, context)
+    MatrixNodeAction.input(screen, E.Pad.A, context)
+    return record, slots, state, party, world, calls, party_commits,
+           world_commits, roll_index
+end
+
+local attack_record, attack_slots, attack_state, attack_party, attack_world,
+      attack_commits, attack_party_commits, attack_world_commits,
+      attack_rolls = run_matrix_combat_program_route(
+          C.PROGRAM.ATTACK, 4, 3, 1, { 5, 0 })
+eq(attack_rolls, 2, "Attack runs the common decker and IC tests")
+eq(attack_state.nodes[0].ic_condition, 0,
+   "ROM Attack clears the current IC condition when net damage exceeds it")
+eq(attack_slots[0].phase, C.RESULT.SUCCESS,
+   "Attack publishes the ROM success slot phase")
+eq(attack_world.karma_counter, 15,
+   "defeating IC rolls the shared signed FFF0CE counter")
+eq(attack_world.passive_ic_counter, 0,
+   "Attack clears the FFF0A3 passive IC probe state")
+eq(attack_party[0].karma, 2,
+   "FFF0CE rollover awards Karma to runner record zero")
+eq(attack_party[1].karma, 5,
+   "FFF0CE rollover awards Karma to runner record one")
+eq(attack_party[2].karma, 0,
+   "FFF0CE rollover wraps Karma byte values")
+eq(attack_commits, 1, "Attack commits the result slot")
+eq(attack_party_commits, 1, "Attack commits party Karma after rollover")
+eq(attack_world_commits, 1, "Attack commits its shared world counter")
+eq(attack_record.active[0], C.PROGRAM.ATTACK,
+   "Attack keeps its loaded program")
+
+local slow_record, slow_slots, slow_state, slow_party, slow_world,
+      slow_commits, slow_party_commits, slow_world_commits, slow_rolls =
+    run_matrix_combat_program_route(C.PROGRAM.SLOW, 4, 2, 1, { 1, 0 })
+eq(slow_rolls, 2, "Slow runs the common decker and IC tests")
+eq(slow_state.nodes[0].ic_reaction, 0,
+   "Slow clears IC reaction when its ROM delta crosses zero")
+eq(slow_state.nodes[0].ic_condition, 0,
+   "Slow crash also clears the current IC condition")
+eq(slow_slots[0].phase, C.RESULT.SUCCESS,
+   "Slow publishes the ROM success slot phase")
+eq(slow_world.karma_counter, 15,
+   "Slow crash shares the FFF0CE karma rollover")
+eq(slow_world.passive_ic_counter, 0,
+   "Slow clears the FFF0A3 passive IC probe state")
+eq(slow_party[1].karma, 5,
+   "Slow rollover awards Karma to the party")
+eq(slow_commits, 1, "Slow commits the result slot")
+eq(slow_party_commits, 1, "Slow commits party Karma after rollover")
+eq(slow_world_commits, 1, "Slow commits its shared world counter")
+eq(slow_record.active[0], C.PROGRAM.SLOW,
+   "Slow keeps its loaded program")
+
+local partial_attack_record, _, partial_attack_state, partial_attack_party,
+      partial_attack_world, partial_attack_commits,
+      partial_attack_party_commits = run_matrix_combat_program_route(
+          C.PROGRAM.ATTACK, 4, 3, 7, { 2, 0 })
+eq(partial_attack_state.nodes[0].ic_condition, 2,
+   "Attack subtracts positive net damage without defeating the IC")
+eq(partial_attack_world.karma_counter, 7,
+   "nonlethal Attack leaves FFF0CE unchanged")
+eq(partial_attack_world.passive_ic_counter, 0,
+   "nonlethal Attack still clears FFF0A3")
+eq(partial_attack_party[0].karma, 1,
+   "nonlethal Attack does not award Karma")
+eq(partial_attack_party_commits, 0,
+   "nonlethal Attack does not commit an unchanged party")
+eq(partial_attack_commits, 1,
+   "nonlethal Attack commits its result status")
+eq(partial_attack_record.active[0], C.PROGRAM.ATTACK,
+   "nonlethal Attack retains its program")
+
+local failed_attack_record, failed_attack_slots, failed_attack_state,
+      failed_attack_party, failed_attack_world, failed_attack_commits,
+      failed_attack_party_commits, _, failed_attack_rolls =
+    run_matrix_combat_program_route(C.PROGRAM.ATTACK, 4, 3, 7, { 0 })
+eq(failed_attack_rolls, 1, "failed Attack stops before IC opposition")
+eq(failed_attack_slots[0].phase, C.RESULT.FAIL,
+   "failed Attack publishes the ROM failure phase")
+eq(failed_attack_state.nodes[0].ic_condition, 4,
+   "failed Attack leaves IC condition unchanged")
+eq(failed_attack_world.karma_counter, 7,
+   "failed Attack leaves FFF0CE unchanged")
+eq(failed_attack_world.passive_ic_counter, -3,
+   "failed Attack does not clear FFF0A3 before the result tail")
+eq(failed_attack_party[0].karma, 1,
+   "failed Attack does not award Karma")
+eq(failed_attack_party_commits, 0,
+   "failed Attack leaves party state uncommitted")
+eq(failed_attack_commits, 1,
+   "failed Attack commits its result status")
+eq(failed_attack_record.active[0], C.PROGRAM.ATTACK,
+   "failed Attack retains its program")
+
+local partial_slow_record, _, partial_slow_state, partial_slow_party,
+      partial_slow_world, partial_slow_commits,
+      partial_slow_party_commits = run_matrix_combat_program_route(
+          C.PROGRAM.SLOW, 4, 7, 7, { 1, 0 })
+eq(partial_slow_state.nodes[0].ic_reaction, 4,
+   "Slow subtracts twice net plus half rating when reaction stays nonnegative")
+eq(partial_slow_state.nodes[0].ic_condition, 4,
+   "noncrashing Slow leaves IC condition unchanged")
+eq(partial_slow_world.karma_counter, 7,
+   "noncrashing Slow leaves FFF0CE unchanged")
+eq(partial_slow_world.passive_ic_counter, 0,
+   "noncrashing Slow still clears FFF0A3")
+eq(partial_slow_party[0].karma, 1,
+   "noncrashing Slow does not award Karma")
+eq(partial_slow_party_commits, 0,
+   "noncrashing Slow does not commit an unchanged party")
+eq(partial_slow_commits, 1,
+   "noncrashing Slow commits its result status")
+eq(partial_slow_record.active[0], C.PROGRAM.SLOW,
+   "noncrashing Slow retains its program")
+end
+
+local palette_state = DeckPalette.new()
+for frame = 1, 21 do
+    local phase, changed = DeckPalette.tick(palette_state)
+    eq(phase, ((frame - 1) // 5 + 1) % 4,
+       "ROM deck palette phase at frame " .. frame)
+    eq(changed, frame == 1 or frame % 5 == 1,
+       "ROM deck palette cadence at frame " .. frame)
 end
 
 -- Deck grid input uses newly pressed edges, with vertical priority and silent wrap.
@@ -97,6 +474,118 @@ for system_id = 0, 24 do
     for _ in pairs(system.nodes) do node_count = node_count + 1 end
 end
 eq(node_count, 406, "ROM Matrix node catalog count")
+for class_id = 0, 46 do
+    assert(Session.file_class_name(class_id) ~= nil,
+        "ROM Matrix file-class label " .. class_id)
+end
+eq(Session.file_class_name(33), "Data Routing",
+    "Matrix file-class lookup includes extended node records")
+eq(HUD.program_states[10], " Resisted!!  ",
+    "active program status preserves its ROM cell padding")
+eq(HUD.alert_states[2], "Active Alert ",
+    "alert status preserves the ROM's trailing space")
+eq(HUD.ic_types[3], "  Blaster-    ",
+    "secondary IC labels preserve the ROM's fixed-width cells")
+eq(HUD.ic_rating_columns[3], 10,
+    "IC rating column follows the ROM type-position table")
+eq(HUD.program_states[15], "Active Alert ",
+    "program-state catalog includes its final ROM record")
+eq(HUD.node_functions[5], "SM ",
+    "node-function catalog preserves padded abbreviations")
+eq(HUD.security_bands[4], "   Red-",
+    "security-band catalog includes the red record")
+eq(HUD.ic_types[8], "  BlackIce-   ",
+    "IC-type catalog includes the final ROM record")
+eq(HUD.ic_visibility[2], "Ice Suppressed",
+    "IC visibility catalog includes the suppression state")
+local routed_spu_state = {
+    nodes = Systems[2].nodes, current_node = 2, knowledge_ranks = {},
+}
+local routed_spu_status = Session.node_status(routed_spu_state)
+eq(routed_spu_status.knowledge_rank, 0,
+    "unvisited Matrix node starts with no IC knowledge")
+eq(routed_spu_status.file_class_label, "",
+    "unrevealed node hides its file-class label")
+eq(routed_spu_status.action_difficulty, -1,
+    "unrevealed node hides its security rating")
+eq(Session.set_current_node_knowledge(routed_spu_state, 4), true,
+    "node-action entry sets the source knowledge rank")
+routed_spu_status = Session.node_status(routed_spu_state)
+eq(routed_spu_status.file_class_label, " Data Routing ",
+    "system 2 SPU renders its padded ROM file-class label")
+eq(routed_spu_status.action_difficulty, Systems[2].nodes[2].security,
+    "rank-four node displays its ROM security rating")
+local loading_state = {}
+local loading_slots = {
+    [0] = { status = 5, timer = 2, phase = 0 },
+    [1] = { status = 0, timer = 1, phase = 0 },
+    [2] = { status = 6, timer = 0, phase = 1 },
+    [3] = { status = 6, timer = 0, phase = 1 },
+    [4] = { status = 6, timer = 0, phase = 1 },
+}
+eq(Session.advance_program_loading(loading_state, loading_slots), true,
+    "ROM service advances the first incomplete footer slot immediately")
+eq(loading_slots[0].status, 6,
+    "ROM loader completes the first footer slot before later slots")
+eq(loading_slots[0].phase, 1,
+    "completed footer slot publishes the Ready state")
+eq(loading_slots[1].status, 0,
+    "next footer slot waits for a later source service pass")
+eq(loading_state.program_loading.progress_delay, 2,
+    "ROM loader installs the completed slot delay")
+eq(Session.advance_program_loading(loading_state, loading_slots), false,
+    "ROM loader counts down the first inter-step frame")
+eq(Session.advance_program_loading(loading_state, loading_slots), false,
+    "ROM loader counts down the second inter-step frame")
+eq(Session.advance_program_loading(loading_state, loading_slots), true,
+    "ROM loader advances one slot after the signed delay expires")
+eq(loading_slots[1].status, 1,
+    "ROM loader advances the next incomplete slot by one visual state")
+loading_slots[1].status, loading_slots[1].phase = 6, 1
+eq(Session.advance_program_loading(loading_state, loading_slots), false,
+    "ROM loader preserves the remaining per-slot countdown")
+eq(Session.advance_program_loading(loading_state, loading_slots), false,
+    "ready footer slots do not advance after the delay expires")
+eq(loading_state.program_loading, nil,
+    "loader countdown state retires when all footer slots are ready")
+eq(Session.file_class_name(46), "HVAC Systems",
+    "Matrix file-class lookup includes the final ROM record")
+local _, paired_ice_state = Session.begin(16, true)
+paired_ice_state.current_node = 4
+local paired_ice_view = Session.traversal_view(
+    paired_ice_state, "Analyze-2", Session.program_status_label(10))
+eq(paired_ice_view.ice_label, HUD.ic_visibility[1],
+    "unseen IC uses the ROM unknown label")
+eq(paired_ice_view.file_class_label, "",
+    "rank one hides the node file class")
+eq(paired_ice_view.action_difficulty, -1,
+    "unseen node hides the node security rating")
+Session.set_current_node_knowledge(paired_ice_state, 1)
+paired_ice_view = Session.traversal_view(
+    paired_ice_state, "Analyze-2", Session.program_status_label(10))
+eq(paired_ice_view.ice_label, HUD.ic_types[0],
+    "rank one reveals the IC type")
+eq(paired_ice_view.ice_rating_label, "?",
+    "rank one shows the IC type but hides its rating")
+Session.set_current_node_knowledge(paired_ice_state, 4)
+paired_ice_view = Session.traversal_view(
+    paired_ice_state, "Analyze-2", Session.program_status_label(10))
+eq(paired_ice_view.function_label, "SPU",
+    "Matrix HUD node function comes from the ROM text table")
+eq(paired_ice_view.file_class_label, " Data Routing ",
+    "rank four reveals the ROM file-class cell")
+eq(paired_ice_view.ice_label, HUD.ic_types[0],
+    "first IC layer comes from the two-byte ROM combo table")
+eq(paired_ice_view.ice_rating_label, "7",
+    "first IC rating adds the active-alert bonus")
+eq(paired_ice_view.second_ice_label, HUD.ic_types[3],
+    "second IC layer renders on the second source row")
+eq(paired_ice_view.second_ice_rating_label, "6",
+    "second IC rating uses the node's second rating byte")
+eq(paired_ice_view.alert_label, HUD.alert_states[2],
+    "node HUD alert string uses the source alert table")
+eq(paired_ice_view.active_program_status_label, HUD.program_states[10],
+    "active program status uses the FFF0E8 HUD table")
 local started, first_session = Session.begin(0)
 eq(started, true, "Matrix session starts from system zero")
 eq(first_session.current_node, 0, "Matrix session enters access node")
@@ -134,6 +623,22 @@ eq(completed_targeted_entry.state, 0,
     "completed-run flag prevents reactivation of the target system")
 eq(table.concat(Session.map_labels(), ","), "CPU,SPU,IOP,SAN,SM,DS",
     "Matrix map labels match ROM text table")
+local seen_world_models = {}
+for system_id = 0, 24 do
+    local system = Systems[system_id]
+    for node_id, node in pairs(system.nodes) do
+        local status = Session.node_status({
+            nodes = system.nodes, current_node = node_id,
+        })
+        assert(status and status.world_model_id == node.function_id,
+            "node status preserves the ROM world-model id")
+        seen_world_models[status.world_model_id] = true
+    end
+end
+for model_id = 0, 5 do
+    assert(seen_world_models[model_id],
+        "Matrix topology includes world-model id " .. model_id)
+end
 for system_id = 0, 24 do
     local ok, session = Session.begin(system_id)
     assert(ok, "Matrix map visual state initializes for system " .. system_id)
@@ -164,7 +669,11 @@ local deck_context = { redraw = function() end, game = {
     deck_enter = function() return E.MatrixModeResult.ATTACK end,
     deck_leave = function(mode) restored_deck_mode = mode end,
     set_deck_mode = function() end,
-    deck_tick = function() end,
+    deck_record = function()
+        return { ratings = {}, active = {}, load_io = 0, memory = 0 }
+    end,
+    deck_slots = function() return {} end,
+    matrix_world_state = function() return {} end,
 } }
 Cyberdeck.Cyberdeck.enter(deck_screen, deck_context)
 eq(mode_state.mode, E.MatrixModeResult.BALANCED,
@@ -309,26 +818,33 @@ eq(Session.cancel_node_selection(cpu_session), false,
     "node phase rejects a stale navigation cancel")
 
 -- Exercise the actual deck-grid screen against a narrow fake host. This verifies
--- the menu calls its heartbeat, moves the visible cursor, and submits the
--- selected attack mode before opening the chosen child screen.
+-- the Lua-owned palette cadence, shared child state, cursor, and selected mode.
 local Cyberdeck = require("menu.screens.cyberdeck").Cyberdeck
-local deck_screen, grid = Cyberdeck.new(), { ticks = 0, mode = nil, redraw = nil }
+local deck_screen, grid = Cyberdeck.new(), { mode = nil, redraw = nil }
 local grid_ctx = {
     game = {
-        deck_tick = function() grid.ticks = grid.ticks + 1 end,
         set_deck_mode = function(mode) grid.mode = mode end,
+        deck_record = function()
+            return { ratings = {}, active = {}, load_io = 0, memory = 0 }
+        end,
+        deck_slots = function() return {} end,
     },
     redraw = function(region) grid.redraw = region end,
 }
 Cyberdeck.input(deck_screen, E.Pad.UP, grid_ctx)
-eq(grid.ticks, 1, "deck screen services heartbeat")
+eq(deck_screen.deck_palette_phase, 1,
+   "deck palette advances on its first active frame")
 eq(deck_screen.col, 0, "deck screen up keeps first column")
 eq(deck_screen.row, 3, "deck screen up wraps to bottom row")
-eq(grid.redraw, E.MenuRegion.SUBMENU, "deck screen redraws moved grid")
+eq(grid.redraw, E.MenuRegion.FULL, "deck screen redraws changed footer art")
 local child = Cyberdeck.input(deck_screen, E.Pad.A, grid_ctx)
 eq(grid.mode, E.MatrixDeckMode.ATTACK, "deck screen submits attack mode")
 eq(child.transition, E.MenuTransition.PUSH, "deck screen opens child route")
 eq(child.screen, E.MenuScreen.DECK_CYBERINFO, "bottom-left cell opens deck info")
+eq(child.args.deck_palette, deck_screen.deck_palette,
+   "deck child shares Lua-owned palette state")
+eq(child.args.matrix_state, deck_screen.matrix_state,
+   "deck child shares the active Matrix session")
 
 -- IC visibility, layered types, and alert bonuses follow the ROM tables.
 local node = { ic_condition = 10, ic_code = 7, ic_rating = 3, ic_rating2 = 5 }
@@ -457,13 +973,17 @@ D.erase_file(stored_files, 0)
 eq(stored_files.files[0].value, 0,
     "erasing a file clears its value byte with the size word")
 eq(D.run_info(0, 0, 0), "NONE", "no active run summary")
-local slots = { status = { [0] = 6, [1] = 6, [2] = 6, [3] = 6, [4] = 6 },
-    phase = { [0] = 0, [1] = 0, [2] = 0, [3] = 0, [4] = 0 },
-    timer = { [0] = 0, [1] = 0, [2] = 0, [3] = 0, [4] = 0 } }
+local slots = {
+    [0] = { status = 6, phase = 0, timer = 0 },
+    [1] = { status = 6, phase = 0, timer = 0 },
+    [2] = { status = 6, phase = 0, timer = 0 },
+    [3] = { status = 6, phase = 0, timer = 0 },
+    [4] = { status = 6, phase = 0, timer = 0 },
+}
 D.load(deck, slots, 1, 2, false)
 eq(deck.active[1], 2, "loading publishes selected program")
-eq(slots.timer[1], 60, "loading timer is ten frames per step")
-eq(slots.status[1], 0, "ready slot enters loading state")
+eq(slots[1].timer, 60, "loading timer is ten frames per step")
+eq(slots[1].status, 0, "ready slot enters loading state")
 
 -- Node movement and action outcomes preserve table ordering and story gates.
 local links = { [0] = 5, [1] = -1, [2] = 7, [7] = 9 }
@@ -689,6 +1209,64 @@ local healed = Programs.medic(deck, function(dice, tn)
 end)
 eq(healed.healed, 2, "Medic reports successes rolled")
 eq(deck.persona, 10, "Medic clamps persona at ten")
+local analyze_deck = {
+    mpcp = 8, response = 2, sensor = 5,
+    ratings = { [11] = 1 },
+}
+local analyze_node = { colour = 2, security = 3 }
+local analyze_state = { mode = E.MatrixModeResult.ATTACK,
+                        alert = 0, smoke = 0 }
+local analyze_roll_count = 0
+local known_nodes = { [14] = 0 }
+local analyzed = Programs.analyze(
+    analyze_deck, { d81c = 3, computer = 6 }, analyze_node,
+    analyze_state,
+    function(dice, tn)
+        analyze_roll_count = analyze_roll_count + 1
+        if analyze_roll_count == 1 then
+            eq(dice, 1, "Analyze decker dice include the color penalty")
+            eq(tn, 3, "Analyze decker roll uses Matrix alert TN")
+            return 2
+        end
+        eq(dice, 3, "Analyze opposes with node security")
+        eq(tn, 5, "Analyze opposition uses deck Sensor")
+        return 0
+    end, known_nodes, 14)
+eq(analyzed.ok, true, "Analyze returns its successful outcome")
+eq(analyzed.net, 2, "Analyze floors and reports net successes")
+eq(analyzed.level, 2, "Analyze returns the FFFB30 knowledge rank")
+eq(analyzed.frames, 0x3C, "Analyze starts the ROM profile duration")
+eq(known_nodes[14], 0x20, "Analyze stores its knowledge nibble")
+local analyze_failed = Programs.analyze(
+    analyze_deck, { d81c = 3, computer = 6 }, analyze_node,
+    analyze_state, function() return 0 end)
+eq(analyze_failed.fail, true, "Analyze failure follows the unload path")
+local analyze_transition = {}
+eq(Session.begin_analyze_transition(analyze_transition, 1, 10), true,
+   "Analyze transition accepts the active program slot")
+for tick = 1, 18 do
+    Session.advance_analyze_transition(analyze_transition)
+end
+eq(analyze_transition.analyze_transition.runner_phase, 1,
+   "Analyze raises the runner after five source calls")
+eq(analyze_transition.analyze_transition.ring_phase, 3,
+   "Analyze selects the source ring phase from its signed timer")
+for tick = 19, 60 do
+    Session.advance_analyze_transition(analyze_transition)
+end
+eq(analyze_transition.analyze_transition.remaining, 0,
+   "Analyze profile remains active for countdown zero")
+eq(analyze_transition.analyze_transition.ring_phase, 0,
+   "Analyze countdown zero selects phase zero")
+local analyze_advanced, analyze_finished =
+    Session.advance_analyze_transition(analyze_transition)
+eq(analyze_advanced, true, "Analyze advances its final source call")
+eq(analyze_finished.result_state, 10,
+   "Analyze publishes the completed Resisted result")
+eq(analyze_transition.analyze_transition, nil,
+   "Analyze clears the transition after the signed countdown")
+eq(analyze_transition.analyze_runner_idle, true,
+   "Analyze restores the idle runner after completion")
 local kind = C.ic_kind(7, 1)
 eq(kind, "trace", "active layered IC attacks as trace")
 eq(C.ic_kind(12, 0), "passive", "inactive layered IC remains passive")
@@ -957,6 +1535,55 @@ eq(johnson_intro_events[1], "first_impression",
     "first Wanderer page uses its location profile")
 eq(johnson_intro_events[2], "first_meeting",
     "second Wanderer page uses its location profile")
+
+-- Mortimer's Big Rhino work choice uses source context 2 and its own opening
+-- page. Information remains separate until its ROM question and contact-
+-- purchase branches are connected.
+local old_present_offer_for_context = Registry.present_offer_for_context
+local old_take_pending_johnson_return = Registry.take_pending_johnson_return
+local mortimer_offer_context
+local mortimer_events = {}
+local mortimer_menu_call = 0
+Registry.present_offer_for_context = function(context)
+    mortimer_offer_context = context
+    return "declined"
+end
+Registry.take_pending_johnson_return = function() return nil end
+game.modules.dialogue = Dialogue
+game.location = { text_profile = "big-rhino.mortimer_reed" }
+game.state = {}
+game.ui = {
+    say = function(event_id)
+        mortimer_events[#mortimer_events + 1] = event_id
+    end,
+    say_text = function() end,
+    menu = function(menu_id)
+        mortimer_menu_call = mortimer_menu_call + 1
+        eq(menu_id, "opening", "Mortimer uses his source opening menu")
+        return mortimer_menu_call == 1 and "work" or "leave"
+    end,
+    prompt_text = function() return "no" end,
+}
+eq(Johnson.interaction(), "leave",
+    "Mortimer interaction returns to the field after leave")
+eq(mortimer_offer_context, E.RunOfferContext.BIG_RHINO,
+    "Mortimer work selection uses ROM Johnson context two")
+eq(mortimer_events[1], "booth_entry",
+    "Mortimer first contact shows the ROM booth-entry dialogue")
+eq(mortimer_events[2], "work_opening",
+    "Mortimer work selection shows its ROM work opening")
+game.ui.menu = function(menu_id)
+    if menu_id == "repeat_opening" then return "information" end
+    if menu_id == "information" then return "back" end
+    if menu_id == "opening_after_information" then return "leave" end
+    error("unexpected Mortimer menu " .. tostring(menu_id))
+end
+eq(Johnson.interaction(), "leave",
+    "Mortimer information returns to its own opening menu")
+eq(mortimer_events[5], "information_opening",
+    "Mortimer information uses its own ROM introduction")
+Registry.present_offer_for_context = old_present_offer_for_context
+Registry.take_pending_johnson_return = old_take_pending_johnson_return
 
 print("matrix Lua rules: " .. checks .. " checks passed")
 )lua";

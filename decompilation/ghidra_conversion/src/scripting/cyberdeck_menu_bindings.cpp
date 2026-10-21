@@ -187,8 +187,12 @@ void push_optional_integer(lua_State* lua, const int table_index,
 
 void push_matrix_world_state(lua_State* lua,
                              const ScriptMatrixWorldState& world) {
-    lua_createtable(lua, 0, 4);
+    lua_createtable(lua, 0, 6);
     const int world_index = lua_absindex(lua, -1);
+    push_optional_integer(lua, world_index, "karma_counter",
+                          world.karma_counter);
+    push_optional_integer(lua, world_index, "passive_ic_counter",
+                          world.passive_ic_counter);
     if (world.run.has_value()) {
         const auto& run = *world.run;
         lua_createtable(lua, 0, 7);
@@ -256,6 +260,18 @@ void push_matrix_world_state(lua_State* lua,
 ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
                                                 const int world_index) {
     ScriptMatrixWorldState world;
+    if (const auto value = read_optional_integer(
+            lua, world_index, "karma_counter");
+        value.has_value()) {
+        world.karma_counter = static_cast<std::int8_t>(
+            std::clamp<lua_Integer>(*value, -128, 127));
+    }
+    if (const auto value = read_optional_integer(
+            lua, world_index, "passive_ic_counter");
+        value.has_value()) {
+        world.passive_ic_counter = static_cast<std::int8_t>(
+            std::clamp<lua_Integer>(*value, -128, 127));
+    }
     lua_getfield(lua, world_index, "run");
     if (lua_istable(lua, -1)) {
         const int run_index = lua_absindex(lua, -1);
@@ -394,9 +410,6 @@ int dispatch_cyberdeck_menu_binding(
     case CyberdeckMenuBinding::leave:
         if (game.deck_leave) game.deck_leave(integer_argument(lua, 1));
         return 0;
-    case CyberdeckMenuBinding::tick:
-        if (game.deck_tick) game.deck_tick();
-        return 0;
     case CyberdeckMenuBinding::set_mode:
         if (game.set_deck_mode) {
             const int source_mode = integer_argument(lua, 1);
@@ -452,7 +465,7 @@ int dispatch_cyberdeck_menu_binding(
         push_record(lua, game.deck_record ? game.deck_record()
                                           : ScriptCyberdeckRecord{});
         return 1;
-    case CyberdeckMenuBinding::slots: {
+    case CyberdeckMenuBinding::program_slots: {
         const auto slots = game.deck_slots
                                ? game.deck_slots()
                                : std::array<ScriptCyberdeckProgramSlot, 5>{};

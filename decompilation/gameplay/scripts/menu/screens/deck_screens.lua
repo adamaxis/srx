@@ -3,12 +3,35 @@
 local E = require("enums")
 local D = require("menu.rules.deck")
 local MatrixSession = require("menu.matrix_session")
+local DeckPalette = require("menu.deck_palette")
 local P, R, T, MM = E.Pad, E.MenuRegion, E.MenuTransition, E.MenuMessage
 local ABC = P.A | P.B | P.C
 
+local function tick_palette(st, ctx)
+    local phase, changed = DeckPalette.tick(st.deck_palette)
+    st.deck_palette_phase = phase
+    if changed then ctx.redraw(R.FULL) end
+end
+
+local function service_program_loading(st, ctx)
+    if not MatrixSession.is_online(st.matrix_state) then return false end
+    local slots = ctx.game.deck_slots()
+    if not MatrixSession.advance_program_loading(st.matrix_state, slots) then
+        return false
+    end
+    ctx.game.deck_commit(ctx.game.deck_record(), slots)
+    ctx.redraw(R.FULL)
+    return true
+end
+
 local Program = { window = E.WindowPlane.OFF }
 function Program.new(args)
-    return { p = D.index(args.col, args.row), choice = 1 }
+    args = args or {}
+    local deck_palette = args.deck_palette or DeckPalette.new()
+    return { p = D.index(args.col, args.row), choice = 1,
+             matrix_state = args.matrix_state,
+             deck_palette = deck_palette,
+             deck_palette_phase = DeckPalette.phase(deck_palette) }
 end
 function Program.enter(st, ctx)
     local g = ctx.game
@@ -39,7 +62,8 @@ function Program.enter(st, ctx)
     return { transition = T.POP, result = {} }
 end
 function Program.input(st, events, ctx)
-    ctx.game.deck_tick()
+    tick_palette(st, ctx)
+    service_program_loading(st, ctx)
     if st.slot then
         if events & (P.UP | P.DOWN) ~= 0 then
             st.choice = 1 - st.choice
@@ -66,15 +90,23 @@ end
 
 local CyberInfo = { window = E.WindowPlane.OFF }
 function CyberInfo.new(args)
-    return { row = 0, matrix_state = args and args.matrix_state }
+    args = args or {}
+    local deck_palette = args.deck_palette or DeckPalette.new()
+    return { row = 0, matrix_state = args.matrix_state,
+             deck_palette = deck_palette,
+             deck_palette_phase = DeckPalette.phase(deck_palette) }
 end
 function CyberInfo.enter(st, ctx)
-    st.title = "Cyberdeck Information"
-    st.labels = { "Deck Stats", "Run Info" }
+    -- ROM 0x18AB0 reads the padded title/options at 0xE3886 from $C32C.
+    -- The source wording is "Cyberdeck Info", with two leading spaces on
+    -- each visible line; the 12-glyph separator is placed by the presenter.
+    st.title = "  Cyberdeck Info"
+    st.labels = { "  Deck Stats", "  Run Info" }
     ctx.redraw(R.SUBMENU)
 end
 function CyberInfo.input(st, events, ctx)
-    ctx.game.deck_tick()
+    tick_palette(st, ctx)
+    service_program_loading(st, ctx)
     if events & (P.UP | P.DOWN) ~= 0 then
         st.row = 1 - st.row
         ctx.redraw(R.SUBMENU)
@@ -95,7 +127,10 @@ function CyberInfo.input(st, events, ctx)
                 run and run.value or 0)
             if status == "COMPLETE" then
                 return { transition = T.POP,
-                         result = { text = "Shadowrun is complete!!" } }
+                         result = { matrix_run_info = {
+                             kind = "complete",
+                             message = "Shadowrun is| complete!!",
+                         } } }
             end
             if status == "ACTIVE" then
                 local objective = run.objective
@@ -106,30 +141,38 @@ function CyberInfo.input(st, events, ctx)
                     [0] = "Delete File", "Upload File", "Crash System",
                     "Download File",
                 }
-                return { transition = T.POP, result = { text = table.concat({
-                    "Node: " .. node,
-                    "Node Function: " .. node_function,
-                    "Action: " .. action_names[action_index],
-                }, "|") } }
+                return { transition = T.POP, result = { matrix_run_info = {
+                    kind = "active",
+                    node_label = "Node:",
+                    node = node,
+                    function_label = "Node Function:",
+                    node_function = node_function,
+                    action_label = "Action:",
+                    action = action_names[action_index],
+                } } }
             end
             -- The field Cyberdeck route has no active run. ROM 0x18C50
-            -- writes this text and returns without opening a wait screen.
+            -- writes two text rows separated by a 0x80 row control and
+            -- returns without opening a wait screen.
             return { transition = T.POP,
-                     result = { text = "You are not on a matrix run!!" } }
+                     result = { matrix_run_info = {
+                         kind = "no_run",
+                         message = "You are not on|a matrix run!!",
+                     } } }
         end
         local record = ctx.game.deck_record()
-        local p = record.persona
-        local text = table.concat({
-            "MPCP: " .. record.mpcp,
-            "Hardening: " .. record.hardening,
-            "Memory: " .. record.memory .. " Mp",
-            "Storage: " .. record.storage .. " Mp",
-            "Load/IO: " .. record.load_io,
-            "Response: " .. record.response,
-            "Bod/Evasion/Masking/Sensor: " ..
-                p[0] .. "/" .. p[1] .. "/" .. p[2] .. "/" .. p[3],
-        }, "|")
-        return { transition = T.POP, result = { text = text } }
+        local model = D.MODEL_NAMES[record.model] or { "", "" }
+        local persona = record.persona
+        return { transition = T.POP, result = { matrix_deck_stats = {
+            manufacturer = model[1],
+            model = model[2],
+            labels = D.STAT_LABELS,
+            values = {
+                record.mpcp, record.hardening, record.memory, record.storage,
+                record.load_io, record.response,
+                persona[0], persona[1], persona[2], persona[3],
+            },
+        } } }
     end
     if events & P.START ~= 0 then
         return { transition = T.POP, result = {} }
@@ -147,7 +190,13 @@ local function file_text(record)
 end
 
 local Storage = { window = E.WindowPlane.OFF }
-function Storage.new() return { row = 0 } end
+function Storage.new(args)
+    args = args or {}
+    local deck_palette = args.deck_palette or DeckPalette.new()
+    return { row = 0, matrix_state = args.matrix_state,
+             deck_palette = deck_palette,
+             deck_palette_phase = DeckPalette.phase(deck_palette) }
+end
 function Storage.enter(st, ctx)
     st.title = "Cyberdeck Storage"
     st.labels = { "View Files", "Erase File" }
@@ -162,8 +211,8 @@ local function return_file_list(ctx)
     return { transition = T.POP, result = { text = text } }
 end
 function Storage.input(st, events, ctx)
+    service_program_loading(st, ctx)
     local g = ctx.game
-    g.deck_tick()
     if st.phase == "erase" then
         if events & (P.UP | P.DOWN) ~= 0 then
             st.choice = 1 - st.choice
@@ -218,7 +267,11 @@ end
 
 local Map = { window = E.WindowPlane.OFF }
 function Map.new(args)
-    return { row = 0, matrix_state = args.matrix_state }
+    args = args or {}
+    local deck_palette = args.deck_palette or DeckPalette.new()
+    return { row = 0, matrix_state = args.matrix_state,
+             deck_palette = deck_palette,
+             deck_palette_phase = DeckPalette.phase(deck_palette) }
 end
 function Map.enter(st, ctx)
     -- The source only dispatches this screen from the active Matrix session.
@@ -232,6 +285,7 @@ function Map.enter(st, ctx)
     ctx.redraw(R.SUBMENU)
 end
 function Map.input(st, events, ctx)
+    service_program_loading(st, ctx)
     local g = ctx.game
     if st.phase == "map" then
         if events & P.START ~= 0 then
@@ -249,7 +303,6 @@ function Map.input(st, events, ctx)
         end
         return
     end
-    g.deck_tick()
     if events & (P.UP | P.DOWN) ~= 0 then
         st.row = 1 - st.row
         ctx.redraw(R.SUBMENU)

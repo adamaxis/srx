@@ -6,6 +6,8 @@
 -- passive FFF0A3, trace_on FFF0E6, trace_left FFF0E7). roll(dice, tn) = 0xDBA successes (RNG stays in C++).
 local MX = require("menu.rules.matrix")
 local M = {}
+M.PROGRAM = { ATTACK = 0, SLOW = 1, DEGRADE = 2 }
+M.RESULT = { FAIL = 7, BLOCKED = 8, SUCCESS = 9 }
 local function s8(v) v = v & 0xFF; return v >= 0x80 and v - 0x100 or v end
 local function min2(tn) return tn < 2 and 2 or tn end
 
@@ -46,30 +48,35 @@ end
 function M.run_program(deck, decker, node, st, p, roll)
     local s = M.decker_test(deck, decker, node, st, p, roll)
     local net = s < 0 and -1 or M.opposed(deck, node, st, s, roll)
-    return net, net < 0 and 7 or net == 0 and 8 or 9
+    return net, net < 0 and M.RESULT.FAIL or
+                net == 0 and M.RESULT.BLOCKED or M.RESULT.SUCCESS
 end
-local function ic_defeated(st, party)                 -- shared tail of 0x56434 / 0x56482
+local function ic_defeated(st, party)                 -- shared FFF0CE rollover
     st.karma_counter = s8(st.karma_counter - 2)
     if st.karma_counter < 0 then
         st.karma_counter = 15
         for i = 0, 2 do local r = party[i]; if r then r.karma = (r.karma + 1) & 0xFF end end   -- FF018D/028D/038D
     end
 end
--- Attack 0x56434: condition -= net; <= 0 -> 0 + karma counter.
+-- Attack program table entry 0x1B734 (table 0xE2E0A). Its result path uses
+-- 0x19E32 and the shared 0x56434 helper to reduce selected node +0x0F.
 function M.attack(node, st, net, party)
     st.passive = 0
     node.ic_condition = s8(node.ic_condition - net)
     if node.ic_condition <= 0 then node.ic_condition = 0; ic_defeated(st, party); return true end
     return false
 end
--- Slow 0x56482: reaction -= 2*net + Slow rating/2; < 0 -> 0, 0x1A154 crashes the IC (+0x0F = 0), karma counter.
+-- Slow program table entry 0x1B696 (table 0xE2E0A). Result path 0x19EA6
+-- sends 2*net + floor(Slow rating/2) through 0x56482 to node +0x10; a
+-- negative signed result clears +0x0F and uses the shared FFF0CE rollover.
 function M.slow(deck, node, st, net, party)
     st.passive = 0
     node.ic_reaction = s8(node.ic_reaction - (2 * net + (deck.ratings[1] >> 1)))
     if node.ic_reaction < 0 then node.ic_reaction = 0; node.ic_condition = 0; ic_defeated(st, party); return true end
     return false
 end
--- Degrade 0x564D6: security -= max(1, net >> 1), floor 2.
+-- Degrade program table entry 0x1B81A (table 0xE2E0A). Result handler
+-- 0x19F18 passes positive net to the shared 0x564D6 current-node helper.
 function M.degrade(node, net)
     local d = net >> 1; if d <= 0 then d = 1 end
     node.security = node.security - d; if node.security < 2 then node.security = 2 end

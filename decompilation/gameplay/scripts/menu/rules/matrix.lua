@@ -27,13 +27,23 @@ function M.step_deck_cursor(column, row, up, down, left, right)
 end
 -- 0xE31A7: per IC code {normal, active-alert} type bytes (0xFF = unused). Codes 7..16 are two-layer IC:
 -- the second type applies once the alert is ACTIVE (0x19B82: FFF0A0 > 0 and 7 <= code < 0x11).
-M.IC_TABLE = { [0] = {0,255},{1,255},{2,255},{3,255},{8,255},{6,255},{7,255},{0,6},{0,7},{1,6},{1,7},{0,2},{0,3},{0,8},{1,2},{1,3},{1,8},{0,4} }
+M.IC_TABLE = { [0] =
+    {0,255},{1,255},{2,255},{3,255},{8,255},{6,255},{7,255},
+    {0,6},{0,7},{1,6},{1,7},{0,2},{0,3},{0,8},{1,2},{1,3},{1,8},
+    {0,4},{0,5},{1,4},{1,5},{2,4},{2,5},{3,4},{3,5},{8,4},{8,5},
+} -- Codes 0..26, both bytes copied from ROM 0xE31A7.
 local function layered(code, alert) return alert > 0 and code >= 7 and code < 0x11 end
 -- 0x19B40: IC type of the current node. map_seen = FFFB30[FFF102] >> 4 (0x17C3C); in_alert = FFDF84 < 0.
 function M.ic_type(node, alert, in_alert, map_seen)
-    if node.ic_condition == 0 or node.ic_condition >= 0x80 or node.ic_code >= 0x80 then return M.NO_IC end   -- ble / bmi on bytes
+    local code = node.ic_code
+    if node.ic_condition <= 0 or node.ic_condition >= 0x80 or
+       type(code) ~= "number" or code < 0 or code > 26 then
+        return M.NO_IC
+    end -- signed BLE/BMI guards at 0x19B58/0x19B64; table ends after code 26.
     if not in_alert and map_seen <= 0 then return M.UNSEEN end
-    return M.IC_TABLE[node.ic_code][layered(node.ic_code, alert) and 2 or 1]
+    local types = M.IC_TABLE[code]
+    if not types then return M.NO_IC end
+    return types[layered(code, alert) and 2 or 1]
 end
 -- 0x19BF6: IC rating = +0x11 (or +0x12 for the second layer) + alert bonus (none 0, passive +1, active +2)
 function M.ic_rating(node, alert)

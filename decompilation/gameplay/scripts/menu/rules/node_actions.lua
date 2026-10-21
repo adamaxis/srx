@@ -125,7 +125,9 @@ end
 function M.file_name(id) return DECK.FILE_NAMES[id] end
 -- Phase 2 (after "Download File?" A = yes). Returns message key or stored slot.
 function M.store(rec, run, node, st, file, rand)
-    if DECK.free_storage(rec) < file.size then return nil, M.TEXT.NO_STORAGE end
+    if not DECK.storage_fits_file(rec, file.size) then
+        return nil, M.TEXT.NO_STORAGE
+    end
     local k; for i = 0, DECK.FILES - 1 do if rec.files[i].id < 0 then k = i; break end end
     if not k then return nil, M.TEXT.FIVE_FILES end
     local id = file.id

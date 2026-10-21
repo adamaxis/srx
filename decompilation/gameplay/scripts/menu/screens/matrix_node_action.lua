@@ -6,12 +6,16 @@ local MatrixSession = require("menu.matrix_session")
 local NodeActions = require("menu.rules.node_actions")
 local MatrixText = require("menu.rules.matrix_text")
 local MatrixRules = require("menu.rules.matrix")
+local MatrixCombat = require("menu.rules.matrix_combat")
+local DeckRules = require("menu.rules.deck")
+local MatrixPrograms = require("menu.rules.matrix_programs")
 
 local M = { window = E.WindowPlane.OFF }
 local CONFIRM = P.A | P.B | P.C
 
 local function refresh(st)
     st.matrix_node_status = nil
+    st.matrix_traversal_view = nil
     if st.shutdown then
         st.title, st.text, st.labels = "Matrix Message", MatrixText.SHUTDOWN, {}
         return
@@ -57,6 +61,11 @@ local function refresh(st)
     st.title = MatrixSession.node_name(state, state.current_node)
     st.text = MatrixSession.node_summary(state)
     st.matrix_node_status = MatrixSession.node_status(state)
+    if st.traversal_view then
+        st.matrix_traversal_view = MatrixSession.traversal_view(
+            state, st.active_program_label,
+            st.active_program_status_label)
+    end
     st.labels = {}
     local actions = MatrixSession.node_actions(state)
     for index, action in ipairs(actions) do
@@ -67,6 +76,276 @@ local function refresh(st)
     elseif st.row >= #st.labels then
         st.row = #st.labels - 1
     end
+end
+
+local function update_deck_view(st, ctx)
+    local record = ctx.game.deck_record()
+    local slots = ctx.game.deck_slots()
+    if type(record) ~= "table" or type(slots) ~= "table" then return end
+    st.program_ratings = record.ratings
+    st.active_programs = record.active
+    local slot_status = {}
+    for slot = 0, 4 do
+        local entry = slots[slot]
+        slot_status[slot] = entry and entry.status or 0
+    end
+    st.program_slot_status = slot_status
+
+    local selected = MatrixSession.selected_program_slot(st.matrix_state)
+    local program = record.active and record.active[selected]
+    local active_slot = slots[selected]
+    local rating = program and record.ratings and record.ratings[program] or 0
+    local name = program and program >= 0 and DeckRules.PROGRAM_NAMES[program]
+    st.active_program_label = name and rating > 0
+        and (name .. "-" .. tostring(rating)) or ""
+    st.active_program_status_label = program and program >= 0 and active_slot
+        and MatrixSession.program_status_label(active_slot.phase) or ""
+end
+
+local function start_combat_program(st, events, ctx, program)
+    local state = st.matrix_state
+    if state.phase ~= "node" or (events & CONFIRM) == 0 then return false end
+    local game = ctx.game
+    local record = game.deck_record()
+    local slots = game.deck_slots()
+    if type(record) ~= "table" or type(record.active) ~= "table" or
+       type(slots) ~= "table" then
+        return false
+    end
+
+    local slot_index = MatrixSession.selected_program_slot(state)
+    local visual = slots[slot_index]
+    if record.active[slot_index] ~= program or
+       type(visual) ~= "table" or (visual.status or 0) < DeckRules.READY or
+       not ((visual.phase or 0) == 1 or (visual.phase or 0) >= 6) then
+        return false
+    end
+
+    local party = game.party()
+    local world
+    if program == MatrixCombat.PROGRAM.ATTACK or
+       program == MatrixCombat.PROGRAM.SLOW then
+        world = MatrixSession.world_state(game)
+        if type(world.karma_counter) ~= "number" then return false end
+    end
+    local party_karma = {}
+    for member_index = 0, 2 do
+        local member = party[member_index]
+        if member then party_karma[member_index] = member.karma end
+    end
+    local runner = party[game.active_slot()]
+    local node = MatrixSession.current_node(state)
+    if not runner or not node then return false end
+
+    local mode = MatrixSession.program_mode_from_buttons(events)
+    state.mode = mode
+    local attributes = runner.attributes or {}
+    local skills = runner.skills or {}
+    local decker = {
+        d81c = (((attributes[1] or 0) + (attributes[4] or 0)) & 0xFF) >> 1,
+        computer = skills[7] or 0,
+    }
+    local deck = {
+        mpcp = record.mpcp or 0,
+        response = record.response or 0,
+        evasion = record.persona and record.persona[2] or 0,
+        ratings = record.ratings or {},
+    }
+    local combat_state = {
+        alert = state.alert,
+        mode = mode,
+        smoke = state.smoke or 0,
+        mirrors = state.mirrors or 0,
+        karma_counter = world and world.karma_counter or 0,
+        passive = world and world.passive_ic_counter or 0,
+    }
+    local net, result_state = MatrixCombat.run_program(
+        deck, decker, node, combat_state, program,
+        function(dice, target)
+            return game.roll_successes(dice, target)
+        end)
+    if net > 0 then
+        if program == MatrixCombat.PROGRAM.ATTACK then
+            MatrixCombat.attack(node, combat_state, net, party)
+        elseif program == MatrixCombat.PROGRAM.SLOW then
+            MatrixCombat.slow(deck, node, combat_state, net, party)
+        else
+            MatrixCombat.degrade(node, net)
+        end
+    end
+    if world then
+        world.karma_counter = combat_state.karma_counter
+        if net > 0 then
+            world.passive_ic_counter = combat_state.passive
+        end
+        local party_karma_changed = false
+        for member_index = 0, 2 do
+            local member = party[member_index]
+            if member and party_karma[member_index] ~= member.karma then
+                party_karma_changed = true
+                break
+            end
+        end
+        if party_karma_changed and type(game.commit_party) == "function" then
+            game.commit_party(party)
+        end
+        MatrixSession.commit_world_state(game, world)
+    end
+    visual.phase = result_state
+    game.deck_commit(record, slots)
+    update_deck_view(st, ctx)
+    refresh(st)
+    ctx.redraw(R.FULL)
+    return true
+end
+
+local function start_attack(st, events, ctx)
+    return start_combat_program(st, events, ctx,
+                                MatrixCombat.PROGRAM.ATTACK)
+end
+
+local function start_slow(st, events, ctx)
+    return start_combat_program(st, events, ctx, MatrixCombat.PROGRAM.SLOW)
+end
+
+local function start_degrade(st, events, ctx)
+    return start_combat_program(st, events, ctx,
+                                MatrixCombat.PROGRAM.DEGRADE)
+end
+
+local function start_medic(st, events, ctx)
+    local state = st.matrix_state
+    if state.phase ~= "node" or (events & CONFIRM) == 0 then return false end
+    local game = ctx.game
+    local record = game.deck_record()
+    local slots = game.deck_slots()
+    if type(record) ~= "table" or type(record.active) ~= "table" or
+       type(slots) ~= "table" then
+        return false
+    end
+    local slot_index = MatrixSession.selected_program_slot(state)
+    local visual = slots[slot_index]
+    if record.active[slot_index] ~= MatrixPrograms.P.MEDIC or
+       type(visual) ~= "table" or (visual.status or 0) < DeckRules.READY or
+       not ((visual.phase or 0) == 1 or (visual.phase or 0) >= 6) then
+        return false
+    end
+
+    state.mode = MatrixSession.program_mode_from_buttons(events)
+    local deck = {
+        persona = record.persona_condition or 0,
+        ratings = record.ratings or {},
+    }
+    local result = MatrixPrograms.medic(
+        deck, function(dice, target)
+            return game.roll_successes(dice, target)
+        end)
+    record.persona_condition = deck.persona
+    visual.phase = result.state or 7
+    game.deck_commit(record, slots)
+    update_deck_view(st, ctx)
+    refresh(st)
+    ctx.redraw(R.FULL)
+    return true
+end
+
+local function start_analyze(st, events, ctx)
+    local state = st.matrix_state
+    if not st.traversal_view or state.phase ~= "node" or
+       state.analyze_transition or (events & CONFIRM) == 0 then
+        return false
+    end
+    local game = ctx.game
+    local record = game.deck_record()
+    local slots = game.deck_slots()
+    if type(record) ~= "table" or type(record.active) ~= "table" or
+       type(slots) ~= "table" then
+        return false
+    end
+    local slot_index = MatrixSession.selected_program_slot(state)
+    local program = record.active[slot_index]
+    local visual = slots[slot_index]
+    if program ~= MatrixPrograms.P.ANALYZE or type(visual) ~= "table" or
+       (visual.status or 0) < DeckRules.READY or
+       not ((visual.phase or 0) == 1 or (visual.phase or 0) >= 6) then
+        return false
+    end
+
+    local mode = MatrixSession.program_mode_from_buttons(events)
+    state.mode = mode
+    local party = game.party()
+    local runner = party[game.active_slot()]
+    local node = MatrixSession.current_node(state)
+    if not runner or not node then return false end
+    local attributes = runner.attributes or {}
+    local skills = runner.skills or {}
+    local persona = record.persona or {}
+    local deck = {
+        mpcp = record.mpcp or 0,
+        response = record.response or 0,
+        sensor = persona[3] or 0,
+        ratings = record.ratings or {},
+    }
+    -- ROM 0xD81C is the wrapped byte sum of leader attributes +0x78/+0x7B,
+    -- divided by two; Computer is leader skill +0x88.
+    local decker = {
+        d81c = (((attributes[1] or 0) + (attributes[4] or 0)) & 0xFF) >> 1,
+        computer = skills[7] or 0,
+    }
+    local action_state = {
+        alert = state.alert,
+        mode = mode,
+        smoke = 0,
+    }
+    local result = MatrixPrograms.analyze(
+        deck, decker, node, action_state,
+        function(dice, target) return game.roll_successes(dice, target) end)
+    if result.fail then
+        visual.phase = 7
+        DeckRules.unload(record, slots, slot_index)
+        game.deck_commit(record, slots)
+        update_deck_view(st, ctx)
+        refresh(st)
+        ctx.redraw(R.FULL)
+        return true
+    end
+
+    MatrixSession.merge_current_node_knowledge(state, result.level)
+    MatrixSession.begin_analyze_transition(
+        state, slot_index, result.net > 0 and 6 or 10)
+    -- The world loop calls the profile service after 0x1C754 dispatches the
+    -- selected program, so the input VBlank also publishes its first phase.
+    MatrixSession.advance_analyze_transition(state)
+    refresh(st)
+    ctx.redraw(R.FULL)
+    return true
+end
+
+local function advance_analyze(st, ctx)
+    local advanced, completed = MatrixSession.advance_analyze_transition(
+        st.matrix_state)
+    if not advanced then return false end
+    if completed then
+        local slots = ctx.game.deck_slots()
+        local visual = slots[completed.slot]
+        if visual then visual.phase = completed.result_state end
+        ctx.game.deck_commit(ctx.game.deck_record(), slots)
+        update_deck_view(st, ctx)
+    end
+    refresh(st)
+    ctx.redraw(R.FULL)
+    return true
+end
+
+local function service_program_loading(st, ctx)
+    local state = st.matrix_state
+    if not MatrixSession.is_online(state) then return false end
+    local slots = ctx.game.deck_slots()
+    if not MatrixSession.advance_program_loading(state, slots) then
+        return false
+    end
+    ctx.game.deck_commit(ctx.game.deck_record(), slots)
+    return true
 end
 
 local function show_random_alert(st, ctx)
@@ -122,14 +401,38 @@ local function rebuild_node_view(st, ctx)
 end
 
 function M.new(args)
-    return { matrix_state = args.matrix_state, system_id = args.system_id,
+    return { matrix_state = args.matrix_state or MatrixSession.current_state(),
+             system_id = args.system_id,
+             node_id = args.node_id,
+             node_ic_condition = args.node_ic_condition,
              return_to_field = args.return_to_field == true,
+             traversal_view = args.traversal_view == true,
              row = 0, title = "Matrix", text = "", labels = {} }
 end
 
 function M.enter(st, ctx)
+    if not st.matrix_state then
+        st.matrix_state = MatrixSession.current_state()
+    end
+    if not st.matrix_state then
+        if type(st.system_id) == "number" and st.system_id % 1 == 0 and
+           st.system_id >= 0 and st.system_id <= 24 then
+            local world = MatrixSession.world_state(ctx.game)
+            local started, matrix_state = MatrixSession.begin(
+                st.system_id, world.field and world.field.alarm,
+                st.node_id, st.node_ic_condition)
+            if started then st.matrix_state = matrix_state end
+        end
+    end
     if not MatrixSession.is_online(st.matrix_state) then
         return { transition = T.POP, result = {} }
+    end
+    -- ROM 0x54662 replaces FFFB30's knowledge nibble for the selected
+    -- map cell with 4 before the node-action HUD is rendered.
+    MatrixSession.set_current_node_knowledge(st.matrix_state, 4)
+    if st.traversal_view then
+        MatrixSession.begin_world_entry(st.matrix_state)
+        update_deck_view(st, ctx)
     end
     rebuild_node_view(st, ctx)
 end
@@ -139,6 +442,7 @@ local function open_deck(st)
              args = { system_id = st.system_id, matrix_session = true,
                       return_to_node_action = true,
                       return_to_field = st.return_to_field,
+                      traversal_view = st.traversal_view,
                       matrix_state = st.matrix_state } }
 end
 
@@ -309,6 +613,27 @@ function M.input(st, events, ctx)
     if not MatrixSession.is_online(state) then
         return { transition = T.POP, result = {} }
     end
+    if st.traversal_view and MatrixSession.advance_world_entry(state) then
+        refresh(st)
+        ctx.redraw(R.FULL)
+        return
+    end
+    if service_program_loading(st, ctx) then
+        update_deck_view(st, ctx)
+        refresh(st)
+        ctx.redraw(R.FULL)
+    end
+    if st.traversal_view and state.phase == "node" and
+       not st.matrix_transition and not st.transfer and not st.shutdown and
+       not st.matrix_message and
+       MatrixSession.advance_world_effect_frame(state) then
+        refresh(st)
+        ctx.redraw(R.FULL)
+    end
+    if state.analyze_transition then
+        advance_analyze(st, ctx)
+        return
+    end
     if st.matrix_transition then
         return advance_matrix_transition(st, ctx)
     end
@@ -379,6 +704,27 @@ function M.input(st, events, ctx)
             ctx.redraw(R.SUBMENU)
             return
         end
+        if events & (P.LEFT | P.RIGHT) ~= 0 then
+            local record = game.deck_record()
+            local slots = game.deck_slots()
+            if type(record) ~= "table" or type(record.active) ~= "table" or
+               type(slots) ~= "table" then
+                return
+            end
+            if MatrixSession.step_program_slot(
+                    state, events & P.RIGHT ~= 0, record.active, slots) then
+                game.deck_commit(record, slots)
+                update_deck_view(st, ctx)
+                refresh(st)
+                ctx.redraw(R.FULL)
+            end
+            return
+        end
+        if start_attack(st, events, ctx) then return end
+        if start_slow(st, events, ctx) then return end
+        if start_degrade(st, events, ctx) then return end
+        if start_medic(st, events, ctx) then return end
+        if start_analyze(st, events, ctx) then return end
         if events & CONFIRM ~= 0 then
             local action = MatrixSession.node_actions(state)[st.row + 1]
             if action and (action.id == "enter_system" or
@@ -481,6 +827,10 @@ function M.input(st, events, ctx)
 
     if events & CONFIRM ~= 0 and
        MatrixSession.commit_node_selection(state) then
+        if st.traversal_view then
+            MatrixSession.set_current_node_knowledge(state, 4)
+            MatrixSession.begin_world_entry(state)
+        end
         st.row = 0
         rebuild_node_view(st, ctx)
     end
@@ -488,6 +838,7 @@ end
 
 function M.child_returned(st, child, result, ctx)
     if result and result.matrix_resumed then
+        if st.traversal_view then update_deck_view(st, ctx) end
         st.row = 0
         rebuild_node_view(st, ctx)
     end

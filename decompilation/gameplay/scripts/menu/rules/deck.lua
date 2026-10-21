@@ -2,7 +2,8 @@
 -- Deck record view (FFFBBE, docs/05 s3): rec.memory (+0x02 w, active memory), rec.storage (+0x04 w),
 --   rec.load_io (+0x06 b, "Load/IO Speed" label 0xE387E block), rec.ratings[0..11] (+0x0E+p),
 --   rec.active[0..4] (+0x1A+slot, -1 = empty), rec.files[0..4] = {id (+0x1F+3k, <0 empty), size (+0x20+3k), signed value (+0x21+3k; -1 = run objective)}.
--- Slot state: slots.status[0..4] = FFF0ED, slots.timer[0..4] = FFF0F2 (words), slots.phase[0..4] = FFF0E8.
+-- Slot state: slots[0..4] are typed records containing status (FFF0ED), timer
+-- (FFF0F2 words), and phase (FFF0E8), matching the host's narrow binding.
 -- srx cross-check: src/cyberspace/matrix_storage_conversion.cpp, matrix_program_timing_conversion.cpp (same maths).
 local M = {}
 M.FOOTPRINT = { [0] = 2, 4, 4, 3, 4, 4, 2, 3, 3, 2, 2, 3 }   -- 0xE2DF2 [C bytes]
@@ -38,6 +39,25 @@ M.PROGRAM_NAMES = {
     [0] = "Attack", "Slow", "Degrade", "Rebound", "Medic", "Shield",
     "Smoke", "Mirrors", "Sleaze", "Deception", "Relocate", "Analyze",
 } -- 0xE2F68, source program-name table [C]
+M.MODEL_NAMES = {
+    [-1] = { "Allegiance", "Alpha" },
+    [0] = { "Cyber Shack", "PCD-500" },
+    [1] = { "Fuchi", "Cyber-5" },
+    [2] = { "SEGA", "CTY-360" },
+    [3] = { "Fuchi", "Cyber-7" },
+    [4] = { "Fairlight", "Excalibur" },
+} -- ROM 0x1AB100 / 0x1AB118: maker and model rows (24 bytes each).
+M.STAT_LABELS = {
+    "MPCP . . . . .", "Hardening. . .", "Memory . . . .  Mp",
+    "Storage  . . .  Mp", "Load/IO Spd. .  Mp", "Response . . .",
+    "Bod  . . . . .", "Evasion. . . .", "Masking. . . .",
+    "Sensor . . . .",
+} -- ROM 0xE3902, including the four persona rating rows.
+M.PROGRAM_DETAIL_LABELS = {
+    "Size. . . . . .  Mp", "Free Memory . .  Mp", "Load Time . .  Secs",
+} -- ROM 0xE38C6; written at $C2A6 for installed programs 0..11.
+M.RUNNER_DETAIL_LABELS = { "Success", "Defense" }
+M.NO_ACTIVE_RUN_DETAILS = { "Unknown", "Unknown" } -- ROM 0xE4370 at $C4B4.
 
 function M.index(col, row) return row * 4 + col end                              -- 0x18A92
 function M.size(p, rating) return rating * rating * M.FOOTPRINT[p] end          -- 0x1952C
@@ -55,6 +75,11 @@ function M.free_storage(rec)                                                    
 end
 local function signed(v) return v >= 0x8000 and v - 0x10000 or v end
 function M.fits(rec, p) return signed(w16(M.free_memory(rec) - M.size(p, rec.ratings[p]))) >= 0 end   -- cmp.w / bpl
+function M.storage_fits_file(rec, size)
+    -- The ROM subtracts the requested file size from the wrapped free-storage
+    -- word and branches on the signed word result (0x19558/0x54C5E).
+    return signed(w16(M.free_storage(rec) - size)) >= 0
+end
 function M.load_steps(size, io)                                                  -- 0x195A6: ceil, >= 7 -> 6
     local s = w16(size) // io; if w16(size) % io ~= 0 then s = s + 1 end
     if s >= 7 then s = M.MAX_LOAD_STEPS end
@@ -64,14 +89,15 @@ function M.loaded_slot(rec, p) for s = 0, M.SLOTS - 1 do if rec.active[s] == p t
 function M.free_slot(rec) for s = 0, M.SLOTS - 1 do if rec.active[s] < 0 then return s end end end          -- 0x192D4
 -- 0x19736 + 0x195D8: install p in slot
 function M.load(rec, slots, slot, p, matrix_mode)
-    if matrix_mode or slots.status[slot] == M.READY then slots.status[slot] = 0 end   -- FFF10C < 0 or status == 6
-    rec.active[slot] = p; slots.phase[slot] = 0
-    slots.timer[slot] = M.load_steps(M.size(p, rec.ratings[p]), rec.load_io) * 10
+    local state = slots[slot]
+    if matrix_mode or state.status == M.READY then state.status = 0 end        -- FFF10C < 0 or status == 6
+    rec.active[slot] = p; state.phase = 0
+    state.timer = M.load_steps(M.size(p, rec.ratings[p]), rec.load_io) * 10
 end
 -- 0x1962A: erase; program-specific RAM clears are the host's (game.program_unloaded):
 --   3 Rebound: FF1592 b5, FFF0D9; 5 Shield: FFF0D2; 6 Smoke: FF1592 b2; 7 Mirrors: FF1592 b1, FFE169 [C addrs; names docs/05]
 M.UNLOAD_EFFECT = { [3] = true, [5] = true, [6] = true, [7] = true }
-function M.unload(rec, slots, slot) local p = rec.active[slot]; rec.active[slot] = -1; slots.status[slot] = M.READY; return p end
+function M.unload(rec, slots, slot) local p = rec.active[slot]; rec.active[slot] = -1; slots[slot].status = M.READY; return p end
 -- Storage erase cursor 0x18DE0: descending circular search for the next file (FFDD46); nil = none at all
 function M.next_file(rec, from)
     for i = 0, M.FILES - 1 do local k = (from - i) % M.FILES; if rec.files[k].id >= 0 then return k end end

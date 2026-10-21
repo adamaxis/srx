@@ -10,6 +10,8 @@ function M.new(args)
     args = args or {}
     return {
         system_id = args.system_id,
+        node_id = args.node_id,
+        node_ic_condition = args.node_ic_condition,
         return_to_field = args.return_to_field == true,
         wait_frames = 20,
         title = "",
@@ -42,7 +44,8 @@ function M.input(st, events, ctx)
     end
 
     local started, matrix_state = MatrixSession.begin(
-        system_id, world.field and world.field.alarm)
+        system_id, world.field and world.field.alarm, st.node_id,
+        st.node_ic_condition)
     if not started then
         return { transition = T.EXIT, result = { system_unavailable = true } }
     end
@@ -52,7 +55,10 @@ function M.input(st, events, ctx)
     end
     return {
         transition = T.REPLACE,
-        screen = E.MenuScreen.MATRIX_NODE_ACTION,
+        -- ROM 0xE47A enters the ten-slot Matrix menu at 0x181F8, which falls
+        -- through to the interactive deck/program loop at 0x1822C. The node
+        -- action view is reached through the separate world-mode path.
+        screen = E.MenuScreen.CYBERDECK,
         args = {
             system_id = system_id,
             matrix_session = true,

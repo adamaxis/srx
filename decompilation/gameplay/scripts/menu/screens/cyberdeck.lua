@@ -11,6 +11,7 @@ local E = require("enums")
 local D = require("menu.rules.deck")
 local MX = require("menu.rules.matrix")
 local MatrixSession = require("menu.matrix_session")
+local DeckPalette = require("menu.deck_palette")
 local LegacyCyberdeck = require("menu.screens.legacy").make(
     E.MenuScreen.CYBERDECK, E.WindowPlane.OFF)
 local P, R, T, MM, S = E.Pad, E.MenuRegion, E.MenuTransition, E.MenuMessage, E.MenuSound
@@ -21,6 +22,77 @@ M.GRID_LABELS = {
     D.PROGRAM_NAMES[8], D.PROGRAM_NAMES[9], D.PROGRAM_NAMES[10], D.PROGRAM_NAMES[11],
     "CyberInfo", "Storage", "Map", "Pull Plug",
 }
+M.GRID_DESCRIPTIONS = {
+    'Attack is used to destroy ("crash") IC.|Attack becomes necessary when Masking fails.',
+    "Slow reduces the IC's reactions, delaying attacks and alerts.|Slow does nothing against Trace IC.",
+    "Degrade attempts to lower a Node's Security Rating.|Both the Node's & the IC's defenses become weakened.",
+    "Rebound bounces attacks back at the attacker.|Rebound weakens slowly with each interception.",
+    "Medic repairs damage taken by the Persona.|Seriously damaged Personas repair at a slower rate.",
+    "Shield reduces damage from most attacks. Each hit it degrades.|Shield is useless against Black IC.",
+    "Smoke creates electronic chaos.  ALL actions have added difficulty.|Smoke degrades every 4 seconds.",
+    "Mirrors confounds IC and Deckers, decreasing their attack accuracy.|Mirrors degrades every 4 seconds.",
+    "Sleaze allows the Persona to bypass the node without affecting it in any manner.",
+    "Deception creates passcodes to fool Access & Gray IC.|Deception has no effect on Barrier or Black IC.",
+    "Relocate leads any Trace IC on a wild goose chase.|If successful, the Trace ends immediately.",
+    "Analyze scans the Node and its IC for information.|Multiple Analyzes may be required for hidden info.",
+    "This selection allows you to view information on your current cyberdeck or matrix run.",
+    "This selection allows you to see the items you have in storage.",
+    "See where you are in the system and retreat to prior node if needed.",
+    "An emergency or quick abort from cyberspace.|Some forms of IC may be able to block your jack out attempt and cause damage!",
+}
+local function update_description(st)
+    st.description = M.GRID_DESCRIPTIONS[D.index(st.col, st.row) + 1]
+end
+local function update_program_details(st, record)
+    st.runner_detail_labels = D.RUNNER_DETAIL_LABELS
+    local program = D.index(st.col, st.row)
+    if program >= D.PROGRAMS then
+        st.program_detail_values = nil
+        return
+    end
+    local rating = record.ratings[program] or 0
+    if rating == 0 then
+        st.program_detail_values = nil
+        return
+    end
+    local size = D.size(program, rating)
+    st.program_detail_values = {
+        tostring(size),
+        tostring(D.free_memory(record)),
+        tostring(record.load_io > 0 and D.load_steps(size, record.load_io) or 0),
+    }
+end
+local function update_program_art_state(st, ctx)
+    local record = ctx.game.deck_record()
+    st.program_ratings = record.ratings
+    st.active_programs = record.active
+
+    local previous = st.program_slot_status
+    local status = {}
+    local changed = false
+    local slots = ctx.game.deck_slots()
+    for slot = 0, D.SLOTS - 1 do
+        local entry = slots[slot]
+        local value = entry and entry.status or 0
+        status[slot] = value
+        if previous == nil or previous[slot] ~= value then
+            changed = true
+        end
+    end
+    st.program_slot_status = status
+    return changed, record
+end
+
+local function service_program_loading(st, ctx)
+    if not MatrixSession.is_online(st.matrix_state) then return false end
+    local slots = ctx.game.deck_slots()
+    local record = ctx.game.deck_record()
+    if not MatrixSession.advance_program_loading(st.matrix_state, slots) then
+        return false
+    end
+    ctx.game.deck_commit(record, slots)
+    return true
+end
 local MODE = {
     [P.A] = E.MatrixDeckMode.ATTACK,
     [P.B] = E.MatrixDeckMode.BALANCED,
@@ -43,7 +115,8 @@ function M.new(args)
             legacy_state = LegacyCyberdeck.new(args),
         }
     end
-    return {
+    local deck_palette = args.deck_palette or DeckPalette.new()
+    local state = {
         col = 0,
         row = 0,
         title = "Cyberdeck",
@@ -53,7 +126,17 @@ function M.new(args)
         return_to_field = args.return_to_field == true,
         system_id = args.system_id,
         matrix_state = args.matrix_state,
+        deck_palette = deck_palette,
+        deck_palette_phase = DeckPalette.phase(deck_palette),
+        program_detail_labels = D.PROGRAM_DETAIL_LABELS,
     }
+    update_description(state)
+    return state
+end
+local function tick_palette(st, ctx)
+    local phase, changed = DeckPalette.tick(st.deck_palette)
+    st.deck_palette_phase = phase
+    if changed then ctx.redraw(R.FULL) end
 end
 function M.enter(st, ctx)
     if st.legacy_adapter then
@@ -61,6 +144,18 @@ function M.enter(st, ctx)
         return
     end
     st.saved = ctx.game.deck_enter()
+    -- ROM 0x187AA draws the twelve program icons only when FFFBBE+0x0E+p
+    -- has a nonzero installed rating. Keep that typed gameplay data on the
+    -- Lua screen state so presentation does not guess which icons exist.
+    local _, record = update_program_art_state(st, ctx)
+    update_program_details(st, record)
+    local run = MatrixSession.world_state(ctx.game).run
+    if run == nil or (run.state or 0) >= 0 then
+        st.runner_detail_lines = D.NO_ACTIVE_RUN_DETAILS
+    else
+        st.runner_detail_lines = nil
+    end
+    update_description(st)
     if st.matrix_state then
         st.matrix_state.mode = E.MatrixModeResult.BALANCED
     end
@@ -77,6 +172,19 @@ local function leave(st, ctx, res)
     if st.return_to_node_action and
        not (res and res.exit_secretary) then
         return { transition = T.POP, result = { matrix_resumed = true } }
+    end
+    if st.matrix_session and st.matrix_state and
+       not (res and res.exit_secretary) then
+        -- ROM 0xE49E returns from the first 0x181F8 deck loop into
+        -- 0x173F2/0x1745E, then reaches the world-mode action loop. Keep the
+        -- Lua Matrix session alive and hand control to that route; the
+        -- node-action screen owns later Deck round trips.
+        return { transition = T.REPLACE,
+                 screen = E.MenuScreen.MATRIX_NODE_ACTION,
+                 args = { system_id = st.system_id,
+                          matrix_state = st.matrix_state,
+                          return_to_field = st.return_to_field,
+                          traversal_view = true } }
     end
     if st.return_to_field then
         MatrixSession.finish(st.matrix_state)
@@ -97,19 +205,33 @@ function M.input(st, events, ctx)
         return LegacyCyberdeck.input(st.legacy_state, events, ctx)
     end
     local g = ctx.game
-    g.deck_tick()                                                                        -- 0x196F2
+    tick_palette(st, ctx)                                                               -- 0x196F2
+    service_program_loading(st, ctx)
+    local slot_art_changed = update_program_art_state(st, ctx)
     local col, row, moved = MX.step_deck_cursor(
         st.col, st.row,
         events & P.UP ~= 0, events & P.DOWN ~= 0,
         events & P.LEFT ~= 0, events & P.RIGHT ~= 0)
-    if moved then st.col, st.row = col, row; st.text = nil; ctx.redraw(R.SUBMENU); return end
+    if moved then
+        st.col, st.row = col, row
+        st.text = nil
+        update_description(st)
+        update_program_details(st, g.deck_record())
+        st.matrix_run_info = nil
+        st.matrix_deck_stats = nil
+        ctx.redraw(slot_art_changed and R.FULL or R.SUBMENU)
+        return
+    end
     if events & P.START ~= 0 then return leave(st, ctx) end
     local btn = events & P.A ~= 0 and P.A or events & P.B ~= 0 and P.B or events & P.C ~= 0 and P.C
-    if not btn then return end
+    if not btn then
+        if slot_art_changed then ctx.redraw(R.FULL) end
+        return
+    end
     g.set_deck_mode(MODE[btn])
     if st.matrix_state then st.matrix_state.mode = RESULT_MODE[btn] end
     st.text = nil
-    if st.row ~= M.PLUG_ROW then return { transition = T.PUSH, screen = E.MenuScreen.DECK_PROGRAM, args = { col = st.col, row = st.row } } end
+    if st.row ~= M.PLUG_ROW then return { transition = T.PUSH, screen = E.MenuScreen.DECK_PROGRAM, args = { col = st.col, row = st.row, deck_palette = st.deck_palette, matrix_state = st.matrix_state } } end
     if st.col == M.PLUG_COL then
         if not online(st, ctx) then return end
         local node = MatrixSession.current_node(st.matrix_state) or g.matrix_node()
@@ -124,11 +246,13 @@ function M.input(st, events, ctx)
                       g.in_combat() -- 0x19B40 == 8 && FFDF84
         return { transition = T.PUSH, screen = E.MenuScreen.PULL_PLUG,
                  args = { black_ic = black,
+                          deck_palette = st.deck_palette,
                           matrix_state = st.matrix_state } }
     end
     if st.col == 2 and not online(st, ctx) then return end
     return { transition = T.PUSH, screen = M.FUNCTION[st.col],
-             args = { matrix_state = st.matrix_state } }                              -- 0xE2DFE[col]
+             args = { deck_palette = st.deck_palette,
+                      matrix_state = st.matrix_state } }                              -- 0xE2DFE[col]
 end
 function M.child_returned(st, child, res, ctx)
     if res.logged_out then return leave(st, ctx, { exit_secretary = true }) end          -- FFF0DC = FF
@@ -137,7 +261,14 @@ function M.child_returned(st, child, res, ctx)
             (st.matrix_session and { exit_secretary = true } or {}))                    -- 0x549C0 resumes 0x54662
     end
     st.text = type(res.text) == "string" and res.text or nil                           -- plain-rts text remains until redraw
+    st.matrix_run_info = type(res.matrix_run_info) == "table"
+        and res.matrix_run_info or nil
+    st.matrix_deck_stats = type(res.matrix_deck_stats) == "table"
+        and res.matrix_deck_stats or nil
+    local _, record = update_program_art_state(st, ctx)
+    update_program_details(st, record)
     st.list = res.list
+    st.deck_palette_phase = DeckPalette.phase(st.deck_palette)
     ctx.redraw(R.FULL)                                                                   -- 0x1882E grid redraw
 end
 
@@ -148,8 +279,11 @@ end
 -- Logout: FFF0DC = FF, 0x18776, 0x26A00 (sfx 0x29, FFF0B1 = FF).
 local Plug = { window = E.WindowPlane.OFF }
 function Plug.new(a)
+    local deck_palette = a.deck_palette or DeckPalette.new()
     return {
         black_ic = a.black_ic,
+        deck_palette = deck_palette,
+        deck_palette_phase = DeckPalette.phase(deck_palette),
         matrix_state = a.matrix_state,
         yes = false,
         row = 1,
@@ -159,7 +293,14 @@ function Plug.new(a)
         labels = { "Yes", "No" },
     }
 end
-function Plug.enter(st, ctx) ctx.redraw(R.MESSAGE) end
+function Plug.enter(st, ctx)
+    -- 0x1822C enters this prompt from the selected Cyberdeck cell, while the
+    -- source leaves the program grid and loaded-slot footer visible behind
+    -- the question. Publish those current Lua deck values with the child
+    -- screen so the presenter can keep that same deck surface on screen.
+    update_program_art_state(st, ctx)
+    ctx.redraw(R.MESSAGE)
+end
 function M.dumpshock(ctx, matrix_state)
     local g = ctx.game
     local party = g.party()
@@ -184,6 +325,8 @@ function M.dumpshock(ctx, matrix_state)
     return true
 end
 function Plug.input(st, events, ctx)
+    tick_palette(st, ctx)
+    if service_program_loading(st, ctx) then ctx.redraw(R.FULL) end
     if events & (P.UP | P.DOWN) ~= 0 then
         st.yes = not st.yes
         st.row = st.yes and 0 or 1

@@ -9,7 +9,6 @@ namespace shadowrun::ghidra_conversion::scripting {
 enum class CyberdeckMenuBinding {
     enter,
     leave,
-    tick,
     set_mode,
     matrix_online,
     matrix_node,
@@ -19,7 +18,7 @@ enum class CyberdeckMenuBinding {
     matrix_world_state,
     commit_matrix_world_state,
     record,
-    slots,
+    program_slots,
     commit,
     program_unloaded,
 };
