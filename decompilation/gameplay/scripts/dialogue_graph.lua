@@ -390,11 +390,17 @@ function Session:_boundary(graph_id, node_id, reason)
     }
 end
 
-function Session:_choose(graph_id, node_id, graph, node, choices)
+local function presentation_for(graph, node, context)
+    local invocation = context and context.presentation or {}
+    return node.speakerId or graph.speakerId or invocation.speakerId or "",
+           node.textProfile or graph.textProfile or
+               invocation.textProfile or ""
+end
+
+function Session:_choose(graph_id, node_id, graph, node, choices, context)
     local ids = {}
     for index, choice in ipairs(choices) do ids[index] = choice.id end
-    local speaker_id = node.speakerId or graph.speakerId or ""
-    local text_profile = node.textProfile or graph.textProfile or ""
+    local speaker_id, text_profile = presentation_for(graph, node, context)
     if node.inputContract ~= "cursor_list" then
         local selected = self.host.present_choice(
             node, ids, speaker_id, text_profile)
@@ -445,8 +451,8 @@ function Session:run(graph_id, context)
     for _ = 1, MAX_GRAPH_STEPS do
         local node = graph.nodes[node_id]
         if node.type == "page" then
-            local speaker_id = node.speakerId or graph.speakerId or ""
-            local text_profile = node.textProfile or graph.textProfile or ""
+            local speaker_id, text_profile = presentation_for(
+                graph, node, context)
             if self.host.present_page(node, speaker_id, text_profile) ~= true then
                 return self:_boundary(graph_id, node_id,
                                       "page_presentation_failed")
@@ -479,7 +485,7 @@ function Session:run(graph_id, context)
                                       "visible_button_choice_limit_exceeded")
             end
             local choice_id, cancelled, boundary = self:_choose(
-                graph_id, node_id, graph, node, visible)
+                graph_id, node_id, graph, node, visible, context)
             if boundary ~= nil then
                 return boundary
             elseif cancelled then
@@ -594,6 +600,17 @@ function DialogueGraph.run(graph_id, registered_actions, invocation_context)
             "dialogue graph invocation context must be an object")
         for key, value in pairs(invocation_context) do
             context[key] = value
+        end
+    end
+    if context.presentation ~= nil then
+        assert(type(context.presentation) == "table",
+            "dialogue graph presentation context must be an object")
+        for key, value in pairs(context.presentation) do
+            assert(key == "speakerId" or key == "textProfile",
+                "dialogue graph presentation has an unsupported field: " ..
+                tostring(key))
+            assert(is_identifier(value),
+                "dialogue graph presentation has an invalid " .. key)
         end
     end
     local host = {

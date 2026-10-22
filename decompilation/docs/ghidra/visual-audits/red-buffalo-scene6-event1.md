@@ -47,8 +47,11 @@ no-Ito state, the final update sets effect bit 7 and returns cleanly to Scene
 6 without setting the gift-service bit 18. Its full-frame captures include
 `no-gift-prompt.bmp`, `more-response.bmp`, each Harlequin topic page,
 `renraku-update.bmp`, and `same-map-return.bmp`; Debug and Release outputs
-match by SHA-256. The following post-Ito and map-item branches use the same
-shared Lua flow and have their own apartment-script coverage.
+match by SHA-256. The main Harlequin conversation remains in Lua, then calls
+the reusable `harlequin.map_information` JSON graph. Debug/Release script QA
+also runs that graph with Red Buffalo's speaker/profile context; its no-map
+page is covered here, while physical post-Ito/map-item coverage through this
+Scene-6 entry remains open.
 
 ## Open work
 

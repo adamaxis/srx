@@ -1,6 +1,13 @@
 package.path = "decompilation/gameplay/scripts/?.lua;" ..
     "decompilation/gameplay/scripts/?/init.lua;" .. package.path
 
+local map_information_calls = 0
+package.loaded["harlequin_dialogue"] = {
+    present_map_information = function()
+        map_information_calls = map_information_calls + 1
+        return "left"
+    end,
+}
 local Apartments = require("tarislar_apartments")
 
 local location_id = "puyallup_site_02_tarislar_garden_apartments"
@@ -265,33 +272,22 @@ assert(#prompts == 2 and prompts[1].choices[1] == "ito_killed" and
        prompts[1].choices[2] == "information")
 assert(prompts[2].id == "ito_response")
 assert(prompts[2].text == game.content.texts["tarislar.ito_response"])
-assert(#speeches == 1 and speeches[1].text:find(
-    "Thon turned on Renraku", 1, true))
-assert(game.state.field_mode_effect_flag_bit_8 == true)
+assert(#speeches == 0 and map_information_calls == 1)
 
--- A held Renraku map exposes the first map-information route.
+-- A held Renraku map exposes the outer graph's map-information route. The
+-- injected helper stands in for the separately tested shared map graph.
 game.state.group_item_flag_bit_8 = true
-expect_repeat({ "information" }, "information", "more", "more", "more",
-              "more", "more")
-assert(prompts[2].id == "renraku_map")
-assert(prompts[2].text ==
-       "<You show Harlequin the map you retrieved from Renraku.>")
-assert(prompts[3].id == "renraku_map_meaning")
-assert(prompts[6].id == "vigore_explanation")
-assert(game.state.story_flag_bit_26 == true)
-assert(game.state.field_mode_effect_flag_bit_12 == true)
+expect_repeat({ "information" }, "information")
+assert(#prompts == 1 and map_information_calls == 2)
+assert(game.state.story_flag_bit_26 ~= true)
+assert(game.state.field_mode_effect_flag_bit_12 ~= true)
 assert(game.state.story_flag_bit_27 ~= true)
 
--- After the Renraku map has been shown, item bit 7 exposes the paired-map
--- response and the source command marks story bit 27.
+-- After story bit 26 is set, item bit 7 exposes the paired-map route.
 game.state.group_item_flag_bit_7 = true
-expect_repeat({ "information" }, "information", "more", "more", "more",
-              "more")
-assert(prompts[2].id == "renraku_map")
-assert(prompts[3].id == "both_maps_meaning")
-assert(game.state.story_flag_bit_27 == true)
-assert(#speeches == 2 and speeches[1].continuation and
-       not speeches[2].continuation)
+expect_repeat({ "information" }, "information")
+assert(#prompts == 1 and map_information_calls == 3)
+assert(game.state.story_flag_bit_27 ~= true)
 
 -- Once both map routes are complete, or before any map item is available,
 -- the service falls back to questions.

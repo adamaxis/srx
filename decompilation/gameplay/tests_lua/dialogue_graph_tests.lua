@@ -124,6 +124,25 @@ local document = {
             done = { type = "terminal",
                      outcome = { type = "continue_in_place" } },
         }),
+        ["test.invocation_presentation"] = {
+            entryNode = "page",
+            provenance = { romAddresses = { "0x1008" } },
+            nodes = {
+                page = {
+                    type = "page", eventId = "page_one", next = "prompt",
+                },
+                prompt = {
+                    type = "choice", menuId = "test_inline_menu",
+                    promptTextKey = "test.inline_prompt.text",
+                    inputContract = "buttons_abc",
+                    choices = { { id = "take_room", next = "done" } },
+                },
+                done = {
+                    type = "terminal",
+                    outcome = { type = "continue_in_place" },
+                },
+            },
+        },
         ["test.cursor"] = graph("menu", {
             menu = {
                 type = "choice", menuId = "test_cursor",
@@ -347,6 +366,17 @@ assert(outcome.type == "continue_in_place" and
        inline_prompt_call.choices[1] == "take_room" and
        inline_prompt_call.speaker_id == "inline_prompt_speaker" and
        inline_prompt_call.text_profile == "test.inline_prompt_profile")
+outcome = DialogueGraph.run("test.invocation_presentation", nil, {
+    presentation = {
+        speakerId = "shared_harlequin",
+        textProfile = "test.shared_profile",
+    },
+})
+assert(outcome.type == "continue_in_place" and
+       presented_script_page.speaker_id == "shared_harlequin" and
+       presented_script_page.text_profile == "test.shared_profile" and
+       inline_prompt_call.speaker_id == "shared_harlequin" and
+       inline_prompt_call.text_profile == "test.shared_profile")
 outcome = DialogueGraph.run("test.mode_text")
 assert(outcome.type == "continue_in_place" and
        presented_script_page.event_id == "mode_text_page" and

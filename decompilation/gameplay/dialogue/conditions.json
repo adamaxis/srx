@@ -237,6 +237,24 @@
         "scope": "repeat_information_requires_unshown_map_item"
       }
     },
+    "harlequin.map_information_has_renraku_map": {
+      "expression": {
+        "fact": "story.group_item_flag_bit_8", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0x220CC", "0x22018", "0x22072"],
+        "scope": "renraku_map_item_branch"
+      }
+    },
+    "harlequin.map_information_has_vigore_map": {
+      "expression": {
+        "fact": "story.group_item_flag_bit_7", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0x220CC", "0x22018", "0x22072"],
+        "scope": "paired_vigore_map_item_branch"
+      }
+    },
     "wylie_gala_inn.room_service_context": {
       "expression": {
         "all": [

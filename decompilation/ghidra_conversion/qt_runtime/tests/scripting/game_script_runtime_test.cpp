@@ -10130,6 +10130,286 @@ int main() {
     }
     scripts.cancel_task();
 
+    const auto is_harlequin_map_prompt =
+        [&scripts](const ScriptTaskStep& task, const std::string_view menu_id,
+                  const std::string_view text_key,
+                  const std::string_view speaker_id,
+                  const std::string_view text_profile) {
+            const auto* expected_text = scripts.dialogue_text(text_key);
+            return expected_text != nullptr &&
+                   task.status ==
+                       ScriptTaskStep::Status::awaiting_native_operation &&
+                   task.operation.has_value() &&
+                   task.operation->type ==
+                       ScriptNativeOperation::Type::ui_menu &&
+                   task.operation->menu.has_value() &&
+                   task.operation->menu->id == menu_id &&
+                   task.operation->menu->inline_prompt &&
+                   task.operation->menu->inline_text == *expected_text &&
+                   task.operation->menu->speaker_id == speaker_id &&
+                   task.operation->menu->text_profile == text_profile &&
+                   task.operation->menu->choices.size() == 1U &&
+                   task.operation->menu->choices.front().id == "more";
+        };
+    const auto is_harlequin_map_page =
+        [&scripts](const ScriptTaskStep& task, const std::string_view event_id,
+                  const std::string_view text_key,
+                  const std::string_view speaker_id,
+                  const std::string_view text_profile,
+                  const std::string_view continuation_key) {
+            const auto* expected_text = scripts.dialogue_text(text_key);
+            const auto event_keys = scripts.dialogue_event_text_keys(
+                speaker_id, text_profile, event_id);
+            return expected_text != nullptr &&
+                   event_keys.has_value() &&
+                   event_keys->title_key == text_key &&
+                   event_keys->continuation_key == continuation_key &&
+                   task.status ==
+                       ScriptTaskStep::Status::awaiting_native_operation &&
+                   task.operation.has_value() &&
+                   task.operation->type ==
+                       ScriptNativeOperation::Type::ui_say &&
+                   task.operation->dialogue.has_value() &&
+                   task.operation->dialogue->event_id == event_id &&
+                   task.operation->dialogue->speaker_id == speaker_id &&
+                   task.operation->dialogue->text_profile == text_profile &&
+                   task.operation->dialogue->inline_text.empty() &&
+                   *expected_text != "";
+        };
+
+    scripts.set_location_context("building", kRedBuffaloLocation,
+                                 "salish.red_buffalo", "red_buffalo_woman");
+    scripts.set_story_state({
+        {"group_item_flag_bit_7", false},
+        {"group_item_flag_bit_8", false},
+    });
+    auto harlequin_without_map = scripts.start_task(
+        "harlequin_dialogue", "present_map_information");
+    if (!expect(is_harlequin_map_page(
+                    harlequin_without_map, "no_renraku_map",
+                    "salish.red_buffalo.page.branch_10",
+                    "red_buffalo_woman", "salish.red_buffalo", "") &&
+                    scripts.story_state().at("field_mode_effect_flag_bit_8"),
+                "Shared Harlequin graph lost the no-map effect, extracted page, or Red Buffalo presentation context")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    harlequin_without_map = scripts.complete_native_operation(true);
+    if (!expect(harlequin_without_map.status ==
+                        ScriptTaskStep::Status::completed &&
+                    harlequin_without_map.result_id ==
+                        std::optional<std::string>{"left"},
+                "Shared Harlequin no-map branch did not return in place")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    scripts.set_location_context("building", kTarislarLocation,
+                                 "tarislar.garden.apartments.entry",
+                                 "tarislar_apartments_narrator");
+    scripts.set_field_mode_context(ScriptFieldModeContext{1U, 7U, 0});
+    scripts.set_story_state({
+        {"story_flag_bit_16", true},
+        {"story_flag_bit_21", true},
+        {"story_flag_bit_26", false},
+        {"story_flag_bit_27", false},
+        {"story_flag_bit_28", true},
+        {"story_flag_bit_30", true},
+        {"group_item_flag_bit_7", false},
+        {"group_item_flag_bit_8", true},
+    });
+    auto tarislar_one_map_flow = scripts.start_task(
+        "tarislar_apartments", "present_repeat_service");
+    if (!expect(tarislar_one_map_flow.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_one_map_flow.operation.has_value() &&
+                    tarislar_one_map_flow.operation->menu.has_value() &&
+                    tarislar_one_map_flow.operation->menu->id ==
+                        "repeat_service" &&
+                    tarislar_one_map_flow.operation->menu->choices.size() ==
+                        1U &&
+                    tarislar_one_map_flow.operation->menu->choices.front().id ==
+                        "information",
+                "Tarislar did not expose the first map-information choice")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_one_map_flow =
+        scripts.complete_native_menu_choice("information");
+    if (!expect(is_harlequin_map_prompt(
+                    tarislar_one_map_flow, "renraku_map",
+                    "salish.red_buffalo.page.ito_detail",
+                    "tarislar_apartments_narrator",
+                    "tarislar.garden.apartments.entry") &&
+                    scripts.story_state().at("story_flag_bit_26") &&
+                    scripts.story_state().at("story_trigger_active_26"),
+                "Shared one-map graph lost ROM text 0xFC921 or command 0x46's bit-26 effect")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_one_map_flow =
+        scripts.complete_native_menu_choice("more");
+    if (!expect(is_harlequin_map_prompt(
+                    tarislar_one_map_flow, "renraku_map_meaning",
+                    "salish.red_buffalo.page.branch_0",
+                    "tarislar_apartments_narrator",
+                    "tarislar.garden.apartments.entry"),
+                "Shared one-map graph lost ROM text 0xFC95A")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_one_map_flow =
+        scripts.complete_native_menu_choice("more");
+    if (!expect(is_harlequin_map_prompt(
+                    tarislar_one_map_flow, "vigore_lead",
+                    "salish.red_buffalo.page.branch_1",
+                    "tarislar_apartments_narrator",
+                    "tarislar.garden.apartments.entry") &&
+                    scripts.story_state().at("field_mode_effect_flag_bit_12") &&
+                    !scripts.story_state().at("story_flag_bit_27"),
+                "Shared one-map graph lost command 0x47's FFFC34 bit-12 / bit-26 branch")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_one_map_flow =
+        scripts.complete_native_menu_choice("more");
+    if (!expect(is_harlequin_map_prompt(
+                    tarislar_one_map_flow, "vigore_report",
+                    "salish.red_buffalo.page.branch_2",
+                    "tarislar_apartments_narrator",
+                    "tarislar.garden.apartments.entry"),
+                "Shared one-map graph lost ROM text 0xFCEAE")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_one_map_flow =
+        scripts.complete_native_menu_choice("more");
+    if (!expect(is_harlequin_map_prompt(
+                    tarislar_one_map_flow, "vigore_explanation",
+                    "salish.red_buffalo.page.branch_3",
+                    "tarislar_apartments_narrator",
+                    "tarislar.garden.apartments.entry"),
+                "Shared one-map graph lost ROM text 0xFCF20")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_one_map_flow =
+        scripts.complete_native_menu_choice("more");
+    if (!expect(is_harlequin_map_page(
+                    tarislar_one_map_flow, "renraku_closing",
+                    "salish.red_buffalo.page.branch_4",
+                    "tarislar_apartments_narrator",
+                    "tarislar.garden.apartments.entry", "") &&
+                    !scripts.story_state().at("story_flag_bit_27"),
+                "Shared one-map graph lost its final ROM page or set the paired-map flag")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_one_map_flow = scripts.complete_native_operation(true);
+    if (!expect(tarislar_one_map_flow.status ==
+                        ScriptTaskStep::Status::completed &&
+                    tarislar_one_map_flow.result_id ==
+                        std::optional<std::string>{"left"},
+                "Tarislar one-map information graph did not return in place")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_16", true},
+        {"story_flag_bit_21", true},
+        {"story_flag_bit_26", true},
+        {"story_flag_bit_27", false},
+        {"story_flag_bit_28", true},
+        {"story_flag_bit_30", true},
+        {"group_item_flag_bit_7", true},
+        {"group_item_flag_bit_8", true},
+    });
+    auto tarislar_paired_map_flow = scripts.start_task(
+        "tarislar_apartments", "present_repeat_service");
+    if (!expect(tarislar_paired_map_flow.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_paired_map_flow.operation.has_value() &&
+                    tarislar_paired_map_flow.operation->menu.has_value() &&
+                    tarislar_paired_map_flow.operation->menu->choices.size() ==
+                        1U &&
+                    tarislar_paired_map_flow.operation->menu->choices.front().id ==
+                        "information",
+                "Tarislar did not expose the paired-map information choice")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_paired_map_flow =
+        scripts.complete_native_menu_choice("information");
+    if (!expect(is_harlequin_map_prompt(
+                    tarislar_paired_map_flow, "renraku_map",
+                    "salish.red_buffalo.page.branch_5",
+                    "tarislar_apartments_narrator",
+                    "tarislar.garden.apartments.entry") &&
+                    scripts.story_state().at("story_flag_bit_27"),
+                "Shared paired-map graph lost ROM text 0xFC9F3 or command 0x46's bit-27 effect")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    constexpr std::array<std::string_view, 3U> paired_map_menu_ids{{
+        "both_maps_meaning", "tomb_artifacts", "harlequin_resolves",
+    }};
+    constexpr std::array<std::string_view, 3U> paired_map_text_keys{{
+        "salish.red_buffalo.page.branch_6",
+        "salish.red_buffalo.page.branch_7",
+        "salish.red_buffalo.page.branch_8",
+    }};
+    for (std::size_t page = 0U; page < paired_map_menu_ids.size(); ++page) {
+        tarislar_paired_map_flow =
+            scripts.complete_native_menu_choice("more");
+        if (!expect(is_harlequin_map_prompt(
+                        tarislar_paired_map_flow,
+                        paired_map_menu_ids[page], paired_map_text_keys[page],
+                        "tarislar_apartments_narrator",
+                        "tarislar.garden.apartments.entry"),
+                    "Shared paired-map graph lost a ROM text/More step")) {
+            std::cerr << scripts.failure() << '\n';
+            return 17;
+        }
+    }
+    tarislar_paired_map_flow =
+        scripts.complete_native_menu_choice("more");
+    if (!expect(is_harlequin_map_page(
+                    tarislar_paired_map_flow, "tomb_departure_prompt",
+                    "salish.red_buffalo.page.branch_11",
+                    "tarislar_apartments_narrator",
+                    "tarislar.garden.apartments.entry", "shared.more"),
+                "Shared paired-map graph lost the continued tomb departure page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    if (!expect(scripts.story_state().at("field_mode_effect_flag_bit_14") &&
+                    scripts.story_state().at("story_flag_bit_27") &&
+                    scripts.story_state().at("story_trigger_active_27"),
+                "Shared paired-map graph lost command 0x47 effects before its departure page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_paired_map_flow = scripts.complete_native_operation(true);
+    if (!expect(is_harlequin_map_page(
+                    tarislar_paired_map_flow, "tomb_departure_response",
+                    "salish.red_buffalo.page.branch_12",
+                    "tarislar_apartments_narrator",
+                    "tarislar.garden.apartments.entry", ""),
+                "Shared paired-map graph lost its final no-continuation page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_paired_map_flow = scripts.complete_native_operation(true);
+    if (!expect(tarislar_paired_map_flow.status ==
+                        ScriptTaskStep::Status::completed &&
+                    tarislar_paired_map_flow.result_id ==
+                        std::optional<std::string>{"left"},
+                "Tarislar paired-map information graph did not return in place")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
     scripts.set_story_state({
         {"story_flag_bit_16", true},
         {"story_flag_bit_21", true},
@@ -10236,16 +10516,12 @@ int main() {
         return 17;
     }
     tarislar_post_ito = scripts.complete_native_menu_choice("more");
-    if (!expect(tarislar_post_ito.status ==
-                        ScriptTaskStep::Status::awaiting_native_operation &&
-                    tarislar_post_ito.operation.has_value() &&
-                    tarislar_post_ito.operation->type ==
-                        ScriptNativeOperation::Type::ui_say &&
-                    tarislar_post_ito.operation->dialogue.has_value() &&
-                    tarislar_post_ito.operation->dialogue->inline_text ==
-                        "Thon turned on Renraku when he thought he no longer needed them.||"
-                        "I believe his actions were a bit premature; I still feel him growing weaker.||"
-                        "However, I suggest a run against Renraku to find out exactly what they do have.",
+    if (!expect(is_harlequin_map_page(
+                    tarislar_post_ito, "no_renraku_map",
+                    "salish.red_buffalo.page.branch_10",
+                    "tarislar_apartments_narrator",
+                    "tarislar.garden.apartments.entry", "") &&
+                    scripts.story_state().at("field_mode_effect_flag_bit_8"),
                 "Tarislar post-Ito graph did not enter the shared map-information branch")) {
         std::cerr << scripts.failure() << '\n';
         return 17;

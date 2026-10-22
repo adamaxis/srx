@@ -1,0 +1,232 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "harlequin.map_information": {
+      "entryNode": "renraku_map_gate",
+      "provenance": {
+        "romAddresses": [
+          "0x220CC",
+          "0x22018",
+          "0x22072",
+          "0xFC841",
+          "0xFC921",
+          "0xFC95A",
+          "0xFCE10",
+          "0xFCEAE",
+          "0xFCF20",
+          "0xFCFE4",
+          "0xFC9F3",
+          "0xFCA56",
+          "0xFCB09",
+          "0xFCBA7",
+          "0xFCC74",
+          "0xFCD6D"
+        ],
+        "scope": "shared_harlequin_map_information_scene_1_and_scene_6"
+      },
+      "nodes": {
+        "renraku_map_gate": {
+          "type": "branch",
+          "cases": [
+            {
+              "when": "harlequin.map_information_has_renraku_map",
+              "next": "mark_renraku_map_shown"
+            }
+          ],
+          "fallback": "no_map_effect",
+          "evidence": "Command 0x48 at 0x220CC checks FFFC22 item bit 8 before the map-information branches."
+        },
+        "no_map_effect": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 8, "value": true },
+          "next": "no_renraku_map_page",
+          "evidence": "The no-map branch sets FFFC34 bit 8 before text 0xFC841."
+        },
+        "no_renraku_map_page": {
+          "type": "page",
+          "eventId": "no_renraku_map",
+          "next": "continue_in_place",
+          "evidence": "ROM text record 0xFC841 recommends the Renraku run."
+        },
+        "mark_renraku_map_shown": {
+          "type": "action",
+          "actionId": "story.apply_dialogue_command",
+          "arguments": {
+            "commandId": 70,
+            "options": { "branch": 1 }
+          },
+          "next": "vigore_map_gate",
+          "evidence": "Command 0x46 at 0x22018 marks story bit 26 for the Renraku-map branch."
+        },
+        "vigore_map_gate": {
+          "type": "branch",
+          "cases": [
+            {
+              "when": "harlequin.map_information_has_vigore_map",
+              "next": "mark_both_maps_shown"
+            }
+          ],
+          "fallback": "renraku_map_prompt",
+          "evidence": "The paired-map branch is selected by FFFC22 item bit 7."
+        },
+        "renraku_map_prompt": {
+          "type": "choice",
+          "menuId": "renraku_map",
+          "promptTextKey": "salish.red_buffalo.page.ito_detail",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "renraku_map_meaning_prompt" }
+          ],
+          "evidence": "ROM text 0xFC921 is presented with the one-choice More prompt."
+        },
+        "renraku_map_meaning_prompt": {
+          "type": "choice",
+          "menuId": "renraku_map_meaning",
+          "promptTextKey": "salish.red_buffalo.page.branch_0",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "single_map_effect" }
+          ],
+          "evidence": "ROM text 0xFC95A explains the first map and its counterpart."
+        },
+        "single_map_effect": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 12, "value": true },
+          "next": "mark_renraku_map_again",
+          "evidence": "Command 0x47 at 0x22072 sets FFFC34 bit 12 when the counterpart is absent."
+        },
+        "mark_renraku_map_again": {
+          "type": "action",
+          "actionId": "story.apply_dialogue_command",
+          "arguments": {
+            "commandId": 71,
+            "options": { "branch": 1 }
+          },
+          "next": "vigore_lead_prompt",
+          "evidence": "Command 0x47 also marks story bit 26 on its one-map branch."
+        },
+        "vigore_lead_prompt": {
+          "type": "choice",
+          "menuId": "vigore_lead",
+          "promptTextKey": "salish.red_buffalo.page.branch_1",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "vigore_report_prompt" }
+          ],
+          "evidence": "ROM text 0xFCE10 introduces Vigore and Jarl."
+        },
+        "vigore_report_prompt": {
+          "type": "choice",
+          "menuId": "vigore_report",
+          "promptTextKey": "salish.red_buffalo.page.branch_2",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "vigore_explanation_prompt" }
+          ],
+          "evidence": "ROM text 0xFCEAE carries the runner's report."
+        },
+        "vigore_explanation_prompt": {
+          "type": "choice",
+          "menuId": "vigore_explanation",
+          "promptTextKey": "salish.red_buffalo.page.branch_3",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "renraku_closing_page" }
+          ],
+          "evidence": "ROM text 0xFCF20 explains Vigore and Jarl's roles."
+        },
+        "renraku_closing_page": {
+          "type": "page",
+          "eventId": "renraku_closing",
+          "next": "continue_in_place",
+          "evidence": "ROM text 0xFCFE4 closes the one-map branch without a More choice."
+        },
+        "mark_both_maps_shown": {
+          "type": "action",
+          "actionId": "story.apply_dialogue_command",
+          "arguments": {
+            "commandId": 70,
+            "options": { "branch": 2 }
+          },
+          "next": "both_maps_prompt",
+          "evidence": "Command 0x46 at 0x22018 marks story bit 27 when both map items are present."
+        },
+        "both_maps_prompt": {
+          "type": "choice",
+          "menuId": "renraku_map",
+          "promptTextKey": "salish.red_buffalo.page.branch_5",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "both_maps_meaning_prompt" }
+          ],
+          "evidence": "ROM text 0xFC9F3 presents both maps."
+        },
+        "both_maps_meaning_prompt": {
+          "type": "choice",
+          "menuId": "both_maps_meaning",
+          "promptTextKey": "salish.red_buffalo.page.branch_6",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "tomb_artifacts_prompt" }
+          ],
+          "evidence": "ROM text 0xFCA56 interprets the paired maps."
+        },
+        "tomb_artifacts_prompt": {
+          "type": "choice",
+          "menuId": "tomb_artifacts",
+          "promptTextKey": "salish.red_buffalo.page.branch_7",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "harlequin_resolves_prompt" }
+          ],
+          "evidence": "ROM text 0xFCB09 introduces the tomb artifacts."
+        },
+        "harlequin_resolves_prompt": {
+          "type": "choice",
+          "menuId": "harlequin_resolves",
+          "promptTextKey": "salish.red_buffalo.page.branch_8",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "tomb_effect" }
+          ],
+          "evidence": "ROM text 0xFCBA7 presents Harlequin's change in resolve."
+        },
+        "tomb_effect": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 14, "value": true },
+          "next": "mark_both_maps_shown_again",
+          "evidence": "The paired-map departure branch sets FFFC34 bit 14."
+        },
+        "mark_both_maps_shown_again": {
+          "type": "action",
+          "actionId": "story.apply_dialogue_command",
+          "arguments": {
+            "commandId": 71,
+            "options": { "branch": 2 }
+          },
+          "next": "tomb_departure_prompt",
+          "evidence": "Command 0x47 at 0x22072 marks story bit 27 on the paired-map branch."
+        },
+        "tomb_departure_prompt": {
+          "type": "page",
+          "eventId": "tomb_departure_prompt",
+          "next": "tomb_departure_response",
+          "evidence": "ROM text 0xFCC74 is followed by the More continuation."
+        },
+        "tomb_departure_response": {
+          "type": "page",
+          "eventId": "tomb_departure_response",
+          "next": "continue_in_place",
+          "evidence": "ROM text 0xFCD6D is the final no-continuation response."
+        },
+        "continue_in_place": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
+    }
+  }
+}

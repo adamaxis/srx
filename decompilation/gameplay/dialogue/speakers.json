@@ -398,7 +398,24 @@
       "text_profile": "big-rhino.mortimer_reed"
     },
     "red_buffalo_woman": {
-      "events": {},
+      "events": {
+        "no_renraku_map": {
+          "continuation_key": "",
+          "title_key": "salish.red_buffalo.page.branch_10"
+        },
+        "renraku_closing": {
+          "continuation_key": "",
+          "title_key": "salish.red_buffalo.page.branch_4"
+        },
+        "tomb_departure_prompt": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.red_buffalo.page.branch_11"
+        },
+        "tomb_departure_response": {
+          "continuation_key": "",
+          "title_key": "salish.red_buffalo.page.branch_12"
+        }
+      },
       "name": "Red Buffalo Woman",
       "portrait_alias": "dialogue.portraits.red.buffalo.woman",
       "text_profile": "salish.red_buffalo"
@@ -529,6 +546,22 @@
         "guarded_penthouse": {
           "continuation_key": "shared.more",
           "title_key": "tarislar.garden.apartments.page.penthouse_entry"
+        },
+        "no_renraku_map": {
+          "continuation_key": "",
+          "title_key": "salish.red_buffalo.page.branch_10"
+        },
+        "renraku_closing": {
+          "continuation_key": "",
+          "title_key": "salish.red_buffalo.page.branch_4"
+        },
+        "tomb_departure_prompt": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.red_buffalo.page.branch_11"
+        },
+        "tomb_departure_response": {
+          "continuation_key": "",
+          "title_key": "salish.red_buffalo.page.branch_12"
         },
         "repeat_questions": {
           "continuation_key": "",

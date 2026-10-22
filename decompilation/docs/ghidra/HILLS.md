@@ -410,10 +410,14 @@ choice and save full-screen captures. The repeat
 service now uses a JSON graph and JSON conditions for its story/item gates,
 greeting at `0xFC111`, questions response at `0xFC222`, and Ito response at
 `0xFC757`. A named Lua action applies command `0x40`'s bit-28 effect, then the
-graph enters the shared map-information flow. Debug/Release script QA checks
-the questions and post-Ito branches; physical-input QA captures the greeting,
-Renraku response, remaining map pages, and clean scene-1 `actual.bmp` return.
-The shared map-information pages and effects remain in Lua. The separate
+graph enters the reusable `harlequin.map_information` JSON conversation.
+Its conditions branch on group-item bits 8 and 7; named dialogue actions apply
+commands `0x46`/`0x47` and field-effect bits 8, 12, and 14. The same graph
+resolves pages and More labels from either building's speaker/menu profile.
+Debug/Release script QA checks the no-map, Renraku-only, and paired-map paths,
+including both tomb-departure pages. Physical-input QA captures the Tarislar
+Renraku path and clean scene-1 `actual.bmp` return. Independent Genesis page
+captures remain open. The separate
 tomb-offer override requires bits 30, 21, 16, 28, 26, and 27, plus alternate
 result 0; its Yes branch presents the three ROM
 travel pages and enters scene 54, while No returns to scene 1. Debug/Release

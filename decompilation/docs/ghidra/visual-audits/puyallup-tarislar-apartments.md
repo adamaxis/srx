@@ -126,10 +126,14 @@ catalog's source policy explicitly authorizes a correction.
   condition records for bit 16/28 and the map-item gates: item bit 8 opens the
   first Renraku map response; item bit 7 opens the paired-map response after
   bit 26 is set. The greeting at `0xFC111`, questions page at `0xFC222`, and
-  Ito response at `0xFC757` are extracted into the text catalog. Named Lua
-  actions apply command `0x40` and enter the shared map-information flow; the
-  graph keeps this service on scene 1. Source choice labels are extracted from
-  `0x1047D4`, `0x104494`, and `0x104473`.
+  Ito response at `0xFC757` are extracted into the text catalog. The named Lua
+  action applies command `0x40` and enters the reusable
+  `harlequin.map_information` JSON graph; it resolves Tarislar or Red Buffalo
+  speaker/menu data from the active location. Conditions on FFFC22 item bits
+  8 and 7 select the no-map, Renraku-only, and paired-map branches. Graph
+  actions apply commands `0x46`/`0x47`, story bits 26/27, and effect bits
+  8/12/14. The graph keeps this service on scene 1. Source choice labels are
+  extracted from `0x1047D4`, `0x104494`, and `0x104473`.
 - Tomb departure: when the story/map gates are complete, root `0xF4E08` asks
   whether Joshua is prepared for the
   trip. Its prompt labels are `0x103A0E` (Yes) and `0x103A13` (No). The Yes
@@ -140,9 +144,12 @@ catalog's source policy explicitly authorizes a correction.
   the story gates (bits 30, 21, 16, 28, 26, 27) and alternate-result-zero
   condition; a matching task result resumes scene 54 only after the Yes pages.
 - Command `0x48` at `0x220CC` chooses between the Renraku-only and paired-map
-  responses using FFFC22 bit 7. The CTests exercise both the map-information
-  route and its return to a clean scene-1 redraw. The event-specific `FFE162`
-  producer/lifetime and the scene-54 completion route remain unresolved.
+  responses using FFFC22 bit 7. Debug/Release script-runtime QA traverses all
+  three graph branches and checks story/effect flags and the continuation on
+  the final paired-map page. The physical-input CTest captures the Renraku-only
+  route and clean scene-1 redraw. Independent Genesis page captures, the
+  event-specific `FFE162` producer/lifetime, and the scene-54 completion route
+  remain unresolved.
 
 ## Scene 54 entry profile and collision evidence
 
