@@ -96,6 +96,7 @@ game.content.speakers = load_dialogue_catalog("speakers")
 game.content.contacts = load_dialogue_catalog("contacts")
 game.content.menus = load_dialogue_catalog("menus")
 game.content.conditions = load_dialogue_catalog("conditions")
+game.content.cinematics = load_dialogue_catalog("cinematics")
 game.content.conversations = {
     gates_undersound = load_dialogue_catalog(
         "conversations/gates_undersound"),

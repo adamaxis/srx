@@ -15,6 +15,7 @@ local content = {
     speakers = load_json("dialogue/speakers"),
     menus = load_json("dialogue/menus"),
     conditions = load_json("dialogue/conditions"),
+    cinematics = load_json("dialogue/cinematics"),
     conversations = {
         wylie_gala_inn = load_json(
             "dialogue/conversations/wylie_gala_inn"),

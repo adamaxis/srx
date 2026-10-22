@@ -14,6 +14,7 @@ local content = {
     menus = load_json("dialogue/menus"),
     contacts = load_json("dialogue/contacts"),
     conditions = load_json("dialogue/conditions"),
+    cinematics = load_json("dialogue/cinematics"),
     conversations = {
         vid_phone_services = load_json(
             "dialogue/conversations/vid_phone_services"),
