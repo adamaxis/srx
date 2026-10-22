@@ -172,6 +172,42 @@
         "scope": "contact_0_call_history_set"
       }
     },
+    "vid_phone.henry_contact_not_called": {
+      "expression": {
+        "fact": "story.vid_phone_called_9", "op": "eq", "value": false
+      },
+      "provenance": {
+        "romAddresses": ["0xE5E2", "0x109682", "0x10DE0C"],
+        "scope": "contact_9_call_history_clear"
+      }
+    },
+    "vid_phone.henry_contact_called": {
+      "expression": {
+        "fact": "story.vid_phone_called_9", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0xE5E2", "0x109682", "0x10DE0C"],
+        "scope": "contact_9_call_history_set"
+      }
+    },
+    "vid_phone.chillicut_contact_not_called": {
+      "expression": {
+        "fact": "story.vid_phone_called_11", "op": "eq", "value": false
+      },
+      "provenance": {
+        "romAddresses": ["0xE5E2", "0x109682", "0x10E9DE"],
+        "scope": "contact_11_call_history_clear"
+      }
+    },
+    "vid_phone.chillicut_contact_called": {
+      "expression": {
+        "fact": "story.vid_phone_called_11", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0xE5E2", "0x109682", "0x10E9DE"],
+        "scope": "contact_11_call_history_set"
+      }
+    },
     "salish.owlfeather.first_contact_available": {
       "expression": {
         "all": [

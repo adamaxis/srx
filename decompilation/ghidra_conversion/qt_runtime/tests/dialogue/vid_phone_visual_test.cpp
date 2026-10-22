@@ -339,11 +339,38 @@ int main(int argc, char** argv) {
         return 7;
     }
 
-    if (!advance(runtime, 0x1000U,
-                 "B did not return from Henry's call to the field terminal") ||
+    if (!advance(runtime, 0x4000U,
+                 "A did not open Henry's Services menu") ||
+        !expect(runtime.panel().option_count == 3U &&
+                    runtime.panel().actor_name == "Henry J. Culver",
+                "Henry Services did not show the three ROM options") ||
+        !expect(save_panel(runtime, output_root, "07-henry-services"),
+                "could not save Henry's Services menu") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Henry's criminal-record offer") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    panel_contains_text(runtime, "2,500"),
+                "Henry's record offer did not show its source price") ||
+        !expect(save_panel(runtime, output_root, "08-henry-record-offer"),
+                "could not save Henry's record offer") ||
+        !advance(runtime, 0x1000U,
+                 "B did not decline to Henry's call options") ||
+        !expect(runtime.panel().option_count == 2U &&
+                    panel_contains_text(runtime, "How may I help you?"),
+                "declining Henry's service did not return to call options") ||
+        !expect(save_panel(runtime, output_root, "09-henry-service-return"),
+                "could not save Henry's return options") ||
+        !advance(runtime, 0x1000U,
+                 "B did not open Henry's Goodbye page") ||
+        !expect(runtime.panel().actor_name == "Henry J. Culver",
+                "Henry's Goodbye page lost its speaker profile") ||
+        !expect(save_panel(runtime, output_root, "10-henry-goodbye"),
+                "could not save Henry's Goodbye page") ||
+        !advance(runtime, 0x4000U,
+                 "A did not close Henry's Goodbye page") ||
         !expect(runtime.panel().option_count == 4U,
                 "ending the call did not restore the four field choices") ||
-        !expect(save_panel(runtime, output_root, "07-return-to-field-menu"),
+        !expect(save_panel(runtime, output_root, "11-return-to-field-menu"),
                 "could not save the field terminal after the call")) {
         std::cerr << runtime.failure() << '\n';
         if (!source_boundary.empty()) {

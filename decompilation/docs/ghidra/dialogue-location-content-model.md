@@ -340,11 +340,10 @@ have special first-call/history behavior. Calls may present a one-page or
 multi-page first/repeat message, a Services/Goodbye menu, or a contact-specific
 service graph.
 
-Seven contacts have source-derived service implementations: Captain Quinton,
-Alesandro, Sharkey, Kipp, Wilma, Macklemann, and Gregory. All seven flows are
-now JSON graphs: Quinton's complete first/repeat call and service flow, plus
-Alesandro's, Sharkey's, Kipp's, Wilma's, Macklemann's, and Gregory's service
-flows. The traced result permutations include:
+Nine contacts have source-derived service implementations: Captain Quinton,
+Alesandro, Sharkey, Kipp, Wilma, Macklemann, Gregory, Henry J. Culver, and
+Chillicut. Their converted paths are JSON graphs with named Lua actions and
+typed host service calls. The traced result permutations include:
 
 - Information-only topics and multi-page lessons, with return-to-services or
   disconnect/farewell outcomes.
@@ -357,8 +356,10 @@ flows. The traced result permutations include:
 - Result screens that either return to a service menu or end the call, as
   distinct from result screens that start travel.
 
-The remaining six list contacts still have first/repeat text and portraits;
-their contact-specific service behavior is not inferred from those facts.
+Four list contacts remain to be converted: Mr. Faradouchi, Agira Tetsumi,
+Max, and Prof. Jefferson. Their contact-specific branches and state changes
+must be traced before adding graph content; the contact list's existence,
+first/repeat copy, and portraits do not establish their service behavior.
 `contacts.json`, `speakers.json`, `menus.json`, `conditions.json`, and
 `conversations/*.json` now hold shared content and converted graph structure.
 Named Lua actions and typed host services retain state mutation policy. Three
@@ -528,9 +529,9 @@ conditions, and outcome types must not depend on Qt JSON classes.
    and consumers reference stable text keys. Extracted strings remain
    extractor-owned.
 3. **Implemented for shared catalogs:** speaker, menu, and 13-contact data are
-   JSON-backed. Captain Quinton's full call flow and the six other converted
-   contact service flows use JSON graphs; the remaining six listed contacts
-   still need source-traced service behavior.
+   JSON-backed. Captain Quinton's full call flow and eight other converted
+   contact service flows use JSON graphs; Faradouchi, Agira, Max, and Prof.
+   Jefferson still need source-traced service behavior.
 4. **Implemented with explicit host boundaries:** the reusable Lua graph and
    condition engines and typed `DialogueOutcome` contract are active. The
    portable C++ `DialogueOutcomeDispatcher` registers handlers by outcome type
@@ -558,8 +559,9 @@ The first JSON graph migration was a vertical slice that exercises more than
 one terminal kind. Stoker's indexed service and signed field-exit prompt now
 use separate JSON graph roots. The remaining Stoker work is source coverage
 for the 80..99 effect callback, saved-game fact restoration, and independent
-visual checks. Quinton's call graph and the six converted contact service
-graphs now cover all seven source-derived service trees. The Spirit Eyes ritual
+visual checks. Quinton's call graph and eight converted contact service
+graphs now cover the nine source-derived service trees. Faradouchi, Agira,
+Max, and Prof. Jefferson remain open. The Spirit Eyes ritual
 route is JSON-backed through its source-traced Scene-4 prompt chain and staged
 item gates. Licourtrix's Scene-47 graph is JSON-backed and tested, and the
 seeded mode-table route now reaches its typed Scene-47 entry and Lua actor list.
@@ -658,6 +660,24 @@ Seven non-Stoker graphs and two Stoker roots currently exercise that contract:
   these permutations, and Debug/Release script/panel QA passes. The longplay
   has a shared Alesandro/Professor portrait reference but no complete matching
   Alesandro call sequence.
+- Henry J. Culver's record at `0x10DE0C` now uses one graph for first/repeat
+  call choices, Services, three priced offers, insufficient funds, each state
+  write, the return menu after declining, and the source Goodbye page. His
+  commands charge 2,500/1,500/8,000; success clears the Lone Star record byte,
+  sets FFFC2C bit 27, or sets FFFC22 bit 11 respectively. The state effect is
+  applied only after the typed wallet transaction succeeds. Lua permutations,
+  script QA, and full-panel image QA cover the declared paths. The reviewed
+  longplay contains no complete Henry call, so those internal captures do not
+  establish independent Genesis visual fidelity.
+- Sgt. Chillicut's record at `0x10E9DE` now keeps the first-call MORE page and
+  private-line detail separate from the repeat-call menu. Its three offers
+  preserve the ROM's Yes/No/Goodbye buttons and return-to-services behavior;
+  successful offers show the service result menu, while failed payments end
+  on the source insufficiency page. Commands charge 5,000/3,000/10,000 and
+  write the same record, Hollywood-access, and permit facts as Henry. Lua
+  permutations cover first/repeat calls, choices, prices, and transaction
+  outcomes. No complete Chillicut call appears in the reviewed longplay; its
+  route remains visually unverified against an independent Genesis capture.
 
 - Stoker has two JSON roots so the indexed trigger and signed field-exit
   selector stay separate. The indexed root uses the ROM gate from `0x53AB6`

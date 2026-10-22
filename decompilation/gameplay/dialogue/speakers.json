@@ -596,6 +596,18 @@
           "continuation_key": "shared.more",
           "title_key": "vid_phone.contact.chillicut.first_call"
         },
+        "first_call_details": {
+          "continuation_key": "",
+          "title_key": "vid_phone.chillicut.first_call_details"
+        },
+        "goodbye": {
+          "continuation_key": "",
+          "title_key": "vid_phone.goodbye"
+        },
+        "payment_insufficient": {
+          "continuation_key": "",
+          "title_key": "vid_phone.chillicut.payment_insufficient"
+        },
         "repeat_call": {
           "continuation_key": "",
           "title_key": "vid_phone.contact.chillicut.repeat_call"
@@ -642,9 +654,29 @@
           "continuation_key": "",
           "title_key": "vid_phone.contact.henry_j_culver.first_call"
         },
+        "goodbye": {
+          "continuation_key": "",
+          "title_key": "vid_phone.goodbye"
+        },
+        "hollywood_access_granted": {
+          "continuation_key": "shared.more",
+          "title_key": "vid_phone.henry_j_culver.hollywood_access_granted"
+        },
+        "payment_insufficient": {
+          "continuation_key": "",
+          "title_key": "vid_phone.henry_j_culver.payment_insufficient"
+        },
+        "record_deleted": {
+          "continuation_key": "shared.more",
+          "title_key": "vid_phone.henry_j_culver.record_deleted"
+        },
         "repeat_call": {
           "continuation_key": "",
           "title_key": "vid_phone.contact.henry_j_culver.repeat_call"
+        },
+        "weapon_permit_granted": {
+          "continuation_key": "shared.more",
+          "title_key": "vid_phone.henry_j_culver.weapon_permit_granted"
         }
       },
       "name": "Henry J. Culver",

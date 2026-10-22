@@ -1258,6 +1258,12 @@ int main() {
         return 11;
     }
     task = scripts.complete_native_menu_choice("goodbye");
+    if (!expect(is_say(task, "goodbye", "vid_phone_henry_j_culver"),
+                "Henry's Goodbye choice did not present the farewell page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 26;
+    }
+    task = scripts.complete_native_operation(true);
     if (!expect(task.status == ScriptTaskStep::Status::completed,
                 "Henry call did not return from the Vid-Phone activity")) {
         return 26;

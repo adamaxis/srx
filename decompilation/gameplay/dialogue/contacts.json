@@ -260,6 +260,11 @@
         "eventId": "repeat_call",
         "textKey": "vid_phone.contact.henry_j_culver.repeat_call",
         "continuation": false
+      },
+      "service": {
+        "module": "vid_phone.henry_j_culver",
+        "graphId": "vid_phone.henry_j_culver.call",
+        "graphScope": "call"
       }
     },
     {
@@ -304,6 +309,11 @@
         "eventId": "repeat_call",
         "textKey": "vid_phone.contact.chillicut.repeat_call",
         "continuation": false
+      },
+      "service": {
+        "module": "vid_phone.chillicut",
+        "graphId": "vid_phone.chillicut.call",
+        "graphScope": "call"
       }
     },
     {

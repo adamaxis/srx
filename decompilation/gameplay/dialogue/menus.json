@@ -360,6 +360,129 @@
         },
         "title_key": "vid_phone.contact.henry_j_culver.repeat_call"
       },
+      "henry_service_return": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.henry_j_culver.service_return"
+      },
+      "chillicut_first_call_intro": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.contact.chillicut.first_call"
+      },
+      "chillicut_first_call_details": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.chillicut.first_call_details"
+      },
+      "henry_services": {
+        "choice_label_keys": {
+          "delete_record": "vid_phone.henry_j_culver.option.delete_record",
+          "hollywood_access": "vid_phone.henry_j_culver.option.hollywood_access",
+          "weapon_permit": "vid_phone.henry_j_culver.option.weapon_permit"
+        },
+        "title_key": "vid_phone.henry_j_culver.services"
+      },
+      "henry_offer_delete_record": {
+        "choice_label_keys": {
+          "accept": "vid_phone.option.yes",
+          "decline": "vid_phone.option.no"
+        },
+        "title_key": "vid_phone.henry_j_culver.offer.delete_record"
+      },
+      "henry_offer_hollywood_access": {
+        "choice_label_keys": {
+          "accept": "vid_phone.option.yes",
+          "decline": "vid_phone.option.no"
+        },
+        "title_key": "vid_phone.henry_j_culver.offer.hollywood_access"
+      },
+      "henry_offer_weapon_permit": {
+        "choice_label_keys": {
+          "accept": "vid_phone.option.yes",
+          "decline": "vid_phone.option.no"
+        },
+        "title_key": "vid_phone.henry_j_culver.offer.weapon_permit"
+      },
+      "henry_result_delete_record": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.henry_j_culver.record_deleted"
+      },
+      "henry_result_hollywood_access": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.henry_j_culver.hollywood_access_granted"
+      },
+      "henry_result_weapon_permit": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.henry_j_culver.weapon_permit_granted"
+      },
+      "chillicut_services": {
+        "choice_label_keys": {
+          "delete_record": "vid_phone.chillicut.option.delete_record",
+          "hollywood_access": "vid_phone.chillicut.option.hollywood_access",
+          "weapon_permit": "vid_phone.chillicut.option.weapon_permit"
+        },
+        "title_key": "vid_phone.chillicut.services"
+      },
+      "chillicut_offer_delete_record": {
+        "choice_label_keys": {
+          "accept": "vid_phone.option.yes",
+          "decline": "vid_phone.option.no",
+          "goodbye": "vid_phone.option.goodbye"
+        },
+        "title_key": "vid_phone.chillicut.offer.delete_record"
+      },
+      "chillicut_offer_hollywood_access": {
+        "choice_label_keys": {
+          "accept": "vid_phone.option.yes",
+          "decline": "vid_phone.option.no",
+          "goodbye": "vid_phone.option.goodbye"
+        },
+        "title_key": "vid_phone.chillicut.offer.hollywood_access"
+      },
+      "chillicut_offer_weapon_permit": {
+        "choice_label_keys": {
+          "accept": "vid_phone.option.yes",
+          "decline": "vid_phone.option.no",
+          "goodbye": "vid_phone.option.goodbye"
+        },
+        "title_key": "vid_phone.chillicut.offer.weapon_permit"
+      },
+      "chillicut_result_delete_record": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.chillicut.record_deleted"
+      },
+      "chillicut_result_hollywood_access": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.chillicut.hollywood_access_granted"
+      },
+      "chillicut_result_weapon_permit": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.chillicut.weapon_permit_granted"
+      },
       "call_kipp_david_first_call": {
         "choice_label_keys": {
           "goodbye": "vid_phone.option.goodbye",

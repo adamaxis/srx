@@ -1057,6 +1057,352 @@
           "outcome": { "type": "return_to_caller" }
         }
       }
+    },
+    "vid_phone.henry_j_culver.call": {
+      "entryNode": "call_history",
+      "speakerId": "vid_phone_henry_j_culver",
+      "textProfile": "field.vid_phone",
+      "provenance": {
+        "romAddresses": [
+          "0xE4C8", "0xE5E2", "0x109682", "0x10DE0C", "0x10DE1A",
+          "0x10DE32", "0x10DE62", "0x10DE8E", "0x10DEA6", "0x10DEBE",
+          "0x21A4E", "0x22D38", "0x22D5A", "0x22D86"
+        ],
+        "scope": "henry_first_repeat_calls_and_three_services"
+      },
+      "nodes": {
+        "call_history": {
+          "type": "branch",
+          "cases": [
+            { "when": "vid_phone.henry_contact_not_called", "next": "mark_called" },
+            { "when": "vid_phone.henry_contact_called", "next": "repeat_call_options" }
+          ],
+          "fallback": "call_history_boundary"
+        },
+        "mark_called": {
+          "type": "action",
+          "actionId": "vid_phone.mark_called",
+          "next": "first_call_options",
+          "results": { "call_history_unavailable": "call_history_boundary" }
+        },
+        "first_call_options": {
+          "type": "choice",
+          "menuId": "call_henry_j_culver_first_call",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "repeat_call_options": {
+          "type": "choice",
+          "menuId": "call_henry_j_culver_repeat_call",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "services": {
+          "type": "choice",
+          "menuId": "henry_services",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "delete_record", "next": "delete_record_offer" },
+            { "id": "hollywood_access", "next": "hollywood_access_offer" },
+            { "id": "weapon_permit", "next": "weapon_permit_offer" }
+          ]
+        },
+        "delete_record_offer": {
+          "type": "choice",
+          "menuId": "henry_offer_delete_record",
+          "inputContract": "yes_no",
+          "choices": [
+            { "id": "accept", "next": "delete_record_purchase" },
+            { "id": "decline", "next": "service_return" }
+          ]
+        },
+        "delete_record_purchase": {
+          "type": "action",
+          "actionId": "vid_phone.henry.delete_record",
+          "results": {
+            "completed": "delete_record_result",
+            "insufficient": "delete_record_insufficient",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "delete_record_insufficient": {
+          "type": "page",
+          "eventId": "payment_insufficient",
+          "next": "finished"
+        },
+        "delete_record_result": {
+          "type": "page",
+          "eventId": "record_deleted",
+          "next": "goodbye"
+        },
+        "hollywood_access_offer": {
+          "type": "choice",
+          "menuId": "henry_offer_hollywood_access",
+          "inputContract": "yes_no",
+          "choices": [
+            { "id": "accept", "next": "hollywood_access_purchase" },
+            { "id": "decline", "next": "service_return" }
+          ]
+        },
+        "hollywood_access_purchase": {
+          "type": "action",
+          "actionId": "vid_phone.henry.hollywood_access",
+          "results": {
+            "completed": "hollywood_access_result",
+            "insufficient": "hollywood_access_insufficient",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "hollywood_access_insufficient": {
+          "type": "page",
+          "eventId": "payment_insufficient",
+          "next": "finished"
+        },
+        "hollywood_access_result": {
+          "type": "page",
+          "eventId": "hollywood_access_granted",
+          "next": "goodbye"
+        },
+        "weapon_permit_offer": {
+          "type": "choice",
+          "menuId": "henry_offer_weapon_permit",
+          "inputContract": "yes_no",
+          "choices": [
+            { "id": "accept", "next": "weapon_permit_purchase" },
+            { "id": "decline", "next": "service_return" }
+          ]
+        },
+        "weapon_permit_purchase": {
+          "type": "action",
+          "actionId": "vid_phone.henry.weapon_permit",
+          "results": {
+            "completed": "weapon_permit_result",
+            "insufficient": "weapon_permit_insufficient",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "weapon_permit_insufficient": {
+          "type": "page",
+          "eventId": "payment_insufficient",
+          "next": "finished"
+        },
+        "weapon_permit_result": {
+          "type": "page",
+          "eventId": "weapon_permit_granted",
+          "next": "goodbye"
+        },
+        "service_return": {
+          "type": "choice",
+          "menuId": "henry_service_return",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "goodbye": {
+          "type": "page",
+          "eventId": "goodbye",
+          "next": "finished"
+        },
+        "call_history_boundary": {
+          "type": "source_boundary",
+          "reason": "Henry's call-history state is unresolved."
+        },
+        "service_boundary": {
+          "type": "source_boundary",
+          "reason": "Henry's payment transaction returned an unavailable or unrecognized result."
+        },
+        "finished": {
+          "type": "terminal",
+          "outcome": { "type": "return_to_caller" }
+        }
+      }
+    },
+    "vid_phone.chillicut.call": {
+      "entryNode": "call_history",
+      "speakerId": "vid_phone_chillicut",
+      "textProfile": "field.vid_phone",
+      "provenance": {
+        "romAddresses": [
+          "0xE4C8", "0xE5E2", "0x109682", "0x10E9DE", "0x10E9EC",
+          "0x10EA00", "0x10EA30", "0x10EA5C", "0x10EA78", "0x10EA94",
+          "0x21A4E", "0x22EC6", "0x22EE8", "0x22F14"
+        ],
+        "scope": "chillicut_first_repeat_calls_and_three_services"
+      },
+      "nodes": {
+        "call_history": {
+          "type": "branch",
+          "cases": [
+            { "when": "vid_phone.chillicut_contact_not_called", "next": "mark_called" },
+            { "when": "vid_phone.chillicut_contact_called", "next": "repeat_call_options" }
+          ],
+          "fallback": "call_history_boundary"
+        },
+        "mark_called": {
+          "type": "action",
+          "actionId": "vid_phone.mark_called",
+          "next": "first_call_intro",
+          "results": { "call_history_unavailable": "call_history_boundary" }
+        },
+        "first_call_intro": {
+          "type": "choice",
+          "menuId": "chillicut_first_call_intro",
+          "inputContract": "buttons_abc",
+          "choices": [ { "id": "more", "next": "first_call_details_options" } ]
+        },
+        "first_call_details_options": {
+          "type": "choice",
+          "menuId": "chillicut_first_call_details",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "repeat_call_options": {
+          "type": "choice",
+          "menuId": "call_chillicut_repeat_call",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "services": {
+          "type": "choice",
+          "menuId": "chillicut_services",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "delete_record", "next": "delete_record_offer" },
+            { "id": "hollywood_access", "next": "hollywood_access_offer" },
+            { "id": "weapon_permit", "next": "weapon_permit_offer" }
+          ]
+        },
+        "delete_record_offer": {
+          "type": "choice",
+          "menuId": "chillicut_offer_delete_record",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "accept", "next": "delete_record_purchase" },
+            { "id": "decline", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "delete_record_purchase": {
+          "type": "action",
+          "actionId": "vid_phone.chillicut.delete_record",
+          "results": {
+            "completed": "delete_record_result",
+            "insufficient": "delete_record_insufficient",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "delete_record_insufficient": {
+          "type": "page",
+          "eventId": "payment_insufficient",
+          "next": "finished"
+        },
+        "delete_record_result": {
+          "type": "choice",
+          "menuId": "chillicut_result_delete_record",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "hollywood_access_offer": {
+          "type": "choice",
+          "menuId": "chillicut_offer_hollywood_access",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "accept", "next": "hollywood_access_purchase" },
+            { "id": "decline", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "hollywood_access_purchase": {
+          "type": "action",
+          "actionId": "vid_phone.chillicut.hollywood_access",
+          "results": {
+            "completed": "hollywood_access_result",
+            "insufficient": "hollywood_access_insufficient",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "hollywood_access_insufficient": {
+          "type": "page",
+          "eventId": "payment_insufficient",
+          "next": "finished"
+        },
+        "hollywood_access_result": {
+          "type": "choice",
+          "menuId": "chillicut_result_hollywood_access",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "weapon_permit_offer": {
+          "type": "choice",
+          "menuId": "chillicut_offer_weapon_permit",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "accept", "next": "weapon_permit_purchase" },
+            { "id": "decline", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "weapon_permit_purchase": {
+          "type": "action",
+          "actionId": "vid_phone.chillicut.weapon_permit",
+          "results": {
+            "completed": "weapon_permit_result",
+            "insufficient": "weapon_permit_insufficient",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "weapon_permit_insufficient": {
+          "type": "page",
+          "eventId": "payment_insufficient",
+          "next": "finished"
+        },
+        "weapon_permit_result": {
+          "type": "choice",
+          "menuId": "chillicut_result_weapon_permit",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "goodbye": {
+          "type": "page",
+          "eventId": "goodbye",
+          "next": "finished"
+        },
+        "call_history_boundary": {
+          "type": "source_boundary",
+          "reason": "Chillicut's call-history state is unresolved."
+        },
+        "service_boundary": {
+          "type": "source_boundary",
+          "reason": "Chillicut's payment transaction returned an unavailable or unrecognized result."
+        },
+        "finished": {
+          "type": "terminal",
+          "outcome": { "type": "return_to_caller" }
+        }
+      }
     }
   }
 }
