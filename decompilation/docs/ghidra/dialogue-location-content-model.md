@@ -196,6 +196,7 @@ The source-derived permutation table for this graph is:
 
 | Gate/input | ROM result | Graph result |
 | --- | --- | --- |
+| FFFC10 is `0x14`, FFFBF9 is 8 | `0x2CE0` selects context `0x13`, maps it to Scene `0x2F`, and schedules `0x53EE2`/`0x1E552` when FFFC1E bit 8 is clear. | This is the source predecessor for the contextual Scene-47 route; the active Qt coordinator does not yet execute this mode/activity transition. |
 | FFFC10 is not `0x13` | Event 25 is rewritten to event 8 before `0x53EFA`. | The graph is not entered; a direct invocation reports a source boundary. |
 | Context `0x13`, any story state | Select story trigger 8 first. | Begin the ordered story checks. |
 | Story bit 7 clear, either value of bit 8 | Select the flight-notice record. | Show `serpent_flight`; return in place without writing the scale. |

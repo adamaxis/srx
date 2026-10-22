@@ -14,6 +14,16 @@ Genesis dialogue frame.
 
 ## ROM trace
 
+- The event-25 context is a result of the source mode table, not a fixed
+  Scene-47 spawn value. At `0x2CE0`, FFFC10=`0x14` with FFFBF9=8 indexes
+  `0x2E72` to select FFFC10=`0x13`; `0x2E42` maps that mode to Scene `0x2F`,
+  and `0x2D92` supplies coordinates `0x5E80,0x1300`. If FFFC1E bit 8 is
+  clear, this transition also schedules world activity descriptor `0x53EE2`
+  and handler `0x1E552`. Debug/Release `shadowrun_ghidra_field_mode` verifies
+  both the unlocked activity handoff and the locked case. The typed table
+  conversion exists, but the active Qt field coordinator does not connect
+  this transition/activity path or preserve its context through physical
+  input QA.
 - Scene 4 record 96 (`0x15BDF6`) carries raw collision `0x00DB`, event 27,
   bounds x `0x06C0..0x06DF`, y `0x0080..0x009F`. It bypasses the ordinary event
   table and selects continuation `0x53D5A`; the event-table byte `0x80` is
@@ -103,8 +113,9 @@ Genesis dialogue frame.
 
 ## Remaining evidence
 
-- Connect a source-derived FFFC10=`0x13` transition context in the active Qt
-  field route, then exercise the Scene-47 contextual trigger with physical
+- Connect the context-`0x14`/event-8 mode-table transition, its `0x53EE2`/
+  `0x1E552` world-activity handoff, and the resulting FFFC10=`0x13` state in
+  the active Qt field route. Then exercise Scene-47 record 62 with physical
   input. The JSON precondition exposes missing context as an unresolved
   boundary instead of treating it as a false story fact.
 - Extract the `0x1FE6C2` resource profile into named host assets, present the
