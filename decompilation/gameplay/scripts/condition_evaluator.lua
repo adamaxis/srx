@@ -23,6 +23,65 @@ local function state_value(state, key)
     return value
 end
 
+local runner_skill_indices = {
+    sorcery = 0,
+    firearms = 1,
+    pistols = 2,
+    smgs = 3,
+    shotguns = 4,
+    melee_combat = 5,
+    throwing = 6,
+    computer = 7,
+    biotech = 8,
+    electronics = 9,
+    reputation = 10,
+    negotiation = 11,
+}
+
+local runner_attribute_indices = {
+    body = 0,
+    quickness = 1,
+    strength = 2,
+    charisma = 3,
+    intelligence = 4,
+    willpower = 5,
+    essence = 6,
+    magic = 7,
+}
+
+local function runner_stat_value(fact_name)
+    local category, id = fact_name:match("^runner%.([%w_]+)%.([%w_]+)$")
+    local index
+    local collection
+    if category == "skill" then
+        collection = "skills"
+        index = runner_skill_indices[id]
+    elseif category == "attribute" then
+        collection = "attributes"
+        index = runner_attribute_indices[id]
+    else
+        return unknown_fact
+    end
+    if index == nil or type(game) ~= "table" or
+       type(game.party) ~= "function" or
+       type(game.active_slot) ~= "function" then
+        return unknown_fact
+    end
+
+    local ok, value = pcall(function()
+        local party = game.party()
+        local active_slot = game.active_slot()
+        if type(party) ~= "table" or type(active_slot) ~= "number" then
+            return unknown_fact
+        end
+        local runner = party[active_slot]
+        local values = type(runner) == "table" and runner[collection] or nil
+        local stat = type(values) == "table" and values[index] or nil
+        return type(stat) == "number" and stat or unknown_fact
+    end)
+    return ok and value or unknown_fact
+end
+
 function FactProvider.new(options)
     options = options or {}
     return setmetatable({
@@ -69,6 +128,10 @@ function FactProvider:read(fact_name, context)
     if fact_name:sub(1, 9) == "dialogue." then
         local dialogue = type(context) == "table" and context.dialogue or nil
         return state_value(dialogue, fact_name:sub(10))
+    end
+
+    if fact_name:sub(1, 7) == "runner." then
+        return runner_stat_value(fact_name)
     end
 
     local registry = self.run_registry

@@ -58,6 +58,31 @@ assert(evaluator:evaluate({ ["not"] =
     compare("story.not_loaded", "eq", true) }).status == Status.unknown)
 assert(evaluator:evaluate(nil).status == Status.true_value)
 
+local previous_game = game
+local active_reputation = 5
+game = {
+    party = function()
+        return { [0] = { skills = { [10] = active_reputation } } }
+    end,
+    active_slot = function() return 0 end,
+}
+local runner_evaluator = ConditionEvaluator.new(
+    ConditionEvaluator.FactProvider.new())
+assert(runner_evaluator:evaluate(
+    compare("runner.skill.reputation", "gte", 5)).status ==
+    Status.true_value)
+active_reputation = 4
+assert(runner_evaluator:evaluate(
+    compare("runner.skill.reputation", "lt", 5)).status ==
+    Status.true_value)
+game.party = function()
+    return { [0] = { skills = {} } }
+end
+assert(runner_evaluator:evaluate(
+    compare("runner.skill.reputation", "gte", 5)).status ==
+    Status.unknown)
+game = previous_game
+
 local valid, err = pcall(ConditionEvaluator.validate,
     compare("story.story_flag_bit_0", "approximately", false))
 assert(not valid and tostring(err):match("unsupported operator") ~= nil)
