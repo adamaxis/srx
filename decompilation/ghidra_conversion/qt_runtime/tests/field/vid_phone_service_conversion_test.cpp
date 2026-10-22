@@ -36,6 +36,14 @@ int main() {
         VidPhoneServiceAction::purchase_maglock_passkey_level_3);
     const auto level5_passkey_offer = vid_phone_supply_offer(
         VidPhoneServiceAction::purchase_maglock_passkey_level_5);
+    const auto max_hk227_s_offer = vid_phone_supply_offer(
+        VidPhoneServiceAction::purchase_max_hk227_s);
+    const auto ak97_offer = vid_phone_supply_offer(
+        VidPhoneServiceAction::purchase_ak97);
+    const auto max_level4_passkey_offer = vid_phone_supply_offer(
+        VidPhoneServiceAction::purchase_max_maglock_passkey_level_4);
+    const auto max_level5_passkey_offer = vid_phone_supply_offer(
+        VidPhoneServiceAction::purchase_max_maglock_passkey_level_5);
     const auto smart_goggles_offer = vid_phone_supply_offer(
         VidPhoneServiceAction::purchase_smart_goggles);
     const auto power_focus_offer = vid_phone_supply_offer(
@@ -47,6 +55,10 @@ int main() {
                     grenade_offer.has_value() && hk227_s_offer.has_value() &&
                     level3_passkey_offer.has_value() &&
                     level5_passkey_offer.has_value() &&
+                    max_hk227_s_offer.has_value() &&
+                    ak97_offer.has_value() &&
+                    max_level4_passkey_offer.has_value() &&
+                    max_level5_passkey_offer.has_value() &&
                     smart_goggles_offer.has_value() &&
                     power_focus_offer.has_value() &&
                     grenade_offer->item_code == UsItemCode::frag_grenade &&
@@ -71,6 +83,20 @@ int main() {
                         UsItemCode::maglock_passkey &&
                     level5_passkey_offer->price == 20000U &&
                     level5_passkey_offer->item_phase == 5U &&
+                    max_hk227_s_offer->item_code == UsItemCode::hk227_s_smg &&
+                    max_hk227_s_offer->price == 1500U &&
+                    max_hk227_s_offer->item_phase == 0x1CU &&
+                    ak97_offer->item_code == UsItemCode::ak97_smg &&
+                    ak97_offer->price == 2000U &&
+                    ak97_offer->item_phase == 0x25U &&
+                    max_level4_passkey_offer->item_code ==
+                        UsItemCode::maglock_passkey &&
+                    max_level4_passkey_offer->price == 30000U &&
+                    max_level4_passkey_offer->item_phase == 4U &&
+                    max_level5_passkey_offer->item_code ==
+                        UsItemCode::maglock_passkey &&
+                    max_level5_passkey_offer->price == 42000U &&
+                    max_level5_passkey_offer->item_phase == 5U &&
                     maglock_passkey->base_cost == 10000U &&
                     smart_goggles_offer->item_code ==
                         UsItemCode::smart_goggles &&
@@ -108,11 +134,32 @@ int main() {
                         "vid_phone.purchase_power_focus") ==
                     VidPhoneServiceAction::purchase_power_focus &&
                     vid_phone_service_action_for_id(
+                        "vid_phone.purchase_riannons_discount") ==
+                    VidPhoneServiceAction::purchase_riannons_discount &&
+                    vid_phone_service_action_for_id(
+                        "vid_phone.purchase_max_hk227_s") ==
+                    VidPhoneServiceAction::purchase_max_hk227_s &&
+                    vid_phone_service_action_for_id(
+                        "vid_phone.purchase_ak97") ==
+                    VidPhoneServiceAction::purchase_ak97 &&
+                    vid_phone_service_action_for_id(
+                        "vid_phone.purchase_max_maglock_passkey_level_4") ==
+                    VidPhoneServiceAction::purchase_max_maglock_passkey_level_4 &&
+                    vid_phone_service_action_for_id(
+                        "vid_phone.purchase_max_maglock_passkey_level_5") ==
+                    VidPhoneServiceAction::purchase_max_maglock_passkey_level_5 &&
+                    vid_phone_service_action_for_id(
                         "vid_phone.hire_sharkey") ==
                     VidPhoneServiceAction::hire_sharkey &&
                     vid_phone_service_action_for_id(
                         "vid_phone.hire_macklemann") ==
                     VidPhoneServiceAction::hire_macklemann &&
+                    vid_phone_service_action_for_id(
+                        "vid_phone.hire_gregory_wilns") ==
+                    VidPhoneServiceAction::hire_gregory_wilns &&
+                    vid_phone_service_action_for_id(
+                        "vid_phone.issue_max_corporate_badge") ==
+                    VidPhoneServiceAction::issue_max_corporate_badge &&
                     !vid_phone_service_action_for_id(
                         "vid_phone.unknown_offer").has_value(),
                 "Lua Vid-Phone service ids did not map to typed host actions")) {
@@ -619,6 +666,133 @@ int main() {
                     vid_phone_service_script_result(gregory) == "out_of_stock",
                 "full inventory changed funds/items during Power Focus purchase")) {
         return 45;
+    }
+
+    struct MaxItemOfferCase {
+        VidPhoneServiceAction action;
+        UsItemCode item_code;
+        std::uint32_t price;
+        std::uint8_t phase;
+    };
+    constexpr std::array<MaxItemOfferCase, 4> kMaxOffers{{
+        {VidPhoneServiceAction::purchase_max_hk227_s,
+         UsItemCode::hk227_s_smg, 1500U, 0x1CU},
+        {VidPhoneServiceAction::purchase_ak97,
+         UsItemCode::ak97_smg, 2000U, 0x25U},
+        {VidPhoneServiceAction::purchase_max_maglock_passkey_level_4,
+         UsItemCode::maglock_passkey, 30000U, 4U},
+        {VidPhoneServiceAction::purchase_max_maglock_passkey_level_5,
+         UsItemCode::maglock_passkey, 42000U, 5U},
+    }};
+    for (const auto& offer : kMaxOffers) {
+        item_codes = {};
+        item_phases = {};
+        funds = offer.price;
+        auto max_purchase = apply_vid_phone_service(
+            offer.action, funds, item_codes, item_phases, badge_flags);
+        const auto* definition = find_us_item_definition(offer.item_code);
+        if (!expect(definition != nullptr &&
+                        max_purchase == VidPhoneServiceResult::purchased &&
+                        funds == 0U && item_codes[0] == definition->item_code &&
+                        item_phases[0] == offer.phase,
+                    "Max's ROM item offer did not charge and install its exact item/phase")) {
+            return 46;
+        }
+        funds = offer.price - 1U;
+        item_codes = {};
+        item_phases = {};
+        max_purchase = apply_vid_phone_service(
+            offer.action, funds, item_codes, item_phases, badge_flags);
+        if (!expect(max_purchase == VidPhoneServiceResult::insufficient_funds &&
+                        funds == offer.price - 1U && item_codes[0] == 0U &&
+                        item_phases[0] == 0U,
+                    "Max's short-balance branch mutated nuyen or inventory")) {
+            return 47;
+        }
+        funds = offer.price;
+        item_codes.fill(1U);
+        item_phases.fill(7U);
+        max_purchase = apply_vid_phone_service(
+            offer.action, funds, item_codes, item_phases, badge_flags);
+        if (!expect(max_purchase == VidPhoneServiceResult::inventory_full &&
+                        funds == offer.price && item_codes[0] == 1U &&
+                        item_phases[0] == 7U,
+                    "Max's full-inventory branch charged or overwrote an item")) {
+            return 48;
+        }
+    }
+
+    constexpr std::uint32_t kMaxCorporateBadgeBit = 1U << 10U;
+    std::optional<std::uint32_t> group_flags = (1U << 4U);
+    funds = 5999U;
+    auto max_badge = apply_vid_phone_service(
+        VidPhoneServiceAction::issue_max_corporate_badge, funds, item_codes,
+        item_phases, badge_flags, nullptr, std::nullopt, &group_flags);
+    if (!expect(max_badge == VidPhoneServiceResult::insufficient_funds &&
+                    funds == 5999U && group_flags == (1U << 4U),
+                "short Max badge funds changed nuyen or group-item flags")) {
+        return 49;
+    }
+    funds = 6000U;
+    max_badge = apply_vid_phone_service(
+        VidPhoneServiceAction::issue_max_corporate_badge, funds, item_codes,
+        item_phases, badge_flags, nullptr, std::nullopt, &group_flags);
+    if (!expect(max_badge == VidPhoneServiceResult::badge_issued &&
+                    funds == 0U &&
+                    group_flags == ((1U << 4U) | kMaxCorporateBadgeBit) &&
+                    vid_phone_service_script_result(max_badge) == "badge_issued",
+                "Max's $6,000 badge did not set FFFC22 bit 10")) {
+        return 50;
+    }
+    group_flags.reset();
+    funds = 6000U;
+    max_badge = apply_vid_phone_service(
+        VidPhoneServiceAction::issue_max_corporate_badge, funds, item_codes,
+        item_phases, badge_flags, nullptr, std::nullopt, &group_flags);
+    if (!expect(max_badge == VidPhoneServiceResult::unavailable &&
+                    funds == 6000U,
+                "unresolved group-item flags still issued Max's badge")) {
+        return 51;
+    }
+
+    feature_flags = 0x80U;
+    funds = 1499U;
+    auto riannons = apply_vid_phone_service(
+        VidPhoneServiceAction::purchase_riannons_discount, funds, item_codes,
+        item_phases, badge_flags, &feature_flags);
+    if (!expect(riannons == VidPhoneServiceResult::insufficient_funds &&
+                    funds == 1499U && feature_flags == 0x80U,
+                "short Riannon's fee changed funds or runner features")) {
+        return 52;
+    }
+    funds = 1500U;
+    riannons = apply_vid_phone_service(
+        VidPhoneServiceAction::purchase_riannons_discount, funds, item_codes,
+        item_phases, badge_flags, &feature_flags);
+    if (!expect(riannons == VidPhoneServiceResult::discount_enabled &&
+                    funds == 0U && feature_flags == 0xC0U,
+                "Professor's $1,500 fee did not set FF018F bit 6")) {
+        return 53;
+    }
+    badge_flags = 1U << 5U;
+    funds = 2000U;
+    auto professor_contact = apply_vid_phone_service(
+        VidPhoneServiceAction::hire_gregory_wilns, funds, item_codes,
+        item_phases, badge_flags);
+    if (!expect(professor_contact == VidPhoneServiceResult::hired &&
+                    funds == 0U && badge_flags == ((1U << 5U) | (1U << 6U)),
+                "Professor's $2,000 offer did not add Gregory contact bit 6")) {
+        return 54;
+    }
+    funds = 1999U;
+    badge_flags = 1U << 5U;
+    professor_contact = apply_vid_phone_service(
+        VidPhoneServiceAction::hire_gregory_wilns, funds, item_codes,
+        item_phases, badge_flags);
+    if (!expect(professor_contact == VidPhoneServiceResult::insufficient_funds &&
+                    funds == 1999U && badge_flags == (1U << 5U),
+                "Professor's insufficient offer changed funds or contact flags")) {
+        return 55;
     }
 
     return 0;

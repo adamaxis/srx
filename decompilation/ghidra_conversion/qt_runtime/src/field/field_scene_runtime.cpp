@@ -1173,7 +1173,8 @@ FieldSceneRuntime::FieldSceneRuntime(
                     runner.inventory_item_codes,
                     runner.inventory_phase_bytes,
                     notebook_contacts_flags_, &field_runner_feature_flags_,
-                    static_cast<std::int8_t>(runner.archetype_index));
+                    static_cast<std::int8_t>(runner.archetype_index),
+                    &group_item_flags_);
                 if (result == VidPhoneServiceResult::purchased) {
                     refresh_field_hud_runner_slot();
                     refresh_command_overview_combat_bars();

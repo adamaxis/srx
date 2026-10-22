@@ -11,6 +11,7 @@ constexpr std::size_t kUsItemDefinitionCount = 50U;
 // Semantic item codes used by native host services. The numeric values are
 // the one-based inventory codes in the US ROM's D4540 item catalog.
 enum class UsItemCode : std::uint8_t {
+    ak97_smg = 8U,
     hk227_s_smg = 9U,
     frag_grenade = 13U,
     maglock_passkey = 20U,

@@ -24,9 +24,16 @@ enum class VidPhoneServiceAction : std::uint8_t {
     purchase_smart_goggles,
     purchase_merlins_lore_discount,
     purchase_power_focus,
+    purchase_riannons_discount,
+    purchase_max_hk227_s,
+    purchase_ak97,
+    purchase_max_maglock_passkey_level_4,
+    purchase_max_maglock_passkey_level_5,
     hire_sharkey,
     hire_macklemann,
+    hire_gregory_wilns,
     issue_hollywood_badge,
+    issue_max_corporate_badge,
 };
 
 enum class VidPhonePassageResult : std::uint8_t {
@@ -102,6 +109,7 @@ inline std::optional<std::string_view> vid_phone_passage_script_result(
 enum class VidPhoneServiceResult : std::uint8_t {
     purchased,
     hired,
+    badge_issued,
     insufficient_funds,
     inventory_full,
     ineligible,
@@ -112,6 +120,7 @@ enum class VidPhoneServiceResult : std::uint8_t {
 enum class VidPhoneContactIndex : std::uint8_t {
     sharkey = 2U,
     macklemann = 5U,
+    gregory_wilns = 6U,
 };
 
 struct VidPhoneSupplyOffer {
@@ -140,14 +149,27 @@ inline std::optional<VidPhoneSupplyOffer> vid_phone_supply_offer(
         return VidPhoneSupplyOffer{UsItemCode::maglock_passkey, 20000U, 5U};
     case VidPhoneServiceAction::purchase_smart_goggles:
         return VidPhoneSupplyOffer{UsItemCode::smart_goggles, 3000U, 0U};
+    case VidPhoneServiceAction::purchase_max_hk227_s:
+        // Max command 0x86, ROM 0x22E52: H&K with source accessory byte 0x1C.
+        return VidPhoneSupplyOffer{UsItemCode::hk227_s_smg, 1500U, 0x1CU};
+    case VidPhoneServiceAction::purchase_ak97:
+        // Max command 0x87, ROM 0x22E8C: AK-97 with phase byte 0x25.
+        return VidPhoneSupplyOffer{UsItemCode::ak97_smg, 2000U, 0x25U};
+    case VidPhoneServiceAction::purchase_max_maglock_passkey_level_4:
+        return VidPhoneSupplyOffer{UsItemCode::maglock_passkey, 30000U, 4U};
+    case VidPhoneServiceAction::purchase_max_maglock_passkey_level_5:
+        return VidPhoneSupplyOffer{UsItemCode::maglock_passkey, 42000U, 5U};
     case VidPhoneServiceAction::purchase_power_focus:
         // Gregory Wilns, command 0x78 at ROM 0x22C46. Item 0x18 is the
         // Power Focus; the transaction initializes its phase/charge byte to 2.
         return VidPhoneSupplyOffer{UsItemCode::power_focus, 50000U, 2U};
     case VidPhoneServiceAction::purchase_merlins_lore_discount:
+    case VidPhoneServiceAction::purchase_riannons_discount:
     case VidPhoneServiceAction::hire_sharkey:
     case VidPhoneServiceAction::hire_macklemann:
+    case VidPhoneServiceAction::hire_gregory_wilns:
     case VidPhoneServiceAction::issue_hollywood_badge:
+    case VidPhoneServiceAction::issue_max_corporate_badge:
         return std::nullopt;
     }
     return std::nullopt;
@@ -176,14 +198,35 @@ inline std::optional<VidPhoneServiceAction> vid_phone_service_action_for_id(
     if (service_id == "vid_phone.purchase_power_focus") {
         return VidPhoneServiceAction::purchase_power_focus;
     }
+    if (service_id == "vid_phone.purchase_riannons_discount") {
+        return VidPhoneServiceAction::purchase_riannons_discount;
+    }
+    if (service_id == "vid_phone.purchase_max_hk227_s") {
+        return VidPhoneServiceAction::purchase_max_hk227_s;
+    }
+    if (service_id == "vid_phone.purchase_ak97") {
+        return VidPhoneServiceAction::purchase_ak97;
+    }
+    if (service_id == "vid_phone.purchase_max_maglock_passkey_level_4") {
+        return VidPhoneServiceAction::purchase_max_maglock_passkey_level_4;
+    }
+    if (service_id == "vid_phone.purchase_max_maglock_passkey_level_5") {
+        return VidPhoneServiceAction::purchase_max_maglock_passkey_level_5;
+    }
     if (service_id == "vid_phone.hire_sharkey") {
         return VidPhoneServiceAction::hire_sharkey;
     }
     if (service_id == "vid_phone.hire_macklemann") {
         return VidPhoneServiceAction::hire_macklemann;
     }
+    if (service_id == "vid_phone.hire_gregory_wilns") {
+        return VidPhoneServiceAction::hire_gregory_wilns;
+    }
     if (service_id == "vid_phone.issue_hollywood_badge") {
         return VidPhoneServiceAction::issue_hollywood_badge;
+    }
+    if (service_id == "vid_phone.issue_max_corporate_badge") {
+        return VidPhoneServiceAction::issue_max_corporate_badge;
     }
     return std::nullopt;
 }
@@ -193,6 +236,7 @@ inline std::optional<std::string_view> vid_phone_service_script_result(
     switch (result) {
     case VidPhoneServiceResult::purchased: return "purchased";
     case VidPhoneServiceResult::hired: return "hired";
+    case VidPhoneServiceResult::badge_issued: return "badge_issued";
     case VidPhoneServiceResult::insufficient_funds: return "insufficient";
     case VidPhoneServiceResult::inventory_full: return "out_of_stock";
     case VidPhoneServiceResult::ineligible: return "ineligible";
@@ -212,7 +256,25 @@ inline VidPhoneServiceResult apply_vid_phone_service(
     std::array<std::uint8_t, 8>& inventory_phase_bytes,
     std::optional<std::uint32_t>& notebook_contacts_flags,
     std::optional<std::uint8_t>* runner_feature_flags = nullptr,
-    std::optional<std::int8_t> runner_archetype_status = std::nullopt) noexcept {
+    std::optional<std::int8_t> runner_archetype_status = std::nullopt,
+    std::optional<std::uint32_t>* group_item_flags = nullptr) noexcept {
+    // Max's command 0x83 charges 6,000 and sets FFFC22 bit 10. This is a
+    // typed host transaction because the item/flag word belongs to C++ state.
+    if (action == VidPhoneServiceAction::issue_max_corporate_badge) {
+        constexpr std::uint32_t kBadgePrice = 6000U;
+        constexpr std::uint32_t kCorporateBadgeBit = 1U << 10U;
+        if (!funds.has_value() || group_item_flags == nullptr ||
+            !group_item_flags->has_value()) {
+            return VidPhoneServiceResult::unavailable;
+        }
+        if (*funds < kBadgePrice) {
+            return VidPhoneServiceResult::insufficient_funds;
+        }
+        *funds -= kBadgePrice;
+        **group_item_flags |= kCorporateBadgeBit;
+        return VidPhoneServiceResult::badge_issued;
+    }
+
     // 0x22BF6 charges 5,000 and sets FFFC2C bit 28. The 0x03FFFFFF
     // contact/call-history mask would drop that bit. Command 0x64
     // clears it when the Hollywood gate plays.
@@ -232,17 +294,22 @@ inline VidPhoneServiceResult apply_vid_phone_service(
 
     // Gregory's command 0x77 (ROM 0x22C22) charges 4,000 and sets
     // FF018F bit 7, the Merlin's Lore corporate discount flag.
-    if (action == VidPhoneServiceAction::purchase_merlins_lore_discount) {
-        constexpr std::uint32_t kDiscountPrice = 0x0FA0U;
+    if (action == VidPhoneServiceAction::purchase_merlins_lore_discount ||
+        action == VidPhoneServiceAction::purchase_riannons_discount) {
+        const bool riannons =
+            action == VidPhoneServiceAction::purchase_riannons_discount;
+        const std::uint32_t discount_price = riannons ? 1500U : 0x0FA0U;
+        const std::uint8_t discount_bit = riannons ? 6U : 7U;
         if (runner_feature_flags == nullptr ||
             !runner_feature_flags->has_value() || !funds.has_value()) {
             return VidPhoneServiceResult::unavailable;
         }
-        if (*funds < kDiscountPrice) {
+        if (*funds < discount_price) {
             return VidPhoneServiceResult::insufficient_funds;
         }
-        *funds -= kDiscountPrice;
-        **runner_feature_flags |= 0x80U;
+        *funds -= discount_price;
+        **runner_feature_flags |=
+            static_cast<std::uint8_t>(1U << discount_bit);
         return VidPhoneServiceResult::discount_enabled;
     }
 
@@ -264,6 +331,8 @@ inline VidPhoneServiceResult apply_vid_phone_service(
             return std::pair{2800U, VidPhoneContactIndex::sharkey};
         case VidPhoneServiceAction::hire_macklemann:
             return std::pair{8000U, VidPhoneContactIndex::macklemann};
+        case VidPhoneServiceAction::hire_gregory_wilns:
+            return std::pair{2000U, VidPhoneContactIndex::gregory_wilns};
         default:
             return std::nullopt;
         }
