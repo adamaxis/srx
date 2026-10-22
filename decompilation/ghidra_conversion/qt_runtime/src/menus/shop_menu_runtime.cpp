@@ -35,10 +35,13 @@ bool ShopMenuController::open(
     const scripting::ScriptShopDefinition& definition,
     const std::array<std::string, 2>& confirmation_choice_ids) {
     const bool shop_id_matches_definition =
-        (shop == ShopId::ares_weapon_emporium &&
-         definition.id == "ares_weapon_emporium") ||
+        (shop == ShopId::field_store && definition.menu_result == -1 &&
+         definition.groups.size() == 6U) ||
+        (shop == ShopId::field_store && definition.menu_result == 0 &&
+         definition.groups.size() == 4U) ||
         (shop == ShopId::medicine_lodge &&
-         definition.id == "medicine_lodge");
+         definition.id == "medicine_lodge" &&
+         definition.menu_result == 0 && definition.groups.size() == 4U);
     if (!shop_id_matches_definition || definition.groups.empty() ||
         definition.groups.size() > group_ids_.size() ||
         confirmation_choice_ids[0] != "yes" ||

@@ -5720,7 +5720,7 @@ int run_field_scene5_store_service_entry_qa(
         std::cerr << "Scene-5 store service QA: could not write route trace\n";
         return 3;
     }
-    routes << "event\tservice_id\tportrait_alias\tmenu_boundary\n";
+    routes << "event\tservice_id\tportrait_alias\tmenu_outcome\n";
     for (const auto& store : kStores) {
         const auto service = std::string(store.service_id);
         if (!field_scene.begin_field_mode_service_event_for_dump(
@@ -5767,6 +5767,14 @@ int run_field_scene5_store_service_entry_qa(
         }
         const auto capture_directory = output / service;
         std::filesystem::create_directories(capture_directory);
+        const auto save_actual = [&capture_directory](
+                                     const std::string_view name,
+                                     const QImage& image) {
+            const auto directory = capture_directory / std::string(name);
+            std::filesystem::create_directories(directory);
+            return image.save(QString::fromStdWString(
+                (directory / "actual.bmp").wstring()));
+        };
         const bool saved = frame.save(QString::fromStdWString(
             (capture_directory / "actual.bmp").wstring()));
         if (frame.width() != 320 || frame.height() != 224 || !green_text ||
@@ -5790,25 +5798,141 @@ int run_field_scene5_store_service_entry_qa(
             field_scene.advance_frame();
         }
         tap_qa_controller_button(field_scene, 0x40U);
-        const auto expected_boundary = "field.shop." + service +
-                                       ".menu_unimplemented";
-        const auto expected_boundary_found =
-            source_boundaries.size() > boundary_start &&
-            std::find(source_boundaries.begin() +
-                          static_cast<std::ptrdiff_t>(boundary_start),
-                      source_boundaries.end(), expected_boundary) !=
-                source_boundaries.end();
-        if (field_scene.shop_menu_open() ||
-            field_scene.field_mode_text_open_for_dump() ||
-            !expected_boundary_found) {
-            std::cerr << "Scene-5 store service QA: " << service
-                      << " incorrectly opened another shop or missed its "
-                         "explicit menu boundary\n";
-            return 3;
+        const auto boundary_seen_since_prompt = [&](
+            const std::string_view expected) {
+            return source_boundaries.size() > boundary_start &&
+                std::find(source_boundaries.begin() +
+                              static_cast<std::ptrdiff_t>(boundary_start),
+                          source_boundaries.end(), expected) !=
+                    source_boundaries.end();
+        };
+        std::string menu_outcome;
+        if (service == "weapons_world") {
+            const auto category_frame = render_qa_field(field_scene);
+            const auto category_saved =
+                save_actual("menu-category", category_frame);
+            if (!field_scene.shop_menu_open() ||
+                field_scene.shop_menu_mode() != 0U ||
+                field_scene.shop_menu_result() != -1 ||
+                field_scene.shop_menu_group() != ShopActionGroup::weapons ||
+                field_scene.shop_menu_cursor() != 0U ||
+                field_scene.shop_menu_offers_active() ||
+                !category_saved ||
+                !boundary_seen_since_prompt(
+                    "field.shop.weapons_world.opened")) {
+                std::cerr << "Scene-5 store service QA: Weapon's World did "
+                             "not open the mode-0 Weapons category\n";
+                return 3;
+            }
+
+            tap_qa_controller_button(field_scene, 0x02U); // First offer.
+            const auto offer_frame = render_qa_field(field_scene);
+            const auto offer_saved =
+                save_actual("first-weapon-offer", offer_frame);
+            if (!field_scene.shop_menu_open() ||
+                field_scene.shop_menu_group() != ShopActionGroup::weapons ||
+                field_scene.shop_menu_cursor() != 0U ||
+                !field_scene.shop_menu_offers_active() || !offer_saved ||
+                !image_has_green_ink(offer_frame, 24, 56, 224, 64)) {
+                std::cerr << "Scene-5 store service QA: Weapon's World did "
+                             "not display its first ROM weapon offer\n";
+                return 3;
+            }
+
+            tap_qa_controller_button(field_scene, 0x80U); // Start return.
+            const auto returned = render_qa_field(field_scene);
+            const auto returned_saved = save_actual("field-return", returned);
+            if (field_scene.shop_menu_open() || !returned_saved ||
+                !boundary_seen_since_prompt(
+                    "field.shop.weapons_world.returned_to_field")) {
+                std::cerr << "Scene-5 store service QA: Weapon's World did "
+                             "not return to the field through Start\n";
+                return 3;
+            }
+            menu_outcome = "field.shop.weapons_world.opened";
+        } else if (service == "merlins_lore") {
+            const auto category_frame = render_qa_field(field_scene);
+            const auto category_saved =
+                save_actual("menu-category", category_frame);
+            if (!field_scene.shop_menu_open() ||
+                field_scene.shop_menu_mode() != 5U ||
+                field_scene.shop_menu_result() != 0 ||
+                field_scene.shop_menu_group() !=
+                    ShopActionGroup::magic_spells ||
+                field_scene.shop_menu_cursor() != 0U ||
+                field_scene.shop_menu_offers_active() || !category_saved ||
+                !boundary_seen_since_prompt(
+                    "field.shop.merlins_lore.opened")) {
+                std::cerr << "Scene-5 store service QA: Merlin's Lore did "
+                             "not open the mode-5 spell category\n";
+                return 3;
+            }
+
+            tap_qa_controller_button(field_scene, 0x02U);
+            const auto progression_frame = render_qa_field(field_scene);
+            const auto progression_saved =
+                save_actual("spell-training-gate", progression_frame);
+            const auto panel_changed_seen = boundary_seen_since_prompt(
+                "field.shop.merlins_lore.panel_changed");
+            if (!field_scene.shop_menu_open() ||
+                field_scene.shop_menu_group() !=
+                    ShopActionGroup::magic_spells ||
+                field_scene.shop_menu_cursor() != 0U ||
+                !field_scene.shop_menu_offers_active() ||
+                !progression_saved ||
+                !image_has_green_ink(progression_frame, 64, 88, 224, 32) ||
+                !panel_changed_seen) {
+                std::cerr << "Scene-5 store service QA: Merlin's Lore did "
+                             "not show its ROM progression training gate "
+                          << "(open=" << field_scene.shop_menu_open()
+                          << " group=" << static_cast<int>(
+                                 field_scene.shop_menu_group())
+                          << " cursor=" << static_cast<unsigned>(
+                                 field_scene.shop_menu_cursor())
+                          << " panel="
+                          << field_scene.shop_menu_offers_active()
+                          << " ink=" << image_has_green_ink(
+                                 progression_frame, 24, 56, 224, 64)
+                          << " panel_changed=" << panel_changed_seen
+                          << " recent=";
+                const auto first_recent = source_boundaries.size() > 8U
+                    ? source_boundaries.size() - 8U
+                    : boundary_start;
+                for (auto index = first_recent;
+                     index < source_boundaries.size(); ++index) {
+                    std::cerr << ' ' << source_boundaries[index];
+                }
+                std::cerr << ")\n";
+                return 3;
+            }
+
+            tap_qa_controller_button(field_scene, 0x80U);
+            const auto returned = render_qa_field(field_scene);
+            const auto returned_saved = save_actual("field-return", returned);
+            if (field_scene.shop_menu_open() || !returned_saved ||
+                !boundary_seen_since_prompt(
+                    "field.shop.merlins_lore.returned_to_field")) {
+                std::cerr << "Scene-5 store service QA: Merlin's Lore did "
+                             "not return to the field through Start\n";
+                return 3;
+            }
+            menu_outcome = "field.shop.merlins_lore.opened";
+        } else {
+            const auto expected_boundary = "field.shop." + service +
+                                           ".menu_unimplemented";
+            if (field_scene.shop_menu_open() ||
+                field_scene.field_mode_text_open_for_dump() ||
+                !boundary_seen_since_prompt(expected_boundary)) {
+                std::cerr << "Scene-5 store service QA: " << service
+                          << " incorrectly opened another shop or missed its "
+                             "explicit menu boundary\n";
+                return 3;
+            }
+            menu_outcome = expected_boundary;
         }
         routes << static_cast<unsigned>(store.event_code) << '\t' << service
                << '\t' << store.expected_portrait << '\t'
-               << expected_boundary << '\n';
+               << menu_outcome << '\n';
     }
 
     std::cout << "field_scene5_store_service_entry_qa=passed events=2,3,4,5 "

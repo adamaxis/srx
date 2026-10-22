@@ -8086,6 +8086,78 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
+    const auto weapons_world = scripts.shop_definition("weapons_world");
+    if (!expect(weapons_world.has_value() &&
+                    weapons_world->menu_mode == 0U &&
+                    weapons_world->menu_result == -1 &&
+                    weapons_world->title_key ==
+                        "shop.service.option.weapons_world" &&
+                    weapons_world->groups.size() == 6U,
+                "Weapons World's Lua catalog lost its ROM mode/result") ||
+        !expect(weapons_world->groups[0].id == "weapons" &&
+                    weapons_world->groups[0].offers.size() == 6U &&
+                    weapons_world->groups[0].offers[0].type == 0x03U &&
+                    weapons_world->groups[0].offers[0].quantity == 0x0FU &&
+                    weapons_world->groups[0].offers[5].type == 0x0EU &&
+                    weapons_world->groups[0].offers[5].value == 0x06U &&
+                    weapons_world->groups[1].id == "armor" &&
+                    weapons_world->groups[1].offers.size() == 2U &&
+                    weapons_world->groups[1].offers[0].type == 0x2BU &&
+                    weapons_world->groups[1].offers[1].type == 0x2CU &&
+                    weapons_world->groups[2].id == "other_items" &&
+                    weapons_world->groups[2].offers.size() == 4U &&
+                    weapons_world->groups[2].offers[0].type == 0x45U &&
+                    weapons_world->groups[2].offers[0].quantity == 0x28U &&
+                    weapons_world->groups[2].offers[1].type == 0x0FU &&
+                    weapons_world->groups[2].offers[1].value == 0x06U &&
+                    weapons_world->groups[2].offers[1].quantity == 0x14U,
+                "Weapons World's stock differs from the ROM mode-0 rows")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    const auto merlins_lore = scripts.shop_definition("merlins_lore");
+    if (!expect(merlins_lore.has_value() &&
+                    merlins_lore->menu_mode == 5U &&
+                    merlins_lore->menu_result == 0 &&
+                    merlins_lore->title_key ==
+                        "shop.service.option.merlins_lore" &&
+                    merlins_lore->groups.size() == 4U,
+                "Merlin's Lore catalog lost its ROM mode/result") ||
+        !expect(merlins_lore->groups[0].id == "magic_spells" &&
+                    merlins_lore->groups[0].progression_offers.size() == 6U &&
+                    merlins_lore->groups[0].progression_offers[0].action_code ==
+                        0x07U &&
+                    merlins_lore->groups[0].progression_offers[2].action_code ==
+                        0x09U &&
+                    merlins_lore->groups[0].progression_offers[3].action_code ==
+                        0x06U &&
+                    merlins_lore->groups[0].progression_offers[5].action_code ==
+                        0x0BU &&
+                    merlins_lore->groups[0].progression_offers[0].source_metadata ==
+                        0x06U &&
+                    merlins_lore->groups[0].progression_offers[0].base_cost ==
+                        1000U,
+                "Merlin's Lore progression rows differ from ROM 0x1AAF80") ||
+        !expect(merlins_lore->groups[1].id == "magic_items" &&
+                    merlins_lore->groups[1].offers.size() == 4U &&
+                    merlins_lore->groups[1].offers[0].type == 0x12U &&
+                    merlins_lore->groups[1].offers[0].value == 0x0AU &&
+                    merlins_lore->groups[1].offers[0].quantity == 0x0DU &&
+                    merlins_lore->groups[1].offers[2].type == 0x27U &&
+                    merlins_lore->groups[1].offers[3].value == 0x04U &&
+                    merlins_lore->groups[1].offers[3].quantity == 0x20U &&
+                    merlins_lore->groups[2].id == "magic_foci" &&
+                    merlins_lore->groups[2].offers.size() == 6U &&
+                    merlins_lore->groups[2].offers[0].type == 0x25U &&
+                    merlins_lore->groups[2].offers[0].quantity == 0x12U &&
+                    merlins_lore->groups[2].offers[3].value == 0x04U &&
+                    merlins_lore->groups[2].offers[5].type == 0x22U &&
+                    merlins_lore->groups[2].offers[5].quantity == 0x16U &&
+                    merlins_lore->groups[3].id == "sell",
+                "Merlin's Lore item/focus rows differ from ROM 0x1AAF28/0x1AAEE0")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
     const auto medicine_lodge = scripts.shop_definition("medicine_lodge");
     if (!expect(medicine_lodge.has_value() &&
                     medicine_lodge->menu_mode == 3U &&

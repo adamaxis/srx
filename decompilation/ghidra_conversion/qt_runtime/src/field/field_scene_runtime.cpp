@@ -685,11 +685,11 @@ std::string centered_command_footer(const std::string_view label) {
 // FFDE08 is profile word 33. The 48-word block starts at FFDDC6.
 constexpr std::size_t kSceneProfileEntityPositionWord = 33U;
 
-FieldActionCostContext ares_cost_context(
+FieldActionCostContext field_shop_cost_context(
     const std::uint8_t menu_mode, const RunnerRecordFields& runner,
     const std::uint8_t runner_feature_flags) {
-    // Ares enters the service with FFF0B6 = 1. 1AAC6E[1] is 2, and the
-    // source reads the active runner's +0x8C statistic (typed as skills[11]).
+    // Preserve the source mode, active runner's +0x8C statistic, feature
+    // flags, and ROM action-cost table selector for each field shop.
     return FieldActionCostContext{
         menu_mode, runner_feature_flags, runner.skills[11], 2U};
 }
@@ -761,7 +761,7 @@ std::optional<FieldShopProgressionInput> make_field_shop_progression_input(
     const std::uint32_t funds, const MagicSpellTable& spell_table,
     const std::uint8_t runner_feature_flags) {
     const auto menu_mode = menu.menu_mode();
-    if (menu.shop() != ShopId::medicine_lodge ||
+    if (menu.menu_result() != 0 ||
         menu.selected_group() != ShopActionGroup::magic_spells ||
         menu_mode < 3U || menu_mode > 5U ||
         spell_table.entry_count > kFieldSpellProgressionRecordCapacity) {
@@ -797,7 +797,7 @@ std::optional<FieldShopProgressionInput> make_field_shop_progression_input(
         static_cast<std::int8_t>(runner.auxiliary[0]);
     result.state.funds = funds;
     result.state.cost_context =
-        ares_cost_context(menu_mode, runner, runner_feature_flags);
+        field_shop_cost_context(menu_mode, runner, runner_feature_flags);
     result.state.ledger.source_record_count_word =
         spell_table.entry_count == 0U
             ? 0U
@@ -15982,27 +15982,43 @@ void FieldSceneRuntime::advance_frame() {
                 const auto service_id =
                     field_shop_route_pending_service_id_;
                 field_shop_route_pending_service_id_.clear();
-                if (service_id != "ares_weapon_emporium") {
+                field_shop_active_definition_ =
+                    game_scripts_.shop_definition(service_id);
+                const auto field_store_shape =
+                    field_shop_active_definition_.has_value() &&
+                    ((field_shop_active_definition_->menu_result == -1 &&
+                      field_shop_active_definition_->groups.size() == 6U) ||
+                     (field_shop_active_definition_->menu_result == 0 &&
+                      field_shop_active_definition_->groups.size() == 4U));
+                if (!field_store_shape) {
                     source_boundary("field.shop." + service_id +
                                     ".menu_unimplemented");
+                    field_shop_active_definition_.reset();
                     return;
                 }
-                field_shop_active_definition_ = field_shop_definition_;
-                const auto script_menu =
-                    game_scripts_.open_shop_menu("ares_weapon_emporium");
+                const auto shop_id = service_id == "medicine_lodge"
+                    ? ShopId::medicine_lodge
+                    : ShopId::field_store;
+                const auto shop_tag = service_id == "ares_weapon_emporium"
+                    ? std::string_view{"ares"}
+                    : std::string_view{service_id};
+                const auto script_menu = game_scripts_.open_shop_menu(
+                    service_id);
                 if (field_shop_active_definition_.has_value() &&
                     script_menu.has_value() &&
                     field_shop_menu_.open(
-                        ShopId::ares_weapon_emporium,
+                        shop_id,
                         *field_shop_active_definition_,
                         field_menu_text_.confirmation_choice_ids) &&
                     field_shop_menu_.apply_script_snapshot(*script_menu)
                         .has_value()) {
-                    source_boundary("field.shop.ares.opened");
+                    source_boundary(std::string("field.shop.") +
+                                    std::string(shop_tag) + ".opened");
                 } else {
                     (void)game_scripts_.close_shop_menu();
                     field_shop_active_definition_.reset();
-                    source_boundary("field.shop.ares.open_failed");
+                    source_boundary(std::string("field.shop.") +
+                                    std::string(shop_tag) + ".open_failed");
                 }
             } else if (field_mode_entry_transition_pending_) {
                 if (!resume_field_mode_entry_route()) {
@@ -16197,14 +16213,23 @@ void FieldSceneRuntime::advance_frame() {
         return;
     }
     if (field_shop_menu_.is_open()) {
-        const auto shop_tag =
-            field_shop_menu_.shop() == ShopId::medicine_lodge
-                ? std::string_view{"medicine_lodge"}
-                : std::string_view{"ares"};
+        const auto shop_tag = [this]() -> std::string {
+            switch (field_shop_menu_.shop()) {
+            case ShopId::field_store:
+                if (field_shop_active_definition_.has_value()) {
+                    return field_shop_active_definition_->id ==
+                                   "ares_weapon_emporium"
+                               ? std::string{"ares"}
+                               : field_shop_active_definition_->id;
+                }
+                return "field_store";
+            case ShopId::medicine_lodge: return "medicine_lodge";
+            }
+            return "shop";
+        }();
         const auto shop_boundary = [this, shop_tag](
                                        const std::string_view event) {
-            source_boundary(std::string("field.shop.") +
-                            std::string(shop_tag) + "." +
+            source_boundary(std::string("field.shop.") + shop_tag + "." +
                             std::string(event));
         };
         // ROM 0x56AC0 services audio and new high-byte input inside its menu
@@ -16229,7 +16254,7 @@ void FieldSceneRuntime::advance_frame() {
             auto sale_state = make_sale_state(
                 active_runner_record(), field_shop_menu_.selected_cursor(),
                 *field_funds_);
-            const auto cost_context = ares_cost_context(
+            const auto cost_context = field_shop_cost_context(
                 field_shop_menu_.menu_mode(), active_runner_record(),
                 field_runner_feature_flags_.value_or(0U));
             const auto confirmation_was_open =
@@ -16310,7 +16335,7 @@ void FieldSceneRuntime::advance_frame() {
                 field_funds_.has_value()) {
                 auto purchase_state = make_purchase_state(
                     active_runner_record(), *field_funds_);
-                const auto cost_context = ares_cost_context(
+                const auto cost_context = field_shop_cost_context(
                     field_shop_menu_.menu_mode(), active_runner_record(),
                     field_runner_feature_flags_.value_or(0U));
                 const auto transaction_event =
@@ -16337,7 +16362,7 @@ void FieldSceneRuntime::advance_frame() {
                 auto sale_state = make_sale_state(
                     active_runner_record(), field_shop_menu_.selected_cursor(),
                     *field_funds_);
-                const auto cost_context = ares_cost_context(
+                const auto cost_context = field_shop_cost_context(
                     field_shop_menu_.menu_mode(), active_runner_record(),
                     field_runner_feature_flags_.value_or(0U));
                 const auto transaction_event = field_shop_menu_.begin_sale(
@@ -19103,7 +19128,7 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                         field_menu_text_.shop_purchase_price_heading);
                     const auto amount = calculate_field_action_record_cost(
                         *selected_offer,
-                        ares_cost_context(field_shop_menu_.menu_mode(),
+                        field_shop_cost_context(field_shop_menu_.menu_mode(),
                                           active_runner_record(),
                                           field_runner_feature_flags_.value_or(
                                               0U)),

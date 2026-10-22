@@ -22,7 +22,7 @@ int main() {
         return 50;
     }
 
-    const auto ares = ShopId::ares_weapon_emporium;
+    const auto ares = ShopId::field_store;
     const std::array<std::string, 2> confirmation_choice_ids{{"yes", "no"}};
     const auto snapshot = [](
         const std::string_view shop_id, const std::uint8_t menu_mode,
@@ -71,6 +71,77 @@ int main() {
             ares, ares_definition,
             std::array<std::string, 2>{"no", "yes"}))) {
         return 18;
+    }
+
+    auto weapons_world_definition = ares_definition;
+    weapons_world_definition.id = "weapons_world";
+    weapons_world_definition.menu_mode = 0U;
+    weapons_world_definition.groups[0].offers = {
+        {0x03U, 0x00U, 0x0FU}, {0x04U, 0x00U, 0x0BU},
+        {0x05U, 0x00U, 0x0EU}, {0x06U, 0x00U, 0x0CU},
+        {0x0BU, 0x00U, 0x0FU}, {0x0EU, 0x06U, 0x00U}};
+    weapons_world_definition.groups[1].offers = {
+        {0x2BU, 0x00U, 0x00U}, {0x2CU, 0x00U, 0x00U}};
+    weapons_world_definition.groups[2].offers = {
+        {0x45U, 0x00U, 0x28U}, {0x0FU, 0x06U, 0x14U},
+        {0x11U, 0x04U, 0x00U}, {0x10U, 0x04U, 0x00U}};
+    ShopMenuController weapons_world_menu;
+    if (!expect(weapons_world_menu.open(
+            ShopId::field_store, weapons_world_definition,
+            confirmation_choice_ids))) {
+        return 28;
+    }
+    const auto weapons_world_first_offer =
+        weapons_world_menu.offer(ShopActionGroup::weapons, 0U);
+    const auto weapons_world_last_armor_offer =
+        weapons_world_menu.offer(ShopActionGroup::armor, 1U);
+    if (!expect(weapons_world_menu.menu_mode() == 0U) ||
+        !expect(weapons_world_menu.menu_result() == -1) ||
+        !expect(weapons_world_menu.selected_group() ==
+                ShopActionGroup::weapons) ||
+        !expect(weapons_world_menu.offer_count(ShopActionGroup::weapons) ==
+                6U) ||
+        !expect(weapons_world_menu.offer_count(ShopActionGroup::armor) ==
+                2U) ||
+        !expect(weapons_world_menu.offer_count(
+                    ShopActionGroup::other_items) == 4U) ||
+        !expect(weapons_world_first_offer.has_value() &&
+                    weapons_world_first_offer->type == 0x03U &&
+                    weapons_world_first_offer->quantity == 0x0FU) ||
+        !expect(weapons_world_last_armor_offer.has_value() &&
+                    weapons_world_last_armor_offer->type == 0x2CU)) {
+        return 28;
+    }
+
+    auto merlins_lore_definition = ares_definition;
+    merlins_lore_definition.id = "merlins_lore";
+    merlins_lore_definition.menu_mode = 5U;
+    merlins_lore_definition.menu_result = 0;
+    merlins_lore_definition.groups = {
+        {"magic_spells", {}, {}, {
+            {0x07U, 0x06U, 1000U}, {0x08U, 0x06U, 1000U},
+            {0x09U, 0x06U, 1000U}, {0x06U, 0x06U, 1000U},
+            {0x0AU, 0x06U, 1000U}, {0x0BU, 0x06U, 1000U}}},
+        {"magic_items", {}, {{0x12U, 0x0AU, 0x0DU}}, {}},
+        {"magic_foci", {}, {{0x25U, 0x03U, 0x12U}}, {}},
+        {"sell", {}, {}, {}}};
+    ShopMenuController merlins_lore_menu;
+    const bool merlins_lore_opened = merlins_lore_menu.open(
+        ShopId::field_store, merlins_lore_definition,
+        confirmation_choice_ids);
+    const auto merlins_lore_last_progression =
+        merlins_lore_menu.progression_offer(
+            ShopActionGroup::magic_spells, 5U);
+    if (!expect(merlins_lore_opened) ||
+        !expect(merlins_lore_menu.menu_mode() == 5U) ||
+        !expect(merlins_lore_menu.menu_result() == 0) ||
+        !expect(merlins_lore_menu.selected_group() ==
+                ShopActionGroup::magic_spells) ||
+        !expect(merlins_lore_menu.progression_offer_count(
+                    ShopActionGroup::magic_spells) == 6U) ||
+        !expect(merlins_lore_last_progression.has_value() &&
+                merlins_lore_last_progression->action_code == 0x0BU)) {
+        return 29;
     }
 
     shadowrun::ghidra_conversion::scripting::ScriptShopDefinition

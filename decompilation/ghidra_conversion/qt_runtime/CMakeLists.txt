@@ -712,8 +712,8 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_ares_collision_sho
                  "${CMAKE_CURRENT_BINARY_DIR}/field-ares-collision-shop-qa")
 
 # Scene-5 storefronts are intercepted by 0x1FA78. Verify their ROM-backed
-# entry text/profile sprite, Lua service IDs, and that unsupported shop
-# catalogs stop at explicit boundaries instead of opening Ares by accident.
+# entry text/profile sprites, Lua service IDs, mode-0 Weapon's World and
+# mode-5 Merlin's Lore menus, plus boundaries for the two catalogs still open.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene5_store_service_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene5-store-service-entry-qa

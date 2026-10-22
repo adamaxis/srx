@@ -17,7 +17,7 @@
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
 enum class ShopId : std::uint8_t {
-    ares_weapon_emporium,
+    field_store,
     medicine_lodge,
 };
 
@@ -181,7 +181,7 @@ private:
     enum class TransactionKind : std::uint8_t { none, purchase, sale };
     void reset_transaction() noexcept;
 
-    ShopId shop_ = ShopId::ares_weapon_emporium;
+    ShopId shop_ = ShopId::field_store;
     std::string definition_id_;
     std::uint8_t menu_mode_ = 0;
     std::size_t group_count_ = 0U;
