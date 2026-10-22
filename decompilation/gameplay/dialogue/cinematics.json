@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "cinematics": {
+    "salish.spirit_eyes.ritual_of_binding": {
+      "presentation": "full_screen_story_pages",
+      "assetProfileId": "salish.spirit_eyes.ritual_sequence",
+      "inputContract": "controller_event",
+      "returnPolicy": "source_context",
+      "provenance": {
+        "romAddresses": [
+          "0x5D172", "0x5D1F6", "0xF4C20", "0x1FE6C2",
+          "0xF7915", "0xF798D", "0xF79F0", "0xF7A8B"
+        ],
+        "scope": "command_0x4A_blocking_story_page_sequence"
+      },
+      "pages": [
+        {
+          "id": "warning",
+          "textKey": "salish.spirit_eyes.page.post_ritual_warning",
+          "provenance": { "romAddress": "0xF7915" }
+        },
+        {
+          "id": "name",
+          "textKey": "salish.spirit_eyes.page.post_ritual_name",
+          "provenance": { "romAddress": "0xF798D" }
+        },
+        {
+          "id": "brother",
+          "textKey": "salish.spirit_eyes.page.post_ritual_brother",
+          "provenance": { "romAddress": "0xF79F0" }
+        },
+        {
+          "id": "lust",
+          "textKey": "salish.spirit_eyes.page.post_ritual_lust",
+          "provenance": { "romAddress": "0xF7A8B" }
+        }
+      ]
+    }
+  }
+}

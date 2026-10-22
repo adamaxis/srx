@@ -299,14 +299,15 @@
         "ritual_setup_page": {
           "type": "page",
           "eventId": "ritual_setup",
-          "next": "ritual_activity",
+          "next": "ritual_cinematic",
           "evidence": "ROM prompt 0xF51A8 displays text 0xF78A3 with MORE; A dispatches command 0x4A."
         },
-        "ritual_activity": {
+        "ritual_cinematic": {
           "type": "terminal",
           "outcome": {
-            "type": "enter_activity",
-            "activityId": "salish.spirit_eyes.ritual_of_binding"
+            "type": "play_cinematic",
+            "cinematicId": "salish.spirit_eyes.ritual_of_binding",
+            "returnPolicy": "source_context"
           }
         },
         "post_ritual_opening": {

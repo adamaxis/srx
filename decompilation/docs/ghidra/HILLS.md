@@ -771,20 +771,24 @@ one-choice questions, their response page, and the first horn request. The
 bit-5 write happens after the opening page input. Later graph stages model
 missing/present horn, pelt, and scale branches and their ordered item, story,
 FFFC30, and FFFC40 effects. Scale completion records the `0xF51A8` page and a
-typed `enter_activity` result for command `0x4A`/`0x5D172`; its field host
-dispatcher remains unimplemented. The bit-9 repeat route is limited to the
-single text-only page actually consumed by the shared prompt runner; adjacent
-unconsumed pointers are unresolved.
+typed `play_cinematic` result for command `0x4A`/`0x5D172`. A new
+`cinematics.json` catalog records its four ordered ROM text pages, controller
+input contract, resource-profile ID, and source-context return policy. The
+field dispatcher still leaves the sequence at an explicit boundary because
+the named assets and native full-screen presenter are not implemented. The
+bit-9 repeat route is limited to the single text-only page consumed by the
+shared prompt runner; the adjacent four pointers are consumed by the separate
+cinematic sequence.
 
-Debug/Release script-runtime QA covers the graph branches and typed activity
-result. Debug/Release physical-input QA reaches record 96 with ordinary Up,
+Debug/Release script-runtime QA covers the graph branches and typed cinematic
+result/catalog binding. Debug/Release physical-input QA reaches record 96 with ordinary Up,
 walks the complete first-contact prompt chain, and saves full 320x224 frames
 for every prompt and the clean Scene-4 return. C++ persists the FFFC40 ritual
 markers as typed field state. Scene-47 record 62 still routes context `0x13`
 to the separate procedural Licourtrix task; ROM `0x53F50` grants story bit 8
 and Group Item bit 2, then the Spirit Eyes scale branch consumes it and writes
 bit 9. Keep this hill partial: the Licourtrix text graph and contextual
-physical route are unresolved, the ritual activity is not dispatched by the
+physical route are unresolved, the ritual cinematic is not presented by the
 host, and no independent Genesis conversation frame was identified. See
 [the Spirit Eyes audit](visual-audits/council-spirit-eyes.md).
 

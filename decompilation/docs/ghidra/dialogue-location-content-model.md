@@ -31,6 +31,11 @@ every listed route is implemented or visually verified.
   not as `false`, a silent default, or a successful return.
 - Keep the graph engine and route policy independent of Qt so another host can
   provide the same typed services and presentation.
+- Use small domain objects with explicit ownership: catalogs validate named
+  definitions, a dialogue session owns one in-progress graph, condition and
+  action registries resolve stable IDs, and the outcome dispatcher hands a
+  completed route to a typed host service. Persistent gameplay facts remain
+  Lua-owned; transient input and presentation state belongs to its session.
 
 ## Source and longplay findings
 
@@ -87,7 +92,7 @@ are:
 | `enter_field_scene` | Sharkey's paid travel offers; the Tarislar Tomb offer | Ends dialogue and enters a named scene after the typed destination is validated against the completed source service, using the named ROM arrival policy. |
 | `enter_activity` | Office entries and other event-table destinations | Ends dialogue and enters the pending source route with its resource/activity setup. |
 | `open_service` | Hotel Options, Hospital Options, shops, taxi, Matrix | Ends the current graph and hands off to a separately owned service with an explicit return policy. This is a yield/handoff, not an implicit dialogue return. |
-| `play_cinematic` | Extensible outcome only | Ends dialogue and plays a named cinematic/sequence. No surveyed building/phone terminal is proven to use it, so do not assign one without a ROM trace. |
+| `play_cinematic` | Spirit Eyes command `0x4A` | Ends dialogue and requests a named sequence with an explicit return policy. The ROM has a four-page story sequence after the dialogue; its host presenter is still pending. No surveyed building/phone terminal is proven to use this outcome. |
 | `source_boundary` | Tabatha's unconverted encounter commands; unresolved phone facts | Diagnostic state outside the normal game outcome union; retain source command/provenance and do not pretend the route completed. |
 
 ### Prompt and choice shapes
@@ -163,14 +168,17 @@ Later contacts select one stage from story flags and item facts:
 | Bit 9 set | — | Show text-only page `0xF7C79`, then return in place. |
 
 The completion page's command `0x1A` continues to prompt `0xF51A8` and its
-`0xF78A3` page. The next input dispatches command `0x4A` to the ROM activity
-routine `0x5D172`. JSON reports this as `enter_activity` with stable ID
-`salish.spirit_eyes.ritual_of_binding`; the field host still needs an activity
-dispatcher. On the completed-task repeat route, `0x53ED4` selects `0xF4C18`.
-The shared `0x1F246`/`0x1F3C4` runner sees its negative first-option sentinel,
-shows only the `0xF7C79` text, and returns. The adjacent `0xF7915`, `0xF798D`,
-`0xF79F0`, and `0xF7A8B` pointers are retained as extracted text, but their
-consumer is unresolved; they are not modeled as extra pages.
+`0xF78A3` page. The next controller event dispatches command `0x4A` to
+`0x5D172`, which sets up the full-screen resources at `0x1FE6C2` and passes
+the four-page pointer table at `0xF4C20` to the blocking story-page routine
+`0x5D1F6`. `cinematics.json` records the stable sequence ID, page order, text
+keys, controller-event input contract, and `source_context` return policy;
+the graph ends with typed `play_cinematic`. The field dispatcher leaves this
+target at an explicit source boundary until its named assets and native
+presenter are implemented. On the completed-task repeat route, `0x53ED4`
+selects `0xF4C18`. The shared `0x1F246`/`0x1F3C4` runner sees its negative
+first-option sentinel, shows only the `0xF7C79` text, and returns. The four
+adjacent pointers belong to the separate `0x5D1F6` sequence.
 
 The Scene-47 Licourtrix graph remains procedural and the context-`0x13` route
 still needs a complete ROM trace. Reviewed longplay sections contain no
@@ -243,6 +251,7 @@ decompilation/gameplay/dialogue/
   speakers.json                # speaker IDs, portraits, event text bindings
   menus.json                   # stable choice IDs and ordered label bindings
   conditions.json              # named, composable typed conditions
+  cinematics.json              # named sequence metadata and ordered page keys
   conversations/<graph>.json   # pages, choices, branches, effects, outcomes
   location_conditions.json     # source-derived location route conditions
 decompilation/gameplay/world/entities/<id>/
@@ -315,6 +324,12 @@ nodes, and ROM provenance. Nodes are limited to reusable forms:
 - `action`: one registered Lua effect or yielded typed host service, with
   explicit result-ID edges when the operation can return multiple outcomes.
 - `terminal`: exactly one typed outcome after all ordered effects complete.
+  Outcomes form a tagged union (`continue_in_place`, `resume_source_route`,
+  `return_to_origin`, `enter_field_scene`, `enter_activity`, `open_service`,
+  or `play_cinematic`) with payload fields specific to the tag. Targeted
+  outcomes resolve stable IDs in the corresponding catalog/registry, and
+  return policies are checked against the declared target. This lets another
+  host register the same outcome handler without route-specific string cases.
 
 Graph node IDs are content IDs, never source addresses. A source command may
 appear as provenance on the edge/action that represents it. Effects are named

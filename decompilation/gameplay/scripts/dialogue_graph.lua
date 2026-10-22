@@ -50,7 +50,7 @@ local function validate_outcome_fields(outcome, required, optional)
     end
 end
 
-local function validate_outcome(outcome)
+local function validate_outcome(outcome, cinematics)
     assert(type(outcome) == "table" and is_identifier(outcome.type),
         "dialogue terminal needs a typed outcome")
     if outcome.type == "continue_in_place" or
@@ -86,6 +86,15 @@ local function validate_outcome(outcome)
         assert(is_identifier(outcome.cinematicId) and
                is_identifier(outcome.returnPolicy),
             "play_cinematic needs cinematicId and returnPolicy")
+        if cinematics ~= nil then
+            local cinematic = cinematics[outcome.cinematicId]
+            assert(type(cinematic) == "table",
+                "play_cinematic references an unknown cinematic: " ..
+                outcome.cinematicId)
+            assert(cinematic.returnPolicy == outcome.returnPolicy,
+                "play_cinematic returnPolicy does not match its catalog entry: " ..
+                outcome.cinematicId)
+        end
     else
         error("unsupported or non-terminal dialogue outcome: " ..
               tostring(outcome.type))
@@ -104,7 +113,7 @@ local function validate_provenance(provenance)
     end
 end
 
-local function validate_graph(graph_id, graph, conditions)
+local function validate_graph(graph_id, graph, conditions, cinematics)
     assert(is_identifier(graph_id) and type(graph) == "table" and
            type(graph.entryNode) == "string" and
            type(graph.nodes) == "table",
@@ -232,7 +241,7 @@ local function validate_graph(graph_id, graph, conditions)
             assert(node.next ~= nil or node.results ~= nil,
                 owner .. " needs a next edge or result edges")
         elseif node.type == "terminal" then
-            validate_outcome(node.outcome)
+            validate_outcome(node.outcome, cinematics)
         elseif node.type == "source_boundary" then
             assert(type(node.reason) == "string" and node.reason ~= "" and
                    #node.reason <= 384,
@@ -244,7 +253,36 @@ local function validate_graph(graph_id, graph, conditions)
     return true
 end
 
-function Catalog.new(document, condition_document)
+local function validate_cinematic_document(document)
+    assert(type(document) == "table" and document.schemaVersion == 1 and
+           type(document.cinematics) == "table",
+        "cinematic catalog has an unsupported schema")
+    for cinematic_id, cinematic in pairs(document.cinematics) do
+        assert(is_identifier(cinematic_id) and type(cinematic) == "table" and
+               is_identifier(cinematic.presentation) and
+               is_identifier(cinematic.assetProfileId) and
+               is_identifier(cinematic.inputContract) and
+               is_identifier(cinematic.returnPolicy) and
+               is_array(cinematic.pages) and #cinematic.pages > 0,
+            "cinematic definition is malformed: " .. tostring(cinematic_id))
+        validate_provenance(cinematic.provenance)
+        local seen_pages = {}
+        for _, page in ipairs(cinematic.pages) do
+            assert(type(page) == "table" and is_identifier(page.id) and
+                   is_identifier(page.textKey) and
+                   type(page.provenance) == "table" and
+                   type(page.provenance.romAddress) == "string" and
+                   page.provenance.romAddress:match("^0x%x+$") and
+                   not seen_pages[page.id],
+                "cinematic page is malformed or duplicated: " ..
+                tostring(cinematic_id))
+            seen_pages[page.id] = true
+        end
+    end
+    return document.cinematics
+end
+
+function Catalog.new(document, condition_document, cinematic_document)
     assert(type(document) == "table" and document.schemaVersion == 1 and
            type(document.graphs) == "table",
         "dialogue graph catalog has an unsupported schema")
@@ -252,6 +290,7 @@ function Catalog.new(document, condition_document)
            condition_document.schemaVersion == 1 and
            type(condition_document.conditions) == "table",
         "dialogue condition catalog has an unsupported schema")
+    local cinematics = validate_cinematic_document(cinematic_document)
     local conditions = {}
     for condition_id, definition in pairs(condition_document.conditions) do
         assert(is_identifier(condition_id) and type(definition) == "table" and
@@ -261,10 +300,11 @@ function Catalog.new(document, condition_document)
         conditions[condition_id] = definition
     end
     for graph_id, graph in pairs(document.graphs) do
-        validate_graph(graph_id, graph, conditions)
+        validate_graph(graph_id, graph, conditions, cinematics)
     end
     return setmetatable({ graphs = document.graphs,
-                          conditions = conditions }, Catalog)
+                          conditions = conditions,
+                          cinematics = cinematics }, Catalog)
 end
 
 function Catalog:get(graph_id)
@@ -470,7 +510,10 @@ function DialogueGraph.run(graph_id, registered_actions, invocation_context)
         type(content.conversations) == "table" and
         content.conversations or nil
     local conditions = type(content) == "table" and content.conditions or nil
-    if type(graph_documents) ~= "table" or type(conditions) ~= "table" then
+    local cinematic_document = type(content) == "table" and
+        content.cinematics or nil
+    if type(graph_documents) ~= "table" or type(conditions) ~= "table" or
+       type(cinematic_document) ~= "table" then
         return { type = "source_boundary",
                  reason = "dialogue_graph:content_catalog_missing" }
     end
@@ -488,7 +531,8 @@ function DialogueGraph.run(graph_id, registered_actions, invocation_context)
         end
     end
     local graph_document = { schemaVersion = 1, graphs = graphs }
-    local catalog = Catalog.new(graph_document, conditions)
+    local catalog = Catalog.new(graph_document, conditions,
+                                cinematic_document)
     local evaluator = ConditionEvaluator.new(
         ConditionEvaluator.FactProvider.new())
     local actions = DialogueActions.new_default_registry(registered_actions)

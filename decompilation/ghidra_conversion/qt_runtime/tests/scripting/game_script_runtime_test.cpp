@@ -10492,10 +10492,24 @@ int main() {
                         ScriptTaskStep::Status::completed &&
                     spirit_eyes_completion.dialogue_outcome.has_value() &&
                     spirit_eyes_completion.dialogue_outcome->type ==
-                        DialogueOutcomeType::enter_activity &&
+                        DialogueOutcomeType::play_cinematic &&
                     spirit_eyes_completion.dialogue_outcome->destination_id ==
-                        "salish.spirit_eyes.ritual_of_binding",
-                "Spirit Eyes command 0x4A did not select its typed ritual activity")) {
+                        "salish.spirit_eyes.ritual_of_binding" &&
+                    spirit_eyes_completion.dialogue_outcome->return_policy ==
+                        "source_context" &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.page.post_ritual_warning") !=
+                        nullptr &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.page.post_ritual_name") !=
+                        nullptr &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.page.post_ritual_brother") !=
+                        nullptr &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.page.post_ritual_lust") !=
+                        nullptr,
+                "Spirit Eyes command 0x4A did not select its typed ritual cinematic")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
     }

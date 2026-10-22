@@ -25,6 +25,22 @@ local condition_document = {
         },
     },
 }
+local cinematic_document = {
+    schemaVersion = 1,
+    cinematics = {
+        source_confirmed_sequence = {
+            presentation = "full_screen_story_pages",
+            assetProfileId = "test.story_sequence",
+            inputContract = "controller_event",
+            returnPolicy = "resume_origin",
+            provenance = { romAddresses = { "0x1000" } },
+            pages = {
+                { id = "page_one", textKey = "test.sequence.page_one",
+                  provenance = { romAddress = "0x1002" } },
+            },
+        },
+    },
+}
 
 local function graph(entry_node, nodes)
     return {
@@ -135,7 +151,8 @@ local document = {
     },
 }
 
-local catalog = DialogueGraph.Catalog.new(document, condition_document)
+local catalog = DialogueGraph.Catalog.new(
+    document, condition_document, cinematic_document)
 local evaluator = ConditionEvaluator.new(
     ConditionEvaluator.FactProvider.new({ state = { enabled = true } }))
 local invocation_evaluator = ConditionEvaluator.new(
@@ -229,6 +246,7 @@ game = {
     content = {
         conversations = { graph_tests = document },
         conditions = condition_document,
+        cinematics = cinematic_document,
     },
     field = {},
     state = {},
@@ -272,7 +290,7 @@ local invalid = pcall(function()
             done = { type = "terminal",
                      outcome = { type = "continue_in_place" } },
         }),
-    } }, condition_document)
+    } }, condition_document, cinematic_document)
 end)
 assert(not invalid)
 
@@ -283,7 +301,7 @@ invalid = pcall(function()
                      outcome = { type = "continue_in_place",
                                  resultId = "legacy-result" } },
         }),
-    } }, condition_document)
+    } }, condition_document, cinematic_document)
 end)
 assert(not invalid)
 
@@ -299,7 +317,31 @@ invalid = pcall(function()
             done = { type = "terminal",
                      outcome = { type = "continue_in_place" } },
         }),
-    } }, condition_document)
+    } }, condition_document, cinematic_document)
+end)
+assert(not invalid)
+
+invalid = pcall(function()
+    DialogueGraph.Catalog.new({ schemaVersion = 1, graphs = {
+        broken = graph("done", {
+            done = { type = "terminal",
+                     outcome = { type = "play_cinematic",
+                                 cinematicId = "missing.sequence",
+                                 returnPolicy = "resume_origin" } },
+        }),
+    } }, condition_document, cinematic_document)
+end)
+assert(not invalid)
+
+invalid = pcall(function()
+    DialogueGraph.Catalog.new({ schemaVersion = 1, graphs = {
+        broken = graph("done", {
+            done = { type = "terminal",
+                     outcome = { type = "play_cinematic",
+                                 cinematicId = "source_confirmed_sequence",
+                                 returnPolicy = "wrong_return" } },
+        }),
+    } }, condition_document, cinematic_document)
 end)
 assert(not invalid)
 

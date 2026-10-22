@@ -4,8 +4,9 @@ Status: **partial**. Scene-4 event 27 opens a JSON conversation graph from
 ordinary movement. Debug/Release physical-input QA covers its complete known
 first-contact prompt chain and saves full 320x224 images. The staged horn,
 pelt, and scale gates are covered by Debug/Release script-runtime tests. The
-completion path returns a typed ritual-activity request, but the field host
-does not yet dispatch that activity. The Scene-47 conversation remains
+completion path returns a typed cinematic request and `cinematics.json`
+records its four ROM pages, but the field host does not yet present the
+sequence. The Scene-47 conversation remains
 procedural, its contextual physical route and full text graph are not
 defended, and the reviewed longplay sections contain no matching independent
 Genesis dialogue frame.
@@ -36,15 +37,19 @@ Genesis dialogue frame.
   `0x53EA8` sets bit 9 directly. The handler updates FFFC30/FFFC40 and opens
   `0xF4C04` (`0xF77FE`). Its command `0x1A` marks the already active trigger
   and selects prompt `0xF51A8` (`0xF78A3`). `<MORE>` dispatches command `0x4A`
-  into `0x5D172`, which starts the ROM activity sequence. The graph reports
-  `enter_activity: salish.spirit_eyes.ritual_of_binding`; host dispatch is
-  still pending. The handler does not set `FFDD64=9` at this point.
+  into `0x5D172`. It loads the resource descriptor at `0x1FE6C2` and passes
+  the ordered pointers at `0xF4C20` to `0x5D1F6`. That blocking routine draws
+  the four pages and waits for controller events before returning to the
+  source field context. The graph reports
+  `play_cinematic: salish.spirit_eyes.ritual_of_binding` with
+  `source_context` return policy. The JSON catalog records page order and
+  text keys; host resource extraction/presentation is still pending. The
+  handler does not set `FFDD64=9` at this point.
 - When bit 9 is already set, `0x53ED4` opens `0xF4C18`. The shared prompt
   runner sees its negative first-option sentinel, displays its first text-only
   entry `0xF7C79`, and returns. The adjacent `0xF7915`, `0xF798D`, `0xF79F0`,
   and `0xF7A8B` pointers are not consumed by this route in
-  `0x1F246`/`0x1F3C4`; their consumer remains unresolved and they are not
-  modeled as extra answer pages.
+  `0x1F246`/`0x1F3C4`; the separate `0x5D1F6` sequence consumes them in order.
 - The independent Scene-47 record 62 (`0x1D54B0`) is raw event 25. Its direct
   continuation `0x53EFA` is selected only for transition context `0x13`; the
   other route rewrites the event to 8. `0x53F00` selects story index 8 and
@@ -58,7 +63,9 @@ Genesis dialogue frame.
 
 - `gameplay/world/entities/council_spirit_eyes_site/links.tsv` owns Scene-4
   event 27 routing. `dialogue/conversations/salish_spirit_eyes.json` owns the
-  traced prompt chain, staged conditions, pages, and typed activity result.
+  traced prompt chain, staged conditions, pages, and typed cinematic result.
+  `dialogue/cinematics.json` owns the sequence's ordered page references and
+  controller-event contract.
   `salish_spirit_eyes.lua` delegates the ritual to that graph and retains the
   still-unmapped Licourtrix route.
 - The Scene-47 entity has a separate event-25 link. The host only reaches it
@@ -74,7 +81,7 @@ Genesis dialogue frame.
 - Debug/Release script-runtime tests cover the first-contact prompt states,
   command `0x15` timing, both one-choice inputs, missing and present
   horn/pelt/scale branches, item consumption, direct bit-9 completion,
-  command `0x1A`, and the typed activity outcome. Completed-task repeat shows
+  command `0x1A`, and the typed cinematic outcome. Completed-task repeat shows
   the one known text-only page.
 - Debug/Release CTest
   `shadowrun_ghidra_conversion_qt_field_spirit_eyes_physical_entry_qa` walks
@@ -90,6 +97,8 @@ Genesis dialogue frame.
 - Trace every choice/response node in the `0xF4C44` graph and establish the
   exact world-context condition for entering the direct continuation from
   Scene 47.
-- Connect and validate the `0x5D172` ritual activity request, then exercise
-  the contextual Scene-47 route with physical input. Independent Genesis
-  dialogue captures remain unavailable, so this hill stays partial.
+- Extract the `0x1FE6C2` resource profile into named host assets, present the
+  four-page sequence through a native full-screen presenter, and exercise its
+  source-context return. Then exercise the contextual Scene-47 route with
+  physical input. Independent Genesis dialogue captures remain unavailable,
+  so this hill stays partial.
