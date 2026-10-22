@@ -97,6 +97,21 @@ local document = {
             second_result = { type = "terminal",
                               outcome = { type = "resume_source_route" } },
         }),
+        ["test.filtered_button_overflow"] = graph("menu", {
+            menu = {
+                type = "choice", menuId = "test_menu",
+                inputContract = "buttons_abc",
+                choices = {
+                    { id = "first", next = "done" },
+                    { id = "second", next = "done" },
+                    { id = "third", next = "done" },
+                    { id = "conditional", when = "test.enabled",
+                      next = "done" },
+                },
+            },
+            done = { type = "terminal",
+                     outcome = { type = "continue_in_place" } },
+        }),
         ["test.inline_prompt"] = graph("prompt", {
             prompt = {
                 type = "choice", menuId = "test_inline_menu",
@@ -262,6 +277,10 @@ assert(outcome.type == "resume_source_route")
 local visible_choices = presented_choices[#presented_choices].choices
 assert(#visible_choices == 2 and visible_choices[1] == "first" and
        visible_choices[2] == "second")
+
+outcome = session:run("test.filtered_button_overflow")
+assert(outcome.type == "source_boundary" and
+       outcome.reason:find("visible_button_choice_limit_exceeded", 1, true) ~= nil)
 
 outcome = session:run("test.cursor")
 assert(outcome.type == "enter_activity" and

@@ -201,8 +201,14 @@ local function validate_graph(graph_id, graph, conditions, cinematics)
                     owner .. " has an invalid text profile")
             end
             if node.inputContract == "buttons_abc" then
-                assert(#node.choices <= 3,
-                    owner .. " exceeds the A/B/C choice limit")
+                local unconditional_choices = 0
+                for _, choice in ipairs(node.choices) do
+                    if choice.when == nil then
+                        unconditional_choices = unconditional_choices + 1
+                    end
+                end
+                assert(unconditional_choices <= 3,
+                    owner .. " has too many unconditional A/B/C choices")
             elseif node.inputContract == "yes_no" then
                 assert(#node.choices == 2,
                     owner .. " yes_no contract needs two choices")
@@ -467,6 +473,10 @@ function Session:run(graph_id, context)
             if #visible == 0 then
                 return self:_boundary(graph_id, node_id,
                                       "no_available_choices")
+            end
+            if node.inputContract == "buttons_abc" and #visible > 3 then
+                return self:_boundary(graph_id, node_id,
+                                      "visible_button_choice_limit_exceeded")
             end
             local choice_id, cancelled, boundary = self:_choose(
                 graph_id, node_id, graph, node, visible)
