@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "entityId": "stoker_coffin_motel",
+  "interactions": [
+    {
+      "id": "rom_event_02",
+      "source": {
+        "sceneId": 2,
+        "eventCode": "event_2"
+      },
+      "route": {
+        "kind": "dialogue",
+        "script": "lua_dialogue",
+        "priority": 0,
+        "conditionId": "stoker_coffin_motel.rom_event_02.route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "michael_package",
+          "function": "stoker_interaction"
+        },
+        "locationContext": {
+          "type": "motel",
+          "id": "stoker_motel",
+          "textProfile": "stoker.motel",
+          "speakerId": "stoker"
+        },
+        "conditionId": "stoker_coffin_motel.rom_event_02.entry",
+        "continueResultId": "continue"
+      },
+      "provenance": {
+        "evidence": "ROM scene 2 collision record 91 at 0x173138, raw 0x00C2; 0xB7B8 -> 0x1F5CA -> 0x1F65A selects Stoker's same-map dialogue while FFFC1E bit 0 is clear and FFF0D5 is zero; event-table row 2 is not followed while this service is active."
+      }
+    }
+  ]
+}

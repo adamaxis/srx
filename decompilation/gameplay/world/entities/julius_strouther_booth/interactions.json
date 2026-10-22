@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "entityId": "julius_strouther_booth",
+  "interactions": [
+    {
+      "id": "rom_event_30",
+      "source": {
+        "sceneId": 18,
+        "eventCode": "event_30"
+      },
+      "route": {
+        "kind": "dialogue",
+        "script": "lua_dialogue",
+        "priority": 0
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "johnson",
+          "function": "interaction"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "julius_strouther_booth",
+          "textProfile": "matchstick.julius_strouther",
+          "speakerId": "julius_strouther"
+        }
+      },
+      "provenance": {
+        "evidence": "ROM scene-18 record 9 at 0x1D5E38 dispatches through 0x20990; context-1 profile data at 0x12CC60 selects Julius Strouther."
+      }
+    }
+  ]
+}

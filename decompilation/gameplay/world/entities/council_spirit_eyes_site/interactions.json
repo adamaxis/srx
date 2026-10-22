@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "entityId": "council_spirit_eyes_site",
+  "interactions": [
+    {
+      "id": "spirit_eyes_field_dialogue",
+      "source": {
+        "sceneId": 4,
+        "eventCode": "event_27"
+      },
+      "route": {
+        "kind": "dialogue",
+        "script": "lua_dialogue",
+        "priority": 0
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "salish_spirit_eyes",
+          "function": "present"
+        },
+        "locationContext": {
+          "type": "site",
+          "id": "council_spirit_eyes_site",
+          "textProfile": "salish.spirit_eyes",
+          "speakerId": "spirit_eyes"
+        }
+      },
+      "provenance": {
+        "evidence": "ROM scene-4 record 96 at 0x15BDF6 dispatches direct continuation 0x53D5A. The Lua task owns the component and story-flag branches; the map figures are composed art, not default actor records."
+      }
+    }
+  ]
+}

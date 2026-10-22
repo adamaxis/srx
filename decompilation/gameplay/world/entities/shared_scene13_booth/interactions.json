@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "entityId": "shared_scene13_booth",
+  "interactions": [
+    {
+      "id": "rom_event_30",
+      "source": {
+        "sceneId": 13,
+        "eventCode": "event_30"
+      },
+      "route": {
+        "kind": "dialogue",
+        "script": "lua_dialogue",
+        "priority": 0
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "johnson",
+          "function": "interaction"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "jump_house",
+          "textProfile": "gunderson.jump_house",
+          "speakerId": "gunderson"
+        }
+      },
+      "provenance": {
+        "evidence": "ROM event-30 records 11-12 at 0x1B3CF8/0x1B3D02 dispatch through 0x20990; its scene-13 branch selects Gunderson dialogue."
+      }
+    }
+  ]
+}

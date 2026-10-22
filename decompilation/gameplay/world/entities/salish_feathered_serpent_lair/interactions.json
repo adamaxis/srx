@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "entityId": "salish_feathered_serpent_lair",
+  "interactions": [
+    {
+      "id": "serpent_lair_encounter",
+      "source": {
+        "sceneId": 47,
+        "eventCode": "event_25"
+      },
+      "route": {
+        "kind": "dialogue",
+        "script": "lua_dialogue",
+        "priority": 0
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "salish_spirit_eyes",
+          "function": "present_serpent_encounter"
+        },
+        "locationContext": {
+          "type": "site",
+          "id": "salish_feathered_serpent_lair",
+          "textProfile": "salish.spirit_eyes",
+          "speakerId": "licourtrix"
+        }
+      },
+      "provenance": {
+        "evidence": "ROM scene-47 record 62 at 0x1D54B0 selects direct continuation 0x53EFA for the 0x13 contextual event-25 path. ROM 0x53F00 sets active trigger 8 before profile 0x121EA4 and dialogue root F4C44. Post-dialogue handler 0x53F50 marks story bit 8 and sets Group Item bit 2 for the Feathered Scale, consumed by Spirit Eyes at 0x53E98."
+      }
+    }
+  ]
+}

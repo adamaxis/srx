@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "entityId": "jackals_lantern_old_man_contact",
+  "interactions": [
+    {
+      "id": "rom_event_30",
+      "source": {
+        "sceneId": 19,
+        "eventCode": "event_30"
+      },
+      "route": {
+        "kind": "dialogue",
+        "script": "lua_dialogue",
+        "priority": 0
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "field_events",
+          "function": "present_location_dialogue"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "jackals_lantern",
+          "textProfile": "jackals_lantern.old_man",
+          "speakerId": "jackals_lantern_old_man"
+        },
+        "eventId": "opening"
+      },
+      "provenance": {
+        "evidence": "ROM scene-19 event-30 record 12 at 0x1D5F50 reaches default branch 0x20C78 and opens prompt 0xF3FAC/text 0xF3FBC with no choices."
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "entityId": "restaurant_northwest_threshold",
+  "interactions": [
+    {
+      "id": "rom_event_30",
+      "source": {
+        "sceneId": 10,
+        "eventCode": "event_30"
+      },
+      "route": {
+        "kind": "dialogue",
+        "script": "lua_dialogue",
+        "priority": 0
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "field_events",
+          "function": "present_location_dialogue"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "council_friendship_restaurant",
+          "textProfile": "jackals_lantern.old_man",
+          "speakerId": "jackals_lantern_old_man"
+        },
+        "eventId": "opening"
+      },
+      "provenance": {
+        "evidence": "ROM 0x20990 sends scene 10 through default branch 0x20C78, which loads profile 0x121E5C and prompt 0xF3FAC. The descriptor presents text 0xF3FBC with no choice pointer."
+      }
+    }
+  ]
+}

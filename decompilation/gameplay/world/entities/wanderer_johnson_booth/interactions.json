@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "entityId": "wanderer_johnson_booth",
+  "interactions": [
+    {
+      "id": "rom_event_30",
+      "source": {
+        "sceneId": 14,
+        "eventCode": "event_30"
+      },
+      "route": {
+        "kind": "dialogue",
+        "script": "lua_dialogue",
+        "priority": 0
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "johnson",
+          "function": "interaction"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "wanderer",
+          "textProfile": "wanderer.vigore_jarl",
+          "speakerId": "vigore_jarl"
+        }
+      },
+      "provenance": {
+        "evidence": "ROM scene-14 event-30 record 9 at 0x1D5C10 dispatches through 0x20990; the scene-14 branch selects the Vigore/Jarl dialogue profile."
+      }
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "entityId": "icarus_descending_booth",
+  "interactions": [
+    {
+      "id": "rom_event_11_blocked",
+      "source": {
+        "sceneId": 12,
+        "eventCode": "event_30"
+      },
+      "route": {
+        "kind": "dialogue",
+        "script": "lua_dialogue",
+        "priority": 0,
+        "conditionId": "icarus_descending_booth.rom_event_11_blocked.route"
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "icarus_descending",
+          "function": "present_access_blocked"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "icarus_descending_booth",
+          "textProfile": "icarus-descending.caleb_brightmore",
+          "speakerId": "caleb_brightmore"
+        },
+        "conditionId": "icarus_descending_booth.rom_event_11_blocked.entry",
+        "eventId": "access_blocked"
+      },
+      "provenance": {
+        "evidence": "ROM scene 12 record 11 at 0x1D605E enters 0x20990. When FFFC1E bit 10 is clear, the ROM presents the bodyguard-blocked page at 0x108796 and returns to the field."
+      }
+    },
+    {
+      "id": "rom_event_11_accessible",
+      "source": {
+        "sceneId": 12,
+        "eventCode": "event_30"
+      },
+      "route": {
+        "kind": "dialogue",
+        "script": "lua_dialogue",
+        "priority": 0,
+        "conditionId": "icarus_descending_booth.rom_event_11_accessible.route"
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "johnson",
+          "function": "interaction"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "icarus_descending_booth",
+          "textProfile": "icarus-descending.caleb_brightmore",
+          "speakerId": "caleb_brightmore"
+        },
+        "conditionId": "icarus_descending_booth.rom_event_11_accessible.entry"
+      },
+      "provenance": {
+        "evidence": "ROM 0x20990: FFFC1E bit 10 opens Caleb; FFFC27 bit 4 records the contact and bit 7 selects the first meeting. Run return context is 4."
+      }
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "entityId": "big_rhino_dark_booth",
+  "interactions": [
+    {
+      "id": "rom_event_30",
+      "source": {
+        "sceneId": 11,
+        "eventCode": "event_30"
+      },
+      "route": {
+        "kind": "dialogue",
+        "script": "lua_dialogue",
+        "priority": 0
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "johnson",
+          "function": "interaction"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "big_rhino",
+          "textProfile": "big-rhino.mortimer_reed",
+          "speakerId": "mortimer_reed"
+        }
+      },
+      "provenance": {
+        "evidence": "Scene 11 event-30 records 10-11 at 0x1D5B0C/0x1D5B16 enter Mortimer's booth via the scene-specific 0x20990 profile branch; context 2 maps to the ROM run-offer rows at 0xF3EBC."
+      }
+    }
+  ]
+}

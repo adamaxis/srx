@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "entityId": "scene15_unnamed_old_man_contact",
+  "interactions": [
+    {
+      "id": "rom_event_30",
+      "source": {
+        "sceneId": 15,
+        "eventCode": "event_30"
+      },
+      "route": {
+        "kind": "dialogue",
+        "script": "lua_dialogue",
+        "priority": 0
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "field_events",
+          "function": "present_location_dialogue"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "scene15_unidentified_contact",
+          "textProfile": "jackals_lantern.old_man",
+          "speakerId": "jackals_lantern_old_man"
+        },
+        "eventId": "opening"
+      },
+      "provenance": {
+        "evidence": "ROM scene-15 event-30 record 12 at 0x1D5D3E bypasses the event table and dispatches through 0x20990 to its 0x20C78 default branch. It loads portrait profile 0x121E5C and prompt 0xF3FAC/text 0xF3FBC with no choices. The interaction is separate from map entry; no reputation or nuyen check appears in this branch."
+      }
+    }
+  ]
+}

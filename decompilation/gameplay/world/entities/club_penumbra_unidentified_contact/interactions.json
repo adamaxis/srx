@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "entityId": "club_penumbra_unidentified_contact",
+  "interactions": [
+    {
+      "id": "rom_event_30",
+      "source": {
+        "sceneId": 17,
+        "eventCode": "event_30"
+      },
+      "route": {
+        "kind": "dialogue",
+        "script": "lua_dialogue",
+        "priority": 0
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "field_events",
+          "function": "present_location_dialogue"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "club_penumbra",
+          "textProfile": "jackals_lantern.old_man",
+          "speakerId": "jackals_lantern_old_man"
+        },
+        "eventId": "opening"
+      },
+      "provenance": {
+        "evidence": "ROM event 30 bypasses the scene event table and dispatches to 0x20990. Scene 17 has no special scene branch there and reaches 0x20C78, loading the shared old-man profile 0x121E5C and prompt 0xF3FAC. No reputation or nuyen condition is present in this branch."
+      }
+    }
+  ]
+}

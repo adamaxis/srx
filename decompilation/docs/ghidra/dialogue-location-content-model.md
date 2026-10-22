@@ -2,9 +2,10 @@
 
 Status: design, source inventory, and staged implementation. The generated
 text catalog, speaker/menu/contact catalogs, conversation graphs, and location
-condition catalog are JSON-backed. The eight modeled Lua/host field services
-now use entity-owned interaction JSON; 79 event-route rows remain in TSV.
-Those records reference named JSON conditions where needed. The Lua graph engine and typed outcome
+condition catalog are JSON-backed. Eight modeled field services and thirteen
+entry-dialogue routes now use entity-owned interaction JSON; 66 event-route
+rows remain in TSV. Those records reference named JSON conditions where
+needed. The Lua graph engine and typed outcome
 bridge drive Gates Undersound's same-map service, the Renraku and Fuchi gated
 entry pages, Tarislar City Inn, Wylie's Gala Inn, and the two Stoker entry
 roots. The field host dispatches the `hotel.options` and `hospital.options`
@@ -619,7 +620,7 @@ not filled-in defaults.
 
 `gameplay/dialogue/location_conditions.json` now contains versioned, stable-ID
 condition definitions for every nontrivial gate in the 87 modeled entity
-route interactions. The 79 rows still in TSV carry `route_condition_id` and
+route interactions. The 66 rows still in TSV carry `route_condition_id` and
 `entry_condition_id` references; entity JSON uses `route.conditionId` and
 `entryDialogue.conditionId`. Semicolon conditions, the separate entry
 alternate-result field, and building-interaction mode gates have been removed
