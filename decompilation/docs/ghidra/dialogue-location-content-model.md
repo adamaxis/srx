@@ -116,6 +116,72 @@ These are different input contracts. A `MORE` page is not a two-choice menu;
 the Vid-Phone contact list is not an A/B/C prompt; and the Hospital Exit
 confirmation ignores Start and returns to Options when No is chosen.
 
+### Keep the interaction dimensions separate
+
+The ROM behavior is a combination of independent decisions. JSON should model
+each decision once and connect them with stable IDs; it should not create a new
+special-case outcome for every combination.
+
+| Dimension | Source-derived values to model | JSON/runtime owner |
+| --- | --- | --- |
+| Invocation and gate | Location/entity, scene and event, field mode, signed alternate result, run target/type/result, story flags, items, money, and first/repeat history. A known false gate allows the source default route; an unknown fact or ambiguous match is a boundary. | Entity interaction record plus named condition; `LocationInteractionResolver` and `ConditionEvaluator`. |
+| Presentation and input | Text-only/MORE page, title-only wait, one-to-three A/B/C buttons, Yes/No buttons, cursor list with confirm/cancel, contact picker with Next/Prior, timed input lockout, and ordered multi-page sequence. | `page`/`choice` nodes for graph-owned prompts; a named menu/service owns a distinct input contract when it is not the shared prompt loop. The Qt view only presents the resulting view model. |
+| Choice availability | Ordered choices can be removed by story or inventory conditions, which changes the physical A/B/C slot assignment. Unknown conditions must stop at a boundary rather than silently hiding an option. | Choice IDs remain stable; Lua filters in source order and assigns visible slots after filtering. |
+| Effects and transactions | Ordered story/item/party changes and host operations can report action-specific results such as paid/insufficient, success/unavailable, full storage, ineligible, or passage requested. | A named Lua action or typed host request returns a finite result ID; the graph explicitly maps every source-supported result to the next node. |
+| Terminal transition | Keep the current place, resume an already selected source route, restore the saved origin, enter a named location/activity, open a separate service, or play a named cinematic. | One validated terminal tagged union, dispatched through registered host adapters. It is separate from the action result that led to it. |
+| Return context | A service may return to its caller, a saved exterior entry, the source route, or a named scene; position and heading follow the selected source entry/return record. | Invocation context carries a stable return-point ID and policy. The host applies the return record; the dialogue graph does not reconstruct coordinates. |
+
+This decomposition covers combinations without flattening them. For example,
+a building visit can be gated by a run/story condition, show a page and a
+Yes/No choice, charge through a transaction action, branch on the result, and
+then return to the saved entrance. The gate, prompt, transaction, and terminal
+remain independently readable and testable.
+
+The longplay establishes that these are real presentation states: section 03
+frame 000301 shows the three-choice manager panel; section 03 frame 000601
+shows a multi-page payment/debt prompt with two choices; section 14 frame
+006630 shows a portrait page with Yes/No rows; and section 23 frame 001770
+shows a narrative page with Services/Goodbye choices. The same panel shell is
+reused across them. These captures show the selected player's path only; ROM
+conditions and branch code define the alternatives that the video never
+selects.
+
+The current catalog review has 18 graphs. All graph choice nodes currently
+use `buttons_abc`; `yes_no` and `cursor_list` are accepted by validation, but
+no converted graph yet exercises either contract. The Vid-Phone contact
+picker remains its own paged service loop. Treat those contracts as designed
+and ROM-supported, not as fully implemented or defended graph permutations.
+
+### Interaction lifecycle
+
+1. Resolve the entity interaction using the current location and source event
+   facts. Evaluate gates with three-valued results. A known false gate follows
+   the source default; a true gate starts the declared graph or destination;
+   unknown data and equal-priority conflicts stop visibly.
+2. Capture an immutable invocation context: stable interaction ID, source
+   scene/event/mode facts, active run identity when known, and the caller's
+   return-point ID. Do not copy coordinates or ROM addresses into dialogue
+   definitions.
+3. Run the graph in Lua. Pages and choices are presentation requests;
+   conditions select edges; named effects mutate story state; typed host
+   operations return result IDs. Every action runs once when its node is
+   entered, not again when the presenter redraws the page.
+4. Return exactly one terminal transition or one diagnostic source boundary.
+   The host dispatches a terminal by type and, where applicable, by registered
+   stable target ID. A service/cinematic/activity owns its own session and
+   follows its declared return policy when it completes.
+5. On return, apply the captured source return record. This keeps door offset,
+   spawn, and heading policy with the door/arrival data instead of duplicating
+   those rules in each conversation.
+
+The Vid-Phone lifecycle is a separate instance of this composition: access and
+call-history gates filter the 13 ordered contacts; the contact picker pages
+seven names plus Next, then the remaining six plus Prior; selecting a contact
+chooses its first/repeat call path; a call can show information, offer
+services, execute a transaction, return to services, disconnect, or complete
+travel. The contact picker is not encoded as a dialogue A/B/C graph, and a
+call-history write belongs to the named contact action that the ROM performs.
+
 ### Owlfeather graph conversion
 
 The ROM title services at `0x53B78`, `0x53BCC`, and `0x53CEA` call three
@@ -423,6 +489,23 @@ boundary result and is never serialized as a successful terminal outcome.
 Lua remains the one owner of active story/dialogue state. C++ types validate
 requests and outcomes and provide host services; Qt remains a presenter. No
 second C++ dialogue graph or menu cursor state machine is introduced.
+
+Keep the serialized outcome a JSON tagged union, with required and forbidden
+payload fields validated for each `type`. Keep source boundaries outside that
+successful terminal union. The current C++ bridge represents the tag as an
+enum plus a bag of optional/string payload fields; before adding more terminal
+variants, tighten that boundary to a C++17 `std::variant` of payload structs
+(`ContinueInPlace`, `ReturnToOrigin`, `EnterLocation`, and so on), with a
+separate `SourceBoundary` result. This makes invalid combinations unrepresentable
+to host adapters while preserving the same JSON contract for Lua and other
+hosts. The dispatcher can continue registering handlers by outcome type or
+stable target ID; views do not gain outcome-specific branches.
+
+Action results follow the same rule at their smaller scope: each registered
+action declares its allowed result IDs, every JSON edge must map one, and the
+result payload is validated by that action's typed adapter. Do not create one
+global list that implies, for example, every purchase can be `passage_requested`
+or every payment can be `inventory_full`.
 
 For portable testing, the graph engine receives interfaces for facts, input,
 effects, and outcome dispatch. A fake provider can drive every branch without
