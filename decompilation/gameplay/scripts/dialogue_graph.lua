@@ -149,6 +149,23 @@ local function validate_graph(graph_id, graph, conditions, cinematics)
         if node.type == "page" then
             assert(is_identifier(node.eventId), owner .. " needs eventId")
             require_node_reference(graph.nodes, node.next, owner)
+            if node.presentation ~= nil then
+                assert(node.presentation == "field_npc" or
+                       node.presentation == "field_mode_text",
+                    owner .. " has an unsupported presentation contract")
+            end
+            if node.inputDelayFrames ~= nil then
+                assert(type(node.inputDelayFrames) == "number" and
+                       node.inputDelayFrames % 1 == 0 and
+                       node.inputDelayFrames >= 0 and
+                       node.inputDelayFrames <= 255 and
+                       node.presentation == "field_mode_text",
+                    owner .. " has an invalid input delay")
+            end
+            if node.presentation == "field_mode_text" then
+                assert((node.inputDelayFrames or 0) > 0,
+                    owner .. " mode-text page needs an input delay")
+            end
             if node.speakerId ~= nil then
                 assert(is_identifier(node.speakerId),
                     owner .. " has an invalid speaker")
@@ -546,7 +563,9 @@ function DialogueGraph.run(graph_id, registered_actions, invocation_context)
     end
     local host = {
         present_page = function(node, speaker_id, text_profile)
-            return game.ui.say(node.eventId, speaker_id, text_profile)
+            return game.ui.say(node.eventId, speaker_id, text_profile,
+                               node.presentation or "field_npc",
+                               node.inputDelayFrames or 0)
         end,
         present_choice = function(node, choice_ids, speaker_id,
                                   text_profile, selected_index)

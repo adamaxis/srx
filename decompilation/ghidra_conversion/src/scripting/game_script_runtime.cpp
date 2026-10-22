@@ -3716,26 +3716,46 @@ struct GameScriptRuntime::Impl {
         std::string event_id;
         std::string speaker_id = self->location_speaker_id;
         std::string text_profile = self->location_text_profile;
+        std::string presentation_name = "field_npc";
+        std::uint32_t input_delay_frames = 0U;
         const bool valid_speaker = lua_gettop(lua) < 2 ||
             (read_string(lua, 2, speaker_id) &&
              valid_identifier(speaker_id));
         const bool valid_profile = lua_gettop(lua) < 3 ||
             (read_string(lua, 3, text_profile) &&
              valid_identifier(text_profile));
+        const bool valid_presentation = lua_gettop(lua) < 4 ||
+            (read_string(lua, 4, presentation_name) &&
+             (presentation_name == "field_npc" ||
+              presentation_name == "field_mode_text"));
+        const bool valid_input_delay = lua_gettop(lua) < 5 ||
+            read_integer(lua, 5, 255U, input_delay_frames);
         if (!read_string(lua, 1, event_id) ||
             !valid_identifier(event_id) || !valid_speaker ||
-            !valid_profile || !valid_identifier(text_profile)) {
+            !valid_profile || !valid_identifier(text_profile) ||
+            !valid_presentation || !valid_input_delay ||
+            (presentation_name != "field_mode_text" &&
+             input_delay_frames != 0U) ||
+            (presentation_name == "field_mode_text" &&
+             input_delay_frames == 0U)) {
             self->bridge_failure =
-                "game.ui.say expects an event and optional speaker/profile in a profiled location";
+                "game.ui.say expects an event, optional speaker/profile, and a valid presentation/input-delay contract";
             lua_pushboolean(lua, 0);
             return 1;
         }
 
         ScriptNativeOperation operation{};
         operation.type = ScriptNativeOperation::Type::ui_say;
-        operation.dialogue = ScriptDialogueRequest{
-            std::move(speaker_id), std::move(text_profile),
-            std::move(event_id)};
+        ScriptDialogueRequest dialogue{};
+        dialogue.speaker_id = std::move(speaker_id);
+        dialogue.text_profile = std::move(text_profile);
+        dialogue.event_id = std::move(event_id);
+        dialogue.presentation = presentation_name == "field_mode_text"
+            ? ScriptDialoguePresentation::field_mode_text
+            : ScriptDialoguePresentation::field_npc;
+        dialogue.input_delay_frames =
+            static_cast<std::uint8_t>(input_delay_frames);
+        operation.dialogue = std::move(dialogue);
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
         return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);

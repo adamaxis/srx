@@ -135,6 +135,15 @@ local document = {
                                  cinematicId = "source_confirmed_sequence",
                                  returnPolicy = "resume_origin" } },
         }),
+        ["test.mode_text"] = graph("page", {
+            page = {
+                type = "page", eventId = "mode_text_page",
+                presentation = "field_mode_text", inputDelayFrames = 30,
+                next = "done",
+            },
+            done = { type = "terminal",
+                     outcome = { type = "continue_in_place" } },
+        }),
         ["test.unknown"] = graph("branch", {
             branch = {
                 type = "branch",
@@ -195,6 +204,8 @@ local host = {
             event_id = node.eventId,
             speaker_id = speaker_id,
             text_profile = text_profile,
+            presentation = node.presentation or "field_npc",
+            input_delay_frames = node.inputDelayFrames or 0,
         }
         return true
     end,
@@ -240,8 +251,14 @@ assert(outcome.type == "play_cinematic" and
        presented_pages[#presented_pages].event_id == "page_one" and
        presented_pages[#presented_pages].speaker_id == "test_speaker")
 
+outcome = session:run("test.mode_text")
+assert(outcome.type == "continue_in_place" and
+       presented_pages[#presented_pages].presentation == "field_mode_text" and
+       presented_pages[#presented_pages].input_delay_frames == 30)
+
 local previous_game = game
 local inline_prompt_call
+local presented_script_page
 game = {
     content = {
         conversations = { graph_tests = document },
@@ -262,6 +279,17 @@ game = {
             }
             return "take_room"
         end,
+        say = function(event_id, speaker_id, text_profile, presentation,
+                       input_delay_frames)
+            presented_script_page = {
+                event_id = event_id,
+                speaker_id = speaker_id,
+                text_profile = text_profile,
+                presentation = presentation,
+                input_delay_frames = input_delay_frames,
+            }
+            return true
+        end,
         menu = function()
             error("inline prompt incorrectly used the catalog-title menu")
         end,
@@ -274,6 +302,13 @@ assert(outcome.type == "continue_in_place" and
        inline_prompt_call.choices[1] == "take_room" and
        inline_prompt_call.speaker_id == "inline_prompt_speaker" and
        inline_prompt_call.text_profile == "test.inline_prompt_profile")
+outcome = DialogueGraph.run("test.mode_text")
+assert(outcome.type == "continue_in_place" and
+       presented_script_page.event_id == "mode_text_page" and
+       presented_script_page.speaker_id == "test_speaker" and
+       presented_script_page.text_profile == "test.dialogue" and
+       presented_script_page.presentation == "field_mode_text" and
+       presented_script_page.input_delay_frames == 30)
 game = previous_game
 
 outcome = session:run("test.unknown")
@@ -287,6 +322,31 @@ assert(Status.unknown == "unknown")
 local invalid = pcall(function()
     DialogueGraph.Catalog.new({ schemaVersion = 1, graphs = {
         broken = graph("missing", {
+            done = { type = "terminal",
+                     outcome = { type = "continue_in_place" } },
+        }),
+    } }, condition_document, cinematic_document)
+end)
+assert(not invalid)
+
+invalid = pcall(function()
+    DialogueGraph.Catalog.new({ schemaVersion = 1, graphs = {
+        broken = graph("page", {
+            page = { type = "page", eventId = "mode_text_page",
+                     presentation = "field_mode_text", next = "done" },
+            done = { type = "terminal",
+                     outcome = { type = "continue_in_place" } },
+        }),
+    } }, condition_document, cinematic_document)
+end)
+assert(not invalid)
+
+invalid = pcall(function()
+    DialogueGraph.Catalog.new({ schemaVersion = 1, graphs = {
+        broken = graph("page", {
+            page = { type = "page", eventId = "page_one",
+                     presentation = "field_npc", inputDelayFrames = 30,
+                     next = "done" },
             done = { type = "terminal",
                      outcome = { type = "continue_in_place" } },
         }),

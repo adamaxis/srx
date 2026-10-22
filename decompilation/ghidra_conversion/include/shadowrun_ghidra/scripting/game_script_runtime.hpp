@@ -670,12 +670,22 @@ struct ScriptItemCatalog {
     std::array<std::string, 3> detail_label_keys{};
 };
 
+// Dialogue content selects a semantic presentation contract. The game owns
+// page flow; the active host decides how that view is drawn and timed.
+enum class ScriptDialoguePresentation : std::uint8_t {
+    field_npc,
+    field_mode_text,
+};
+
 struct ScriptDialogueRequest {
     std::string speaker_id;
     std::string text_profile;
     std::string event_id;
     std::string inline_text;
     std::string continuation_key;
+    ScriptDialoguePresentation presentation =
+        ScriptDialoguePresentation::field_npc;
+    std::uint8_t input_delay_frames = 0U;
 };
 
 struct ScriptFieldModeContext {

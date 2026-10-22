@@ -396,7 +396,27 @@ bool FieldDialogueRuntime::present_script_operation(
                 return resolve_text(alias);
             };
         std::optional<DialoguePanelView> view;
-        if (!dialogue.inline_text.empty()) {
+        if (dialogue.presentation ==
+            scripting::ScriptDialoguePresentation::field_mode_text) {
+            if (!dialogue.inline_text.empty() ||
+                !dialogue.continuation_key.empty()) {
+                return open_source_boundary(
+                    "field mode-text page cannot contain inline text or a continuation label");
+            }
+            const auto text_keys =
+                script_runtime_->dialogue_event_text_keys(
+                    dialogue.speaker_id, dialogue.text_profile,
+                    dialogue.event_id);
+            if (!text_keys.has_value()) {
+                return open_source_boundary(
+                    script_runtime_->failure().empty()
+                        ? "field mode-text page selected an unbound Lua event"
+                        : script_runtime_->failure());
+            }
+            view = make_script_mode_text_panel_view(
+                present_speaker(*active_speaker_profile_),
+                text_keys->title_key, resolver);
+        } else if (!dialogue.inline_text.empty()) {
             if (!dialogue.event_id.empty()) {
                 return open_source_boundary(
                     "inline dialogue also supplied a catalog event id");
@@ -434,11 +454,20 @@ bool FieldDialogueRuntime::present_script_operation(
                     ? "dialogue script selected an unbound text event"
                     : std::string(panel_.source_boundary_reason));
         }
-        // MORE pages use another wait (not traced, H: none); the closing
-        // page is the 0x1F592 record without options.
-        input_lockout_frames_ = static_cast<std::uint8_t>(
-            panel_.has_more ? DialogueInputLockout::none
-                            : DialogueInputLockout::closing_page);
+        if (dialogue.presentation ==
+            scripting::ScriptDialoguePresentation::field_mode_text) {
+            input_lockout_frames_ = dialogue.input_delay_frames;
+        } else {
+            // MORE pages use another wait (not traced, H: none); the closing
+            // page is the 0x1F592 record without options.
+            if (dialogue.input_delay_frames != 0U) {
+                return open_source_boundary(
+                    "field dialogue page supplied a mode-text input delay");
+            }
+            input_lockout_frames_ = static_cast<std::uint8_t>(
+                panel_.has_more ? DialogueInputLockout::none
+                                : DialogueInputLockout::closing_page);
+        }
         return true;
     }
     if (operation.type == scripting::ScriptNativeOperation::Type::ui_menu &&

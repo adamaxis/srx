@@ -519,6 +519,27 @@ std::optional<DialoguePanelView> make_script_dialogue_panel_view(
     return view;
 }
 
+std::optional<DialoguePanelView> make_script_mode_text_panel_view(
+    const DialogueSpeakerPresentation& speaker,
+    const std::string_view title_key,
+    const DialogueTextResolver& resolve_text) {
+    if (speaker.id.empty() || speaker.text_profile.empty() ||
+        speaker.portrait_alias.empty() || title_key.empty()) {
+        return std::nullopt;
+    }
+
+    DialoguePanelView view{};
+    view.open = true;
+    view.actor_kind = DialoguePanelActorKind::none;
+    view.portrait_alias = speaker.portrait_alias;
+    view.kind = DialoguePanelKind::information_page;
+    copy_text_alias_stream(view, title_key, resolve_text);
+    if (!view.source_complete) {
+        view.kind = DialoguePanelKind::source_boundary;
+    }
+    return view;
+}
+
 std::optional<DialoguePanelView> make_script_dialogue_panel_view_text(
     const DialogueSpeakerPresentation& speaker,
     const std::string_view text,

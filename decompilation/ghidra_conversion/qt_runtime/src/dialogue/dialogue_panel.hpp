@@ -198,6 +198,12 @@ std::optional<DialoguePanelView> make_script_dialogue_panel_view(
     std::string_view continuation_key,
     const DialogueTextResolver& resolve_text);
 
+// Source mode-text pages use the common frame and text well with profile art
+// in the left well, but do not display an NPC name or button row.
+std::optional<DialoguePanelView> make_script_mode_text_panel_view(
+    const DialogueSpeakerPresentation& speaker, std::string_view title_key,
+    const DialogueTextResolver& resolve_text);
+
 // Dynamic script-authored dialogue uses the same panel and source-aware
 // continuation label while keeping the text storage with the active Lua op.
 std::optional<DialoguePanelView> make_script_dialogue_panel_view_text(
