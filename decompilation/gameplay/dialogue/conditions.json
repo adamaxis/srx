@@ -364,6 +364,22 @@
         "romAddresses": ["0x53F1A", "0x53F32"],
         "scope": "profile_gate_before_licourtrix_conversation"
       }
+    },
+    "salish.renraku.cave_ambush_context": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "site" },
+          { "fact": "location.id", "op": "eq", "value": "salish_feathered_serpent_lair" },
+          { "fact": "location.scene_id", "op": "eq", "value": 47 },
+          { "fact": "field.mode", "op": "eq", "value": 47 },
+          { "fact": "field.event_code", "op": "eq", "value": 8 },
+          { "fact": "field.transition_context", "op": "eq", "value": 19 }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x2CE0", "0x1E2EC", "0x53EE2", "0x1F246"],
+        "scope": "scene_47_mode_table_activity_prompt"
+      }
     }
   }
 }

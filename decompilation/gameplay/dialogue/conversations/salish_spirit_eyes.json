@@ -474,6 +474,33 @@
           "outcome": { "type": "continue_in_place" }
         }
       }
+    },
+    "salish.renraku.cave_ambush": {
+      "entryNode": "opening_page",
+      "speakerId": "renraku_strike_team",
+      "textProfile": "salish.renraku_cave_ambush",
+      "precondition": "salish.renraku.cave_ambush_context",
+      "provenance": {
+        "romAddresses": [
+          "0x2CE0", "0x1E2EC", "0x53EE2", "0x1F246", "0x1F3C4",
+          "0xF4C58", "0xF7D0C", "0x12206C"
+        ],
+        "scope": "scene_47_deferred_mode_activity_text_page"
+      },
+      "nodes": {
+        "opening_page": {
+          "type": "page",
+          "eventId": "cave_ambush",
+          "presentation": "field_mode_text",
+          "inputDelayFrames": 30,
+          "next": "continue_in_place",
+          "evidence": "Deferred handler 0x53EE2 passes the single text-only descriptor at 0xF4C58 and profile 0x12206C to 0x1F246. Its negative first-option sentinel selects the shared 30-frame wait and any-controller-event return in 0x1F3C4."
+        },
+        "continue_in_place": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
     }
   }
 }

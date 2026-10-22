@@ -1172,6 +1172,8 @@ void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
         {"salish.licourtrix.page.life_debt", 0x0F82E8U},
         {"salish.licourtrix.page.protective_bond", 0x0F835CU},
         {"salish.licourtrix.page.farewell", 0x0F8410U},
+        // Scene-47 mode-table activity opening page selected by 0x53EE2.
+        {"salish.renraku.page.cave_ambush", 0x0F7D0CU},
         {"salish.licourtrix.option.neighborhood", 0x103F9FU},
         {"salish.licourtrix.option.scale", 0x103FC5U},
         {"salish.licourtrix.option.thanks", 0x104003U},
@@ -6138,6 +6140,14 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                                          little_chiba_mode_sprite.height,
                                          little_chiba_mode_sprite.pixels},
           "sprite", "0x1F830/0x1F246/0x1F292/0x12200C", true);
+    const auto renraku_mode_sprite =
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x12206CU);
+    write("field/mode-entry/renraku-strike-team-sprite.bmp",
+          shadowrun::native::NativeImage{renraku_mode_sprite.width,
+                                         renraku_mode_sprite.height,
+                                         renraku_mode_sprite.pixels},
+          "sprite", "0x53EE2/0x1F246/0x1F292/0x12206C", true);
     write_array("field/hud/face-", assets.field_hud_faces, "sprite", "0x3404",
                 true);
     write_array("field/hud/item-", assets.field_hud_item_blocks, "sprite",

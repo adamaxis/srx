@@ -14,4 +14,8 @@ function SpiritEyes.present_serpent_encounter()
     return DialogueGraph.run("salish.licourtrix.encounter")
 end
 
+function SpiritEyes.present_renraku_ambush()
+    return DialogueGraph.run("salish.renraku.cave_ambush")
+end
+
 return SpiritEyes

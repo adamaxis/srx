@@ -315,6 +315,17 @@
       "portrait_alias": "dialogue.portraits.licourtrix",
       "text_profile": "salish.spirit_eyes"
     },
+    "renraku_strike_team": {
+      "events": {
+        "cave_ambush": {
+          "continuation_key": "",
+          "title_key": "salish.renraku.page.cave_ambush"
+        }
+      },
+      "name": "Renraku Strike Team",
+      "portrait_alias": "field.mode.entry.renraku.strike.team.sprite",
+      "text_profile": "salish.renraku_cave_ambush"
+    },
     "mortimer_reed": {
       "events": {
         "booth_entry": {
