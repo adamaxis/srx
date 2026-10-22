@@ -4,10 +4,10 @@
 -- story gates, item handoffs, and prompt graph.
 local E = require("enums")
 local StoryFlags = require("story_flags")
+local DialogueGraph = require("dialogue_graph")
 
 local SpiritEyes = {}
 
-local SPIRIT_SITE = "council_spirit_eyes_site"
 local SERPENT_SITE = "salish_feathered_serpent_lair"
 
 local function at_site(location_id, event_code)
@@ -28,134 +28,8 @@ local function reminder(text)
     return "field_return"
 end
 
-local FIRST_CONTACT = table.concat({
-    "You come upon an ancient AmerIndian sitting cross-legged near an open fire pit.",
-    "Your breath catches in your throat as his eyes slide open and he turns to face you.",
-}, "||")
-
-local NEED_HORN = table.concat({
-    "I cannot instruct you further until I have the horn of a gargoyle.",
-    "Seek them in the caves or abandoned areas.",
-}, "||")
-
-local SECOND_ITEM = table.concat({
-    "Well done, young warrior.  The second item required is the pelt of a hell hound.",
-    "These foul animals travel in packs, attacking lone travelers or defenseless groups.",
-    "Remember, the pelt must be removed by your own hand.",
-}, "||")
-
-local NEED_PELT = table.concat({
-    "The hell hound pelt is critical for the preparation of the gargoyle horn.",
-    "Quickly, bring a pelt to me so that I may begin the final process!",
-}, "||")
-
-local FINAL_ITEM = table.concat({
-    "The final task is at hand. Return with the living scale of a feathered serpent.",
-    "The feather must be given freely, not taken, from the dragon to be of use.",
-    "Return with this final item and we will learn your opponent's name.",
-}, "||")
-
-local NEED_SCALE = table.concat({
-    "All is ready but for the living feather.",
-    "I know not where to find a dragon, but they are solitary creatures with vast intelligence and powers!",
-    "All I await is this final item.",
-}, "||")
-
-local TASKS_DONE = table.concat({
-    "You have completed your tasks, young warrior.  Rest while I call upon the spirits.",
-    "In return for the gifts you provided, they will guide me to the answer you seek.",
-}, "||")
-
 function SpiritEyes.present()
-    if not at_site(SPIRIT_SITE, 27) then
-        return "denied"
-    end
-
-    if StoryFlags.is_set(E.StoryFlag.SHAMAN_MET) ~= true then
-        -- 0x53D5A sets story bit 5, FFFC30 bits 15/16, FFFC40 bit 0,
-        -- and FFDD64=5 before opening F4BD8. Command 0x15 in that node marks
-        -- the same active story index.
-        StoryFlags.mark_fixed(E.StoryFlag.SHAMAN_MET)
-        game.state.field_mode_effect_flag_bit_14 = false
-        game.state.field_mode_effect_flag_bit_15 = true
-        game.state.field_mode_effect_flag_bit_16 = true
-        game.state.field_auxiliary_flag_bit_0 = true
-        if not more("first_contact", FIRST_CONTACT) then
-            return "field_return"
-        end
-        StoryFlags.apply_dialogue_command(0x15)
-        return reminder(NEED_HORN)
-    end
-
-    if StoryFlags.is_set(E.StoryFlag.SHAMAN_ITEM4_GIVEN) ~= true then
-        if game.state.group_item_flag_bit_4 ~= true then
-            return reminder(NEED_HORN)
-        end
-        -- 0x53DD0 consumes Group Item 4 and sets story bit 6 before F4C34.
-        game.state.group_item_flag_bit_4 = false
-        StoryFlags.set(E.StoryFlag.SHAMAN_ITEM4_GIVEN)
-        game.state.field_mode_effect_flag_bit_14 = false
-        game.state.field_mode_effect_flag_bit_16 = false
-        game.state.field_mode_effect_flag_bit_17 = true
-        game.state.field_auxiliary_flag_bit_0 = false
-        game.state.field_auxiliary_flag_bit_1 = true
-        return reminder(SECOND_ITEM)
-    end
-
-    if StoryFlags.is_set(E.StoryFlag.SHAMAN_PELT_GIVEN) ~= true then
-        if game.state.group_item_flag_bit_3 ~= true then
-            return reminder(NEED_PELT)
-        end
-        -- 0x53E38 consumes Group Item 3 and sets story bit 7 before F4C3C.
-        game.state.group_item_flag_bit_3 = false
-        StoryFlags.set(E.StoryFlag.SHAMAN_PELT_GIVEN)
-        game.state.field_mode_effect_flag_bit_17 = false
-        game.state.field_mode_effect_flag_bit_18 = true
-        game.state.field_auxiliary_flag_bit_1 = false
-        game.state.field_auxiliary_flag_bit_2 = true
-        return reminder(FINAL_ITEM)
-    end
-
-    if StoryFlags.is_set(E.StoryFlag.SERPENT_SCALE_TAKEN) ~= true then
-        return reminder(NEED_SCALE)
-    end
-
-    if StoryFlags.is_set(E.StoryFlag.SHAMAN_TASKS_DONE) ~= true then
-        if game.state.group_item_flag_bit_2 ~= true then
-            return reminder(NEED_SCALE)
-        end
-        -- 0x53EA8 consumes Group Item 2, writes story bit 9, and advances
-        -- the FFFC30 ritual marker from bits 15/18 to bit 19 before F4C04.
-        game.state.group_item_flag_bit_2 = false
-        -- The direct branch sets the fixed active trigger and story bit
-        -- before F4C04. Its 0x1A command then marks that same trigger after
-        -- the completion dialogue.
-        StoryFlags.select_fixed_trigger(E.StoryFlag.SHAMAN_TASKS_DONE)
-        StoryFlags.set(E.StoryFlag.SHAMAN_TASKS_DONE)
-        game.state.field_mode_effect_flag_bit_15 = false
-        game.state.field_mode_effect_flag_bit_18 = false
-        game.state.field_mode_effect_flag_bit_19 = true
-        game.state.field_auxiliary_flag_bit_2 = false
-        say(TASKS_DONE, true)
-        StoryFlags.apply_dialogue_command(0x1A)
-        return "field_return"
-    end
-
-    -- F4C18 is the post-ritual answer root.
-    say(table.concat({
-        "Warrior, why do you waste time here with me?",
-        "There are no more answers I can provide.",
-        "You must seek out Thon!",
-        "You must find the clues yourself!",
-    }, "||"), true)
-    say(table.concat({
-        "Evil walks the land!",
-        "It is more powerful than I expected and dedicated to the pursuit of power.",
-    }, "||"), true)
-    return reminder(table.concat({
-        "This is the true face of your enemy, and his name is",
-        "THON!",
-    }, "||"))
+    return DialogueGraph.run("salish.spirit_eyes.ritual")
 end
 
 function SpiritEyes.present_serpent_encounter()

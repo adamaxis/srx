@@ -138,6 +138,45 @@ several opening choices with full-frame host dumps. These are internal route
 and rendering checks; the reviewed longplay sections contain no matching
 Owlfeather sequence, so independent Genesis dialogue visuals remain open.
 
+### Spirit Eyes first-contact and ritual graph
+
+The Scene-4 event-27 graph follows the ROM prompt chain instead of assuming
+that first contact immediately consumes an item. `0x53D5A` initializes the
+ritual markers, selects fixed trigger 5, and opens `0xF4BD8`. Its first
+`<MORE>` dispatches command `0x15`, which sets the active trigger bit and
+selects prompt `0xF5150`. The route then presents the Spirit Eyes description,
+the one-choice welcome question and response, the one-choice ritual question,
+and the text-only first horn request at `0xF51A0`. Tests assert that bit 5 is
+set after the first input, not while the opening page is still displayed.
+
+Later contacts select one stage from story flags and item facts:
+
+| Source gate | Inventory result | State change and page |
+| --- | --- | --- |
+| Bit 6 clear | Group Item bit 4 absent | Show repeat horn request `0xF7ACB`; remain in Scene 4. |
+| Bit 6 clear | Group Item bit 4 present | Consume bit 4, set bit 6, update FFFC30/FFFC40, show `0xF7641`. |
+| Bit 7 clear | Group Item bit 3 absent | Show repeat pelt request `0xF7B3A`; remain in Scene 4. |
+| Bit 7 clear | Group Item bit 3 present | Consume bit 3, set bit 7, update effects, show `0xF771D`. |
+| Bit 8 clear | Any scale state | Show missing-scale request `0xF7BC8`. |
+| Bit 8 set, bit 9 clear | Group Item bit 2 absent | Show missing-scale request `0xF7BC8`. |
+| Bit 8 set, bit 9 clear | Group Item bit 2 present | Consume bit 2, set bit 9, update effects, show completion page `0xF77FE`. |
+| Bit 9 set | — | Show text-only page `0xF7C79`, then return in place. |
+
+The completion page's command `0x1A` continues to prompt `0xF51A8` and its
+`0xF78A3` page. The next input dispatches command `0x4A` to the ROM activity
+routine `0x5D172`. JSON reports this as `enter_activity` with stable ID
+`salish.spirit_eyes.ritual_of_binding`; the field host still needs an activity
+dispatcher. On the completed-task repeat route, `0x53ED4` selects `0xF4C18`.
+The shared `0x1F246`/`0x1F3C4` runner sees its negative first-option sentinel,
+shows only the `0xF7C79` text, and returns. The adjacent `0xF7915`, `0xF798D`,
+`0xF79F0`, and `0xF7A8B` pointers are retained as extracted text, but their
+consumer is unresolved; they are not modeled as extra pages.
+
+The Scene-47 Licourtrix graph remains procedural and the context-`0x13` route
+still needs a complete ROM trace. Reviewed longplay sections contain no
+matching Spirit Eyes encounter, so the full-frame runtime captures are not an
+independent Genesis visual comparison.
+
 ### Longplay evidence
 
 The hand-reviewed first 12 minutes and direct 320x224 frame review show the
@@ -360,9 +399,10 @@ one terminal kind. Stoker's indexed service and signed field-exit prompt now
 use separate JSON graph roots. The remaining Stoker work is source coverage
 for the 80..99 effect callback, saved-game fact restoration, and independent
 visual checks. Quinton's call graph and the six converted contact service
-graphs now cover all seven source-derived service trees. The Salish dialogues
-still need conversion. Existing
-incomplete encounter commands, upstream quest producers, and unverified visual
+graphs now cover all seven source-derived service trees. The Spirit Eyes
+ritual route is JSON-backed through its source-traced Scene-4 prompt chain and
+staged item gates. Licourtrix's Scene-47 graph, the ritual activity host,
+upstream quest producers, incomplete encounter commands, and unverified visual
 branches remain explicit work, not filled-in defaults.
 
 ## Implemented condition slice
@@ -468,9 +508,11 @@ condition-filtered choices, cursor input, registered action result edges,
 pages, inline prompt text, and every declared successful outcome shape. The
 C++ runtime test advances the five earlier route graphs through their
 presenter and service yields and checks typed outcomes and ordered story
-effects. Focused Debug CTests exercise both Stoker roots through the field
-dialogue presenter. Debug and Release coverage for all implemented graph
-routes remains in progress. Full physical route QA and independent Genesis
-comparison remain separate evidence; the reviewed
+effects. Debug/Release script-runtime QA also traverses the complete known
+Spirit Eyes first-contact chain, the three item gates, the typed ritual
+activity outcome, and the single completed-task return page. Focused Debug
+CTests exercise both Stoker roots through the field dialogue presenter. Full
+physical route QA and independent Genesis comparison remain separate
+evidence; the reviewed
 longplay shows shared panel/menu examples but no matching Gates departure or
 Renraku/Fuchi first-entry sequence or Wylie's Gala Inn interaction.

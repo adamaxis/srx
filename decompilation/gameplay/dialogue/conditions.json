@@ -231,6 +231,95 @@
         "romAddresses": ["0x53CEA", "0x53D4E"],
         "scope": "return_followup_tail_dispatch"
       }
+    },
+    "salish.spirit_eyes.event_context": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "site" },
+          { "fact": "location.id", "op": "eq", "value": "council_spirit_eyes_site" },
+          { "fact": "field.mode", "op": "eq", "value": 4 },
+          { "fact": "field.event_code", "op": "eq", "value": 27 }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x53D5A", "0x15BDF6"],
+        "scope": "scene_4_event_27_direct_continuation"
+      }
+    },
+    "salish.spirit_eyes.first_contact": {
+      "expression": {
+        "fact": "story.story_flag_bit_5", "op": "eq", "value": false
+      },
+      "provenance": {
+        "romAddresses": ["0x53D5A", "0xF4BD8"],
+        "scope": "first_contact_gate"
+      }
+    },
+    "salish.spirit_eyes.horn_not_given": {
+      "expression": {
+        "fact": "story.story_flag_bit_6", "op": "eq", "value": false
+      },
+      "provenance": {
+        "romAddresses": ["0x53DD0", "0xF4BD8"],
+        "scope": "gargoyle_horn_stage_gate"
+      }
+    },
+    "salish.spirit_eyes.horn_available": {
+      "expression": {
+        "fact": "story.group_item_flag_bit_4", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0x53DD0", "0xF4BD8"],
+        "scope": "gargoyle_horn_inventory_gate"
+      }
+    },
+    "salish.spirit_eyes.pelt_not_given": {
+      "expression": {
+        "fact": "story.story_flag_bit_7", "op": "eq", "value": false
+      },
+      "provenance": {
+        "romAddresses": ["0x53E38", "0xF4BD8"],
+        "scope": "hellhound_pelt_stage_gate"
+      }
+    },
+    "salish.spirit_eyes.pelt_available": {
+      "expression": {
+        "fact": "story.group_item_flag_bit_3", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0x53E38", "0xF4BD8"],
+        "scope": "hellhound_pelt_inventory_gate"
+      }
+    },
+    "salish.spirit_eyes.scale_not_taken": {
+      "expression": {
+        "fact": "story.story_flag_bit_8", "op": "eq", "value": false
+      },
+      "provenance": {
+        "romAddresses": ["0x53E84", "0x53EA8", "0xF4BD8"],
+        "scope": "feathered_scale_not_yet_granted"
+      }
+    },
+    "salish.spirit_eyes.scale_available": {
+      "expression": {
+        "all": [
+          { "fact": "story.story_flag_bit_8", "op": "eq", "value": true },
+          { "fact": "story.group_item_flag_bit_2", "op": "eq", "value": true }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x53E84", "0x53E98", "0x53F50"],
+        "scope": "scale_inventory_and_story_gate"
+      }
+    },
+    "salish.spirit_eyes.tasks_not_done": {
+      "expression": {
+        "fact": "story.story_flag_bit_9", "op": "eq", "value": false
+      },
+      "provenance": {
+        "romAddresses": ["0x53EA8", "0xF4C04"],
+        "scope": "ritual_completion_gate"
+      }
     }
   }
 }

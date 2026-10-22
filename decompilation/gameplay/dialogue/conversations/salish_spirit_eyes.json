@@ -1,0 +1,333 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "salish.spirit_eyes.ritual": {
+      "entryNode": "select_ritual_stage",
+      "speakerId": "spirit_eyes",
+      "textProfile": "salish.spirit_eyes",
+      "precondition": "salish.spirit_eyes.event_context",
+      "provenance": {
+        "romAddresses": [
+          "0x53D5A", "0x53DD0", "0x53E38", "0x53E84", "0x53E98",
+          "0x53EA8", "0x2196C", "0x15BDF6", "0xF4BD8", "0xF4C04",
+          "0xF4C18"
+        ],
+        "scope": "scene_4_event_27_ritual_and_post_ritual_answer"
+      },
+      "nodes": {
+        "select_ritual_stage": {
+          "type": "branch",
+          "cases": [
+            { "when": "salish.spirit_eyes.first_contact", "next": "first_select_trigger" },
+            { "when": "salish.spirit_eyes.horn_not_given", "next": "check_horn" },
+            { "when": "salish.spirit_eyes.pelt_not_given", "next": "check_pelt" },
+            { "when": "salish.spirit_eyes.tasks_not_done", "next": "check_scale" }
+          ],
+          "fallback": "post_ritual_opening",
+          "evidence": "ROM 0x53D5A selects the ritual stage from FFFC1E bits 5-9; item availability is tested separately at 0x53DD0, 0x53E38, and 0x53E98."
+        },
+        "context_boundary": {
+          "type": "source_boundary",
+          "reason": "Spirit Eyes ritual graph requires the Scene-4 event-27 site context."
+        },
+
+        "first_select_trigger": {
+          "type": "action",
+          "actionId": "story.select_fixed_trigger",
+          "arguments": { "triggerId": 5 },
+          "next": "first_clear_effect_14"
+        },
+        "first_clear_effect_14": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 14, "value": false },
+          "next": "first_set_effect_15"
+        },
+        "first_set_effect_15": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 15, "value": true },
+          "next": "first_set_effect_16"
+        },
+        "first_set_effect_16": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 16, "value": true },
+          "next": "first_set_auxiliary_0"
+        },
+        "first_set_auxiliary_0": {
+          "type": "action",
+          "actionId": "field.set_auxiliary_flag",
+          "arguments": { "flagBit": 0, "value": true },
+          "next": "first_contact_page"
+        },
+        "first_contact_page": {
+          "type": "page",
+          "eventId": "first_contact",
+          "next": "first_contact_command",
+          "evidence": "ROM prompt record 0xF4BD8 displays text 0xF7204 and sends A to command 0x15."
+        },
+        "first_contact_command": {
+          "type": "action",
+          "actionId": "story.apply_dialogue_command",
+          "arguments": { "commandId": 21 },
+          "next": "spirit_eyes_description",
+          "results": { "command_unresolved": "dialogue_command_boundary" },
+          "evidence": "ROM command 0x15 dispatches to 0x218B2, selects prompt 0xF5150, and calls 0x2196C to set the active trigger bit after the first page."
+        },
+        "spirit_eyes_description": {
+          "type": "page",
+          "eventId": "spirit_eyes_description",
+          "next": "welcome_question",
+          "evidence": "ROM prompt 0xF5150 displays text 0xF72AB with MORE and advances to 0xF5164."
+        },
+        "welcome_question": {
+          "type": "choice",
+          "menuId": "welcome_question",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.spirit_eyes.page.welcome_question",
+          "choices": [
+            { "id": "brother_killer", "next": "welcome_response" }
+          ],
+          "evidence": "ROM prompt 0xF5164 binds its only option, text 0x103F4A, to response record 0xF5178."
+        },
+        "welcome_response": {
+          "type": "page",
+          "eventId": "welcome_response",
+          "next": "ritual_question",
+          "evidence": "ROM prompt 0xF5178 displays text 0xF7401 with MORE and advances to 0xF518C."
+        },
+        "ritual_question": {
+          "type": "choice",
+          "menuId": "ritual_question",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.spirit_eyes.page.ritual_question",
+          "choices": [
+            { "id": "gather", "next": "first_horn_request" }
+          ],
+          "evidence": "ROM prompt 0xF518C binds its only option, text 0x103F7B, to record 0xF51A0."
+        },
+        "first_horn_request": {
+          "type": "page",
+          "eventId": "first_horn_request",
+          "next": "continue_in_place",
+          "evidence": "ROM text 0xF7579 is the final text-only prompt in the first-contact sequence."
+        },
+
+        "check_horn": {
+          "type": "branch",
+          "cases": [
+            { "when": "salish.spirit_eyes.horn_available", "next": "consume_horn" }
+          ],
+          "fallback": "need_horn_page"
+        },
+        "need_horn_page": {
+          "type": "page",
+          "eventId": "need_horn",
+          "next": "continue_in_place",
+          "evidence": "ROM text pointer 0xF7ACB."
+        },
+        "consume_horn": {
+          "type": "action",
+          "actionId": "item.set_group_flag",
+          "arguments": { "flagBit": 4, "value": false },
+          "next": "mark_horn_given"
+        },
+        "mark_horn_given": {
+          "type": "action",
+          "actionId": "story.set_flag",
+          "arguments": { "flagBit": 6, "value": true },
+          "next": "horn_clear_effect_14"
+        },
+        "horn_clear_effect_14": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 14, "value": false },
+          "next": "horn_clear_effect_16"
+        },
+        "horn_clear_effect_16": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 16, "value": false },
+          "next": "horn_set_effect_17"
+        },
+        "horn_set_effect_17": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 17, "value": true },
+          "next": "horn_clear_auxiliary_0"
+        },
+        "horn_clear_auxiliary_0": {
+          "type": "action",
+          "actionId": "field.set_auxiliary_flag",
+          "arguments": { "flagBit": 0, "value": false },
+          "next": "horn_set_auxiliary_1"
+        },
+        "horn_set_auxiliary_1": {
+          "type": "action",
+          "actionId": "field.set_auxiliary_flag",
+          "arguments": { "flagBit": 1, "value": true },
+          "next": "second_item_page"
+        },
+        "second_item_page": {
+          "type": "page",
+          "eventId": "second_item",
+          "next": "continue_in_place",
+          "evidence": "ROM text pointer 0xF7641."
+        },
+
+        "check_pelt": {
+          "type": "branch",
+          "cases": [
+            { "when": "salish.spirit_eyes.pelt_available", "next": "consume_pelt" }
+          ],
+          "fallback": "need_pelt_page"
+        },
+        "need_pelt_page": {
+          "type": "page",
+          "eventId": "need_pelt",
+          "next": "continue_in_place",
+          "evidence": "ROM text pointer 0xF7B3A."
+        },
+        "consume_pelt": {
+          "type": "action",
+          "actionId": "item.set_group_flag",
+          "arguments": { "flagBit": 3, "value": false },
+          "next": "mark_pelt_given"
+        },
+        "mark_pelt_given": {
+          "type": "action",
+          "actionId": "story.set_flag",
+          "arguments": { "flagBit": 7, "value": true },
+          "next": "pelt_clear_effect_17"
+        },
+        "pelt_clear_effect_17": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 17, "value": false },
+          "next": "pelt_set_effect_18"
+        },
+        "pelt_set_effect_18": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 18, "value": true },
+          "next": "pelt_clear_auxiliary_1"
+        },
+        "pelt_clear_auxiliary_1": {
+          "type": "action",
+          "actionId": "field.set_auxiliary_flag",
+          "arguments": { "flagBit": 1, "value": false },
+          "next": "pelt_set_auxiliary_2"
+        },
+        "pelt_set_auxiliary_2": {
+          "type": "action",
+          "actionId": "field.set_auxiliary_flag",
+          "arguments": { "flagBit": 2, "value": true },
+          "next": "final_item_page"
+        },
+        "final_item_page": {
+          "type": "page",
+          "eventId": "final_item",
+          "next": "continue_in_place",
+          "evidence": "ROM text pointer 0xF771D."
+        },
+
+        "check_scale": {
+          "type": "branch",
+          "cases": [
+            { "when": "salish.spirit_eyes.scale_not_taken", "next": "need_scale_page" },
+            { "when": "salish.spirit_eyes.scale_available", "next": "consume_scale" }
+          ],
+          "fallback": "need_scale_page"
+        },
+        "need_scale_page": {
+          "type": "page",
+          "eventId": "need_scale",
+          "next": "continue_in_place",
+          "evidence": "ROM text pointer 0xF7BC8."
+        },
+        "consume_scale": {
+          "type": "action",
+          "actionId": "item.set_group_flag",
+          "arguments": { "flagBit": 2, "value": false },
+          "next": "mark_tasks_done"
+        },
+        "mark_tasks_done": {
+          "type": "action",
+          "actionId": "story.set_flag",
+          "arguments": { "flagBit": 9, "value": true },
+          "next": "completion_clear_effect_15"
+        },
+        "completion_clear_effect_15": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 15, "value": false },
+          "next": "completion_clear_effect_18"
+        },
+        "completion_clear_effect_18": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 18, "value": false },
+          "next": "completion_set_effect_19"
+        },
+        "completion_set_effect_19": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 19, "value": true },
+          "next": "completion_clear_auxiliary_2"
+        },
+        "completion_clear_auxiliary_2": {
+          "type": "action",
+          "actionId": "field.set_auxiliary_flag",
+          "arguments": { "flagBit": 2, "value": false },
+          "next": "tasks_done_page"
+        },
+        "tasks_done_page": {
+          "type": "page",
+          "eventId": "tasks_done",
+          "next": "completion_dialogue_command",
+          "evidence": "ROM text pointer 0xF77FE."
+        },
+        "completion_dialogue_command": {
+          "type": "action",
+          "actionId": "story.apply_dialogue_command",
+          "arguments": { "commandId": 26 },
+          "next": "ritual_setup_page",
+          "results": { "command_unresolved": "dialogue_command_boundary" },
+          "evidence": "ROM command 0x1A dispatches to 0x218F8, selects prompt 0xF51A8, and marks the already active trigger after the completion page."
+        },
+        "ritual_setup_page": {
+          "type": "page",
+          "eventId": "ritual_setup",
+          "next": "ritual_activity",
+          "evidence": "ROM prompt 0xF51A8 displays text 0xF78A3 with MORE; A dispatches command 0x4A."
+        },
+        "ritual_activity": {
+          "type": "terminal",
+          "outcome": {
+            "type": "enter_activity",
+            "activityId": "salish.spirit_eyes.ritual_of_binding"
+          }
+        },
+        "post_ritual_opening": {
+          "type": "page",
+          "eventId": "post_ritual_opening",
+          "next": "continue_in_place",
+          "evidence": "ROM branch 0x53ED4 loads 0xF4C18. Its first prompt record has title 0xF7C79 and a negative first-option sentinel, so the shared prompt loop displays this one text-only page and returns."
+        },
+        "post_ritual_text_table_boundary": {
+          "type": "source_boundary",
+          "reason": "The adjacent 0xF7915, 0xF798D, 0xF79F0, and 0xF7A8B pointers after the 0xF4C18 sentinel are not read by the 0x1F246/0x1F3C4 text-only route. Their consumer is unresolved."
+        },
+        "continue_in_place": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        },
+        "dialogue_command_boundary": {
+          "type": "source_boundary",
+          "reason": "The ROM story command has no converted active-trigger effect for this saved state."
+        }
+      }
+    }
+  }
+}

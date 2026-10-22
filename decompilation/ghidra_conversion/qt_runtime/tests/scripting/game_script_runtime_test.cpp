@@ -10036,49 +10036,258 @@ int main() {
         {"field_auxiliary_flag_bit_0", false},
         {"group_item_flag_bit_4", false},
     });
+    const auto spirit_page_is = [](const ScriptTaskStep& task,
+                                   const std::string_view event_id) {
+        return task.status == ScriptTaskStep::Status::awaiting_native_operation &&
+               task.operation.has_value() &&
+               task.operation->dialogue.has_value() &&
+               task.operation->dialogue->event_id == event_id;
+    };
     auto spirit_eyes_task = scripts.start_task(
         "salish_spirit_eyes", "present");
-    const auto spirit_eyes_menu =
-        spirit_eyes_task.operation.has_value()
-            ? spirit_eyes_task.operation->menu
-            : std::optional<ScriptMenuDefinition>{};
-    const auto resolved_spirit_eyes_menu = spirit_eyes_menu.has_value()
-        ? scripts.resolve_dialogue_menu(*spirit_eyes_menu)
-        : std::optional<ScriptMenuDefinition>{};
     if (!expect(spirit_eyes_task.status ==
                         ScriptTaskStep::Status::awaiting_native_operation &&
-                    spirit_eyes_menu.has_value() &&
-                    spirit_eyes_menu->inline_prompt &&
-                    spirit_eyes_menu->id == "first_contact" &&
-                    resolved_spirit_eyes_menu.has_value() &&
-                    resolved_spirit_eyes_menu->choices.size() == 1U &&
-                    resolved_spirit_eyes_menu->choices[0].label_key ==
-                        "shared.more" &&
-                    scripts.story_state().at("story_flag_bit_5") &&
+                    spirit_eyes_task.operation.has_value() &&
+                    spirit_eyes_task.operation->dialogue.has_value() &&
+                    spirit_eyes_task.operation->dialogue->event_id ==
+                        "first_contact" &&
+                    spirit_eyes_task.operation->dialogue->speaker_id ==
+                        "spirit_eyes" &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.page.first_contact") != nullptr &&
+                    !scripts.story_state().at("story_flag_bit_5") &&
+                    scripts.story_state().at(
+                        "story_trigger_active_5") &&
+                    !scripts.story_state().at(
+                        "field_mode_effect_flag_bit_14") &&
+                    scripts.story_state().at(
+                        "field_mode_effect_flag_bit_15") &&
+                    scripts.story_state().at(
+                        "field_mode_effect_flag_bit_16") &&
                     scripts.story_state().at(
                         "field_auxiliary_flag_bit_0"),
                 "Spirit Eyes first-contact task lost its ROM text menu or FFFC40 state")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
     }
-    spirit_eyes_task = scripts.complete_native_menu_choice("more");
+    spirit_eyes_task = scripts.complete_native_operation(true);
     if (!expect(spirit_eyes_task.status ==
                         ScriptTaskStep::Status::awaiting_native_operation &&
                     spirit_eyes_task.operation.has_value() &&
                     spirit_eyes_task.operation->dialogue.has_value() &&
-                    spirit_eyes_task.operation->dialogue->inline_text.find(
-                        "horn of a gargoyle") != std::string::npos &&
+                    spirit_eyes_task.operation->dialogue->event_id ==
+                        "spirit_eyes_description" &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.page.spirit_eyes_description") !=
+                        nullptr &&
                     scripts.story_state().at("story_flag_bit_5"),
-                "Spirit Eyes first-contact continuation did not request the gargoyle horn")) {
+                "Spirit Eyes command 0x15 did not mark the active trigger before its next ROM page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    spirit_eyes_task = scripts.complete_native_operation(true);
+    if (!expect(spirit_eyes_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    spirit_eyes_task.operation.has_value() &&
+                    spirit_eyes_task.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    spirit_eyes_task.operation->menu.has_value() &&
+                    spirit_eyes_task.operation->menu->id ==
+                        "welcome_question",
+                "Spirit Eyes first-contact route omitted its one-choice welcome prompt")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    const auto spirit_eyes_welcome_menu = scripts.resolve_dialogue_menu(
+        *spirit_eyes_task.operation->menu);
+    if (!expect(spirit_eyes_welcome_menu.has_value() &&
+                    spirit_eyes_welcome_menu->choices.size() == 1U &&
+                    spirit_eyes_welcome_menu->choices.front().id ==
+                        "brother_killer" &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.page.welcome_question") != nullptr &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.option.brother_killer") != nullptr,
+                "Spirit Eyes welcome prompt lost its source text or ROM option")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    spirit_eyes_task = scripts.complete_native_menu_choice("brother_killer");
+    if (!expect(spirit_page_is(spirit_eyes_task, "welcome_response") &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.page.welcome_response") != nullptr,
+                "Spirit Eyes welcome choice did not reach its ROM response page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    spirit_eyes_task = scripts.complete_native_operation(true);
+    if (!expect(spirit_eyes_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    spirit_eyes_task.operation.has_value() &&
+                    spirit_eyes_task.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    spirit_eyes_task.operation->menu.has_value() &&
+                    spirit_eyes_task.operation->menu->id ==
+                        "ritual_question",
+                "Spirit Eyes first-contact route omitted its ritual question")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    const auto spirit_eyes_ritual_menu = scripts.resolve_dialogue_menu(
+        *spirit_eyes_task.operation->menu);
+    if (!expect(spirit_eyes_ritual_menu.has_value() &&
+                    spirit_eyes_ritual_menu->choices.size() == 1U &&
+                    spirit_eyes_ritual_menu->choices.front().id == "gather" &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.page.ritual_question") != nullptr &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.option.gather") != nullptr,
+                "Spirit Eyes ritual prompt lost its source text or ROM option")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    spirit_eyes_task = scripts.complete_native_menu_choice("gather");
+    if (!expect(spirit_page_is(spirit_eyes_task, "first_horn_request") &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.page.first_horn_request") != nullptr,
+                "Spirit Eyes first-contact route omitted its first horn request")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
     }
     spirit_eyes_task = scripts.complete_native_operation(true);
     if (!expect(spirit_eyes_task.status ==
                         ScriptTaskStep::Status::completed &&
-                    spirit_eyes_task.result_id ==
-                        std::optional<std::string>{"field_return"},
-                "Spirit Eyes horn request did not return to the field")) {
+                    spirit_eyes_task.dialogue_outcome.has_value() &&
+                    spirit_eyes_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place,
+                "Spirit Eyes first-contact sequence did not return to the field")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    // Each repeat visit consumes at most the one item for the current stage.
+    // Exercise both sides of every ROM inventory gate through the JSON graph.
+    scripts.set_story_state({
+        {"story_flag_bit_5", true}, {"story_flag_bit_6", false},
+        {"group_item_flag_bit_4", false},
+    });
+    spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
+    if (!expect(spirit_page_is(spirit_eyes_task, "need_horn") &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.page.need_horn") != nullptr,
+                "Spirit Eyes no-horn branch did not select its ROM page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    spirit_eyes_task = scripts.complete_native_operation(true);
+    if (!expect(spirit_eyes_task.dialogue_outcome.has_value() &&
+                    spirit_eyes_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place,
+                "Spirit Eyes no-horn branch did not remain at the site")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_5", true}, {"story_flag_bit_6", false},
+        {"group_item_flag_bit_4", true},
+        {"field_mode_effect_flag_bit_14", true},
+        {"field_mode_effect_flag_bit_16", true},
+        {"field_mode_effect_flag_bit_17", false},
+        {"field_auxiliary_flag_bit_0", true},
+        {"field_auxiliary_flag_bit_1", false},
+    });
+    spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
+    if (!expect(spirit_page_is(spirit_eyes_task, "second_item") &&
+                    !scripts.story_state().at("group_item_flag_bit_4") &&
+                    scripts.story_state().at("story_flag_bit_6") &&
+                    !scripts.story_state().at(
+                        "field_mode_effect_flag_bit_14") &&
+                    !scripts.story_state().at(
+                        "field_mode_effect_flag_bit_16") &&
+                    scripts.story_state().at(
+                        "field_mode_effect_flag_bit_17") &&
+                    !scripts.story_state().at("field_auxiliary_flag_bit_0") &&
+                    scripts.story_state().at("field_auxiliary_flag_bit_1"),
+                "Spirit Eyes horn handoff lost its item, story, or ritual-marker effects")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    spirit_eyes_task = scripts.complete_native_operation(true);
+    if (!expect(spirit_eyes_task.dialogue_outcome.has_value() &&
+                    spirit_eyes_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place,
+                "Spirit Eyes horn handoff did not remain at the site")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_5", true}, {"story_flag_bit_6", true},
+        {"story_flag_bit_7", false}, {"group_item_flag_bit_3", false},
+    });
+    spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
+    if (!expect(spirit_page_is(spirit_eyes_task, "need_pelt"),
+                "Spirit Eyes no-pelt branch did not select its ROM page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    spirit_eyes_task = scripts.complete_native_operation(true);
+    if (!expect(spirit_eyes_task.dialogue_outcome.has_value() &&
+                    spirit_eyes_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place,
+                "Spirit Eyes no-pelt branch did not remain at the site")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_5", true}, {"story_flag_bit_6", true},
+        {"story_flag_bit_7", false}, {"group_item_flag_bit_3", true},
+        {"field_mode_effect_flag_bit_17", true},
+        {"field_mode_effect_flag_bit_18", false},
+        {"field_auxiliary_flag_bit_1", true},
+        {"field_auxiliary_flag_bit_2", false},
+    });
+    spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
+    if (!expect(spirit_page_is(spirit_eyes_task, "final_item") &&
+                    !scripts.story_state().at("group_item_flag_bit_3") &&
+                    scripts.story_state().at("story_flag_bit_7") &&
+                    !scripts.story_state().at(
+                        "field_mode_effect_flag_bit_17") &&
+                    scripts.story_state().at(
+                        "field_mode_effect_flag_bit_18") &&
+                    !scripts.story_state().at("field_auxiliary_flag_bit_1") &&
+                    scripts.story_state().at("field_auxiliary_flag_bit_2"),
+                "Spirit Eyes pelt handoff lost its item, story, or ritual-marker effects")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    spirit_eyes_task = scripts.complete_native_operation(true);
+    if (!expect(spirit_eyes_task.dialogue_outcome.has_value() &&
+                    spirit_eyes_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place,
+                "Spirit Eyes pelt handoff did not remain at the site")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_5", true}, {"story_flag_bit_6", true},
+        {"story_flag_bit_7", true}, {"story_flag_bit_8", false},
+        {"story_flag_bit_9", false}, {"group_item_flag_bit_2", false},
+    });
+    spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
+    if (!expect(spirit_page_is(spirit_eyes_task, "need_scale"),
+                "Spirit Eyes pre-scale branch did not select its ROM page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    spirit_eyes_task = scripts.complete_native_operation(true);
+    if (!expect(spirit_eyes_task.dialogue_outcome.has_value() &&
+                    spirit_eyes_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place,
+                "Spirit Eyes pre-scale branch did not remain at the site")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
     }
@@ -10127,7 +10336,37 @@ int main() {
         {"story_flag_bit_7", true},
         {"story_flag_bit_8", true},
         {"story_flag_bit_9", false},
+        {"group_item_flag_bit_2", false},
+    });
+    auto missing_scale = scripts.start_task(
+        "salish_spirit_eyes", "present");
+    if (!expect(spirit_page_is(missing_scale, "need_scale"),
+                "Spirit Eyes missing-scale inventory branch did not select its ROM page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    missing_scale = scripts.complete_native_operation(true);
+    if (!expect(missing_scale.dialogue_outcome.has_value() &&
+                    missing_scale.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place,
+                "Spirit Eyes missing-scale branch did not remain at the site")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_5", true},
+        {"story_flag_bit_6", true},
+        {"story_flag_bit_7", true},
+        {"story_flag_bit_8", true},
+        {"story_flag_bit_9", false},
         {"group_item_flag_bit_2", true},
+        {"story_trigger_active_8", true},
+        {"story_trigger_active_9", false},
+        {"field_mode_effect_flag_bit_15", true},
+        {"field_mode_effect_flag_bit_18", true},
+        {"field_mode_effect_flag_bit_19", false},
+        {"field_auxiliary_flag_bit_2", true},
     });
     auto spirit_eyes_completion = scripts.start_task(
         "salish_spirit_eyes", "present");
@@ -10135,20 +10374,67 @@ int main() {
                         ScriptTaskStep::Status::awaiting_native_operation &&
                     spirit_eyes_completion.operation.has_value() &&
                     spirit_eyes_completion.operation->dialogue.has_value() &&
-                    spirit_eyes_completion.operation->dialogue->inline_text.find(
-                        "completed your tasks") != std::string::npos &&
+                    spirit_eyes_completion.operation->dialogue->event_id ==
+                        "tasks_done" &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.page.tasks_done") != nullptr &&
                     scripts.story_state().at("story_flag_bit_9") &&
-                    !scripts.story_state().at("group_item_flag_bit_2"),
+                    scripts.story_state().at("story_trigger_active_8") &&
+                    !scripts.story_state().at("story_trigger_active_9") &&
+                    !scripts.story_state().at("group_item_flag_bit_2") &&
+                    !scripts.story_state().at(
+                        "field_mode_effect_flag_bit_15") &&
+                    !scripts.story_state().at(
+                        "field_mode_effect_flag_bit_18") &&
+                    scripts.story_state().at(
+                        "field_mode_effect_flag_bit_19") &&
+                    !scripts.story_state().at("field_auxiliary_flag_bit_2"),
                 "Spirit Eyes did not consume the Licourtrix scale into bit 9")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    spirit_eyes_completion = scripts.complete_native_operation(true);
+    if (!expect(spirit_page_is(spirit_eyes_completion, "ritual_setup") &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.page.ritual_setup") != nullptr,
+                "Spirit Eyes command 0x1A did not continue to the ritual setup prompt")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
     }
     spirit_eyes_completion = scripts.complete_native_operation(true);
     if (!expect(spirit_eyes_completion.status ==
                         ScriptTaskStep::Status::completed &&
-                    spirit_eyes_completion.result_id ==
-                        std::optional<std::string>{"field_return"},
-                "Spirit Eyes scale completion did not return to Scene 4")) {
+                    spirit_eyes_completion.dialogue_outcome.has_value() &&
+                    spirit_eyes_completion.dialogue_outcome->type ==
+                        DialogueOutcomeType::enter_activity &&
+                    spirit_eyes_completion.dialogue_outcome->destination_id ==
+                        "salish.spirit_eyes.ritual_of_binding",
+                "Spirit Eyes command 0x4A did not select its typed ritual activity")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_5", true}, {"story_flag_bit_6", true},
+        {"story_flag_bit_7", true}, {"story_flag_bit_8", true},
+        {"story_flag_bit_9", true},
+    });
+    auto post_ritual = scripts.start_task(
+        "salish_spirit_eyes", "present");
+    if (!expect(spirit_page_is(post_ritual, "post_ritual_opening") &&
+                    scripts.dialogue_text(
+                        "salish.spirit_eyes.page.post_ritual_opening") !=
+                        nullptr,
+                "Spirit Eyes completed-task route omitted its ROM text-only page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    post_ritual = scripts.complete_native_operation(true);
+    if (!expect(post_ritual.status == ScriptTaskStep::Status::completed &&
+                    post_ritual.dialogue_outcome.has_value() &&
+                    post_ritual.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place,
+                "Spirit Eyes post-ritual answer did not finish in place")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
     }

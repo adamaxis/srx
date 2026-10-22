@@ -343,7 +343,56 @@
       "text_profile": "renraku.offices"
     },
     "spirit_eyes": {
-      "events": {},
+      "events": {
+        "first_contact": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.spirit_eyes.page.first_contact"
+        },
+        "spirit_eyes_description": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.spirit_eyes.page.spirit_eyes_description"
+        },
+        "welcome_response": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.spirit_eyes.page.welcome_response"
+        },
+        "first_horn_request": {
+          "continuation_key": "",
+          "title_key": "salish.spirit_eyes.page.first_horn_request"
+        },
+        "ritual_setup": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.spirit_eyes.page.ritual_setup"
+        },
+        "need_horn": {
+          "continuation_key": "",
+          "title_key": "salish.spirit_eyes.page.need_horn"
+        },
+        "second_item": {
+          "continuation_key": "",
+          "title_key": "salish.spirit_eyes.page.second_item"
+        },
+        "need_pelt": {
+          "continuation_key": "",
+          "title_key": "salish.spirit_eyes.page.need_pelt"
+        },
+        "final_item": {
+          "continuation_key": "",
+          "title_key": "salish.spirit_eyes.page.final_item"
+        },
+        "need_scale": {
+          "continuation_key": "",
+          "title_key": "salish.spirit_eyes.page.need_scale"
+        },
+        "tasks_done": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.spirit_eyes.page.tasks_done"
+        },
+        "post_ritual_opening": {
+          "continuation_key": "",
+          "title_key": "salish.spirit_eyes.page.post_ritual_opening"
+        }
+      },
       "name": "Spirit Eyes",
       "portrait_alias": "dialogue.portraits.spirit.eyes",
       "text_profile": "salish.spirit_eyes"

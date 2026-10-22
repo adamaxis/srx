@@ -762,23 +762,30 @@ full-frame captures were inspected, but no independent Genesis frame of this
 service screen has been identified, so visual fidelity remains open.
 See [the Medicine Lodge route audit](visual-audits/council-medicine-lodge-entry.md).
 
-## Council Island Spirit Eyes ritual (partial, 2026-10-19)
+## Council Island Spirit Eyes ritual (partial, 2026-10-21)
 
-Scene-4 record 96 (`0x15BDF6`, event 27) now routes through an entity-owned
-Lua link to `salish_spirit_eyes.lua`. The task represents the first contact,
-ordered gargoyle-horn and hellhound-pelt handoffs, the final scale gate, and
-the bit-9 completion root. C++ saves the FFFC40 ritual markers as typed field
-state. Debug/Release physical-input QA reaches the record with ordinary Up,
-checks the event-27 dispatch and first-contact/horn-request panels, and writes
-`qt_runtime/field-spirit-eyes-physical-entry-qa/actual.bmp`; the full frames
-were inspected. Scene-47 record 62 routes its context-`0x13` event-25
-continuation to the separate Licourtrix Lua task. ROM `0x53F50` sets story bit
-8 and Group Item bit 2; Spirit Eyes handler `0x53E84` consumes that scale at
-`0x53E98` and sets bit 9 at `0x53EA8`. Lua and Debug/Release script-runtime
-QA now exercise the item handoff through the bit-9 completion. Keep this hill
-partial: the serpent text graph is not fully mapped, the contextual Scene-47
-route lacks physical QA, and no independent Genesis conversation frames were
-identified. See
+Scene-4 record 96 (`0x15BDF6`, event 27) routes through an entity-owned link
+to the `salish.spirit_eyes.ritual` JSON graph. It follows the ROM first-contact
+chain from `0xF7204` through command `0x15`, the Spirit Eyes description, both
+one-choice questions, their response page, and the first horn request. The
+bit-5 write happens after the opening page input. Later graph stages model
+missing/present horn, pelt, and scale branches and their ordered item, story,
+FFFC30, and FFFC40 effects. Scale completion records the `0xF51A8` page and a
+typed `enter_activity` result for command `0x4A`/`0x5D172`; its field host
+dispatcher remains unimplemented. The bit-9 repeat route is limited to the
+single text-only page actually consumed by the shared prompt runner; adjacent
+unconsumed pointers are unresolved.
+
+Debug/Release script-runtime QA covers the graph branches and typed activity
+result. Debug/Release physical-input QA reaches record 96 with ordinary Up,
+walks the complete first-contact prompt chain, and saves full 320x224 frames
+for every prompt and the clean Scene-4 return. C++ persists the FFFC40 ritual
+markers as typed field state. Scene-47 record 62 still routes context `0x13`
+to the separate procedural Licourtrix task; ROM `0x53F50` grants story bit 8
+and Group Item bit 2, then the Spirit Eyes scale branch consumes it and writes
+bit 9. Keep this hill partial: the Licourtrix text graph and contextual
+physical route are unresolved, the ritual activity is not dispatched by the
+host, and no independent Genesis conversation frame was identified. See
 [the Spirit Eyes audit](visual-audits/council-spirit-eyes.md).
 
 ## Boris Greenhouse Scene-2/event-6 indexed service (partial, 2026-10-21)

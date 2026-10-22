@@ -20850,9 +20850,9 @@ int run_field_spirit_eyes_physical_entry_qa(
         field_scene.field_runtime_state_for_dump().field_mode != 4U ||
         !introduction.source_complete ||
         introduction.option_count != 1U ||
-        introduction.options[0U].source_label != "|          < MORE >" ||
+        introduction.options[0U].source_label != "          < MORE >" ||
         !contains("ancient AmerIndian") ||
-        field_scene.field_world_fact_flags_for_dump() != (1U << 5U) ||
+        field_scene.field_world_fact_flags_for_dump() != 0U ||
         field_scene.field_auxiliary_flags_for_dump() != 1U ||
         introduction.portrait_alias !=
             "dialogue.portraits.spirit.eyes" ||
@@ -20870,11 +20870,61 @@ int run_field_spirit_eyes_physical_entry_qa(
         return 3;
     }
 
-    tap_qa_controller_button(field_scene, 0x40U); // A: continue to horn request
-    if (!field_scene.dialogue_open() || !contains("gargoyle") ||
-        !save("horn-request", false)) {
-        std::cerr << "Spirit Eyes QA: first-contact More did not reveal the "
-                     "source gargoyle-horn request\n";
+    tap_qa_controller_button(field_scene, 0x40U); // A: command 0x15
+    if (!field_scene.dialogue_open() || !contains("This is Spirit Eyes") ||
+        field_scene.field_world_fact_flags_for_dump() != (1U << 5U) ||
+        !save("spirit-eyes-description", false)) {
+        std::cerr << "Spirit Eyes QA: command 0x15 did not set bit 5 and "
+                     "advance to the next ROM page\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: one-choice welcome prompt
+    if (!field_scene.dialogue_open() || !contains("Is that not true?") ||
+        field_scene.dialogue_panel().option_count != 1U ||
+        !save("welcome-question", false)) {
+        std::cerr << "Spirit Eyes QA: welcome question did not expose its "
+                     "single ROM choice\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: brother-killer response
+    if (!field_scene.dialogue_open() ||
+        !contains("noble to the spirit") ||
+        !save("welcome-response", false)) {
+        std::cerr << "Spirit Eyes QA: welcome choice did not reach the "
+                     "source response page\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: ritual question
+    if (!field_scene.dialogue_open() ||
+        !contains("complex ritual") ||
+        field_scene.dialogue_panel().option_count != 1U ||
+        !save("ritual-question", false)) {
+        std::cerr << "Spirit Eyes QA: ritual question did not expose its "
+                     "single ROM choice\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: ask what to gather
+    if (!field_scene.dialogue_open() ||
+        !contains("horn of a gargoyle") ||
+        !save("first-horn-request", false)) {
+        std::cerr << "Spirit Eyes QA: first-contact conversation did not end "
+                     "with the source horn request\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: return to field
+    const auto return_frames =
+        field_scene.field_modal_return_transition_frames_for_dump();
+    const bool transition_finished =
+        finish_field_modal_return_transition(field_scene);
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 4U ||
+        return_frames == 0U || !transition_finished ||
+        !save("field-return", true)) {
+        std::cerr << "Spirit Eyes QA: first-contact prompt chain did not "
+                     "finish its modal return to Scene 4 (frames="
+                  << static_cast<unsigned>(return_frames)
+                  << ", transition_finished=" << transition_finished
+                  << ")\n";
         return 3;
     }
 
@@ -20882,10 +20932,10 @@ int run_field_spirit_eyes_physical_entry_qa(
     if (!trace) return 3;
     trace << "record\tevent\tcontinuation\tgate\tmovement_ticks\tresult\taudio_requests\n"
           << "96\t27\t0x53D5A\tstory_flag_bit_5=0\t"
-          << movement_ticks << "\tfirst_contact_then_horn_request\t"
+          << movement_ticks << "\tcomplete_first_contact_prompt_chain\t"
           << field_audio_events.size() << '\n';
     std::cout << "field_spirit_eyes_physical_entry_qa=passed "
-                 "record=96 event=27 result=first_contact_horn_request "
+                 "record=96 event=27 result=first_contact_prompt_chain "
                  "artifacts=" << output.string() << '\n';
     return 0;
 }

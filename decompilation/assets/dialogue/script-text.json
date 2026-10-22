@@ -1261,6 +1261,26 @@
     "council_medicine_lodge.response.farewell": "It would gladden my heart to share my relationship with nature to those who would listen.",
     "council_medicine_lodge.response.wise_one": "I see. You will find him outside the door to your left.",
     "council_medicine_lodge.entry.package_handoff": "<Chief Running Stream hands you a package.>||This is for you to deliver, Man-Of-The-City.||May the spirits keep you safe.",
-    "council_medicine_lodge.entry.package_payment": "<Chief Running Stream exchanges the package for nuyen.>||My ancestors thank you, Man-Of-The-City."
+    "council_medicine_lodge.entry.package_payment": "<Chief Running Stream exchanges the package for nuyen.>||My ancestors thank you, Man-Of-The-City.",
+    "salish.spirit_eyes.page.final_item": "The final task is at hand. Return with the living scale of a feathered serpent.||The feather must be given freely, not taken, from the dragon to be of use.||Return with this final item and we will learn your opponent's name.",
+    "salish.spirit_eyes.page.first_contact": "<You come upon an ancient AmerIndian sitting cross-legged near an open fire pit.||Your breath catches in your throat as his eyes slide open and he turns to face you.>",
+    "salish.spirit_eyes.page.need_horn": "I cannot instruct you further until I have the horn of a gargoyle.||Seek them in the caves or abandoned areas.",
+    "salish.spirit_eyes.page.need_pelt": "The hell hound pelt is critical for the preparation of the gargoyle horn.||Quickly, bring a pelt to me so that I may begin the final process!",
+    "salish.spirit_eyes.page.need_scale": "All is ready but for the living feather.||I know not where to find a dragon, but they are solitary creatures with vast intelligence and powers!||All I await is this final item.",
+    "salish.spirit_eyes.page.post_ritual_brother": "   Thon killed your brother, and|   he has linked himself to you.||   I sense he has already begun|      shaping the events of|       your life from afar.",
+    "salish.spirit_eyes.page.post_ritual_lust": "| His lust for power is boundless!||        You must stop him!!",
+    "salish.spirit_eyes.page.post_ritual_name": "             This is|   the true face of your enemy,|         and his name is||              THON!",
+    "salish.spirit_eyes.page.post_ritual_opening": "Warrior, why do you waste time here with me?||There are no more answers I can provide.||You must seek out Thon!||You must find the clues yourself!",
+    "salish.spirit_eyes.page.post_ritual_warning": "       Evil walks the land!||    It is more powerful than I|     expected and dedicated to|       the pursuit of power.",
+    "salish.spirit_eyes.page.second_item": "Well done, young warrior.  The second item required is the pelt of a hell hound.||These foul animals travel in packs, attacking lone travelers or defenseless groups.||Remember, the pelt must be removed by your own hand.",
+    "salish.spirit_eyes.page.tasks_done": "You have completed your tasks, young warrior.  Rest while I call upon the spirits.||In return for the gifts you provided, they will guide me to the answer you seek.",
+    "salish.spirit_eyes.option.brother_killer": "I hear you can help me find my brother's killer.",
+    "salish.spirit_eyes.option.gather": "What must I gather for your ritual?",
+    "salish.spirit_eyes.page.first_horn_request": "First, I must have the horn of a gargoyle, removed by your own hand.||Heed my warning, gargoyles are extremely tough, and rarely attack alone.||When you acquire this, return and I will tell you more.",
+    "salish.spirit_eyes.page.ritual_question": "In order to learn the name of your enemy, I must perform a complex ritual.||I will need three key ingredients, and the task I ask of you is to gather them.",
+    "salish.spirit_eyes.page.spirit_eyes_description": "<His eyes are bottomless black pits that seem to hold the knowledge of centuries,|the deep sadness of racial injustices,|and a wealth of human compassion.|||This is Spirit Eyes.>",
+    "salish.spirit_eyes.page.welcome_question": "Welcome stranger.||Sit and let me look at you.||You carry a heavy burden and travel in a strange land.  Enemies surround you and you seek help.||Is that not true?",
+    "salish.spirit_eyes.page.welcome_response": "I can and will help you, for your quest is noble to the spirit.||We must seek the identity of your foe, for to know your opponent is half the battle.||However, I will need you to assist me in acquiring this information.",
+    "salish.spirit_eyes.page.ritual_setup": "<Spirit Eyes is soon set up for the ritual with the items you have provided.||You watch spellbound as he begins.>"
   }
 }

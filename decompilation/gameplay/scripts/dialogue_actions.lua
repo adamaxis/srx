@@ -55,6 +55,13 @@ local function register_core_actions(registry)
         return true
     end)
 
+    registry:register("story.select_fixed_trigger", function(arguments)
+        assert(is_integer(arguments.triggerId, 0, 31),
+            "story.select_fixed_trigger needs triggerId 0..31")
+        StoryFlags.select_fixed_trigger(arguments.triggerId)
+        return true
+    end)
+
     registry:register("story.apply_dialogue_command", function(arguments)
         assert(is_integer(arguments.commandId, 0, 255),
             "story.apply_dialogue_command needs commandId 0..255")
@@ -76,6 +83,24 @@ local function register_core_actions(registry)
                type(arguments.value) == "boolean",
             "field.set_mode_effect_flag needs a flagBit and boolean value")
         game.state["field_mode_effect_flag_bit_" .. arguments.flagBit] =
+            arguments.value
+        return true
+    end)
+
+    registry:register("field.set_auxiliary_flag", function(arguments)
+        assert(is_integer(arguments.flagBit, 0, 31) and
+               type(arguments.value) == "boolean",
+            "field.set_auxiliary_flag needs a flagBit and boolean value")
+        game.state["field_auxiliary_flag_bit_" .. arguments.flagBit] =
+            arguments.value
+        return true
+    end)
+
+    registry:register("item.set_group_flag", function(arguments)
+        assert(is_integer(arguments.flagBit, 0, 14) and
+               type(arguments.value) == "boolean",
+            "item.set_group_flag needs a group-item flagBit and boolean value")
+        game.state["group_item_flag_bit_" .. arguments.flagBit] =
             arguments.value
         return true
     end)

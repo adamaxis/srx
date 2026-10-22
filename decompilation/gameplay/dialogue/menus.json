@@ -1274,6 +1274,16 @@
           "more": "shared.more"
         }
       },
+      "welcome_question": {
+        "choice_label_keys": {
+          "brother_killer": "salish.spirit_eyes.option.brother_killer"
+        }
+      },
+      "ritual_question": {
+        "choice_label_keys": {
+          "gather": "salish.spirit_eyes.option.gather"
+        }
+      },
       "serpent_intentions": {
         "choice_label_keys": {
           "neighborhood": "salish.spirit_eyes.option.neighborhood",
