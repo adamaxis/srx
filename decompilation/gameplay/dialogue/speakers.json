@@ -399,6 +399,10 @@
     },
     "red_buffalo_woman": {
       "events": {
+        "renraku_update": {
+          "continuation_key": "",
+          "title_key": "salish.red_buffalo.page.gillian_followup"
+        },
         "no_renraku_map": {
           "continuation_key": "",
           "title_key": "salish.red_buffalo.page.branch_10"
@@ -546,6 +550,10 @@
         "guarded_penthouse": {
           "continuation_key": "shared.more",
           "title_key": "tarislar.garden.apartments.page.penthouse_entry"
+        },
+        "renraku_update": {
+          "continuation_key": "",
+          "title_key": "salish.red_buffalo.page.gillian_followup"
         },
         "no_renraku_map": {
           "continuation_key": "",

@@ -112,6 +112,18 @@ local document = {
             done = { type = "terminal",
                      outcome = { type = "continue_in_place" } },
         }),
+        ["test.button_no_selection"] = graph("menu", {
+            menu = {
+                type = "choice", menuId = "test_menu",
+                inputContract = "buttons_abc",
+                choices = { { id = "more", next = "continued" } },
+                noSelectionNext = "left",
+            },
+            continued = { type = "terminal",
+                          outcome = { type = "return_to_caller" } },
+            left = { type = "terminal",
+                     outcome = { type = "continue_in_place" } },
+        }),
         ["test.inline_prompt"] = graph("prompt", {
             prompt = {
                 type = "choice", menuId = "test_inline_menu",
@@ -249,6 +261,7 @@ local actions = {
 }
 local presented_pages = {}
 local presented_choices = {}
+local next_button_input = "second"
 local cursor_inputs = { "down", "confirm" }
 local yes_no_inputs = { "yes", "no" }
 local host = {
@@ -282,7 +295,7 @@ local host = {
         elseif node.inputContract == "yes_no" then
             return table.remove(yes_no_inputs, 1)
         end
-        return "second"
+        return next_button_input
     end,
 }
 local session = DialogueGraph.Session.new(
@@ -300,6 +313,11 @@ assert(#visible_choices == 2 and visible_choices[1] == "first" and
 outcome = session:run("test.filtered_button_overflow")
 assert(outcome.type == "source_boundary" and
        outcome.reason:find("visible_button_choice_limit_exceeded", 1, true) ~= nil)
+
+next_button_input = nil
+outcome = session:run("test.button_no_selection")
+assert(outcome.type == "continue_in_place")
+next_button_input = "second"
 
 outcome = session:run("test.cursor")
 assert(outcome.type == "enter_activity" and

@@ -200,6 +200,12 @@ local function validate_graph(graph_id, graph, conditions, cinematics)
                 assert(is_identifier(node.textProfile),
                     owner .. " has an invalid text profile")
             end
+            if node.noSelectionNext ~= nil then
+                assert(node.inputContract == "buttons_abc",
+                    owner .. " noSelectionNext needs buttons_abc")
+                require_node_reference(
+                    graph.nodes, node.noSelectionNext, owner)
+            end
             if node.inputContract == "buttons_abc" then
                 local unconditional_choices = 0
                 for _, choice in ipairs(node.choices) do
@@ -491,18 +497,30 @@ function Session:run(graph_id, context)
             elseif cancelled then
                 node_id = node.cancelNext
             elseif choice_id == nil then
-                return self:_boundary(graph_id, node_id,
-                                      "choice_input_unresolved")
+                -- Some source button prompts return to their caller when no
+                -- listed result is selected. Content must declare that edge.
+                if node.noSelectionNext ~= nil then
+                    node_id = node.noSelectionNext
+                else
+                    return self:_boundary(graph_id, node_id,
+                                          "choice_input_unresolved")
+                end
             else
                 local selected
                 for _, choice in ipairs(visible) do
                     if choice.id == choice_id then selected = choice break end
                 end
                 if selected == nil then
-                    return self:_boundary(graph_id, node_id,
-                                          "choice_not_in_visible_options")
+                    if node.noSelectionNext ~= nil then
+                        node_id = node.noSelectionNext
+                    else
+                        return self:_boundary(
+                            graph_id, node_id,
+                            "choice_not_in_visible_options")
+                    end
+                else
+                    node_id = selected.next
                 end
-                node_id = selected.next
             end
         elseif node.type == "branch" then
             local next_node

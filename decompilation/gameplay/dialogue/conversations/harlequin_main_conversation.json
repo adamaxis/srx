@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "harlequin.main_conversation": {
+      "entryNode": "meeting",
+      "provenance": {
+        "romAddresses": [
+          "0xF58C0",
+          "0xF594C",
+          "0xF5968",
+          "0x21F32"
+        ],
+        "scope": "shared_harlequin_main_conversation_scene_1_and_scene_6"
+      },
+      "nodes": {
+        "meeting": {
+          "type": "choice",
+          "menuId": "meeting",
+          "promptTextKey": "salish.red_buffalo.page.topics",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "michael_topic" }
+          ],
+          "noSelectionNext": "finish_in_place",
+          "evidence": "The shared prompt at 0xF58C0 starts Harlequin's meeting and leaves the field route when More is not selected."
+        },
+        "michael_topic": {
+          "type": "choice",
+          "menuId": "michael_topic",
+          "promptTextKey": "salish.red_buffalo.page.michael",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "ask_about_michael", "next": "thon_topic" }
+          ],
+          "noSelectionNext": "finish_in_place",
+          "evidence": "The one-choice prompt follows the meeting and asks about Michael before continuing to the Thon topic."
+        },
+        "thon_topic": {
+          "type": "choice",
+          "menuId": "thon_topic",
+          "promptTextKey": "salish.red_buffalo.page.thon",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "who_is_thon", "next": "thon_explanation" }
+          ],
+          "noSelectionNext": "finish_in_place",
+          "evidence": "The one-choice topic prompt presents Harlequin's apology about Michael before the explanation of Thon."
+        },
+        "thon_explanation": {
+          "type": "choice",
+          "menuId": "thon_explanation",
+          "promptTextKey": "salish.red_buffalo.page.thon_more",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "thon_curse" }
+          ],
+          "noSelectionNext": "finish_in_place",
+          "evidence": "The More prompt presents the extracted explanation of Thon's nature and age."
+        },
+        "thon_curse": {
+          "type": "choice",
+          "menuId": "thon_curse",
+          "promptTextKey": "salish.red_buffalo.page.renraku",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "renraku_topic" }
+          ],
+          "noSelectionNext": "finish_in_place",
+          "evidence": "The More prompt explains Thon's need to replenish his life force before the Renraku topic."
+        },
+        "renraku_topic": {
+          "type": "choice",
+          "menuId": "renraku_topic",
+          "promptTextKey": "salish.red_buffalo.page.renraku_more",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "why_renraku", "next": "renraku_explanation" }
+          ],
+          "noSelectionNext": "finish_in_place",
+          "evidence": "The one-choice Renraku topic describes Thon's weakened state and reliance on outside help."
+        },
+        "renraku_explanation": {
+          "type": "choice",
+          "menuId": "renraku_explanation",
+          "promptTextKey": "salish.red_buffalo.page.gillian",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "ito_victory_gate" }
+          ],
+          "noSelectionNext": "finish_in_place",
+          "evidence": "Completing the Renraku and Mako explanation reaches the Ito-victory branch in the shared Harlequin prompt sequence."
+        },
+        "ito_victory_gate": {
+          "type": "branch",
+          "cases": [
+            {
+              "when": "harlequin.main_conversation_ito_fight_won",
+              "next": "mark_post_ito_briefed"
+            }
+          ],
+          "fallback": "no_ito_effect",
+          "evidence": "Story bit 16 separates the Ito update from the no-Ito Renraku return at prompts 0xF5968 and 0xF594C."
+        },
+        "no_ito_effect": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 7, "value": true },
+          "next": "no_ito_update",
+          "evidence": "The no-Ito return path sets FFFC34 bit 7 before displaying the final Renraku update."
+        },
+        "no_ito_update": {
+          "type": "page",
+          "eventId": "renraku_update",
+          "next": "finish_in_place",
+          "evidence": "Prompt 0xF594C presents the extracted Mako/Ito update without a More continuation when Ito has not been defeated."
+        },
+        "mark_post_ito_briefed": {
+          "type": "action",
+          "actionId": "story.apply_dialogue_command",
+          "arguments": { "commandId": 64 },
+          "next": "ito_update",
+          "evidence": "Dialogue command 0x40 at 0x21F32 selects trigger 28 and marks POST_ITO_BRIEFED before the Ito choice."
+        },
+        "ito_update": {
+          "type": "choice",
+          "menuId": "ito_update",
+          "promptTextKey": "salish.red_buffalo.page.gillian_followup",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "ito_killed", "next": "ito_response" }
+          ],
+          "noSelectionNext": "finish_in_place",
+          "evidence": "Prompt 0xF5968 asks the player about Ito after command 0x40 marks bit 28."
+        },
+        "ito_response": {
+          "type": "choice",
+          "menuId": "ito_response",
+          "promptTextKey": "salish.red_buffalo.page.ito",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "map_information_caller" }
+          ],
+          "noSelectionNext": "finish_in_place",
+          "evidence": "ROM text record 0xFC757 is followed by More and then the shared map-information dialogue."
+        },
+        "map_information_caller": {
+          "type": "terminal",
+          "outcome": { "type": "return_to_caller" }
+        },
+        "finish_in_place": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
+    }
+  }
+}

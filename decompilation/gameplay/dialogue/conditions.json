@@ -237,6 +237,15 @@
         "scope": "repeat_information_requires_unshown_map_item"
       }
     },
+    "harlequin.main_conversation_ito_fight_won": {
+      "expression": {
+        "fact": "story.story_flag_bit_16", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0xF58C0", "0xF594C", "0xF5968"],
+        "scope": "shared_harlequin_main_conversation_ito_victory_branch"
+      }
+    },
     "harlequin.map_information_has_renraku_map": {
       "expression": {
         "fact": "story.group_item_flag_bit_8", "op": "eq", "value": true

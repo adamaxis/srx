@@ -9897,6 +9897,7 @@ int main() {
 
     scripts.set_story_state({
         {"story_flag_bit_30", true},
+        {"story_flag_bit_16", false},
         {"story_flag_bit_21", false},
     });
     constexpr std::string_view kTarislarLocation =
@@ -10130,7 +10131,7 @@ int main() {
     }
     scripts.cancel_task();
 
-    const auto is_harlequin_map_prompt =
+    const auto is_harlequin_more_prompt =
         [&scripts](const ScriptTaskStep& task, const std::string_view menu_id,
                   const std::string_view text_key,
                   const std::string_view speaker_id,
@@ -10151,7 +10152,29 @@ int main() {
                    task.operation->menu->choices.size() == 1U &&
                    task.operation->menu->choices.front().id == "more";
         };
-    const auto is_harlequin_map_page =
+    const auto is_harlequin_prompt =
+        [&scripts](const ScriptTaskStep& task, const std::string_view menu_id,
+                  const std::string_view text_key,
+                  const std::string_view choice_id,
+                  const std::string_view speaker_id,
+                  const std::string_view text_profile) {
+            const auto* expected_text = scripts.dialogue_text(text_key);
+            return expected_text != nullptr &&
+                   task.status ==
+                       ScriptTaskStep::Status::awaiting_native_operation &&
+                   task.operation.has_value() &&
+                   task.operation->type ==
+                       ScriptNativeOperation::Type::ui_menu &&
+                   task.operation->menu.has_value() &&
+                   task.operation->menu->id == menu_id &&
+                   task.operation->menu->inline_prompt &&
+                   task.operation->menu->inline_text == *expected_text &&
+                   task.operation->menu->speaker_id == speaker_id &&
+                   task.operation->menu->text_profile == text_profile &&
+                   task.operation->menu->choices.size() == 1U &&
+                   task.operation->menu->choices.front().id == choice_id;
+        };
+    const auto is_harlequin_page =
         [&scripts](const ScriptTaskStep& task, const std::string_view event_id,
                   const std::string_view text_key,
                   const std::string_view speaker_id,
@@ -10185,7 +10208,7 @@ int main() {
     });
     auto harlequin_without_map = scripts.start_task(
         "harlequin_dialogue", "present_map_information");
-    if (!expect(is_harlequin_map_page(
+    if (!expect(is_harlequin_page(
                     harlequin_without_map, "no_renraku_map",
                     "salish.red_buffalo.page.branch_10",
                     "red_buffalo_woman", "salish.red_buffalo", "") &&
@@ -10200,6 +10223,113 @@ int main() {
                     harlequin_without_map.result_id ==
                         std::optional<std::string>{"left"},
                 "Shared Harlequin no-map branch did not return in place")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    struct HarlequinMainPrompt final {
+        std::string_view menu_id;
+        std::string_view text_key;
+        std::string_view choice_id;
+    };
+    constexpr std::array<HarlequinMainPrompt, 7U> harlequin_main_prompts{{
+        {"meeting", "salish.red_buffalo.page.topics", "more"},
+        {"michael_topic", "salish.red_buffalo.page.michael",
+         "ask_about_michael"},
+        {"thon_topic", "salish.red_buffalo.page.thon", "who_is_thon"},
+        {"thon_explanation", "salish.red_buffalo.page.thon_more", "more"},
+        {"thon_curse", "salish.red_buffalo.page.renraku", "more"},
+        {"renraku_topic", "salish.red_buffalo.page.renraku_more",
+         "why_renraku"},
+        {"renraku_explanation", "salish.red_buffalo.page.gillian", "more"},
+    }};
+    scripts.set_story_state({{"story_flag_bit_16", false}});
+    auto harlequin_no_ito = scripts.start_task(
+        "harlequin_dialogue", "present_main_conversation");
+    for (const auto& prompt : harlequin_main_prompts) {
+        if (!expect(is_harlequin_prompt(
+                        harlequin_no_ito, prompt.menu_id, prompt.text_key,
+                        prompt.choice_id, "red_buffalo_woman",
+                        "salish.red_buffalo"),
+                    "Shared Harlequin main graph lost a ROM topic prompt or Red Buffalo presentation context")) {
+            std::cerr << scripts.failure() << '\n';
+            return 17;
+        }
+        harlequin_no_ito =
+            scripts.complete_native_menu_choice(prompt.choice_id);
+    }
+    if (!expect(is_harlequin_page(
+                    harlequin_no_ito, "renraku_update",
+                    "salish.red_buffalo.page.gillian_followup",
+                    "red_buffalo_woman", "salish.red_buffalo", "") &&
+                    scripts.story_state().at(
+                        "field_mode_effect_flag_bit_7"),
+                "Shared Harlequin no-Ito graph lost the final update or effect bit 7")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    harlequin_no_ito = scripts.complete_native_operation(true);
+    if (!expect(harlequin_no_ito.status ==
+                        ScriptTaskStep::Status::completed &&
+                    harlequin_no_ito.result_id ==
+                        std::optional<std::string>{"left"},
+                "Shared Harlequin no-Ito route did not return in place")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_16", true},
+        {"group_item_flag_bit_7", false},
+        {"group_item_flag_bit_8", false},
+    });
+    auto harlequin_ito = scripts.start_task(
+        "harlequin_dialogue", "present_main_conversation");
+    for (const auto& prompt : harlequin_main_prompts) {
+        if (!expect(is_harlequin_prompt(
+                        harlequin_ito, prompt.menu_id, prompt.text_key,
+                        prompt.choice_id, "red_buffalo_woman",
+                        "salish.red_buffalo"),
+                    "Shared Harlequin Ito graph lost a ROM topic prompt")) {
+            std::cerr << scripts.failure() << '\n';
+            return 17;
+        }
+        harlequin_ito = scripts.complete_native_menu_choice(prompt.choice_id);
+    }
+    if (!expect(is_harlequin_prompt(
+                    harlequin_ito, "ito_update",
+                    "salish.red_buffalo.page.gillian_followup", "ito_killed",
+                    "red_buffalo_woman", "salish.red_buffalo") &&
+                    scripts.story_state().at("story_flag_bit_28") &&
+                    scripts.story_state().at("story_trigger_active_28"),
+                "Shared Harlequin Ito branch did not apply command 0x40 before its choice")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    harlequin_ito = scripts.complete_native_menu_choice("ito_killed");
+    if (!expect(is_harlequin_more_prompt(
+                    harlequin_ito, "ito_response",
+                    "salish.red_buffalo.page.ito",
+                    "red_buffalo_woman", "salish.red_buffalo"),
+                "Shared Harlequin Ito branch lost the extracted Ito response")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    harlequin_ito = scripts.complete_native_menu_choice("more");
+    if (!expect(is_harlequin_page(
+                    harlequin_ito, "no_renraku_map",
+                    "salish.red_buffalo.page.branch_10",
+                    "red_buffalo_woman", "salish.red_buffalo", "") &&
+                    scripts.story_state().at("field_mode_effect_flag_bit_8"),
+                "Shared Harlequin Ito continuation did not enter the map graph")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    harlequin_ito = scripts.complete_native_operation(true);
+    if (!expect(harlequin_ito.status == ScriptTaskStep::Status::completed &&
+                    harlequin_ito.result_id ==
+                        std::optional<std::string>{"left"},
+                "Shared Harlequin Ito and map-information graphs did not return in place")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
@@ -10236,7 +10366,7 @@ int main() {
     }
     tarislar_one_map_flow =
         scripts.complete_native_menu_choice("information");
-    if (!expect(is_harlequin_map_prompt(
+    if (!expect(is_harlequin_more_prompt(
                     tarislar_one_map_flow, "renraku_map",
                     "salish.red_buffalo.page.ito_detail",
                     "tarislar_apartments_narrator",
@@ -10249,7 +10379,7 @@ int main() {
     }
     tarislar_one_map_flow =
         scripts.complete_native_menu_choice("more");
-    if (!expect(is_harlequin_map_prompt(
+    if (!expect(is_harlequin_more_prompt(
                     tarislar_one_map_flow, "renraku_map_meaning",
                     "salish.red_buffalo.page.branch_0",
                     "tarislar_apartments_narrator",
@@ -10260,7 +10390,7 @@ int main() {
     }
     tarislar_one_map_flow =
         scripts.complete_native_menu_choice("more");
-    if (!expect(is_harlequin_map_prompt(
+    if (!expect(is_harlequin_more_prompt(
                     tarislar_one_map_flow, "vigore_lead",
                     "salish.red_buffalo.page.branch_1",
                     "tarislar_apartments_narrator",
@@ -10273,7 +10403,7 @@ int main() {
     }
     tarislar_one_map_flow =
         scripts.complete_native_menu_choice("more");
-    if (!expect(is_harlequin_map_prompt(
+    if (!expect(is_harlequin_more_prompt(
                     tarislar_one_map_flow, "vigore_report",
                     "salish.red_buffalo.page.branch_2",
                     "tarislar_apartments_narrator",
@@ -10284,7 +10414,7 @@ int main() {
     }
     tarislar_one_map_flow =
         scripts.complete_native_menu_choice("more");
-    if (!expect(is_harlequin_map_prompt(
+    if (!expect(is_harlequin_more_prompt(
                     tarislar_one_map_flow, "vigore_explanation",
                     "salish.red_buffalo.page.branch_3",
                     "tarislar_apartments_narrator",
@@ -10295,7 +10425,7 @@ int main() {
     }
     tarislar_one_map_flow =
         scripts.complete_native_menu_choice("more");
-    if (!expect(is_harlequin_map_page(
+    if (!expect(is_harlequin_page(
                     tarislar_one_map_flow, "renraku_closing",
                     "salish.red_buffalo.page.branch_4",
                     "tarislar_apartments_narrator",
@@ -10341,7 +10471,7 @@ int main() {
     }
     tarislar_paired_map_flow =
         scripts.complete_native_menu_choice("information");
-    if (!expect(is_harlequin_map_prompt(
+    if (!expect(is_harlequin_more_prompt(
                     tarislar_paired_map_flow, "renraku_map",
                     "salish.red_buffalo.page.branch_5",
                     "tarislar_apartments_narrator",
@@ -10362,7 +10492,7 @@ int main() {
     for (std::size_t page = 0U; page < paired_map_menu_ids.size(); ++page) {
         tarislar_paired_map_flow =
             scripts.complete_native_menu_choice("more");
-        if (!expect(is_harlequin_map_prompt(
+        if (!expect(is_harlequin_more_prompt(
                         tarislar_paired_map_flow,
                         paired_map_menu_ids[page], paired_map_text_keys[page],
                         "tarislar_apartments_narrator",
@@ -10374,7 +10504,7 @@ int main() {
     }
     tarislar_paired_map_flow =
         scripts.complete_native_menu_choice("more");
-    if (!expect(is_harlequin_map_page(
+    if (!expect(is_harlequin_page(
                     tarislar_paired_map_flow, "tomb_departure_prompt",
                     "salish.red_buffalo.page.branch_11",
                     "tarislar_apartments_narrator",
@@ -10391,7 +10521,7 @@ int main() {
         return 17;
     }
     tarislar_paired_map_flow = scripts.complete_native_operation(true);
-    if (!expect(is_harlequin_map_page(
+    if (!expect(is_harlequin_page(
                     tarislar_paired_map_flow, "tomb_departure_response",
                     "salish.red_buffalo.page.branch_12",
                     "tarislar_apartments_narrator",
@@ -10516,7 +10646,7 @@ int main() {
         return 17;
     }
     tarislar_post_ito = scripts.complete_native_menu_choice("more");
-    if (!expect(is_harlequin_map_page(
+    if (!expect(is_harlequin_page(
                     tarislar_post_ito, "no_renraku_map",
                     "salish.red_buffalo.page.branch_10",
                     "tarislar_apartments_narrator",
@@ -10537,6 +10667,7 @@ int main() {
 
     scripts.set_story_state({
         {"story_flag_bit_30", true},
+        {"story_flag_bit_16", false},
         {"story_flag_bit_21", false},
     });
     auto tarislar_dialogue = scripts.start_task(
@@ -10627,17 +10758,12 @@ int main() {
         tarislar_dialogue = scripts.complete_native_menu_choice(
             tarislar_choice_ids[page]);
     }
-    if (!expect(tarislar_dialogue.status ==
-                        ScriptTaskStep::Status::awaiting_native_operation &&
-                    tarislar_dialogue.operation.has_value() &&
-                    tarislar_dialogue.operation->type ==
-                        ScriptNativeOperation::Type::ui_say &&
-                    tarislar_dialogue.operation->dialogue.has_value() &&
-                    tarislar_dialogue.operation->dialogue->inline_text ==
-                        "After Thon fragged his relationship with Renraku, Mako was replaced.||"
-                        "Ito Ogami is a legendary player of hardball.||"
-                        "I've managed to keep him and Renraku off my trail so far.",
-                "Tarislar first-entry path did not follow command 0x40 to its guarded response")) {
+    if (!expect(is_harlequin_page(
+                    tarislar_dialogue, "renraku_update",
+                    "salish.red_buffalo.page.gillian_followup",
+                    "tarislar_apartments_narrator",
+                    "tarislar.garden.apartments.entry", ""),
+                "Tarislar first-entry path lost its extracted no-Ito response page")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
@@ -10793,6 +10919,7 @@ int main() {
 
     scripts.set_story_state({
         {"story_flag_bit_30", false},
+        {"story_flag_bit_16", false},
         {"story_flag_bit_21", false},
     });
     auto tarislar_guard_route =
@@ -10952,15 +11079,11 @@ int main() {
     tarislar_guard_continue = scripts.complete_native_menu_choice(
         "why_renraku");
     tarislar_guard_continue = scripts.complete_native_menu_choice("more");
-    if (!expect(tarislar_guard_continue.status ==
-                    ScriptTaskStep::Status::awaiting_native_operation &&
-                    tarislar_guard_continue.operation.has_value() &&
-                    tarislar_guard_continue.operation->type ==
-                        ScriptNativeOperation::Type::ui_say &&
-                    tarislar_guard_continue.operation->dialogue.has_value() &&
-                    tarislar_guard_continue.operation->dialogue->inline_text.find(
-                        "After Thon fragged his relationship with Renraku") !=
-                        std::string::npos,
+    if (!expect(is_harlequin_page(
+                    tarislar_guard_continue, "renraku_update",
+                    "salish.red_buffalo.page.gillian_followup",
+                    "tarislar_apartments_narrator",
+                    "tarislar.garden.apartments.entry", ""),
                 "Nested Harlequin branch did not reach its source continuation")) {
         std::cerr << scripts.failure() << '\n';
         return 17;

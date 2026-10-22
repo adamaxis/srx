@@ -169,8 +169,12 @@ reused across them. These captures show the selected player's path only; ROM
 conditions and branch code define the alternatives that the video never
 selects.
 
-The current catalog review has 18 graphs. All converted game choice nodes
-currently use `buttons_abc`. The Lua session tests also exercise `yes_no`
+The current catalog review has 30 graphs. All converted game choice nodes
+currently use `buttons_abc`. A button choice may declare `noSelectionNext`
+when the ROM returns to its caller without a listed selection; absent that
+source-backed edge, an unselected or unmatched result remains a visible source
+boundary. Cursor-list menus use `cancelNext` for their explicit back/cancel
+input. The Lua session tests also exercise `yes_no`
 (exactly two choices) and `cursor_list` (navigation, confirmation, and
 cancellation) without pretending those test fixtures are game content. The
 Vid-Phone contact picker remains its own paged service loop. Independent game
