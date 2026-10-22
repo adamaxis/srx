@@ -180,26 +180,48 @@ selects `0xF4C18`. The shared `0x1F246`/`0x1F3C4` runner sees its negative
 first-option sentinel, shows only the `0xF7C79` text, and returns. The four
 adjacent pointers belong to the separate `0x5D1F6` sequence.
 
-The Scene-47 Licourtrix encounter now uses the same JSON graph, named text
+### Scene-47 mode-table Renraku notice
+
+The mode-table activity at `0x2CE0` has a separate deferred handler from the
+record-62 Licourtrix conversation. When FFFC10=`0x14`, FFFBF9=8, FFFC0E is
+nonzero, and FFFC1E bit 8 is clear, the ROM selects Scene 47 and queues list
+`0x1E552` with handler `0x53EE2`. That handler passes the single text-only
+descriptor at `0xF4C58` and profile `0x12206C` to the shared
+`0x1F246`/`0x1F3C4` prompt loop. The page text is `0xF7D0C`; its negative
+first-option sentinel means wait 30 frames, then return on any controller
+event. It does not implement the later fight or replace the five queued
+actors.
+
+The host represents this as `salish.renraku.cave_ambush` in JSON, with the ROM
+text and 56x72 portrait imported as named assets. Its precondition checks the
+active Scene-47 location, field mode 47, event 8, and transition context
+`0x13`. The page uses the shared `field_mode_text` presentation contract and
+ends with typed `continue_in_place`. Debug/Release route QA exercises the
+60-frame activity handoff, full-screen page, early-input rejection, 30-frame
+wait, and in-place return. The route is injected from traced ROM inputs because
+the upstream producer of context `0x14` is not yet recovered; the capture is
+internal evidence, with no matching independent longplay frame identified.
+
+### Scene-47 Licourtrix encounter
+
+The record-62 Licourtrix conversation uses the same JSON graph, named text
 keys, speaker/menu catalog, and condition evaluator as the other converted
 dialogue. ROM order is explicit: trigger 8 is selected first; clear story bit 7
 shows the flight page; otherwise set bit 8 shows the empty lair; otherwise the
 main graph requires FFFC0E nonzero, FFFC10=`0x13`, and FFFBF9=8. The lie answer
 loops on one warning-and-choice node, and the scale reward is written only
-after the final page closes. Debug/Release tests cover these permutations. The
-active Qt coordinator now runs the mode-table transition and scene-entry path
-from seeded ROM inputs, selecting Scene 47, its `0x5E80,0x1300` runner spawn,
-and the Lua `mode_13_entry` actor list. Debug/Release route QA covers those
-results. The upstream producer of context `0x14`, deferred `0x53EE2` handler,
-and physical record-62 input remain incomplete. Reviewed longplay sections
-contain no matching Licourtrix encounter, so runtime captures remain internal
-evidence rather than an independent Genesis visual comparison.
+after the final page closes. Debug/Release tests cover these permutations.
+Scene entry now selects Scene 47, its `0x5E80,0x1300` runner spawn, and the Lua
+`mode_13_entry` actor list. The upstream context producer and physical
+record-62 input remain incomplete. Reviewed longplay sections contain no
+matching Licourtrix encounter, so runtime captures remain internal evidence
+rather than an independent Genesis visual comparison.
 
 The source-derived permutation table for this graph is:
 
 | Gate/input | ROM result | Graph result |
 | --- | --- | --- |
-| FFFC10 is `0x14`, FFFBF9 is 8, FFFC0E is nonzero | `0x2CE0` selects context `0x13`, maps it to Scene `0x2F`, and when FFFC1E bit 8 is clear starts activity with deferred routine `0x53EE2` and pending list `0x1E552`. | Active Qt coordinator and scene-entry code select Scene 47, spawn `0x5E80,0x1300`, and load five Lua actors for the seeded inputs. The upstream context producer and deferred routine are still unresolved. |
+| FFFC10 is `0x14`, FFFBF9 is 8, FFFC0E is nonzero | `0x2CE0` selects context `0x13`, maps it to Scene `0x2F`, and when FFFC1E bit 8 is clear starts activity with deferred routine `0x53EE2` and pending list `0x1E552`. | Active Qt coordinator selects Scene 47, spawn `0x5E80,0x1300`, and five Lua actors. After the 60-frame activity handoff, `0x53EE2` opens the JSON mode-text page from `0xF7D0C` with profile `0x12206C`; the 30-frame any-button wait ends in `continue_in_place`. The context producer remains unresolved. |
 | FFFC10 is not `0x13` | Event 25 is rewritten to event 8 before `0x53EFA`. | The graph is not entered; a direct invocation reports a source boundary. |
 | Context `0x13`, any story state | Select story trigger 8 first. | Begin the ordered story checks. |
 | Story bit 7 clear, either value of bit 8 | Select the flight-notice record. | Show `serpent_flight`; return in place without writing the scale. |

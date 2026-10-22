@@ -7607,12 +7607,42 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         }
         if (continuation == MovementModeTransitionContinuation::
                                mode_table_world_activity) {
-            // ROM 0x2CE0 installs handler 0x53EE2. The actor-list entry is
-            // now selected by its Lua content id, but this handler body is
-            // not yet converted, so keep the remaining continuation visible.
-            source_boundary(
-                "field.activity.mode_table_handler_0x53ee2_unresolved");
-            return integration::PendingFieldSceneHandlerResult::unresolved;
+            // ROM 0x2CE0 installs 0x53EE2 for the mode-table activity. That
+            // handler submits the Renraku text-only descriptor at 0xF4C58
+            // and profile 0x12206C to the shared 0x1F246 prompt service.
+            const auto scene_id = static_cast<std::uint8_t>(
+                state_.field_scene_buffers.scene_reference);
+            game_scripts_.set_location_context(
+                "site", "salish_feathered_serpent_lair",
+                "salish.renraku_cave_ambush", "renraku_strike_team",
+                "cave_ambush", scene_id);
+            game_scripts_.set_field_mode_context(
+                scripting::ScriptFieldModeContext{
+                    state_.field_scene_buffers.field_resource_mode,
+                    field_movement_transition_state_.mode_event_code,
+                    field_exit_alternate_result_,
+                    state_.field_scene_buffers.scene_mode,
+                    field_movement_transition_state_.field_transition_context});
+            const bool opened = field_dialogue_.open_gameplay_task(
+                "salish_spirit_eyes", "present_renraku_ambush");
+            field_activity_continuation_ =
+                MovementModeTransitionContinuation::none;
+            if (!opened) {
+                std::string reason =
+                    "field.activity.mode_table_handler_0x53ee2_prompt_failed";
+                const auto& detail =
+                    field_dialogue_.panel().source_boundary_reason;
+                if (!detail.empty()) {
+                    reason += ":";
+                    reason.append(detail);
+                }
+                source_boundary(reason);
+                return integration::PendingFieldSceneHandlerResult::resumed_field;
+            } else {
+                source_boundary(
+                    "field.activity.mode_table_handler_0x53ee2_prompt_opened");
+                return integration::PendingFieldSceneHandlerResult::resumed_field;
+            }
         }
         if (continuation ==
             MovementModeTransitionContinuation::event_30_world_activity) {
@@ -7830,6 +7860,12 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         refresh_world_entity_service_targets();
         advance_world_frame_logic(world_frame_logic_state_,
                                   world_frame_logic_callbacks_);
+        // The frame service decrements FFE11C before the coordinator checks
+        // whether it may run the pending scene handler. Publish that updated
+        // value now; copying the pre-service value back at frame end would
+        // re-arm the same countdown forever.
+        field_runtime_state_.world_activity_countdown =
+            world_frame_logic_state_.activity_countdown;
         ++field_world_frame_counter_;
         field_world_activity_timeout_state_.timeout_marker =
             static_cast<std::int16_t>(world_frame_logic_state_.world_active);

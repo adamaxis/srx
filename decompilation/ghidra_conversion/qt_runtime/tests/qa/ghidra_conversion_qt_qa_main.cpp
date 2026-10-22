@@ -20988,8 +20988,8 @@ int run_field_mode_13_entry_qa(
     const auto queued = std::find(
         source_boundaries.begin(), source_boundaries.end(),
         "field.world_activity.pending_actor_list_queued");
-    const auto image = render_qa_field(field_scene);
-    const auto image_path = output / "actual.bmp";
+    const auto entry_image = render_qa_field(field_scene);
+    const auto entry_image_path = output / "entry.bmp";
     if (field_scene.field_scene_reference_for_dump() != 47U ||
         field_scene.field_runtime_state_for_dump().transition_context != 0x13 ||
         !field_scene.field_runtime_state_for_dump()
@@ -20998,8 +20998,8 @@ int run_field_mode_13_entry_qa(
                 .world_activity_countdown == 0U ||
         runner.x != 0x5E80U || runner.y != 0x1300U || !actors_match ||
         selected == source_boundaries.end() || queued == source_boundaries.end() ||
-        image.size() != QSize(kSceneWidth, kSceneHeight) ||
-        !image.save(QString::fromStdWString(image_path.wstring()))) {
+        entry_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !entry_image.save(QString::fromStdWString(entry_image_path.wstring()))) {
         std::cerr << "Mode-13 entry QA: ROM-selected Scene 47 route failed "
                      "(scene="
                   << field_scene.field_scene_reference_for_dump()
@@ -21012,14 +21012,147 @@ int run_field_mode_13_entry_qa(
         return 3;
     }
 
+    // The ROM activity timer runs before the deferred 0x53EE2 callback. Wait
+    // through that source interval, then verify its distinct mode-text page.
+    std::uint16_t activity_wait_frames = 0U;
+    while (!field_scene.dialogue_open() &&
+           field_scene.field_runtime_state_for_dump()
+               .pending_field_scene_handler &&
+           activity_wait_frames < 180U) {
+        field_scene.advance_frame();
+        ++activity_wait_frames;
+    }
+    const auto& page = field_scene.dialogue_panel();
+    std::string page_text;
+    for (std::size_t index = 0U; index < page.text_segment_count; ++index) {
+        page_text.append(page.text_segments[index]);
+        page_text.push_back('\n');
+    }
+    const bool page_matches_source =
+        field_scene.dialogue_open() && page.source_complete &&
+        page.kind == DialoguePanelKind::information_page &&
+        page.actor_kind == DialoguePanelActorKind::none &&
+        page.portrait_alias ==
+            "field.mode.entry.renraku.strike.team.sprite" &&
+        page.option_count == 0U && !page.has_more &&
+        page_text.find("You come upon a Renraku Strike Team") !=
+            std::string::npos &&
+        page_text.find("Kill them quickly, before they slot this operation "
+                       "all to drek!!") != std::string::npos &&
+        page_text.find("They unholster their weapons and come at you!") !=
+            std::string::npos &&
+        field_scene.dialogue_input_locked();
+    const auto image = render_qa_field(field_scene);
+    const auto image_path = output / "actual.bmp";
+    if (!page_matches_source || activity_wait_frames != 60U ||
+        field_scene.field_scene_reference_for_dump() != 47U ||
+        image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !image.save(QString::fromStdWString(image_path.wstring()))) {
+        std::cerr << "Mode-13 entry QA: deferred Renraku mode-text page "
+                     "failed (open=" << field_scene.dialogue_open()
+                  << ", kind=" << static_cast<int>(page.kind)
+                  << ", portrait=" << page.portrait_alias
+                  << ", text=" << page_text
+                  << ", activity_wait=" << activity_wait_frames
+                  << ", pending="
+                  << field_scene.field_runtime_state_for_dump()
+                         .pending_field_scene_handler
+                  << ", countdown="
+                  << field_scene.field_runtime_state_for_dump()
+                         .world_activity_countdown
+                  << ", activity_lock="
+                  << field_scene.field_runtime_state_for_dump()
+                         .field_activity_lock
+                  << ", display_service="
+                  << field_scene.field_runtime_state_for_dump()
+                         .display_service_word
+                  << ", field_transition="
+                  << field_scene.field_runtime_state_for_dump()
+                         .field_transition_requested
+                  << ", world_activity="
+                  << field_scene.field_runtime_state_for_dump()
+                         .world_activity_requested
+                  << ", mode=" << static_cast<unsigned>(
+                         field_scene.field_runtime_state_for_dump().field_mode)
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_runtime_state_for_dump()
+                             .mode_event_code)
+                  << ", context=0x" << std::hex
+                  << field_scene.field_runtime_state_for_dump()
+                         .transition_context
+                  << ", scene_mode=0x"
+                  << field_scene.field_runtime_state_for_dump()
+                         .mode_transition_gate
+                  << std::dec << ")\n";
+        for (const auto& boundary : source_boundaries) {
+            if (boundary.find("0x53ee2") != std::string::npos ||
+                boundary == "field.runtime.callback_unresolved") {
+                std::cerr << "  boundary=" << boundary << '\n';
+            }
+        }
+        return 3;
+    }
+
+    // A held/early A event is ignored during the ROM's 30-frame wait. After
+    // that delay, a fresh A edge returns in place and leaves the actors active.
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    if (!field_scene.dialogue_open()) {
+        std::cerr << "Mode-13 entry QA: early A dismissed the mode-text page\n";
+        return 3;
+    }
+    std::uint8_t elapsed_wait_frames = 2U;
+    while (field_scene.dialogue_input_locked() &&
+           elapsed_wait_frames < 32U) {
+        field_scene.advance_frame();
+        ++elapsed_wait_frames;
+    }
+    if (!field_scene.dialogue_open() ||
+        field_scene.dialogue_input_locked() ||
+        elapsed_wait_frames != 30U) {
+        std::cerr << "Mode-13 entry QA: ROM mode-text wait did not expire at "
+                     "30 frames (elapsed="
+                  << static_cast<unsigned>(elapsed_wait_frames)
+                  << ", open=" << field_scene.dialogue_open()
+                  << ", locked=" << field_scene.dialogue_input_locked()
+                  << ")\n";
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    const auto returned_in_place = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.dialogue.continued_in_place");
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 47U ||
+        returned_in_place == source_boundaries.end() ||
+        field_scene.world_activity_script_actor_count_for_dump() !=
+            kExpectedActors.size()) {
+        std::cerr << "Mode-13 entry QA: text page did not return to Scene 47 "
+                     "in place\n";
+        return 3;
+    }
+
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) return 3;
     trace << "event_code\tinput_context\tworld_flags\tresult_context\tscene"
-             "\trunner_x\trunner_y\tactor_list\tactor_count\n"
+             "\trunner_x\trunner_y\tactor_list\tactor_count\tdeferred_prompt"
+             "\tactivity_wait_frames\tinput_wait_frames\tterminal_outcome\n"
           << "8\t0x14\t0\t0x13\t47\t0x5E80\t0x1300\t"
-             "mode_13_entry\t5\n";
+             "mode_13_entry\t5\t0x53EE2:salish.renraku.cave_ambush\t"
+          << activity_wait_frames << "\t"
+          << static_cast<unsigned>(elapsed_wait_frames)
+          << "\tcontinue_in_place\n";
     std::cout << "field_mode_13_entry_qa=passed scene=47 context=0x13 "
-                 "runner=0x5E80,0x1300 actors=5 artifacts="
+                 "runner=0x5E80,0x1300 actors=5 deferred_prompt=0x53EE2 "
+                 "activity_wait_frames=" << activity_wait_frames
+              << " input_wait_frames="
+              << static_cast<unsigned>(elapsed_wait_frames)
+              << " outcome=continue_in_place artifacts="
               << output.string() << '\n';
     return 0;
 }
