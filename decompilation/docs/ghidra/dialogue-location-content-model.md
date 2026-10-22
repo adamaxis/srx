@@ -187,16 +187,19 @@ shows the flight page; otherwise set bit 8 shows the empty lair; otherwise the
 main graph requires FFFC0E nonzero, FFFC10=`0x13`, and FFFBF9=8. The lie answer
 loops on one warning-and-choice node, and the scale reward is written only
 after the final page closes. Debug/Release tests cover these permutations. The
-active Qt field route still lacks physical context-`0x13` exercise. Reviewed
-longplay sections contain no matching Licourtrix encounter, so the runtime
-captures remain internal evidence rather than an independent Genesis visual
-comparison.
+active Qt coordinator now runs the mode-table transition and scene-entry path
+from seeded ROM inputs, selecting Scene 47, its `0x5E80,0x1300` runner spawn,
+and the Lua `mode_13_entry` actor list. Debug/Release route QA covers those
+results. The upstream producer of context `0x14`, deferred `0x53EE2` handler,
+and physical record-62 input remain incomplete. Reviewed longplay sections
+contain no matching Licourtrix encounter, so runtime captures remain internal
+evidence rather than an independent Genesis visual comparison.
 
 The source-derived permutation table for this graph is:
 
 | Gate/input | ROM result | Graph result |
 | --- | --- | --- |
-| FFFC10 is `0x14`, FFFBF9 is 8 | `0x2CE0` selects context `0x13`, maps it to Scene `0x2F`, and schedules `0x53EE2`/`0x1E552` when FFFC1E bit 8 is clear. | This is the source predecessor for the contextual Scene-47 route; the active Qt coordinator does not yet execute this mode/activity transition. |
+| FFFC10 is `0x14`, FFFBF9 is 8, FFFC0E is nonzero | `0x2CE0` selects context `0x13`, maps it to Scene `0x2F`, and when FFFC1E bit 8 is clear starts activity with deferred routine `0x53EE2` and pending list `0x1E552`. | Active Qt coordinator and scene-entry code select Scene 47, spawn `0x5E80,0x1300`, and load five Lua actors for the seeded inputs. The upstream context producer and deferred routine are still unresolved. |
 | FFFC10 is not `0x13` | Event 25 is rewritten to event 8 before `0x53EFA`. | The graph is not entered; a direct invocation reports a source boundary. |
 | Context `0x13`, any story state | Select story trigger 8 first. | Begin the ordered story checks. |
 | Story bit 7 clear, either value of bit 8 | Select the flight-notice record. | Show `serpent_flight`; return in place without writing the scale. |
@@ -444,12 +447,13 @@ one terminal kind. Stoker's indexed service and signed field-exit prompt now
 use separate JSON graph roots. The remaining Stoker work is source coverage
 for the 80..99 effect callback, saved-game fact restoration, and independent
 visual checks. Quinton's call graph and the six converted contact service
-graphs now cover all seven source-derived service trees. The Spirit Eyes
-ritual route is JSON-backed through its source-traced Scene-4 prompt chain and
-staged item gates. Licourtrix's Scene-47 graph is JSON-backed and tested, while
-the physical context route, ritual activity host, upstream quest producers,
-incomplete encounter commands, and unverified visual branches remain explicit
-work, not filled-in defaults.
+graphs now cover all seven source-derived service trees. The Spirit Eyes ritual
+route is JSON-backed through its source-traced Scene-4 prompt chain and staged
+item gates. Licourtrix's Scene-47 graph is JSON-backed and tested, and the
+seeded mode-table route now reaches its typed Scene-47 entry and Lua actor list.
+The context producer, deferred activity routine, ritual cinematic presenter,
+physical record-62 route, and unverified visual branches remain explicit work,
+not filled-in defaults.
 
 ## Implemented condition slice
 

@@ -790,10 +790,12 @@ gate, both answers and the repeated-lie loop, and the post-dialogue story/item
 grant. Debug/Release runtime tests cover each branch and the page order. The
 ROM `0x2CE0` mode-table predecessor from context `0x14`/event 8 to context
 `0x13`/Scene 47 and the `0x53EE2` activity handoff is covered by Debug/Release
-field-mode tests. The active Qt field still does not execute that transition
-or exercise record 62 with physical input. The host also does not present the
-ritual cinematic, and no independent Genesis Licourtrix dialogue frame was
-identified. Keep this hill partial. See
+field-mode tests. Seeded Debug/Release Qt QA now runs the coordinator and
+scene-entry path, verifies Scene 47, spawn `0x5E80,0x1300`, and five Lua-selected
+actors, then saves a full-frame capture. The upstream context producer,
+deferred `0x53EE2` routine, and physical record-62 input remain unresolved. The
+host also does not present the ritual cinematic, and no independent Genesis
+Licourtrix dialogue frame was identified. Keep this hill partial. See
 [the Spirit Eyes audit](visual-audits/council-spirit-eyes.md).
 
 ## Boris Greenhouse Scene-2/event-6 indexed service (partial, 2026-10-21)

@@ -8,8 +8,11 @@ completion path returns a typed cinematic request and `cinematics.json`
 records its four ROM pages, but the field host does not yet present the
 sequence. The Scene-47 Licourtrix text and branch graph now live in the JSON
 conversation and condition catalogs, with Debug/Release runtime coverage for
-the story and profile permutations. Its contextual physical route is not
-exercised, and the reviewed longplay sections contain no matching independent
+the story and profile permutations. The active Qt coordinator now exercises
+the seeded mode-table inputs through Scene-47 entry, including the ROM runner
+spawn and five-actor Lua list. The upstream context producer and deferred
+`0x53EE2` routine are still unresolved; record-62 physical input is not
+exercised. The reviewed longplay sections contain no matching independent
 Genesis dialogue frame.
 
 ## ROM trace
@@ -18,12 +21,12 @@ Genesis dialogue frame.
   Scene-47 spawn value. At `0x2CE0`, FFFC10=`0x14` with FFFBF9=8 indexes
   `0x2E72` to select FFFC10=`0x13`; `0x2E42` maps that mode to Scene `0x2F`,
   and `0x2D92` supplies coordinates `0x5E80,0x1300`. If FFFC1E bit 8 is
-  clear, this transition also schedules world activity descriptor `0x53EE2`
-  and handler `0x1E552`. Debug/Release `shadowrun_ghidra_field_mode` verifies
-  both the unlocked activity handoff and the locked case. The typed table
-  conversion exists, but the active Qt field coordinator does not connect
-  this transition/activity path or preserve its context through physical
-  input QA.
+  clear, this transition starts world activity with deferred routine `0x53EE2`
+  and pending actor list `0x1E552`. Debug/Release `shadowrun_ghidra_field_mode`
+  verifies both the unlocked activity handoff and the locked case. The seeded
+  Qt mode-13 QA verifies coordinator selection, Scene-47 entry, spawn
+  `0x5E80,0x1300`, and all five actors. It does not establish the upstream
+  context producer or convert the deferred routine.
 - Scene 4 record 96 (`0x15BDF6`) carries raw collision `0x00DB`, event 27,
   bounds x `0x06C0..0x06DF`, y `0x0080..0x009F`. It bypasses the ordinary event
   table and selects continuation `0x53D5A`; the event-table byte `0x80` is
@@ -113,11 +116,11 @@ Genesis dialogue frame.
 
 ## Remaining evidence
 
-- Connect the context-`0x14`/event-8 mode-table transition, its `0x53EE2`/
-  `0x1E552` world-activity handoff, and the resulting FFFC10=`0x13` state in
-  the active Qt field route. Then exercise Scene-47 record 62 with physical
-  input. The JSON precondition exposes missing context as an unresolved
-  boundary instead of treating it as a false story fact.
+- Trace the upstream producer of context `0x14`, convert the deferred
+  `0x53EE2` mode-exit routine into the dialogue/outcome model, and exercise
+  Scene-47 record 62 with physical input. The active Qt route currently has a
+  seeded QA entry; its JSON precondition exposes missing context as an
+  unresolved boundary instead of treating it as a false story fact.
 - Extract the `0x1FE6C2` resource profile into named host assets, present the
   four-page sequence through a native full-screen presenter, and exercise its
   source-context return. Independent Genesis dialogue captures remain
