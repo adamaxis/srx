@@ -17513,8 +17513,12 @@ int run_field_boris_greenhouse_dialogue_qa(
         return true;
     };
     const auto finish = [&field_scene](const std::string_view stage) {
-        const auto result = field_scene.advance_stoker_dialogue_for_dump(
+        auto result = field_scene.advance_stoker_dialogue_for_dump(
             0x4000U); // ordinary A edge
+        if (result == FieldDialogueAdvanceResult::typed_outcome_requested &&
+            field_scene.dispatch_dialogue_outcome_for_dump()) {
+            result = FieldDialogueAdvanceResult::returned_to_field;
+        }
         if (result != FieldDialogueAdvanceResult::returned_to_field) {
             std::cerr << "Boris Greenhouse QA: A did not finish " << stage
                       << " (result=" << static_cast<int>(result) << ")\n";

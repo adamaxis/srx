@@ -1,6 +1,108 @@
 {
   "schemaVersion": 1,
   "conditions": {
+    "boris_greenhouse.indexed_service_available": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "building" },
+          { "fact": "location.id", "op": "eq", "value": "boris_greenhouse_frontage" },
+          { "fact": "field.event_code", "op": "eq", "value": 6 },
+          { "fact": "story.field_dialogue_flag_bit_0", "op": "in", "value": [true, false] },
+          { "fact": "story.field_dialogue_flag_bit_1", "op": "in", "value": [true, false] },
+          { "fact": "story.field_dialogue_flag_bit_2", "op": "in", "value": [true, false] },
+          { "fact": "story.field_dialogue_flag_bit_3", "op": "in", "value": [true, false] }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x53F8C", "0x1F246", "0x173110"],
+        "scope": "scene_2_event_6_indexed_service_and_required_state"
+      }
+    },
+    "boris_greenhouse.alternate_result_positive": {
+      "expression": { "fact": "field.alternate_result", "op": "gt", "value": 0 },
+      "provenance": { "romAddresses": ["0x53F8C"], "scope": "signed_alternate_result_positive" }
+    },
+    "boris_greenhouse.alternate_result_negative": {
+      "expression": { "fact": "field.alternate_result", "op": "lt", "value": 0 },
+      "provenance": { "romAddresses": ["0x53F8C"], "scope": "signed_alternate_result_negative" }
+    },
+    "boris_greenhouse.repeat_greeting_pending": {
+      "expression": { "fact": "story.field_dialogue_flag_bit_3", "op": "eq", "value": true },
+      "provenance": { "romAddresses": ["0x53F8C"], "scope": "repeat_greeting_selector" }
+    },
+    "boris_greenhouse.michael_alternate_greeting_pending": {
+      "expression": { "fact": "story.field_dialogue_flag_bit_1", "op": "eq", "value": true },
+      "provenance": { "romAddresses": ["0x53F8C"], "scope": "michael_interruption_greeting_selector" }
+    },
+    "boris_greenhouse.story_offer_already_paid": {
+      "expression": { "fact": "story.field_dialogue_flag_bit_0", "op": "eq", "value": true },
+      "provenance": { "romAddresses": ["0x53F8C"], "scope": "story_offer_repeat_gate" }
+    },
+    "boris_greenhouse.information_already_paid": {
+      "expression": { "fact": "story.field_dialogue_flag_bit_2", "op": "eq", "value": true },
+      "provenance": { "romAddresses": ["0x53F8C"], "scope": "information_payment_repeat_gate" }
+    },
+    "boris_greenhouse.michael_already_learned": {
+      "expression": { "fact": "story.story_flag_bit_10", "op": "eq", "value": true },
+      "provenance": { "romAddresses": ["0x21B82"], "scope": "michael_alias_already_learned" }
+    },
+    "boris_greenhouse.michael_identity_unknown": {
+      "expression": { "fact": "story.story_flag_bit_1", "op": "eq", "value": false },
+      "provenance": { "romAddresses": ["0x21B82"], "scope": "michael_story_gate" }
+    },
+    "boris_greenhouse.david_topic_available": {
+      "expression": {
+        "all": [
+          { "fact": "story.story_flag_bit_1", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_3", "op": "eq", "value": false }
+        ]
+      },
+      "provenance": { "romAddresses": ["0x53F8C", "0x21EB0"], "scope": "david_topic_gate" }
+    },
+    "boris_greenhouse.ilene_topic_available": {
+      "expression": {
+        "all": [
+          { "not": { "all": [
+            { "fact": "story.story_flag_bit_1", "op": "eq", "value": true },
+            { "fact": "story.story_flag_bit_3", "op": "eq", "value": false }
+          ] } },
+          { "fact": "story.story_flag_bit_18", "op": "eq", "value": true },
+          { "fact": "story.group_item_flag_bit_5", "op": "eq", "value": false },
+          { "fact": "story.story_flag_bit_19", "op": "eq", "value": false }
+        ]
+      },
+      "provenance": { "romAddresses": ["0x53F8C", "0x21B6A"], "scope": "ilene_topic_gate_after_david_priority" }
+    },
+    "boris_greenhouse.thon_topic_available": {
+      "expression": {
+        "all": [
+          { "not": { "all": [
+            { "fact": "story.story_flag_bit_1", "op": "eq", "value": true },
+            { "fact": "story.story_flag_bit_3", "op": "eq", "value": false }
+          ] } },
+          { "any": [
+            { "fact": "story.story_flag_bit_18", "op": "eq", "value": false },
+            { "fact": "story.group_item_flag_bit_5", "op": "eq", "value": true },
+            { "fact": "story.story_flag_bit_19", "op": "eq", "value": true }
+          ] },
+          { "fact": "story.story_flag_bit_9", "op": "eq", "value": true }
+        ]
+      },
+      "provenance": { "romAddresses": ["0x53F8C"], "scope": "thon_topic_gate_after_david_and_ilene_priority" }
+    },
+    "boris_greenhouse.topic_facts_available": {
+      "expression": {
+        "all": [
+          { "fact": "story.story_flag_bit_1", "op": "in", "value": [true, false] },
+          { "fact": "story.story_flag_bit_3", "op": "in", "value": [true, false] },
+          { "fact": "story.story_flag_bit_9", "op": "in", "value": [true, false] },
+          { "fact": "story.story_flag_bit_18", "op": "in", "value": [true, false] },
+          { "fact": "story.story_flag_bit_19", "op": "in", "value": [true, false] },
+          { "fact": "story.group_item_flag_bit_5", "op": "in", "value": [true, false] }
+        ]
+      },
+      "provenance": { "romAddresses": ["0x53F8C"], "scope": "topic_menu_required_story_and_item_facts" }
+    },
     "gates_undersound.ogami_departure_available": {
       "expression": {
         "all": [

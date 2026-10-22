@@ -2,9 +2,25 @@
   "profiles": {
     "boris_greenhouse_narrator": {
       "events": {
+        "alternate_0": {
+          "continuation_key": "shared.more",
+          "title_key": "boris.greenhouse.page.alternate_0"
+        },
+        "default": {
+          "continuation_key": "shared.more",
+          "title_key": "boris.greenhouse.page.default"
+        },
+        "followup": {
+          "continuation_key": "shared.more",
+          "title_key": "boris.greenhouse.page.followup"
+        },
         "insufficient_funds": {
           "continuation_key": "",
           "title_key": "boris.greenhouse.page.insufficient_funds"
+        },
+        "michael_learned": {
+          "continuation_key": "shared.more",
+          "title_key": "boris.greenhouse.page.michael_learned"
         },
         "package_payment": {
           "continuation_key": "",
@@ -13,6 +29,18 @@
         "package_request": {
           "continuation_key": "",
           "title_key": "boris.greenhouse.page.alternate_1"
+        },
+        "repeat": {
+          "continuation_key": "shared.more",
+          "title_key": "boris.greenhouse.page.repeat"
+        },
+        "story_answer": {
+          "continuation_key": "shared.more",
+          "title_key": "boris.greenhouse.page.story_answer"
+        },
+        "thon_information": {
+          "continuation_key": "shared.more",
+          "title_key": "boris.greenhouse.page.thon_information"
         }
       },
       "name": "Boris",

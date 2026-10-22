@@ -14,9 +14,10 @@ trees are also JSON-backed. Max's and Professor Jefferson's first/repeat calls
 and complete service trees are now JSON graphs as well. Owlfeather's
 scene-6/event-0 services 2, 3, and 4 now share a JSON graph with explicit route
 conditions and named Lua action adapters. Their Lua modules register named
-host actions. Remaining conversation routes and other service outcome
-dispatchers are pending; this does not claim every listed route is implemented
-or visually verified.
+host actions. Boris Greenhouse's currently modeled Scene-2/event-6 branches
+also use the shared JSON graph and typed `continue_in_place` outcome. Other
+conversation routes and service outcome dispatchers remain pending; this does
+not claim every listed route is implemented or visually verified.
 
 ## Design goals
 
@@ -647,7 +648,8 @@ Hospital checkout now use that same return handler. No migrated dialogue graph
 currently emits the outcome. Unsupported activity/cinematic IDs and
 unregistered service IDs remain visible source boundaries.
 
-Seven non-Stoker graphs and two Stoker roots currently exercise that contract:
+The following non-Stoker graphs and two Stoker roots currently exercise that
+contract:
 
 - Gates Undersound trigger 15 performs the ordered trigger/page/effect-flag/
   trigger-tail operations and returns `continue_in_place`, suppressing event
@@ -669,6 +671,17 @@ Seven non-Stoker graphs and two Stoker roots currently exercise that contract:
   FieldScene QA separately checks physical entry/Leave and exercises the
   production hotel dispatcher through a controlled typed-outcome seam, so it
   does not claim one end-to-end paid field transaction.
+- Boris Greenhouse service 10 is a JSON graph for its signed alternate-result
+  pages, default/repeat greeting, $100 story offer, $500 information offer,
+  ordered Michael/David/Ilene/Thon topic gates, and same-map return. Conditions
+  remain named JSON expressions; Lua only registers the source-derived state
+  mutations. The Strike Team command `0x2C` remains an explicit source
+  boundary, and the unconverted item commands `0x2D`-`0x2F` are not presented
+  as implemented paths. Lua graph tests cover payment outcomes, topic priority,
+  and missing-fact boundaries. Debug/Release physical route QA covers the
+  indexed entry, $100 transaction, typed same-map return, and save restore;
+  six full-frame captures per build match. No independent Genesis dialogue
+  frame has been identified; keep the route partial.
 - Wylie's Gala Inn service 1 is a JSON graph with its signed run-result pages,
   inline entry and room prompts, runner-status free-stay gate, 50-nuyen wallet
   action, and paid/insufficient branches. Successful paid or free paths return

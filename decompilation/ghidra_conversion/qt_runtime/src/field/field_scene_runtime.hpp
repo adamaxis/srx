@@ -435,6 +435,7 @@ public:
     bool open_stoker_room_payment_for_dump(std::uint32_t funds);
     FieldDialogueAdvanceResult advance_stoker_dialogue_for_dump(
         std::uint16_t event_word);
+    bool dispatch_dialogue_outcome_for_dump();
     bool hotel_menu_open() const noexcept { return hotel_menu_.open(); }
     bool hotel_karma_screen_loading() const noexcept {
         return hotel_karma_skills_.is_open() && hotel_karma_load_frames_ > 0U;

@@ -17374,6 +17374,11 @@ FieldSceneRuntime::advance_stoker_dialogue_for_dump(
     }
     return result;
 }
+
+bool FieldSceneRuntime::dispatch_dialogue_outcome_for_dump() {
+    const auto outcome = field_dialogue_.take_gameplay_task_outcome();
+    return outcome.has_value() && dispatch_dialogue_outcome(*outcome);
+}
 #endif // SHADOWRUN_QT_QA_DRIVER
 
 

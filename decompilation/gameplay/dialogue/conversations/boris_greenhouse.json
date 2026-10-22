@@ -1,0 +1,317 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "boris_greenhouse.indexed_title_service": {
+      "entryNode": "alternate_result",
+      "precondition": "boris_greenhouse.indexed_service_available",
+      "speakerId": "boris_greenhouse_narrator",
+      "textProfile": "boris.greenhouse",
+      "provenance": {
+        "romAddresses": ["0x53F8C", "0x1F246", "0x173110", "0x21B6A", "0x21B82", "0x21BE4", "0x21EB0"],
+        "scope": "scene_2_event_6_known_dialogue_routes_before_unconverted_item_and_strike_team_commands"
+      },
+      "nodes": {
+        "alternate_result": {
+          "type": "branch",
+          "cases": [
+            { "when": "boris_greenhouse.alternate_result_positive", "next": "package_request" },
+            { "when": "boris_greenhouse.alternate_result_negative", "next": "package_payment" }
+          ],
+          "fallback": "michael_greeting_check"
+        },
+        "package_request": {
+          "type": "page",
+          "eventId": "package_request",
+          "next": "stay_on_map"
+        },
+        "package_payment": {
+          "type": "page",
+          "eventId": "package_payment",
+          "next": "package_followup"
+        },
+        "package_followup": {
+          "type": "page",
+          "eventId": "followup",
+          "next": "stay_on_map"
+        },
+        "michael_greeting_check": {
+          "type": "branch",
+          "cases": [
+            { "when": "boris_greenhouse.michael_alternate_greeting_pending", "next": "alternate_greeting" }
+          ],
+          "fallback": "default_greeting"
+        },
+        "alternate_greeting": {
+          "type": "action",
+          "actionId": "boris.clear_field_dialogue_flag",
+          "arguments": { "flagBit": 1 },
+          "next": "alternate_0_page"
+        },
+        "alternate_0_page": {
+          "type": "page",
+          "eventId": "alternate_0",
+          "next": "after_michael_menu"
+        },
+        "after_michael_menu": {
+          "type": "choice",
+          "menuId": "opening",
+          "promptTextKey": "boris.greenhouse.page.after_michael",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "story", "next": "story_offer_check" },
+            { "id": "information", "next": "information_offer_check" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "default_greeting": {
+          "type": "page",
+          "eventId": "default",
+          "next": "repeat_greeting_check"
+        },
+        "repeat_greeting_check": {
+          "type": "branch",
+          "cases": [
+            { "when": "boris_greenhouse.repeat_greeting_pending", "next": "clear_repeat_greeting" }
+          ],
+          "fallback": "opening_menu"
+        },
+        "clear_repeat_greeting": {
+          "type": "action",
+          "actionId": "boris.clear_field_dialogue_flag",
+          "arguments": { "flagBit": 3 },
+          "next": "repeat_greeting"
+        },
+        "repeat_greeting": {
+          "type": "page",
+          "eventId": "repeat",
+          "next": "repeat_menu"
+        },
+        "opening_menu": {
+          "type": "choice",
+          "menuId": "opening",
+          "promptTextKey": "boris.greenhouse.page.opening",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "story", "next": "story_offer_check" },
+            { "id": "information", "next": "information_offer_check" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "repeat_menu": {
+          "type": "choice",
+          "menuId": "repeat_opening",
+          "promptTextKey": "boris.greenhouse.page.repeat",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "story", "next": "story_offer_check" },
+            { "id": "information", "next": "information_offer_check" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "story_offer_check": {
+          "type": "branch",
+          "cases": [
+            { "when": "boris_greenhouse.story_offer_already_paid", "next": "story_answer" }
+          ],
+          "fallback": "story_payment_prompt"
+        },
+        "story_payment_prompt": {
+          "type": "choice",
+          "menuId": "story_payment",
+          "promptTextKey": "boris.greenhouse.page.story_prompt",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "accept", "next": "charge_story_offer" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "charge_story_offer": {
+          "type": "action",
+          "actionId": "building.charge_amount",
+          "arguments": { "amount": 100 },
+          "results": {
+            "paid": "mark_story_offer_paid",
+            "insufficient": "insufficient_funds"
+          },
+          "evidence": "ROM command 0x27 charges 100 nuyen and records FFFC26 bit 0 after payment succeeds."
+        },
+        "mark_story_offer_paid": {
+          "type": "action",
+          "actionId": "boris.mark_paid_dialogue_flag",
+          "arguments": { "flagBit": 0 },
+          "next": "story_answer"
+        },
+        "story_answer": {
+          "type": "page",
+          "eventId": "story_answer",
+          "next": "stay_on_map"
+        },
+        "insufficient_funds": {
+          "type": "page",
+          "eventId": "insufficient_funds",
+          "next": "stay_on_map"
+        },
+        "information_offer_check": {
+          "type": "branch",
+          "cases": [
+            { "when": "boris_greenhouse.information_already_paid", "next": "repeat_topic_fact_gate" }
+          ],
+          "fallback": "information_payment_prompt"
+        },
+        "information_payment_prompt": {
+          "type": "choice",
+          "menuId": "information_payment",
+          "promptTextKey": "boris.greenhouse.page.information_prompt",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "accept", "next": "charge_information" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "charge_information": {
+          "type": "action",
+          "actionId": "building.charge_amount",
+          "arguments": { "amount": 500 },
+          "results": {
+            "paid": "mark_information_paid",
+            "insufficient": "insufficient_funds"
+          },
+          "evidence": "ROM command 0x29 charges 500 nuyen and sets FFFC26 bit 2 before the topic prompt."
+        },
+        "mark_information_paid": {
+          "type": "action",
+          "actionId": "boris.mark_paid_dialogue_flag",
+          "arguments": { "flagBit": 2 },
+          "next": "first_topic_fact_gate"
+        },
+        "first_topic_fact_gate": {
+          "type": "branch",
+          "cases": [
+            { "when": "boris_greenhouse.topic_facts_available", "next": "first_information_topics" }
+          ],
+          "fallback": "topic_state_boundary"
+        },
+        "repeat_topic_fact_gate": {
+          "type": "branch",
+          "cases": [
+            { "when": "boris_greenhouse.topic_facts_available", "next": "repeat_information_topics" }
+          ],
+          "fallback": "topic_state_boundary"
+        },
+        "topic_state_boundary": {
+          "type": "source_boundary",
+          "reason": "Boris topic selection requires the source story and Group Item facts used by the ordered topic gates."
+        },
+        "first_information_topics": {
+          "type": "choice",
+          "menuId": "information_topics",
+          "promptTextKey": "boris.greenhouse.page.paid_information",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "michael", "next": "michael_information_check" },
+            { "id": "david", "when": "boris_greenhouse.david_topic_available", "next": "prepare_david_information" },
+            { "id": "ilene", "when": "boris_greenhouse.ilene_topic_available", "next": "mark_ilene_information" },
+            { "id": "thon", "when": "boris_greenhouse.thon_topic_available", "next": "thon_information" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "repeat_information_topics": {
+          "type": "choice",
+          "menuId": "information_topics",
+          "promptTextKey": "boris.greenhouse.page.paid_information_repeat",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "michael", "next": "michael_information_check" },
+            { "id": "david", "when": "boris_greenhouse.david_topic_available", "next": "prepare_david_information" },
+            { "id": "ilene", "when": "boris_greenhouse.ilene_topic_available", "next": "mark_ilene_information" },
+            { "id": "thon", "when": "boris_greenhouse.thon_topic_available", "next": "thon_information" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "michael_information_check": {
+          "type": "branch",
+          "cases": [
+            { "when": "boris_greenhouse.michael_identity_unknown", "next": "michael_unknown_menu" },
+            { "when": "boris_greenhouse.michael_already_learned", "next": "michael_repeat_menu" }
+          ],
+          "fallback": "reveal_michael_information"
+        },
+        "michael_unknown_menu": {
+          "type": "choice",
+          "menuId": "opening",
+          "promptTextKey": "boris.greenhouse.page.michael_unknown",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "story", "next": "story_offer_check" },
+            { "id": "information", "next": "information_offer_check" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "michael_repeat_menu": {
+          "type": "choice",
+          "menuId": "opening",
+          "promptTextKey": "boris.greenhouse.page.michael_repeat",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "story", "next": "story_offer_check" },
+            { "id": "information", "next": "information_offer_check" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "reveal_michael_information": {
+          "type": "action",
+          "actionId": "boris.reveal_michael_information",
+          "next": "michael_learned"
+        },
+        "michael_learned": {
+          "type": "page",
+          "eventId": "michael_learned",
+          "next": "stay_on_map"
+        },
+        "prepare_david_information": {
+          "type": "action",
+          "actionId": "boris.prepare_david_information",
+          "next": "david_brother_choice"
+        },
+        "david_brother_choice": {
+          "type": "choice",
+          "menuId": "david_followup",
+          "promptTextKey": "boris.greenhouse.page.david_information",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "brother", "next": "strike_team_boundary" }
+          ]
+        },
+        "strike_team_boundary": {
+          "type": "source_boundary",
+          "reason": "ROM command 0x2C at 0x21BE4 starts the Strike Team/world effect, which is not converted."
+        },
+        "mark_ilene_information": {
+          "type": "action",
+          "actionId": "boris.mark_ilene_information",
+          "next": "ilene_return_menu"
+        },
+        "ilene_return_menu": {
+          "type": "choice",
+          "menuId": "opening",
+          "promptTextKey": "boris.greenhouse.page.ilene_information",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "story", "next": "story_offer_check" },
+            { "id": "information", "next": "information_offer_check" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "thon_information": {
+          "type": "page",
+          "eventId": "thon_information",
+          "next": "stay_on_map"
+        },
+        "stay_on_map": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
+    }
+  }
+}
