@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "entityId": "boris_greenhouse_frontage",
+  "interactions": [
+    {
+      "id": "boris_greenhouse_service",
+      "source": {
+        "sceneId": 2,
+        "eventCode": "event_6"
+      },
+      "route": {
+        "kind": "field_service",
+        "script": "lua_field_service",
+        "priority": 10,
+        "sourceRoutePolicy": "suppress_source_route",
+        "sourceTableDestination": 26
+      },
+      "tasks": {
+        "indexedTitleService": {
+          "module": "boris_greenhouse",
+          "function": "present_indexed_title_service"
+        }
+      },
+      "locationContext": {
+        "type": "building",
+        "id": "boris_greenhouse_frontage",
+        "textProfile": "boris.greenhouse",
+        "speakerId": "boris_greenhouse_narrator"
+      },
+      "provenance": {
+        "romAddresses": ["0x53F8C", "0x121F58", "0x1F246", "0x173110"],
+        "scope": "Scene 2 event 6 runs indexed title service 10, whose D6=-1 result suppresses event-table destination 26. The service dialogue branches on FFF0D5, FFFC26, and story facts and remains on Scene 2."
+      }
+    }
+  ]
+}

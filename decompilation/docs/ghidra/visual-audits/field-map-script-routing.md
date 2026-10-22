@@ -124,15 +124,17 @@ The Qt field-exit coordinator consumes that typed result to select the
 dialogue event code, service route, or normal area-event continuation. It does
 not interpret ROM addresses at runtime.
 
-Location-to-route bindings are now stored beside the reusable map entity in
-`gameplay/world/entities/<entity>/links.tsv`. The world-content loader reads
-those rows into Lua, and `world_content.lua` finds the unique link belonging
-to an entity instance in the current scene. `building.lua` owns route
-selection: direct same-map services require their source mode, while ordinary
-area links are accepted only when their numeric destination agrees with the
-active ROM event-table row. Unlinked events continue through the same imported
-table path. This gives scene entities reusable route data without assigning
-unknown interiors or treating every collision event as a door.
+Unconverted location-to-route bindings remain beside reusable map entities in
+`links.tsv`. Migrated scripted interactions use
+`gameplay/world/entities/<entity>/interactions.json`; the package loader puts
+them in Lua's versioned content registry, and `world_content.lua` joins both
+forms to the entity instance in the current scene. `building.lua` owns route
+selection: direct same-map services require their source mode, JSON routes can
+declare named conditions and explicit source-route policy, and ordinary area
+links are accepted only when their numeric destination agrees with the active
+ROM event-table row. Unlinked events continue through the same imported table
+path. This gives scene entities reusable route data without assigning unknown
+interiors or treating every collision event as a door.
 
 The initial source-verified links cover Scene 2: Stoker event 2 (same-map
 dialogue), Ares event 11 (same-map shop service), Jump House event 4 to scene
@@ -152,8 +154,9 @@ entity set is not a complete route census. In particular, the ROM census's
 doors or reversible links.
 
 The reusable route model now supports several source-confirmed outcomes for
-one event. Entity `links.tsv` rows use `route_priority` and stable condition
-IDs that resolve through `gameplay/dialogue/location_conditions.json`.
+one event. Remaining entity `links.tsv` rows use `route_priority`; migrated
+entity JSON uses `route.priority`. Both use stable condition IDs that resolve
+through `gameplay/dialogue/location_conditions.json`.
 Conditions cover story facts, active/current runs, alternate results, and the
 building-interaction mode. Missing facts evaluate to `unknown`; an unknown
 candidate that could outrank the known route and equal-priority true matches

@@ -2226,6 +2226,7 @@ int main() {
                       << " boundary="
                       << (route.has_value() ? route->boundary_reason
                                             : std::string{})
+                      << " lua_failure=" << scripts.failure()
                       << '\n';
             break;
         }

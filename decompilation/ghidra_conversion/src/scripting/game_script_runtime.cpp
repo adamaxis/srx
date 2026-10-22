@@ -4188,7 +4188,8 @@ struct GameScriptRuntime::Impl {
     }
 
     bool load_json_content(const std::filesystem::path& content_root,
-                           std::string& error) {
+                           std::string& error,
+                           const std::string_view namespace_prefix = {}) {
         std::error_code path_error;
         if (!std::filesystem::exists(content_root, path_error)) {
             if (!path_error) {
@@ -4253,6 +4254,13 @@ struct GameScriptRuntime::Impl {
 
             const auto relative = path.lexically_relative(root);
             std::vector<std::string> keys;
+            if (!namespace_prefix.empty()) {
+                if (!valid_identifier(namespace_prefix)) {
+                    error = "gameplay JSON namespace is invalid";
+                    return false;
+                }
+                keys.emplace_back(namespace_prefix);
+            }
             for (auto component = relative.begin();
                  component != relative.end(); ++component) {
                 auto key = component->string();
@@ -4372,6 +4380,10 @@ bool GameScriptRuntime::load_package(
         : json_content_directory;
     if (!impl_->load_json_content(gameplay_dialogue_directory,
                                   impl_->failure)) {
+        return false;
+    }
+    if (!impl_->load_json_content(world_directory / "entities",
+                                  impl_->failure, "entities")) {
         return false;
     }
 
@@ -4686,7 +4698,12 @@ GameScriptRuntime::resolve_field_location_route(
     lua_setfield(state, input_index, "event_table");
 
     if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
-        return fail("building.lua field location route failed");
+        std::size_t message_length = 0U;
+        const auto* message = lua_tolstring(state, -1, &message_length);
+        return fail(message == nullptr
+                        ? "building.lua field location route failed"
+                        : "building.lua field location route failed: " +
+                              std::string(message, message_length));
     }
     if (!lua_istable(state, -1)) {
         return fail("building.lua field location route returned no decision");

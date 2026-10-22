@@ -63,6 +63,108 @@ function World.events_in_scene(scene_id)
     return result
 end
 
+local interaction_task_fields = {
+    routePreparation = "route_preparation",
+    indexedTitleService = "indexed_title_service",
+    fieldExitPrompt = "field_exit_prompt",
+}
+
+local function interaction_location_fields(link, context)
+    if type(context) ~= "table" then return end
+    link.location_type = context.type
+    link.location_id = context.id
+    link.location_text_profile = context.textProfile
+    link.location_speaker_id = context.speakerId
+end
+
+local function append_interaction_task(link, task_id, task, context)
+    local field = interaction_task_fields[task_id]
+    assert(field ~= nil,
+        "entity interaction has an unsupported task: " .. tostring(task_id))
+    assert(type(task) == "table" and type(task.module) == "string" and
+           task.module ~= "" and type(task["function"]) == "string" and
+           task["function"] ~= "",
+        "entity interaction task needs a module and function")
+    link[field .. "_module"] = task.module
+    link[field .. "_function"] = task["function"]
+    interaction_location_fields(link, context)
+end
+
+local function normalize_entity_interaction(entity, interaction)
+    assert(type(interaction) == "table" and type(interaction.id) == "string" and
+           interaction.id ~= "" and type(interaction.source) == "table" and
+           type(interaction.source.sceneId) == "number" and
+           interaction.source.sceneId % 1 == 0 and
+           type(interaction.source.eventCode) == "string" and
+           type(interaction.route) == "table" and
+           type(interaction.route.kind) == "string" and
+           type(interaction.route.script) == "string",
+        "entity interaction has an invalid id, source, or route")
+    local route = interaction.route
+    local link = {
+        id = interaction.id,
+        link_id = interaction.id,
+        entity_id = entity.id,
+        source_scene = interaction.source.sceneId,
+        source_event = interaction.source.eventCode,
+        route_kind = route.kind,
+        script = route.script,
+        route_priority = route.priority or 0,
+        route_condition_id = route.conditionId,
+        source_route_policy = route.sourceRoutePolicy,
+        source_table_destination = route.sourceTableDestination,
+        destination_scene = route.destinationScene,
+        destination_mode = route.destinationMode,
+        return_anchor = route.returnAnchor or "",
+        return_facing = route.returnFacing or "",
+    }
+    assert(type(link.route_priority) == "number" and
+           link.route_priority % 1 == 0,
+        "entity interaction route priority must be an integer")
+
+    local location_context = interaction.locationContext
+    for task_id, task in pairs(interaction.tasks or {}) do
+        append_interaction_task(link, task_id, task, location_context)
+    end
+    if type(interaction.entryDialogue) == "table" then
+        local entry = interaction.entryDialogue
+        local task = entry.task
+        assert(type(task) == "table" and type(task.module) == "string" and
+               type(task["function"]) == "string",
+            "entity entry dialogue needs a module and function")
+        link.entry_dialogue_module = task.module
+        link.entry_dialogue_function = task["function"]
+        link.entry_condition_id = entry.conditionId
+        link.entry_event_id = entry.eventId or ""
+        link.entry_continue_result_id = entry.continueResultId or ""
+        link.entry_continue_outcome_type = entry.continueOutcomeType or ""
+        link.entry_resource_override = entry.resourceOverride or ""
+        interaction_location_fields(
+            link, entry.locationContext or location_context)
+        link.entry_location_type = link.location_type
+        link.entry_location_id = link.location_id
+        link.entry_text_profile = link.location_text_profile
+        link.entry_speaker_id = link.location_speaker_id
+    end
+    return link
+end
+
+local function entity_interactions(entity)
+    local catalog = type(game) == "table" and game.content or nil
+    local definitions = type(catalog) == "table" and catalog.entities or nil
+    local entity_content = type(definitions) == "table" and
+        definitions[entity.id] or nil
+    local document = type(entity_content) == "table" and
+        entity_content.interactions or nil
+    if document == nil then return {} end
+    assert(type(document) == "table" and document.schemaVersion == 1 and
+           document.entityId == entity.id and
+           type(document.interactions) == "table",
+        "entity interaction document has an invalid schema or entity id: " ..
+            tostring(entity.id))
+    return document.interactions
+end
+
 -- A location link binds a ROM collision event to the entity it belongs to.
 -- More than one row may describe the same entrance when route conditions
 -- select different source-verified outcomes. The Lua route policy resolves
@@ -86,6 +188,17 @@ function World.location_links_for_event(scene_id, event_code)
                 resolved_link.link_id = link.link_id or link.id
                 resolved_link.instance_id = instance.instance_id
                 result[#result + 1] = resolved_link
+            end
+        end
+        if entity ~= nil then
+            for _, interaction in ipairs(entity_interactions(entity)) do
+                local resolved_link =
+                    normalize_entity_interaction(entity, interaction)
+                if resolved_link.source_scene == scene_id and
+                   resolved_link.source_event == event_code then
+                    resolved_link.instance_id = instance.instance_id
+                    result[#result + 1] = resolved_link
+                end
             end
         end
     end

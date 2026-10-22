@@ -846,7 +846,8 @@ partial. See
 ROM record 87 at `0x173110` has event 6 and a raw event-table value of Scene
 26. Indexed title service 10 at `0x53F8C` loads profile `0x121F58`, runs the
 dialogue runner `0x1F246`, and returns D6=-1, so the player stays on Scene 2.
-The Lua entity link gives this service priority over the raw event-table row.
+The entity's `interactions.json` route gives this service priority over the
+raw event-table row; the direct destination stays in `links.tsv` as map data.
 Debug/Release physical-input QA approaches the imported 32×32 trigger from the
 south with ordinary Up, confirms the Boris portrait and opening choices, pays
 the $100 story offer, and verifies FFFC26 plus the wallet survive save restore.

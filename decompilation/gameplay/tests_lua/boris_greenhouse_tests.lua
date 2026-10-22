@@ -22,6 +22,12 @@ local content = {
     conversations = {
         boris_greenhouse = load_json("dialogue/conversations/boris_greenhouse"),
     },
+    entities = {
+        boris_greenhouse_frontage = {
+            interactions = load_json(
+                "world/entities/boris_greenhouse_frontage/interactions"),
+        },
+    },
 }
 
 local Building = require("building")
@@ -36,21 +42,6 @@ local area_link = {
     destination_mode = "resource_activity",
     route_priority = 0,
 }
-local service_link = {
-    source_scene = 2,
-    source_event = "event_6",
-    route_kind = "field_service",
-    script = "lua_field_service",
-    source_table_destination = 26,
-    route_priority = 10,
-    indexed_title_service_module = "boris_greenhouse",
-    indexed_title_service_function = "present_indexed_title_service",
-    location_type = "building",
-    location_id = "boris_greenhouse_frontage",
-    location_text_profile = "boris.greenhouse",
-    location_speaker_id = "boris_greenhouse_narrator",
-}
-
 local function new_game(choices, flags, funds, alternate_result)
     local queued_choices = {}
     for index, choice in ipairs(choices or {}) do
@@ -88,7 +79,8 @@ local function new_game(choices, flags, funds, alternate_result)
         modules = {
             world_content_data = {
                 entities = { boris_greenhouse_frontage = {
-                    links = { area_link, service_link },
+                    id = "boris_greenhouse_frontage",
+                    links = { area_link },
                 } },
                 areas = { [2] = { { entity_id = "boris_greenhouse_frontage" } } },
             },
@@ -183,6 +175,17 @@ assert(route.indexed_title_service and
        route.indexed_title_service.module == "boris_greenhouse" and
        route.indexed_title_service.function_name ==
            "present_indexed_title_service")
+local mismatched_event_context = {}
+for key, value in pairs(context) do
+    mismatched_event_context[key] = value
+end
+mismatched_event_context.event_table = { 0, 0, 0, 0, 0, 0, 25 }
+local mismatched_route = Building.resolve_field_location_route(
+    mismatched_event_context)
+assert(mismatched_route.kind == "source_boundary" and
+       mismatched_route.boundary_reason ==
+           "location.source_route_destination_mismatch:" ..
+           "boris_greenhouse_frontage.boris_greenhouse_service")
 local outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "continue_in_place" and #state.service_calls == 0)
 assert(state.seen_events[1].text_key == "boris.greenhouse.page.default" and

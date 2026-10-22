@@ -334,6 +334,21 @@ function Building.resolve_field_location_route(context)
             }
         elseif link.route_kind == route_kind.field_service and
                link.script == "lua_field_service" then
+            if link.source_route_policy == "suppress_source_route" and
+               not area_event_source_matches({
+                   route_kind = route_kind.area_event_override,
+                   source_table_destination =
+                       link.source_table_destination,
+               }, context) then
+                return source_boundary(context.event_code,
+                    "location.source_route_destination_mismatch:" ..
+                    (link.entity_id or "location") .. "." ..
+                    (link.link_id or link.id or "unnamed"))
+            end
+            assert(link.source_route_policy == nil or
+                   link.source_route_policy == "suppress_source_route",
+                "unsupported entity source-route policy: " ..
+                    tostring(link.source_route_policy))
             local service = location_script_task(
                 link, "indexed_title_service")
             assert(service ~= nil,
