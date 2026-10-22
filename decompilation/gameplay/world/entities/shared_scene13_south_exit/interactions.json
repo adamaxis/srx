@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "entityId": "shared_scene13_south_exit",
+  "interactions": [
+    {
+      "id": "rom_event_0",
+      "source": {
+        "sceneId": 13,
+        "eventCode": "event_0"
+      },
+      "route": {
+        "kind": "area_event_override",
+        "script": "area_event_table",
+        "priority": 0,
+        "destinationScene": 0,
+        "destinationMode": "field",
+        "sourceTableDestination": 0
+      },
+      "provenance": {
+        "evidence": "ROM scene-13 profile 0x1B3C06 has a null event-table pointer at 0x1B3C54. The generic event-0 route reaches 0x167AE; its null table base reads ROM byte 0 as field scene 0."
+      }
+    }
+  ]
+}

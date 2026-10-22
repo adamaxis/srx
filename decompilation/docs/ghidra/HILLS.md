@@ -397,6 +397,8 @@ Puyallup's Tarislar Garden Apartments route is partial. Scene 1 record
 67/event 7 defaults to scene 13. The first-authorized service-21 branch runs
 the Harlequin prompt chain, sets bit 21, awards +2 Karma, and returns to scene
 1; its Debug/Release physical-input QA saves a clean field `actual.bmp`. The
+six condition-selected event-7 route records now live in the entity's
+`interactions.json`; the raw event-table destination remains scene 13.
 guarded branch also returns to scene 1 after its three source pages. The repeat
 service now selects the questions, Ito, map-information, and tomb branches from
 bits 16/28/26/27 and group-item bits 8/7. Its Debug/Release physical-input QA

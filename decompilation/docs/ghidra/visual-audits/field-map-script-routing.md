@@ -126,10 +126,11 @@ not interpret ROM addresses at runtime.
 
 Unconverted location-to-route bindings remain beside reusable map entities in
 `links.tsv`. The eight Ares, Boris, Gates Undersound, Tarislar City Inn,
-Owlfeather, and Red Buffalo field-service routes and thirteen entry-dialogue
-bindings use `gameplay/world/entities/<entity>/interactions.json`; the package
-loader puts them in Lua's versioned content registry, and `world_content.lua`
-joins them to the entity instance in the current scene. `building.lua` owns route
+Owlfeather, and Red Buffalo field-service routes, thirteen entry-dialogue
+bindings, and eight conditional map overrides use
+`gameplay/world/entities/<entity>/interactions.json`; the package loader puts
+them in Lua's versioned content registry, and `world_content.lua` joins them
+to the entity instance in the current scene. `building.lua` owns route
 selection: direct same-map services require their source mode, JSON routes can
 declare named conditions and explicit source-route policy, and ordinary area
 links are accepted only when their numeric destination agrees with the active

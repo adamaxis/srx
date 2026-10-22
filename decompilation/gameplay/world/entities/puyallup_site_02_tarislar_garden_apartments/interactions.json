@@ -1,0 +1,216 @@
+{
+  "schemaVersion": 1,
+  "entityId": "puyallup_site_02_tarislar_garden_apartments",
+  "interactions": [
+    {
+      "id": "rom_event_07_positive_alternate_result",
+      "source": {
+        "sceneId": 1,
+        "eventCode": "event_7"
+      },
+      "route": {
+        "kind": "area_event_override",
+        "script": "area_event_table",
+        "priority": 20,
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_positive_alternate_result.route",
+        "destinationScene": 13,
+        "destinationMode": "field",
+        "sourceTableDestination": 13,
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "tarislar_apartments",
+          "function": "present_alternate_result"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "puyallup_site_02_tarislar_garden_apartments",
+          "textProfile": "tarislar.garden.apartments.entry",
+          "speakerId": "tarislar_apartments_narrator"
+        },
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_positive_alternate_result.entry",
+        "continueResultId": "enter_scene_13"
+      },
+      "provenance": {
+        "evidence": "ROM indexed title service 21 at 0x5447E tests signed FFF0D5 before story flags. Positive selects text group 0x15FF28 / page 0x15FE5D; its one-page prompt returns D6=-1 and remains on scene 1. Scene-1 record 67/event 7 has ordinary event-table destination scene 13, retained as the suppressed result. The entity route binds this branch to Lua and records the source destination."
+      }
+    },
+    {
+      "id": "rom_event_07_negative_alternate_result",
+      "source": {
+        "sceneId": 1,
+        "eventCode": "event_7"
+      },
+      "route": {
+        "kind": "area_event_override",
+        "script": "area_event_table",
+        "priority": 20,
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_negative_alternate_result.route",
+        "destinationScene": 13,
+        "destinationMode": "field",
+        "sourceTableDestination": 13,
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "tarislar_apartments",
+          "function": "present_alternate_result"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "puyallup_site_02_tarislar_garden_apartments",
+          "textProfile": "tarislar.garden.apartments.entry",
+          "speakerId": "tarislar_apartments_narrator"
+        },
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_negative_alternate_result.entry",
+        "continueResultId": "enter_scene_13"
+      },
+      "provenance": {
+        "evidence": "ROM indexed title service 21 at 0x5447E tests signed FFF0D5 before story flags. Negative selects text group 0x15FF20 / page 0x15FDB8; its one-page prompt returns D6=-1 and remains on scene 1. Scene-1 record 67/event 7 has ordinary event-table destination scene 13, retained as the suppressed result. The entity route binds this branch to Lua and records the source destination."
+      }
+    },
+    {
+      "id": "rom_event_07_first_authorized_visit",
+      "source": {
+        "sceneId": 1,
+        "eventCode": "event_7"
+      },
+      "route": {
+        "kind": "area_event_override",
+        "script": "area_event_table",
+        "priority": 10,
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_first_authorized_visit.route",
+        "destinationScene": 54,
+        "destinationMode": "scripted_activity",
+        "sourceTableDestination": 13,
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "tarislar_apartments",
+          "function": "present_first_entry"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "puyallup_site_02_tarislar_garden_apartments",
+          "textProfile": "tarislar.garden.apartments.entry",
+          "speakerId": "tarislar_apartments_narrator"
+        },
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_first_authorized_visit.entry",
+        "continueResultId": "enter_scene_54"
+      },
+      "provenance": {
+        "evidence": "ROM scene 1 record 67 at 0x17D9A2; event-table row 7 at 0x17D627 is scene 13. Indexed title service 21 at 0x5447E selects first-entry node 0xF4DF4 at 0x5456E when FFF0D5 is zero, FFFC1E bit 30 is set, and bit 21 is clear; it marks bit 21, adds +2 Karma, and starts the Harlequin prompt chain. This path does not set FFF0CC and returns to scene 1 after its prompt chain. The later repeat root 0xF4E08 offers the separately gated tomb departure; the companion rom_event_07_tomb_departure row resumes scene 54 only after its Yes travel pages return enter_scene_54. FFF0D5 is supplied as alternate_result. A pending descriptor list can override the later selector to scene 15. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    },
+    {
+      "id": "rom_event_07_repeat_service",
+      "source": {
+        "sceneId": 1,
+        "eventCode": "event_7"
+      },
+      "route": {
+        "kind": "area_event_override",
+        "script": "area_event_table",
+        "priority": 5,
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_repeat_service.route",
+        "destinationScene": 13,
+        "destinationMode": "field",
+        "sourceTableDestination": 13,
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "tarislar_apartments",
+          "function": "present_repeat_service"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "puyallup_site_02_tarislar_garden_apartments",
+          "textProfile": "tarislar.garden.apartments.entry",
+          "speakerId": "tarislar_apartments_narrator"
+        },
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_repeat_service.entry",
+        "continueResultId": "enter_scene_13"
+      },
+      "provenance": {
+        "evidence": "ROM service 21 repeat branch at 0x5447E selects greeting/root 0xF4E08 only after the first visit. Bits 16, 28, 26, and 27 then select the Ito, question, information, or tomb branches; command 0x48 at 0x220CC gates the Renraku map response with group-item bit 8 and the paired-map response with bit 7. Tomb departure has higher route priority and remains a separate entity link. FFF0D5 is supplied as alternate_result. The same-map service returns to scene 1 without selecting scene 13 again."
+      }
+    },
+    {
+      "id": "rom_event_07_tomb_departure",
+      "source": {
+        "sceneId": 1,
+        "eventCode": "event_7"
+      },
+      "route": {
+        "kind": "area_event_override",
+        "script": "area_event_table",
+        "priority": 10,
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_tomb_departure.route",
+        "destinationScene": 54,
+        "destinationMode": "scripted_activity",
+        "sourceTableDestination": 13,
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "tarislar_apartments",
+          "function": "present_tomb_departure"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "puyallup_site_02_tarislar_garden_apartments",
+          "textProfile": "tarislar.garden.apartments.entry",
+          "speakerId": "tarislar_apartments_narrator"
+        },
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_tomb_departure.entry",
+        "continueResultId": "enter_scene_54"
+      },
+      "provenance": {
+        "evidence": "ROM service 21 repeat root 0xF4E08 requires story bits 30, 21, 16, 28, 26, and 27 after the Harlequin/Ito/map branches. The Yes command 0xE4 calls 0x24954, sets FFF0CC, and selects scene 54; the no branch at 0xF5A5C returns to the field map. FFF0D5 is supplied as alternate_result. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    },
+    {
+      "id": "rom_event_07_guarded_visit",
+      "source": {
+        "sceneId": 1,
+        "eventCode": "event_7"
+      },
+      "route": {
+        "kind": "area_event_override",
+        "script": "area_event_table",
+        "priority": 10,
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_guarded_visit.route",
+        "destinationScene": 13,
+        "destinationMode": "field",
+        "sourceTableDestination": 13,
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "tarislar_apartments",
+          "function": "present_guarded_entry"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "puyallup_site_02_tarislar_garden_apartments",
+          "textProfile": "tarislar.garden.apartments.entry",
+          "speakerId": "tarislar_apartments_narrator"
+        },
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_guarded_visit.entry",
+        "continueResultId": "enter_scene_13"
+      },
+      "provenance": {
+        "evidence": "ROM scene 1 record 67 at 0x17D9A2; indexed service 21 at 0x544D0 selects prompt root 0xF4DE0 while FFFC1E bit 30 is clear and FFF0D5 is zero. The graph shows text 0xFBCC7, challenge 0xFBD5A, and leave narration 0xFBD94; D6 remains -1 and no scene transition is selected. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    }
+  ]
+}
