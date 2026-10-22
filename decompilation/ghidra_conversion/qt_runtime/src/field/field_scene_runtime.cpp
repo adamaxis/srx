@@ -3776,20 +3776,39 @@ void FieldSceneRuntime::initialize_default_field_actors(
     field_default_actors_.erase(
         std::remove_if(
             field_default_actors_.begin(), field_default_actors_.end(),
-            [](const DefaultFieldActorPresentation& actor) {
-                return actor.temporary_world_encounter ||
-                       actor.world_activity_script_actor;
+            [scene_reference](const DefaultFieldActorPresentation& actor) {
+                const bool transient_actor =
+                    actor.temporary_world_encounter ||
+                    actor.world_activity_script_actor;
+                return transient_actor &&
+                       actor.scene_reference != scene_reference;
             }),
         field_default_actors_.end());
     field_world_effect_slots_occupied_.fill(false);
+    for (const auto& actor : field_default_actors_) {
+        if (!actor.active || actor.scene_reference != scene_reference ||
+            !actor.effect_slot.has_value() ||
+            *actor.effect_slot >= field_world_effect_slots_occupied_.size()) {
+            continue;
+        }
+        field_world_effect_slots_occupied_[*actor.effect_slot] = true;
+    }
     field_spell_effect_slot_target_ids_.fill(std::string{});
     field_entity_target_owner_ = EntityServiceTargetOwner{};
     field_entity_target_records_.assign(16U, EntityServiceTargetRecord{});
     pending_field_encounter_outcome_.reset();
-    pending_world_activity_script_actors_.clear();
-    pending_world_activity_script_actor_scene_.reset();
+    if (!pending_world_activity_script_actor_scene_.has_value() ||
+        *pending_world_activity_script_actor_scene_ != scene_reference) {
+        pending_world_activity_script_actors_.clear();
+        pending_world_activity_script_actor_scene_.reset();
+    }
 
     for (auto& actor : field_default_actors_) {
+        if (actor.active && actor.scene_reference == scene_reference &&
+            (actor.temporary_world_encounter ||
+             actor.world_activity_script_actor)) {
+            continue;
+        }
         actor.active = false;
         actor.source_record_slot.reset();
         actor.target_selected = false;
