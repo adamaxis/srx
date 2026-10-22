@@ -282,6 +282,22 @@ The panel CTest captures the lesson and club path. Section 23 frame 001770
 shows the shared Alesandro/Professor portrait and a generic Services/Goodbye
 panel, not the complete phone call.
 
+Mr. Faradouchi's ROM record at `0x10D068` routes to a repeat-call page after
+acceptance; on a first call handler `0x22C98` rejects an existing Yakuza tie,
+then checks the active runner's Reputation at `$FF018B` against 5 before
+offering Mafia membership. Command `0x7D` at `0x22CC8` records contact 7's
+history bit 20 and FF018F bit 2 only after Yes. Agira Tetsumi's record at
+`0x10D676` mirrors that flow: handler `0x22CE8` rejects a Mafia tie, and
+command `0x7F` at `0x22D18` records contact 8's history bit 21 and FF018F bit
+1 after Yes. Decline, low
+Reputation, and rival-faction rejection keep the history bit clear, so a later
+call repeats the first-call branch. JSON contains the pages, Yes/No menus,
+typed Reputation conditions, and return-to-caller terminal; Lua registers only
+the paired history/discount-flag action. Pure-Lua and Debug/Release native-host
+permutation tests cover first/repeat, both faction gates, threshold values,
+acceptance, and decline. The reviewed longplay breakdowns have no complete
+matching call sequence for either person, so the visual hill remains partial.
+
 Sharkey's ROM contact record at `0x10A7F2`
 offers commands `0x6E`-`0x70`: 3,000 nuyen for Salish-Shidhe passage to scene
 6, 5,000 for Sinsearach passage to scene 9, or Smart Goggles (item 22) for
@@ -348,14 +364,15 @@ the ordinary four-choice terminal, selects Vid-Phone and Captain Quinton,
 uses the source B choice to end the call, then checks the terminal redraw and
 the completed 60-frame host return fade. Its full 320x224 contact panel and
 returned field frame were inspected. There is no independent longplay call
-frame, so the visual hill remains partial. The remaining contact-specific
-service paths remain open. Cyberspace checks
+frame, so the visual hill remains partial. Physical routes to service screens
+and independent call-frame matches remain open. Cyberspace checks
 deck/MPCP/datajack facts, offers passcodes or System Search, then enters the
 existing Matrix session and node-action route. Debug/Release CTests cover these script routes, the phone
 pages/calls, the cab selector, and a completed Redmond-to-Downtown map load;
 the taxi selector and arrival full-screen dumps are byte-identical across
-builds. This hill remains partial: remaining contact-specific services, full
-Matrix presentation/actions, and the ROM's mode-exit dialogue are still open.
+builds. This hill remains partial: physical input coverage for every contact
+service, full Matrix presentation/actions, and the ROM's mode-exit dialogue are
+still open.
 See
 [`field-map-trigger-profile.md`](field-map-trigger-profile.md).
 

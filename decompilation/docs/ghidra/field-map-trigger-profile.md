@@ -455,11 +455,12 @@ contact bitfield, pages the rows, resolves each first/repeat dialogue and
 portrait, and retains per-contact call-history state. ROM-rooted service
 trees are implemented for Capt. Quinton, Alesandro, Sharkey, Kipp David,
 Wilma Temmenhoff, Sgt. Macklemann, and Gregory Wilns, including wallet,
-inventory, contact-flag, deck-record, and map-destination effects. All seven
-converted contact services use the reusable JSON conversation graph with Lua
-action adapters. The menu
+inventory, contact-flag, deck-record, and map-destination effects. Across all
+contacts, eleven service flows use the reusable JSON conversation graph with
+Lua action adapters. Faradouchi and Agira have call-scoped pledge graphs with
+the ROM's Reputation and rival-faction gates. The menu
 is rooted at `0x1096F4`, with Firepower and Contacts nodes at `0x109750` and
-`0x109780`. Other contact-specific service paths remain unresolved.
+`0x109780`. No additional Services menus are inferred for Faradouchi or Agira.
 Cyberspace checks deck,
 MPCP, and datajack facts before showing Enter Passcode / System Search / Exit;
 known passcodes enter their selected system, while System Search follows the

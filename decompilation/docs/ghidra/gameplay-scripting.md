@@ -156,10 +156,14 @@ two named transactions. The ROM's insufficient-funds text pointer targets
 invalid data, so those results stay at a `source_boundary` instead of adding
 invented copy.
 
-Together with the shared Quinton call graph, all eleven contacts with traced
-service behavior now use JSON graphs. Faradouchi and Agira are the remaining
-call-only records under source review; no service behavior is inferred for
-them.
+The eleven contacts with traced service behavior use JSON graphs. Faradouchi
+and Agira have separate call-scoped graphs for first/repeat dialogue, their
+opposing-faction rejection, the active runner's Reputation-5 gate, and the
+accept/decline pledge. ROM commands `0x7D` and `0x7F` write the contact-history
+and corresponding Mafia/Yakuza discount bits only after acceptance. Their
+graphs return directly to the caller; no Services menu is invented for them.
+Longplay breakdowns reviewed so far contain no complete matching call sequence,
+so internal tests cover behavior while visual fidelity remains open.
 
 The Ares Weapon Emporium stock is declared in `gameplay/scripts/shop.lua`.
 The script groups offers under stable category names; `GameScriptRuntime`

@@ -138,6 +138,15 @@ special-case outcome for every combination.
 | Terminal transition | Keep the current place, resume an already selected source route, restore the saved origin, enter a named location/activity, open a separate service, or play a named cinematic. | One validated terminal tagged union, dispatched through registered host adapters. It is separate from the action result that led to it. |
 | Return context | A service may return to its caller, a saved exterior entry, the source route, or a named scene; position and heading follow the selected source entry/return record. | Invocation context carries a stable return-point ID and policy. The host applies the return record; the dialogue graph does not reconstruct coordinates. |
 
+Condition facts keep their source types and owners. `story.*` reads named
+boolean progression facts, while `runner.attribute.*` and `runner.skill.*`
+read numeric values from the active party record supplied by the host. Missing
+runner data stays unknown; a graph does not silently treat it as zero. For the
+Faradouchi and Agira calls, ROM `$FF018B` is the active runner's `+0x8B`
+Reputation skill (`skills[10]`), and both handlers compare it with 5. This
+typed fact keeps a stat gate out of the boolean story-flag store and makes the
+same condition usable by later dialogue graphs.
+
 This decomposition covers combinations without flattening them. For example,
 a building visit can be gated by a run/story condition, show a page and a
 Yes/No choice, charge through a transaction action, branch on the result, and
@@ -370,14 +379,23 @@ permutations include:
   paths. The ROM's insufficient-funds pointer at `0x10F12E` resolves to
   unsupported bytes at `0x0FED41`; those results remain explicit boundaries.
 
-Two list contacts remain under source review: Mr. Faradouchi and Agira
-Tetsumi. Their call-history and continuation behavior must be traced before
-adding graph content; the contact list, first/repeat copy, and portraits do
-not establish extra service branches.
+Mr. Faradouchi and Agira Tetsumi now have call-scoped JSON graphs sourced from
+ROM handlers `0x22C98/0x22CC8` and `0x22CE8/0x22D18`. The graphs preserve their
+first/repeat streams, the opposing-faction rejection, the active runner's
+Reputation threshold of 5, and the Yes/No pledge. The call-history bit and
+matching FF018F faction discount bit are written only after Yes. Decline,
+low Reputation, and rival-faction rejection leave history clear, so the next
+attempt still selects the first-call stream. The ROM supplies no Services
+menu for these contacts, so none was inferred. Their accepted repeat stream
+remains the source-provided acknowledgment text.
+
 `contacts.json`, `speakers.json`, `menus.json`, `conditions.json`, and
-`conversations/*.json` now hold shared content and the eleven converted
-service graphs. Named Lua actions and typed host services retain state
-mutation policy. The two remaining contacts have no inferred service tree.
+`conversations/*.json` hold the shared content and all thirteen contact
+interaction graphs: eleven service graphs plus the two faction pledge call
+graphs. Lua registers the small flag-writing action; JSON owns page order,
+choice IDs, gates, and return-to-caller outcomes. The active runner's
+Reputation comes from the typed party binding, while missing runner or restored
+save facts remain explicit source boundaries.
 
 ## JSON content and entity-route layout
 
@@ -543,9 +561,9 @@ conditions, and outcome types must not depend on Qt JSON classes.
    and consumers reference stable text keys. Extracted strings remain
    extractor-owned.
 3. **Implemented for shared catalogs:** speaker, menu, and 13-contact data are
-   JSON-backed. Captain Quinton's full call flow and ten other converted
-   contact service flows use JSON graphs; Faradouchi and Agira remain under
-   source review and have no inferred service behavior.
+   JSON-backed. Eleven contacts have JSON service graphs; Faradouchi and Agira
+   have JSON first/repeat and faction-pledge call graphs, including the ROM's
+   active-runner Reputation and rival-faction gates.
 4. **Implemented with explicit host boundaries:** the reusable Lua graph and
    condition engines and typed `DialogueOutcome` contract are active. The
    portable C++ `DialogueOutcomeDispatcher` registers handlers by outcome type
@@ -573,9 +591,11 @@ The first JSON graph migration was a vertical slice that exercises more than
 one terminal kind. Stoker's indexed service and signed field-exit prompt now
 use separate JSON graph roots. The remaining Stoker work is source coverage
 for the 80..99 effect callback, saved-game fact restoration, and independent
-visual checks. Quinton's call graph and ten other converted contact service
-graphs now cover the eleven source-derived service trees. Faradouchi and Agira
-remain open for call-history and continuation source tracing. The Spirit Eyes
+visual checks. The eleven source-derived contact service trees and the two
+faction pledge call graphs are JSON-backed. Their state, prompt, and terminal
+permutations have automated Lua and native-host coverage; matching independent
+longplay frames for the Faradouchi and Agira call sequences remain unavailable,
+so their visual status stays partial. The Spirit Eyes
 ritual route is JSON-backed through its source-traced Scene-4 prompt chain and staged
 item gates. Licourtrix's Scene-47 graph is JSON-backed and tested, and the
 seeded mode-table route now reaches its typed Scene-47 entry and Lua actor list.
