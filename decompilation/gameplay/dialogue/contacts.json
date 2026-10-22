@@ -206,7 +206,7 @@
       "textProfile": "field.vid_phone",
       "availabilityFact": "vid_phone_contact_7",
       "callHistoryFact": "vid_phone_called_7",
-      "callHistoryPolicy": "external_effect",
+      "callHistoryPolicy": "graph_action",
       "firstCall": {
         "eventId": "first_call",
         "textKey": "vid_phone.contact.mr_faradouchi.first_call",
@@ -216,6 +216,11 @@
         "eventId": "repeat_call",
         "textKey": "vid_phone.contact.mr_faradouchi.repeat_call",
         "continuation": true
+      },
+      "service": {
+        "module": "vid_phone.affiliations",
+        "graphId": "vid_phone.mr_faradouchi.call",
+        "graphScope": "call"
       }
     },
     {
@@ -228,7 +233,7 @@
       "textProfile": "field.vid_phone",
       "availabilityFact": "vid_phone_contact_8",
       "callHistoryFact": "vid_phone_called_8",
-      "callHistoryPolicy": "external_effect",
+      "callHistoryPolicy": "graph_action",
       "firstCall": {
         "eventId": "first_call",
         "textKey": "vid_phone.contact.agira_tetsumi.first_call",
@@ -238,6 +243,11 @@
         "eventId": "repeat_call",
         "textKey": "vid_phone.contact.agira_tetsumi.repeat_call",
         "continuation": true
+      },
+      "service": {
+        "module": "vid_phone.affiliations",
+        "graphId": "vid_phone.agira_tetsumi.call",
+        "graphScope": "call"
       }
     },
     {

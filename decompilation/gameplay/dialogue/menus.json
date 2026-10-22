@@ -276,19 +276,12 @@
         },
         "title_key": "vid_phone.alesandro_hobbs.services"
       },
-      "call_agira_tetsumi_first_call": {
+      "call_agira_tetsumi_yakuza_pledge": {
         "choice_label_keys": {
-          "goodbye": "vid_phone.option.goodbye",
-          "services": "vid_phone.option.services"
+          "no": "vid_phone.option.no",
+          "yes": "vid_phone.option.yes"
         },
-        "title_key": "vid_phone.contact.agira_tetsumi.first_call"
-      },
-      "call_agira_tetsumi_repeat_call": {
-        "choice_label_keys": {
-          "goodbye": "vid_phone.option.goodbye",
-          "services": "vid_phone.option.services"
-        },
-        "title_key": "vid_phone.contact.agira_tetsumi.repeat_call"
+        "title_key": "vid_phone.agira_tetsumi.yakuza_offer"
       },
       "call_alesandro_hobbs_first_call": {
         "choice_label_keys": {
@@ -597,19 +590,12 @@
         },
         "title_key": "vid_phone.max.services"
       },
-      "call_mr_faradouchi_first_call": {
+      "call_mr_faradouchi_mafia_pledge": {
         "choice_label_keys": {
-          "goodbye": "vid_phone.option.goodbye",
-          "services": "vid_phone.option.services"
+          "no": "vid_phone.option.no",
+          "yes": "vid_phone.option.yes"
         },
-        "title_key": "vid_phone.contact.mr_faradouchi.first_call"
-      },
-      "call_mr_faradouchi_repeat_call": {
-        "choice_label_keys": {
-          "goodbye": "vid_phone.option.goodbye",
-          "services": "vid_phone.option.services"
-        },
-        "title_key": "vid_phone.contact.mr_faradouchi.repeat_call"
+        "title_key": "vid_phone.mr_faradouchi.mafia_offer"
       },
       "call_professor_jefferson_first_call": {
         "choice_label_keys": {

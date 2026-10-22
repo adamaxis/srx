@@ -49,7 +49,7 @@ for position, record in ipairs(phone_catalog.contacts) do
            not history_facts[record.callHistoryFact],
         "Vid-Phone JSON catalog contains a duplicate contact or fact")
     assert(record.callHistoryPolicy == "before_first_call" or
-           record.callHistoryPolicy == "external_effect",
+           record.callHistoryPolicy == "graph_action",
         "Vid-Phone contact has an unsupported history policy: " .. record.id)
     contact_ids[record.id] = true
     availability_facts[record.availabilityFact] = true
@@ -101,6 +101,11 @@ for position, record in ipairs(phone_catalog.contacts) do
         assert(contact.service_graph_id ~= nil or
                contact.service_function ~= nil,
             "Vid-Phone service needs a graph or legacy function: " ..
+            record.id)
+    end
+    if record.callHistoryPolicy == "graph_action" then
+        assert(contact.service_graph_scope == "call",
+            "Vid-Phone graph-action history needs a call-scoped graph: " ..
             record.id)
     end
     vid_phone_contacts[#vid_phone_contacts + 1] = contact

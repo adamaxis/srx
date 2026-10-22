@@ -37,6 +37,8 @@ function Harness.new(contact_id)
         operations = {},
         choices = {},
         service_results = {},
+        active_slot = 0,
+        reputation = 5,
     }, Harness)
     self.content = load_content()
     local text_file = assert(io.open(
@@ -52,6 +54,14 @@ function Harness.new(contact_id)
         ui = {},
         services = {},
     }
+    game.party = function()
+        return { [self.active_slot] = {
+            skills = self.reputation == nil and {} or {
+                [10] = self.reputation,
+            },
+        } }
+    end
+    game.active_slot = function() return self.active_slot end
     game.ui.cursor_menu = function(menu_id, choices, selected_index,
                                    speaker_id, text_profile)
         assert(menu_id == "contacts" and selected_index == 1)
@@ -105,12 +115,19 @@ function Harness.new(contact_id)
     return self
 end
 
-function Harness:reset(called, choices, service_results)
+function Harness:reset(called, choices, service_results, reputation,
+                       affiliations)
     self.menus = {}
     self.pages = {}
     self.operations = {}
     self.choices = choices or {}
     self.service_results = service_results or {}
+    if reputation == "unknown" then
+        self.reputation = nil
+    else
+        self.reputation = reputation == nil and 5 or reputation
+    end
+    affiliations = affiliations or {}
     local contact
     for _, candidate in ipairs(self.content.contacts.contacts) do
         if candidate.id == self.contact_id then contact = candidate break end
@@ -120,6 +137,8 @@ function Harness:reset(called, choices, service_results)
         vid_phone_contacts_resolved = true,
         [contact.availabilityFact] = true,
         [contact.callHistoryFact] = called,
+        vid_phone_affiliation_mafia = affiliations.mafia or false,
+        vid_phone_affiliation_yakuza = affiliations.yakuza or false,
     }
 end
 

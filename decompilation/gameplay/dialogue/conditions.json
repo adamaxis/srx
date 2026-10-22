@@ -244,6 +244,82 @@
         "scope": "contact_12_call_history_set"
       }
     },
+    "vid_phone.faradouchi_contact_not_called": {
+      "expression": {
+        "fact": "story.vid_phone_called_7", "op": "eq", "value": false
+      },
+      "provenance": {
+        "romAddresses": ["0xE5E2", "0x109682", "0x10D068"],
+        "scope": "contact_7_call_history_clear"
+      }
+    },
+    "vid_phone.faradouchi_contact_called": {
+      "expression": {
+        "fact": "story.vid_phone_called_7", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0xE5E2", "0x109682", "0x10D068"],
+        "scope": "contact_7_call_history_set_after_mafia_acceptance"
+      }
+    },
+    "vid_phone.agira_contact_not_called": {
+      "expression": {
+        "fact": "story.vid_phone_called_8", "op": "eq", "value": false
+      },
+      "provenance": {
+        "romAddresses": ["0xE5E2", "0x109682", "0x10D676"],
+        "scope": "contact_8_call_history_clear"
+      }
+    },
+    "vid_phone.agira_contact_called": {
+      "expression": {
+        "fact": "story.vid_phone_called_8", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0xE5E2", "0x109682", "0x10D676"],
+        "scope": "contact_8_call_history_set_after_yakuza_acceptance"
+      }
+    },
+    "vid_phone.faradouchi_blocked_by_yakuza": {
+      "expression": {
+        "fact": "story.vid_phone_affiliation_yakuza",
+        "op": "eq",
+        "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0x22C98", "0x22D18"],
+        "scope": "yakuza_flag_routes_faradouchi_to_hit_list"
+      }
+    },
+    "vid_phone.agira_blocked_by_mafia": {
+      "expression": {
+        "fact": "story.vid_phone_affiliation_mafia",
+        "op": "eq",
+        "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0x22CE8", "0x22CC8"],
+        "scope": "mafia_flag_routes_agira_to_death_threat"
+      }
+    },
+    "vid_phone.active_runner_reputation_at_least_5": {
+      "expression": {
+        "fact": "runner.skill.reputation", "op": "gte", "value": 5
+      },
+      "provenance": {
+        "romAddresses": ["0x22CAC", "0x22CFC", "0x0D82A", "0xC1A2A"],
+        "scope": "active_runner_reputation_skill_threshold"
+      }
+    },
+    "vid_phone.active_runner_reputation_below_5": {
+      "expression": {
+        "fact": "runner.skill.reputation", "op": "lt", "value": 5
+      },
+      "provenance": {
+        "romAddresses": ["0x22CAC", "0x22CFC", "0x0D82A", "0xC1A2A"],
+        "scope": "active_runner_reputation_skill_threshold"
+      }
+    },
     "salish.owlfeather.first_contact_available": {
       "expression": {
         "all": [

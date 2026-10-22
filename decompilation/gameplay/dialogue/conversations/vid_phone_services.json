@@ -1779,6 +1779,182 @@
           "outcome": { "type": "return_to_caller" }
         }
       }
+    },
+    "vid_phone.mr_faradouchi.call": {
+      "entryNode": "call_history",
+      "speakerId": "vid_phone_mr_faradouchi",
+      "textProfile": "field.vid_phone",
+      "provenance": {
+        "romAddresses": [
+          "0xE5E2", "0xE61C", "0x109682", "0x10D068", "0x10D076",
+          "0x10D08A", "0x10D092", "0x10D0AA", "0x10D0BA", "0x10D0C2",
+          "0x22C98", "0x22CC8", "0x22D18", "0x1F246", "0x1F3C4"
+        ],
+        "scope": "first_repeat_mafia_affiliation_and_rival_gate"
+      },
+      "nodes": {
+        "call_history": {
+          "type": "branch",
+          "cases": [
+            { "when": "vid_phone.faradouchi_contact_called", "next": "repeat_call" },
+            { "when": "vid_phone.faradouchi_contact_not_called", "next": "first_call" }
+          ],
+          "fallback": "call_history_boundary"
+        },
+        "first_call": {
+          "type": "page",
+          "eventId": "first_call",
+          "next": "first_call_gate"
+        },
+        "first_call_gate": {
+          "type": "branch",
+          "cases": [
+            { "when": "vid_phone.faradouchi_blocked_by_yakuza", "next": "yakuza_rejection" },
+            { "when": "vid_phone.active_runner_reputation_at_least_5", "next": "mafia_offer" },
+            { "when": "vid_phone.active_runner_reputation_below_5", "next": "low_reputation" }
+          ],
+          "fallback": "reputation_boundary"
+        },
+        "yakuza_rejection": {
+          "type": "page",
+          "eventId": "yakuza_rejection",
+          "next": "finished"
+        },
+        "low_reputation": {
+          "type": "page",
+          "eventId": "low_reputation",
+          "next": "finished"
+        },
+        "mafia_offer": {
+          "type": "choice",
+          "menuId": "call_mr_faradouchi_mafia_pledge",
+          "inputContract": "yes_no",
+          "choices": [
+            { "id": "yes", "next": "accept_mafia_affiliation" },
+            { "id": "no", "next": "finished" }
+          ]
+        },
+        "accept_mafia_affiliation": {
+          "type": "action",
+          "actionId": "vid_phone.accept_mafia_affiliation",
+          "next": "pledge_accepted",
+          "results": { "state_unavailable": "state_boundary" }
+        },
+        "pledge_accepted": {
+          "type": "page",
+          "eventId": "pledge_accepted",
+          "next": "finished"
+        },
+        "repeat_call": {
+          "type": "page",
+          "eventId": "repeat_call",
+          "next": "finished"
+        },
+        "call_history_boundary": {
+          "type": "source_boundary",
+          "reason": "Mr. Faradouchi call-history state is unresolved."
+        },
+        "reputation_boundary": {
+          "type": "source_boundary",
+          "reason": "The active runner Reputation skill required by ROM 0x22C98 is unresolved."
+        },
+        "state_boundary": {
+          "type": "source_boundary",
+          "reason": "ROM command 0x7D could not write Faradouchi's contact and Mafia affiliation facts."
+        },
+        "finished": {
+          "type": "terminal",
+          "outcome": { "type": "return_to_caller" }
+        }
+      }
+    },
+    "vid_phone.agira_tetsumi.call": {
+      "entryNode": "call_history",
+      "speakerId": "vid_phone_agira_tetsumi",
+      "textProfile": "field.vid_phone",
+      "provenance": {
+        "romAddresses": [
+          "0xE5E2", "0xE61C", "0x109682", "0x10D676", "0x10D684",
+          "0x10D698", "0x10D6A0", "0x10D6A8", "0x10D6C0", "0x10D6D0",
+          "0x22CE8", "0x22D18", "0x22CC8", "0x1F246", "0x1F3C4"
+        ],
+        "scope": "first_repeat_yakuza_affiliation_and_rival_gate"
+      },
+      "nodes": {
+        "call_history": {
+          "type": "branch",
+          "cases": [
+            { "when": "vid_phone.agira_contact_called", "next": "repeat_call" },
+            { "when": "vid_phone.agira_contact_not_called", "next": "first_call" }
+          ],
+          "fallback": "call_history_boundary"
+        },
+        "first_call": {
+          "type": "page",
+          "eventId": "first_call",
+          "next": "first_call_gate"
+        },
+        "first_call_gate": {
+          "type": "branch",
+          "cases": [
+            { "when": "vid_phone.agira_blocked_by_mafia", "next": "mafia_rejection" },
+            { "when": "vid_phone.active_runner_reputation_at_least_5", "next": "yakuza_offer" },
+            { "when": "vid_phone.active_runner_reputation_below_5", "next": "low_reputation" }
+          ],
+          "fallback": "reputation_boundary"
+        },
+        "mafia_rejection": {
+          "type": "page",
+          "eventId": "mafia_rejection",
+          "next": "finished"
+        },
+        "low_reputation": {
+          "type": "page",
+          "eventId": "low_reputation",
+          "next": "finished"
+        },
+        "yakuza_offer": {
+          "type": "choice",
+          "menuId": "call_agira_tetsumi_yakuza_pledge",
+          "inputContract": "yes_no",
+          "choices": [
+            { "id": "yes", "next": "accept_yakuza_affiliation" },
+            { "id": "no", "next": "finished" }
+          ]
+        },
+        "accept_yakuza_affiliation": {
+          "type": "action",
+          "actionId": "vid_phone.accept_yakuza_affiliation",
+          "next": "pledge_accepted",
+          "results": { "state_unavailable": "state_boundary" }
+        },
+        "pledge_accepted": {
+          "type": "page",
+          "eventId": "pledge_accepted",
+          "next": "finished"
+        },
+        "repeat_call": {
+          "type": "page",
+          "eventId": "repeat_call",
+          "next": "finished"
+        },
+        "call_history_boundary": {
+          "type": "source_boundary",
+          "reason": "Agira Tetsumi call-history state is unresolved."
+        },
+        "reputation_boundary": {
+          "type": "source_boundary",
+          "reason": "The active runner Reputation skill required by ROM 0x22CE8 is unresolved."
+        },
+        "state_boundary": {
+          "type": "source_boundary",
+          "reason": "ROM command 0x7F could not write Agira's contact and Yakuza affiliation facts."
+        },
+        "finished": {
+          "type": "terminal",
+          "outcome": { "type": "return_to_caller" }
+        }
+      }
     }
   }
 }

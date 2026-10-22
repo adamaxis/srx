@@ -154,9 +154,8 @@ local function call_contact(contact)
     local first_call = game.state[called_fact] ~= true
     if first_call and contact.call_history_policy == "before_first_call" then
         -- ROM 0xE5E2 sets the contact's call-history bit before opening its
-        -- first-call dialogue. Faradouchi and Agira are the two exceptions:
-        -- the source writes for their branch are not part of this converted
-        -- common caller, so their JSON policy leaves the write to that effect.
+        -- first-call dialogue. Call-scoped JSON graphs own contacts whose ROM
+        -- handlers write history only after a particular dialogue choice.
         game.state[called_fact] = true
     end
 

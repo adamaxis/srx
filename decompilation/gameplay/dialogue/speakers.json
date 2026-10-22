@@ -515,6 +515,18 @@
           "continuation_key": "shared.more",
           "title_key": "vid_phone.contact.agira_tetsumi.first_call"
         },
+        "low_reputation": {
+          "continuation_key": "",
+          "title_key": "vid_phone.agira_tetsumi.unknown_name"
+        },
+        "mafia_rejection": {
+          "continuation_key": "",
+          "title_key": "vid_phone.agira_tetsumi.mafia_rejection"
+        },
+        "pledge_accepted": {
+          "continuation_key": "",
+          "title_key": "vid_phone.agira_tetsumi.pledge_accepted"
+        },
         "repeat_call": {
           "continuation_key": "shared.more",
           "title_key": "vid_phone.contact.agira_tetsumi.repeat_call"
@@ -761,6 +773,18 @@
         "first_call": {
           "continuation_key": "shared.more",
           "title_key": "vid_phone.contact.mr_faradouchi.first_call"
+        },
+        "low_reputation": {
+          "continuation_key": "",
+          "title_key": "vid_phone.mr_faradouchi.unknown_caller"
+        },
+        "pledge_accepted": {
+          "continuation_key": "",
+          "title_key": "vid_phone.mr_faradouchi.pledge_accepted"
+        },
+        "yakuza_rejection": {
+          "continuation_key": "",
+          "title_key": "vid_phone.mr_faradouchi.yakuza_rejection"
         },
         "repeat_call": {
           "continuation_key": "shared.more",
