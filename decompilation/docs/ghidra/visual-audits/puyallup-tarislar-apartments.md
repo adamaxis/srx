@@ -121,10 +121,14 @@ catalog's source policy explicitly authorizes a correction.
   itself an interior transition.
 - Repeat service: `0x5447E` selects greeting/root `0xF4E08` after the first
   visit. Story bit 16 clear selects the questions root `0xF4E20`; bit 16 set
-  with bit 28 clear marks bit 28 and offers the Ito and information choices.
-  Once bit 28 is set, item bit 8 gates the first Renraku map response and item
-  bit 7 gates the paired-map response after bit 26 is set. The Lua route keeps
-  this service on scene 1; its source choice labels are extracted from ROM
+  with bit 28 clear applies command `0x40` at `0x5451A`, marks bit 28, and
+  offers the Ito and information choices. The repeat-service JSON graph uses
+  condition records for bit 16/28 and the map-item gates: item bit 8 opens the
+  first Renraku map response; item bit 7 opens the paired-map response after
+  bit 26 is set. The greeting at `0xFC111`, questions page at `0xFC222`, and
+  Ito response at `0xFC757` are extracted into the text catalog. Named Lua
+  actions apply command `0x40` and enter the shared map-information flow; the
+  graph keeps this service on scene 1. Source choice labels are extracted from
   `0x1047D4`, `0x104494`, and `0x104473`.
 - Tomb departure: when the story/map gates are complete, root `0xF4E08` asks
   whether Joshua is prepared for the

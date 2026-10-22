@@ -40,6 +40,105 @@
         }
       }
     },
+    "tarislar_garden_apartments.repeat_service": {
+      "entryNode": "ito_victory_gate",
+      "precondition": "tarislar_garden_apartments.repeat_service_available",
+      "speakerId": "tarislar_apartments_narrator",
+      "textProfile": "tarislar.garden.apartments.entry",
+      "provenance": {
+        "romAddresses": ["0x5447E", "0x544E8", "0x5451A", "0x5456A", "0xF4E08", "0xF4E20", "0xF4E34", "0xF4E48", "0xFC111", "0xFC222", "0xFC757", "0x220CC"],
+        "scope": "scene_1_event_7_repeat_service_before_tomb_departure"
+      },
+      "nodes": {
+        "ito_victory_gate": {
+          "type": "branch",
+          "cases": [
+            { "when": "tarislar_garden_apartments.repeat_ito_fight_won", "next": "post_ito_briefing_gate" }
+          ],
+          "fallback": "questions_choice",
+          "evidence": "ROM service 21 selects the questions root 0xF4E20 while story bit 16 is clear."
+        },
+        "post_ito_briefing_gate": {
+          "type": "branch",
+          "cases": [
+            { "when": "tarislar_garden_apartments.repeat_post_ito_briefing_pending", "next": "mark_post_ito_briefed" }
+          ],
+          "fallback": "map_information_gate",
+          "evidence": "With bit 16 set and bit 28 clear, 0x5451A applies command 0x40 before prompt root 0xF4E34."
+        },
+        "mark_post_ito_briefed": {
+          "type": "action",
+          "actionId": "tarislar_apartments.mark_post_ito_briefed",
+          "results": { "applied": "post_ito_choice" },
+          "evidence": "Dialogue command 0x40 at 0x21F32 marks FFFC1E bit 28."
+        },
+        "map_information_gate": {
+          "type": "branch",
+          "cases": [
+            { "when": "tarislar_garden_apartments.repeat_map_information_available", "next": "information_choice" }
+          ],
+          "fallback": "questions_choice",
+          "evidence": "After briefing, FFFC22 item bit 8 gates the first map; item bit 7 gates the counterpart after story bit 26."
+        },
+        "questions_choice": {
+          "type": "choice",
+          "menuId": "repeat_service",
+          "promptTextKey": "tarislar.garden.apartments.page.repeat_greeting",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "questions", "next": "questions_response" }
+          ],
+          "evidence": "The questions-only root 0xF4E20 presents greeting 0xFC111 and option label 0x1047D4."
+        },
+        "post_ito_choice": {
+          "type": "choice",
+          "menuId": "repeat_service",
+          "promptTextKey": "tarislar.garden.apartments.page.repeat_greeting",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "ito_killed", "next": "ito_response" },
+            { "id": "information", "next": "map_information" }
+          ],
+          "evidence": "After command 0x40, root 0xF4E34 offers the Ito response and map information."
+        },
+        "information_choice": {
+          "type": "choice",
+          "menuId": "repeat_service",
+          "promptTextKey": "tarislar.garden.apartments.page.repeat_greeting",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "information", "next": "map_information" }
+          ],
+          "evidence": "Root 0xF4E48 presents map information as the only available repeat-service choice."
+        },
+        "questions_response": {
+          "type": "page",
+          "eventId": "repeat_questions",
+          "next": "continue_in_place",
+          "evidence": "The questions root reaches the Harlequin response at 0xFC222 without a continuation choice."
+        },
+        "ito_response": {
+          "type": "choice",
+          "menuId": "ito_response",
+          "promptTextKey": "salish.red_buffalo.page.ito",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "more", "next": "map_information" }
+          ],
+          "evidence": "The Ito branch presents shared Harlequin text 0xFC757 with the ROM More continuation."
+        },
+        "map_information": {
+          "type": "action",
+          "actionId": "tarislar_apartments.present_map_information",
+          "results": { "left": "continue_in_place" },
+          "evidence": "The information branch enters shared map dialogue at command 0x220CC and returns to the scene-1 field route."
+        },
+        "continue_in_place": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
+    },
     "tarislar_garden_apartments.guarded_entry": {
       "entryNode": "guarded_entry",
       "precondition": "tarislar_garden_apartments.guarded_entry_available",

@@ -407,11 +407,15 @@ No Business/More choice: No Business follows `0xFBD94`, while More follows
 `0xFBEEC` into the shared Harlequin conversation at `0xF58C0`. Both outcomes
 stay on scene 1. Separate Debug/Release physical-input CTests exercise each
 choice and save full-screen captures. The repeat
-service now selects the questions, Ito, map-information, and tomb branches from
-bits 16/28/26/27 and group-item bits 8/7. Its Debug/Release physical-input QA
-captures the greeting, Renraku response, remaining map pages, and clean scene-1
-`actual.bmp` return. The separate tomb-offer override requires bits 30, 21, 16,
-28, 26, and 27, plus alternate result 0; its Yes branch presents the three ROM
+service now uses a JSON graph and JSON conditions for its story/item gates,
+greeting at `0xFC111`, questions response at `0xFC222`, and Ito response at
+`0xFC757`. A named Lua action applies command `0x40`'s bit-28 effect, then the
+graph enters the shared map-information flow. Debug/Release script QA checks
+the questions and post-Ito branches; physical-input QA captures the greeting,
+Renraku response, remaining map pages, and clean scene-1 `actual.bmp` return.
+The shared map-information pages and effects remain in Lua. The separate
+tomb-offer override requires bits 30, 21, 16, 28, 26, and 27, plus alternate
+result 0; its Yes branch presents the three ROM
 travel pages and enters scene 54, while No returns to scene 1. Debug/Release
 physical-input QA captures both outcomes and the full-screen scene-1/scene-54
 `actual.bmp` files. Signed nonzero FFF0D5 results now have higher-priority Lua

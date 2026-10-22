@@ -58,65 +58,23 @@ function TarislarApartments.present_first_entry()
 end
 
 function TarislarApartments.present_repeat_service()
-    if not at_apartments() or
-       StoryFlags.is_set(E.StoryFlag.FROSTY_MET) ~= true or
-       StoryFlags.is_set(E.StoryFlag.GARDEN_APTS_ENTERED) ~= true or
-       game.field.alternate_result ~= 0 then
-        return "denied"
-    end
-
-    -- ROM 0x544E8..0x5456A selects F4E20, F4E34, or F4E48 from the
-    -- Ito/post-Ito/map bits. The question branch at F4E20 reaches F5A4C;
-    -- the information command at F4E48 reaches 0x220CC, which chooses the
-    -- Renraku-only or two-map response using FFFC22 bit 7.
-    local choices = { "questions" }
-    if StoryFlags.is_set(E.StoryFlag.ITO_FIGHT_WON) == true then
-        if StoryFlags.is_set(E.StoryFlag.POST_ITO_BRIEFED) ~= true then
-            -- 0x5451A sets story bit 28 before presenting F4E34.
-            StoryFlags.mark_fixed(E.StoryFlag.POST_ITO_BRIEFED)
-            choices = { "ito_killed", "information" }
-        else
-            local renraku_map_shown =
-                StoryFlags.is_set(E.StoryFlag.RENRAKU_MAP_SHOWN) == true
-            local both_maps_shown =
-                StoryFlags.is_set(E.StoryFlag.BOTH_MAPS_SHOWN) == true
-            local information_available =
-                (not renraku_map_shown and
-                 game.state.group_item_flag_bit_8 == true) or
-                (renraku_map_shown and not both_maps_shown and
-                 game.state.group_item_flag_bit_7 == true)
-            if information_available then
-                choices = { "information" }
-            end
-        end
-    end
-
-    local choice = game.ui.prompt_text(
-        "repeat_service",
-        "Hello again, Joshua.||||You have bought my time with your pain.||||Spend it as you wish.",
-        choices)
-    if choice == "questions" then
-        game.ui.say_text(table.concat({
-            "I have no new information at this time.",
-            "My resources are spread too thin, but that shouldn't concern you.",
-            "For now, you are on your own.",
-        }, "||"), false)
+    local outcome = DialogueGraph.run(
+        "tarislar_garden_apartments.repeat_service", {
+            ["tarislar_apartments.mark_post_ito_briefed"] = function()
+                -- ROM 0x5451A selects command 0x40; handler 0x21F32 marks
+                -- FFFC1E bit 28 before the repeat-service choices appear.
+                StoryFlags.mark_fixed(E.StoryFlag.POST_ITO_BRIEFED)
+                return "applied"
+            end,
+            ["tarislar_apartments.present_map_information"] = function()
+                return HarlequinDialogue.present_map_information()
+            end,
+        })
+    if type(outcome) == "table" and
+       outcome.type == "continue_in_place" then
         return "left"
     end
-    if choice == "ito_killed" then
-        if not more("ito_response", table.concat({
-            "You managed to have him killed?",
-            "It seems I am not the only person to underestimate you, although it appears I'll be the only one around to correct my mistake.",
-            "Well, with Ogami out of the way Renraku should not bother us any longer.",
-        }, "||")) then
-            return "left"
-        end
-        return HarlequinDialogue.present_map_information()
-    end
-    if choice == "information" then
-        return HarlequinDialogue.present_map_information()
-    end
-    return "left"
+    return outcome
 end
 
 function TarislarApartments.present_guarded_entry()

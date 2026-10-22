@@ -529,6 +529,10 @@
         "guarded_penthouse": {
           "continuation_key": "shared.more",
           "title_key": "tarislar.garden.apartments.page.penthouse_entry"
+        },
+        "repeat_questions": {
+          "continuation_key": "",
+          "title_key": "salish.red_buffalo.page.branch_9"
         }
       },
       "name": "Narration",

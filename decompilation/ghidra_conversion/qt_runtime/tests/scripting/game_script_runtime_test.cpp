@@ -10046,7 +10046,7 @@ int main() {
         return 17;
     }
     scripts.set_story_state({
-        {"story_flag_bit_16", true},
+        {"story_flag_bit_16", false},
         {"story_flag_bit_21", true},
         {"story_flag_bit_26", false},
         {"story_flag_bit_27", false},
@@ -10064,7 +10064,7 @@ int main() {
                     tarislar_repeat.operation->menu.has_value() &&
                     tarislar_repeat.operation->menu->id == "repeat_service" &&
                     tarislar_repeat.operation->menu->inline_text ==
-                        "Hello again, Joshua.||||You have bought my time with your pain.||||Spend it as you wish." &&
+                        "Hello again, Joshua.||You have bought my time with your pain.||Spend it as you wish." &&
                     tarislar_repeat.operation->menu->choices.size() == 1U &&
                     tarislar_repeat.operation->menu->choices.front().id ==
                         "questions",
@@ -10073,13 +10073,19 @@ int main() {
         return 17;
     }
     tarislar_repeat = scripts.complete_native_menu_choice("questions");
+    const auto* tarislar_repeat_questions_text = scripts.dialogue_text(
+        "salish.red_buffalo.page.branch_9");
     if (!expect(tarislar_repeat.status ==
                         ScriptTaskStep::Status::awaiting_native_operation &&
                     tarislar_repeat.operation.has_value() &&
                     tarislar_repeat.operation->type ==
                         ScriptNativeOperation::Type::ui_say &&
                     tarislar_repeat.operation->dialogue.has_value() &&
-                    tarislar_repeat.operation->dialogue->inline_text ==
+                    tarislar_repeat.operation->dialogue->event_id ==
+                        "repeat_questions" &&
+                    tarislar_repeat.operation->dialogue->inline_text.empty() &&
+                    tarislar_repeat_questions_text != nullptr &&
+                    *tarislar_repeat_questions_text ==
                         "I have no new information at this time.||"
                         "My resources are spread too thin, but that shouldn't concern you.||"
                         "For now, you are on your own.",
@@ -10092,6 +10098,163 @@ int main() {
                     tarislar_repeat.result_id ==
                         std::optional<std::string>{"left"},
                 "Tarislar repeat service requested a field-scene transition")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_16", true},
+        {"story_flag_bit_21", true},
+        {"story_flag_bit_26", false},
+        {"story_flag_bit_27", false},
+        {"story_flag_bit_28", true},
+        {"story_flag_bit_30", true},
+        {"group_item_flag_bit_7", false},
+        {"group_item_flag_bit_8", false},
+    });
+    auto tarislar_briefed_without_maps = scripts.start_task(
+        "tarislar_apartments", "present_repeat_service");
+    if (!expect(tarislar_briefed_without_maps.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_briefed_without_maps.operation.has_value() &&
+                    tarislar_briefed_without_maps.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    tarislar_briefed_without_maps.operation->menu.has_value() &&
+                    tarislar_briefed_without_maps.operation->menu->choices.size() ==
+                        1U &&
+                    tarislar_briefed_without_maps.operation->menu->choices.front().id ==
+                        "questions",
+                "Tarislar completed briefing without an available map did not select questions")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    scripts.cancel_task();
+
+    scripts.set_story_state({
+        {"story_flag_bit_16", true},
+        {"story_flag_bit_21", true},
+        {"story_flag_bit_26", false},
+        {"story_flag_bit_27", false},
+        {"story_flag_bit_28", true},
+        {"story_flag_bit_30", true},
+        {"group_item_flag_bit_7", false},
+        {"group_item_flag_bit_8", true},
+    });
+    auto tarislar_first_map_available = scripts.start_task(
+        "tarislar_apartments", "present_repeat_service");
+    if (!expect(tarislar_first_map_available.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_first_map_available.operation.has_value() &&
+                    tarislar_first_map_available.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    tarislar_first_map_available.operation->menu.has_value() &&
+                    tarislar_first_map_available.operation->menu->choices.size() ==
+                        1U &&
+                    tarislar_first_map_available.operation->menu->choices.front().id ==
+                        "information",
+                "Tarislar repeat graph did not expose the first map item gate")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    scripts.cancel_task();
+
+    scripts.set_story_state({
+        {"story_flag_bit_16", true},
+        {"story_flag_bit_21", true},
+        {"story_flag_bit_26", true},
+        {"story_flag_bit_27", false},
+        {"story_flag_bit_28", true},
+        {"story_flag_bit_30", true},
+        {"group_item_flag_bit_7", true},
+        {"group_item_flag_bit_8", true},
+    });
+    auto tarislar_pair_map_available = scripts.start_task(
+        "tarislar_apartments", "present_repeat_service");
+    if (!expect(tarislar_pair_map_available.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_pair_map_available.operation.has_value() &&
+                    tarislar_pair_map_available.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    tarislar_pair_map_available.operation->menu.has_value() &&
+                    tarislar_pair_map_available.operation->menu->choices.size() ==
+                        1U &&
+                    tarislar_pair_map_available.operation->menu->choices.front().id ==
+                        "information",
+                "Tarislar repeat graph did not expose the paired-map item gate")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    scripts.cancel_task();
+
+    scripts.set_story_state({
+        {"story_flag_bit_16", true},
+        {"story_flag_bit_21", true},
+        {"story_flag_bit_26", false},
+        {"story_flag_bit_27", false},
+        {"story_flag_bit_28", false},
+        {"story_flag_bit_30", true},
+        {"group_item_flag_bit_7", false},
+        {"group_item_flag_bit_8", false},
+    });
+    auto tarislar_post_ito = scripts.start_task(
+        "tarislar_apartments", "present_repeat_service");
+    if (!expect(tarislar_post_ito.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_post_ito.operation.has_value() &&
+                    tarislar_post_ito.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    tarislar_post_ito.operation->menu.has_value() &&
+                    tarislar_post_ito.operation->menu->choices.size() == 2U &&
+                    tarislar_post_ito.operation->menu->choices[0].id ==
+                        "ito_killed" &&
+                    tarislar_post_ito.operation->menu->choices[1].id ==
+                        "information" &&
+                    scripts.story_state().at("story_flag_bit_28") &&
+                    scripts.story_state().at("story_trigger_active_28"),
+                "Tarislar repeat graph did not mark bit 28 before the post-Ito menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_post_ito = scripts.complete_native_menu_choice("ito_killed");
+    const auto* tarislar_ito_response_text = scripts.dialogue_text(
+        "salish.red_buffalo.page.ito");
+    if (!expect(tarislar_post_ito.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_post_ito.operation.has_value() &&
+                    tarislar_post_ito.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    tarislar_post_ito.operation->menu.has_value() &&
+                    tarislar_post_ito.operation->menu->id == "ito_response" &&
+                    tarislar_ito_response_text != nullptr &&
+                    tarislar_post_ito.operation->menu->inline_text ==
+                        *tarislar_ito_response_text &&
+                    tarislar_post_ito.operation->menu->choices.size() == 1U &&
+                    tarislar_post_ito.operation->menu->choices.front().id ==
+                        "more",
+                "Tarislar repeat graph did not present the extracted ROM Ito page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_post_ito = scripts.complete_native_menu_choice("more");
+    if (!expect(tarislar_post_ito.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_post_ito.operation.has_value() &&
+                    tarislar_post_ito.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    tarislar_post_ito.operation->dialogue.has_value() &&
+                    tarislar_post_ito.operation->dialogue->inline_text ==
+                        "Thon turned on Renraku when he thought he no longer needed them.||"
+                        "I believe his actions were a bit premature; I still feel him growing weaker.||"
+                        "However, I suggest a run against Renraku to find out exactly what they do have.",
+                "Tarislar post-Ito graph did not enter the shared map-information branch")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_post_ito = scripts.complete_native_operation(true);
+    if (!expect(tarislar_post_ito.status == ScriptTaskStep::Status::completed &&
+                    tarislar_post_ito.result_id ==
+                        std::optional<std::string>{"left"},
+                "Tarislar post-Ito graph did not return to the field route")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }

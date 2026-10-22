@@ -183,6 +183,60 @@
         "scope": "scene_1_event_7_guarded_entry_before_frosty"
       }
     },
+    "tarislar_garden_apartments.repeat_service_available": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "building" },
+          { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
+          { "fact": "field.mode", "op": "eq", "value": 1 },
+          { "fact": "field.event_code", "op": "eq", "value": 7 },
+          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "story.story_flag_bit_21", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_30", "op": "eq", "value": true }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x5447E", "0x544E8", "0x5456A"],
+        "scope": "scene_1_event_7_repeat_service_after_first_visit"
+      }
+    },
+    "tarislar_garden_apartments.repeat_ito_fight_won": {
+      "expression": {
+        "fact": "story.story_flag_bit_16", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0x544E8", "0xF4E34"],
+        "scope": "repeat_service_ito_victory_branch"
+      }
+    },
+    "tarislar_garden_apartments.repeat_post_ito_briefing_pending": {
+      "expression": {
+        "fact": "story.story_flag_bit_28", "op": "eq", "value": false
+      },
+      "provenance": {
+        "romAddresses": ["0x544E8", "0x5451A", "0xF4E34"],
+        "scope": "set_post_ito_briefing_before_repeat_choice"
+      }
+    },
+    "tarislar_garden_apartments.repeat_map_information_available": {
+      "expression": {
+        "any": [
+          { "all": [
+            { "fact": "story.story_flag_bit_26", "op": "eq", "value": false },
+            { "fact": "story.group_item_flag_bit_8", "op": "eq", "value": true }
+          ] },
+          { "all": [
+            { "fact": "story.story_flag_bit_26", "op": "eq", "value": true },
+            { "fact": "story.story_flag_bit_27", "op": "eq", "value": false },
+            { "fact": "story.group_item_flag_bit_7", "op": "eq", "value": true }
+          ] }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x544E8", "0x220CC", "0x22018", "0x22072"],
+        "scope": "repeat_information_requires_unshown_map_item"
+      }
+    },
     "wylie_gala_inn.room_service_context": {
       "expression": {
         "all": [
