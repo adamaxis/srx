@@ -4,8 +4,8 @@ Date: 2026-10-08
 
 **Status:** partial. `field_events.lua` selects a named action for every
 accepted collision; `building.lua` selects direct scene-2 location routes,
-ROM event-table destinations and their typed field/resource/scripted/halted
-destination mode, elevator entry groups, and selected floor destinations.
+Scene-5 host field services, ROM event-table destinations and their typed
+field/resource/scripted/halted destination mode, elevator entry groups, and selected floor destinations.
 The embedded Lua package also defines the New Game scene-entry action and
 Stoker story/menu branches. C++ validates those script results and applies the
 typed engine operations. Selector timing, animations, transitions, and
@@ -27,6 +27,7 @@ records.
 |---|---|---|
 | Scene 2, collision value `0xC2` at ROM `0x173138`, field mode 2/event 2 | `building.lua` location route, then Lua story/menu package | `0x1F65A` selects the generic Stoker arrival dialogue; Lua resolves first/repeat/ordinary story state and supplies manager choices; native handlers apply selected actions |
 | Scene 2, collision value `0xCB` at ROM `0x173142`, field mode 2/event 11 | Ares service script | `0x1FA78` selects the Ares mode-text prompt; A opens the shop and Start returns |
+| Scene 5, records 47–50 at `0x067C40`–`0x067C5E`, events 2–5 | `building.lua` selects the named Wire-Masters, Merlin's Lore, MicroTronics, or Weapon's World field service; `field_mode.lua` selects ROM text by event and signed run result | `0x1FA78` intercepts event-table byte `0x23`; default shows the location text then calls `0x56AC0` with that shop's mode/result, while signed alternate results show the package handoff/payment text and return to scene 5. These four shop catalogs and action handlers are still unresolved. |
 | Scene 2, paired collision values `0xC0` at ROM `0x173124` and `0x17312E`, event 0 | `building.lua` reads the active map's ROM event table | Row 0 in `0x172CDC` unconditionally selects numeric scene `0x14` (scene 20); the identifier does not supply a place-name. `0x167AE` separately checks FFFC2C bit 26 at `0x1689A`; when set, it clears the bit and schedules `0x1DBAA`'s timeout without changing the destination. |
 | Scene 20, record 110 at `0x1D96DE`, raw `0x00C0`, event 0 | Scene-`0x14` generic interaction | No event-table destination exists. `0xB7B8` -> `0x1651E` returns carry on zero event and begins the normal field transition; `0x16E30`, `0x2FA4`, and `0x2F32` preserve/restore the source scene context and actor anchors. Debug/Release QA reaches the record with eight ordinary Left updates around adjacent record 109's `0x7F` wall, then held Up; the first raw C0 sample is followed by the zero-event dispatch on the next service update. On return, the route restores the Lua-selected source collision-probe lead anchor at (3884,10700), 350 source position units (21.875 map pixels) beyond the contact at (3884,10350), outside the expanded trigger envelope. scene2-c0-return-source.tsv records the selected bank and positions; the CTest asserts that the runner resumes with the opposite of the entry heading. ROM 0xBC36/0xBD34 and 0x2F32 support the anchor and camera. The opposite-facing choice is the requested route policy; no independent Genesis capture confirms that heading write. Held Down clears the retry latch before fresh Right. |
 | Scene 2, collision value `0xC1` at ROM `0x17314C`, event 1 | `building.lua` reads the ROM event table and passes the target to the world-activity service | Row 1 in `0x172CDC` selects numeric scene `0x1A` (scene 26); its resource bundle has bound 3 |
@@ -179,10 +180,15 @@ the active map event-table row; conditional variants and interaction-specific
 services are separate JSON records. Event IDs 2-5 alone do not
 identify a maglock route: `0xB7B8` selects the lock prompt only in Scene 20 or
 resource-activity mode (scene IDs 21-43). Field scenes 0-19 publish those
-events to their map tables. Five
-Scene-5 sites select resource-activity destination 35. The four Weapon's
-World, Wire-Masters, Merlin's Lore, and Microtronics links remain numeric-only;
-Renraku Offices now has a conditional title-service-12 arrival page when
+events to their map tables. Scene-5 event-table rows for Renraku Offices and
+the four storefronts contain byte `0x23`, but their runtime paths differ:
+event 6 enters resource-activity scene 35 after its gated title-service-12
+arrival page, while events 2-5 are intercepted by `0x1FA78` and remain on
+Scene 5. Weapon's World, Wire-Masters, Merlin's Lore, and Microtronics each
+have a named Lua field-service route, ROM mode/result pair, entry text, and
+signed package handoff/payment text. Their `0x56AC0` shop catalogs and action
+handlers remain open; host prompt captures are not independent Genesis
+visuals. Renraku Offices has a conditional title-service-12 arrival page when
 story bit 16 is set, bit 12 is clear, and alternate result is zero. Its JSON
 graph returns `resume_source_route`; the host then resumes the already selected
 activity-35 destination. Penumbra
@@ -208,7 +214,8 @@ source scene at the captured ROM collision-probe lead with heading `0x8000`;
 both route traces and all full-screen captures match across builds. These exit checks seed an adjacent
 activity cell, and independent Genesis interior/exit visuals remain open. The
 four Scene-5 stores still need
-their shop catalogs and activity return behavior. Scene-1 Tarislar now has physical QA for its first-authorized
+their catalogs, purchase/action handlers, and any quest/run gates for access.
+Scene-1 Tarislar now has physical QA for its first-authorized
 Harlequin conversation, its guarded leave branch, and its gated tomb-departure
 Yes route into scene 54. The first conversation returns to scene 1; the tomb
 route requires story bits 30, 21, 16, 28, 26, and 27 plus alternate result 0.

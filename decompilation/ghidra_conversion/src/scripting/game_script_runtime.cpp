@@ -3216,6 +3216,10 @@ struct GameScriptRuntime::Impl {
             lua_pushinteger(lua, self->field_mode_context.mode);
         } else if (field == "event_code") {
             lua_pushinteger(lua, self->field_mode_context.event_code);
+        } else if (field == "service_id") {
+            lua_pushlstring(lua,
+                            self->field_mode_context.service_id.data(),
+                            self->field_mode_context.service_id.size());
         } else if (field == "alternate_result") {
             lua_pushinteger(lua,
                             self->field_mode_context.alternate_result);

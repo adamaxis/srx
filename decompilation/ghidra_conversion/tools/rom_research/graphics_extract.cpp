@@ -2097,6 +2097,54 @@ void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
         "field.mode.ares.package_payment",
         read_mode_prompt_paragraphs(
             {{0x118A6CU, 54U}, {0x118AA4U, 80U}}));
+    // ROM 0x1FA78 selects these three narrative variants for each of the
+    // four Scene-5 storefront service records. The location's ordinary event
+    // table byte is not the destination when this service selector matches.
+    const auto read_mode_dialogue_record = [&rom](
+        const std::size_t source_offset) {
+        const auto segments =
+            shadowrun::graphics::read_genesis_dialogue_segments(
+                rom, source_offset);
+        if (segments.empty()) {
+            throw std::runtime_error(
+                "field-mode dialogue record is empty at ROM +0x" +
+                [&source_offset] {
+                    std::ostringstream address;
+                    address << std::hex << source_offset;
+                    return address.str();
+                }());
+        }
+        std::string text;
+        for (std::size_t index = 0U; index < segments.size(); ++index) {
+            if (index != 0U) {
+                text.push_back('|');
+            }
+            text += segments[index];
+        }
+        return text;
+    };
+    struct RenrakuStorePromptRecords {
+        std::string_view id;
+        std::size_t intro;
+        std::size_t handoff;
+        std::size_t payment;
+    };
+    constexpr std::array<RenrakuStorePromptRecords, 4>
+        kRenrakuStorePrompts{{
+            {"wire_masters", 0x1198D2U, 0x11996EU, 0x1199E5U},
+            {"merlins_lore", 0x119AD3U, 0x119B2CU, 0x119B96U},
+            {"microtronics", 0x119C1FU, 0x119CC1U, 0x119D49U},
+            {"weapons_world", 0x119DF3U, 0x119EA4U, 0x119F2BU},
+        }};
+    for (const auto& store : kRenrakuStorePrompts) {
+        const auto prefix = "field.mode." + std::string(store.id) + ".";
+        write_text_entry(prefix + "store_intro",
+                         read_mode_dialogue_record(store.intro));
+        write_text_entry(prefix + "package_handoff",
+                         read_mode_dialogue_record(store.handoff));
+        write_text_entry(prefix + "package_payment",
+                         read_mode_dialogue_record(store.payment));
+    }
     constexpr std::array<std::string_view, 12> kServiceTitleIds{{
         "weapons_world", "ares_weapon_emporium", "crime_mall",
         "medicine_lodge", "riannons", "merlins_lore", "microtronics",
@@ -6208,6 +6256,15 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                                          ares_mode_sprite.height,
                                          ares_mode_sprite.pixels},
           "sprite", "0x1FA78/0x1F246/0x1F292/0x1220C0", true);
+    const auto renraku_arcology_mode_sprite =
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x1220A8U);
+    write("field/mode-entry/renraku-arcology-sprite.bmp",
+          shadowrun::native::NativeImage{
+              renraku_arcology_mode_sprite.width,
+              renraku_arcology_mode_sprite.height,
+              renraku_arcology_mode_sprite.pixels},
+          "sprite", "0x1FA78/0x1F246/0x1F292/0x1220A8", true);
     const auto little_chiba_mode_sprite =
         shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
             rom, 0x12200CU);

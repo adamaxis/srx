@@ -5655,6 +5655,130 @@ int run_field_ares_collision_shop_qa(
     return 0;
 }
 
+int run_field_scene5_store_service_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    struct StoreCase {
+        std::uint8_t event_code;
+        std::string_view service_id;
+        std::string_view expected_intro;
+        std::string_view expected_portrait;
+    };
+    constexpr std::array<StoreCase, 4> kStores{{
+        {2U, "wire_masters", "cybernetic installers",
+         "field.mode.entry.renraku.arcology.sprite"},
+        {3U, "merlins_lore", "premier magic shop",
+         "field.mode.entry.renraku.arcology.sprite"},
+        {4U, "microtronics", "serious decker",
+         "field.mode.entry.renraku.arcology.sprite"},
+        {5U, "weapons_world", "division of Ares",
+         "field.mode.entry.ares.sprite"},
+    }};
+
+    std::filesystem::create_directories(output);
+    std::ofstream routes(output / "routes.tsv", std::ios::trunc);
+    if (!routes) {
+        std::cerr << "Scene-5 store service QA: could not write route trace\n";
+        return 3;
+    }
+    routes << "event\tservice_id\tportrait_alias\tmenu_boundary\n";
+    for (const auto& store : kStores) {
+        const auto service = std::string(store.service_id);
+        if (!field_scene.begin_field_mode_service_event_for_dump(
+                5U, 5U, store.event_code, 0) ||
+            !field_scene.field_mode_text_open_for_dump()) {
+            std::cerr << "Scene-5 store service QA: event "
+                      << static_cast<unsigned>(store.event_code)
+                      << " did not open its ROM-backed prompt\n";
+            return 3;
+        }
+
+        const auto& panel = field_scene.field_mode_text_panel_for_dump();
+        if (panel.portrait_alias != store.expected_portrait ||
+            panel.text_segment_count == 0U ||
+            panel.text_segments[0].find(store.expected_intro) ==
+                std::string_view::npos) {
+            std::cerr << "Scene-5 store service QA: event "
+                      << static_cast<unsigned>(store.event_code)
+                      << " selected the wrong text or mode-profile art\n";
+            return 3;
+        }
+
+        const auto frame = render_qa_field(field_scene);
+        bool green_text = false;
+        for (int y = 16; y < 136; ++y) {
+            for (int x = 88; x < 304; ++x) {
+                const auto color = frame.pixelColor(x, y);
+                green_text = green_text ||
+                    (color.green() > color.red() + 40 &&
+                     color.green() > color.blue() + 40);
+            }
+        }
+        const bool renraku_portrait =
+            store.expected_portrait ==
+            "field.mode.entry.renraku.arcology.sprite";
+        std::size_t portrait_signature_pixels = 0U;
+        for (int y = 39; y < 108; ++y) {
+            for (int x = 20; x < 76; ++x) {
+                const auto color = frame.pixelColor(x, y);
+                portrait_signature_pixels += renraku_portrait
+                    ? (color.blue() > color.red() + 25 ? 1U : 0U)
+                    : (color.green() > color.red() + 25 ? 1U : 0U);
+            }
+        }
+        const auto capture_directory = output / service;
+        std::filesystem::create_directories(capture_directory);
+        const bool saved = frame.save(QString::fromStdWString(
+            (capture_directory / "actual.bmp").wstring()));
+        if (frame.width() != 320 || frame.height() != 224 || !green_text ||
+            portrait_signature_pixels < (renraku_portrait ? 1000U : 200U) ||
+            !saved) {
+            std::cerr << "Scene-5 store service QA: event "
+                      << static_cast<unsigned>(store.event_code)
+                      << " prompt frame, text, portrait, or actual.bmp is "
+                         "missing (size="
+                      << frame.width() << 'x' << frame.height()
+                      << " green_text=" << green_text
+                      << " portrait_signature_pixels="
+                      << portrait_signature_pixels
+                      << " saved=" << saved << ")\n";
+            return 3;
+        }
+
+        const auto boundary_start = source_boundaries.size();
+        field_scene.set_controller_port_byte(0U);
+        for (int frame_index = 0; frame_index < 30; ++frame_index) {
+            field_scene.advance_frame();
+        }
+        tap_qa_controller_button(field_scene, 0x40U);
+        const auto expected_boundary = "field.shop." + service +
+                                       ".menu_unimplemented";
+        const auto expected_boundary_found =
+            source_boundaries.size() > boundary_start &&
+            std::find(source_boundaries.begin() +
+                          static_cast<std::ptrdiff_t>(boundary_start),
+                      source_boundaries.end(), expected_boundary) !=
+                source_boundaries.end();
+        if (field_scene.shop_menu_open() ||
+            field_scene.field_mode_text_open_for_dump() ||
+            !expected_boundary_found) {
+            std::cerr << "Scene-5 store service QA: " << service
+                      << " incorrectly opened another shop or missed its "
+                         "explicit menu boundary\n";
+            return 3;
+        }
+        routes << static_cast<unsigned>(store.event_code) << '\t' << service
+               << '\t' << store.expected_portrait << '\t'
+               << expected_boundary << '\n';
+    }
+
+    std::cout << "field_scene5_store_service_entry_qa=passed events=2,3,4,5 "
+                 "default_result=0 scene_transition=none artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 enum class Scene20PhysicalEntryQaPath : std::uint8_t {
     ilene_prerequisite,
     c0_exit_lifetime,
@@ -23479,6 +23603,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_ares_collision_shop_qa_path;
         std::optional<std::filesystem::path>
+            field_scene5_store_service_entry_qa_path;
+        std::optional<std::filesystem::path>
             field_scene20_physical_entry_qa_path;
         std::optional<std::filesystem::path>
             field_scene20_entry_gate_qa_path;
@@ -23880,6 +24006,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_ares_collision_shop_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene5-store-service-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene5_store_service_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -28645,6 +28778,11 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_ares_collision_shop_qa_path,
                     field_audio_events, field_source_boundaries);
+            }
+            if (field_scene5_store_service_entry_qa_path.has_value()) {
+                return run_field_scene5_store_service_entry_qa(
+                    field_scene, *field_scene5_store_service_entry_qa_path,
+                    field_source_boundaries);
             }
             if (field_scene20_physical_entry_qa_path.has_value()) {
                 return run_field_scene20_physical_entry_qa(

@@ -9,15 +9,13 @@
         "eventCode": "event_5"
       },
       "route": {
-        "kind": "area_event",
-        "script": "area_event_table",
-        "priority": 0,
-        "sourceRoutePolicy": "resume_source_route",
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "kind": "field_service",
+        "script": "host_field_service",
+        "fieldServiceId": "weapons_world",
+        "priority": 0
       },
       "provenance": {
-        "evidence": "ROM scene 5 record 47 at 0x067C40; profile pointer at 0x0679B8 selects event table 0x0679C6, where row 5 at 0x0679CB is 0x23 (resource activity 35). Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+        "evidence": "ROM scene 5 record 47 at 0x067C40 publishes event 5. Although event-table row 5 at 0x0679CB is 0x23, ROM 0x1FA78 intercepts scene 5/event 5, selects menu mode 0/result -1 and mode profile 0x1220C0, and the Weapon's World prompt at 0x110EC2. Default result calls 0x56AC0; signed alternate results play the package record and return without opening the service."
       }
     }
   ]

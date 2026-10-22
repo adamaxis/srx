@@ -9,15 +9,13 @@
         "eventCode": "event_3"
       },
       "route": {
-        "kind": "area_event",
-        "script": "area_event_table",
-        "priority": 0,
-        "sourceRoutePolicy": "resume_source_route",
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "kind": "field_service",
+        "script": "host_field_service",
+        "fieldServiceId": "merlins_lore",
+        "priority": 0
       },
       "provenance": {
-        "evidence": "ROM scene 5 record 49 at 0x067C54; profile pointer at 0x0679B8 selects event table 0x0679C6, where row 3 at 0x0679C9 is 0x23 (resource activity 35). Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+        "evidence": "ROM scene 5 record 49 at 0x067C54 publishes event 3. Although event-table row 3 at 0x0679C9 is 0x23, ROM 0x1FA78 intercepts scene 5/event 3, selects mode profile 0x1220A8, menu mode 5/result 0, and the Merlin's Lore prompt at 0x110EB2. Default result calls 0x56AC0; signed alternate results play the package record and return without opening the service."
       }
     }
   ]

@@ -868,6 +868,7 @@ dialogue.panel.button.b	dialogue/panel/button-b.bmp	image	0	0
 dialogue.panel.button.c	dialogue/panel/button-c.bmp	image	0	0
 field.hud.background	field/hud/background.bmp	image	0	0
 field.mode.entry.ares.sprite	field/mode-entry/ares-sprite.bmp	image	0	0
+field.mode.entry.renraku.arcology.sprite	field/mode-entry/renraku-arcology-sprite.bmp	image	0	0
 field.mode.entry.little.chiba.sprite	field/mode-entry/little-chiba-sprite.bmp	image	0	0
 field.mode.entry.renraku.strike.team.sprite	field/mode-entry/renraku-strike-team-sprite.bmp	image	0	0
 field.hud.face.0	field/hud/face-0.bmp	image	0	0

@@ -696,6 +696,9 @@ struct ScriptFieldModeContext {
     // Scene mode is FFFC0E; transition context is FFFC10.
     std::optional<std::uint16_t> alternate_profile;
     std::optional<std::uint16_t> transition_context;
+    // Entity JSON chooses the named host service; Lua uses this ID to select
+    // its matching field-mode narrative profile.
+    std::string service_id;
 };
 
 enum class ScriptRunFieldEventAction : std::uint8_t {

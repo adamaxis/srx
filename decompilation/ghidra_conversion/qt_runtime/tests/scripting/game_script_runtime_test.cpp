@@ -2077,6 +2077,33 @@ int main() {
     const auto renraku_office_repeat_visit =
         scripts.resolve_field_location_route(renraku_office_route);
     scripts.set_story_state({});
+    struct RenrakuStoreServiceRoute {
+        FieldCollisionEventCode event_code;
+        std::string_view service_id;
+    };
+    constexpr std::array<RenrakuStoreServiceRoute, 4>
+        kRenrakuStoreServiceRoutes{{
+            {FieldCollisionEventCode::event_2, "wire_masters"},
+            {FieldCollisionEventCode::event_3, "merlins_lore"},
+            {FieldCollisionEventCode::event_4, "microtronics"},
+            {FieldCollisionEventCode::event_5, "weapons_world"},
+        }};
+    bool renraku_store_service_routes_match = true;
+    for (const auto& expected : kRenrakuStoreServiceRoutes) {
+        FieldScriptRouteContext store_route{};
+        store_route.scene_id = 5U;
+        store_route.field_mode = 5U;
+        store_route.event_code = expected.event_code;
+        store_route.event_table_available = true;
+        store_route.event_table[
+            field_collision_event_value(expected.event_code)] = 35U;
+        const auto route = scripts.resolve_field_location_route(store_route);
+        renraku_store_service_routes_match =
+            renraku_store_service_routes_match && route.has_value() &&
+            route->kind == FieldScriptRouteKind::field_service &&
+            route->script == FieldScriptId::host_field_service &&
+            route->field_service_id == expected.service_id;
+    }
     FieldScriptRouteContext fuchi_office_route{};
     fuchi_office_route.scene_id = 3U;
     fuchi_office_route.field_mode = 1U;
@@ -2125,7 +2152,7 @@ int main() {
     };
     // Scene 6/event 0 and event 1 are ROM indexed-title-service overrides;
     // their Lua tasks are asserted below instead of as generic table routes.
-    constexpr std::array<AuthoredLocationRouteCase, 46>
+    constexpr std::array<AuthoredLocationRouteCase, 42>
         kAuthoredLocationRouteCases{{
             {0U, 0U, 21U, WorldActivityMode::resource_activity},
             {0U, 1U, 12U, WorldActivityMode::field},
@@ -2153,10 +2180,6 @@ int main() {
             // audit has not established it as a doorway.
             {4U, 6U, 0U, WorldActivityMode::field, false},
             {5U, 1U, 16U, WorldActivityMode::field},
-            {5U, 2U, 35U, WorldActivityMode::resource_activity},
-            {5U, 3U, 35U, WorldActivityMode::resource_activity},
-            {5U, 4U, 35U, WorldActivityMode::resource_activity},
-            {5U, 5U, 35U, WorldActivityMode::resource_activity},
             {5U, 6U, 35U, WorldActivityMode::resource_activity},
             {7U, 0U, 13U, WorldActivityMode::field},
             {0U, 2U, 18U, WorldActivityMode::field},
@@ -2329,6 +2352,7 @@ int main() {
                 renraku_office_repeat_visit->entry_dialogue_module.empty() &&
                 renraku_office_repeat_visit->entry_resource_override ==
                     FieldLocationResourceEntryOverride::none &&
+                renraku_store_service_routes_match &&
                 fuchi_office_first_visit.has_value() &&
                 fuchi_office_first_visit->area_event_target == 21U &&
                 fuchi_office_first_visit->entry_dialogue_module ==
@@ -6815,26 +6839,73 @@ int main() {
 
     const auto mode_prompt_content = [&](const std::uint8_t mode,
                                          const std::uint8_t event_code,
-                                         const std::int8_t alternate_result) {
-        scripts.set_field_mode_context(
-            ScriptFieldModeContext{mode, event_code, alternate_result});
+                                         const std::int8_t alternate_result,
+                                         const std::string_view service_id) {
+        ScriptFieldModeContext context{mode, event_code, alternate_result};
+        context.service_id = service_id;
+        scripts.set_field_mode_context(context);
         return scripts.string_map("field_mode", "mode_text_content");
     };
-    const auto ares_intro = mode_prompt_content(2U, 11U, 0);
-    const auto ares_handoff = mode_prompt_content(2U, 11U, -1);
-    const auto ares_payment = mode_prompt_content(2U, 11U, 1);
-    const auto little_chiba_intro = mode_prompt_content(2U, 1U, 0);
-    const auto little_chiba_handoff = mode_prompt_content(2U, 1U, -1);
-    const auto little_chiba_payment = mode_prompt_content(2U, 1U, 1);
-    const auto unmatched_mode_prompt = mode_prompt_content(2U, 2U, 0);
+    const auto ares_intro = mode_prompt_content(2U, 11U, 0, "");
+    const auto ares_handoff = mode_prompt_content(2U, 11U, -1, "");
+    const auto ares_payment = mode_prompt_content(2U, 11U, 1, "");
+    const auto little_chiba_intro = mode_prompt_content(2U, 1U, 0, "");
+    const auto little_chiba_handoff = mode_prompt_content(2U, 1U, -1, "");
+    const auto little_chiba_payment = mode_prompt_content(2U, 1U, 1, "");
+    const auto wire_masters_intro =
+        mode_prompt_content(5U, 2U, 0, "wire_masters");
+    const auto wire_masters_handoff =
+        mode_prompt_content(5U, 2U, -1, "wire_masters");
+    const auto wire_masters_payment =
+        mode_prompt_content(5U, 2U, 1, "wire_masters");
+    const auto merlins_lore_intro =
+        mode_prompt_content(5U, 3U, 0, "merlins_lore");
+    const auto merlins_lore_handoff =
+        mode_prompt_content(5U, 3U, -1, "merlins_lore");
+    const auto merlins_lore_payment =
+        mode_prompt_content(5U, 3U, 1, "merlins_lore");
+    const auto microtronics_intro =
+        mode_prompt_content(5U, 4U, 0, "microtronics");
+    const auto microtronics_handoff =
+        mode_prompt_content(5U, 4U, -1, "microtronics");
+    const auto microtronics_payment =
+        mode_prompt_content(5U, 4U, 1, "microtronics");
+    const auto weapons_world_intro =
+        mode_prompt_content(5U, 5U, 0, "weapons_world");
+    const auto weapons_world_handoff =
+        mode_prompt_content(5U, 5U, -1, "weapons_world");
+    const auto weapons_world_payment =
+        mode_prompt_content(5U, 5U, 1, "weapons_world");
+    const auto unmatched_mode_prompt = mode_prompt_content(2U, 2U, 0, "");
+    const auto unnamed_renraku_service_prompt =
+        mode_prompt_content(5U, 4U, 0, "");
     const auto valid_mode_prompt = [&](const auto& content,
                                        const std::string_view text_key,
                                        const std::string_view portrait_alias) {
-        return content.has_value() && content->size() == 3U &&
+        const bool valid = content.has_value() && content->size() == 3U &&
                content->at("status") == "matched" &&
                content->at("text_key") == text_key &&
                content->at("portrait_alias") == portrait_alias &&
                scripts.dialogue_text(text_key) != nullptr;
+        if (!valid) {
+            std::cerr << "invalid field-mode prompt expected=" << text_key;
+            if (content.has_value()) {
+                const auto value = [&](const std::string_view key) {
+                    const auto found = content->find(std::string(key));
+                    return found == content->end() ? std::string("<missing>")
+                                                   : found->second;
+                };
+                std::cerr << " status=" << value("status")
+                          << " text=" << value("text_key")
+                          << " portrait=" << value("portrait_alias");
+            } else {
+                std::cerr << " result=<none>";
+            }
+            std::cerr << " dialogue_present="
+                      << (scripts.dialogue_text(text_key) != nullptr)
+                      << '\n';
+        }
+        return valid;
     };
     if (!expect(valid_mode_prompt(ares_intro,
                                   "field.mode.ares.store_intro",
@@ -6857,10 +6928,65 @@ int main() {
                         little_chiba_payment,
                         "field.mode.little_chiba.package_payment",
                         "field.mode.entry.little.chiba.sprite") &&
+                    valid_mode_prompt(
+                        wire_masters_intro,
+                        "field.mode.wire_masters.store_intro",
+                        "field.mode.entry.renraku.arcology.sprite") &&
+                    valid_mode_prompt(
+                        wire_masters_handoff,
+                        "field.mode.wire_masters.package_handoff",
+                        "field.mode.entry.renraku.arcology.sprite") &&
+                    valid_mode_prompt(
+                        wire_masters_payment,
+                        "field.mode.wire_masters.package_payment",
+                        "field.mode.entry.renraku.arcology.sprite") &&
+                    valid_mode_prompt(
+                        merlins_lore_intro,
+                        "field.mode.merlins_lore.store_intro",
+                        "field.mode.entry.renraku.arcology.sprite") &&
+                    valid_mode_prompt(
+                        merlins_lore_handoff,
+                        "field.mode.merlins_lore.package_handoff",
+                        "field.mode.entry.renraku.arcology.sprite") &&
+                    valid_mode_prompt(
+                        merlins_lore_payment,
+                        "field.mode.merlins_lore.package_payment",
+                        "field.mode.entry.renraku.arcology.sprite") &&
+                    valid_mode_prompt(
+                        microtronics_intro,
+                        "field.mode.microtronics.store_intro",
+                        "field.mode.entry.renraku.arcology.sprite") &&
+                    valid_mode_prompt(
+                        microtronics_handoff,
+                        "field.mode.microtronics.package_handoff",
+                        "field.mode.entry.renraku.arcology.sprite") &&
+                    valid_mode_prompt(
+                        microtronics_payment,
+                        "field.mode.microtronics.package_payment",
+                        "field.mode.entry.renraku.arcology.sprite") &&
+                    valid_mode_prompt(
+                        weapons_world_intro,
+                        "field.mode.weapons_world.store_intro",
+                        "field.mode.entry.ares.sprite") &&
+                    valid_mode_prompt(
+                        weapons_world_handoff,
+                        "field.mode.weapons_world.package_handoff",
+                        "field.mode.entry.ares.sprite") &&
+                    valid_mode_prompt(
+                        weapons_world_payment,
+                        "field.mode.weapons_world.package_payment",
+                        "field.mode.entry.ares.sprite") &&
                     unmatched_mode_prompt.has_value() &&
                     unmatched_mode_prompt->at("status") == "unmatched" &&
                     unmatched_mode_prompt->at("text_key") == "none" &&
-                    unmatched_mode_prompt->at("portrait_alias") == "none",
+                    unmatched_mode_prompt->at("portrait_alias") == "none" &&
+                    unnamed_renraku_service_prompt.has_value() &&
+                    unnamed_renraku_service_prompt->at("status") ==
+                        "unmatched" &&
+                    unnamed_renraku_service_prompt->at("text_key") ==
+                        "none" &&
+                    unnamed_renraku_service_prompt->at("portrait_alias") ==
+                        "none",
                 "Lua field-mode context did not select the ROM Ares text branches")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
@@ -6872,6 +6998,14 @@ int main() {
         scripts.dialogue_text("field.security-terminal.floor.4");
     const auto* renraku_entry_text =
         scripts.dialogue_text("renraku.offices.page.entry");
+    const auto* wire_masters_intro_text =
+        scripts.dialogue_text("field.mode.wire_masters.store_intro");
+    const auto* merlins_lore_intro_text =
+        scripts.dialogue_text("field.mode.merlins_lore.store_intro");
+    const auto* microtronics_intro_text =
+        scripts.dialogue_text("field.mode.microtronics.store_intro");
+    const auto* weapons_world_intro_text =
+        scripts.dialogue_text("field.mode.weapons_world.store_intro");
     const auto* fuchi_entry_text =
         scripts.dialogue_text("penumbra.fuchi.page.entry");
     const auto* gates_entry_text =
@@ -6884,6 +7018,18 @@ int main() {
                         std::string::npos &&
                     renraku_entry_text != nullptr &&
                     renraku_entry_text->find("past the foyer") !=
+                        std::string::npos &&
+                    wire_masters_intro_text != nullptr &&
+                    wire_masters_intro_text->find("cybernetic installers") !=
+                        std::string::npos &&
+                    merlins_lore_intro_text != nullptr &&
+                    merlins_lore_intro_text->find("premier magic shop") !=
+                        std::string::npos &&
+                    microtronics_intro_text != nullptr &&
+                    microtronics_intro_text->find("serious decker") !=
+                        std::string::npos &&
+                    weapons_world_intro_text != nullptr &&
+                    weapons_world_intro_text->find("division of Ares") !=
                         std::string::npos &&
                     fuchi_entry_text != nullptr &&
                     fuchi_entry_text->find("cyber-heart") !=

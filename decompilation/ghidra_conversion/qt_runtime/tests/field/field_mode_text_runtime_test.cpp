@@ -101,6 +101,39 @@ int main() {
         return 6;
     }
 
+    runtime.close();
+    ScriptFieldModeContext microtronics_context{5U, 4U, 0};
+    microtronics_context.service_id = "microtronics";
+    if (!expect(runtime.open(microtronics_context)) ||
+        !expect(runtime.panel().portrait_alias ==
+                "field.mode.entry.renraku.arcology.sprite") ||
+        !expect(runtime.panel().text_segments[0].find("MicroTronics") !=
+                std::string_view::npos) ||
+        !expect(runtime.panel().text_segments[2].find("legal") !=
+                std::string_view::npos)) {
+        return 15;
+    }
+    image.fill(Qt::black);
+    QPainter renraku_store_painter(&image);
+    runtime.paint(renraku_store_painter);
+    renraku_store_painter.end();
+    if (!expect(has_green_ink(image, 88, 16, 216, 120)) ||
+        !expect(!region_is_color(image, 16, 32, 56, 72,
+                                 QColor(0, 0, 0)))) {
+        return 16;
+    }
+    const auto scene5_prompt_dump =
+        std::filesystem::path("field-scene5-store-prompt-qa") /
+        "actual.bmp";
+    std::filesystem::create_directories(scene5_prompt_dump.parent_path());
+    if (!image.save(QString::fromStdString(scene5_prompt_dump.string()))) {
+        return 18;
+    }
+    runtime.close();
+    if (!expect(runtime.open(ScriptFieldModeContext{2U, 11U, 0}))) {
+        return 17;
+    }
+
     // The source sentinel waits a full 30 frames. Button edges during the
     // delay do not dismiss it; any fresh high-byte edge after the delay does.
     if (!expect(runtime.advance_controller_events(0x4000U, 29U) ==

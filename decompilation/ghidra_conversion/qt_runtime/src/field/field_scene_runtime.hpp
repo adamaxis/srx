@@ -701,6 +701,9 @@ public:
         return advance_field_interaction(event_word);
     }
     bool begin_ares_shop_event_for_dump();
+    bool begin_field_mode_service_event_for_dump(
+        std::uint8_t scene_id, std::uint8_t field_mode,
+        std::uint8_t event_code, std::int8_t alternate_result);
     bool shop_menu_open() const noexcept { return field_shop_menu_.is_open(); }
     std::uint8_t shop_menu_mode() const noexcept {
         return field_shop_menu_.menu_mode();
@@ -2286,7 +2289,7 @@ private:
     std::optional<std::uint8_t> field_runner_feature_flags_{0U}; // FF018F
     std::optional<std::array<std::uint8_t, 3>>
         field_entity_action_phase_roll_counters_{std::array<std::uint8_t, 3>{}};
-    bool field_shop_route_pending_ = false;
+    std::string field_shop_route_pending_service_id_;
     FieldEntityPresentation field_entity_{};
     std::string failure_;
     bool ready_ = false;

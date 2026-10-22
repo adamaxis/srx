@@ -2126,19 +2126,19 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
         return event_route.kind == FieldScriptRouteKind::area_event;
     };
 
-    // The typed route plan identifies the Ares service entry at ROM 0x1FA78.
-    // Its text and optional alternate result are selected by the mode-text
-    // provider below; other service routes remain explicit boundaries.
-    const auto is_ares_shop_event = [&event_route] {
+    // The entity route selects a named host service. ROM 0x1FA78 still
+    // supplies that service's typed mode/result profile below.
+    const auto is_host_field_service_route = [&event_route] {
         return event_route.kind == FieldScriptRouteKind::field_service &&
                event_route.script == FieldScriptId::host_field_service &&
-               event_route.field_service_id == "ares_weapon_emporium";
+               !event_route.field_service_id.empty();
     };
     callbacks.prepare_field_mode_exit =
-        [this, &runtime_state, &event_route, &is_ares_shop_event,
+        [this, &runtime_state, &event_route,
+         &is_host_field_service_route,
          &continues_through_area_event_table](
             FieldExitOrchestratorState& state) {
-        if (is_ares_shop_event()) {
+        if (is_host_field_service_route()) {
             return false;
         }
         if (continues_through_area_event_table()) {
@@ -2178,13 +2178,14 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
         return true;
     };
     callbacks.select_field_mode_service =
-        [this, &runtime_state, &is_ares_shop_event,
+        [this, &runtime_state, &event_route,
+         &is_host_field_service_route,
          &continues_through_area_event_table](
             FieldExitOrchestratorState& state) {
             if (continues_through_area_event_table()) {
                 return false;
             }
-            if (!is_ares_shop_event()) {
+            if (!is_host_field_service_route()) {
                 source_boundary("field.exit.mode_service_unresolved");
                 state.caller_exit_status = -1;
                 return true;
@@ -2198,13 +2199,15 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
             bool prompt_opened = false;
             FieldModeServiceRouteCallbacks service_callbacks{};
             service_callbacks.run_mode_exit_services =
-                [this, &prompt_opened](
+                [this, &event_route, &prompt_opened](
                     FieldModeServiceSelection&,
                     FieldModeServiceRouteState& source_state) {
+                    scripting::ScriptFieldModeContext context{
+                        source_state.scene_id, source_state.submode,
+                        source_state.alternate_result};
+                    context.service_id = event_route.field_service_id;
                     prompt_opened = field_mode_text_.open(
-                        scripting::ScriptFieldModeContext{
-                            source_state.scene_id, source_state.submode,
-                            source_state.alternate_result});
+                        context);
                     if (prompt_opened) {
                         // The source mode-text service rebuilds the display
                         // after the field fade. The Qt fade is a presentation
@@ -2219,12 +2222,14 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     }
                 };
             service_callbacks.run_field_mode_service =
-                [this, &prompt_opened](FieldModeServiceRouteState&) {
+                [this, &event_route, &prompt_opened](
+                    FieldModeServiceRouteState&) {
                     if (!prompt_opened) {
                         return;
                     }
-                    field_shop_route_pending_ = true;
-                    source_boundary("field.shop.ares.service_dispatched");
+                    field_shop_route_pending_service_id_ =
+                        event_route.field_service_id;
+                    source_boundary("field.shop.service_dispatched");
                 };
 
             const auto action = select_field_mode_service(
@@ -11479,7 +11484,7 @@ bool FieldSceneRuntime::bootstrap(
     ready_ = false;
     failure_.clear();
     field_shop_menu_.close();
-    field_shop_route_pending_ = false;
+    field_shop_route_pending_service_id_.clear();
     field_funds_.reset();
     field_walk_fast_enabled_ = false;
     field_matrix_field_state_ = scripting::ScriptMatrixFieldState{};
@@ -15973,8 +15978,15 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_sample_state_.events);
         if (result == FieldModeTextAdvanceResult::returned_to_route) {
             source_boundary("field.mode_text_prompt.returned_to_caller");
-            if (field_shop_route_pending_) {
-                field_shop_route_pending_ = false;
+            if (!field_shop_route_pending_service_id_.empty()) {
+                const auto service_id =
+                    field_shop_route_pending_service_id_;
+                field_shop_route_pending_service_id_.clear();
+                if (service_id != "ares_weapon_emporium") {
+                    source_boundary("field.shop." + service_id +
+                                    ".menu_unimplemented");
+                    return;
+                }
                 field_shop_active_definition_ = field_shop_definition_;
                 const auto script_menu =
                     game_scripts_.open_shop_menu("ares_weapon_emporium");
@@ -16459,7 +16471,7 @@ void FieldSceneRuntime::advance_frame() {
             shop_boundary("active_runner_changed");
             break;
         case ShopMenuEvent::returned_to_field:
-            field_shop_route_pending_ = false;
+            field_shop_route_pending_service_id_.clear();
             state_.display_service_word = 0U;
             field_runtime_state_.display_service_word = 0U;
             field_shop_active_definition_.reset();
@@ -18304,16 +18316,25 @@ FieldSceneRuntime::process_hotel_karma_screen_events(
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::begin_ares_shop_event_for_dump() {
+    return begin_field_mode_service_event_for_dump(2U, 2U, 11U, 0);
+}
+
+bool FieldSceneRuntime::begin_field_mode_service_event_for_dump(
+    const std::uint8_t scene_id, const std::uint8_t field_mode,
+    const std::uint8_t event_code,
+    const std::int8_t alternate_result) {
     if (!ready_) {
         return false;
     }
-    // Inject the already source-resolved event tuple into the same converted
-    // orchestrator used by field movement. This test seam does not skip the
-    // generic prompt or the 0x1FA78 service selector.
-    field_runtime_state_.field_mode = 2U;
-    field_movement_transition_state_.mode_event_code = 11U;
-    field_exit_alternate_result_ = 0;
-    field_shop_route_pending_ = false;
+    // Inject a source-resolved event tuple into the same converted
+    // orchestrator used by field movement. This test seam does not skip Lua
+    // entity routing, the generic prompt, or the 0x1FA78 service selector.
+    field_runtime_state_.scene_id = scene_id;
+    field_runtime_state_.field_mode = field_mode;
+    field_movement_transition_state_.mode_event_code = event_code;
+    field_exit_alternate_result_ = alternate_result;
+    field_shop_route_pending_service_id_.clear();
+    field_mode_text_.close();
     (void)run_field_exit_orchestrator(field_runtime_state_);
     return field_mode_text_.open();
 }

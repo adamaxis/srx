@@ -9,15 +9,13 @@
         "eventCode": "event_4"
       },
       "route": {
-        "kind": "area_event",
-        "script": "area_event_table",
-        "priority": 0,
-        "sourceRoutePolicy": "resume_source_route",
-        "returnAnchor": "collision_probe_lead",
-        "returnFacing": "face_away_from_entry"
+        "kind": "field_service",
+        "script": "host_field_service",
+        "fieldServiceId": "microtronics",
+        "priority": 0
       },
       "provenance": {
-        "evidence": "ROM scene 5 record 50 at 0x067C5E; profile pointer at 0x0679B8 selects event table 0x0679C6, where row 4 at 0x0679CA is 0x23 (resource activity 35). Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+        "evidence": "ROM scene 5 record 50 at 0x067C5E publishes event 4. Although event-table row 4 at 0x0679CA is 0x23, ROM 0x1FA78 intercepts scene 5/event 4, selects mode profile 0x1220A8, menu mode 6/result 2, and the MicroTronics prompt at 0x110EBA. Default result calls 0x56AC0; signed alternate results play the package record and return without opening the service."
       }
     }
   ]
