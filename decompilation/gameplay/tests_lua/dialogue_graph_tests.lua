@@ -433,4 +433,21 @@ invalid = pcall(function()
 end)
 assert(not invalid)
 
+-- Runtime catalogs defer only graph validation until a graph is selected;
+-- the content test still proves that malformed data fails at that boundary.
+local runtime_catalog = DialogueGraph.Catalog.new(
+    document, condition_document, cinematic_document, "on_use")
+assert(runtime_catalog:get("test.return_to_caller") ~= nil)
+local runtime_invalid_catalog = DialogueGraph.Catalog.new({
+    schemaVersion = 1,
+    graphs = {
+        broken = graph("missing", {
+            done = { type = "terminal",
+                     outcome = { type = "continue_in_place" } },
+        }),
+    },
+}, condition_document, cinematic_document, "on_use")
+invalid = pcall(function() runtime_invalid_catalog:get("broken") end)
+assert(not invalid)
+
 print("dialogue graph tests passed: branches, pages, menus, actions, outcomes, boundaries")

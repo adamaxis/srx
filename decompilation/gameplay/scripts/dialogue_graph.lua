@@ -12,6 +12,10 @@ Session.__index = Session
 local MAX_GRAPH_NODES = 256
 local MAX_GRAPH_STEPS = 2048
 local MAX_CHOICES = 8
+-- Runtime content is immutable for the lifetime of one game package. Cache
+-- its catalog by table identity and validate each graph on first use, so a
+-- single call does not revalidate every unrelated conversation in the game.
+local runtime_catalogs = setmetatable({}, { __mode = "k" })
 
 local function is_identifier(value)
     return type(value) == "string" and value ~= "" and
@@ -300,10 +304,13 @@ local function validate_cinematic_document(document)
     return document.cinematics
 end
 
-function Catalog.new(document, condition_document, cinematic_document)
+function Catalog.new(document, condition_document, cinematic_document,
+                     validation_mode)
     assert(type(document) == "table" and document.schemaVersion == 1 and
            type(document.graphs) == "table",
         "dialogue graph catalog has an unsupported schema")
+    assert(validation_mode == nil or validation_mode == "on_use",
+        "dialogue graph catalog has an unsupported validation mode")
     assert(type(condition_document) == "table" and
            condition_document.schemaVersion == 1 and
            type(condition_document.conditions) == "table",
@@ -317,16 +324,29 @@ function Catalog.new(document, condition_document, cinematic_document)
         ConditionEvaluator.validate(definition.expression)
         conditions[condition_id] = definition
     end
-    for graph_id, graph in pairs(document.graphs) do
-        validate_graph(graph_id, graph, conditions, cinematics)
+    local catalog = setmetatable({
+        graphs = document.graphs,
+        conditions = conditions,
+        cinematics = cinematics,
+        validation_mode = validation_mode or "eager",
+        validated_graphs = {},
+    }, Catalog)
+    if catalog.validation_mode == "eager" then
+        for graph_id, graph in pairs(document.graphs) do
+            validate_graph(graph_id, graph, conditions, cinematics)
+            catalog.validated_graphs[graph_id] = true
+        end
     end
-    return setmetatable({ graphs = document.graphs,
-                          conditions = conditions,
-                          cinematics = cinematics }, Catalog)
+    return catalog
 end
 
 function Catalog:get(graph_id)
-    return self.graphs[graph_id]
+    local graph = self.graphs[graph_id]
+    if graph ~= nil and not self.validated_graphs[graph_id] then
+        validate_graph(graph_id, graph, self.conditions, self.cinematics)
+        self.validated_graphs[graph_id] = true
+    end
+    return graph
 end
 
 function Session.new(catalog, condition_evaluator, action_registry, host)
@@ -535,22 +555,26 @@ function DialogueGraph.run(graph_id, registered_actions, invocation_context)
         return { type = "source_boundary",
                  reason = "dialogue_graph:content_catalog_missing" }
     end
-    local graphs = {}
-    for _, document in pairs(graph_documents) do
-        if type(document) == "table" and document.schemaVersion == 1 and
-           type(document.graphs) == "table" then
-            for id, graph in pairs(document.graphs) do
-                if graphs[id] ~= nil then
-                    return { type = "source_boundary",
-                             reason = "dialogue_graph:duplicate_graph:" .. id }
+    local catalog = runtime_catalogs[content]
+    if catalog == nil then
+        local graphs = {}
+        for _, document in pairs(graph_documents) do
+            if type(document) == "table" and document.schemaVersion == 1 and
+               type(document.graphs) == "table" then
+                for id, graph in pairs(document.graphs) do
+                    if graphs[id] ~= nil then
+                        return { type = "source_boundary",
+                                 reason = "dialogue_graph:duplicate_graph:" .. id }
+                    end
+                    graphs[id] = graph
                 end
-                graphs[id] = graph
             end
         end
+        local graph_document = { schemaVersion = 1, graphs = graphs }
+        catalog = Catalog.new(
+            graph_document, conditions, cinematic_document, "on_use")
+        runtime_catalogs[content] = catalog
     end
-    local graph_document = { schemaVersion = 1, graphs = graphs }
-    local catalog = Catalog.new(graph_document, conditions,
-                                cinematic_document)
     local evaluator = ConditionEvaluator.new(
         ConditionEvaluator.FactProvider.new())
     local actions = DialogueActions.new_default_registry(registered_actions)
