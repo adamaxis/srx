@@ -525,6 +525,78 @@
         },
         "title_key": "vid_phone.contact.max.repeat_call"
       },
+      "max_badge_offer": {
+        "choice_label_keys": {
+          "accept_badge": "vid_phone.max.option.accept_badge",
+          "different_subject": "vid_phone.max.option.different_subject"
+        },
+        "title_key": "vid_phone.max.badge_offer"
+      },
+      "max_badge_result": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.max.badge_success"
+      },
+      "max_hardware_intro": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.max.hardware_intro"
+      },
+      "max_hardware_categories": {
+        "choice_label_keys": {
+          "passkeys": "vid_phone.max.option.passkey",
+          "return_to_services": "vid_phone.max.option.different_subject",
+          "smgs": "vid_phone.max.option.smg"
+        },
+        "title_key": "vid_phone.max.passkey_list"
+      },
+      "max_smg_selector": {
+        "choice_label_keys": {
+          "ak97": "vid_phone.max.option.ak97",
+          "hk227": "vid_phone.max.option.hk227",
+          "return_to_services": "vid_phone.max.option.different_subject"
+        },
+        "title_key": "vid_phone.max.product_choices"
+      },
+      "max_passkey_selector": {
+        "choice_label_keys": {
+          "level_4": "vid_phone.max.option.passkey_level_4",
+          "level_5": "vid_phone.max.option.passkey_level_5",
+          "return_to_services": "vid_phone.max.option.different_subject"
+        },
+        "title_key": "vid_phone.max.product_choices"
+      },
+      "max_purchase_result": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.max.purchase_result"
+      },
+      "max_out_of_stock": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.max.out_of_stock"
+      },
+      "max_service_return": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.max.service_return"
+      },
+      "max_services": {
+        "choice_label_keys": {
+          "corporate_badge": "vid_phone.max.option.corporate_badge",
+          "hardware": "vid_phone.max.option.hardware"
+        },
+        "title_key": "vid_phone.max.services"
+      },
       "call_mr_faradouchi_first_call": {
         "choice_label_keys": {
           "goodbye": "vid_phone.option.goodbye",
@@ -734,6 +806,62 @@
           "paranormal_creatures": "vid_phone.gregory_wilns.option.paranormal_creatures"
         },
         "title_key": "vid_phone.gregory_wilns.services"
+      },
+      "professor_club_information": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.professor_jefferson.club_information"
+      },
+      "professor_club_offer": {
+        "choice_label_keys": {
+          "accept": "vid_phone.professor_jefferson.option.yes",
+          "decline": "vid_phone.professor_jefferson.option.no",
+          "goodbye": "vid_phone.option.goodbye"
+        },
+        "title_key": "vid_phone.professor_jefferson.club_offer"
+      },
+      "professor_creature_page_1": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.professor_jefferson.creature_page_1"
+      },
+      "professor_creature_page_2": {
+        "choice_label_keys": {
+          "more": "vid_phone.option.more"
+        },
+        "title_key": "vid_phone.professor_jefferson.creature_page_2"
+      },
+      "professor_creature_page_3": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.professor_jefferson.creature_page_3"
+      },
+      "professor_services": {
+        "choice_label_keys": {
+          "club": "vid_phone.professor_jefferson.option.magic_club",
+          "former_student": "vid_phone.professor_jefferson.option.former_student",
+          "paranormal_creatures": "vid_phone.professor_jefferson.option.paranormal_creatures"
+        },
+        "title_key": "vid_phone.professor_jefferson.services"
+      },
+      "professor_student_offer": {
+        "choice_label_keys": {
+          "accept": "vid_phone.professor_jefferson.option.yes",
+          "decline": "vid_phone.professor_jefferson.option.no",
+          "goodbye": "vid_phone.option.goodbye"
+        },
+        "title_key": "vid_phone.professor_jefferson.student_offer"
+      },
+      "professor_student_result": {
+        "choice_label_keys": {
+          "goodbye": "vid_phone.option.goodbye",
+          "services": "vid_phone.option.services"
+        },
+        "title_key": "vid_phone.professor_jefferson.student_result"
       },
       "kipp_deck_offer": {
         "choice_label_keys": {

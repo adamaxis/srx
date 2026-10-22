@@ -735,9 +735,17 @@
     },
     "vid_phone_max": {
       "events": {
+        "goodbye": {
+          "continuation_key": "",
+          "title_key": "vid_phone.max.goodbye"
+        },
         "first_call": {
           "continuation_key": "",
           "title_key": "vid_phone.contact.max.first_call"
+        },
+        "insufficient_balance": {
+          "continuation_key": "",
+          "title_key": "vid_phone.max.insufficient_balance"
         },
         "repeat_call": {
           "continuation_key": "",
@@ -765,9 +773,17 @@
     },
     "vid_phone_professor_jefferson": {
       "events": {
+        "club_success": {
+          "continuation_key": "",
+          "title_key": "vid_phone.professor_jefferson.club_success"
+        },
         "first_call": {
           "continuation_key": "",
           "title_key": "vid_phone.contact.professor_jefferson.first_call"
+        },
+        "goodbye": {
+          "continuation_key": "",
+          "title_key": "vid_phone.professor_jefferson.goodbye"
         },
         "repeat_call": {
           "continuation_key": "",

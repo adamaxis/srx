@@ -1403,6 +1403,382 @@
           "outcome": { "type": "return_to_caller" }
         }
       }
+    },
+    "vid_phone.max.call": {
+      "entryNode": "call_history",
+      "speakerId": "vid_phone_max",
+      "textProfile": "field.vid_phone",
+      "provenance": {
+        "romAddresses": [
+          "0xE4C8", "0xE5E2", "0x109682", "0x10E400", "0x10E40E",
+          "0x10E426", "0x10E43E", "0x10E456", "0x10E49E", "0x10E4B2",
+          "0x10E4CE", "0x10E4EA", "0x10E506", "0x10E46E", "0x10E47E",
+          "0x10E51E", "0x10E536", "0x22DB2", "0x22DDE", "0x22E18",
+          "0x22E52", "0x22E8C"
+        ],
+        "scope": "max_first_repeat_calls_badges_hardware_and_purchase_outcomes"
+      },
+      "nodes": {
+        "call_history": {
+          "type": "branch",
+          "cases": [
+            { "when": "vid_phone.max_contact_not_called", "next": "mark_called" },
+            { "when": "vid_phone.max_contact_called", "next": "repeat_call_options" }
+          ],
+          "fallback": "call_history_boundary"
+        },
+        "mark_called": {
+          "type": "action",
+          "actionId": "vid_phone.mark_called",
+          "next": "first_call_options",
+          "results": { "call_history_unavailable": "call_history_boundary" }
+        },
+        "first_call_options": {
+          "type": "choice",
+          "menuId": "call_max_first_call",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "repeat_call_options": {
+          "type": "choice",
+          "menuId": "call_max_repeat_call",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "services": {
+          "type": "choice",
+          "menuId": "max_services",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "corporate_badge", "next": "badge_offer" },
+            { "id": "hardware", "next": "hardware_intro" }
+          ]
+        },
+        "badge_offer": {
+          "type": "choice",
+          "menuId": "max_badge_offer",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "accept_badge", "next": "issue_badge" },
+            { "id": "different_subject", "next": "service_return" }
+          ]
+        },
+        "issue_badge": {
+          "type": "action",
+          "actionId": "vid_phone.issue_max_corporate_badge",
+          "results": {
+            "badge_issued": "badge_result",
+            "insufficient": "insufficient_balance",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          },
+          "evidence": "ROM command 0x83 charges 6,000 and sets FFFC22 bit 10."
+        },
+        "badge_result": {
+          "type": "choice",
+          "menuId": "max_badge_result",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "hardware_intro": {
+          "type": "choice",
+          "menuId": "max_hardware_intro",
+          "inputContract": "buttons_abc",
+          "choices": [ { "id": "more", "next": "hardware_categories" } ]
+        },
+        "hardware_categories": {
+          "type": "choice",
+          "menuId": "max_hardware_categories",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "smgs", "next": "smg_selector" },
+            { "id": "passkeys", "next": "passkey_selector" },
+            { "id": "return_to_services", "next": "service_return" }
+          ]
+        },
+        "smg_selector": {
+          "type": "choice",
+          "menuId": "max_smg_selector",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "hk227", "next": "purchase_hk227" },
+            { "id": "ak97", "next": "purchase_ak97" },
+            { "id": "return_to_services", "next": "service_return" }
+          ]
+        },
+        "passkey_selector": {
+          "type": "choice",
+          "menuId": "max_passkey_selector",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "level_4", "next": "purchase_level_4_passkey" },
+            { "id": "level_5", "next": "purchase_level_5_passkey" },
+            { "id": "return_to_services", "next": "service_return" }
+          ]
+        },
+        "purchase_hk227": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_max_hk227_s",
+          "results": {
+            "purchased": "purchase_result",
+            "insufficient": "insufficient_balance",
+            "out_of_stock": "out_of_stock",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "purchase_ak97": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_ak97",
+          "results": {
+            "purchased": "purchase_result",
+            "insufficient": "insufficient_balance",
+            "out_of_stock": "out_of_stock",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "purchase_level_4_passkey": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_max_maglock_passkey_level_4",
+          "results": {
+            "purchased": "purchase_result",
+            "insufficient": "insufficient_balance",
+            "out_of_stock": "out_of_stock",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "purchase_level_5_passkey": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_max_maglock_passkey_level_5",
+          "results": {
+            "purchased": "purchase_result",
+            "insufficient": "insufficient_balance",
+            "out_of_stock": "out_of_stock",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "purchase_result": {
+          "type": "choice",
+          "menuId": "max_purchase_result",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "out_of_stock": {
+          "type": "choice",
+          "menuId": "max_out_of_stock",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "service_return": {
+          "type": "choice",
+          "menuId": "max_service_return",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "insufficient_balance": {
+          "type": "page",
+          "eventId": "insufficient_balance",
+          "next": "finished"
+        },
+        "goodbye": {
+          "type": "page",
+          "eventId": "goodbye",
+          "next": "finished"
+        },
+        "call_history_boundary": {
+          "type": "source_boundary",
+          "reason": "Max's call-history state is unresolved."
+        },
+        "service_boundary": {
+          "type": "source_boundary",
+          "reason": "Max's transaction returned an unavailable or unrecognized source result."
+        },
+        "finished": {
+          "type": "terminal",
+          "outcome": { "type": "return_to_caller" }
+        }
+      }
+    },
+    "vid_phone.professor_jefferson.call": {
+      "entryNode": "call_history",
+      "speakerId": "vid_phone_professor_jefferson",
+      "textProfile": "field.vid_phone",
+      "provenance": {
+        "romAddresses": [
+          "0xE4C8", "0xE5E2", "0x109682", "0x10F0D4", "0x10F0E2",
+          "0x10F0FA", "0x10F112", "0x10F12E", "0x10F136", "0x10F13E",
+          "0x10F152", "0x10F16E", "0x10F18A", "0x10F19E", "0x10F1B2",
+          "0x10F1CA", "0x10F1D2", "0x22F40", "0x22F64"
+        ],
+        "scope": "professor_first_repeat_calls_lesson_and_paid_services"
+      },
+      "nodes": {
+        "call_history": {
+          "type": "branch",
+          "cases": [
+            { "when": "vid_phone.professor_contact_not_called", "next": "mark_called" },
+            { "when": "vid_phone.professor_contact_called", "next": "repeat_call_options" }
+          ],
+          "fallback": "call_history_boundary"
+        },
+        "mark_called": {
+          "type": "action",
+          "actionId": "vid_phone.mark_called",
+          "next": "first_call_options",
+          "results": { "call_history_unavailable": "call_history_boundary" }
+        },
+        "first_call_options": {
+          "type": "choice",
+          "menuId": "call_professor_jefferson_first_call",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "repeat_call_options": {
+          "type": "choice",
+          "menuId": "call_professor_jefferson_repeat_call",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "services": {
+          "type": "choice",
+          "menuId": "professor_services",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "paranormal_creatures", "next": "creature_page_1" },
+            { "id": "club", "next": "club_information" },
+            { "id": "former_student", "next": "student_offer" }
+          ]
+        },
+        "creature_page_1": {
+          "type": "choice",
+          "menuId": "professor_creature_page_1",
+          "inputContract": "buttons_abc",
+          "choices": [ { "id": "more", "next": "creature_page_2" } ]
+        },
+        "creature_page_2": {
+          "type": "choice",
+          "menuId": "professor_creature_page_2",
+          "inputContract": "buttons_abc",
+          "choices": [ { "id": "more", "next": "creature_page_3" } ]
+        },
+        "creature_page_3": {
+          "type": "choice",
+          "menuId": "professor_creature_page_3",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "club_information": {
+          "type": "choice",
+          "menuId": "professor_club_information",
+          "inputContract": "buttons_abc",
+          "choices": [ { "id": "more", "next": "club_offer" } ]
+        },
+        "club_offer": {
+          "type": "choice",
+          "menuId": "professor_club_offer",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "accept", "next": "purchase_riannons_discount" },
+            { "id": "decline", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "purchase_riannons_discount": {
+          "type": "action",
+          "actionId": "vid_phone.purchase_riannons_discount",
+          "results": {
+            "discount_enabled": "club_success",
+            "insufficient": "payment_text_boundary",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "club_success": {
+          "type": "page",
+          "eventId": "club_success",
+          "next": "finished"
+        },
+        "student_offer": {
+          "type": "choice",
+          "menuId": "professor_student_offer",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "accept", "next": "hire_gregory" },
+            { "id": "decline", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "hire_gregory": {
+          "type": "action",
+          "actionId": "vid_phone.hire_gregory_wilns",
+          "results": {
+            "hired": "student_result",
+            "insufficient": "payment_text_boundary",
+            "unavailable": "service_boundary",
+            "service_unavailable": "service_boundary"
+          }
+        },
+        "student_result": {
+          "type": "choice",
+          "menuId": "professor_student_result",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "services", "next": "services" },
+            { "id": "goodbye", "next": "goodbye" }
+          ]
+        },
+        "payment_text_boundary": {
+          "type": "source_boundary",
+          "reason": "ROM record 0x10F12E points to 0x0FED41 for the insufficient-funds page; its bytes are not a supported dialogue string."
+        },
+        "goodbye": {
+          "type": "page",
+          "eventId": "goodbye",
+          "next": "finished"
+        },
+        "call_history_boundary": {
+          "type": "source_boundary",
+          "reason": "Professor Jefferson's call-history state is unresolved."
+        },
+        "service_boundary": {
+          "type": "source_boundary",
+          "reason": "Professor Jefferson's transaction returned an unavailable or unrecognized source result."
+        },
+        "finished": {
+          "type": "terminal",
+          "outcome": { "type": "return_to_caller" }
+        }
+      }
     }
   }
 }
