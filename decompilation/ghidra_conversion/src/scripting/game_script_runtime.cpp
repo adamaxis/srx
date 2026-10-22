@@ -387,12 +387,16 @@ std::optional<DialogueOutcome> read_dialogue_outcome(
     std::uint32_t scene_id = 0U;
     switch (*type) {
     case DialogueOutcomeType::continue_in_place:
+    case DialogueOutcomeType::return_to_caller:
     case DialogueOutcomeType::resume_source_route:
         if (!outcome_has_only_fields(state, absolute_index, {"type"})) {
             return std::nullopt;
         }
         if (*type == DialogueOutcomeType::continue_in_place) {
             return ContinueInPlaceOutcome{};
+        }
+        if (*type == DialogueOutcomeType::return_to_caller) {
+            return ReturnToCallerOutcome{};
         }
         return ResumeSourceRouteOutcome{};
     case DialogueOutcomeType::return_to_origin: {

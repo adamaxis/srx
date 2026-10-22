@@ -21,12 +21,16 @@ enum class DialogueOutcomeType : std::uint8_t {
     open_service,
     play_cinematic,
     source_boundary,
+    return_to_caller,
 };
 
 constexpr std::optional<DialogueOutcomeType> dialogue_outcome_type_from_name(
     const std::string_view name) noexcept {
     if (name == "continue_in_place") {
         return DialogueOutcomeType::continue_in_place;
+    }
+    if (name == "return_to_caller") {
+        return DialogueOutcomeType::return_to_caller;
     }
     if (name == "resume_source_route") {
         return DialogueOutcomeType::resume_source_route;
@@ -57,6 +61,8 @@ constexpr std::string_view dialogue_outcome_type_name(
     switch (type) {
     case DialogueOutcomeType::continue_in_place:
         return "continue_in_place";
+    case DialogueOutcomeType::return_to_caller:
+        return "return_to_caller";
     case DialogueOutcomeType::resume_source_route:
         return "resume_source_route";
     case DialogueOutcomeType::return_to_origin:
@@ -76,6 +82,7 @@ constexpr std::string_view dialogue_outcome_type_name(
 }
 
 struct ContinueInPlaceOutcome final {};
+struct ReturnToCallerOutcome final {};
 struct ResumeSourceRouteOutcome final {};
 
 struct ReturnToOriginOutcome final {
@@ -114,6 +121,13 @@ template <>
 struct DialogueOutcomeTraits<ContinueInPlaceOutcome> final {
     static constexpr DialogueOutcomeType type =
         DialogueOutcomeType::continue_in_place;
+    static constexpr bool requires_target = false;
+};
+
+template <>
+struct DialogueOutcomeTraits<ReturnToCallerOutcome> final {
+    static constexpr DialogueOutcomeType type =
+        DialogueOutcomeType::return_to_caller;
     static constexpr bool requires_target = false;
 };
 
@@ -174,7 +188,8 @@ using DialogueOutcome = std::variant<
     EnterActivityOutcome,
     OpenServiceOutcome,
     PlayCinematicOutcome,
-    SourceBoundaryOutcome>;
+    SourceBoundaryOutcome,
+    ReturnToCallerOutcome>;
 
 inline DialogueOutcomeType dialogue_outcome_type(
     const DialogueOutcome& outcome) noexcept {

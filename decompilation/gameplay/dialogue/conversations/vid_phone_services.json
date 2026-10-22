@@ -202,7 +202,7 @@
         },
         "finished": {
           "type": "terminal",
-          "outcome": { "type": "continue_in_place" }
+          "outcome": { "type": "return_to_caller" }
         }
       }
     },
@@ -348,7 +348,7 @@
         },
         "finished": {
           "type": "terminal",
-          "outcome": { "type": "continue_in_place" }
+          "outcome": { "type": "return_to_caller" }
         }
       }
     },
@@ -479,7 +479,7 @@
         },
         "finished": {
           "type": "terminal",
-          "outcome": { "type": "continue_in_place" }
+          "outcome": { "type": "return_to_caller" }
         }
       }
     },
@@ -640,7 +640,7 @@
         },
         "finished": {
           "type": "terminal",
-          "outcome": { "type": "continue_in_place" }
+          "outcome": { "type": "return_to_caller" }
         }
       }
     },
@@ -789,7 +789,7 @@
         },
         "finished": {
           "type": "terminal",
-          "outcome": { "type": "continue_in_place" }
+          "outcome": { "type": "return_to_caller" }
         }
       }
     },
@@ -907,7 +907,7 @@
         },
         "finished": {
           "type": "terminal",
-          "outcome": { "type": "continue_in_place" }
+          "outcome": { "type": "return_to_caller" }
         }
       }
     },
@@ -1054,7 +1054,7 @@
         },
         "finished": {
           "type": "terminal",
-          "outcome": { "type": "continue_in_place" }
+          "outcome": { "type": "return_to_caller" }
         }
       }
     }

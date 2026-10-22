@@ -128,6 +128,20 @@ local document = {
                           outcome = { type = "return_to_origin",
                                       returnPoint = "saved_door_entry" } },
         }),
+        ["test.yes_no"] = graph("prompt", {
+            prompt = {
+                type = "choice", menuId = "test_yes_no",
+                inputContract = "yes_no",
+                choices = {
+                    { id = "yes", next = "accepted" },
+                    { id = "no", next = "declined" },
+                },
+            },
+            accepted = { type = "terminal",
+                         outcome = { type = "return_to_caller" } },
+            declined = { type = "terminal",
+                         outcome = { type = "continue_in_place" } },
+        }),
         ["test.page"] = graph("page", {
             page = { type = "page", eventId = "page_one", next = "done" },
             done = { type = "terminal",
@@ -156,6 +170,10 @@ local document = {
         ["test.source_boundary"] = graph("blocked", {
             blocked = { type = "source_boundary",
                         reason = "ROM command 0x1234 is not converted." },
+        }),
+        ["test.return_to_caller"] = graph("done", {
+            done = { type = "terminal",
+                     outcome = { type = "return_to_caller" } },
         }),
     },
 }
@@ -198,6 +216,7 @@ local actions = {
 local presented_pages = {}
 local presented_choices = {}
 local cursor_inputs = { "down", "confirm" }
+local yes_no_inputs = { "yes", "no" }
 local host = {
     present_page = function(node, speaker_id, text_profile)
         presented_pages[#presented_pages + 1] = {
@@ -226,6 +245,8 @@ local host = {
                 assert(selected_index == 2)
             end
             return input
+        elseif node.inputContract == "yes_no" then
+            return table.remove(yes_no_inputs, 1)
         end
         return "second"
     end,
@@ -245,6 +266,11 @@ assert(#visible_choices == 2 and visible_choices[1] == "first" and
 outcome = session:run("test.cursor")
 assert(outcome.type == "enter_activity" and
        outcome.activityId == "resource_scene_35")
+
+outcome = session:run("test.yes_no")
+assert(outcome.type == "return_to_caller")
+outcome = session:run("test.yes_no")
+assert(outcome.type == "continue_in_place")
 
 outcome = session:run("test.page")
 assert(outcome.type == "play_cinematic" and
@@ -317,6 +343,8 @@ assert(outcome.type == "source_boundary" and
 outcome = session:run("test.source_boundary")
 assert(outcome.type == "source_boundary" and
        outcome.reason:match("ROM command 0x1234 is not converted") ~= nil)
+outcome = session:run("test.return_to_caller")
+assert(outcome.type == "return_to_caller")
 assert(Status.unknown == "unknown")
 
 local invalid = pcall(function()

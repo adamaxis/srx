@@ -126,7 +126,9 @@ local function run_contact_graph(contact)
     if type(outcome) ~= "table" or type(outcome.type) ~= "string" then
         return "phone_service_result_unresolved"
     end
-    if outcome.type == "continue_in_place" then
+    -- The contact graph owns one nested call; this field-activity session owns
+    -- the ROM's post-call transition to the caller.
+    if outcome.type == "return_to_caller" then
         return phone_call_finished()
     end
     return outcome

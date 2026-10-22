@@ -518,6 +518,26 @@ bool verify_dialogue_outcome_dispatcher() {
         return false;
     }
 
+    int returned_to_caller = 0;
+    if (!expect(dispatcher.register_type_handler<ReturnToCallerOutcome>(
+                    [&returned_to_caller](const ReturnToCallerOutcome&) {
+                        ++returned_to_caller;
+                        return true;
+                    }),
+                "could not register return-to-caller outcome")) {
+        return false;
+    }
+    DialogueOutcome caller_outcome = ReturnToCallerOutcome{};
+    if (!expect(dialogue_outcome_type(caller_outcome) ==
+                    DialogueOutcomeType::return_to_caller &&
+                    dialogue_outcome_type_from_name("return_to_caller") ==
+                        DialogueOutcomeType::return_to_caller &&
+                    dispatcher.dispatch(caller_outcome).handled() &&
+                    returned_to_caller == 1,
+                "return-to-caller outcome was not dispatched by type")) {
+        return false;
+    }
+
     DialogueOutcome hotel_outcome =
         OpenServiceOutcome{"hotel.options", "origin"};
     if (!expect(dispatcher.dispatch(hotel_outcome).handled() &&

@@ -87,6 +87,7 @@ are:
 | Terminal behavior | Example | Host meaning |
 | --- | --- | --- |
 | `continue_in_place` | Gates, Red Buffalo, Owlfeather services | Ends dialogue and keeps the current scene/event context. Do not follow a raw event-table destination suppressed by the source handler. |
+| `return_to_caller` | Vid-Phone contact graphs | Ends a nested interaction and gives control back to the owning phone session, which applies its call-completion behavior. It does not mean “stay in this field scene.” |
 | `resume_source_route` | Fuchi and Renraku entry pages | Ends the page, then continues the already selected event-table route into the source activity. |
 | `return_to_origin` | Hotel/building checkout and activity exit | Ends dialogue and restores the saved origin scene, camera/door return point, and source-derived heading policy. This represents “ends and sends outside” when the saved origin is outdoors. |
 | `enter_field_scene` | Sharkey's paid travel offers; the Tarislar Tomb offer | Ends dialogue and enters a named scene after the typed destination is validated against the completed source service, using the named ROM arrival policy. |
@@ -146,11 +147,13 @@ reused across them. These captures show the selected player's path only; ROM
 conditions and branch code define the alternatives that the video never
 selects.
 
-The current catalog review has 18 graphs. All graph choice nodes currently
-use `buttons_abc`; `yes_no` and `cursor_list` are accepted by validation, but
-no converted graph yet exercises either contract. The Vid-Phone contact
-picker remains its own paged service loop. Treat those contracts as designed
-and ROM-supported, not as fully implemented or defended graph permutations.
+The current catalog review has 18 graphs. All converted game choice nodes
+currently use `buttons_abc`. The Lua session tests also exercise `yes_no`
+(exactly two choices) and `cursor_list` (navigation, confirmation, and
+cancellation) without pretending those test fixtures are game content. The
+Vid-Phone contact picker remains its own paged service loop. Independent game
+routes using the two-choice and cursor-list graph contracts still need their
+own source-traced conversion and presentation checks.
 
 ### Interaction lifecycle
 
@@ -441,7 +444,7 @@ nodes, and ROM provenance. Nodes are limited to reusable forms:
 - `action`: one registered Lua effect or yielded typed host service, with
   explicit result-ID edges when the operation can return multiple outcomes.
 - `terminal`: exactly one typed outcome after all ordered effects complete.
-  Outcomes form a tagged union (`continue_in_place`, `resume_source_route`,
+  Outcomes form a tagged union (`continue_in_place`, `return_to_caller`, `resume_source_route`,
   `return_to_origin`, `enter_field_scene`, `enter_activity`, `open_service`,
   or `play_cinematic`) with payload fields specific to the tag. Targeted
   outcomes resolve stable IDs in the corresponding catalog/registry, and
@@ -459,6 +462,7 @@ The `terminal` outcome is a discriminated union, not a free-form result string:
 
 ```json
 { "type": "continue_in_place" }
+{ "type": "return_to_caller" }
 { "type": "resume_source_route" }
 { "type": "return_to_origin", "returnPoint": "saved_door_entry" }
 { "type": "enter_field_scene", "sceneId": 54, "arrivalId": "tomb_entry" }
@@ -470,6 +474,9 @@ The `terminal` outcome is a discriminated union, not a free-form result string:
 `open_service` and other asynchronous operations carry their return policy;
 they are not aliases for `continue_in_place`. `play_cinematic` is part of the
 extensible type set but remains unused until a dialogue route is source-traced.
+`return_to_caller` is consumed only by an owning interaction session; if it
+escapes to the field host without a caller, it remains an unregistered outcome
+and is reported as a source boundary.
 An unresolved condition or unconverted source command is a separate diagnostic
 boundary result and is never serialized as a successful terminal outcome.
 

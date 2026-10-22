@@ -54,6 +54,7 @@ local function validate_outcome(outcome, cinematics)
     assert(type(outcome) == "table" and is_identifier(outcome.type),
         "dialogue terminal needs a typed outcome")
     if outcome.type == "continue_in_place" or
+       outcome.type == "return_to_caller" or
        outcome.type == "resume_source_route" then
         validate_outcome_fields(outcome, {})
         return true
