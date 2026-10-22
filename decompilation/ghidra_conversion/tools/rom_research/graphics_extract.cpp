@@ -84,6 +84,100 @@ std::string read_multiline_rom_text(const std::vector<std::uint8_t>& rom,
     return text;
 }
 
+shadowrun::graphics::RgbaImage decode_field_service_cyberware_icon(
+    const std::vector<std::uint8_t>& rom, const std::size_t category) {
+    constexpr std::size_t kIconTableOffset = 0xD177CU;
+    // Mode 7/result 1 uploads the eight cyberware illustrations after the
+    // shared field-menu graphics. Their name-table words select tiles 0x44E-
+    // 0x47B, which are populated by this distinct source block.
+    constexpr std::size_t kCyberwarePatternOffset = 0xCF97CU;
+    constexpr std::size_t kCyberwarePatternVramOffset = 0x89A0U;
+    constexpr std::size_t kCyberwarePatternBytes = 0x5E0U;
+    constexpr std::size_t kSetupPaletteOffset = 0xD29D6U;
+    constexpr std::size_t kFieldPaletteTailOffset = 0x18AC56U;
+    constexpr std::size_t kIconWidth = 24U;
+    constexpr std::size_t kIconHeight = 16U;
+    if (category >= 8U) {
+        throw std::out_of_range("Genesis cyberware icon category is invalid");
+    }
+
+    std::vector<std::uint8_t> pattern_vram(0x10000U, 0U);
+    if (kCyberwarePatternOffset > rom.size() ||
+        rom.size() - kCyberwarePatternOffset < kCyberwarePatternBytes ||
+        kCyberwarePatternVramOffset > pattern_vram.size() ||
+        pattern_vram.size() - kCyberwarePatternVramOffset <
+            kCyberwarePatternBytes) {
+        throw std::out_of_range(
+            "Genesis cyberware pattern upload is truncated");
+    }
+    std::copy_n(
+        rom.begin() + static_cast<std::ptrdiff_t>(kCyberwarePatternOffset),
+        kCyberwarePatternBytes,
+        pattern_vram.begin() +
+            static_cast<std::ptrdiff_t>(kCyberwarePatternVramOffset));
+
+    auto palette = shadowrun::graphics::read_genesis_palette_set(
+        rom, kSetupPaletteOffset);
+    for (std::size_t index = 16U; index < palette.size(); ++index) {
+        const auto color_offset = kFieldPaletteTailOffset + (index - 16U) * 2U;
+        if (color_offset > rom.size() || rom.size() - color_offset < 2U) {
+            throw std::out_of_range("Genesis field palette tail is truncated");
+        }
+        palette[index] = shadowrun::graphics::decode_genesis_cram_word(
+            read_big_endian_word(rom, color_offset), index % 16U == 0U);
+    }
+
+    const auto icon_table = kIconTableOffset + category * 12U;
+    if (icon_table > rom.size() || rom.size() - icon_table < 12U) {
+        throw std::out_of_range("Genesis cyberware icon grid is truncated");
+    }
+    shadowrun::graphics::RgbaImage image{
+        static_cast<std::uint16_t>(kIconWidth),
+        static_cast<std::uint16_t>(kIconHeight),
+        std::vector<shadowrun::native::Rgba8>(
+            kIconWidth * kIconHeight,
+            shadowrun::native::Rgba8{0U, 0U, 0U, 0U}),
+    };
+    for (std::size_t row = 0U; row < 2U; ++row) {
+        for (std::size_t column = 0U; column < 3U; ++column) {
+            const auto name_word = read_big_endian_word(
+                rom, icon_table + (row * 3U + column) * 2U);
+            const auto palette_line =
+                static_cast<std::size_t>((name_word >> 13U) & 0x03U) | 1U;
+            if ((name_word & 0x8000U) != 0U || palette_line != 1U) {
+                throw std::runtime_error(
+                    "Genesis cyberware icon has unsupported tile attributes");
+            }
+            const auto tile_index =
+                static_cast<std::size_t>(name_word & 0x07FFU);
+            if (tile_index * 32U + 32U > pattern_vram.size()) {
+                throw std::out_of_range(
+                    "Genesis cyberware icon references missing tile data");
+            }
+            const auto tile = shadowrun::graphics::decode_genesis_tile(
+                pattern_vram.data() + tile_index * 32U, 32U);
+            const bool hflip = (name_word & 0x0800U) != 0U;
+            const bool vflip = (name_word & 0x1000U) != 0U;
+            for (std::size_t y = 0U; y < 8U; ++y) {
+                for (std::size_t x = 0U; x < 8U; ++x) {
+                    const auto source_x = hflip ? 7U - x : x;
+                    const auto source_y = vflip ? 7U - y : y;
+                    const auto color_index =
+                        tile.pixels[source_y * 8U + source_x];
+                    if (color_index == 0U) {
+                        continue;
+                    }
+                    auto color = palette[palette_line * 16U + color_index];
+                    color.alpha = 255U;
+                    image.pixels[(row * 8U + y) * kIconWidth +
+                                 column * 8U + x] = color;
+                }
+            }
+        }
+    }
+    return image;
+}
+
 std::vector<std::uint8_t> read_file(const std::string& path) {
     std::ifstream input(path, std::ios::binary);
     if (!input) {
@@ -2204,6 +2298,54 @@ void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
                      shop_text.sale_quote_heading);
     write_text_entry("shop.transaction.purchase_price_heading",
                      shop_text.purchase_price_heading);
+    write_text_entry(
+        "shop.cyberware.already_owned",
+        read_multiline_rom_text(rom, 0x1AA787U, 0x40U,
+                                "cyberware already-owned message"));
+    write_text_entry(
+        "shop.cyberware.spurs_conflict",
+        read_multiline_rom_text(rom, 0x1AA7ADU, 0x40U,
+                                "cyberware Spurs conflict message"));
+    write_text_entry(
+        "shop.cyberware.insufficient_essence",
+        read_multiline_rom_text(rom, 0x1AA7E2U, 0x50U,
+                                "cyberware Essence rejection message"));
+    write_text_entry(
+        "shop.cyberware.purchase_heading",
+        read_multiline_rom_text(rom, 0x1AA76FU, 0x40U,
+                                "cyberware purchase heading"));
+    const auto essence_headings = read_multiline_rom_text(
+        rom, 0x1AB517U, 0x40U, "cyberware Essence headings");
+    const auto essence_heading_break = essence_headings.find('\n');
+    if (essence_heading_break == std::string::npos) {
+        throw std::runtime_error(
+            "cyberware Essence headings lack their source line break");
+    }
+    write_text_entry("shop.cyberware.essence_heading",
+                     essence_headings.substr(0U, essence_heading_break));
+    write_text_entry("shop.cyberware.essence_cost_heading",
+                     essence_headings.substr(essence_heading_break + 1U));
+    constexpr std::array<std::string_view, 8> kCyberwareShopTextIds{{
+        "datajack", "cyber_eyes", "hand_razors", "spurs", "smartlink",
+        "muscle_replacement", "dermal_plating", "wired_reflexes"}};
+    constexpr std::array<std::string_view, 8> kCyberwareDescriptionIds{{
+        "datajack", "cyber_eyes", "hand_razors", "spurs", "smartlink",
+        "muscle_replace", "dermal_plating", "wired_reflexes"}};
+    for (std::size_t index = 0U; index < kCyberwareShopTextIds.size(); ++index) {
+        const auto selection_name_offset = 0x1AAFA0U + index * 24U;
+        const auto description_offset = read_big_endian_long(
+            rom, 0x1AC8C0U + index * 4U);
+        write_text_entry(
+            "shop.cyberware.selection_name." +
+                std::string(kCyberwareShopTextIds[index]),
+            read_multiline_rom_text(rom, selection_name_offset, 24U,
+                                    "cyberware selected-item name"));
+        write_text_entry(
+            "shop.cyberware.description." +
+                std::string(kCyberwareDescriptionIds[index]),
+            read_multiline_rom_text(rom, description_offset, 0x80U,
+                                    "cyberware description"));
+    }
     write_text_entry(
         "shop.store_closed",
         read_multiline_rom_text(rom, 0x1AA3B4U, 0x20U,
@@ -6444,6 +6586,17 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             rom),
         "sprite", "0x586F6/0xCE28E/0xD29D6/0x18AC56", false, manifest,
         written, missing, blank);
+    constexpr std::array<std::string_view, 8> kCyberwareIconIds{{
+        "datajack", "cyber_eyes", "hand_razors", "spurs", "smartlink",
+        "muscle_replacement", "dermal_plating", "wired_reflexes"}};
+    for (std::size_t index = 0U; index < kCyberwareIconIds.size(); ++index) {
+        write_catalog_asset(
+            root, "menu/field/service-cyberware-" +
+                      std::string(kCyberwareIconIds[index]) + ".bmp",
+            decode_field_service_cyberware_icon(rom, index), "sprite",
+            "0x587DA/0x5895C/0x57EEE/0xD177C/0xCAB0C/0xD29D6/0x18AC56",
+            false, manifest, written, missing, blank);
+    }
     write("menu/field/action-background.bmp",
           assets.field_menu_action_background, "background", "0x117A0", false);
     write("menu/field/action-confirm-background.bmp",

@@ -1251,6 +1251,14 @@ menu.field.service.tabs.selected.3	menu/field/service-tabs-selected-3.bmp	image	
 menu.field.service.tabs.selected.4	menu/field/service-tabs-selected-4.bmp	image	0	0
 menu.field.service.tabs.selected.5	menu/field/service-tabs-selected-5.bmp	image	0	0
 menu.field.service.universal.clips	menu/field/service-universal-clips.bmp	image	0	0
+menu.field.service.cyberware.datajack	menu/field/service-cyberware-datajack.bmp	image	0	0
+menu.field.service.cyberware.cyber_eyes	menu/field/service-cyberware-cyber_eyes.bmp	image	0	0
+menu.field.service.cyberware.hand_razors	menu/field/service-cyberware-hand_razors.bmp	image	0	0
+menu.field.service.cyberware.spurs	menu/field/service-cyberware-spurs.bmp	image	0	0
+menu.field.service.cyberware.smartlink	menu/field/service-cyberware-smartlink.bmp	image	0	0
+menu.field.service.cyberware.muscle_replacement	menu/field/service-cyberware-muscle_replacement.bmp	image	0	0
+menu.field.service.cyberware.dermal_plating	menu/field/service-cyberware-dermal_plating.bmp	image	0	0
+menu.field.service.cyberware.wired_reflexes	menu/field/service-cyberware-wired_reflexes.bmp	image	0	0
 menu.field.action.background	menu/field/action-background.bmp	image	0	0
 menu.field.action.confirm.background	menu/field/action-confirm-background.bmp	image	0	0
 menu.field.clips.background	menu/field/clips-background.bmp	image	0	0
