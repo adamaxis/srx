@@ -754,12 +754,27 @@ Renraku now has Debug/Release physical-input QA from scene-5 record 46/event 6:
 the MORE page advances into activity 35, and the full-screen `actual.bmp` and
 `activity-35.bmp` were inspected. Fuchi now has Debug/Release physical-input
 QA from scene-3 record 97/event 2; its MORE page advances into activity 21.
-Both full-screen entry and activity captures were inspected. The entry routes now carry the ROM's FFE184 index-5/marker-0 and FFE187 index-2/marker-3 resource contexts from their Lua links into the typed activity initializer, and Debug/Release physical QA asserts both results. Debug/Release physical Down QA reaches Renraku activity-35 record 121/event 0 and Fuchi activity-21 record 102/event 0; both restore the source field at the ROM probe lead with heading 0x8000. The exit QA seeds an adjacent activity cell. Independent Genesis captures are unavailable for both interiors/exits. Other building sites still
-have numeric-only routes or no authored entity link; continue from the
-ROM-backed site route manifests rather than treating guide names as destination
-proof. See [the Gates Undersound audit](visual-audits/gates-undersound-title-service.md),
+Both full-screen entry and activity captures were inspected. The entry routes now carry the ROM's FFE184 index-5/marker-0 and FFE187 index-2/marker-3 resource contexts from their Lua links into the typed activity initializer, and Debug/Release physical QA asserts both results. Debug/Release physical Down QA reaches Renraku activity-35 record 121/event 0 and Fuchi activity-21 record 102/event 0; both restore the source field at the ROM probe lead with heading 0x8000. The exit QA seeds an adjacent activity cell. Independent Genesis captures are unavailable for both interiors/exits, so these routes remain partial. Continue from the ROM-backed site route manifests rather than treating guide names as destination proof. See [the Gates Undersound audit](visual-audits/gates-undersound-title-service.md),
 [the Renraku route audit](visual-audits/renraku-offices-scene5-event6.md), and
 [the Fuchi route audit](visual-audits/fuchi-offices-scene3-event2.md).
+
+## Entity route data migration (partial, 2026-10-22)
+
+The currently modeled route set has since moved into entity-owned
+`interactions.json`: 58 ordinary event-table continuations, eight conditional
+map overrides, 13 dialogue routes, and eight field services across 70 entities.
+Lua resolves those stable interaction IDs and checks ordinary map destinations
+against the imported ROM event table; the C++ TSV loader no longer reads legacy
+entity `links.tsv` routes. The shared mechanism is covered by Debug/Release
+route/runtime tests, including ambiguity, unknown-condition, mismatched-source,
+and source-default cases. Keep the hill partial: JSON coverage does not imply
+that each destination's shop, entry dialogue, quest gate, activity behavior, or
+return has been source-traced and physically exercised. In Scene 5, four guide
+storefront labels share the ROM's resource-activity-35 destination; their guide
+stock lists do not prove separate ROM shop menus. The site manifest now records
+the verified event-table pointer and row bytes. See
+[the field-map route audit](visual-audits/field-map-script-routing.md) and
+[the dialogue/location content model](dialogue-location-content-model.md).
 
 ## Council Island Medicine Lodge service screen (partial, 2026-10-20)
 
