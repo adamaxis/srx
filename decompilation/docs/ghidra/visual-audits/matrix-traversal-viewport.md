@@ -895,5 +895,30 @@ the phase-four runner with its arms outstretched, the green faceted SPU, the
 top HUD frame, blue grid, and complete footer. The CyberInfo capture verifies
 the same HUD layer on a different selected model. The complete Matrix hill
 remains partial: other node/model profiles, action overlays, their exact
-cadence, and the field return path are not defended. Do not use the flat
-system-map capture or node-action panel as a traversal reference.
+cadence, the original logout-transition artwork, and other field-resume/death
+paths are not defended. Do not use the flat system-map capture or node-action
+panel as a traversal reference.
+
+### Pull Plug logout cadence (2026-10-22)
+
+ROM `0x18776` performs five palette-fade steps, each held for two VBlanks,
+before `0x26A00` begins. `0x26A00` requests sound `0x29` on entry and runs a
+54-VBlank display handoff (`14 + 6 + 11 + 6 + 6 + 11`). The route now shares
+one Lua transition clock across Pull Plug, Crash System, and overload. The Qt
+Pull Plug presenter applies the five fade levels to the entire 320x224 frame,
+then holds black for those 54 VBlanks. A typed completed-transition result
+lets the field host skip its separate 60-frame modal fade while keeping the
+held confirmation blocked until release.
+
+The Debug/Release route test checks the two-VBlank fade cadence, one `0x29`
+sound at VBlank 10, the full 64-VBlank total, and completed-result propagation.
+The Debug/Release `field_matrix_traversal_entry_qa` also writes full 320x224
+captures for the prompt, fade start, fade black, handoff black at VBlank 63,
+field return while A remains held, and the first field frame after release.
+All six frames were opened at original size. The prompt layout was inspected
+beside independent Section 15 frame `005400`; that frame has the same selected
+No row and retained deck surface. Program icons and ratings are fixture state,
+so only the screen structure and placement are compared. No independent
+longplay capture of the 64-frame logout sequence was located. The black hold
+is a timing placeholder; the source line-collapse and center-dot artwork from
+`0x26A00` remains unported.

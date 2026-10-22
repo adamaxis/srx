@@ -26805,11 +26805,137 @@ int main(int argc, char** argv) {
                               << '\n';
                     return 3;
                 }
+                // Pull Plug owns the ROM's 10-frame palette fade and
+                // 54-frame display handoff. Capture the entire host frame at
+                // each boundary and verify field return skips the separate
+                // native modal fade while still consuming its confirm input.
+                tap_qa_controller_button(field_scene, 0x80U); // Start: deck.
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                    static_cast<std::uint16_t>(srx::MenuScreen::CYBERDECK)) {
+                    std::cerr << "Matrix logout QA: Start did not open the deck\n";
+                    return 3;
+                }
+                for (int step = 0; step < 3; ++step) {
+                    tap_qa_controller_button(field_scene, 0x02U); // Down.
+                }
+                for (int step = 0; step < 3; ++step) {
+                    tap_qa_controller_button(field_scene, 0x08U); // Right.
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // Pull Plug.
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                const auto pull_plug_prompt =
+                    capture("matrix-pull-plug-prompt");
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::PULL_PLUG) ||
+                    route.top_row != 1 || !complete_frame(pull_plug_prompt)) {
+                    std::cerr << "Matrix logout QA: Pull Plug prompt was not a "
+                                 "complete 320x224 frame\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x01U); // Select Yes.
+                const auto logout_audio_start = field_audio_events.size();
+                field_scene.set_controller_port_byte(0x40U); // Confirm; hold through logout.
+                field_scene.advance_frame();
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                const auto fade_start_image =
+                    capture("matrix-pull-plug-fade-start");
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::PULL_PLUG) ||
+                    route.top_matrix_transition_fade_step != 0 ||
+                    !complete_frame(fade_start_image)) {
+                    std::cerr << "Matrix logout QA: fade did not begin over the "
+                                 "full Pull Plug screen\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 9; ++frame) {
+                    field_scene.advance_frame();
+                }
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                const auto logout_sound_count = [&field_audio_events,
+                                                 logout_audio_start]() {
+                    return static_cast<std::size_t>(std::count(
+                        field_audio_events.begin() +
+                            static_cast<std::ptrdiff_t>(logout_audio_start),
+                        field_audio_events.end(), 0x29U));
+                };
+                if (route.top_matrix_transition_fade_step != 4 ||
+                    logout_sound_count() != 0U) {
+                    std::cerr << "Matrix logout QA: fade timing or sound "
+                                 "boundary is early\n";
+                    return 3;
+                }
+                field_scene.advance_frame(); // VBlank 10: enter 0x26A00.
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                const auto fade_black_image =
+                    capture("matrix-pull-plug-fade-black");
+                const auto all_black = [](const QImage& image) {
+                    if (image.size() != QSize(kSceneWidth, kSceneHeight)) {
+                        return false;
+                    }
+                    for (int y = 0; y < image.height(); ++y) {
+                        for (int x = 0; x < image.width(); ++x) {
+                            if (image.pixelColor(x, y) != QColor(Qt::black)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
+                if (route.top_matrix_transition_fade_step != 5 ||
+                    logout_sound_count() != 1U ||
+                    !all_black(fade_black_image)) {
+                    std::cerr << "Matrix logout QA: ten-frame fade did not "
+                                 "produce one 0x29 sound and a full black frame\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 53; ++frame) {
+                    field_scene.advance_frame();
+                }
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                const auto handoff_image =
+                    capture("matrix-pull-plug-handoff-black");
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::PULL_PLUG) ||
+                    route.top_matrix_transition_fade_step != 5 ||
+                    !all_black(handoff_image)) {
+                    std::cerr << "Matrix logout QA: 54-frame display handoff "
+                                 "did not hold a complete black screen\n";
+                    return 3;
+                }
+                field_scene.advance_frame(); // VBlank 64: return to field.
+                const auto returned_field_image =
+                    capture("matrix-pull-plug-field-return-input-held");
+                if (field_scene.field_menu_route_snapshot_for_dump().open ||
+                    field_scene.field_modal_return_transition_frames_for_dump() !=
+                        0U ||
+                    (field_scene.field_modal_return_blocked_inputs_for_dump() &
+                     0x40U) == 0U ||
+                    !complete_frame(returned_field_image)) {
+                    std::cerr << "Matrix logout QA: field return added a second "
+                                 "fade or failed to suppress the confirm input\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0U);
+                field_scene.advance_frame();
+                const auto released_field_image =
+                    capture("matrix-pull-plug-field-return");
+                if (field_scene.field_modal_return_blocked_inputs_for_dump() !=
+                        0U ||
+                    !complete_frame(released_field_image)) {
+                    std::cerr << "Matrix logout QA: field input did not resume "
+                                 "cleanly after the held confirm was released\n";
+                    return 3;
+                }
                 std::cout << "field_matrix_traversal_entry_qa=passed "
                           << "system=2 node=2 setup_vblanks=61 "
                           << "entry_vblanks=239 publications=56 "
                           << "reference_frames=004730-004830,004800 "
                           << "full_320x224=1 footer_icons=1 "
+                          << "pull_plug_logout_vblanks=64 "
+                          << "logout_black_frames=54 field_return_fade=0 "
                           << "system_access_model0=1 "
                           << "model0_host_bounds="
                           << model0_host_bounds.x() << ','
