@@ -19,6 +19,7 @@ namespace shadowrun::ghidra_conversion::qt_runtime {
 enum class ShopId : std::uint8_t {
     field_store,
     medicine_lodge,
+    wire_masters,
 };
 
 enum class ShopActionGroup : std::int8_t {
@@ -33,6 +34,7 @@ enum class ShopActionGroup : std::int8_t {
     magic_spells = 6,
     magic_items = 7,
     magic_foci = 8,
+    cyberware = 9,
 };
 
 struct ShopActionRequest {
@@ -40,6 +42,8 @@ struct ShopActionRequest {
     std::uint8_t cursor = 0;
     std::optional<FieldActionCostRecord> offer;
     std::optional<scripting::ScriptShopProgressionOffer> progression_offer;
+    std::optional<scripting::ScriptShopEquipmentUpgradeOffer>
+        equipment_upgrade_offer;
 };
 
 struct ShopSaleOutcome {
@@ -60,6 +64,9 @@ enum class ShopTransactionMessage : std::uint8_t {
     special_action_limit,
     protected_sale,
     training_unavailable,
+    cyberware_already_owned,
+    cyberware_spurs_conflict,
+    cyberware_insufficient_essence,
 };
 
 enum class ShopTransactionEvent : std::uint8_t {
@@ -68,6 +75,7 @@ enum class ShopTransactionEvent : std::uint8_t {
     confirmation_moved,
     purchase_applied,
     sale_applied,
+    equipment_upgrade_confirmed,
     cancelled,
     message_shown,
     message_dismissed,
@@ -83,6 +91,7 @@ enum class ShopMenuEvent : std::uint8_t {
     sale_selected,
     offer_unavailable,
     progression_selected,
+    equipment_upgrade_selected,
     source_action_boundary,
     active_runner_change_requested,
     returned_to_field,
@@ -157,6 +166,11 @@ public:
     std::size_t progression_offer_count(ShopActionGroup group) const noexcept;
     std::optional<scripting::ScriptShopProgressionOffer> progression_offer(
         ShopActionGroup group, std::size_t index) const noexcept;
+    std::size_t equipment_upgrade_offer_count(
+        ShopActionGroup group) const noexcept;
+    std::optional<scripting::ScriptShopEquipmentUpgradeOffer>
+    equipment_upgrade_offer(ShopActionGroup group,
+                            std::size_t index) const noexcept;
 
     ShopTransactionEvent begin_purchase(
         const FieldActionCostRecord& selected_offer,
@@ -167,6 +181,8 @@ public:
         const FieldActionCostContext& cost_context,
         RunnerActionRemovalState& state,
         const FieldActionBaseCostLookup& resale_base_lookup = {});
+    ShopTransactionEvent begin_equipment_upgrade_confirmation(
+        std::uint32_t cost);
     ShopTransactionEvent advance_transaction(
         std::uint16_t controller_events,
         const FieldActionCostContext& cost_context,
@@ -174,11 +190,16 @@ public:
         RunnerActionRemovalState& sale_state,
         const FieldActionBaseCostLookup& purchase_base_lookup = {},
         const FieldActionBaseCostLookup& resale_base_lookup = {});
-    void show_progression_message(ShopTransactionMessage message) noexcept;
+    void show_transaction_message(ShopTransactionMessage message) noexcept;
     void clear_pending_action() noexcept;
 
 private:
-    enum class TransactionKind : std::uint8_t { none, purchase, sale };
+    enum class TransactionKind : std::uint8_t {
+        none,
+        purchase,
+        sale,
+        equipment_upgrade,
+    };
     void reset_transaction() noexcept;
 
     ShopId shop_ = ShopId::field_store;
@@ -194,6 +215,8 @@ private:
     std::array<std::vector<FieldActionCostRecord>, 6> offer_groups_{};
     std::array<std::vector<scripting::ScriptShopProgressionOffer>, 6>
         progression_offer_groups_{};
+    std::array<std::vector<scripting::ScriptShopEquipmentUpgradeOffer>, 6>
+        equipment_upgrade_offer_groups_{};
     MenuConfirmationState transaction_confirmation_{};
     TransactionKind transaction_kind_ = TransactionKind::none;
     ShopTransactionMessage transaction_message_ = ShopTransactionMessage::none;

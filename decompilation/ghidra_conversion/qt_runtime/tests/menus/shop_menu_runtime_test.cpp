@@ -347,6 +347,68 @@ int main() {
         return 8;
     }
 
+    scripting::ScriptShopDefinition wire_masters_definition{};
+    wire_masters_definition.id = "wire_masters";
+    wire_masters_definition.menu_mode = 7U;
+    wire_masters_definition.menu_result = 1;
+    wire_masters_definition.equipment_upgrade_meter_thresholds.assign(
+        16U, 2U);
+    scripting::ScriptShopOfferGroup wire_cyberware{};
+    wire_cyberware.id = "cyberware";
+    for (std::uint8_t category = 0U; category < 8U; ++category) {
+        wire_cyberware.equipment_upgrade_offers.push_back(
+            scripting::ScriptShopEquipmentUpgradeOffer{
+                category, static_cast<std::uint32_t>(500U + category * 100U),
+                "cyberware.text.option.datajack",
+                "shop.cyberware.selection_name.datajack",
+                "shop.cyberware.description.datajack"});
+    }
+    wire_masters_definition.groups.push_back(wire_cyberware);
+    ShopMenuController wire_menu;
+    const FieldActionCostContext wire_cost_context{7U, 0U, 0U, 2U};
+    if (!expect(wire_menu.open(
+                    ShopId::wire_masters, wire_masters_definition,
+                    confirmation_choice_ids)) ||
+        !expect(wire_menu.menu_mode() == 7U &&
+                    wire_menu.menu_result() == 1 &&
+                    wire_menu.selected_group() == ShopActionGroup::cyberware &&
+                    wire_menu.offers_panel_active() &&
+                    wire_menu.equipment_upgrade_offer_count(
+                        ShopActionGroup::cyberware) == 8U &&
+                    wire_menu.equipment_upgrade_offer(
+                        ShopActionGroup::cyberware, 7U)->category == 7U)) {
+        return 51;
+    }
+    if (!expect(wire_menu.apply_script_snapshot(snapshot(
+                    "wire_masters", 7U, 1, 1U, 1U, 1U,
+                    "selection_moved")) == ShopMenuEvent::selection_moved) ||
+        !expect(wire_menu.selected_cursor() == 1U) ||
+        !expect(wire_menu.apply_script_snapshot(snapshot(
+                    "wire_masters", 7U, 1, 1U, 1U, 1U,
+                    "equipment_upgrade_selected")) ==
+                ShopMenuEvent::equipment_upgrade_selected) ||
+        !expect(wire_menu.pending_action().has_value() &&
+                    wire_menu.pending_action()->equipment_upgrade_offer
+                        ->category == 1U)) {
+        return 52;
+    }
+    if (!expect(wire_menu.begin_equipment_upgrade_confirmation(3000U) ==
+                    ShopTransactionEvent::confirmation_opened) ||
+        !expect(wire_menu.transaction_amount() == 3000U) ||
+        !expect(wire_menu.transaction_confirmation().selected_option == 1U)) {
+        return 53;
+    }
+    FieldActionPurchaseState ignored_purchase{};
+    RunnerActionRemovalState ignored_sale{};
+    if (!expect(wire_menu.advance_transaction(
+                    0x0100U, wire_cost_context, ignored_purchase, ignored_sale) ==
+                ShopTransactionEvent::confirmation_moved) ||
+        !expect(wire_menu.advance_transaction(
+                    0x4000U, wire_cost_context, ignored_purchase, ignored_sale) ==
+                ShopTransactionEvent::equipment_upgrade_confirmed)) {
+        return 54;
+    }
+
     ShopTransactionService transactions;
     const FieldActionCostContext cost_context{1U, 0U, 3U, 2U};
     FieldActionPurchaseState purchase{};

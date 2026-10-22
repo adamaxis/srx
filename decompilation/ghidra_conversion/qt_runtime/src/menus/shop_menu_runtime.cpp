@@ -24,6 +24,7 @@ std::string_view group_id(const ShopActionGroup group) {
     case ShopActionGroup::magic_spells: return "magic_spells";
     case ShopActionGroup::magic_items: return "magic_items";
     case ShopActionGroup::magic_foci: return "magic_foci";
+    case ShopActionGroup::cyberware: return "cyberware";
     }
     return {};
 }
@@ -41,7 +42,12 @@ bool ShopMenuController::open(
          definition.groups.size() == 4U) ||
         (shop == ShopId::medicine_lodge &&
          definition.id == "medicine_lodge" &&
-         definition.menu_result == 0 && definition.groups.size() == 4U);
+         definition.menu_result == 0 && definition.groups.size() == 4U) ||
+        (shop == ShopId::wire_masters &&
+         definition.id == "wire_masters" && definition.menu_mode == 7U &&
+         definition.menu_result == 1 && definition.groups.size() == 1U &&
+         definition.equipment_upgrade_meter_thresholds.size() == 16U &&
+         definition.groups.front().equipment_upgrade_offers.size() == 8U);
     if (!shop_id_matches_definition || definition.groups.empty() ||
         definition.groups.size() > group_ids_.size() ||
         confirmation_choice_ids[0] != "yes" ||
@@ -53,6 +59,8 @@ bool ShopMenuController::open(
     std::array<std::vector<FieldActionCostRecord>, 6> offer_groups{};
     std::array<std::vector<scripting::ScriptShopProgressionOffer>, 6>
         progression_offer_groups{};
+    std::array<std::vector<scripting::ScriptShopEquipmentUpgradeOffer>, 6>
+        equipment_upgrade_offer_groups{};
     for (std::size_t index = 0; index < definition.groups.size(); ++index) {
         const auto& scripted_group = definition.groups[index];
         const auto previous = std::find(
@@ -62,8 +70,13 @@ bool ShopMenuController::open(
             previous != group_ids.begin() + index ||
             scripted_group.offers.size() > 8U ||
             scripted_group.progression_offers.size() > 8U ||
-            (!scripted_group.offers.empty() &&
-             !scripted_group.progression_offers.empty())) {
+            scripted_group.equipment_upgrade_offers.size() > 8U ||
+            static_cast<unsigned>(!scripted_group.offers.empty()) +
+                    static_cast<unsigned>(
+                        !scripted_group.progression_offers.empty()) +
+                    static_cast<unsigned>(
+                        !scripted_group.equipment_upgrade_offers.empty()) >
+                1U) {
             return false;
         }
         group_ids[index] = scripted_group.id;
@@ -74,6 +87,8 @@ bool ShopMenuController::open(
                 offer.type, offer.value, offer.quantity});
         }
         progression_offer_groups[index] = scripted_group.progression_offers;
+        equipment_upgrade_offer_groups[index] =
+            scripted_group.equipment_upgrade_offers;
     }
     shop_ = shop;
     definition_id_ = definition.id;
@@ -85,11 +100,14 @@ bool ShopMenuController::open(
     confirmation_choice_ids_ = confirmation_choice_ids;
     offer_groups_ = std::move(offer_groups);
     progression_offer_groups_ = std::move(progression_offer_groups);
+    equipment_upgrade_offer_groups_ =
+        std::move(equipment_upgrade_offer_groups);
     menu_mode_ = definition.menu_mode;
     source_state_ = FieldModeServiceState{};
     source_state_.action_selection.menu_result = definition.menu_result;
     source_state_.action_selection.action_cursor = 0;
-    source_state_.action_selection.action_panel = 0;
+    source_state_.action_selection.action_panel =
+        definition.menu_result == 1 ? 1 : 0;
     source_state_.action_selection.selected_action = 0;
     displayed_offer_group_ = selected_group();
     source_state_.selection_marker = -1;
@@ -112,6 +130,7 @@ void ShopMenuController::close() noexcept {
     confirmation_choice_ids_ = {};
     offer_groups_ = {};
     progression_offer_groups_ = {};
+    equipment_upgrade_offer_groups_ = {};
     menu_mode_ = 0U;
 }
 
@@ -127,7 +146,21 @@ void ShopMenuController::clear_pending_action() noexcept {
     pending_action_.reset();
 }
 
-void ShopMenuController::show_progression_message(
+ShopTransactionEvent ShopMenuController::begin_equipment_upgrade_confirmation(
+    const std::uint32_t cost) {
+    if (!open_ || shop_ != ShopId::wire_masters || !pending_action_ ||
+        !pending_action_->equipment_upgrade_offer.has_value()) {
+        return ShopTransactionEvent::unresolved;
+    }
+    reset_transaction();
+    transaction_kind_ = TransactionKind::equipment_upgrade;
+    transaction_amount_ = cost;
+    transaction_confirmation_ = MenuConfirmationState{};
+    transaction_confirmation_open_ = true;
+    return ShopTransactionEvent::confirmation_opened;
+}
+
+void ShopMenuController::show_transaction_message(
     const ShopTransactionMessage message) noexcept {
     reset_transaction();
     if (message == ShopTransactionMessage::none) {
@@ -308,6 +341,12 @@ ShopTransactionEvent ShopMenuController::advance_transaction(
             return ShopTransactionEvent::message_shown;
         }
     }
+    if (transaction_kind_ == TransactionKind::equipment_upgrade &&
+        pending_action_ &&
+        pending_action_->equipment_upgrade_offer.has_value()) {
+        reset_transaction();
+        return ShopTransactionEvent::equipment_upgrade_confirmed;
+    }
     clear_pending_action();
     reset_transaction();
     return ShopTransactionEvent::unresolved;
@@ -328,10 +367,14 @@ ShopActionGroup ShopMenuController::selected_group() const noexcept {
     if (id == "magic_spells") return ShopActionGroup::magic_spells;
     if (id == "magic_items") return ShopActionGroup::magic_items;
     if (id == "magic_foci") return ShopActionGroup::magic_foci;
+    if (id == "cyberware") return ShopActionGroup::cyberware;
     return static_cast<ShopActionGroup>(index);
 }
 
 std::size_t ShopMenuController::selected_group_index() const noexcept {
+    if (source_state_.action_selection.menu_result == 1) {
+        return group_count_ == 0U ? group_count_ : 0U;
+    }
     const auto index = source_state_.action_selection.selected_action;
     return index < 0 ? group_count_ : static_cast<std::size_t>(index);
 }
@@ -433,11 +476,58 @@ ShopMenuController::progression_offer(
     return progression_offer_groups_[group_slot][index];
 }
 
+std::size_t ShopMenuController::equipment_upgrade_offer_count(
+    const ShopActionGroup group) const noexcept {
+    if (!open_) {
+        return 0U;
+    }
+    const auto id = group_id(group);
+    const auto found = std::find(
+        group_ids_.begin(), group_ids_.begin() +
+                                static_cast<std::ptrdiff_t>(group_count_),
+        id);
+    if (found == group_ids_.begin() +
+                     static_cast<std::ptrdiff_t>(group_count_)) {
+        return 0U;
+    }
+    const auto group_slot = static_cast<std::size_t>(
+        std::distance(group_ids_.begin(), found));
+    return equipment_upgrade_offer_groups_[group_slot].size();
+}
+
+std::optional<scripting::ScriptShopEquipmentUpgradeOffer>
+ShopMenuController::equipment_upgrade_offer(
+    const ShopActionGroup group, const std::size_t index) const noexcept {
+    if (index >= equipment_upgrade_offer_count(group)) {
+        return std::nullopt;
+    }
+    const auto id = group_id(group);
+    const auto found = std::find(
+        group_ids_.begin(), group_ids_.begin() +
+                                static_cast<std::ptrdiff_t>(group_count_),
+        id);
+    if (found == group_ids_.begin() +
+                     static_cast<std::ptrdiff_t>(group_count_)) {
+        return std::nullopt;
+    }
+    const auto group_slot = static_cast<std::size_t>(
+        std::distance(group_ids_.begin(), found));
+    return equipment_upgrade_offer_groups_[group_slot][index];
+}
+
 std::optional<ShopMenuEvent> ShopMenuController::apply_script_snapshot(
     const scripting::ScriptShopMenuSnapshot& snapshot) {
+    const bool equipment_selector = snapshot.menu_result == 1;
     if (!open_ || snapshot.shop_id != definition_id_ ||
-        snapshot.menu_mode != menu_mode_ ||
-        snapshot.selected_action >= group_count_) {
+        snapshot.menu_mode != menu_mode_) {
+        return std::nullopt;
+    }
+    if (equipment_selector) {
+        if (shop_ != ShopId::wire_masters || snapshot.action_panel != 1U ||
+            snapshot.action_cursor >= 8U || snapshot.selected_action >= 8U) {
+            return std::nullopt;
+        }
+    } else if (snapshot.selected_action >= group_count_) {
         return std::nullopt;
     }
 
@@ -454,6 +544,8 @@ std::optional<ShopMenuEvent> ShopMenuController::apply_script_snapshot(
         event = ShopMenuEvent::offer_unavailable;
     } else if (snapshot.event == "progression_selected") {
         event = ShopMenuEvent::progression_selected;
+    } else if (snapshot.event == "equipment_upgrade_selected") {
+        event = ShopMenuEvent::equipment_upgrade_selected;
     } else if (snapshot.event == "source_action_boundary") {
         event = ShopMenuEvent::source_action_boundary;
     } else if (snapshot.event == "active_runner_change_requested") {
@@ -481,6 +573,7 @@ std::optional<ShopMenuEvent> ShopMenuController::apply_script_snapshot(
     if (event == ShopMenuEvent::purchase_selected ||
         event == ShopMenuEvent::sale_selected ||
         event == ShopMenuEvent::progression_selected ||
+        event == ShopMenuEvent::equipment_upgrade_selected ||
         event == ShopMenuEvent::source_action_boundary) {
         ShopActionRequest request{};
         request.group = selected_group();
@@ -494,6 +587,12 @@ std::optional<ShopMenuEvent> ShopMenuController::apply_script_snapshot(
             request.progression_offer =
                 progression_offer(request.group, request.cursor);
             if (!request.progression_offer.has_value()) {
+                return std::nullopt;
+            }
+        } else if (event == ShopMenuEvent::equipment_upgrade_selected) {
+            request.equipment_upgrade_offer = equipment_upgrade_offer(
+                request.group, request.cursor);
+            if (!request.equipment_upgrade_offer.has_value()) {
                 return std::nullopt;
             }
         }
