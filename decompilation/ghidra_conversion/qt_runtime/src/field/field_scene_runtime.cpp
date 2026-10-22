@@ -8251,7 +8251,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
         matrix_return_to_field_on_close_ = false;
         if (matrix_logout_transition_complete) {
             // The Lua route already spent the ROM's 10-frame fade and
-            // 54-frame black display handoff. Consume its confirm input, but
+            // 54-frame display transition. Consume its confirm input, but
             // do not layer the host's separate 60-frame modal fade on top.
             field_modal_return_transition_frames_remaining_ = 0U;
             field_palette_fade_steps_ = 0U;
@@ -21374,6 +21374,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     }
                     draw_matrix_text(224, y,
                                      routed_menu.top_option_labels[option]);
+                }
+                if (paint_matrix_logout_transition_art(painter,
+                                                       routed_menu)) {
+                    return;
                 }
                 if (routed_menu.top_matrix_transition_fade_step.has_value()) {
                     const auto fade_step = std::clamp(

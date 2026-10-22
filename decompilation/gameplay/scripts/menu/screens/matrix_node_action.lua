@@ -679,7 +679,8 @@ function M.input(st, events, ctx)
         if next_value == nil then
             -- ROM 0x54B34 calls 0x18776, then 0x26A00, after the 60-frame
             -- zero. Share the 10-frame fade + 54-frame display handoff used
-            -- by overload; the source handoff artwork remains unported.
+            -- by overload; its line and center-mark phases are published to
+            -- the native presenter from this Lua-owned transition state.
             st.shutdown = nil
             st.matrix_transition = MatrixRules.new_exit_transition(true)
             ctx.redraw(R.FULL)

@@ -350,6 +350,10 @@ bool paint_matrix_node_action_panel(
     painter.save();
     painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
     painter.drawImage(QPoint(0, 0), background);
+    if (paint_matrix_logout_transition_art(painter, state)) {
+        painter.restore();
+        return true;
+    }
     const auto draw_text = [&painter, &font](const int x, const int y,
                                              const std::string& value) {
         auto current_x = x;
@@ -454,6 +458,62 @@ bool paint_matrix_node_action_panel(
                   y, state.top_option_labels[row]);
     }
     paint_transition_overlay();
+    painter.restore();
+    return true;
+}
+
+bool paint_matrix_logout_transition_art(
+    QPainter& painter,
+    const scripting::ScriptMenuRouteSnapshot& state) {
+    if (!state.top_matrix_logout_visual.has_value()) return false;
+    const auto& visual = *state.top_matrix_logout_visual;
+    using Phase = scripting::ScriptMatrixLogoutVisualPhase;
+    if (visual.phase == Phase::FADE) return false;
+
+    painter.save();
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
+    painter.fillRect(painter.viewport(), Qt::black);
+    static constexpr std::array<std::uint8_t, 8> kDotRows{{
+        0x00U, 0x00U, 0x14U, 0x08U, 0x14U, 0x00U, 0x00U, 0x00U}};
+    static constexpr std::array<std::uint8_t, 8> kSparkleRows{{
+        0x08U, 0x2AU, 0x1CU, 0xFFU, 0x1CU, 0x2AU, 0x08U, 0x08U}};
+    const auto draw_center_tile = [&painter](
+                                      const std::array<std::uint8_t, 8>& rows) {
+        for (int y = 0; y < static_cast<int>(rows.size()); ++y) {
+            for (int x = 0; x < 8; ++x) {
+                if ((rows[static_cast<std::size_t>(y)] &
+                     (1U << static_cast<unsigned int>(x))) != 0U) {
+                    painter.fillRect(QRect(160 + x, 112 + y, 1, 1),
+                                     Qt::white);
+                }
+            }
+        }
+    };
+    if (visual.phase == Phase::CROSS) {
+        // The source tiles 0x4B3 and 0x4B4 are repeated through the viewport:
+        // 0x4B3 paints row 3 of each 8x8 tile, 0x4B4 paints column 3.
+        if (visual.horizontal_right > visual.horizontal_left) {
+            painter.fillRect(
+                QRect(visual.horizontal_left, 115,
+                      visual.horizontal_right - visual.horizontal_left, 1),
+                Qt::white);
+        }
+        if (visual.vertical_bottom > visual.vertical_top) {
+            painter.fillRect(
+                QRect(163, visual.vertical_top, 1,
+                      visual.vertical_bottom - visual.vertical_top),
+                Qt::white);
+        }
+        draw_center_tile(kSparkleRows);
+    } else if (visual.phase == Phase::DOT ||
+               visual.phase == Phase::SPARKLE) {
+        // Exact color-7 pixel rows decoded from the five ROM patterns uploaded
+        // at 0x15BE02. Pattern 0x4B2 is the five-pixel dot; 0x4B1 is the
+        // eight-pixel sparkle. Both are drawn at the source tile's screen
+        // origin (160,112), so their center aligns with the collapsing lines.
+        draw_center_tile(visual.phase == Phase::DOT ? kDotRows
+                                                     : kSparkleRows);
+    }
     painter.restore();
     return true;
 }

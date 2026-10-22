@@ -35,6 +35,8 @@ using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteBindings;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteStartArguments;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunState;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixDatastoreFacts;
+using shadowrun::ghidra_conversion::scripting::
+    ScriptMatrixLogoutVisualPhase;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixWorldState;
 using shadowrun::ghidra_conversion::scripting::CyberdeckMenuBinding;
 using shadowrun::ghidra_conversion::scripting::dispatch_cyberdeck_menu_binding;
@@ -67,6 +69,8 @@ constexpr std::uint16_t kMatrixSearch = 39U;
 constexpr std::uint16_t kDeckCyberInfo = 32U;
 constexpr std::uint16_t kTaxiSelector = 40U;
 constexpr std::uint16_t kCommandPagePocketSecretary = 6U;
+constexpr std::array<std::uint8_t, 8> kMatrixLogoutSparkleRows{{
+    0x08U, 0x2AU, 0x1CU, 0xFFU, 0x1CU, 0x2AU, 0x08U, 0x08U}};
 constexpr std::uint16_t kNotebook = 10U;
 constexpr std::uint16_t kNotebookTips = 21U;
 constexpr std::uint16_t kMrJohnsons = 20U;
@@ -2234,6 +2238,9 @@ int main() {
     route = runtime.menu_route_snapshot();
     check(route.open && route.top_screen == 30U &&
               route.top_matrix_transition_fade_step == 0 &&
+              route.top_matrix_logout_visual.has_value() &&
+              route.top_matrix_logout_visual->phase ==
+                  ScriptMatrixLogoutVisualPhase::FADE &&
               deck_leave_count == 2 && closed_count == 4,
           "Pull Plug starts its source logout sequence before leaving the deck",
           failures);
@@ -2247,17 +2254,23 @@ int main() {
     runtime.advance_menu_route(0U);
     route = runtime.menu_route_snapshot();
     check(route.top_matrix_transition_fade_step == 5 &&
+              route.top_matrix_logout_visual.has_value() &&
+              route.top_matrix_logout_visual->phase ==
+                  ScriptMatrixLogoutVisualPhase::CROSS &&
               sounds.size() == sounds_before_pull_plug + 1U &&
               sounds.back() == 0x29U,
-          "Pull Plug starts the display handoff sound after ten VBlanks",
+          "Pull Plug starts the cross animation and sound after ten VBlanks",
           failures);
     for (int frame = 0; frame < 53; ++frame) {
         runtime.advance_menu_route(0U);
     }
     check(runtime.menu_route_snapshot().open &&
               runtime.menu_route_snapshot().top_screen == 30U &&
-              runtime.menu_route_snapshot().top_matrix_transition_fade_step == 5,
-          "Pull Plug holds the black handoff through 63 total VBlanks",
+              runtime.menu_route_snapshot().top_matrix_transition_fade_step == 5 &&
+              runtime.menu_route_snapshot().top_matrix_logout_visual.has_value() &&
+              runtime.menu_route_snapshot().top_matrix_logout_visual->phase ==
+                  ScriptMatrixLogoutVisualPhase::BLACK,
+          "Pull Plug reaches the final black phase at VBlank 63",
           failures);
     runtime.advance_menu_route(0U);
     route = runtime.menu_route_snapshot();
@@ -2475,7 +2488,10 @@ int main() {
     }
     route = runtime.menu_route_snapshot();
     check(route.open && route.top_matrix_countdown == 0 &&
-              route.top_matrix_transition_fade_step == 0,
+              route.top_matrix_transition_fade_step == 0 &&
+              route.top_matrix_logout_visual.has_value() &&
+              route.top_matrix_logout_visual->phase ==
+                  ScriptMatrixLogoutVisualPhase::FADE,
           "Crash System starts its logout transition after the final zero", failures);
     const auto sounds_before_crash_logout = sounds.size();
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
@@ -2492,14 +2508,17 @@ int main() {
                   route.top_matrix_countdown == 0,
               "Crash System completes each two-VBlank fade step", failures);
     }
-    check(route.open && route.top_matrix_transition_fade_step == 5,
-          "Crash System holds the final countdown under full fade", failures);
+    check(route.open && route.top_matrix_transition_fade_step == 5 &&
+              route.top_matrix_logout_visual.has_value() &&
+              route.top_matrix_logout_visual->phase ==
+                  ScriptMatrixLogoutVisualPhase::CROSS,
+          "Crash System begins the source cross after the final fade", failures);
     check(sounds.size() == sounds_before_crash_logout + 1U &&
               sounds.back() == 0x29U,
           "Crash System plays the logout sound when the display handoff begins",
           failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
-    save_transfer_frame("shutdown-logout-fade-black.bmp", route);
+    save_transfer_frame("shutdown-logout-cross-full.bmp", route);
     {
         QImage image(320, 224, QImage::Format_ARGB32);
         image.fill(QColor(255, 0, 255));
@@ -2508,17 +2527,33 @@ int main() {
             painter, node_font, node_background_for(route),
             node_cursor_for(route), route);
         painter.end();
-        bool full_black = painted;
-        for (int y = 0; y < image.height() && full_black; ++y) {
+        bool full_cross = painted;
+        std::size_t white_pixels = 0U;
+        for (int y = 0; y < image.height() && full_cross; ++y) {
             for (int x = 0; x < image.width(); ++x) {
-                if (image.pixelColor(x, y) != QColor(0, 0, 0)) {
-                    full_black = false;
+                const bool source_sparkle =
+                    x >= 160 && x < 168 && y >= 112 && y < 120 &&
+                    (kMatrixLogoutSparkleRows[
+                         static_cast<std::size_t>(y - 112)] &
+                     (1U << static_cast<unsigned int>(x - 160))) != 0U;
+                const bool cross_pixel =
+                    (y == 115 && x >= 8) || (x == 163 && y >= 8) ||
+                    source_sparkle;
+                const auto pixel = image.pixelColor(x, y);
+                if (cross_pixel) {
+                    if (pixel != QColor(255, 255, 255)) {
+                        full_cross = false;
+                    }
+                    ++white_pixels;
+                } else if (pixel != QColor(0, 0, 0)) {
+                    full_cross = false;
                     break;
                 }
             }
         }
-        check(full_black,
-              "Crash System fade covers the countdown and old panel", failures);
+        check(full_cross && white_pixels == 535U,
+              "Crash System replaces its countdown with the full source cross",
+              failures);
     }
 #endif
     for (int frame = 0; frame < 53; ++frame) {
@@ -2611,7 +2646,7 @@ int main() {
           "Matrix overload plays the logout sound at the handoff boundary",
           failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
-    save_transfer_frame("system-overload-fade-black.bmp", route);
+    save_transfer_frame("system-overload-cross-full.bmp", route);
     {
         QImage image(320, 224, QImage::Format_ARGB32);
         image.fill(QColor(255, 0, 255));
@@ -2624,17 +2659,33 @@ int main() {
             painter, font, node_background_for(route), node_cursor_for(route),
             route);
         painter.end();
-        bool full_black = painted;
-        for (int y = 0; y < image.height() && full_black; ++y) {
+        bool full_cross = painted;
+        std::size_t white_pixels = 0U;
+        for (int y = 0; y < image.height() && full_cross; ++y) {
             for (int x = 0; x < image.width(); ++x) {
-                if (image.pixelColor(x, y) != QColor(0, 0, 0)) {
-                    full_black = false;
+                const bool source_sparkle =
+                    x >= 160 && x < 168 && y >= 112 && y < 120 &&
+                    (kMatrixLogoutSparkleRows[
+                         static_cast<std::size_t>(y - 112)] &
+                     (1U << static_cast<unsigned int>(x - 160))) != 0U;
+                const bool cross_pixel =
+                    (y == 115 && x >= 8) || (x == 163 && y >= 8) ||
+                    source_sparkle;
+                const auto pixel = image.pixelColor(x, y);
+                if (cross_pixel) {
+                    if (pixel != QColor(255, 255, 255)) {
+                        full_cross = false;
+                    }
+                    ++white_pixels;
+                } else if (pixel != QColor(0, 0, 0)) {
+                    full_cross = false;
                     break;
                 }
             }
         }
-        check(full_black,
-              "completed Matrix fade clears every old panel pixel", failures);
+        check(full_cross && white_pixels == 535U,
+              "Matrix overload replaces its panel with the source cross",
+              failures);
     }
 #endif
     for (int frame = 0; frame < 53; ++frame) {
@@ -2990,13 +3041,19 @@ int main() {
     runtime.advance_menu_route(0x4000U);
     route = runtime.menu_route_snapshot();
     check(route.open && route.top_screen == 30U &&
-              route.top_matrix_transition_fade_step == 0,
+              route.top_matrix_transition_fade_step == 0 &&
+              route.top_matrix_logout_visual.has_value() &&
+              route.top_matrix_logout_visual->phase ==
+                  ScriptMatrixLogoutVisualPhase::FADE,
           "normal field Matrix logout starts the source transition", failures);
     for (int frame = 0; frame < 10; ++frame) {
         runtime.advance_menu_route(0U);
     }
     route = runtime.menu_route_snapshot();
     check(route.open && route.top_matrix_transition_fade_step == 5 &&
+              route.top_matrix_logout_visual.has_value() &&
+              route.top_matrix_logout_visual->phase ==
+                  ScriptMatrixLogoutVisualPhase::CROSS &&
               sounds.size() == sounds_before_field_pull_plug + 1U &&
               sounds.back() == 0x29U,
           "field Pull Plug completes its fade and starts the display handoff",

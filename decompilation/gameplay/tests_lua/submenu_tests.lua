@@ -441,6 +441,38 @@ local act, run = { [0] = 1, 5, -1, 1, -1 }, { [0] = 6, 6, 0, 6, 0 }
 check(MXr.cycle_slot(0, -1, act, run) == 4 and run[0] == 1, "slot cycle wraps, resets state>=6")
 check(MXr.cycle_slot(1, 1, act, run) == 2 and run[1] == 6, "persistent program 5 keeps state")
 check(MXr.matrix_delay(3, 2) == 9 and MXr.LOGOUT_FRAMES == 54, "delay + logout frames")
+local logout = MXr.new_exit_transition(true)
+local logout_sound = false
+for frame = 1, 10 do
+    local sound = MXr.advance_exit_transition(logout)
+    if sound then logout_sound = true end
+end
+check(logout_sound and logout.visual.phase == "cross" and
+      logout.fade_step == 5,
+      "logout begins the full cross and sound after the ten-VBlank fade")
+for _ = 1, 14 do MXr.advance_exit_transition(logout) end
+check(logout.elapsed_frames == 24 and logout.visual.phase == "cross" and
+      logout.visual.horizontal_left == 112 and
+      logout.visual.horizontal_right == 216 and
+      logout.visual.vertical_top == 112 and
+      logout.visual.vertical_bottom == 120,
+      "logout sweeps both axes into the 8-pixel center tile after 14 ticks")
+for _ = 1, 6 do MXr.advance_exit_transition(logout) end
+check(logout.elapsed_frames == 30 and logout.visual.phase == "dot",
+      "logout switches to the five-pixel center pattern after the 6-tick settle")
+for _ = 1, 11 do MXr.advance_exit_transition(logout) end
+check(logout.elapsed_frames == 41 and logout.visual.phase == "sparkle",
+      "logout displays the ROM sparkle after its 11-VBlank dot hold")
+for _ = 1, 6 do MXr.advance_exit_transition(logout) end
+check(logout.elapsed_frames == 47 and logout.visual.phase == "dot",
+      "logout restores the center dot after the 6-VBlank sparkle")
+for _ = 1, 6 do MXr.advance_exit_transition(logout) end
+check(logout.elapsed_frames == 53 and logout.visual.phase == "black",
+      "logout clears the center mark after the second 6-VBlank hold")
+for _ = 1, 10 do MXr.advance_exit_transition(logout) end
+local _, logout_complete = MXr.advance_exit_transition(logout)
+check(logout_complete and logout.elapsed_frames == 64,
+      "logout returns after its final 11-VBlank black hold")
 local MatrixSession = require("menu.matrix_session")
 local started, hidden_state = MatrixSession.begin(16, false)
 if started then

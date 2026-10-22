@@ -5,23 +5,52 @@
 --   from the Pocket Secretary see 0 (Pull the plug and Show Map/Retreat are inert) [C].
 local M = {}
 M.NONE, M.PASSIVE, M.ACTIVE = -1, 0, 1
--- The Matrix exit used by overload (0x1989A) and Crash System (0x54B34)
--- calls 0x18776 (five palette steps, two VBlanks each), then 0x26A00
--- (14 + 6 sweep/settle ticks and 34 timed restore ticks). The host presents
--- those 64 frames as a fade to black plus a clean display handoff; the source
--- transition artwork remains a separate asset/presentation task.
+-- The Matrix exit used by overload (0x1989A), Crash System (0x54B34), and
+-- Pull Plug (0x18450) calls 0x18776 (five palette steps, two VBlanks each),
+-- then 0x26A00. The source presents a line cross that collapses over 14 + 6
+-- VBlanks, followed by the center tile sequence held for 11 + 6 + 6 + 11.
 M.EXIT_FADE_FRAMES = 10
 M.EXIT_DISPLAY_TRANSITION_FRAMES = 54
 M.EXIT_TRANSITION_FRAMES =
     M.EXIT_FADE_FRAMES + M.EXIT_DISPLAY_TRANSITION_FRAMES
 M.EXIT_FADE_STEPS = 5
+
+local function logout_visual(elapsed_frames)
+    if elapsed_frames < M.EXIT_FADE_FRAMES then
+        return { phase = "fade" }
+    end
+
+    -- 0x26A00 draws its initial cross before its first wait. Each following
+    -- VBlank replaces one 8x8 edge tile with the source's blank pattern 4B5.
+    -- The first edge address lies just outside the visible viewport, hence
+    -- the first wait leaves the full cross unchanged.
+    local display_frame = elapsed_frames - M.EXIT_FADE_FRAMES
+    if display_frame <= 19 then
+        local horizontal_tiles = math.min(19, math.max(0, display_frame - 1))
+        local vertical_tiles = math.min(13, horizontal_tiles)
+        return {
+            phase = "cross",
+            horizontal_left = 8 + horizontal_tiles * 8,
+            horizontal_right = 320 - horizontal_tiles * 8,
+            vertical_top = 8 + vertical_tiles * 8,
+            vertical_bottom = 224 - vertical_tiles * 8,
+        }
+    end
+    if display_frame <= 30 then return { phase = "dot" } end
+    if display_frame <= 36 then return { phase = "sparkle" } end
+    if display_frame <= 42 then return { phase = "dot" } end
+    return { phase = "black" }
+end
+
 function M.new_exit_transition(exit_when_complete)
-    return {
+    local transition = {
         frames_remaining = M.EXIT_TRANSITION_FRAMES,
         elapsed_frames = 0,
         fade_step = 0,
         exit_when_complete = exit_when_complete == true,
     }
+    transition.visual = logout_visual(transition.elapsed_frames)
+    return transition
 end
 -- Advance one source VBlank. The first ten frames perform five two-frame
 -- palette steps; the logout sound starts on the first display-transition
@@ -32,6 +61,7 @@ function M.advance_exit_transition(transition)
     transition.fade_step = math.min(
         M.EXIT_FADE_STEPS,
         transition.elapsed_frames // 2)
+    transition.visual = logout_visual(transition.elapsed_frames)
     return transition.elapsed_frames == M.EXIT_FADE_FRAMES,
            transition.frames_remaining <= 0
 end

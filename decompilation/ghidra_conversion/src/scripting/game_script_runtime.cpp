@@ -2646,6 +2646,62 @@ struct GameScriptRuntime::Impl {
                         menu_route_state.top_matrix_transition_fade_step =
                             *fade_step;
                     }
+                    lua_getfield(state, transition_index, "visual");
+                    if (lua_istable(state, -1)) {
+                        const auto visual_index = lua_absindex(state, -1);
+                        std::string phase;
+                        lua_getfield(state, visual_index, "phase");
+                        const bool has_phase =
+                            read_string_allow_empty(state, -1, phase);
+                        lua_pop(state, 1);
+
+                        ScriptMatrixLogoutVisual visual;
+                        bool valid_visual = has_phase;
+                        if (phase == "fade") {
+                            visual.phase =
+                                ScriptMatrixLogoutVisualPhase::FADE;
+                        } else if (phase == "cross") {
+                            visual.phase =
+                                ScriptMatrixLogoutVisualPhase::CROSS;
+                            visual.horizontal_left =
+                                read_optional(visual_index, "horizontal_left")
+                                    .value_or(-1);
+                            visual.horizontal_right =
+                                read_optional(visual_index, "horizontal_right")
+                                    .value_or(-1);
+                            visual.vertical_top =
+                                read_optional(visual_index, "vertical_top")
+                                    .value_or(-1);
+                            visual.vertical_bottom =
+                                read_optional(visual_index, "vertical_bottom")
+                                    .value_or(-1);
+                            valid_visual =
+                                valid_visual &&
+                                visual.horizontal_left >= 0 &&
+                                visual.horizontal_left <=
+                                    visual.horizontal_right &&
+                                visual.horizontal_right <= 320 &&
+                                visual.vertical_top >= 0 &&
+                                visual.vertical_top <=
+                                    visual.vertical_bottom &&
+                                visual.vertical_bottom <= 224;
+                        } else if (phase == "dot") {
+                            visual.phase =
+                                ScriptMatrixLogoutVisualPhase::DOT;
+                        } else if (phase == "sparkle") {
+                            visual.phase =
+                                ScriptMatrixLogoutVisualPhase::SPARKLE;
+                        } else if (phase == "black") {
+                            visual.phase =
+                                ScriptMatrixLogoutVisualPhase::BLACK;
+                        } else {
+                            valid_visual = false;
+                        }
+                        if (valid_visual) {
+                            menu_route_state.top_matrix_logout_visual = visual;
+                        }
+                    }
+                    lua_pop(state, 1);
                 }
                 lua_pop(state, 1);
                 lua_getfield(state, screen_state_index, "magic_view");

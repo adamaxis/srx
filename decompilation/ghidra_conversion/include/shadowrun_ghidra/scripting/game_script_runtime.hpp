@@ -417,6 +417,23 @@ struct ScriptMatrixDeckStatsView {
     std::array<unsigned int, 10> values{};
 };
 
+enum class ScriptMatrixLogoutVisualPhase {
+    FADE,
+    CROSS,
+    DOT,
+    SPARKLE,
+    BLACK,
+};
+
+struct ScriptMatrixLogoutVisual {
+    ScriptMatrixLogoutVisualPhase phase =
+        ScriptMatrixLogoutVisualPhase::FADE;
+    int horizontal_left = 8;
+    int horizontal_right = 320;
+    int vertical_top = 8;
+    int vertical_bottom = 224;
+};
+
 struct ScriptMenuRouteSnapshot {
     bool open = false;
     std::uint16_t top_screen = 0U;
@@ -495,6 +512,7 @@ struct ScriptMenuRouteSnapshot {
     std::vector<std::string> top_matrix_storage_empty_message_lines;
     std::optional<int> top_matrix_countdown;
     std::optional<int> top_matrix_transition_fade_step;
+    std::optional<ScriptMatrixLogoutVisual> top_matrix_logout_visual;
     bool top_matrix_map_cells_present = false;
     std::array<ScriptMatrixMapCellVisual, 140> top_matrix_map_cells{};
     bool top_matrix_map_labels_present = false;

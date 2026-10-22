@@ -35,6 +35,10 @@ bool paint_matrix_traversal_view(
     const std::array<QImage, 7>& slot_status_images,
     const scripting::ScriptMenuRouteSnapshot& state);
 
+bool paint_matrix_logout_transition_art(
+    QPainter& painter,
+    const scripting::ScriptMenuRouteSnapshot& state);
+
 bool paint_matrix_node_action_panel(
     QPainter& painter,
     const QImage& font,

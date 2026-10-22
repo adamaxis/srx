@@ -26868,8 +26868,8 @@ int main(int argc, char** argv) {
                 }
                 field_scene.advance_frame(); // VBlank 10: enter 0x26A00.
                 route = field_scene.field_menu_route_snapshot_for_dump();
-                const auto fade_black_image =
-                    capture("matrix-pull-plug-fade-black");
+                const auto cross_full_image =
+                    capture("matrix-pull-plug-cross-full");
                 const auto all_black = [](const QImage& image) {
                     if (image.size() != QSize(kSceneWidth, kSceneHeight)) {
                         return false;
@@ -26883,14 +26883,157 @@ int main(int argc, char** argv) {
                     }
                     return true;
                 };
+                static constexpr std::array<std::uint8_t, 8> kDotRows{{
+                    0x00U, 0x00U, 0x14U, 0x08U,
+                    0x14U, 0x00U, 0x00U, 0x00U}};
+                static constexpr std::array<std::uint8_t, 8> kSparkleRows{{
+                    0x08U, 0x2AU, 0x1CU, 0xFFU,
+                    0x1CU, 0x2AU, 0x08U, 0x08U}};
+                const auto cross_matches = [](const QImage& image,
+                                              const int left,
+                                              const int right,
+                                              const int top,
+                                              const int bottom,
+                                              const bool center_sparkle) {
+                    if (image.size() != QSize(kSceneWidth, kSceneHeight)) {
+                        return false;
+                    }
+                    for (int y = 0; y < image.height(); ++y) {
+                        for (int x = 0; x < image.width(); ++x) {
+                            bool expected_white =
+                                (y == 115 && x >= left && x < right) ||
+                                (x == 163 && y >= top && y < bottom);
+                            if (center_sparkle && x >= 160 && x < 168 &&
+                                y >= 112 && y < 120) {
+                                expected_white = expected_white ||
+                                    (kSparkleRows[static_cast<std::size_t>(
+                                         y - 112)] &
+                                     (1U << static_cast<unsigned int>(
+                                         x - 160))) != 0U;
+                            }
+                            const auto expected =
+                                expected_white ? QColor(Qt::white)
+                                               : QColor(Qt::black);
+                            if (image.pixelColor(x, y) != expected) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
+                const auto center_mark_matches = [](
+                    const QImage& image,
+                    const std::array<std::uint8_t, 8>& rows) {
+                    if (image.size() != QSize(kSceneWidth, kSceneHeight)) {
+                        return false;
+                    }
+                    for (int y = 0; y < image.height(); ++y) {
+                        for (int x = 0; x < image.width(); ++x) {
+                            bool expected_white = false;
+                            if (x >= 160 && x < 168 && y >= 112 && y < 120) {
+                                const auto local_x =
+                                    static_cast<unsigned int>(x - 160);
+                                const auto local_y =
+                                    static_cast<std::size_t>(y - 112);
+                                expected_white =
+                                    (rows[local_y] & (1U << local_x)) != 0U;
+                            }
+                            const auto expected =
+                                expected_white ? QColor(Qt::white)
+                                               : QColor(Qt::black);
+                            if (image.pixelColor(x, y) != expected) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
                 if (route.top_matrix_transition_fade_step != 5 ||
+                    !route.top_matrix_logout_visual.has_value() ||
+                    route.top_matrix_logout_visual->phase !=
+                        scripting::ScriptMatrixLogoutVisualPhase::CROSS ||
                     logout_sound_count() != 1U ||
-                    !all_black(fade_black_image)) {
+                    !cross_matches(cross_full_image, 8, 320, 8, 224, true)) {
                     std::cerr << "Matrix logout QA: ten-frame fade did not "
-                                 "produce one 0x29 sound and a full black frame\n";
+                                 "start one 0x29 sound and the full ROM cross\n";
                     return 3;
                 }
-                for (int frame = 0; frame < 53; ++frame) {
+                for (int frame = 0; frame < 14; ++frame) {
+                    field_scene.advance_frame(); // 14-tick two-axis sweep.
+                }
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                const auto cross_swept_image =
+                    capture("matrix-pull-plug-cross-swept");
+                if (!route.top_matrix_logout_visual.has_value() ||
+                    route.top_matrix_logout_visual->phase !=
+                        scripting::ScriptMatrixLogoutVisualPhase::CROSS ||
+                    route.top_matrix_logout_visual->horizontal_left != 112 ||
+                    route.top_matrix_logout_visual->horizontal_right != 216 ||
+                    route.top_matrix_logout_visual->vertical_top != 112 ||
+                    route.top_matrix_logout_visual->vertical_bottom != 120 ||
+                    !cross_matches(cross_swept_image, 112, 216, 112, 120,
+                                   true)) {
+                    std::cerr << "Matrix logout QA: source 14-tick cross sweep "
+                                 "did not reach its center tile\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 6; ++frame) {
+                    field_scene.advance_frame(); // 6-tick horizontal settle.
+                }
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                const auto center_dot_image =
+                    capture("matrix-pull-plug-center-dot");
+                if (!route.top_matrix_logout_visual.has_value() ||
+                    route.top_matrix_logout_visual->phase !=
+                        scripting::ScriptMatrixLogoutVisualPhase::DOT ||
+                    !center_mark_matches(center_dot_image, kDotRows)) {
+                    std::cerr << "Matrix logout QA: source 6-tick settle did "
+                                 "not show the extracted five-pixel tile\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 11; ++frame) {
+                    field_scene.advance_frame();
+                }
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                const auto center_sparkle_image =
+                    capture("matrix-pull-plug-center-sparkle");
+                if (!route.top_matrix_logout_visual.has_value() ||
+                    route.top_matrix_logout_visual->phase !=
+                        scripting::ScriptMatrixLogoutVisualPhase::SPARKLE ||
+                    !center_mark_matches(center_sparkle_image, kSparkleRows)) {
+                    std::cerr << "Matrix logout QA: source 11-tick hold did "
+                                 "not reveal the extracted sparkle tile\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 6; ++frame) {
+                    field_scene.advance_frame();
+                }
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                const auto center_dot_return_image =
+                    capture("matrix-pull-plug-center-dot-return");
+                if (!route.top_matrix_logout_visual.has_value() ||
+                    route.top_matrix_logout_visual->phase !=
+                        scripting::ScriptMatrixLogoutVisualPhase::DOT ||
+                    !center_mark_matches(center_dot_return_image, kDotRows)) {
+                    std::cerr << "Matrix logout QA: sparkle did not return to "
+                                 "the five-pixel center tile\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 6; ++frame) {
+                    field_scene.advance_frame();
+                }
+                route = field_scene.field_menu_route_snapshot_for_dump();
+                const auto transition_black_image =
+                    capture("matrix-pull-plug-transition-black");
+                if (!route.top_matrix_logout_visual.has_value() ||
+                    route.top_matrix_logout_visual->phase !=
+                        scripting::ScriptMatrixLogoutVisualPhase::BLACK ||
+                    !all_black(transition_black_image)) {
+                    std::cerr << "Matrix logout QA: source center-mark clear "
+                                 "did not leave a full black frame\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 10; ++frame) {
                     field_scene.advance_frame();
                 }
                 route = field_scene.field_menu_route_snapshot_for_dump();
@@ -26935,7 +27078,8 @@ int main(int argc, char** argv) {
                           << "reference_frames=004730-004830,004800 "
                           << "full_320x224=1 footer_icons=1 "
                           << "pull_plug_logout_vblanks=64 "
-                          << "logout_black_frames=54 field_return_fade=0 "
+                          << "logout_art_vblanks=54 black_tail_vblanks=11 "
+                          << "field_return_fade=0 "
                           << "system_access_model0=1 "
                           << "model0_host_bounds="
                           << model0_host_bounds.x() << ','
@@ -26951,6 +27095,7 @@ int main(int argc, char** argv) {
                           << "analyze_action=verified "
                           << "medic_action=verified "
                           << "degrade_action=verified "
+                          << "transition_art=verified "
                           << "world_effect_gate_negative=verified\n";
                 return 0;
             }
