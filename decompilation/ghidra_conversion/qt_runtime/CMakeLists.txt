@@ -719,6 +719,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene5_store_servi
                  --field-scene5-store-service-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene5-store-service-entry-qa")
 
+# Wire-Masters mode 7 uses a direct eight-item cyberware selector and its own
+# ROM cost, Essence, tier replacement, and transaction-message paths.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_wire_masters_upgrade_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-wire-masters-upgrade-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-wire-masters-upgrade-qa")
+
 # Ordinary D-pad input contacts the paired scene-2 C0 doorway records,
 # enters scene 0x14, walks to the scene-20 maglock, and opens its source-backed
 # choice panel. C/Walk Away returns to a clean field-only redraw. The QA writes

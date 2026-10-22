@@ -745,6 +745,9 @@ public:
     ShopTransactionMessage shop_transaction_message() const noexcept {
         return field_shop_menu_.transaction_message();
     }
+    std::uint32_t shop_transaction_amount() const noexcept {
+        return field_shop_menu_.transaction_amount();
+    }
     FieldActionApplicationResult shop_last_purchase_result() const noexcept {
         return field_shop_menu_.last_purchase_result();
     }
@@ -1923,6 +1926,7 @@ private:
     std::array<QImage, 4> field_elevator_selector_feedback_layers_{};
     QImage field_service_universal_clips_icon_;
     std::array<QImage, 6> field_service_tab_images_{};
+    std::array<QImage, 8> field_service_cyberware_icons_{};
     QImage command_overview_background_;
     QImage command_overview_inventory_boxes_;
     QImage command_overview_font_;

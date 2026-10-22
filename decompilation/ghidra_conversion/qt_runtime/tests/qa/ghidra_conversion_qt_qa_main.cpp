@@ -5695,8 +5695,10 @@ int run_field_ares_collision_shop_qa(
 
 int run_field_scene5_store_service_entry_qa(
     FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
-    const std::vector<std::string>& source_boundaries) {
+    const std::vector<std::string>& source_boundaries,
+    const bool wire_only = false) {
     struct StoreCase {
         std::uint8_t event_code;
         std::string_view service_id;
@@ -5723,6 +5725,16 @@ int run_field_scene5_store_service_entry_qa(
     routes << "event\tservice_id\tportrait_alias\tmenu_outcome\n";
     for (const auto& store : kStores) {
         const auto service = std::string(store.service_id);
+        if (wire_only && service != "wire_masters") {
+            continue;
+        }
+        if (service == "wire_masters") {
+            auto& runner = field_scene.active_runner_record();
+            runner.cyberware_flags = 0U;
+            runner.set_cyberware_essence_tens(9U);
+            runner.set_cyberware_essence_ones(9U);
+            field_scene.set_field_funds_for_dump(50000U);
+        }
         if (!field_scene.begin_field_mode_service_event_for_dump(
                 5U, 5U, store.event_code, 0) ||
             !field_scene.field_mode_text_open_for_dump()) {
@@ -5807,7 +5819,190 @@ int run_field_scene5_store_service_entry_qa(
                     source_boundaries.end();
         };
         std::string menu_outcome;
-        if (service == "weapons_world") {
+        if (service == "wire_masters") {
+            const auto menu_frame = render_qa_field(field_scene);
+            const auto menu_saved = save_actual("menu-selected-datajack",
+                                                menu_frame);
+            const QImage service_background(QString::fromStdWString(
+                (asset_root / "menu" / "field" /
+                 "service-background.bmp").wstring()));
+            bool all_stock_icons_differ_from_empty_slots =
+                !service_background.isNull() &&
+                image_region_differs(menu_frame, service_background,
+                                     80, 32, 24, 16);
+            for (int index = 0; index < 8; ++index) {
+                all_stock_icons_differ_from_empty_slots =
+                    all_stock_icons_differ_from_empty_slots &&
+                    image_region_differs(menu_frame, service_background,
+                                         16 + index * 32, 168, 24, 16);
+            }
+            const auto opened_boundary = boundary_seen_since_prompt(
+                "field.shop.wire_masters.opened");
+            if (!field_scene.shop_menu_open() ||
+                field_scene.shop_menu_mode() != 7U ||
+                field_scene.shop_menu_result() != 1 ||
+                field_scene.shop_menu_group() != ShopActionGroup::cyberware ||
+                field_scene.shop_menu_cursor() != 0U ||
+                !field_scene.shop_menu_offers_active() || !menu_saved ||
+                !opened_boundary ||
+                !all_stock_icons_differ_from_empty_slots ||
+                !image_has_green_ink(menu_frame, 24, 56, 240, 64)) {
+                std::cerr << "Scene-5 store service QA: Wire-Masters did not "
+                             "open its mode-7 cyberware selector with all ROM "
+                             "item icons\n";
+                return 3;
+            }
+
+            tap_qa_controller_button(field_scene, 0x08U); // Right: CyberEyes.
+            const auto moved_frame = render_qa_field(field_scene);
+            const auto moved_saved =
+                save_actual("cursor-cyber-eyes", moved_frame);
+            if (field_scene.shop_menu_cursor() != 1U || !moved_saved ||
+                !image_has_green_ink(moved_frame, 24, 56, 240, 64)) {
+                std::cerr << "Scene-5 store service QA: Wire-Masters right "
+                             "did not move the cyberware selection\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x02U); // Down is ignored.
+            if (field_scene.shop_menu_cursor() != 1U ||
+                field_scene.shop_menu_group() != ShopActionGroup::cyberware) {
+                std::cerr << "Scene-5 store service QA: Wire-Masters changed "
+                             "its selector on vertical input\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x04U); // Left: Datajack.
+            tap_qa_controller_button(field_scene, 0x40U); // Confirm purchase.
+            const auto confirmation_frame = render_qa_field(field_scene);
+            const auto confirmation_saved =
+                save_actual("purchase-confirmation-no", confirmation_frame);
+            if (!field_scene.shop_transaction_confirmation_open() ||
+                field_scene.shop_transaction_confirmation()
+                        .selected_option != 1U ||
+                !confirmation_saved ||
+                !boundary_seen_since_prompt(
+                    "field.shop.wire_masters.equipment_upgrade_confirmation") ||
+                !image_has_green_ink(confirmation_frame, 48, 88, 224, 32)) {
+                std::cerr << "Scene-5 store service QA: Wire-Masters did not "
+                             "show its source cost confirmation\n";
+                return 3;
+            }
+
+            tap_qa_controller_button(field_scene, 0x01U); // No -> Yes.
+            const auto yes_frame = render_qa_field(field_scene);
+            const auto yes_saved =
+                save_actual("purchase-confirmation-yes", yes_frame);
+            if (field_scene.shop_transaction_confirmation()
+                        .selected_option != 0U || !yes_saved) {
+                std::cerr << "Scene-5 store service QA: Wire-Masters did not "
+                             "move confirmation to Yes\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x40U);
+            const auto applied_frame = render_qa_field(field_scene);
+            const auto applied_saved =
+                save_actual("purchase-applied", applied_frame);
+            const auto& purchased_runner = field_scene.active_runner_record();
+            if ((purchased_runner.cyberware_flags & 0x0001U) == 0U ||
+                purchased_runner.cyberware_essence_tens() != 9U ||
+                purchased_runner.cyberware_essence_ones() != 7U ||
+                field_scene.field_funds_for_dump().value_or(50000U) >=
+                    50000U ||
+                !applied_saved ||
+                !boundary_seen_since_prompt(
+                    "field.shop.wire_masters.equipment_upgrade_applied")) {
+                std::cerr << "Scene-5 store service QA: accepted Datajack "
+                             "purchase did not update runner state and funds\n";
+                return 3;
+            }
+
+            tap_qa_controller_button(field_scene, 0x40U); // Already owned.
+            const auto owned_frame = render_qa_field(field_scene);
+            const auto owned_saved =
+                save_actual("already-owned", owned_frame);
+            if (field_scene.shop_transaction_message() !=
+                    ShopTransactionMessage::cyberware_already_owned ||
+                !owned_saved ||
+                !image_has_green_ink(owned_frame, 64, 88, 208, 40)) {
+                std::cerr << "Scene-5 store service QA: owned cyberware "
+                             "message was not shown\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x40U);
+
+            field_scene.active_runner_record().cyberware_flags |= 0x0008U;
+            tap_qa_controller_button(field_scene, 0x08U);
+            tap_qa_controller_button(field_scene, 0x08U);
+            tap_qa_controller_button(field_scene, 0x40U);
+            const auto spurs_frame = render_qa_field(field_scene);
+            const auto spurs_saved = save_actual("spurs-conflict", spurs_frame);
+            if (field_scene.shop_menu_cursor() != 2U ||
+                field_scene.shop_transaction_message() !=
+                    ShopTransactionMessage::cyberware_spurs_conflict ||
+                !spurs_saved ||
+                !image_has_green_ink(spurs_frame, 64, 88, 208, 40)) {
+                std::cerr << "Scene-5 store service QA: Spurs conflict "
+                             "message was not shown\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x40U);
+
+            auto& essence_limited_runner = field_scene.active_runner_record();
+            essence_limited_runner.set_cyberware_essence_tens(1U);
+            essence_limited_runner.set_cyberware_essence_ones(0U);
+            for (int index = 0; index < 5; ++index) {
+                tap_qa_controller_button(field_scene, 0x08U);
+            }
+            tap_qa_controller_button(field_scene, 0x40U);
+            if (!field_scene.shop_transaction_confirmation_open()) {
+                std::cerr << "Scene-5 store service QA: Wired Reflexes "
+                             "did not reach its post-funds confirmation\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x01U);
+            tap_qa_controller_button(field_scene, 0x40U);
+            const auto essence_frame = render_qa_field(field_scene);
+            const auto essence_saved =
+                save_actual("insufficient-essence", essence_frame);
+            if (field_scene.shop_transaction_message() !=
+                    ShopTransactionMessage::cyberware_insufficient_essence ||
+                !essence_saved ||
+                !image_has_green_ink(essence_frame, 64, 88, 208, 40)) {
+                std::cerr << "Scene-5 store service QA: Essence rejection "
+                             "message was not shown\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x40U);
+
+            field_scene.set_field_funds_for_dump(0U);
+            for (int index = 0; index < 3; ++index) {
+                tap_qa_controller_button(field_scene, 0x04U);
+            }
+            tap_qa_controller_button(field_scene, 0x40U);
+            const auto funds_frame = render_qa_field(field_scene);
+            const auto funds_saved =
+                save_actual("insufficient-funds", funds_frame);
+            if (field_scene.shop_menu_cursor() != 4U ||
+                field_scene.shop_transaction_message() !=
+                    ShopTransactionMessage::insufficient_funds ||
+                !funds_saved ||
+                !image_has_green_ink(funds_frame, 56, 88, 216, 32)) {
+                std::cerr << "Scene-5 store service QA: Nuyen rejection "
+                             "message was not shown\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x40U);
+            tap_qa_controller_button(field_scene, 0x80U); // Start return.
+            const auto returned = render_qa_field(field_scene);
+            const auto returned_saved = save_actual("field-return", returned);
+            if (field_scene.shop_menu_open() || !returned_saved ||
+                !boundary_seen_since_prompt(
+                    "field.shop.wire_masters.returned_to_field")) {
+                std::cerr << "Scene-5 store service QA: Wire-Masters did not "
+                             "return cleanly to the field\n";
+                return 3;
+            }
+            menu_outcome = "field.shop.wire_masters.upgrade_applied";
+        } else if (service == "weapons_world") {
             const auto category_frame = render_qa_field(field_scene);
             const auto category_saved =
                 save_actual("menu-category", category_frame);
@@ -5963,8 +6158,10 @@ int run_field_scene5_store_service_entry_qa(
                << menu_outcome << '\n';
     }
 
-    std::cout << "field_scene5_store_service_entry_qa=passed events=2,3,4,5 "
-                 "default_result=0 scene_transition=none artifacts="
+    std::cout << (wire_only
+                      ? "field_wire_masters_upgrade_qa=passed events=2 "
+                      : "field_scene5_store_service_entry_qa=passed events=2,3,4,5 ")
+              << "default_result=0 scene_transition=none artifacts="
               << output.string() << '\n';
     return 0;
 }
@@ -23795,6 +23992,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene5_store_service_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_wire_masters_upgrade_qa_path;
+        std::optional<std::filesystem::path>
             field_scene20_physical_entry_qa_path;
         std::optional<std::filesystem::path>
             field_scene20_entry_gate_qa_path;
@@ -24203,6 +24402,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene5_store_service_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-wire-masters-upgrade-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_wire_masters_upgrade_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -28971,8 +29177,15 @@ int main(int argc, char** argv) {
             }
             if (field_scene5_store_service_entry_qa_path.has_value()) {
                 return run_field_scene5_store_service_entry_qa(
-                    field_scene, *field_scene5_store_service_entry_qa_path,
+                    field_scene, asset_root,
+                    *field_scene5_store_service_entry_qa_path,
                     field_source_boundaries);
+            }
+            if (field_wire_masters_upgrade_qa_path.has_value()) {
+                return run_field_scene5_store_service_entry_qa(
+                    field_scene, asset_root,
+                    *field_wire_masters_upgrade_qa_path,
+                    field_source_boundaries, true);
             }
             if (field_scene20_physical_entry_qa_path.has_value()) {
                 return run_field_scene20_physical_entry_qa(

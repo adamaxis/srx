@@ -13,6 +13,7 @@
 #include "shadowrun_ghidra/field/field_exit_prompt_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_service_conversion.hpp"
 #include "shadowrun_ghidra/field/field_action_progression_purchase_conversion.hpp"
+#include "shadowrun_ghidra/field/field_equipment_upgrade_conversion.hpp"
 #include "shadowrun_ghidra/field/field_resource_sequence_conversion.hpp"
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 #include "shadowrun_ghidra/field/field_action_detail_text_conversion.hpp"
@@ -830,6 +831,72 @@ std::optional<MagicSpellTable> spell_table_from_field_progression(
         result.entries[index] = {
             state.ledger.records[index].action_code,
             state.ledger.records[index].progression_level};
+    }
+    return result;
+}
+
+struct FieldShopEquipmentUpgradeInput {
+    FieldEquipmentUpgradeTable table{};
+    FieldEquipmentUpgradeState state{};
+};
+
+std::optional<FieldShopEquipmentUpgradeInput>
+make_field_shop_equipment_upgrade_input(
+    const scripting::ScriptShopDefinition& definition,
+    const ShopMenuController& menu,
+    const scripting::ScriptShopEquipmentUpgradeOffer& offer,
+    const RunnerRecordFields& runner, const std::uint32_t funds,
+    const MagicSpellTable* spell_table,
+    const std::uint8_t runner_feature_flags) {
+    if (definition.menu_result != 1 || definition.menu_mode != 7U ||
+        definition.equipment_upgrade_meter_thresholds.size() != 16U ||
+        offer.category >= 8U) {
+        return std::nullopt;
+    }
+    FieldShopEquipmentUpgradeInput result{};
+    std::copy(definition.equipment_upgrade_meter_thresholds.begin(),
+              definition.equipment_upgrade_meter_thresholds.end(),
+              result.table.meter_thresholds.begin());
+
+    auto& state = result.state;
+    state.upgrade_flags = runner.cyberware_flags;
+    state.selection_category = offer.category;
+    state.cost = apply_field_action_cost_discounts(
+        offer.base_cost,
+        field_shop_cost_context(menu.menu_mode(), runner,
+                               runner_feature_flags));
+    state.funds = funds;
+    state.meter_tens = runner.cyberware_essence_tens();
+    state.meter_ones = runner.cyberware_essence_ones();
+    state.saved_meter_tens = runner.auxiliary[0U];
+    state.archetype_status = static_cast<std::int8_t>(runner.archetype_index);
+    if (state.archetype_status < 2) {
+        if (spell_table == nullptr ||
+            spell_table->entry_count > kMagicSpellTableEntryCapacity) {
+            return std::nullopt;
+        }
+        state.tracked_meter_values.reserve(spell_table->entry_count);
+        for (std::size_t index = 0U; index < spell_table->entry_count; ++index) {
+            state.tracked_meter_values.push_back(
+                spell_table->entries[index].force_limit);
+        }
+    }
+    return result;
+}
+
+std::optional<MagicSpellTable> spell_table_after_equipment_upgrade(
+    const MagicSpellTable& source,
+    const FieldEquipmentUpgradeState& upgrade) {
+    if (upgrade.archetype_status >= 2) {
+        return source;
+    }
+    if (upgrade.tracked_meter_values.size() != source.entry_count) {
+        return std::nullopt;
+    }
+    auto result = source;
+    for (std::size_t index = 0U; index < result.entry_count; ++index) {
+        result.entries[index].force_limit =
+            upgrade.tracked_meter_values[index];
     }
     return result;
 }
@@ -12412,6 +12479,19 @@ bool FieldSceneRuntime::bootstrap(
             return false;
         }
     }
+    constexpr std::array<std::string_view, 8> kFieldServiceCyberwareIds{{
+        "datajack", "cyber_eyes", "hand_razors", "spurs", "smartlink",
+        "muscle_replacement", "dermal_plating", "wired_reflexes"}};
+    for (std::size_t index = 0U;
+         index < field_service_cyberware_icons_.size(); ++index) {
+        const auto alias = "menu.field.service.cyberware." +
+                           std::string(kFieldServiceCyberwareIds[index]);
+        if (!load_image(startup_state.asset_catalog.catalog, alias,
+                        field_service_cyberware_icons_[index])) {
+            source_boundary("field.bootstrap.service_cyberware_icon_missing");
+            return false;
+        }
+    }
     if (!load_image(startup_state.asset_catalog.catalog,
                     "menu.field.service.universal.clips",
                     field_service_universal_clips_icon_)) {
@@ -16054,7 +16134,14 @@ void FieldSceneRuntime::advance_frame() {
                     ((field_shop_active_definition_->menu_result == -1 &&
                       field_shop_active_definition_->groups.size() == 6U) ||
                      (field_shop_active_definition_->menu_result == 0 &&
-                      field_shop_active_definition_->groups.size() == 4U));
+                      field_shop_active_definition_->groups.size() == 4U) ||
+                     (service_id == "wire_masters" &&
+                      field_shop_active_definition_->menu_mode == 7U &&
+                      field_shop_active_definition_->menu_result == 1 &&
+                      field_shop_active_definition_->groups.size() == 1U &&
+                      field_shop_active_definition_
+                              ->groups.front().equipment_upgrade_offers.size() ==
+                          8U));
                 if (!field_store_shape) {
                     source_boundary("field.shop." + service_id +
                                     ".menu_unimplemented");
@@ -16063,7 +16150,9 @@ void FieldSceneRuntime::advance_frame() {
                 }
                 const auto shop_id = service_id == "medicine_lodge"
                     ? ShopId::medicine_lodge
-                    : ShopId::field_store;
+                    : service_id == "wire_masters"
+                          ? ShopId::wire_masters
+                          : ShopId::field_store;
                 const auto shop_tag = service_id == "ares_weapon_emporium"
                     ? std::string_view{"ares"}
                     : std::string_view{service_id};
@@ -16289,6 +16378,7 @@ void FieldSceneRuntime::advance_frame() {
                 }
                 return "field_store";
             case ShopId::medicine_lodge: return "medicine_lodge";
+            case ShopId::wire_masters: return "wire_masters";
             }
             return "shop";
         }();
@@ -16297,6 +16387,112 @@ void FieldSceneRuntime::advance_frame() {
             source_boundary(std::string("field.shop.") + shop_tag + "." +
                             std::string(event));
         };
+        const auto service_wire_upgrade =
+            [this, &shop_boundary](const bool confirmed) {
+                if (!field_shop_active_definition_.has_value() ||
+                    !field_shop_menu_.pending_action().has_value() ||
+                    !field_shop_menu_.pending_action()
+                         ->equipment_upgrade_offer.has_value() ||
+                    !field_funds_.has_value()) {
+                    shop_boundary("equipment_upgrade_state_unavailable");
+                    field_shop_menu_.finish_action();
+                    return;
+                }
+                const auto table_index = active_runner_record().magic_table_index;
+                const auto* const spell_table =
+                    field_magic_spell_table(table_index);
+                const auto input = make_field_shop_equipment_upgrade_input(
+                    *field_shop_active_definition_, field_shop_menu_,
+                    *field_shop_menu_.pending_action()
+                         ->equipment_upgrade_offer,
+                    active_runner_record(), *field_funds_, spell_table,
+                    field_runner_feature_flags_.value_or(0U));
+                if (!input.has_value()) {
+                    shop_boundary("equipment_upgrade_source_state_unavailable");
+                    field_shop_menu_.finish_action();
+                    return;
+                }
+                auto state = input->state;
+                FieldEquipmentUpgradeCallbacks callbacks{};
+                callbacks.confirm_purchase = [confirmed] {
+                    return confirmed;
+                };
+                const auto result = apply_field_equipment_upgrade(
+                    input->table, state, callbacks);
+                switch (result) {
+                case FieldEquipmentUpgradeResult::cancelled:
+                    if (!confirmed &&
+                        field_shop_menu_.begin_equipment_upgrade_confirmation(
+                            state.cost) ==
+                            ShopTransactionEvent::confirmation_opened) {
+                        shop_boundary("equipment_upgrade_confirmation");
+                    } else {
+                        shop_boundary("equipment_upgrade_confirmation_unavailable");
+                        field_shop_menu_.finish_action();
+                    }
+                    return;
+                case FieldEquipmentUpgradeResult::already_owned:
+                    field_shop_menu_.show_transaction_message(
+                        ShopTransactionMessage::cyberware_already_owned);
+                    shop_boundary("equipment_upgrade_already_owned");
+                    return;
+                case FieldEquipmentUpgradeResult::
+                    spurs_make_hand_razors_unnecessary:
+                    field_shop_menu_.show_transaction_message(
+                        ShopTransactionMessage::cyberware_spurs_conflict);
+                    shop_boundary("equipment_upgrade_spurs_conflict");
+                    return;
+                case FieldEquipmentUpgradeResult::insufficient_funds:
+                    field_shop_menu_.show_transaction_message(
+                        ShopTransactionMessage::insufficient_funds);
+                    shop_boundary("equipment_upgrade_insufficient_funds");
+                    return;
+                case FieldEquipmentUpgradeResult::insufficient_essence:
+                    field_shop_menu_.show_transaction_message(
+                        ShopTransactionMessage::cyberware_insufficient_essence);
+                    shop_boundary("equipment_upgrade_insufficient_essence");
+                    return;
+                case FieldEquipmentUpgradeResult::invalid_selection:
+                    shop_boundary("equipment_upgrade_selection_unresolved");
+                    field_shop_menu_.finish_action();
+                    return;
+                case FieldEquipmentUpgradeResult::applied:
+                    break;
+                }
+
+                std::optional<MagicSpellTable> updated_spell_table;
+                if (state.archetype_status < 2) {
+                    if (spell_table == nullptr ||
+                        table_index >=
+                            field_magic_spell_table_overrides_.size()) {
+                        shop_boundary(
+                            "equipment_upgrade_spell_table_unavailable");
+                        field_shop_menu_.finish_action();
+                        return;
+                    }
+                    updated_spell_table = spell_table_after_equipment_upgrade(
+                        *spell_table, state);
+                    if (!updated_spell_table.has_value()) {
+                        shop_boundary(
+                            "equipment_upgrade_spell_table_write_unavailable");
+                        field_shop_menu_.finish_action();
+                        return;
+                    }
+                }
+                auto& runner = active_runner_record();
+                runner.cyberware_flags = state.upgrade_flags;
+                runner.set_cyberware_essence_tens(state.meter_tens);
+                runner.set_cyberware_essence_ones(state.meter_ones);
+                runner.auxiliary[0U] = state.saved_meter_tens;
+                if (updated_spell_table.has_value()) {
+                    field_magic_spell_table_overrides_[table_index] =
+                        *updated_spell_table;
+                }
+                field_funds_ = state.funds;
+                refresh_field_hud_runner_slot();
+                field_shop_menu_.finish_action();
+                shop_boundary("equipment_upgrade_applied");
+            };
         // ROM 0x56AC0 services audio and new high-byte input inside its menu
         // loop. Keep that interaction modal so field movement cannot write
         // stale map pixels underneath the full-screen service presentation.
@@ -16353,6 +16549,9 @@ void FieldSceneRuntime::advance_frame() {
                 field_funds_ = sale_state.funds;
                 refresh_field_hud_runner_slot();
                 shop_boundary("sale_applied");
+            } else if (transaction_event ==
+                       ShopTransactionEvent::equipment_upgrade_confirmed) {
+                service_wire_upgrade(true);
             } else if (transaction_event ==
                        ShopTransactionEvent::message_shown) {
                 shop_boundary("transaction_message");
@@ -16498,13 +16697,13 @@ void FieldSceneRuntime::advance_frame() {
                     } else if (purchase_result ==
                                FieldActionProgressionPurchaseResult::
                                    insufficient_funds) {
-                        field_shop_menu_.show_progression_message(
+                        field_shop_menu_.show_transaction_message(
                             ShopTransactionMessage::insufficient_funds);
                         shop_boundary("progression_insufficient_funds");
                     } else if (purchase_result ==
                                FieldActionProgressionPurchaseResult::
                                    runner_unavailable) {
-                        field_shop_menu_.show_progression_message(
+                        field_shop_menu_.show_transaction_message(
                             ShopTransactionMessage::training_unavailable);
                         shop_boundary("progression_runner_unavailable");
                     } else {
@@ -16514,7 +16713,7 @@ void FieldSceneRuntime::advance_frame() {
                 } else if (quote.result ==
                            FieldActionProgressionQuoteResult::
                                runner_unavailable) {
-                    field_shop_menu_.show_progression_message(
+                    field_shop_menu_.show_transaction_message(
                         ShopTransactionMessage::training_unavailable);
                     shop_boundary("progression_runner_unavailable");
                 } else if (quote.result ==
@@ -16532,6 +16731,12 @@ void FieldSceneRuntime::advance_frame() {
                     field_shop_menu_.finish_action();
                 }
             }
+            break;
+        case ShopMenuEvent::equipment_upgrade_selected:
+            if (source_audio_event_callback_) {
+                source_audio_event_callback_(0x24U);
+            }
+            service_wire_upgrade(false);
             break;
         case ShopMenuEvent::offer_unavailable:
             shop_boundary("offer_unavailable");
@@ -18951,15 +19156,22 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
     const bool sell_group = group_definition.id == "sell";
     const bool progression_group =
         !group_definition.progression_offers.empty();
-    if (group_index < field_service_tab_images_.size()) {
+    const bool wire_upgrade_group =
+        !group_definition.equipment_upgrade_offers.empty();
+    if (!wire_upgrade_group &&
+        group_index < field_service_tab_images_.size()) {
         painter.drawImage(64, 128, field_service_tab_images_[group_index]);
     }
     if (field_shop_menu_.offers_panel_active()) {
             const bool transaction_replaces_detail =
-                field_shop_menu_.transaction_confirmation_open() ||
-                field_shop_menu_.transaction_message() !=
-                    ShopTransactionMessage::none;
+                !wire_upgrade_group &&
+                (field_shop_menu_.transaction_confirmation_open() ||
+                 field_shop_menu_.transaction_message() !=
+                     ShopTransactionMessage::none);
             const auto cursor = field_shop_menu_.selected_cursor();
+            const auto selected_upgrade_offer = wire_upgrade_group
+                ? field_shop_menu_.equipment_upgrade_offer(group, cursor)
+                : std::optional<scripting::ScriptShopEquipmentUpgradeOffer>{};
             const auto selected_offer = sell_group || progression_group
                 ? std::optional<FieldActionCostRecord>{}
                 : field_shop_menu_.offer(group, cursor);
@@ -18979,7 +19191,94 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                     selected_offer->type + 1U);
             }
 
-            if (progression_group && selected_progression_offer.has_value()) {
+            if (wire_upgrade_group && selected_upgrade_offer.has_value()) {
+                const auto& upgrade = *selected_upgrade_offer;
+                if (upgrade.category < field_service_cyberware_icons_.size()) {
+                    painter.drawImage(
+                        80, 32,
+                        field_service_cyberware_icons_[upgrade.category]);
+                }
+                const auto* selected_name = game_scripts_.dialogue_text(
+                    upgrade.selected_name_key);
+                if (selected_name != nullptr) {
+                    draw_command_overview_text(painter, 128, 32,
+                                               *selected_name);
+                }
+                const auto* description = game_scripts_.dialogue_text(
+                    upgrade.description_key);
+                if (description != nullptr) {
+                    draw_command_overview_text(painter, 24, 56,
+                                               *description);
+                }
+
+                const auto show_upgrade_quote =
+                    !field_shop_menu_.transaction_confirmation_open() &&
+                    field_shop_menu_.transaction_message() ==
+                        ShopTransactionMessage::none;
+                if (show_upgrade_quote) {
+                    const auto* price_heading = game_scripts_.dialogue_text(
+                        field_shop_active_definition_->text_keys
+                            .purchase_price_heading);
+                    if (price_heading != nullptr) {
+                        draw_command_overview_text(painter, 80, 112,
+                                                   *price_heading);
+                    }
+                    const auto cost = apply_field_action_cost_discounts(
+                        upgrade.base_cost,
+                        field_shop_cost_context(
+                            field_shop_menu_.menu_mode(),
+                            active_runner_record(),
+                            field_runner_feature_flags_.value_or(0U)));
+                    draw_command_overview_number(
+                        painter, command_overview_font_, 176, 112, cost,
+                        NumericVisualAlignment::right, true);
+
+                    const auto& thresholds =
+                        field_shop_active_definition_
+                            ->equipment_upgrade_meter_thresholds;
+                    if (thresholds.size() == 16U) {
+                        FieldEquipmentUpgradeTable table{};
+                        std::copy(thresholds.begin(), thresholds.end(),
+                                  table.meter_thresholds.begin());
+                        const auto essence_cost =
+                            field_equipment_upgrade_display_essence_cost(
+                                table, upgrade.category,
+                                active_runner_record().cyberware_flags);
+                        const auto* essence_heading =
+                            game_scripts_.dialogue_text(
+                                field_shop_active_definition_->text_keys
+                                    .cyberware_essence_heading);
+                        const auto* essence_cost_heading =
+                            game_scripts_.dialogue_text(
+                                field_shop_active_definition_->text_keys
+                                    .cyberware_essence_cost_heading);
+                        if (essence_heading != nullptr) {
+                            draw_command_overview_text(
+                                painter, 72, 88, *essence_heading);
+                        }
+                        if (essence_cost_heading != nullptr) {
+                            draw_command_overview_text(
+                                painter, 72, 96, *essence_cost_heading);
+                        }
+                        const auto& runner = active_runner_record();
+                        draw_command_overview_number(
+                            painter, command_overview_font_, 184, 88,
+                            runner.cyberware_essence_tens());
+                        draw_command_overview_number(
+                            painter, command_overview_font_, 200, 88,
+                            runner.cyberware_essence_ones());
+                        if (essence_cost.has_value()) {
+                            draw_command_overview_number(
+                                painter, command_overview_font_, 184, 96,
+                                *essence_cost);
+                            draw_command_overview_number(
+                                painter, command_overview_font_, 200, 96,
+                                0U);
+                        }
+                    }
+                }
+            } else if (progression_group &&
+                       selected_progression_offer.has_value()) {
                 // ROM 0x57D7E uses the offer byte directly as the D4EA0 row
                 // index for its name, details, and glyph.
                 const auto spell_code = static_cast<std::size_t>(
@@ -19070,7 +19369,7 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                 }
             }
 
-            if (selected_offer.has_value() &&
+            if (!wire_upgrade_group && selected_offer.has_value() &&
                 selected_offer->type == static_cast<std::uint8_t>('E')) {
                 // ROM 0x586F6 uses the dedicated CE28E grid, 1AACE2
                 // description, 1AACCE title, and record quantity for the
@@ -19113,7 +19412,7 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
                     }
                 }
             }
-            else if (selected_item_code > 0U &&
+            else if (!wire_upgrade_group && selected_item_code > 0U &&
                      selected_item_code <= field_menu_text_.items.size()) {
                 const auto item_index =
                     static_cast<std::size_t>(selected_item_code - 1U);
@@ -19232,12 +19531,26 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
         stock_group_index < field_shop_active_definition_->groups.size() &&
         !field_shop_active_definition_->groups[stock_group_index]
              .progression_offers.empty();
-    const auto count = stock_is_sell
-        ? active_runner_record().inventory_item_codes.size()
-        : stock_is_progression
-              ? field_shop_menu_.progression_offer_count(stock_group)
-              : field_shop_menu_.offer_count(stock_group);
+    const bool stock_is_wire_upgrade =
+        stock_group_index < field_shop_active_definition_->groups.size() &&
+        !field_shop_active_definition_->groups[stock_group_index]
+             .equipment_upgrade_offers.empty();
+    const auto count = stock_is_wire_upgrade
+        ? field_shop_menu_.equipment_upgrade_offer_count(stock_group)
+        : stock_is_sell
+              ? active_runner_record().inventory_item_codes.size()
+              : stock_is_progression
+                    ? field_shop_menu_.progression_offer_count(stock_group)
+                    : field_shop_menu_.offer_count(stock_group);
     for (std::size_t index = 0; index < count && index < 8U; ++index) {
+        if (stock_is_wire_upgrade) {
+            if (index < field_service_cyberware_icons_.size()) {
+                painter.drawImage(
+                    16 + static_cast<int>(index) * 32, 168,
+                    field_service_cyberware_icons_[index]);
+            }
+            continue;
+        }
         if (stock_is_sell) {
             const auto item_code =
                 active_runner_record().inventory_item_codes[index];
@@ -19288,7 +19601,7 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
         // warm-yellow pixel around that footprint; the surrounding 32x24
         // cell and neighboring controls remain clear.
         const auto cursor = field_shop_menu_.selected_cursor();
-        const auto selectable = !sell_group ||
+        const auto selectable = stock_is_wire_upgrade || !sell_group ||
             (cursor < active_runner_record().inventory_item_codes.size() &&
              active_runner_record().inventory_item_codes[cursor] != 0U);
         if (selectable && cursor < count && cursor < 8U) {
@@ -19315,9 +19628,22 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
     }
 
     if (field_shop_menu_.transaction_confirmation_open()) {
-        draw_command_overview_text(
-            painter, 24, 80, field_menu_text_.shop_transaction_prompt);
-        if (sell_group) {
+        if (wire_upgrade_group) {
+            const auto* heading = game_scripts_.dialogue_text(
+                field_shop_active_definition_->text_keys
+                    .cyberware_purchase_heading);
+            if (heading != nullptr) {
+                draw_command_overview_text(painter, 48, 88, *heading);
+            }
+            draw_command_overview_number(
+                painter, command_overview_font_, 216, 88,
+                field_shop_menu_.transaction_amount(),
+                NumericVisualAlignment::right, true);
+        } else {
+            draw_command_overview_text(
+                painter, 24, 80, field_menu_text_.shop_transaction_prompt);
+        }
+        if (sell_group && !wire_upgrade_group) {
             draw_command_overview_text(
                 painter, 56, 88, field_menu_text_.shop_sale_quote_heading);
             draw_command_overview_number(
@@ -19358,6 +19684,33 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
             const auto* message = game_scripts_.dialogue_text(
                 field_shop_active_definition_->text_keys
                     .progression_training_unavailable);
+            if (message != nullptr) {
+                draw_command_overview_text(painter, 64, 88, *message);
+            }
+            break;
+        }
+        case ShopTransactionMessage::cyberware_already_owned: {
+            const auto* message = game_scripts_.dialogue_text(
+                field_shop_active_definition_->text_keys
+                    .cyberware_already_owned);
+            if (message != nullptr) {
+                draw_command_overview_text(painter, 64, 88, *message);
+            }
+            break;
+        }
+        case ShopTransactionMessage::cyberware_spurs_conflict: {
+            const auto* message = game_scripts_.dialogue_text(
+                field_shop_active_definition_->text_keys
+                    .cyberware_spurs_conflict);
+            if (message != nullptr) {
+                draw_command_overview_text(painter, 72, 88, *message);
+            }
+            break;
+        }
+        case ShopTransactionMessage::cyberware_insufficient_essence: {
+            const auto* message = game_scripts_.dialogue_text(
+                field_shop_active_definition_->text_keys
+                    .cyberware_insufficient_essence);
             if (message != nullptr) {
                 draw_command_overview_text(painter, 64, 88, *message);
             }
