@@ -9,8 +9,9 @@ services. Ordinary continuations read their destination from the active map's
 imported event table; entity JSON stores their policy, gates, tasks, return
 behavior, and provenance. The Lua graph engine and typed outcome
 bridge drive Gates Undersound's same-map service, the Renraku and Fuchi gated
-entry pages, Tarislar City Inn, Wylie's Gala Inn, and the two Stoker entry
-roots. The field host dispatches the `hotel.options` and `hospital.options`
+entry pages, Tarislar Apartments' guarded No Business/More branches, Tarislar
+City Inn, Wylie's Gala Inn, and the two Stoker entry roots. The field host
+dispatches the `hotel.options` and `hospital.options`
 service IDs.
 Captain Quinton's first/repeat call and complete service tree is a JSON graph;
 Alesandro's, Sharkey's, Kipp's, Wilma's, Macklemann's, and Gregory's service
@@ -97,7 +98,7 @@ are:
 
 | Terminal behavior | Example | Host meaning |
 | --- | --- | --- |
-| `continue_in_place` | Gates, Red Buffalo, Owlfeather services | Ends dialogue and keeps the current scene/event context. Do not follow a raw event-table destination suppressed by the source handler. |
+| `continue_in_place` | Gates, Red Buffalo, Owlfeather services, Tarislar Apartments guarded entry | Ends dialogue and keeps the current scene/event context. Do not follow a raw event-table destination suppressed by the source handler. |
 | `return_to_caller` | Vid-Phone contact graphs | Ends a nested interaction and gives control back to the owning phone session, which applies its call-completion behavior. It does not mean “stay in this field scene.” |
 | `resume_source_route` | Fuchi and Renraku entry pages | Ends the page, then continues the already selected event-table route into the source activity. |
 | `return_to_origin` | Hotel/building checkout and activity exit | Ends dialogue and restores the saved origin scene, camera/door return point, and source-derived heading policy. This represents “ends and sends outside” when the saved origin is outdoors. |

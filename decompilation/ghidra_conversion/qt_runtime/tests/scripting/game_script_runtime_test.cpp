@@ -10355,44 +10355,169 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
-    constexpr std::array<std::string_view, 3> tarislar_guard_pages{{
-        "<You enter the Tarislar Garden Apartments.>\n\n"
-        "<You are greeted by elves carrying sub-machine guns!>\n\n"
-        "<One of the elves points the weapon at your face.>",
-        "I don't think you have any business here, do you chummer?",
-        "<Thinking over how quickly they could cut you to ribbons, you "
-        "agree you don't have any reason to be here, and quickly leave.>",
-    }};
+    scripts.set_field_mode_context(ScriptFieldModeContext{1U, 7U, 0});
     auto tarislar_guard = scripts.start_task(
         "tarislar_apartments", "present_guarded_entry");
-    for (std::size_t page = 0U; page < tarislar_guard_pages.size(); ++page) {
-        if (!expect(tarislar_guard.status ==
-                            ScriptTaskStep::Status::awaiting_native_operation &&
-                        tarislar_guard.operation.has_value() &&
-                        tarislar_guard.operation->type ==
-                            ScriptNativeOperation::Type::ui_say &&
-                        tarislar_guard.operation->dialogue.has_value() &&
-                        tarislar_guard.operation->dialogue->speaker_id ==
-                            "tarislar_apartments_narrator" &&
-                        tarislar_guard.operation->dialogue->inline_text ==
-                            tarislar_guard_pages[page] &&
-                        tarislar_guard.operation->dialogue->continuation_key ==
-                            (page + 1U < tarislar_guard_pages.size()
-                                 ? "shared.more"
-                                 : ""),
-                    "Tarislar guard task did not preserve its ROM page order or waits")) {
-            std::cerr << scripts.failure() << '\n';
-            return 17;
+    if (!expect(tarislar_guard.status ==
+                    ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_guard.operation.has_value() &&
+                    tarislar_guard.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    tarislar_guard.operation->dialogue.has_value() &&
+                    tarislar_guard.operation->dialogue->speaker_id ==
+                        "tarislar_apartments_narrator" &&
+                    tarislar_guard.operation->dialogue->event_id ==
+                        "guarded_entry" &&
+                    tarislar_guard.operation->dialogue->inline_text.empty(),
+                "Tarislar guard graph did not load the ROM-backed entry page")) {
+        std::cerr << "guarded task status="
+                  << static_cast<unsigned>(tarislar_guard.status)
+                  << " failure=" << scripts.failure();
+        if (tarislar_guard.operation.has_value()) {
+            std::cerr << " operation="
+                      << static_cast<unsigned>(tarislar_guard.operation->type);
+            if (tarislar_guard.operation->dialogue.has_value()) {
+                const auto& dialogue = *tarislar_guard.operation->dialogue;
+                std::cerr << " event=" << dialogue.event_id
+                          << " speaker=" << dialogue.speaker_id
+                          << " profile=" << dialogue.text_profile
+                          << " text=" << dialogue.inline_text;
+            }
         }
-        tarislar_guard = scripts.complete_native_operation(true);
+        if (tarislar_guard.dialogue_outcome.has_value()) {
+            std::cerr << " typed_outcome="
+                      << dialogue_outcome_type_name(
+                             dialogue_outcome_type(
+                                 *tarislar_guard.dialogue_outcome));
+        }
+        std::cerr << '\n';
+        return 17;
     }
+    tarislar_guard = scripts.complete_native_operation(true);
+    if (!expect(tarislar_guard.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_guard.operation.has_value() &&
+                    tarislar_guard.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    tarislar_guard.operation->dialogue.has_value() &&
+                    tarislar_guard.operation->dialogue->event_id ==
+                        "guarded_challenge",
+                "Tarislar guard graph lost its ROM challenge page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_guard = scripts.complete_native_operation(true);
+    if (!expect(tarislar_guard.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_guard.operation.has_value() &&
+                    tarislar_guard.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    tarislar_guard.operation->menu.has_value() &&
+                    !tarislar_guard.operation->menu->inline_prompt &&
+                    tarislar_guard.operation->menu->id == "guarded_choice" &&
+                    tarislar_guard.operation->menu->choices.size() == 2U &&
+                    tarislar_guard.operation->menu->choices[0U].id ==
+                        "no_business" &&
+                    tarislar_guard.operation->menu->choices[1U].id == "more",
+                "Tarislar guard graph lost its ordered No Business/More choices")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_guard = scripts.complete_native_menu_choice("no_business");
+    if (!expect(tarislar_guard.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_guard.operation.has_value() &&
+                    tarislar_guard.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    tarislar_guard.operation->dialogue.has_value() &&
+                    tarislar_guard.operation->dialogue->event_id ==
+                        "guarded_leave" &&
+                    tarislar_guard.operation->dialogue->continuation_key.empty(),
+                "Tarislar guard No Business choice did not select the leave page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_guard = scripts.complete_native_operation(true);
     if (!expect(tarislar_guard.status ==
                         ScriptTaskStep::Status::completed &&
                     tarislar_guard.result_id ==
                         std::optional<std::string>{"left"} &&
                     scripts.story_state().at("story_flag_bit_30") == false &&
                     scripts.story_state().at("story_flag_bit_21") == false,
-                "Tarislar guard task did not leave the story flags unchanged")) {
+                "Tarislar guard leave choices changed story flags or resumed the source route")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    auto tarislar_guard_continue = scripts.start_task(
+        "tarislar_apartments", "present_guarded_entry");
+    tarislar_guard_continue = scripts.complete_native_operation(true);
+    tarislar_guard_continue = scripts.complete_native_operation(true);
+    tarislar_guard_continue = scripts.complete_native_menu_choice("more");
+    if (!expect(tarislar_guard_continue.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_guard_continue.operation.has_value() &&
+                    tarislar_guard_continue.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    tarislar_guard_continue.operation->dialogue.has_value() &&
+                    tarislar_guard_continue.operation->dialogue->event_id ==
+                        "guarded_penthouse",
+                "Tarislar guard More choice did not select the ROM penthouse page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_guard_continue = scripts.complete_native_operation(true);
+    constexpr std::string_view kHarlequinMeeting =
+        "So we meet.||I guess you would eventually have found me, given your "
+        "resources and abilities.||As you have probably guessed, I've been "
+        "keeping an eye on you since you first arrived in Seattle.";
+    if (!expect(check_tomb_prompt(tarislar_guard_continue, "meeting",
+                                  kHarlequinMeeting, {"more"}),
+                "Tarislar guard More choice did not continue into Harlequin's meeting")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_guard_continue = scripts.complete_native_menu_choice("more");
+    constexpr std::string_view kHarlequinMichaelTopic =
+        "You've acquired quite a reputation in your short time here, yet your "
+        "original mission remains unfulfilled.||I will help you if I can.";
+    if (!expect(check_tomb_prompt(tarislar_guard_continue, "michael_topic",
+                                  kHarlequinMichaelTopic,
+                                  {"ask_about_michael"}),
+                "Nested Harlequin flow did not resume after its first yielded menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_guard_continue = scripts.complete_native_menu_choice(
+        "ask_about_michael");
+    tarislar_guard_continue = scripts.complete_native_menu_choice(
+        "who_is_thon");
+    tarislar_guard_continue = scripts.complete_native_menu_choice("more");
+    tarislar_guard_continue = scripts.complete_native_menu_choice("more");
+    tarislar_guard_continue = scripts.complete_native_menu_choice(
+        "why_renraku");
+    tarislar_guard_continue = scripts.complete_native_menu_choice("more");
+    if (!expect(tarislar_guard_continue.status ==
+                    ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_guard_continue.operation.has_value() &&
+                    tarislar_guard_continue.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    tarislar_guard_continue.operation->dialogue.has_value() &&
+                    tarislar_guard_continue.operation->dialogue->inline_text.find(
+                        "After Thon fragged his relationship with Renraku") !=
+                        std::string::npos,
+                "Nested Harlequin branch did not reach its source continuation")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_guard_continue = scripts.complete_native_operation(true);
+    if (!expect(tarislar_guard_continue.status ==
+                        ScriptTaskStep::Status::completed &&
+                    tarislar_guard_continue.result_id ==
+                        std::optional<std::string>{"left"} &&
+                    scripts.story_state().at(
+                        "field_mode_effect_flag_bit_7") == true,
+                "Tarislar guard More branch did not return after Harlequin's no-Ito update")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }

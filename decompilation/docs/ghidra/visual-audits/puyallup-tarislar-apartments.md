@@ -7,7 +7,11 @@ record 67 is an event-7 trigger whose event-table
 default is scene 13. With FFFC1E bit 30 set, bit 21 clear, and alternate
 result/FFF0D5 zero, the first visit marks bit 21, awards +2 Karma to the three
 live runners, presents the Harlequin prompt chain, then returns to scene 1. The
-guarded branch presents its three source pages and returns to scene 1. A repeat
+guarded branch presents pages `0xFBCC7` and `0xFBD5A`, then a titleless No
+Business/More choice. No Business follows `0xFBD94` and returns to scene 1;
+More follows `0xFBEEC` into the shared Harlequin conversation at `0xF58C0`,
+which also returns to scene 1. Debug/Release physical-input CTests exercise
+both choices and capture the menu, branch pages, and clean field return. A repeat
 visit presents Harlequin's “Hello again” service. Ito, post-Ito, map, and
 group-item bits select the questions, Ito response, map-information, or tomb
 branch; the information path shows the available Renraku and paired maps, then
@@ -96,10 +100,13 @@ catalog's source policy explicitly authorizes a correction.
   passage. `0x59C34` performs `ADD.B` at `FF018D`, `FF028D`, and `FF038D`;
   these are the three live runner records' +0x8D Karma bytes. The shared Lua
   `party.award_karma_2` host service now applies this source reward.
-- Guarded passage: text group `0xF4DE0` references `0xFBCC7`, the shared
-  continuation label `0xFE5BF`, and the next node at `0xF5890`. That chain
-  continues through `0xFBD5A` and `0xFBD94`, ending in the text that Joshua
-  agrees to leave.
+- Guarded passage: text group `0xF4DE0` starts with page `0xFBCC7`, then page
+  `0xFBD5A`, followed by a titleless two-choice menu. The No Business choice
+  uses the `0xFBD5A` text as its label and follows `0xFBD94`, ending in the text
+  that Joshua agrees to leave. More uses the shared `0xFE5BF` label and follows
+  `0xFBEEC` to the penthouse page, then node `0xF58C0` into the shared Harlequin
+  conversation. Neither choice selects scene 13; both close on scene 1. The
+  graph and its two physical-input QA cases are in Debug and Release.
 - Authorized first entry: text group `0xF4DF4` starts at `0xFBE12`. It
   describes entering the apartments, meeting the armed elves, following them
   into the elevator, and riding to the top floor.

@@ -215,7 +215,7 @@
         "continueResultId": "enter_scene_13"
       },
       "provenance": {
-        "evidence": "ROM scene 1 record 67 at 0x17D9A2; indexed service 21 at 0x544D0 selects prompt root 0xF4DE0 while FFFC1E bit 30 is clear and FFF0D5 is zero. The graph shows text 0xFBCC7, challenge 0xFBD5A, and leave narration 0xFBD94; D6 remains -1 and no scene transition is selected. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+        "evidence": "ROM scene 1 record 67 at 0x17D9A2; indexed service 21 at 0x544D0 selects prompt root 0xF4DE0 while FFFC1E bit 30 is clear and FFF0D5 is zero. The JSON graph shows text 0xFBCC7 and challenge 0xFBD5A, then the titleless No Business/More menu. No Business follows leave narration 0xFBD94. More follows 0xFBEEC into the shared Harlequin conversation at 0xF58C0. D6 remains -1 and neither branch selects a scene transition. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
       }
     },
     {

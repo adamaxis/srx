@@ -1631,6 +1631,14 @@
           "more": "shared.more"
         }
       },
+      "guarded_choice": {
+        "layout": "compact_list",
+        "title_key": "",
+        "choice_label_keys": {
+          "more": "shared.more",
+          "no_business": "tarislar.garden.apartments.option.no_business"
+        }
+      },
       "both_maps_meaning": {
         "choice_label_keys": {
           "more": "shared.more"

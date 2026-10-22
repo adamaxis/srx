@@ -509,7 +509,24 @@
       "text_profile": "stoker.motel"
     },
     "tarislar_apartments_narrator": {
-      "events": {},
+      "events": {
+        "guarded_entry": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.garden.apartments.page.guarded_entry"
+        },
+        "guarded_challenge": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.garden.apartments.page.guard_challenge"
+        },
+        "guarded_leave": {
+          "continuation_key": "",
+          "title_key": "tarislar.garden.apartments.page.guard_leave"
+        },
+        "guarded_penthouse": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.garden.apartments.page.penthouse_entry"
+        }
+      },
       "name": "Narration",
       "portrait_alias": "none",
       "text_profile": "tarislar.garden.apartments.entry"

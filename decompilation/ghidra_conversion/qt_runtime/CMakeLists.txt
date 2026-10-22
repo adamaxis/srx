@@ -592,6 +592,12 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_guarded_e
                  --field-tarislar-guarded-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-guarded-entry-qa")
 
+# Exercise the ROM's guarded More edge into Harlequin from a fresh field start.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_guarded_more_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-guarded-more-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-guarded-more-qa")
+
 # Exercise both signed FFF0D5 result pages by reaching record 67 with ordinary
 # field movement. Each path must remain on scene 1 after its one-page prompt.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_positive_alternate_qa

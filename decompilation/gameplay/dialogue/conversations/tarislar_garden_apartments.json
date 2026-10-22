@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "tarislar_garden_apartments.guarded_entry": {
+      "entryNode": "guarded_entry",
+      "precondition": "tarislar_garden_apartments.guarded_entry_available",
+      "speakerId": "tarislar_apartments_narrator",
+      "textProfile": "tarislar.garden.apartments.entry",
+      "provenance": {
+        "romAddresses": ["0x544D0", "0xF4DE0", "0xFBCC7", "0xFBD5A", "0xF5890", "0xF58A4", "0xFBD94", "0xFBEEC", "0xF58C0"],
+        "scope": "pre_frosty_guard_leave_or_harlequin_continuation"
+      },
+      "nodes": {
+        "guarded_entry": {
+          "type": "page",
+          "eventId": "guarded_entry",
+          "next": "guarded_challenge",
+          "evidence": "ROM text group 0xF4DE0 shows 0xFBCC7 and advances to the guarded challenge page."
+        },
+        "guarded_challenge": {
+          "type": "page",
+          "eventId": "guarded_challenge",
+          "next": "guarded_choice",
+          "evidence": "ROM node 0xF5890 shows 0xFBD5A with the shared More continuation before branching."
+        },
+        "guarded_choice": {
+          "type": "choice",
+          "menuId": "guarded_choice",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "no_business", "next": "guard_leave" },
+            { "id": "more", "next": "guarded_penthouse" }
+          ],
+          "evidence": "ROM node 0xF58A4 branches to the leave passage or the Harlequin passage."
+        },
+        "guard_leave": {
+          "type": "page",
+          "eventId": "guarded_leave",
+          "next": "continue_in_place",
+          "evidence": "The no-business branch selects 0xFBD94 and leaves D6 at -1, suppressing the scene-13 transition."
+        },
+        "guarded_penthouse": {
+          "type": "page",
+          "eventId": "guarded_penthouse",
+          "next": "harlequin_conversation",
+          "evidence": "The More branch selects the penthouse passage at 0xFBEEC and continues at node 0xF58C0."
+        },
+        "harlequin_conversation": {
+          "type": "action",
+          "actionId": "tarislar_apartments.present_harlequin_main_conversation",
+          "results": {
+            "left": "continue_in_place"
+          },
+          "evidence": "Node 0xF58C0 enters the shared Harlequin meeting and topic flow used by Tarislar Apartments and the Red Buffalo."
+        },
+        "continue_in_place": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
+    }
+  }
+}

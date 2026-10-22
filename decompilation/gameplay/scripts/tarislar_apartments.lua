@@ -5,6 +5,7 @@
 local E = require("enums")
 local StoryFlags = require("story_flags")
 local HarlequinDialogue = require("harlequin_dialogue")
+local DialogueGraph = require("dialogue_graph")
 
 local TarislarApartments = {}
 
@@ -121,27 +122,20 @@ function TarislarApartments.present_repeat_service()
 end
 
 function TarislarApartments.present_guarded_entry()
-    if not at_apartments() or
-       StoryFlags.is_set(E.StoryFlag.FROSTY_MET) ~= false then
-        return "denied"
+    local outcome = DialogueGraph.run(
+        "tarislar_garden_apartments.guarded_entry", {
+            ["tarislar_apartments.present_harlequin_main_conversation"] =
+                function()
+                    return HarlequinDialogue.present_main_conversation()
+                end,
+        })
+    if type(outcome) == "table" and
+       outcome.type == "continue_in_place" then
+        -- The entry task contract uses a non-matching result to suppress the
+        -- scene-13 event-table transition after this same-map conversation.
+        return "left"
     end
-
-    -- ROM 0x544D0 selects prompt root 0xF4DE0 while bit 30 is clear.
-    -- The full graph includes an optional continue path; this first pass
-    -- reproduces the three-page guarded leave branch only.
-    game.ui.say_text(
-        "<You enter the Tarislar Garden Apartments.>\n\n" ..
-        "<You are greeted by elves carrying sub-machine guns!>\n\n" ..
-        "<One of the elves points the weapon at your face.>",
-        true)
-    game.ui.say_text(
-        "I don't think you have any business here, do you chummer?",
-        true)
-    game.ui.say_text(
-        "<Thinking over how quickly they could cut you to ribbons, you " ..
-        "agree you don't have any reason to be here, and quickly leave.>",
-        false)
-    return "left"
+    return outcome
 end
 
 function TarislarApartments.present_alternate_result()

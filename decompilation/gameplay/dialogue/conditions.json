@@ -167,6 +167,22 @@
         "scope": "indexed_title_service_gate"
       }
     },
+    "tarislar_garden_apartments.guarded_entry_available": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "building" },
+          { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
+          { "fact": "field.mode", "op": "eq", "value": 1 },
+          { "fact": "field.event_code", "op": "eq", "value": 7 },
+          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "story.story_flag_bit_30", "op": "eq", "value": false }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x5447E", "0x544D0", "0xF4DE0"],
+        "scope": "scene_1_event_7_guarded_entry_before_frosty"
+      }
+    },
     "wylie_gala_inn.room_service_context": {
       "expression": {
         "all": [

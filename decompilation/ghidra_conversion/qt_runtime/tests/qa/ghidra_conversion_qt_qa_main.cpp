@@ -22960,7 +22960,8 @@ int run_field_tarislar_guarded_entry_qa(
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
-    const std::vector<std::string>& source_boundaries) {
+    const std::vector<std::string>& source_boundaries,
+    const bool choose_more) {
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
@@ -23131,8 +23132,116 @@ int run_field_tarislar_guarded_entry_qa(
     advance_guard_page();
     if (!check_page("guard-page-1", "any business here", true)) return 3;
     advance_guard_page();
-    if (!check_page("guard-page-2", "quickly leave", false)) return 3;
-    advance_guard_page();
+    const auto check_guard_choice = [&](const std::string_view file) {
+        for (std::uint8_t settle = 0U;
+             settle < 100U &&
+             (!field_scene.dialogue_panel().source_complete ||
+              field_scene.dialogue_panel().option_count != 2U);
+             ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto& panel = field_scene.dialogue_panel();
+        const auto image = render();
+        const bool valid = field_scene.dialogue_open() &&
+            field_scene.field_scene_reference_for_dump() == 1U &&
+            panel.source_complete && panel.option_count == 2U &&
+            panel.portrait_alias == "none" &&
+            !field_hud_chrome_survives(image, asset_root) &&
+            image_has_green_ink(image, 88, 16, 216, 120) &&
+            save(file, false);
+        if (!valid) {
+            std::cerr << "Tarislar guard QA: source choice check failed for "
+                      << file << " (open=" << field_scene.dialogue_open()
+                      << ", scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", complete=" << panel.source_complete
+                      << ", options=" << static_cast<unsigned>(panel.option_count)
+                      << ", portrait=" << panel.portrait_alias << ")\n";
+        }
+        return valid;
+    };
+    if (!check_guard_choice("guard-choice")) return 3;
+    const auto exercise_more_branch = [&]() {
+        tap_qa_controller_button(field_scene, 0x10U); // B: More
+        for (std::uint8_t settle = 0U;
+             settle < 100U && !contains_text(
+                 field_scene.dialogue_panel(), "enter the penthouse");
+             ++settle) {
+            field_scene.advance_frame();
+        }
+        const auto& penthouse_panel = field_scene.dialogue_panel();
+        if (!field_scene.dialogue_open() ||
+            !contains_text(penthouse_panel, "enter the penthouse") ||
+            !contains_text(penthouse_panel, "This must be Harlequin") ||
+            penthouse_panel.option_count != 1U ||
+            !save("guard-more-penthouse", false)) {
+            std::cerr << "Tarislar guard More QA: choice did not show the ROM "
+                         "penthouse/Harlequin passage\n";
+            return false;
+        }
+        const std::array<std::pair<std::string_view, std::string_view>, 7U>
+            harlequin_pages{{
+                {"So we meet", "harlequin-meeting"},
+                {"You've acquired quite a reputation", "michael-topic"},
+                {"Your brother's death", "thon-topic"},
+                {"Thon is a what, not a who", "thon-explanation"},
+                {"But Thon is cursed", "thon-curse"},
+                {"Currently, Thon's energy is waning", "renraku-topic"},
+                {"Renraku became involved with Thon", "renraku-explanation"},
+            }};
+        for (std::size_t page = 0U; page < harlequin_pages.size(); ++page) {
+            tap_qa_controller_button(field_scene, 0x40U);
+            for (std::uint8_t settle = 0U;
+                 settle < 100U && !contains_text(
+                     field_scene.dialogue_panel(),
+                     harlequin_pages[page].first); ++settle) {
+                field_scene.advance_frame();
+            }
+            if (!field_scene.dialogue_open() ||
+                !contains_text(field_scene.dialogue_panel(),
+                               harlequin_pages[page].first) ||
+                !save(harlequin_pages[page].second, false)) {
+                std::cerr << "Tarislar guard More QA: Harlequin flow missed "
+                             "source page " << page << '\n';
+                return false;
+            }
+        }
+        tap_qa_controller_button(field_scene, 0x40U);
+        for (std::uint8_t settle = 0U;
+             settle < 100U && !contains_text(
+                 field_scene.dialogue_panel(),
+                 "After Thon fragged his relationship with Renraku"); ++settle) {
+            field_scene.advance_frame();
+        }
+        if (!field_scene.dialogue_open() ||
+            !contains_text(field_scene.dialogue_panel(),
+                           "After Thon fragged his relationship with Renraku") ||
+            (field_scene.field_mode_effect_flags_for_dump() & (1U << 7U)) == 0U ||
+            !save("harlequin-renraku-update", false)) {
+            std::cerr << "Tarislar guard More QA: Harlequin's no-Ito source "
+                         "branch did not complete\n";
+            return false;
+        }
+        tap_qa_controller_button(field_scene, 0x40U);
+        for (std::uint8_t settle = 0U;
+             settle < 100U && field_scene.dialogue_open(); ++settle) {
+            field_scene.advance_frame();
+        }
+        return !field_scene.dialogue_open();
+    };
+
+    if (choose_more) {
+        if (!exercise_more_branch()) return 3;
+    } else {
+        tap_qa_controller_button(field_scene, 0x40U); // A: no business
+        for (std::uint8_t settle = 0U;
+             settle < 100U && !contains_text(
+                 field_scene.dialogue_panel(), "quickly leave"); ++settle) {
+            field_scene.advance_frame();
+        }
+        if (!check_page("guard-leave", "quickly leave", false)) return 3;
+        advance_guard_page();
+    }
 
     const auto& party_after = field_scene.field_party_records_for_dump();
     bool karma_unchanged = party_after.size() == karma_before.size();
@@ -23174,28 +23283,45 @@ int run_field_tarislar_guarded_entry_qa(
             return 3;
         }
     }
-    const auto final_image = render();
-    const auto scene_entered = std::count(
-        source_boundaries.begin(), source_boundaries.end(),
-        std::string("field.entry.area_event_scene_entered"));
     if (field_scene.field_scene_reference_for_dump() != 1U ||
         field_scene.dialogue_open() || field_scene.field_interaction_open() ||
         field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
         field_scene.field_palette_fade_steps_for_dump() != 0U ||
-        !field_hud_chrome_survives(final_image, asset_root) ||
-        count_playfield_lit(final_image) < 100U || scene_entered != 0 ||
+        !field_hud_chrome_survives(render(), asset_root) ||
+        count_playfield_lit(render()) < 100U ||
         !save("actual", true)) {
         std::cerr << "Tarislar guard QA: the exit passage did not return to a "
                      "clean scene-1 field redraw\n";
         return 3;
     }
+    const auto final_image = render();
+    const auto scene_entered = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.entry.area_event_scene_entered"));
+    if (field_scene.field_scene_reference_for_dump() != 1U ||
+        field_scene.dialogue_open() ||
+        field_scene.field_interaction_open() ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        field_scene.field_palette_fade_steps_for_dump() != 0U ||
+        scene_entered != 0 ||
+        (field_scene.field_world_fact_flags_for_dump() &
+         ((1U << 30U) | (1U << 21U))) != 0U ||
+        !field_hud_chrome_survives(final_image, asset_root) ||
+        count_playfield_lit(final_image) < 100U ||
+        !save("actual", true)) {
+        std::cerr << "Tarislar guard More QA: Harlequin did not return cleanly "
+                     "to scene 1 without entering scene 13\n";
+        return 3;
+    }
     trace << "result\t" << movement_ticks
           << "\t64\t1\t" << kStartX << '\t' << kStartY
-          << "\t7\t0\t0\n";
+          << "\t7\t0\t" << (choose_more ? "more" : "no_business")
+          << "\n";
     trace.close();
     if (!trace) return 3;
     std::cout << "field_tarislar_guarded_entry_qa=passed record=67 event=7 "
-                 "frosty_met=no pages=3 karma_delta=0 destination_scene=1 "
+                 "branch=" << (choose_more ? "more_harlequin" : "no_business_leave") << " "
+                 "frosty_met=no karma_delta=0 destination_scene=1 "
                  "clean_redraw=yes audio_requests=0 artifacts="
               << output.string() << '\n';
     return 0;
@@ -23978,6 +24104,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_tarislar_guarded_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_tarislar_guarded_more_qa_path;
+        std::optional<std::filesystem::path>
             field_tarislar_positive_alternate_qa_path;
         std::optional<std::filesystem::path>
             field_tarislar_negative_alternate_qa_path;
@@ -24353,6 +24481,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_tarislar_guarded_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-tarislar-guarded-more-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_tarislar_guarded_more_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -25387,6 +25522,7 @@ int main(int argc, char** argv) {
                 field_tarislar_repeat_service_qa_path.has_value() ||
                 field_tarislar_city_inn_qa_path.has_value() ||
                 field_tarislar_guarded_entry_qa_path.has_value() ||
+                field_tarislar_guarded_more_qa_path.has_value() ||
                 field_tarislar_positive_alternate_qa_path.has_value() ||
                 field_tarislar_negative_alternate_qa_path.has_value() ||
                 field_tarislar_tomb_departure_qa_path.has_value() ||
@@ -25814,6 +25950,7 @@ int main(int argc, char** argv) {
                 field_tarislar_first_entry_qa_path.has_value() ||
                 field_tarislar_repeat_service_qa_path.has_value() ||
                 field_tarislar_guarded_entry_qa_path.has_value() ||
+                field_tarislar_guarded_more_qa_path.has_value() ||
                 field_tarislar_positive_alternate_qa_path.has_value() ||
                 field_tarislar_negative_alternate_qa_path.has_value() ||
                 field_tarislar_tomb_departure_qa_path.has_value() ||
@@ -25857,6 +25994,7 @@ int main(int argc, char** argv) {
             if (field_tarislar_first_entry_qa_path.has_value() ||
                 field_tarislar_repeat_service_qa_path.has_value() ||
                 field_tarislar_guarded_entry_qa_path.has_value() ||
+                field_tarislar_guarded_more_qa_path.has_value() ||
                 field_tarislar_positive_alternate_qa_path.has_value() ||
                 field_tarislar_negative_alternate_qa_path.has_value() ||
                 field_tarislar_tomb_departure_qa_path.has_value() ||
@@ -25867,7 +26005,8 @@ int main(int argc, char** argv) {
                     field_tarislar_tomb_departure_qa_path.has_value() ||
                     field_tarislar_tomb_decline_qa_path.has_value();
                 const bool guarded_visit =
-                    field_tarislar_guarded_entry_qa_path.has_value();
+                    field_tarislar_guarded_entry_qa_path.has_value() ||
+                    field_tarislar_guarded_more_qa_path.has_value();
                 if (!field_scene.set_story_flag_for_dump(
                         30U, !guarded_visit) ||
                     !field_scene.set_story_flag_for_dump(
@@ -29406,7 +29545,13 @@ int main(int argc, char** argv) {
                 return run_field_tarislar_guarded_entry_qa(
                     field_scene, asset_root,
                     *field_tarislar_guarded_entry_qa_path,
-                    field_audio_events, field_source_boundaries);
+                    field_audio_events, field_source_boundaries, false);
+            }
+            if (field_tarislar_guarded_more_qa_path.has_value()) {
+                return run_field_tarislar_guarded_entry_qa(
+                    field_scene, asset_root,
+                    *field_tarislar_guarded_more_qa_path,
+                    field_audio_events, field_source_boundaries, true);
             }
             if (field_tarislar_positive_alternate_qa_path.has_value()) {
                 return run_field_tarislar_alternate_result_qa(

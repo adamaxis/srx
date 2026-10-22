@@ -399,7 +399,11 @@ the Harlequin prompt chain, sets bit 21, awards +2 Karma, and returns to scene
 1; its Debug/Release physical-input QA saves a clean field `actual.bmp`. The
 six condition-selected event-7 route records now live in the entity's
 `interactions.json`; the raw event-table destination remains scene 13.
-guarded branch also returns to scene 1 after its three source pages. The repeat
+The guarded branch now presents the `0xFBCC7` and `0xFBD5A` pages, then a titleless
+No Business/More choice: No Business follows `0xFBD94`, while More follows
+`0xFBEEC` into the shared Harlequin conversation at `0xF58C0`. Both outcomes
+stay on scene 1. Separate Debug/Release physical-input CTests exercise each
+choice and save full-screen captures. The repeat
 service now selects the questions, Ito, map-information, and tomb branches from
 bits 16/28/26/27 and group-item bits 8/7. Its Debug/Release physical-input QA
 captures the greeting, Renraku response, remaining map pages, and clean scene-1
