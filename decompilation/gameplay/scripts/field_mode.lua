@@ -25,6 +25,10 @@ local function renraku_store_prompt(field)
     end
     local store_id = field.service_id
 
+    if field.prompt_variant == "store_closed" then
+        return prompt("shop.store_closed", "none")
+    end
+
     local text_variant = "store_intro"
     if field.alternate_result > 0 then
         text_variant = "package_payment"

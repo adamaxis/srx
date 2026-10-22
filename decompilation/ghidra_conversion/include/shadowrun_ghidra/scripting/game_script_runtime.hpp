@@ -699,6 +699,9 @@ struct ScriptFieldModeContext {
     // Entity JSON chooses the named host service; Lua uses this ID to select
     // its matching field-mode narrative profile.
     std::string service_id;
+    // A named modal variant lets a shared field-mode presenter resolve
+    // service-specific notices without encoding content keys in C++.
+    std::string prompt_variant;
 };
 
 enum class ScriptRunFieldEventAction : std::uint8_t {

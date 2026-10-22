@@ -708,6 +708,7 @@
     "shop.transaction.protected_sale": "Totems cannot be sold!!",
     "shop.transaction.sale_quote_heading": "Item sells for       $",
     "shop.transaction.purchase_price_heading": "Price        $",
+    "shop.store_closed": "STORE CLOSED!",
     "shop.progression.training_unavailable": "You do not have the\nneccessary training\nto use these items!",
     "shop.progression.maximum_level": " This spell is at\nits maximum level.",
     "shop.progression.cost_heading": "Training cost       $",

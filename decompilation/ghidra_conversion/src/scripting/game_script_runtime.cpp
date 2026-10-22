@@ -3220,6 +3220,10 @@ struct GameScriptRuntime::Impl {
             lua_pushlstring(lua,
                             self->field_mode_context.service_id.data(),
                             self->field_mode_context.service_id.size());
+        } else if (field == "prompt_variant") {
+            lua_pushlstring(
+                lua, self->field_mode_context.prompt_variant.data(),
+                self->field_mode_context.prompt_variant.size());
         } else if (field == "alternate_result") {
             lua_pushinteger(lua,
                             self->field_mode_context.alternate_result);

@@ -11485,6 +11485,9 @@ bool FieldSceneRuntime::bootstrap(
     failure_.clear();
     field_shop_menu_.close();
     field_shop_route_pending_service_id_.clear();
+    field_shop_notice_active_ = false;
+    field_shop_notice_service_id_.clear();
+    field_shop_notice_text_key_.clear();
     field_funds_.reset();
     field_walk_fast_enabled_ = false;
     field_matrix_field_state_ = scripting::ScriptMatrixFieldState{};
@@ -15966,6 +15969,25 @@ void FieldSceneRuntime::advance_frame() {
             field_controller_sample_state_.events);
         return;
     }
+    if (field_shop_notice_active_) {
+        field_controller_latch_state_.events =
+            field_controller_sample_state_.events;
+        field_controller_latch_state_.extra_events = 0U;
+        (void)::shadowrun::ghidra_conversion::latch_controller_events(
+            field_controller_latch_state_);
+        ::shadowrun::ghidra_conversion::sample_controller_input(
+            field_controller_sample_state_, field_controller_port_byte_);
+        if ((field_controller_sample_state_.events & 0xFF00U) != 0U) {
+            field_shop_notice_active_ = false;
+            field_shop_notice_service_id_.clear();
+            field_shop_notice_text_key_.clear();
+            state_.display_service_word = 0U;
+            field_runtime_state_.display_service_word = 0U;
+            source_boundary(
+                "field.shop.microtronics.store_closed_dismissed");
+        }
+        return;
+    }
     if (field_mode_text_.open()) {
         field_controller_latch_state_.events =
             field_controller_sample_state_.events;
@@ -15982,6 +16004,49 @@ void FieldSceneRuntime::advance_frame() {
                 const auto service_id =
                     field_shop_route_pending_service_id_;
                 field_shop_route_pending_service_id_.clear();
+                if (service_id == "microtronics") {
+                    if (!field_runner_feature_flags_.has_value()) {
+                        field_shop_active_definition_.reset();
+                        source_boundary(
+                            "field.shop.microtronics.deck_fact_unresolved");
+                        return;
+                    }
+                    if ((*field_runner_feature_flags_ & 0x01U) == 0U) {
+                        scripting::ScriptFieldModeContext context{
+                            5U, 4U, 0};
+                        context.service_id = service_id;
+                        context.prompt_variant = "store_closed";
+                        game_scripts_.set_field_mode_context(
+                            std::move(context));
+                        const auto content = game_scripts_.string_map(
+                            "field_mode", "mode_text_content");
+                        if (!content.has_value()) {
+                            field_shop_active_definition_.reset();
+                            source_boundary(
+                                "field.shop.microtronics.store_closed_text_unavailable");
+                            return;
+                        }
+                        const auto status = content->find("status");
+                        const auto text_key = content->find("text_key");
+                        if (status == content->end() ||
+                            status->second != "matched" ||
+                            text_key == content->end() ||
+                            game_scripts_.dialogue_text(text_key->second) ==
+                                nullptr) {
+                            field_shop_active_definition_.reset();
+                            source_boundary(
+                                "field.shop.microtronics.store_closed_text_unavailable");
+                            return;
+                        }
+                        field_shop_notice_active_ = true;
+                        field_shop_notice_service_id_ = service_id;
+                        field_shop_notice_text_key_ = text_key->second;
+                        field_shop_active_definition_.reset();
+                        source_boundary(
+                            "field.shop.microtronics.store_closed");
+                        return;
+                    }
+                }
                 field_shop_active_definition_ =
                     game_scripts_.shop_definition(service_id);
                 const auto field_store_shape =
@@ -18359,6 +18424,9 @@ bool FieldSceneRuntime::begin_field_mode_service_event_for_dump(
     field_movement_transition_state_.mode_event_code = event_code;
     field_exit_alternate_result_ = alternate_result;
     field_shop_route_pending_service_id_.clear();
+    field_shop_notice_active_ = false;
+    field_shop_notice_service_id_.clear();
+    field_shop_notice_text_key_.clear();
     field_mode_text_.close();
     (void)run_field_exit_orchestrator(field_runtime_state_);
     return field_mode_text_.open();
@@ -19298,6 +19366,32 @@ void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
         case ShopTransactionMessage::none:
             break;
         }
+    }
+}
+
+void FieldSceneRuntime::paint_field_shop_notice(QPainter& painter) const {
+    if (!field_shop_notice_active_ || field_service_background_.isNull()) {
+        return;
+    }
+    painter.drawImage(0, 0, field_service_background_);
+    const auto* title = game_scripts_.dialogue_text(
+        "shop.service.option." + field_shop_notice_service_id_);
+    if (title != nullptr) {
+        draw_command_overview_text(painter, 64, 16, *title);
+    }
+    const auto* message = game_scripts_.dialogue_text(
+        field_shop_notice_text_key_);
+    if (message != nullptr) {
+        // ROM 0x56C12 writes the message at name-table word 0xC316. On the
+        // source 64-cell plane this is pixel origin (88, 48).
+        draw_command_overview_text(painter, 88, 48, *message);
+    }
+    paint_field_hud_overlays(painter);
+    if (field_funds_.has_value()) {
+        draw_command_overview_number(
+            painter, command_overview_font_, 144, 200, *field_funds_,
+            NumericVisualAlignment::left, true);
+        draw_command_overview_text(painter, 200, 200, "$");
     }
 }
 
@@ -22346,6 +22440,11 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
     }
     if (field_mode_text_.open()) {
         field_mode_text_.paint(painter);
+        apply_palette_fade();
+        return;
+    }
+    if (field_shop_notice_active_) {
+        paint_field_shop_notice(painter);
         apply_palette_fade();
         return;
     }

@@ -705,6 +705,12 @@ public:
         std::uint8_t scene_id, std::uint8_t field_mode,
         std::uint8_t event_code, std::int8_t alternate_result);
     bool shop_menu_open() const noexcept { return field_shop_menu_.is_open(); }
+    bool field_shop_notice_open_for_dump() const noexcept {
+        return field_shop_notice_active_;
+    }
+    std::string_view field_shop_notice_text_key_for_dump() const noexcept {
+        return field_shop_notice_text_key_;
+    }
     std::uint8_t shop_menu_mode() const noexcept {
         return field_shop_menu_.menu_mode();
     }
@@ -1489,6 +1495,7 @@ private:
     void paint_command_overview_clips(QPainter& painter) const;
     void paint_command_overview_posture_panel(QPainter& painter) const;
     void paint_field_shop(QPainter& painter) const;
+    void paint_field_shop_notice(QPainter& painter) const;
     std::optional<std::uint8_t> selected_shop_item_code() const;
     std::optional<std::uint8_t> weapon_magazine_capacity_for_item(
         std::uint8_t item_code) const;
@@ -1863,6 +1870,9 @@ private:
     std::optional<scripting::ScriptShopDefinition> field_shop_definition_;
     std::optional<scripting::ScriptShopDefinition>
         field_shop_active_definition_;
+    bool field_shop_notice_active_ = false;
+    std::string field_shop_notice_service_id_;
+    std::string field_shop_notice_text_key_;
     FieldDialogueRuntime field_dialogue_;
     scripting::DialogueOutcomeDispatcher dialogue_outcome_dispatcher_;
     HotelMenuRuntime hotel_menu_{};

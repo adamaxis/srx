@@ -5917,6 +5917,34 @@ int run_field_scene5_store_service_entry_qa(
                 return 3;
             }
             menu_outcome = "field.shop.merlins_lore.opened";
+        } else if (service == "microtronics") {
+            const auto closed_frame = render_qa_field(field_scene);
+            const auto closed_saved = save_actual("store-closed", closed_frame);
+            if (field_scene.shop_menu_open() ||
+                !field_scene.field_shop_notice_open_for_dump() ||
+                field_scene.field_shop_notice_text_key_for_dump() !=
+                    "shop.store_closed" ||
+                !closed_saved ||
+                !image_has_green_ink(closed_frame, 88, 48, 144, 24) ||
+                !boundary_seen_since_prompt(
+                    "field.shop.microtronics.store_closed")) {
+                std::cerr << "Scene-5 store service QA: MicroTronics did not "
+                             "show the ROM STORE CLOSED! gate\n";
+                return 3;
+            }
+
+            tap_qa_controller_button(field_scene, 0x02U);
+            const auto returned = render_qa_field(field_scene);
+            const auto returned_saved = save_actual("field-return", returned);
+            if (field_scene.field_shop_notice_open_for_dump() ||
+                field_scene.shop_menu_open() || !returned_saved ||
+                !boundary_seen_since_prompt(
+                    "field.shop.microtronics.store_closed_dismissed")) {
+                std::cerr << "Scene-5 store service QA: MicroTronics did not "
+                             "dismiss the closed-store gate back to the field\n";
+                return 3;
+            }
+            menu_outcome = "field.shop.microtronics.store_closed";
         } else {
             const auto expected_boundary = "field.shop." + service +
                                            ".menu_unimplemented";

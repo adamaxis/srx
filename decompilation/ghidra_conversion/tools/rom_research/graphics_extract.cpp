@@ -2205,6 +2205,10 @@ void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
     write_text_entry("shop.transaction.purchase_price_heading",
                      shop_text.purchase_price_heading);
     write_text_entry(
+        "shop.store_closed",
+        read_multiline_rom_text(rom, 0x1AA3B4U, 0x20U,
+                                "MicroTronics store-closed message"));
+    write_text_entry(
         "shop.progression.training_unavailable",
         read_multiline_rom_text(rom, 0x1AA42CU, 0x80U,
                                 "field spell-training restriction"));
