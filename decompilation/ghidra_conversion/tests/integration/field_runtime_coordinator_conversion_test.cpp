@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/integration/field_runtime_coordinator_conversion.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -43,6 +44,7 @@ FieldRuntimeCoordinatorCallbacks make_callbacks(Observations& observations) {
     };
     callbacks.advance_field_mode_transition = [&](auto&) {
         observations.order.emplace_back("advance_mode_transition");
+        return true;
     };
     callbacks.initialize_world_activity_mode = [&](auto&) {
         observations.order.emplace_back("initialize_world_activity");
@@ -233,7 +235,8 @@ int test_transition_branch_source_order() {
     state = FieldRuntimeCoordinatorState{};
     state.field_transition_requested = true;
     state.scene_id = 4U;
-    state.field_mode = 6U;
+    state.field_mode = 2U;
+    state.mode_event_code = 6U;
     if (expect(advance_field_runtime_frame(state, callbacks) ==
                FieldRuntimeFrameResult::field_transition_dispatched) != 0) {
         return 9;
@@ -249,7 +252,8 @@ int test_mode_transition_and_scene_37_activity_paths() {
     FieldRuntimeCoordinatorState state;
     state.field_transition_requested = true;
     state.mode_transition_gate = 1U;
-    state.field_mode = 8U;
+    state.field_mode = 2U;
+    state.mode_event_code = 8U;
 
     if (expect(advance_field_runtime_frame(state, callbacks) ==
                FieldRuntimeFrameResult::field_transition_dispatched) != 0) {
@@ -264,10 +268,51 @@ int test_mode_transition_and_scene_37_activity_paths() {
     observations.order.clear();
     state = FieldRuntimeCoordinatorState{};
     state.field_transition_requested = true;
-    state.scene_id = 0x37U;
+    state.mode_transition_gate = 1U;
+    state.field_mode = 12U;
+    state.mode_event_code = 7U;
     if (expect(advance_field_runtime_frame(state, callbacks) ==
                FieldRuntimeFrameResult::field_transition_dispatched) != 0) {
         return 3;
+    }
+    if (expect(observations.order == std::vector<std::string>{
+                   "vblank", "prepare_mode_entry", "toggle_variant", "field_exit",
+                   "initialize_world_activity", "scene_transition"}) != 0) {
+        return 4;
+    }
+
+    observations.order.clear();
+    state = FieldRuntimeCoordinatorState{};
+    state.field_transition_requested = true;
+    state.mode_transition_gate = 1U;
+    state.mode_event_code = 8U;
+    callbacks.advance_field_mode_transition = [&](auto&) {
+        observations.order.emplace_back("advance_mode_transition_unresolved");
+        return false;
+    };
+    if (expect(advance_field_runtime_frame(state, callbacks) ==
+               FieldRuntimeFrameResult::field_transition_pending) != 0) {
+        return 5;
+    }
+    if (expect(state.field_transition_requested &&
+               observations.order.back() ==
+                   "advance_mode_transition_unresolved" &&
+               std::find(observations.order.begin(), observations.order.end(),
+                         "scene_transition") == observations.order.end()) != 0) {
+        return 6;
+    }
+    callbacks.advance_field_mode_transition = [&](auto&) {
+        observations.order.emplace_back("advance_mode_transition");
+        return true;
+    };
+
+    observations.order.clear();
+    state = FieldRuntimeCoordinatorState{};
+    state.field_transition_requested = true;
+    state.scene_id = 0x37U;
+    if (expect(advance_field_runtime_frame(state, callbacks) ==
+               FieldRuntimeFrameResult::field_transition_dispatched) != 0) {
+        return 7;
     }
     return expect(observations.order == std::vector<std::string>{
                       "vblank", "prepare_mode_entry", "toggle_variant", "field_exit",
@@ -332,8 +377,26 @@ int test_pending_handler_can_return_to_title_or_reenter_field() {
                FieldRuntimeFrameResult::field_scene_reentry_requested) != 0) {
         return 3;
     }
-    return expect(!state.pending_field_scene_handler &&
-                  observations.order.back() == "scene_transition");
+    if (expect(!state.pending_field_scene_handler &&
+               observations.order.back() == "scene_transition") != 0) {
+        return 4;
+    }
+
+    observations.order.clear();
+    state = FieldRuntimeCoordinatorState{};
+    state.pending_field_scene_handler = true;
+    callbacks.run_pending_field_scene_handler = [&] {
+        observations.order.emplace_back("pending_handler");
+        return PendingFieldSceneHandlerResult::unresolved;
+    };
+    if (expect(advance_field_runtime_frame(state, callbacks) ==
+               FieldRuntimeFrameResult::callback_unresolved) != 0) {
+        return 5;
+    }
+    return expect(state.pending_field_scene_handler &&
+                  observations.order.back() == "pending_handler" &&
+                  std::find(observations.order.begin(), observations.order.end(),
+                            "scene_transition") == observations.order.end());
 }
 
 } // namespace

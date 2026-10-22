@@ -129,19 +129,22 @@ FieldRuntimeFrameResult dispatch_field_transition_request(
 
     // 0x09FA..0x0A0E is the one scene/submode combination that skips both
     // mode transition and world-activity initialization.
-    if (state.scene_id == 4U && state.field_mode == 6U) {
+    if (state.scene_id == 4U && state.mode_event_code == 6U) {
         return complete_field_scene_reentry(state, callbacks);
     }
 
     // 0x0A12..0x0A2E selects the mode-transition table only when FFFC0E is
-    // set and the field mode is at least 8; otherwise it initializes the
+    // set and the mode event code is at least 8; otherwise it initializes the
     // world-activity mode.
-    if (state.mode_transition_gate != 0U && state.field_mode >= 8U) {
+    if (state.mode_transition_gate != 0U && state.mode_event_code >= 8U) {
         if (!callbacks.advance_field_mode_transition) {
             state.field_transition_requested = true;
             return FieldRuntimeFrameResult::field_transition_pending;
         }
-        callbacks.advance_field_mode_transition(state);
+        if (!callbacks.advance_field_mode_transition(state)) {
+            state.field_transition_requested = true;
+            return FieldRuntimeFrameResult::field_transition_pending;
+        }
     } else {
         if (!callbacks.initialize_world_activity_mode) {
             state.field_transition_requested = true;
@@ -262,6 +265,11 @@ FieldRuntimeFrameResult advance_field_runtime_frame(
     state.display_service_word = 0xFFFFU;
     state.pending_handler_dispatched = true;
     const auto handler_result = callbacks.run_pending_field_scene_handler();
+    if (handler_result == PendingFieldSceneHandlerResult::unresolved) {
+        // Retain the source-visible pending callback so a missing conversion
+        // cannot masquerade as a successful return to ordinary field play.
+        return FieldRuntimeFrameResult::callback_unresolved;
+    }
     state.pending_field_scene_handler = false;
     if (handler_result == PendingFieldSceneHandlerResult::returned_to_title) {
         return FieldRuntimeFrameResult::returned_to_title;

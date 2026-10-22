@@ -2,6 +2,7 @@
 
 #include "enums.hpp"
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
+#include "shadowrun_ghidra/field/field_mode_conversion.hpp"
 
 #include "shadowrun_ghidra/audio/audio_command_batch_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
@@ -3800,22 +3801,16 @@ void FieldSceneRuntime::initialize_default_field_actors(
         actor.ai_weapon_item_id.reset();
     }
 
-    const auto selected_pending_list =
-        game_scripts_.pending_world_activity_actor_list_for_scene(
-            scene_reference, field_world_effect_active_,
-            field_pending_world_effect_);
-    if (!selected_pending_list.has_value() &&
-        !game_scripts_.failure().empty()) {
-        failure_ = game_scripts_.failure();
-        source_boundary("field.world_activity.pending_list_selection_failed");
-    } else if (selected_pending_list.has_value()) {
-        auto actors = game_scripts_.world_activity_actors_for_source_list(
-            scene_reference, *selected_pending_list);
+    const auto queue_pending_actor_list =
+        [this, scene_reference](
+            std::optional<std::vector<scripting::ScriptWorldActivityActor>>
+                actors,
+            const std::string_view unresolved_boundary) {
         if (!actors.has_value() || actors->empty()) {
             failure_ = game_scripts_.failure().empty()
                 ? "selected pending world-activity list has no extracted actors"
                 : game_scripts_.failure();
-            source_boundary("field.world_activity.pending_list_unresolved");
+            source_boundary(std::string(unresolved_boundary));
         } else if (actors->size() > kFieldWorldActorSlots.size()) {
             failure_ =
                 "selected pending world-activity list exceeds live actor slots";
@@ -3824,6 +3819,35 @@ void FieldSceneRuntime::initialize_default_field_actors(
             pending_world_activity_script_actor_scene_ = scene_reference;
             pending_world_activity_script_actors_ = std::move(*actors);
             source_boundary("field.world_activity.pending_actor_list_queued");
+        }
+    };
+    if (field_pending_mode_transition_actor_list_.has_value()) {
+        const auto list_id = field_mode_pending_actor_list_id(
+            *field_pending_mode_transition_actor_list_);
+        auto actors = list_id.empty()
+            ? std::optional<
+                  std::vector<scripting::ScriptWorldActivityActor>>{}
+            : game_scripts_.world_activity_actors_for_list_id(
+                  scene_reference, list_id);
+        field_pending_mode_transition_actor_list_.reset();
+        queue_pending_actor_list(std::move(actors),
+                                 "field.mode_transition.actor_list_unresolved");
+    } else {
+        const auto selected_pending_list =
+            game_scripts_.pending_world_activity_actor_list_for_scene(
+                scene_reference, field_world_effect_active_,
+                field_pending_world_effect_);
+        if (!selected_pending_list.has_value() &&
+            !game_scripts_.failure().empty()) {
+            failure_ = game_scripts_.failure();
+            source_boundary(
+                "field.world_activity.pending_list_selection_failed");
+        } else if (selected_pending_list.has_value()) {
+            auto actors = game_scripts_.world_activity_actors_for_source_list(
+                scene_reference, *selected_pending_list);
+            queue_pending_actor_list(
+                std::move(actors),
+                "field.world_activity.pending_list_unresolved");
         }
     }
     const auto pending_actor_slot_count =
@@ -7480,6 +7504,70 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                                 : "field.exit.coordinator_continue_activity");
             return anchor_refresh_required;
         };
+    field_runtime_callbacks_.advance_field_mode_transition =
+        [this](integration::FieldRuntimeCoordinatorState& runtime) {
+            const auto plan = advance_field_mode_transition(
+                FieldModeTransitionInput{
+                    runtime.mode_event_code,
+                    runtime.transition_context,
+                    runtime.world_activity_flags},
+                FieldModeTransitionCallbacks{
+                    [this] {
+                        const auto continuation =
+                            MovementModeTransitionContinuation::
+                                mode_table_world_activity;
+                        begin_world_activity(
+                            field_world_activity_state_,
+                            static_cast<std::uint16_t>(continuation));
+                        world_frame_logic_state_.resource_countdown =
+                            field_world_activity_state_.timeout;
+                        field_runtime_state_.world_activity_countdown =
+                            field_world_activity_state_.timeout;
+                        record_field_activity_start(continuation);
+                    },
+                    [this] {
+                        (void)schedule_world_activity_timeout(
+                            field_world_activity_timeout_state_);
+                        world_frame_logic_state_.world_active =
+                            static_cast<std::uint16_t>(
+                                field_world_activity_timeout_state_
+                                    .timeout_marker);
+                        world_frame_logic_state_.cleanup_countdown =
+                            static_cast<std::int16_t>(
+                                field_world_activity_timeout_state_
+                                    .timeout_frames);
+                        source_boundary(
+                            "field.mode_transition.schedule_timeout");
+                    }});
+            if (!plan.resolved || !plan.spawn_position_available ||
+                !field_session_source_assets_ ||
+                plan.scene_id >=
+                    field_session_source_assets_->field_scene_resources.size() ||
+                !field_session_source_assets_
+                     ->field_scene_resources[plan.scene_id]
+                     .has_value()) {
+                source_boundary("field.mode_transition.destination_unresolved");
+                return false;
+            }
+
+            if (plan.start_world_activity &&
+                !plan.pending_actor_list.has_value()) {
+                source_boundary("field.mode_transition.actor_list_missing");
+                return false;
+            }
+            runtime.transition_context = plan.next_mode_index;
+            runtime.scene_id = plan.scene_id;
+            field_movement_transition_state_.field_transition_context =
+                plan.next_mode_index;
+            field_pending_mode_transition_scene_ = plan.scene_id;
+            field_pending_mode_transition_spawn_ =
+                SceneRunnerPosition{plan.override_x, plan.override_y};
+            field_pending_mode_transition_actor_list_ =
+                plan.pending_actor_list;
+            field_world_activity_scene_entry_pending_ = true;
+            source_boundary("field.mode_transition.destination_selected");
+            return true;
+        };
     field_runtime_callbacks_.reset_field_entity_transition_words =
         [this](integration::FieldRuntimeCoordinatorState&) {
             // The source writes its invalid-anchor sentinel to the three
@@ -7512,8 +7600,20 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         };
     field_runtime_callbacks_.run_pending_field_scene_handler = [this] {
         const auto continuation = field_activity_continuation_;
-        field_activity_continuation_ =
-            MovementModeTransitionContinuation::none;
+        if (continuation != MovementModeTransitionContinuation::
+                                mode_table_world_activity) {
+            field_activity_continuation_ =
+                MovementModeTransitionContinuation::none;
+        }
+        if (continuation == MovementModeTransitionContinuation::
+                               mode_table_world_activity) {
+            // ROM 0x2CE0 installs handler 0x53EE2. The actor-list entry is
+            // now selected by its Lua content id, but this handler body is
+            // not yet converted, so keep the remaining continuation visible.
+            source_boundary(
+                "field.activity.mode_table_handler_0x53ee2_unresolved");
+            return integration::PendingFieldSceneHandlerResult::unresolved;
+        }
         if (continuation ==
             MovementModeTransitionContinuation::event_30_world_activity) {
             const auto& event_metadata =
@@ -11498,6 +11598,9 @@ bool FieldSceneRuntime::bootstrap(
     field_map_event_state_flags_ = 0U;
     field_palette_fade_steps_ = 0U;
     field_world_activity_scene_entry_pending_ = false;
+    field_pending_mode_transition_scene_.reset();
+    field_pending_mode_transition_spawn_.reset();
+    field_pending_mode_transition_actor_list_.reset();
     field_world_activity_state_ = WorldActivityState{};
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     world_activity_routine_state_ = WorldActivityRoutineState{};
@@ -12536,7 +12639,9 @@ void FieldSceneRuntime::record_field_activity_start(
         continuation ==
             MovementModeTransitionContinuation::event_25_world_activity ||
         continuation ==
-            MovementModeTransitionContinuation::event_29_world_activity) {
+            MovementModeTransitionContinuation::event_29_world_activity ||
+        continuation == MovementModeTransitionContinuation::
+                           mode_table_world_activity) {
         field_runtime_state_.pending_field_scene_handler = true;
     }
     // ROM 0x1E2E0/0x1E2EC stores the typed continuation in the activity
@@ -14754,10 +14859,18 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
         return false;
     }
 
-    const auto input = integration::make_field_scene_input(
+    auto input = integration::make_field_scene_input(
         *field_session_source_assets_, scene_reference);
     if (!input.has_value()) {
         return false;
+    }
+    const bool apply_mode_transition_spawn =
+        field_pending_mode_transition_scene_ ==
+            std::optional<std::uint16_t>{scene_reference} &&
+        field_pending_mode_transition_spawn_.has_value();
+    if (apply_mode_transition_spawn) {
+        input->pending_position_available = true;
+        input->pending_position = *field_pending_mode_transition_spawn_;
     }
     const auto alias =
         std::string("field.maps.mode.") + std::to_string(scene_reference);
@@ -14825,8 +14938,10 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     field_map_priority_overlay_ =
         std::move(next_field_map_priority_overlay);
     reset_field_map_cell_words();
-    if (!same_scene) {
+    if (!same_scene || field_world_activity_scene_entry_pending_) {
         initialize_default_field_actors(scene_reference);
+    }
+    if (!same_scene) {
         field_weapon_projectiles_.clear();
         field_weapon_slots_occupied_.fill(false);
         // 0x167AE may arm FFDF84/FFDF86 while selecting a new field scene.
@@ -14875,6 +14990,9 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
         // same-scene 0x2BD2 redraw does not restart the song [C]. The song
         // starts on the next field tick (0x2900).
         scene_music_latch_ = true;
+    }
+    if (apply_mode_transition_spawn) {
+        field_pending_mode_transition_spawn_.reset();
     }
     source_boundary("field.world_activity.scene_prepared");
     return true;
@@ -15092,9 +15210,15 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
             callbacks_.field_viewports);
     };
     scene_callbacks.prepare_field_scene_buffers = [this] {
+        const auto destination_scene =
+            field_pending_mode_transition_scene_.value_or(
+                state_.field_scene_buffers.scene_reference);
         if (!prepare_runtime_field_scene(
-                state_.field_scene_buffers.scene_reference)) {
+                destination_scene)) {
             source_boundary("field.scene.transition.scene_prepare_unresolved");
+        } else if (field_pending_mode_transition_scene_ ==
+                   std::optional<std::uint16_t>{destination_scene}) {
+            field_pending_mode_transition_scene_.reset();
         }
     };
     scene_callbacks.apply_scene_profile_selection =
@@ -16767,6 +16891,13 @@ void FieldSceneRuntime::advance_frame() {
         state_.field_scene_buffers.scene_reference;
     field_runtime_state_.field_mode =
         state_.field_scene_buffers.field_resource_mode;
+    field_runtime_state_.mode_event_code =
+        field_movement_transition_state_.mode_event_code;
+    field_runtime_state_.transition_context =
+        field_movement_transition_state_.field_transition_context;
+    field_runtime_state_.world_activity_flags = field_exit_world_flags_;
+    field_runtime_state_.mode_transition_gate =
+        state_.field_scene_buffers.scene_mode;
 
     const auto result = integration::advance_field_runtime_frame(
         field_runtime_state_, field_runtime_callbacks_);

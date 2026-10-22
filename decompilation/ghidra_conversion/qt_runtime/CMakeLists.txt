@@ -465,6 +465,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_world_activity_qa
                  --field-world-activity-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-world-activity-qa")
 
+# Seed the traced 0x2CE0 inputs, then exercise the normal Qt coordinator,
+# Scene-47 preparation, ROM spawn override, and Lua-selected actor list.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_mode_13_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-mode-13-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-mode-13-entry-qa")
+
 # Resolve Scene 2's ROM sum-3 actor sequence through Lua and pass its ordered
 # templates through source edge placement, Lua actor initialization, and the
 # live field renderer. The selector rolls are injected so this QA isolates the

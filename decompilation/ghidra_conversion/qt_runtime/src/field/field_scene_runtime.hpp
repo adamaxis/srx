@@ -10,6 +10,7 @@
 #include "shadowrun_ghidra/entities/collision_probe_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_behavior_frame_service_conversion.hpp"
 #include "shadowrun_ghidra/field/field_camera_conversion.hpp"
+#include "shadowrun_ghidra/field/field_mode_conversion.hpp"
 #include "shadowrun_ghidra/field/field_hud_conversion.hpp"
 #include "shadowrun_ghidra/field/field_viewport_conversion.hpp"
 #include "shadowrun_ghidra/field/field_coordinate_conversion.hpp"
@@ -631,6 +632,19 @@ public:
     // the dump/test surface rather than exposing a second gameplay control.
     void set_field_interaction_mode_for_dump(std::uint16_t mode) noexcept {
         field_movement_transition_state_.world_mode = mode;
+    }
+    // Seed the exact FFFBF9/FFFC10/FFFC1E and FFFC0E inputs for the mode-table
+    // route QA. The following advance_frame uses the normal coordinator and
+    // scene-entry callbacks; this does not create a second transition path.
+    void seed_field_mode_transition_for_dump(
+        std::uint8_t mode_event_code, std::int16_t transition_context,
+        std::uint32_t world_activity_flags) noexcept {
+        field_movement_transition_state_.mode_event_code = mode_event_code;
+        field_movement_transition_state_.field_transition_context =
+            transition_context;
+        field_exit_world_flags_ = world_activity_flags;
+        state_.field_scene_buffers.scene_mode = 1U;
+        field_runtime_state_.field_transition_requested = true;
     }
     std::uint8_t field_activity_selection_for_dump() const noexcept {
         return field_movement_transition_state_.activity_selection;
@@ -2164,6 +2178,10 @@ private:
     bool field_phone_transition_active_ = false;
     std::optional<std::uint16_t> field_phone_pending_destination_;
     std::optional<std::uint16_t> field_mode_entry_destination_scene_;
+    std::optional<std::uint16_t> field_pending_mode_transition_scene_;
+    std::optional<SceneRunnerPosition> field_pending_mode_transition_spawn_;
+    std::optional<FieldModePendingActorList>
+        field_pending_mode_transition_actor_list_;
     std::int8_t field_indexed_title_service_result_ = 0;
     // FFDD64: 0x53A78 stores the index of the trigger service it dispatches.
     // 0x2196C sets that bit of FFFC1E (field_exit_world_flags_). Lua reads

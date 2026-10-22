@@ -20940,6 +20940,90 @@ int run_field_spirit_eyes_physical_entry_qa(
     return 0;
 }
 
+int run_field_mode_13_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Mode-13 entry QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error || field_scene.field_scene_reference_for_dump() != 4U) {
+        std::cerr << "Mode-13 entry QA: Scene-4 checkpoint unavailable\n";
+        return 3;
+    }
+
+    // The upstream path that publishes FFFC10=0x14 is not yet recovered.
+    // Seed its ROM inputs, then let advance_frame run the ordinary coordinator,
+    // mode-table callback, and scene-entry path.
+    field_scene.seed_field_mode_transition_for_dump(8U, 0x14, 0U);
+    field_scene.advance_frame();
+
+    constexpr std::array<SceneRunnerPosition, 5U> kExpectedActors{{
+        {0x5980U, 0x0E80U}, {0x5F00U, 0x1B80U}, {0x6000U, 0x1E80U},
+        {0x4F00U, 0x1200U}, {0x5B00U, 0x0980U}}};
+    bool actors_match =
+        field_scene.world_activity_script_actor_count_for_dump() ==
+        kExpectedActors.size();
+    for (std::uint16_t index = 0U;
+         actors_match && index < kExpectedActors.size(); ++index) {
+        const auto position =
+            field_scene.world_activity_script_actor_position_for_dump(index);
+        const auto profile =
+            field_scene.world_activity_script_actor_profile_for_dump(index);
+        actors_match = position.has_value() &&
+                       position->x == kExpectedActors[index].x &&
+                       position->y == kExpectedActors[index].y &&
+                       profile.has_value() &&
+                       *profile == "eye5r_1_k07_item01";
+    }
+    const auto runner = field_scene.field_entity_world_position();
+    const auto selected = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.mode_transition.destination_selected");
+    const auto queued = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.world_activity.pending_actor_list_queued");
+    const auto image = render_qa_field(field_scene);
+    const auto image_path = output / "actual.bmp";
+    if (field_scene.field_scene_reference_for_dump() != 47U ||
+        field_scene.field_runtime_state_for_dump().transition_context != 0x13 ||
+        !field_scene.field_runtime_state_for_dump()
+             .pending_field_scene_handler ||
+        field_scene.field_runtime_state_for_dump()
+                .world_activity_countdown == 0U ||
+        runner.x != 0x5E80U || runner.y != 0x1300U || !actors_match ||
+        selected == source_boundaries.end() || queued == source_boundaries.end() ||
+        image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !image.save(QString::fromStdWString(image_path.wstring()))) {
+        std::cerr << "Mode-13 entry QA: ROM-selected Scene 47 route failed "
+                     "(scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", context=0x" << std::hex
+                  << field_scene.field_runtime_state_for_dump().transition_context
+                  << ", runner=0x" << runner.x << ",0x" << runner.y
+                  << std::dec << ", actors="
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << ")\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "event_code\tinput_context\tworld_flags\tresult_context\tscene"
+             "\trunner_x\trunner_y\tactor_list\tactor_count\n"
+          << "8\t0x14\t0\t0x13\t47\t0x5E80\t0x1300\t"
+             "mode_13_entry\t5\n";
+    std::cout << "field_mode_13_entry_qa=passed scene=47 context=0x13 "
+                 "runner=0x5E80,0x1300 actors=5 artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 int run_field_owlfeather_physical_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -23354,6 +23438,7 @@ int main(int argc, char** argv) {
             field_medicine_lodge_wise_one_physical_entry_qa_path;
         std::optional<std::filesystem::path>
             field_spirit_eyes_physical_entry_qa_path;
+        std::optional<std::filesystem::path> field_mode_13_entry_qa_path;
         std::optional<std::filesystem::path>
             field_owlfeather_physical_entry_qa_path;
         bool field_owlfeather_return_followup_qa = false;
@@ -24172,6 +24257,12 @@ int main(int argc, char** argv) {
                 field_spirit_eyes_physical_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
+            if (std::string(argv[index]) == "--field-mode-13-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_mode_13_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
             if (std::string(argv[index]) ==
                     "--field-owlfeather-physical-entry-qa" &&
                 index + 1 < argc) {
@@ -24814,7 +24905,8 @@ int main(int argc, char** argv) {
             if (field_hospital_physical_entry_qa_path.has_value() ||
                 field_medicine_lodge_physical_entry_qa_path.has_value() ||
                 field_medicine_lodge_wise_one_physical_entry_qa_path.has_value() ||
-                field_spirit_eyes_physical_entry_qa_path.has_value()) {
+                field_spirit_eyes_physical_entry_qa_path.has_value() ||
+                field_mode_13_entry_qa_path.has_value()) {
                 const auto scene4 = integration::make_field_scene_input(
                     *smoke_state.field_session_source_assets, 4U);
                 if (!scene4.has_value() ||
@@ -24833,10 +24925,12 @@ int main(int argc, char** argv) {
                         .has_value();
                 const bool spirit_eyes_entry =
                     field_spirit_eyes_physical_entry_qa_path.has_value();
-                checkpoint.camera_x = spirit_eyes_entry
+                const bool mode_13_transition =
+                    field_mode_13_entry_qa_path.has_value();
+                checkpoint.camera_x = (spirit_eyes_entry || mode_13_transition)
                     ? 0x6D00U
                     : (medicine_lodge_entry ? 0x5000U : 0x6A00U);
-                checkpoint.camera_y = spirit_eyes_entry
+                checkpoint.camera_y = (spirit_eyes_entry || mode_13_transition)
                     ? 0x0B00U
                     : (medicine_lodge_entry ? 0x0800U : 0x3A00U);
                 for (std::size_t slot = 0U;
@@ -28335,6 +28429,11 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_spirit_eyes_physical_entry_qa_path,
                     field_audio_events, field_source_boundaries);
+            }
+            if (field_mode_13_entry_qa_path.has_value()) {
+                return run_field_mode_13_entry_qa(
+                    field_scene, *field_mode_13_entry_qa_path,
+                    field_source_boundaries);
             }
             if (field_owlfeather_physical_entry_qa_path.has_value()) {
                 return run_field_owlfeather_physical_entry_qa(
