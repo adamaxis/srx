@@ -3,13 +3,12 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <optional>
+#include <string_view>
+
+#include "shadowrun_ghidra/field/field_mode_profile.hpp"
 
 namespace shadowrun::ghidra_conversion {
-
-enum class FieldModeProfile {
-    profile_a,
-    profile_b,
-};
 
 struct FieldModeEntryTransientState {
     // ROM FFE12E: source clears the complete deferred activity handler word.
@@ -92,13 +91,17 @@ constexpr std::array<std::uint16_t, 88> kFieldModeTransitionOverrides{{
     0x5E80U, 0x2300U, 0x0000U, 0x0000U, 0x0000U, 0x0000U, 0x0000U, 0x0000U,
     0x6000U, 0x2580U, 0x0000U, 0x0000U, 0x0000U, 0x0000U, 0x0000U, 0x0000U}};
 
-constexpr std::uint32_t kFieldWorldActivityDescriptor = 0x00053EE2U;
-constexpr std::uint32_t kFieldWorldActivityHandler = 0x0001E552U;
+enum class FieldModePendingActorList {
+    council_island_spirit_eyes,
+};
+
+std::string_view field_mode_pending_actor_list_id(
+    FieldModePendingActorList actor_list) noexcept;
 
 struct FieldModeTransitionInput {
-    std::uint8_t field_mode = 0; // FFFBF9
-    std::int16_t mode_index = 0; // FFFC10
-    std::uint32_t world_activity_lock = 0; // FFFC1E long, BTST #8
+    std::uint8_t event_code = 0; // FFFBF9
+    std::int16_t transition_context = 0; // FFFC10
+    std::uint32_t world_activity_flags = 0; // FFFC1E long, BTST #8
 };
 
 struct FieldModeTransitionPlan {
@@ -106,9 +109,10 @@ struct FieldModeTransitionPlan {
     std::uint16_t scene_id = 0; // FFDDC4
     std::uint16_t override_x = 0; // FFE10A
     std::uint16_t override_y = 0; // FFE10C
+    bool resolved = false;
+    bool spawn_position_available = false;
     bool start_world_activity = false;
-    std::uint32_t world_activity_descriptor = 0;
-    std::uint32_t world_activity_handler = 0;
+    std::optional<FieldModePendingActorList> pending_actor_list;
 };
 
 struct FieldModeTransitionCallbacks {

@@ -116,6 +116,8 @@ local function world_activity_actor_descriptors(scene_id, selector_field,
             and row.script_index == selector
             or selector_field == "list_offset"
                 and row.list_offset == selector
+            or selector_field == "list_id"
+                and row.list_id == selector
         if row.scene == scene_id and selector_matches then
             local id
             if row.script_index >= 0 then
@@ -129,6 +131,7 @@ local function world_activity_actor_descriptors(scene_id, selector_field,
                 id = id,
                 scene = row.scene,
                 script_index = row.script_index,
+                list_id = row.list_id,
                 source_order = row.source_order,
                 list_offset = row.list_offset,
                 source_record_offset = row.source_record_offset,
@@ -236,6 +239,14 @@ function World.world_activity_actors_for_source_list(scene_id, list_offset)
     end
     return world_activity_actor_descriptors(scene_id, "list_offset",
                                              list_offset)
+end
+
+function World.world_activity_actors_for_list_id(scene_id, list_id)
+    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
+       type(list_id) ~= "string" or list_id == "" then
+        return {}
+    end
+    return world_activity_actor_descriptors(scene_id, "list_id", list_id)
 end
 
 -- Resolve coordinator-installed lists through their extracted transient

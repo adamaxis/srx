@@ -4,6 +4,8 @@
 #include <functional>
 #include <optional>
 
+#include "shadowrun_ghidra/field/field_mode_profile.hpp"
+
 namespace shadowrun::ghidra_conversion {
 
 enum class ExitEffectSlotGroup {
@@ -15,11 +17,6 @@ enum class ExitEffectSlotGroup {
 enum class FieldModeExitServicePhase {
     mode_specific_cleanup,
     common_state_refresh,
-};
-
-enum class FieldModeProfile {
-    profile_a,
-    profile_b,
 };
 
 struct FieldModeExitTransitionState {

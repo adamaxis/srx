@@ -5704,6 +5704,18 @@ GameScriptRuntime::world_activity_actors_for_source_list(
         "world_activity_actors_for_source_list");
 }
 
+std::optional<std::vector<ScriptWorldActivityActor>>
+GameScriptRuntime::world_activity_actors_for_list_id(
+    const std::uint16_t scene_id, const std::string_view list_id) {
+    if (list_id.empty() || list_id.size() > 128U) {
+        impl_->failure = "world-activity actor-list id is empty or too long";
+        return std::nullopt;
+    }
+    return world_activity_actors_for_selector(
+        scene_id, "list_id", 0U, 0U,
+        "world_activity_actors_for_list_id", list_id);
+}
+
 std::optional<std::uint32_t>
 GameScriptRuntime::pending_world_activity_actor_list_for_scene(
     const std::uint16_t scene_id, const bool world_effect_active,
@@ -5760,10 +5772,13 @@ GameScriptRuntime::world_activity_actors_for_selector(
     const std::uint16_t scene_id, const std::string_view selector_field,
     const std::uint32_t selector_value,
     const std::uint32_t selector_maximum,
-    const std::string_view lua_function) {
+    const std::string_view lua_function,
+    const std::string_view selector_text) {
     auto* state = impl_->state;
     if (state == nullptr || scene_id > 55U ||
-        selector_value > selector_maximum) {
+        (selector_field == "list_id"
+             ? selector_text.empty()
+             : selector_value > selector_maximum)) {
         impl_->failure = "world-activity actor lookup is outside source bounds";
         return std::nullopt;
     }
@@ -5785,7 +5800,11 @@ GameScriptRuntime::world_activity_actors_for_selector(
     }
     lua_remove(state, -2);
     lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
-    lua_pushinteger(state, static_cast<lua_Integer>(selector_value));
+    if (selector_field == "list_id") {
+        lua_pushlstring(state, selector_text.data(), selector_text.size());
+    } else {
+        lua_pushinteger(state, static_cast<lua_Integer>(selector_value));
+    }
     ScopedInstructionBudget instruction_budget(state);
     if (lua_pcall(state, 2, 1, 0) != LUA_OK) {
         return fail("world_content." + function_name + ": " +
@@ -5834,6 +5853,7 @@ GameScriptRuntime::world_activity_actors_for_selector(
         std::uint32_t row_scene = 0U;
         int row_script_index = 0;
         std::string action_kind;
+        std::string row_list_id;
         const bool valid =
             read_field_integer(state, row_index, "scene", 55U,
                                row_scene) &&
@@ -5850,6 +5870,9 @@ GameScriptRuntime::world_activity_actors_for_selector(
                                list_offset) &&
             (selector_field != "list_offset" ||
              list_offset == selector_value) &&
+            (selector_field != "list_id" ||
+             (read_field_string(state, row_index, "list_id", row_list_id) &&
+              row_list_id == selector_text)) &&
             read_field_integer(state, row_index, "source_record_offset",
                                0x1FFFFFU, source_record_offset) &&
             read_field_integer(state, row_index, "tagged_template",

@@ -591,10 +591,31 @@ int main() {
         scripts.world_activity_actors_for_script(13U, 2U);
     const auto ilene_pending_list =
         scripts.world_activity_actors_for_source_list(20U, 0xA8CCU);
+    const auto spirit_eyes_entry_list =
+        scripts.world_activity_actors_for_list_id(47U, "mode_13_entry");
+    const auto spirit_eyes_entry_failure = scripts.failure();
     const auto ilene_selected_pending_list =
         scripts.pending_world_activity_actor_list_for_scene(20U, false, true);
     const auto ilene_blocked_pending_list =
         scripts.pending_world_activity_actor_list_for_scene(20U, true, true);
+    if (!expect(
+            spirit_eyes_entry_list.has_value() &&
+                spirit_eyes_entry_list->size() == 5U &&
+                spirit_eyes_entry_list->front().scene_id == 47U &&
+                spirit_eyes_entry_list->front().list_offset == 0x1E552U &&
+                spirit_eyes_entry_list->front().source_order == 0U &&
+                spirit_eyes_entry_list->front().world_x == 0x5980U &&
+                spirit_eyes_entry_list->front().world_y == 0x0E80U,
+            "semantic mode-13 actor list did not resolve its five ROM records")) {
+        std::cerr << "mode-13 actor list failure: "
+                  << spirit_eyes_entry_failure
+                  << " present=" << spirit_eyes_entry_list.has_value();
+        if (spirit_eyes_entry_list.has_value()) {
+            std::cerr << " count=" << spirit_eyes_entry_list->size();
+        }
+        std::cerr << '\n';
+        return 1;
+    }
     if (!expect(
             ilene_gate_actors.has_value() &&
                 ilene_gate_actors->size() == 1U &&

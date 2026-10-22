@@ -1443,6 +1443,9 @@ public:
     std::optional<std::vector<ScriptWorldActivityActor>>
     world_activity_actors_for_source_list(std::uint16_t scene_id,
                                           std::uint32_t list_offset);
+    std::optional<std::vector<ScriptWorldActivityActor>>
+    world_activity_actors_for_list_id(std::uint16_t scene_id,
+                                     std::string_view list_id);
     std::optional<std::uint32_t>
     pending_world_activity_actor_list_for_scene(
         std::uint16_t scene_id, bool world_effect_active,
@@ -1529,7 +1532,8 @@ private:
                                        std::string_view selector_field,
                                        std::uint32_t selector_value,
                                        std::uint32_t selector_maximum,
-                                       std::string_view lua_function);
+                                       std::string_view lua_function,
+                                       std::string_view selector_text = {});
     std::optional<ScriptFieldEncounterOutcome>
     resolve_field_encounter_impl(std::uint16_t scene_id,
                                  std::uint8_t first_roll,
