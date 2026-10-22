@@ -11716,6 +11716,18 @@ bool FieldSceneRuntime::bootstrap(
             if (name == "vid_phone_contacts_resolved") {
                 return notebook_contacts_flags_.has_value();
             }
+            if (name == "vid_phone_affiliation_mafia" ||
+                name == "vid_phone_affiliation_yakuza") {
+                if (!field_runner_feature_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                // ROM 0x22CC8/0x22D18 write FF018F bits 2/1 when the
+                // corresponding Vid-Phone pledge is accepted.
+                const auto bit = name == "vid_phone_affiliation_mafia"
+                                     ? 2U
+                                     : 1U;
+                return (*field_runner_feature_flags_ & (1U << bit)) != 0U;
+            }
             constexpr std::string_view kRunnerFeatureBitPrefix =
                 "runner_feature_flag_bit_";
             if (name.size() > kRunnerFeatureBitPrefix.size() &&
@@ -11916,6 +11928,23 @@ bool FieldSceneRuntime::bootstrap(
                 *notebook_contacts_flags_ = value
                     ? *notebook_contacts_flags_ | mask
                     : *notebook_contacts_flags_ & ~mask;
+                return true;
+            }
+            if (name == "vid_phone_affiliation_mafia" ||
+                name == "vid_phone_affiliation_yakuza") {
+                if (!field_runner_feature_flags_.has_value()) {
+                    return false;
+                }
+                const auto bit = name == "vid_phone_affiliation_mafia"
+                                     ? 2U
+                                     : 1U;
+                const auto mask = static_cast<std::uint8_t>(1U << bit);
+                *field_runner_feature_flags_ = value
+                    ? static_cast<std::uint8_t>(
+                          *field_runner_feature_flags_ | mask)
+                    : static_cast<std::uint8_t>(
+                          *field_runner_feature_flags_ &
+                          static_cast<std::uint8_t>(~mask));
                 return true;
             }
             constexpr std::string_view kRunnerFeatureBitPrefix =

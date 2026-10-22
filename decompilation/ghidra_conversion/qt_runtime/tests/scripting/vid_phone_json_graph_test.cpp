@@ -2,11 +2,13 @@
 
 #include <charconv>
 #include <cstdint>
+#include <array>
 #include <filesystem>
 #include <iostream>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace {
 
@@ -233,6 +235,129 @@ bool test_professor_graph(GameScriptRuntime& scripts,
                   "Professor student result did not return to the phonebook");
 }
 
+ScriptTaskStep complete_page(GameScriptRuntime& scripts,
+                             const ScriptTaskStep& page,
+                             const std::string_view event_id,
+                             const std::string_view speaker_id) {
+    if (!expect(is_say(page, event_id, speaker_id),
+                "Vid-Phone affiliation graph yielded an unexpected page")) {
+        return page;
+    }
+    return scripts.complete_native_operation(true);
+}
+
+bool test_affiliation_graph(GameScriptRuntime& scripts,
+                            std::uint32_t& contact_flags,
+                            std::uint8_t& runner_flags,
+                            std::array<ScriptMenuPartyMember, 3>& party,
+                            const int& active_slot,
+                            const unsigned contact_index,
+                            const std::string_view speaker_id,
+                            const std::string_view offer_menu,
+                            const std::string_view rival_event,
+                            const unsigned rival_affiliation_bit,
+                            const unsigned own_affiliation_bit) {
+    const auto availability = static_cast<std::uint32_t>(1U << contact_index);
+    const auto history = static_cast<std::uint32_t>(
+        1U << (contact_index + 13U));
+
+    const auto begin = [&]() {
+        return begin_only_contact(scripts);
+    };
+    const auto finish_after_first_page = [&](const std::string_view event) {
+        auto task = begin();
+        if (!expect(is_say(task, "first_call", speaker_id),
+                    "Affiliation first call did not show its ROM opening")) {
+            return false;
+        }
+        task = complete_page(scripts, task, "first_call", speaker_id);
+        if (!expect(is_say(task, event, speaker_id),
+                    "Affiliation first-call branch did not match its ROM result")) {
+            return false;
+        }
+        task = scripts.complete_native_operation(true);
+        return expect(task.status == ScriptTaskStep::Status::completed,
+                      "Affiliation rejection did not return to the phonebook") &&
+               (contact_flags & history) == 0U;
+    };
+
+    party[static_cast<std::size_t>(active_slot)].skills[10] = 4U;
+    runner_flags = 0U;
+    contact_flags = availability;
+    if (!finish_after_first_page("low_reputation")) return false;
+
+    party[static_cast<std::size_t>(active_slot)].skills[10] = 5U;
+    runner_flags = static_cast<std::uint8_t>(
+        1U << rival_affiliation_bit);
+    contact_flags = availability;
+    if (!finish_after_first_page(rival_event)) return false;
+
+    runner_flags = 0U;
+    contact_flags = availability;
+    auto task = begin();
+    if (!expect(is_say(task, "first_call", speaker_id),
+                "Eligible contact did not show its ROM opening")) {
+        return false;
+    }
+    task = complete_page(scripts, task, "first_call", speaker_id);
+    if (!menu_resolves(scripts, task, offer_menu, 2U)) return false;
+    task = scripts.complete_native_menu_choice("no");
+    if (!expect(task.status == ScriptTaskStep::Status::completed &&
+                    (contact_flags & history) == 0U && runner_flags == 0U,
+                "Declining an affiliation wrote source flags")) {
+        return false;
+    }
+
+    task = begin();
+    if (!expect(is_say(task, "first_call", speaker_id),
+                "Declined contact did not retain its first-call route")) {
+        return false;
+    }
+    task = complete_page(scripts, task, "first_call", speaker_id);
+    if (!menu_resolves(scripts, task, offer_menu, 2U)) return false;
+    task = scripts.complete_native_menu_choice("yes");
+    const auto accepted_event = "pledge_accepted";
+    if (!expect(is_say(task, accepted_event, speaker_id) &&
+                    (contact_flags & history) != 0U &&
+                    (runner_flags & (1U << own_affiliation_bit)) != 0U,
+                "Accepting affiliation did not write the call and faction bits")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed,
+                "Affiliation acknowledgement did not return to the phonebook")) {
+        return false;
+    }
+
+    task = begin();
+    if (!expect(is_say(task, "repeat_call", speaker_id),
+                "Accepted contact did not switch to its ROM repeat stream")) {
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    return expect(task.status == ScriptTaskStep::Status::completed,
+                  "Affiliation repeat stream did not return to the phonebook");
+}
+
+bool test_affiliation_graphs(GameScriptRuntime& scripts,
+                             std::uint32_t& contact_flags,
+                             std::uint8_t& runner_flags,
+                             std::array<ScriptMenuPartyMember, 3>& party,
+                             const int& active_slot) {
+    // 1 = Yakuza, 2 = Mafia in ROM FF018F.
+    if (!test_affiliation_graph(
+            scripts, contact_flags, runner_flags, party, active_slot, 7U,
+            "vid_phone_mr_faradouchi",
+            "call_mr_faradouchi_mafia_pledge", "yakuza_rejection", 1U,
+            2U)) {
+        return false;
+    }
+    return test_affiliation_graph(
+        scripts, contact_flags, runner_flags, party, active_slot, 8U,
+        "vid_phone_agira_tetsumi", "call_agira_tetsumi_yakuza_pledge",
+        "mafia_rejection", 2U, 1U);
+}
+
 } // namespace
 
 int main() {
@@ -247,9 +372,22 @@ int main() {
     }
 
     std::uint32_t contact_flags = 0U;
+    std::uint8_t runner_flags = 0U;
+    std::array<ScriptMenuPartyMember, 3> party{};
+    // Use a nonzero slot so the graph test catches implementations that read
+    // the first roster member instead of the active runner record.
+    int active_slot = 2;
+    party[0].skills[10] = 0U;
     scripts.set_story_fact_accessors(
-        [&contact_flags](const std::string_view name) -> std::optional<bool> {
+        [&contact_flags, &runner_flags](const std::string_view name)
+            -> std::optional<bool> {
             if (name == "vid_phone_contacts_resolved") return true;
+            if (name == "vid_phone_affiliation_mafia") {
+                return (runner_flags & (1U << 2U)) != 0U;
+            }
+            if (name == "vid_phone_affiliation_yakuza") {
+                return (runner_flags & (1U << 1U)) != 0U;
+            }
             if (const auto index = parse_index(name, "vid_phone_contact_")) {
                 return (contact_flags & (1U << *index)) != 0U;
             }
@@ -258,15 +396,34 @@ int main() {
             }
             return std::nullopt;
         },
-        [&contact_flags](const std::string_view name, const bool value) {
+        [&contact_flags, &runner_flags](const std::string_view name,
+                                        const bool value) {
             const auto index = parse_index(name, "vid_phone_called_");
-            if (!index.has_value()) return false;
-            const auto mask = static_cast<std::uint32_t>(
-                1U << (*index + 13U));
-            contact_flags = value ? contact_flags | mask
-                                  : contact_flags & ~mask;
-            return true;
+            if (index.has_value()) {
+                const auto mask = static_cast<std::uint32_t>(
+                    1U << (*index + 13U));
+                contact_flags = value ? contact_flags | mask
+                                      : contact_flags & ~mask;
+                return true;
+            }
+            if (name == "vid_phone_affiliation_mafia" ||
+                name == "vid_phone_affiliation_yakuza") {
+                const auto bit = name == "vid_phone_affiliation_mafia"
+                                     ? 2U
+                                     : 1U;
+                const auto mask = static_cast<std::uint8_t>(1U << bit);
+                runner_flags = value
+                    ? static_cast<std::uint8_t>(runner_flags | mask)
+                    : static_cast<std::uint8_t>(runner_flags &
+                                                static_cast<std::uint8_t>(~mask));
+                return true;
+            }
+            return false;
         });
+    ScriptMenuRouteBindings route_bindings{};
+    route_bindings.game.party = [&party] { return party; };
+    route_bindings.game.active_slot = [&active_slot] { return active_slot; };
+    scripts.set_menu_route_bindings(std::move(route_bindings));
     scripts.set_location_context(
         "field_map", "scene_0", "field.main_menu", "");
 
@@ -278,6 +435,11 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 3;
     }
-    std::cout << "Max and Professor Jefferson JSON graph host integration passed\n";
+    if (!test_affiliation_graphs(
+            scripts, contact_flags, runner_flags, party, active_slot)) {
+        std::cerr << scripts.failure() << '\n';
+        return 4;
+    }
+    std::cout << "Max, Professor Jefferson, Faradouchi, and Agira JSON graph host integration passed\n";
     return 0;
 }
