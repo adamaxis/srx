@@ -115,6 +115,7 @@ local function normalize_entity_interaction(entity, interaction)
         source_table_destination = route.sourceTableDestination,
         destination_scene = route.destinationScene,
         destination_mode = route.destinationMode,
+        field_service_id = route.fieldServiceId,
         return_anchor = route.returnAnchor or "",
         return_facing = route.returnFacing or "",
     }

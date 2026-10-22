@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "entityId": "salish_red_buffalo_lodge",
+  "interactions": [
+    {
+      "id": "red_buffalo_title_service",
+      "source": {
+        "sceneId": 6,
+        "eventCode": "event_1"
+      },
+      "route": {
+        "kind": "field_service",
+        "script": "lua_field_service",
+        "priority": 10
+      },
+      "tasks": {
+        "indexedTitleService": {
+          "module": "salish_red_buffalo",
+          "function": "present_indexed_title_service"
+        }
+      },
+      "locationContext": {
+        "type": "building",
+        "id": "salish_red_buffalo_lodge",
+        "textProfile": "salish.red_buffalo",
+        "speakerId": "red_buffalo_woman"
+      },
+      "provenance": {
+        "evidence": "ROM service 18 at 0x54322 always matches scene 6/event 1 and sets D6=-1. Bit 17 set with bit 18 clear selects F4DB8; other states select F4DCC. The gift path marks trigger 18 and updates FFFC22 bits 5/6 plus FFFC30 bits 29/30."
+      }
+    }
+  ]
+}

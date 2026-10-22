@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "entityId": "puyallup_site_03_tarislar_city_inn",
+  "interactions": [
+    {
+      "id": "rom_event_01_paid_stay_and_shale_service",
+      "source": {
+        "sceneId": 1,
+        "eventCode": "event_1"
+      },
+      "route": {
+        "kind": "field_service",
+        "script": "lua_field_service",
+        "conditionId": "puyallup_site_03_tarislar_city_inn.rom_event_01_paid_stay_and_shale_service.route",
+        "priority": 10
+      },
+      "tasks": {
+        "indexedTitleService": {
+          "module": "tarislar_city_inn",
+          "function": "present_indexed_title_service"
+        }
+      },
+      "locationContext": {
+        "type": "building",
+        "id": "puyallup_site_03_tarislar_city_inn",
+        "textProfile": "tarislar.city_inn",
+        "speakerId": "tarislar_city_inn_narrator"
+      },
+      "provenance": {
+        "evidence": "ROM indexed title service 1 at 0x53B16 requires FFFC1E bit 0 set, bit 1 clear, scene/event 1/1, and FFF0D5 equal to zero. It opens 0xF49E8, whose room offer charges the FFF10D value 30 through command 0x06; command 0x16 marks FFFC1E bit 1 before the Tabatha Shale conversation. Successful payment enters 0xCF38 Hotel Options and remains outside."
+      }
+    }
+  ]
+}

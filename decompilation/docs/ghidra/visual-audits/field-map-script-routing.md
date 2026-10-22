@@ -125,7 +125,8 @@ dialogue event code, service route, or normal area-event continuation. It does
 not interpret ROM addresses at runtime.
 
 Unconverted location-to-route bindings remain beside reusable map entities in
-`links.tsv`. Migrated scripted interactions use
+`links.tsv`. The eight Ares, Boris, Gates Undersound, Tarislar City Inn,
+Owlfeather, and Red Buffalo field-service routes use
 `gameplay/world/entities/<entity>/interactions.json`; the package loader puts
 them in Lua's versioned content registry, and `world_content.lua` joins both
 forms to the entity instance in the current scene. `building.lua` owns route

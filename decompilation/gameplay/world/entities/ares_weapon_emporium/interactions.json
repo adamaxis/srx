@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "entityId": "ares_weapon_emporium",
+  "interactions": [
+    {
+      "id": "rom_event_11",
+      "source": {
+        "sceneId": 2,
+        "eventCode": "event_11"
+      },
+      "route": {
+        "kind": "field_service",
+        "script": "host_field_service",
+        "fieldServiceId": "ares_weapon_emporium",
+        "conditionId": "ares_weapon_emporium.rom_event_11.route",
+        "priority": 0
+      },
+      "provenance": {
+        "evidence": "ROM scene 2 collision record 92 at 0x173142, raw 0x00CB; 0x1FA78 selects the Ares service prompt and A opens the shop on scene 2."
+      }
+    }
+  ]
+}
