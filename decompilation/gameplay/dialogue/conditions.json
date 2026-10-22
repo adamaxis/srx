@@ -237,6 +237,60 @@
         "scope": "repeat_information_requires_unshown_map_item"
       }
     },
+    "tarislar_garden_apartments.signed_alternate_result_available": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "building" },
+          { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
+          { "fact": "field.mode", "op": "eq", "value": 1 },
+          { "fact": "field.event_code", "op": "eq", "value": 7 },
+          { "fact": "field.alternate_result", "op": "ne", "value": 0 }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x5447E", "0x15FF28", "0x15FF20"],
+        "scope": "signed_nonzero_package_result_before_story_gates"
+      }
+    },
+    "tarislar_garden_apartments.alternate_result_positive": {
+      "expression": {
+        "fact": "field.alternate_result", "op": "gt", "value": 0
+      },
+      "provenance": {
+        "romAddresses": ["0x5447E", "0x15FF28", "0x15FE5D"],
+        "scope": "positive_package_delivery_branch"
+      }
+    },
+    "tarislar_garden_apartments.alternate_result_negative": {
+      "expression": {
+        "fact": "field.alternate_result", "op": "lt", "value": 0
+      },
+      "provenance": {
+        "romAddresses": ["0x5447E", "0x15FF20", "0x15FDB8"],
+        "scope": "negative_package_pickup_branch"
+      }
+    },
+    "tarislar_garden_apartments.tomb_departure_available": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "building" },
+          { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
+          { "fact": "field.mode", "op": "eq", "value": 1 },
+          { "fact": "field.event_code", "op": "eq", "value": 7 },
+          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "story.story_flag_bit_30", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_21", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_16", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_28", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_26", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_27", "op": "eq", "value": true }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x5447E", "0xF4E08", "0x24954", "0xF5A5C"],
+        "scope": "repeat_tomb_prompt_story_map_and_field_context_gate"
+      }
+    },
     "harlequin.main_conversation_ito_fight_won": {
       "expression": {
         "fact": "story.story_flag_bit_16", "op": "eq", "value": true

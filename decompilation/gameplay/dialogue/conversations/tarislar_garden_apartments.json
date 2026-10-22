@@ -196,6 +196,123 @@
           "outcome": { "type": "continue_in_place" }
         }
       }
+    },
+    "tarislar_garden_apartments.signed_alternate_result": {
+      "entryNode": "signed_result",
+      "precondition": "tarislar_garden_apartments.signed_alternate_result_available",
+      "speakerId": "tarislar_apartments_narrator",
+      "textProfile": "tarislar.garden.apartments.entry",
+      "provenance": {
+        "romAddresses": ["0x5447E", "0x15FF28", "0x15FE5D", "0x15FF20", "0x15FDB8"],
+        "scope": "scene_1_event_7_signed_alternate_package_result"
+      },
+      "nodes": {
+        "signed_result": {
+          "type": "branch",
+          "cases": [
+            { "when": "tarislar_garden_apartments.alternate_result_positive", "next": "package_delivery" },
+            { "when": "tarislar_garden_apartments.alternate_result_negative", "next": "package_pickup" }
+          ],
+          "fallback": "signed_result_boundary",
+          "evidence": "ROM service 21 tests signed FFF0D5 first; each nonzero sign selects its own single-page prompt group and leaves D6 at -1."
+        },
+        "package_pickup": {
+          "type": "page",
+          "eventId": "signed_package_pickup",
+          "next": "continue_in_place"
+        },
+        "package_delivery": {
+          "type": "page",
+          "eventId": "signed_package_delivery",
+          "next": "continue_in_place"
+        },
+        "continue_in_place": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        },
+        "signed_result_boundary": {
+          "type": "source_boundary",
+          "reason": "ROM service 21 signed FFF0D5 did not match its positive or negative source branch."
+        }
+      }
+    },
+    "tarislar_garden_apartments.tomb_departure": {
+      "entryNode": "tomb_offer",
+      "precondition": "tarislar_garden_apartments.tomb_departure_available",
+      "speakerId": "tarislar_apartments_narrator",
+      "textProfile": "tarislar.garden.apartments.entry",
+      "provenance": {
+        "romAddresses": ["0x5447E", "0xF4E08", "0xFD03D", "0x103A0E", "0x103A13", "0x24954", "0xF5A5C", "0xF5A70", "0xF5A78", "0xF5A8C", "0xF5AA0", "0x21E98"],
+        "scope": "scene_1_event_7_gated_tomb_departure"
+      },
+      "nodes": {
+        "tomb_offer": {
+          "type": "choice",
+          "menuId": "tomb_offer",
+          "promptTextKey": "tarislar.garden.apartments.page.tomb_offer",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "yes", "next": "tomb_flight" },
+            { "id": "no", "next": "tomb_declined" }
+          ],
+          "noSelectionNext": "continue_in_place",
+          "evidence": "ROM option labels at 0x103A0E/0x103A13 branch from root 0xF4E08; a missing button selection returns to scene 1."
+        },
+        "tomb_declined": {
+          "type": "choice",
+          "menuId": "tomb_declined",
+          "promptTextKey": "salish.red_buffalo.page.branch_11",
+          "inputContract": "buttons_abc",
+          "choices": [{ "id": "more", "next": "tomb_declined_response" }],
+          "noSelectionNext": "continue_in_place",
+          "evidence": "ROM node 0xF5A5C displays the preparation page and leaves the route on scene 1."
+        },
+        "tomb_declined_response": {
+          "type": "page",
+          "eventId": "tomb_departure_response",
+          "next": "continue_in_place",
+          "evidence": "ROM node 0xF5A70 selects the final preparation response without a More continuation."
+        },
+        "tomb_flight": {
+          "type": "choice",
+          "menuId": "tomb_flight",
+          "promptTextKey": "salish.red_buffalo.page.branch_13",
+          "inputContract": "buttons_abc",
+          "choices": [{ "id": "more", "next": "tomb_walkie" }],
+          "noSelectionNext": "continue_in_place",
+          "evidence": "Yes command 0xE4 enters 0x24954, sets FFF0CC, and returns the first travel page at 0xF5A78."
+        },
+        "tomb_walkie": {
+          "type": "choice",
+          "menuId": "tomb_walkie",
+          "promptTextKey": "salish.red_buffalo.page.branch_14",
+          "inputContract": "buttons_abc",
+          "choices": [{ "id": "more", "next": "tomb_good_luck" }],
+          "noSelectionNext": "continue_in_place",
+          "evidence": "The second travel page is selected by 0xF5A8C."
+        },
+        "tomb_good_luck": {
+          "type": "choice",
+          "menuId": "tomb_good_luck",
+          "promptTextKey": "salish.red_buffalo.page.branch_15",
+          "inputContract": "buttons_abc",
+          "choices": [{ "id": "more", "next": "enter_scene_54" }],
+          "noSelectionNext": "continue_in_place",
+          "evidence": "The final travel page is selected by 0xF5AA0; only completing it reaches selector marker 1."
+        },
+        "enter_scene_54": {
+          "type": "terminal",
+          "outcome": {
+            "type": "enter_field_scene",
+            "sceneId": 54,
+            "arrivalId": "rom_default"
+          }
+        },
+        "continue_in_place": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
     }
   }
 }

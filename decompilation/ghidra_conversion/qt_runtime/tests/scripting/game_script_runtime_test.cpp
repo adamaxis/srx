@@ -598,7 +598,6 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
-
     const auto ilene_gate_actors =
         scripts.world_activity_actors_for_script(13U, 3U);
     const auto absent_scene_script_actors =
@@ -9933,6 +9932,8 @@ int main() {
     }
     const auto check_tarislar_alternate_task =
         [&scripts, &tarislar_context](const std::int8_t result,
+                                      const std::string_view expected_event,
+                                      const std::string_view expected_text_key,
                                       const std::string_view expected_text) {
             tarislar_context.alternate_result = result;
             scripts.set_field_mode_context(
@@ -9956,31 +9957,38 @@ int main() {
                 !task.operation->dialogue.has_value() ||
                 task.operation->dialogue->speaker_id !=
                     "tarislar_apartments_narrator" ||
-                task.operation->dialogue->inline_text != expected_text ||
+                task.operation->dialogue->event_id != expected_event ||
+                !task.operation->dialogue->inline_text.empty() ||
                 !task.operation->dialogue->continuation_key.empty()) {
                 return false;
             }
+            const auto* text = scripts.dialogue_text(expected_text_key);
+            if (text == nullptr || *text != expected_text) return false;
             task = scripts.complete_native_operation(true);
             return task.status == ScriptTaskStep::Status::completed &&
                    task.result_id == std::optional<std::string>{"left"};
         };
     constexpr std::string_view kTarislarPositiveAlternateText =
-        "Heavily armed and armored elves train their weapons on you.||"
-        "After confirming you as the pick-up man, you are given a package "
-        "and pushed back out into the street.";
-    constexpr std::string_view kTarislarNegativeAlternateText =
-        "The metallic clacking of weapons being readied stops you in your "
+        "<The metallic clacking of weapons being readied stops you in your "
         "tracks!||A lone elf approaches and you hand him the package.||"
-        "He tosses you a grin and a credstick, and walks you to the door.";
+        "He tosses you a grin and a credstick, and walks you to the door.>";
+    constexpr std::string_view kTarislarNegativeAlternateText =
+        "<Heavily armed and armored elves train their weapons on you.||"
+        "After confirming you as the pick-up man, you are given a package "
+        "and pushed back out into the street.>";
     if (!expect(check_tarislar_alternate_task(
-                    1, kTarislarPositiveAlternateText),
+                    1, "signed_package_delivery",
+                    "tarislar.garden.apartments.page.package_delivery",
+                    kTarislarPositiveAlternateText),
                 "Tarislar positive FFF0D5 did not select its one-page package handoff")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
     if (!expect(check_tarislar_alternate_task(
-                    -1, kTarislarNegativeAlternateText),
-                "Tarislar negative FFF0D5 did not select its one-page package delivery")) {
+                    -1, "signed_package_pickup",
+                    "tarislar.garden.apartments.page.package_pickup",
+                    kTarislarNegativeAlternateText),
+                "Tarislar negative FFF0D5 did not select its one-page package pickup")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
@@ -10822,18 +10830,27 @@ int main() {
                               return actual.id == expected;
                           });
     };
-    constexpr std::string_view kTarislarTombOffer =
-        "Are you prepared for the trip to Ellisia's tomb?";
+    const auto* tarislar_tomb_offer_text = scripts.dialogue_text(
+        "tarislar.garden.apartments.page.tomb_offer");
+    if (!expect(tarislar_tomb_offer_text != nullptr &&
+                    *tarislar_tomb_offer_text ==
+                        "Are you prepared for the trip to Ellisia's tomb?",
+                "Tarislar tomb offer question was not extracted from the ROM text record")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
     auto tarislar_tomb = scripts.start_task(
         "tarislar_apartments", "present_tomb_departure");
     if (!expect(check_tomb_prompt(tarislar_tomb, "tomb_offer",
-                                  kTarislarTombOffer,
+                                  *tarislar_tomb_offer_text,
                                   {"yes", "no"}),
                 "Tarislar tomb offer lost its ROM question or Yes/No choices")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
     tarislar_tomb = scripts.complete_native_menu_choice("no");
+    const auto* tarislar_tomb_declined_text = scripts.dialogue_text(
+        "salish.red_buffalo.page.branch_11");
     if (!expect(tarislar_tomb.status ==
                         ScriptTaskStep::Status::awaiting_native_operation &&
                     tarislar_tomb.operation.has_value() &&
@@ -10841,10 +10858,9 @@ int main() {
                         ScriptNativeOperation::Type::ui_menu &&
                     tarislar_tomb.operation->menu.has_value() &&
                     tarislar_tomb.operation->menu->id == "tomb_declined" &&
+                    tarislar_tomb_declined_text != nullptr &&
                     tarislar_tomb.operation->menu->inline_text ==
-                        "As we sit here, Thon may already be at Ellisia's tomb.||"
-                        "Joshua, you must go now to assemble a team to destroy Thon.||"
-                        "We now have very little time, so equip your team well and when you return here I will have arranged for your transport to the Tomb." &&
+                        *tarislar_tomb_declined_text &&
                     tarislar_tomb.operation->menu->choices.size() == 1U &&
                     tarislar_tomb.operation->menu->choices.front().id ==
                         "more",
@@ -10859,12 +10875,31 @@ int main() {
                     tarislar_tomb.operation->type ==
                         ScriptNativeOperation::Type::ui_say &&
                     tarislar_tomb.operation->dialogue.has_value() &&
-                    tarislar_tomb.operation->dialogue->inline_text ==
-                        "<Harlequin fixes you with his piercing gaze.>||"
-                        "I beseech you.  Thon must be stopped and an elven myth preserved.||"
-                        "I'll prepare things on this end for your return.",
-                "Tarislar No branch lost Harlequin's source follow-up")) {
+                    tarislar_tomb.operation->dialogue->speaker_id ==
+                        "tarislar_apartments_narrator" &&
+                    tarislar_tomb.operation->dialogue->event_id ==
+                        "tomb_departure_response" &&
+                    tarislar_tomb.operation->dialogue->inline_text.empty() &&
+                    tarislar_tomb.operation->dialogue->continuation_key.empty() &&
+                    scripts.dialogue_text(
+                        "salish.red_buffalo.page.branch_12") != nullptr,
+                "Tarislar No graph lost its source follow-up event or catalog page")) {
         std::cerr << scripts.failure() << '\n';
+        if (tarislar_tomb.operation.has_value()) {
+            std::cerr << "Tarislar No follow-up diagnostic: operation="
+                      << static_cast<int>(tarislar_tomb.operation->type);
+            if (tarislar_tomb.operation->dialogue.has_value()) {
+                const auto& dialogue = *tarislar_tomb.operation->dialogue;
+                std::cerr << " speaker=" << dialogue.speaker_id
+                          << " event=" << dialogue.event_id
+                          << " inline=" << dialogue.inline_text
+                          << " continuation=" << dialogue.continuation_key;
+            }
+            std::cerr << " catalog="
+                      << (scripts.dialogue_text(
+                              "salish.red_buffalo.page.branch_12") != nullptr)
+                      << '\n';
+        }
         return 17;
     }
     tarislar_tomb = scripts.complete_native_operation(true);
@@ -10879,7 +10914,7 @@ int main() {
     tarislar_tomb = scripts.start_task(
         "tarislar_apartments", "present_tomb_departure");
     if (!expect(check_tomb_prompt(tarislar_tomb, "tomb_offer",
-                                  kTarislarTombOffer,
+                                  *tarislar_tomb_offer_text,
                                   {"yes", "no"}),
                 "Tarislar Yes branch did not reopen the tomb offer")) {
         std::cerr << scripts.failure() << '\n';

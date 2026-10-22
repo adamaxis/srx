@@ -16,10 +16,6 @@ local function at_apartments()
            game.location.id == LOCATION_ID
 end
 
-local function more(prompt_id, text)
-    return game.ui.prompt_text(prompt_id, text, { "more" }) == "more"
-end
-
 function TarislarApartments.present_first_entry()
     if not at_apartments() or
        StoryFlags.is_set(E.StoryFlag.FROSTY_MET) ~= true or
@@ -101,81 +97,33 @@ function TarislarApartments.present_alternate_result()
     end
 
     -- ROM 0x5447E tests signed FFF0D5 before the Frosty and visit flags.
-    -- Positive selects group 0x15FF28 / text 0x15FE5D; negative selects
-    -- group 0x15FF20 / text 0x15FDB8. Both prompt chains are one page and
-    -- leave D6 at -1, so the scene-1 event-table destination is suppressed.
-    if game.field.alternate_result > 0 then
-        game.ui.say_text(table.concat({
-            "Heavily armed and armored elves train their weapons on you.",
-            "After confirming you as the pick-up man, you are given a package and pushed back out into the street.",
-        }, "||"), false)
-    else
-        game.ui.say_text(table.concat({
-            "The metallic clacking of weapons being readied stops you in your tracks!",
-            "A lone elf approaches and you hand him the package.",
-            "He tosses you a grin and a credstick, and walks you to the door.",
-        }, "||"), false)
+    -- The JSON graph branches to text groups 0x15FF28 / 0x15FE5D and
+    -- 0x15FF20 / 0x15FDB8. Both one-page routes suppress scene 13.
+    local outcome = DialogueGraph.run(
+        "tarislar_garden_apartments.signed_alternate_result")
+    if type(outcome) == "table" and
+       outcome.type == "continue_in_place" then
+        return "left"
     end
-    return "left"
+    return outcome
 end
 
 function TarislarApartments.present_tomb_departure()
-    if not at_apartments() or
-       StoryFlags.is_set(E.StoryFlag.FROSTY_MET) ~= true or
-       StoryFlags.is_set(E.StoryFlag.GARDEN_APTS_ENTERED) ~= true or
-       StoryFlags.is_set(E.StoryFlag.ITO_FIGHT_WON) ~= true or
-       StoryFlags.is_set(E.StoryFlag.POST_ITO_BRIEFED) ~= true or
-       StoryFlags.is_set(E.StoryFlag.RENRAKU_MAP_SHOWN) ~= true or
-       StoryFlags.is_set(E.StoryFlag.BOTH_MAPS_SHOWN) ~= true then
-        return "denied"
-    end
-
-    -- ROM root 0xF4E08 is reached only after the Harlequin, Ito, and map
-    -- progress gates. Command 0xE4 enters 0x24954, which sets FFF0CC before
-    -- returning to the trip sequence. The matching Lua task result lets the
-    -- entity-owned link resume scene 54 through the ordinary route service.
-    local choice = game.ui.prompt_text(
-        "tomb_offer",
-        "Are you prepared for the trip to Ellisia's tomb?",
-        { "yes", "no" })
-    if choice == "no" then
-        if not more("tomb_declined", table.concat({
-            "As we sit here, Thon may already be at Ellisia's tomb.",
-            "Joshua, you must go now to assemble a team to destroy Thon.",
-            "We now have very little time, so equip your team well and when you return here I will have arranged for your transport to the Tomb.",
-        }, "||")) then
-            return "left"
-        end
-        game.ui.say_text(table.concat({
-            "<Harlequin fixes you with his piercing gaze.>",
-            "I beseech you.  Thon must be stopped and an elven myth preserved.",
-            "I'll prepare things on this end for your return.",
-        }, "||"), false)
+    -- The graph owns the story gate and prompt/page sequence. Its typed
+    -- enter_field_scene outcome is translated to the entity task's stable
+    -- continuation result so the ordinary area-event route service performs
+    -- the actual scene handoff after the last page.
+    local outcome = DialogueGraph.run(
+        "tarislar_garden_apartments.tomb_departure")
+    if type(outcome) == "table" and
+       outcome.type == "continue_in_place" then
         return "left"
+    elseif type(outcome) == "table" and
+           outcome.type == "enter_field_scene" and
+           outcome.sceneId == 54 and outcome.arrivalId == "rom_default" then
+        return "enter_scene_54"
     end
-    if choice ~= "yes" then return "left" end
-
-    if not more("tomb_flight", table.concat({
-        "<Harlequin takes you to a sleek VTOL craft whose body bristles with communications and jamming devices.",
-        "A harried ride with Harlequin at the stick takes you to the entrance of Ellisia's tomb.>",
-    }, "||")) then
-        return "left"
-    end
-    if not more("tomb_walkie", table.concat({
-        "<Harlequin gives you a hands-free walkie-talkie.>",
-        "What happens in the tomb is up to you.  I'll take care of things out here.",
-        "<Harlequin holds up a hand to stifle your questions and ushers you to the tomb.>",
-    }, "||")) then
-        return "left"
-    end
-    if not more("tomb_good_luck", table.concat({
-        "Good luck, my friend.  May we meet again.",
-        "<You take a deep breath of fresh air and a last look at the forest.",
-        "Nodding to Harlequin, you turn and walk into the tomb's antechamber, noticing that the stone doors were literally ripped from the entrance...",
-    }, "||")) then
-        return "left"
-    end
-    return "enter_scene_54"
+    return outcome
 end
 
 return TarislarApartments

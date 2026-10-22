@@ -35,7 +35,7 @@
         "continueResultId": "enter_scene_13"
       },
       "provenance": {
-        "evidence": "ROM indexed title service 21 at 0x5447E tests signed FFF0D5 before story flags. Positive selects text group 0x15FF28 / page 0x15FE5D; its one-page prompt returns D6=-1 and remains on scene 1. Scene-1 record 67/event 7 has ordinary event-table destination scene 13, retained as the suppressed result. The entity route binds this branch to Lua and records the source destination."
+        "evidence": "ROM indexed title service 21 at 0x5447E tests signed FFF0D5 before story flags. Positive selects group 0x15FF28/page 0x15FE5D, the package-delivery page; its prompt returns D6=-1 and remains on scene 1. Scene-1 record 67/event 7 has ordinary event-table destination scene 13, retained as the suppressed result. The entity route binds this branch to the JSON graph."
       }
     },
     {
@@ -71,7 +71,7 @@
         "continueResultId": "enter_scene_13"
       },
       "provenance": {
-        "evidence": "ROM indexed title service 21 at 0x5447E tests signed FFF0D5 before story flags. Negative selects text group 0x15FF20 / page 0x15FDB8; its one-page prompt returns D6=-1 and remains on scene 1. Scene-1 record 67/event 7 has ordinary event-table destination scene 13, retained as the suppressed result. The entity route binds this branch to Lua and records the source destination."
+        "evidence": "ROM indexed title service 21 at 0x5447E tests signed FFF0D5 before story flags. Negative selects group 0x15FF20/page 0x15FDB8, the package-pickup page; its prompt returns D6=-1 and remains on scene 1. Scene-1 record 67/event 7 has ordinary event-table destination scene 13, retained as the suppressed result. The entity route binds this branch to the JSON graph."
       }
     },
     {

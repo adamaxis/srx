@@ -57,8 +57,11 @@ catalog's source policy explicitly authorizes a correction.
   and page `0x15FE5D`; negative selects the same profile, group `0x15FF20`,
   and page `0x15FDB8`. Both are one-page prompts. The completion path leaves
   `FFF0CC` clear, sets `D6=-1`, and suppresses event-table row 7's scene-13
-  transition. The Lua entity links now select the signed branch by result sign
-  and retain the numeric scene-13 destination as its suppressed route.
+  transition. The Lua entity links select the signed route; its JSON graph
+  branches by result sign and renders both ROM-imported pages from the text
+  catalog. ROM's positive result selects the delivery page at `0x15FE5D`;
+  negative selects the pickup page at `0x15FDB8`. The entity retains numeric
+  scene 13 as its suppressed route.
 - State-selected story dialogue: command `0x34` at table `0x12CCB4` points to
   handler `0x21CE4`; its selection block begins at `0x21D00`. With story bits
   13, 17, 18, 19, and 20 set, Group Item bit 5 clear, and story bit 30 clear,
@@ -136,13 +139,15 @@ catalog's source policy explicitly authorizes a correction.
   extracted from `0x1047D4`, `0x104494`, and `0x104473`.
 - Tomb departure: when the story/map gates are complete, root `0xF4E08` asks
   whether Joshua is prepared for the
-  trip. Its prompt labels are `0x103A0E` (Yes) and `0x103A13` (No). The Yes
+  trip. The question is the ROM text record at `0xFD03D`; its prompt labels are
+  `0x103A0E` (Yes) and `0x103A13` (No). The Yes
   command `0xE4` calls `0x24954`, which returns prompt `0xF5A78` and writes
   `FFF0CC=1`; the sequence continues through `0xF5A8C` and `0xF5AA0`, then
   selector marker 1 loads scene 54. No follows `0xF5A5C` and `0xF5A70`, asks
-  Joshua to assemble a team, and leaves him on scene 1. The Lua link expresses
-  the story gates (bits 30, 21, 16, 28, 26, 27) and alternate-result-zero
-  condition; a matching task result resumes scene 54 only after the Yes pages.
+  Joshua to assemble a team, and leaves him on scene 1. The JSON graph
+  declares the story, map, and field-context gate and represents both
+  branches with typed outcomes; the Lua entity adapter resumes scene 54 only
+  after the Yes pages reach `enter_field_scene`.
 - Command `0x48` at `0x220CC` chooses between the Renraku-only and paired-map
   responses using FFFC22 bit 7. Debug/Release script-runtime QA traverses all
   three graph branches and checks story/effect flags and the continuation on

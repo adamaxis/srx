@@ -423,15 +423,16 @@ Debug/Release script QA checks the no-map, Renraku-only, and paired-map paths,
 including both tomb-departure pages. Physical-input QA captures the Tarislar
 Renraku path and clean scene-1 `actual.bmp` return. Independent Genesis page
 captures remain open. The separate
-tomb-offer override requires bits 30, 21, 16, 28, 26, and 27, plus alternate
-result 0; its Yes branch presents the three ROM
-travel pages and enters scene 54, while No returns to scene 1. Debug/Release
+tomb-offer graph requires bits 30, 21, 16, 28, 26, and 27, plus alternate
+result 0; its question is imported from ROM text at `0xFD03D`. The typed
+`enter_field_scene` terminal maps to the entity task's stable scene-54 result
+after Yes completes all three ROM travel pages; No returns to scene 1. Debug/Release
 physical-input QA captures both outcomes and the full-screen scene-1/scene-54
 `actual.bmp` files. Signed nonzero FFF0D5 results now have higher-priority Lua
-entity routes: positive selects the ROM package-pickup page and negative the
-package-delivery page. Debug/Release CTests reach event 7 with ordinary Up
-input, verify each one-page dialog, suppress scene 13, and capture the clean
-scene-1 return as `actual.bmp`. The upstream Frosty conversation,
+entity routes whose JSON graph maps positive FFF0D5 to ROM-imported package-
+delivery text and negative FFF0D5 to package-pickup text. Debug/Release CTests
+reach event 7 with ordinary Up input, verify both pages, suppress scene 13,
+and capture the clean scene-1 return as `actual.bmp`. The upstream Frosty conversation,
 pending-descriptor override, and scene-54 completion/return remain open.
 Scene 54's extracted map is a tall 320x1344 layout, and its profile has no
 event table or elevator group. Its event-31 handler returns without a route in

@@ -217,7 +217,9 @@ The source path is:
    handler `0x53F50` sets story bit 8 and Group Item bit 2 after the
    Licourtrix conversation; Lua now models both ends of that item handoff.
 4. `FFF0D5` is not a gate: when nonzero the service chooses a separate text
-   path at `0x15FF20` or `0x15FF28` based on its sign. When it is zero and bit
+   path at `0x15FF20` or `0x15FF28` based on its sign. Positive selects
+   `0x15FF28` -> `0x15FE5D` (package delivery); negative selects `0x15FF20`
+   -> `0x15FDB8` (package pickup). When it is zero and bit
    30 is clear, service 21 selects the armed-guard copy beginning at
    `0xFBCC7`, followed by the challenge at `0xFBD5A` and leave narration at
    `0xFBD94`. With bit 30 set and bit 21 clear, it sets bit 21 through

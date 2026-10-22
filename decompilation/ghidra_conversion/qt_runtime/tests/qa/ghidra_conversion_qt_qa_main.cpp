@@ -23985,7 +23985,21 @@ int run_field_tarislar_tomb_departure_qa(
             prompt.options[0U].source_label.find("MORE") ==
                 std::string_view::npos || !capture(page_names[page])) {
             std::cerr << "Tarislar tomb QA: source travel page " << page
-                      << " is missing its body or MORE choice\n";
+                      << " is missing its body or MORE choice (open="
+                      << field_scene.dialogue_open() << " complete="
+                      << prompt.source_complete << " options="
+                      << static_cast<unsigned>(prompt.option_count)
+                      << " text=" << contains_text << " label="
+                      << (prompt.option_count > 0U
+                              ? prompt.options[0U].source_label
+                              : std::string_view{})
+                      << " boundary=" << prompt.source_boundary_reason
+                      << " segments=";
+            for (std::size_t segment = 0U;
+                 segment < prompt.text_segment_count; ++segment) {
+                std::cerr << '[' << prompt.text_segments[segment] << ']';
+            }
+            std::cerr << ")\n";
             return 3;
         }
     }
@@ -29558,14 +29572,14 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_tarislar_positive_alternate_qa_path,
                     field_audio_events, field_source_boundaries, 1,
-                    "Heavily armed and armored elves train their weapons on you.");
+                    "The metallic clacking of weapons being readied stops you in your tracks!");
             }
             if (field_tarislar_negative_alternate_qa_path.has_value()) {
                 return run_field_tarislar_alternate_result_qa(
                     field_scene, asset_root,
                     *field_tarislar_negative_alternate_qa_path,
                     field_audio_events, field_source_boundaries, -1,
-                    "The metallic clacking of weapons being readied stops you in your tracks!");
+                    "Heavily armed and armored elves train their weapons on you.");
             }
             if (field_tarislar_tomb_departure_qa_path.has_value()) {
                 return run_field_tarislar_tomb_departure_qa(

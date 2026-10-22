@@ -571,6 +571,14 @@
           "continuation_key": "",
           "title_key": "salish.red_buffalo.page.branch_12"
         },
+        "signed_package_pickup": {
+          "continuation_key": "",
+          "title_key": "tarislar.garden.apartments.page.package_pickup"
+        },
+        "signed_package_delivery": {
+          "continuation_key": "",
+          "title_key": "tarislar.garden.apartments.page.package_delivery"
+        },
         "repeat_questions": {
           "continuation_key": "",
           "title_key": "salish.red_buffalo.page.branch_9"
