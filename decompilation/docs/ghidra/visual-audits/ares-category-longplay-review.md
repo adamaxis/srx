@@ -49,8 +49,9 @@ addresses is only a cross-check.
 - At `0x56DC4`, action cursor 0 selects the mode-1 table at `0x1AAC86`, cursor
   1 selects `0x1AADBF`, and cursor 2 selects `0x1AAD77`. The heading rows at
   `0x1AA8AF + cursor * 0x2A` label them Weapons, Armor, and Equipment.
-- For mode 1, cursor 1's table contains offer types `0x2D`, `0x2F`, and
-  `0x30`; cursor 2's table contains `0x45/0x19`, `0x0F/0x06`,
+- For Ares mode 1, cursor 1 reads `0x1AADBF + 0x18` and contains offers
+  `0x2E/0x00/0x00` and `0x2D/0x00/0x0C`; cursor 2 reads
+  `0x1AAD77 + 0x18` and contains `0x45/0x19`, `0x0F/0x06`,
   `0x10/0x04/0x07`, and `0x11/0x04/0x07`. The host retains the existing
   `other_items` identifier for the source's Equipment records.
 - `0x56AC0` gives the category cursor and offers-panel cursor separate input

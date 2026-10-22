@@ -50,8 +50,8 @@ int main() {
                           {0x06U, 0x00U, 0x0FU}, {0x04U, 0x00U, 0x00U},
                           {0x05U, 0x00U, 0x0DU}, {0x0DU, 0x06U, 0x14U},
                           {0x0EU, 0x06U, 0x00U}}},
-        {"armor", {}, {{0x2DU, 0x00U, 0x00U}, {0x2FU, 0x00U, 0x00U},
-                        {0x30U, 0x00U, 0x00U}}},
+        {"armor", {}, {{0x2EU, 0x00U, 0x00U},
+                        {0x2DU, 0x00U, 0x0CU}}},
         {"other_items", {}, {{0x45U, 0x00U, 0x19U},
                              {0x0FU, 0x06U, 0x00U},
                              {0x10U, 0x04U, 0x07U},
@@ -61,7 +61,7 @@ int main() {
     ShopMenuController menu;
     if (!expect(menu.open(ares, ares_definition, confirmation_choice_ids)) ||
         !expect(menu.offer_count(ShopActionGroup::weapons) == 7U) ||
-        !expect(menu.offer_count(ShopActionGroup::armor) == 3U) ||
+        !expect(menu.offer_count(ShopActionGroup::armor) == 2U) ||
         !expect(menu.offer_count(ShopActionGroup::other_items) == 4U) ||
         !expect(!menu.offer(ShopActionGroup::weapons, 7U).has_value())) {
         return 1;
@@ -135,16 +135,17 @@ int main() {
         !expect(reordered_menu.displayed_offer_group() ==
                 ShopActionGroup::armor) ||
         !expect(reordered_menu.offer_count(
-                    ShopActionGroup::armor) == 3U)) {
+                    ShopActionGroup::armor) == 2U)) {
         return 17;
     }
 
     const auto weapon_offer = menu.offer(ShopActionGroup::weapons, 2U);
     const auto other_offer = menu.offer(ShopActionGroup::other_items, 0U);
-    const auto armor_offer = menu.offer(ShopActionGroup::armor, 0U);
+    const auto armor_offer = menu.offer(ShopActionGroup::armor, 1U);
     if (!expect(weapon_offer.has_value() && weapon_offer->type == 6U &&
                 weapon_offer->quantity == 15U) ||
-        !expect(armor_offer.has_value() && armor_offer->type == 0x2DU) ||
+        !expect(armor_offer.has_value() && armor_offer->type == 0x2DU &&
+                armor_offer->quantity == 12U) ||
         !expect(other_offer.has_value() && other_offer->type == 0x45U &&
                 other_offer->quantity == 25U)) {
         return 2;
@@ -167,7 +168,7 @@ int main() {
                     "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
                     "purchase_selected")) == ShopMenuEvent::purchase_selected) ||
         !expect(menu.pending_action().has_value()) ||
-        !expect(menu.pending_action()->offer->type == 0x2DU)) {
+        !expect(menu.pending_action()->offer->type == 0x2EU)) {
         return 3;
     }
     menu.finish_action();

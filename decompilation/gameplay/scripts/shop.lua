@@ -262,9 +262,8 @@ Shop.catalog = {
             }),
             group("armor", action_heading("ares_armor_display"),
                   action_heading("ares_armor_available"), {
-                offer(0x2D),
-                offer(0x2F),
-                offer(0x30),
+                offer(0x2E),
+                offer(0x2D, 0x00, 0x0C),
             }),
             group(
                 "other_items", action_heading("ares_other_items_display"),
