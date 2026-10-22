@@ -1158,6 +1158,24 @@ void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
         {"salish.spirit_eyes.page.post_ritual_name", 0x0F798DU},
         {"salish.spirit_eyes.page.post_ritual_brother", 0x0F79F0U},
         {"salish.spirit_eyes.page.post_ritual_lust", 0x0F7A8BU},
+        // Scene-47/event-25 Licourtrix dialogue records at 0xF4C44,
+        // including both story-gated repeat pages and the A/B answer labels.
+        {"salish.licourtrix.page.serpent_flight", 0x0F7DBFU},
+        {"salish.licourtrix.page.empty_lair", 0x0F7E72U},
+        {"salish.licourtrix.page.entering_antechamber", 0x0F7EF5U},
+        {"salish.licourtrix.page.face_to_face", 0x0F7FC4U},
+        {"salish.licourtrix.page.appreciation", 0x0F8087U},
+        {"salish.licourtrix.page.intentions_prompt", 0x0F8115U},
+        {"salish.licourtrix.page.lie_prompt", 0x0F8179U},
+        {"salish.licourtrix.page.honesty_prompt", 0x0F81F7U},
+        {"salish.licourtrix.page.task_prompt", 0x0F828FU},
+        {"salish.licourtrix.page.life_debt", 0x0F82E8U},
+        {"salish.licourtrix.page.protective_bond", 0x0F835CU},
+        {"salish.licourtrix.page.farewell", 0x0F8410U},
+        {"salish.licourtrix.option.neighborhood", 0x103F9FU},
+        {"salish.licourtrix.option.scale", 0x103FC5U},
+        {"salish.licourtrix.option.thanks", 0x104003U},
+        {"salish.licourtrix.option.what", 0x104012U},
         {"salish.red_buffalo.page.branch_21", 0x0F8AB9U},
         {"salish.red_buffalo.page.branch_22", 0x0F8A88U},
         {"salish.red_buffalo.option.no_business", 0x0FBD5AU},
@@ -2140,15 +2158,23 @@ void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
     // catalog. New ROM-derived values replace old values by stable key while
     // keys owned by another importer remain available for the next pass.
     auto merged_texts = read_dialogue_text_json(path);
-    // These two pointers were previously given non-semantic Red Buffalo
-    // branch names even though they are Owlfeather's source farewell pages.
+    // These pointers were previously given non-semantic or incorrect route
+    // names. Keep only their source-derived dialogue owners in the catalog.
     merged_texts.erase(
         std::remove_if(merged_texts.begin(), merged_texts.end(),
                        [](const auto& entry) {
                            return entry.first ==
                                       "salish.red_buffalo.page.branch_19" ||
                                   entry.first ==
-                                      "salish.red_buffalo.page.branch_20";
+                                      "salish.red_buffalo.page.branch_20" ||
+                                  entry.first ==
+                                      "salish.spirit_eyes.option.neighborhood" ||
+                                  entry.first ==
+                                      "salish.spirit_eyes.option.scale" ||
+                                  entry.first ==
+                                      "salish.spirit_eyes.option.thanks" ||
+                                  entry.first ==
+                                      "salish.spirit_eyes.option.what";
                        }),
         merged_texts.end());
     for (const auto& [key, value] : generated_texts) {

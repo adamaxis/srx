@@ -784,12 +784,13 @@ Debug/Release script-runtime QA covers the graph branches and typed cinematic
 result/catalog binding. Debug/Release physical-input QA reaches record 96 with ordinary Up,
 walks the complete first-contact prompt chain, and saves full 320x224 frames
 for every prompt and the clean Scene-4 return. C++ persists the FFFC40 ritual
-markers as typed field state. Scene-47 record 62 still routes context `0x13`
-to the separate procedural Licourtrix task; ROM `0x53F50` grants story bit 8
-and Group Item bit 2, then the Spirit Eyes scale branch consumes it and writes
-bit 9. Keep this hill partial: the Licourtrix text graph and contextual
-physical route are unresolved, the ritual cinematic is not presented by the
-host, and no independent Genesis conversation frame was identified. See
+markers as typed field state. Scene-47 record 62 has a JSON-backed Licourtrix
+graph covering the pelt-first and scale-second repeat pages, the profile/mode
+gate, both answers and the repeated-lie loop, and the post-dialogue story/item
+grant. Debug/Release runtime tests cover each branch and the page order. The
+active Qt field still does not exercise the source FFFC10=`0x13` contextual
+route. The host also does not present the ritual cinematic, and no independent
+Genesis Licourtrix dialogue frame was identified. Keep this hill partial. See
 [the Spirit Eyes audit](visual-audits/council-spirit-eyes.md).
 
 ## Boris Greenhouse Scene-2/event-6 indexed service (partial, 2026-10-21)

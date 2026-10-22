@@ -682,6 +682,10 @@ struct ScriptFieldModeContext {
     std::uint8_t mode = 0;
     std::uint8_t event_code = 0;
     std::int8_t alternate_result = 0;
+    // Source transition facts exposed only when the field host knows them.
+    // Scene mode is FFFC0E; transition context is FFFC10.
+    std::optional<std::uint16_t> alternate_profile;
+    std::optional<std::uint16_t> transition_context;
 };
 
 enum class ScriptRunFieldEventAction : std::uint8_t {

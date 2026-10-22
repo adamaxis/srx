@@ -3193,6 +3193,20 @@ struct GameScriptRuntime::Impl {
         } else if (field == "alternate_result") {
             lua_pushinteger(lua,
                             self->field_mode_context.alternate_result);
+        } else if (field == "alternate_profile") {
+            if (self->field_mode_context.alternate_profile.has_value()) {
+                lua_pushinteger(
+                    lua, *self->field_mode_context.alternate_profile);
+            } else {
+                lua_pushnil(lua);
+            }
+        } else if (field == "transition_context") {
+            if (self->field_mode_context.transition_context.has_value()) {
+                lua_pushinteger(
+                    lua, *self->field_mode_context.transition_context);
+            } else {
+                lua_pushnil(lua);
+            }
         } else {
             lua_pushnil(lua);
         }

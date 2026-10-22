@@ -180,10 +180,35 @@ selects `0xF4C18`. The shared `0x1F246`/`0x1F3C4` runner sees its negative
 first-option sentinel, shows only the `0xF7C79` text, and returns. The four
 adjacent pointers belong to the separate `0x5D1F6` sequence.
 
-The Scene-47 Licourtrix graph remains procedural and the context-`0x13` route
-still needs a complete ROM trace. Reviewed longplay sections contain no
-matching Spirit Eyes encounter, so the full-frame runtime captures are not an
-independent Genesis visual comparison.
+The Scene-47 Licourtrix encounter now uses the same JSON graph, named text
+keys, speaker/menu catalog, and condition evaluator as the other converted
+dialogue. ROM order is explicit: trigger 8 is selected first; clear story bit 7
+shows the flight page; otherwise set bit 8 shows the empty lair; otherwise the
+main graph requires FFFC0E nonzero, FFFC10=`0x13`, and FFFBF9=8. The lie answer
+loops on one warning-and-choice node, and the scale reward is written only
+after the final page closes. Debug/Release tests cover these permutations. The
+active Qt field route still lacks physical context-`0x13` exercise. Reviewed
+longplay sections contain no matching Licourtrix encounter, so the runtime
+captures remain internal evidence rather than an independent Genesis visual
+comparison.
+
+The source-derived permutation table for this graph is:
+
+| Gate/input | ROM result | Graph result |
+| --- | --- | --- |
+| FFFC10 is not `0x13` | Event 25 is rewritten to event 8 before `0x53EFA`. | The graph is not entered; a direct invocation reports a source boundary. |
+| Context `0x13`, any story state | Select story trigger 8 first. | Begin the ordered story checks. |
+| Story bit 7 clear, either value of bit 8 | Select the flight-notice record. | Show `serpent_flight`; return in place without writing the scale. |
+| Bit 7 set, bit 8 set | Select the empty-lair record. | Show `empty_lair`; return in place without changing the item. |
+| Bits 7/8 are set/clear; FFFBF9 is not 8 | The profile mode check fails. | Return in place without opening the conversation or granting the scale. |
+| Bits 7/8 are set/clear; FFFBF9 is 8; FFFC0E is zero | The alternate-profile check fails. | Return in place without opening the conversation or granting the scale. |
+| Bits 7/8 are set/clear; FFFBF9 is 8; FFFC0E is nonzero | Open the `0xF4C44` graph. | Show three pages, then ask neighborhood/scale. Neighborhood loops on the combined warning-and-choice record; scale advances through the two one-button answers and three closing pages. After the farewell closes, set story bit 8 and Group Item bit 2, then return in place. |
+
+Debug/Release runtime cases cover each distinct gate outcome, the overlapping
+bit-7/bit-8 case, the repeated lie loop, the scale answer, every page edge,
+the ROM choice labels, and the delayed reward writes. The input contract has no
+additional source-defined cancel branch; unresolved host input remains a
+boundary instead of inventing one.
 
 ### Longplay evidence
 
@@ -420,9 +445,10 @@ for the 80..99 effect callback, saved-game fact restoration, and independent
 visual checks. Quinton's call graph and the six converted contact service
 graphs now cover all seven source-derived service trees. The Spirit Eyes
 ritual route is JSON-backed through its source-traced Scene-4 prompt chain and
-staged item gates. Licourtrix's Scene-47 graph, the ritual activity host,
-upstream quest producers, incomplete encounter commands, and unverified visual
-branches remain explicit work, not filled-in defaults.
+staged item gates. Licourtrix's Scene-47 graph is JSON-backed and tested, while
+the physical context route, ritual activity host, upstream quest producers,
+incomplete encounter commands, and unverified visual branches remain explicit
+work, not filled-in defaults.
 
 ## Implemented condition slice
 

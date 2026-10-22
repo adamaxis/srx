@@ -1286,29 +1286,24 @@
       },
       "serpent_intentions": {
         "choice_label_keys": {
-          "neighborhood": "salish.spirit_eyes.option.neighborhood",
-          "scale": "salish.spirit_eyes.option.scale"
+          "neighborhood": "salish.licourtrix.option.neighborhood",
+          "scale": "salish.licourtrix.option.scale"
         }
       },
       "serpent_lie": {
         "choice_label_keys": {
-          "neighborhood": "salish.spirit_eyes.option.neighborhood",
-          "scale": "salish.spirit_eyes.option.scale"
-        }
-      },
-      "serpent_more": {
-        "choice_label_keys": {
-          "more": "shared.more"
+          "neighborhood": "salish.licourtrix.option.neighborhood",
+          "scale": "salish.licourtrix.option.scale"
         }
       },
       "serpent_task": {
         "choice_label_keys": {
-          "what": "salish.spirit_eyes.option.what"
+          "what": "salish.licourtrix.option.what"
         }
       },
       "serpent_thanks": {
         "choice_label_keys": {
-          "thanks": "salish.spirit_eyes.option.thanks"
+          "thanks": "salish.licourtrix.option.thanks"
         }
       }
     },

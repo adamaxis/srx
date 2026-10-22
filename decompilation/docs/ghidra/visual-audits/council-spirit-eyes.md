@@ -6,9 +6,10 @@ first-contact prompt chain and saves full 320x224 images. The staged horn,
 pelt, and scale gates are covered by Debug/Release script-runtime tests. The
 completion path returns a typed cinematic request and `cinematics.json`
 records its four ROM pages, but the field host does not yet present the
-sequence. The Scene-47 conversation remains
-procedural, its contextual physical route and full text graph are not
-defended, and the reviewed longplay sections contain no matching independent
+sequence. The Scene-47 Licourtrix text and branch graph now live in the JSON
+conversation and condition catalogs, with Debug/Release runtime coverage for
+the story and profile permutations. Its contextual physical route is not
+exercised, and the reviewed longplay sections contain no matching independent
 Genesis dialogue frame.
 
 ## ROM trace
@@ -53,11 +54,16 @@ Genesis dialogue frame.
 - The independent Scene-47 record 62 (`0x1D54B0`) is raw event 25. Its direct
   continuation `0x53EFA` is selected only for transition context `0x13`; the
   other route rewrites the event to 8. `0x53F00` selects story index 8 and
-  opens Licourtrix's `0xF4C44` text profile. After the conversation,
-  `0x53F50` calls `0x2196C` to set story bit 8, then sets FFFC22 bit 2 with
-  `BSET #2,D0`. This is the Feathered Scale consumed by the Spirit Eyes event
-  at `0x53E98` when Joshua returns. Lua now carries the item from Licourtrix
-  into the bit-9 completion branch and consumes it there.
+  opens Licourtrix's profile before checking the story gates. If story bit 7
+  is clear, it shows the flying-serpent text at `0xF7DBF` and returns. Only
+  after bit 7 is set does it check bit 8; a set bit shows the empty-lair text
+  at `0xF7E72`. With bit 7 set and bit 8 clear, the full conversation opens
+  only when FFFC0E is nonzero, FFFC10 is `0x13`, and FFFBF9 is 8. The ordered
+  prompt records begin at `0xF4C44` and link through `0xF51BC`, `0xF51D0`,
+  and the A/B response loops at `0xF51E4`/`0xF51FC`. After the final prompt
+  closes, `0x53F50` calls `0x2196C` to set story bit 8, then sets FFFC22 bit 2
+  with `BSET #2,D0`. This is the Feathered Scale consumed by the Spirit Eyes
+  event at `0x53E98` when Joshua returns.
 
 ## Native and Lua implementation
 
@@ -66,8 +72,9 @@ Genesis dialogue frame.
   traced prompt chain, staged conditions, pages, and typed cinematic result.
   `dialogue/cinematics.json` owns the sequence's ordered page references and
   controller-event contract.
-  `salish_spirit_eyes.lua` delegates the ritual to that graph and retains the
-  still-unmapped Licourtrix route.
+  `salish_spirit_eyes.lua` delegates both the ritual and Licourtrix encounter
+  to their JSON graphs. `conditions.json` keeps the pelt-first/scale-second
+  priority and the source profile/context gates as named, reusable facts.
 - The Scene-47 entity has a separate event-25 link. The host only reaches it
   when the ROM-derived context selects the direct continuation; ordinary
   event-25 rewrite behavior stays in the field-event policy.
@@ -81,8 +88,10 @@ Genesis dialogue frame.
 - Debug/Release script-runtime tests cover the first-contact prompt states,
   command `0x15` timing, both one-choice inputs, missing and present
   horn/pelt/scale branches, item consumption, direct bit-9 completion,
-  command `0x1A`, and the typed cinematic outcome. Completed-task repeat shows
-  the one known text-only page.
+  command `0x1A`, and the typed cinematic outcome. They also cover Licourtrix's
+  ordered bit-7/bit-8 repeat pages, mode/profile gate, repeated lie loop,
+  source choice labels, completion timing, and scale grant. Completed-task
+  repeat shows the one known text-only page.
 - Debug/Release CTest
   `shadowrun_ghidra_conversion_qt_field_spirit_eyes_physical_entry_qa` walks
   into record 96 with ordinary Up and checks `0xFFDB`/event-27 dispatch, the
@@ -94,11 +103,11 @@ Genesis dialogue frame.
 
 ## Remaining evidence
 
-- Trace every choice/response node in the `0xF4C44` graph and establish the
-  exact world-context condition for entering the direct continuation from
-  Scene 47.
+- Connect a source-derived FFFC10=`0x13` transition context in the active Qt
+  field route, then exercise the Scene-47 contextual trigger with physical
+  input. The JSON precondition exposes missing context as an unresolved
+  boundary instead of treating it as a false story fact.
 - Extract the `0x1FE6C2` resource profile into named host assets, present the
   four-page sequence through a native full-screen presenter, and exercise its
-  source-context return. Then exercise the contextual Scene-47 route with
-  physical input. Independent Genesis dialogue captures remain unavailable,
-  so this hill stays partial.
+  source-context return. Independent Genesis dialogue captures remain
+  unavailable, so this hill stays partial.

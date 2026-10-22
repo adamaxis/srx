@@ -69,21 +69,20 @@ assert(actions:execute("field.set_auxiliary_flag", {
 }))
 assert(game.state.field_auxiliary_flag_bit_2 == false)
 
--- Keep the still-procedural Licourtrix branch covered until its complete ROM
--- choice/effect graph is independently traced and migrated to JSON.
-game.state.story_flag_bit_7 = false
+-- The Licourtrix conversation is content-catalog owned now; this Lua-only
+-- adapter suite has no loaded content package, so the graph remains an
+-- explicit boundary here. ROM state permutations are covered by the C++
+-- GameScriptRuntime integration test using the production JSON catalogs.
+game.state.story_flag_bit_7 = true
 game.state.story_flag_bit_8 = false
 game.state.story_flag_bit_9 = false
 game.state.group_item_flag_bit_2 = false
-choices = {
-    "more", "more", "more", "scale", "thanks", "what",
-    "more", "more", "more",
-}
-assert(SpiritEyes.present_serpent_encounter() == "field_return")
-assert(active_trigger == 8 and game.state.story_flag_bit_8 == true and
-       game.state.group_item_flag_bit_2 == true)
-assert(menus[4].id == "serpent_intentions" and
-       menus[5].id == "serpent_thanks" and menus[6].id == "serpent_task")
-assert(#choices == 0)
+local licourtrix_unavailable = SpiritEyes.present_serpent_encounter()
+assert(type(licourtrix_unavailable) == "table" and
+       licourtrix_unavailable.type == "source_boundary" and
+       licourtrix_unavailable.reason ==
+           "dialogue_graph:content_catalog_missing" and
+       game.state.story_flag_bit_8 == false and
+       game.state.group_item_flag_bit_2 == false)
 
-print("Spirit Eyes tests passed: JSON graph adapters and Licourtrix item grant")
+print("Spirit Eyes tests passed: graph adapter boundaries and shared Lua actions")

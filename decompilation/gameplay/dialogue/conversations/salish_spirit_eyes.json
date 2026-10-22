@@ -329,6 +329,151 @@
           "reason": "The ROM story command has no converted active-trigger effect for this saved state."
         }
       }
+    },
+    "salish.licourtrix.encounter": {
+      "entryNode": "select_trigger_8",
+      "speakerId": "licourtrix",
+      "textProfile": "salish.spirit_eyes",
+      "precondition": "salish.licourtrix.event_context",
+      "provenance": {
+        "romAddresses": [
+          "0x53EFA", "0x53F00", "0x53F0A", "0x53F12", "0x53F1A",
+          "0x53F26", "0x53F32", "0x1F246", "0x1F3C4", "0x53F50",
+          "0x2196C", "0xF4C44", "0xF51BC", "0xF51D0", "0xF51E4",
+          "0xF51FC", "0xF5214", "0xF5228", "0xF523C", "0xF5250",
+          "0xF5264", "0xF4C60", "0xF4C68"
+        ],
+        "scope": "scene_47_event_25_licourtrix_encounter"
+      },
+      "nodes": {
+        "select_trigger_8": {
+          "type": "action",
+          "actionId": "story.select_fixed_trigger",
+          "arguments": { "triggerId": 8 },
+          "next": "select_lair_state",
+          "evidence": "ROM 0x53F00 selects story trigger 8 before testing the post-pelt and post-scale branches."
+        },
+        "select_lair_state": {
+          "type": "branch",
+          "cases": [
+            { "when": "salish.licourtrix.pelt_not_given", "next": "serpent_flight_page" },
+            { "when": "salish.licourtrix.scale_already_taken", "next": "empty_lair_page" },
+            { "when": "salish.licourtrix.encounter_profile_available", "next": "opening_page" }
+          ],
+          "fallback": "continue_in_place",
+          "evidence": "ROM 0x53F0A checks story bit 7 first, then 0x53F12 checks bit 8. Only afterward do the profile/mode gates at 0x53F1A, 0x53F26, and 0x53F32 select the conversation."
+        },
+        "serpent_flight_page": {
+          "type": "page",
+          "eventId": "serpent_flight",
+          "next": "continue_in_place",
+          "evidence": "With story bit 7 clear, ROM 0x53F6A opens text record 0xF4C60 (0xF7DBF) and returns."
+        },
+        "empty_lair_page": {
+          "type": "page",
+          "eventId": "empty_lair",
+          "next": "continue_in_place",
+          "evidence": "After bit 7 is set, ROM 0x53F74 opens text record 0xF4C68 (0xF7E72) when bit 8 is set."
+        },
+        "opening_page": {
+          "type": "page",
+          "eventId": "entering_antechamber",
+          "next": "face_to_face_page",
+          "evidence": "Prompt record 0xF4C44 displays 0xF7EF5 and advances to 0xF51BC."
+        },
+        "face_to_face_page": {
+          "type": "page",
+          "eventId": "face_to_face",
+          "next": "appreciation_page",
+          "evidence": "Prompt record 0xF51BC displays 0xF7FC4 and advances to 0xF51D0."
+        },
+        "appreciation_page": {
+          "type": "page",
+          "eventId": "appreciation",
+          "next": "intentions_choice",
+          "evidence": "Prompt record 0xF51D0 displays 0xF8087 and advances to the two-choice record at 0xF51E4."
+        },
+        "intentions_choice": {
+          "type": "choice",
+          "menuId": "serpent_intentions",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.licourtrix.page.intentions_prompt",
+          "choices": [
+            { "id": "neighborhood", "next": "lie_choice" },
+            { "id": "scale", "next": "honesty_choice" }
+          ],
+          "evidence": "Prompt record 0xF51E4 binds the neighborhood and scale answers (0x103F9F and 0x103FC5) to the A/B response records."
+        },
+        "lie_choice": {
+          "type": "choice",
+          "menuId": "serpent_lie",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.licourtrix.page.lie_prompt",
+          "choices": [
+            { "id": "neighborhood", "next": "lie_choice" },
+            { "id": "scale", "next": "honesty_choice" }
+          ],
+          "evidence": "Prompt record 0xF51FC shows the patience warning and both answers together; A repeats this same record while B advances to 0xF5214."
+        },
+        "honesty_choice": {
+          "type": "choice",
+          "menuId": "serpent_thanks",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.licourtrix.page.honesty_prompt",
+          "choices": [
+            { "id": "thanks", "next": "task_choice" }
+          ],
+          "evidence": "Prompt record 0xF5214 displays 0xF81F7 and its single A response label 0x104003, then advances to 0xF5228."
+        },
+        "task_choice": {
+          "type": "choice",
+          "menuId": "serpent_task",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.licourtrix.page.task_prompt",
+          "choices": [
+            { "id": "what", "next": "life_page" }
+          ],
+          "evidence": "Prompt record 0xF5228 displays 0xF828F and its single A response label 0x104012, then advances to 0xF523C."
+        },
+        "life_page": {
+          "type": "page",
+          "eventId": "life_debt",
+          "next": "bond_page",
+          "evidence": "Prompt record 0xF523C displays 0xF82E8 with the shared MORE caption."
+        },
+        "bond_page": {
+          "type": "page",
+          "eventId": "protective_bond",
+          "next": "farewell_page",
+          "evidence": "Prompt record 0xF5250 displays 0xF835C with the shared MORE caption."
+        },
+        "farewell_page": {
+          "type": "page",
+          "eventId": "farewell",
+          "next": "mark_scale_story_flag",
+          "evidence": "The final record at 0xF5264 displays 0xF8410; its negative sentinel closes the prompt before the caller applies the rewards."
+        },
+        "mark_scale_story_flag": {
+          "type": "action",
+          "actionId": "story.set_flag",
+          "arguments": { "flagBit": 8, "value": true },
+          "next": "grant_scale_item"
+        },
+        "grant_scale_item": {
+          "type": "action",
+          "actionId": "item.set_group_flag",
+          "arguments": { "flagBit": 2, "value": true },
+          "next": "encounter_complete"
+        },
+        "encounter_complete": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        },
+        "continue_in_place": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
     }
   }
 }

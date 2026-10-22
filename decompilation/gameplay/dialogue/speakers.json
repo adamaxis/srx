@@ -277,7 +277,40 @@
       "text_profile": "jump_house.entry"
     },
     "licourtrix": {
-      "events": {},
+      "events": {
+        "serpent_flight": {
+          "continuation_key": "",
+          "title_key": "salish.licourtrix.page.serpent_flight"
+        },
+        "empty_lair": {
+          "continuation_key": "",
+          "title_key": "salish.licourtrix.page.empty_lair"
+        },
+        "entering_antechamber": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.licourtrix.page.entering_antechamber"
+        },
+        "face_to_face": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.licourtrix.page.face_to_face"
+        },
+        "appreciation": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.licourtrix.page.appreciation"
+        },
+        "life_debt": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.licourtrix.page.life_debt"
+        },
+        "protective_bond": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.licourtrix.page.protective_bond"
+        },
+        "farewell": {
+          "continuation_key": "",
+          "title_key": "salish.licourtrix.page.farewell"
+        }
+      },
       "name": "Licourtrix",
       "portrait_alias": "dialogue.portraits.licourtrix",
       "text_profile": "salish.spirit_eyes"

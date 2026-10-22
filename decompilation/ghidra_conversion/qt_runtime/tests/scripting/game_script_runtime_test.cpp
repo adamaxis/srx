@@ -10129,6 +10129,14 @@ int main() {
                task.operation->dialogue.has_value() &&
                task.operation->dialogue->event_id == event_id;
     };
+    const auto licourtrix_page_is = [](
+        const ScriptTaskStep& task, const std::string_view event_id) {
+        return task.status == ScriptTaskStep::Status::awaiting_native_operation &&
+               task.operation.has_value() &&
+               task.operation->dialogue.has_value() &&
+               task.operation->dialogue->event_id == event_id &&
+               task.operation->dialogue->speaker_id == "licourtrix";
+    };
     auto spirit_eyes_task = scripts.start_task(
         "salish_spirit_eyes", "present");
     if (!expect(spirit_eyes_task.status ==
@@ -10382,30 +10390,279 @@ int main() {
         "salish_feathered_serpent_lair";
     scripts.set_location_context(
         "site", kFeatheredSerpentLair, "salish.spirit_eyes", "licourtrix");
-    scripts.set_field_mode_context(ScriptFieldModeContext{47U, 25U, 0});
+    scripts.set_field_mode_context(
+        ScriptFieldModeContext{8U, 25U, 0, 1U, 19U});
+
+    // ROM 0x53F00 selects trigger 8 before the ordered story checks. Bit 7
+    // wins over bit 8, so even this unusual combination shows the flight text.
     scripts.set_story_state({
         {"story_flag_bit_7", false},
-        {"story_flag_bit_8", false},
-        {"story_flag_bit_9", false},
+        {"story_flag_bit_8", true},
         {"group_item_flag_bit_2", false},
+        {"story_trigger_active_8", false},
     });
     auto licourtrix_task = scripts.start_task(
         "salish_spirit_eyes", "present_serpent_encounter");
-    for (const auto* choice : {"more", "more", "more", "scale", "thanks",
-                               "what", "more", "more", "more"}) {
-        if (!expect(licourtrix_task.status ==
-                            ScriptTaskStep::Status::awaiting_native_operation &&
-                        licourtrix_task.operation.has_value() &&
-                        licourtrix_task.operation->menu.has_value(),
-                    "Licourtrix encounter lost a ROM dialogue choice node")) {
-            std::cerr << scripts.failure() << '\n';
-            return 18;
-        }
-        licourtrix_task = scripts.complete_native_menu_choice(choice);
+    if (!expect(licourtrix_page_is(licourtrix_task, "serpent_flight") &&
+                    scripts.story_state().at("story_trigger_active_8") &&
+                    scripts.story_state().at("story_flag_bit_8") &&
+                    !scripts.story_state().at("group_item_flag_bit_2") &&
+                    scripts.dialogue_text(
+                        "salish.licourtrix.page.serpent_flight") != nullptr,
+                "Licourtrix bit-7-first branch did not select the flight text")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
     }
+    licourtrix_task = scripts.complete_native_operation(true);
     if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
-                    licourtrix_task.result_id ==
-                        std::optional<std::string>{"field_return"} &&
+                    licourtrix_task.dialogue_outcome.has_value() &&
+                    licourtrix_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place &&
+                    scripts.story_state().at("story_flag_bit_8") &&
+                    !scripts.story_state().at("group_item_flag_bit_2"),
+                "Licourtrix flight notice changed its source story/item state")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    // With bit 7 set, bit 8 selects the empty-lair repeat before checking the
+    // profile and field-mode conditions for the first encounter.
+    scripts.set_story_state({
+        {"story_flag_bit_7", true},
+        {"story_flag_bit_8", true},
+        {"group_item_flag_bit_2", false},
+        {"story_trigger_active_8", false},
+    });
+    licourtrix_task = scripts.start_task(
+        "salish_spirit_eyes", "present_serpent_encounter");
+    if (!expect(licourtrix_page_is(licourtrix_task, "empty_lair") &&
+                    scripts.story_state().at("story_trigger_active_8") &&
+                    scripts.dialogue_text(
+                        "salish.licourtrix.page.empty_lair") != nullptr,
+                "Licourtrix bit-8 repeat branch did not select the empty-lair text")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_task = scripts.complete_native_operation(true);
+    if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
+                    licourtrix_task.dialogue_outcome.has_value() &&
+                    licourtrix_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place &&
+                    !scripts.story_state().at("group_item_flag_bit_2"),
+                "Licourtrix empty-lair repeat changed the scale item")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    // The source profile/mode gates precede the F4C44 conversation. The
+    // dispatcher can reach event 25 without satisfying that inner gate.
+    scripts.set_field_mode_context(
+        ScriptFieldModeContext{7U, 25U, 0, 1U, 19U});
+    scripts.set_story_state({
+        {"story_flag_bit_7", true},
+        {"story_flag_bit_8", false},
+        {"group_item_flag_bit_2", false},
+        {"story_trigger_active_8", false},
+    });
+    licourtrix_task = scripts.start_task(
+        "salish_spirit_eyes", "present_serpent_encounter");
+    if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
+                    licourtrix_task.dialogue_outcome.has_value() &&
+                    licourtrix_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place &&
+                    scripts.story_state().at("story_trigger_active_8") &&
+                    !scripts.story_state().at("story_flag_bit_8") &&
+                    !scripts.story_state().at("group_item_flag_bit_2"),
+                "Licourtrix mode gate opened the conversation outside mode 8")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    // ROM compares FFFC0E to zero and accepts every nonzero value. Keep this
+    // distinct from the event-context condition and the exact mode-8 gate.
+    scripts.set_field_mode_context(
+        ScriptFieldModeContext{8U, 25U, 0, 0U, 19U});
+    licourtrix_task = scripts.start_task(
+        "salish_spirit_eyes", "present_serpent_encounter");
+    if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
+                    licourtrix_task.dialogue_outcome.has_value() &&
+                    licourtrix_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place &&
+                    !scripts.story_state().at("story_flag_bit_8") &&
+                    !scripts.story_state().at("group_item_flag_bit_2"),
+                "Licourtrix profile gate accepted FFFC0E equal to zero")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    scripts.set_field_mode_context(
+        ScriptFieldModeContext{8U, 25U, 0, 1U, 0U});
+    scripts.set_story_state({
+        {"story_flag_bit_7", true},
+        {"story_flag_bit_8", false},
+        {"group_item_flag_bit_2", false},
+        {"story_trigger_active_8", false},
+    });
+    licourtrix_task = scripts.start_task(
+        "salish_spirit_eyes", "present_serpent_encounter");
+    if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
+                    licourtrix_task.dialogue_outcome.has_value() &&
+                    licourtrix_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::source_boundary &&
+                    !scripts.story_state().at("story_trigger_active_8") &&
+                    !scripts.story_state().at("story_flag_bit_8") &&
+                    !scripts.story_state().at("group_item_flag_bit_2"),
+                "Licourtrix graph ignored the outer transition-context gate")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    // The valid mode-8/profile/context route follows the ROM's four text
+    // records, loops on the lie response screen, and grants the scale only
+    // after the final page closes.
+    scripts.set_field_mode_context(
+        ScriptFieldModeContext{8U, 25U, 0, 1U, 19U});
+    licourtrix_task = scripts.start_task(
+        "salish_spirit_eyes", "present_serpent_encounter");
+    if (!expect(licourtrix_page_is(
+                        licourtrix_task, "entering_antechamber") &&
+                    scripts.dialogue_text(
+                        "salish.licourtrix.page.entering_antechamber") !=
+                        nullptr &&
+                    scripts.dialogue_text(
+                        "salish.licourtrix.option.neighborhood") != nullptr &&
+                    scripts.dialogue_text(
+                        "salish.licourtrix.option.scale") != nullptr &&
+                    !scripts.story_state().at("story_flag_bit_8") &&
+                    !scripts.story_state().at("group_item_flag_bit_2"),
+                "Licourtrix direct route did not begin at the ROM opening page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_task = scripts.complete_native_operation(true);
+    if (!expect(licourtrix_page_is(licourtrix_task, "face_to_face"),
+                "Licourtrix opening page did not advance to 0xF51BC")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_task = scripts.complete_native_operation(true);
+    if (!expect(licourtrix_page_is(licourtrix_task, "appreciation"),
+                "Licourtrix face-to-face page did not advance to 0xF51D0")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_task = scripts.complete_native_operation(true);
+    if (!expect(licourtrix_task.operation.has_value() &&
+                    licourtrix_task.operation->menu.has_value() &&
+                    licourtrix_task.operation->menu->id ==
+                        "serpent_intentions",
+                "Licourtrix appreciation did not expose the intentions choices")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    auto licourtrix_menu = scripts.resolve_dialogue_menu(
+        *licourtrix_task.operation->menu);
+    if (!expect(licourtrix_menu.has_value() &&
+                    licourtrix_menu->choices.size() == 2U &&
+                    licourtrix_menu->choices[0].label_key ==
+                        "salish.licourtrix.option.neighborhood" &&
+                    licourtrix_menu->choices[1].label_key ==
+                        "salish.licourtrix.option.scale",
+                "Licourtrix intentions choices lost their ROM labels")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_task = scripts.complete_native_menu_choice("neighborhood");
+    if (!expect(licourtrix_task.operation.has_value() &&
+                    licourtrix_task.operation->menu.has_value() &&
+                    licourtrix_task.operation->menu->id == "serpent_lie",
+                "Licourtrix lie did not reach the combined warning/choice screen")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_menu = scripts.resolve_dialogue_menu(
+        *licourtrix_task.operation->menu);
+    if (!expect(licourtrix_menu.has_value() &&
+                    scripts.dialogue_text(
+                        "salish.licourtrix.page.lie_prompt") != nullptr,
+                "Licourtrix repeated lie screen lost its ROM prompt text")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_task = scripts.complete_native_menu_choice("neighborhood");
+    if (!expect(licourtrix_task.operation.has_value() &&
+                    licourtrix_task.operation->menu.has_value() &&
+                    licourtrix_task.operation->menu->id == "serpent_lie",
+                "Repeated Licourtrix lie did not loop to the same choice record")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_task = scripts.complete_native_menu_choice("scale");
+    if (!expect(licourtrix_task.operation.has_value() &&
+                    licourtrix_task.operation->menu.has_value() &&
+                    licourtrix_task.operation->menu->id == "serpent_thanks",
+                "Licourtrix honesty choice did not select the thanks response")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_menu = scripts.resolve_dialogue_menu(
+        *licourtrix_task.operation->menu);
+    if (!expect(licourtrix_menu.has_value() &&
+                    licourtrix_menu->choices.size() == 1U &&
+                    licourtrix_menu->choices[0].label_key ==
+                        "salish.licourtrix.option.thanks" &&
+                    scripts.dialogue_text(
+                        "salish.licourtrix.page.honesty_prompt") != nullptr,
+                "Licourtrix thanks prompt or A response label is missing")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_task = scripts.complete_native_menu_choice("thanks");
+    if (!expect(licourtrix_task.operation.has_value() &&
+                    licourtrix_task.operation->menu.has_value() &&
+                    licourtrix_task.operation->menu->id == "serpent_task",
+                "Licourtrix thanks response did not reach the task question")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_menu = scripts.resolve_dialogue_menu(
+        *licourtrix_task.operation->menu);
+    if (!expect(licourtrix_menu.has_value() &&
+                    licourtrix_menu->choices.size() == 1U &&
+                    licourtrix_menu->choices[0].label_key ==
+                        "salish.licourtrix.option.what" &&
+                    scripts.dialogue_text(
+                        "salish.licourtrix.page.task_prompt") != nullptr,
+                "Licourtrix task question or A response label is missing")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_task = scripts.complete_native_menu_choice("what");
+    if (!expect(licourtrix_page_is(licourtrix_task, "life_debt"),
+                "Licourtrix task response did not start its closing pages")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_task = scripts.complete_native_operation(true);
+    if (!expect(licourtrix_page_is(licourtrix_task, "protective_bond"),
+                "Licourtrix life-debt page did not advance to the bond page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_task = scripts.complete_native_operation(true);
+    if (!expect(licourtrix_page_is(licourtrix_task, "farewell") &&
+                    !scripts.story_state().at("story_flag_bit_8") &&
+                    !scripts.story_state().at("group_item_flag_bit_2"),
+                "Licourtrix granted the scale before its final page was closed")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    licourtrix_task = scripts.complete_native_operation(true);
+    if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
+                    licourtrix_task.dialogue_outcome.has_value() &&
+                    licourtrix_task.dialogue_outcome->type ==
+                        DialogueOutcomeType::continue_in_place &&
+                    scripts.story_state().at("story_trigger_active_8") &&
                     scripts.story_state().at("story_flag_bit_8") &&
                     scripts.story_state().at("group_item_flag_bit_2"),
                 "Licourtrix completion did not grant FFFC22 bit 2 with story bit 8")) {

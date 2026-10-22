@@ -1846,7 +1846,9 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     scripting::ScriptFieldModeContext{
                         static_cast<std::uint8_t>(runtime_state.field_mode),
                         event_route.event_code,
-                        field_exit_alternate_result_});
+                        field_exit_alternate_result_,
+                        state_.field_scene_buffers.scene_mode,
+                        field_movement_transition_state_.field_transition_context});
                 game_scripts_.set_location_context(
                     preparation.location_type,
                     preparation.location_id,
@@ -1873,7 +1875,9 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     scripting::ScriptFieldModeContext{
                         static_cast<std::uint8_t>(runtime_state.field_mode),
                         event_route.event_code,
-                        field_exit_alternate_result_});
+                        field_exit_alternate_result_,
+                        state_.field_scene_buffers.scene_mode,
+                        field_movement_transition_state_.field_transition_context});
                 game_scripts_.set_location_context(
                     task.location_type, task.location_id,
                     task.text_profile, task.speaker_id);
@@ -1914,7 +1918,9 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     scripting::ScriptFieldModeContext{
                         static_cast<std::uint8_t>(runtime_state.field_mode),
                         event_route.event_code,
-                        field_exit_alternate_result_});
+                        field_exit_alternate_result_,
+                        state_.field_scene_buffers.scene_mode,
+                        field_movement_transition_state_.field_transition_context});
                 game_scripts_.set_location_context(
                     event_route.entry_location_type,
                     event_route.entry_location_id,
@@ -2000,7 +2006,9 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 scripting::ScriptFieldModeContext{
                     static_cast<std::uint8_t>(runtime_state.field_mode),
                     event_route.event_code,
-                    field_exit_alternate_result_});
+                    field_exit_alternate_result_,
+                    state_.field_scene_buffers.scene_mode,
+                    field_movement_transition_state_.field_transition_context});
             game_scripts_.set_location_context(
                 event_route.entry_location_type,
                 event_route.entry_location_id,
@@ -2034,7 +2042,9 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     scripting::ScriptFieldModeContext{
                         static_cast<std::uint8_t>(runtime_state.field_mode),
                         event_route.event_code,
-                        field_exit_alternate_result_});
+                        field_exit_alternate_result_,
+                        state_.field_scene_buffers.scene_mode,
+                        field_movement_transition_state_.field_transition_context});
                 game_scripts_.set_location_context(
                     task.location_type, task.location_id,
                     task.text_profile, task.speaker_id);
@@ -2074,7 +2084,9 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 scripting::ScriptFieldModeContext{
                     static_cast<std::uint8_t>(runtime_state.field_mode),
                     dialogue_event_code,
-                    field_exit_alternate_result_});
+                    field_exit_alternate_result_,
+                    state_.field_scene_buffers.scene_mode,
+                    field_movement_transition_state_.field_transition_context});
             const auto action = field_dialogue_event_resolver_.resolve(
                 event_context, prompt_state,
                 {[this](FieldExitPromptSelection& selection,
@@ -16820,7 +16832,9 @@ bool FieldSceneRuntime::open_hospital_menu_for_dump(
         "building", "council_island_hospital",
         "council_island_hospital", "council_island_hospital_narrator");
     game_scripts_.set_field_mode_context(
-        scripting::ScriptFieldModeContext{4U, 4U, 0});
+        scripting::ScriptFieldModeContext{
+            4U, 4U, 0, state_.field_scene_buffers.scene_mode,
+            field_movement_transition_state_.field_transition_context});
     return begin_hospital_menu_task(function);
 }
 
@@ -17125,7 +17139,9 @@ bool FieldSceneRuntime::open_field_location_dialogue(
     game_scripts_.set_field_mode_context(scripting::ScriptFieldModeContext{
         state_.field_scene_buffers.field_resource_mode,
         route.event_code,
-        field_exit_alternate_result_});
+        field_exit_alternate_result_,
+        state_.field_scene_buffers.scene_mode,
+        field_movement_transition_state_.field_transition_context});
 
     if (route.entry_dialogue_module == "johnson") {
         const auto context = game_scripts_.johnson_interaction_context(
@@ -17438,7 +17454,9 @@ bool FieldSceneRuntime::open_hospital_dialogue_service(
         "building", "council_island_hospital",
         "council_island_hospital", "council_island_hospital_narrator");
     game_scripts_.set_field_mode_context(
-        scripting::ScriptFieldModeContext{4U, 4U, 0});
+        scripting::ScriptFieldModeContext{
+            4U, 4U, 0, state_.field_scene_buffers.scene_mode,
+            field_movement_transition_state_.field_transition_context});
     return begin_hospital_menu_task("present_options");
 }
 

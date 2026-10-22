@@ -320,6 +320,50 @@
         "romAddresses": ["0x53EA8", "0xF4C04"],
         "scope": "ritual_completion_gate"
       }
+    },
+    "salish.licourtrix.event_context": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "site" },
+          { "fact": "location.id", "op": "eq", "value": "salish_feathered_serpent_lair" },
+          { "fact": "field.event_code", "op": "eq", "value": 25 },
+          { "fact": "field.transition_context", "op": "eq", "value": 19 }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x53EFA", "0x1D54B0", "0xB7B8"],
+        "scope": "scene_47_event_25_special_transition_context"
+      }
+    },
+    "salish.licourtrix.pelt_not_given": {
+      "expression": {
+        "fact": "story.story_flag_bit_7", "op": "eq", "value": false
+      },
+      "provenance": {
+        "romAddresses": ["0x53F0A", "0x53F6A", "0xF4C60"],
+        "scope": "serpent_flight_notice_precedes_other_story_gates"
+      }
+    },
+    "salish.licourtrix.scale_already_taken": {
+      "expression": {
+        "fact": "story.story_flag_bit_8", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0x53F12", "0x53F74", "0xF4C68"],
+        "scope": "empty_lair_repeat_after_scale_grant"
+      }
+    },
+    "salish.licourtrix.encounter_profile_available": {
+      "expression": {
+        "all": [
+          { "fact": "field.mode", "op": "eq", "value": 8 },
+          { "fact": "field.alternate_profile", "op": "ne", "value": 0 }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x53F1A", "0x53F32"],
+        "scope": "profile_gate_before_licourtrix_conversation"
+      }
     }
   }
 }
