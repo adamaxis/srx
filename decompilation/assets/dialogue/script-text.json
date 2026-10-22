@@ -1360,6 +1360,14 @@
     "vid_phone.professor_jefferson.option.yes": "Yes.",
     "vid_phone.professor_jefferson.services": "Well, Joshua, would you like to learn something about paranormal creatures?||Or hear of an exclusive club for mages?||Or can I interest you in meeting an ex-student of mine?",
     "vid_phone.professor_jefferson.student_offer": "He graduated with flying colors, and he might be able to help you in your line of work.||If you could give me a payment of 2,000$, I could give his number to you.||Are you interested?",
-    "vid_phone.professor_jefferson.student_result": "His name is Gregory Wilns; he holds a PhD in Sorcery and works for some big Corp in Chicago."
+    "vid_phone.professor_jefferson.student_result": "His name is Gregory Wilns; he holds a PhD in Sorcery and works for some big Corp in Chicago.",
+    "vid_phone.agira_tetsumi.mafia_rejection": "You're the one who has been in contact with Faradouchi, our sworn enemy!||You must die!||<You disconnect before they can trace your location.>",
+    "vid_phone.agira_tetsumi.pledge_accepted": "So it is done.||I will call Tetsumi-san and inform him of your decision.",
+    "vid_phone.agira_tetsumi.unknown_name": "I don't know that name.||You had better forget it also if you know what is good for you.",
+    "vid_phone.agira_tetsumi.yakuza_offer": "You are known to us, Joshua.||You have unknowingly interfered and aided our operations on many occasions.||Now you come to us as an ally.||Do you wish to join our order and be bound as one of the Yakuza forever?",
+    "vid_phone.mr_faradouchi.mafia_offer": "You've made quite a name for yourself.||So you wanna' ally with the Mafia?||Better be sure, 'cause once you agree there's no turning back.",
+    "vid_phone.mr_faradouchi.pledge_accepted": "I'll inform Mr. Faradouchi of your pledge of allegiance.||<The line goes dead and you disconnect.>",
+    "vid_phone.mr_faradouchi.unknown_caller": "<A new, gravelly voice comes over the vid-phone.>||Listen real good.||We don't know you from squat.||If you value your life, you won't call back again.",
+    "vid_phone.mr_faradouchi.yakuza_rejection": "Hey, wait a sec.||You're the guy what's hooked up with Tetsumi!||You're on our hit list, pal!!||<You hang up before he traces your location.>"
   }
 }
