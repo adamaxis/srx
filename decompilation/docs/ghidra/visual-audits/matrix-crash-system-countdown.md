@@ -1,6 +1,6 @@
 # Matrix Crash System countdown
 
-Audit date: 2026-10-16
+Audit date: 2026-10-22
 
 ## ROM trace
 
@@ -18,6 +18,14 @@ Primary source: `input/shadowrun_genesis_us.bin`, entry `0x54B34`.
   (60 frames); the loop updates the digit 3, 2, 1, 0, waiting 60 frames on
   each value.
 - It then calls fade `0x18776` and Matrix logout `0x26A00`.
+
+The logout routine uploads five 8x8 patterns from ROM `0x15BE02` to the
+center-tile graphics area. The corresponding name words at `0x15BEA2` select
+sparkle `0x4B1`, dot `0x4B2`, horizontal line `0x4B3`, vertical line `0x4B4`,
+and blank `0x4B5`. It lays the two lines across the view, replaces one edge
+tile per VBlank for 14 ticks on both axes and six more on the horizontal axis,
+then changes the center tile through dot, sparkle, dot, and blank holds of
+11/6/6/11 VBlanks. The initial sparkle stays centered over the crossing lines.
 
 The render positions use the 64-column name-table pitch (`$80` bytes per row):
 `$C518` is tile `(12,10)` or pixel `(96,80)`, and `$C722` is tile `(17,14)`
@@ -53,9 +61,9 @@ raw records remain a boundary.
 The live debug-menu route enters system 0, follows its first link to CPU, runs
 Crash System through the shared action gate, and advances the countdown once
 per VBlank. After the final 60-frame zero, it runs the five-step fade at two
-VBlanks per step, then holds the black transition for the remaining 54 frames
-before logging out. The host uses a full-black frame during that final display
-handoff because the original transition artwork is not ported. The panel
+VBlanks per step, then paints the ROM's line-art sequence during the 54-frame
+display handoff before logging out. Lua publishes the phase and line bounds;
+Qt presents the native layout and the extracted center-tile pixels. The panel
 rebuild clears the previous actions and selector before drawing the shutdown
 screen, and the fade overlay also covers the special countdown renderer.
 
@@ -67,13 +75,19 @@ that each value remains visible for 60 frames and save:
 - `matrix-node-action-route-qa/shutdown-countdown-1.bmp`
 - `matrix-node-action-route-qa/shutdown-countdown-0.bmp`
 - `matrix-node-action-route-qa/shutdown-logout-fade-start.bmp`
-- `matrix-node-action-route-qa/shutdown-logout-fade-black.bmp`
+- `matrix-node-action-route-qa/shutdown-logout-cross-full.bmp`
 
-The four countdown frames and both transition frames were reviewed. The
-message rows remain fixed while the digit changes; the final fade covers the
-countdown and leaves the frame fully black. No old button or selector pixels
-remain. These are internal Qt route artifacts, not independent Genesis
-captures.
+The four countdown frames and transition frame were reviewed. The message rows
+remain fixed while the digit changes; the final fade removes the countdown and
+reveals the full cross, including its center sparkle. The independent Genesis
+sequence in Section 15 frames `005420`, `005427`, `005430`, `005435`, `005440`,
+and `005445` shows the same cross sweep, center dot, sparkle, dot, and black
+tail. Thresholded white-pixel mask IoU is 0.998 for the full cross, 0.992 for
+the collapsed cross, 1.000 for both dot frames, 0.957 for the sparkle, and
+1.000 for the black frame. The one-pixel differences in cross/sparkle masks are
+consistent with video compression. Full 320x224 Debug/Release QA captures
+each native phase and checks the exact ROM tile masks and source-derived line
+bounds.
 
 ## Remaining integration
 
@@ -83,6 +97,7 @@ completion bit 0 set) and verifies the completion writes. The production
 runtime still has no active-run provider. The field runtime stores the
 committed flags, but security/maglock writes are not yet consumed by guard or
 door behavior or included in save data; only alarm-off actor `+0x9E` updates
-are currently connected. Countdown, fade, and logout timing are connected;
-the host’s black hold is a presentation substitute and the source Matrix
-logout artwork remains open. The Crash System hill remains `partial`.
+are currently connected. Countdown, fade, and the full Matrix logout artwork
+are connected and checked against the independent longplay. The Crash System
+hill remains `partial` because the production run provider and field-effect
+consumers are still missing.
