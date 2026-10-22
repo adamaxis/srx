@@ -48,6 +48,7 @@
 #include "shadowrun_ghidra/world/world_frame_logic_conversion.hpp"
 #include "shadowrun_ghidra/world/world_scene_entity_conversion.hpp"
 #include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
+#include "shadowrun_ghidra/scripting/dialogue_outcome_dispatcher.hpp"
 
 #include <QImage>
 #include <QJsonObject>
@@ -1480,7 +1481,22 @@ private:
     FieldActionBaseCostLookup item_base_cost_lookup() const;
     FieldActionBaseCostLookup item_resale_base_lookup() const;
     void begin_hotel_menu();
-    bool dispatch_open_service_outcome(
+    void register_dialogue_outcome_handlers();
+    bool dispatch_dialogue_outcome(
+        const scripting::DialogueOutcome& outcome);
+    bool handle_dialogue_continue_in_place(
+        const scripting::DialogueOutcome& outcome);
+    bool handle_dialogue_resume_source_route(
+        const scripting::DialogueOutcome& outcome);
+    bool handle_dialogue_enter_field_scene(
+        const scripting::DialogueOutcome& outcome);
+    bool handle_dialogue_return_to_source_entry(
+        const scripting::DialogueOutcome& outcome);
+    bool prepare_open_dialogue_service(
+        const scripting::DialogueOutcome& outcome);
+    bool open_hotel_dialogue_service(
+        const scripting::DialogueOutcome& outcome);
+    bool open_hospital_dialogue_service(
         const scripting::DialogueOutcome& outcome);
     bool load_command_overview_menu_content();
     bool load_hotel_menu_content();
@@ -1830,6 +1846,7 @@ private:
     std::optional<scripting::ScriptShopDefinition>
         field_shop_active_definition_;
     FieldDialogueRuntime field_dialogue_;
+    scripting::DialogueOutcomeDispatcher dialogue_outcome_dispatcher_;
     HotelMenuRuntime hotel_menu_{};
     // E660 advances while Hospital Options and its confirmation are open.
     // This state only decorates the screen; Lua owns the cursor and action.

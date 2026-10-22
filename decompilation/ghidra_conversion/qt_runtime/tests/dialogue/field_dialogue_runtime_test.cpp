@@ -169,7 +169,7 @@ int main() {
     if (!expect(runtime.open_gameplay_task(
                     "gates_undersound", "present_ogami_departure")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::continue_in_place)) {
+                FieldDialogueAdvanceResult::typed_outcome_requested)) {
         std::cerr << "Gates graph did not complete as continue_in_place\n";
         return 128;
     }
@@ -193,7 +193,7 @@ int main() {
     if (!expect(runtime.open_gameplay_task(
                     "renraku_offices", "present_map_overlay_entry")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::resume_source_route)) {
+                FieldDialogueAdvanceResult::typed_outcome_requested)) {
         std::cerr << "Renraku graph did not complete as resume_source_route\n";
         return 130;
     }
@@ -217,7 +217,7 @@ int main() {
     if (!expect(runtime.open_gameplay_task(
                     "fuchi_offices", "present_cyberheart_entry")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::resume_source_route)) {
+                FieldDialogueAdvanceResult::typed_outcome_requested)) {
         std::cerr << "Fuchi graph did not complete as resume_source_route\n";
         return 132;
     }
@@ -416,7 +416,7 @@ int main() {
                 std::string_view::npos) ||
         !expect(capture_tarislar_inn("room-paid")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::open_service_requested)) {
+                FieldDialogueAdvanceResult::typed_outcome_requested)) {
         std::cerr << "Tarislar City Inn room transaction did not yield its typed service outcome\n";
         return 121;
     }
@@ -708,7 +708,8 @@ int main() {
     }
     const auto insufficient_return = runtime.advance_controller_events(0x4000U);
     const auto insufficient_outcome = runtime.take_gameplay_task_outcome();
-    if (insufficient_return != FieldDialogueAdvanceResult::continue_in_place ||
+    if (insufficient_return !=
+            FieldDialogueAdvanceResult::typed_outcome_requested ||
         !insufficient_outcome.has_value() ||
         insufficient_outcome->type !=
             scripting::DialogueOutcomeType::continue_in_place) {
@@ -1861,7 +1862,7 @@ int main() {
     if (!expect(matches_region(room_paid_scene, room_paid_idle, 0, 0, 320,
                                224)) ||
         !expect(room_paid_close ==
-                FieldDialogueAdvanceResult::open_service_requested) ||
+                FieldDialogueAdvanceResult::typed_outcome_requested) ||
         !expect(!runtime.open()) ||
         !expect(boundary.empty())) {
         std::cerr << "Stoker graph hotel service: close="
@@ -1981,7 +1982,7 @@ int main() {
                 std::string_view::npos) ||
         !expect(runtime.panel().option_count == 0U) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::continue_in_place)) {
+                FieldDialogueAdvanceResult::typed_outcome_requested)) {
         return 9;
     }
 
@@ -2059,7 +2060,7 @@ int main() {
                 std::string_view::npos) ||
         !expect(runtime.panel().option_count == 0U) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
-                    FieldDialogueAdvanceResult::continue_in_place) ||
+                    FieldDialogueAdvanceResult::typed_outcome_requested) ||
         !expect(!runtime.open())) {
         return 73;
     }
@@ -2087,7 +2088,7 @@ int main() {
                 std::string_view::npos) ||
         !expect(runtime.panel().option_count == 0U) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::continue_in_place) ||
+                FieldDialogueAdvanceResult::typed_outcome_requested) ||
         !expect(!runtime.open())) {
         std::cerr << "Stoker insufficient graph funds="
                   << debt_payment_outcome.remaining_funds
@@ -2131,7 +2132,7 @@ int main() {
             return false;
         }()) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::continue_in_place) ||
+                FieldDialogueAdvanceResult::typed_outcome_requested) ||
         !expect(!runtime.open())) {
         std::cerr << "Stoker paid graph funds="
                   << debt_payment_outcome.remaining_funds

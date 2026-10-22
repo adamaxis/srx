@@ -733,7 +733,7 @@ int main(int argc, char** argv) {
     const auto passage_advance = runtime.advance_controller_events(0x4000U);
     const auto passage_outcome = runtime.take_gameplay_task_outcome();
     if (passage_advance !=
-            FieldDialogueAdvanceResult::enter_field_scene_requested ||
+            FieldDialogueAdvanceResult::typed_outcome_requested ||
         !expect(passage_outcome.has_value() &&
                     passage_outcome->type ==
                         scripting::DialogueOutcomeType::enter_field_scene &&

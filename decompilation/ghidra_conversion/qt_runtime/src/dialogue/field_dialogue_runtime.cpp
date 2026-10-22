@@ -360,29 +360,12 @@ FieldDialogueRuntime::resolve_typed_outcome(
     }
     last_gameplay_task_outcome_ = task.dialogue_outcome;
     close();
-    switch (task.dialogue_outcome->type) {
-    case scripting::DialogueOutcomeType::continue_in_place:
-        return FieldDialogueAdvanceResult::continue_in_place;
-    case scripting::DialogueOutcomeType::resume_source_route:
-        return FieldDialogueAdvanceResult::resume_source_route;
-    case scripting::DialogueOutcomeType::enter_field_scene:
-        return FieldDialogueAdvanceResult::enter_field_scene_requested;
-    case scripting::DialogueOutcomeType::open_service:
-        return FieldDialogueAdvanceResult::open_service_requested;
-    case scripting::DialogueOutcomeType::source_boundary:
+    if (task.dialogue_outcome->type ==
+        scripting::DialogueOutcomeType::source_boundary) {
         open_source_boundary(task.dialogue_outcome->reason);
         return FieldDialogueAdvanceResult::source_boundary;
-    case scripting::DialogueOutcomeType::return_to_origin:
-    case scripting::DialogueOutcomeType::enter_activity:
-    case scripting::DialogueOutcomeType::play_cinematic:
-        open_source_boundary(
-            "field dialogue outcome is not dispatched yet: " +
-            std::string(scripting::dialogue_outcome_type_name(
-                task.dialogue_outcome->type)));
-        return FieldDialogueAdvanceResult::source_boundary;
     }
-    open_source_boundary("field dialogue returned an unknown typed outcome");
-    return FieldDialogueAdvanceResult::source_boundary;
+    return FieldDialogueAdvanceResult::typed_outcome_requested;
 }
 
 bool FieldDialogueRuntime::present_script_operation(

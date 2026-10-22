@@ -3,6 +3,7 @@
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
+#include "shadowrun_ghidra/scripting/dialogue_outcome_dispatcher.hpp"
 
 #include <algorithm>
 #include <array>
@@ -476,11 +477,96 @@ bool verify_dialogue_graph_outcomes(
                   "Fuchi graph did not resume the selected source route");
 }
 
+bool verify_dialogue_outcome_dispatcher() {
+    using namespace shadowrun::ghidra_conversion::scripting;
+
+    DialogueOutcomeDispatcher dispatcher;
+    int continued = 0;
+    int hotel_opened = 0;
+    if (!expect(dispatcher.register_type_handler(
+                    DialogueOutcomeType::continue_in_place,
+                    [&continued](const DialogueOutcome& outcome) {
+                        ++continued;
+                        return outcome.type ==
+                               DialogueOutcomeType::continue_in_place;
+                    }),
+                "could not register generic continue outcome") ||
+        !expect(dispatcher.register_target_handler(
+                    DialogueOutcomeType::open_service, "hotel.options",
+                    [&hotel_opened](const DialogueOutcome& outcome) {
+                        ++hotel_opened;
+                        return outcome.type ==
+                                   DialogueOutcomeType::open_service &&
+                               outcome.return_policy == "origin";
+                    }),
+                "could not register named hotel service outcome") ||
+        !expect(!dispatcher.register_target_handler(
+                    DialogueOutcomeType::open_service, "hotel.options",
+                    [](const DialogueOutcome&) { return true; }),
+                "dispatcher accepted a duplicate target handler") ||
+        !expect(!dispatcher.register_target_handler(
+                    DialogueOutcomeType::open_service, "",
+                    [](const DialogueOutcome&) { return true; }),
+                "dispatcher accepted an empty target ID")) {
+        return false;
+    }
+
+    DialogueOutcome continue_outcome{};
+    continue_outcome.type = DialogueOutcomeType::continue_in_place;
+    if (!expect(dispatcher.dispatch(continue_outcome).handled() &&
+                    continued == 1,
+                "dispatcher did not resolve a registered outcome type")) {
+        return false;
+    }
+
+    DialogueOutcome hotel_outcome{};
+    hotel_outcome.type = DialogueOutcomeType::open_service;
+    hotel_outcome.destination_id = "hotel.options";
+    hotel_outcome.return_policy = "origin";
+    if (!expect(dispatcher.dispatch(hotel_outcome).handled() &&
+                    hotel_opened == 1,
+                "dispatcher did not resolve a named service target")) {
+        return false;
+    }
+
+    hotel_outcome.return_policy = "unresolved";
+    if (!expect(dispatcher.dispatch(hotel_outcome).status ==
+                    DialogueOutcomeDispatcher::Status::handler_rejected &&
+                    hotel_opened == 2,
+                "named target handler did not reject an unsupported policy")) {
+        return false;
+    }
+
+    DialogueOutcome unknown_service{};
+    unknown_service.type = DialogueOutcomeType::open_service;
+    unknown_service.destination_id = "unknown.options";
+    unknown_service.return_policy = "origin";
+    if (!expect(dispatcher.dispatch(unknown_service).status ==
+                    DialogueOutcomeDispatcher::Status::target_not_registered,
+                "unknown service did not remain an explicit boundary")) {
+        return false;
+    }
+
+    DialogueOutcome cinematic{};
+    cinematic.type = DialogueOutcomeType::play_cinematic;
+    cinematic.destination_id = "unregistered.sequence";
+    if (!expect(dispatcher.dispatch(cinematic).status ==
+                    DialogueOutcomeDispatcher::Status::target_not_registered,
+                "unregistered cinematic did not remain an explicit boundary")) {
+        return false;
+    }
+    return true;
+}
+
 } // namespace
 
 int main() {
     using namespace shadowrun::ghidra_conversion;
     using namespace shadowrun::ghidra_conversion::scripting;
+
+    if (!verify_dialogue_outcome_dispatcher()) {
+        return 2;
+    }
 
     if (!verify_dialogue_graph_outcomes(
             SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,

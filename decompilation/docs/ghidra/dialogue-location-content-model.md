@@ -376,9 +376,13 @@ conditions, and outcome types must not depend on Qt JSON classes.
    contact service flows use JSON graphs; the remaining six listed contacts
    still need source-traced service behavior.
 4. **Implemented with explicit host boundaries:** the reusable Lua graph and
-   condition engines and typed `DialogueOutcome` union are active. The host
-   dispatches only connected outcome families; return, other activity/service,
-   and cinematic transitions still stop at named boundaries. Remove legacy
+   condition engines and typed `DialogueOutcome` contract are active. The
+   portable C++ `DialogueOutcomeDispatcher` registers handlers by outcome type
+   or stable target ID. The field host registers in-place continuation, source
+   route resumption, ROM-default field-scene travel, hotel and hospital service
+   targets, and `return_to_origin` for the saved `source_entry` door record.
+   Unknown targets remain visible source boundaries. Activity and cinematic
+   transitions still need their source-backed host coordinators. Remove legacy
    result strings as each family is source-traced and migrated.
 5. **Ongoing:** migrate one source-traced behavior hill at a time, covering
    same-map services, pending route continuation, return through the saved
@@ -434,15 +438,20 @@ actions, and typed terminal outcomes. The host adapter yields the current
 page/menu to the existing presenter and returns controller facts. Effects are
 resolved by `dialogue_actions.lua`; JSON cannot call arbitrary Lua code.
 
-The C++ script boundary parses a discriminated `DialogueOutcome` value:
+The C++ script boundary parses a tagged `DialogueOutcome` value:
 `continue_in_place`, `resume_source_route`, `return_to_origin`,
 `enter_field_scene`, `enter_activity`, `open_service`, `play_cinematic`, and a
 diagnostic `source_boundary`. Route data can declare the expected typed result
-for a pre-entry page. The field presenter dispatches `continue_in_place`,
-`resume_source_route`, the Sharkey travel form of `enter_field_scene`, and the
-named `hotel.options`/`hospital.options` service screens. Return, activity,
-other service-screen, and cinematic outcomes still stop at an explicit host
-boundary until their coordinators are source-traced and connected.
+for a pre-entry page. The field presenter sends typed outcomes through the
+portable `DialogueOutcomeDispatcher`. Type handlers own `continue_in_place`,
+`resume_source_route`, and the Sharkey travel form of `enter_field_scene`.
+Named handlers own `hotel.options` and `hospital.options`; adding a service
+screen registers its stable ID and host coordinator instead of editing a
+service-name branch in the presenter. `return_to_origin` can consume the
+source-derived saved door point as `returnPoint: "source_entry"`; Hotel and
+Hospital checkout now use that same return handler. No migrated dialogue graph
+currently emits the outcome. Unsupported activity/cinematic IDs and
+unregistered service IDs remain visible source boundaries.
 
 Seven non-Stoker graphs and two Stoker roots currently exercise that contract:
 
