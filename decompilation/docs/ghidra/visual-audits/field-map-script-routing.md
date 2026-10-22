@@ -457,3 +457,23 @@ scene-2 resource entry or story-driven access. Additional doorway/object
 records, broad terrain recovery, other building item use, reverse transitions,
 and world-entry one-shot conditions still need ROM traces and normal-input
 route captures.
+
+## Facades with no ROM event-table entrance
+
+The current world entity catalog has four building-category facades without
+an interaction route. I checked their map footprints against the raw ROM
+high-bit collision records. These are explicit no-route findings for the
+event-table entrance mechanism, not destination guesses:
+
+| Entity | Scene and mapped footprint | ROM event-record check | Result |
+| --- | --- | --- | --- |
+| `northwest_factory_frontage` | Scene 2, x=0..256, y=0..256 | Scene-2 event records 85..97 at `0x1730FC..0x173174`; none overlaps the facade. The nearest event rectangles belong to other Scene-2 routes. | No event-table entrance is assigned. |
+| `puyallup_center_west_frontage` | Scene 1, x=560..720, y=480..544 | Scene-1 records 66..78 at `0x17D998..0x17DA10`; the nearest trigger is record 70 at x=800..831, y=512..543, outside the frontage and attached to Underground 93. | No event-table entrance is assigned. |
+| `salish_village_dwelling` | Scene 6; five instances at (1504,1088), (1504,1248), (1152,1440), (1504,1440), and (1632,1632), each 192x160 | Scene-6 event records 190..194 at `0x14C0EA..0x14C112`; records 193/194 align with Owlfeather and Red Buffalo, not these repeated dwellings. | No event-table entrance is assigned to the repeated dwelling art. |
+| `salish_village_north_lodge` | Scene 6, x=1248..1440, y=768..928 | The same Scene-6 records 190..194 contain no event rectangle in this structure. | No event-table entrance is assigned. |
+
+I reread the listed 10-byte collision records from the US ROM and checked the
+scene-1, scene-2, and scene-6 event-table rows. The `interactables.tsv` files
+for these entities remain empty; adding a Lua transition would currently
+invent a door event. This finding only covers the map collision/event route;
+any future claim of another interaction path needs a separate ROM trace.
