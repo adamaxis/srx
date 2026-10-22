@@ -17,7 +17,7 @@
         "returnFacing": "face_away_from_entry"
       },
       "provenance": {
-        "evidence": "ROM scene 5 record 47 at 0x067C40; event-table row 5 at 0x0679C5 selects numeric resource-activity scene 35. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+        "evidence": "ROM scene 5 record 47 at 0x067C40; profile pointer at 0x0679B8 selects event table 0x0679C6, where row 5 at 0x0679CB is 0x23 (resource activity 35). Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
       }
     }
   ]
