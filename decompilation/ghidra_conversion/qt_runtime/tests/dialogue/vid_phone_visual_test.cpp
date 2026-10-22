@@ -732,13 +732,15 @@ int main(int argc, char** argv) {
     }
     const auto passage_advance = runtime.advance_controller_events(0x4000U);
     const auto passage_outcome = runtime.take_gameplay_task_outcome();
+    const auto* passage = passage_outcome.has_value()
+        ? std::get_if<scripting::EnterFieldSceneOutcome>(
+              &*passage_outcome)
+        : nullptr;
     if (passage_advance !=
             FieldDialogueAdvanceResult::typed_outcome_requested ||
         !expect(passage_outcome.has_value() &&
-                    passage_outcome->type ==
-                        scripting::DialogueOutcomeType::enter_field_scene &&
-                    passage_outcome->scene_id == 6U &&
-                    passage_outcome->arrival_id == "rom_default",
+                    passage != nullptr && passage->scene_id == 6U &&
+                    passage->arrival_id == "rom_default",
                 "passage acknowledgement lost its typed scene-6 destination") ||
         !expect(!runtime.open(),
                 "passage acknowledgement left Sharkey's old panel on screen")) {

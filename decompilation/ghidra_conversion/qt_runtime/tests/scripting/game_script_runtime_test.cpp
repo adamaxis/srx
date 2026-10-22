@@ -382,8 +382,11 @@ bool verify_dialogue_graph_outcomes(
                   << " failure=" << scripts.failure();
         if (task.dialogue_outcome.has_value()) {
             std::cerr << " outcome=" << dialogue_outcome_type_name(
-                             task.dialogue_outcome->type)
-                      << " reason=" << task.dialogue_outcome->reason;
+                             dialogue_outcome_type(*task.dialogue_outcome));
+            if (const auto* boundary = std::get_if<SourceBoundaryOutcome>(
+                    &*task.dialogue_outcome)) {
+                std::cerr << " reason=" << boundary->reason;
+            }
         }
         std::cerr << '\n';
         return false;
@@ -392,7 +395,7 @@ bool verify_dialogue_graph_outcomes(
     const auto gates_state = scripts.story_state();
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
                     task.dialogue_outcome.has_value() &&
-                    task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
                     gates_state.at("story_trigger_active_15") &&
                     gates_state.at("story_flag_bit_15") &&
@@ -408,9 +411,10 @@ bool verify_dialogue_graph_outcomes(
         "gates_undersound", "present_ogami_departure");
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
                     task.dialogue_outcome.has_value() &&
-                    task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*task.dialogue_outcome) ==
                         DialogueOutcomeType::source_boundary &&
-                    task.dialogue_outcome->reason.find(
+                    std::get<SourceBoundaryOutcome>(
+                        *task.dialogue_outcome).reason.find(
                         "condition_unknown") != std::string::npos,
                 "unknown graph gate did not return a typed source boundary")) {
         std::cerr << scripts.failure() << '\n';
@@ -439,7 +443,7 @@ bool verify_dialogue_graph_outcomes(
     const auto renraku_state = scripts.story_state();
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
                     task.dialogue_outcome.has_value() &&
-                    task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*task.dialogue_outcome) ==
                         DialogueOutcomeType::resume_source_route &&
                     renraku_state.at("story_trigger_active_12") &&
                     !renraku_state.at("story_flag_bit_12"),
@@ -470,7 +474,7 @@ bool verify_dialogue_graph_outcomes(
     const auto fuchi_state = scripts.story_state();
     return expect(task.status == ScriptTaskStep::Status::completed &&
                       task.dialogue_outcome.has_value() &&
-                      task.dialogue_outcome->type ==
+                      dialogue_outcome_type(*task.dialogue_outcome) ==
                           DialogueOutcomeType::resume_source_route &&
                       fuchi_state.at("story_trigger_active_14") &&
                       !fuchi_state.at("story_flag_bit_14"),
@@ -483,53 +487,46 @@ bool verify_dialogue_outcome_dispatcher() {
     DialogueOutcomeDispatcher dispatcher;
     int continued = 0;
     int hotel_opened = 0;
-    if (!expect(dispatcher.register_type_handler(
-                    DialogueOutcomeType::continue_in_place,
-                    [&continued](const DialogueOutcome& outcome) {
+    if (!expect(dispatcher.register_type_handler<
+                    ContinueInPlaceOutcome>(
+                    [&continued](const ContinueInPlaceOutcome&) {
                         ++continued;
-                        return outcome.type ==
-                               DialogueOutcomeType::continue_in_place;
+                        return true;
                     }),
                 "could not register generic continue outcome") ||
-        !expect(dispatcher.register_target_handler(
-                    DialogueOutcomeType::open_service, "hotel.options",
-                    [&hotel_opened](const DialogueOutcome& outcome) {
+        !expect(dispatcher.register_target_handler<OpenServiceOutcome>(
+                    "hotel.options",
+                    [&hotel_opened](const OpenServiceOutcome& outcome) {
                         ++hotel_opened;
-                        return outcome.type ==
-                                   DialogueOutcomeType::open_service &&
-                               outcome.return_policy == "origin";
+                        return outcome.return_policy == "origin";
                     }),
                 "could not register named hotel service outcome") ||
-        !expect(!dispatcher.register_target_handler(
-                    DialogueOutcomeType::open_service, "hotel.options",
-                    [](const DialogueOutcome&) { return true; }),
+        !expect(!dispatcher.register_target_handler<OpenServiceOutcome>(
+                    "hotel.options",
+                    [](const OpenServiceOutcome&) { return true; }),
                 "dispatcher accepted a duplicate target handler") ||
-        !expect(!dispatcher.register_target_handler(
-                    DialogueOutcomeType::open_service, "",
-                    [](const DialogueOutcome&) { return true; }),
+        !expect(!dispatcher.register_target_handler<OpenServiceOutcome>(
+                    "", [](const OpenServiceOutcome&) { return true; }),
                 "dispatcher accepted an empty target ID")) {
         return false;
     }
 
-    DialogueOutcome continue_outcome{};
-    continue_outcome.type = DialogueOutcomeType::continue_in_place;
+    DialogueOutcome continue_outcome = ContinueInPlaceOutcome{};
     if (!expect(dispatcher.dispatch(continue_outcome).handled() &&
                     continued == 1,
                 "dispatcher did not resolve a registered outcome type")) {
         return false;
     }
 
-    DialogueOutcome hotel_outcome{};
-    hotel_outcome.type = DialogueOutcomeType::open_service;
-    hotel_outcome.destination_id = "hotel.options";
-    hotel_outcome.return_policy = "origin";
+    DialogueOutcome hotel_outcome =
+        OpenServiceOutcome{"hotel.options", "origin"};
     if (!expect(dispatcher.dispatch(hotel_outcome).handled() &&
                     hotel_opened == 1,
                 "dispatcher did not resolve a named service target")) {
         return false;
     }
 
-    hotel_outcome.return_policy = "unresolved";
+    hotel_outcome = OpenServiceOutcome{"hotel.options", "unresolved"};
     if (!expect(dispatcher.dispatch(hotel_outcome).status ==
                     DialogueOutcomeDispatcher::Status::handler_rejected &&
                     hotel_opened == 2,
@@ -537,19 +534,16 @@ bool verify_dialogue_outcome_dispatcher() {
         return false;
     }
 
-    DialogueOutcome unknown_service{};
-    unknown_service.type = DialogueOutcomeType::open_service;
-    unknown_service.destination_id = "unknown.options";
-    unknown_service.return_policy = "origin";
+    DialogueOutcome unknown_service =
+        OpenServiceOutcome{"unknown.options", "origin"};
     if (!expect(dispatcher.dispatch(unknown_service).status ==
                     DialogueOutcomeDispatcher::Status::target_not_registered,
                 "unknown service did not remain an explicit boundary")) {
         return false;
     }
 
-    DialogueOutcome cinematic{};
-    cinematic.type = DialogueOutcomeType::play_cinematic;
-    cinematic.destination_id = "unregistered.sequence";
+    DialogueOutcome cinematic =
+        PlayCinematicOutcome{"unregistered.sequence", "source_context"};
     if (!expect(dispatcher.dispatch(cinematic).status ==
                     DialogueOutcomeDispatcher::Status::target_not_registered,
                 "unregistered cinematic did not remain an explicit boundary")) {
@@ -8601,7 +8595,7 @@ int main() {
     if (!expect(native_completed_visit.status ==
                         ScriptTaskStep::Status::completed &&
                     native_completed_visit.dialogue_outcome.has_value() &&
-                    native_completed_visit.dialogue_outcome->type ==
+                    dialogue_outcome_type(*native_completed_visit.dialogue_outcome) ==
                         DialogueOutcomeType::source_boundary,
                 "Stoker graph did not reread changed native story facts")) {
         std::cerr << scripts.failure() << '\n';
@@ -9031,7 +9025,7 @@ int main() {
     inn_task = scripts.complete_native_operation(true);
     if (!expect(inn_task.status == ScriptTaskStep::Status::completed &&
                     inn_task.dialogue_outcome.has_value() &&
-                    inn_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*inn_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place,
                 "Inn JSON graph did not continue in place after leaving")) {
         std::cerr << scripts.failure() << '\n';
@@ -9152,13 +9146,15 @@ int main() {
         return 19;
     }
     wylie_task = scripts.complete_native_operation(true);
+    const auto* wylie_paid_service =
+        wylie_task.dialogue_outcome.has_value()
+            ? std::get_if<OpenServiceOutcome>(&*wylie_task.dialogue_outcome)
+            : nullptr;
     if (!expect(wylie_task.status == ScriptTaskStep::Status::completed &&
                     wylie_task.dialogue_outcome.has_value() &&
-                    wylie_task.dialogue_outcome->type ==
-                        DialogueOutcomeType::open_service &&
-                    wylie_task.dialogue_outcome->destination_id ==
-                        "hotel.options" &&
-                    wylie_task.dialogue_outcome->return_policy == "origin",
+                    wylie_paid_service != nullptr &&
+                    wylie_paid_service->service_id == "hotel.options" &&
+                    wylie_paid_service->return_policy == "origin",
                 "Wylie's paid stay did not transfer to the Hotel Options screen")) {
         std::cerr << scripts.failure() << '\n';
         return 19;
@@ -9195,13 +9191,15 @@ int main() {
         return 19;
     }
     wylie_task = scripts.complete_native_operation(true);
+    const auto* wylie_free_service =
+        wylie_task.dialogue_outcome.has_value()
+            ? std::get_if<OpenServiceOutcome>(&*wylie_task.dialogue_outcome)
+            : nullptr;
     if (!expect(wylie_task.status == ScriptTaskStep::Status::completed &&
                     wylie_task.dialogue_outcome.has_value() &&
-                    wylie_task.dialogue_outcome->type ==
-                        DialogueOutcomeType::open_service &&
-                    wylie_task.dialogue_outcome->destination_id ==
-                        "hotel.options" &&
-                    wylie_task.dialogue_outcome->return_policy == "origin",
+                    wylie_free_service != nullptr &&
+                    wylie_free_service->service_id == "hotel.options" &&
+                    wylie_free_service->return_policy == "origin",
                 "Wylie's free stay did not transfer to the Hotel Options screen")) {
         std::cerr << scripts.failure() << '\n';
         return 19;
@@ -9220,9 +9218,10 @@ int main() {
     wylie_task = scripts.complete_native_menu_choice("crash");
     if (!expect(wylie_task.status == ScriptTaskStep::Status::completed &&
                     wylie_task.dialogue_outcome.has_value() &&
-                    wylie_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*wylie_task.dialogue_outcome) ==
                         DialogueOutcomeType::source_boundary &&
-                    wylie_task.dialogue_outcome->reason.find(
+                    std::get<SourceBoundaryOutcome>(
+                        *wylie_task.dialogue_outcome).reason.find(
                         "story.runner_feature_flag_bit_2") !=
                         std::string::npos,
                 "Wylie's Inn guessed an unresolved restored runner-status bit")) {
@@ -9402,7 +9401,7 @@ int main() {
     owlfeather_task = scripts.complete_native_operation(true);
     if (!expect(owlfeather_task.status == ScriptTaskStep::Status::completed &&
                     owlfeather_task.dialogue_outcome.has_value() &&
-                    owlfeather_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*owlfeather_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
                     scripts.story_state().at("field_mode_effect_flag_bit_10"),
                 "Owlfeather's JSON dialogue graph did not finish its task branch, farewell pages, and effect bit 10")) {
@@ -9431,7 +9430,7 @@ int main() {
     owlfeather_task = scripts.complete_native_operation(true);
     if (!expect(owlfeather_task.status == ScriptTaskStep::Status::completed &&
                     owlfeather_task.dialogue_outcome.has_value() &&
-                    owlfeather_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*owlfeather_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
                     !scripts.story_state().at("story_flag_bit_2"),
                 "Owlfeather's shared Lands/Rangers/villages/Council topic loop changed the task gate or missed its terminal")) {
@@ -9463,7 +9462,7 @@ int main() {
     owlfeather_task = scripts.complete_native_operation(true);
     if (!expect(owlfeather_task.status == ScriptTaskStep::Status::completed &&
                     owlfeather_task.dialogue_outcome.has_value() &&
-                    owlfeather_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*owlfeather_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
                     !scripts.story_state().at("story_flag_bit_3"),
                 "Owlfeather's Later branch did not return in place with its repeat gate open")) {
@@ -9516,7 +9515,7 @@ int main() {
     owlfeather_task = scripts.complete_native_operation(true);
     if (!expect(owlfeather_task.status == ScriptTaskStep::Status::completed &&
                     owlfeather_task.dialogue_outcome.has_value() &&
-                    owlfeather_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*owlfeather_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
                     scripts.story_state().at("story_flag_bit_4") &&
                     scripts.story_state().at("story_trigger_active_4"),
@@ -10273,7 +10272,7 @@ int main() {
     if (!expect(spirit_eyes_task.status ==
                         ScriptTaskStep::Status::completed &&
                     spirit_eyes_task.dialogue_outcome.has_value() &&
-                    spirit_eyes_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*spirit_eyes_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place,
                 "Spirit Eyes first-contact sequence did not return to the field")) {
         std::cerr << scripts.failure() << '\n';
@@ -10296,7 +10295,7 @@ int main() {
     }
     spirit_eyes_task = scripts.complete_native_operation(true);
     if (!expect(spirit_eyes_task.dialogue_outcome.has_value() &&
-                    spirit_eyes_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*spirit_eyes_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place,
                 "Spirit Eyes no-horn branch did not remain at the site")) {
         std::cerr << scripts.failure() << '\n';
@@ -10330,7 +10329,7 @@ int main() {
     }
     spirit_eyes_task = scripts.complete_native_operation(true);
     if (!expect(spirit_eyes_task.dialogue_outcome.has_value() &&
-                    spirit_eyes_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*spirit_eyes_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place,
                 "Spirit Eyes horn handoff did not remain at the site")) {
         std::cerr << scripts.failure() << '\n';
@@ -10349,7 +10348,7 @@ int main() {
     }
     spirit_eyes_task = scripts.complete_native_operation(true);
     if (!expect(spirit_eyes_task.dialogue_outcome.has_value() &&
-                    spirit_eyes_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*spirit_eyes_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place,
                 "Spirit Eyes no-pelt branch did not remain at the site")) {
         std::cerr << scripts.failure() << '\n';
@@ -10380,7 +10379,7 @@ int main() {
     }
     spirit_eyes_task = scripts.complete_native_operation(true);
     if (!expect(spirit_eyes_task.dialogue_outcome.has_value() &&
-                    spirit_eyes_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*spirit_eyes_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place,
                 "Spirit Eyes pelt handoff did not remain at the site")) {
         std::cerr << scripts.failure() << '\n';
@@ -10400,7 +10399,7 @@ int main() {
     }
     spirit_eyes_task = scripts.complete_native_operation(true);
     if (!expect(spirit_eyes_task.dialogue_outcome.has_value() &&
-                    spirit_eyes_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*spirit_eyes_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place,
                 "Spirit Eyes pre-scale branch did not remain at the site")) {
         std::cerr << scripts.failure() << '\n';
@@ -10437,7 +10436,7 @@ int main() {
     licourtrix_task = scripts.complete_native_operation(true);
     if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
                     licourtrix_task.dialogue_outcome.has_value() &&
-                    licourtrix_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
                     scripts.story_state().at("story_flag_bit_8") &&
                     !scripts.story_state().at("group_item_flag_bit_2"),
@@ -10467,7 +10466,7 @@ int main() {
     licourtrix_task = scripts.complete_native_operation(true);
     if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
                     licourtrix_task.dialogue_outcome.has_value() &&
-                    licourtrix_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
                     !scripts.story_state().at("group_item_flag_bit_2"),
                 "Licourtrix empty-lair repeat changed the scale item")) {
@@ -10489,7 +10488,7 @@ int main() {
         "salish_spirit_eyes", "present_serpent_encounter");
     if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
                     licourtrix_task.dialogue_outcome.has_value() &&
-                    licourtrix_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
                     scripts.story_state().at("story_trigger_active_8") &&
                     !scripts.story_state().at("story_flag_bit_8") &&
@@ -10507,7 +10506,7 @@ int main() {
         "salish_spirit_eyes", "present_serpent_encounter");
     if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
                     licourtrix_task.dialogue_outcome.has_value() &&
-                    licourtrix_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
                     !scripts.story_state().at("story_flag_bit_8") &&
                     !scripts.story_state().at("group_item_flag_bit_2"),
@@ -10528,7 +10527,7 @@ int main() {
         "salish_spirit_eyes", "present_serpent_encounter");
     if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
                     licourtrix_task.dialogue_outcome.has_value() &&
-                    licourtrix_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
                         DialogueOutcomeType::source_boundary &&
                     !scripts.story_state().at("story_trigger_active_8") &&
                     !scripts.story_state().at("story_flag_bit_8") &&
@@ -10681,7 +10680,7 @@ int main() {
     licourtrix_task = scripts.complete_native_operation(true);
     if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
                     licourtrix_task.dialogue_outcome.has_value() &&
-                    licourtrix_task.dialogue_outcome->type ==
+                    dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
                     scripts.story_state().at("story_trigger_active_8") &&
                     scripts.story_state().at("story_flag_bit_8") &&
@@ -10711,7 +10710,7 @@ int main() {
     }
     missing_scale = scripts.complete_native_operation(true);
     if (!expect(missing_scale.dialogue_outcome.has_value() &&
-                    missing_scale.dialogue_outcome->type ==
+                    dialogue_outcome_type(*missing_scale.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place,
                 "Spirit Eyes missing-scale branch did not remain at the site")) {
         std::cerr << scripts.failure() << '\n';
@@ -10766,15 +10765,18 @@ int main() {
         return 18;
     }
     spirit_eyes_completion = scripts.complete_native_operation(true);
+    const auto* ritual_cinematic =
+        spirit_eyes_completion.dialogue_outcome.has_value()
+            ? std::get_if<PlayCinematicOutcome>(
+                  &*spirit_eyes_completion.dialogue_outcome)
+            : nullptr;
     if (!expect(spirit_eyes_completion.status ==
                         ScriptTaskStep::Status::completed &&
                     spirit_eyes_completion.dialogue_outcome.has_value() &&
-                    spirit_eyes_completion.dialogue_outcome->type ==
-                        DialogueOutcomeType::play_cinematic &&
-                    spirit_eyes_completion.dialogue_outcome->destination_id ==
+                    ritual_cinematic != nullptr &&
+                    ritual_cinematic->cinematic_id ==
                         "salish.spirit_eyes.ritual_of_binding" &&
-                    spirit_eyes_completion.dialogue_outcome->return_policy ==
-                        "source_context" &&
+                    ritual_cinematic->return_policy == "source_context" &&
                     scripts.dialogue_text(
                         "salish.spirit_eyes.page.post_ritual_warning") !=
                         nullptr &&
@@ -10810,7 +10812,7 @@ int main() {
     post_ritual = scripts.complete_native_operation(true);
     if (!expect(post_ritual.status == ScriptTaskStep::Status::completed &&
                     post_ritual.dialogue_outcome.has_value() &&
-                    post_ritual.dialogue_outcome->type ==
+                    dialogue_outcome_type(*post_ritual.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place,
                 "Spirit Eyes post-ritual answer did not finish in place")) {
         std::cerr << scripts.failure() << '\n';

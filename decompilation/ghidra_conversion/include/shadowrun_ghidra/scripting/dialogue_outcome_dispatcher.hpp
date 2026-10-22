@@ -6,17 +6,17 @@
 #include <map>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
+#include <variant>
 
 namespace shadowrun::ghidra_conversion::scripting {
 
-// Hosts register the transitions they actually implement. Named targets such
-// as service, activity, and cinematic IDs resolve without growing a switch in
-// the dialogue presenter. A missing target stays an explicit source boundary.
+// Hosts register the transitions they actually implement. A handler receives
+// only the payload type associated with its registration, while named targets
+// resolve without route-specific cases in the presenter.
 class DialogueOutcomeDispatcher final {
 public:
-    using Handler = std::function<bool(const DialogueOutcome&)>;
-
     enum class Status {
         handled,
         target_not_registered,
@@ -29,37 +29,68 @@ public:
         bool handled() const noexcept { return status == Status::handled; }
     };
 
-    bool register_type_handler(DialogueOutcomeType type, Handler handler) {
-        if (!handler) {
+    template <typename Outcome, typename Callable>
+    bool register_type_handler(Callable&& callable) {
+        static_assert(is_terminal_outcome<Outcome>() &&
+                          !DialogueOutcomeTraits<Outcome>::requires_target,
+                      "targeted outcomes need a registered target handler");
+        TypedHandler<Outcome> typed_handler(std::forward<Callable>(callable));
+        if (!typed_handler) {
             return false;
         }
-        return type_handlers_.emplace(type, std::move(handler)).second;
+        return type_handlers_.emplace(
+            DialogueOutcomeTraits<Outcome>::type,
+            [handler = std::move(typed_handler)](
+                const DialogueOutcome& outcome) {
+                const auto* typed = std::get_if<Outcome>(&outcome);
+                return typed != nullptr && handler(*typed);
+            }).second;
     }
 
-    bool register_target_handler(DialogueOutcomeType type,
-                                 std::string_view target_id,
-                                 Handler handler) {
-        if (target_id.empty() || !handler) {
+    template <typename Outcome, typename Callable>
+    bool register_target_handler(std::string_view target_id,
+                                 Callable&& callable) {
+        static_assert(is_terminal_outcome<Outcome>() &&
+                          DialogueOutcomeTraits<Outcome>::requires_target,
+                      "only named-target outcomes use target handlers");
+        if (target_id.empty()) {
             return false;
         }
-        return target_handlers_
-            .emplace(TargetKey{type, std::string(target_id)},
-                     std::move(handler))
-            .second;
+        TypedHandler<Outcome> typed_handler(std::forward<Callable>(callable));
+        if (!typed_handler) {
+            return false;
+        }
+        return target_handlers_.emplace(
+            TargetKey{DialogueOutcomeTraits<Outcome>::type,
+                      std::string(target_id)},
+            [handler = std::move(typed_handler)](
+                const DialogueOutcome& outcome) {
+                const auto* typed = std::get_if<Outcome>(&outcome);
+                return typed != nullptr && handler(*typed);
+            }).second;
     }
 
     Result dispatch(const DialogueOutcome& outcome) const {
-        const auto target = outcome_target_id(outcome);
-        if (!target.empty()) {
+        if (std::holds_alternative<SourceBoundaryOutcome>(outcome)) {
+            return {Status::handler_rejected};
+        }
+
+        const auto type = dialogue_outcome_type(outcome);
+        const auto target = dialogue_outcome_target_id(outcome);
+        if (dialogue_outcome_requires_target(outcome)) {
+            if (target.empty()) {
+                return {Status::target_not_registered};
+            }
             const auto found =
                 target_handlers_.find(
-                    TargetKey{outcome.type, std::string(target)});
+                    TargetKey{type, std::string(target)});
             if (found != target_handlers_.end()) {
                 return invoke(found->second, outcome);
             }
+            return {Status::target_not_registered};
         }
 
-        const auto found = type_handlers_.find(outcome.type);
+        const auto found = type_handlers_.find(type);
         if (found == type_handlers_.end()) {
             return {Status::target_not_registered};
         }
@@ -67,6 +98,16 @@ public:
     }
 
 private:
+    using Handler = std::function<bool(const DialogueOutcome&)>;
+
+    template <typename Outcome>
+    using TypedHandler = std::function<bool(const Outcome&)>;
+
+    template <typename Outcome>
+    static constexpr bool is_terminal_outcome() noexcept {
+        return !std::is_same_v<Outcome, SourceBoundaryOutcome>;
+    }
+
     struct TargetKey {
         DialogueOutcomeType type;
         std::string target_id;
@@ -79,23 +120,6 @@ private:
             return left.target_id < right.target_id;
         }
     };
-
-    static std::string_view outcome_target_id(
-        const DialogueOutcome& outcome) noexcept {
-        switch (outcome.type) {
-        case DialogueOutcomeType::return_to_origin:
-        case DialogueOutcomeType::enter_activity:
-        case DialogueOutcomeType::open_service:
-        case DialogueOutcomeType::play_cinematic:
-            return outcome.destination_id;
-        case DialogueOutcomeType::continue_in_place:
-        case DialogueOutcomeType::resume_source_route:
-        case DialogueOutcomeType::enter_field_scene:
-        case DialogueOutcomeType::source_boundary:
-            return {};
-        }
-        return {};
-    }
 
     static Result invoke(const Handler& handler,
                          const DialogueOutcome& outcome) {

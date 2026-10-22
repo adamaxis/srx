@@ -15971,9 +15971,8 @@ void FieldSceneRuntime::advance_frame() {
             (void)begin_hospital_menu_task("present_leave_confirmation");
         } else if (result == FieldDialogueAdvanceResult::hospital_left) {
             hospital_service_session_active_ = false;
-            scripting::DialogueOutcome outcome{};
-            outcome.type = scripting::DialogueOutcomeType::return_to_origin;
-            outcome.destination_id = "source_entry";
+            scripting::DialogueOutcome outcome =
+                scripting::ReturnToOriginOutcome{"source_entry", std::nullopt};
             (void)dispatch_dialogue_outcome(outcome);
         } else if (result == FieldDialogueAdvanceResult::
                        hospital_cyberware_requested) {
@@ -16968,10 +16967,8 @@ bool FieldSceneRuntime::open_command_overview_for_dump() {
 bool FieldSceneRuntime::dispatch_dialogue_service_for_dump(
     const std::string_view service_id,
     const std::string_view return_policy) {
-    scripting::DialogueOutcome outcome{};
-    outcome.type = scripting::DialogueOutcomeType::open_service;
-    outcome.destination_id = std::string(service_id);
-    outcome.return_policy = std::string(return_policy);
+    scripting::DialogueOutcome outcome = scripting::OpenServiceOutcome{
+        std::string(service_id), std::string(return_policy)};
     return dispatch_dialogue_outcome(outcome);
 }
 
@@ -17434,37 +17431,38 @@ void FieldSceneRuntime::begin_hotel_menu() {
 }
 
 void FieldSceneRuntime::register_dialogue_outcome_handlers() {
-    using scripting::DialogueOutcomeType;
-
     const bool registered =
-        dialogue_outcome_dispatcher_.register_type_handler(
-            DialogueOutcomeType::continue_in_place,
-            [this](const scripting::DialogueOutcome& outcome) {
+        dialogue_outcome_dispatcher_.register_type_handler<
+            scripting::ContinueInPlaceOutcome>(
+            [this](const scripting::ContinueInPlaceOutcome& outcome) {
                 return handle_dialogue_continue_in_place(outcome);
             }) &&
-        dialogue_outcome_dispatcher_.register_type_handler(
-            DialogueOutcomeType::resume_source_route,
-            [this](const scripting::DialogueOutcome& outcome) {
+        dialogue_outcome_dispatcher_.register_type_handler<
+            scripting::ResumeSourceRouteOutcome>(
+            [this](const scripting::ResumeSourceRouteOutcome& outcome) {
                 return handle_dialogue_resume_source_route(outcome);
             }) &&
-        dialogue_outcome_dispatcher_.register_type_handler(
-            DialogueOutcomeType::enter_field_scene,
-            [this](const scripting::DialogueOutcome& outcome) {
+        dialogue_outcome_dispatcher_.register_type_handler<
+            scripting::EnterFieldSceneOutcome>(
+            [this](const scripting::EnterFieldSceneOutcome& outcome) {
                 return handle_dialogue_enter_field_scene(outcome);
             }) &&
-        dialogue_outcome_dispatcher_.register_target_handler(
-            DialogueOutcomeType::return_to_origin, "source_entry",
-            [this](const scripting::DialogueOutcome& outcome) {
+        dialogue_outcome_dispatcher_.register_target_handler<
+            scripting::ReturnToOriginOutcome>(
+            "source_entry",
+            [this](const scripting::ReturnToOriginOutcome& outcome) {
                 return handle_dialogue_return_to_source_entry(outcome);
             }) &&
-        dialogue_outcome_dispatcher_.register_target_handler(
-            DialogueOutcomeType::open_service, "hotel.options",
-            [this](const scripting::DialogueOutcome& outcome) {
+        dialogue_outcome_dispatcher_.register_target_handler<
+            scripting::OpenServiceOutcome>(
+            "hotel.options",
+            [this](const scripting::OpenServiceOutcome& outcome) {
                 return open_hotel_dialogue_service(outcome);
             }) &&
-        dialogue_outcome_dispatcher_.register_target_handler(
-            DialogueOutcomeType::open_service, "hospital.options",
-            [this](const scripting::DialogueOutcome& outcome) {
+        dialogue_outcome_dispatcher_.register_target_handler<
+            scripting::OpenServiceOutcome>(
+            "hospital.options",
+            [this](const scripting::OpenServiceOutcome& outcome) {
                 return open_hospital_dialogue_service(outcome);
             });
 
@@ -17476,9 +17474,11 @@ void FieldSceneRuntime::register_dialogue_outcome_handlers() {
 
 bool FieldSceneRuntime::dispatch_dialogue_outcome(
     const scripting::DialogueOutcome& outcome) {
-    if (outcome.type == scripting::DialogueOutcomeType::source_boundary) {
-        source_boundary("field.dialogue.source_boundary:" + outcome.reason);
-        return field_dialogue_.present_source_boundary_for_host(outcome.reason);
+    if (const auto* boundary = std::get_if<scripting::SourceBoundaryOutcome>(
+            &outcome)) {
+        source_boundary("field.dialogue.source_boundary:" + boundary->reason);
+        return field_dialogue_.present_source_boundary_for_host(
+            boundary->reason);
     }
 
     const auto result = dialogue_outcome_dispatcher_.dispatch(outcome);
@@ -17491,22 +17491,22 @@ bool FieldSceneRuntime::dispatch_dialogue_outcome(
                 scripting::DialogueOutcomeDispatcher::Status::handler_rejected
             ? "handler_rejected"
             : "target_not_registered";
-    const auto type_name =
-        scripting::dialogue_outcome_type_name(outcome.type);
+    const auto type_name = scripting::dialogue_outcome_type_name(
+        scripting::dialogue_outcome_type(outcome));
     std::string reason = "field.dialogue.outcome." +
                          std::string(status) + ":" +
                          std::string(type_name);
-    if (!outcome.destination_id.empty()) {
-        reason += ":" + outcome.destination_id;
+    const auto target_id = scripting::dialogue_outcome_target_id(outcome);
+    if (!target_id.empty()) {
+        reason += ":" + std::string(target_id);
     }
     source_boundary(reason);
     return field_dialogue_.present_source_boundary_for_host(reason);
 }
 
 bool FieldSceneRuntime::handle_dialogue_continue_in_place(
-    const scripting::DialogueOutcome& outcome) {
-    if (!ready_ || outcome.type !=
-                       scripting::DialogueOutcomeType::continue_in_place) {
+    const scripting::ContinueInPlaceOutcome& /* outcome */) {
+    if (!ready_) {
         return false;
     }
     hospital_service_session_active_ = false;
@@ -17520,15 +17520,14 @@ bool FieldSceneRuntime::handle_dialogue_continue_in_place(
 }
 
 bool FieldSceneRuntime::handle_dialogue_resume_source_route(
-    const scripting::DialogueOutcome& outcome) {
-    if (!ready_ || outcome.type !=
-                       scripting::DialogueOutcomeType::resume_source_route) {
+    const scripting::ResumeSourceRouteOutcome& /* outcome */) {
+    if (!ready_) {
         return false;
     }
     const bool outcome_matches_route =
         active_field_script_route_.has_value() &&
         active_field_script_route_->entry_continue_outcome_type &&
-        outcome.type ==
+        scripting::DialogueOutcomeType::resume_source_route ==
             *active_field_script_route_->entry_continue_outcome_type;
     if (!field_mode_entry_transition_pending_ || !outcome_matches_route) {
         field_mode_entry_transition_pending_ = false;
@@ -17549,16 +17548,14 @@ bool FieldSceneRuntime::handle_dialogue_resume_source_route(
 }
 
 bool FieldSceneRuntime::handle_dialogue_enter_field_scene(
-    const scripting::DialogueOutcome& outcome) {
-    if (!ready_ || outcome.type !=
-                       scripting::DialogueOutcomeType::enter_field_scene) {
+    const scripting::EnterFieldSceneOutcome& outcome) {
+    if (!ready_) {
         return false;
     }
     const bool outcome_matches_service =
         outcome.arrival_id == "rom_default" &&
         field_phone_pending_destination_.has_value() &&
-        outcome.scene_id.has_value() &&
-        *outcome.scene_id == *field_phone_pending_destination_;
+        outcome.scene_id == *field_phone_pending_destination_;
     if (!outcome_matches_service) {
         field_phone_pending_destination_.reset();
         source_boundary("field.vid_phone.typed_scene_outcome_mismatch");
@@ -17575,12 +17572,10 @@ bool FieldSceneRuntime::handle_dialogue_enter_field_scene(
 }
 
 bool FieldSceneRuntime::handle_dialogue_return_to_source_entry(
-    const scripting::DialogueOutcome& outcome) {
-    if (!ready_ || outcome.type !=
-                       scripting::DialogueOutcomeType::return_to_origin ||
-        outcome.destination_id != "source_entry" ||
-        (!outcome.return_policy.empty() &&
-         outcome.return_policy != "recorded_entry") ||
+    const scripting::ReturnToOriginOutcome& outcome) {
+    if (!ready_ || outcome.return_point_id != "source_entry" ||
+        (outcome.return_policy.has_value() &&
+         *outcome.return_policy != "recorded_entry") ||
         !field_door_return_point_.valid) {
         return false;
     }
@@ -17590,9 +17585,8 @@ bool FieldSceneRuntime::handle_dialogue_return_to_source_entry(
 }
 
 bool FieldSceneRuntime::prepare_open_dialogue_service(
-    const scripting::DialogueOutcome& outcome) {
-    if (!ready_ || outcome.type !=
-                       scripting::DialogueOutcomeType::open_service ||
+    const scripting::OpenServiceOutcome& outcome) {
+    if (!ready_ ||
         outcome.return_policy != "origin") {
         return false;
     }
@@ -17603,7 +17597,7 @@ bool FieldSceneRuntime::prepare_open_dialogue_service(
 }
 
 bool FieldSceneRuntime::open_hotel_dialogue_service(
-    const scripting::DialogueOutcome& outcome) {
+    const scripting::OpenServiceOutcome& outcome) {
     if (!prepare_open_dialogue_service(outcome)) {
         return false;
     }
@@ -17612,7 +17606,7 @@ bool FieldSceneRuntime::open_hotel_dialogue_service(
 }
 
 bool FieldSceneRuntime::open_hospital_dialogue_service(
-    const scripting::DialogueOutcome& outcome) {
+    const scripting::OpenServiceOutcome& outcome) {
     if (!prepare_open_dialogue_service(outcome)) {
         return false;
     }
@@ -18078,9 +18072,8 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
         break;
     case HotelMenuEvent::checked_out:
         {
-            scripting::DialogueOutcome outcome{};
-            outcome.type = scripting::DialogueOutcomeType::return_to_origin;
-            outcome.destination_id = "source_entry";
+            scripting::DialogueOutcome outcome =
+                scripting::ReturnToOriginOutcome{"source_entry", std::nullopt};
             (void)dispatch_dialogue_outcome(outcome);
         }
         refresh_field_hud_runner_slot();

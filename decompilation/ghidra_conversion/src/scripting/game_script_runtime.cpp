@@ -384,8 +384,6 @@ std::optional<DialogueOutcome> read_dialogue_outcome(
         return std::nullopt;
     }
 
-    DialogueOutcome result{};
-    result.type = *type;
     std::uint32_t scene_id = 0U;
     switch (*type) {
     case DialogueOutcomeType::continue_in_place:
@@ -393,71 +391,95 @@ std::optional<DialogueOutcome> read_dialogue_outcome(
         if (!outcome_has_only_fields(state, absolute_index, {"type"})) {
             return std::nullopt;
         }
-        break;
-    case DialogueOutcomeType::return_to_origin:
+        if (*type == DialogueOutcomeType::continue_in_place) {
+            return ContinueInPlaceOutcome{};
+        }
+        return ResumeSourceRouteOutcome{};
+    case DialogueOutcomeType::return_to_origin: {
+        std::string return_point_id;
+        std::string return_policy;
         if (!outcome_has_only_fields(state, absolute_index,
                                      {"type", "returnPoint",
                                       "returnPolicy"}) ||
             !read_field_string(state, absolute_index, "returnPoint",
-                               result.destination_id) ||
+                               return_point_id) ||
             !read_optional_field_string(state, absolute_index,
                                         "returnPolicy",
-                                        result.return_policy)) {
+                                        return_policy)) {
             return std::nullopt;
         }
-        break;
-    case DialogueOutcomeType::enter_field_scene:
+        std::optional<std::string> optional_return_policy;
+        if (!return_policy.empty()) {
+            optional_return_policy = std::move(return_policy);
+        }
+        return ReturnToOriginOutcome{
+            std::move(return_point_id), std::move(optional_return_policy)};
+    }
+    case DialogueOutcomeType::enter_field_scene: {
+        std::string arrival_id;
         if (!outcome_has_only_fields(state, absolute_index,
                                      {"type", "sceneId", "arrivalId"}) ||
             !read_field_integer(state, absolute_index, "sceneId", 55U,
                                 scene_id) ||
             !read_field_string(state, absolute_index, "arrivalId",
-                               result.arrival_id)) {
+                               arrival_id)) {
             return std::nullopt;
         }
-        result.scene_id = static_cast<std::uint8_t>(scene_id);
-        break;
-    case DialogueOutcomeType::enter_activity:
+        return EnterFieldSceneOutcome{static_cast<std::uint8_t>(scene_id),
+                                      std::move(arrival_id)};
+    }
+    case DialogueOutcomeType::enter_activity: {
+        std::string activity_id;
         if (!outcome_has_only_fields(state, absolute_index,
                                      {"type", "activityId"}) ||
             !read_field_string(state, absolute_index, "activityId",
-                               result.destination_id)) {
+                               activity_id)) {
             return std::nullopt;
         }
-        break;
-    case DialogueOutcomeType::open_service:
+        return EnterActivityOutcome{std::move(activity_id)};
+    }
+    case DialogueOutcomeType::open_service: {
+        std::string service_id;
+        std::string return_policy;
         if (!outcome_has_only_fields(state, absolute_index,
                                      {"type", "serviceId",
                                       "returnPolicy"}) ||
             !read_field_string(state, absolute_index, "serviceId",
-                               result.destination_id) ||
+                               service_id) ||
             !read_field_string(state, absolute_index, "returnPolicy",
-                               result.return_policy)) {
+                               return_policy)) {
             return std::nullopt;
         }
-        break;
-    case DialogueOutcomeType::play_cinematic:
+        return OpenServiceOutcome{std::move(service_id),
+                                  std::move(return_policy)};
+    }
+    case DialogueOutcomeType::play_cinematic: {
+        std::string cinematic_id;
+        std::string return_policy;
         if (!outcome_has_only_fields(state, absolute_index,
                                      {"type", "cinematicId",
                                       "returnPolicy"}) ||
             !read_field_string(state, absolute_index, "cinematicId",
-                               result.destination_id) ||
+                               cinematic_id) ||
             !read_field_string(state, absolute_index, "returnPolicy",
-                               result.return_policy)) {
+                               return_policy)) {
             return std::nullopt;
         }
-        break;
-    case DialogueOutcomeType::source_boundary:
+        return PlayCinematicOutcome{std::move(cinematic_id),
+                                    std::move(return_policy)};
+    }
+    case DialogueOutcomeType::source_boundary: {
+        std::string reason;
         if (!outcome_has_only_fields(state, absolute_index,
                                      {"type", "reason"}) ||
-            !read_field_text(state, absolute_index, "reason",
-                             result.reason, 512U) ||
-            result.reason.empty()) {
+            !read_field_text(state, absolute_index, "reason", reason, 512U) ||
+            reason.empty()) {
             return std::nullopt;
         }
-        break;
+        return SourceBoundaryOutcome{std::move(reason)};
     }
-    return result;
+    }
+    return std::nullopt;
 }
 
 bool valid_lua_module_name(const std::string_view value) {

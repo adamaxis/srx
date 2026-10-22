@@ -491,21 +491,20 @@ requests and outcomes and provide host services; Qt remains a presenter. No
 second C++ dialogue graph or menu cursor state machine is introduced.
 
 Keep the serialized outcome a JSON tagged union, with required and forbidden
-payload fields validated for each `type`. Keep source boundaries outside that
-successful terminal union. The current C++ bridge represents the tag as an
-enum plus a bag of optional/string payload fields; before adding more terminal
-variants, tighten that boundary to a C++17 `std::variant` of payload structs
-(`ContinueInPlace`, `ReturnToOrigin`, `EnterLocation`, and so on), with a
-separate `SourceBoundary` result. This makes invalid combinations unrepresentable
-to host adapters while preserving the same JSON contract for Lua and other
-hosts. The dispatcher can continue registering handlers by outcome type or
-stable target ID; views do not gain outcome-specific branches.
+payload fields validated for each `type`. Source boundaries are diagnostic
+results, never successful graph terminals. Implemented: the C++ bridge converts
+the Lua table into a C++17 `std::variant` of outcome payload structs plus a
+`SourceBoundaryOutcome` alternative. This makes mismatched payload combinations
+unrepresentable to host adapters while preserving the same JSON contract for
+Lua and other hosts. The dispatcher registers typed handlers by outcome type
+or stable target ID; a missing named target remains unhandled and cannot fall
+through to a generic handler. Views do not gain outcome-specific branches.
 
-Action results follow the same rule at their smaller scope: each registered
-action declares its allowed result IDs, every JSON edge must map one, and the
-result payload is validated by that action's typed adapter. Do not create one
-global list that implies, for example, every purchase can be `passage_requested`
-or every payment can be `inventory_full`.
+Action results follow the same rule at their smaller scope. The graph currently
+validates each action node's explicit result edges. As host transactions migrate,
+each action adapter should declare its allowed result IDs and validate its own
+payload; do not create one global list that implies, for example, every
+purchase can be `passage_requested` or every payment can be `inventory_full`.
 
 For portable testing, the graph engine receives interfaces for facts, input,
 effects, and outcome dispatch. A fake provider can drive every branch without

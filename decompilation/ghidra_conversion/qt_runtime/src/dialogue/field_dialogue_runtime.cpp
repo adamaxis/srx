@@ -360,9 +360,9 @@ FieldDialogueRuntime::resolve_typed_outcome(
     }
     last_gameplay_task_outcome_ = task.dialogue_outcome;
     close();
-    if (task.dialogue_outcome->type ==
-        scripting::DialogueOutcomeType::source_boundary) {
-        open_source_boundary(task.dialogue_outcome->reason);
+    if (const auto* boundary = std::get_if<
+            scripting::SourceBoundaryOutcome>(&*task.dialogue_outcome)) {
+        open_source_boundary(boundary->reason);
         return FieldDialogueAdvanceResult::source_boundary;
     }
     return FieldDialogueAdvanceResult::typed_outcome_requested;

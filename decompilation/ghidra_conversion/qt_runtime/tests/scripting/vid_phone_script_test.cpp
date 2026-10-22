@@ -301,12 +301,13 @@ bool test_sharkey_service_tree(GameScriptRuntime& scripts,
         return false;
     }
     task = scripts.complete_native_operation(true);
+    const auto* passage = task.dialogue_outcome.has_value()
+        ? std::get_if<EnterFieldSceneOutcome>(&*task.dialogue_outcome)
+        : nullptr;
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
                     task.dialogue_outcome.has_value() &&
-                    task.dialogue_outcome->type ==
-                        DialogueOutcomeType::enter_field_scene &&
-                    task.dialogue_outcome->scene_id == 9U &&
-                    task.dialogue_outcome->arrival_id == "rom_default" &&
+                    passage != nullptr && passage->scene_id == 9U &&
+                    passage->arrival_id == "rom_default" &&
                     !task.result_id.has_value(),
                 "passage acknowledgement did not return a typed scene request")) {
         return false;

@@ -1499,19 +1499,19 @@ private:
     bool dispatch_dialogue_outcome(
         const scripting::DialogueOutcome& outcome);
     bool handle_dialogue_continue_in_place(
-        const scripting::DialogueOutcome& outcome);
+        const scripting::ContinueInPlaceOutcome& outcome);
     bool handle_dialogue_resume_source_route(
-        const scripting::DialogueOutcome& outcome);
+        const scripting::ResumeSourceRouteOutcome& outcome);
     bool handle_dialogue_enter_field_scene(
-        const scripting::DialogueOutcome& outcome);
+        const scripting::EnterFieldSceneOutcome& outcome);
     bool handle_dialogue_return_to_source_entry(
-        const scripting::DialogueOutcome& outcome);
+        const scripting::ReturnToOriginOutcome& outcome);
     bool prepare_open_dialogue_service(
-        const scripting::DialogueOutcome& outcome);
+        const scripting::OpenServiceOutcome& outcome);
     bool open_hotel_dialogue_service(
-        const scripting::DialogueOutcome& outcome);
+        const scripting::OpenServiceOutcome& outcome);
     bool open_hospital_dialogue_service(
-        const scripting::DialogueOutcome& outcome);
+        const scripting::OpenServiceOutcome& outcome);
     bool load_command_overview_menu_content();
     bool load_hotel_menu_content();
     bool load_pocket_secretary_menu_content();

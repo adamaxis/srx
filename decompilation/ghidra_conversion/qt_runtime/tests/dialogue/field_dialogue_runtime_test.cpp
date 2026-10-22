@@ -175,8 +175,8 @@ int main() {
     }
     const auto gates_outcome = runtime.take_gameplay_task_outcome();
     if (!expect(gates_outcome.has_value() &&
-                gates_outcome->type ==
-                    scripting::DialogueOutcomeType::continue_in_place)) {
+                std::holds_alternative<
+                    scripting::ContinueInPlaceOutcome>(*gates_outcome))) {
         std::cerr << "Gates graph lost its typed outcome at the presenter\n";
         return 129;
     }
@@ -199,8 +199,9 @@ int main() {
     }
     const auto renraku_outcome = runtime.take_gameplay_task_outcome();
     if (!expect(renraku_outcome.has_value() &&
-                renraku_outcome->type ==
-                    scripting::DialogueOutcomeType::resume_source_route)) {
+                std::holds_alternative<
+                    scripting::ResumeSourceRouteOutcome>(
+                        *renraku_outcome))) {
         std::cerr << "Renraku graph lost its typed outcome at the presenter\n";
         return 131;
     }
@@ -223,8 +224,8 @@ int main() {
     }
     const auto fuchi_outcome = runtime.take_gameplay_task_outcome();
     if (!expect(fuchi_outcome.has_value() &&
-                fuchi_outcome->type ==
-                    scripting::DialogueOutcomeType::resume_source_route)) {
+                std::holds_alternative<
+                    scripting::ResumeSourceRouteOutcome>(*fuchi_outcome))) {
         std::cerr << "Fuchi graph lost its typed outcome at the presenter\n";
         return 133;
     }
@@ -421,11 +422,14 @@ int main() {
         return 121;
     }
     const auto inn_service_outcome = runtime.take_gameplay_task_outcome();
+    const auto* inn_service = inn_service_outcome.has_value()
+        ? std::get_if<scripting::OpenServiceOutcome>(
+              &*inn_service_outcome)
+        : nullptr;
     if (!expect(inn_service_outcome.has_value()) ||
-        !expect(inn_service_outcome->type ==
-                scripting::DialogueOutcomeType::open_service) ||
-        !expect(inn_service_outcome->destination_id == "hotel.options") ||
-        !expect(inn_service_outcome->return_policy == "origin")) {
+        !expect(inn_service != nullptr) ||
+        !expect(inn_service->service_id == "hotel.options") ||
+        !expect(inn_service->return_policy == "origin")) {
         std::cerr << "Tarislar City Inn did not return the Hotel Options service ID and origin policy\n";
         return 121;
     }
@@ -711,8 +715,8 @@ int main() {
     if (insufficient_return !=
             FieldDialogueAdvanceResult::typed_outcome_requested ||
         !insufficient_outcome.has_value() ||
-        insufficient_outcome->type !=
-            scripting::DialogueOutcomeType::continue_in_place) {
+        !std::holds_alternative<
+            scripting::ContinueInPlaceOutcome>(*insufficient_outcome)) {
         std::cerr << "Tarislar City Inn did not continue in place after the insufficient-funds page: "
                   << static_cast<int>(insufficient_return) << '\n';
         return 122;
@@ -779,10 +783,12 @@ int main() {
         return 123;
     }
     const auto tabatha_boundary = runtime.take_gameplay_task_outcome();
+    const auto* tabatha_source_boundary = tabatha_boundary.has_value()
+        ? std::get_if<scripting::SourceBoundaryOutcome>(&*tabatha_boundary)
+        : nullptr;
     if (!expect(tabatha_boundary.has_value()) ||
-        !expect(tabatha_boundary->type ==
-                scripting::DialogueOutcomeType::source_boundary) ||
-        !expect(tabatha_boundary->reason.find("0x4B") !=
+        !expect(tabatha_source_boundary != nullptr) ||
+        !expect(tabatha_source_boundary->reason.find("0x4B") !=
                 std::string::npos)) {
         std::cerr << "Tarislar JSON graph did not retain the unresolved encounter boundary\n";
         return 123;
@@ -1873,11 +1879,14 @@ int main() {
     }
 
     const auto stoker_hotel_outcome = runtime.take_gameplay_task_outcome();
+    const auto* stoker_hotel_service = stoker_hotel_outcome.has_value()
+        ? std::get_if<scripting::OpenServiceOutcome>(
+              &*stoker_hotel_outcome)
+        : nullptr;
     if (!expect(stoker_hotel_outcome.has_value() &&
-                stoker_hotel_outcome->type ==
-                    scripting::DialogueOutcomeType::open_service &&
-                stoker_hotel_outcome->destination_id == "hotel.options" &&
-                stoker_hotel_outcome->return_policy == "origin")) {
+                stoker_hotel_service != nullptr &&
+                stoker_hotel_service->service_id == "hotel.options" &&
+                stoker_hotel_service->return_policy == "origin")) {
         return 65;
     }
 
