@@ -100,7 +100,7 @@ struct ScriptMenuRouteHost {
     std::function<void(std::uint16_t)> blank;
     std::function<void(std::uint16_t)> set_window;
     std::function<void(std::uint16_t)> set_screen;
-    std::function<void()> menu_closed;
+    std::function<void(bool)> menu_closed;
     std::function<void(std::uint16_t, const ScriptMenuRouteArgs&)>
         legacy_open;
     std::function<std::pair<bool, bool>(std::uint16_t, std::uint16_t)>

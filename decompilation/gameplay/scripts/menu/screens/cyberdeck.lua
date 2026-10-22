@@ -283,7 +283,13 @@ function M.input(st, events, ctx)
                       deck_parent_row = st.row } }                                -- 0xE2DFE[col]
 end
 function M.child_returned(st, child, res, ctx)
-    if res.logged_out then return leave(st, ctx, { exit_secretary = true }) end          -- FFF0DC = FF
+    if res.logged_out then
+        return leave(st, ctx, {
+            exit_secretary = true,
+            matrix_logout_transition_complete =
+                res.matrix_logout_transition_complete == true,
+        })
+    end                                                                              -- FFF0DC = FF
     if res.exit_deck then
         return leave(st, ctx, st.return_to_node_action and {} or
             (st.matrix_session and { exit_secretary = true } or {}))                    -- 0x549C0 resumes 0x54662
@@ -355,6 +361,22 @@ function M.dumpshock(ctx, matrix_state)
     return true
 end
 function Plug.input(st, events, ctx)
+    if st.matrix_transition then
+        local play_logout_sound, complete =
+            MX.advance_exit_transition(st.matrix_transition)
+        if play_logout_sound then ctx.sound(MX.LOGOUT_SOUND) end
+        if complete then
+            return {
+                transition = T.POP,
+                result = {
+                    logged_out = true,
+                    matrix_logout_transition_complete = true,
+                },
+            }
+        end
+        ctx.redraw(R.FULL)
+        return
+    end
     tick_palette(st, ctx)
     if service_program_loading(st, ctx) then ctx.redraw(R.FULL) end
     if events & (P.UP | P.DOWN) ~= 0 then
@@ -368,9 +390,8 @@ function Plug.input(st, events, ctx)
     if st.black_ic and not M.dumpshock(ctx, st.matrix_state) then
         return { transition = T.POP, result = {} }
     end
-    MatrixSession.finish(st.matrix_state)
-    ctx.sound(MX.LOGOUT_SOUND)
-    return { transition = T.POP, result = { logged_out = true } }
+    st.matrix_transition = MX.new_exit_transition(true)
+    ctx.redraw(R.FULL)
 end
 
 return { Cyberdeck = M, PullPlug = Plug }

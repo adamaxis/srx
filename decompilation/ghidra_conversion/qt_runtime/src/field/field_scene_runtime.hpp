@@ -1420,6 +1420,7 @@ private:
         integration::FieldRuntimeCoordinatorState& runtime_state);
     bool resume_field_mode_entry_route();
     void begin_field_modal_return_transition();
+    void suppress_field_modal_close_input();
     void handle_field_map_event_activations(
         const std::vector<FieldMapEventActivation>& activations);
     void handle_game_script_task_step(

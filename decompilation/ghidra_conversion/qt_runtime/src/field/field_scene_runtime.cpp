@@ -8243,10 +8243,21 @@ void FieldSceneRuntime::configure_field_menu_route() {
         posture_dialog_active_ =
             screen == static_cast<std::uint16_t>(srx::MenuScreen::POSTURE);
     };
-    bindings.host.menu_closed = [this] {
+    bindings.host.menu_closed = [this](
+                                    const bool matrix_logout_transition_complete) {
         matrix_field_return_transition_pending_ =
-            matrix_return_to_field_on_close_;
+            matrix_return_to_field_on_close_ &&
+            !matrix_logout_transition_complete;
         matrix_return_to_field_on_close_ = false;
+        if (matrix_logout_transition_complete) {
+            // The Lua route already spent the ROM's 10-frame fade and
+            // 54-frame black display handoff. Consume its confirm input, but
+            // do not layer the host's separate 60-frame modal fade on top.
+            field_modal_return_transition_frames_remaining_ = 0U;
+            field_palette_fade_steps_ = 0U;
+            suppress_field_modal_close_input();
+            field_entity_animation_.redraw_requested = true;
+        }
         field_matrix_route_active_ = false;
         if (field_taxi_route_active_) {
             field_taxi_route_active_ = false;
@@ -15614,9 +15625,15 @@ void FieldSceneRuntime::begin_field_modal_return_transition() {
     // this handoff is visible and the button used to dismiss the panel is consumed.
     field_modal_return_transition_frames_remaining_ =
         kFieldModalReturnTransitionFrames;
+    field_palette_fade_steps_ = 9U;
+    suppress_field_modal_close_input();
+    field_entity_animation_.redraw_requested = true;
+    source_boundary("field.modal_return.transition_started");
+}
+
+void FieldSceneRuntime::suppress_field_modal_close_input() {
     field_modal_return_blocked_inputs_ = static_cast<std::uint8_t>(
         (field_controller_sample_state_.held & 0x00FFU) | 0x0040U);
-    field_palette_fade_steps_ = 9U;
     field_combat_input_suppressed_until_release_ =
         (field_modal_return_blocked_inputs_ & 0x40U) != 0U;
     // The A edge that dismissed the modal belongs to that modal. Keep the
@@ -15626,8 +15643,6 @@ void FieldSceneRuntime::begin_field_modal_return_transition() {
         static_cast<std::uint16_t>(field_controller_sample_state_.held &
                                    0x00FFU);
     field_controller_latch_state_ = ControllerLatchState{};
-    field_entity_animation_.redraw_requested = true;
-    source_boundary("field.modal_return.transition_started");
 }
 
 void FieldSceneRuntime::dispatch_field_map_scene_entry(
@@ -21359,6 +21374,13 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     }
                     draw_matrix_text(224, y,
                                      routed_menu.top_option_labels[option]);
+                }
+                if (routed_menu.top_matrix_transition_fade_step.has_value()) {
+                    const auto fade_step = std::clamp(
+                        *routed_menu.top_matrix_transition_fade_step, 0, 5);
+                    painter.fillRect(
+                        painter.viewport(),
+                        QColor(0, 0, 0, fade_step * 51));
                 }
                 return;
             }

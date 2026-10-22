@@ -260,6 +260,7 @@ int main() {
     int posture = 2;
     int reselect_count = 0;
     int closed_count = 0;
+    int completed_matrix_logout_count = 0;
     int debug_unlock_consumptions = 0;
     int deck_enter_count = 0;
     int deck_leave_count = 0;
@@ -333,7 +334,14 @@ int main() {
         windows.push_back(window);
     };
     bindings.host.set_screen = [](std::uint16_t) {};
-    bindings.host.menu_closed = [&closed_count] { ++closed_count; };
+    bindings.host.menu_closed =
+        [&closed_count, &completed_matrix_logout_count](
+            const bool matrix_logout_transition_complete) {
+            ++closed_count;
+            if (matrix_logout_transition_complete) {
+                ++completed_matrix_logout_count;
+            }
+        };
     bindings.host.legacy_open =
         [&legacy_screens, &legacy_active](
             const std::uint16_t screen,
@@ -2221,12 +2229,42 @@ int main() {
     check(runtime.menu_route_snapshot().top_screen == 30U,
           "Matrix logout reaches the ROM Pull Plug confirmation", failures);
     runtime.advance_menu_route(0x0100U); // Change from No to Yes.
+    const auto sounds_before_pull_plug = sounds.size();
     runtime.advance_menu_route(0x4000U); // Confirm logout.
+    route = runtime.menu_route_snapshot();
+    check(route.open && route.top_screen == 30U &&
+              route.top_matrix_transition_fade_step == 0 &&
+              deck_leave_count == 2 && closed_count == 4,
+          "Pull Plug starts its source logout sequence before leaving the deck",
+          failures);
+    for (int frame = 0; frame < 9; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    check(runtime.menu_route_snapshot().top_matrix_transition_fade_step == 4 &&
+              sounds.size() == sounds_before_pull_plug,
+          "Pull Plug waits through four two-VBlank palette fade steps",
+          failures);
+    runtime.advance_menu_route(0U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_matrix_transition_fade_step == 5 &&
+              sounds.size() == sounds_before_pull_plug + 1U &&
+              sounds.back() == 0x29U,
+          "Pull Plug starts the display handoff sound after ten VBlanks",
+          failures);
+    for (int frame = 0; frame < 53; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    check(runtime.menu_route_snapshot().open &&
+              runtime.menu_route_snapshot().top_screen == 30U &&
+              runtime.menu_route_snapshot().top_matrix_transition_fade_step == 5,
+          "Pull Plug holds the black handoff through 63 total VBlanks",
+          failures);
+    runtime.advance_menu_route(0U);
     route = runtime.menu_route_snapshot();
     check(route.open && route.top_screen == kCommand &&
               route.page == kCommandPagePocketSecretary &&
               deck_leave_count == 3 && closed_count == 4,
-          "Matrix exit clears hidden children and rebuilds Command on page 6",
+          "Pull Plug rebuilds Command after its 64-frame source logout",
           failures);
     runtime.advance_menu_route(0x4000U); // Reopen Pocket Secretary.
     for (int row = 0; row < 5; ++row) {
@@ -2439,6 +2477,7 @@ int main() {
     check(route.open && route.top_matrix_countdown == 0 &&
               route.top_matrix_transition_fade_step == 0,
           "Crash System starts its logout transition after the final zero", failures);
+    const auto sounds_before_crash_logout = sounds.size();
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     save_transfer_frame("shutdown-logout-fade-start.bmp", route);
 #endif
@@ -2455,6 +2494,10 @@ int main() {
     }
     check(route.open && route.top_matrix_transition_fade_step == 5,
           "Crash System holds the final countdown under full fade", failures);
+    check(sounds.size() == sounds_before_crash_logout + 1U &&
+              sounds.back() == 0x29U,
+          "Crash System plays the logout sound when the display handoff begins",
+          failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     save_transfer_frame("shutdown-logout-fade-black.bmp", route);
     {
@@ -2488,6 +2531,9 @@ int main() {
     route = runtime.menu_route_snapshot();
     check(!route.open && closed_count == 6,
           "Crash System exits after the 10-frame fade and 54-frame handoff",
+          failures);
+    check(completed_matrix_logout_count == 1,
+          "Crash System marks its completed source logout for the field host",
           failures);
     check(runtime.open_menu_route(kCommand),
           "reopen command after Matrix Crash System logout", failures);
@@ -2560,6 +2606,10 @@ int main() {
     check(route.top_matrix_transition_fade_step == 5 &&
               route.top_text.find("SYSTEM OVERLOAD") == std::string::npos,
           "five fade steps each follow two source VBlanks", failures);
+    check(sounds.size() == sounds_before_overload + 1U &&
+              sounds.back() == 0x29U,
+          "Matrix overload plays the logout sound at the handoff boundary",
+          failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     save_transfer_frame("system-overload-fade-black.bmp", route);
     {
@@ -2613,6 +2663,9 @@ int main() {
     runtime.advance_menu_route(0x4000U); // 0xD94 any-edge wait after 30 frames.
     check(!runtime.menu_route_snapshot().open && closed_count == 8,
           "overload exits the Matrix route after message and input waits",
+          failures);
+    check(completed_matrix_logout_count == 2,
+          "overload preserves the completed logout marker through its message",
           failures);
 
     runtime.close_menu_route();
@@ -2933,9 +2986,32 @@ int main() {
               std::string::npos,
           "the field Matrix exposes the source Pull Plug confirmation", failures);
     runtime.advance_menu_route(0x0100U); // Yes.
+    const auto sounds_before_field_pull_plug = sounds.size();
     runtime.advance_menu_route(0x4000U);
-    check(!runtime.menu_route_snapshot().open && closed_count == 9,
-          "normal field Matrix logout exits to the field caller", failures);
+    route = runtime.menu_route_snapshot();
+    check(route.open && route.top_screen == 30U &&
+              route.top_matrix_transition_fade_step == 0,
+          "normal field Matrix logout starts the source transition", failures);
+    for (int frame = 0; frame < 10; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    route = runtime.menu_route_snapshot();
+    check(route.open && route.top_matrix_transition_fade_step == 5 &&
+              sounds.size() == sounds_before_field_pull_plug + 1U &&
+              sounds.back() == 0x29U,
+          "field Pull Plug completes its fade and starts the display handoff",
+          failures);
+    for (int frame = 0; frame < 53; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    check(runtime.menu_route_snapshot().open,
+          "field Pull Plug keeps the logout handoff active for 63 frames",
+          failures);
+    runtime.advance_menu_route(0U);
+    check(!runtime.menu_route_snapshot().open && closed_count == 9 &&
+              completed_matrix_logout_count == 3,
+          "field Matrix returns after 64 frames and reports the completed handoff",
+          failures);
 
     // Taxi's Lua menu uses the same seven ROM destinations and cab outline
     // records as the opening selector. The current Redmond map begins at its

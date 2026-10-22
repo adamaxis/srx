@@ -85,7 +85,9 @@ function Route:apply(entry, res)
     elseif t == T.EXIT then        -- leave the whole menu tree (Start, FFF0B1, FFF0CD)
         self.stack = {}
         apply_presentation(self)
-        self.host.menu_closed()
+        local result = res.result or {}
+        self.host.menu_closed(
+            result.matrix_logout_transition_complete == true)
     end
 end
 
@@ -100,7 +102,7 @@ function Route:close()
     if #self.stack == 0 then return end
     self.stack = {}
     apply_presentation(self)
-    self.host.menu_closed()
+    self.host.menu_closed(false)
 end
 
 function Route:frame(events)

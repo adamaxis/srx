@@ -15,6 +15,26 @@ M.EXIT_DISPLAY_TRANSITION_FRAMES = 54
 M.EXIT_TRANSITION_FRAMES =
     M.EXIT_FADE_FRAMES + M.EXIT_DISPLAY_TRANSITION_FRAMES
 M.EXIT_FADE_STEPS = 5
+function M.new_exit_transition(exit_when_complete)
+    return {
+        frames_remaining = M.EXIT_TRANSITION_FRAMES,
+        elapsed_frames = 0,
+        fade_step = 0,
+        exit_when_complete = exit_when_complete == true,
+    }
+end
+-- Advance one source VBlank. The first ten frames perform five two-frame
+-- palette steps; the logout sound starts on the first display-transition
+-- frame, followed by the ROM's 54-frame screen handoff.
+function M.advance_exit_transition(transition)
+    transition.frames_remaining = transition.frames_remaining - 1
+    transition.elapsed_frames = transition.elapsed_frames + 1
+    transition.fade_step = math.min(
+        M.EXIT_FADE_STEPS,
+        transition.elapsed_frames // 2)
+    return transition.elapsed_frames == M.EXIT_FADE_FRAMES,
+           transition.frames_remaining <= 0
+end
 M.NO_IC, M.UNSEEN = 0x45, -1
 -- 0x1833C..0x18418: the visible deck grid is four columns by four rows.
 -- Direction priority is up, down, left, right; movement wraps silently.

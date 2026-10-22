@@ -384,11 +384,7 @@ local function show_random_alert(st, ctx)
         st.matrix_message_kind = nil
         st.matrix_message = nil
         st.message_delay_frames = nil
-        st.matrix_transition = {
-            frames_remaining = MatrixRules.EXIT_TRANSITION_FRAMES,
-            elapsed_frames = 0,
-            fade_step = 0,
-        }
+        st.matrix_transition = MatrixRules.new_exit_transition(false)
     else
         st.matrix_message_kind = "system_alert"
         st.matrix_message = MatrixText.SYSTEM_ALERT
@@ -608,18 +604,19 @@ end
 
 local function advance_matrix_transition(st, ctx)
     local transition = st.matrix_transition
-    transition.frames_remaining = transition.frames_remaining - 1
-    transition.elapsed_frames = transition.elapsed_frames + 1
-    transition.fade_step = math.min(
-        MatrixRules.EXIT_FADE_STEPS,
-        transition.elapsed_frames // 2)
+    local play_logout_sound, complete =
+        MatrixRules.advance_exit_transition(transition)
+    if play_logout_sound then ctx.sound(MatrixRules.LOGOUT_SOUND) end
 
-    if transition.frames_remaining <= 0 then
+    if complete then
         st.matrix_transition = nil
         if transition.exit_when_complete then
             MatrixSession.finish(st.matrix_state)
             return { transition = T.EXIT,
-                     result = { matrix_crash = true } }
+                     result = {
+                         matrix_crash = true,
+                         matrix_logout_transition_complete = true,
+                     } }
         end
         st.matrix_message_kind = "system_overload"
         st.matrix_message = MatrixText.SYSTEM_OVERLOAD
@@ -684,12 +681,7 @@ function M.input(st, events, ctx)
             -- zero. Share the 10-frame fade + 54-frame display handoff used
             -- by overload; the source handoff artwork remains unported.
             st.shutdown = nil
-            st.matrix_transition = {
-                frames_remaining = MatrixRules.EXIT_TRANSITION_FRAMES,
-                elapsed_frames = 0,
-                fade_step = 0,
-                exit_when_complete = true,
-            }
+            st.matrix_transition = MatrixRules.new_exit_transition(true)
             ctx.redraw(R.FULL)
             return
         end
@@ -712,7 +704,10 @@ function M.input(st, events, ctx)
             if message_kind == "system_overload" then
                 MatrixSession.finish(state)
                 return { transition = T.EXIT,
-                         result = { matrix_overload = true } }
+                         result = {
+                             matrix_overload = true,
+                             matrix_logout_transition_complete = true,
+                         } }
             elseif message_kind == "system_alert" then
                 -- 0x54A8E returns to the already-built node screen after the
                 -- notice; it does not consume a second random draw.

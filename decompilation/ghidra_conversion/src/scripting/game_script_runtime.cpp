@@ -1104,7 +1104,8 @@ struct GameScriptRuntime::Impl {
             return 0;
         case MenuBinding::menu_closed:
             if (self->menu_route_bindings.host.menu_closed) {
-                self->menu_route_bindings.host.menu_closed();
+                self->menu_route_bindings.host.menu_closed(
+                    lua_toboolean(lua, 1) != 0);
             }
             return 0;
         case MenuBinding::legacy_open: {
