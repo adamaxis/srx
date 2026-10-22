@@ -319,8 +319,9 @@ roll, which has a separate 0..79 route and is covered by a different graph
 entry.
 
 Later longplay frames also show dialogue presentation variants: section 05
-frame 001440 (Max portrait/text page), section 14 frame 006630 (Henry portrait
-with Yes/No rows), and section 23 frame 001770 (A/B services/goodbye choice).
+frame 001440 (Max portrait/text page), section 14 frame 006630 (the Club
+Penumbra bouncer's 25-nuyen Yes/No entry prompt), and section 23 frame 001770
+(A/B services/goodbye choice).
 Section 32 frame 001500 is Big Rhino restaurant dialogue. Its steak portrait
 matches the reused art assigned to Macklemann's profile, so it supports that
 portrait only, not his Vid-Phone choices or outcomes. The other listed frames
