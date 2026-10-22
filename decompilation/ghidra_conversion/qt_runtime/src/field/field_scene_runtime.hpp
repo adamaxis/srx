@@ -2071,6 +2071,10 @@ private:
     // Shadowrunners. Fresh New Game seeds Contacts to 0x1C7F at 0x59C48;
     // a loaded save restores the full FFFC2C longword when available.
     std::optional<std::uint32_t> notebook_contacts_flags_ = 0x1C7FU;
+    // ROM FFFBFA: Henry and Chillicut clear Lone Star's criminal-record byte
+    // after a successful Vid-Phone deletion service. Save restoration does not
+    // currently publish this source byte, so retain the unresolved boundary.
+    std::optional<bool> field_lone_star_criminal_record_active_ = std::nullopt;
     std::optional<std::uint8_t> notebook_referral_flags_ = 0U;
     std::optional<std::uint16_t> notebook_shadowrunner_flags_ = 0U;
     QImage pocket_secretary_background_;

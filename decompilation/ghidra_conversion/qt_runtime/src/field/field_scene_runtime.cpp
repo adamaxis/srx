@@ -11715,14 +11715,40 @@ bool FieldSceneRuntime::bootstrap(
             if (name == "vid_phone_contacts_resolved") {
                 return notebook_contacts_flags_.has_value();
             }
-            if (name == "runner_feature_flag_bit_2") {
-                // Scene 3/event 1's ROM command EA tests FF018F bit 2 before
-                // choosing Wylie's free-stay page or the 50-nuyen offer.
-                // A restored save that lacks FF018F keeps this fact unknown.
-                if (!field_runner_feature_flags_.has_value()) {
+            constexpr std::string_view kRunnerFeatureBitPrefix =
+                "runner_feature_flag_bit_";
+            if (name.size() > kRunnerFeatureBitPrefix.size() &&
+                name.substr(0U, kRunnerFeatureBitPrefix.size()) ==
+                    kRunnerFeatureBitPrefix) {
+                unsigned bit = 0U;
+                const auto suffix = name.substr(kRunnerFeatureBitPrefix.size());
+                const auto parsed = std::from_chars(
+                    suffix.data(), suffix.data() + suffix.size(), bit);
+                if (parsed.ec != std::errc{} ||
+                    parsed.ptr != suffix.data() + suffix.size() || bit >= 8U ||
+                    !field_runner_feature_flags_.has_value()) {
                     return std::nullopt;
                 }
-                return (*field_runner_feature_flags_ & 0x04U) != 0U;
+                return (*field_runner_feature_flags_ & (1U << bit)) != 0U;
+            }
+            constexpr std::string_view kVidPhoneStoryFlagPrefix =
+                "vid_phone_story_flag_bit_";
+            if (name.size() > kVidPhoneStoryFlagPrefix.size() &&
+                name.substr(0U, kVidPhoneStoryFlagPrefix.size()) ==
+                    kVidPhoneStoryFlagPrefix) {
+                unsigned bit = 0U;
+                const auto suffix = name.substr(kVidPhoneStoryFlagPrefix.size());
+                const auto parsed = std::from_chars(
+                    suffix.data(), suffix.data() + suffix.size(), bit);
+                if (parsed.ec != std::errc{} ||
+                    parsed.ptr != suffix.data() + suffix.size() || bit >= 32U ||
+                    !notebook_contacts_flags_.has_value()) {
+                    return std::nullopt;
+                }
+                return (*notebook_contacts_flags_ & (1U << bit)) != 0U;
+            }
+            if (name == "lone_star_criminal_record_active") {
+                return field_lone_star_criminal_record_active_;
             }
             constexpr std::string_view kPhoneContactPrefix =
                 "vid_phone_contact_";
@@ -11889,6 +11915,53 @@ bool FieldSceneRuntime::bootstrap(
                 *notebook_contacts_flags_ = value
                     ? *notebook_contacts_flags_ | mask
                     : *notebook_contacts_flags_ & ~mask;
+                return true;
+            }
+            constexpr std::string_view kRunnerFeatureBitPrefix =
+                "runner_feature_flag_bit_";
+            if (name.size() > kRunnerFeatureBitPrefix.size() &&
+                name.substr(0U, kRunnerFeatureBitPrefix.size()) ==
+                    kRunnerFeatureBitPrefix) {
+                unsigned bit = 0U;
+                const auto suffix = name.substr(kRunnerFeatureBitPrefix.size());
+                const auto parsed = std::from_chars(
+                    suffix.data(), suffix.data() + suffix.size(), bit);
+                if (parsed.ec != std::errc{} ||
+                    parsed.ptr != suffix.data() + suffix.size() || bit >= 8U ||
+                    !field_runner_feature_flags_.has_value()) {
+                    return false;
+                }
+                const auto mask = static_cast<std::uint8_t>(1U << bit);
+                *field_runner_feature_flags_ = value
+                    ? static_cast<std::uint8_t>(
+                          *field_runner_feature_flags_ | mask)
+                    : static_cast<std::uint8_t>(
+                          *field_runner_feature_flags_ &
+                          static_cast<std::uint8_t>(~mask));
+                return true;
+            }
+            constexpr std::string_view kVidPhoneStoryFlagPrefix =
+                "vid_phone_story_flag_bit_";
+            if (name.size() > kVidPhoneStoryFlagPrefix.size() &&
+                name.substr(0U, kVidPhoneStoryFlagPrefix.size()) ==
+                    kVidPhoneStoryFlagPrefix) {
+                unsigned bit = 0U;
+                const auto suffix = name.substr(kVidPhoneStoryFlagPrefix.size());
+                const auto parsed = std::from_chars(
+                    suffix.data(), suffix.data() + suffix.size(), bit);
+                if (parsed.ec != std::errc{} ||
+                    parsed.ptr != suffix.data() + suffix.size() || bit >= 32U ||
+                    !notebook_contacts_flags_.has_value()) {
+                    return false;
+                }
+                const auto mask = std::uint32_t{1U} << bit;
+                *notebook_contacts_flags_ = value
+                    ? *notebook_contacts_flags_ | mask
+                    : *notebook_contacts_flags_ & ~mask;
+                return true;
+            }
+            if (name == "lone_star_criminal_record_active") {
+                field_lone_star_criminal_record_active_ = value;
                 return true;
             }
             if (const auto bit = story_fact_bit_index(
