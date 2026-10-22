@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "entityId": "puyallup_site_12_abandoned_building",
+  "interactions": [
+    {
+      "id": "rom_event_11",
+      "source": {
+        "sceneId": 1,
+        "eventCode": "event_11"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM scene 1 record 78 at 0X17DA10; event-table row 11 at 0x17D62B selects numeric scripted activity scene 52. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    }
+  ]
+}

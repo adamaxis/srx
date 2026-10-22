@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "entityId": "council_island_hospital",
+  "interactions": [
+    {
+      "id": "rom_event_04",
+      "source": {
+        "sceneId": 4,
+        "eventCode": "event_4"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "tasks": {
+        "fieldExitPrompt": {
+          "module": "council_island_hospital",
+          "function": "present_field_exit_prompt"
+        }
+      },
+      "locationContext": {
+        "type": "building",
+        "id": "council_island_hospital",
+        "textProfile": "council_island_hospital",
+        "speakerId": "council_island_hospital_narrator"
+      },
+      "provenance": {
+        "evidence": "ROM scene 4 record 93 at 0x15BDD8; event-table row 4 at 0x15B962 retains field scene 13 as route evidence. ROM 0x1FA02 intercepts the field-mode 4/4 route: its alternate-result byte selects package handoff/payment copy, while the default root offers services or leave; the prompt returns to the current field map. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    }
+  ]
+}

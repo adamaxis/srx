@@ -284,6 +284,20 @@ local function area_event_source_matches(link, context)
         context.event_index == 0 and source_destination == 0
 end
 
+local function source_event_table_destination(context)
+    if context.event_table_available ~= true or
+       type(context.event_table) ~= "table" or
+       context.event_index >= #context.event_table then
+        return nil
+    end
+    local destination = context.event_table[context.event_index + 1]
+    if type(destination) ~= "number" or destination < 0 or
+       destination > 255 or destination % 1 ~= 0 then
+        return nil
+    end
+    return destination
+end
+
 function Building.resolve_field_location_route(context)
     if type(context) ~= "table" or
        type(context.building_interaction_mode) ~= "boolean" or
@@ -359,6 +373,88 @@ function Building.resolve_field_location_route(context)
                 event_code = context.event_code,
                 indexed_title_service = service,
             }
+        elseif link.route_kind == route_kind.area_event and
+               link.script == route_script.map_event_table and
+               link.source_route_policy == "resume_source_route" then
+            local target_scene = source_event_table_destination(context)
+            if target_scene == nil then
+                local has_source_task =
+                    (link.entry_dialogue_module or "") ~= "" or
+                    (link.route_preparation_module or "") ~= "" or
+                    (link.indexed_title_service_module or "") ~= "" or
+                    (link.field_exit_prompt_module or "") ~= ""
+                if has_source_task then
+                    return source_boundary(context.event_code,
+                        "location.source_event_table_missing:" ..
+                        (link.entity_id or "location") .. "." ..
+                        (link.link_id or link.id or "unnamed"))
+                end
+                return no_route(context.event_code)
+            end
+            local return_policy = return_fields(link)
+            local route, is_boundary = add_entry_dialogue({
+                kind = route_kind.area_event,
+                script = route_script.map_event_table,
+                event_code = context.event_code,
+                area_event_target = target_scene,
+                area_event_destination_mode =
+                    classify_area_event_destination(target_scene),
+                return_anchor = return_policy.return_anchor,
+                return_facing = return_policy.return_facing,
+            }, link, context)
+            if is_boundary then return route end
+            return add_location_script_tasks(route, link)
+        elseif link.route_kind == route_kind.area_event and
+               link.script == route_script.map_event_table and
+               link.source_route_policy ~= nil then
+            return source_boundary(context.event_code,
+                "location.source_route_policy_unsupported:" ..
+                (link.entity_id or "location") .. "." ..
+                (link.link_id or link.id or "unnamed"))
+        elseif link.route_kind == route_kind.area_event_override and
+               link.script == route_script.map_event_table then
+            local link_identity = (link.entity_id or "location") .. "." ..
+                (link.link_id or link.id or "unnamed")
+            if link.source_route_policy ~= "suppress_source_route" then
+                local policy_failure = link.source_route_policy == nil and
+                    "location.source_route_policy_missing:" or
+                    "location.source_route_policy_unsupported:"
+                return source_boundary(context.event_code,
+                    policy_failure .. link_identity)
+            end
+            if not area_event_source_matches(link, context) then
+                return source_boundary(context.event_code,
+                    "location.source_route_destination_mismatch:" ..
+                    link_identity)
+            end
+            if type(link.destination_scene) ~= "number" or
+               link.destination_scene < 0 or
+               link.destination_scene > 255 or
+               link.destination_scene % 1 ~= 0 then
+                return source_boundary(context.event_code,
+                    "location.override_destination_invalid:" ..
+                    link_identity)
+            end
+            local return_policy = return_fields(link)
+            local mode = link.destination_mode
+            if mode ~= destination_mode.field and
+               mode ~= destination_mode.resource_activity and
+               mode ~= destination_mode.scripted_activity and
+               mode ~= destination_mode.halted then
+                mode = classify_area_event_destination(
+                    link.destination_scene)
+            end
+            local route, is_boundary = add_entry_dialogue({
+                kind = route_kind.area_event,
+                script = route_script.map_event_table,
+                event_code = context.event_code,
+                area_event_target = link.destination_scene,
+                area_event_destination_mode = mode,
+                return_anchor = return_policy.return_anchor,
+                return_facing = return_policy.return_facing,
+            }, link, context)
+            if is_boundary then return route end
+            return add_location_script_tasks(route, link)
         elseif (link.route_kind == route_kind.area_event or
                 link.route_kind == route_kind.area_event_override) and
                link.script == route_script.map_event_table and

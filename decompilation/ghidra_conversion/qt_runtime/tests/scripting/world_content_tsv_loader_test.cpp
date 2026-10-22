@@ -143,22 +143,10 @@ int main() {
             valid;
     lua_pop(state, 2);
     lua_getfield(state, scene15_contact, "links");
-    const int scene15_links = lua_absindex(state, -1);
-    lua_rawgeti(state, scene15_links, 1);
-    const int scene15_link = lua_absindex(state, -1);
-    valid = expect(field_integer_is(state, scene15_link, "source_scene", 15) &&
-                       field_string_is(state, scene15_link, "source_event",
-                                       "event_30") &&
-                       field_string_is(state, scene15_link, "route_kind",
-                                       "dialogue") &&
-                       field_string_is(state, scene15_link, "script",
-                                       "lua_dialogue") &&
-                       field_string_is(state, scene15_link,
-                                       "entry_text_profile",
-                                       "jackals_lantern.old_man"),
-                   "Scene 15 event 30 did not load its Lua dialogue link") &&
+    valid = expect(lua_isnil(state, -1),
+                   "route data remains in the legacy TSV world loader") &&
             valid;
-    lua_pop(state, 3);
+    lua_pop(state, 1);
 
     lua_getfield(state, stoker, "parts");
     const int stoker_parts = lua_absindex(state, -1);

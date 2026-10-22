@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "entityId": "merlins_lore_arcology",
+  "interactions": [
+    {
+      "id": "rom_event_03",
+      "source": {
+        "sceneId": 5,
+        "eventCode": "event_3"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM scene 5 record 49 at 0x067C54; event-table row 3 at 0x0679C3 selects numeric resource-activity scene 35. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    }
+  ]
+}

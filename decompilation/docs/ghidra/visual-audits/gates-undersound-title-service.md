@@ -21,7 +21,7 @@ Undersound service paths remain open.
 
 ## Lua route and host behavior
 
-`gameplay/world/entities/downtown_site_04_gates_undersound/links.tsv` carries
+`gameplay/world/entities/downtown_site_04_gates_undersound/interactions.json` carries
 the default event-table row and a higher-priority, story-gated service row.
 `building.lua` resolves the service task from that entity data.
 `gates_undersound.lua` is a small route adapter into the JSON graph. The graph

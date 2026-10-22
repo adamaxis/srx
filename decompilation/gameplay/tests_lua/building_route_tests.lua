@@ -193,6 +193,7 @@ local override_link = {
     destination_scene = 54,
     destination_mode = "scripted_activity",
     source_table_destination = 13,
+    source_route_policy = "suppress_source_route",
     route_priority = 10,
     return_anchor = "collision_probe_lead",
     return_facing = "face_away_from_entry",
@@ -229,6 +230,20 @@ assert(first_entry.kind == "area_event" and
        first_entry.return_facing == "face_away_from_entry" and
        first_entry.entry_continue_result_id == "enter_scene_54")
 
+override_link.source_route_policy = nil
+local missing_override_policy = Building.resolve_field_location_route(context)
+assert(missing_override_policy.kind == "source_boundary" and
+       missing_override_policy.boundary_reason:match(
+           "source_route_policy_missing") ~= nil)
+override_link.source_route_policy = "suppress_source_route"
+local previous_source_destination = context.event_table[8]
+context.event_table[8] = 12
+local override_source_mismatch = Building.resolve_field_location_route(context)
+assert(override_source_mismatch.kind == "source_boundary" and
+       override_source_mismatch.boundary_reason:match(
+           "source_route_destination_mismatch") ~= nil)
+context.event_table[8] = previous_source_destination
+
 local tomb_link = {
     source_scene = 1,
     source_event = "event_7",
@@ -237,6 +252,7 @@ local tomb_link = {
     destination_scene = 54,
     destination_mode = "scripted_activity",
     source_table_destination = 13,
+    source_route_policy = "suppress_source_route",
     route_priority = 10,
     route_condition_id = condition("test.tomb.route", {
         equal("story.story_flag_bit_30", true),
@@ -298,6 +314,7 @@ local guarded_link = {
     destination_scene = 13,
     destination_mode = "field",
     source_table_destination = 13,
+    source_route_policy = "suppress_source_route",
     route_priority = 10,
     route_condition_id = condition("test.guarded.route", {
         equal("story.story_flag_bit_30", false),
@@ -333,9 +350,9 @@ assert(alternate_result.kind == "area_event" and
 context.alternate_result = 0
 context.event_table[8] = 12
 local source_table_mismatch = Building.resolve_field_location_route(context)
-assert(source_table_mismatch.kind == "area_event" and
-       source_table_mismatch.area_event_target == 12 and
-       source_table_mismatch.entry_dialogue_module == nil)
+assert(source_table_mismatch.kind == "source_boundary" and
+       source_table_mismatch.boundary_reason:match(
+           "source_route_destination_mismatch") ~= nil)
 
 -- The Inn keeps the ROM's event-table byte as route evidence while its
 -- entity-owned Lua tasks handle the indexed title service and generic prompt.
@@ -561,6 +578,7 @@ local wanderer_exit_link = {
     destination_scene = 0,
     destination_mode = "field",
     source_table_destination = 0,
+    source_route_policy = "suppress_source_route",
     route_priority = 0,
 }
 game.modules.world_content_data.entities.source_test.links = {

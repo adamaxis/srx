@@ -124,19 +124,20 @@ The Qt field-exit coordinator consumes that typed result to select the
 dialogue event code, service route, or normal area-event continuation. It does
 not interpret ROM addresses at runtime.
 
-Unconverted location-to-route bindings remain beside reusable map entities in
-`links.tsv`. The eight Ares, Boris, Gates Undersound, Tarislar City Inn,
-Owlfeather, and Red Buffalo field-service routes, thirteen entry-dialogue
-bindings, and eight conditional map overrides use
-`gameplay/world/entities/<entity>/interactions.json`; the package loader puts
-them in Lua's versioned content registry, and `world_content.lua` joins them
-to the entity instance in the current scene. `building.lua` owns route
+All 87 modeled location-to-route bindings now live beside reusable map
+entities in `gameplay/world/entities/<entity>/interactions.json`: 58 ordinary
+map-event continuations, eight conditional map overrides, thirteen
+entry-dialogue bindings, and eight field-service routes. The package loader
+puts them in Lua's versioned content registry, and `world_content.lua` joins
+them to the entity instance in the current scene. `building.lua` owns route
 selection: direct same-map services require their source mode, JSON routes can
 declare named conditions and explicit source-route policy, and ordinary area
-links are accepted only when their numeric destination agrees with the active
-ROM event-table row. Unlinked events continue through the same imported table
-path. This gives scene entities reusable route data without assigning unknown
-interiors or treating every collision event as a door.
+event routes read their destination from the active ROM event-table row.
+Conditional overrides retain their source-table and destination bytes and are
+accepted only when the source byte matches the active map. Unlinked events
+continue through the same imported table path. This gives scene entities
+reusable route data without assigning unknown interiors or treating every
+collision event as a door.
 
 The initial source-verified links cover Scene 2: Stoker event 2 (same-map
 dialogue), Ares event 11 (same-map shop service), Jump House event 4 to scene
@@ -156,9 +157,9 @@ entity set is not a complete route census. In particular, the ROM census's
 doors or reversible links.
 
 The reusable route model now supports several source-confirmed outcomes for
-one event. Remaining entity `links.tsv` rows use `route_priority`; migrated
-entity JSON uses `route.priority`. Both use stable condition IDs that resolve
-through `gameplay/dialogue/location_conditions.json`.
+one event. All entity interaction JSON uses `route.priority` and stable
+condition IDs that resolve through
+`gameplay/dialogue/location_conditions.json`.
 Conditions cover story facts, active/current runs, alternate results, and the
 building-interaction mode. Missing facts evaluate to `unknown`; an unknown
 candidate that could outrank the known route and equal-priority true matches
@@ -172,9 +173,10 @@ clear `FFF0D5` branch opens its ROM-derived Lua passage and then resumes scene
 redraw. Lua route tests cover story-fact and run-state variants, priority
 ties, unknown-fact boundaries, and entry task selection.
 
-The entity sweep now has 68 explicit Lua link rows in 57 entity files across
-scenes 0-7: 57 event-table routes, three Tarislar service-21 overrides, seven
-field services, and one same-map dialogue route. Event IDs 2-5 alone do not
+The route catalog has 87 explicit interaction records in 70 entity files.
+Across the currently mapped scenes 0-7, 58 regular area-event records resume
+the active map event-table row; conditional variants and interaction-specific
+services are separate JSON records. Event IDs 2-5 alone do not
 identify a maglock route: `0xB7B8` selects the lock prompt only in Scene 20 or
 resource-activity mode (scene IDs 21-43). Field scenes 0-19 publish those
 events to their map tables. Five
@@ -254,8 +256,8 @@ per-scene route manifests now reflect the `0xB7B8` mode gate instead of
 inferring a maglock from event IDs 2-5 alone. See the [Tarislar audit](puyallup-tarislar-apartments.md)
 and each `scene-NN-site-routes.tsv` manifest before adding a location row.
 
-The entity-owned `links.tsv` rows now carry return-anchor and return-facing
-policy for all 60 traced map-transition variants across scenes 0-7, except
+Entity `interactions.json` records carry return-anchor and return-facing
+policy for the 60 traced map-transition variants across scenes 0-7, except
 Scene 4/event 6, whose connection to the Medicine Lodge remains unresolved.
 For links marked `collision_probe_lead`, the field coordinator captures the
 already-expanded 0xBC36/0xBD34 point 0 and its camera before leaving. Activity

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "entityId": "little_chibas_chop_shop",
+  "interactions": [
+    {
+      "id": "rom_event_01",
+      "source": {
+        "sceneId": 2,
+        "eventCode": "event_1"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM scene 2 collision record 93 at 0x17314C; event-table row 1 at 0x172CDD selects numeric resource-activity scene 26."
+      }
+    }
+  ]
+}

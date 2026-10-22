@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "entityId": "penumbra_site_09_wylies_gala_inn",
+  "interactions": [
+    {
+      "id": "rom_event_01",
+      "source": {
+        "sceneId": 3,
+        "eventCode": "event_1"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "tasks": {
+        "fieldExitPrompt": {
+          "module": "wylie_gala_inn",
+          "function": "present_field_exit_prompt"
+        }
+      },
+      "locationContext": {
+        "type": "building",
+        "id": "penumbra_site_09_wylies_gala_inn",
+        "textProfile": "penumbra.wylies_gala_inn",
+        "speakerId": "wylie_gala_inn_narrator"
+      },
+      "provenance": {
+        "evidence": "ROM scene-3 record 99 at 0x18ABB4; event-table row 1 at 0x18A6FC selects scene 13. The mode-3/event-1 selector at 0x1F77C loads root 0xF4A18 and sets FFF10D=0x32; command EA at 0x249FA tests FF018F bit 2, selecting free text 0x114EF5 or the 50-nuyen offer 0x114E66. Command 0x06 charges the active amount and selects shared paid/insufficient feedback; 0x1F816 enters Hotel Options only when FFF10D is negative. The prompt returns D6=-1, so event-table scene 13 is retained as evidence and is not the normal arrival destination. Signed run results select package text roots 0xF49E0/0xF4A50."
+      }
+    }
+  ]
+}

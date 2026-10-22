@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "entityId": "weapons_world_arcology",
+  "interactions": [
+    {
+      "id": "rom_event_05",
+      "source": {
+        "sceneId": 5,
+        "eventCode": "event_5"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM scene 5 record 47 at 0x067C40; event-table row 5 at 0x0679C5 selects numeric resource-activity scene 35. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    }
+  ]
+}

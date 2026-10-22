@@ -29,6 +29,36 @@
       "provenance": {
         "evidence": "ROM indexed title service 1 at 0x53B16 requires FFFC1E bit 0 set, bit 1 clear, scene/event 1/1, and FFF0D5 equal to zero. It opens 0xF49E8, whose room offer charges the FFF10D value 30 through command 0x06; command 0x16 marks FFFC1E bit 1 before the Tabatha Shale conversation. Successful payment enters 0xCF38 Hotel Options and remains outside."
       }
+    },
+    {
+      "id": "rom_event_01_default",
+      "source": {
+        "sceneId": 1,
+        "eventCode": "event_1"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "tasks": {
+        "fieldExitPrompt": {
+          "module": "tarislar_city_inn",
+          "function": "present_field_exit_prompt"
+        }
+      },
+      "locationContext": {
+        "type": "building",
+        "id": "puyallup_site_03_tarislar_city_inn",
+        "textProfile": "tarislar.city_inn",
+        "speakerId": "tarislar_city_inn_narrator"
+      },
+      "provenance": {
+        "evidence": "ROM scene 1 record 68 at 0x17D9AC; event-table row 1 at 0x17D621 selects scene 53. ROM 0x1F65A selects the normal or run-result Inn prompt before the event-table destination; the prompt service returns D6=-1, so this row is retained as route evidence and is not entered through the standard prompt. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
     }
   ]
 }

@@ -1,6 +1,7 @@
 -- Generic access to editor-authored map entities. The native Lua package
--- loader reads gameplay/world TSV files into game.modules.world_content_data;
--- this module supplies the reusable lookup behavior used by map scripts.
+-- loader reads map structure from gameplay/world TSV files into
+-- game.modules.world_content_data and versioned route JSON into
+-- game.content.entities; this module joins those records for map scripts.
 local World = {}
 
 local function content()

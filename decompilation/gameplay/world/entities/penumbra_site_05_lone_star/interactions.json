@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "entityId": "penumbra_site_05_lone_star",
+  "interactions": [
+    {
+      "id": "rom_event_06",
+      "source": {
+        "sceneId": 3,
+        "eventCode": "event_6"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM scene 3 record 96 at 0X18AB96; event-table row 6 at 0x18A702 selects numeric resource activity scene 41. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "entityId": "jackals_lantern_frontage",
+  "interactions": [
+    {
+      "id": "rom_event_05",
+      "source": {
+        "sceneId": 2,
+        "eventCode": "event_5"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM scene 2 collision record 86 at 0x173106; event-table row 5 selects numeric field scene 19."
+      }
+    }
+  ]
+}

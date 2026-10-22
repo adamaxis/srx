@@ -11,7 +11,7 @@ row 2 selects resource activity scene 21 (`0x15`). Title service 14 at
 destination.
 
 The Lua link for `penumbra_site_02_fuchi` records the source conditions and
-entry task in `gameplay/world/entities/penumbra_site_02_fuchi/links.tsv`.
+entry task in `gameplay/world/entities/penumbra_site_02_fuchi/interactions.json`.
 `conversations/fuchi_offices.json` declares the location, event, alternate
 result, and story-bit precondition, then runs the registered trigger-14 action,
 shows the extracted `entry` page, and returns the typed

@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "entityId": "council_medicine_lodge",
+  "interactions": [
+    {
+      "id": "rom_event_03",
+      "source": {
+        "sceneId": 4,
+        "eventCode": "event_3"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "tasks": {
+        "fieldExitPrompt": {
+          "module": "council_medicine_lodge",
+          "function": "present_field_exit_prompt"
+        }
+      },
+      "locationContext": {
+        "type": "building",
+        "id": "council_medicine_lodge",
+        "textProfile": "council_medicine_lodge",
+        "speakerId": "council_medicine_lodge_narrator"
+      },
+      "provenance": {
+        "evidence": "ROM scene 4 record 88 at 0x15BDA6, event-table row 3 at 0x15B95E selects field scene 13. ROM 0x1FCF2 intercepts mode/event 4/3. Default text root 0x111876 or quest-state root 0x111892 is selected by FFFC1E bit 4; command 0x1E opens the field service, command 0x1F queues scene-entry profile 0x1668A and returns the left-door direction; signed results select package handoff/payment roots 0x1118E2/0x1118EA. Both alternate pages return to the same field map. The field stays on Scene 4 for the prompt and returns to the collision-probe lead after service."
+      }
+    },
+    {
+      "id": "rom_event_06",
+      "source": {
+        "sceneId": 4,
+        "eventCode": "event_6"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route"
+      },
+      "provenance": {
+        "evidence": "ROM scene 4 record 89 at 0x15BDB0; event-table row 6 at 0x15B964 selects numeric field scene 0."
+      }
+    }
+  ]
+}

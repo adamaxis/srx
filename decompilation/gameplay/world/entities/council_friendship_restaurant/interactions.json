@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "entityId": "council_friendship_restaurant",
+  "interactions": [
+    {
+      "id": "rom_event_01",
+      "source": {
+        "sceneId": 4,
+        "eventCode": "event_1"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM scene 4 record 91 at 0X15BDC4; event-table row 1 at 0x15B95F selects numeric field scene 10. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    }
+  ]
+}

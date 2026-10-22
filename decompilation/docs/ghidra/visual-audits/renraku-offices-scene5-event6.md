@@ -11,7 +11,7 @@ text `0x1195CF`, and portrait profile `0x121E2C`, then retains the event-table
 destination.
 
 The Lua link for `renraku_offices_frontage` records the route gate and entry
-dialogue fields in `gameplay/world/entities/renraku_offices_frontage/links.tsv`.
+dialogue fields in `gameplay/world/entities/renraku_offices_frontage/interactions.json`.
 `renraku_offices.present_map_overlay_entry()` validates the location and the
 two story bits, marks trigger 12 as active, says the extracted `entry` page,
 and returns `enter_scene_35`. Trigger 12 is the active dialogue trigger; it is

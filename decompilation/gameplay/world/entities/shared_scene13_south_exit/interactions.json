@@ -11,6 +11,7 @@
       "route": {
         "kind": "area_event_override",
         "script": "area_event_table",
+        "sourceRoutePolicy": "suppress_source_route",
         "priority": 0,
         "destinationScene": 0,
         "destinationMode": "field",

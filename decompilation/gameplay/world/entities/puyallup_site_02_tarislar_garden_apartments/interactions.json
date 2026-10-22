@@ -11,6 +11,7 @@
       "route": {
         "kind": "area_event_override",
         "script": "area_event_table",
+        "sourceRoutePolicy": "suppress_source_route",
         "priority": 20,
         "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_positive_alternate_result.route",
         "destinationScene": 13,
@@ -46,6 +47,7 @@
       "route": {
         "kind": "area_event_override",
         "script": "area_event_table",
+        "sourceRoutePolicy": "suppress_source_route",
         "priority": 20,
         "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_negative_alternate_result.route",
         "destinationScene": 13,
@@ -81,6 +83,7 @@
       "route": {
         "kind": "area_event_override",
         "script": "area_event_table",
+        "sourceRoutePolicy": "suppress_source_route",
         "priority": 10,
         "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_first_authorized_visit.route",
         "destinationScene": 54,
@@ -116,6 +119,7 @@
       "route": {
         "kind": "area_event_override",
         "script": "area_event_table",
+        "sourceRoutePolicy": "suppress_source_route",
         "priority": 5,
         "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_repeat_service.route",
         "destinationScene": 13,
@@ -151,6 +155,7 @@
       "route": {
         "kind": "area_event_override",
         "script": "area_event_table",
+        "sourceRoutePolicy": "suppress_source_route",
         "priority": 10,
         "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_tomb_departure.route",
         "destinationScene": 54,
@@ -186,6 +191,7 @@
       "route": {
         "kind": "area_event_override",
         "script": "area_event_table",
+        "sourceRoutePolicy": "suppress_source_route",
         "priority": 10,
         "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_guarded_visit.route",
         "destinationScene": 13,
@@ -210,6 +216,24 @@
       },
       "provenance": {
         "evidence": "ROM scene 1 record 67 at 0x17D9A2; indexed service 21 at 0x544D0 selects prompt root 0xF4DE0 while FFFC1E bit 30 is clear and FFF0D5 is zero. The graph shows text 0xFBCC7, challenge 0xFBD5A, and leave narration 0xFBD94; D6 remains -1 and no scene transition is selected. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    },
+    {
+      "id": "rom_event_07_default",
+      "source": {
+        "sceneId": 1,
+        "eventCode": "event_7"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM scene 1 record 67 at 0x17D9A2; event-table row 7 at 0x17D627 selects numeric field scene 13 when the indexed title-service branch does not select another route. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
       }
     }
   ]

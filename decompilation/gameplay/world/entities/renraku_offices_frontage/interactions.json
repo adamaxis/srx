@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "entityId": "renraku_offices_frontage",
+  "interactions": [
+    {
+      "id": "rom_event_06",
+      "source": {
+        "sceneId": 5,
+        "eventCode": "event_6"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM scene 5 record 46 at 0x067C36; event-table row 6 at 0x0679CC selects resource activity 35 when the title service does not override entry. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    },
+    {
+      "id": "renraku_map_overlay_entry",
+      "source": {
+        "sceneId": 5,
+        "eventCode": "event_6"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 10,
+        "sourceRoutePolicy": "resume_source_route",
+        "conditionId": "renraku_offices_frontage.renraku_map_overlay_entry.route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "renraku_offices",
+          "function": "present_map_overlay_entry"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "renraku_offices_frontage",
+          "textProfile": "renraku.offices",
+          "speakerId": "renraku_offices_narrator"
+        },
+        "conditionId": "renraku_offices_frontage.renraku_map_overlay_entry.entry",
+        "continueOutcomeType": "resume_source_route",
+        "resourceOverride": "index_five_marker_zero"
+      },
+      "provenance": {
+        "evidence": "ROM title service 12 at 0x54076 checks FFFC1E bits 16/12 and FFF0D5=0 for scene 5/event 6, loads dialogue root 0x110A2A with portrait profile 0x121E2C, sets FFF0CC, and returns D6=0 so the event-table destination remains resource activity 35. The extracted opening page is 0x1195CF. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    }
+  ]
+}

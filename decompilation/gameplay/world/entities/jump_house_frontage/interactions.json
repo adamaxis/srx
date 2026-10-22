@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "entityId": "jump_house_frontage",
+  "interactions": [
+    {
+      "id": "rom_event_04",
+      "source": {
+        "sceneId": 2,
+        "eventCode": "event_4"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "building",
+          "function": "present_entry_description"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "jump_house",
+          "textProfile": "jump_house.entry",
+          "speakerId": "jump_house_entry"
+        },
+        "conditionId": "jump_house_frontage.rom_event_04.entry",
+        "continueResultId": "shown"
+      },
+      "provenance": {
+        "evidence": "ROM scene 2 collision record 85 at 0x1730FC; event-table row 4 at 0x172CE0 selects scene 13 before the indexed title entry description. ROM indexed title service 22 at 0x20484 opens the entry passage when FFF0D5 is clear, then resumes the saved route."
+      }
+    }
+  ]
+}

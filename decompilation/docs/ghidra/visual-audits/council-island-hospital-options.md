@@ -40,7 +40,7 @@ own a second menu state machine. Text strings are named ROM-extracted assets.
 
 ## Verification
 
-The scene-4 entity link in `gameplay/world/entities/council_island_hospital/links.tsv` connects record 93 to `council_island_hospital.present_field_exit_prompt`. The alternate-result byte selects package handoff/payment versus the default Services/Leave prompt. Event-table row 4 remains 0x0D provenance; the physical-entry QA confirms the tested default route stays on Scene 4. The bits-23/24 branch at 0x1F830 belongs to a separate mode-exit policy and does not gate this event-4 route.
+The scene-4 entity link in `gameplay/world/entities/council_island_hospital/interactions.json` connects record 93 to `council_island_hospital.present_field_exit_prompt`. The alternate-result byte selects package handoff/payment versus the default Services/Leave prompt. Event-table row 4 remains 0x0D provenance; the physical-entry QA confirms the tested default route stays on Scene 4. The bits-23/24 branch at 0x1F830 belongs to a separate mode-exit policy and does not gate this event-4 route.
 
 Debug and Release CTests cover
 `shadowrun_ghidra_conversion_qt_field_hospital_options_qa`,

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "entityId": "penumbra_site_04_abandoned_building",
+  "interactions": [
+    {
+      "id": "rom_event_07",
+      "source": {
+        "sceneId": 3,
+        "eventCode": "event_7"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM scene 3 record 103 at 0X18ABDC; event-table row 7 at 0x18A703 selects numeric scripted activity scene 51. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    }
+  ]
+}

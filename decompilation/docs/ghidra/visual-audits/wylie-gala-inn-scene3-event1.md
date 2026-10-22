@@ -16,7 +16,7 @@ insufficient-funds feedback, and enters Hotel Options through `0x1F816` only
 after a successful payment or free stay. The signed run-result branches select
 the package text roots at `0xF49E0` and `0xF4A50`.
 
-The link profile is `gameplay/world/entities/penumbra_site_09_wylies_gala_inn/links.tsv`.
+The link profile is `gameplay/world/entities/penumbra_site_09_wylies_gala_inn/interactions.json`.
 `conversations/wylie_gala_inn.json` owns the pages, inline prompts, condition
 branches, payment edge, and typed outcome. The location's Lua module only
 starts that graph. The generic typed building service performs the wallet

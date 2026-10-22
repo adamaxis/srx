@@ -80,7 +80,7 @@ Genesis dialogue frame.
 
 ## Native and Lua implementation
 
-- `gameplay/world/entities/council_spirit_eyes_site/links.tsv` owns Scene-4
+- `gameplay/world/entities/council_spirit_eyes_site/interactions.json` owns Scene-4
   event 27 routing. `dialogue/conversations/salish_spirit_eyes.json` owns the
   traced prompt chain, staged conditions, pages, and typed cinematic result.
   `dialogue/cinematics.json` owns the sequence's ordered page references and

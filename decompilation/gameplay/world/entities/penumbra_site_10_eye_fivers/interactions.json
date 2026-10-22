@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "entityId": "penumbra_site_10_eye_fivers",
+  "interactions": [
+    {
+      "id": "rom_event_04",
+      "source": {
+        "sceneId": 3,
+        "eventCode": "event_4"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM Scene 3 record 100 at 0x18ABBE publishes event 4; exact active gang-contract target area 3/event 4 is intercepted by run_gang_contract.lua at 0x1F086 and selects passage/Scene 15. Otherwise event-table row 4 at 0x18A6FC selects numeric field Scene 13 (subject to the source scene gate). Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data preserves this generic route and collision-probe return anchor."
+      }
+    }
+  ]
+}

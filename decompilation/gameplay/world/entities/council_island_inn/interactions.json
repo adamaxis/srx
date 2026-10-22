@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "entityId": "council_island_inn",
+  "interactions": [
+    {
+      "id": "rom_event_00",
+      "source": {
+        "sceneId": 4,
+        "eventCode": "event_0"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM scene 4 record 92 at 0X15BDCE; event-table row 0 at 0x15B95E selects numeric field scene 13. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    }
+  ]
+}

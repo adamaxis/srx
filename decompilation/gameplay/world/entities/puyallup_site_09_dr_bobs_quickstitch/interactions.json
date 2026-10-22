@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "entityId": "puyallup_site_09_dr_bobs_quickstitch",
+  "interactions": [
+    {
+      "id": "rom_event_06",
+      "source": {
+        "sceneId": 1,
+        "eventCode": "event_6"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM scene 1 record 74 at 0x17D9E8; after the conditional maglock path, event-table row 6 at 0x17D626 selects shared field scene 13. ILENE_MET bit 19 at 0x167AE gates only the post-load world-script actor. Debug/Release ordinary-Up QA reaches the route at zero funds without entry dialogue; this link does not claim a clinic or shop menu. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    }
+  ]
+}

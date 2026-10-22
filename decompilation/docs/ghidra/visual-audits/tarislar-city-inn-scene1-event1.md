@@ -50,7 +50,7 @@ temporary output tree so separately managed text entries remained intact.
 
 ## Lua route and host behavior
 
-`gameplay/world/entities/puyallup_site_03_tarislar_city_inn/links.tsv` carries
+`gameplay/world/entities/puyallup_site_03_tarislar_city_inn/interactions.json` carries
 two entity-owned routes. The priority service row declares a generic
 `lua_field_service` task under the source flag/alternate-result gate. The
 default area-event row retains scene 53 and attaches the generic field-exit

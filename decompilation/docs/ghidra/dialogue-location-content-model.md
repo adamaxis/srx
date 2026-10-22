@@ -1,11 +1,13 @@
 # Dialogue and location interaction content model
 
 Status: design, source inventory, and staged implementation. The generated
-text catalog, speaker/menu/contact catalogs, conversation graphs, and location
-condition catalog are JSON-backed. Eight field services, thirteen
-entry-dialogue routes, and eight conditional map overrides now use
-entity-owned interaction JSON; 58 map-route rows remain in TSV. Those records
-reference named JSON conditions where needed. The Lua graph engine and typed outcome
+text catalog, speaker/menu/contact catalogs, conversation graphs, location
+condition catalog, and all 87 modeled entity route interactions are JSON-backed.
+The route catalog spans 70 entities: 58 map-event continuations, eight
+conditional map overrides, thirteen entry-dialogue routes, and eight field
+services. Ordinary continuations read their destination from the active map's
+imported event table; entity JSON stores their policy, gates, tasks, return
+behavior, and provenance. The Lua graph engine and typed outcome
 bridge drive Gates Undersound's same-map service, the Renraku and Fuchi gated
 entry pages, Tarislar City Inn, Wylie's Gala Inn, and the two Stoker entry
 roots. The field host dispatches the `hotel.options` and `hospital.options`
@@ -85,10 +87,10 @@ known from the US ROM and current route audits are:
 The table is one source-ordered service layer, not a complete count of game
 dialogues. Other routes include ordinary event-table doors, `0x1F65A` prompt
 families, resource-scene services, field terminals, service menus, and run
-contracts. Current entity link data contains 87 route rows across 70 entities
-(58 area-event rows, 8 area-event overrides, 13 dialogue rows, and 8 field
-services). This is the checked-in route catalog size, not proof that the ROM
-has only 70 locations.
+contracts. Current entity interaction JSON contains 87 route records across 70
+entities (58 area-event continuations, 8 area-event overrides, 13 dialogue
+routes, and 8 field services). This is the checked-in route catalog size, not
+proof that the ROM has only 70 locations.
 
 The source-supported terminal distinctions already required by these routes
 are:
@@ -423,8 +425,8 @@ graph files refer to those keys through speaker and menu bindings instead of
 copying text. This preserves text provenance, avoids two sources for one
 sentence, and allows a later localization catalog to use the same graph.
 
-Entity interaction JSON replaces nested route/task columns in `links.tsv` as
-each source-traced entity is migrated. The JSON loader registers
+Entity interaction JSON owns the route/task records for every currently
+modeled entity route. The JSON loader registers
 `world/entities/<id>/interactions.json` at
 `game.content.entities.<id>.interactions`; `world_content.lua` validates the
 document and normalizes its structured source, route, task, and location
@@ -432,14 +434,18 @@ context into the Lua route policy's typed input. Its version-1 contract uses
 `source.sceneId`/`source.eventCode`, a `route` object with a stable condition
 ID, priority, optional destination and source-route policy, named `tasks`, a
 shared `locationContext`, optional `entryDialogue`, and ROM `provenance`.
-`sourceRoutePolicy` is explicit: `suppress_source_route` must also declare the
-expected `sourceTableDestination`, which Lua checks against the active map's
-imported event-table row before selecting the interaction. Conditions remain
-named expressions in `location_conditions.json`, rather than inline Lua or
-string mini-languages. Unconverted route rows remain in `links.tsv` until
-their source gates and destinations are traced. Map geometry, collision
-records, and event-table destinations remain in the existing map/source-data
-pipeline; runtime JSON never duplicates map geometry or ROM address arithmetic.
+`sourceRoutePolicy` is explicit for routes that alter map-event behavior.
+`area_event_override` records `suppress_source_route`, its expected
+`sourceTableDestination`, and its replacement `destinationScene`; Lua checks
+the expected byte against the active map's imported event-table row before
+selecting the interaction. `resume_source_route` asks Lua to read that row and
+return its destination without duplicating it in the entity document.
+Conditions remain named expressions in
+`location_conditions.json`, rather than inline Lua or string mini-languages.
+Map geometry, collision records, and event-table destinations remain in the
+existing map/source-data pipeline; runtime JSON never duplicates map geometry
+or ROM address arithmetic. The C++ world-content TSV loader does not load
+route records.
 
 ### Condition language
 
@@ -618,10 +624,9 @@ not filled-in defaults.
 
 ## Implemented condition slice
 
-`gameplay/dialogue/location_conditions.json` now contains versioned, stable-ID
+`gameplay/dialogue/location_conditions.json` contains versioned, stable-ID
 condition definitions for every nontrivial gate in the 87 modeled entity
-route interactions. The 58 rows still in TSV carry `route_condition_id` and
-`entry_condition_id` references; entity JSON uses `route.conditionId` and
+route interactions. Entity JSON uses `route.conditionId` and
 `entryDialogue.conditionId`. Semicolon conditions, the separate entry
 alternate-result field, and building-interaction mode gates have been removed
 from route records. Existing source addresses and branch evidence stay with

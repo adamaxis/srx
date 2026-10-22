@@ -1,2 +1,0 @@
-link_id	source_scene	source_event	route_kind	script	destination_scene	destination_mode	return_anchor	return_facing	evidence
-rom_event_06	0	event_6	area_event	area_event_table	10	field	collision_probe_lead	face_away_from_entry	ROM scene 0 record 44 at 0X0D5796; event-table row 6 at 0xD54B8 selects numeric field scene 10. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return.

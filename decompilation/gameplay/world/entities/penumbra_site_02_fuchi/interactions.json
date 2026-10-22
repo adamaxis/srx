@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "entityId": "penumbra_site_02_fuchi",
+  "interactions": [
+    {
+      "id": "rom_event_02",
+      "source": {
+        "sceneId": 3,
+        "eventCode": "event_2"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM scene 3 record 97 at 0x18ABA0; after the conditional maglock path, event-table row 2 at 0x18A6FE selects resource activity 21 when the title service does not override entry. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    },
+    {
+      "id": "cyberheart_entry",
+      "source": {
+        "sceneId": 3,
+        "eventCode": "event_2"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 10,
+        "sourceRoutePolicy": "resume_source_route",
+        "conditionId": "penumbra_site_02_fuchi.cyberheart_entry.route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "fuchi_offices",
+          "function": "present_cyberheart_entry"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "penumbra_site_02_fuchi",
+          "textProfile": "penumbra.fuchi",
+          "speakerId": "fuchi_offices_narrator"
+        },
+        "conditionId": "penumbra_site_02_fuchi.cyberheart_entry.entry",
+        "continueOutcomeType": "resume_source_route",
+        "resourceOverride": "index_two_marker_three"
+      },
+      "provenance": {
+        "evidence": "ROM title service 14 at 0x54152 checks FFFC1E bits 25/14 and FFF0D5=0 for scene 3/event 2, loads dialogue root 0x11B7F4 with portrait profile 0x122090, sets FFF0CC, and returns D6=0 so event-table row 2 still selects resource activity 21. The extracted entry page is 0x11C213. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+      }
+    }
+  ]
+}

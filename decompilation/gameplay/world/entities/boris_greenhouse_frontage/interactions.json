@@ -28,8 +28,31 @@
         "speakerId": "boris_greenhouse_narrator"
       },
       "provenance": {
-        "romAddresses": ["0x53F8C", "0x121F58", "0x1F246", "0x173110"],
-        "scope": "Scene 2 event 6 runs indexed title service 10, whose D6=-1 result suppresses event-table destination 26. The service dialogue branches on FFF0D5, FFFC26, and story facts and remains on Scene 2."
+        "romAddresses": [
+          "0x53F8C",
+          "0x121F58",
+          "0x1F246",
+          "0x173110"
+        ],
+        "evidence": "Scene 2 event 6 runs indexed title service 10, whose D6=-1 result suppresses event-table destination 26. The service dialogue branches on FFF0D5, FFFC26, and story facts and remains on Scene 2."
+      }
+    },
+    {
+      "id": "rom_event_06",
+      "source": {
+        "sceneId": 2,
+        "eventCode": "event_6"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM record 87 at 0x173110 selects numeric Scene 26 in event-table row 6; indexed title service 10 at 0x53F8C intercepts this event and replaces the destination with a same-map return."
       }
     }
   ]

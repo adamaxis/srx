@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "entityId": "puyallup_site_11_orc_gang_hideout",
+  "interactions": [
+    {
+      "id": "rom_event_09",
+      "source": {
+        "sceneId": 1,
+        "eventCode": "event_9"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 0,
+        "sourceRoutePolicy": "resume_source_route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "provenance": {
+        "evidence": "ROM scene 1 records 76/77 at 0x17D9FC/0x17DA06 publish event 9; event-table row 9 at 0x17D629 selects Scene 13. Before the generic route, ROM 0x1F086 checks the active run target; a matching Puyallup gang contract shows the 0xFE0DE passage and queues the Scene-15 actor group. Lua run_gang_contract owns this conditional route. The generic link preserves the source collision-probe return anchor and face-away policy."
+      }
+    }
+  ]
+}
