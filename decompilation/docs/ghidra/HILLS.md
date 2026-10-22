@@ -257,8 +257,30 @@ choices, and result edges; Lua submits the three typed host transactions. The
 direct Lua permutation suite and Debug/Release script/panel CTests cover the
 graph branches and render through screen 34. Alesandro's shared portrait
 appears in section 23 frame 001770, but no complete matching call sequence was
-found in the reviewed longplay. At that point in the conversion, three other
-contact service trees still used procedural Lua.
+found in the reviewed longplay.
+
+Max's record at `0x10E400` enters its first/repeat graph before the
+Services/Goodbye choice. Commands `0x83`-`0x87` offer a $6,000 corporate badge,
+a $1,500 HK227-S, a $2,000 AK-97, and level-4/level-5 passkeys for $30,000/
+$42,000. The typed service checks funds and item space; JSON owns the offer,
+category, success, insufficient-funds, inventory-full, and return edges. Lua
+permutations cover all five transactions and C++ integration checks the live
+graph-to-host requests. The panel CTest now captures the call, service,
+hardware, category, purchase-result, and Goodbye screens for internal review.
+Section 05 frame 001440 shows a Max portrait/text page, not a phone call, so
+independent call-screen fidelity remains open.
+
+Professor Jefferson's record at `0x10F0D4` offers a three-page paranormal
+lesson, a $1,500 club discount (command `0x88`, FF018F bit 6), and a $2,000
+former-student introduction (command `0x89`, FFFC2C bit 6, Gregory contact).
+The JSON graph keeps the lesson and both offer flows separate; named Lua
+actions request the typed host transactions. The insufficient-funds pointer
+at `0x10F12E` targets invalid text bytes at `0x0FED41`, and both low-funds
+results remain explicit source boundaries. Lua permutations and C++ host
+integration cover first/repeat, lesson, offer, transaction, and result edges.
+The panel CTest captures the lesson and club path. Section 23 frame 001770
+shows the shared Alesandro/Professor portrait and a generic Services/Goodbye
+panel, not the complete phone call.
 
 Sharkey's ROM contact record at `0x10A7F2`
 offers commands `0x6E`-`0x70`: 3,000 nuyen for Salish-Shidhe passage to scene

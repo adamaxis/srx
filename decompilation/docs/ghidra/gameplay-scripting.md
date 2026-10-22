@@ -96,7 +96,9 @@ on stable paid/insufficient/service result IDs; Lua registers named host
 effects and C++ applies typed wallet, source-world, and runner-record
 transactions. The indexed service and signed field-exit selector are separate
 graph roots. Each graph operation uses a 100,000-instruction limit on initial
-invocation and resume.
+invocation and resume. Runtime graph catalogs are cached by immutable content
+package and validate a selected graph once, so an interaction's instruction
+budget is not spent revalidating unrelated contacts and locations.
 
 `gameplay/dialogue/conversations/vid_phone_services.json` owns Captain
 Quinton's first/repeat call split, Services/Goodbye choices, Hollywood and
@@ -139,9 +141,25 @@ Gregory Wilns' service tree is the seventh graph. JSON owns the paranormal
 creature lesson, Merlin's Lore discount offer, Power Focus offer, result pages,
 and return/farewell routes. His Lua adapter registers the two typed purchase
 actions; host services retain eligibility, affordability, inventory, feature
-flag, and item rules. All seven contacts with source-derived services now use
-JSON graphs; the other six contact records remain without inferred service
-behavior.
+flag, and item rules.
+
+Max's graph is the tenth service graph. It owns first/repeat call history,
+the corporate-badge offer, hardware categories, four purchases, and each
+result/return edge. `vid_phone/max.lua` registers only the call-history write
+and named transactions. The typed service applies wallet/inventory checks and
+the badge flag.
+
+Professor Jefferson's graph is the eleventh. It owns the three-page paranormal
+lesson, Riannon's discount, Gregory's introduction, and all return/farewell
+choices. `vid_phone/professor_jefferson.lua` registers the history write and
+two named transactions. The ROM's insufficient-funds text pointer targets
+invalid data, so those results stay at a `source_boundary` instead of adding
+invented copy.
+
+Together with the shared Quinton call graph, all eleven contacts with traced
+service behavior now use JSON graphs. Faradouchi and Agira are the remaining
+call-only records under source review; no service behavior is inferred for
+them.
 
 The Ares Weapon Emporium stock is declared in `gameplay/scripts/shop.lua`.
 The script groups offers under stable category names; `GameScriptRuntime`

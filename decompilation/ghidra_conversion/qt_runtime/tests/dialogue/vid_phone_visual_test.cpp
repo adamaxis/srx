@@ -1236,5 +1236,145 @@ int main(int argc, char** argv) {
         }
         return 36;
     }
+
+    const auto select_later_contact =
+        [&runtime, &output_root](const unsigned row_on_page_two,
+                                 const std::string_view portrait_alias,
+                                 const std::string_view artifact_name) {
+            if (!select_phone_option(runtime)) {
+                std::cerr << "Could not select Vid-Phone for "
+                          << artifact_name << " (options="
+                          << runtime.panel().option_count << ", selected="
+                          << runtime.panel().selected_option << ", compact="
+                          << runtime.panel().compact_cursor_list << ", actor="
+                          << runtime.panel().actor_name << ")\n";
+                return false;
+            }
+            if (!advance(runtime, 0x4000U,
+                         "A did not reopen the contact list")) {
+                return false;
+            }
+            for (unsigned row = 0U; row < 7U; ++row) {
+                if (!advance(runtime, 0x0200U,
+                             "Down did not select Next Screen")) {
+                    return false;
+                }
+            }
+            if (!advance(runtime, 0x1000U,
+                         "B did not open contact page two")) {
+                return false;
+            }
+            for (unsigned row = 0U; row < row_on_page_two; ++row) {
+                if (!advance(runtime, 0x0200U,
+                             "Down did not select the requested contact")) {
+                    return false;
+                }
+            }
+            if (!advance(runtime, 0x4000U,
+                         "A did not open the requested contact") ||
+                !expect(runtime.panel().portrait_alias == portrait_alias &&
+                            runtime.panel().option_count == 2U,
+                        "contact call did not resolve its portrait and choices") ||
+                !save_panel(runtime, output_root, artifact_name)) {
+                std::cerr << "Could not save or select contact "
+                          << artifact_name << '\n';
+                return false;
+            }
+            return true;
+        };
+
+    // These are host regression dumps. The reviewed longplay provides panel
+    // and portrait references, not complete phone-call images for either
+    // contact.
+    phone_funds = 100000U;
+    phone_item_codes.fill(0U);
+    phone_item_phases.fill(0U);
+    if (!select_later_contact(
+            3U, "dialogue.portraits.vid.phone.max", "73-max-first-call") ||
+        !advance(runtime, 0x4000U, "A did not open Max's Services menu") ||
+        !expect(runtime.panel().actor_name == "Max" &&
+                    runtime.panel().option_count == 2U,
+                "Max Services did not render both ROM choices") ||
+        !save_panel(runtime, output_root, "74-max-services") ||
+        !advance(runtime, 0x1000U,
+                 "B did not select Max's hardware service") ||
+        !save_panel(runtime, output_root, "75-max-hardware-intro") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Max's hardware categories") ||
+        !expect(runtime.panel().option_count == 3U,
+                "Max hardware category count differs from its ROM menu") ||
+        !save_panel(runtime, output_root, "76-max-hardware-categories") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Max's SMG choices") ||
+        !expect(runtime.panel().option_count == 3U,
+                "Max SMG menu does not show the two items and return choice") ||
+        !save_panel(runtime, output_root, "77-max-smg-choices") ||
+        !advance(runtime, 0x4000U,
+                 "A did not purchase Max's HK227-S") ||
+        !expect(phone_item_codes[0] == 9U && phone_funds == 98500U,
+                "Max's HK227-S transaction did not apply its ROM item/price") ||
+        !expect(runtime.panel().option_count == 2U,
+                "Max purchase result does not show Services and Goodbye") ||
+        !save_panel(runtime, output_root, "78-max-purchase-result") ||
+        !advance(runtime, 0x1000U,
+                 "B did not select Goodbye after Max's purchase") ||
+        !save_panel(runtime, output_root, "79-max-goodbye") ||
+        !advance(runtime, 0x4000U,
+                 "A did not return to the field menu after Max")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 37;
+    }
+
+    phone_funds = 100000U;
+    if (!select_later_contact(
+            5U, "dialogue.portraits.vid.phone.professor.jefferson",
+            "80-professor-first-call") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Professor Jefferson's Services") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open the paranormal lesson") ||
+        !save_panel(runtime, output_root, "81-professor-creature-page-1") ||
+        !advance(runtime, 0x4000U,
+                 "A did not advance Professor lesson page two") ||
+        !save_panel(runtime, output_root, "82-professor-creature-page-2") ||
+        !advance(runtime, 0x4000U,
+                 "A did not advance Professor lesson conclusion") ||
+        !expect(runtime.panel().option_count == 2U,
+                "Professor lesson conclusion does not show Services/Goodbye") ||
+        !save_panel(runtime, output_root, "83-professor-creature-page-3") ||
+        !advance(runtime, 0x4000U,
+                 "A did not return to Professor Services") ||
+        !advance(runtime, 0x1000U,
+                 "B did not select Professor's club information") ||
+        !expect(panel_contains_text(runtime, "choice group") &&
+                    runtime.panel().option_count == 1U,
+                "Professor's club information page did not resolve") ||
+        !save_panel(runtime, output_root, "84-professor-club-information") ||
+        !advance(runtime, 0x4000U,
+                 "A did not open Professor's club offer") ||
+        !expect(panel_contains_text(runtime, "1,500") &&
+                    runtime.panel().option_count == 3U,
+                "Professor's club offer did not show its price and three choices") ||
+        !save_panel(runtime, output_root, "85-professor-club-offer") ||
+        !advance(runtime, 0x4000U,
+                 "A did not accept Professor's club offer") ||
+        !expect(phone_funds == 98500U &&
+                    (phone_feature_flags.value_or(0U) & (1U << 6U)) != 0U,
+                "Professor's discount transaction did not charge or set its ROM flag") ||
+        !save_panel(runtime, output_root, "86-professor-club-success") ||
+        !advance(runtime, 0x4000U,
+                 "A did not return to the field terminal after Professor") ||
+        !expect(runtime.panel().option_count == 4U,
+                "Professor call did not restore the ordinary field terminal") ||
+        !save_panel(runtime, output_root, "87-professor-field-terminal")) {
+        std::cerr << runtime.failure() << '\n';
+        if (!source_boundary.empty()) {
+            std::cerr << source_boundary << '\n';
+        }
+        return 38;
+    }
     return 0;
 }

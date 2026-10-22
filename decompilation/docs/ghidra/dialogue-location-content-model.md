@@ -10,11 +10,13 @@ roots. The field host dispatches the `hotel.options` and `hospital.options`
 service IDs.
 Captain Quinton's first/repeat call and complete service tree is a JSON graph;
 Alesandro's, Sharkey's, Kipp's, Wilma's, Macklemann's, and Gregory's service
-trees are also JSON-backed. Owlfeather's scene-6/event-0 services 2, 3, and 4
-now share a JSON graph with explicit route conditions and named Lua action
-adapters. Their Lua modules register named host actions. Remaining conversation
-routes and other service outcome dispatchers are pending; this does not claim
-every listed route is implemented or visually verified.
+trees are also JSON-backed. Max's and Professor Jefferson's first/repeat calls
+and complete service trees are now JSON graphs as well. Owlfeather's
+scene-6/event-0 services 2, 3, and 4 now share a JSON graph with explicit route
+conditions and named Lua action adapters. Their Lua modules register named
+host actions. Remaining conversation routes and other service outcome
+dispatchers are pending; this does not claim every listed route is implemented
+or visually verified.
 
 ## Design goals
 
@@ -36,6 +38,10 @@ every listed route is implemented or visually verified.
   action registries resolve stable IDs, and the outcome dispatcher hands a
   completed route to a typed host service. Persistent gameplay facts remain
   Lua-owned; transient input and presentation state belongs to its session.
+- Treat loaded JSON content as an immutable package revision. The runtime
+  caches its catalog by package identity and validates each graph when first
+  selected; offline and unit-test construction can validate every graph
+  eagerly. Replacing the package table is the reload boundary.
 
 ## Source and longplay findings
 
@@ -340,10 +346,11 @@ have special first-call/history behavior. Calls may present a one-page or
 multi-page first/repeat message, a Services/Goodbye menu, or a contact-specific
 service graph.
 
-Nine contacts have source-derived service implementations: Captain Quinton,
-Alesandro, Sharkey, Kipp, Wilma, Macklemann, Gregory, Henry J. Culver, and
-Chillicut. Their converted paths are JSON graphs with named Lua actions and
-typed host service calls. The traced result permutations include:
+Eleven contacts have source-derived service implementations: Captain Quinton,
+Alesandro, Sharkey, Kipp, Wilma, Macklemann, Gregory, Henry J. Culver,
+Chillicut, Max, and Professor Jefferson. Their converted paths are JSON graphs
+with named Lua actions and typed host service calls. The traced result
+permutations include:
 
 - Information-only topics and multi-page lessons, with return-to-services or
   disconnect/farewell outcomes.
@@ -355,15 +362,22 @@ typed host service calls. The traced result permutations include:
   transitions to the destination; insufficient funds returns to services.
 - Result screens that either return to a service menu or end the call, as
   distinct from result screens that start travel.
+- Max's $6,000 corporate badge, HK227-S, AK-97, and level-4/level-5 passkeys;
+  each item offer checks wallet and inventory, then follows its own result
+  menu or explicit unavailable boundary.
+- Professor Jefferson's three-page paranormal lesson, Riannon discount,
+  Gregory introduction, first/repeat history, and success/decline/farewell
+  paths. The ROM's insufficient-funds pointer at `0x10F12E` resolves to
+  unsupported bytes at `0x0FED41`; those results remain explicit boundaries.
 
-Four list contacts remain to be converted: Mr. Faradouchi, Agira Tetsumi,
-Max, and Prof. Jefferson. Their contact-specific branches and state changes
-must be traced before adding graph content; the contact list's existence,
-first/repeat copy, and portraits do not establish their service behavior.
+Two list contacts remain under source review: Mr. Faradouchi and Agira
+Tetsumi. Their call-history and continuation behavior must be traced before
+adding graph content; the contact list, first/repeat copy, and portraits do
+not establish extra service branches.
 `contacts.json`, `speakers.json`, `menus.json`, `conditions.json`, and
-`conversations/*.json` now hold shared content and converted graph structure.
-Named Lua actions and typed host services retain state mutation policy. Three
-contact modules still own procedural service flow and are explicitly pending.
+`conversations/*.json` now hold shared content and the eleven converted
+service graphs. Named Lua actions and typed host services retain state
+mutation policy. The two remaining contacts have no inferred service tree.
 
 ## JSON content and entity-route layout
 
@@ -529,9 +543,9 @@ conditions, and outcome types must not depend on Qt JSON classes.
    and consumers reference stable text keys. Extracted strings remain
    extractor-owned.
 3. **Implemented for shared catalogs:** speaker, menu, and 13-contact data are
-   JSON-backed. Captain Quinton's full call flow and eight other converted
-   contact service flows use JSON graphs; Faradouchi, Agira, Max, and Prof.
-   Jefferson still need source-traced service behavior.
+   JSON-backed. Captain Quinton's full call flow and ten other converted
+   contact service flows use JSON graphs; Faradouchi and Agira remain under
+   source review and have no inferred service behavior.
 4. **Implemented with explicit host boundaries:** the reusable Lua graph and
    condition engines and typed `DialogueOutcome` contract are active. The
    portable C++ `DialogueOutcomeDispatcher` registers handlers by outcome type
@@ -559,10 +573,10 @@ The first JSON graph migration was a vertical slice that exercises more than
 one terminal kind. Stoker's indexed service and signed field-exit prompt now
 use separate JSON graph roots. The remaining Stoker work is source coverage
 for the 80..99 effect callback, saved-game fact restoration, and independent
-visual checks. Quinton's call graph and eight converted contact service
-graphs now cover the nine source-derived service trees. Faradouchi, Agira,
-Max, and Prof. Jefferson remain open. The Spirit Eyes ritual
-route is JSON-backed through its source-traced Scene-4 prompt chain and staged
+visual checks. Quinton's call graph and ten other converted contact service
+graphs now cover the eleven source-derived service trees. Faradouchi and Agira
+remain open for call-history and continuation source tracing. The Spirit Eyes
+ritual route is JSON-backed through its source-traced Scene-4 prompt chain and staged
 item gates. Licourtrix's Scene-47 graph is JSON-backed and tested, and the
 seeded mode-table route now reaches its typed Scene-47 entry and Lua actor list.
 The context producer, deferred activity routine, ritual cinematic presenter,
@@ -678,6 +692,27 @@ Seven non-Stoker graphs and two Stoker roots currently exercise that contract:
   permutations cover first/repeat calls, choices, prices, and transaction
   outcomes. No complete Chillicut call appears in the reviewed longplay; its
   route remains visually unverified against an independent Genesis capture.
+- Max's record at `0x10E400` branches on contact history, then offers the
+  $6,000 corporate badge or the hardware flow. Commands `0x83`-`0x87` charge
+  $6,000, $1,500, $2,000, $30,000, and $42,000 for the badge, HK227-S, AK-97,
+  and level-4/level-5 passkeys. The C++ service checks wallet and free
+  inventory before applying the item or FFFC22 bit-10 badge flag. JSON owns
+  offer categories, return menus, success, insufficient-funds, inventory-full,
+  and goodbye edges. Lua permutations exercise every command/result pair and
+  the host integration test resolves the displayed labels. Section 05 frame
+  001440 is a Max portrait/text page, not a phone call; no complete Max call
+  sequence appears in the reviewed longplay.
+- Professor Jefferson's record at `0x10F0D4` has the three-page paranormal
+  lesson, the club offer (command `0x88`, $1,500, FF018F bit 6), and former
+  student offer (command `0x89`, $2,000, FFFC2C bit 6, unlocking Gregory).
+  JSON keeps each branch's Services/Goodbye choices and transaction outcomes;
+  the Lua adapter submits only the two named host requests. The insufficient
+  message pointer at `0x10F12E` points to invalid text bytes at `0x0FED41`, so
+  both low-funds results stop at a documented source boundary. Section 23
+  frame 001770 shows the shared Alesandro/Professor portrait with a generic
+  Services/Goodbye panel, not a complete Professor call. Pure-Lua permutation
+  and C++ host-integration tests cover the graph; independent call visuals
+  remain unavailable.
 
 - Stoker has two JSON roots so the indexed trigger and signed field-exit
   selector stay separate. The indexed root uses the ROM gate from `0x53AB6`

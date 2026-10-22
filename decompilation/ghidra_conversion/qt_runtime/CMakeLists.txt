@@ -161,6 +161,16 @@ target_compile_definitions(shadowrun_vid_phone_script_test PRIVATE
 add_test(NAME shadowrun_vid_phone_script_qa
          COMMAND shadowrun_vid_phone_script_test)
 
+add_executable(shadowrun_vid_phone_json_graph_test
+    tests/scripting/vid_phone_json_graph_test.cpp)
+target_link_libraries(shadowrun_vid_phone_json_graph_test
+    PRIVATE shadowrun_gameplay_script_runtime)
+target_compile_definitions(shadowrun_vid_phone_json_graph_test PRIVATE
+    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts"
+    SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets")
+add_test(NAME shadowrun_vid_phone_json_graph_qa
+         COMMAND shadowrun_vid_phone_json_graph_test)
+
 add_executable(shadowrun_vid_phone_service_conversion_test
     tests/field/vid_phone_service_conversion_test.cpp)
 target_include_directories(shadowrun_vid_phone_service_conversion_test
