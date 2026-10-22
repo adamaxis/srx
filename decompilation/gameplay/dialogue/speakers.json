@@ -510,6 +510,10 @@
     },
     "tarislar_apartments_narrator": {
       "events": {
+        "authorized_entry": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.garden.apartments.page.authorized_entry"
+        },
         "guarded_entry": {
           "continuation_key": "shared.more",
           "title_key": "tarislar.garden.apartments.page.guarded_entry"

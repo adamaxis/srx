@@ -36,27 +36,25 @@ function TarislarApartments.present_first_entry()
         return "denied"
     end
 
-    if not more("arrival", table.concat({
-        "<You enter the Tarlisar Garden Apartments.",
-        "Two elves carrying sub-machine guns greet you at the door.",
-        "They say nothing but motion you to follow them.",
-        "They lead you into the elevator, and you ride to the top floor.>",
-    }, "||")) then
+    local outcome = DialogueGraph.run(
+        "tarislar_garden_apartments.first_authorized_entry", {
+            ["tarislar_apartments.mark_first_entry_arrival_effects"] =
+                function()
+                    -- ROM command 0x45 at 0x21FF2 sets FFFC34 bits 5 and 6.
+                    game.state.field_mode_effect_flag_bit_5 = true
+                    game.state.field_mode_effect_flag_bit_6 = true
+                    return "applied"
+                end,
+            ["tarislar_apartments.present_harlequin_main_conversation"] =
+                function()
+                    return HarlequinDialogue.present_main_conversation()
+                end,
+        })
+    if type(outcome) == "table" and
+       outcome.type == "continue_in_place" then
         return "left"
     end
-    game.state.field_mode_effect_flag_bit_5 = true
-    game.state.field_mode_effect_flag_bit_6 = true
-
-    if not more("penthouse", table.concat({
-        "<Passing even more armed elves, you enter the penthouse.",
-        "Inside you face a bizarre sight.",
-        "There stands an elf, his face tatooed like a clown; however, his expression reflects his serious nature.",
-        "This must be Harlequin.>",
-    }, "||")) then
-        return "left"
-    end
-
-    return HarlequinDialogue.present_main_conversation()
+    return outcome
 end
 
 function TarislarApartments.present_repeat_service()

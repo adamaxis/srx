@@ -394,9 +394,12 @@ Genesis controller evidence remain open. See
 [`visual-audits/field-movement-animation.md`](visual-audits/field-movement-animation.md).
 
 Puyallup's Tarislar Garden Apartments route is partial. Scene 1 record
-67/event 7 defaults to scene 13. The first-authorized service-21 branch runs
-the Harlequin prompt chain, sets bit 21, awards +2 Karma, and returns to scene
-1; its Debug/Release physical-input QA saves a clean field `actual.bmp`. The
+67/event 7 defaults to scene 13. The first-authorized service-21 branch now
+uses a JSON graph for the ROM arrival and penthouse pages before the shared
+Harlequin prompt chain. Lua applies bit 21 and +2 Karma before the dialogue,
+then command `0x45`'s effect bits 5/6 after the arrival page. The route returns
+to scene 1; its Debug/Release physical-input QA captures all nine pages and a
+clean field `actual.bmp`. The
 six condition-selected event-7 route records now live in the entity's
 `interactions.json`; the raw event-table destination remains scene 13.
 The guarded branch now presents the `0xFBCC7` and `0xFBD5A` pages, then a titleless

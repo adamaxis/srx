@@ -10115,9 +10115,38 @@ int main() {
     }
     tarislar_dialogue =
         scripts.complete_native_service_result("applied");
-    constexpr std::array<std::string_view, 9U> tarislar_prompt_texts{{
-        "<You enter the Tarlisar Garden Apartments.||Two elves carrying sub-machine guns greet you at the door.||They say nothing but motion you to follow them.||They lead you into the elevator, and you ride to the top floor.>",
-        "<Passing even more armed elves, you enter the penthouse.||Inside you face a bizarre sight.||There stands an elf, his face tatooed like a clown; however, his expression reflects his serious nature.||This must be Harlequin.>",
+    if (!expect(tarislar_dialogue.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_dialogue.operation.has_value() &&
+                    tarislar_dialogue.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    tarislar_dialogue.operation->dialogue.has_value() &&
+                    tarislar_dialogue.operation->dialogue->event_id ==
+                        "authorized_entry" &&
+                    tarislar_dialogue.operation->dialogue->inline_text.empty() &&
+                    scripts.story_state().at("story_flag_bit_21") &&
+                    scripts.story_state().at("story_trigger_active_21"),
+                "Tarislar first-entry graph did not start with its extracted arrival page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_dialogue = scripts.complete_native_operation(true);
+    if (!expect(tarislar_dialogue.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    tarislar_dialogue.operation.has_value() &&
+                    tarislar_dialogue.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    tarislar_dialogue.operation->dialogue.has_value() &&
+                    tarislar_dialogue.operation->dialogue->event_id ==
+                        "guarded_penthouse" &&
+                    scripts.story_state().at("field_mode_effect_flag_bit_5") &&
+                    scripts.story_state().at("field_mode_effect_flag_bit_6"),
+                "Tarislar command 0x45 effects did not precede the ROM penthouse page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    tarislar_dialogue = scripts.complete_native_operation(true);
+    constexpr std::array<std::string_view, 7U> tarislar_prompt_texts{{
         "So we meet.||I guess you would eventually have found me, given your resources and abilities.||As you have probably guessed, I've been keeping an eye on you since you first arrived in Seattle.",
         "You've acquired quite a reputation in your short time here, yet your original mission remains unfulfilled.||I will help you if I can.",
         "Your brother's death is made worse by the fact that it was wholly avoidable.||I underestimated Thon, and he punished me by destroying those in my employ.||I apologize for Michael's death.",
@@ -10126,14 +10155,13 @@ int main() {
         "Currently, Thon's energy is waning.||But make no mistake!  He is still very powerful and quite dangerous.||But to save on expenditure of his energies, he now uses much outside help and avoids direct confrontations.",
         "Renraku became involved with Thon through Vigore, who was casting about for corporate support.||Renraku assigned Mako to the project, but he was easily blinded by the promise of power and became Thon's unwitting pawn.",
     }};
-    constexpr std::array<std::string_view, 9U> tarislar_menu_ids{{
-        "arrival", "penthouse", "meeting", "michael_topic", "thon_topic",
-        "thon_explanation", "thon_curse", "renraku_topic",
-        "renraku_explanation",
+    constexpr std::array<std::string_view, 7U> tarislar_menu_ids{{
+        "meeting", "michael_topic", "thon_topic", "thon_explanation",
+        "thon_curse", "renraku_topic", "renraku_explanation",
     }};
-    constexpr std::array<std::string_view, 9U> tarislar_choice_ids{{
-        "more", "more", "more", "ask_about_michael", "who_is_thon",
-        "more", "more", "why_renraku", "more",
+    constexpr std::array<std::string_view, 7U> tarislar_choice_ids{{
+        "more", "ask_about_michael", "who_is_thon", "more", "more",
+        "why_renraku", "more",
     }};
     for (std::size_t page = 0U;
          page < tarislar_prompt_texts.size(); ++page) {
@@ -10157,20 +10185,8 @@ int main() {
             std::cerr << scripts.failure() << '\n';
             return 17;
         }
-        if (page == 0U &&
-            (!scripts.story_state().at("story_flag_bit_21") ||
-             !scripts.story_state().at("story_trigger_active_21"))) {
-            std::cerr << scripts.failure() << '\n';
-            return 17;
-        }
         tarislar_dialogue = scripts.complete_native_menu_choice(
             tarislar_choice_ids[page]);
-        if (page == 0U &&
-            (!scripts.story_state().at("field_mode_effect_flag_bit_5") ||
-             !scripts.story_state().at("field_mode_effect_flag_bit_6"))) {
-            std::cerr << scripts.failure() << '\n';
-            return 17;
-        }
     }
     if (!expect(tarislar_dialogue.status ==
                         ScriptTaskStep::Status::awaiting_native_operation &&

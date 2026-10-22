@@ -1,6 +1,45 @@
 {
   "schemaVersion": 1,
   "graphs": {
+    "tarislar_garden_apartments.first_authorized_entry": {
+      "entryNode": "authorized_entry",
+      "speakerId": "tarislar_apartments_narrator",
+      "textProfile": "tarislar.garden.apartments.entry",
+      "provenance": {
+        "romAddresses": ["0x5456E", "0x59C34", "0xF4DF4", "0xFBE12", "0x21FF2", "0xFBEEC", "0xF58C0"],
+        "scope": "first_authorized_visit_before_repeat_or_frosty_departure"
+      },
+      "nodes": {
+        "authorized_entry": {
+          "type": "page",
+          "eventId": "authorized_entry",
+          "next": "apply_arrival_effects",
+          "evidence": "ROM group 0xF4DF4 starts with text 0xFBE12; the completed More page selects command 0x45."
+        },
+        "apply_arrival_effects": {
+          "type": "action",
+          "actionId": "tarislar_apartments.mark_first_entry_arrival_effects",
+          "results": { "applied": "penthouse_entry" },
+          "evidence": "ROM command 0x45 at 0x21FF2 sets FFFC34 bits 5 and 6 before the penthouse page."
+        },
+        "penthouse_entry": {
+          "type": "page",
+          "eventId": "guarded_penthouse",
+          "next": "harlequin_conversation",
+          "evidence": "ROM text 0xFBEEC describes the armed penthouse and Harlequin."
+        },
+        "harlequin_conversation": {
+          "type": "action",
+          "actionId": "tarislar_apartments.present_harlequin_main_conversation",
+          "results": { "left": "continue_in_place" },
+          "evidence": "The first authorized branch enters the shared Harlequin conversation and returns to the field route without setting FFF0CC."
+        },
+        "continue_in_place": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
+    },
     "tarislar_garden_apartments.guarded_entry": {
       "entryNode": "guarded_entry",
       "precondition": "tarislar_garden_apartments.guarded_entry_available",

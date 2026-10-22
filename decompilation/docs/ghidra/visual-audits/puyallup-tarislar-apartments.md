@@ -6,7 +6,10 @@ upstream Frosty handoff and pending descriptor path remain open**. Scene 1
 record 67 is an event-7 trigger whose event-table
 default is scene 13. With FFFC1E bit 30 set, bit 21 clear, and alternate
 result/FFF0D5 zero, the first visit marks bit 21, awards +2 Karma to the three
-live runners, presents the Harlequin prompt chain, then returns to scene 1. The
+live runners, and runs the JSON arrival/penthouse pages before the shared
+Harlequin prompt chain. Completing the arrival page applies effect bits 5/6;
+the conversation then returns to scene 1. Debug/Release script and physical
+input QA check the ordered pages, flags, and full-screen field return. The
 guarded branch presents pages `0xFBCC7` and `0xFBD5A`, then a titleless No
 Business/More choice. No Business follows `0xFBD94` and returns to scene 1;
 More follows `0xFBEEC` into the shared Harlequin conversation at `0xF58C0`,
@@ -107,9 +110,11 @@ catalog's source policy explicitly authorizes a correction.
   `0xFBEEC` to the penthouse page, then node `0xF58C0` into the shared Harlequin
   conversation. Neither choice selects scene 13; both close on scene 1. The
   graph and its two physical-input QA cases are in Debug and Release.
-- Authorized first entry: text group `0xF4DF4` starts at `0xFBE12`. It
-  describes entering the apartments, meeting the armed elves, following them
-  into the elevator, and riding to the top floor.
+- Authorized first entry: text group `0xF4DF4` starts at `0xFBE12`. The JSON
+  graph imports that page from the ROM, then runs command `0x45` at `0x21FF2`
+  to set FFFC34 bits 5/6 before the `0xFBEEC` penthouse page and shared
+  Harlequin flow at `0xF58C0`. The tested path does not set `FFF0CC`, so it
+  returns to the field route instead of loading scene 54.
 - First-visit return: this branch does not set `FFF0CC`. Its prompt chain
   finishes without the marker, so event 7 returns to the field route rather
   than selecting scene 54. The indexed service's first-authorized path is not

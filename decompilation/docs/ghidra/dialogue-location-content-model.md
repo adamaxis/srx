@@ -9,8 +9,9 @@ services. Ordinary continuations read their destination from the active map's
 imported event table; entity JSON stores their policy, gates, tasks, return
 behavior, and provenance. The Lua graph engine and typed outcome
 bridge drive Gates Undersound's same-map service, the Renraku and Fuchi gated
-entry pages, Tarislar Apartments' guarded No Business/More branches, Tarislar
-City Inn, Wylie's Gala Inn, and the two Stoker entry roots. The field host
+entry pages, Tarislar Apartments' authorized arrival and guarded No
+Business/More branches, Tarislar City Inn, Wylie's Gala Inn, and the two Stoker
+entry roots. The field host
 dispatches the `hotel.options` and `hospital.options`
 service IDs.
 Captain Quinton's first/repeat call and complete service tree is a JSON graph;
@@ -82,7 +83,7 @@ known from the US ROM and current route audits are:
 | 18 | `0x54322` | Red Buffalo Woman | Scene 6/event 1; bits 17/18 select the gift vs. no-gift Harlequin graph; both suppress Scene 13 and return to Scene 6. |
 | 19 | `0x543A2` | Ilene route preparation | Scene-2/event-0 story/effect gate prepares a later Scene-20 entry; it is not a dialogue terminal. |
 | 20 | `0x49A0` | No-op slot | No indexed service branch. |
-| 21 | `0x5447E` | Tarislar Apartments | Scene 1/event 7; signed alternate result, first/repeat state, conditional information, guarded leave, and gated Tomb offer. |
+| 21 | `0x5447E` | Tarislar Apartments | Scene 1/event 7; signed alternate result, first/repeat state, conditional information, guarded No Business/More, and gated Tomb offer. |
 | 22 | `0x545B6` | Redmond Vigore search | Scene 2/event 7; prerequisite bit 13 and unconsumed bit 10 gate three narrative pages, rewards, and a same-map return. |
 
 The table is one source-ordered service layer, not a complete count of game
