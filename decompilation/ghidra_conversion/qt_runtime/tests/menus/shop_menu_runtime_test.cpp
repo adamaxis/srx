@@ -50,17 +50,19 @@ int main() {
                           {0x06U, 0x00U, 0x0FU}, {0x04U, 0x00U, 0x00U},
                           {0x05U, 0x00U, 0x0DU}, {0x0DU, 0x06U, 0x14U},
                           {0x0EU, 0x06U, 0x00U}}},
-        {"other_items", {}, {{0x45U, 0x00U, 0x19U}, {0x0FU, 0x06U, 0x00U},
+        {"armor", {}, {{0x2DU, 0x00U, 0x00U}, {0x2FU, 0x00U, 0x00U},
+                        {0x30U, 0x00U, 0x00U}}},
+        {"other_items", {}, {{0x45U, 0x00U, 0x19U},
+                             {0x0FU, 0x06U, 0x00U},
                              {0x10U, 0x04U, 0x07U},
                              {0x11U, 0x04U, 0x07U}}},
-        {"armor", {}, {{0x2EU, 0x00U, 0x00U}, {0x2DU, 0x00U, 0x0CU}}},
         {"source_action_3", {}, {}}, {"source_action_4", {}, {}},
         {"sell", {}, {}}};
     ShopMenuController menu;
     if (!expect(menu.open(ares, ares_definition, confirmation_choice_ids)) ||
         !expect(menu.offer_count(ShopActionGroup::weapons) == 7U) ||
+        !expect(menu.offer_count(ShopActionGroup::armor) == 3U) ||
         !expect(menu.offer_count(ShopActionGroup::other_items) == 4U) ||
-        !expect(menu.offer_count(ShopActionGroup::armor) == 2U) ||
         !expect(!menu.offer(ShopActionGroup::weapons, 7U).has_value())) {
         return 1;
     }
@@ -129,21 +131,20 @@ int main() {
     if (!expect(reordered_menu.open(
                     ares, reordered_definition, confirmation_choice_ids)) ||
         !expect(reordered_menu.selected_group() ==
-                ShopActionGroup::other_items) ||
+                ShopActionGroup::armor) ||
         !expect(reordered_menu.displayed_offer_group() ==
-                ShopActionGroup::other_items) ||
+                ShopActionGroup::armor) ||
         !expect(reordered_menu.offer_count(
-                    ShopActionGroup::other_items) == 4U)) {
+                    ShopActionGroup::armor) == 3U)) {
         return 17;
     }
 
     const auto weapon_offer = menu.offer(ShopActionGroup::weapons, 2U);
     const auto other_offer = menu.offer(ShopActionGroup::other_items, 0U);
-    const auto armor_offer = menu.offer(ShopActionGroup::armor, 1U);
+    const auto armor_offer = menu.offer(ShopActionGroup::armor, 0U);
     if (!expect(weapon_offer.has_value() && weapon_offer->type == 6U &&
                 weapon_offer->quantity == 15U) ||
-        !expect(armor_offer.has_value() && armor_offer->type == 0x2DU &&
-                armor_offer->quantity == 12U) ||
+        !expect(armor_offer.has_value() && armor_offer->type == 0x2DU) ||
         !expect(other_offer.has_value() && other_offer->type == 0x45U &&
                 other_offer->quantity == 25U)) {
         return 2;
@@ -154,24 +155,24 @@ int main() {
         !expect(menu.apply_script_snapshot(snapshot(
                     "ares_weapon_emporium", 1U, -1, 1U, 0U, 1U,
                     "selection_moved")) == ShopMenuEvent::selection_moved) ||
-        !expect(menu.selected_group() == ShopActionGroup::other_items) ||
+        !expect(menu.selected_group() == ShopActionGroup::armor) ||
         !expect(menu.displayed_offer_group() == ShopActionGroup::weapons) ||
         !expect(menu.apply_script_snapshot(snapshot(
                     "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
                     "panel_changed")) == ShopMenuEvent::panel_changed) ||
         !expect(menu.offers_panel_active()) ||
-        !expect(menu.selected_group() == ShopActionGroup::other_items) ||
-        !expect(menu.displayed_offer_group() == ShopActionGroup::other_items) ||
+        !expect(menu.selected_group() == ShopActionGroup::armor) ||
+        !expect(menu.displayed_offer_group() == ShopActionGroup::armor) ||
         !expect(menu.apply_script_snapshot(snapshot(
                     "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
                     "purchase_selected")) == ShopMenuEvent::purchase_selected) ||
         !expect(menu.pending_action().has_value()) ||
-        !expect(menu.pending_action()->offer->type == 0x45U)) {
+        !expect(menu.pending_action()->offer->type == 0x2DU)) {
         return 3;
     }
     menu.finish_action();
-    if (!expect(menu.selected_group() == ShopActionGroup::other_items) ||
-        !expect(menu.displayed_offer_group() == ShopActionGroup::other_items)) {
+    if (!expect(menu.selected_group() == ShopActionGroup::armor) ||
+        !expect(menu.displayed_offer_group() == ShopActionGroup::armor)) {
         return 20;
     }
 
@@ -184,8 +185,10 @@ int main() {
         !expect(retained_display_menu.apply_script_snapshot(snapshot(
                     "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
                     "panel_changed")) == ShopMenuEvent::panel_changed) ||
+        !expect(retained_display_menu.selected_group() ==
+                ShopActionGroup::armor) ||
         !expect(retained_display_menu.displayed_offer_group() ==
-                ShopActionGroup::other_items) ||
+                ShopActionGroup::armor) ||
         !expect(retained_display_menu.apply_script_snapshot(snapshot(
                     "ares_weapon_emporium", 1U, -1, 0U, 0U, 0U,
                     "panel_changed")) == ShopMenuEvent::panel_changed) ||
@@ -193,7 +196,7 @@ int main() {
         !expect(retained_display_menu.selected_group() ==
                 ShopActionGroup::weapons) ||
         !expect(retained_display_menu.displayed_offer_group() ==
-                ShopActionGroup::other_items)) {
+                ShopActionGroup::armor)) {
         return 21;
     }
 
@@ -219,7 +222,7 @@ int main() {
         !expect(menu.apply_script_snapshot(snapshot(
                     "ares_weapon_emporium", 1U, -1, 2U, 0U, 2U,
                     "selection_moved")) == ShopMenuEvent::selection_moved) ||
-        !expect(menu.selected_group() == ShopActionGroup::armor) ||
+        !expect(menu.selected_group() == ShopActionGroup::other_items) ||
         !expect(menu.apply_script_snapshot(snapshot(
                     "ares_weapon_emporium", 1U, -1, 0U, 1U, 2U,
                     "panel_changed")) == ShopMenuEvent::panel_changed) ||
@@ -227,8 +230,8 @@ int main() {
                     "ares_weapon_emporium", 1U, -1, 0U, 1U, 2U,
                     "purchase_selected")) == ShopMenuEvent::purchase_selected) ||
         !expect(menu.pending_action().has_value()) ||
-        !expect(menu.pending_action()->group == ShopActionGroup::armor) ||
-        !expect(menu.pending_action()->offer->type == 0x2EU)) {
+        !expect(menu.pending_action()->group == ShopActionGroup::other_items) ||
+        !expect(menu.pending_action()->offer->type == 0x45U)) {
         return 16;
     }
 
@@ -389,13 +392,13 @@ int main() {
     if (!expect(transaction_menu.open(
                     ares, ares_definition, confirmation_choice_ids)) ||
         !expect(transaction_menu.apply_script_snapshot(snapshot(
-                    "ares_weapon_emporium", 1U, -1, 1U, 0U, 1U,
+                    "ares_weapon_emporium", 1U, -1, 2U, 0U, 2U,
                     "selection_moved")) == ShopMenuEvent::selection_moved) ||
         !expect(transaction_menu.apply_script_snapshot(snapshot(
-                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 2U,
                     "panel_changed")) == ShopMenuEvent::panel_changed) ||
         !expect(transaction_menu.apply_script_snapshot(snapshot(
-                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 2U,
                     "purchase_selected")) == ShopMenuEvent::purchase_selected)) {
         return 17;
     }
@@ -429,7 +432,7 @@ int main() {
     }
 
     if (!expect(transaction_menu.apply_script_snapshot(snapshot(
-                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 2U,
                     "purchase_selected")) == ShopMenuEvent::purchase_selected)) {
         return 19;
     }
@@ -448,7 +451,7 @@ int main() {
     }
 
     if (!expect(transaction_menu.apply_script_snapshot(snapshot(
-                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 1U,
+                    "ares_weapon_emporium", 1U, -1, 0U, 1U, 2U,
                     "purchase_selected")) == ShopMenuEvent::purchase_selected)) {
         return 21;
     }

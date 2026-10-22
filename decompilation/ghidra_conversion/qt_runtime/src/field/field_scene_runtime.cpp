@@ -18010,7 +18010,7 @@ bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
 
 bool FieldSceneRuntime::load_ares_shop_menu_content() {
     constexpr std::array<std::string_view, 6> kGroupIds{{
-        "weapons", "other_items", "armor", "source_action_3",
+        "weapons", "armor", "other_items", "source_action_3",
         "source_action_4", "sell"}};
     const auto fail = [this](std::string message) {
         failure_ = std::move(message);

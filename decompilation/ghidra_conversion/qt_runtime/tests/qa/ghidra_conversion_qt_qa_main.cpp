@@ -5415,11 +5415,48 @@ int run_field_ares_collision_shop_qa(
     }
     write_state("ares-shop-category");
 
-    // Follow the same source cursor path visible in the longplay: begin on
-    // Weapons, move Right to the other-items category, then Down into its
-    // first stock offer (Universal Gun Clips). Capture each full screen so
-    // the selected tab and detail panel can be reviewed together.
+    // ROM selector order is Weapons, Armor, then Equipment. Capture both
+    // category moves: the stock row stays on the last rendered Weapons offer
+    // until Down opens the Equipment offers panel.
     field_scene.set_controller_port_byte(0x08U); // ordinary Right
+    field_scene.advance_frame();
+    ++frame;
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto armor_category_image = render();
+    const auto armor_category_saved = save("ares-shop-armor-category");
+    const bool armor_category_state_valid =
+        field_scene.shop_menu_open() &&
+        field_scene.shop_menu_group() == ShopActionGroup::armor &&
+        field_scene.shop_menu_cursor() == 1U &&
+        !field_scene.shop_menu_offers_active();
+    const bool armor_category_presentation_valid =
+        armor_category_saved &&
+        image_region_differs(shop_image, armor_category_image,
+                             64, 128, 144, 16) &&
+        image_region_differs(shop_image, armor_category_image,
+                             64, 144, 160, 16) &&
+        !image_region_differs(shop_image, armor_category_image,
+                              16, 168, 240, 24);
+    if (!armor_category_state_valid ||
+        !armor_category_presentation_valid) {
+        std::cerr << "Ares collision QA: first Right did not select the "
+                     "ROM Armor category and retain the stock row (group="
+                  << static_cast<int>(field_scene.shop_menu_group())
+                  << ", cursor=" << static_cast<unsigned>(
+                         field_scene.shop_menu_cursor())
+                  << ", offers=" << field_scene.shop_menu_offers_active()
+                  << ", row_preserved="
+                  << !image_region_differs(shop_image,
+                                           armor_category_image,
+                                           16, 168, 240, 24)
+                  << ", frame_saved=" << armor_category_saved << ")\n";
+        return 3;
+    }
+    write_state("ares-shop-armor-category");
+
+    field_scene.set_controller_port_byte(0x08U); // ordinary Right to Equipment
     field_scene.advance_frame();
     ++frame;
     field_scene.set_controller_port_byte(0U);
@@ -5431,20 +5468,21 @@ int run_field_ares_collision_shop_qa(
     const bool equipment_category_state_valid =
         field_scene.shop_menu_open() &&
         field_scene.shop_menu_group() == ShopActionGroup::other_items &&
-        field_scene.shop_menu_cursor() == 1U &&
+        field_scene.shop_menu_cursor() == 2U &&
         !field_scene.shop_menu_offers_active();
     const bool equipment_category_presentation_valid =
         equipment_category_saved &&
-        image_region_differs(shop_image, equipment_category_image,
+        image_region_differs(armor_category_image, equipment_category_image,
                              64, 128, 144, 16) &&
-        image_region_differs(shop_image, equipment_category_image,
+        image_region_differs(armor_category_image, equipment_category_image,
                              64, 144, 160, 16) &&
         !image_region_differs(shop_image, equipment_category_image,
                               16, 168, 240, 24);
     if (!equipment_category_state_valid ||
         !equipment_category_presentation_valid) {
-        std::cerr << "Ares collision QA: category navigation did not keep "
-                     "the source cursor and stock panel in sync (group="
+        std::cerr << "Ares collision QA: second Right did not select the "
+                     "ROM Equipment category and retain the stock row "
+                     "(group="
                   << static_cast<int>(field_scene.shop_menu_group())
                   << ", cursor=" << static_cast<unsigned>(
                          field_scene.shop_menu_cursor())
@@ -33266,13 +33304,23 @@ int main(int argc, char** argv) {
                     field_scene.advance_frame();
                 }
                 tap_qa_controller_button(field_scene, 0x40U);
-                tap_qa_controller_button(field_scene, 0x08U); // Other items.
+                tap_qa_controller_button(field_scene, 0x08U); // Armor.
+                if (!field_scene.shop_menu_open() ||
+                    field_scene.shop_menu_group() != ShopActionGroup::armor ||
+                    field_scene.shop_menu_cursor() != 1U ||
+                    field_scene.shop_menu_offers_active()) {
+                    std::cerr << "field Ares shop QA: first Right did not "
+                                 "select the Armor category\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x08U); // Equipment.
                 if (!field_scene.shop_menu_open() ||
                     field_scene.shop_menu_group() !=
                         ShopActionGroup::other_items ||
+                    field_scene.shop_menu_cursor() != 2U ||
                     field_scene.shop_menu_offers_active()) {
-                    std::cerr << "field Ares shop QA: Right did not select "
-                                 "the other-items tab\n";
+                    std::cerr << "field Ares shop QA: second Right did not "
+                                 "select the Equipment tab\n";
                     return 3;
                 }
                 const auto other_items = render_shop_scene();
@@ -33316,7 +33364,7 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 if (field_audio_events !=
-                    std::vector<std::uint16_t>{0x25U, 0x25U}) {
+                    std::vector<std::uint16_t>{0x25U, 0x25U, 0x25U}) {
                     std::cerr << "field Ares shop QA: category and row "
                                  "movement audio requests are unexpected\n";
                     return 3;
@@ -33617,7 +33665,8 @@ int main(int argc, char** argv) {
                 // E-coded clips increment the runner's special-action count
                 // instead of writing an ordinary inventory slot.
                 press_field_input(0x01U); // Return to service categories.
-                press_field_input(0x08U); // Other items.
+                press_field_input(0x08U); // Armor.
+                press_field_input(0x08U); // Equipment/other items.
                 press_field_input(0x02U); // Open the offer panel.
                 if (field_scene.shop_menu_group() !=
                         ShopActionGroup::other_items ||

@@ -245,7 +245,9 @@ Shop.catalog = {
             progression_cost_heading = "shop.progression.cost_heading",
             progression_level_label = "shop.progression.level_label",
         },
-        -- Keep these six groups in the order used by the ROM selector.
+        -- ROM 0x56DC4 selects the mode-1 rows at 0x1AAC86 (cursor 0),
+        -- 0x1AADBF (cursor 1), and 0x1AAD77 (cursor 2). The title rows at
+        -- 0x1AA8AF label those groups Weapons, Armor, and Equipment.
         groups = {
             group(
                 "weapons", action_heading("ares_weapons_display"),
@@ -258,6 +260,12 @@ Shop.catalog = {
                 offer(0x0D, 0x06, 0x14),
                 offer(0x0E, 0x06),
             }),
+            group("armor", action_heading("ares_armor_display"),
+                  action_heading("ares_armor_available"), {
+                offer(0x2D),
+                offer(0x2F),
+                offer(0x30),
+            }),
             group(
                 "other_items", action_heading("ares_other_items_display"),
                 action_heading("ares_other_items_equipment"), {
@@ -265,11 +273,6 @@ Shop.catalog = {
                 offer(0x0F, 0x06),
                 offer(0x10, 0x04, 0x07),
                 offer(0x11, 0x04, 0x07),
-            }),
-            group("armor", action_heading("ares_armor_display"),
-                  action_heading("ares_armor_available"), {
-                offer(0x2E),
-                offer(0x2D, 0x00, 0x0C),
             }),
             group(
                 "source_action_3",

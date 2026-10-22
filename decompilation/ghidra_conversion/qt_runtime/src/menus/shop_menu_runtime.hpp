@@ -23,10 +23,10 @@ enum class ShopId : std::uint8_t {
 
 enum class ShopActionGroup : std::int8_t {
     // These values are the source action indices in FFF0B8. ROM 0x56DC4
-    // dispatches 0 to weapons, 1 to other items, and 2 to armor.
+    // dispatches 0 to weapons, 1 to armor, and 2 to equipment/other items.
     weapons = 0,
-    other_items = 1,
-    armor = 2,
+    armor = 1,
+    other_items = 2,
     source_action_3 = 3,
     source_action_4 = 4,
     sell = 5,
