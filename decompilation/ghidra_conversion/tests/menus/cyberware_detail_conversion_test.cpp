@@ -17,7 +17,7 @@ int main() {
     record.skills = {20U, 21U, 22U, 23U, 24U, 25U,
                      26U, 27U, 28U, 29U, 30U, 31U};
     record.auxiliary[0U] = 18U;
-    record.auxiliary[3U] = 19U;
+    record.set_cyberware_essence_ones(19U);
     record.cyberware_flags = static_cast<std::uint16_t>(
         (1U << 6U) | (1U << 8U) | (1U << 10U));
 

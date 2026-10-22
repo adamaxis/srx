@@ -25,7 +25,8 @@ function Shop.open_menu(shop_id)
         menu_mode = definition.menu_mode,
         menu_result = definition.menu_result,
         action_cursor = 0,
-        action_panel = 0,
+        -- Result one starts on the direct eight-choice equipment selector.
+        action_panel = definition.menu_result == 1 and 1 or 0,
         selected_action = 0,
     }
     game.shop_menu = menu
@@ -53,12 +54,15 @@ function Shop.advance_menu(controller_events)
             return snapshot("no_change")
         end
         menu.action_cursor = candidate
-        if menu.action_panel == 0 then
+        if menu.action_panel == 0 or menu.menu_result == 1 then
             menu.selected_action = candidate
         end
         return snapshot("selection_moved")
     end
     local function move_panel(delta)
+        if menu.menu_result == 1 then
+            return snapshot("no_change")
+        end
         local candidate = menu.action_panel + delta
         if candidate < 0 or candidate > 1 then
             return snapshot("no_change")
@@ -89,9 +93,14 @@ function Shop.advance_menu(controller_events)
             menu.selected_action = menu.action_cursor
             return snapshot("no_change")
         end
-        local group = definition.groups[menu.selected_action + 1]
+        local group = definition.groups[
+            menu.menu_result == 1 and 1 or menu.selected_action + 1]
         if group == nil then
             return snapshot("source_action_boundary")
+        elseif menu.menu_result == 1 then
+            return snapshot(group.equipment_upgrade_offers[
+                menu.action_cursor + 1] and "equipment_upgrade_selected"
+                or "offer_unavailable")
         elseif group.id == "sell" then
             return snapshot("sale_selected")
         elseif #group.progression_offers > 0 then
@@ -215,13 +224,25 @@ local function progression_offer(action_code, source_metadata, base_cost)
     }
 end
 
+local function equipment_upgrade_offer(category, label_id, selection_id,
+                                       description_id, base_cost)
+    return {
+        category = category,
+        label_key = "cyberware.text.option." .. label_id,
+        selected_name_key = "shop.cyberware.selection_name." .. selection_id,
+        description_key = "shop.cyberware.description." .. description_id,
+        base_cost = base_cost,
+    }
+end
+
 local function group(id, first_title_key, second_title_key, offers,
-                     progression_offers)
+                     progression_offers, equipment_upgrade_offers)
     return {
         id = id,
         title_keys = { first_title_key, second_title_key },
         offers = offers or {},
         progression_offers = progression_offers or {},
+        equipment_upgrade_offers = equipment_upgrade_offers or {},
     }
 end
 
@@ -240,6 +261,14 @@ local function field_shop_text_keys()
         progression_maximum_level = "shop.progression.maximum_level",
         progression_cost_heading = "shop.progression.cost_heading",
         progression_level_label = "shop.progression.level_label",
+        cyberware_already_owned = "shop.cyberware.already_owned",
+        cyberware_spurs_conflict = "shop.cyberware.spurs_conflict",
+        cyberware_insufficient_essence =
+            "shop.cyberware.insufficient_essence",
+        cyberware_purchase_heading = "shop.cyberware.purchase_heading",
+        cyberware_essence_heading = "shop.cyberware.essence_heading",
+        cyberware_essence_cost_heading =
+            "shop.cyberware.essence_cost_heading",
     }
 end
 
@@ -378,6 +407,43 @@ Shop.catalog = {
                 offer(0x1C, 0x02, 0x00),
                 offer(0x1C, 0x03, 0x14),
         }),
+    },
+    wire_masters = {
+        menu_mode = 7,
+        menu_result = 1,
+        title_key = service_title("wire_masters"),
+        text_keys = field_shop_text_keys(),
+        -- The selected category resolves into a cyberware flag at +0x90.
+        -- Prices are the eight 32-bit rows at 0x1AB060 + category * 4;
+        -- essence thresholds are the target-bit-indexed bytes at 0x1AA8A0.
+        equipment_upgrade_meter_thresholds = {
+            2, 2, 1, 2, 5, 10, 10, 10,
+            10, 5, 5, 5, 20, 10, 20, 32,
+        },
+        groups = {
+            group("cyberware", service_title("wire_masters"),
+                  service_title("wire_masters"), {}, {}, {
+                equipment_upgrade_offer(0, "datajack", "datajack",
+                                        "datajack", 500),
+                equipment_upgrade_offer(1, "cyber_eyes", "cyber_eyes",
+                                        "cyber_eyes", 3000),
+                equipment_upgrade_offer(2, "hand_razors", "hand_razors",
+                                        "hand_razors", 1500),
+                equipment_upgrade_offer(3, "spurs", "spurs", "spurs",
+                                        4000),
+                equipment_upgrade_offer(4, "smartlink", "smartlink",
+                                        "smartlink", 1500),
+                equipment_upgrade_offer(5, "muscle_replace_1",
+                                        "muscle_replacement", "muscle_replace",
+                                        10000),
+                equipment_upgrade_offer(6, "dermal_plating_1",
+                                        "dermal_plating", "dermal_plating",
+                                        3000),
+                equipment_upgrade_offer(7, "wired_reflexes_1",
+                                        "wired_reflexes", "wired_reflexes",
+                                        20000),
+            }),
+        },
     },
 }
 

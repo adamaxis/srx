@@ -30,20 +30,30 @@ struct FieldEquipmentUpgradeTarget {
     bool replaces_previous = false; // FFEF96
 };
 
+// ROM 0x57FA4 draws the displayed Essence cost for the selected category.
+// Its preview index is separate from the purchase branch's tier resolver.
+std::optional<std::uint8_t> field_equipment_upgrade_display_essence_cost(
+    const FieldEquipmentUpgradeTable& table, std::uint8_t selection_category,
+    std::uint16_t upgrade_flags) noexcept;
+
 enum class FieldEquipmentUpgradeResult {
     applied,
-    unavailable,
     invalid_selection,
+    already_owned,
+    spurs_make_hand_razors_unnecessary,
     insufficient_funds,
+    insufficient_essence,
     cancelled,
 };
 
 struct FieldEquipmentUpgradeCallbacks {
-    // 0x57C46 is drawn before the branch tests. Presentation messages and
-    // confirmation remain explicit boundaries rather than hidden state.
+    // 0x57C46 is drawn before the branch tests. 0x571B2 checks conflicts and
+    // funds, runs the confirmation prompt, then 0x57342 checks Essence.
     std::function<void()> render_action_grid;
-    std::function<void()> show_unavailable;
+    std::function<void()> show_already_owned;
+    std::function<void()> show_spurs_make_hand_razors_unnecessary;
     std::function<void()> show_insufficient_funds;
+    std::function<void()> show_insufficient_essence;
     std::function<bool()> confirm_purchase;
 };
 

@@ -8268,6 +8268,83 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
+    const auto wire_masters = scripts.shop_definition("wire_masters");
+    constexpr std::array<std::uint32_t, 8U> kCyberwareCosts{{
+        500U, 3000U, 1500U, 4000U, 1500U, 10000U, 3000U, 20000U}};
+    if (!expect(wire_masters.has_value() &&
+                    wire_masters->menu_mode == 7U &&
+                    wire_masters->menu_result == 1 &&
+                    wire_masters->equipment_upgrade_meter_thresholds ==
+                        std::vector<std::uint8_t>{
+                            2U, 2U, 1U, 2U, 5U, 10U, 10U, 10U,
+                            10U, 5U, 5U, 5U, 20U, 10U, 20U, 32U} &&
+                    wire_masters->groups.size() == 1U &&
+                    wire_masters->groups[0].id == "cyberware" &&
+                    wire_masters->groups[0].equipment_upgrade_offers.size() ==
+                        kCyberwareCosts.size(),
+                "Wire-Masters Lua catalog lost its mode-7/result-1 selector")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    for (std::size_t index = 0U; index < kCyberwareCosts.size(); ++index) {
+        const auto& offer =
+            wire_masters->groups[0].equipment_upgrade_offers[index];
+        if (!expect(offer.category == index &&
+                        offer.base_cost == kCyberwareCosts[index] &&
+                        !offer.label_key.empty() &&
+                        !offer.selected_name_key.empty() &&
+                        !offer.description_key.empty(),
+                    "Wire-Masters offer lost its ROM category or text keys")) {
+            std::cerr << scripts.failure() << '\n';
+            return 1;
+        }
+    }
+    auto wire_menu = scripts.open_shop_menu("wire_masters");
+    if (!expect(wire_menu.has_value() && wire_menu->open &&
+                    wire_menu->menu_mode == 7U &&
+                    wire_menu->menu_result == 1 &&
+                    wire_menu->action_panel == 1U &&
+                    wire_menu->action_cursor == 0U &&
+                    wire_menu->event == "opened",
+                "Lua did not start Wire-Masters on its direct selector")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    wire_menu = scripts.advance_shop_menu(0x0100U);
+    if (!expect(wire_menu.has_value() && wire_menu->event == "no_change" &&
+                    wire_menu->action_cursor == 0U &&
+                    wire_menu->action_panel == 1U,
+                "Wire-Masters must ignore vertical panel input")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    wire_menu = scripts.advance_shop_menu(0x0800U);
+    if (!expect(wire_menu.has_value() &&
+                    wire_menu->event == "selection_moved" &&
+                    wire_menu->action_cursor == 1U &&
+                    wire_menu->selected_action == 1U,
+                "Wire-Masters primary cursor increment did not advance its selector")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    wire_menu = scripts.advance_shop_menu(0x0400U);
+    wire_menu = scripts.advance_shop_menu(0x4000U);
+    if (!expect(wire_menu.has_value() &&
+                    wire_menu->event == "equipment_upgrade_selected" &&
+                    wire_menu->action_cursor == 0U &&
+                    wire_menu->selected_action == 0U,
+                "Wire-Masters confirm did not select its first cyberware row")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    wire_menu = scripts.advance_shop_menu(0x8000U);
+    if (!expect(wire_menu.has_value() && !wire_menu->open &&
+                    wire_menu->event == "returned_to_field" &&
+                    scripts.close_shop_menu(),
+                "Wire-Masters Start did not return to the field")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
     const auto* ares_title = scripts.dialogue_text(shop->title_key);
     const auto* transaction_prompt =
         scripts.dialogue_text(shop->text_keys.transaction_prompt);

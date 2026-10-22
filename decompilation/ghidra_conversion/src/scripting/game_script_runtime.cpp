@@ -6815,11 +6815,55 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
         read_text_key("progression_cost_heading",
                       definition.text_keys.progression_cost_heading) &&
         read_text_key("progression_level_label",
-                      definition.text_keys.progression_level_label);
+                      definition.text_keys.progression_level_label) &&
+        read_text_key("cyberware_already_owned",
+                      definition.text_keys.cyberware_already_owned) &&
+        read_text_key("cyberware_spurs_conflict",
+                      definition.text_keys.cyberware_spurs_conflict) &&
+        read_text_key("cyberware_insufficient_essence",
+                      definition.text_keys.cyberware_insufficient_essence) &&
+        read_text_key("cyberware_purchase_heading",
+                      definition.text_keys.cyberware_purchase_heading) &&
+        read_text_key("cyberware_essence_heading",
+                      definition.text_keys.cyberware_essence_heading) &&
+        read_text_key("cyberware_essence_cost_heading",
+                      definition.text_keys.cyberware_essence_cost_heading);
     lua_pop(state, 1);
     if (!text_keys_valid) {
         return fail("shop catalog transaction text keys are incomplete");
     }
+
+    lua_getfield(state, definition_index,
+                 "equipment_upgrade_meter_thresholds");
+    if (lua_istable(state, -1)) {
+        const auto thresholds_index = lua_absindex(state, -1);
+        const auto threshold_count = lua_rawlen(state, thresholds_index);
+        if (threshold_count != 16U) {
+            return fail("equipment upgrade threshold table must contain 16 rows");
+        }
+        definition.equipment_upgrade_meter_thresholds.reserve(threshold_count);
+        for (std::size_t index = 1U; index <= threshold_count; ++index) {
+            lua_rawgeti(state, thresholds_index,
+                        static_cast<lua_Integer>(index));
+            std::uint32_t threshold = 0U;
+            const bool valid = lua_isinteger(state, -1) &&
+                lua_tointeger(state, -1) >= 0 &&
+                lua_tointeger(state, -1) <= 0xFF;
+            if (valid) {
+                threshold = static_cast<std::uint32_t>(
+                    lua_tointeger(state, -1));
+            }
+            lua_pop(state, 1);
+            if (!valid) {
+                return fail("equipment upgrade threshold is outside a byte");
+            }
+            definition.equipment_upgrade_meter_thresholds.push_back(
+                static_cast<std::uint8_t>(threshold));
+        }
+    } else if (!lua_isnil(state, -1)) {
+        return fail("equipment upgrade thresholds must be an array");
+    }
+    lua_pop(state, 1);
     lua_getfield(state, definition_index, "groups");
     if (!lua_istable(state, -1)) {
         return fail("shop catalog groups must be an array");
@@ -6947,8 +6991,71 @@ std::optional<ScriptShopDefinition> GameScriptRuntime::shop_definition(
                 static_cast<std::uint16_t>(base_cost)});
         }
         lua_pop(state, 1);
+
+        lua_getfield(state, group_table, "equipment_upgrade_offers");
+        if (!lua_istable(state, -1)) {
+            return fail(
+                "shop offer group must contain an equipment_upgrade_offers array");
+        }
+        const auto upgrade_offers_index = lua_absindex(state, -1);
+        const auto upgrade_offer_count = lua_rawlen(state, upgrade_offers_index);
+        if (upgrade_offer_count > kMaximumShopOffers) {
+            return fail(
+                "shop offer group exceeds the eight-slot equipment upgrade panel");
+        }
+        group.equipment_upgrade_offers.reserve(upgrade_offer_count);
+        for (std::size_t offer_index = 1U;
+             offer_index <= upgrade_offer_count; ++offer_index) {
+            lua_rawgeti(state, upgrade_offers_index,
+                        static_cast<lua_Integer>(offer_index));
+            if (!lua_istable(state, -1)) {
+                return fail("equipment upgrade offer is not a record table");
+            }
+            const auto offer_table = lua_absindex(state, -1);
+            std::uint32_t category = 0U;
+            std::uint32_t base_cost = 0U;
+            std::string label_key;
+            std::string selected_name_key;
+            std::string description_key;
+            const bool valid =
+                read_field_integer(state, offer_table, "category", 7U,
+                                   category) &&
+                read_field_integer(state, offer_table, "base_cost",
+                                   0xFFFFFFFFU, base_cost) &&
+                read_field_string(state, offer_table, "label_key", label_key) &&
+                valid_identifier(label_key) &&
+                read_field_string(state, offer_table, "selected_name_key",
+                                  selected_name_key) &&
+                valid_identifier(selected_name_key) &&
+                read_field_string(state, offer_table, "description_key",
+                                  description_key) &&
+                valid_identifier(description_key);
+            lua_pop(state, 1);
+            if (!valid) {
+                return fail("equipment upgrade offer has invalid source fields");
+            }
+            group.equipment_upgrade_offers.push_back(
+                ScriptShopEquipmentUpgradeOffer{
+                    static_cast<std::uint8_t>(category), base_cost,
+                    std::move(label_key), std::move(selected_name_key),
+                    std::move(description_key)});
+        }
+        lua_pop(state, 1);
         lua_pop(state, 1);
         definition.groups.push_back(std::move(group));
+    }
+
+    if (definition.id == "wire_masters" &&
+        (definition.menu_mode != 7U || definition.menu_result != 1 ||
+         definition.equipment_upgrade_meter_thresholds.size() != 16U ||
+         definition.groups.size() != 1U ||
+         definition.groups.front().equipment_upgrade_offers.size() != 8U)) {
+        return fail("Wire-Masters has an invalid source upgrade shape");
+    }
+    if (!definition.equipment_upgrade_meter_thresholds.empty() &&
+        (definition.menu_result != 1 ||
+         definition.equipment_upgrade_meter_thresholds.size() != 16U)) {
+        return fail("equipment upgrade thresholds have an invalid menu shape");
     }
 
     lua_settop(state, stack_base);

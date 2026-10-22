@@ -22,13 +22,12 @@ CyberwareDetailRecordValues read_cyberware_detail_values(
          ++index) {
         result.primary_attributes[index] = record.attributes[index];
     }
-    // 0x0D5DC's row-6/row-7 paths are not the same as the contiguous
-    // Attributes/Skills display array: +0x7E is Essence, +0x7F is Magic, and
-    // the secondary Essence number comes from +0x8E.
-    result.essence = record.attributes[7U];
+    // 0x0D5DC's row-6/row-7 paths use named live-record fields rather than
+    // the contiguous Attributes/Skills display array.
+    result.essence = record.cyberware_essence_tens();
     result.magic = record.auxiliary[0U];
     result.skills = record.skills;
-    result.essence_secondary = record.auxiliary[3U];
+    result.essence_secondary = record.cyberware_essence_ones();
     result.cyberware_flags = record.cyberware_flags;
     return result;
 }

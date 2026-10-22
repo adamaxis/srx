@@ -49,7 +49,10 @@ int main() {
                 fields.skills[0] == 0x80U && fields.skills[5] == 0x85U &&
                 fields.skills[6] == 0x87U && fields.skills[11] == 0x8CU &&
                 fields.auxiliary[0] == 0x7FU && fields.auxiliary[1] == 0x86U &&
-                fields.auxiliary[2] == 0x8DU && fields.auxiliary[3] == 0x8EU)) {
+                fields.auxiliary[2] == 0x8DU &&
+                fields.auxiliary[3] == 0x8EU &&
+                fields.cyberware_essence_tens() == 0x7EU &&
+                fields.cyberware_essence_ones() == 0x8EU)) {
         return 1;
     }
 

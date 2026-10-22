@@ -105,10 +105,26 @@ struct RunnerRecordFields {
         inventory_phase_bytes{};
     std::array<std::uint8_t, kRunnerRecordAttributeCount> attributes{};
     std::array<std::uint8_t, kRunnerRecordSkillCount> skills{};
-    // Auxiliary source bytes remain positional unless a caller has a proven
-    // meaning. The live-record byte at +0x8D is the displayed Karma value;
-    // ROM 0x59C34 adds D0 to it for each of the three runner records.
+    // Auxiliary source bytes include +0x7F (Magic/Essence cap), +0x86,
+    // +0x8D (displayed Karma), and +0x8E (the ones digit of Essence).
     std::array<std::uint8_t, kRunnerRecordAuxiliaryCount> auxiliary{};
+
+    // Source 0x57F80/0x57F90 and 0x5735A/0x57362 treat +0x7E and +0x8E as
+    // the tens and ones digits of the live cyberware Essence value. These
+    // accessors keep the original positional storage consistent for callers
+    // that also use the Attributes and auxiliary arrays.
+    std::uint8_t cyberware_essence_tens() const noexcept {
+        return attributes[7U];
+    }
+    std::uint8_t cyberware_essence_ones() const noexcept {
+        return auxiliary[3U];
+    }
+    void set_cyberware_essence_tens(const std::uint8_t value) noexcept {
+        attributes[7U] = value;
+    }
+    void set_cyberware_essence_ones(const std::uint8_t value) noexcept {
+        auxiliary[3U] = value;
+    }
 };
 
 // ROM consumers:

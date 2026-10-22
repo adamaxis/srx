@@ -559,11 +559,20 @@ struct ScriptShopProgressionOffer {
     std::uint16_t base_cost = 0;
 };
 
+struct ScriptShopEquipmentUpgradeOffer {
+    std::uint8_t category = 0;
+    std::uint32_t base_cost = 0;
+    std::string label_key;
+    std::string selected_name_key;
+    std::string description_key;
+};
+
 struct ScriptShopOfferGroup {
     std::string id;
     std::array<std::string, 2> title_keys{};
     std::vector<ScriptShopOffer> offers;
     std::vector<ScriptShopProgressionOffer> progression_offers;
+    std::vector<ScriptShopEquipmentUpgradeOffer> equipment_upgrade_offers;
 };
 
 struct ScriptShopTextKeys {
@@ -580,6 +589,12 @@ struct ScriptShopTextKeys {
     std::string progression_maximum_level;
     std::string progression_cost_heading;
     std::string progression_level_label;
+    std::string cyberware_already_owned;
+    std::string cyberware_spurs_conflict;
+    std::string cyberware_insufficient_essence;
+    std::string cyberware_purchase_heading;
+    std::string cyberware_essence_heading;
+    std::string cyberware_essence_cost_heading;
 };
 
 struct ScriptShopDefinition {
@@ -588,6 +603,7 @@ struct ScriptShopDefinition {
     std::uint8_t menu_mode = 0; // ROM FFF0B6
     std::int8_t menu_result = 0; // ROM FFF0B7
     ScriptShopTextKeys text_keys;
+    std::vector<std::uint8_t> equipment_upgrade_meter_thresholds;
     std::vector<ScriptShopOfferGroup> groups;
 };
 
