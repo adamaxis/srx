@@ -341,6 +341,13 @@ bool FieldDialogueRuntime::start_script_task(
             "dialogue script has no gameplay script runtime");
     }
     const auto task = script_runtime_->start_task(module, function);
+    if (task.status == scripting::ScriptTaskStep::Status::completed &&
+        task.dialogue_outcome.has_value()) {
+        if (const auto* boundary = std::get_if<
+                scripting::SourceBoundaryOutcome>(&*task.dialogue_outcome)) {
+            return open_source_boundary(boundary->reason);
+        }
+    }
     if (task.status !=
             scripting::ScriptTaskStep::Status::awaiting_native_operation ||
         !task.operation.has_value()) {

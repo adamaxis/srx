@@ -625,6 +625,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_wylie_gala_inn_qa
                  --field-wylie-gala-inn-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-wylie-gala-inn-qa")
 
+# Walk into Club Penumbra and follow the qualifying Mako activity through
+# Scene 17's four actor transitions and delayed result callback.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_mako_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-penumbra-mako-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-mako-qa")
+
 # Reach Gates Undersound's source event-3 frontage, exercise gated title
 # service 15, and verify the one-page Ogami departure result returns to scene 0.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_gates_undersound_qa

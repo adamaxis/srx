@@ -1,5 +1,4 @@
--- Scene 3/event 0's exterior doorman path. Lua owns the dialogue branches
--- through the Mako introduction; its delayed actor outcome remains a boundary.
+-- Scene 3/event 0's exterior doorman path and delayed Mako actor-list result.
 local DialogueGraph = require("dialogue_graph")
 
 local ClubPenumbra = {}

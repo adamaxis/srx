@@ -1512,6 +1512,18 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                   field_heat_level_.has_value()
                       ? QJsonValue(*field_heat_level_)
                       : QJsonValue(-1));
+    fields.insert(QStringLiteral("field.debug.notebook_tip_flags_resolved"),
+                  notebook_tip_flags_resolved_);
+    fields.insert(QStringLiteral("field.debug.mode_flags_resolved"),
+                  field_mode_flags_resolved_);
+    fields.insert(QStringLiteral("field.debug.party_roster_available"),
+                  field_party_roster_.available());
+    fields.insert(QStringLiteral("field.debug.mako_result_state_available"),
+                  field_heat_level_.has_value() &&
+                      field_strike_team_counter_.has_value() &&
+                      notebook_tip_flags_resolved_ &&
+                      field_mode_flags_resolved_ &&
+                      field_party_roster_.available());
     fields.insert(QStringLiteral("field.debug.strike_team_counter"),
                   field_strike_team_counter_.has_value()
                       ? QJsonValue(*field_strike_team_counter_)

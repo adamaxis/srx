@@ -3035,37 +3035,42 @@ struct GameScriptRuntime::Impl {
         return true;
     }
 
-    bool load_module(const std::string_view name, std::string& error) {
-        if (state == nullptr || modules_reference == LUA_NOREF ||
+    bool load_module(lua_State* target_state, const std::string_view name,
+                     std::string& error) {
+        if (target_state == nullptr || modules_reference == LUA_NOREF ||
             !valid_lua_module_name(name)) {
             error = "invalid gameplay module name";
             return false;
         }
 
-        lua_rawgeti(state, LUA_REGISTRYINDEX, modules_reference);
-        const int modules_index = lua_absindex(state, -1);
-        lua_pushlstring(state, name.data(), name.size());
-        lua_gettable(state, modules_index);
-        if (lua_istable(state, -1)) {
-            lua_remove(state, modules_index);
+        // `require` can run inside a suspended gameplay task coroutine. Lua
+        // registry values are shared across threads, but stack operations
+        // must stay on the calling thread or require returns a value from the
+        // unrelated main-state stack.
+        lua_rawgeti(target_state, LUA_REGISTRYINDEX, modules_reference);
+        const int modules_index = lua_absindex(target_state, -1);
+        lua_pushlstring(target_state, name.data(), name.size());
+        lua_gettable(target_state, modules_index);
+        if (lua_istable(target_state, -1)) {
+            lua_remove(target_state, modules_index);
             return true;
         }
-        if (!lua_isnil(state, -1)) {
-            lua_settop(state, modules_index - 1);
+        if (!lua_isnil(target_state, -1)) {
+            lua_settop(target_state, modules_index - 1);
             error = "gameplay module cache contains a non-table value";
             return false;
         }
-        lua_pop(state, 1);
+        lua_pop(target_state, 1);
 
         const std::string module_name(name);
         if (modules_loading.find(module_name) != modules_loading.end()) {
-            lua_settop(state, modules_index - 1);
+            lua_settop(target_state, modules_index - 1);
             error = "cyclic gameplay module dependency: " + module_name;
             return false;
         }
         constexpr std::size_t kMaximumLoadedModules = 256U;
         if (loaded_module_count >= kMaximumLoadedModules) {
-            lua_settop(state, modules_index - 1);
+            lua_settop(target_state, modules_index - 1);
             error = "gameplay module package exceeds module limit";
             return false;
         }
@@ -3096,7 +3101,7 @@ struct GameScriptRuntime::Impl {
         if (path_error || !path_is_within_root(script_root, module_path) ||
             !std::filesystem::is_regular_file(module_path, path_error) ||
             path_error) {
-            lua_settop(state, modules_index - 1);
+            lua_settop(target_state, modules_index - 1);
             error = "gameplay module is missing or outside script root: " +
                     module_name;
             return false;
@@ -3104,28 +3109,29 @@ struct GameScriptRuntime::Impl {
 
         int status = LUA_OK;
         {
-            ScopedInstructionBudget instruction_budget(state);
-            status = luaL_loadfilex(state, module_path.string().c_str(), "t");
+            ScopedInstructionBudget instruction_budget(target_state);
+            status = luaL_loadfilex(target_state,
+                                    module_path.string().c_str(), "t");
             if (status == LUA_OK) {
-                status = lua_pcall(state, 0, 1, 0);
+                status = lua_pcall(target_state, 0, 1, 0);
             }
         }
         if (status != LUA_OK) {
-            error = module_name + ": " + stack_error(state);
-            lua_settop(state, modules_index - 1);
+            error = module_name + ": " + stack_error(target_state);
+            lua_settop(target_state, modules_index - 1);
             return false;
         }
-        if (!lua_istable(state, -1)) {
-            lua_settop(state, modules_index - 1);
+        if (!lua_istable(target_state, -1)) {
+            lua_settop(target_state, modules_index - 1);
             error = module_name + " must return a definition table";
             return false;
         }
 
-        const int definition_index = lua_absindex(state, -1);
-        lua_pushlstring(state, name.data(), name.size());
-        lua_pushvalue(state, definition_index);
-        lua_settable(state, modules_index);
-        lua_remove(state, modules_index);
+        const int definition_index = lua_absindex(target_state, -1);
+        lua_pushlstring(target_state, name.data(), name.size());
+        lua_pushvalue(target_state, definition_index);
+        lua_settable(target_state, modules_index);
+        lua_remove(target_state, modules_index);
         ++loaded_module_count;
         return true;
     }
@@ -3137,7 +3143,7 @@ struct GameScriptRuntime::Impl {
             std::string module_name;
             std::string error;
             if (self != nullptr && read_string(lua, 1, module_name)) {
-                loaded = self->load_module(module_name, error);
+                loaded = self->load_module(lua, module_name, error);
             } else {
                 error = "require expects a dotted gameplay module name";
             }
@@ -4299,7 +4305,7 @@ struct GameScriptRuntime::Impl {
             return false;
         }
         std::string module_error;
-        if (!load_module("json", module_error)) {
+        if (!load_module(state, "json", module_error)) {
             lua_settop(state, base);
             error = module_error.empty()
                         ? "gameplay JSON decoder module is missing"
@@ -4586,7 +4592,7 @@ bool GameScriptRuntime::load_package(
             continue;
         }
         std::string module_error;
-        if (!impl_->load_module(module, module_error)) {
+        if (!impl_->load_module(state, module, module_error)) {
             impl_->failure = file.filename().string() + ": " +
                              module_error;
             return false;
@@ -10661,7 +10667,7 @@ bool GameScriptRuntime::open_menu_route(
 
     const auto base = lua_gettop(state);
     std::string module_error;
-    if (!impl_->load_module("menu.field_init", module_error)) {
+    if (!impl_->load_module(state, "menu.field_init", module_error)) {
         impl_->failure = "could not load field menu route: " + module_error;
         lua_settop(state, base);
         return false;

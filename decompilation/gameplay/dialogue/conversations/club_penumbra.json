@@ -90,7 +90,7 @@
           "cases": [
             {
               "when": "club_penumbra.mako_activity_available",
-              "next": "mako_intro"
+              "next": "queue_mako_actor_list"
             }
           ],
           "fallback": "resume_club_route",

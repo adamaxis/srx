@@ -19501,6 +19501,420 @@ int run_field_wylie_gala_inn_qa(
     return 0;
 }
 
+int run_field_penumbra_mako_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Club Penumbra Mako QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Club Penumbra Mako QA: could not create captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kRecord = 101U;
+    constexpr std::uint16_t kCollision = 0x00C0U;
+    constexpr std::uint8_t kEvent = 0U;
+    // ROM coordinates at 0x18ABC8 are pixel-space bounds. The field uses
+    // 12.4 fixed-point positions, so begin 49 pixels south of the rectangle
+    // center and walk north through its actual event edge.
+    constexpr std::uint16_t kStartX = 0x7100U;
+    constexpr std::uint16_t kStartY = 0x3D00U;
+    constexpr std::uint16_t kCameraX = 0x6680U;
+    constexpr std::uint16_t kCameraY = 0x3600U;
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    if (field_scene.field_scene_reference_for_dump() != 3U ||
+        rectangles.size() <= kRecord ||
+        rectangles[kRecord].left != 0x0700U ||
+        rectangles[kRecord].right != 0x071FU ||
+        rectangles[kRecord].top != 0x0380U ||
+        rectangles[kRecord].bottom != 0x039FU ||
+        rectangles[kRecord].value != kCollision) {
+        std::cerr << "Club Penumbra Mako QA: Scene-3 record 101 does not "
+                     "match the ROM rectangle at 0x18ABC8\n";
+        return 3;
+    }
+
+    field_scene.set_field_entity_world_position_for_dump(kStartX, kStartY);
+    field_scene.set_field_camera_world_position_for_dump(kCameraX, kCameraY);
+    field_scene.set_field_funds_for_dump(75U);
+    field_scene.active_runner_record().skills[10U] = 4U;
+    field_scene.seed_notebook_tip_flags_for_qa({{0U, 0U, 0x08U}});
+    if (!field_scene.set_story_flag_for_dump(10U, true) ||
+        !field_scene.set_story_flag_for_dump(11U, false)) {
+        std::cerr << "Club Penumbra Mako QA: source story gates could not "
+                     "be seeded\n";
+        return 3;
+    }
+    const auto initial_karma =
+        field_scene.active_runner_record().auxiliary[2U];
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&asset_root, &output, &render](
+                          const std::string_view name,
+                          const std::optional<bool> expect_hud) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) != *expect_hud) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()))) {
+            std::cerr << "Club Penumbra Mako QA: full-frame capture failed "
+                      << "for " << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    if (!save("spawn", true)) return 3;
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up to record 101
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 3U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto& dispatch =
+        field_scene.field_map_event_system_for_dump().last_collision_dispatch();
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        !dispatch.has_value() ||
+        dispatch->decision.source_event_code !=
+            FieldCollisionEventCode::event_0 ||
+        dispatch->decision.event_code != FieldCollisionEventCode::event_0 ||
+        field_scene.field_terrain_collision_code_for_dump() != 0xFFC0U ||
+        field_scene.field_mode_event_code_for_dump() != kEvent) {
+        std::cerr << "Club Penumbra Mako QA: ordinary Up did not dispatch "
+                     "Scene-3 record 101/event 0 (ticks="
+                  << movement_ticks << ", position=0x" << std::hex
+                  << field_scene.field_entity_world_position().x << ",0x"
+                  << field_scene.field_entity_world_position().y
+                  << ", collision=0x"
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << std::dec << ", dispatch=" << dispatch.has_value()
+                  << ")\n";
+        return 3;
+    }
+    for (std::uint8_t settle = 0U;
+         settle < 120U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 3U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto& doorman = field_scene.dialogue_panel();
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 3U ||
+        !contains("decadent") || doorman.option_count != 2U ||
+        doorman.options[0U].source_label.find("go in") ==
+            std::string_view::npos ||
+        doorman.options[1U].source_label.find("later") ==
+            std::string_view::npos ||
+        !save("doorman-prompt", false)) {
+        std::cerr << "Club Penumbra Mako QA: event 0 did not open the "
+                     "source doorman choices (dialogue="
+                  << field_scene.dialogue_open() << ", text="
+                  << contains("decadent") << ", options="
+                  << static_cast<unsigned>(doorman.option_count)
+                  << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: enter
+    const auto& fee_prompt = field_scene.dialogue_panel();
+    if (!field_scene.dialogue_open() || fee_prompt.option_count != 2U ||
+        !contains("75$") ||
+        !save("entry-fee-prompt", false)) {
+        std::cerr << "Club Penumbra Mako QA: Reputation 4 did not open the "
+                     "75-nuyen prompt\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: pay 75 nuyen
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{0U} ||
+        !contains("fee deducted") || !save("paid-entry", false)) {
+        std::cerr << "Club Penumbra Mako QA: payment did not debit exactly "
+                     "75 nuyen and present the paid response (funds="
+                  << (field_scene.field_funds_for_dump().has_value()
+                          ? std::to_string(*field_scene.field_funds_for_dump())
+                          : std::string("unknown"))
+                  << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t page = 0U;
+         page < 8U && !contains("Once inside"); ++page) {
+        tap_qa_controller_button(field_scene, 0x40U);
+    }
+    if (!field_scene.dialogue_open() || !contains("Once inside") ||
+        !save("mako-introduction", false)) {
+        std::cerr << "Club Penumbra Mako QA: qualifying story gates did not "
+                     "open the first Mako introduction page\n";
+        return 3;
+    }
+    for (std::uint8_t page = 0U;
+         page < 8U && !contains("Mako slowly glances up"); ++page) {
+        tap_qa_controller_button(field_scene, 0x40U);
+    }
+    if (!field_scene.dialogue_open() ||
+        !contains("Mako slowly glances up") ||
+        !save("mako-notices-joshua", false)) {
+        std::cerr << "Club Penumbra Mako QA: second ROM introduction page "
+                     "was not presented\n";
+        return 3;
+    }
+
+    for (std::uint8_t page = 0U;
+         page < 12U && field_scene.field_scene_reference_for_dump() == 3U;
+         ++page) {
+        tap_qa_controller_button(field_scene, 0x40U);
+    }
+    for (std::uint16_t frame = 0U;
+         frame < 180U && field_scene.field_scene_reference_for_dump() != 17U;
+         ++frame) {
+        field_scene.advance_frame();
+    }
+    if (field_scene.field_scene_reference_for_dump() != 17U) {
+        std::cerr << "Club Penumbra Mako QA: the source event-table row did "
+                     "not enter Scene 17 after the introduction pages (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", field_transition="
+                  << field_scene.field_transition_pending_for_dump()
+                  << ", interaction_transition="
+                  << field_scene.field_interaction_transition_active_for_dump()
+                  << ")\n";
+        const auto first_boundary = source_boundaries.size() > 16U
+            ? source_boundaries.size() - 16U
+            : 0U;
+        for (std::size_t index = first_boundary;
+             index < source_boundaries.size(); ++index) {
+            std::cerr << "boundary=" << source_boundaries[index] << '\n';
+        }
+        for (const auto& boundary : source_boundaries) {
+            if (boundary.find("field.entry.") != std::string::npos ||
+                boundary.find("club_penumbra") != std::string::npos ||
+                boundary.find("dialogue.outcome") != std::string::npos) {
+                std::cerr << "route_boundary=" << boundary << '\n';
+            }
+        }
+        return 3;
+    }
+
+    const auto boundary_count = [&source_boundaries](
+                                    const std::string_view reason) {
+        return std::count(source_boundaries.begin(), source_boundaries.end(),
+                          std::string(reason));
+    };
+    const auto mako_actor_count = [&field_scene] {
+        const auto fields = field_scene.debug_inspection_fields();
+        std::size_t count = 0U;
+        for (auto it = fields.constBegin(); it != fields.constEnd(); ++it) {
+            if (it.key().startsWith(QStringLiteral(
+                    "actor.field_scene_17_world_list_124456_actor_")) &&
+                it.key().endsWith(QStringLiteral(".profile"))) {
+                ++count;
+            }
+        }
+        return count;
+    };
+    for (std::uint16_t frame = 0U;
+         frame < 240U && mako_actor_count() < 4U;
+         ++frame) {
+        field_scene.advance_frame();
+    }
+    if (mako_actor_count() != 4U ||
+        !save("scene-17-actors", true)) {
+        std::cerr << "Club Penumbra Mako QA: Scene 17 did not publish the "
+                     "four source actor rows (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", count="
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << ", mako_actors=" << mako_actor_count()
+                  << ")\n";
+        for (const auto& boundary : source_boundaries) {
+            if (boundary.find("mako") != std::string::npos ||
+                boundary.find("pending_actor_list") != std::string::npos ||
+                boundary.find("script_actor_published") !=
+                    std::string::npos) {
+                std::cerr << "route_boundary=" << boundary << '\n';
+            }
+        }
+        return 3;
+    }
+
+    for (std::uint16_t frame = 0U;
+         frame < 900U && !contains("On the floor, Mako lies unconscious");
+         ++frame) {
+        field_scene.advance_frame();
+    }
+    const auto debug = field_scene.debug_inspection_fields();
+    constexpr auto kPublishedActorBoundary =
+        "field.world_activity.script_actor_published_from_rom_list";
+    constexpr auto kTransitionBoundary =
+        "field.world_activity.club_penumbra_mako_actor_transition_completed";
+    if (!field_scene.dialogue_open() ||
+        !contains("On the floor, Mako lies unconscious") ||
+        field_scene.field_scene_reference_for_dump() != 17U ||
+        boundary_count("field.world_activity.club_penumbra_mako_list_queued") !=
+            1 ||
+        boundary_count(kTransitionBoundary) != 4 ||
+        boundary_count("field.world_activity.club_penumbra_mako_callback_dispatched") !=
+            1 ||
+        debug.value(QStringLiteral("field.debug.mako_actor_transitions_remaining"))
+                .toInt(-1) != -1 ||
+        debug.value(QStringLiteral("field.debug.actor_list_callback_pending"))
+                .toBool(true) ||
+        debug.value(QStringLiteral("field.debug.heat_level")).toInt(-1) != 2 ||
+        debug.value(QStringLiteral("field.debug.strike_team_counter"))
+                .toInt(-1) != 1 ||
+        (field_scene.field_world_fact_flags_for_dump() & (1U << 11U)) == 0U ||
+        (field_scene.field_mode_flags_for_dump() & (1U << 24U)) == 0U ||
+        (field_scene.field_mode_flags_for_dump() &
+         ((1U << 20U) | (1U << 21U))) != 0U ||
+        field_scene.active_runner_record().auxiliary[2U] !=
+            static_cast<std::uint8_t>(initial_karma + 2U) ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{0U} ||
+        !save("actual", false)) {
+        std::cerr << "Club Penumbra Mako QA: the four-transition callback "
+                     "did not present its result and source effects "
+                     "(dialogue=" << field_scene.dialogue_open()
+                  << ", result="
+                  << contains("On the floor, Mako lies unconscious")
+                  << ", actors="
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << ", published=" << boundary_count(kPublishedActorBoundary)
+                  << ", transitions=" << boundary_count(kTransitionBoundary)
+                  << ", heat="
+                  << debug.value(QStringLiteral("field.debug.heat_level"))
+                         .toInt(-1)
+                  << ", strike_team="
+                  << debug.value(QStringLiteral("field.debug.strike_team_counter"))
+                         .toInt(-1)
+                  << ", callback_gate="
+                  << debug.value(QStringLiteral(
+                         "field.debug.mako_result_state_available"))
+                         .toBool(false)
+                  << ", mode_flags_resolved="
+                  << debug.value(QStringLiteral(
+                         "field.debug.mode_flags_resolved"))
+                         .toBool(false)
+                  << ", notebook_resolved="
+                  << debug.value(QStringLiteral(
+                         "field.debug.notebook_tip_flags_resolved"))
+                         .toBool(false)
+                  << ", party_available="
+                  << debug.value(QStringLiteral(
+                         "field.debug.party_roster_available"))
+                         .toBool(false)
+                  << ", transitions_remaining="
+                  << debug.value(QStringLiteral(
+                         "field.debug.mako_actor_transitions_remaining"))
+                         .toInt(-1)
+                  << ", world_frame="
+                  << debug.value(QStringLiteral("field.world.frame"))
+                         .toInt(-1)
+                  << ", callback_pending="
+                  << debug.value(QStringLiteral(
+                         "field.debug.actor_list_callback_pending"))
+                         .toBool(true)
+                  << ", callback_dispatched="
+                  << boundary_count(
+                         "field.world_activity.club_penumbra_mako_callback_dispatched")
+                  << ", callback_open_failed="
+                  << boundary_count(
+                         "field.world_activity.club_penumbra_mako_callback_dialogue_open_failed")
+                  << ", list_queued="
+                  << boundary_count(
+                         "field.world_activity.club_penumbra_mako_list_queued")
+                  << ", actor_list_incomplete="
+                  << boundary_count(
+                         "field.world_activity.club_penumbra_mako_actor_list_incomplete")
+                  << ", list_unresolved="
+                  << boundary_count(
+                         "field.world_activity.club_penumbra_mako_list_unresolved")
+                  << ", dialogue_boundary="
+                  << field_scene.dialogue_panel().source_boundary_reason
+                  << ")\n";
+        for (const auto& boundary : source_boundaries) {
+            if (boundary.find("mako") != std::string::npos ||
+                boundary.find("script_actor_published_from_rom_list") !=
+                    std::string::npos) {
+                std::cerr << "route_boundary=" << boundary << '\n';
+            }
+        }
+        for (auto it = debug.constBegin(); it != debug.constEnd(); ++it) {
+            if (it.key().startsWith(QStringLiteral("actor."))) {
+                std::cerr << it.key().toStdString() << '='
+                          << it.value().toVariant().toString().toStdString()
+                          << '\n';
+            }
+        }
+        std::cerr << "behavior_failures="
+                  << boundary_count("field.actor.lua_behavior_failed")
+                  << ", animations_failures="
+                  << boundary_count("field.actor.lua_animation_failed")
+                  << '\n';
+        return 3;
+    }
+
+    for (std::uint8_t page = 0U;
+         page < 8U && field_scene.dialogue_open(); ++page) {
+        tap_qa_controller_button(field_scene, 0x40U);
+    }
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 17U ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{0U} ||
+        !save("field-return", true)) {
+        std::cerr << "Club Penumbra Mako QA: result acknowledgement did not "
+                     "return cleanly to Scene 17\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "scene\trecord\tevent\tstart_x\tstart_y\tmovement_ticks\t"
+             "wallet_before\twallet_after\tactors_published\t"
+             "actor_transitions\theat\tkarma_delta\tstrike_team\tresult\n"
+          << "3\t101\t0\t" << kStartX << '\t' << kStartY << '\t'
+          << movement_ticks << "\t75\t0\t4\t4\t2\t2\t1\t"
+             "scene17_four_actor_callback\n";
+    trace.close();
+    if (!trace) return 3;
+    std::cout << "field_penumbra_mako_qa=passed scene=3 record=101 "
+                 "event=0 wallet=75 actors=4 transitions=4 scene=17 "
+                 "artifacts=" << output.string() << '\n';
+    return 0;
+}
+
 int run_field_gates_undersound_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -24863,6 +25277,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_wylie_gala_inn_qa_path;
         std::optional<std::filesystem::path>
+            field_penumbra_mako_qa_path;
+        std::optional<std::filesystem::path>
             field_gates_undersound_qa_path;
         std::optional<std::filesystem::path>
             field_renraku_offices_qa_path;
@@ -25211,6 +25627,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_wylie_gala_inn_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-penumbra-mako-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_penumbra_mako_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -26789,6 +27212,7 @@ int main(int argc, char** argv) {
                 field_matrix_cyber_info_qa_path.has_value() ||
                 field_matrix_traversal_entry_qa_path.has_value() ||
                 field_wylie_gala_inn_qa_path.has_value() ||
+                field_penumbra_mako_qa_path.has_value() ||
                 field_tarislar_first_entry_qa_path.has_value() ||
                 field_tarislar_repeat_service_qa_path.has_value() ||
                 field_tarislar_guarded_entry_qa_path.has_value() ||
@@ -26807,7 +27231,9 @@ int main(int argc, char** argv) {
                 field_scene.set_source_random_seed_for_dump(0x4000U);
                 field_scene.set_field_world_frame_counter_for_dump(0x0200U);
             }
-            const auto bootstrapped = field_wylie_gala_inn_qa_path.has_value()
+            const auto bootstrapped =
+                (field_wylie_gala_inn_qa_path.has_value() ||
+                 field_penumbra_mako_qa_path.has_value())
                 ? field_scene.bootstrap_for_scene_dump(smoke_state, 3U)
                 : (field_sinsearach_gate_physical_entry_qa_path.has_value() ||
                            field_sinsearach_gate_fare_physical_entry_qa_path
@@ -30268,6 +30694,11 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_wylie_gala_inn_qa_path,
                     field_audio_events, field_source_boundaries);
+            }
+            if (field_penumbra_mako_qa_path.has_value()) {
+                return run_field_penumbra_mako_qa(
+                    field_scene, asset_root,
+                    *field_penumbra_mako_qa_path, field_source_boundaries);
             }
             if (field_gates_undersound_qa_path.has_value()) {
                 return run_field_gates_undersound_qa(

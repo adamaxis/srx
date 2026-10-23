@@ -39,8 +39,12 @@ record has `+0x9E` bit 6 set and `+0x10` bit 3 clear, then resets the shared
 actor service links and invokes the Lua callback graph. The callback updates
 heat, party Karma, the FFFC1E/30/38 facts, and the Strike Team counter before
 presenting descriptor `0xF4CA8`. Older restored saves with unavailable heat, FFFC30, or progression
-data stop at a source boundary. Qt route QA remains open. The
-Scene-47 table grouping does not assign a Scene-47 transition. See the [field
+data stop at a source boundary. The qualifying Reputation-4, paid-fee, Mako
+story-gated route now has physical Qt QA through the result page and in-place
+Scene-17 return. Its route record and screenshots are emitted under
+`build/conversion/qt/{debug,release}/qt_runtime/field-penumbra-mako-qa/`. The test validates host-rendered artifacts;
+it is not an independent Genesis visual comparison. The Scene-47 table grouping
+does not assign a Scene-47 transition. See the [field
 random-event audit](../field-random-event-selector.md).
 
 ## Pending-list actor transitions and result callback
@@ -70,7 +74,9 @@ exit service with resources `0x122000` and descriptor `0xF4CA8` (text
 carries this route's extracted actor list into Scene 17 and publishes its four
 actor records. It counts four eligible behavior transitions, then dispatches
 the Lua callback graph to apply the source state changes and present the result
-page. Route QA remains open.
+page. The physical route QA checks all four actor publications and behavior
+transitions, callback state changes, the result page, and return to Scene 17.
+The independent Genesis comparison and alternate entry branches remain open.
 
 ## Scene-17 contact
 
@@ -106,16 +112,18 @@ it marks Mako defeated and opens descriptor
 Penumbra Scene-3/event-0 finalizer. The finalizer permits row 0 to reach Scene
 17, and the next common world-frame service drains the queued list there; the
 host resolves the rows through the Scene-47 extraction context and publishes
-them in Scene 17. The timeout counter and callback remain open. Keep this
+them in Scene 17. The qualifying callback route is covered by Debug/Release QA; timeout-counter expiry and alternate story-gate outcomes remain open. Keep this
 separate from the traced scene-17/event-30 generic contact.
 
 ## Verification boundary
 
-The existing route test only checks the scene-3/event-0 numeric destination
-and the scene-17/event-30 Lua contact binding; it does not cover the doorman
-graph added in this continuation. Physical movement into the scene-17
-rectangle, the south-edge return, Qt execution of the fee/reputation branches,
-pending-list lifecycle and activity placement, and an independent Genesis
-capture remain open. The ROM
-does not identify the Scene-17 event-30 speaker as Freya; that contact remains
-separate from the entry gate.
+Debug/Release CTest `shadowrun_ghidra_conversion_qt_field_penumbra_mako_qa` walks into Scene-3
+record 101 with ordinary movement, follows the qualifying Reputation-4 and
+paid-fee Mako path, checks four Scene-17 actor publications and their callback
+transitions, verifies the result state/page, and confirms the route returns to
+Scene 17. It writes `actual.bmp`, milestone BMPs, and `route.tsv` under the
+CTest build tree. The check covers only the qualifying path: low Reputation,
+insufficient funds, other story-gate outcomes, timeout behavior, and an
+independent Genesis capture remain open. The ROM does not identify the
+Scene-17 event-30 speaker as Freya; that contact remains separate from the
+entry gate.

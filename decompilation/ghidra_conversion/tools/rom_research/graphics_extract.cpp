@@ -7690,7 +7690,11 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             const auto sprite_stem = entity_kind == 7U
                 ? "actor-kind-7-palette-" + std::to_string(palette_line)
                 : entity_kind == 5U
-                    ? std::string("corp-guard")
+                    // Keep the extracted host asset key tied to this ROM
+                    // template. The generic "corp-guard" label does not
+                    // resolve to the named sprite/profile assets, so pending
+                    // kind-5 lists could never publish their actor record.
+                    ? profile_id
                     : entity_kind == 11U
                         ? std::string("pedestrian")
                         : entity_kind == 8U
