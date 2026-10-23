@@ -163,8 +163,11 @@ catalog's source policy explicitly authorizes a correction.
   reachability remains unresolved. Scene-55 fight-completion is traced through
   the mode-3 effect scan and special callback. The five-panel terminal outcome
   retains its last page through the post-panel cleanup and two fades before the
-  host attract-loop restart. The native fight trigger and pre-panel presentation
-  remain unimplemented. Scene-54 event 0 is now
+  host attract-loop restart. The active host now connects the slot-3 meter gate,
+  Lua-owned completion cadence, six-slot actor query, and typed 60-frame callback
+  queue. That live trigger has no full-route QA or CLI frame yet; its pending
+  continuation stops at the Licourtrix prelude and 1000-iteration presentation,
+  and the pre-panel animation/fade remains unimplemented. Scene-54 event 0 is now
   traced into Scene 55.
 
 ## Scene 54 entry profile and collision evidence
@@ -317,10 +320,14 @@ keeps the typed field state aligned with ROM `0x097C`/`0x1DD94` ordering. The
 3 only when that marker is negative and signed byte `FF044C` is at most 9.
 `FF044C` aliases `FF0400+0x4C`, the first entity record's physical-meter byte
 as confirmed by the `0x5D29C` six-record scan. Its typed host owner is
-`FieldWorldActorSlot::slot_3`, but the runtime gate does not consume that
-actor's meter yet. The host also lacks a runtime model for the `FFF11E` phase
-record, so this state synchronization
-does not invoke the actor query or activate the completion callback.
+`FieldWorldActorSlot::slot_3`. The typed world-frame callback now consumes
+that meter for the Scene-55 mode-2-to-3 gate. Lua owns the wait, effect-frame
+cadence, and slot-4..9 eligibility scan, and the render-pass tail queues a
+typed 60-frame callback when the phase timer expires with no eligible actor.
+This does not reproduce the complete `FFF11E` visual/effect record. A missing
+slot-3 record remains an explicit boundary; the callback body likewise stops
+before the Licourtrix prompt and 1000-loop presentation. The full Scene-55
+route is unverified and remains partial.
 
 ## Seven visual and behavioral checks
 

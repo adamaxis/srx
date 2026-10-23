@@ -304,11 +304,15 @@ six actors come from the separate default list at
    if no eligible active actor has nonzero physical meter, its phase timer
    eventually queues callback `0x5BAC4`. That callback opens Licourtrix's
    prompt and closing sequence, then the field coordinator follows the title
-   return branch. The typed final outcome queues the host attract-loop restart;
-   Lua now has a typed six-slot query over live actor flags and combat meters,
-   with Debug/Release script and field encounter QA. The field render pass does
-   not call it yet, and the pre-panel presentation remains open; the five-page
-   sequence and post-panel title fade have a direct QA seam.
+  return branch. The typed final outcome queues the host attract-loop restart;
+  Lua's typed six-slot query reads live actor flags and physical meters, with
+  Debug/Release helper and field-encounter QA. The Scene-55 render-pass tail
+  now advances the source-derived completion cadence and calls that query;
+  the slot-3 meter feeds the mode-2-to-3 gate and an expired empty scan queues
+  the typed 60-frame callback. The trigger has no full-route QA or CLI frame,
+  and its callback continuation stops at the unresolved Licourtrix prelude and
+  1000-iteration presentation. The five-page presenter and post-panel title
+  fade remain covered only by their direct QA seam.
 
 No screenshot-based scene-name claim should be made from the extracted map
 alone. The map has not been aligned to scene 9 coordinates. The Sinsearach
@@ -335,9 +339,10 @@ The known type-3 producer's three offer targets exclude Scene 1/event 7, but
 other callers and state carried into that selector have not been ruled out.
 Scene-54 event 0 is traced into Scene 55 and its Tomb of Ellisia text callback.
 Inherited callback reachability remains open. Scene-55 completion is
-source-traced through `0x5D29C`/`0x5BAC4`; the typed ending outcome queues the
-host attract-loop restart after the post-panel cleanup and two source fades. Its native trigger and pre-panel presentation remain
-open.
+source-traced through `0x5D29C`/`0x5BAC4`; the host now connects the mode gate,
+Lua-owned actor scan, and delayed typed callback queue. Its callback prelude,
+1000-iteration display, and pre-panel presentation remain open, so the trigger
+hill stays partial until full-route coverage and a CLI `actual.bmp` exist.
 
 ### Reported Little Chiba / Redmond elevator transition
 

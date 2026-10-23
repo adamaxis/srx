@@ -32,6 +32,7 @@ enum class MovementModeTransitionContinuation {
     building_security_terminal, // source continuation 0x20EC2
     event_25_world_activity, // source continuation 0x53EFA
     scene_37_antechamber_entry, // Scene-55 entry callback
+    scene_55_tomb_credits_callback, // source callback 0x5BAC4
     mode_table_world_activity, // source-selected field activity during 0x2CE0
     field_mode_exit_finalizer, // native boundary for source 0x0C64C
 };

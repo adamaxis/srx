@@ -1421,6 +1421,7 @@ private:
     void advance_field_movement();
     void advance_field_actor_animation();
     void advance_default_field_actor_animations();
+    void advance_tarislar_tomb_outro();
     void advance_field_weapon_projectile_animations();
     void advance_field_weapon_projectiles();
     bool apply_script_combat_meter_update(

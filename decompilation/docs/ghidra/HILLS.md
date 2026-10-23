@@ -521,15 +521,18 @@ initial combat facts, and its typed six-slot query reads live service flags
 and physical meters for the `0x5D29C` eligibility decision. Debug/Release
 script-runtime, world-activity, and random-encounter QA pass. Lua validates
 the six source addresses as typed actor slots 4..9 (`FF0400` is slot 3). The
-field render pass has no caller for the query. The live fight-completion
-trigger, callback's 1000-iteration presentation, and the pre-panel
-animation/fade setup remain open. The host synchronizes FFE186 between its
-coordinator and world-frame state at field-frame and render-pass boundaries.
-FFF140 and the FFF11E
-effect-phase state are not yet connected. FF044C is FF0400+0x4C, the first
-entity record's physical-meter byte; its typed host owner is slot_3, but the
-runtime gate does not yet consume that meter.
-The hill remains partial.
+field render-pass tail now advances the Scene-55 Lua completion state and
+invokes the query during the source frame-3 window. The world-frame callback
+projects slot 3's `+0x4C` meter into the `0x1DD94` mode gate and arms the
+sequence on the mode-2-to-3 transition. When the phase timer expires with no
+eligible actor, the host queues a typed 60-frame continuation for `0x5BAC4`.
+This live trigger has not had a full-route CTest or CLI `actual.bmp`; the
+existing five-panel QA enters through a direct presenter seam. The typed
+continuation stops at the unresolved Licourtrix prelude and 1000-iteration
+presentation, and the pre-panel animation/fade is still open. The complete
+`FFF11E` visual/effect record is not reproduced. The host synchronizes
+`FFE186` between its coordinator and world-frame state at field-frame and
+render-pass boundaries. The hill remains partial.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).

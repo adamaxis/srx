@@ -7931,6 +7931,12 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "source_record_slot");
     lua_pushinteger(state, context.source_record_flags);
     lua_setfield(state, -2, "source_record_flags");
+    if (context.source_physical_meter.has_value()) {
+        lua_pushinteger(state, *context.source_physical_meter);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "source_physical_meter");
     if (context.source_actor_posture.has_value()) {
         lua_pushinteger(state, *context.source_actor_posture);
     } else {
@@ -10065,6 +10071,75 @@ std::optional<bool> GameScriptRuntime::has_world_scene_effect_target(
             "actor_ai.has_world_scene_effect_target returned invalid actor state");
     }
     const bool result = lua_toboolean(state, -1) != 0;
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return result;
+}
+
+std::optional<ScriptTarislarTombOutroStep>
+GameScriptRuntime::advance_tarislar_tomb_outro(
+    const std::uint16_t scene_id, const std::uint8_t scene_state,
+    const std::array<std::string, 6>& actor_ids, const bool arm) {
+    auto* state = impl_->state;
+    const auto stack_base = state == nullptr ? 0 : lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptTarislarTombOutroStep> {
+        if (state != nullptr) {
+            lua_settop(state, stack_base);
+        }
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (state == nullptr) {
+        return fail("gameplay Lua actor state is unavailable");
+    }
+    if (!impl_->push_module("tarislar_tomb_outro")) {
+        return fail("gameplay Lua Scene-55 outro module is missing");
+    }
+    lua_getfield(state, -1, "advance");
+    if (!lua_isfunction(state, -1)) {
+        return fail("tarislar_tomb_outro.advance is missing");
+    }
+    lua_remove(state, -2);
+    lua_pushinteger(state, scene_id);
+    lua_pushinteger(state, scene_state);
+    lua_createtable(state, static_cast<int>(actor_ids.size()), 0);
+    for (std::size_t index = 0U; index < actor_ids.size(); ++index) {
+        const auto& actor_id = actor_ids[index];
+        if (!actor_id.empty() && !valid_identifier(actor_id)) {
+            return fail("Scene-55 outro actor ID is invalid");
+        }
+        lua_pushlstring(state, actor_id.data(), actor_id.size());
+        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+    }
+    lua_pushboolean(state, arm);
+
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 4, 1, 0) != LUA_OK) {
+        return fail("tarislar_tomb_outro.advance: " + stack_error(state));
+    }
+    std::size_t step_length = 0U;
+    const auto* step_data = lua_tolstring(state, -1, &step_length);
+    if (step_data == nullptr) {
+        return fail("tarislar_tomb_outro.advance returned invalid state");
+    }
+    const std::string_view step(step_data, step_length);
+    std::optional<ScriptTarislarTombOutroStep> result;
+    if (step == "inactive") {
+        result = ScriptTarislarTombOutroStep::inactive;
+    } else if (step == "armed") {
+        result = ScriptTarislarTombOutroStep::armed;
+    } else if (step == "progressed") {
+        result = ScriptTarislarTombOutroStep::progressed;
+    } else if (step == "actor_target_present") {
+        result = ScriptTarislarTombOutroStep::actor_target_present;
+    } else if (step == "completion_ready") {
+        result = ScriptTarislarTombOutroStep::completion_ready;
+    } else if (step == "unresolved") {
+        result = ScriptTarislarTombOutroStep::unresolved;
+    } else {
+        return fail("tarislar_tomb_outro.advance returned unknown state");
+    }
     lua_settop(state, stack_base);
     impl_->failure.clear();
     return result;

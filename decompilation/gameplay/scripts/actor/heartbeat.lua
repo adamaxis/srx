@@ -112,6 +112,8 @@ function ActorAI.heartbeat(context)
     state.spell_action_resolution = nil
     state.source_record_flags = context.source_record_flags or
                                 state.source_record_flags
+    state.source_physical_meter = context.source_physical_meter or
+                                  state.source_physical_meter
     state.source_record_slot = context.source_record_slot or
                                state.source_record_slot
     state.source_behavior_flags = context.source_behavior_flags or
@@ -477,22 +479,26 @@ function ActorAI.has_world_scene_effect_target(actor_ids)
                 return nil
             end
             local state = states[actor_id]
+            local physical_meter = type(state) == "table" and
+                state.source_physical_meter or nil
+            if physical_meter == nil and type(state) == "table" and
+               type(state.combatant) == "table" then
+                physical_meter = state.combatant.physical_meter
+            end
             if type(state) ~= "table" or
                state.source_record_slot ~= index + 3 or
                type(state.source_record_flags) ~= "number" or
                state.source_record_flags < 0 or
                state.source_record_flags > 0xff or
-               type(state.combatant) ~= "table" or
-               type(state.combatant.physical_meter) ~= "number" or
-               state.combatant.physical_meter < 0 or
-               state.combatant.physical_meter > 0xff then
+               type(physical_meter) ~= "number" or
+               physical_meter < 0 or physical_meter > 0xff then
                 return nil
             end
             local flags = state.source_record_flags
             if (flags & ActorStatus.ACTIVE) ~= 0 and
                (flags & ActorStatus.DOWN) == 0 and
                (flags & ActorStatus.DEAD) == 0 and
-               state.combatant.physical_meter ~= 0 then
+               physical_meter ~= 0 then
                 return true
             end
         end

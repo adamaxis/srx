@@ -4538,6 +4538,12 @@ void FieldSceneRuntime::advance_default_field_actors() {
             script_action_attribute_selectors();
         context.combat_meter_service_blocked =
             field_movement_transition_state_.world_mode == 3U;
+        if (actor.source_record_slot.has_value()) {
+            context.source_record_slot = static_cast<std::uint8_t>(
+                *actor.source_record_slot);
+            context.source_record_flags = actor.source_record_flags;
+            context.source_physical_meter = actor.physical_meter;
+        }
         if (dynamic_world_actor) {
             context.combatant = actor.combatant;
             context.source_actor_posture = actor.combatant.posture;
@@ -6072,6 +6078,8 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         if (actor.source_record_slot.has_value()) {
             context.source_record_slot = static_cast<std::uint8_t>(
                 *actor.source_record_slot);
+            context.source_record_flags = actor.source_record_flags;
+            context.source_physical_meter = actor.physical_meter;
         }
         context.action_profile_modifiers =
             script_action_profile_modifiers(state_.action_selection_profiles);
@@ -7463,13 +7471,14 @@ void FieldSceneRuntime::configure_callbacks() {
         };
     callbacks_.entity_render_pass.finish_pass = [this] {
         source_boundary("field.entities.finish_render_pass");
-        // ROM 0x04658 calls 0x5D29C at the render-pass tail. Keep this typed
-        // FFE186 projection current at that boundary; the staged effect
-        // controller itself is not connected to this host render pass yet.
+        // ROM 0x04658 calls 0x5D29C at the render-pass tail. Keep the mode
+        // projection current, advance Lua-owned actor animation first, then
+        // service the semantic Scene-55 completion gate at that boundary.
         world_frame_logic_state_.scene_state =
             field_runtime_state_.scene_runtime_state;
         advance_default_field_actor_animations();
         advance_field_weapon_projectile_animations();
+        advance_tarislar_tomb_outro();
     };
     callbacks_.wait_for_vblank = [this] {
         source_boundary("field.timing.wait_for_vblank");
@@ -8128,6 +8137,20 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             }
             return integration::PendingFieldSceneHandlerResult::resumed_field;
         }
+        if (continuation == MovementModeTransitionContinuation::
+                                scene_55_tomb_credits_callback) {
+            if (state_.field_scene_buffers.scene_reference != 55U) {
+                source_boundary(
+                    "field.activity.scene55_tomb_credits_scene_mismatch");
+                return integration::PendingFieldSceneHandlerResult::unresolved;
+            }
+            // The callback target is known, but its Licourtrix prelude and
+            // 1000-iteration presentation are not reconstructed yet. Do not
+            // jump straight to the post-loop credits pages.
+            source_boundary(
+                "field.activity.scene55_tomb_credits_callback_body_unresolved");
+            return integration::PendingFieldSceneHandlerResult::unresolved;
+        }
         if (continuation ==
             MovementModeTransitionContinuation::event_30_world_activity) {
             const auto& event_metadata =
@@ -8345,9 +8368,55 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             field_world_activity_timeout_state_.timeout_marker);
         world_frame_logic_state_.cleanup_countdown = static_cast<std::int16_t>(
             field_world_activity_timeout_state_.timeout_frames);
+        const auto current_scene =
+            state_.field_scene_buffers.scene_reference;
+        const auto slot_three_actor = std::find_if(
+            field_default_actors_.begin(), field_default_actors_.end(),
+            [current_scene](const auto& actor) {
+                return actor.scene_reference == current_scene &&
+                       actor.source_record_slot ==
+                           FieldWorldActorSlot::slot_3;
+            });
+        if (slot_three_actor != field_default_actors_.end()) {
+            // ROM 0x1DD94 compares FF044C, the +0x4C meter in the slot-3
+            // record at FF0400, before promoting FFE186 from 2 to 3.
+            world_frame_logic_state_.region_or_mode =
+                static_cast<std::int8_t>(slot_three_actor->physical_meter);
+        } else if (world_frame_logic_state_.scene_state == 2U &&
+                   world_frame_logic_state_.transition_marker < 0) {
+            // The record's meter is a required source fact; keep the mode
+            // transition at its source boundary when this typed record is not
+            // available instead of letting the default zero satisfy it.
+            if (world_frame_logic_state_.region_or_mode != 10) {
+                source_boundary(
+                    "field.world_logic.slot_three_physical_meter_unresolved");
+            }
+            world_frame_logic_state_.region_or_mode = 10;
+        }
+        const auto scene_state_before = world_frame_logic_state_.scene_state;
+        const auto transition_marker_before =
+            world_frame_logic_state_.transition_marker;
+        const auto region_or_mode_before =
+            world_frame_logic_state_.region_or_mode;
+        const bool scene_55_outro_arm_requested =
+            current_scene == 55U && scene_state_before == 2U &&
+            transition_marker_before < 0 && region_or_mode_before <= 9;
         refresh_world_entity_service_targets();
         advance_world_frame_logic(world_frame_logic_state_,
                                   world_frame_logic_callbacks_);
+        if (scene_55_outro_arm_requested &&
+            world_frame_logic_state_.scene_state == 3U) {
+            const auto armed = game_scripts_.advance_tarislar_tomb_outro(
+                current_scene, world_frame_logic_state_.scene_state,
+                std::array<std::string, 6>{}, true);
+            if (!armed.has_value() ||
+                *armed != scripting::ScriptTarislarTombOutroStep::armed) {
+                failure_ = game_scripts_.failure();
+                source_boundary("field.scene55.tomb_outro_arm_failed");
+            } else {
+                source_boundary("field.scene55.tomb_outro_armed");
+            }
+        }
         field_runtime_state_.scene_runtime_state =
             world_frame_logic_state_.scene_state;
         // The frame service decrements FFE11C before the coordinator checks
@@ -13356,6 +13425,8 @@ void FieldSceneRuntime::record_field_activity_start(
         continuation == MovementModeTransitionContinuation::
                            scene_37_antechamber_entry ||
         continuation == MovementModeTransitionContinuation::
+                           scene_55_tomb_credits_callback ||
+        continuation == MovementModeTransitionContinuation::
                            mode_table_world_activity) {
         field_runtime_state_.pending_field_scene_handler = true;
     }
@@ -15136,6 +15207,61 @@ void FieldSceneRuntime::advance_field_actor_animation() {
                 previous_animation != field_entity_animation_id_;
         }
     }
+}
+
+void FieldSceneRuntime::advance_tarislar_tomb_outro() {
+    const auto scene_id = state_.field_scene_buffers.scene_reference;
+    std::array<std::string, 6> actor_ids{};
+    if (scene_id == 55U) {
+        for (const auto& actor : field_default_actors_) {
+            if (!actor.active || actor.scene_reference != scene_id ||
+                !actor.source_record_slot.has_value()) {
+                continue;
+            }
+            const auto slot = static_cast<std::uint8_t>(
+                *actor.source_record_slot);
+            if (slot < 4U || slot > 9U) {
+                continue;
+            }
+            auto& actor_id = actor_ids[static_cast<std::size_t>(slot - 4U)];
+            if (!actor_id.empty()) {
+                source_boundary(
+                    "field.scene55.tomb_outro_duplicate_actor_slot");
+                return;
+            }
+            actor_id = actor.actor_instance_id;
+        }
+    }
+
+    const auto step = game_scripts_.advance_tarislar_tomb_outro(
+        scene_id, world_frame_logic_state_.scene_state, actor_ids, false);
+    if (!step.has_value()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.scene55.tomb_outro_lua_failed");
+        return;
+    }
+    if (*step == scripting::ScriptTarislarTombOutroStep::unresolved) {
+        source_boundary("field.scene55.tomb_outro_actor_state_unresolved");
+        return;
+    }
+    if (*step != scripting::ScriptTarislarTombOutroStep::completion_ready ||
+        field_activity_continuation_ ==
+            MovementModeTransitionContinuation::
+                scene_55_tomb_credits_callback) {
+        return;
+    }
+
+    const auto continuation =
+        MovementModeTransitionContinuation::scene_55_tomb_credits_callback;
+    if (!begin_world_activity_if_idle(
+            field_world_activity_state_,
+            static_cast<std::uint16_t>(continuation))) {
+        return;
+    }
+    world_frame_logic_state_.resource_countdown =
+        field_world_activity_state_.timeout;
+    record_field_activity_start(continuation);
+    source_boundary("field.scene55.tomb_outro_callback_queued");
 }
 
 void FieldSceneRuntime::advance_default_field_actor_animations() {

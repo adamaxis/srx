@@ -1354,6 +1354,18 @@ struct ScriptActorBehaviorContext {
     // Closed over the caster. Unset means the host cannot run 0x14D8E
     // honestly, and Lua then refuses the cast.
     ScriptActorActionLineClear action_line_clear;
+    // Source +0x4C physical meter. Lua retains this separate field for the
+    // Scene-55 ending scan without exposing combatant facts to static actors.
+    std::optional<std::uint8_t> source_physical_meter;
+};
+
+enum class ScriptTarislarTombOutroStep {
+    inactive,
+    armed,
+    progressed,
+    actor_target_present,
+    completion_ready,
+    unresolved,
 };
 
 struct ScriptActorBehaviorDecision {
@@ -1557,6 +1569,12 @@ public:
     // host slot. Eligibility is read from Lua-owned actor state.
     std::optional<bool> has_world_scene_effect_target(
         const std::array<std::string, 6>& actor_ids);
+    // Lua owns the Scene-55 outro progression from the 0x1DD94 mode change
+    // through the 0x5D29C actor scan. The host supplies typed actor identities
+    // and receives the point where 0x1E2E0 should queue its 60-frame callback.
+    std::optional<ScriptTarislarTombOutroStep> advance_tarislar_tomb_outro(
+        std::uint16_t scene_id, std::uint8_t scene_state,
+        const std::array<std::string, 6>& actor_ids, bool arm);
     void set_actor_heartbeat_observer(
         ScriptActorHeartbeatObserver observer);
     // Kept for the existing script-runtime caller contract. New game-runtime
