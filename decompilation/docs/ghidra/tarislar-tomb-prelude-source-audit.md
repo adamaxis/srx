@@ -33,13 +33,48 @@ the extracted host art, not runtime pointers.
 | Source time | ROM path | Recovered behavior and resources |
 | --- | --- | --- |
 | `0..0x6D` | `0x5BD6A` | Draw list `0x1EF988` at base `(0xF0,0x117)` with a small random offset. |
-| `0x6E..0xC7` | `0x5BD6A` | Switch to list `0x1EFAAA` at fixed-point position `FFF1B0/FFF1B2`; five `(dx,dy,deadline)` rows at `0x5BE62` update the position until the routine stops at `0xC8`. |
+| `0x6E..0xC7` | `0x5BD6A` | Switch to list `0x1EFAAA` at fixed-point position `FFF1B0/FFF1B2`; four of the five `(vx,vy,wait)` rows at `0x5BE62` update the position before the routine stops at `0xC8`. |
 | `0..0x351` | `0x5BEA2` | Draw list `0x1EFB5C` at `(0x188, FFF1B8 >> 6)`. The initial y value is `0x44C0`; it moves upward by `0x33` per source frame from `0x190` through `0x1F3`, then holds. |
-| `<0x26C` | `0x5BEA2` | Animate two list families selected from pointer tables `0x5C016` and `0x5C01E`. The first changes every 10 frames; the second changes every 5. Their lists are `0x1EFB9E`, `0x1EFBB8`, `0x1EFBEC`, `0x1EFBFE`, `0x1EFC10`, and `0x1EFC22`. |
+| `<0xFA` and `0x26C..0x2BB` | `0x5BEA2` | Animate two list families selected from pointer tables `0x5C016` and `0x5C01E`. The first changes every 10 frames; the second every 5. Their lists are `0x1EFB9E`, `0x1EFBB8`, `0x1EFBEC`, `0x1EFBFE`, `0x1EFC10`, and `0x1EFC22`. |
 | `0x190..0x351` | `0x5C02E` | Draw list `0x1EF936` at base x `0x1BF` and y `(FFF1B8 >> 6) + 0x4D`. At `0x190`, `0x5C744` loads stream `0x1EFDCC` at tile `0x80`; this list does not use the `0x1F002E` pattern bank. |
-| `0x26C..0x351` | `0x5BEA2` | Draw list `0x1EFBCA` at `(0x188, FFF1B8 >> 6)`. |
+| `0xFA..0x26B` and `0x2BC..0x351` | `0x5BEA2` | Draw list `0x1EFBCA` at `(0x188, FFF1B8 >> 6)`. |
 | `<0x17C` | `0x5C0A6` | Two fixed-point motion paths draw lists `0x1EFC66` and `0x1EFC34`; their velocity/deadline rows begin at `0x5C1FA` and `0x5C1D0`. Both lists stop after elapsed frame `0x17B`. |
 | Timed restarts | `0x5C230`, `0x5C336` | Start six ordered sprite-list phases from table `0x5C39C`: `0x1EFCA8`, `0x1EFCB2`, `0x1EFCCC`, `0x1EFD0E`, `0x1EFD48`, `0x1EFD6A`. A selected phase advances every 8 frames. The initial base is `(0x106,0x10B)`; exact later restart times and bases are listed below. |
+
+The ROM branch bounds make two non-contiguous animation windows. At `0x5BEF6`,
+`0x5BEFA`, and `0x5BF06`, the `0x1EFBCA` list is selected for elapsed
+`0xFA..0x26B` and `0x2BC..0x351`; the two animated pointer families run at
+`0..0xF9` and `0x26C..0x2BB`. `0x5BE80` initializes the shared y position to
+`0x44C0` and both family indices/deadlines to zero. The first family contains
+two lists and wraps at index 2, while the second contains four and wraps at
+index 4. On a frame where both deadlines are reached, the first family updates
+before the second; the second family anchors at x `0x14A +
+((first_family_index ^ 1) << 2)` and y `(FFF1B8 >> 6) - 4` after that update.
+The sprite-service call
+order at `0x5BD2C` is `0x5BEA2`, `0x5C02E`, `0x5C336`, `0x5BD6A`, and
+`0x5C0A6`; preserve this order when composing the named host layers.
+
+The `0x5BD6A` early actor starts with list `0x1EF988` at `(0xF0,0x117)` and
+calls `0xD3A` with bound `0x28` on every active frame. Only results 0 through
+3 shift both coordinates by that result. At elapsed `0x6E`, it switches to
+list `0x1EFAAA`, initializes fixed-point position `(0x40C0,0x3C00)`, and
+begins reading five six-byte records from `0x5BE62` as `(vx,vy,wait)`:
+`(0,0,0x1E)`, `(-0x33,0x33,0x0A)`, `(-0x66,0x33,0x0A)`, and
+`(-0x33,0x33,0x28)`. The fifth all-zero record is not reached because the
+routine returns at elapsed `0xC8`. Position is advanced before drawing and
+converted from six-fraction-bit units by shifting right six.
+
+The two paths in `0x5C0A6` also read `(vx,vy,wait)` records, add the selected
+velocity on the same frame as the record change, and draw after converting
+their six-fraction-bit positions to pixels. They start from `(0x24C0,0x37C0)`.
+The `0x1EFC66` path reads `0x5C1FA`: `(0,0,0xA0)`,
+`(0x33,0x33,0x0A)`, `(0x33,0x66,0x0A)`, `(0x66,0x66,0x0A)`,
+`(0x99,0x99,0x0A)`, `(0x66,0x99,0x0A)`, `(0,0,0x64)`,
+`(0,0x80,0x46)`, then an unused zero row. The `0x1EFC34` path reads
+`0x5C1D0`: `(0,0,0xAA)`, `(0x33,0x33,0x14)`, `(0x33,0x66,0x0A)`,
+`(0x99,0xCC,0x0A)`, `(0,0,0x64)`, `(0,0x80,0x46)`, then two unused
+rows. The shared elapsed-`0x17C` cutoff occurs before either path can load
+the trailing row.
 
 The six-list phase starts at elapsed `0`, then `0x50`, `0x6E`, `0xA0`, `0xD2`,
 `0x26C`, `0x27B`, `0x28A`, and `0x2A3`. The corresponding bases from the
@@ -47,10 +82,23 @@ The six-list phase starts at elapsed `0`, then `0x50`, `0x6E`, `0xA0`, `0xD2`,
 `(0x0DD,0x133)`, `(0x0A3,0x0FA)`, `(0x0D5,0x0CF)`, `(0x107,0x0B0)`, and
 `(0x179,0x0FF)`. The first base is set separately by `0x5C2FE`.
 
-`0x5BC70` also applies timed state changes: a random branch between `0x64` and
-`0xA9`, a field-effect adjustment from `0x136` to `0x18F`, resource changes at
-`0x190` and `0x26C`, and a plane clear at `0x30C`. After the `0x26C` resource
-change, `0x5C88C` is called on even elapsed frames from `0x26E` through
+`0x5BC70` also changes the active plane scroll. Descriptor `0x5C966` initializes
+horizontal and vertical scroll words at offsets `+8..+0xE` to zero. Between
+elapsed `0x64` and `0xA9`, it calls `0xD3A` with bound `0x20` each pass; results
+below four replace Plane-A horizontal scroll `FFDD08` with the negative result.
+From `0x136` through `0x18F`, while Plane-B vertical scroll `FFDD0E` remains
+above signed `-0x90`, each pass subtracts two from both planes' vertical scroll
+words (`FFDD0A` and `FFDD0E`). Starting from zero, this reaches `-0x90` after
+72 updates, on elapsed `0x17D`; later passes in that interval leave it there.
+At `0x190`, `0x5C744` clears both planes' horizontal and vertical scroll words
+before installing the skyline. These source scroll changes are absent from
+the static importer previews and need typed runtime state before the sequence
+can be called reconstructed.
+
+The same routine changes resources at `0x190` and `0x26C`, then calls the
+Plane-B clear/fill helper `0x102A` at `0x30C`. This leaves the Plane-A reveal
+map in place. After the `0x26C` resource change, `0x5C88C` is called on
+even elapsed frames from `0x26E` through
 `0x2BA`. It writes one tile in each of 19 rows per update. Its destination
 column advances from x=1 through x=38; the source stride is 38 words because
 the row writer post-increments one word and then skips 37 more. The counter
@@ -60,6 +108,12 @@ Plane-B scene installed at `0x190`. The separate `0x5BBA6` schedule calls
 `0x530DE` with D0 values `0x35` or `0x2C` at exact elapsed values. These paths
 are part of the active presentation, so replacing them with a fixed host delay
 would omit source-visible state changes.
+
+The `0x5BBA6` sound schedule dispatches `0x35` at elapsed
+`0x01,0x1C,0x30,0x45,0x58,0x6C,0x85,0x95,0xA8,0xBC,0xD0,0xE0,0x26F,0x280,0x294,0x2A8`.
+It dispatches `0x2C` at `0xA0,0xB0,0xC4,0xF0`. The later `0x2C` comparison
+for `0xE0` is unreachable because the earlier `0x35` comparison handles that
+elapsed value first.
 
 ## Background stages and palette writes
 
