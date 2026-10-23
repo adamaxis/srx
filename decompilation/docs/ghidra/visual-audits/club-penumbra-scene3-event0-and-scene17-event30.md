@@ -36,11 +36,12 @@ through the source-route transition; Scene 17 resolves the four extracted
 rows from their Scene-47 activity-table grouping and publishes them in the
 destination scene. It counts four Lua behavior-completion edges when each
 record has `+0x9E` bit 6 set and `+0x10` bit 3 clear, then resets the shared
-actor service links. The callback request remains pending; dispatch through
-`FFE104`, its story/reward updates, and the Mako result page are not connected.
-No Qt route QA has been run for this graph. The Scene-47 table grouping does
-not assign a Scene-47 transition. See the [field random-event
-audit](../field-random-event-selector.md).
+actor service links and invokes the Lua callback graph. The callback updates
+heat, party Karma, the FFFC1E/30/38 facts, and the Strike Team counter before
+presenting descriptor `0xF4CA8`. Older restored saves with unavailable heat, FFFC30, or progression
+data stop at a source boundary. Qt route QA remains open. The
+Scene-47 table grouping does not assign a Scene-47 transition. See the [field
+random-event audit](../field-random-event-selector.md).
 
 ## Pending-list actor transitions and result callback
 
@@ -67,9 +68,9 @@ increments `FFFBFB` up to 8 through `0x1F1E0`. Finally it runs the shared mode
 exit service with resources `0x122000` and descriptor `0xF4CA8` (text
 `0xF98FA`, Mako lying unconscious), then returns D6=-1. The native field path
 carries this route's extracted actor list into Scene 17 and publishes its four
-actor records. It counts four eligible behavior transitions and holds callback
-dispatch pending; the delayed story outcome, result page, and route QA are
-still open.
+actor records. It counts four eligible behavior transitions, then dispatches
+the Lua callback graph to apply the source state changes and present the result
+page. Route QA remains open.
 
 ## Scene-17 contact
 

@@ -127,7 +127,7 @@ pages. Its Lua action queues the extracted list before the pages; after the
 source route resumes to Scene 17, the typed field path resolves and publishes
 the four rows from the Scene-47 table context. The host counts four eligible
 Lua behavior-completion edges and resets actor service links at zero. Dispatch
-through FFE104, the callback result, and Qt route QA remain open. This is not a
+through FFE104 now invokes the typed Lua result graph; Qt route QA remains open. This is not a
 random-event selector result.
 
 The linked ROM records confirm this is a Mako story route. Entry descriptor

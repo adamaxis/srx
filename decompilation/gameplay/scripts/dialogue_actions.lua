@@ -130,6 +130,11 @@ local function register_core_actions(registry)
             "field", "queue_mako_actor_list")
         return result == "queued" and result or "service_unavailable"
     end)
+
+    registry:register("field.apply_mako_callback", function()
+        local result = require("club_penumbra").apply_mako_callback()
+        return result == "applied" and result or "service_unavailable"
+    end)
 end
 
 function DialogueActions.new_default_registry(registered_actions)

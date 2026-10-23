@@ -1149,6 +1149,35 @@ FieldSceneRuntime::FieldSceneRuntime(
                 }
                 return "applied";
             }
+            if (service_id == "field.mako_result_state_available") {
+                return field_heat_level_.has_value() &&
+                               field_strike_team_counter_.has_value() &&
+                               notebook_tip_flags_resolved_ &&
+                               field_mode_flags_resolved_ &&
+                               field_party_roster_.available()
+                           ? std::optional<std::string>{"available"}
+                           : std::nullopt;
+            }
+            if (service_id == "field.add_heat_2_capped_8") {
+                if (!field_heat_level_.has_value()) {
+                    return std::nullopt;
+                }
+                field_heat_level_ = static_cast<std::uint8_t>(
+                    std::min<unsigned int>(
+                        8U, static_cast<unsigned int>(*field_heat_level_) +
+                                2U));
+                return "applied";
+            }
+            if (service_id == "field.advance_strike_team_counter") {
+                if (!field_strike_team_counter_.has_value()) {
+                    return std::nullopt;
+                }
+                field_strike_team_counter_ = static_cast<std::uint8_t>(
+                    std::min<unsigned int>(
+                        8U, static_cast<unsigned int>(
+                                *field_strike_team_counter_) + 1U));
+                return "applied";
+            }
             if (service_id == "field.queue_mako_actor_list") {
                 if (field_pending_route_actor_list_.has_value() ||
                     field_pending_actor_list_transition_group_.has_value() ||
@@ -1468,6 +1497,14 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
             : QJsonValue(-1));
     fields.insert(QStringLiteral("field.debug.actor_list_callback_pending"),
                   field_pending_actor_list_callback_.has_value());
+    fields.insert(QStringLiteral("field.debug.heat_level"),
+                  field_heat_level_.has_value()
+                      ? QJsonValue(*field_heat_level_)
+                      : QJsonValue(-1));
+    fields.insert(QStringLiteral("field.debug.strike_team_counter"),
+                  field_strike_team_counter_.has_value()
+                      ? QJsonValue(*field_strike_team_counter_)
+                      : QJsonValue(-1));
     fields.insert(QStringLiteral("field.debug.display_service_word"),
                   field_runtime_state_.display_service_word);
     fields.insert(QStringLiteral("field.debug.pending_scene_handler"),
@@ -5052,6 +5089,19 @@ void FieldSceneRuntime::advance_default_field_actors() {
             service_dynamic_actor_weapon_action(actor, context, *decision);
         }
         resolve_default_actor_proximity(actor);
+    }
+    if (field_pending_actor_list_callback_ ==
+            FieldRoutePendingActorList::club_penumbra_mako &&
+        !field_dialogue_.open()) {
+        field_pending_actor_list_callback_.reset();
+        if (field_dialogue_.open_gameplay_task(
+                "club_penumbra", "present_mako_activity_result")) {
+            source_boundary(
+                "field.world_activity.club_penumbra_mako_callback_dispatched");
+        } else {
+            source_boundary(
+                "field.world_activity.club_penumbra_mako_callback_dialogue_open_failed");
+        }
     }
 }
 
@@ -9073,6 +9123,10 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
     QJsonObject story;
     story.insert(QStringLiteral("exit_world_flags"),
                  static_cast<double>(field_exit_world_flags_));
+    story.insert(QStringLiteral("mode_flags"),
+                 field_mode_flags_resolved_
+                     ? QJsonValue(static_cast<double>(field_mode_flags_))
+                     : QJsonValue(QJsonValue::Null));
     story.insert(QStringLiteral("mode_effect_flags"),
                  static_cast<double>(field_mode_effect_flags_));
     story.insert(QStringLiteral("auxiliary_flags"),
@@ -9119,6 +9173,14 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
     story.insert(QStringLiteral("runner_feature_flags"),
                  field_runner_feature_flags_.has_value()
                      ? QJsonValue(*field_runner_feature_flags_)
+                     : QJsonValue(QJsonValue::Null));
+    story.insert(QStringLiteral("heat_level"),
+                 field_heat_level_.has_value()
+                     ? QJsonValue(*field_heat_level_)
+                     : QJsonValue(QJsonValue::Null));
+    story.insert(QStringLiteral("strike_team_counter"),
+                 field_strike_team_counter_.has_value()
+                     ? QJsonValue(*field_strike_team_counter_)
                      : QJsonValue(QJsonValue::Null));
     story.insert(QStringLiteral("walk_fast"), field_walk_fast_enabled_);
     story.insert(QStringLiteral("notebook_current_run_available"),
@@ -9206,6 +9268,7 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         bool funds_available = false;
         std::uint32_t funds = 0U;
         std::uint32_t exit_world_flags = 0U;
+        std::optional<std::uint32_t> mode_flags;
         std::uint32_t mode_effect_flags = 0U;
         std::uint32_t auxiliary_flags = 0U;
         std::uint32_t render_effect_flags = 0U;
@@ -9227,6 +9290,8 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         std::optional<std::uint32_t> contacts_flags;
         std::optional<std::uint8_t> referral_flags;
         std::optional<std::uint16_t> shadowrunner_flags;
+        std::optional<std::uint8_t> heat_level;
+        std::optional<std::uint8_t> strike_team_counter;
         std::optional<std::array<std::uint8_t, 3>> action_phase_roll_counters;
         std::uint16_t world_frame_counter = 0U;
         std::uint32_t world_encounter_sequence = 0U;
@@ -9409,7 +9474,7 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         [&story, &fail](const char* key, const std::int64_t maximum,
                         auto& output) {
             const auto value = story.value(QLatin1String(key));
-            if (value.isNull()) {
+            if (value.isUndefined() || value.isNull()) {
                 output.reset();
                 return true;
             }
@@ -9433,6 +9498,8 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
                                 restored.dialogue_register) ||
         !read_optional_unsigned("dialogue_flags", 0xFF,
                                 restored.dialogue_flags) ||
+        !read_optional_unsigned("mode_flags", 0xFFFFFFFFLL,
+                                restored.mode_flags) ||
         !read_optional_unsigned("group_item_flags", 0xFFFFFFFFLL,
                                 restored.group_item_flags) ||
         !read_optional_unsigned("matrix_passcode_flags", 0xFFFF,
@@ -9444,7 +9511,11 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         !read_optional_unsigned("notebook_referral_flags", 0xFF,
                                 restored.referral_flags) ||
         !read_optional_unsigned("notebook_shadowrunner_flags", 0xFFFF,
-                                restored.shadowrunner_flags)) {
+                                restored.shadowrunner_flags) ||
+        !read_optional_unsigned("heat_level", 8,
+                                restored.heat_level) ||
+        !read_optional_unsigned("strike_team_counter", 8,
+                                restored.strike_team_counter)) {
         return false;
     }
     const auto karma_counter = story.value(QStringLiteral("karma_counter"));
@@ -9583,6 +9654,8 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
                        ? std::optional<std::uint32_t>(restored.funds)
                        : std::nullopt;
     field_exit_world_flags_ = restored.exit_world_flags;
+    field_mode_flags_resolved_ = restored.mode_flags.has_value();
+    field_mode_flags_ = restored.mode_flags.value_or(1U);
     field_mode_effect_flags_ = restored.mode_effect_flags;
     field_auxiliary_flags_ = restored.auxiliary_flags;
     field_render_effect_flags_ = restored.render_effect_flags;
@@ -9604,6 +9677,8 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     notebook_contacts_flags_ = restored.contacts_flags;
     notebook_referral_flags_ = restored.referral_flags;
     notebook_shadowrunner_flags_ = restored.shadowrunner_flags;
+    field_heat_level_ = restored.heat_level;
+    field_strike_team_counter_ = restored.strike_team_counter;
     field_entity_action_phase_roll_counters_ =
         restored.action_phase_roll_counters;
     field_world_frame_counter_ = restored.world_frame_counter;
@@ -11694,6 +11769,14 @@ bool FieldSceneRuntime::bootstrap(
     field_funds_ = restored_field_state == nullptr
                        ? std::optional<std::uint32_t>{0x14U}
                        : std::nullopt;
+    // The cold New Game path begins with zeroed work RAM. Restored snapshots
+    // carry these bytes when known; older saves remain unresolved.
+    field_heat_level_ = restored_field_state == nullptr
+        ? std::optional<std::uint8_t>{0U}
+        : std::nullopt;
+    field_strike_team_counter_ = restored_field_state == nullptr
+        ? std::optional<std::uint8_t>{0U}
+        : std::nullopt;
     field_runner_feature_flags_ =
         restored_field_state == nullptr
             ? std::optional<std::uint8_t>{0U}
@@ -11862,6 +11945,7 @@ bool FieldSceneRuntime::bootstrap(
     field_exit_world_flags_ = 0U;
     // New Game seeds FFFC30 bit 0 at ROM 0x59C48.
     field_mode_flags_ = 1U;
+    field_mode_flags_resolved_ = restored_field_state == nullptr;
     field_mode_effect_flags_ = 0U;
     field_dialogue_flags_ = restored_field_state == nullptr
         ? std::optional<std::uint8_t>{0U}
@@ -11964,7 +12048,10 @@ bool FieldSceneRuntime::bootstrap(
                 return (*notebook_contacts_flags_ & (1U << bit)) != 0U;
             }
             if (name == "lone_star_criminal_record_active") {
-                return field_lone_star_criminal_record_active_;
+                return field_heat_level_.has_value()
+                           ? std::optional<bool>{
+                                 *field_heat_level_ != 0U}
+                           : std::nullopt;
             }
             constexpr std::string_view kPhoneContactPrefix =
                 "vid_phone_contact_";
@@ -12009,6 +12096,9 @@ bool FieldSceneRuntime::bootstrap(
             }
             if (const auto bit = story_fact_bit_index(
                     name, kFieldModeFlagBitPrefix)) {
+                if (!field_mode_flags_resolved_) {
+                    return std::nullopt;
+                }
                 return (field_mode_flags_ & (1U << *bit)) != 0U;
             }
             if (const auto bit = story_fact_bit_index(
@@ -12194,7 +12284,12 @@ bool FieldSceneRuntime::bootstrap(
                 return true;
             }
             if (name == "lone_star_criminal_record_active") {
-                field_lone_star_criminal_record_active_ = value;
+                // The source Vid-Phone command clears the full FFFBFA heat
+                // byte. A boolean true cannot reconstruct its numeric level.
+                if (value) {
+                    return false;
+                }
+                field_heat_level_ = 0U;
                 return true;
             }
             if (const auto bit = story_fact_bit_index(
@@ -12207,6 +12302,9 @@ bool FieldSceneRuntime::bootstrap(
             }
             if (const auto bit = story_fact_bit_index(
                     name, kFieldModeFlagBitPrefix)) {
+                if (!field_mode_flags_resolved_) {
+                    return false;
+                }
                 const auto mask = std::uint32_t{1U} << *bit;
                 field_mode_flags_ = value
                     ? field_mode_flags_ | mask

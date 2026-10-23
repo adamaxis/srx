@@ -121,7 +121,7 @@
         },
         "mako_encounter_boundary": {
           "type": "source_boundary",
-          "reason": "The host could not queue pending list 0x1E628 after the ROM story gates passed. The later FFE104 callback dispatch, result-state changes, and result page remain incomplete."
+          "reason": "The host could not queue pending list 0x1E628 after the ROM story gates passed."
         },
         "resume_club_route": {
           "type": "terminal",
@@ -135,6 +135,44 @@
         "payment_boundary": {
           "type": "source_boundary",
           "reason": "The native wallet service did not return a payment result for the Club Penumbra fee."
+        }
+      }
+    },
+    "club_penumbra.mako_activity_result": {
+      "entryNode": "apply_callback",
+      "speakerId": "club_penumbra_narrator",
+      "textProfile": "club.penumbra",
+      "provenance": {
+        "romAddresses": [
+          "0x53FFC", "0xAB02", "0x1F1E0", "0xF4CA8", "0xF98FA"
+        ],
+        "scope": "club_penumbra_mako_actor_list_outcome"
+      },
+      "nodes": {
+        "apply_callback": {
+          "type": "action",
+          "actionId": "field.apply_mako_callback",
+          "results": {
+            "applied": "result_page",
+            "service_unavailable": "result_boundary"
+          },
+          "evidence": "ROM callback 0x53FFC applies the Mako result after 0xAB02 completes the four-member FFE177 count."
+        },
+        "result_page": {
+          "type": "page",
+          "eventId": "mako_result",
+          "speakerId": "club_penumbra_narrator",
+          "next": "return_to_field",
+          "evidence": "ROM descriptor 0xF4CA8 points to text 0xF98FA."
+        },
+        "result_boundary": {
+          "type": "source_boundary",
+          "reason": "The Mako callback's heat, FFFC30, Strike Team progression, party, or Notebook state is unavailable in this restored session."
+        },
+        "return_to_field": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" },
+          "evidence": "The source callback returns D6=-1 after opening the Mako result descriptor."
         }
       }
     }

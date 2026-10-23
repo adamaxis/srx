@@ -2099,10 +2099,14 @@ private:
     // Shadowrunners. Fresh New Game seeds Contacts to 0x1C7F at 0x59C48;
     // a loaded save restores the full FFFC2C longword when available.
     std::optional<std::uint32_t> notebook_contacts_flags_ = 0x1C7FU;
-    // ROM FFFBFA: Henry and Chillicut clear Lone Star's criminal-record byte
-    // after a successful Vid-Phone deletion service. Save restoration does not
-    // currently publish this source byte, so retain the unresolved boundary.
-    std::optional<bool> field_lone_star_criminal_record_active_ = std::nullopt;
+    // FFFBFA is the numeric Lone Star heat level (0..8), read by encounters
+    // and cleared by the Vid-Phone record deletion service. Older host saves
+    // do not contain it, so restored sessions keep the source value unknown.
+    std::optional<std::uint8_t> field_heat_level_ = std::nullopt;
+    // FFFBFB advances the Strike Team escalation stage, capped at eight.
+    // It is separate from the actor-transition countdown and remains unknown
+    // when restored from a save that predates this field.
+    std::optional<std::uint8_t> field_strike_team_counter_ = std::nullopt;
     std::optional<std::uint8_t> notebook_referral_flags_ = 0U;
     std::optional<std::uint16_t> notebook_shadowrunner_flags_ = 0U;
     QImage pocket_secretary_background_;
@@ -2295,6 +2299,8 @@ private:
     std::uint32_t field_exit_world_flags_ = 0;
     // Typed counterpart for source FFFC30, separate from FFFC1E and FFFC34.
     std::uint32_t field_mode_flags_ = 1U;
+    // Old host saves omit FFFC30; do not expose its New Game seed as saved data.
+    bool field_mode_flags_resolved_ = true;
     // Typed counterparts for the field story-service registers. These remain
     // session state until the save adapter restores their source facts.
     std::uint32_t field_mode_effect_flags_ = 0;
