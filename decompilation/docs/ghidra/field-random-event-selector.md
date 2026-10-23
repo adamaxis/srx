@@ -123,9 +123,11 @@ Scene-3/event-0 doorman branch in finalizer `0x1FD80`. The extractor indexes
 the same list under the Scene-47 activity-table context, but the source exit
 sequence continues to Scene 17 and the common consumer has no scene transition.
 The Club dialogue graph models the entry checks and both Mako introduction
-pages. It stops at a source boundary before actor allocation and actor-list
-completion, which are not implemented. This is not a random-event selector
-result.
+pages. Its Lua action queues the extracted list before the pages; after the
+source route resumes to Scene 17, the typed field path resolves and publishes
+the four rows from the Scene-47 table context. The four-transition counter,
+callback result, and Qt route QA remain open. This is not a random-event
+selector result.
 
 The linked ROM records confirm this is a Mako story route. Entry descriptor
 `0xF4CBC` points to text `0xF9718` (“Once inside, you inquire about Mako” and

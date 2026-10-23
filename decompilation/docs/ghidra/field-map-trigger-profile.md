@@ -269,7 +269,10 @@ for the 75-nuyen entry fee. The command-0x60 caller is the Club Penumbra
 Scene-3/event-0 finalizer. On the qualifying Mako branch, `0x225D2` clears D6
 after queueing the list, so `0x1FD80` resumes event-table row 0 to Scene 17.
 The common `0x043B6` consumer runs from the field-frame service without a
-scene check; its Scene-47 extractor grouping is not a transition. Scene 54's
+scene check; its Scene-47 extractor grouping is not a transition. The Lua Club
+graph now stages a typed pending-list request before its introduction pages;
+the Scene-17 actor initialization resolves the four rows through the Scene-47
+table grouping and publishes them in Scene 17. Scene 54's
 six actors come from the separate default list at
    `FFDDF0`. The marker-1 route with
    `FFE162` clear does not replace `FFE120`. The Club writer's source route

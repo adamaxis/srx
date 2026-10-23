@@ -1149,6 +1149,16 @@ FieldSceneRuntime::FieldSceneRuntime(
                 }
                 return "applied";
             }
+            if (service_id == "field.queue_mako_actor_list") {
+                if (field_pending_route_actor_list_.has_value()) {
+                    return std::nullopt;
+                }
+                field_pending_route_actor_list_ =
+                    FieldRoutePendingActorList::club_penumbra_mako;
+                this->source_boundary(
+                    "field.world_activity.club_penumbra_mako_list_queued");
+                return "queued";
+            }
             constexpr std::string_view kRunnerTripletPrefix =
                 "runner.adjust_source_byte_triplet_";
             if (service_id.rfind(kRunnerTripletPrefix, 0U) == 0U) {
@@ -3913,7 +3923,27 @@ void FieldSceneRuntime::initialize_default_field_actors(
             source_boundary("field.world_activity.pending_actor_list_queued");
         }
     };
-    if (field_pending_mode_transition_actor_list_.has_value()) {
+    if (field_pending_route_actor_list_.has_value() &&
+        scene_reference == 17U) {
+        const auto pending_route_list = *field_pending_route_actor_list_;
+        field_pending_route_actor_list_.reset();
+        const auto list_id =
+            pending_route_list ==
+                    FieldRoutePendingActorList::club_penumbra_mako
+                ? std::string_view{"pending_list_1e628"}
+                : std::string_view{};
+        // The extractor records this reusable source list in Scene 47's
+        // activity table. The ROM's 0x43B6 consumer drains FFE120 without a
+        // scene check; the Club finalizer enters Scene 17 before that pass.
+        auto actors = list_id.empty()
+            ? std::optional<
+                  std::vector<scripting::ScriptWorldActivityActor>>{}
+            : game_scripts_.world_activity_actors_for_list_id(
+                  47U, list_id);
+        queue_pending_actor_list(
+            std::move(actors),
+            "field.world_activity.club_penumbra_mako_list_unresolved");
+    } else if (field_pending_mode_transition_actor_list_.has_value()) {
         const auto list_id = field_mode_pending_actor_list_id(
             *field_pending_mode_transition_actor_list_);
         auto actors = list_id.empty()
@@ -11743,6 +11773,7 @@ bool FieldSceneRuntime::bootstrap(
     field_pending_mode_transition_scene_.reset();
     field_pending_mode_transition_spawn_.reset();
     field_pending_mode_transition_actor_list_.reset();
+    field_pending_route_actor_list_.reset();
     field_world_activity_state_ = WorldActivityState{};
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     world_activity_routine_state_ = WorldActivityRoutineState{};

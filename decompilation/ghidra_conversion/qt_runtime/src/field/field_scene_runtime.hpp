@@ -1381,6 +1381,10 @@ private:
         vid_phone,
     };
 
+    enum class FieldRoutePendingActorList : std::uint8_t {
+        club_penumbra_mako,
+    };
+
     struct DefaultFieldActorPresentation;
     struct DefaultActorSpriteView;
     FieldInteractionAdvanceResult advance_field_interaction(
@@ -2208,6 +2212,8 @@ private:
     std::optional<SceneRunnerPosition> field_pending_mode_transition_spawn_;
     std::optional<FieldModePendingActorList>
         field_pending_mode_transition_actor_list_;
+    std::optional<FieldRoutePendingActorList>
+        field_pending_route_actor_list_;
     std::int8_t field_indexed_title_service_result_ = 0;
     // FFDD64: 0x53A78 stores the index of the trigger service it dispatches.
     // 0x2196C sets that bit of FFFC1E (field_exit_world_flags_). Lua reads

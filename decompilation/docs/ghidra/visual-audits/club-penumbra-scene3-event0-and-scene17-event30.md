@@ -30,14 +30,15 @@ list.
 
 The entity route opens a named JSON/Lua graph for the doorman prompt, the
 Reputation threshold, rejection pages, and 75-nuyen payment. If the separate
-Mako story gates pass, the graph shows the two ROM Mako introduction pages,
-then stops at an explicit source boundary because native actor allocation and
-the actor-list completion callback remain unimplemented. No Qt route QA has
-been run for this new graph. The extractor indexes the pending list's actor
-rows under Scene 47's activity table, but the traced Club route reaches Scene
-17 before the common list consumer drains it. That table grouping does not
-assign a Scene-47 transition. See the [field random-event
-audit](../field-random-event-selector.md).
+Mako story gates pass, Lua requests the pending actor list before presenting
+the two ROM introduction pages. The typed field service carries that request
+through the source-route transition; Scene 17 resolves the four extracted
+rows from their Scene-47 activity-table grouping and publishes them in the
+destination scene. The host does not yet count the four ROM behavior
+transitions or run callback `0x53FFC`, so the result-state changes and Mako
+result page remain open. No Qt route QA has been run for this graph. The
+Scene-47 table grouping does not assign a Scene-47 transition. See the [field
+random-event audit](../field-random-event-selector.md).
 
 ## Pending-list actor transitions and result callback
 
@@ -62,9 +63,10 @@ runner bytes at `FF018D`, `FF028D`, and `FF038D`, sets `FFFC1E` bit 11, clears
 `FFFC30` bits 20 and 21 and sets bit 24, then clears `FFFC38` bit 17. It also
 increments `FFFBFB` up to 8 through `0x1F1E0`. Finally it runs the shared mode
 exit service with resources `0x122000` and descriptor `0xF4CA8` (text
-`0xF98FA`, Mako lying unconscious), then returns D6=-1. The ROM callback is
-now source-traced; native actor transitions, this delayed story outcome, and
-its route QA are still open.
+`0xF98FA`, Mako lying unconscious), then returns D6=-1. The native field path
+now carries this route's extracted actor list into Scene 17 and publishes its
+four actor records. The ROM transition counter, delayed story outcome, result
+page, and route QA are still open.
 
 ## Scene-17 contact
 
@@ -99,9 +101,9 @@ it marks Mako defeated and opens descriptor
 `0xF4CA8` / text `0xF98FA`. The menu caller is now linked to the Club
 Penumbra Scene-3/event-0 finalizer. The finalizer permits row 0 to reach Scene
 17, and the next common world-frame service drains the queued list there; the
-Scene-47 extraction context is not a destination. Native actor allocation and
-the timeout callback remain open. Keep this separate from the traced
-scene-17/event-30 generic contact.
+host resolves the rows through the Scene-47 extraction context and publishes
+them in Scene 17. The timeout counter and callback remain open. Keep this
+separate from the traced scene-17/event-30 generic contact.
 
 ## Verification boundary
 

@@ -10,7 +10,7 @@
           "0x1FD80", "0x2013A", "0x110C7A", "0x1148F8", "0x10438A",
           "0x225B6", "0x11132E", "0x111316", "0x114BC8", "0x114C72",
           "0x114A88", "0x225D2", "0x114AC9", "0x114B80", "0x22622",
-          "0x43B6", "0x1F246", "0xF4CBC", "0xF9718", "0xF4CD0",
+          "0x1E628", "0x43B6", "0x1F246", "0xF4CBC", "0xF9718", "0xF4CD0",
           "0xF9788", "0x53FFC", "0xAB02", "0x1DBAA", "0x59C34",
           "0x1F1E0", "0xF4CA8", "0xF98FA", "0x1FED2", "0x18A6FC"
         ],
@@ -96,6 +96,15 @@
           "fallback": "resume_club_route",
           "evidence": "ROM command 0x60 writes pending list 0x1E628 only when story bit 10 is set, bit 11 is clear, and FFFC30 bit 21 or FFFC38 bit 3 is set."
         },
+        "queue_mako_actor_list": {
+          "type": "action",
+          "actionId": "field.queue_mako_actor_list",
+          "results": {
+            "queued": "mako_intro",
+            "service_unavailable": "mako_encounter_boundary"
+          },
+          "evidence": "The qualifying command-0x60 path writes FFE120=0x1E628 before the two Mako dialogue pages."
+        },
         "mako_intro": {
           "type": "page",
           "eventId": "mako_intro",
@@ -107,17 +116,17 @@
           "type": "page",
           "eventId": "mako_noticed",
           "speakerId": "club_penumbra_narrator",
-          "next": "mako_encounter_boundary",
+          "next": "resume_club_route",
           "evidence": "The following descriptor 0xF4CD0 points to text 0xF9788, where Mako notices the player."
         },
         "mako_encounter_boundary": {
           "type": "source_boundary",
-          "reason": "The ROM queues list 0x1E628 before continuing through the Scene-3/event-0 row-0 transition to Scene 17. The shared 0x43B6 service drains it there, sets FFE177=4, and installs callback 0x53FFC. At 0xAB02 eligible actor behavior transitions decrement FFE177; reaching zero publishes and dispatches the callback, which adds 2 heat capped at 8 and 2 Karma per runner, updates the Mako story flags and Strike Team counter, then opens result descriptor 0xF4CA8 with resources 0x122000. The 0x1DBAA call separately arms FFDF86. Native actor allocation, transition counting, and callback outcome are not implemented yet."
+          "reason": "The host could not queue pending list 0x1E628 after the ROM story gates passed. The field actor-transition counter and delayed callback outcome remain incomplete."
         },
         "resume_club_route": {
           "type": "terminal",
           "outcome": { "type": "resume_source_route" },
-          "evidence": "Without the Mako activity gates, the finalizer resumes the event-table route to field scene 17."
+          "evidence": "The finalizer resumes the event-table route to field scene 17. On the Mako branch, the pending actor list is queued before the two introduction pages and is consumed by the shared field-frame actor-list path after scene entry."
         },
         "stay_outside": {
           "type": "terminal",
