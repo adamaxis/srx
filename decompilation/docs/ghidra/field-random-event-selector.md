@@ -896,7 +896,7 @@ The disturbance handlers at `0x20EFA`, `0x20F42`, and `0x2115C` make the same FF
 
 The story choice at `0x21BE4` advances this shared counter and queues two Strike Team actors. The low-stage disturbance routes differ: the urban continuation returns explicit Renraku attack text, while the wilderness continuation can choose the creature packs listed above. The conditional event patrols above are independent of the still-untraced global wanted-state patrol logic.
 
-The typed dialogue action now applies the capped counter increment when Boris's Brother? choice selects command `0x2C`. Its actor-list placement and world-effect/combat handoff remain a Scene-2 source boundary: `0x1D6FD0` has no extracted Scene-2 placement rows in `world-activity-actors.tsv`, and the later event-list coordinates are not used as substitutes.
+The typed dialogue action now applies the capped counter increment when Boris's Brother? choice selects command `0x2C`. Its actor-list placement and world-effect/combat handoff remain a Scene-2 source boundary: `0x1D6FD0` has no extracted Scene-2 placement rows in `world-activity-actors.tsv`, and the later event-list coordinates are not used as substitutes. The ROM list at `0x1D6FD0` contains template pointer `0x001D6AFA` twice, then a null sentinel at `0x1D6FD8`; `0x1D6AFA` matches the extracted Strike Team profile in pending list `0x1E628`.
 
 ### Complete enabled dialogue-event selector coverage
 

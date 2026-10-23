@@ -20,6 +20,10 @@ now applies that shared typed counter update before retaining a source boundary
 for the unconverted actor-list/world-effect/combat handoff. The extracted
 world-activity actor catalog has no Scene-2 placement records for list
 `0x1D6FD0`, so the later event-list placement data is not being substituted.
+The ROM list itself contains `0x001D6AFA` twice and then a null sentinel at
+`0x1D6FD8`; template `0x1D6AFA` matches the extracted Strike Team profile in
+pending list `0x1E628`. Composition is therefore known, while Scene-2 placement
+and combat completion remain open.
 Commands `0x2D`-`0x2F` and their item-purchase return paths remain outside this
 implementation.
 
