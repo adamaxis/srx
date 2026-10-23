@@ -96,15 +96,17 @@ Scene IDs below are ROM field-scene IDs. The tables cover the field random-event
 | Renraku Security prompt, handler `0x210E4` | Scenes `35-40`; sum `4` | Its follow-up dispatches to `0x24936` and queues one corporate-guard template from `0x1D705C`. Keep it separate from the Strike Team event. |
 | Scene-47 mode-`0x13` lists (Cave 4 guide cross-reference) | Scene `47`; lists `0x1E5C4` and `0x1E628` | One list has one Strike Team, two bodyguards, and a pedestrian; the other has three Strike Teams and a corporate guard. These ROM lists match Mike's Cave 4 map note about a Renraku strike team; the cave name is guide cross-reference evidence, not a ROM label. They are separate from the random disturbance and the scene-35-40 selector outcomes. |
 
-A separate source path also selects list `0x1E628`. ROM code at `0x225D2`,
-named by a pointer-table word at `0x12CE34` but absent from the exported
-disassembly, debits 75 nuyen when available, then requires FFFC1E bit 10 set,
-bit 11 clear, and either FFFC30 bit 21 or FFFC38 bit 3. It writes
+A separate source path also selects list `0x1E628`. Prompt command `0x60`
+dispatches through table `0x12CCB4` at `0x1F57C`; its entry at `0x12CE34`
+points to raw-ROM code `0x225D2`, which is absent from the exported
+disassembly. It debits 75 nuyen when available, then requires FFFC1E bit 10
+set, bit 11 clear, and either FFFC30 bit 21 or FFFC38 bit 3. It writes
 `0x1E628` to `FFE120`, selects resource profile `0x122000`, uses stream
 `0xF4CBC`, and sets the field-exit abort marker. The `0x43B6` list consumer
-then installs timeout callback `0x53FFC`; that completion path marks Mako
-defeated. The active scene/event and caller for `0x225D2` remain unidentified,
-so this path is not assigned to Scene 47 or Scene 54.
+installs timeout callback `0x53FFC` when it drains this pointer; that
+completion path marks Mako defeated. The prompt record that emits command
+`0x60` and its active scene/event remain unidentified, so this path is not
+assigned to Scene 47 or Scene 54.
 
 The Strike Team counter is advanced by dispatch command `0x2C` at `0x21BE4`.
 That handler increments the byte at `FFFBFB`, caps it at `8` through

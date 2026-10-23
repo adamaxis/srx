@@ -197,9 +197,10 @@ in mode 3, and the same active record then decrements `FFE177`. The six rows
 match the initial count. At zero, service records reset and `FFE12E` is
 dispatched and cleared if installed. Initializers `0x2A32`/`0x2A44` clear
 `FFE12E`; direct assignments in `0x043B6` install handlers only for pending
-lists `0x1E628` and `0x1E5C4`. A raw ROM code gap at `0x22622` sets
-`FFE120=0x1E628` after a 75-nuyen debit and story gates; its caller and active
-scene are not identified, so its relation to Tarislar is open. Scene 54's six
+lists `0x1E628` and `0x1E5C4`. Prompt command `0x60` can reach a raw ROM code
+gap at `0x225D2`, which sets `FFE120=0x1E628` at `0x22622` after a 75-nuyen
+debit and story gates; the prompt record and active scene are not identified,
+so its relation to Tarislar is open. Scene 54's six
 actors come from the separate default list at `FFDDF0`, and its marker-1 route
 with `FFE162` clear does not
 replace `FFE120`. The selector takes the Scene-54 mode-3 branch and bypasses

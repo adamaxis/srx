@@ -261,9 +261,10 @@ The source path is:
    the activity, and clears `FFE12E`. Initializers `0x2A32`/`0x2A44` clear
    `FFE12E`; the direct assignments in `0x043B6` install handlers only when
    `FFE120` names pending list `0x1E628` or `0x1E5C4`. Raw ROM code at
-   `0x22622` directly writes `0x1E628` after a successful 75-nuyen debit and
-   its FFFC1E/FFFC30/FFFC38 story gates; its active scene/event remains
-   unidentified. Scene 54's six actors come from the separate default list at
+   `0x22622`, reached by prompt command `0x60` through `0x1F57C`, directly
+   writes `0x1E628` after a successful 75-nuyen debit and its
+   FFFC1E/FFFC30/FFFC38 story gates; the prompt record and active scene/event
+   remain unidentified. Scene 54's six actors come from the separate default list at
    `FFDDF0`. The marker-1 route with
    `FFE162` clear does not replace `FFE120`; whether a pending pointer can
    carry into its first service pass remains unresolved; the `0x22622` writer
