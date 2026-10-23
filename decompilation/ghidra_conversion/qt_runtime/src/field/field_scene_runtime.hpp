@@ -1379,6 +1379,7 @@ private:
         elevator,
         taxi,
         vid_phone,
+        dialogue_scene_entry,
     };
 
     enum class FieldRoutePendingActorList : std::uint8_t {
@@ -2216,6 +2217,9 @@ private:
     std::optional<std::uint16_t> field_taxi_pending_destination_;
     bool field_phone_transition_active_ = false;
     std::optional<std::uint16_t> field_phone_pending_destination_;
+    bool field_dialogue_scene_transition_active_ = false;
+    std::optional<std::uint16_t>
+        field_dialogue_scene_pending_destination_;
     std::optional<std::uint16_t> field_mode_entry_destination_scene_;
     std::optional<std::uint16_t> field_pending_mode_transition_scene_;
     std::optional<SceneRunnerPosition> field_pending_mode_transition_spawn_;

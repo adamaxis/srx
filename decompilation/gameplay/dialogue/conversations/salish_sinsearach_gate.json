@@ -337,8 +337,9 @@
           "evidence": "The no-fare response list 0x0F5AC0 begins with ROM text at 0x0F7152."
         },
         "fare_no_return": {
-          "type": "source_boundary",
-          "reason": "The ROM caller is now traced: the Scene-9 gate finalizer returns through direct Scene-9 re-entry. The host graph still needs a typed same-scene return outcome after the No reply at 0x0F7152."
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" },
+          "evidence": "After the No reply at 0x0F7152, the Scene-9 gate finalizer returns D6=-1; the field loop directly re-enters the selected Scene 9 mode."
         },
         "charge_copt_fare": {
           "type": "action",
@@ -354,7 +355,7 @@
           "type": "page",
           "eventId": "fare_paid",
           "speakerId": "salish_sinsearach_narrator",
-          "next": "fare_destination_boundary"
+          "next": "fare_enter_scene_6"
         },
         "fare_insufficient": {
           "type": "page",
@@ -363,16 +364,22 @@
           "next": "fare_insufficient_return"
         },
         "fare_insufficient_return": {
-          "type": "source_boundary",
-          "reason": "Command 0x38 selects the short-wallet text at 0x11B51D; the ROM caller then directly re-enters Scene 9. The host graph still needs a typed same-scene return outcome."
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" },
+          "evidence": "Command 0x38 selects short-wallet text at 0x11B51D; the Scene-9 gate finalizer returns D6=-1 and the field loop re-enters Scene 9."
         },
         "fare_wallet_boundary": {
           "type": "source_boundary",
           "reason": "The typed field wallet is unavailable, so command 0x38 cannot make its source funds comparison."
         },
-        "fare_destination_boundary": {
-          "type": "source_boundary",
-          "reason": "Payment and the paid-flight text at 0x11B450 are modeled. ROM command 0x38 initializes mode 6; the gate caller directly re-enters numeric Scene 6 with its default profile. The typed host scene-entry outcome remains unwired."
+        "fare_enter_scene_6": {
+          "type": "terminal",
+          "outcome": {
+            "type": "enter_field_scene",
+            "sceneId": 6,
+            "arrivalId": "salish_sinsearach_copt"
+          },
+          "evidence": "After the paid-flight text at 0x11B450, command 0x38 selects mode 6 through 0x136DE. The Scene-9 gate finalizer returns D6=-1 and the field loop enters numeric Scene 6 through its default profile."
         },
         "frosty_harlequin_story_pages": {
           "type": "terminal",

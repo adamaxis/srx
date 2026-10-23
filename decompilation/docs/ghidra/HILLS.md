@@ -1029,20 +1029,20 @@ highway flight, but the numeric destination is the only ROM-backed scene
 identity established here. Lua owns the wallet action; no ROM-address
 interpreter or second wallet state was added.
 
-Debug/Release `shadowrun_gameplay_script_runtime_qa` checks both roots, No and
-short-wallet pages with unchanged funds and explicit host-transition
-boundaries, the exact 1,000-nuyen debit, and the typed boundary after the
-paid-flight page. Debug/Release
-`shadowrun_ghidra_conversion_qt_field_sinsearach_gate_fare_physical_entry_qa`
+`shadowrun_gameplay_script_runtime_qa` now expects typed `continue_in_place`
+outcomes after No and insufficient funds, and `enter_field_scene` for Scene 6
+after the paid-flight page. Those updated assertions have not been rerun in
+this pass. The fare physical-entry QA was previously run in Debug/Release. It
 uses ordinary Up input to reach record 230, selects Later and Yes, verifies
 the 999-nuyen balance is unchanged, and writes full-frame offer and result
 captures under `build/conversion/qt/{debug,release}/qt_runtime/`, including
 `field-sinsearach-gate-fare-physical-entry-qa/actual.bmp`.
-The ROM trace now resolves the paid destination as numeric Scene 6 and its
-default profile anchors, and resolves the refusal/short-wallet branches as
-Scene-9 direct re-entry. The typed host handoff for those branches and the
-paid Scene-6 entry is still pending, as is the exact active-actor position
-after profile selection. The overall gate hill remains partial. No independent
-Genesis encounter frame has been identified; these captures test the
-converted route and renderer, not Genesis visual fidelity. See the
+The ROM trace resolves the paid destination as numeric Scene 6 and its default
+profile anchors, and resolves the refusal/short-wallet branches as Scene-9
+direct re-entry. The Lua outcomes and typed Qt destination-transition route
+are now wired, but the updated script assertions and paid physical route have
+not been verified in this pass. The exact active-actor position after profile
+selection also remains open. The overall gate hill remains partial. No
+independent Genesis encounter frame has been identified; these captures test
+the converted route and renderer, not Genesis visual fidelity. See the
 [story-page source audit](cinematic-story-pages-source-audit.md).

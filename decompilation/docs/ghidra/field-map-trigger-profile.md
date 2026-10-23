@@ -306,9 +306,11 @@ return/fare prompts. Command 0x38 models the 1,000-nuyen comparison, short
 wallet response, and paid-flight page. ROM tracing resolves the refusal and
 short-wallet branches to Scene-9 direct re-entry; successful payment sets mode
 6 and enters numeric Scene 6, whose default profile anchors are documented in
-the [HILLS index](HILLS.md). The typed host transitions remain unwired, and no
-scene-name claim is made from the extracted map. These internal captures are
-not independent visual proof.
+the [HILLS index](HILLS.md). Typed Lua outcomes and the Qt destination route
+are wired; the updated script assertions and paid physical route still need
+verification, and the controlled runner's exact post-profile position is
+unresolved. No scene-name claim is made from the extracted map. These internal
+captures are not independent visual proof.
 Tarislar event-7 carried `FFE162` state and scene-54 completion/return also
 remain unresolved. The known type-3 producer's three offer targets exclude
 Scene 1/event 7; other callers and state carried into that selector have not

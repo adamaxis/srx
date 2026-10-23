@@ -12243,12 +12243,9 @@ int main() {
     if (!expect(sinsearach_fare.status == ScriptTaskStep::Status::completed &&
                     sinsearach_fare.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*sinsearach_fare.dialogue_outcome) ==
-                        DialogueOutcomeType::source_boundary &&
-                    std::get<SourceBoundaryOutcome>(
-                        *sinsearach_fare.dialogue_outcome).reason.find(
-                        "field return") != std::string::npos &&
+                        DialogueOutcomeType::continue_in_place &&
                     sinsearach_fare_funds == 1200U,
-                "Sinsearach No reply lost its unresolved return boundary or charged funds")) {
+                "Sinsearach No reply did not return in place or changed funds")) {
         std::cerr << sinsearach_fare_scripts.failure() << '\n';
         return 18;
     }
@@ -12298,12 +12295,9 @@ int main() {
     if (!expect(sinsearach_fare.status == ScriptTaskStep::Status::completed &&
                     sinsearach_fare.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*sinsearach_fare.dialogue_outcome) ==
-                        DialogueOutcomeType::source_boundary &&
-                    std::get<SourceBoundaryOutcome>(
-                        *sinsearach_fare.dialogue_outcome).reason.find(
-                        "field return") != std::string::npos &&
+                        DialogueOutcomeType::continue_in_place &&
                     sinsearach_fare_funds == 999U,
-                "Sinsearach short-funds page lost its unresolved return boundary or charged funds")) {
+                "Sinsearach short-funds page did not return in place or changed funds")) {
         std::cerr << sinsearach_fare_scripts.failure() << '\n';
         return 18;
     }
@@ -12335,11 +12329,13 @@ int main() {
     if (!expect(sinsearach_fare.status == ScriptTaskStep::Status::completed &&
                     sinsearach_fare.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*sinsearach_fare.dialogue_outcome) ==
-                        DialogueOutcomeType::source_boundary &&
-                    std::get<SourceBoundaryOutcome>(
-                        *sinsearach_fare.dialogue_outcome).reason.find(
-                        "highway scene") != std::string::npos,
-                "Sinsearach paid-flight route did not stop at its unresolved highway transition")) {
+                        DialogueOutcomeType::enter_field_scene &&
+                    std::get<EnterFieldSceneOutcome>(
+                        *sinsearach_fare.dialogue_outcome).scene_id == 6U &&
+                    std::get<EnterFieldSceneOutcome>(
+                        *sinsearach_fare.dialogue_outcome).arrival_id ==
+                        "salish_sinsearach_copt",
+                "Sinsearach paid-flight route did not select numeric Scene 6")) {
         std::cerr << sinsearach_fare_scripts.failure() << '\n';
         return 18;
     }
