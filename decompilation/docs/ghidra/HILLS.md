@@ -448,13 +448,23 @@ bit 6 set. On their qualifying completion path, `0x0AB02` calls `0x16B98`;
 ordinary kind 8 returns without a weighted spawn in mode 3, then `0x0AB02`
 decrements `FFE177` for that record. The six profile rows therefore match the
 initial count. At zero, the service records reset and `FFE12E` is dispatched
-and cleared if installed. Its Scene-54 installer remains unresolved. The
-field-exit orchestrator dispatches run type 3 through `0x1EEDC`'s callback
+and cleared if installed. The only non-clear `FFE12E` stores found in the raw
+ROM are the two pending-list branches in `0x043B6`: list `0x1E628` installs
+`0x53FFC`, and list `0x1E5C4` installs `0x54286`. Scene 54's marker-1 selector
+bypasses its lower `FFE120` list-selection path, so its default actor list does
+not itself install either callback. An inherited matching `FFE120` list at the
+first Scene-54 service pass remains possible but unconnected to this route.
+The field-exit orchestrator dispatches run type 3 through `0x1EEDC`'s callback
 table entry at `0xF3E62` to the `FFE162` writer at `0x1F086`. Its confirmed
 target tuples (Scene 1/event 9, Scene 2/event 9, and Scene 3/event 4) exclude
 Tarislar's Scene 1/event 7, so that pass cannot make a fresh write from the
-accepted target pool. Whether a prior descriptor can carry into the selector
-remains unresolved. Prompt command `0x60` reaches a separate ROM code gap at
+accepted target pool. In the outer loop at `0x075E`, a clear-D6 event below 8
+reaches `0x167AE`; there, any nonzero `FFE162` is copied into `FFE132`, published
+as `FFE120`, cleared at `0x16A62`, and forces Scene 15. Matching type-3 writes
+are consumed in that pass for target event 4 and for event 9 when `FFFC0E` is
+clear. Event 9 with `FFFC0E` set takes `0x2CE0`, which does not consume
+`FFE162`; its later route to Tarislar remains unresolved. Prompt command
+`0x60` reaches a separate ROM code gap at
 `0x225D2`, which sets `FFE120` to `0x1E628` behind a 75-nuyen and story gate.
 The menu node at `0x111316` presents the entry-fee question and places command
 `0x60` in its first choice slot. Adjacent code at `0x225CA` returns that node;

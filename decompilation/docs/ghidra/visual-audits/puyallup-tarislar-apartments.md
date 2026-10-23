@@ -5,16 +5,25 @@ alternate-result pages, repeat information service, and gated tomb departure
 are connected. The adjacent Scene-9 Sinsearach gate route now has a typed
 three-page cinematic catalog, named art, Lua-owned page order, native presenter,
 source-context return, and Debug/Release physical-input QA. Its fare roots and
-wallet branches are modeled through their text pages. ROM tracing resolves
-paid travel to numeric Scene 6 and refusal/short-funds to Scene-9 re-entry, but
-the typed host transitions remain unwired; see the [HILLS index](../HILLS.md)
-and [story-page audit](../cinematic-story-pages-source-audit.md).
+wallet branches are modeled through their text pages. The typed outcomes now
+keep refusal and short-funds in Scene 9 and enter Scene 6 after payment; its
+first profile record places the runner at `(0x1310, 0x0980)`. Debug and Release
+Qt targets build with this route. The updated script-runtime assertions and
+paid physical route have not been run, so the gate hill remains partial. See
+the [HILLS index](../HILLS.md) and [story-page audit](../cinematic-story-pages-source-audit.md).
 The direct `FFE162` producer is now traced at `0x1F086`, the active type-3
-run-entry handler. Its three confirmed offer targets are area/event `1/9`,
-`2/9`, and `3/4`; Scene 1/event 7 is not one of them. Whether another caller
-or carried pointer can reach Tarislar's selector remains open. The Scene-54
-`FFE12E` installer and activity exit route are unresolved. The initial
-`FFE177` count and its six-profile-actor match are source-traced.
+run-entry handler. It writes one of three descriptors only when the active
+target matches the current area/event: `1/9`, `2/9`, or `3/4`. The event-7
+pass cannot create a fresh descriptor from this target pool. A generic
+event-7 selection that reaches `0x167AE` publishes and clears any nonzero
+`FFE162` pointer, then forces Scene 15. A type-3 write is consumed in that
+same outer pass when it reaches `0x167AE`; event 9 with `FFFC0E` nonzero takes
+the alternate `0x2CE0` route, which does not consume the pointer. Whether that
+alternate route can carry the pointer to a later Tarislar selection remains
+open. Scene 54's only traced `FFE12E` installers are the two pending-list
+branches in `0x043B6`; an inherited matching list and the activity exit route
+remain unresolved. The initial `FFE177` count and its six-profile-actor match
+are source-traced.
 
 Mike's RPG Center labels Puyallup map marker 2 “Tarislar Garden Apartments.”
 Its walkthrough places the visit after the Sinsearach trials and meeting
@@ -67,8 +76,11 @@ catalog's source policy explicitly authorizes a correction.
   The native presenter and typed source-context return are implemented, and
   Debug/Release physical-input QA captures the three pages and field return.
   The fare roots `0x39`/`0x3A` and command `0x38` are modeled through their
-  response pages; the typed Scene-9/Scene-6 handoffs remain open. The gate hill
-  remains partial, with no independent Genesis encounter capture.
+  response pages. Refusal and insufficient funds use `continue_in_place`;
+  payment uses `enter_field_scene` for Scene 6, whose first profile record is
+  `(0x1310, 0x0980)`. The host handoffs are wired. Updated script assertions
+  and the paid physical route remain unrun, and no independent Genesis
+  encounter capture exists, so the gate hill remains partial.
 - Ilene prerequisite: Scene-2/event-0 service 19 at `0x543A2` requires story
   bits 18/19 = 1/0, `FFF0D5=0`, `FFFC34` bit 0 clear, and `FFFC38` bit 12 set.
   It arms `FFE182` and leaves event-table row 0's Scene-20 destination live.
@@ -196,8 +208,13 @@ completion, `0x0AB02` calls `0x16B98`; kind 8 returns without a weighted spawn
 in mode 3, and the same active record then decrements `FFE177`. The six rows
 match the initial count. At zero, service records reset and `FFE12E` is
 dispatched and cleared if installed. Initializers `0x2A32`/`0x2A44` clear
-`FFE12E`; direct assignments in `0x043B6` install handlers only for pending
-lists `0x1E628` and `0x1E5C4`. Prompt command `0x60` can reach a raw ROM code
+`FFE12E`; the only non-clear stores found in the raw ROM are the two pending-
+list branches in `0x043B6`, installing `0x53FFC` for list `0x1E628` and
+`0x54286` for list `0x1E5C4`. The default Scene-54 rows do not themselves
+install either callback. A matching inherited `FFE120` list at the first
+Scene-54 service pass remains unresolved. In the zero-count clause, a null
+`FFE12E` skips the callback call.
+Prompt command `0x60` can reach a raw ROM code
 gap at `0x225D2`, which sets `FFE120=0x1E628` at `0x22622` after a 75-nuyen
 debit and story gates; its menu node is identified at `0x111316` and presents
 the 75-nuyen entry-fee question with command `0x60` in the first choice slot.
@@ -214,12 +231,18 @@ calls the handler at `0x1F086`. That handler requires current area/event
 descriptors `0x1D6D4A`, `0x1D6D5E`, or `0x1D6D72` by target area. The confirmed
 offer target pool contains Scene 1/event 9, Scene 2/event 9, and Scene 3/event
 4; none matches Tarislar's Scene 1/event 7. The event-7 pass cannot make a
-fresh write from this pool. Whether a descriptor written earlier can carry
-into the selector remains unresolved. The Club Penumbra writer queues
+fresh write from this pool. In the outer loop at `0x075E`, a clear-D6 event
+below 8 reaches `0x167AE`. That selector publishes any pending `FFE162`
+descriptors through `0x16A26`, clears the pointer at `0x16A62`, and forces
+Scene 15 before normal scene selection. A matching type-3 writer is consumed
+in the same pass when the target is event 4 or event 9 with `FFFC0E` clear.
+Event 9 with `FFFC0E` set instead calls `0x2CE0`, which leaves `FFE162`
+untouched; its later path to Tarislar has not been traced. The Club Penumbra writer queues
 `0x1E628` before its route continues to Scene 17, where the common `0x043B6`
-service drains it; this source path supplies no carry into Scene 54. Whether
-another `FFE120` writer can reach the first Scene-54 service pass remains
-unresolved. No Tarislar connection is established.
+service drains it; this source path supplies no carry into Scene 54. Raw
+direct stores also set `FFE120=0x1E5C4` in separate code at `0x22482` and
+`0x224F2`; no link from either path to Tarislar is established. A carry into
+the Scene-54 service remains unresolved.
 Scene completion and exit destination remain unresolved.
 The event-0 record has raw value `0x00C0`, so `0xB7B8` publishes event 0 in
 `FFFBF9`. In Scene-54 mode 3 it calls `0x1651E`; with D0=0, that helper returns
