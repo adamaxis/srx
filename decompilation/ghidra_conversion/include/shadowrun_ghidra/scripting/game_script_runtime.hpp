@@ -1426,6 +1426,7 @@ struct ScriptNativeOperation {
         actor_walk_heading,
         ui_say,
         ui_story_page,
+        ui_credits_page,
         ui_menu,
         service_call,
     };
@@ -1445,6 +1446,11 @@ struct ScriptNativeOperation {
         std::array<std::uint8_t, 3> ink_rgb{};
     };
     std::optional<StoryPageRequest> story_page;
+    struct CreditsPageRequest {
+        std::string asset_alias;
+        std::string page_id;
+    };
+    std::optional<CreditsPageRequest> credits_page;
     std::optional<ScriptMenuDefinition> menu;
 };
 

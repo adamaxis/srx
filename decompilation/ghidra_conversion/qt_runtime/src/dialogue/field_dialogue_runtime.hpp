@@ -126,9 +126,16 @@ public:
     bool uses_hospital_medical_attention_layout() const noexcept;
 
     void close() noexcept;
-    bool open() const noexcept { return panel_.open || story_page_open_; }
+    bool open() const noexcept {
+        return panel_.open || story_page_open_ || credits_page_open_;
+    }
     const DialoguePanelView& panel() const noexcept { return panel_; }
     const std::string& failure() const noexcept { return failure_; }
+#ifdef SHADOWRUN_QT_QA_DRIVER
+    std::string_view credits_page_id_for_dump() const noexcept {
+        return credits_page_id_;
+    }
+#endif
 
     // This is a host presentation of the source prompt grid. It uses the
     // extracted Genesis font and portrait directly; no full-screen bitmap or
@@ -165,8 +172,11 @@ private:
     bool hosted_choice_list_ = false;
     bool script_task_waiting_ = false;
     bool story_page_open_ = false;
+    bool credits_page_open_ = false;
     std::string story_page_asset_alias_;
     std::string story_page_text_;
+    std::string credits_page_asset_alias_;
+    std::string credits_page_id_;
     std::uint8_t input_lockout_frames_ = 0U;
     std::optional<std::uint8_t> pending_matrix_entry_system_id_;
     std::optional<std::uint8_t> pending_matrix_entry_node_id_;

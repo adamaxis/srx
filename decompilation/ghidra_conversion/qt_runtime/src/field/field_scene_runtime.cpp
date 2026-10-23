@@ -17844,6 +17844,16 @@ bool FieldSceneRuntime::open_spirit_eyes_ritual_for_dump() {
         "salish_spirit_eyes", "present");
 }
 
+bool FieldSceneRuntime::open_tarislar_tomb_credits_for_dump() {
+    if (!ready_) {
+        return false;
+    }
+    // This hook exercises only the recovered panel sequence. It does not
+    // synthesize Scene-55 fight completion or the title-screen return.
+    return field_dialogue_.open_gameplay_task(
+        "tarislar_tomb_credits", "present");
+}
+
 bool FieldSceneRuntime::seed_cyberspace_access_for_dump() {
     if (!ready_) {
         return false;

@@ -3953,6 +3953,42 @@ struct GameScriptRuntime::Impl {
         return lua_yieldk(lua, 0, 0, actor_walk_heading_continuation);
     }
 
+    static int ui_credits_page(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        if (self == nullptr || self->task_state != lua ||
+            self->task_waiting || self->pending_task_operation.has_value() ||
+            self->active_native_operation.has_value()) {
+            if (self != nullptr) {
+                self->bridge_failure =
+                    "game.ui.credits_page must run inside an active task";
+            }
+            lua_pushboolean(lua, 0);
+            return 1;
+        }
+
+        std::string asset_alias;
+        std::string page_id;
+        if (lua_gettop(lua) != 2 ||
+            !read_string(lua, 1, asset_alias) ||
+            !valid_identifier(asset_alias) ||
+            !read_string(lua, 2, page_id) || !valid_identifier(page_id)) {
+            self->bridge_failure =
+                "game.ui.credits_page expects an asset alias and page id";
+            lua_pushboolean(lua, 0);
+            return 1;
+        }
+
+        ScriptNativeOperation operation{};
+        operation.type = ScriptNativeOperation::Type::ui_credits_page;
+        ScriptNativeOperation::CreditsPageRequest request{};
+        request.asset_alias = std::move(asset_alias);
+        request.page_id = std::move(page_id);
+        operation.credits_page = std::move(request);
+        self->pending_task_operation = std::move(operation);
+        self->task_waiting = true;
+        return lua_yieldk(lua, 0, 0, actor_walk_heading_continuation);
+    }
+
     static int services_call(lua_State* lua) {
         auto* self = from_upvalue(lua);
         if (self == nullptr || self->task_state != lua ||
@@ -4184,6 +4220,9 @@ struct GameScriptRuntime::Impl {
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, ui_story_page, 1);
         lua_setfield(state, -2, "story_page");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, ui_credits_page, 1);
+        lua_setfield(state, -2, "credits_page");
         lua_setfield(state, -2, "ui");
         lua_newtable(state);
         lua_pushlightuserdata(state, this);
@@ -10135,7 +10174,9 @@ ScriptTaskStep GameScriptRuntime::complete_native_operation(
          impl_->active_native_operation->type !=
              ScriptNativeOperation::Type::ui_say &&
          impl_->active_native_operation->type !=
-             ScriptNativeOperation::Type::ui_story_page)) {
+             ScriptNativeOperation::Type::ui_story_page &&
+         impl_->active_native_operation->type !=
+             ScriptNativeOperation::Type::ui_credits_page)) {
         return impl_->failed_task(
             "gameplay script task is not waiting for a resumable operation");
     }

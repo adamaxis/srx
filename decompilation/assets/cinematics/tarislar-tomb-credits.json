@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "romAddresses": ["0x5BAC4", "0x5C3B4", "0x5C446"]
+  },
+  "layout": {"x": 64, "y": 16, "columns": 32, "lineHeight": 8, "inkPaletteLine": 3, "inkPaletteIndex": 1, "inkRgb": [255, 255, 255]},
+  "encoding": {"rowBreak": "0x80", "panelEnd": "0xFF"},
+  "pages": [
+    {"id": "opening_and_game_design", "romAddress": "0x5CA92", "topRowOffset": 0, "lines": ["         CREDITS", "        [\\\\\\\\\\\\\\\\", "", "ORIGINAL UNIVERSE CREATION", "      Jordan Weisman", "      Bob Charrette", "        Paul Hume", "        Tom Dowd", "   L. Ross Babcock III", "        Sam Lewis", "       David Wylie", "", "       GAME DESIGN", "        Tony Van", "     John Fulbright", "    Heinrich Michaels", "     Scott Berfield", "", "      PROGRAMMING", "     John Fulbright", "    Heinrich Michaels", ""]},
+    {"id": "additional_programming_and_art", "romAddress": "0x5CBFB", "topRowOffset": 0, "lines": ["  ADDITIONAL PROGRAMMING", "       Bonita Kane", "      Jason Weesner", "      Brian Belfield", "", "      ART DIRECTION", "    Dana Christianson", "", "           ART", "       Dok Whitson", "      Ellis Goodson", "      Rick Schmitz", "       Jeff Remmer", "       Jeff Jonas", "       John Seidel", "      Mark Dobratz", "      Jerry Huber", "      Joe Shoopack", "        John Roy", "     Geoffrey Knobel", "      Brian McMurdo", "        Tom Moon", ""]},
+    {"id": "story_music_and_lead_testing", "romAddress": "0x5CF9B", "topRowOffset": 0, "lines": ["     ORIGINAL STORY", "        Jim Long", "", "        WRITERS", "        Tony Van", "     John Fulbright", "        Jim Long", "      Don McClure", "", "     SOUND AND MUSIC", "       Sam Powell", "", "    CYBERSPACE VOICE", "      Karyn Mason", "", "     ADDITIONAL ART", "       Ernie Chan", "", "      LEAD TESTING", "     Julio Martinez", "       Jeff Todd", "      Casey Grimm", ""]},
+    {"id": "additional_testing_part_1", "romAddress": "0x5CD82", "topRowOffset": 4, "lines": ["   ADDITIONAL TESTING", "", "    Crisi Albertson", "    Dante Anderson", "    Jennifer Brozek", "     Blair Bullock", "       Joe Cain", "     Brian Dawson", "      Marc Dawson", "       Dan Jung", "      Jeff Junio", "      Jason Kuo", "       Max Loeb", "      Jeff Loney", "     Dermot Lyons"]},
+    {"id": "additional_testing_part_2_and_producer", "romAddress": "0x5CE80", "topRowOffset": 3, "lines": ["   ADDITIONAL TESTING", "", "      Mike Madden", "     Heather Meigs", "      Chris Pepper", "     Loran Pudinski", "      Eric Rawlins", "     Ben Szymkowiak", "      Conan Tigard", "      Maria Tuzzo", "       Greg Vogt", "    Christina Watson", "      Stan Weaver", "      David Wood", "", "", "       PRODUCER", "       Tony Van"]}
+  ]
+}

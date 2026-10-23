@@ -275,23 +275,23 @@ with Licourtrix profile `0x121EA4`; its visible response is text `0xFD71E`.
 The callback then runs a 1000-iteration closing animation and five
 controller-advanced credits text panels. Their ordered source blocks begin at
 `0x5CA92`, `0x5CBFB`, `0x5CF9B`, `0x5CD82`, and `0x5CE80`; each uses `0x80` for
-row breaks and ends at `0xFF`. The offline all-assets importer now has a writer
-for their ordered, space-preserving rows at
-`assets/cinematics/tarislar-tomb-credits.json`; that generated asset is pending
-an importer run. Text entry thunks `0x5C472`, `0x5C486`, and `0x5C49A` share a
-top row; `0x5C4AE` and `0x5C4C2` start four and three rows lower. The shared
-text routine at `0xC0DA` advances one row for each `0x80` marker and ends the
-panel at `0xFF`, so the host asset stores relative row offsets instead of
-source VDP addresses. At `0x5C3B4`, `0x5C9D2` is loaded as the target palette
-source for `0x1368`, which copies 32 entries. Palette and font graphics remain
-outside this text asset. The palette fades to black and back to the copied
-target in 17 `0x1342` frame waits per transition. `0x5C446` waits for a
-controller event between panels, and the display-clear helper runs before each
-panel after the first. When the callback returns, the outer loop recognizes
-`0x5BAC4` at `0x0B44` and branches through `0x0BA6`/`0x078A` to the main title
-path. The response's next-record pointer is not consumed by this callback.
-The native fight trigger, credit presenter, and cleanup remain unimplemented;
-this runtime slice has no CTest or actual.bmp, so the hill stays partial.
+row breaks and ends at `0xFF`. The offline all-assets importer emits their
+ordered, space-preserving rows at
+`assets/cinematics/tarislar-tomb-credits.json`; the named host JSON has been
+generated from the ROM and checked in. The `0x5C472`, `0x5C486`, and `0x5C49A`
+thunks pass name-table address `0x2110`; `0x5C4AE` and `0x5C4C2` pass
+`0x2310` and `0x2290`, four and three rows lower. Each selects `D1=$E000`,
+which places the glyphs on palette line 3. The host asset records origin
+`(64,16)` and derives white ink from palette entry 1 of the 64-color block at
+`0x5C9D2`, copied by `0x1368` after `0x5C3B4`. The existing named field font
+provides the glyph mask. Lua owns the page order, and the typed presenter
+draws the rows at the recovered positions. Debug/Release CTest
+`shadowrun_ghidra_conversion_qt_field_tarislar_tomb_credits_presenter_qa`
+captures five distinct panels and `actual.bmp`; this is an internal renderer
+check, not an independent Genesis visual. The 17-step palette fades, 1000-loop
+close animation, panel-clear timing, native fight trigger, and title return
+remain unimplemented. The response's next-record pointer is not consumed by
+this callback, so the hill stays partial.
 The raw `0x00C0` record publishes event 0 in `FFFBF9`. In Scene-54 mode 3,
 `0x1651E` returns carry for D0=0 without changing a map cell; `0xB7B8` then
 sets the projected-interaction countdown described above. The later

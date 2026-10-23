@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "tarislar.tomb.credits": {
+      "entryNode": "credits",
+      "provenance": {
+        "romAddresses": ["0x5BAC4", "0x5C3B4", "0x5C446"],
+        "scope": "scene_55_end_credits_callback"
+      },
+      "nodes": {
+        "credits": {
+          "type": "terminal",
+          "outcome": {
+            "type": "play_cinematic",
+            "cinematicId": "tarislar.tomb.credits",
+            "returnPolicy": "title"
+          }
+        }
+      }
+    }
+  }
+}

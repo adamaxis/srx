@@ -1,5 +1,10 @@
 #include "dialogue_panel_presenter.hpp"
 
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonParseError>
 #include <QPainter>
 #include <QRect>
 #include <QSize>
@@ -8,6 +13,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cmath>
 #include <string_view>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
@@ -17,6 +23,7 @@ bool DialoguePanelPresenter::load_assets(
     failure_.clear();
     portraits_.clear();
     story_page_assets_.clear();
+    credits_assets_.clear();
 
     constexpr std::string_view kPortraitPrefix = "dialogue.portraits.";
     constexpr std::string_view kFieldModePortraitPrefix =
@@ -128,6 +135,112 @@ bool DialoguePanelPresenter::load_assets(
             record.alias,
             image.convertToFormat(QImage::Format_ARGB32_Premultiplied));
     }
+
+    constexpr std::string_view kCreditsAlias =
+        "cinematic.tarislar.tomb.credits";
+    const auto* credits_record = assets.find(kCreditsAlias);
+    if (credits_record == nullptr || credits_record->kind != "json") {
+        failure_ = "Tarislar Tomb credits data asset is unavailable";
+        return false;
+    }
+    QFile credits_file(QString::fromStdWString(
+        credits_record->absolute_path.wstring()));
+    if (!credits_file.open(QIODevice::ReadOnly)) {
+        failure_ = "Tarislar Tomb credits data asset cannot be opened";
+        return false;
+    }
+    QJsonParseError json_error{};
+    const auto credits_document = QJsonDocument::fromJson(
+        credits_file.readAll(), &json_error);
+    if (json_error.error != QJsonParseError::NoError ||
+        !credits_document.isObject()) {
+        failure_ = "Tarislar Tomb credits data asset is invalid JSON";
+        return false;
+    }
+    const auto credits_root = credits_document.object();
+    const auto layout = credits_root.value("layout").toObject();
+    const auto ink = layout.value("inkRgb").toArray();
+    CreditsAsset credits_asset{};
+    credits_asset.origin_x = layout.value("x").toInt(-1);
+    credits_asset.origin_y = layout.value("y").toInt(-1);
+    credits_asset.columns = layout.value("columns").toInt(-1);
+    const auto line_height = layout.value("lineHeight").toInt(-1);
+    const auto palette_line = layout.value("inkPaletteLine").toInt(-1);
+    const auto palette_index = layout.value("inkPaletteIndex").toInt(-1);
+    if (credits_root.value("schemaVersion").toInt(-1) != 1 ||
+        credits_asset.origin_x != 64 || credits_asset.origin_y != 16 ||
+        credits_asset.columns != 32 || line_height != 8 ||
+        palette_line != 3 || palette_index != 1 || ink.size() != 3 ||
+        credits_asset.origin_x + credits_asset.columns * 8 > 320) {
+        failure_ = "Tarislar Tomb credits layout does not match its ROM trace";
+        return false;
+    }
+    for (const auto channel : ink) {
+        if (!channel.isDouble() || channel.toInt(-1) < 0 ||
+            channel.toInt(-1) > 255 ||
+            std::floor(channel.toDouble()) != channel.toDouble()) {
+            failure_ = "Tarislar Tomb credits ink is outside RGB8 range";
+            return false;
+        }
+    }
+    credits_asset.ink = QColor(ink[0].toInt(), ink[1].toInt(),
+                               ink[2].toInt());
+
+    const auto pages = credits_root.value("pages").toArray();
+    if (pages.size() != 5) {
+        failure_ = "Tarislar Tomb credits asset must contain five panels";
+        return false;
+    }
+    for (const auto value : pages) {
+        if (!value.isObject()) {
+            failure_ = "Tarislar Tomb credits panel is malformed";
+            return false;
+        }
+        const auto page_object = value.toObject();
+        CreditsPage page{};
+        page.id = page_object.value("id").toString().toStdString();
+        const auto top_row_offset =
+            page_object.value("topRowOffset").toInt(-1);
+        const auto source_address =
+            page_object.value("romAddress").toString();
+        const auto lines = page_object.value("lines").toArray();
+        if (page.id.empty() || top_row_offset < 0 ||
+            top_row_offset > 27 || source_address.isEmpty() ||
+            !source_address.startsWith("0x") || lines.isEmpty() ||
+            top_row_offset + lines.size() > 28) {
+            failure_ = "Tarislar Tomb credits panel metadata is invalid";
+            return false;
+        }
+        if (std::find_if(credits_asset.pages.begin(),
+                         credits_asset.pages.end(),
+                         [&page](const CreditsPage& candidate) {
+                             return candidate.id == page.id;
+                         }) != credits_asset.pages.end()) {
+            failure_ = "Tarislar Tomb credits panel id is duplicated";
+            return false;
+        }
+        page.top_row_offset = static_cast<std::uint8_t>(top_row_offset);
+        page.lines.reserve(static_cast<std::size_t>(lines.size()));
+        for (const auto line_value : lines) {
+            if (!line_value.isString()) {
+                failure_ = "Tarislar Tomb credits row is not text";
+                return false;
+            }
+            const auto line = line_value.toString().toStdString();
+            if (line.size() > static_cast<std::size_t>(credits_asset.columns) ||
+                std::any_of(line.begin(), line.end(), [](const char character) {
+                    const auto byte = static_cast<unsigned char>(character);
+                    return byte < 0x20U || byte > 0x7EU;
+                })) {
+                failure_ = "Tarislar Tomb credits row exceeds its source layout";
+                return false;
+            }
+            page.lines.push_back(line);
+        }
+        credits_asset.pages.push_back(std::move(page));
+    }
+    credits_assets_.emplace(std::string(kCreditsAlias),
+                            std::move(credits_asset));
     return true;
 }
 
@@ -135,6 +248,17 @@ bool DialoguePanelPresenter::has_story_page_asset(
     const std::string_view asset_alias) const {
     return story_page_assets_.find(std::string(asset_alias)) !=
            story_page_assets_.end();
+}
+
+bool DialoguePanelPresenter::has_credits_page(
+    const std::string_view asset_alias,
+    const std::string_view page_id) const {
+    const auto asset = credits_assets_.find(std::string(asset_alias));
+    return asset != credits_assets_.end() &&
+           std::find_if(asset->second.pages.begin(), asset->second.pages.end(),
+                        [page_id](const CreditsPage& page) {
+                            return page.id == page_id;
+                        }) != asset->second.pages.end();
 }
 
 void DialoguePanelPresenter::draw_pixel_text(
@@ -332,6 +456,32 @@ void DialoguePanelPresenter::paint_story_page(
             break;
         }
         start = separator + 1U;
+    }
+}
+
+void DialoguePanelPresenter::paint_credits_page(
+    QPainter& painter, const std::string_view asset_alias,
+    const std::string_view page_id) const {
+    const auto asset = credits_assets_.find(std::string(asset_alias));
+    if (asset == credits_assets_.end()) {
+        return;
+    }
+    const auto page = std::find_if(
+        asset->second.pages.begin(), asset->second.pages.end(),
+        [page_id](const CreditsPage& candidate) {
+            return candidate.id == page_id;
+        });
+    if (page == asset->second.pages.end()) {
+        return;
+    }
+
+    painter.fillRect(QRect(0, 0, 320, 224), Qt::black);
+    for (std::size_t row = 0U; row < page->lines.size(); ++row) {
+        const auto y = asset->second.origin_y +
+            (static_cast<int>(page->top_row_offset) +
+             static_cast<int>(row)) * 8;
+        draw_pixel_text(painter, asset->second.origin_x, y, page->lines[row],
+                        asset->second.columns, 1, asset->second.ink);
     }
 }
 

@@ -1257,6 +1257,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_spirit_eyes_physic
                  --field-spirit-eyes-physical-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-spirit-eyes-physical-entry-qa")
 
+# Present the five ROM-ordered Tarislar Tomb credit panels through Lua and
+# capture their typed, full-screen host presentation. The fight trigger and
+# return-to-title transition remain explicit source boundaries.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_tomb_credits_presenter_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-tomb-credits-presenter-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-tomb-credits-presenter-qa")
+
 # Walk into the Sinsearach village gate through Scene-9 record 230/event 0,
 # follow the Lady Gillian/Frosty route, and capture its source-backed pages.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_sinsearach_gate_physical_entry_qa

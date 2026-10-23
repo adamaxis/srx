@@ -376,8 +376,11 @@ bool FieldDialogueRuntime::present_script_operation(
     active_script_menu_.reset();
     hosted_choice_list_ = false;
     story_page_open_ = false;
+    credits_page_open_ = false;
     story_page_asset_alias_.clear();
     story_page_text_.clear();
+    credits_page_asset_alias_.clear();
+    credits_page_id_.clear();
     script_task_waiting_ = true;
     if (operation.type == scripting::ScriptNativeOperation::Type::ui_say) {
         if (!operation.dialogue.has_value()) {
@@ -504,6 +507,27 @@ bool FieldDialogueRuntime::present_script_operation(
         story_page_asset_alias_ = story_page.asset_alias;
         story_page_text_ = *text;
         story_page_open_ = true;
+        input_lockout_frames_ = 0U;
+        return true;
+    }
+    if (operation.type ==
+        scripting::ScriptNativeOperation::Type::ui_credits_page) {
+        if (!operation.credits_page.has_value()) {
+            return open_source_boundary(
+                "dialogue script emitted an incomplete credits-page request");
+        }
+        const auto& credits_page = *operation.credits_page;
+        if (!presenter_.has_credits_page(credits_page.asset_alias,
+                                         credits_page.page_id)) {
+            return open_source_boundary(
+                "cinematic credits-page asset is unavailable: " +
+                credits_page.asset_alias + ":" + credits_page.page_id);
+        }
+        panel_ = DialoguePanelView{};
+        panel_.source_complete = true;
+        credits_page_asset_alias_ = credits_page.asset_alias;
+        credits_page_id_ = credits_page.page_id;
+        credits_page_open_ = true;
         input_lockout_frames_ = 0U;
         return true;
     }
@@ -814,7 +838,9 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
                scripting::ScriptNativeOperation::Type::ui_say &&
            !panel_.has_more) ||
           active_script_operation_->type ==
-              scripting::ScriptNativeOperation::Type::ui_story_page)) ||
+              scripting::ScriptNativeOperation::Type::ui_story_page ||
+          active_script_operation_->type ==
+              scripting::ScriptNativeOperation::Type::ui_credits_page)) ||
         (!active_script_operation_.has_value() &&
          !active_script_menu_.has_value() &&
          panel_.kind != DialoguePanelKind::source_boundary &&
@@ -836,7 +862,9 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         (active_script_operation_->type ==
              scripting::ScriptNativeOperation::Type::ui_say ||
          active_script_operation_->type ==
-             scripting::ScriptNativeOperation::Type::ui_story_page);
+             scripting::ScriptNativeOperation::Type::ui_story_page ||
+         active_script_operation_->type ==
+             scripting::ScriptNativeOperation::Type::ui_credits_page);
     if (active_script_page) {
         if (active_script_operation_->type ==
                 scripting::ScriptNativeOperation::Type::ui_say &&
@@ -1480,8 +1508,11 @@ void FieldDialogueRuntime::close() noexcept {
     hosted_choice_list_ = false;
     script_task_waiting_ = false;
     story_page_open_ = false;
+    credits_page_open_ = false;
     story_page_asset_alias_.clear();
     story_page_text_.clear();
+    credits_page_asset_alias_.clear();
+    credits_page_id_.clear();
     pending_matrix_entry_system_id_.reset();
     pending_matrix_entry_node_id_.reset();
     inline_task_advance_result_.reset();
@@ -1551,6 +1582,11 @@ bool FieldDialogueRuntime::uses_hospital_medical_attention_layout()
 }
 
 void FieldDialogueRuntime::paint(QPainter& painter) const {
+    if (credits_page_open_) {
+        presenter_.paint_credits_page(
+            painter, credits_page_asset_alias_, credits_page_id_);
+        return;
+    }
     if (story_page_open_) {
         const auto* operation = active_script_operation_.has_value()
             ? &*active_script_operation_

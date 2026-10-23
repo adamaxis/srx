@@ -81,6 +81,28 @@
           "provenance": { "romAddress": "0xF7A8B" }
         }
       ]
+    },
+    "tarislar.tomb.credits": {
+      "presentation": "full_screen_credit_panels",
+      "assetProfileId": "tarislar.tomb.credits",
+      "assetAlias": "cinematic.tarislar.tomb.credits",
+      "inputContract": "controller_event",
+      "returnPolicy": "title",
+      "provenance": {
+        "romAddresses": [
+          "0x5BAC4", "0x5C3B4", "0x5C472", "0x5C486",
+          "0x5C49A", "0x5C4AE", "0x5C4C2", "0x5C446",
+          "0x5C9D2", "0xC0DA"
+        ],
+        "scope": "scene_55_end_credits_callback"
+      },
+      "pages": [
+        {"id": "opening_and_game_design", "provenance": {"romAddress": "0x5CA92"}},
+        {"id": "additional_programming_and_art", "provenance": {"romAddress": "0x5CBFB"}},
+        {"id": "story_music_and_lead_testing", "provenance": {"romAddress": "0x5CF9B"}},
+        {"id": "additional_testing_part_1", "provenance": {"romAddress": "0x5CD82"}},
+        {"id": "additional_testing_part_2_and_producer", "provenance": {"romAddress": "0x5CE80"}}
+      ]
     }
   }
 }

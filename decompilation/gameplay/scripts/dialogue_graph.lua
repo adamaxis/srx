@@ -297,42 +297,44 @@ local function validate_cinematic_document(document)
                is_identifier(cinematic.assetAlias) and
                is_identifier(cinematic.inputContract) and
                is_identifier(cinematic.returnPolicy) and
-               type(cinematic.textLayout) == "table" and
-               type(cinematic.textLayout.x) == "number" and
-               cinematic.textLayout.x % 1 == 0 and
-               cinematic.textLayout.x >= 0 and cinematic.textLayout.x <= 319 and
-               type(cinematic.textLayout.y) == "number" and
-               cinematic.textLayout.y % 1 == 0 and
-               cinematic.textLayout.y >= 0 and cinematic.textLayout.y <= 223 and
-               type(cinematic.textLayout.columns) == "number" and
-               cinematic.textLayout.columns % 1 == 0 and
-               cinematic.textLayout.columns >= 1 and
-               cinematic.textLayout.columns <= 40 and
-               type(cinematic.textLayout.rows) == "number" and
-               cinematic.textLayout.rows % 1 == 0 and
-               cinematic.textLayout.rows >= 1 and
-               cinematic.textLayout.rows <= 28 and
-               is_array(cinematic.textLayout.inkRgb) and
-               #cinematic.textLayout.inkRgb == 3 and
-               type(cinematic.textLayout.inkRgb[1]) == "number" and
-               type(cinematic.textLayout.inkRgb[2]) == "number" and
-               type(cinematic.textLayout.inkRgb[3]) == "number" and
                is_array(cinematic.pages) and #cinematic.pages > 0,
             "cinematic definition is malformed: " .. tostring(cinematic_id))
-        for _, channel in ipairs(cinematic.textLayout.inkRgb) do
-            assert(channel % 1 == 0 and channel >= 0 and channel <= 255,
-                "cinematic text ink is outside RGB8 range: " ..
-                tostring(cinematic_id))
-        end
-        assert(cinematic.presentation == "full_screen_story_pages" and
+        assert((cinematic.presentation == "full_screen_story_pages" or
+                cinematic.presentation == "full_screen_credit_panels") and
                cinematic.inputContract == "controller_event",
             "cinematic presentation contract is unsupported: " ..
             tostring(cinematic_id))
+        if cinematic.presentation == "full_screen_story_pages" then
+            local layout = cinematic.textLayout
+            assert(type(layout) == "table" and
+                   type(layout.x) == "number" and layout.x % 1 == 0 and
+                   layout.x >= 0 and layout.x <= 319 and
+                   type(layout.y) == "number" and layout.y % 1 == 0 and
+                   layout.y >= 0 and layout.y <= 223 and
+                   type(layout.columns) == "number" and
+                   layout.columns % 1 == 0 and
+                   layout.columns >= 1 and layout.columns <= 40 and
+                   type(layout.rows) == "number" and
+                   layout.rows % 1 == 0 and
+                   layout.rows >= 1 and layout.rows <= 28 and
+                   is_array(layout.inkRgb) and #layout.inkRgb == 3 and
+                   type(layout.inkRgb[1]) == "number" and
+                   type(layout.inkRgb[2]) == "number" and
+                   type(layout.inkRgb[3]) == "number",
+                "cinematic text layout is malformed: " ..
+                tostring(cinematic_id))
+            for _, channel in ipairs(layout.inkRgb) do
+                assert(channel % 1 == 0 and channel >= 0 and channel <= 255,
+                    "cinematic text ink is outside RGB8 range: " ..
+                    tostring(cinematic_id))
+            end
+        end
         validate_provenance(cinematic.provenance)
         local seen_pages = {}
         for _, page in ipairs(cinematic.pages) do
             assert(type(page) == "table" and is_identifier(page.id) and
-                   is_identifier(page.textKey) and
+                   (cinematic.presentation == "full_screen_credit_panels" or
+                    is_identifier(page.textKey)) and
                    type(page.provenance) == "table" and
                    type(page.provenance.romAddress) == "string" and
                    page.provenance.romAddress:match("^0x%x+$") and
@@ -597,17 +599,34 @@ function Session:run(graph_id, context)
                     return self:_boundary(
                         graph_id, node_id, "cinematic_catalog_entry_missing")
                 end
-                if type(self.host.present_story_page) ~= "function" then
+                local is_credit_sequence = cinematic.presentation ==
+                    "full_screen_credit_panels"
+                local presenter
+                if is_credit_sequence then
+                    presenter = self.host.present_credit_page
+                else
+                    presenter = self.host.present_story_page
+                end
+                if type(presenter) ~= "function" then
                     return self:_boundary(
-                        graph_id, node_id, "story_page_presenter_unavailable")
+                        graph_id, node_id,
+                        is_credit_sequence
+                            and "credit_page_presenter_unavailable"
+                            or "story_page_presenter_unavailable")
                 end
                 for _, page in ipairs(cinematic.pages) do
-                    if self.host.present_story_page(
-                           cinematic.assetAlias, page.textKey,
-                           cinematic.textLayout) ~= true then
+                    local presented
+                    if is_credit_sequence then
+                        presented = presenter(cinematic.assetAlias, page.id)
+                    else
+                        presented = presenter(cinematic.assetAlias,
+                                              page.textKey,
+                                              cinematic.textLayout)
+                    end
+                    if presented ~= true then
                         return self:_boundary(
                             graph_id, node_id,
-                            "story_page_presentation_failed:" .. page.id)
+                            "cinematic_page_presentation_failed:" .. page.id)
                     end
                 end
             end
@@ -691,6 +710,9 @@ function DialogueGraph.run(graph_id, registered_actions, invocation_context)
                 asset_alias, text_key, layout.x, layout.y,
                 layout.columns, layout.rows, layout.inkRgb[1],
                 layout.inkRgb[2], layout.inkRgb[3])
+        end,
+        present_credit_page = function(asset_alias, page_id)
+            return game.ui.credits_page(asset_alias, page_id)
         end,
         present_choice = function(node, choice_ids, speaker_id,
                                   text_profile, selected_index)

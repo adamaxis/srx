@@ -1101,9 +1101,23 @@ void write_tarislar_tomb_credits_asset(
     // Callback 0x5BAC4 presents these text blocks in this order and waits for
     // a controller event between blocks. 0x80 ends a row; 0xFF ends a panel.
     // Keep the row padding because it is part of the original credit layout.
-    // The 0x5C472/0x5C486/0x5C49A entry thunks share a top row; 0x5C4AE and
-    // 0x5C4C2 start four and three rows lower. Store only those relative host
-    // layout offsets, not the VDP addresses passed to 0xC0DA.
+    // The entry thunks at 0x5C472..0x5C4D0 pass VRAM name-table addresses
+    // 0x2110, 0x2110, 0x2110, 0x2310, and 0x2290 to 0xC0DA. With Plane A at
+    // 0x2000 and 64-tile rows, the host origin is (64,16); the later two
+    // addresses add four and three rows. D1=$E000 selects palette line 3.
+    // Its first visible glyph color is palette entry 1, which is loaded from
+    // the second word of that line in the 64-color block at 0x5C9D2.
+    constexpr std::size_t kCreditsPaletteOffset = 0x5C9D2U;
+    constexpr std::size_t kCreditsInkPaletteIndex = 3U * 16U + 1U;
+    const auto ink_word = read_big_endian_word(
+        rom, kCreditsPaletteOffset + kCreditsInkPaletteIndex * 2U);
+    const auto expand_cram_channel = [ink_word](const unsigned shift) {
+        const auto level = static_cast<unsigned>((ink_word >> shift) & 7U);
+        return level * 255U / 7U;
+    };
+    const auto ink_red = expand_cram_channel(1U);
+    const auto ink_green = expand_cram_channel(5U);
+    const auto ink_blue = expand_cram_channel(9U);
     constexpr std::array<CreditPanelRecord, 5> kPanels{{
         {"opening_and_game_design", "0x5CA92", 0x5CA92U, 0x168U, 22U,
          0U},
@@ -1129,6 +1143,11 @@ void write_tarislar_tomb_credits_asset(
               "    \"romAddresses\": [\"0x5BAC4\", \"0x5C3B4\", "
               "\"0x5C446\"]\n"
               "  },\n"
+              "  \"layout\": {\"x\": 64, \"y\": 16, "
+              "\"columns\": 32, \"lineHeight\": 8, "
+              "\"inkPaletteLine\": 3, \"inkPaletteIndex\": 1, "
+              "\"inkRgb\": [";
+    output << ink_red << ", " << ink_green << ", " << ink_blue << "]},\n"
               "  \"encoding\": {\"rowBreak\": \"0x80\", "
               "\"panelEnd\": \"0xFF\"},\n"
               "  \"pages\": [\n";

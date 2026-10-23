@@ -501,18 +501,20 @@ The callback opens the single Licourtrix prompt from `0xFDD72` with profile
 `0x121EA4`, runs the closing animation and five controller-advanced credits
 text panels, then returns through the main title path. Their source-ordered
 text blocks begin at `0x5CA92`, `0x5CBFB`, `0x5CF9B`, `0x5CD82`, and `0x5CE80`;
-the offline all-assets importer now has a writer for their space-preserving
-rows at `cinematics/tarislar-tomb-credits.json`, retaining `0x80` row breaks
-and `0xFF` panel terminators. The first three source text entries share a top
-row; the fourth and fifth start four and three rows below it. These relative
-offsets are included as host layout data. At `0x5C3B4`, the ROM copies 32
-palette entries from `0x5C9D2` through `0x1368`; the glyph transfer and palette
-are not part of the text asset. The routine fades to black, copies the palette,
-then fades toward it in 17 palette-frame steps before panel 1. It waits for a
-controller event between panels and calls the display-clear helper before
-panels 2-5. The generated asset is pending an importer run. The native
-fight-completion trigger and presenter are still absent; this partial slice
-has no CTest or actual.bmp.
+the offline all-assets importer emits their space-preserving rows at
+`cinematics/tarislar-tomb-credits.json`, retaining `0x80` row breaks and
+`0xFF` panel terminators. The named host asset records the source row data,
+origin `(64,16)`, and white ink from palette line 3, entry 1. The entry thunks
+at `0x5C472` through `0x5C4C2` pass name-table addresses `0x2110`, `0x2110`,
+`0x2110`, `0x2310`, and `0x2290` with `D1=$E000`; the final two start four and
+three rows lower. Lua owns the five-page order and yields typed credit-page
+requests to the host presenter. Debug and Release CTest
+`shadowrun_ghidra_conversion_qt_field_tarislar_tomb_credits_presenter_qa`
+captures each panel and writes `actual.bmp` for the first. These internal
+captures exercise the renderer and are not an independent Genesis visual
+reference. The fight-completion trigger, 1000-iteration close animation,
+palette fades, panel-clear timing, and title return are still unconnected, so
+the hill remains partial.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).

@@ -21550,6 +21550,150 @@ int run_field_spirit_eyes_physical_entry_qa(
     return 0;
 }
 
+int run_field_tarislar_tomb_credits_presenter_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Tarislar Tomb credits QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Tarislar Tomb credits QA: could not create captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::array<std::string_view, 5U> kPageIds{{
+        "opening_and_game_design",
+        "additional_programming_and_art",
+        "story_music_and_lead_testing",
+        "additional_testing_part_1",
+        "additional_testing_part_2_and_producer",
+    }};
+    constexpr std::array<int, 5U> kTopRowOffsets{{0, 0, 0, 4, 3}};
+    constexpr std::array<int, 5U> kLineCounts{{22, 23, 23, 15, 18}};
+    if (!field_scene.open_tarislar_tomb_credits_for_dump()) {
+        std::cerr << "Tarislar Tomb credits QA: Lua credit sequence did not "
+                     "yield its first panel\n";
+        return 3;
+    }
+
+    QImage previous;
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) {
+        std::cerr << "Tarislar Tomb credits QA: could not write route trace\n";
+        return 3;
+    }
+    trace << "panel\tpage_id\ttop_row_offset\tinput\tresult\n";
+    for (std::size_t index = 0U; index < kPageIds.size(); ++index) {
+        const auto image = render_qa_field(field_scene);
+        if (image.size() != QSize(kSceneWidth, kSceneHeight)) {
+            std::cerr << "Tarislar Tomb credits QA: panel frame has the "
+                         "wrong dimensions\n";
+            return 3;
+        }
+        if (field_scene.active_credits_page_id_for_dump() != kPageIds[index]) {
+            std::cerr << "Tarislar Tomb credits QA: Lua page order differs "
+                         "at panel " << index + 1U << " (expected "
+                      << kPageIds[index] << ", got "
+                      << field_scene.active_credits_page_id_for_dump() << ")\n";
+            return 3;
+        }
+        const auto first_row = 16 + kTopRowOffsets[index] * 8;
+        const auto last_row = first_row + kLineCounts[index] * 8;
+        std::size_t ink_pixels = 0U;
+        std::size_t first_row_ink_pixels = 0U;
+        std::size_t ink_outside_source_rows = 0U;
+        for (int y = 0; y < 224; ++y) {
+            for (int x = 0; x < 320; ++x) {
+                const auto pixel = image.pixelColor(x, y);
+                if (pixel.red() > 128 && pixel.green() > 128 &&
+                    pixel.blue() > 128) {
+                    if (x < 64 || y < first_row || y >= last_row) {
+                        ++ink_outside_source_rows;
+                    } else {
+                        ++ink_pixels;
+                        if (y < first_row + 8) {
+                            ++first_row_ink_pixels;
+                        }
+                    }
+                }
+            }
+        }
+        const auto capture_name = "panel-" + std::to_string(index + 1U) +
+                                  ".bmp";
+        if (!field_scene.dialogue_open() ||
+            ink_pixels < 24U || first_row_ink_pixels == 0U ||
+            ink_outside_source_rows != 0U ||
+            (index != 0U && image == previous) ||
+            !image.save(QString::fromStdWString(
+                (output / capture_name).wstring())) ||
+            (index == 0U &&
+             !image.save(QString::fromStdWString(
+                 (output / "actual.bmp").wstring())))) {
+            std::cerr << "Tarislar Tomb credits QA: panel capture or source "
+                         "layout failed for " << kPageIds[index]
+                      << " (bright pixels=" << ink_pixels << ")\n";
+            return 3;
+        }
+        trace << (index + 1U) << '\t' << kPageIds[index] << '\t'
+              << kTopRowOffsets[index] << '\t'
+              << (index == 0U ? "entry" : "controller") << '\t'
+              << "visible_white_text\n";
+        previous = image;
+        if (index + 1U < kPageIds.size()) {
+            tap_qa_controller_button(field_scene, 0x40U); // A: next panel
+        }
+    }
+    trace.flush();
+    if (!trace) {
+        std::cerr << "Tarislar Tomb credits QA: route trace write failed\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: source title return
+    constexpr std::string_view kTitleReturnBoundary =
+        "field.dialogue.outcome.target_not_registered:play_cinematic:"
+        "tarislar.tomb.credits";
+    const auto boundary_image = render_qa_field(field_scene);
+    if (!field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().kind != DialoguePanelKind::source_boundary ||
+        field_scene.dialogue_panel().source_boundary_reason !=
+            kTitleReturnBoundary ||
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   kTitleReturnBoundary) < 1 ||
+        !boundary_image.save(QString::fromStdWString(
+            (output / "title-return-boundary.bmp").wstring()))) {
+        std::cerr << "Tarislar Tomb credits QA: unconnected title return was "
+                     "not left at its explicit typed boundary (open="
+                  << field_scene.dialogue_open() << ", kind="
+                  << static_cast<int>(field_scene.dialogue_panel().kind)
+                  << ", reason="
+                  << field_scene.dialogue_panel().source_boundary_reason
+                  << ", boundary_count="
+                  << std::count(source_boundaries.begin(),
+                                source_boundaries.end(), kTitleReturnBoundary)
+                  << ")\n";
+        return 3;
+    }
+    trace << "exit\ttitle_return_pending\t\tcontroller\t"
+          << "target_not_registered\n";
+    trace.flush();
+    if (!trace) {
+        std::cerr << "Tarislar Tomb credits QA: return boundary trace write "
+                     "failed\n";
+        return 3;
+    }
+    std::cout << "field_tarislar_tomb_credits_presenter_qa=passed "
+                 "panels=5 trigger=unconverted title_return=unconverted "
+                 "artifacts=" << output.string() << '\n';
+    return 0;
+}
+
 int run_field_sinsearach_gate_physical_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -24846,6 +24990,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_spirit_eyes_physical_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_tarislar_tomb_credits_presenter_qa_path;
+        std::optional<std::filesystem::path>
             field_sinsearach_gate_physical_entry_qa_path;
         std::optional<std::filesystem::path>
             field_sinsearach_gate_fare_physical_entry_qa_path;
@@ -25689,6 +25835,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_spirit_eyes_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-tarislar-tomb-credits-presenter-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_tarislar_tomb_credits_presenter_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -30200,6 +30353,12 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_spirit_eyes_physical_entry_qa_path,
                     field_audio_events, field_source_boundaries);
+            }
+            if (field_tarislar_tomb_credits_presenter_qa_path.has_value()) {
+                return run_field_tarislar_tomb_credits_presenter_qa(
+                    field_scene,
+                    *field_tarislar_tomb_credits_presenter_qa_path,
+                    field_source_boundaries);
             }
             if (field_sinsearach_gate_physical_entry_qa_path.has_value()) {
                 return run_field_sinsearach_gate_physical_entry_qa(
