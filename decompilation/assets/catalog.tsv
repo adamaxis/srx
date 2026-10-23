@@ -33,6 +33,9 @@ boot/sega-strobe-5.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
 boot/sega-strobe-6.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
 boot/sega-strobe-7.bmp	sprite	104	80	96	32	ROM title/boot resource	extracted
 boot/fasa.bmp	sprite	96	80	127	40	ROM title/boot resource	extracted
+cinematics/tarislar-tomb/background-initial.bmp	background	0	0	320	224	Scene 55 descriptor 0x5C966; layouts 0x1EF775/0x1EF7FB; patterns 0x1EE2AA/0x1F002E	extracted
+cinematics/tarislar-tomb/background-city-at-400.bmp	background	0	0	320	224	Scene 55 frame 0x190; layout 0x1E8802; palette 0x5C9B4	extracted
+cinematics/tarislar-tomb/logo-reveal-overlay.bmp	overlay	13	16	296	152	Scene 55 frame 0x26C; source map 0x1F6532; palette 0x5CA74	extracted
 cyberspace/matrix/system-map-background.bmp	background	0	0	320	224	0x532BC/0x15C4DC name table; 0x15BEAC patterns; CRAM 0x15FCB6	extracted
 cyberspace/matrix/system-map-font.bmp	sprite	0	0	128	48	0x532BC/0xC0DA/0xC1320 glyphs; attribute 0x2000; CRAM 0x15FCB6 palette line 1	extracted
 cyberspace/matrix/traversal-background-theme-1.bmp	background	0	0	320	224	0x1745E field-mode presentation: 0xD646A patterns; 0xD806C and 0xD74F4 Plane-B streams; 0xD8316 shared footer; palette 0x166448[0]	extracted

@@ -86,11 +86,15 @@ At elapsed `0x26C`, `0x5C842` loads `0x1F310E` at `$BAC0` (tile `$5D6`) and
 copies fifteen palette-line-0 colors from `0x5CA74` to CRAM entries 1..15.
 The source map at `0x1F6532` is 38 words wide by 19 rows. `0x5C88C` exposes
 one column every two service frames, producing a complete 304x152 host layer
-after 38 writes. The importer emits four temporary inspection images through
-`--scene-55-tomb-prelude-backgrounds`: the initial two-plane scene, the
+after 38 writes. The focused `--scene-55-tomb-prelude-backgrounds` importer
+emits four temporary inspection images: the initial two-plane scene, the
 steady elapsed-`0x190` skyline, the transparent elapsed-`0x26C` foreground,
-and their full-screen composite. They are generated under the build tree and
-are neither checked-in runtime assets nor independent Genesis captures.
+and their full-screen composite. The explicit `--all-assets` import now emits
+three named host layers under `assets/cinematics/tarislar-tomb/`: the initial
+background, the city background, and a cropped 296x152 transparent logo
+overlay with source origin `(13,16)`. The combined full-screen composite stays
+an inspection image. These compositions come from the source resources and
+are not independent Genesis captures.
 
 ## Extraction boundary
 
@@ -105,13 +109,13 @@ the source timeline, background/layout stages, or all time-dependent palette
 changes; they are not runtime assets or visual goldens.
 
 The presentation remains a source boundary after the Licourtrix response.
-The stage maps, pattern banks, and timed palette writes are now traced and
-have an offline host-image preview. Before connecting it, the remaining work
-is to represent these timed actor/effect states in Lua, promote the stable
-backgrounds and sprite art to individually named runtime assets, consume them
-through a typed presenter, and connect the sequence back to the five credits
-panels. The existing direct credits-panel QA does not defend this live
-callback path.
+The stage maps, pattern banks, and timed palette writes are now traced; the
+explicit importer emits named background/overlay assets and separate
+inspection previews. Before connecting the sequence, the remaining work is
+to represent the timed actor/effect states in Lua, consume these layers and
+the sprite art through a typed presenter, and connect the sequence back to
+the five credits panels. The existing direct credits-panel QA does not defend
+this live callback path.
 
 ## Source references
 
