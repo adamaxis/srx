@@ -280,9 +280,11 @@ for their ordered, space-preserving rows at
 `assets/cinematics/tarislar-tomb-credits.json`; that generated asset is pending
 an importer run. Text entry thunks `0x5C472`, `0x5C486`, and `0x5C49A` share a
 top row; `0x5C4AE` and `0x5C4C2` start four and three rows lower. The shared
-text routine at `0xC0DA` advances one row for each `0x80` marker, so the host
-asset stores relative row offsets instead of source VDP addresses. When the
-callback returns, the outer loop recognizes
+text routine at `0xC0DA` advances one row for each `0x80` marker and ends the
+panel at `0xFF`, so the host asset stores relative row offsets instead of
+source VDP addresses. At `0x5C3B4`, `0x5C9D2` is loaded as the target palette
+source for `0x1368`, which copies 32 entries. Palette and font graphics remain
+outside this text asset. When the callback returns, the outer loop recognizes
 `0x5BAC4` at `0x0B44` and branches through `0x0BA6`/`0x078A` to the main title
 path. The response's next-record pointer is not consumed by this callback.
 The native fight trigger, credit presenter, and cleanup remain unimplemented;

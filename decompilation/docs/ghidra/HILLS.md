@@ -505,9 +505,11 @@ the offline all-assets importer now has a writer for their space-preserving
 rows at `cinematics/tarislar-tomb-credits.json`, retaining `0x80` row breaks
 and `0xFF` panel terminators. The first three source text entries share a top
 row; the fourth and fifth start four and three rows below it. These relative
-offsets are included as host layout data. The generated asset is pending an
-importer run. The native fight-completion trigger and presenter are still
-absent; this partial slice has no CTest or actual.bmp.
+offsets are included as host layout data. At `0x5C3B4`, the ROM copies 32
+palette entries from `0x5C9D2` through `0x1368`; the glyph transfer and palette
+are not part of the text asset. The generated asset is pending an importer
+run. The native fight-completion trigger and presenter are still absent; this
+partial slice has no CTest or actual.bmp.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).
