@@ -454,7 +454,10 @@ table entry at `0xF3E62` to the `FFE162` writer at `0x1F086`. Its confirmed
 target tuples (Scene 1/event 9, Scene 2/event 9, and Scene 3/event 4) exclude
 Tarislar's Scene 1/event 7, so that pass cannot make a fresh write from the
 accepted target pool. Whether a prior descriptor can carry into the selector
-remains unresolved. The event-0 projected interaction has no
+remains unresolved. A separate ROM code gap at `0x22622` sets `FFE120` to
+`0x1E628` behind a 75-nuyen and story gate; its caller/scene context is not
+identified, so a preexisting list pointer remains an open Scene-54 question.
+The event-0 projected interaction has no
 scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).
 

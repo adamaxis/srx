@@ -197,8 +197,11 @@ in mode 3, and the same active record then decrements `FFE177`. The six rows
 match the initial count. At zero, service records reset and `FFE12E` is
 dispatched and cleared if installed. Initializers `0x2A32`/`0x2A44` clear
 `FFE12E`; direct assignments in `0x043B6` install handlers only for pending
-lists `0x1E628` and `0x1E5C4`. Scene 54's six actors come from the separate
-default list at `FFDDF0`, and its marker-1 route with `FFE162` clear does not
+lists `0x1E628` and `0x1E5C4`. A raw ROM code gap at `0x22622` sets
+`FFE120=0x1E628` after a 75-nuyen debit and story gates; its caller and active
+scene are not identified, so its relation to Tarislar is open. Scene 54's six
+actors come from the separate default list at `FFDDF0`, and its marker-1 route
+with `FFE162` clear does not
 replace `FFE120`. The selector takes the Scene-54 mode-3 branch and bypasses
 the lower `FFE120` list-selection path. The field-exit orchestrator at
 `0x1F5CA` calls `0x1EEDC` before title services; this dispatcher indexes the
@@ -210,8 +213,9 @@ offer target pool contains Scene 1/event 9, Scene 2/event 9, and Scene 3/event
 4; none matches Tarislar's Scene 1/event 7. The event-7 pass cannot make a
 fresh write from this pool. Whether a descriptor written earlier can carry
 into the selector, and whether a preexisting `FFE120` pointer reaches the
-first Scene-54 service pass, remain unresolved. Scene completion and exit
-destination remain unresolved.
+first Scene-54 service pass, remain unresolved. The separate `0x22622` writer
+is a candidate carry-in source for `FFE120`, but no Tarislar connection is
+established. Scene completion and exit destination remain unresolved.
 The event-0 record has raw value `0x00C0`, so `0xB7B8` publishes event 0 in
 `FFFBF9`. In Scene-54 mode 3 it calls `0x1651E`; with D0=0, that helper returns
 carry set without a map write. `0xB7B8` then sets `FFDF3A=-1`, `FFDF3C=0x10`,

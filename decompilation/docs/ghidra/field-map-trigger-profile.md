@@ -260,10 +260,15 @@ The source path is:
    records; if `FFE12E` is nonzero, it copies that handler to `FFDD2C`, starts
    the activity, and clears `FFE12E`. Initializers `0x2A32`/`0x2A44` clear
    `FFE12E`; the direct assignments in `0x043B6` install handlers only when
-   `FFE120` names pending list `0x1E628` or `0x1E5C4`. Scene 54's six actors
-   come from the separate default list at `FFDDF0`. The marker-1 route with
+   `FFE120` names pending list `0x1E628` or `0x1E5C4`. Raw ROM code at
+   `0x22622` directly writes `0x1E628` after a successful 75-nuyen debit and
+   its FFFC1E/FFFC30/FFFC38 story gates; its active scene/event remains
+   unidentified. Scene 54's six actors come from the separate default list at
+   `FFDDF0`. The marker-1 route with
    `FFE162` clear does not replace `FFE120`; whether a pending pointer can
-   carry into its first service pass remains unresolved. The dispatched type-3
+   carry into its first service pass remains unresolved; the `0x22622` writer
+   is a possible upstream source, but its scene context is not linked to this
+   route. The dispatched type-3
    handler at `0x1F086` compares `FFFBF8/FFFBF9` with `FFFBEE/FFFBEF`; on a
    match, target areas 1, 2, and 3-or-higher select lists `0x1D6D4A`,
    `0x1D6D5E`, and `0x1D6D72`. The confirmed offer target pool contains Scene
