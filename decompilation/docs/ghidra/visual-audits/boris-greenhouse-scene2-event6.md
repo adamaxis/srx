@@ -15,15 +15,16 @@ command `0x27` charges the wallet and sets bit 0. Command `0x29` charges $500
 and sets bit 2 before the gated topic list. Michael, David, and Ilene choices
 also update the source FFFC1E/FFFC30/FFFC34 facts. The Brother? choice reaches
 command `0x2C` at `0x21BE4`: it increments FFFBFB through the capped helper at
-`0x1F1E0`, then selects two Strike Team actors from `0x1D6FD0`. The Lua graph
-now applies that shared typed counter update before retaining a source boundary
-for the unconverted actor-list/world-effect/combat handoff. The extracted
-world-activity actor catalog has no Scene-2 placement records for list
-`0x1D6FD0`, so the later event-list placement data is not being substituted.
-The ROM list itself contains `0x001D6AFA` twice and then a null sentinel at
-`0x1D6FD8`; template `0x1D6AFA` matches the extracted Strike Team profile in
-pending list `0x1E628`. Composition is therefore known, while Scene-2 placement
-and combat completion remain open.
+`0x1F1E0`, then passes `0x1D6FD0` and `D0=1` to `0x1E1FC`. Raw ROM code at
+`0x1E216` sends nonzero D0 through `0x1E40C`, which builds candidates from the
+live camera origin, map bounds, and terrain lookup at `0x1E41E`; the zero-D0
+branch at `0x1E302` is the separate screen-edge placement path. The list itself
+contains `0x001D6AFA` twice and then a null sentinel at `0x1D6FD8`. Template
+`0x1D6AFA` matches the extracted Strike Team profile in pending list `0x1E628`.
+Thus actor composition and the source placement method are known; the active
+host currently implements only the zero-D0 edge candidate path, and the
+map-candidate handoff and combat completion remain open. The later event-list
+placement coordinates are unrelated and are not used as substitutes.
 Commands `0x2D`-`0x2F` and their item-purchase return paths remain outside this
 implementation.
 
