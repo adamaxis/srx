@@ -79,6 +79,10 @@
         "mako_noticed": {
           "continuation_key": "",
           "title_key": "club.penumbra.mako.noticed"
+        },
+        "mako_result": {
+          "continuation_key": "",
+          "title_key": "club.penumbra.mako_result"
         }
       },
       "name": "Narration",
