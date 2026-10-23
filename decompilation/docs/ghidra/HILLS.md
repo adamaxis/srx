@@ -941,9 +941,12 @@ clear and bit-5 set, plus a runner source-byte triplet `+3`. ROM helper
 `0x5D130` writes FFF0BE=9, selects the three-page table at `0x0F5870` with
 resources at `0x1FE690`, and calls the shared story-page routine `0x5D1F6`.
 The cinematic catalog now records those pages and the graph returns a typed
-`play_cinematic` outcome. The native presenter, the surrounding FFF0BE/FFE172
-state writes, route-specific CTest, CLI `actual.bmp`, and independent Genesis
-capture remain open; this hill is partial.
+`play_cinematic` outcome. The shared per-page controller wait and caller
+return path are source-traced; resource graphics, native full-screen
+presentation, and typed host return/state handling remain open. Route-specific
+CTest, CLI `actual.bmp`, and independent Genesis capture also remain open, so
+this hill is partial. See the
+[story-page source audit](cinematic-story-pages-source-audit.md).
 
 The guard's exit choices remain a separate boundary. Commands `0x39` and
 `0x3A` select roots `0x11B6D4` and `0x11B6EC`. Their related fare command
