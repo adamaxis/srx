@@ -173,8 +173,18 @@ disassembly skips the code region containing that callback, so its Scene-54
 mode-3 path is not verified here; the earlier claim that it returns at
 `0xDEE6` should not be treated as established. Timeout setup is conditional:
 `0x1DBAA` returns when the current scene is 54 and `FFE177=0`; otherwise it
-sets 120 frames, or 600 while `FFE162` is nonzero. The event-7 route's
-`FFE177` value and descriptor producer are unresolved. Scene-54 completion and
+sets 120 frames, or 600 while `FFE162` is nonzero. For the marker-1 entry
+(`FFE186=1`), `0x167AE` calls the scheduler while `FFDDC4` still has the source
+scene, then snapshots and clears `FFE177`. The first field-service pass through
+`0x02900`/`0x04388` sets `FFE177=6`, so the zero-count gate does not skip the
+initial Scene-54 timeout setup. The Scene-54 profile supplies six Yakuza
+Weenr default-list rows, each with `+0x9E` bit 6 set. On a qualifying
+completion, `0x0AB02` calls `0x16B98`; kind 8 returns without a weighted spawn
+in mode 3, and the same active record then decrements `FFE177`. The six rows
+match the initial count. At zero, service records reset and `FFE12E` is
+dispatched and cleared if installed. Its Scene-54 installer remains
+unresolved, as do the `FFE162` producer and whether a pending list can be
+active on event 7. The mode-3 body of callback `0xDB26`, scene completion, and
 exit destination remain unresolved. The event-0 record uses the generic
 projected-interaction path; helper `0x1651E` has no scene-54/mode-3 map write.
 Its later main-loop effect also remains unresolved. No reverse route has been
@@ -201,9 +211,10 @@ added.
    screenshots.
 4. **Is it animated, and under what conditions?** Only the Yes choice at
    repeat root `0xF4E08` calls `0x24954`, sets `FFF0CC`, and selects scene 54.
-   Pending `FFE162` descriptors can select scene 15. Scene-54 actor/activity
-   cadence and transition timing still need source tracing; the Qt frame is
-   recorded but is not an independent fidelity proof.
+   Pending `FFE162` descriptors can select scene 15. The six default actors
+   and their initial completion count are source-connected; their AI cadence
+   and remaining activity timing still need tracing. The Qt frame is recorded
+   but is not an independent fidelity proof.
 5. **Is there a sound?** Service `0x5447E` has no direct sound call in the
    traced path. Shared prompt/input audio and the rest of the scene handoff
    remain unverified.
@@ -236,9 +247,11 @@ added.
   suppressed. Continue with the pending descriptor source and selector
   precedence, then the scene-54 completion/return trace.
 - Identify the producer for `FFE162` beyond the direct absolute-address
-  references and trace `FFE177` into Scene 54's timeout gate. Determine whether
-  either state can be active on Tarislar's event-7 route, and preserve the
-  scene-15 override as a source boundary until that link is established.
+  references and determine whether it can be active on Tarislar's event-7
+  route. Trace the six Scene-54 completion branches, locate the `FFE12E`
+  installer, and recover the indirect `0xDB26` callback's mode-3 behavior.
+  Preserve the scene-15 override as a source boundary until the descriptor
+  link is established.
 - Trace scene 54's direct event-31/event-0 handling, any non-table actor setup,
   the activity completion condition, exits, and return path against the ROM
   before connecting the route in Lua.

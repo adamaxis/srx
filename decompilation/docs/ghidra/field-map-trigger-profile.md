@@ -240,8 +240,19 @@ The source path is:
    the current scene is 54 and `FFE177` is zero; otherwise it sets 120 frames
    by default or 600 while `FFE162` is nonzero. The exported disassembly shows
    direct reads and the clear, but no direct nonzero absolute-address write.
-   The producer, `FFE177` state, and whether either can be active on
-   Tarislar's event-7 route remain unresolved. With no marker,
+   On the marker-1 route (`FFE186=1`), `0x167AE` calls the scheduler while
+   `FFDDC4` still names the source scene, then snapshots and clears `FFE177`.
+   The first field-service pass through `0x02900`/`0x04388` sets it back to 6
+   while `FFE186` remains 1. Thus the zero-count gate does not suppress the
+   initial Scene-54 timeout setup. In the completion path, `0x0AB02`
+   calls `0x16B98` and then decrements for the active record's `+0x9E` bit 6.
+   The Scene-54 profile has six Yakuza Weenr default-list rows with that bit
+   set; kind 8's weighted-spawn path returns without adding a record in mode
+   3, so these six rows match the initial count. At zero, it resets service
+   records; if `FFE12E` is nonzero, it copies that handler to `FFDD2C`, starts
+   the activity, and clears `FFE12E`. The Scene-54 `FFE12E` installer remains
+   unresolved, as do the `FFE162` producer and whether a pending list can be
+   active on Tarislar's event-7 route. With no marker,
    scene 13 is subject to the selector's bit 19 gate. Marker 2 is a different
    path: it selects scene 55 and queues `0x20938`, whose graph begins at
    `0x0FDD1A` with the Tomb of Ellisia antechamber. This is not the event-7
