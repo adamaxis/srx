@@ -4269,6 +4269,127 @@ shadowrun::graphics::RgbaImage compose_matrix_traversal_background(
     return image;
 }
 
+using Scene55Palette =
+    std::array<shadowrun::native::Rgba8, 64U>;
+
+struct Scene55TileLayer {
+    const std::vector<std::uint16_t>* words = nullptr;
+    std::size_t first_x = 0U;
+    std::size_t first_y = 0U;
+    std::size_t columns = 0U;
+    std::size_t rows = 0U;
+    std::uint16_t attributes = 0U;
+};
+
+void load_scene55_pattern_bank(
+    const std::vector<std::uint8_t>& rom,
+    const std::size_t source,
+    const std::size_t destination,
+    std::vector<std::uint8_t>& vram,
+    std::array<bool, 0x800U>& loaded_tiles,
+    const std::string_view label) {
+    const auto patterns = shadowrun::graphics::decode_genesis_resource_stream(
+        rom, source);
+    if (patterns.empty() || patterns.size() % 32U != 0U ||
+        destination % 32U != 0U || destination > vram.size() ||
+        patterns.size() > vram.size() - destination) {
+        throw std::runtime_error(std::string(label) +
+                                 " has an invalid pattern range");
+    }
+    std::copy(patterns.begin(), patterns.end(),
+              vram.begin() + static_cast<std::ptrdiff_t>(destination));
+    const auto first_tile = destination / 32U;
+    const auto tile_count = patterns.size() / 32U;
+    if (first_tile > loaded_tiles.size() ||
+        tile_count > loaded_tiles.size() - first_tile) {
+        throw std::out_of_range(std::string(label) +
+                                " exceeds the Genesis pattern index range");
+    }
+    std::fill(loaded_tiles.begin() + static_cast<std::ptrdiff_t>(first_tile),
+              loaded_tiles.begin() +
+                  static_cast<std::ptrdiff_t>(first_tile + tile_count),
+              true);
+}
+
+void draw_scene55_tile_layer(
+    const std::vector<std::uint8_t>& vram,
+    const std::array<bool, 0x800U>& loaded_tiles,
+    const Scene55Palette& palette,
+    const Scene55TileLayer& layer,
+    shadowrun::graphics::RgbaImage& image) {
+    constexpr std::size_t kTileBytes = 32U;
+    constexpr std::size_t kTilePixels = 8U;
+    constexpr std::size_t kScreenWidth = 320U;
+    constexpr std::size_t kScreenHeight = 224U;
+    if (layer.words == nullptr ||
+        layer.words->size() != layer.columns * layer.rows) {
+        throw std::runtime_error("Scene-55 background layout size changed");
+    }
+    for (std::size_t tile_y = 0U; tile_y < layer.rows; ++tile_y) {
+        for (std::size_t tile_x = 0U; tile_x < layer.columns; ++tile_x) {
+            const auto word = static_cast<std::uint16_t>(
+                (*layer.words)[tile_y * layer.columns + tile_x] |
+                layer.attributes);
+            const auto tile_index = static_cast<std::size_t>(word & 0x07FFU);
+            const auto tile_offset = tile_index * kTileBytes;
+            if (tile_offset > vram.size() ||
+                vram.size() - tile_offset < kTileBytes ||
+                (tile_index != 0U && !loaded_tiles[tile_index])) {
+                throw std::runtime_error(
+                    "Scene-55 layout references a missing source pattern");
+            }
+            const auto tile = shadowrun::graphics::decode_genesis_tile(
+                vram.data() + tile_offset, kTileBytes);
+            const auto palette_line = static_cast<std::size_t>(
+                (word >> 13U) & 0x03U);
+            const bool flip_x = (word & 0x0800U) != 0U;
+            const bool flip_y = (word & 0x1000U) != 0U;
+            const auto pixel_x = (layer.first_x + tile_x) * kTilePixels;
+            const auto pixel_y = (layer.first_y + tile_y) * kTilePixels;
+            for (std::size_t y = 0U; y < kTilePixels; ++y) {
+                const auto target_y = pixel_y + y;
+                if (target_y >= kScreenHeight) continue;
+                const auto source_y = flip_y ? 7U - y : y;
+                for (std::size_t x = 0U; x < kTilePixels; ++x) {
+                    const auto target_x = pixel_x + x;
+                    if (target_x >= kScreenWidth) continue;
+                    const auto source_x = flip_x ? 7U - x : x;
+                    const auto color_index = static_cast<std::size_t>(
+                        tile.pixels[source_y * kTilePixels + source_x]);
+                    if (color_index == 0U) continue;
+                    image.pixels[target_y * kScreenWidth + target_x] =
+                        palette[palette_line * 16U + color_index];
+                }
+            }
+        }
+    }
+}
+
+shadowrun::graphics::RgbaImage make_scene55_background_canvas(
+    const Scene55Palette& palette,
+    const bool transparent) {
+    constexpr std::size_t kWidth = 320U;
+    constexpr std::size_t kHeight = 224U;
+    auto background = palette[0U];
+    if (transparent) background = shadowrun::native::Rgba8{0U, 0U, 0U, 0U};
+    return shadowrun::graphics::RgbaImage{
+        static_cast<std::uint16_t>(kWidth),
+        static_cast<std::uint16_t>(kHeight),
+        std::vector<shadowrun::native::Rgba8>(kWidth * kHeight, background),
+    };
+}
+
+void overlay_scene55_layers(
+    const std::vector<std::uint8_t>& vram,
+    const std::array<bool, 0x800U>& loaded_tiles,
+    const Scene55Palette& palette,
+    const std::vector<Scene55TileLayer>& layers,
+    shadowrun::graphics::RgbaImage& image) {
+    for (const auto& layer : layers) {
+        draw_scene55_tile_layer(vram, loaded_tiles, palette, layer, image);
+    }
+}
+
 shadowrun::graphics::RgbaImage compose_matrix_traversal_hud_frame(
     const std::vector<std::uint8_t>& rom,
     const shadowrun::graphics::RgbaImage& matrix_menu_patterns) {
@@ -10718,6 +10839,144 @@ int main(int argc, char** argv) {
         }
     }
     if (argc == 4 &&
+        std::string(argv[3]) == "--scene-55-tomb-prelude-backgrounds") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const std::filesystem::path root(argv[2]);
+            std::filesystem::create_directories(root);
+
+            // The initial descriptor 0x5C966 loads these two pattern banks
+            // before placing the two compressed layouts at 0x1EF775 and
+            // 0x1EF7FB. Its tagged pointer 0x1EE2AB starts at even byte
+            // offset 0x1EE2AA, matching the 0x1530 resource header.
+            std::vector<std::uint8_t> initial_vram(0x10000U, 0U);
+            std::array<bool, 0x800U> initial_loaded_tiles{};
+            load_scene55_pattern_bank(rom, 0x1EE2AAU, 0x4420U,
+                                      initial_vram, initial_loaded_tiles,
+                                      "Scene-55 initial pattern bank A");
+            load_scene55_pattern_bank(rom, 0x1F002EU, 0x8A80U,
+                                      initial_vram, initial_loaded_tiles,
+                                      "Scene-55 initial pattern bank B");
+            const auto initial_plane_a = decode_hud_sprite_stream_for_asset(
+                rom, 0x1EF774U, "Scene-55 initial Plane-A layout");
+            const auto initial_plane_b = decode_hud_sprite_stream_for_asset(
+                rom, 0x1EF7FAU, "Scene-55 initial Plane-B layout");
+            if (initial_plane_a.size() > 16U * 14U ||
+                initial_plane_b.size() > 40U * 18U) {
+                throw std::runtime_error(
+                    "Scene-55 initial layout dimensions changed (A=" +
+                    std::to_string(initial_plane_a.size()) + ", B=" +
+                    std::to_string(initial_plane_b.size()) + ")");
+            }
+            auto initial_plane_a_cells = initial_plane_a;
+            auto initial_plane_b_cells = initial_plane_b;
+            initial_plane_a_cells.resize(16U * 14U, 0U);
+            initial_plane_b_cells.resize(40U * 18U, 0U);
+            const auto initial_palette =
+                shadowrun::graphics::read_genesis_palette_set(rom, 0x5C9D2U);
+            auto initial_image = make_scene55_background_canvas(
+                initial_palette, false);
+            overlay_scene55_layers(
+                initial_vram, initial_loaded_tiles, initial_palette,
+                {{&initial_plane_b_cells, 0U, 10U, 40U, 18U, 0U},
+                 {&initial_plane_a_cells, 0U, 14U, 16U, 14U, 0x8000U}},
+                initial_image);
+            const auto initial_path = root /
+                "scene-55-tomb-prelude-background-initial.png";
+            write_png32(initial_path.string(), initial_image);
+
+            // At elapsed 0x190, 0x5C744 clears both planes, uploads the
+            // streams at $1000 and $4420, and places the 40x15 Plane-B map
+            // from 0x1E8802 at byte address $2680. The routine first clears
+            // Plane-B colors 1..15 to black, then restores them from 0x5C9B4.
+            std::vector<std::uint8_t> stage_vram(0x10000U, 0U);
+            std::array<bool, 0x800U> stage_loaded_tiles{};
+            load_scene55_pattern_bank(rom, 0x1EFDCCU, 0x1000U,
+                                      stage_vram, stage_loaded_tiles,
+                                      "Scene-55 elapsed-0x190 pattern bank A");
+            load_scene55_pattern_bank(rom, 0x1E6956U, 0x4420U,
+                                      stage_vram, stage_loaded_tiles,
+                                      "Scene-55 elapsed-0x190 pattern bank B");
+            const auto stage_plane_b = decode_hud_sprite_stream_for_asset(
+                rom, 0x1E8802U, "Scene-55 elapsed-0x190 Plane-B layout");
+            if (stage_plane_b.size() > 40U * 15U) {
+                throw std::runtime_error(
+                    "Scene-55 elapsed-0x190 layout dimensions changed");
+            }
+            auto stage_plane_b_cells = stage_plane_b;
+            stage_plane_b_cells.resize(40U * 15U, 0U);
+            auto stage_palette = initial_palette;
+            const auto restored_plane_b_palette =
+                shadowrun::graphics::read_genesis_palette(rom, 0x5C9B2U);
+            std::copy(restored_plane_b_palette.begin() + 1,
+                      restored_plane_b_palette.end(),
+                      stage_palette.begin() + 49);
+            auto stage_image = make_scene55_background_canvas(
+                stage_palette, false);
+            const Scene55TileLayer stage_background{
+                &stage_plane_b_cells, 0U, 13U, 40U, 15U, 0x6000U};
+            overlay_scene55_layers(stage_vram, stage_loaded_tiles,
+                                   stage_palette, {stage_background},
+                                   stage_image);
+            const auto stage_path = root /
+                "scene-55-tomb-prelude-background-frame-400.png";
+            write_png32(stage_path.string(), stage_image);
+
+            // At elapsed 0x26C, 0x5C842 loads the 0x5D6 pattern bank and
+            // changes palette-line-zero colors 1..15. 0x5C88C then copies one
+            // map column every even service frame: D7=0x25 is doubled to a
+            // 37-word skip after the post-incremented word, giving a
+            // 38-word source row. DBF D1=0x12 emits 19 rows; counter 0..0x25
+            // reveals the complete 38x19 map in Plane A at (1,2).
+            load_scene55_pattern_bank(rom, 0x1F310EU, 0xBAC0U,
+                                      stage_vram, stage_loaded_tiles,
+                                      "Scene-55 elapsed-0x26C pattern bank");
+            constexpr std::size_t kRevealColumns = 38U;
+            constexpr std::size_t kRevealRows = 19U;
+            constexpr std::size_t kRevealMap = 0x1F6532U;
+            std::vector<std::uint16_t> reveal_words;
+            reveal_words.reserve(kRevealColumns * kRevealRows);
+            for (std::size_t index = 0U;
+                 index < kRevealColumns * kRevealRows; ++index) {
+                reveal_words.push_back(read_big_endian_word(
+                    rom, kRevealMap + index * 2U));
+            }
+            auto reveal_palette = stage_palette;
+            const auto new_plane_a_palette =
+                shadowrun::graphics::read_genesis_palette(rom, 0x5CA72U);
+            std::copy(new_plane_a_palette.begin() + 1,
+                      new_plane_a_palette.end(), reveal_palette.begin() + 1);
+            const Scene55TileLayer reveal_layer{
+                &reveal_words, 1U, 2U, kRevealColumns, kRevealRows, 0U};
+            auto reveal_image = make_scene55_background_canvas(
+                reveal_palette, true);
+            draw_scene55_tile_layer(stage_vram, stage_loaded_tiles,
+                                    reveal_palette, reveal_layer,
+                                    reveal_image);
+            const auto reveal_path = root /
+                "scene-55-tomb-prelude-foreground-frame-620.png";
+            write_png32(reveal_path.string(), reveal_image);
+
+            auto combined_image = stage_image;
+            draw_scene55_tile_layer(stage_vram, stage_loaded_tiles,
+                                    reveal_palette, reveal_layer,
+                                    combined_image);
+            const auto combined_path = root /
+                "scene-55-tomb-prelude-background-frame-620.png";
+            write_png32(combined_path.string(), combined_image);
+
+            std::cout << "initial 2-plane layout, elapsed 0x190 Plane-B stage, "
+                         "and elapsed 0x26C 38x19 Plane-A reveal -> "
+                      << initial_path.string() << ", " << stage_path.string()
+                      << ", " << reveal_path.string() << ", "
+                      << combined_path.string() << "\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 &&
         std::string(argv[3]) == "--matrix-title-figure-atlases") {
         try {
             const auto rom = read_file(argv[1]);
@@ -12232,6 +12491,8 @@ int main(int argc, char** argv) {
                      "--scene-5bd2c-sprite-lists\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
                      "--scene-55-tomb-prelude-sprite-lists\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
+                     "--scene-55-tomb-prelude-backgrounds\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
                      "--matrix-title-figure-atlases\n";
         std::cerr << "numeric offsets accept decimal or 0x-prefixed hex\n";

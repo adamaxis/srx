@@ -50,11 +50,47 @@ The six-list phase starts at elapsed `0`, then `0x50`, `0x6E`, `0xA0`, `0xD2`,
 `0x5BC70` also applies timed state changes: a random branch between `0x64` and
 `0xA9`, a field-effect adjustment from `0x136` to `0x18F`, resource changes at
 `0x190` and `0x26C`, and a plane clear at `0x30C`. After the `0x26C` resource
-change, `0x5C88C` writes its row source at even elapsed frames through `0x2BA`;
-it writes 19 rows per update and stops after 38 updates. The separate
-`0x5BBA6` schedule calls `0x530DE` with D0 values `0x35` or `0x2C` at exact
-elapsed values. These paths are part of the active presentation, so replacing
-them with a fixed host delay would omit source-visible state changes.
+change, `0x5C88C` is called on even elapsed frames from `0x26E` through
+`0x2BA`. It writes one tile in each of 19 rows per update. Its destination
+column advances from x=1 through x=38; the source stride is 38 words because
+the row writer post-increments one word and then skips 37 more. The counter
+guard rejects its call at `0x2BA`, so the 38 visible writes end at `0x2B8`.
+This reveals a 38x19 map from `0x1F6532` across Plane A at (1,2), over the
+Plane-B scene installed at `0x190`. The separate `0x5BBA6` schedule calls
+`0x530DE` with D0 values `0x35` or `0x2C` at exact elapsed values. These paths
+are part of the active presentation, so replacing them with a fixed host delay
+would omit source-visible state changes.
+
+## Background stages and palette writes
+
+The descriptor at `0x5C966` points to VDP setup `0x5C940`, the four-line
+initial palette at `0x5C9D2`, and two tagged `0x1728` layouts. Pattern stream
+`0x1EE2AA` is uploaded at VRAM byte address `$4420` (tile `$221`); the tagged
+pointer `0x1F002F` selects stream data at `0x1F002E`, uploaded at `$8A80`
+(tile `$454`). The Plane-A map `0x1EF775` occupies 16 columns by 14 rows from
+row 14 and sets priority. The Plane-B map `0x1EF7FB` occupies 40 columns by
+18 rows from row 10. Both maps use palette line 0. The two stream terminators
+leave the final cleared cells blank; the offline composition retains those
+cells as tile zero.
+
+At elapsed `0x190`, `0x5C744` clears both planes and loads pattern streams
+`0x1EFDCC` at tile `$80` and `0x1E6956` at tile `$221`. It first copies fifteen
+zero words from `0x5CA52` to palette-line-3 entries 1..15, uploads that palette
+change, then draws the 40x15 Plane-B layout from `0x1E8802` at byte address
+`$2680` (screen tile row 13) with palette-line-3 attributes. It restores
+entries 1..15 from `0x5C9B4` and requests another palette upload. The restored
+palette is the steady background state; the zero write is a timed black
+transition and is not baked into that static image.
+
+At elapsed `0x26C`, `0x5C842` loads `0x1F310E` at `$BAC0` (tile `$5D6`) and
+copies fifteen palette-line-0 colors from `0x5CA74` to CRAM entries 1..15.
+The source map at `0x1F6532` is 38 words wide by 19 rows. `0x5C88C` exposes
+one column every two service frames, producing a complete 304x152 host layer
+after 38 writes. The importer emits four temporary inspection images through
+`--scene-55-tomb-prelude-backgrounds`: the initial two-plane scene, the
+steady elapsed-`0x190` skyline, the transparent elapsed-`0x26C` foreground,
+and their full-screen composite. They are generated under the build tree and
+are neither checked-in runtime assets nor independent Genesis captures.
 
 ## Extraction boundary
 
@@ -69,11 +105,13 @@ the source timeline, background/layout stages, or all time-dependent palette
 changes; they are not runtime assets or visual goldens.
 
 The presentation remains a source boundary after the Licourtrix response.
-Before connecting it, the remaining work is to recover the stage backgrounds
-and palette transitions, represent these timed actor/effect states in Lua,
-consume individually named host images through a typed presenter, and connect
-the resulting sequence back to the five credits panels. The existing direct
-credits-panel QA does not defend this live callback path.
+The stage maps, pattern banks, and timed palette writes are now traced and
+have an offline host-image preview. Before connecting it, the remaining work
+is to represent these timed actor/effect states in Lua, promote the stable
+backgrounds and sprite art to individually named runtime assets, consume them
+through a typed presenter, and connect the sequence back to the five credits
+panels. The existing direct credits-panel QA does not defend this live
+callback path.
 
 ## Source references
 
@@ -83,4 +121,6 @@ credits-panel QA does not defend this live callback path.
   `0x5C2FE`, `0x5C336`, `0x5C39C`, `0x5C744`, `0x5C842`, `0x5C88C`,
   `0x5C966`, `0x1EFDCC`, and `0x1F002E`.
 - Ghidra cross-check: `fn_00001368.cpp`, `fn_00001406.cpp`,
-  `fn_00001530.cpp`, `fn_00001728.cpp`, and `fn_00001378.cpp`.
+  `fn_00001530.cpp`, `fn_00001728.cpp`, and `fn_00001378.cpp`; the primary
+  ROM instructions at `0x5C744`, `0x5C842`, and `0x5C88C` define the timed
+  plane and palette updates.

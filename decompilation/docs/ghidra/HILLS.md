@@ -530,7 +530,11 @@ This live trigger has not had a full-route CTest or CLI `actual.bmp`; the
 existing five-panel QA enters through a direct presenter seam. The typed
 continuation now opens the ROM-backed Licourtrix warning and one-response
 graph, which ends at an explicit boundary before the D7=0x03E8 DBRA
-presentation. That animation and the pre-panel fade remain open (see the
+presentation. The pre-credit audit now traces its initial two-plane scene,
+the elapsed-0x190 Plane-B skyline, the elapsed-0x26C 38-column Plane-A reveal,
+and palette changes; the offline importer emits inspection images for those
+stages. The timed presentation, pre-panel fade, and named runtime assets
+remain unimplemented (see the
 [pre-credit source audit](tarislar-tomb-prelude-source-audit.md)). The complete
 `FFF11E` visual/effect record is not reproduced. The host synchronizes
 `FFE186` between its coordinator and world-frame state at field-frame and
