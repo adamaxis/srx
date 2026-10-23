@@ -15,9 +15,11 @@
           "0x0F57F8", "0x0F580C", "0x0F5820", "0x0F5834", "0x0F5848",
           "0x0F585C", "0x220EA", "0x5D130", "0x5D1F6", "0x0F5870",
           "0x1FE690", "0x0FBAFB", "0x0FBBBD", "0x0FBC6E", "0x21E66",
-          "0x21E8C", "0x21E9E", "0x21A4E", "0x136DE", "0x11B6D4",
-          "0x11B6EC", "0x11B704", "0x11B70C", "0x11B450", "0x11B51D",
-          "0x1050B0", "0x1050DC"
+          "0x21E8C", "0x21E9E", "0x21A4E", "0x1F292", "0x122024",
+          "0x136DE",
+          "0x11B6D4", "0x11B6EC", "0x11B393", "0x11B3C2", "0x11B704",
+          "0x11B70C", "0x11B450", "0x11B51D", "0x1050B0", "0x1050DC",
+          "0x0F5AC0", "0x0F7152"
         ],
         "scope": "scene_9_mode_9_event_0_gate_to_lady_gillian_frosty_and_fare_boundaries"
       },
@@ -44,7 +46,7 @@
           "choices": [
             { "id": "questions", "next": "guard_questions" },
             { "id": "elders", "next": "show_elders_lodge" },
-            { "id": "later", "next": "guard_exit_boundary" }
+            { "id": "later", "next": "guard_later_offer" }
           ],
           "evidence": "ROM prompt 0x11B5A0 orders command 0x33, continuation 0x11B6AC, and command 0x3A under the three response labels."
         },
@@ -56,7 +58,7 @@
           "choices": [
             { "id": "questions", "next": "guard_questions" },
             { "id": "elders", "next": "show_elders_lodge" },
-            { "id": "later", "next": "guard_exit_boundary" }
+            { "id": "later", "next": "guard_later_offer" }
           ],
           "evidence": "ROM prompt 0x11B5BC has the same choices as the hostile root, with its greeting selected by story bit 20 being clear."
         },
@@ -68,7 +70,7 @@
           "choices": [
             { "id": "frosty", "next": "frosty_left" },
             { "id": "elders", "next": "show_elders_lodge" },
-            { "id": "later", "next": "guard_exit_boundary" }
+            { "id": "later", "next": "guard_later_offer" }
           ],
           "evidence": "ROM prompt 0x11B5D8 exposes the Frosty option when story bit 20 is set."
         },
@@ -80,7 +82,7 @@
           "choices": [
             { "id": "frosty", "next": "frosty_left" },
             { "id": "elders", "next": "show_elders_lodge" },
-            { "id": "later", "next": "guard_exit_boundary" }
+            { "id": "later", "next": "guard_later_offer" }
           ],
           "evidence": "ROM prompt 0x11B5F4 repeats while Frosty is absent; the other options continue to the Elders or command 0x3A."
         },
@@ -93,7 +95,7 @@
           "choices": [
             { "id": "caleb", "next": "caleb_answer" },
             { "id": "frosty_question", "next": "frosty_name_answer" },
-            { "id": "later", "next": "guard_exit_boundary" }
+            { "id": "later", "next": "guard_later_offer" }
           ],
           "evidence": "Command 0x33 at 0x21CAA selects prompt 0x11B610."
         },
@@ -105,7 +107,7 @@
           "choices": [
             { "id": "another_question", "next": "guard_questions" },
             { "id": "elders", "next": "elders_welcome" },
-            { "id": "later", "next": "guard_exit_boundary" }
+            { "id": "later", "next": "guard_later_offer" }
           ],
           "evidence": "ROM prompt 0x11B648 returns to 0x11B610 for another question or continues to 0x11B698 for the Elders request."
         },
@@ -117,7 +119,7 @@
           "choices": [
             { "id": "another_question", "next": "guard_questions" },
             { "id": "elders", "next": "elders_welcome" },
-            { "id": "later", "next": "guard_exit_boundary" }
+            { "id": "later", "next": "guard_later_offer" }
           ],
           "evidence": "ROM prompt 0x11B664 returns to 0x11B610 for another question or continues to 0x11B698 for the Elders request."
         },
@@ -160,7 +162,7 @@
           "type": "page",
           "eventId": "elders_busy",
           "speakerId": "salish_sinsearach_guard",
-          "next": "guard_exit_boundary",
+          "next": "guard_return_offer",
           "evidence": "ROM record 0xF4D28 says the Elders are busy and uses command 0x39 to return to the gate response."
         },
         "lady_gillian_greeting": {
@@ -200,7 +202,7 @@
           "type": "page",
           "eventId": "frosty_not_ready",
           "speakerId": "salish_sinsearach_lady_gillian",
-          "next": "guard_exit_boundary",
+          "next": "guard_return_offer",
           "evidence": "ROM record 0xF57D0 refuses the request while story bit 9 is clear; command 0x39 returns to the gate."
         },
         "frosty_arrival": {
@@ -289,9 +291,88 @@
           "type": "source_boundary",
           "reason": "The ROM runner triplet is always present; the typed runner-state service is unavailable in this invocation, so the command sequence cannot continue safely."
         },
-        "guard_exit_boundary": {
+        "guard_return_offer": {
+          "type": "choice",
+          "menuId": "copt_fare_offer",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.guard_return_offer",
+          "speakerId": "salish_sinsearach_guard",
+          "choices": [
+            { "id": "yes", "next": "fare_yes_response" },
+            { "id": "no", "next": "fare_no_response" }
+          ],
+          "evidence": "ROM command 0x39 selects root 0x11B6D4, whose text at 0x11B393 first returns the guard to the front gate before the shared lift offer and Yes/No responses."
+        },
+        "guard_later_offer": {
+          "type": "choice",
+          "menuId": "copt_fare_offer",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.guard_later_offer",
+          "speakerId": "salish_sinsearach_guard",
+          "choices": [
+            { "id": "yes", "next": "fare_yes_response" },
+            { "id": "no", "next": "fare_no_response" }
+          ],
+          "evidence": "ROM command 0x3A selects root 0x11B6EC, which presents the shared lift offer without the initial gate-return text."
+        },
+        "fare_yes_response": {
+          "type": "page",
+          "eventId": "fare_yes_response",
+          "speakerId": "salish_sinsearach_joshua",
+          "next": "charge_copt_fare",
+          "evidence": "The Yes response at 0x1050B0 is Joshua's 'Wiz, chum!' line before command 0x38."
+        },
+        "fare_no_response": {
+          "type": "page",
+          "eventId": "fare_no_response",
+          "speakerId": "salish_sinsearach_joshua",
+          "next": "fare_no_reply",
+          "evidence": "The No response at 0x1050DC is Joshua's 'Neg on that, chum.' line; the linked response text list at 0x0F5AC0 begins with the guard's 'Sure thing' reply at 0x0F7152."
+        },
+        "fare_no_reply": {
+          "type": "page",
+          "eventId": "fare_no_reply",
+          "speakerId": "salish_sinsearach_guard",
+          "next": "fare_no_return",
+          "evidence": "The no-fare response list 0x0F5AC0 begins with ROM text at 0x0F7152."
+        },
+        "fare_no_return": {
           "type": "source_boundary",
-          "reason": "ROM commands 0x39/0x3A select roots 0x11B6D4/0x11B6EC with response pointers 0x1050B0/0x1050DC. Fare command 0x38 at 0x21E66 attempts 1,000 nuyen: low funds selects 0x11B70C/0x11B51D; payment selects 0x11B704/0x11B450 and initializes mode state 6. The final field transition and refusal return are not reconstructed."
+          "reason": "The No reply at 0x0F7152 is traced, but the caller's field return after this text list is unresolved."
+        },
+        "charge_copt_fare": {
+          "type": "action",
+          "actionId": "field.charge_copt_fare",
+          "results": {
+            "paid": "fare_paid",
+            "insufficient": "fare_insufficient",
+            "service_unavailable": "fare_wallet_boundary"
+          },
+          "evidence": "ROM command 0x38 at 0x21E66 subtracts exactly 1,000 from FFFBFE only when the signed comparison passes, then selects 0x11B704/0x11B450; otherwise it selects 0x11B70C/0x11B51D."
+        },
+        "fare_paid": {
+          "type": "page",
+          "eventId": "fare_paid",
+          "speakerId": "salish_sinsearach_narrator",
+          "next": "fare_destination_boundary"
+        },
+        "fare_insufficient": {
+          "type": "page",
+          "eventId": "fare_insufficient",
+          "speakerId": "salish_sinsearach_guard",
+          "next": "fare_insufficient_return"
+        },
+        "fare_insufficient_return": {
+          "type": "source_boundary",
+          "reason": "Command 0x38 selects the short-wallet text at 0x11B51D; the subsequent field return is unresolved."
+        },
+        "fare_wallet_boundary": {
+          "type": "source_boundary",
+          "reason": "The typed field wallet is unavailable, so command 0x38 cannot make its source funds comparison."
+        },
+        "fare_destination_boundary": {
+          "type": "source_boundary",
+          "reason": "Payment and the paid-flight text at 0x11B450 are modeled, and ROM command 0x38 initializes mode state 6. The resulting highway scene and field return position are still unresolved."
         },
         "frosty_harlequin_story_pages": {
           "type": "terminal",

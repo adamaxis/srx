@@ -21850,6 +21850,150 @@ int run_field_sinsearach_gate_physical_entry_qa(
     return 0;
 }
 
+int run_field_sinsearach_gate_fare_physical_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Sinsearach fare QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    constexpr std::size_t kGateRecord = 230U;
+    constexpr std::uint16_t kStartX = 0x0D00U;
+    constexpr std::uint16_t kStartY = 0x0C00U;
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    if (output_error || field_scene.field_scene_reference_for_dump() != 9U ||
+        field_scene.field_runtime_state_for_dump().field_mode != 9U ||
+        field_scene.field_entity_world_position().x != kStartX ||
+        field_scene.field_entity_world_position().y != kStartY ||
+        rectangles.size() <= kGateRecord ||
+        rectangles[kGateRecord].left != 0x00C0U ||
+        rectangles[kGateRecord].right != 0x00DFU ||
+        rectangles[kGateRecord].top != 0x00A0U ||
+        rectangles[kGateRecord].bottom != 0x00BFU) {
+        std::cerr << "Sinsearach fare QA: Scene-9 checkpoint or ROM record "
+                     "230 does not match\n";
+        return 3;
+    }
+
+    for (const std::uint8_t bit : {9U, 13U, 17U, 18U, 19U, 20U}) {
+        if (!field_scene.set_story_flag_for_dump(bit, true)) return 3;
+    }
+    if (!field_scene.set_story_flag_for_dump(30U, false)) return 3;
+    field_scene.set_group_item_flags_for_dump(0U);
+    field_scene.set_field_funds_for_dump(999U);
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&field_scene, &asset_root, &output, &render](
+                          const std::string_view name) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            !field_scene.dialogue_open() ||
+            field_hud_chrome_survives(image, asset_root) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()))) {
+            std::cerr << "Sinsearach fare QA: full-frame capture failed for "
+                      << name << '\n';
+            return false;
+        }
+        return true;
+    };
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into record 230
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 9U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto& dispatch =
+        field_scene.field_map_event_system_for_dump().last_collision_dispatch();
+    if (movement_ticks == 0U || movement_ticks >= 80U || !dispatch.has_value() ||
+        dispatch->decision.source_event_code !=
+            FieldCollisionEventCode::event_0 ||
+        dispatch->decision.event_code != FieldCollisionEventCode::event_0 ||
+        field_scene.field_mode_event_code_for_dump() != 0U) {
+        std::cerr << "Sinsearach fare QA: ordinary Up did not dispatch "
+                     "Scene-9 record 230/event 0\n";
+        return 3;
+    }
+    for (std::uint8_t settle = 0U;
+         settle < 100U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 9U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.dialogue_task_opened"));
+    if (!field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !contains("Greetings, Sir Joshua") || opened != 1) {
+        std::cerr << "Sinsearach fare QA: event 0 did not open the source "
+                     "three-choice guard prompt\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x20U); // C: Later / command 0x3A
+    if (!field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().option_count != 2U ||
+        !contains("1,000$") || !save("fare-offer")) {
+        std::cerr << "Sinsearach fare QA: C did not open the source copt offer\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: Yes
+    if (!field_scene.dialogue_open() ||
+        !contains("save me much needed time") ||
+        !save("fare-yes-response")) {
+        std::cerr << "Sinsearach fare QA: Yes did not show Joshua's response\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: check the wallet
+    if (!field_scene.dialogue_open() ||
+        !contains("comes up short") ||
+        field_scene.field_funds_for_dump() != 999U ||
+        !save("fare-insufficient") || !save("actual")) {
+        std::cerr << "Sinsearach fare QA: 999 nuyen did not select the "
+                     "uncharged short-wallet page\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "record\tevent\tentry\tfunds\tresult\taudio_requests\n"
+          << "230\t0\tordinary_up\t999\t"
+          << "later_yes_short_wallet_no_debit\t"
+          << field_audio_events.size() << '\n';
+    std::cout << "field_sinsearach_gate_fare_physical_entry_qa=passed "
+                 "record=230 event=0 result=insufficient_funds "
+                 "artifacts=" << output.string() << '\n';
+    return 0;
+}
+
 int run_field_mode_13_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
@@ -24629,6 +24773,8 @@ int main(int argc, char** argv) {
             field_spirit_eyes_physical_entry_qa_path;
         std::optional<std::filesystem::path>
             field_sinsearach_gate_physical_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_sinsearach_gate_fare_physical_entry_qa_path;
         std::optional<std::filesystem::path> field_mode_13_entry_qa_path;
         std::optional<std::filesystem::path>
             field_owlfeather_physical_entry_qa_path;
@@ -25476,6 +25622,13 @@ int main(int argc, char** argv) {
                 field_sinsearach_gate_physical_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
+            if (std::string(argv[index]) ==
+                    "--field-sinsearach-gate-fare-physical-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_sinsearach_gate_fare_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
             if (std::string(argv[index]) == "--field-mode-13-entry-qa" &&
                 index + 1 < argc) {
                 field_smoke = true;
@@ -26167,7 +26320,8 @@ int main(int argc, char** argv) {
                 checkpoint.active_runner_slot = 0U;
                 smoke_state.restored_field_state = std::move(checkpoint);
             }
-            if (field_sinsearach_gate_physical_entry_qa_path.has_value()) {
+            if (field_sinsearach_gate_physical_entry_qa_path.has_value() ||
+                field_sinsearach_gate_fare_physical_entry_qa_path.has_value()) {
                 const auto scene9 = integration::make_field_scene_input(
                     *smoke_state.field_session_source_assets, 9U);
                 if (!scene9.has_value() ||
@@ -26388,6 +26542,7 @@ int main(int argc, char** argv) {
                 field_scene2_motel_street_collision_qa_path.has_value() ||
                 field_movement_qa_path.has_value() ||
                 field_sinsearach_gate_physical_entry_qa_path.has_value() ||
+                field_sinsearach_gate_fare_physical_entry_qa_path.has_value() ||
                 field_wanderer_south_exit_record_7_qa_path.has_value() ||
                 field_wanderer_south_exit_record_8_qa_path.has_value() ||
                 field_crime_mall_ilene_gate_qa_path.has_value() ||
@@ -26416,7 +26571,9 @@ int main(int argc, char** argv) {
             }
             const auto bootstrapped = field_wylie_gala_inn_qa_path.has_value()
                 ? field_scene.bootstrap_for_scene_dump(smoke_state, 3U)
-                : (field_sinsearach_gate_physical_entry_qa_path.has_value()
+                : (field_sinsearach_gate_physical_entry_qa_path.has_value() ||
+                           field_sinsearach_gate_fare_physical_entry_qa_path
+                               .has_value()
                        ? field_scene.bootstrap_for_scene_dump(smoke_state, 9U)
                        : field_scene.bootstrap(smoke_state));
             if (!bootstrapped) {
@@ -29961,6 +30118,12 @@ int main(int argc, char** argv) {
                 return run_field_sinsearach_gate_physical_entry_qa(
                     field_scene, asset_root,
                     *field_sinsearach_gate_physical_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_sinsearach_gate_fare_physical_entry_qa_path.has_value()) {
+                return run_field_sinsearach_gate_fare_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_sinsearach_gate_fare_physical_entry_qa_path,
                     field_audio_events, field_source_boundaries);
             }
             if (field_mode_13_entry_qa_path.has_value()) {

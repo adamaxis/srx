@@ -106,25 +106,34 @@ art with the extracted field font and waits for any focused controller event
 before Lua advances. After the last page, `play_cinematic` completes through
 the typed source-context return handler.
 
-The Sinsearach physical-entry QA boots Scene 9 below record 230, uses ordinary
-Up input to reach the gate event, then follows the Elders, Lady Gillian, and
-Frosty choices through command `0x49`. It advances all three pages and checks
-the same-context return, story bit 30, FFFC34 bits 4/5, and the runner source
-byte triplet `+3`. The CLI CTest writes complete frames, including
-`field-sinsearach-gate-physical-entry-qa/actual.bmp` for the final page. The
-Spirit Eyes physical-entry QA similarly reaches Scene-4 record 96, drives the
-scale completion path, advances all four ritual pages, and checks the return;
-it writes the cinematic frame as `ritual-page-3.bmp` and the clean return as
-`actual.bmp`. Focused Debug and Release CTests pass for the gameplay script
-runtime and both physical routes. The Sinsearach Debug and Release
-`actual.bmp` files have identical SHA-256 hashes, and the full 320x224 Release
-frame was inspected.
+The Sinsearach cinematic physical-entry QA boots Scene 9 below record 230,
+uses ordinary Up input to reach the gate event, then follows the Elders, Lady
+Gillian, and Frosty choices through command `0x49`. It advances all three
+pages and checks the same-context return, story bit 30, FFFC34 bits 4/5, and
+the runner source-byte triplet `+3`. The fare physical-entry QA starts from a
+fresh Scene-9 checkpoint, reaches the same record with ordinary Up, selects
+Later and Yes, and captures the offer, Joshua response, and 999-nuyen
+short-wallet page. Its `actual.bmp` is the short-wallet result. The separate
+script-runtime CTest covers the No reply, unchanged short balance, exact
+1,000-nuyen debit, paid-flight page, and typed boundaries where the No/short
+wallet caller's field return and paid destination handoff remain unresolved.
+The Spirit Eyes physical-entry QA similarly reaches Scene-4 record 96, drives
+the scale completion path, advances all four ritual pages, and checks the
+return; it writes the cinematic frame as `ritual-page-3.bmp` and the clean
+return as `actual.bmp`. Focused Debug and Release CTests pass for the gameplay
+script runtime and all three physical routes. The Sinsearach cinematic Debug
+and Release `actual.bmp` files have identical SHA-256 hashes. The fare QA's
+`fare-offer.bmp` hashes also match across Debug/Release
+(`BFFF2BAD8ACAFDC52CEE787E83B4FAAEB5F3A21FA847E205C4AB9E8A3A3FC84C`), as do
+its short-wallet `actual.bmp` files
+(`890D5D827E6F1EB6812F6E96FBA3715472C3D81E6844F1BE84E90E322270B6D9`). The
+full 320x224 Release frames were inspected.
 
 These are source-backed host route and renderer regression captures, not
 independent Genesis visual proof. No independent Genesis encounter frame has
-been identified. The Sinsearach Frosty path now has a physical-entry test and
-CLI image; guard fare commands `0x39`/`0x3A` and payment command `0x38` remain
-explicit source boundaries.
+been identified. Commands `0x39`/`0x3A` and fare command `0x38` are modeled up
+to the paid-flight page; the highway destination, return position, and mode-6
+field transition remain explicit source boundaries.
 
 ## Source references
 

@@ -930,7 +930,7 @@ supplied longplay; this hill defends the traced behavior and host presentation
 regression, without claiming exact visual fidelity. See [the Wire-Masters
 audit](visual-audits/wire-masters-mode7-cyberware.md).
 
-## Sinsearach village gate mode-9/event-0 dialogue (partial, 2026-10-22)
+## Sinsearach village gate mode-9/event-0 dialogue (partial, 2026-10-23)
 
 Scene-9 record 230 at `0x1B578E` crosses the village gate. In mode 9/event 0,
 `0x1FD80` selects the guard's hostile/friendly root from story bits 18/20 and
@@ -951,14 +951,25 @@ route through all three pages, checks the same-context return and source
 effects, and writes full-frame `actual.bmp` captures. Debug/Release
 `shadowrun_ghidra_conversion_qt_field_spirit_eyes_physical_entry_qa` reaches
 record 96, drives all four ritual pages, and captures the page and clean
-return. The Frosty route now has its ROM entry, typed presenter, regression
-CTest, and CLI image; the overall gate hill remains partial because the
-separate fare roots are not reconstructed. No independent Genesis encounter
-frame has been identified, so visual fidelity remains unverified. See the
-[story-page source audit](cinematic-story-pages-source-audit.md).
+return. The gate's separate command roots are also modeled: `0x39` presents
+the gate-return plus fare prompt, while `0x3A` presents the fare prompt
+directly. Joshua's Yes/No replies and the guard's No reply use ROM text.
+Command `0x38` subtracts 1,000 nuyen only when funds cover the fare, selects
+the short-wallet page at `0x11B51D` otherwise, and selects the paid-flight
+page at `0x11B450` when paid. Lua owns the wallet action; no ROM-address
+interpreter or second wallet state was added.
 
-The guard's exit choices remain a separate boundary. Commands `0x39` and
-`0x3A` select roots `0x11B6D4` and `0x11B6EC`. Their related fare command
-`0x38` attempts 1,000 nuyen; insufficient funds select text group `0x11B51D`,
-while payment selects `0x11B450` and initializes mode state 6. The later
-field transition and refusal return are not reconstructed.
+Debug/Release `shadowrun_gameplay_script_runtime_qa` checks both roots, No and
+short-wallet pages with unchanged funds and explicit field-return boundaries,
+the exact 1,000-nuyen debit, and the typed boundary after the paid-flight
+page. Debug/Release
+`shadowrun_ghidra_conversion_qt_field_sinsearach_gate_fare_physical_entry_qa`
+uses ordinary Up input to reach record 230, selects Later and Yes, verifies
+the 999-nuyen balance is unchanged, and writes full-frame offer and result
+captures under `build/conversion/qt/{debug,release}/qt_runtime/`, including
+`field-sinsearach-gate-fare-physical-entry-qa/actual.bmp`.
+The destination highway scene, return position, and command-0x38 mode-state
+transition remain unresolved, so the overall gate hill remains partial. No
+independent Genesis encounter frame has been identified; these captures test
+the converted route and renderer, not Genesis visual fidelity. See the
+[story-page source audit](cinematic-story-pages-source-audit.md).

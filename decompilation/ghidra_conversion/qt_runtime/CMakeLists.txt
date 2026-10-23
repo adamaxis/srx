@@ -1264,6 +1264,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_sinsearach_gate_ph
                  --field-sinsearach-gate-physical-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-sinsearach-gate-physical-entry-qa")
 
+# Start a fresh Scene-9 checkpoint, walk into record 230, and follow the Later
+# and Yes choices through the 1,000-nuyen short-wallet result.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_sinsearach_gate_fare_physical_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-sinsearach-gate-fare-physical-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-sinsearach-gate-fare-physical-entry-qa")
+
 # Walk into the quest-gated Owlfeather lodge through Scene-6 record 193 and
 # verify the ROM title service opens its Lua dialogue and portrait.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_owlfeather_physical_entry_qa

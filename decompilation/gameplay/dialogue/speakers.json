@@ -527,6 +527,14 @@
         "guard_questions": {
           "continuation_key": "",
           "title_key": "salish.sinsearach.page.guard_questions"
+        },
+        "fare_no_reply": {
+          "continuation_key": "",
+          "title_key": "salish.sinsearach.page.fare_no_reply"
+        },
+        "fare_insufficient": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.fare_insufficient"
         }
       },
       "name": "Elven guard",
@@ -588,9 +596,28 @@
         "frosty_arrival": {
           "continuation_key": "shared.more",
           "title_key": "salish.sinsearach.page.frosty_arrival"
+        },
+        "fare_paid": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.fare_paid"
         }
       },
       "name": "Narration",
+      "portrait_alias": "none",
+      "text_profile": "salish.sinsearach"
+    },
+    "salish_sinsearach_joshua": {
+      "events": {
+        "fare_yes_response": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.fare_yes_response"
+        },
+        "fare_no_response": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.fare_no_response"
+        }
+      },
+      "name": "Joshua",
       "portrait_alias": "none",
       "text_profile": "salish.sinsearach"
     },

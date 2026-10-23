@@ -12112,6 +12112,238 @@ int main() {
         return 18;
     }
 
+    GameScriptRuntime sinsearach_fare_scripts;
+    if (!expect(sinsearach_fare_scripts.load_package(
+                    SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
+                    std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
+                        "dialogue" / "script-text.json"),
+                "Sinsearach fare Lua package did not load")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    std::uint32_t sinsearach_fare_funds = 1200U;
+    ScriptMenuRouteBindings sinsearach_fare_bindings{};
+    sinsearach_fare_bindings.game.nuyen = [&sinsearach_fare_funds] {
+        return std::optional<std::uint32_t>{sinsearach_fare_funds};
+    };
+    sinsearach_fare_bindings.game.set_nuyen = [&sinsearach_fare_funds](
+        const std::uint32_t funds) { sinsearach_fare_funds = funds; };
+    sinsearach_fare_scripts.set_menu_route_bindings(
+        std::move(sinsearach_fare_bindings));
+    sinsearach_fare_scripts.set_location_context(
+        "site", "salish_sinsearach_village_gate", "salish.sinsearach",
+        "salish_sinsearach_guard");
+    sinsearach_fare_scripts.set_field_mode_context(
+        ScriptFieldModeContext{9U, 0U, 0});
+    sinsearach_fare_scripts.set_story_state({
+        {"story_flag_bit_9", false},
+        {"story_flag_bit_13", true},
+        {"story_flag_bit_17", true},
+        {"story_flag_bit_18", true},
+        {"story_flag_bit_19", true},
+        {"story_flag_bit_20", true},
+        {"story_flag_bit_30", false},
+        {"group_item_flag_bit_5", false},
+    });
+    const auto fare_menu_has_choices = [&sinsearach_fare_scripts](
+        const ScriptTaskStep& task, const std::string_view menu_id) {
+        if (task.status != ScriptTaskStep::Status::awaiting_native_operation ||
+            !task.operation.has_value() ||
+            !task.operation->menu.has_value() ||
+            task.operation->menu->id != menu_id) {
+            return false;
+        }
+        const auto menu =
+            sinsearach_fare_scripts.resolve_dialogue_menu(*task.operation->menu);
+        return menu.has_value() && menu->choices.size() == 2U &&
+               menu->choices[0].id == "yes" &&
+               menu->choices[1].id == "no";
+    };
+    const auto fare_menu_has_choice = [&sinsearach_fare_scripts](
+        const ScriptTaskStep& task, const std::string_view menu_id,
+        const std::string_view choice_id) {
+        if (task.status != ScriptTaskStep::Status::awaiting_native_operation ||
+            !task.operation.has_value() ||
+            !task.operation->menu.has_value() ||
+            task.operation->menu->id != menu_id) {
+            return false;
+        }
+        const auto menu =
+            sinsearach_fare_scripts.resolve_dialogue_menu(*task.operation->menu);
+        return menu.has_value() && std::any_of(
+            menu->choices.begin(), menu->choices.end(),
+            [choice_id](const ScriptMenuChoice& choice) {
+                return choice.id == choice_id;
+            });
+    };
+    auto sinsearach_fare = sinsearach_fare_scripts.start_task(
+        "salish_sinsearach_gate", "present");
+    if (!expect(fare_menu_has_choice(
+                    sinsearach_fare, "friendly_guard_with_frosty", "elders"),
+                "Sinsearach fare route did not start at the Frosty-era gate root")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_menu_choice("elders");
+    if (!expect(fare_menu_has_choice(
+                    sinsearach_fare, "elders_thanks", "thanks"),
+                "Sinsearach Elders handoff omitted the Thanks response")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_menu_choice("thanks");
+    if (!expect(fare_menu_has_choice(
+                    sinsearach_fare, "lady_gillian_frosty", "frosty"),
+                "Sinsearach Elders response did not enter Lady Gillian's prompt")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_menu_choice("frosty");
+    if (!expect(spirit_page_is(sinsearach_fare, "frosty_not_ready"),
+                "Sinsearach command 0xF9 did not select the not-ready response")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_operation(true);
+    const auto return_offer_text = sinsearach_fare_scripts.dialogue_text(
+        "salish.sinsearach.page.guard_return_offer");
+    if (!expect(fare_menu_has_choices(sinsearach_fare, "copt_fare_offer") &&
+                    sinsearach_fare.operation->menu->inline_prompt &&
+                    return_offer_text != nullptr &&
+                    sinsearach_fare.operation->menu->inline_text ==
+                        *return_offer_text &&
+                    return_offer_text->find("shows you back to the front gate") !=
+                        std::string::npos,
+                "Sinsearach command 0x39 did not return to the gate-and-fare prompt")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_menu_choice("no");
+    if (!expect(spirit_page_is(sinsearach_fare, "fare_no_response") &&
+                    sinsearach_fare.operation->dialogue->speaker_id ==
+                        "salish_sinsearach_joshua",
+                "Sinsearach No choice omitted Joshua's ROM response")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_operation(true);
+    if (!expect(spirit_page_is(sinsearach_fare, "fare_no_reply"),
+                "Sinsearach No choice omitted the guard's ROM reply")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_operation(true);
+    if (!expect(sinsearach_fare.status == ScriptTaskStep::Status::completed &&
+                    sinsearach_fare.dialogue_outcome.has_value() &&
+                    dialogue_outcome_type(*sinsearach_fare.dialogue_outcome) ==
+                        DialogueOutcomeType::source_boundary &&
+                    std::get<SourceBoundaryOutcome>(
+                        *sinsearach_fare.dialogue_outcome).reason.find(
+                        "field return") != std::string::npos &&
+                    sinsearach_fare_funds == 1200U,
+                "Sinsearach No reply lost its unresolved return boundary or charged funds")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+
+    sinsearach_fare_funds = 999U;
+    sinsearach_fare = sinsearach_fare_scripts.start_task(
+        "salish_sinsearach_gate", "present");
+    if (!expect(fare_menu_has_choice(
+                    sinsearach_fare, "friendly_guard_with_frosty", "later"),
+                "Sinsearach command 0x3A route did not expose the Later choice")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_menu_choice("later");
+    const auto later_offer_text = sinsearach_fare_scripts.dialogue_text(
+        "salish.sinsearach.page.guard_later_offer");
+    if (!expect(fare_menu_has_choices(sinsearach_fare, "copt_fare_offer") &&
+                    later_offer_text != nullptr &&
+                    sinsearach_fare.operation->menu->inline_text ==
+                        *later_offer_text &&
+                    later_offer_text->find("shows you back") ==
+                        std::string::npos,
+                "Sinsearach command 0x3A did not select the fare-only prompt")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_menu_choice("yes");
+    if (!expect(spirit_page_is(sinsearach_fare, "fare_yes_response") &&
+                    sinsearach_fare.operation->dialogue->speaker_id ==
+                        "salish_sinsearach_joshua",
+                "Sinsearach Yes choice omitted Joshua's ROM response")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_operation(true);
+    if (!expect(spirit_page_is(sinsearach_fare, "fare_insufficient") &&
+                    sinsearach_fare_funds == 999U,
+                "Sinsearach fare charged a short wallet or omitted its low-funds page")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_operation(true);
+    if (!expect(sinsearach_fare.status == ScriptTaskStep::Status::completed &&
+                    sinsearach_fare.dialogue_outcome.has_value() &&
+                    dialogue_outcome_type(*sinsearach_fare.dialogue_outcome) ==
+                        DialogueOutcomeType::source_boundary &&
+                    std::get<SourceBoundaryOutcome>(
+                        *sinsearach_fare.dialogue_outcome).reason.find(
+                        "field return") != std::string::npos &&
+                    sinsearach_fare_funds == 999U,
+                "Sinsearach short-funds page lost its unresolved return boundary or charged funds")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+
+    sinsearach_fare_funds = 1000U;
+    sinsearach_fare = sinsearach_fare_scripts.start_task(
+        "salish_sinsearach_gate", "present");
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_menu_choice("later");
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_menu_choice("yes");
+    if (!expect(spirit_page_is(sinsearach_fare, "fare_yes_response"),
+                "Sinsearach exact-funds fare did not present Joshua's Yes response")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_operation(true);
+    if (!expect(spirit_page_is(sinsearach_fare, "fare_paid") &&
+                    sinsearach_fare.operation->dialogue->speaker_id ==
+                        "salish_sinsearach_narrator" &&
+                    sinsearach_fare_funds == 0U,
+                "Sinsearach fare did not debit exactly 1,000 before the paid-flight page")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_fare =
+        sinsearach_fare_scripts.complete_native_operation(true);
+    if (!expect(sinsearach_fare.status == ScriptTaskStep::Status::completed &&
+                    sinsearach_fare.dialogue_outcome.has_value() &&
+                    dialogue_outcome_type(*sinsearach_fare.dialogue_outcome) ==
+                        DialogueOutcomeType::source_boundary &&
+                    std::get<SourceBoundaryOutcome>(
+                        *sinsearach_fare.dialogue_outcome).reason.find(
+                        "highway scene") != std::string::npos,
+                "Sinsearach paid-flight route did not stop at its unresolved highway transition")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+
     constexpr std::string_view kCouncilMedicineLodge =
         "council_medicine_lodge";
     scripts.set_location_context(
