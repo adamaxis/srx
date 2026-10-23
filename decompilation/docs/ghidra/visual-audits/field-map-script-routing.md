@@ -262,8 +262,9 @@ Lua-backed and physically QA-covered. The repeat information branch, upstream
 Frosty action, and inherited callback/list reachability are not fully
 connected. Scene-54 event 0 has a source-traced route into Scene 55 and its
 text prelude. Scene-55 completion traces through the active-actor scan,
-delayed `0x5BAC4` close sequence, and title return, but the native trigger and
-presentation remain unimplemented. Other map-guide labels often have only a numeric event-table
+delayed `0x5BAC4` close sequence, five ordered credits text panels, and title
+return, but the native trigger and presenter remain unimplemented. Other
+map-guide labels often have only a numeric event-table
 destination; the guide name does not establish an interior dialogue. The
 per-scene route manifests now reflect the `0xB7B8` mode gate instead of
 inferring a maglock from event IDs 2-5 alone. See the [Tarislar audit](puyallup-tarislar-apartments.md)

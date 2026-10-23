@@ -273,12 +273,16 @@ callback `0x5BAC4` and `0x1E2E0` schedules it for the 60-frame activity
 boundary. Callback `0x5BAC4` opens prompt group `0xFDD72` through `0x20950`
 with Licourtrix profile `0x121EA4`; its visible response is text `0xFD71E`.
 The callback then runs a 1000-iteration closing animation and five
-controller-advanced image screens. When it returns, the outer loop recognizes
+controller-advanced credits text panels. Their ordered source blocks begin at
+`0x5CA92`, `0x5CBFB`, `0x5CF9B`, `0x5CD82`, and `0x5CE80`; each uses `0x80` for
+row breaks and ends at `0xFF`. The offline all-assets importer now has a writer
+for their ordered, space-preserving rows at
+`assets/cinematics/tarislar-tomb-credits.json`; that generated asset is pending
+an importer run. When the callback returns, the outer loop recognizes
 `0x5BAC4` at `0x0B44` and branches through `0x0BA6`/`0x078A` to the main title
 path. The response's next-record pointer is not consumed by this callback.
-The native fight trigger, closing presentation, and cleanup remain
-unimplemented; this runtime slice has no CTest or actual.bmp, so the hill
-stays partial.
+The native fight trigger, credit presenter, and cleanup remain unimplemented;
+this runtime slice has no CTest or actual.bmp, so the hill stays partial.
 The raw `0x00C0` record publishes event 0 in `FFFBF9`. In Scene-54 mode 3,
 `0x1651E` returns carry for D0=0 without changing a map cell; `0xB7B8` then
 sets the projected-interaction countdown described above. The later

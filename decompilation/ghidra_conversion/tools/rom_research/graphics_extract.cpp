@@ -1087,6 +1087,102 @@ void write_json_string(std::ostream& output, const std::string_view text) {
     output << '"';
 }
 
+void write_tarislar_tomb_credits_asset(
+    const std::vector<std::uint8_t>& rom,
+    const std::filesystem::path& root) {
+    struct CreditPanelRecord {
+        std::string_view id;
+        std::string_view rom_address;
+        std::size_t source_offset;
+        std::size_t encoded_size;
+        std::size_t expected_line_count;
+    };
+    // Callback 0x5BAC4 presents these text blocks in this order and waits for
+    // a controller event between blocks. 0x80 ends a row; 0xFF ends a panel.
+    // Keep the row padding because it is part of the original credit layout.
+    constexpr std::array<CreditPanelRecord, 5> kPanels{{
+        {"opening_and_game_design", "0x5CA92", 0x5CA92U, 0x168U, 22U},
+        {"additional_programming_and_art", "0x5CBFB", 0x5CBFBU,
+         0x186U, 23U},
+        {"story_music_and_lead_testing", "0x5CF9B", 0x5CF9BU,
+         0x141U, 23U},
+        {"additional_testing_part_1", "0x5CD82", 0x5CD82U,
+         0x0FDU, 15U},
+        {"additional_testing_part_2_and_producer", "0x5CE80", 0x5CE80U,
+         0x11AU, 18U},
+    }};
+
+    const auto path = root / "cinematics" / "tarislar-tomb-credits.json";
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        throw std::runtime_error("cannot create Tarislar tomb credits asset: " +
+                                 path.string());
+    }
+    output << "{\n  \"schemaVersion\": 1,\n"
+              "  \"provenance\": {\n"
+              "    \"romAddresses\": [\"0x5BAC4\", \"0x5C3B4\", "
+              "\"0x5C446\"]\n"
+              "  },\n"
+              "  \"encoding\": {\"rowBreak\": \"0x80\", "
+              "\"panelEnd\": \"0xFF\"},\n"
+              "  \"pages\": [\n";
+    for (std::size_t panel_index = 0U; panel_index < kPanels.size();
+         ++panel_index) {
+        const auto& panel = kPanels[panel_index];
+        if (panel.source_offset > rom.size() ||
+            panel.encoded_size >= rom.size() - panel.source_offset ||
+            rom[panel.source_offset + panel.encoded_size] != 0xFFU) {
+            throw std::runtime_error(
+                "Tarislar tomb credits panel is truncated or not FF-terminated: " +
+                std::string(panel.id));
+        }
+
+        std::vector<std::string> lines;
+        std::string line;
+        for (std::size_t index = 0U; index < panel.encoded_size; ++index) {
+            const auto byte = rom[panel.source_offset + index];
+            if (byte == 0x80U) {
+                lines.push_back(std::move(line));
+                line.clear();
+            } else if (byte >= 0x20U && byte <= 0x7EU) {
+                line.push_back(static_cast<char>(byte));
+            } else {
+                throw std::runtime_error(
+                    "Tarislar tomb credits panel contains an unsupported byte: " +
+                    std::string(panel.id));
+            }
+        }
+        if (!line.empty()) {
+            lines.push_back(std::move(line));
+        }
+        if (lines.size() != panel.expected_line_count) {
+            throw std::runtime_error(
+                "Tarislar tomb credits panel row count changed: " +
+                std::string(panel.id));
+        }
+
+        output << "    {\"id\": ";
+        write_json_string(output, panel.id);
+        output << ", \"romAddress\": ";
+        write_json_string(output, panel.rom_address);
+        output << ", \"lines\": [";
+        for (std::size_t line_index = 0U; line_index < lines.size();
+             ++line_index) {
+            if (line_index != 0U) {
+                output << ", ";
+            }
+            write_json_string(output, lines[line_index]);
+        }
+        output << "]}" << (panel_index + 1U == kPanels.size() ? "\n" : ",\n");
+    }
+    output << "  ]\n}\n";
+    if (!output) {
+        throw std::runtime_error("cannot write Tarislar tomb credits asset: " +
+                                 path.string());
+    }
+}
+
 void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
                                  const std::filesystem::path& root,
                                  const shadowrun::native::NativePortAssets& assets,
@@ -5717,6 +5813,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     field_text.insert(field_text.end(), notebook_tips.begin(),
                       notebook_tips.end());
     write_dialogue_text_catalog(rom, root, assets, field_text);
+    write_tarislar_tomb_credits_asset(rom, root);
     const auto write = [&](const std::string& name,
                            const shadowrun::native::NativeImage& image,
                            const std::string& kind,

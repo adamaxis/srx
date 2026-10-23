@@ -498,9 +498,14 @@ is 3. A live candidate has record bit 0 set, bits 4 and 6 clear, and a
 nonzero physical meter at `+0x4C`. If none qualify, the phase timer expires
 before `0x5D3D4` queues the special `0x5BAC4` callback through `0x1E2E0`.
 The callback opens the single Licourtrix prompt from `0xFDD72` with profile
-`0x121EA4`, runs the closing animation and five controller-advanced image
-screens, then returns through the main title path. The native fight-completion trigger and ending
-presentation are still absent; this partial slice has no CTest or actual.bmp.
+`0x121EA4`, runs the closing animation and five controller-advanced credits
+text panels, then returns through the main title path. Their source-ordered
+text blocks begin at `0x5CA92`, `0x5CBFB`, `0x5CF9B`, `0x5CD82`, and `0x5CE80`;
+the offline all-assets importer now has a writer for their space-preserving
+rows at `cinematics/tarislar-tomb-credits.json`, retaining `0x80` row breaks
+and `0xFF` panel terminators. That generated asset is pending an importer run.
+The native fight-completion trigger and presentation are still absent; this
+partial slice has no CTest or actual.bmp.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).
