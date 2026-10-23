@@ -66,8 +66,10 @@ charge action yields paid/insufficient edges, and the paid terminal requests
 `hotel.options` with return policy `origin`. `FieldSceneRuntime` dispatches
 that named host service and also recognizes the shared `hospital.options` ID.
 Story facts for the Inn's three ROM flag groups use the existing typed native
-accessors. Tabatha's authored conversation remains a named Lua action until
-the encounter commands are converted.
+accessors. Tabatha's source prompt pages and all Caleb/Errascoe choice
+permutations now live in the JSON graph. The runner byte-triplet adjustment
+remains a narrow Lua action; the attack page's following encounter commands
+remain an explicit source boundary.
 
 The generic dialogue menu resolver now receives whether a prompt carries
 inline title text. It resolves the stable choice labels while leaving the
@@ -80,13 +82,15 @@ key.
 - `building_route_tests.lua` checks the indexed service task, default scene-53
   prompt task, and signed alternate-result routes.
 - `tarislar_city_inn_tests.lua` checks service prerequisites, Frosty gating,
-  both package branches, room payment outcomes, Tabatha's state changes, and
-  the explicit encounter boundary result.
+  both package branches, room payment outcomes, both Tabatha topic permutations,
+  the refusal page's MORE continuation into the attack page, acceptance state,
+  and the explicit encounter boundary result.
 - `shadowrun_gameplay_script_runtime_qa` validates the loaded entity route and
   Lua task through the typed C++ route parser.
 - `shadowrun_ghidra_field_dialogue_runtime` exercises the source panels,
-  payment success/failure, Tabatha's acceptance flags, the source byte update
-  service, and the visible encounter boundary. It writes full 320x224
+  payment success/failure, Tabatha's acceptance flags, both Caleb/Errascoe
+  physical-input paths, the refusal and attack pages, and the visible encounter
+  boundary. It writes full 320x224
   `actual.bmp` panels to
   `qt_runtime/tarislar-city-inn-visual-audit/`.
 - `shadowrun_ghidra_conversion_qt_field_tarislar_city_inn_qa` starts at

@@ -43,12 +43,12 @@ local function frosty_information()
     return "field_return"
 end
 
-local function mark_tabatha_acceptance()
+local function apply_tabatha_acceptance()
     -- ROM command 0x14 at 0x21862 increments the source runner-byte triplet,
     -- sets FFFC30 bits 2/4/5/6/8, FFFC34 bits 2/4, and FFFC27 bits 2/4.
     if game.services.call("runner", "adjust_source_byte_triplet_1") ~=
        "applied" then
-        return false
+        return "service_unavailable"
     end
     for _, bit in ipairs({ 2, 4, 5, 6, 8 }) do
         game.state["notebook_tip_flag_bit_" .. bit] = true
@@ -57,125 +57,7 @@ local function mark_tabatha_acceptance()
     game.state.field_mode_effect_flag_bit_4 = true
     game.state.mr_johnsons_flag_bit_2 = true
     game.state.mr_johnsons_flag_bit_4 = true
-    return true
-end
-
-local function tabatha_conversation()
-    StoryFlags.apply_dialogue_command(0x16)
-    if not more("shale_more", table.concat({
-        "Tabatha Shale?  Yeah, she's here.",
-        "She's been locked in her room for days and won't let anybody in, even to clean up.",
-        "If you think you can talk some sense into her, be my guest.",
-    }, "||")) then
-        return "field_return"
-    end
-    if not more("shale_more", table.concat({
-        "The manager connects you to her room via the vid-phone.",
-        "The screen remains blank, but the woman's wary voice identifies itself as Tabatha.",
-        "Words tumble from your mouth in a desperate rush to convince Tabatha of your sincerity.",
-    }, "||")) then
-        return "field_return"
-    end
-    if not more("shale_more",
-                "After some deliberation, she concedes that you are Michael's brother and agrees to let you enter her apartment.") then
-        return "field_return"
-    end
-    if not mark_tabatha_acceptance() then
-        return "tabatha_state_unavailable"
-    end
-
-    local choice = game.ui.prompt_text(
-        "shale_arrival",
-        table.concat({
-            "Tabatha Shale opens the door as you arrive.",
-            "She looks as if she hasn't slept in a week.",
-            "She invites you in, but her eyes nervously dart around the room.",
-        }, "||"),
-        { "about_michael" })
-    if choice ~= "about_michael" then return "field_return" end
-
-    if not more("shale_more", table.concat({
-        "I don't know that much about it.  We were hired by an unknown Mr. Johnson through Caleb to track down a location in Salish-Shidhe.",
-        "I backed out when he made the offer, so I wasn't included in the deal.",
-        "Michael said one stop at Errascoe's and he'd be set.",
-    }, "||")) then
-        return "field_return"
-    end
-
-    local topic = game.ui.prompt_text(
-        "shale_topics",
-        table.concat({
-            "Y'know, Caleb's not our normal Johnson.",
-            "We usually use a Johnson named Mortimer Reed.",
-            "He sets up in the Penumbra District, in a restaurant called The Big Rhino.",
-        }, "||"),
-        { "caleb", "errascoe" })
-    if topic == "caleb" then
-        say(table.concat({
-            "He's a Johnson Michael and I used a couple of times.",
-            "I don't trust him, though.  Who knows what those elves are up to anyway.",
-            "You might find him at Icarus Descending; that's where we always met him.",
-        }, "||"), false)
-        local other = game.ui.prompt_text(
-            "shale_other_topic",
-            table.concat({
-                "He's a Johnson Michael and I used a couple of times.",
-                "I don't trust him, though.  Who knows what those elves are up to anyway.",
-                "You might find him at Icarus Descending; that's where we always met him.",
-            }, "||"),
-            { "errascoe" })
-        if other ~= "errascoe" then return "field_return" end
-        say(table.concat({
-            "Boris Errascoe is a small time fixer who works out of an abandoned greenhouse in Redmond.",
-            "Anything for a buck, that's Boris.",
-            "He was probably the last person in the sprawl to see Michael alive.",
-        }, "||"), false)
-    elseif topic == "errascoe" then
-        say(table.concat({
-            "Boris Errascoe is a small time fixer who works out of an abandoned greenhouse in Redmond.",
-            "Anything for a buck, that's Boris.",
-            "He was probably the last person in the sprawl to see Michael alive.",
-        }, "||"), false)
-        local other = game.ui.prompt_text(
-            "shale_other_topic",
-            table.concat({
-                "Boris Errascoe is a small time fixer who works out of an abandoned greenhouse in Redmond.",
-                "Anything for a buck, that's Boris.",
-                "He was probably the last person in the sprawl to see Michael alive.",
-            }, "||"),
-            { "caleb" })
-        if other ~= "caleb" then return "field_return" end
-        say(table.concat({
-            "He's a Johnson Michael and I used a couple of times.",
-            "I don't trust him, though.  Who knows what those elves are up to anyway.",
-            "You might find him at Icarus Descending; that's where we always met him.",
-        }, "||"), false)
-    else
-        return "field_return"
-    end
-
-    local followup = game.ui.prompt_text(
-        "shale_followup",
-        "What do you need from me?",
-        { "recruit", "thanks" })
-    if followup == "recruit" then
-        say(table.concat({
-            "No way, ace!",
-            "I loved Michael, but I don't plan on joining him.",
-            "Somebody powerful wanted Michael's team out of the way.",
-            "I don't want any part of something that large.",
-        }, "||"), false)
-        return "field_return"
-    elseif followup == "thanks" then
-        say(table.concat({
-            "As if on cue, the door to the room explodes inward, leaving you momentarily stunned!",
-            "A flash of automatic gunfire rakes Tabatha through the obscuring smoke and sends you diving for cover.",
-        }, "||"), true)
-        -- The continuation after 0xF617F dispatches encounter commands 0x4B,
-        -- 0x4C, and 0x20. Keep the unconverted combat handoff visible.
-        return "tabatha_ambush_unconverted"
-    end
-    return "field_return"
+    return "applied"
 end
 
 function Inn.present_indexed_title_service()
@@ -189,12 +71,13 @@ function Inn.present_indexed_title_service()
 
     -- ROM 0x53A78 publishes indexed title service 1 in FFDD64 before calling
     -- 0x53B16. The intro, manager options, and paid-stay branch are represented
-    -- by the reusable JSON graph. Tabatha's command-heavy conversation remains
-    -- a registered Lua action until its encounter handoff is converted.
+    -- by the reusable JSON graph. Its page and choice permutations follow the
+    -- ROM prompt records; the runner source-byte-triplet update is a narrow
+    -- registered host action, and the post-attack encounter remains a boundary.
     return DialogueGraph.run(
         "tarislar_city_inn.paid_stay_and_shale_service", {
-            ["tarislar_city_inn.present_tabatha_conversation"] = function()
-                return tabatha_conversation()
+            ["tarislar_city_inn.apply_tabatha_acceptance"] = function()
+                return apply_tabatha_acceptance()
             end,
         })
 end

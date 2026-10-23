@@ -7,7 +7,7 @@
       "speakerId": "tarislar_city_inn_narrator",
       "textProfile": "tarislar.city_inn",
       "provenance": {
-        "romAddresses": ["0x53B16", "0xF49E8", "0xF49FC", "0xF49C0", "0x21458", "0xCF38"],
+        "romAddresses": ["0x53B16", "0xF49E8", "0xF49FC", "0xF49C0", "0x21458", "0xCF38", "0xF4EA4", "0xF4EB8", "0xF4ECC", "0x218BC", "0x21862", "0xF4EE0", "0xF4EF4", "0xF4F08", "0xF4F20", "0xF4F34", "0xF4F48", "0xF4F60", "0xF4F78", "0xF4F8C", "0xF617F"],
         "scope": "indexed_service_intro_room_transaction_and_tabatha_handoff"
       },
       "nodes": {
@@ -29,7 +29,7 @@
           "choices": [
             { "id": "crash", "next": "room_payment" },
             { "id": "leave", "next": "farewell" },
-            { "id": "shale", "next": "tabatha_conversation" }
+            { "id": "shale", "next": "tabatha_command_16" }
           ]
         },
         "room_payment": {
@@ -74,15 +74,120 @@
           "eventId": "leave",
           "next": "stay_on_map"
         },
-        "tabatha_conversation": {
+        "tabatha_command_16": {
           "type": "action",
-          "actionId": "tarislar_city_inn.present_tabatha_conversation",
+          "actionId": "story.apply_dialogue_command",
+          "arguments": { "commandId": 22 },
+          "next": "tabatha_intro_0",
+          "evidence": "Selecting Tabatha applies ROM command 0x16 at 0x218BC before the conversation pages."
+        },
+        "tabatha_intro_0": {
+          "type": "page",
+          "eventId": "shale_intro_0",
+          "next": "tabatha_intro_1",
+          "evidence": "ROM prompt record 0xF4EA4 presents text 0x117EC5 with MORE."
+        },
+        "tabatha_intro_1": {
+          "type": "page",
+          "eventId": "shale_intro_1",
+          "next": "tabatha_intro_2",
+          "evidence": "ROM prompt record 0xF4EB8 presents text 0x117F78 with MORE."
+        },
+        "tabatha_intro_2": {
+          "type": "page",
+          "eventId": "shale_intro_2",
+          "next": "tabatha_acceptance_effects",
+          "evidence": "ROM prompt record 0xF4ECC presents text 0x118060; command 0x14 follows its MORE selection."
+        },
+        "tabatha_acceptance_effects": {
+          "type": "action",
+          "actionId": "tarislar_city_inn.apply_tabatha_acceptance",
           "results": {
-            "field_return": "stay_on_map",
-            "tabatha_state_unavailable": "tabatha_state_boundary",
-            "tabatha_ambush_unconverted": "tabatha_ambush_boundary"
+            "applied": "tabatha_arrival",
+            "service_unavailable": "tabatha_state_boundary"
           },
-          "evidence": "ROM command 0x16 starts the one-shot Tabatha conversation; its attack path reaches the unresolved commands 0x4B, 0x4C, and 0x20."
+          "evidence": "ROM command 0x14 at 0x21862 updates the live runner source-byte triplet and story flags before record 0xF4EE0."
+        },
+        "tabatha_arrival": {
+          "type": "choice",
+          "menuId": "shale_arrival",
+          "inputContract": "buttons_abc",
+          "noSelectionNext": "stay_on_map",
+          "choices": [
+            { "id": "about_michael", "next": "tabatha_last_run" }
+          ],
+          "evidence": "ROM record 0xF4EE0 pairs the apartment-arrival text with the Michael-last-run choice."
+        },
+        "tabatha_last_run": {
+          "type": "page",
+          "eventId": "shale_last_run",
+          "next": "tabatha_topic_choice",
+          "evidence": "ROM record 0xF4EF4 presents text 0xF5DA6 with MORE before the topic prompt."
+        },
+        "tabatha_topic_choice": {
+          "type": "choice",
+          "menuId": "shale_topics",
+          "inputContract": "buttons_abc",
+          "noSelectionNext": "stay_on_map",
+          "choices": [
+            { "id": "caleb", "next": "tabatha_after_caleb" },
+            { "id": "errascoe", "next": "tabatha_after_errascoe" }
+          ],
+          "evidence": "ROM record 0xF4F08 offers Caleb first and Errascoe second."
+        },
+        "tabatha_after_caleb": {
+          "type": "choice",
+          "menuId": "shale_after_caleb",
+          "inputContract": "buttons_abc",
+          "noSelectionNext": "stay_on_map",
+          "choices": [
+            { "id": "errascoe", "next": "tabatha_followup_after_caleb" }
+          ],
+          "evidence": "ROM record 0xF4F34 shows Caleb's response and offers Errascoe."
+        },
+        "tabatha_after_errascoe": {
+          "type": "choice",
+          "menuId": "shale_after_errascoe",
+          "inputContract": "buttons_abc",
+          "noSelectionNext": "stay_on_map",
+          "choices": [
+            { "id": "caleb", "next": "tabatha_followup_after_errascoe" }
+          ],
+          "evidence": "ROM record 0xF4F20 shows Errascoe's response and offers Caleb."
+        },
+        "tabatha_followup_after_caleb": {
+          "type": "choice",
+          "menuId": "shale_followup_after_caleb",
+          "inputContract": "buttons_abc",
+          "noSelectionNext": "stay_on_map",
+          "choices": [
+            { "id": "recruit", "next": "tabatha_refusal" },
+            { "id": "thanks", "next": "tabatha_attack" }
+          ],
+          "evidence": "ROM record 0xF4F48 presents Errascoe's detail with recruit/thanks choices."
+        },
+        "tabatha_followup_after_errascoe": {
+          "type": "choice",
+          "menuId": "shale_followup_after_errascoe",
+          "inputContract": "buttons_abc",
+          "noSelectionNext": "stay_on_map",
+          "choices": [
+            { "id": "recruit", "next": "tabatha_refusal" },
+            { "id": "thanks", "next": "tabatha_attack" }
+          ],
+          "evidence": "ROM record 0xF4F60 presents Caleb's detail with recruit/thanks choices."
+        },
+        "tabatha_refusal": {
+          "type": "page",
+          "eventId": "shale_refuses_recruitment",
+          "next": "tabatha_attack",
+          "evidence": "ROM record 0xF4F78 continues from the refusal page to the attack record on MORE."
+        },
+        "tabatha_attack": {
+          "type": "page",
+          "eventId": "shale_attack",
+          "next": "tabatha_ambush_boundary",
+          "evidence": "ROM record 0xF4F8C displays text 0xF617F; its continuation reaches commands 0x4B, 0x4C, and 0x20."
         },
         "tabatha_state_boundary": {
           "type": "source_boundary",

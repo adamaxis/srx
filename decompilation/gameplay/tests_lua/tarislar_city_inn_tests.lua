@@ -199,15 +199,16 @@ assert(speeches[#speeches].event == "leave")
 location_task_result("continue_in_place", "more", "crash", "decline")
 assert(speeches[#speeches].event == "leave")
 
--- Command 0x16 marks the active trigger before Tabatha's conversation;
--- command 0x14's typed source triplet call and story masks happen only after
--- she agrees to receive the runner.
+-- The ROM prompt chain is represented as JSON pages and menus. Command 0x16
+-- marks the active trigger before the first page; command 0x14's typed source
+-- triplet call and story masks happen only after Tabatha agrees to receive
+-- the runner.
 game.state.story_flag_bit_1 = false
 game.state.story_trigger_active_1 = nil
 triplet_result = "applied"
-location_task_result("continue_in_place",
+local refusal_route = location_task_result("source_boundary",
     "more", "shale", "more", "more", "more", "about_michael", "more",
-    "caleb", "errascoe", "recruit")
+    "caleb", "errascoe", "recruit", "more", "more")
 assert(game.state.story_trigger_active_1 == true)
 assert(game.state.story_flag_bit_1 == true)
 assert(game.state.notebook_tip_flag_bit_2 == true)
@@ -221,20 +222,51 @@ assert(game.state.mr_johnsons_flag_bit_2 == true)
 assert(game.state.mr_johnsons_flag_bit_4 == true)
 assert(service_calls[1][1] == "runner" and
        service_calls[1][2] == "adjust_source_byte_triplet_1")
+assert(refusal_route.reason:find("0x4B", 1, true))
+assert(#speeches == 7 and speeches[1].event == "entry" and
+       speeches[2].event == "shale_intro_0" and
+       speeches[3].event == "shale_intro_1" and
+       speeches[4].event == "shale_intro_2" and
+       speeches[5].event == "shale_last_run" and
+       speeches[6].event == "shale_refuses_recruitment" and
+       speeches[7].event == "shale_attack")
+assert(speeches[6].continuation == true and
+       speeches[7].continuation == true)
+assert(prompts[2].id == "shale_arrival" and
+       prompts[2].text == script_text["tarislar.city_inn.shale.apartment"])
+assert(prompts[3].id == "shale_topics" and
+       prompts[3].text == script_text["tarislar.city_inn.shale.caleb"])
+assert(prompts[4].id == "shale_after_caleb" and
+       prompts[4].text ==
+           script_text["tarislar.city_inn.shale.caleb_followup"] and
+       #prompts[4].choices == 1 and prompts[4].choices[1] == "errascoe")
+assert(prompts[5].id == "shale_followup_after_caleb" and
+       prompts[5].text == script_text["tarislar.city_inn.shale.errascoe"] and
+       #prompts[5].choices == 2 and prompts[5].choices[1] == "recruit" and
+       prompts[5].choices[2] == "thanks")
 assert(Inn.present_indexed_title_service() == "denied",
        "the one-shot Tabatha service ran after FFFC1E bit 1 was set")
 
--- The source encounter commands are an explicit unresolved task result;
--- the host turns this into a visible source boundary.
+-- The reverse topic permutation converges on Caleb's account and the same
+-- attack page when the runner thanks Tabatha.
 game.state.story_flag_bit_1 = false
 game.state.story_flag_bit_30 = false
 game.state.story_flag_bit_13 = false
 triplet_result = "applied"
 local ambush_boundary = location_task_result("source_boundary",
     "more", "shale", "more", "more", "more", "about_michael", "more",
-    "caleb", "errascoe", "thanks")
+    "errascoe", "caleb", "thanks", "more")
 assert(ambush_boundary.reason:find("0x4B", 1, true))
 assert(speeches[#speeches].continuation == true)
+assert(speeches[#speeches].event == "shale_attack")
+assert(prompts[4].id == "shale_after_errascoe" and
+       prompts[4].text == script_text["tarislar.city_inn.shale.errascoe"] and
+       #prompts[4].choices == 1 and prompts[4].choices[1] == "caleb")
+assert(prompts[5].id == "shale_followup_after_errascoe" and
+       prompts[5].text ==
+           script_text["tarislar.city_inn.shale.caleb_followup"] and
+       #prompts[5].choices == 2 and prompts[5].choices[1] == "recruit" and
+       prompts[5].choices[2] == "thanks")
 
 -- If the session cannot apply command 0x14's source byte update, the script
 -- reports that failure instead of claiming acceptance completed.
@@ -244,4 +276,4 @@ local state_boundary = location_task_result("source_boundary",
     "more", "shale", "more", "more", "more")
 assert(state_boundary.reason:find("0x21862", 1, true))
 
-print("Tarislar City Inn tests passed: gates, stay payment, Tabatha state and combat boundary")
+print("Tarislar City Inn tests passed: gates, payment, Tabatha JSON branches and encounter boundary")

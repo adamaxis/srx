@@ -771,8 +771,6 @@ int main() {
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(advance_inn_dialogue(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
-        !expect(advance_inn_dialogue(0x1000U) ==
-                FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(advance_inn_dialogue(0x4000U) ==
                 FieldDialogueAdvanceResult::source_boundary) ||
         !expect(runtime.panel().kind == DialoguePanelKind::source_boundary) ||

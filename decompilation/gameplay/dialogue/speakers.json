@@ -605,6 +605,30 @@
         "room_paid": {
           "continuation_key": "",
           "title_key": "shared.hotel.room.paid"
+        },
+        "shale_intro_0": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.city_inn.shale.0"
+        },
+        "shale_intro_1": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.city_inn.shale.1"
+        },
+        "shale_intro_2": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.city_inn.shale.2"
+        },
+        "shale_last_run": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.city_inn.shale.last_run"
+        },
+        "shale_refuses_recruitment": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.city_inn.shale.refuses_recruitment"
+        },
+        "shale_attack": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.city_inn.shale.attack"
         }
       },
       "name": "Narration",

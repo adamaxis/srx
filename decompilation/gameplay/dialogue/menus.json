@@ -1596,26 +1596,33 @@
         "choice_label_keys": {
           "about_michael": "tarislar.city_inn.option.about_michael"
         },
-        "title_key": "tarislar.city_inn.shale.2"
+        "title_key": "tarislar.city_inn.shale.apartment"
       },
-      "shale_followup": {
+      "shale_after_caleb": {
+        "choice_label_keys": {
+          "errascoe": "tarislar.city_inn.option.errascoe"
+        },
+        "title_key": "tarislar.city_inn.shale.caleb_followup"
+      },
+      "shale_after_errascoe": {
+        "choice_label_keys": {
+          "caleb": "tarislar.city_inn.option.caleb"
+        },
+        "title_key": "tarislar.city_inn.shale.errascoe"
+      },
+      "shale_followup_after_caleb": {
+        "choice_label_keys": {
+          "recruit": "tarislar.city_inn.option.recruit",
+          "thanks": "tarislar.city_inn.option.thanks"
+        },
+        "title_key": "tarislar.city_inn.shale.errascoe"
+      },
+      "shale_followup_after_errascoe": {
         "choice_label_keys": {
           "recruit": "tarislar.city_inn.option.recruit",
           "thanks": "tarislar.city_inn.option.thanks"
         },
         "title_key": "tarislar.city_inn.shale.caleb_followup"
-      },
-      "shale_more": {
-        "choice_label_keys": {
-          "more": "shared.more"
-        }
-      },
-      "shale_other_topic": {
-        "choice_label_keys": {
-          "caleb": "tarislar.city_inn.option.caleb",
-          "errascoe": "tarislar.city_inn.option.errascoe"
-        },
-        "title_key": "tarislar.city_inn.shale.errascoe"
       },
       "shale_topics": {
         "choice_label_keys": {
