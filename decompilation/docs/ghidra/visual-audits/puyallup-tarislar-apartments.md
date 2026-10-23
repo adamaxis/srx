@@ -201,8 +201,8 @@ lists `0x1E628` and `0x1E5C4`. Prompt command `0x60` can reach a raw ROM code
 gap at `0x225D2`, which sets `FFE120=0x1E628` at `0x22622` after a 75-nuyen
 debit and story gates; its menu node is identified at `0x111316` and presents
 the 75-nuyen entry-fee question with command `0x60` in the first choice slot.
-The node's caller and active scene remain unidentified, so its relation to
-Tarislar is open. Scene 54's six
+The node's caller is the Club Penumbra Scene-3/event-0 doorman path, so no
+Tarislar relation is established. Scene 54's six
 actors come from the separate default list at `FFDDF0`, and its marker-1 route
 with `FFE162` clear does not
 replace `FFE120`. The selector takes the Scene-54 mode-3 branch and bypasses
@@ -217,8 +217,8 @@ offer target pool contains Scene 1/event 9, Scene 2/event 9, and Scene 3/event
 fresh write from this pool. Whether a descriptor written earlier can carry
 into the selector, and whether a preexisting `FFE120` pointer reaches the
 first Scene-54 service pass, remain unresolved. The separate `0x22622` writer
-is a candidate carry-in source for `FFE120`, but no Tarislar connection is
-established. Scene completion and exit destination remain unresolved.
+is now linked to Club Penumbra, but no Tarislar connection is established.
+Scene completion and exit destination remain unresolved.
 The event-0 record has raw value `0x00C0`, so `0xB7B8` publishes event 0 in
 `FFFBF9`. In Scene-54 mode 3 it calls `0x1651E`; with D0=0, that helper returns
 carry set without a map write. `0xB7B8` then sets `FFDF3A=-1`, `FFDF3C=0x10`,

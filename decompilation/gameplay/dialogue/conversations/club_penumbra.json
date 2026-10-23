@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "club_penumbra.scene3_doorman_entry": {
+      "entryNode": "doorman_prompt",
+      "speakerId": "club_penumbra_doorman",
+      "textProfile": "club.penumbra",
+      "provenance": {
+        "romAddresses": [
+          "0x1FD80", "0x2013A", "0x110C7A", "0x1148F8", "0x10438A",
+          "0x225B6", "0x11132E", "0x111316", "0x114BC8", "0x114C72",
+          "0x114A88", "0x225D2", "0x114AC9", "0x114B80", "0x22622",
+          "0x43B6", "0x1F246", "0x18A6FC"
+        ],
+        "scope": "scene_3_event_0_club_penumbra_doorman_fee_and_mako_activity_gate"
+      },
+      "nodes": {
+        "doorman_prompt": {
+          "type": "choice",
+          "menuId": "doorman_entry",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "club.penumbra.doorman.entry",
+          "choices": [
+            { "id": "enter", "next": "reputation_gate" },
+            { "id": "later", "next": "stay_outside" }
+          ],
+          "evidence": "ROM node 0x110C7A presents text 0x1148F8 and option 0x10438A. The enter option dispatches command 0x5F; the later option closes this prompt without that command."
+        },
+        "reputation_gate": {
+          "type": "branch",
+          "cases": [
+            {
+              "when": "club_penumbra.active_runner_reputation_at_least_4",
+              "next": "entry_fee_prompt"
+            }
+          ],
+          "fallback": "reputation_rejection",
+          "evidence": "ROM command 0x5F at 0x225B6 compares active-runner Reputation at FF018B with 4; below 4 selects node 0x11132E and 4 or higher selects node 0x111316."
+        },
+        "reputation_rejection": {
+          "type": "page",
+          "eventId": "reputation_rejection",
+          "next": "security_warning",
+          "evidence": "ROM node 0x11132E presents text 0x114BC8 with the shared MORE continuation."
+        },
+        "security_warning": {
+          "type": "page",
+          "eventId": "security_warning",
+          "next": "stay_outside",
+          "evidence": "The continuation node 0x111342 presents the wall-mounted auto-gun warning at 0x114C72."
+        },
+        "entry_fee_prompt": {
+          "type": "choice",
+          "menuId": "entry_fee",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "club.penumbra.entry_fee.prompt",
+          "choices": [
+            { "id": "pay", "next": "charge_entry_fee" },
+            { "id": "later", "next": "stay_outside" }
+          ],
+          "evidence": "ROM node 0x111316 presents the 75-nuyen question at 0x114A88; its first option dispatches command 0x60."
+        },
+        "charge_entry_fee": {
+          "type": "action",
+          "actionId": "building.charge_amount",
+          "arguments": { "amount": 75 },
+          "results": {
+            "paid": "entry_fee_paid",
+            "insufficient": "entry_fee_insufficient",
+            "service_unavailable": "payment_boundary"
+          },
+          "evidence": "ROM command 0x60 debits 75 nuyen before evaluating its Mako story gates."
+        },
+        "entry_fee_insufficient": {
+          "type": "page",
+          "eventId": "entry_fee_insufficient",
+          "next": "stay_outside",
+          "evidence": "The insufficient-funds response begins at ROM text 0x114AC9."
+        },
+        "entry_fee_paid": {
+          "type": "page",
+          "eventId": "entry_fee_paid",
+          "next": "mako_activity_gate",
+          "evidence": "The paid response begins at ROM text 0x114B80."
+        },
+        "mako_activity_gate": {
+          "type": "branch",
+          "cases": [
+            {
+              "when": "club_penumbra.mako_activity_available",
+              "next": "mako_activity_boundary"
+            }
+          ],
+          "fallback": "resume_club_route",
+          "evidence": "ROM command 0x60 writes pending list 0x1E628 only when story bit 10 is set, bit 11 is clear, and FFFC30 bit 21 or FFFC38 bit 3 is set."
+        },
+        "mako_activity_boundary": {
+          "type": "source_boundary",
+          "reason": "The ROM queues its pending Mako actor list and opens descriptor 0xF4CBC here; the native list placement and callback lifecycle are not implemented yet."
+        },
+        "resume_club_route": {
+          "type": "terminal",
+          "outcome": { "type": "resume_source_route" },
+          "evidence": "Without the Mako activity gates, the finalizer resumes the event-table route to field scene 17."
+        },
+        "stay_outside": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        },
+        "payment_boundary": {
+          "type": "source_boundary",
+          "reason": "The native wallet service did not return a payment result for the Club Penumbra fee."
+        }
+      }
+    }
+  }
+}

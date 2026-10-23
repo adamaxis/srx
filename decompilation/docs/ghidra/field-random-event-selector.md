@@ -99,7 +99,8 @@ Scene IDs below are ROM field-scene IDs. The tables cover the field random-event
 A separate source path also selects list `0x1E628`. Prompt command `0x60`
 dispatches through table `0x12CCB4` at `0x1F57C`; its entry at `0x12CE34`
 points to raw-ROM code `0x225D2`, which is absent from the exported
-disassembly. It debits 75 nuyen when available, then requires FFFC1E bit 10
+disassembly. It debits 75 nuyen when available, then its Mako-activity gates
+require FFFC1E bit 10
 set, bit 11 clear, and either FFFC30 bit 21 or FFFC38 bit 3. It writes
 `0x1E628` to `FFE120`, selects resource profile `0x122000`, uses stream
 `0xF4CBC`, and sets the field-exit abort marker. The `0x43B6` list consumer
@@ -109,8 +110,14 @@ command `0x60` in its first choice slot at `0x111326`. Adjacent code at
 `0x225CA` loads `0x111316` into A0 and returns. The title stream `0x114A88` is
 the 75-nuyen entry-fee prompt, with first option `0x103A7A` (“Easy money,
 chummer. I'll pay”) and second option `0x104FEB` (“I'll talk to you later,
-chum”). The selector's caller and numeric scene/event remain unidentified, so
-this path is not assigned to Scene 47 or Scene 54.
+chum”). The command-0x60 caller is traced to the Club Penumbra
+Scene-3/event-0 doorman branch in finalizer `0x1FD80`. The extractor indexes
+the same list under the Scene-47 activity-table context, but neither that
+asset grouping nor the common `0x43B6` consumer proves a scene transition from
+Club Penumbra. The new Club dialogue graph models the known entry checks and
+stops at a source boundary when this activity is eligible. Its final placement
+and any carry into Scene 54 remain unresolved. This is not a random-event
+selector result.
 
 The linked ROM records confirm this is a Mako story route. Entry descriptor
 `0xF4CBC` points to text `0xF9718` (“Once inside, you inquire about Mako” and
@@ -118,11 +125,13 @@ the bartender points him out); its following descriptor `0xF4CD0` points to
 `0xF9788`, where Mako notices someone behind the player. Completion callback
 `0x53FFC` adds 2 heat capped at 8, awards 2 Karma per runner, sets FFFC1E bit
 11, updates FFFC30/FFFC38, and opens descriptor `0xF4CA8` / text `0xF98FA`
-about Mako lying unconscious. The entry gate's FFFC1E bit 10 is the Michael
-alias learned through Boris command `0x2B`; its FFFC30 bit 21 alternative is
-set by the Big Rhino Mako-information action. Big Rhino's answer says Mako has
-been spending time at Club Penumbra, so the destination is a plausible
-narrative link, not a recovered scene/event assignment. See the [Boris
+about Mako lying unconscious. The encounter gate's FFFC1E bit 10 is the
+Michael alias learned through Boris command `0x2B`; its FFFC30 bit 21
+alternative is set by the Big Rhino Mako-information action. Big Rhino's
+answer says Mako has been spending time at Club Penumbra, consistent with the
+doorman caller now identified at Scene 3/event 0. This clue is one of the
+handler's two alternative Mako-information gates; the destination is no
+longer inferred from that clue alone. See the [Boris
 Greenhouse audit](visual-audits/boris-greenhouse-scene2-event6.md), [Big Rhino
 audit](visual-audits/big-rhino-scene11.md), and [Club Penumbra audit](visual-audits/club-penumbra-scene3-event0-and-scene17-event30.md).
 

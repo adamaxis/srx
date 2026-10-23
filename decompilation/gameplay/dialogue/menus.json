@@ -1293,6 +1293,20 @@
         "title_key": "julius-strouther.question.prompt"
       }
     },
+    "club.penumbra": {
+      "doorman_entry": {
+        "choice_label_keys": {
+          "enter": "club.penumbra.doorman.option.enter",
+          "later": "stoker.motel.option.leave"
+        }
+      },
+      "entry_fee": {
+        "choice_label_keys": {
+          "later": "stoker.motel.option.leave",
+          "pay": "stoker.motel.option.pay"
+        }
+      }
+    },
     "penumbra.wylies_gala_inn": {
       "inn_service": {
         "choice_label_keys": {

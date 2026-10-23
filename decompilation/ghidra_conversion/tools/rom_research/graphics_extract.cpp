@@ -1134,6 +1134,14 @@ void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
         {"wylie.gala_inn.option.crash", 0x103A17U},
         {"wylie.gala_inn.option.leave", 0x104FEBU},
         {"wylie.gala_inn.option.pay", 0x103A7AU},
+        // Scene-3/event-0 Club Penumbra doorman and fee conversation.
+        {"club.penumbra.doorman.entry", 0x1148F8U},
+        {"club.penumbra.doorman.option.enter", 0x10438AU},
+        {"club.penumbra.doorman.reputation_rejection", 0x114BC8U},
+        {"club.penumbra.doorman.security_warning", 0x114C72U},
+        {"club.penumbra.entry_fee.prompt", 0x114A88U},
+        {"club.penumbra.entry_fee.insufficient", 0x114AC9U},
+        {"club.penumbra.entry_fee.paid", 0x114B80U},
         {"tarislar.city_inn.room", 0x117E58U},
         {"tarislar.city_inn.shale.0", 0x117EC5U},
         {"tarislar.city_inn.shale.1", 0x117F78U},
@@ -6255,6 +6263,14 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             rom, 0x121FA0U),
         "sprite", "0x1F65A/0x121FA0/0x1287C6/0x122420", false, manifest,
         written, missing, blank);
+    // Scene-3/event-0's finalizer selects profile 0x121F40 for the Club
+    // Penumbra doorman prompt. Keep that portrait as a named host asset.
+    write_catalog_asset(
+        root, "dialogue/portraits/club-penumbra-doorman.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121F40U),
+        "sprite", "0x1FD80/0x2013A/0x121F40", false, manifest, written,
+        missing, blank);
     // The Tarislar City Inn title service enters the shared prompt with the
     // related palette/profile variant at 0x121FB8.
     write_catalog_asset(

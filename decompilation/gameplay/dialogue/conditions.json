@@ -573,6 +573,33 @@
         "scope": "active_runner_reputation_skill_threshold"
       }
     },
+    "club_penumbra.active_runner_reputation_at_least_4": {
+      "expression": {
+        "fact": "runner.skill.reputation", "op": "gte", "value": 4
+      },
+      "provenance": {
+        "romAddresses": ["0x225B6", "0x110C7A"],
+        "scope": "club_penumbra_doorman_reputation_gate"
+      }
+    },
+    "club_penumbra.mako_activity_available": {
+      "expression": {
+        "all": [
+          { "fact": "story.story_flag_bit_10", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_11", "op": "eq", "value": false },
+          {
+            "any": [
+              { "fact": "story.field_mode_flag_bit_21", "op": "eq", "value": true },
+              { "fact": "story.notebook_tip_flag_bit_67", "op": "eq", "value": true }
+            ]
+          }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x225D2", "0x22622", "0x43B6"],
+        "scope": "mako_pending_activity_story_gates"
+      }
+    },
     "salish.owlfeather.first_contact_available": {
       "expression": {
         "all": [

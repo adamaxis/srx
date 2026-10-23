@@ -11,12 +11,28 @@ only scene 17.
 The indexed title-service dispatcher at `0x53A78` calls the 23 entries in the
 ROM table at `0x15FD5C` before generic exit routing. None of the nonempty
 handlers matches scene 3/event 0. The entry selector `0x20634` and exit
-selectors `0x1F65A`, `0x1F830`, and `0x1FA78` have no scene-3/event-0 branch;
-`0x1FD80` only reaches the generic scene-3 finalizer, with no event-specific
-reputation or nuyen check. The ordinary event-table path therefore selects
-scene 17 without a ROM entry gate or exterior dialogue. The external map
-guide's reputation-4, 75-nuyen entry requirement is not supported by this ROM
-path.
+selectors `0x1F65A`, `0x1F830`, and `0x1FA78` also have no scene-3/event-0
+branch. The later finalizer `0x1FD80`, however, does: for
+`FFFBF8=3` and `FFFBF9=0`, it loads doorman menu `0x110C7A` and runs the
+shared prompt path. That menu's text at `0x1148F8` names Club Penumbra and
+asks the player's business. Choosing “I'd like to go in” executes command
+`0x5F`; handler `0x225B6` checks active-runner Reputation at `FF018B`,
+returning rejection node `0x11132E` below 4 and fee node `0x111316` at 4 or
+higher. The fee node asks for 75 nuyen at `0x114A88`; command `0x60` at
+`0x225D2` debits that fee. When its additional story gates pass, it queues
+pending list `0x1E628`.
+
+The event-table row still names scene 17 as the ordinary destination, but the
+doorman conversation now sits between the exterior event and that transition.
+The entity route opens a named JSON/Lua graph for the doorman prompt, the
+Reputation threshold, rejection pages, and 75-nuyen payment. If the separate
+Mako story gates pass, that graph stops at an explicit source boundary because
+the pending actor-list lifecycle is still unimplemented. No Qt route QA has
+been run for this new graph. The extractor indexes the pending list's actor
+rows under Scene 47's activity table, but the common list consumer does not
+itself establish that scene as a destination. The path from the Club prompt
+to the list's activity placement remains unresolved. See the [field
+random-event audit](../field-random-event-selector.md).
 
 ## Scene-17 contact
 
@@ -40,22 +56,26 @@ branch. The exterior route remains a separate link on the Penumbra site
 entity and continues to validate destination 17 against the active ROM
 event-table row.
 
-A separate 75-nuyen entry-fee menu node at `0x111316` contains command `0x60`
-in its first choice slot at `0x111326`. Adjacent code at `0x225CA` returns this
-node in A0. Its title stream `0x114A88` asks for a credstick transfer; the
-choice label is `0x103A7A` (“Easy money, chummer. I'll pay”). That handler
-selects pending list `0x1E628`, shows the bartender/Mako text at
-`0xF9718`, and marks Mako defeated through timeout callback `0x53FFC` when the
-activity completes. Big Rhino's Mako-information answer makes Club Penumbra a
-plausible story link, but the menu's caller and numeric scene/event remain
-unresolved. Keep this route separate from the traced scene-17/event-30 generic
-contact. See the [field random-event audit](../field-random-event-selector.md).
+The fee node `0x111316` contains command `0x60` in its first choice slot at
+`0x111326`; adjacent code at `0x225CA` returns this node in A0. Its first
+choice label is `0x103A7A` (“Easy money, chummer. I'll pay”), and its second is
+`0x104FEB` (“I'll talk to you later, chum”). On the paid path, the handler
+checks FFFC1E bits 10/11 and either FFFC30 bit 21 or FFFC38 bit 3 before
+queueing list `0x1E628`. The pending-list consumer at `0x43B6` installs timeout
+callback `0x53FFC`; that completion marks Mako defeated and opens descriptor
+`0xF4CA8` / text `0xF98FA`. The menu caller is now linked to the Club
+Penumbra Scene-3/event-0 finalizer. The extracted actor rows are indexed under
+Scene 47, while exact activity placement, callback timing, and runtime flow
+remain open. Keep this separate from the traced scene-17/event-30 generic
+contact.
 
 ## Verification boundary
 
-The runtime route test checks both the scene-3/event-0 numeric transition and
-the scene-17/event-30 Lua contact binding. Physical movement into the scene-17
-rectangle, the scene-17 south-edge return, and an independent Genesis capture
-of the contact remain unverified. The ROM route establishes no Freya dialogue,
-fee, or reputation threshold here, so those guide details remain unresolved
-content rather than invented runtime behavior.
+The existing route test only checks the scene-3/event-0 numeric destination
+and the scene-17/event-30 Lua contact binding; it does not cover the doorman
+graph added in this continuation. Physical movement into the scene-17
+rectangle, the south-edge return, Qt execution of the fee/reputation branches,
+pending-list lifecycle and activity placement, and an independent Genesis
+capture remain open. The ROM
+does not identify the Scene-17 event-30 speaker as Freya; that contact remains
+separate from the entry gate.

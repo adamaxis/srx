@@ -265,13 +265,16 @@ The source path is:
 writes `0x1E628` after a successful 75-nuyen debit and its
 FFFC1E/FFFC30/FFFC38 story gates; code at `0x225CA` returns menu node
 `0x111316`, whose first-choice command at `0x111326` is `0x60`. The title asks
-for the 75-nuyen entry fee. The selector caller and active scene/event remain
-unidentified. Scene 54's six actors come from the separate default list at
+for the 75-nuyen entry fee. The command-0x60 caller is the Club Penumbra
+Scene-3/event-0 finalizer. The list `0x1E628` is also present in the extracted
+Scene-47 activity-table context, but the Club route's activity placement is
+not established. Scene 54's six actors come from the separate default list at
    `FFDDF0`. The marker-1 route with
    `FFE162` clear does not replace `FFE120`; whether a pending pointer can
-   carry into its first service pass remains unresolved; the `0x22622` writer
-   is a possible upstream source, but its scene context is not linked to this
-   route. The dispatched type-3
+   carry into its first service pass remains unresolved. The `0x22622` writer
+   is linked to the Scene-3/event-0 Club Penumbra prompt, but no carry into
+   this Scene-54 route is established. The
+   dispatched type-3
    handler at `0x1F086` compares `FFFBF8/FFFBF9` with `FFFBEE/FFFBEF`; on a
    match, target areas 1, 2, and 3-or-higher select lists `0x1D6D4A`,
    `0x1D6D5E`, and `0x1D6D72`. The confirmed offer target pool contains Scene

@@ -16,8 +16,20 @@
         "returnAnchor": "collision_probe_lead",
         "returnFacing": "face_away_from_entry"
       },
+      "entryDialogue": {
+        "task": {
+          "module": "club_penumbra",
+          "function": "present_doorman"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "club_penumbra",
+          "textProfile": "club.penumbra",
+          "speakerId": "club_penumbra_doorman"
+        }
+      },
       "provenance": {
-        "evidence": "ROM scene 3 record 101 at 0x18ABC8; no indexed title service or scene-exit selector matches scene 3/event 0; event-table row 0 at 0x18A6FC selects numeric field scene 17. ROM 0xBC36/0xBD34 supplies the collision-probe lead anchor and 0x2F32 restores the source scene; the facing policy is the host return policy."
+        "evidence": "ROM scene-3 record 101 at 0x18ABC8; finalizer 0x1FD80 branches on FFFBF8/FFFBF9=3/0 and opens Club Penumbra doorman node 0x110C7A. Command 0x5F at handler 0x225B6 checks FF018B against 4; the passing path reaches fee node 0x111316 and command 0x60 debits 75 nuyen at 0x225D2. The event-table row 0 at 0x18A6FC selects field scene 17 after this path. Command 0x60 can conditionally queue FFE120=0x1E628; the offline extractor indexes that list's actor rows under Scene 47, but its Club activity placement remains unresolved. ROM 0xBC36/0xBD34 supplies the collision-probe lead anchor and 0x2F32 restores the source scene; the facing policy is the host return policy. The runtime now has the named doorman interaction graph, while the Mako list handoff remains an explicit boundary."
       }
     }
   ]

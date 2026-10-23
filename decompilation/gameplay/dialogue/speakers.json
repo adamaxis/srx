@@ -47,6 +47,29 @@
       "portrait_alias": "dialogue.portraits.boris.greenhouse",
       "text_profile": "boris.greenhouse"
     },
+    "club_penumbra_doorman": {
+      "events": {
+        "entry_fee_insufficient": {
+          "continuation_key": "",
+          "title_key": "club.penumbra.entry_fee.insufficient"
+        },
+        "entry_fee_paid": {
+          "continuation_key": "",
+          "title_key": "club.penumbra.entry_fee.paid"
+        },
+        "reputation_rejection": {
+          "continuation_key": "shared.more",
+          "title_key": "club.penumbra.doorman.reputation_rejection"
+        },
+        "security_warning": {
+          "continuation_key": "",
+          "title_key": "club.penumbra.doorman.security_warning"
+        }
+      },
+      "name": "Club Penumbra doorman",
+      "portrait_alias": "dialogue.portraits.club.penumbra.doorman",
+      "text_profile": "club.penumbra"
+    },
     "caleb_brightmore": {
       "events": {
         "access_blocked": {
