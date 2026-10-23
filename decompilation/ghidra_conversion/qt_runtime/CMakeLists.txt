@@ -560,6 +560,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_boris_greenhouse_p
                  --field-boris-greenhouse-passkey-funds-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-boris-greenhouse-passkey-funds-qa")
 
+# Follow Boris's firearms menu to command 0x2F, buy the Mach 22 into a known
+# free runner slot, and verify the wallet, cleared phase byte, and save restore.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_boris_greenhouse_mach22_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-boris-greenhouse-mach22-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-boris-greenhouse-mach22-qa")
+
 # Follow the already-paid David/Brother? branch through command 0x2C, resolve
 # both map-placed Strike Team actors, capture the response page, and return to
 # Scene 2 with the encounter active.

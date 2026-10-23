@@ -7,8 +7,8 @@
       "speakerId": "boris_greenhouse_narrator",
       "textProfile": "boris.greenhouse",
       "provenance": {
-        "romAddresses": ["0x53F8C", "0x1F246", "0x173110", "0x21A32", "0x21A66", "0x21B6A", "0x21B82", "0x21BE4", "0x21C0C", "0x21C38", "0x22874", "0xF52C0", "0xF52D8", "0xF52EC", "0xF54FC", "0xF5518", "0xF5534", "0xF5AE8", "0xF8A88", "0xF9332", "0xF9385", "0xF9440", "0xF94C8", "0xF95E2", "0xF9570", "0xFE5BF", "0x21EB0"],
-        "scope": "scene_2_event_6_passport_and_rating_2_maglock_passkey_purchase_with_partially_converted_strike_team_outcome"
+        "romAddresses": ["0x53F8C", "0x1F246", "0x173110", "0x21A32", "0x21A66", "0x21B6A", "0x21B82", "0x21BE4", "0x21C0C", "0x21C38", "0x21C72", "0x22874", "0xF52C0", "0xF52D8", "0xF52EC", "0xF54FC", "0xF5518", "0xF5534", "0xF5550", "0xF5AE8", "0xF8A88", "0xF9332", "0xF9385", "0xF9440", "0xF94C8", "0xF95E2", "0xF9570", "0xFE5BF", "0x21EB0"],
+        "scope": "scene_2_event_6_visa_maglock_passkey_and_mach_22_purchases_with_partially_converted_strike_team_outcome"
       },
       "nodes": {
         "alternate_result": {
@@ -185,7 +185,7 @@
           "promptTextKey": "boris.greenhouse.page.firearm_inventory",
           "inputContract": "buttons_abc",
           "choices": [
-            { "id": "mach_22", "next": "mach_22_boundary" },
+            { "id": "mach_22", "next": "purchase_mach_22" },
             { "id": "later", "next": "stay_on_map" }
           ]
         },
@@ -232,9 +232,16 @@
           "eventId": "inventory_full",
           "next": "stay_on_map"
         },
-        "mach_22_boundary": {
-          "type": "source_boundary",
-          "reason": "ROM command 0x2F at 0x21C72 checks for a free runner item slot, charges 1,200 nuyen, and writes a Mach 22 SMG (item 0x0A). The inventory purchase and return path are not converted yet."
+        "purchase_mach_22": {
+          "type": "action",
+          "actionId": "building.purchase_runner_item",
+          "arguments": { "itemCode": 10, "rating": 0, "amount": 1200 },
+          "results": {
+            "purchased": "post_purchase_menu",
+            "inventory_full": "inventory_full",
+            "insufficient": "insufficient_funds"
+          },
+          "evidence": "ROM command 0x2F at 0x21C72 calls 0x22874 before charging 0x4B0 through 0x21A4E, writes item 0x0A and clears its +8 rating byte, then returns to 0xF5534."
         },
         "insufficient_funds": {
           "type": "page",

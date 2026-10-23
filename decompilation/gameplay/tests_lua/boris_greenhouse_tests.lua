@@ -349,12 +349,37 @@ assert(outcome.type == "continue_in_place" and state.funds == 9999 and
            "boris.greenhouse.page.insufficient_funds")
 
 state = new_game({
-    "more", "story", "accept", "more", "items", "firearms", "mach_22",
-}, {}, 20000)
+    "more", "story", "more", "items", "firearms", "mach_22", "later",
+}, { field_dialogue_flag_bit_0 = true }, 1200)
 outcome = Boris.present_indexed_title_service()
-assert(outcome.type == "source_boundary" and
-       outcome.reason:find("Mach 22 SMG", 1, true) ~= nil and
-       #state.service_calls == 1 and state.service_calls[1] == 100)
+assert(outcome.type == "continue_in_place" and state.funds == 0 and
+       #state.purchase_calls == 1 and
+       state.purchase_calls[1].item_code == 0x0A and
+       state.purchase_calls[1].rating == 0 and
+       state.purchase_calls[1].amount == 1200 and
+       state.inventory[0] == 0x0A and state.phase[0] == 0 and
+       state.seen_pages[4].menu_id == "firearm_items" and
+       state.seen_pages[5].menu_id == "post_purchase")
+
+state = new_game({
+    "more", "story", "more", "items", "firearms", "mach_22",
+}, { field_dialogue_flag_bit_0 = true }, 0, nil,
+   { [0] = 1, [1] = 2, [2] = 3, [3] = 4,
+     [4] = 5, [5] = 6, [6] = 7, [7] = 8 })
+outcome = Boris.present_indexed_title_service()
+assert(outcome.type == "continue_in_place" and state.funds == 0 and
+       #state.purchase_calls == 1 and state.inventory[0] == 1 and
+       state.seen_events[#state.seen_events].text_key ==
+           "boris.greenhouse.page.inventory_full")
+
+state = new_game({
+    "more", "story", "more", "items", "firearms", "mach_22",
+}, { field_dialogue_flag_bit_0 = true }, 1199)
+outcome = Boris.present_indexed_title_service()
+assert(outcome.type == "continue_in_place" and state.funds == 1199 and
+       #state.purchase_calls == 1 and state.inventory[0] == 0 and
+       state.seen_events[#state.seen_events].text_key ==
+           "boris.greenhouse.page.insufficient_funds")
 
 state = new_game({ "more", "information", "accept", "michael", "more" }, {
     story_flag_bit_1 = true,
@@ -476,4 +501,4 @@ outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "source_boundary" and
        outcome.reason:find("precondition", 1, true) ~= nil)
 
-print("Boris Greenhouse tests passed: JSON branches, ordered gates, Visa and passkey purchases, inventory/funds rejections, typed outcomes, and source boundaries")
+print("Boris Greenhouse tests passed: JSON branches, ordered gates, Visa, passkey and Mach 22 purchases, inventory/funds rejections, typed outcomes, and source boundaries")

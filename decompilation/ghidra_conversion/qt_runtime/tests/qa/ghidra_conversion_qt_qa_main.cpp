@@ -18629,6 +18629,239 @@ int run_field_boris_greenhouse_passkey_rejection_qa(
     return 0;
 }
 
+int run_field_boris_greenhouse_mach22_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Boris Mach 22 QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Boris Mach 22 QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    if (field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "Boris Mach 22 QA: expected the Scene-2 field map\n";
+        return 3;
+    }
+
+    auto& runner = field_scene.active_runner_record();
+    runner.inventory_item_codes.fill(1U);
+    runner.inventory_phase_bytes.fill(7U);
+    constexpr std::size_t kMach22InventorySlot = 3U;
+    runner.inventory_item_codes[kMach22InventorySlot] = 0U;
+    runner.inventory_phase_bytes[kMach22InventorySlot] = 0xFFU;
+    const auto inventory_before = runner.inventory_item_codes;
+    const auto phases_before = runner.inventory_phase_bytes;
+    field_scene.seed_field_dialogue_flags_for_qa(1U);
+    field_scene.set_field_funds_for_dump(1200U);
+
+    const auto capture = [&field_scene, &output](
+        const std::string_view name) {
+        const auto image = render_qa_field(field_scene);
+        const auto path = output / (std::string(name) + ".bmp");
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+            image.save(QString::fromStdWString(path.wstring()));
+    };
+    const auto panel_contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count;
+             ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto advance = [&field_scene](const std::string_view stage) {
+        const auto result = field_scene.advance_stoker_dialogue_for_dump(
+            0x4000U); // ordinary A edge
+        if (result != FieldDialogueAdvanceResult::prompt_advanced) {
+            std::cerr << "Boris Mach 22 QA: A did not advance " << stage
+                      << " (result=" << static_cast<int>(result) << ")\n";
+            return false;
+        }
+        return true;
+    };
+
+    field_scene.set_field_entity_world_position_for_dump(0x5300U, 0x0600U);
+    field_scene.set_field_camera_world_position_for_dump(0x4900U, 0U);
+    field_scene.set_controller_nibble(0U);
+    for (std::uint8_t settle = 0U; settle < 65U; ++settle) {
+        field_scene.advance_frame();
+    }
+    field_scene.set_controller_nibble(0x01U);
+    bool opened = false;
+    for (std::uint16_t tick = 0U; tick < 80U; ++tick) {
+        field_scene.advance_frame();
+        if (field_scene.dialogue_open()) {
+            opened = true;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto& dispatch = field_scene.field_map_event_system_for_dump()
+                               .last_collision_dispatch();
+    if (!opened || field_scene.field_scene_reference_for_dump() != 2U ||
+        field_scene.field_mode_event_code_for_dump() != 6U ||
+        !dispatch.has_value() ||
+        dispatch->decision.source_event_code !=
+            FieldCollisionEventCode::event_6 ||
+        !advance("greeting") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !advance("story choice") || !panel_contains("Boris Errascoe") ||
+        !advance("story answer") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !advance("items choice") ||
+        field_scene.dialogue_panel().option_count != 3U) {
+        std::cerr << "Boris Mach 22 QA: physical Scene-2 route did not "
+                     "reach the service categories\n";
+        return 3;
+    }
+    const auto firearm_category =
+        field_scene.advance_stoker_dialogue_for_dump(0x1000U); // B
+    if (firearm_category != FieldDialogueAdvanceResult::prompt_advanced ||
+        field_scene.dialogue_panel().option_count != 2U ||
+        !panel_contains("Mach 22") || !advance("Mach 22 choice")) {
+        std::cerr << "Boris Mach 22 QA: firearms menu did not expose the "
+                     "source offer\n";
+        return 3;
+    }
+
+    auto expected_inventory = inventory_before;
+    expected_inventory[kMach22InventorySlot] = 0x0AU;
+    auto expected_phases = phases_before;
+    expected_phases[kMach22InventorySlot] = 0U;
+    if (field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{0U} ||
+        runner.inventory_item_codes != expected_inventory ||
+        runner.inventory_phase_bytes != expected_phases ||
+        !panel_contains("downloads the nuyen") ||
+        !panel_contains("Pleasure doin' business") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !capture("mach22-purchase-confirmation")) {
+        std::cerr << "Boris Mach 22 QA: command 0x2F did not charge 1,200 "
+                     "and store item 0x0A with a cleared rating byte\n";
+        return 3;
+    }
+
+    auto result = field_scene.advance_stoker_dialogue_for_dump(0x2000U); // C
+    if (result == FieldDialogueAdvanceResult::typed_outcome_requested &&
+        field_scene.dispatch_dialogue_outcome_for_dump()) {
+        result = FieldDialogueAdvanceResult::returned_to_field;
+    }
+    field_scene.set_controller_nibble(0U);
+    for (std::uint8_t settle = 0U; settle < 65U; ++settle) {
+        field_scene.advance_frame();
+    }
+    QString snapshot_error;
+    const auto saved =
+        field_scene.capture_game_save_snapshot_for_dump(&snapshot_error);
+    if (result != FieldDialogueAdvanceResult::returned_to_field ||
+        field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        field_scene.active_runner_record().inventory_item_codes !=
+            expected_inventory ||
+        field_scene.active_runner_record().inventory_phase_bytes !=
+            expected_phases ||
+        !saved.has_value()) {
+        std::cerr << "Boris Mach 22 QA: purchase did not return cleanly or "
+                     "retain the runner inventory: "
+                  << snapshot_error.toStdString() << '\n';
+        return 3;
+    }
+    const auto party = saved->value(QStringLiteral("party")).toObject();
+    const auto active_slot = party.value(QStringLiteral("active_slot"))
+                                 .toInt(-1);
+    const auto members = party.value(QStringLiteral("members")).toArray();
+    if (active_slot < 0 || active_slot >= members.size()) return 3;
+    const auto record = members.at(active_slot).toObject()
+                            .value(QStringLiteral("record")).toObject();
+    const auto saved_items = record.value(
+        QStringLiteral("inventory_item_codes")).toArray();
+    const auto saved_phases = record.value(
+        QStringLiteral("inventory_phase_bytes")).toArray();
+    if (saved_items.size() != 8 || saved_phases.size() != 8 ||
+        saved_items.at(static_cast<qsizetype>(kMach22InventorySlot))
+                .toInt(-1) != 0x0AU ||
+        saved_phases.at(static_cast<qsizetype>(kMach22InventorySlot))
+                .toInt(-1) != 0) {
+        std::cerr << "Boris Mach 22 QA: save snapshot did not retain item "
+                     "0x0A and its cleared rating byte\n";
+        return 3;
+    }
+
+    auto normalized_saved = *saved;
+    auto saved_scene = normalized_saved.value(QStringLiteral("scene"))
+                           .toObject();
+    saved_scene.insert(QStringLiteral("mode"), 1);
+    normalized_saved.insert(QStringLiteral("scene"), saved_scene);
+    if (!field_scene.restore_game_save_snapshot_for_dump(
+            normalized_saved, &snapshot_error)) {
+        std::cerr << "Boris Mach 22 QA: could not restore the purchase: "
+                  << snapshot_error.toStdString() << '\n';
+        return 3;
+    }
+    field_scene.set_controller_nibble(0U);
+    for (std::uint8_t settle = 0U; settle < 65U; ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto restored =
+        field_scene.capture_game_save_snapshot_for_dump(&snapshot_error);
+    const auto restored_party = restored.has_value()
+        ? restored->value(QStringLiteral("party")).toObject()
+        : QJsonObject{};
+    const auto restored_slot = restored_party
+        .value(QStringLiteral("active_slot")).toInt(-1);
+    const auto restored_members = restored_party
+        .value(QStringLiteral("members")).toArray();
+    if (!restored.has_value() || restored_slot < 0 ||
+        restored_slot >= restored_members.size()) {
+        std::cerr << "Boris Mach 22 QA: restored party data is missing\n";
+        return 3;
+    }
+    const auto restored_record = restored_members.at(restored_slot).toObject()
+                                    .value(QStringLiteral("record")).toObject();
+    const auto restored_items = restored_record.value(
+        QStringLiteral("inventory_item_codes")).toArray();
+    const auto restored_phases = restored_record.value(
+        QStringLiteral("inventory_phase_bytes")).toArray();
+    if (restored_items.size() != 8 || restored_phases.size() != 8 ||
+        restored_items.at(static_cast<qsizetype>(kMach22InventorySlot))
+                .toInt(-1) != 0x0AU ||
+        restored_phases.at(static_cast<qsizetype>(kMach22InventorySlot))
+                .toInt(-1) != 0 ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{0U} ||
+        field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        !capture("actual")) {
+        std::cerr << "Boris Mach 22 QA: save restore lost the purchase or "
+                     "left the service modal open: "
+                  << snapshot_error.toStdString() << '\n';
+        return 3;
+    }
+
+    std::ofstream route(output / "route.tsv", std::ios::trunc);
+    if (!route) return 3;
+    route << "scene\trecord\tevent\tcommand\titem\trating\tprice\t"
+             "starting_funds\tfree_slot\tphysical_trigger\tresult\n"
+          << "2\t87\t6\t0x2F\t0x0A\t0\t1200\t1200\t"
+          << kMach22InventorySlot << "\tordinary_up\t"
+             "mach22_purchase_returns_to_scene_2\n";
+    std::cout << "field_boris_greenhouse_mach22_qa=passed scene=2 "
+                 "command=0x2F item=0x0A rating=0 price=1200 "
+                 "same_map=yes save_restore=yes actual.bmp="
+              << output.string() << '\n';
+    return 0;
+}
+
 int run_field_boris_greenhouse_strike_team_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
@@ -26115,6 +26348,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_boris_greenhouse_passkey_funds_qa_path;
         std::optional<std::filesystem::path>
+            field_boris_greenhouse_mach22_qa_path;
+        std::optional<std::filesystem::path>
             field_boris_greenhouse_strike_team_qa_path;
         std::optional<std::filesystem::path>
             field_wanderer_south_exit_record_7_qa_path;
@@ -26468,6 +26703,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_boris_greenhouse_passkey_funds_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-boris-greenhouse-mach22-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_boris_greenhouse_mach22_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -31647,6 +31889,10 @@ int main(int argc, char** argv) {
                 return run_field_boris_greenhouse_passkey_rejection_qa(
                     field_scene,
                     *field_boris_greenhouse_passkey_funds_qa_path, false);
+            }
+            if (field_boris_greenhouse_mach22_qa_path.has_value()) {
+                return run_field_boris_greenhouse_mach22_qa(
+                    field_scene, *field_boris_greenhouse_mach22_qa_path);
             }
             if (field_boris_greenhouse_strike_team_qa_path.has_value()) {
                 return run_field_boris_greenhouse_strike_team_qa(

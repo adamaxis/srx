@@ -999,8 +999,14 @@ return. Command `0x2E` checks the first free runner slot before charging
 10,000, stores item `0x14` at rating 2, and returns to the purchase menu. Its
 Debug/Release route QA covers exact-balance success, full inventory with zero
 funds, insufficient funds without inventory mutation, and save restore. The
-`0x2F` Mach 22 command, other deeper service outcomes, and independent Genesis
-dialogue frames remain open.
+`0x2F` Mach 22 command at `0x21C72` is now converted through the same typed
+runner-item purchase service. It checks for a free slot, charges the ROM's
+1,200-nuyen price, stores item `0x0A` with phase byte 0, and returns to the
+purchase menu. Debug/Release QA walks the firearms menu, captures the settled
+field after return, and checks the debit, first-free-slot placement, cleared phase byte,
+and save restore. The Lua suite covers the full-inventory and insufficient-
+funds responses. Other deeper service outcomes, combat completion, and
+independent Genesis dialogue frames remain open.
 See [the Boris Greenhouse event-6 audit](visual-audits/boris-greenhouse-scene2-event6.md).
 
 ## Mako encounter through prompt command `0x60` (partial, 2026-10-23)
