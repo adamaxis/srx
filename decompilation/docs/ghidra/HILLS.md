@@ -448,9 +448,12 @@ bit 6 set. On their qualifying completion path, `0x0AB02` calls `0x16B98`;
 ordinary kind 8 returns without a weighted spawn in mode 3, then `0x0AB02`
 decrements `FFE177` for that record. The six profile rows therefore match the
 initial count. At zero, the service records reset and `FFE12E` is dispatched
-and cleared if installed. Its Scene-54 installer, the pending `FFE162`
-producer remain unresolved. The event-0 projected interaction has no
-scene-54/mode-3 map write. See the
+and cleared if installed. Its Scene-54 installer remains unresolved. The
+direct `FFE162` writer is the type-3 run-entry handler at `0x1F086`; the three
+confirmed target tuples (Scene 1/event 9, Scene 2/event 9, and Scene 3/event 4)
+do not include Tarislar's Scene 1/event 7. Whether another caller or carried
+state can activate that override remains unresolved. The event-0 projected
+interaction has no scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).
 
 Current map-dialogue work: scene-2 record 85/event 4 now opens the Lua entry
