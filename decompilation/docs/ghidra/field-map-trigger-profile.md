@@ -234,11 +234,18 @@ The source path is:
    The selector reads event-table row 7 (scene 13), then selects scene 54 from
    marker 1. If `FFE162` contains a pending descriptor list, `0x16A26` publishes
    it and instead selects scene 15, whose field-mode branch also tests
-   `FFFC1E` bit 29. With no marker, scene 13 is subject to the selector's bit
-   19 gate. Marker 2 is a different path: it selects scene 55 and queues
-   `0x20938`, whose graph begins at `0x0FDD1A` with the Tomb of Ellisia
-   antechamber. This is not the event-7 marker-1 route. The event-specific
-   `FFE162` state and scene-54 completion/return are unresolved.
+   `FFFC1E` bit 29. `0x16A26` copies descriptor IDs into the activity list at
+   `FFE132`, pairs them with handler entries from `0x16A6A`, calls the timeout
+   scheduler, then clears `FFE162`. `0x1DBAA` returns without scheduling when
+   the current scene is 54 and `FFE177` is zero; otherwise it sets 120 frames
+   by default or 600 while `FFE162` is nonzero. The exported disassembly shows
+   direct reads and the clear, but no direct nonzero absolute-address write.
+   The producer, `FFE177` state, and whether either can be active on
+   Tarislar's event-7 route remain unresolved. With no marker,
+   scene 13 is subject to the selector's bit 19 gate. Marker 2 is a different
+   path: it selects scene 55 and queues `0x20938`, whose graph begins at
+   `0x0FDD1A` with the Tomb of Ellisia antechamber. This is not the event-7
+   marker-1 route. Scene-54 completion and return remain unresolved.
 
 No screenshot-based scene-name claim should be made from the extracted map
 alone. The map has not been aligned to scene 9 coordinates. The Sinsearach
@@ -251,10 +258,12 @@ art, native presenter, and typed host return are implemented (see the
 [story-page source audit](cinematic-story-pages-source-audit.md)). Commands
 0x39/0x3A select roots 0x11B6D4/0x11B6EC and the Lua graph models their gate
 return/fare prompts. Command 0x38 models the 1,000-nuyen comparison, short
-wallet response, and paid-flight page; the field return after No or short
-wallet, mode-6 state transition, and final highway field transition remain
-explicit source boundaries. These internal captures are not independent visual
-proof.
+wallet response, and paid-flight page. ROM tracing resolves the refusal and
+short-wallet branches to Scene-9 direct re-entry; successful payment sets mode
+6 and enters numeric Scene 6, whose default profile anchors are documented in
+the [HILLS index](HILLS.md). The typed host transitions remain unwired, and no
+scene-name claim is made from the extracted map. These internal captures are
+not independent visual proof.
 Tarislar event-7 pending FFE162 state and scene-54 completion/return also
 remain unresolved.
 

@@ -1,15 +1,16 @@
 # Puyallup: Tarislar Garden Apartments
 
-Status: **partial**. Scene 1/event 7 first visit, guarded leave, signed alternate-result pages,
-repeat information service, and gated tomb departure are connected. The Scene 9
-mode-9/event-0 Sinsearach gate now has an entity-owned Lua dialogue route and
-JSON graph from the guard roots through Lady Gillian, command 0x44, and Frosty's
-first pages. The graph applies command 0x49's direct state changes and carries
-its three Harlequin exposition pages in a typed cinematic catalog entry for
-0x5D1F6. Host handling for the surrounding FFF0BE/FFE172 state writes and the
-native presenter are unfinished. This route has no route-specific CTest or
-CLI actual.bmp yet, so it is not defended.
-The pending FFE162 descriptor path and Scene 54 completion/return remain open.
+Status: **partial**. Scene 1/event 7 first visit, guarded leave, signed
+alternate-result pages, repeat information service, and gated tomb departure
+are connected. The adjacent Scene-9 Sinsearach gate route now has a typed
+three-page cinematic catalog, named art, Lua-owned page order, native presenter,
+source-context return, and Debug/Release physical-input QA. Its fare roots and
+wallet branches are modeled through their text pages. ROM tracing resolves
+paid travel to numeric Scene 6 and refusal/short-funds to Scene-9 re-entry, but
+the typed host transitions remain unwired; see the [HILLS index](../HILLS.md)
+and [story-page audit](../cinematic-story-pages-source-audit.md).
+Tarislar's `FFE162` descriptor producer, `FFE177` timeout gate, and Scene-54
+completion/return remain open.
 
 Mike's RPG Center labels Puyallup map marker 2 “Tarislar Garden Apartments.”
 Its walkthrough places the visit after the Sinsearach trials and meeting
@@ -59,9 +60,11 @@ catalog's source policy explicitly authorizes a correction.
   three-page table at `0x0F5870` and resources at `0x1FE690`, then calls the
   shared story-page routine `0x5D1F6`. The cinematic catalog records the
   Harlequin, Thon, and Tarislar pages with a source-context return policy.
-  Host handling for FFF0BE/FFE172 and native presentation remain unimplemented.
-  No route-specific CTest, CLI frame, or independent Genesis capture has been
-  produced, so the gate hill remains partial.
+  The native presenter and typed source-context return are implemented, and
+  Debug/Release physical-input QA captures the three pages and field return.
+  The fare roots `0x39`/`0x3A` and command `0x38` are modeled through their
+  response pages; the typed Scene-9/Scene-6 handoffs remain open. The gate hill
+  remains partial, with no independent Genesis encounter capture.
 - Ilene prerequisite: Scene-2/event-0 service 19 at `0x543A2` requires story
   bits 18/19 = 1/0, `FFF0D5=0`, `FFFC34` bit 0 clear, and `FFFC38` bit 12 set.
   It arms `FFE182` and leaves event-table row 0's Scene-20 destination live.
@@ -163,14 +166,19 @@ loader adds no placed actors. This does not rule out actor setup through a
 separate scripted path. The profile also has no elevator child-scene group;
 scene 54 must not be treated as one floor in the normal elevator selector.
 
-The event-31 branch is now traced through ROM `0xB7B8` to handler `0xDB26`.
-Because scene 54 uses scripted-activity mode 3, the handler takes its nonzero
-mode path. Scene 54 matches none of that path's explicit scene cases, so it
-returns at `0xDEE6` without opening a floor selector, dialogue, or destination
-route. The event-0 record uses the generic projected-interaction path; helper
-`0x1651E` has no scene-54/mode-3 map write. Its later main-loop effect remains
-unresolved. The current trace therefore does not establish scene 54's exit
-destination, and no reverse route has been added.
+The event-31 dispatch is traced through ROM `0xB7B8`, which stores `0xDB26` in
+`FFDD2C` as an indirect activity callback. Other route audits map `0xDB26` as
+the ordinary field terminal in resource-field mode. The current exported
+disassembly skips the code region containing that callback, so its Scene-54
+mode-3 path is not verified here; the earlier claim that it returns at
+`0xDEE6` should not be treated as established. Timeout setup is conditional:
+`0x1DBAA` returns when the current scene is 54 and `FFE177=0`; otherwise it
+sets 120 frames, or 600 while `FFE162` is nonzero. The event-7 route's
+`FFE177` value and descriptor producer are unresolved. Scene-54 completion and
+exit destination remain unresolved. The event-0 record uses the generic
+projected-interaction path; helper `0x1651E` has no scene-54/mode-3 map write.
+Its later main-loop effect also remains unresolved. No reverse route has been
+added.
 
 ## Seven visual and behavioral checks
 
@@ -210,12 +218,13 @@ destination, and no reverse route has been added.
 
 ## Next implementation evidence needed
 
-- Implement a native full-screen presenter for the catalogued three-page
-  sequence, trace the remaining FFF0BE/FFE172 state handling, and add focused
-  Debug/Release CTest and physical-input QA for the Scene-9 route. Capture and
-  inspect full 320x224 actual.bmp frames before defending the hill.
-- Wire and physically verify the source-confirmed Ilene continuation without
-  flattening it into an unconditional Scene-20 entry.
+- Wire the traced Scene-9 fare outcomes to typed Scene-9 and Scene-6 host
+  transitions, then add focused Debug/Release route coverage for No, short
+  funds, and successful payment. Keep the hill partial until its required
+  source trace, named CTest, and CLI `actual.bmp` are all recorded.
+- Continue Ilene's source-traced service through actor-pair contact and its
+  world-activity completion; the Scene-20 entry alone does not defend the
+  service.
 - Trace the complete `0xF4C44` dialogue and the world-context route that
   selects Scene-47 event-25 continuation `0x53EFA`; its item grant and the
   Spirit Eyes bit-9 consumer are now connected in Lua.
@@ -224,12 +233,12 @@ destination, and no reverse route has been added.
   conditions, and focused physical QA. Debug/Release tests reach event 7 with
   ordinary Up input for both signs, capture each full one-page dialog and the
   clean scene-1 redraw, and verify that the scene-13 transition stays
-  suppressed. Continue with gate QA and implementation of the traced
-  command-0x39/0x3A fare roots, the nested command-0x49 sequence, pending
-  descriptor, and scene-54 completion/return trace.
-- Trace which world-effect path can populate `FFE162`, whether it is active
-  for Tarislar's event-7 route, and how selector precedence reaches scene 54
-  or the pending scene-15 override.
+  suppressed. Continue with the pending descriptor source and selector
+  precedence, then the scene-54 completion/return trace.
+- Identify the producer for `FFE162` beyond the direct absolute-address
+  references and trace `FFE177` into Scene 54's timeout gate. Determine whether
+  either state can be active on Tarislar's event-7 route, and preserve the
+  scene-15 override as a source boundary until that link is established.
 - Trace scene 54's direct event-31/event-0 handling, any non-table actor setup,
   the activity completion condition, exits, and return path against the ROM
   before connecting the route in Lua.

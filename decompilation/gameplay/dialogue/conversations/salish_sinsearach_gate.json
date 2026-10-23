@@ -338,7 +338,7 @@
         },
         "fare_no_return": {
           "type": "source_boundary",
-          "reason": "The No reply at 0x0F7152 is traced, but the caller's field return after this text list is unresolved."
+          "reason": "The ROM caller is now traced: the Scene-9 gate finalizer returns through direct Scene-9 re-entry. The host graph still needs a typed same-scene return outcome after the No reply at 0x0F7152."
         },
         "charge_copt_fare": {
           "type": "action",
@@ -364,7 +364,7 @@
         },
         "fare_insufficient_return": {
           "type": "source_boundary",
-          "reason": "Command 0x38 selects the short-wallet text at 0x11B51D; the subsequent field return is unresolved."
+          "reason": "Command 0x38 selects the short-wallet text at 0x11B51D; the ROM caller then directly re-enters Scene 9. The host graph still needs a typed same-scene return outcome."
         },
         "fare_wallet_boundary": {
           "type": "source_boundary",
@@ -372,7 +372,7 @@
         },
         "fare_destination_boundary": {
           "type": "source_boundary",
-          "reason": "Payment and the paid-flight text at 0x11B450 are modeled, and ROM command 0x38 initializes mode state 6. The resulting highway scene and field return position are still unresolved."
+          "reason": "Payment and the paid-flight text at 0x11B450 are modeled. ROM command 0x38 initializes mode 6; the gate caller directly re-enters numeric Scene 6 with its default profile. The typed host scene-entry outcome remains unwired."
         },
         "frosty_harlequin_story_pages": {
           "type": "terminal",

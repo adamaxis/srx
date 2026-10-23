@@ -115,8 +115,7 @@ fresh Scene-9 checkpoint, reaches the same record with ordinary Up, selects
 Later and Yes, and captures the offer, Joshua response, and 999-nuyen
 short-wallet page. Its `actual.bmp` is the short-wallet result. The separate
 script-runtime CTest covers the No reply, unchanged short balance, exact
-1,000-nuyen debit, paid-flight page, and typed boundaries where the No/short
-wallet caller's field return and paid destination handoff remain unresolved.
+1,000-nuyen debit, paid-flight page, and typed host-transition boundaries.
 The Spirit Eyes physical-entry QA similarly reaches Scene-4 record 96, drives
 the scale completion path, advances all four ritual pages, and checks the
 return; it writes the cinematic frame as `ritual-page-3.bmp` and the clean
@@ -131,16 +130,27 @@ full 320x224 Release frames were inspected.
 
 These are source-backed host route and renderer regression captures, not
 independent Genesis visual proof. No independent Genesis encounter frame has
-been identified. Commands `0x39`/`0x3A` and fare command `0x38` are modeled up
-to the paid-flight page; the highway destination, return position, and mode-6
-field transition remain explicit source boundaries.
+been identified. The ROM trace resolves the gate finalizer at `0x1FD80`: it
+returns `D6=-1`, so the field loop snapshots the actors and takes the direct
+`0x2BD2` re-entry path rather than Scene 9's generic event-table transition.
+On No or insufficient funds, `FFDDC4` remains 9 and that path reloads Scene 9.
+On payment, command `0x38` initializes mode 6, sets the direct-entry marker and
+default-profile flags, and the same path loads numeric Scene 6. Its profile
+pointer is `0x14B890`; the profile anchors are `(0x1310, 0x0980)`,
+`(0x1220, 0x08C0)`, and `(0x1400, 0x08C0)`. `FFE10E=1` prevents the pending
+position override from replacing those profile values. These source facts
+resolve the route and profile data; the typed host handoff is not yet wired,
+and the active controlled-actor position after profile selection still needs
+confirmation. “Highway” is supported as dialogue wording, not as a ROM scene
+name.
 
 ## Source references
 
 - US ROM: `0x5D130`, `0x5D172`, `0x5D1F6`, `0x5D24A`, `0x1406`, `0x12F6`,
   `0xC0C2`, `0xC0DA`, `0x0D94`, `0x195C`, `0x131C`, `0x12C5A`, `0x11C0`,
   `0x0E9C`, `0x0CEC`, `0x1530`, `0x1728`, `0x0C1320`, `0x0F5870`,
-  `0x0F4C20`, `0x1FE638`, `0x1FE690`, and `0x1FE6C2`.
+  `0x0F4C20`, `0x1FE638`, `0x1FE690`, `0x1FE6C2`, `0x21E66`, `0x136DE`,
+  `0x1FD80`, `0x009B2`, `0x02BD2`, `0x02822`, `0x03074`, and `0x14B890`.
 - Ghidra cross-check: `fn_00000D94.cpp`, `fn_00001406.cpp`,
   `fn_000566F6.cpp`, `fn_0000C0DA.cpp`, and `fn_000011C0.cpp`.
 - Host content: `gameplay/dialogue/cinematics.json`.

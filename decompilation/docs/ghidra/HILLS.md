@@ -435,9 +435,13 @@ reach event 7 with ordinary Up input, verify both pages, suppress scene 13,
 and capture the clean scene-1 return as `actual.bmp`. The upstream Frosty conversation,
 pending-descriptor override, and scene-54 completion/return remain open.
 Scene 54's extracted map is a tall 320x1344 layout, and its profile has no
-event table or elevator group. Its event-31 handler returns without a route in
-scripted-activity mode; the event-0 projected interaction also makes no
-scene-54 map write. See the
+event table or elevator group. Event 31 stores callback `0xDB26` through the
+direct `0xB7B8` path; other route audits map its ordinary field-mode behavior
+to the shared terminal. The current export skips the callback body, so the
+Scene-54 mode-3 behavior remains unresolved. Timeout setup at `0x1DBAA` also
+returns when Scene 54 has `FFE177=0`; the route's `FFE177` state and pending
+`FFE162` producer are unknown. The event-0 projected interaction has no
+scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).
 
 Current map-dialogue work: scene-2 record 85/event 4 now opens the Lua entry
@@ -956,20 +960,30 @@ the gate-return plus fare prompt, while `0x3A` presents the fare prompt
 directly. Joshua's Yes/No replies and the guard's No reply use ROM text.
 Command `0x38` subtracts 1,000 nuyen only when funds cover the fare, selects
 the short-wallet page at `0x11B51D` otherwise, and selects the paid-flight
-page at `0x11B450` when paid. Lua owns the wallet action; no ROM-address
+page at `0x11B450` when paid. The paid path calls mode initialization with
+scene 6. That sets the direct scene-entry marker and default-profile flags;
+the gate finalizer then re-enters the selected mode through the field loop,
+without taking Scene 9's generic event-table row. Scene 6's profile pointer is
+`0x14B890`; its three default field anchors are `(0x1310, 0x0980)`,
+`(0x1220, 0x08C0)`, and `(0x1400, 0x08C0)`. The source text calls this a
+highway flight, but the numeric destination is the only ROM-backed scene
+identity established here. Lua owns the wallet action; no ROM-address
 interpreter or second wallet state was added.
 
 Debug/Release `shadowrun_gameplay_script_runtime_qa` checks both roots, No and
-short-wallet pages with unchanged funds and explicit field-return boundaries,
-the exact 1,000-nuyen debit, and the typed boundary after the paid-flight
-page. Debug/Release
+short-wallet pages with unchanged funds and explicit host-transition
+boundaries, the exact 1,000-nuyen debit, and the typed boundary after the
+paid-flight page. Debug/Release
 `shadowrun_ghidra_conversion_qt_field_sinsearach_gate_fare_physical_entry_qa`
 uses ordinary Up input to reach record 230, selects Later and Yes, verifies
 the 999-nuyen balance is unchanged, and writes full-frame offer and result
 captures under `build/conversion/qt/{debug,release}/qt_runtime/`, including
 `field-sinsearach-gate-fare-physical-entry-qa/actual.bmp`.
-The destination highway scene, return position, and command-0x38 mode-state
-transition remain unresolved, so the overall gate hill remains partial. No
-independent Genesis encounter frame has been identified; these captures test
-the converted route and renderer, not Genesis visual fidelity. See the
+The ROM trace now resolves the paid destination as numeric Scene 6 and its
+default profile anchors, and resolves the refusal/short-wallet branches as
+Scene-9 direct re-entry. The typed host handoff for those branches and the
+paid Scene-6 entry is still pending, as is the exact active-actor position
+after profile selection. The overall gate hill remains partial. No independent
+Genesis encounter frame has been identified; these captures test the
+converted route and renderer, not Genesis visual fidelity. See the
 [story-page source audit](cinematic-story-pages-source-audit.md).
