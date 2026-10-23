@@ -766,6 +766,79 @@
         "scope": "profile_gate_before_licourtrix_conversation"
       }
     },
+    "salish.sinsearach.gate.route": {
+      "expression": {
+        "all": [
+          { "fact": "field.mode", "op": "eq", "value": 9 },
+          { "fact": "field.event_code", "op": "eq", "value": 0 }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x1FD80", "0x1FE38", "0x1B578E"],
+        "scope": "scene_9_mode_9_event_0_route_entry"
+      }
+    },
+    "salish.sinsearach.gate.event_context": {
+      "expression": {
+        "all": [
+          { "fact": "location.type", "op": "eq", "value": "site" },
+          { "fact": "location.id", "op": "eq", "value": "salish_sinsearach_village_gate" },
+          { "fact": "field.mode", "op": "eq", "value": 9 },
+          { "fact": "field.event_code", "op": "eq", "value": 0 }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x1FD80", "0x1FE38", "0x1B578E"],
+        "scope": "scene_9_mode_9_event_0_guard_prompt_context"
+      }
+    },
+    "salish.sinsearach.gate.hostile_guard": {
+      "expression": {
+        "any": [
+          { "fact": "story.story_flag_bit_18", "op": "eq", "value": false },
+          { "fact": "story.group_item_flag_bit_5", "op": "eq", "value": true }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x1FE38", "0x11B5A0"],
+        "scope": "hostile_guard_root_priority"
+      }
+    },
+    "salish.sinsearach.gate.frosty_choice_available": {
+      "expression": {
+        "fact": "story.story_flag_bit_20", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0x1FE38", "0x11B5D8"],
+        "scope": "guard_frosty_option_root"
+      }
+    },
+    "salish.sinsearach.gate.lady_gillian_available": {
+      "expression": {
+        "all": [
+          { "fact": "story.story_flag_bit_13", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_17", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_18", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_19", "op": "eq", "value": true },
+          { "fact": "story.story_flag_bit_20", "op": "eq", "value": true },
+          { "fact": "story.group_item_flag_bit_5", "op": "eq", "value": false },
+          { "fact": "story.story_flag_bit_30", "op": "eq", "value": false }
+        ]
+      },
+      "provenance": {
+        "romAddresses": ["0x21CE4", "0x21D00", "0x0F57E4"],
+        "scope": "command_34_lady_gillian_root_gates"
+      }
+    },
+    "salish.sinsearach.gate.frosty_expected": {
+      "expression": {
+        "fact": "story.story_flag_bit_9", "op": "eq", "value": true
+      },
+      "provenance": {
+        "romAddresses": ["0x24DFE", "0x0F57BC", "0x0F57D0"],
+        "scope": "lady_gillian_frosty_readiness_branch"
+      }
+    },
     "salish.renraku.cave_ambush_context": {
       "expression": {
         "all": [

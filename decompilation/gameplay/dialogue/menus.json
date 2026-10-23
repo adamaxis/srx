@@ -1544,6 +1544,82 @@
         }
       }
     },
+    "salish.sinsearach": {
+      "hostile_guard": {
+        "choice_label_keys": {
+          "elders": "salish.sinsearach.option.elders",
+          "later": "salish.sinsearach.option.later",
+          "questions": "salish.sinsearach.option.questions"
+        },
+        "title_key": "salish.sinsearach.page.guard_hostile"
+      },
+      "friendly_guard": {
+        "choice_label_keys": {
+          "elders": "salish.sinsearach.option.elders",
+          "later": "salish.sinsearach.option.later",
+          "questions": "salish.sinsearach.option.questions"
+        },
+        "title_key": "salish.sinsearach.page.guard_friendly"
+      },
+      "friendly_guard_with_frosty": {
+        "choice_label_keys": {
+          "elders": "salish.sinsearach.option.elders",
+          "frosty": "salish.sinsearach.option.frosty",
+          "later": "salish.sinsearach.option.later"
+        },
+        "title_key": "salish.sinsearach.page.guard_friendly"
+      },
+      "guard_questions": {
+        "choice_label_keys": {
+          "caleb": "salish.sinsearach.option.caleb",
+          "frosty_question": "salish.sinsearach.option.frosty_question",
+          "later": "salish.sinsearach.option.later"
+        },
+        "title_key": "salish.sinsearach.page.guard_questions"
+      },
+      "guard_answer_followup": {
+        "choice_label_keys": {
+          "another_question": "salish.sinsearach.option.another_question",
+          "elders": "salish.sinsearach.option.elders",
+          "later": "salish.sinsearach.option.later"
+        }
+      },
+      "elders_thanks": {
+        "choice_label_keys": {
+          "thanks": "salish.sinsearach.option.thanks"
+        }
+      },
+      "lady_gillian_frosty": {
+        "choice_label_keys": {
+          "frosty": "salish.sinsearach.option.frosty"
+        },
+        "title_key": "salish.sinsearach.page.lady_gillian_greeting"
+      },
+      "frosty_thanks": {
+        "choice_label_keys": {
+          "thanks": "salish.sinsearach.option.thanks"
+        },
+        "title_key": "salish.sinsearach.page.frosty_greeting"
+      },
+      "frosty_thon_question": {
+        "choice_label_keys": {
+          "thon": "salish.sinsearach.option.thon"
+        },
+        "title_key": "salish.sinsearach.page.frosty_task_prompt"
+      },
+      "frosty_renraku_question": {
+        "choice_label_keys": {
+          "renraku": "salish.sinsearach.option.renraku"
+        },
+        "title_key": "salish.sinsearach.page.frosty_thon_answer"
+      },
+      "frosty_michael_question": {
+        "choice_label_keys": {
+          "michael": "salish.sinsearach.option.michael"
+        },
+        "title_key": "salish.sinsearach.page.frosty_renraku_answer"
+      }
+    },
     "stoker.motel": {
       "debt": {
         "choice_label_keys": {

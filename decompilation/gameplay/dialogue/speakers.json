@@ -490,6 +490,110 @@
       "portrait_alias": "dialogue.portraits.spirit.eyes",
       "text_profile": "salish.spirit_eyes"
     },
+    "salish_sinsearach_guard": {
+      "events": {
+        "caleb_answer": {
+          "continuation_key": "",
+          "title_key": "salish.sinsearach.page.caleb_answer"
+        },
+        "elders_busy": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.elders_busy"
+        },
+        "elders_show_lodge": {
+          "continuation_key": "",
+          "title_key": "salish.sinsearach.page.elders_show_lodge"
+        },
+        "elders_welcome": {
+          "continuation_key": "",
+          "title_key": "salish.sinsearach.page.elders_welcome"
+        },
+        "frosty_left": {
+          "continuation_key": "",
+          "title_key": "salish.sinsearach.page.frosty_left"
+        },
+        "frosty_name_answer": {
+          "continuation_key": "",
+          "title_key": "salish.sinsearach.page.frosty_name_answer"
+        },
+        "guard_friendly": {
+          "continuation_key": "",
+          "title_key": "salish.sinsearach.page.guard_friendly"
+        },
+        "guard_hostile": {
+          "continuation_key": "",
+          "title_key": "salish.sinsearach.page.guard_hostile"
+        },
+        "guard_questions": {
+          "continuation_key": "",
+          "title_key": "salish.sinsearach.page.guard_questions"
+        }
+      },
+      "name": "Elven guard",
+      "portrait_alias": "none",
+      "text_profile": "salish.sinsearach"
+    },
+    "salish_sinsearach_lady_gillian": {
+      "events": {
+        "frosty_expected": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.frosty_expected"
+        },
+        "frosty_not_ready": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.frosty_not_ready"
+        },
+        "lady_gillian_greeting": {
+          "continuation_key": "",
+          "title_key": "salish.sinsearach.page.lady_gillian_greeting"
+        }
+      },
+      "name": "Lady Gillian",
+      "portrait_alias": "none",
+      "text_profile": "salish.sinsearach"
+    },
+    "salish_sinsearach_frosty": {
+      "events": {
+        "frosty_greeting": {
+          "continuation_key": "",
+          "title_key": "salish.sinsearach.page.frosty_greeting"
+        },
+        "frosty_michael_answer": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.frosty_michael_answer"
+        },
+        "frosty_renraku_answer": {
+          "continuation_key": "",
+          "title_key": "salish.sinsearach.page.frosty_renraku_answer"
+        },
+        "frosty_task_prompt": {
+          "continuation_key": "",
+          "title_key": "salish.sinsearach.page.frosty_task_prompt"
+        },
+        "frosty_thon_answer": {
+          "continuation_key": "",
+          "title_key": "salish.sinsearach.page.frosty_thon_answer"
+        }
+      },
+      "name": "Frosty",
+      "portrait_alias": "none",
+      "text_profile": "salish.sinsearach"
+    },
+    "salish_sinsearach_narrator": {
+      "events": {
+        "elders_escort": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.elders_escort"
+        },
+        "frosty_arrival": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.sinsearach.page.frosty_arrival"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "none",
+      "text_profile": "salish.sinsearach"
+    },
     "stoker": {
       "events": {
         "arrival": {

@@ -928,3 +928,23 @@ were inspected. No independent Genesis Wire-Masters frame appears in the
 supplied longplay; this hill defends the traced behavior and host presentation
 regression, without claiming exact visual fidelity. See [the Wire-Masters
 audit](visual-audits/wire-masters-mode7-cyberware.md).
+
+## Sinsearach village gate mode-9/event-0 dialogue (partial, 2026-10-22)
+
+Scene-9 record 230 at `0x1B578E` crosses the village gate. In mode 9/event 0,
+`0x1FD80` selects the guard's hostile/friendly root from story bits 18/20 and
+Group Item bit 5, then returns D6=-1 rather than taking the generic scene-13
+event-table route. The Lua dialogue graph connects the Elders choice through
+command `0x34`, Lady Gillian's bit-9 Frosty referral, and command `0x44`'s
+bit-30 effect and opening pages. It applies command `0x49`'s FFFC34 bit-4
+clear and bit-5 set, plus a runner source-byte triplet `+3`. ROM helper
+`0x5D130` then selects its sequence
+data and calls `0x5D1F8`; that nested sequence remains a source boundary. No
+route-specific CTest, CLI `actual.bmp`, or independent Genesis capture has
+been added; this hill remains partial.
+
+The guard's exit choices remain a separate boundary. Commands `0x39` and
+`0x3A` select roots `0x11B6D4` and `0x11B6EC`. Their related fare command
+`0x38` attempts 1,000 nuyen; insufficient funds select text group `0x11B51D`,
+while payment selects `0x11B450` and initializes mode state 6. The later
+field transition and refusal return are not reconstructed.

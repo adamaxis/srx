@@ -205,17 +205,18 @@ The source path is:
 2. The indexed service loop `0x53A78` calls entry 21, `0x5447E`, before the
    generic event-table route. That service matches field mode 1/event 7.
    `FFF0D5` selects an alternate text chain; it does not gate the service.
-3. `FFFC1E` bit 30 is set by dispatcher index `0x44`, handler `0x21FD0`. That
-   action loads profile `0x121F4C` and the text chain beginning at `0xF57F8`.
-   The first text says “You are taken to Frosty”; this associates the profile
-   with Frosty in context, though the extracted profile has no name label. The
-   Lua `StoryFlags` now maps command `0x44` to a direct bit-30 write, and its
-   test checks the command-table pointer and handler opcodes. The live caller
-   and route remain unconnected. The Spirit Eyes branch at `0x53E84` checks
-   Group Item bit 2 and, at `0x53E98`, consumes the scale before setting
-   prerequisite story bit 9 at `0x53EA8` and opening `0xF4C04`. Scene-47
-   handler `0x53F50` sets story bit 8 and Group Item bit 2 after the
-   Licourtrix conversation; Lua now models both ends of that item handoff.
+3. Command `0x34` at `0x21CE4` selects Lady Gillian group `0xF57E4` only
+   when story bits 13/17/18/19/20 are set and Group Item bit 5/story bit
+   30 are clear. Lady Gillian command `0xF9` checks bit 9 at `0x24DFE`;
+   command `0x44` at `0x21FD0` sets story bit 30, loads profile `0x121F4C`,
+   and opens `0xF57F8`. The live caller is Scene-9 record 230 at
+   `0x1B578E`: when `FFFBF8=9` and `FFFBF9=0`, finalizer `0x1FD80` selects
+   the guard root at `0x1FE38` from story bits 18/20 and Group Item bit 5,
+   then returns D6=-1 instead of taking event-table row 0 to scene 13. The
+   entity interaction and Lua JSON graph now model this route through the
+   guard, Tribal Elders, Lady Gillian, and Frosty's first pages. The graph
+   stops at command `0x49`, whose helper behavior remains unresolved. There
+   is no route-specific CTest, CLI frame, or independent Genesis capture yet.
 4. `FFF0D5` is not a gate: when nonzero the service chooses a separate text
    path at `0x15FF20` or `0x15FF28` based on its sign. Positive selects
    `0x15FF28` -> `0x15FE5D` (package delivery); negative selects `0x15FF20`
@@ -240,11 +241,15 @@ The source path is:
    `FFE162` state and scene-54 completion/return are unresolved.
 
 No screenshot-based scene-name claim should be made from the extracted map
-alone. The site map image has not yet been aligned to scene 1's coordinates,
-and the entry dialogue has no physical Qt QA. Keep the route partial. The
-guard/repeat variants, event-specific `FFE162` state, upstream Frosty
-action-44 route, scene 54 activity/exit/return, and physical full-screen
-replacement and clean-redraw QA remain open.
+alone. The map has not been aligned to scene 9 coordinates. The Sinsearach
+route is source-connected and Lua-modeled, but needs focused physical-input
+QA, a full-frame actual.bmp, and independent visual evidence. Its command-0x49
+bit and runner-triplet effects are modeled; the nested 0x5D1F8 sequence remains
+open. Commands 0x39/0x3A select roots 0x11B6D4/0x11B6EC; their fare command
+0x38 attempts 1,000 nuyen and selects the 0x11B51D or 0x11B450 group, with
+mode state 6 initialized after payment. The refusal return and final field
+transition remain unmodeled. Tarislar event-7 pending FFE162 state and
+scene-54 completion/return also remain unresolved.
 
 ### Reported Little Chiba / Redmond elevator transition
 

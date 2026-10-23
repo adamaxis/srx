@@ -106,8 +106,8 @@ local function register_core_actions(registry)
     end)
 
     registry:register("runner.adjust_source_byte_triplet", function(arguments)
-        assert(is_integer(arguments.amount, 1, 2),
-            "runner.adjust_source_byte_triplet needs amount 1 or 2")
+        assert(is_integer(arguments.amount, 1, 0xFF),
+            "runner.adjust_source_byte_triplet needs amount 1..255")
         local result = game.services.call(
             "runner", "adjust_source_byte_triplet_" ..
                 tostring(arguments.amount))

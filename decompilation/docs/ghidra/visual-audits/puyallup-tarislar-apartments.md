@@ -1,34 +1,13 @@
 # Puyallup: Tarislar Garden Apartments
 
-Status: **partial; first visit, guarded leave, signed alternate-result pages,
-repeat information service, and gated tomb departure are connected, while the
-upstream Frosty handoff and pending descriptor path remain open**. Scene 1
-record 67 is an event-7 trigger whose event-table
-default is scene 13. With FFFC1E bit 30 set, bit 21 clear, and alternate
-result/FFF0D5 zero, the first visit marks bit 21, awards +2 Karma to the three
-live runners, and runs the JSON arrival/penthouse pages before the shared
-Harlequin prompt chain. Completing the arrival page applies effect bits 5/6;
-the conversation then returns to scene 1. Debug/Release script and physical
-input QA check the ordered pages, flags, and full-screen field return. The
-guarded branch presents pages `0xFBCC7` and `0xFBD5A`, then a titleless No
-Business/More choice. No Business follows `0xFBD94` and returns to scene 1;
-More follows `0xFBEEC` into the shared Harlequin conversation at `0xF58C0`,
-which also returns to scene 1. Debug/Release physical-input CTests exercise
-both choices and capture the menu, branch pages, and clean field return. A repeat
-visit presents Harlequin's “Hello again” service. Ito, post-Ito, map, and
-group-item bits select the questions, Ito response, map-information, or tomb
-branch; the information path shows the available Renraku and paired maps, then
-returns to scene 1. The tomb offer requires bits 30, 21, 16, 28, 26, and 27 and
-alternate result zero. Yes follows the three ROM travel pages and enters scene
-54; No presents the two preparation pages and returns to scene 1. Debug/Release
-physical-input CTests cover first visit, guard, both signed alternate results,
-repeat information, and both tomb choices. The upstream Frosty dialogue and
-pending-descriptor override remain open. A pending descriptor list at FFE162
-can instead override the selector result to scene 15. Scene 55 is a separate
-marker-2 route that starts Tomb of Ellisia dialogue; it is not the event-7
-marker-1 destination. Scene 54's extracted map is 320x1344, consistent with the
-apartment elevator passage, but that asset consistency is not an independent
-visual confirmation. The scene-54 exit and return path also remain unresolved.
+Status: **partial**. Scene 1/event 7 first visit, guarded leave, signed alternate-result pages,
+repeat information service, and gated tomb departure are connected. The Scene 9
+mode-9/event-0 Sinsearach gate now has an entity-owned Lua dialogue route and
+JSON graph from the guard roots through Lady Gillian, command 0x44, and Frosty's
+first pages. The graph applies command 0x49's direct state changes, then stops
+at the nested 0x5D1F8 sequence boundary. This new route has no route-specific
+CTest or CLI actual.bmp yet, so it is not defended.
+The pending FFE162 descriptor path and Scene 54 completion/return remain open.
 
 Mike's RPG Center labels Puyallup map marker 2 “Tarislar Garden Apartments.”
 Its walkthrough places the visit after the Sinsearach trials and meeting
@@ -62,16 +41,22 @@ catalog's source policy explicitly authorizes a correction.
   catalog. ROM's positive result selects the delivery page at `0x15FE5D`;
   negative selects the pickup page at `0x15FDB8`. The entity retains numeric
   scene 13 as its suppressed route.
-- State-selected story dialogue: command `0x34` at table `0x12CCB4` points to
-  handler `0x21CE4`; its selection block begins at `0x21D00`. With story bits
-  13, 17, 18, 19, and 20 set, Group Item bit 5 clear, and story bit 30 clear,
-  the handler returns group `0xF57E4`, whose text at `0xFB535` says Lady
-  Gillian greets Joshua. Command `0x44` is separate: handler `0x21FD0` sets
-  story bit 30, loads profile `0x121F4C`, and opens group `0xF57F8`, whose
-  first text at `0xFB6C8` says Joshua is taken to Frosty. The Lua source test
-  checks the command-table entries and ROM branch bytes. These source roots
-  are identified, but their live field-interaction caller and location route remain
-  unconnected.
+- Sinsearach gate caller and Frosty route: Scene-9 record 230 at `0x1B578E`
+  covers the visible gate. In mode 9/event 0, `0x1FD80` selects the guard
+  root at `0x1FE38` from story bits 18/20 and Group Item bit 5, then returns
+  D6=-1 instead of taking event-table row 0 to scene 13. The graph models
+  the `0x33` question branch and the Tribal Elders response. Command `0x34`
+  at `0x21CE4` selects Lady Gillian group `0xF57E4` only with story bits
+  13/17/18/19/20 set and Group Item bit 5/story bit 30 clear; otherwise it
+  opens the busy-elders pages at `0xF4D14`. Lady Gillian command `0xF9` at
+  `0x24DFE` selects the bit-9 readiness page. MORE dispatches command `0x44`
+  at `0x21FD0`, which sets story bit 30 and opens `0xF57F8`. The Lua JSON
+  graph now follows the guard, Lady Gillian, and Frosty pages up to
+  command `0x49`, applying its FFFC34 bit-4 clear, bit-5 set, and runner
+  source-byte triplet `+3`. Helper `0x5D130` selects source data and enters
+  `0x5D1F8`; the nested sequence remains an explicit source boundary. No
+  route-specific CTest, CLI frame, or independent Genesis capture has been
+  produced, so the gate hill remains partial.
 - Ilene prerequisite: Scene-2/event-0 service 19 at `0x543A2` requires story
   bits 18/19 = 1/0, `FFF0D5=0`, `FFFC34` bit 0 clear, and `FFFC38` bit 12 set.
   It arms `FFE182` and leaves event-table row 0's Scene-20 destination live.
@@ -220,11 +205,11 @@ destination, and no reverse route has been added.
 
 ## Next implementation evidence needed
 
+- Add focused Debug/Release CTest and physical-input QA for the Scene-9
+  mode-9/event-0 route, capture and inspect full 320x224 actual.bmp frames,
+  and de-engineer the `0x5D1F8` sequence before extending Frosty's graph.
 - Wire and physically verify the source-confirmed Ilene continuation without
-  flattening it into an unconditional Scene-20 entry. Then trace the live
-  field-interaction caller for command `0x34`'s Lady Gillian root and command
-  `0x44`'s Frosty handoff. Preserve the verified command distinction: `0x34`
-  selects `0xF57E4`; `0x44` sets bit 30 and opens `0xF57F8`.
+  flattening it into an unconditional Scene-20 entry.
 - Trace the complete `0xF4C44` dialogue and the world-context route that
   selects Scene-47 event-25 continuation `0x53EFA`; its item grant and the
   Spirit Eyes bit-9 consumer are now connected in Lua.
@@ -233,8 +218,9 @@ destination, and no reverse route has been added.
   conditions, and focused physical QA. Debug/Release tests reach event 7 with
   ordinary Up input for both signs, capture each full one-page dialog and the
   clean scene-1 redraw, and verify that the scene-13 transition stays
-  suppressed. Continue with the upstream Frosty branch, pending descriptor,
-  and scene-54 completion/return trace.
+  suppressed. Continue with gate QA and implementation of the traced
+  command-0x39/0x3A fare roots, the nested command-0x49 sequence, pending
+  descriptor, and scene-54 completion/return trace.
 - Trace which world-effect path can populate `FFE162`, whether it is active
   for Tarislar's event-7 route, and how selector precedence reaches scene 54
   or the pending scene-15 override.

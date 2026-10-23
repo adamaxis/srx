@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "entityId": "salish_sinsearach_village_gate",
+  "interactions": [
+    {
+      "id": "scene_09_mode_9_event_0_sinsearach_gate_dialogue",
+      "source": {
+        "sceneId": 9,
+        "eventCode": "event_0"
+      },
+      "route": {
+        "kind": "dialogue",
+        "script": "lua_dialogue",
+        "priority": 10,
+        "conditionId": "salish.sinsearach.gate.route"
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "salish_sinsearach_gate",
+          "function": "present"
+        },
+        "locationContext": {
+          "type": "site",
+          "id": "salish_sinsearach_village_gate",
+          "textProfile": "salish.sinsearach",
+          "speakerId": "salish_sinsearach_guard"
+        }
+      },
+      "provenance": {
+        "evidence": "Scene 9 event record 230 at 0x1B578E crosses the village gate. In mode 9/event 0, finalizer 0x1FD80 selects guard prompts at 0x1FE38 and suppresses the generic event-table transition. The ROM inputs are scene 9, mode 9, event 0, story bits 18/20, and Group Item bit 5."
+      }
+    }
+  ]
+}

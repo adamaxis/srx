@@ -1,0 +1,302 @@
+{
+  "schemaVersion": 1,
+  "graphs": {
+    "salish.sinsearach.gate": {
+      "entryNode": "select_guard_root",
+      "speakerId": "salish_sinsearach_guard",
+      "textProfile": "salish.sinsearach",
+      "precondition": "salish.sinsearach.gate.event_context",
+      "provenance": {
+        "romAddresses": [
+          "0x1FD80", "0x1FE38", "0x1B578E", "0x21CAA", "0x21CE4",
+          "0x24DFE", "0x21FD0", "0x12CCB4", "0x11B5A0", "0x11B5BC",
+          "0x11B5D8", "0x11B5F4", "0x11B610", "0x11B648", "0x11B664",
+          "0x11B698", "0x11B6AC", "0x0F57E4", "0x0F57BC", "0x0F57D0",
+          "0x0F57F8", "0x0F580C", "0x0F5820", "0x0F5834", "0x0F5848",
+          "0x0F585C", "0x220EA", "0x5D130", "0x5D1F8", "0x21E66",
+          "0x21E8C", "0x21E9E", "0x21A4E", "0x136DE", "0x11B6D4",
+          "0x11B6EC", "0x11B704", "0x11B70C", "0x11B450", "0x11B51D",
+          "0x1050B0", "0x1050DC"
+        ],
+        "scope": "scene_9_mode_9_event_0_gate_to_lady_gillian_frosty_and_fare_boundaries"
+      },
+      "nodes": {
+        "select_guard_root": {
+          "type": "branch",
+          "cases": [
+            { "when": "salish.sinsearach.gate.hostile_guard", "next": "hostile_guard" },
+            { "when": "salish.sinsearach.gate.frosty_choice_available", "next": "friendly_guard_with_frosty" }
+          ],
+          "fallback": "friendly_guard",
+          "evidence": "ROM 0x1FE38 selects hostile root 0x11B5A0 when story bit 18 is clear or group-item bit 5 is set. Otherwise bit 20 selects 0x11B5BC or 0x11B5D8."
+        },
+        "context_boundary": {
+          "type": "source_boundary",
+          "reason": "The graph only applies to Scene 9, mode 9, event 0 at the Sinsearach village gate."
+        },
+
+        "hostile_guard": {
+          "type": "choice",
+          "menuId": "hostile_guard",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.guard_hostile",
+          "choices": [
+            { "id": "questions", "next": "guard_questions" },
+            { "id": "elders", "next": "show_elders_lodge" },
+            { "id": "later", "next": "guard_exit_boundary" }
+          ],
+          "evidence": "ROM prompt 0x11B5A0 orders command 0x33, continuation 0x11B6AC, and command 0x3A under the three response labels."
+        },
+        "friendly_guard": {
+          "type": "choice",
+          "menuId": "friendly_guard",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.guard_friendly",
+          "choices": [
+            { "id": "questions", "next": "guard_questions" },
+            { "id": "elders", "next": "show_elders_lodge" },
+            { "id": "later", "next": "guard_exit_boundary" }
+          ],
+          "evidence": "ROM prompt 0x11B5BC has the same choices as the hostile root, with its greeting selected by story bit 20 being clear."
+        },
+        "friendly_guard_with_frosty": {
+          "type": "choice",
+          "menuId": "friendly_guard_with_frosty",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.guard_friendly",
+          "choices": [
+            { "id": "frosty", "next": "frosty_left" },
+            { "id": "elders", "next": "show_elders_lodge" },
+            { "id": "later", "next": "guard_exit_boundary" }
+          ],
+          "evidence": "ROM prompt 0x11B5D8 exposes the Frosty option when story bit 20 is set."
+        },
+        "frosty_left": {
+          "type": "choice",
+          "menuId": "friendly_guard_with_frosty",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.frosty_left",
+          "choices": [
+            { "id": "frosty", "next": "frosty_left" },
+            { "id": "elders", "next": "show_elders_lodge" },
+            { "id": "later", "next": "guard_exit_boundary" }
+          ],
+          "evidence": "ROM prompt 0x11B5F4 repeats while Frosty is absent; the other options continue to the Elders or command 0x3A."
+        },
+
+        "guard_questions": {
+          "type": "choice",
+          "menuId": "guard_questions",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.guard_questions",
+          "choices": [
+            { "id": "caleb", "next": "caleb_answer" },
+            { "id": "frosty_question", "next": "frosty_name_answer" },
+            { "id": "later", "next": "guard_exit_boundary" }
+          ],
+          "evidence": "Command 0x33 at 0x21CAA selects prompt 0x11B610."
+        },
+        "caleb_answer": {
+          "type": "choice",
+          "menuId": "guard_answer_followup",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.caleb_answer",
+          "choices": [
+            { "id": "another_question", "next": "guard_questions" },
+            { "id": "elders", "next": "elders_welcome" },
+            { "id": "later", "next": "guard_exit_boundary" }
+          ],
+          "evidence": "ROM prompt 0x11B648 returns to 0x11B610 for another question or continues to 0x11B698 for the Elders request."
+        },
+        "frosty_name_answer": {
+          "type": "choice",
+          "menuId": "guard_answer_followup",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.frosty_name_answer",
+          "choices": [
+            { "id": "another_question", "next": "guard_questions" },
+            { "id": "elders", "next": "elders_welcome" },
+            { "id": "later", "next": "guard_exit_boundary" }
+          ],
+          "evidence": "ROM prompt 0x11B664 returns to 0x11B610 for another question or continues to 0x11B698 for the Elders request."
+        },
+        "elders_welcome": {
+          "type": "choice",
+          "menuId": "elders_thanks",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.elders_welcome",
+          "choices": [
+            { "id": "thanks", "next": "select_lady_gillian_route" }
+          ],
+          "evidence": "ROM prompt 0x11B698 presents the welcome and the Thanks response before command 0x34."
+        },
+        "show_elders_lodge": {
+          "type": "choice",
+          "menuId": "elders_thanks",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.elders_show_lodge",
+          "choices": [
+            { "id": "thanks", "next": "select_lady_gillian_route" }
+          ],
+          "evidence": "ROM prompt 0x11B6AC presents the direct Lodge handoff and command 0x34."
+        },
+        "select_lady_gillian_route": {
+          "type": "branch",
+          "cases": [
+            { "when": "salish.sinsearach.gate.lady_gillian_available", "next": "lady_gillian_greeting" }
+          ],
+          "fallback": "elders_escort",
+          "evidence": "Command 0x34 at 0x21CE4 opens group 0xF57E4 only when bits 13, 17, 18, 19, and 20 are set, group-item bit 5 and story bit 30 are clear. Otherwise it opens 0xF4D14."
+        },
+        "elders_escort": {
+          "type": "page",
+          "eventId": "elders_escort",
+          "speakerId": "salish_sinsearach_narrator",
+          "next": "elders_busy",
+          "evidence": "ROM group 0xF4D14 starts with the escort-to-Lodge narration."
+        },
+        "elders_busy": {
+          "type": "page",
+          "eventId": "elders_busy",
+          "speakerId": "salish_sinsearach_guard",
+          "next": "guard_exit_boundary",
+          "evidence": "ROM record 0xF4D28 says the Elders are busy and uses command 0x39 to return to the gate response."
+        },
+        "lady_gillian_greeting": {
+          "type": "choice",
+          "menuId": "lady_gillian_frosty",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.lady_gillian_greeting",
+          "speakerId": "salish_sinsearach_lady_gillian",
+          "choices": [
+            { "id": "frosty", "next": "select_frosty_readiness" }
+          ],
+          "evidence": "ROM group 0xF57E4 presents Lady Gillian's greeting and command 0xF9 for the Frosty request."
+        },
+        "select_frosty_readiness": {
+          "type": "branch",
+          "cases": [
+            { "when": "salish.sinsearach.gate.frosty_expected", "next": "frosty_expected" }
+          ],
+          "fallback": "frosty_not_ready",
+          "evidence": "Command 0xF9 at 0x24DFE checks story bit 9 and selects 0xF57BC or 0xF57D0."
+        },
+        "frosty_expected": {
+          "type": "page",
+          "eventId": "frosty_expected",
+          "speakerId": "salish_sinsearach_lady_gillian",
+          "next": "mark_frosty_met",
+          "evidence": "ROM record 0xF57BC presents 'She is expecting you.'; selecting MORE dispatches command 0x44."
+        },
+        "mark_frosty_met": {
+          "type": "action",
+          "actionId": "story.set_flag",
+          "arguments": { "flagBit": 30, "value": true },
+          "next": "frosty_arrival",
+          "evidence": "Command 0x44 at 0x21FD0 sets FFFC1E bit 30, loads profile 0x121F4C, and opens record 0xF57F8."
+        },
+        "frosty_not_ready": {
+          "type": "page",
+          "eventId": "frosty_not_ready",
+          "speakerId": "salish_sinsearach_lady_gillian",
+          "next": "guard_exit_boundary",
+          "evidence": "ROM record 0xF57D0 refuses the request while story bit 9 is clear; command 0x39 returns to the gate."
+        },
+        "frosty_arrival": {
+          "type": "page",
+          "eventId": "frosty_arrival",
+          "speakerId": "salish_sinsearach_narrator",
+          "next": "frosty_greeting",
+          "evidence": "ROM record 0xF57F8 is the first page after command 0x44."
+        },
+        "frosty_greeting": {
+          "type": "choice",
+          "menuId": "frosty_thanks",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.frosty_greeting",
+          "speakerId": "salish_sinsearach_frosty",
+          "choices": [
+            { "id": "thanks", "next": "frosty_task_prompt" }
+          ],
+          "evidence": "ROM record 0xF580C advances on 'Thanks, chum.' to 0xF5820."
+        },
+        "frosty_task_prompt": {
+          "type": "choice",
+          "menuId": "frosty_thon_question",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.frosty_task_prompt",
+          "speakerId": "salish_sinsearach_frosty",
+          "choices": [
+            { "id": "thon", "next": "frosty_thon_answer" }
+          ],
+          "evidence": "ROM record 0xF5820 offers the Thon question and continues to 0xF5834."
+        },
+        "frosty_thon_answer": {
+          "type": "choice",
+          "menuId": "frosty_renraku_question",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.frosty_thon_answer",
+          "speakerId": "salish_sinsearach_frosty",
+          "choices": [
+            { "id": "renraku", "next": "frosty_renraku_answer" }
+          ],
+          "evidence": "ROM record 0xF5834 offers the Renraku question and continues to 0xF5848."
+        },
+        "frosty_renraku_answer": {
+          "type": "choice",
+          "menuId": "frosty_michael_question",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "salish.sinsearach.page.frosty_renraku_answer",
+          "speakerId": "salish_sinsearach_frosty",
+          "choices": [
+            { "id": "michael", "next": "frosty_michael_answer" }
+          ],
+          "evidence": "ROM record 0xF5848 offers the Michael question and continues to 0xF585C."
+        },
+        "frosty_michael_answer": {
+          "type": "page",
+          "eventId": "frosty_michael_answer",
+          "speakerId": "salish_sinsearach_frosty",
+          "next": "frosty_command_49_clear_effect_4",
+          "evidence": "ROM record 0xF585C ends with command 0x49."
+        },
+        "frosty_command_49_clear_effect_4": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 4, "value": false },
+          "next": "frosty_command_49_set_effect_5",
+          "evidence": "ROM command 0x49 at 0x220EA clears FFFC34 bit 4 before calling 0x5D130."
+        },
+        "frosty_command_49_set_effect_5": {
+          "type": "action",
+          "actionId": "field.set_mode_effect_flag",
+          "arguments": { "flagBit": 5, "value": true },
+          "next": "frosty_command_49_runner_triplet",
+          "evidence": "ROM command 0x49 at 0x220EA sets FFFC34 bit 5 before calling 0x5D130."
+        },
+        "frosty_command_49_runner_triplet": {
+          "type": "action",
+          "actionId": "runner.adjust_source_byte_triplet",
+          "arguments": { "amount": 3 },
+          "results": {
+            "applied": "frosty_command_49_sequence_boundary",
+            "service_unavailable": "frosty_runner_state_boundary"
+          },
+          "evidence": "ROM helper 0x5D130 sets D0=3 and calls 0x59C34, which adds that byte to the three source runner fields."
+        },
+        "frosty_runner_state_boundary": {
+          "type": "source_boundary",
+          "reason": "The ROM runner triplet is always present; the typed runner-state service is unavailable in this invocation, so the command sequence cannot continue safely."
+        },
+        "guard_exit_boundary": {
+          "type": "source_boundary",
+          "reason": "ROM commands 0x39/0x3A select roots 0x11B6D4/0x11B6EC with response pointers 0x1050B0/0x1050DC. Fare command 0x38 at 0x21E66 attempts 1,000 nuyen: low funds selects 0x11B70C/0x11B51D; payment selects 0x11B704/0x11B450 and initializes mode state 6. The final field transition and refusal return are not reconstructed."
+        },
+        "frosty_command_49_sequence_boundary": {
+          "type": "source_boundary",
+          "reason": "After the sourced FFFC34 bit changes and runner triplet +3, ROM 0x5D130 sets FFF0BE=9, selects data at 0x0F5870/0x1FE690, and calls 0x5D1F8. The nested sequence's presentation, state transition, and return behavior are not reconstructed."
+        }
+      }
+    }
+  }
+}
