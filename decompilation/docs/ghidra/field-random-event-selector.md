@@ -125,9 +125,10 @@ sequence continues to Scene 17 and the common consumer has no scene transition.
 The Club dialogue graph models the entry checks and both Mako introduction
 pages. Its Lua action queues the extracted list before the pages; after the
 source route resumes to Scene 17, the typed field path resolves and publishes
-the four rows from the Scene-47 table context. The four-transition counter,
-callback result, and Qt route QA remain open. This is not a random-event
-selector result.
+the four rows from the Scene-47 table context. The host counts four eligible
+Lua behavior-completion edges and resets actor service links at zero. Dispatch
+through FFE104, the callback result, and Qt route QA remain open. This is not a
+random-event selector result.
 
 The linked ROM records confirm this is a Mako story route. Entry descriptor
 `0xF4CBC` points to text `0xF9718` (“Once inside, you inquire about Mako” and

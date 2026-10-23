@@ -1699,6 +1699,8 @@ private:
         // package, but their lifetime is tied to the selected scene script,
         // not to a random encounter sequence.
         bool world_activity_script_actor = false;
+        std::optional<FieldRoutePendingActorList>
+            actor_list_completion_group;
         bool target_selected = false;
         bool target_marker_visible = false;
         bool target_marker_animating = false;
@@ -2214,6 +2216,12 @@ private:
         field_pending_mode_transition_actor_list_;
     std::optional<FieldRoutePendingActorList>
         field_pending_route_actor_list_;
+    std::optional<FieldRoutePendingActorList>
+        field_pending_actor_list_transition_group_;
+    std::optional<std::uint8_t>
+        field_mako_actor_transitions_remaining_;
+    std::optional<FieldRoutePendingActorList>
+        field_pending_actor_list_callback_;
     std::int8_t field_indexed_title_service_result_ = 0;
     // FFDD64: 0x53A78 stores the index of the trigger service it dispatches.
     // 0x2196C sets that bit of FFFC1E (field_exit_world_flags_). Lua reads

@@ -121,7 +121,7 @@
         },
         "mako_encounter_boundary": {
           "type": "source_boundary",
-          "reason": "The host could not queue pending list 0x1E628 after the ROM story gates passed. The field actor-transition counter and delayed callback outcome remain incomplete."
+          "reason": "The host could not queue pending list 0x1E628 after the ROM story gates passed. The later FFE104 callback dispatch, result-state changes, and result page remain incomplete."
         },
         "resume_club_route": {
           "type": "terminal",

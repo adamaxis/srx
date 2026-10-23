@@ -1150,7 +1150,11 @@ FieldSceneRuntime::FieldSceneRuntime(
                 return "applied";
             }
             if (service_id == "field.queue_mako_actor_list") {
-                if (field_pending_route_actor_list_.has_value()) {
+                if (field_pending_route_actor_list_.has_value() ||
+                    field_pending_actor_list_transition_group_.has_value() ||
+                    field_mako_actor_transitions_remaining_.has_value() ||
+                    field_pending_actor_list_callback_.has_value() ||
+                    !pending_world_activity_script_actors_.empty()) {
                     return std::nullopt;
                 }
                 field_pending_route_actor_list_ =
@@ -1456,6 +1460,14 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                   field_runtime_state_.field_activity_lock);
     fields.insert(QStringLiteral("field.debug.world_activity_countdown"),
                   field_runtime_state_.world_activity_countdown);
+    fields.insert(
+        QStringLiteral("field.debug.mako_actor_transitions_remaining"),
+        field_mako_actor_transitions_remaining_.has_value()
+            ? QJsonValue(static_cast<int>(
+                  *field_mako_actor_transitions_remaining_))
+            : QJsonValue(-1));
+    fields.insert(QStringLiteral("field.debug.actor_list_callback_pending"),
+                  field_pending_actor_list_callback_.has_value());
     fields.insert(QStringLiteral("field.debug.display_service_word"),
                   field_runtime_state_.display_service_word);
     fields.insert(QStringLiteral("field.debug.pending_scene_handler"),
@@ -3940,9 +3952,19 @@ void FieldSceneRuntime::initialize_default_field_actors(
                   std::vector<scripting::ScriptWorldActivityActor>>{}
             : game_scripts_.world_activity_actors_for_list_id(
                   47U, list_id);
+        const bool has_source_four_actor_list =
+            actors.has_value() && actors->size() == 4U;
         queue_pending_actor_list(
             std::move(actors),
             "field.world_activity.club_penumbra_mako_list_unresolved");
+        if (has_source_four_actor_list &&
+            pending_world_activity_script_actor_scene_ == scene_reference &&
+            pending_world_activity_script_actors_.size() == 4U) {
+            field_pending_actor_list_transition_group_ = pending_route_list;
+            // ROM 0x43B6 seeds FFE177 with the four actor behavior
+            // transitions still outstanding for list 0x1E628.
+            field_mako_actor_transitions_remaining_ = 4U;
+        }
     } else if (field_pending_mode_transition_actor_list_.has_value()) {
         const auto list_id = field_mode_pending_actor_list_id(
             *field_pending_mode_transition_actor_list_);
@@ -4081,6 +4103,8 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         return;
     }
 
+    const auto expected_actor_count =
+        pending_world_activity_script_actors_.size();
     std::size_t published = 0U;
     for (const auto& source_actor : pending_world_activity_script_actors_) {
         const auto artwork =
@@ -4166,6 +4190,8 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             source_actor.source_interaction_flags;
         actor.source_spawn_state_flags =
             source_actor.source_spawn_state_flags;
+        actor.actor_list_completion_group =
+            field_pending_actor_list_transition_group_;
         actor.source_action_slot = source_actor.source_action_slot;
         actor.source_action_ammo = source_actor.source_action_ammo;
         actor.source_action_counter = source_actor.source_action_counter;
@@ -4312,6 +4338,20 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
 
     pending_world_activity_script_actors_.clear();
     pending_world_activity_script_actor_scene_.reset();
+    if (field_pending_actor_list_transition_group_.has_value()) {
+        if (expected_actor_count != 4U || published != expected_actor_count) {
+            for (auto& actor : field_default_actors_) {
+                if (actor.actor_list_completion_group ==
+                    field_pending_actor_list_transition_group_) {
+                    actor.actor_list_completion_group.reset();
+                }
+            }
+            field_mako_actor_transitions_remaining_.reset();
+            source_boundary(
+                "field.world_activity.club_penumbra_mako_actor_list_incomplete");
+        }
+        field_pending_actor_list_transition_group_.reset();
+    }
     if (published != 0U) {
         refresh_world_entity_service_targets();
         state_.display_dirty_flags = static_cast<std::uint8_t>(
@@ -4869,25 +4909,49 @@ void FieldSceneRuntime::advance_default_field_actors() {
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
         const bool transition_just_completed =
-            actor.temporary_world_encounter &&
+            dynamic_world_actor &&
             !actor.transition_complete && decision->transition_complete &&
             actor_flag_is_set(actor.source_spawn_state_flags,
-                              ActorSpawnStateFlag::world_activity_member);
+                              ActorSpawnStateFlag::world_activity_member) &&
+            !actor_flag_is_set(
+                actor.source_record_flags,
+                ActorServiceFlag::targets_world_actor_group);
         actor.transition_started = decision->transition_started;
         actor.transition_complete = decision->transition_complete;
         if (transition_just_completed) {
-            // ROM 0xAB02 retires one FFE177 pending actor when its finite
-            // behavior transition completes. The final member clears shared
-            // entity-service links before a queued activity continuation.
-            if (field_world_activity_timeout_state_.scene_36_gate != 0U) {
+            // ROM 0xAB02 decrements FFE177 only for +0x9E bit 6 members whose
+            // +0x10 bit 3 is clear. The random-encounter timeout counter below
+            // is a separate host path; Club list results keep their own count.
+            if (actor.temporary_world_encounter &&
+                field_world_activity_timeout_state_.scene_36_gate != 0U) {
                 --field_world_activity_timeout_state_.scene_36_gate;
             }
-            source_boundary(
-                "field.random_encounter.actor_transition_completed");
-            if (field_world_activity_timeout_state_.scene_36_gate == 0U) {
+            if (actor.temporary_world_encounter) {
+                source_boundary(
+                    "field.random_encounter.actor_transition_completed");
+            }
+            if (actor.temporary_world_encounter &&
+                field_world_activity_timeout_state_.scene_36_gate == 0U) {
                 reset_field_entity_service_records();
                 source_boundary(
                     "field.random_encounter.sequence_transitions_complete");
+            }
+            if (actor.actor_list_completion_group ==
+                    FieldRoutePendingActorList::club_penumbra_mako &&
+                field_mako_actor_transitions_remaining_.has_value() &&
+                *field_mako_actor_transitions_remaining_ != 0U) {
+                actor.actor_list_completion_group.reset();
+                --*field_mako_actor_transitions_remaining_;
+                source_boundary(
+                    "field.world_activity.club_penumbra_mako_actor_transition_completed");
+                if (*field_mako_actor_transitions_remaining_ == 0U) {
+                    field_mako_actor_transitions_remaining_.reset();
+                    reset_field_entity_service_records();
+                    field_pending_actor_list_callback_ =
+                        FieldRoutePendingActorList::club_penumbra_mako;
+                    source_boundary(
+                        "field.world_activity.club_penumbra_mako_callback_dispatch_pending");
+                }
             }
         }
         if (decision->combat_meter_update.has_value() &&
@@ -11774,6 +11838,9 @@ bool FieldSceneRuntime::bootstrap(
     field_pending_mode_transition_spawn_.reset();
     field_pending_mode_transition_actor_list_.reset();
     field_pending_route_actor_list_.reset();
+    field_pending_actor_list_transition_group_.reset();
+    field_mako_actor_transitions_remaining_.reset();
+    field_pending_actor_list_callback_.reset();
     field_world_activity_state_ = WorldActivityState{};
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     world_activity_routine_state_ = WorldActivityRoutineState{};

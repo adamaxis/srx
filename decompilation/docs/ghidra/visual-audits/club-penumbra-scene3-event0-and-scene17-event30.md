@@ -34,11 +34,13 @@ Mako story gates pass, Lua requests the pending actor list before presenting
 the two ROM introduction pages. The typed field service carries that request
 through the source-route transition; Scene 17 resolves the four extracted
 rows from their Scene-47 activity-table grouping and publishes them in the
-destination scene. The host does not yet count the four ROM behavior
-transitions or run callback `0x53FFC`, so the result-state changes and Mako
-result page remain open. No Qt route QA has been run for this graph. The
-Scene-47 table grouping does not assign a Scene-47 transition. See the [field
-random-event audit](../field-random-event-selector.md).
+destination scene. It counts four Lua behavior-completion edges when each
+record has `+0x9E` bit 6 set and `+0x10` bit 3 clear, then resets the shared
+actor service links. The callback request remains pending; dispatch through
+`FFE104`, its story/reward updates, and the Mako result page are not connected.
+No Qt route QA has been run for this graph. The Scene-47 table grouping does
+not assign a Scene-47 transition. See the [field random-event
+audit](../field-random-event-selector.md).
 
 ## Pending-list actor transitions and result callback
 
@@ -64,9 +66,10 @@ runner bytes at `FF018D`, `FF028D`, and `FF038D`, sets `FFFC1E` bit 11, clears
 increments `FFFBFB` up to 8 through `0x1F1E0`. Finally it runs the shared mode
 exit service with resources `0x122000` and descriptor `0xF4CA8` (text
 `0xF98FA`, Mako lying unconscious), then returns D6=-1. The native field path
-now carries this route's extracted actor list into Scene 17 and publishes its
-four actor records. The ROM transition counter, delayed story outcome, result
-page, and route QA are still open.
+carries this route's extracted actor list into Scene 17 and publishes its four
+actor records. It counts four eligible behavior transitions and holds callback
+dispatch pending; the delayed story outcome, result page, and route QA are
+still open.
 
 ## Scene-17 contact
 
