@@ -507,9 +507,12 @@ and `0xFF` panel terminators. The first three source text entries share a top
 row; the fourth and fifth start four and three rows below it. These relative
 offsets are included as host layout data. At `0x5C3B4`, the ROM copies 32
 palette entries from `0x5C9D2` through `0x1368`; the glyph transfer and palette
-are not part of the text asset. The generated asset is pending an importer
-run. The native fight-completion trigger and presenter are still absent; this
-partial slice has no CTest or actual.bmp.
+are not part of the text asset. The routine fades to black, copies the palette,
+then fades toward it in 17 palette-frame steps before panel 1. It waits for a
+controller event between panels and calls the display-clear helper before
+panels 2-5. The generated asset is pending an importer run. The native
+fight-completion trigger and presenter are still absent; this partial slice
+has no CTest or actual.bmp.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).

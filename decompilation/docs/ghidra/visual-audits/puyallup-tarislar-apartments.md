@@ -284,7 +284,10 @@ text routine at `0xC0DA` advances one row for each `0x80` marker and ends the
 panel at `0xFF`, so the host asset stores relative row offsets instead of
 source VDP addresses. At `0x5C3B4`, `0x5C9D2` is loaded as the target palette
 source for `0x1368`, which copies 32 entries. Palette and font graphics remain
-outside this text asset. When the callback returns, the outer loop recognizes
+outside this text asset. The palette fades to black and back to the copied
+target in 17 `0x1342` frame waits per transition. `0x5C446` waits for a
+controller event between panels, and the display-clear helper runs before each
+panel after the first. When the callback returns, the outer loop recognizes
 `0x5BAC4` at `0x0B44` and branches through `0x0BA6`/`0x078A` to the main title
 path. The response's next-record pointer is not consumed by this callback.
 The native fight trigger, credit presenter, and cleanup remain unimplemented;
