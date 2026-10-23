@@ -1271,6 +1271,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_sinsearach_gate_fa
                  --field-sinsearach-gate-fare-physical-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-sinsearach-gate-fare-physical-entry-qa")
 
+# Follow the same gate collision route with exact 1,000-nuyen funds and verify
+# the paid flight's typed fade and Scene-6 default-profile arrival.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_sinsearach_gate_paid_physical_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-sinsearach-gate-paid-physical-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-sinsearach-gate-paid-physical-entry-qa")
+
 # Walk into the quest-gated Owlfeather lodge through Scene-6 record 193 and
 # verify the ROM title service opens its Lua dialogue and portrait.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_owlfeather_physical_entry_qa

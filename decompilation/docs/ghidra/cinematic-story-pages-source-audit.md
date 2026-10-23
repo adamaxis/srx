@@ -116,16 +116,26 @@ Later and Yes, and captures the offer, Joshua response, and 999-nuyen
 short-wallet page. Its `actual.bmp` is the short-wallet result. The separate
 script-runtime CTest covers the No reply, unchanged short balance, exact
 1,000-nuyen debit, paid-flight page, and typed host-transition boundaries.
+The paid-fare physical-entry QA starts from a separate Scene-9 checkpoint with
+exactly 1,000 nuyen, follows the same physical gate and Later/Yes choices,
+checks the zero balance and paid-flight page, then completes the page and
+verifies the typed destination fade and Scene-6 arrival at `(0x1310, 0x0980)`.
+It writes the paid page as `fare-paid.bmp` and the full-frame arrival as
+`actual.bmp`.
 The Spirit Eyes physical-entry QA similarly reaches Scene-4 record 96, drives
 the scale completion path, advances all four ritual pages, and checks the
 return; it writes the cinematic frame as `ritual-page-3.bmp` and the clean
 return as `actual.bmp`. Focused Debug and Release CTests pass for the gameplay
-script runtime and all three physical routes. The Sinsearach cinematic Debug
+script runtime and all four physical routes. The Sinsearach cinematic Debug
 and Release `actual.bmp` files have identical SHA-256 hashes. The fare QA's
 `fare-offer.bmp` hashes also match across Debug/Release
 (`BFFF2BAD8ACAFDC52CEE787E83B4FAAEB5F3A21FA847E205C4AB9E8A3A3FC84C`), as do
 its short-wallet `actual.bmp` files
 (`890D5D827E6F1EB6812F6E96FBA3715472C3D81E6844F1BE84E90E322270B6D9`). The
+paid-flight `fare-paid.bmp` files
+(`24869FA96EE6997C75A8540B35666F742407DEFB4E57732C0EA759C3ADF7FA60`), and
+Scene-6 `actual.bmp` files
+(`F9CB57E5703980F4488B8AAD90317B37357D4DAAC75FE65492C87DA9411BB328`). The
 full 320x224 Release frames were inspected.
 
 These are source-backed host route and renderer regression captures, not
@@ -141,8 +151,9 @@ pointer is `0x14B890`; the profile anchors are `(0x1310, 0x0980)`,
 position override from replacing those profile values. The Lua outcomes now
 use typed same-scene continuation for refusal/short-wallet and a typed Scene-6
 entry after payment; Qt routes the latter through the field destination fade
-and loader. The updated script assertions and paid physical route have not
-been verified in this pass. The active runner's position is source-resolved:
+and loader. Debug/Release gameplay-script and physical-entry tests now verify
+the debit, typed outcome, fade boundaries, numeric scene, and first profile
+anchor. The active runner's position is source-resolved:
 `0x136DE` sets FFFC0E/FFE10E to 1, `0x03074` keeps the default profile pair,
 and `0x2B34` copies that first pair into runner record FF0100/FF0104. The ROM
 words at `0x14B8D2` are `(0x1310, 0x0980)`, which the host destination route

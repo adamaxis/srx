@@ -1390,7 +1390,10 @@ int main() {
                 club_penumbra_exterior_route->kind ==
                     FieldScriptRouteKind::area_event &&
                 club_penumbra_exterior_route->area_event_target == 17U &&
-                club_penumbra_exterior_route->entry_dialogue_module.empty() &&
+                club_penumbra_exterior_route->entry_dialogue_module ==
+                    "club_penumbra" &&
+                club_penumbra_exterior_route->entry_dialogue_function ==
+                    "present_doorman" &&
                 !club_penumbra_exterior_route->indexed_title_service.has_value() &&
                 icarus_blocked_event30.has_value() &&
                 icarus_blocked_event30->kind ==
@@ -4812,6 +4815,8 @@ int main() {
          CatalogDecision::item_gated},
         {"ghoul1_k07_none00", 7U, ScriptActorActionKind::none, 0U,
          CatalogDecision::unarmed},
+        {"strike_team_k07_item06", 7U, ScriptActorActionKind::item, 6U,
+         CatalogDecision::item_gated},
     };
     constexpr std::size_t catalog_profile_count =
         sizeof(catalog_profiles) / sizeof(catalog_profiles[0]);
@@ -4912,7 +4917,7 @@ int main() {
     };
     bool catalog_ids_match =
         catalog_file_ok && catalog_seen.size() == catalog_profile_count &&
-        catalog_profile_count == 21U;
+        catalog_profile_count == 22U;
     if (catalog_ids_match) {
         for (const auto& seen : catalog_seen) {
             const auto* row = catalog_row_for(seen.profile_id);
@@ -4928,7 +4933,7 @@ int main() {
         }
     }
     if (!expect(catalog_ids_match,
-                "dynamic-world catalog no longer has the 21 "
+                "dynamic-world catalog no longer has the 22 "
                 "profile/action pairs")) {
         std::cerr << catalog_path.string() << " unique="
                   << catalog_seen.size() << '\n';

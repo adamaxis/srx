@@ -1084,21 +1084,19 @@ The first profile pair is the controlled runner's arrival: mode initializer
 the pending-position override and copies the default profile; `0x2B34` then
 copies its first position pair into runner record FF0100/FF0104. The ROM words
 at `0x14B8D2` are `(0x1310, 0x0980)`. The existing host route selects that
-first profile record. Its paid physical route remains unverified.
-
-`shadowrun_gameplay_script_runtime_qa` now expects typed `continue_in_place`
-outcomes after No and insufficient funds, and `enter_field_scene` for Scene 6
-after the paid-flight page. Those updated assertions have not been rerun in
-this pass. The fare physical-entry QA was previously run in Debug/Release. It
-uses ordinary Up input to reach record 230, selects Later and Yes, verifies
-the 999-nuyen balance is unchanged, and writes full-frame offer and result
-captures under `build/conversion/qt/{debug,release}/qt_runtime/`, including
-`field-sinsearach-gate-fare-physical-entry-qa/actual.bmp`.
-The ROM trace resolves the paid destination as numeric Scene 6 and its default
-profile anchors, and resolves the refusal/short-wallet branches as Scene-9
-direct re-entry. The Lua outcomes and typed Qt destination-transition route
-are now wired, but the updated script assertions and paid physical route have
-not been verified in this pass. The overall gate hill remains partial. No
-independent Genesis encounter frame has been identified; these captures test
-the converted route and renderer, not Genesis visual fidelity. See the
-[story-page source audit](cinematic-story-pages-source-audit.md).
+first profile record. Debug/Release physical QA now starts with exactly 1,000
+nuyen, reaches record 230 through ordinary Up, selects Later and Yes, checks
+the debit to zero and paid-flight page, then completes the typed fade and
+loads Scene 6 at `(0x1310, 0x0980)`. It writes the offer, Joshua response,
+paid-flight page, and full-frame `actual.bmp` under
+`build/conversion/qt/{debug,release}/qt_runtime/field-sinsearach-gate-paid-physical-entry-qa/`.
+The existing fare physical QA covers 999 nuyen and confirms the short-wallet
+page leaves the balance unchanged; its `actual.bmp` is the result page.
+Debug/Release `shadowrun_gameplay_script_runtime_qa` now passes the typed
+same-scene outcomes after No and insufficient funds, exact-funds debit, and
+typed Scene-6 outcome assertions. The gate, fare, paid-fare, Spirit Eyes, and
+script-runtime CTests pass in both configurations. Debug/Release paid-route
+captures match byte-for-byte. The overall gate hill remains partial because
+other guard branches and an independent Genesis encounter frame remain open.
+These captures verify the converted route and renderer, not Genesis visual
+fidelity. See the [story-page source audit](cinematic-story-pages-source-audit.md).

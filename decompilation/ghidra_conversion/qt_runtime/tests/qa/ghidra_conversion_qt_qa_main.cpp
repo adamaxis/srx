@@ -21855,7 +21855,8 @@ int run_field_sinsearach_gate_fare_physical_entry_qa(
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
-    const std::vector<std::string>& source_boundaries) {
+    const std::vector<std::string>& source_boundaries,
+    const bool paid_route) {
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
@@ -21889,7 +21890,8 @@ int run_field_sinsearach_gate_fare_physical_entry_qa(
     }
     if (!field_scene.set_story_flag_for_dump(30U, false)) return 3;
     field_scene.set_group_item_flags_for_dump(0U);
-    field_scene.set_field_funds_for_dump(999U);
+    const std::uint32_t initial_funds = paid_route ? 1000U : 999U;
+    field_scene.set_field_funds_for_dump(initial_funds);
 
     const auto render = [&field_scene] { return render_qa_field(field_scene); };
     const auto save = [&field_scene, &asset_root, &output, &render](
@@ -21973,9 +21975,81 @@ int run_field_sinsearach_gate_fare_physical_entry_qa(
         return 3;
     }
     tap_qa_controller_button(field_scene, 0x40U); // A: check the wallet
+    if (paid_route) {
+        if (!field_scene.dialogue_open() ||
+            !contains("nuyen is downloaded") ||
+            field_scene.field_funds_for_dump() != 0U ||
+            !save("fare-paid")) {
+            std::cerr << "Sinsearach paid fare QA: exact funds did not debit "
+                         "1,000 nuyen and select the paid-flight page\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U); // A: finish the flight page.
+        const auto has_boundary = [&source_boundaries](
+                                      const std::string_view expected) {
+            return std::find(source_boundaries.begin(),
+                             source_boundaries.end(), expected) !=
+                   source_boundaries.end();
+        };
+        for (std::uint16_t frame = 0U;
+             frame < 120U &&
+             !has_boundary(
+                 "field.dialogue.scene_entry.destination_fade_finished");
+             ++frame) {
+            field_scene.advance_frame();
+        }
+        const auto arrival = render();
+        const auto& arrival_position = field_scene.field_entity_world_position();
+        const bool transition_boundaries_present =
+            has_boundary("field.dialogue.scene_entry.fade_out_started") &&
+            has_boundary("field.dialogue.scene_entry.destination_loaded") &&
+            has_boundary("field.dialogue.scene_entry.destination_fade_in_started") &&
+            has_boundary("field.dialogue.scene_entry.destination_fade_finished");
+        const bool arrival_capture_saved =
+            arrival.size() == QSize(kSceneWidth, kSceneHeight) &&
+            field_hud_chrome_survives(arrival, asset_root) &&
+            save_qa_image(output, "actual.bmp", arrival);
+        if (!transition_boundaries_present ||
+            field_scene.field_scene_reference_for_dump() != 6U ||
+            field_scene.elevator_scene_transition_phase_for_dump() !=
+                ElevatorSceneTransitionPhase::idle ||
+            field_scene.dialogue_open() ||
+            field_scene.field_funds_for_dump() != 0U ||
+            arrival_position.x != 0x1310U ||
+            arrival_position.y != 0x0980U ||
+            !arrival_capture_saved) {
+            std::cerr << "Sinsearach paid fare QA: paid flight did not load "
+                         "clean Scene 6 at the first ROM profile anchor; "
+                         "scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << " transition=" << static_cast<unsigned>(
+                             field_scene.elevator_scene_transition_phase_for_dump())
+                      << " position=" << arrival_position.x << ','
+                      << arrival_position.y << " boundaries="
+                      << transition_boundaries_present << " capture="
+                      << arrival_capture_saved << '\n';
+            return 3;
+        }
+
+        std::ofstream trace(output / "route.tsv", std::ios::trunc);
+        if (!trace) return 3;
+        trace << "record\tevent\tentry\tfunds_before\tfunds_after\tresult\t"
+                 "scene\tarrival_x\tarrival_y\taudio_requests\n"
+              << "230\t0\tordinary_up\t" << initial_funds << '\t'
+              << field_scene.field_funds_for_dump().value()
+              << "\tpaid_scene_entry\t6\t" << arrival_position.x << '\t'
+              << arrival_position.y << '\t' << field_audio_events.size()
+              << '\n';
+        std::cout << "field_sinsearach_gate_paid_physical_entry_qa=passed "
+                     "record=230 event=0 result=scene_6_arrival "
+                     "artifacts="
+                  << output.string() << '\n';
+        return 0;
+    }
     if (!field_scene.dialogue_open() ||
         !contains("comes up short") ||
-        field_scene.field_funds_for_dump() != 999U ||
+        field_scene.field_funds_for_dump() != initial_funds ||
         !save("fare-insufficient") || !save("actual")) {
         std::cerr << "Sinsearach fare QA: 999 nuyen did not select the "
                      "uncharged short-wallet page\n";
@@ -21985,7 +22059,7 @@ int run_field_sinsearach_gate_fare_physical_entry_qa(
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) return 3;
     trace << "record\tevent\tentry\tfunds\tresult\taudio_requests\n"
-          << "230\t0\tordinary_up\t999\t"
+          << "230\t0\tordinary_up\t" << initial_funds << '\t'
           << "later_yes_short_wallet_no_debit\t"
           << field_audio_events.size() << '\n';
     std::cout << "field_sinsearach_gate_fare_physical_entry_qa=passed "
@@ -24775,6 +24849,8 @@ int main(int argc, char** argv) {
             field_sinsearach_gate_physical_entry_qa_path;
         std::optional<std::filesystem::path>
             field_sinsearach_gate_fare_physical_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_sinsearach_gate_paid_physical_entry_qa_path;
         std::optional<std::filesystem::path> field_mode_13_entry_qa_path;
         std::optional<std::filesystem::path>
             field_owlfeather_physical_entry_qa_path;
@@ -25629,6 +25705,13 @@ int main(int argc, char** argv) {
                 field_sinsearach_gate_fare_physical_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
+            if (std::string(argv[index]) ==
+                    "--field-sinsearach-gate-paid-physical-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_sinsearach_gate_paid_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
             if (std::string(argv[index]) == "--field-mode-13-entry-qa" &&
                 index + 1 < argc) {
                 field_smoke = true;
@@ -26321,7 +26404,8 @@ int main(int argc, char** argv) {
                 smoke_state.restored_field_state = std::move(checkpoint);
             }
             if (field_sinsearach_gate_physical_entry_qa_path.has_value() ||
-                field_sinsearach_gate_fare_physical_entry_qa_path.has_value()) {
+                field_sinsearach_gate_fare_physical_entry_qa_path.has_value() ||
+                field_sinsearach_gate_paid_physical_entry_qa_path.has_value()) {
                 const auto scene9 = integration::make_field_scene_input(
                     *smoke_state.field_session_source_assets, 9U);
                 if (!scene9.has_value() ||
@@ -26543,6 +26627,7 @@ int main(int argc, char** argv) {
                 field_movement_qa_path.has_value() ||
                 field_sinsearach_gate_physical_entry_qa_path.has_value() ||
                 field_sinsearach_gate_fare_physical_entry_qa_path.has_value() ||
+                field_sinsearach_gate_paid_physical_entry_qa_path.has_value() ||
                 field_wanderer_south_exit_record_7_qa_path.has_value() ||
                 field_wanderer_south_exit_record_8_qa_path.has_value() ||
                 field_crime_mall_ilene_gate_qa_path.has_value() ||
@@ -26573,6 +26658,8 @@ int main(int argc, char** argv) {
                 ? field_scene.bootstrap_for_scene_dump(smoke_state, 3U)
                 : (field_sinsearach_gate_physical_entry_qa_path.has_value() ||
                            field_sinsearach_gate_fare_physical_entry_qa_path
+                               .has_value() ||
+                           field_sinsearach_gate_paid_physical_entry_qa_path
                                .has_value()
                        ? field_scene.bootstrap_for_scene_dump(smoke_state, 9U)
                        : field_scene.bootstrap(smoke_state));
@@ -30124,7 +30211,13 @@ int main(int argc, char** argv) {
                 return run_field_sinsearach_gate_fare_physical_entry_qa(
                     field_scene, asset_root,
                     *field_sinsearach_gate_fare_physical_entry_qa_path,
-                    field_audio_events, field_source_boundaries);
+                    field_audio_events, field_source_boundaries, false);
+            }
+            if (field_sinsearach_gate_paid_physical_entry_qa_path.has_value()) {
+                return run_field_sinsearach_gate_fare_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_sinsearach_gate_paid_physical_entry_qa_path,
+                    field_audio_events, field_source_boundaries, true);
             }
             if (field_mode_13_entry_qa_path.has_value()) {
                 return run_field_mode_13_entry_qa(
