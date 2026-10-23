@@ -1346,8 +1346,8 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_spirit_eyes_physic
                  "${CMAKE_CURRENT_BINARY_DIR}/field-spirit-eyes-physical-entry-qa")
 
 # Present the five ROM-ordered Tarislar Tomb credit panels through Lua and
-# capture their typed, full-screen host presentation. The fight trigger and
-# return-to-title transition remain explicit source boundaries.
+# verify that the typed title-return outcome reaches the host restart path.
+# The fight trigger and timed closing presentation remain incomplete.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_tomb_credits_presenter_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-tarislar-tomb-credits-presenter-qa

@@ -512,9 +512,12 @@ requests to the host presenter. Debug and Release CTest
 `shadowrun_ghidra_conversion_qt_field_tarislar_tomb_credits_presenter_qa`
 captures each panel and writes `actual.bmp` for the first. These internal
 captures exercise the renderer and are not an independent Genesis visual
-reference. The fight-completion trigger, 1000-iteration close animation,
-palette fades, panel-clear timing, and title return are still unconnected, so
-the hill remains partial.
+reference. The final panel now dispatches a typed `title` cinematic outcome;
+FieldSceneRuntime publishes a one-shot title-return request, and the Qt host
+restarts the existing attract-loop flow after the current field frame. The
+presenter CTest verifies the request. The fight-completion trigger,
+1000-iteration presentation segment, closing animation, palette fades, and
+panel-clear timing remain unconnected, so the hill remains partial.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).

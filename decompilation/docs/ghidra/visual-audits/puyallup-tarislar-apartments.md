@@ -160,10 +160,11 @@ catalog's source policy explicitly authorizes a correction.
   the final paired-map page. The physical-input CTest captures the Renraku-only
   route and clean scene-1 redraw. Independent Genesis page captures, other
   `FFE162` callers/state reaching event 7, inherited `FFE120`/`FFE12E`
-  reachability remains unresolved. Scene-55 fight-completion and title-return
-  are now traced through the mode-3 effect scan and special callback, but the
-  native fight trigger and ending presentation remain unimplemented. Scene-54
-  event 0 is now traced into Scene 55.
+  reachability remains unresolved. Scene-55 fight-completion is traced through
+  the mode-3 effect scan and special callback. The five-panel terminal outcome
+  now queues the host attract-loop restart, but the native fight trigger and
+  timed closing presentation remain unimplemented. Scene-54 event 0 is now
+  traced into Scene 55.
 
 ## Scene 54 entry profile and collision evidence
 
@@ -363,11 +364,11 @@ sets the projected-interaction countdown described above. The later
   consume their descriptors in that transition. The Tarislar event-7 selector
   has no pending pointer from this source.
 - Resolve whether an inherited pending list or callback can reach Scene 54's
-  first service pass. Scene-55 completion now traces through the phase-2 actor
-  scan, delayed `0x5BAC4` callback, Licourtrix prompt, closing screens, and
-  main-title return. Implement the native actor trigger and authored closing
-  presentation, then add the hill's named CTest and actual.bmp before changing
-  its status.
+  first service pass. Scene-55 completion traces through the phase-2 actor
+  scan and delayed `0x5BAC4` callback; the typed ending outcome queues the host
+  attract-loop restart. Implement the native actor trigger and authored,
+  timed closing presentation, then exercise the full route before changing
+  the hill's status.
 - Capture the remaining branches and a source-backed Scene-54/Scene-55 route
   as whole 320x224 screens. Review all surrounding pixels and check the
   seven questions above before changing this status.

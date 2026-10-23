@@ -1538,6 +1538,18 @@ private:
         }
         if (state_.phase == StartupIntegrationPhase::field_ready) {
             field_scene_runtime_.advance_frame();
+            if (field_scene_runtime_.take_requested_title_return()) {
+                // Scene-55's 0x5BAC4 callback returns through the outer game
+                // loop to the title path. Reuse the host's existing attract
+                // restart after the field frame has finished dispatching.
+                const auto result = restart_startup_attract_loop(
+                    state_, startup_callbacks_);
+                if (result !=
+                    StartupIntegrationStartResult::boot_in_progress) {
+                    throw std::runtime_error(
+                        "credits title return could not restart startup");
+                }
+            }
             return;
         }
         if (state_.phase != StartupIntegrationPhase::title_ready) {

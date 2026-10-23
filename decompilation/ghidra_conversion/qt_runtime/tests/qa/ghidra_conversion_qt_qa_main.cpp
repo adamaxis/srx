@@ -23153,32 +23153,20 @@ int run_field_tarislar_tomb_credits_presenter_qa(
         return 3;
     }
     tap_qa_controller_button(field_scene, 0x40U); // A: source title return
-    constexpr std::string_view kTitleReturnBoundary =
-        "field.dialogue.outcome.target_not_registered:play_cinematic:"
-        "tarislar.tomb.credits";
-    const auto boundary_image = render_qa_field(field_scene);
-    if (!field_scene.dialogue_open() ||
-        field_scene.dialogue_panel().kind != DialoguePanelKind::source_boundary ||
-        field_scene.dialogue_panel().source_boundary_reason !=
-            kTitleReturnBoundary ||
-        std::count(source_boundaries.begin(), source_boundaries.end(),
-                   kTitleReturnBoundary) < 1 ||
-        !boundary_image.save(QString::fromStdWString(
-            (output / "title-return-boundary.bmp").wstring()))) {
-        std::cerr << "Tarislar Tomb credits QA: unconnected title return was "
-                     "not left at its explicit typed boundary (open="
-                  << field_scene.dialogue_open() << ", kind="
-                  << static_cast<int>(field_scene.dialogue_panel().kind)
-                  << ", reason="
-                  << field_scene.dialogue_panel().source_boundary_reason
-                  << ", boundary_count="
-                  << std::count(source_boundaries.begin(),
-                                source_boundaries.end(), kTitleReturnBoundary)
-                  << ")\n";
+    const auto title_return_image = render_qa_field(field_scene);
+    const bool title_return_requested =
+        field_scene.take_requested_title_return();
+    if (field_scene.dialogue_open() || !title_return_requested ||
+        field_scene.take_requested_title_return() ||
+        !title_return_image.save(QString::fromStdWString(
+            (output / "title-return-request.bmp").wstring()))) {
+        std::cerr << "Tarislar Tomb credits QA: typed title return was not "
+                     "accepted after the final panel (dialogue_open="
+                  << field_scene.dialogue_open() << ")\n";
         return 3;
     }
-    trace << "exit\ttitle_return_pending\t\tcontroller\t"
-          << "target_not_registered\n";
+    trace << "exit\ttitle_return\t\tcontroller\t"
+          << "typed_host_restart_requested\n";
     trace.flush();
     if (!trace) {
         std::cerr << "Tarislar Tomb credits QA: return boundary trace write "
@@ -23186,7 +23174,7 @@ int run_field_tarislar_tomb_credits_presenter_qa(
         return 3;
     }
     std::cout << "field_tarislar_tomb_credits_presenter_qa=passed "
-                 "panels=5 trigger=unconverted title_return=unconverted "
+                 "panels=5 trigger=unconverted title_return=requested "
                  "artifacts=" << output.string() << '\n';
     return 0;
 }

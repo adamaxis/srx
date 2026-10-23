@@ -1285,6 +1285,11 @@ public:
     std::uint8_t controller_nibble_for_dump() const noexcept {
         return field_controller_nibble_;
     }
+    bool take_requested_title_return() noexcept {
+        const bool requested = title_return_requested_;
+        title_return_requested_ = false;
+        return requested;
+    }
     void set_field_entity_world_position_for_dump(
         std::uint16_t x, std::uint16_t y) noexcept {
         field_entity_.world_position.x = x;
@@ -2354,6 +2359,7 @@ private:
     FieldEntityPresentation field_entity_{};
     std::string failure_;
     bool ready_ = false;
+    bool title_return_requested_ = false;
 #ifdef SHADOWRUN_QT_QA_DRIVER
     std::optional<std::uint16_t> field_scene_reference_override_for_dump_;
 #endif

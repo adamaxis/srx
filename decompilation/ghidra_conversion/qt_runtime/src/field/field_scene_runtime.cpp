@@ -11967,6 +11967,7 @@ void FieldSceneRuntime::advance_command_overview_first_aid(
 bool FieldSceneRuntime::bootstrap(
     const integration::StartupIntegrationState& startup_state) {
     ready_ = false;
+    title_return_requested_ = false;
     failure_.clear();
     field_shop_menu_.close();
     field_shop_route_pending_service_id_.clear();
@@ -18372,6 +18373,12 @@ void FieldSceneRuntime::register_dialogue_outcome_handlers() {
             [this](const scripting::PlayCinematicOutcome& outcome) {
                 return handle_dialogue_play_cinematic(outcome);
             }) &&
+        dialogue_outcome_dispatcher_.register_target_handler<
+            scripting::PlayCinematicOutcome>(
+            "tarislar.tomb.credits",
+            [this](const scripting::PlayCinematicOutcome& outcome) {
+                return handle_dialogue_play_cinematic(outcome);
+            }) &&
         dialogue_outcome_dispatcher_.register_type_handler<
             scripting::ResumeSourceRouteOutcome>(
             [this](const scripting::ResumeSourceRouteOutcome& outcome) {
@@ -18456,14 +18463,21 @@ bool FieldSceneRuntime::handle_dialogue_continue_in_place(
 
 bool FieldSceneRuntime::handle_dialogue_play_cinematic(
     const scripting::PlayCinematicOutcome& outcome) {
-    if (!ready_ || outcome.cinematic_id.empty() ||
-        outcome.return_policy != "source_context") {
+    if (!ready_ || outcome.cinematic_id.empty()) {
         return false;
     }
-    source_boundary("field.dialogue.cinematic.completed:" +
-                    outcome.cinematic_id);
-    return handle_dialogue_continue_in_place(
-        scripting::ContinueInPlaceOutcome{});
+    if (outcome.return_policy == "source_context") {
+        source_boundary("field.dialogue.cinematic.completed:" +
+                        outcome.cinematic_id);
+        return handle_dialogue_continue_in_place(
+            scripting::ContinueInPlaceOutcome{});
+    }
+    if (outcome.cinematic_id == "tarislar.tomb.credits" &&
+        outcome.return_policy == "title") {
+        title_return_requested_ = true;
+        return true;
+    }
+    return false;
 }
 
 bool FieldSceneRuntime::handle_dialogue_resume_source_route(

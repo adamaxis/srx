@@ -304,7 +304,8 @@ six actors come from the separate default list at
    if no eligible active actor has nonzero physical meter, its phase timer
    eventually queues callback `0x5BAC4`. That callback opens Licourtrix's
    prompt and closing sequence, then the field coordinator follows the title
-   return branch. The native completion trigger and presentation remain open.
+   return branch. The typed final outcome queues the host attract-loop restart;
+   the native completion trigger and closing presentation remain open.
 
 No screenshot-based scene-name claim should be made from the extracted map
 alone. The map has not been aligned to scene 9 coordinates. The Sinsearach
@@ -330,9 +331,10 @@ internal captures are not independent visual proof.
 The known type-3 producer's three offer targets exclude Scene 1/event 7, but
 other callers and state carried into that selector have not been ruled out.
 Scene-54 event 0 is traced into Scene 55 and its Tomb of Ellisia text callback.
-Inherited callback reachability remains open. Scene-55 completion and
-title-return are source-traced through `0x5D29C`/`0x5BAC4`, but their native
-trigger and closing presentation remain open.
+Inherited callback reachability remains open. Scene-55 completion is
+source-traced through `0x5D29C`/`0x5BAC4`; the typed ending outcome queues the
+host attract-loop restart. Its native trigger and closing presentation remain
+open.
 
 ### Reported Little Chiba / Redmond elevator transition
 
