@@ -455,9 +455,12 @@ target tuples (Scene 1/event 9, Scene 2/event 9, and Scene 3/event 4) exclude
 Tarislar's Scene 1/event 7, so that pass cannot make a fresh write from the
 accepted target pool. Whether a prior descriptor can carry into the selector
 remains unresolved. Prompt command `0x60` reaches a separate ROM code gap at
-`0x225D2`, which sets `FFE120` to `0x1E628` behind a 75-nuyen and story gate;
-the prompt source and scene context are not identified, so a preexisting list
-pointer remains an open Scene-54 question.
+`0x225D2`, which sets `FFE120` to `0x1E628` behind a 75-nuyen and story gate.
+The menu node at `0x111316` presents the entry-fee question and places command
+`0x60` in its first choice slot. Adjacent code at `0x225CA` returns that node;
+the selector caller and numeric scene/event remain unresolved, so no Tarislar
+or Scene-54 connection is known. A preexisting list pointer remains an open
+Scene-54 question.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).
@@ -933,6 +936,21 @@ $500 information purchase and quest-gated topic choices. The hill remains
 partial: Strike Team command `0x2C`, item commands `0x2D`–`0x2F`, other deeper
 service outcomes, and independent Genesis dialogue frames are unresolved.
 See [the Boris Greenhouse event-6 audit](visual-audits/boris-greenhouse-scene2-event6.md).
+
+## Mako encounter through prompt command `0x60` (pending, 2026-10-23)
+
+The prompt dispatcher at `0x1F57C` maps command `0x60` through table
+`0x12CCB4` to entry `0x225D2`. Its gates require Michael's alias learned,
+Mako not yet defeated, a successful 75-nuyen debit, and either the Mako lead
+or a separate FFFC38 bit-3 fact. It sets pending list `0x1E628` and opens the
+bartender/Mako entry page. `0x43B6` installs callback `0x53FFC` while draining
+the four actors; the callback records Mako defeated and opens his result page.
+The page and gates connect to the Boris and Big Rhino story facts, but the
+menu node `0x111316` contains the entry-fee question and command `0x60`; its
+caller and numeric scene/event remain unlinked. Scene 17/event 30 remains its
+separate generic one-page contact.
+No Lua route or runtime evidence covers this Mako activity yet. Keep pending
+until its caller and scene flow are traced.
 
 ## Wire-Masters mode-7 cyberware selector and purchases (defended, 2026-10-22)
 

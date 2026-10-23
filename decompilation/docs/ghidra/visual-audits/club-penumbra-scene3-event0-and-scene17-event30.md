@@ -40,6 +40,17 @@ branch. The exterior route remains a separate link on the Penumbra site
 entity and continues to validate destination 17 against the active ROM
 event-table row.
 
+A separate 75-nuyen entry-fee menu node at `0x111316` contains command `0x60`
+in its first choice slot at `0x111326`. Adjacent code at `0x225CA` returns this
+node in A0. Its title stream `0x114A88` asks for a credstick transfer; the
+choice label is `0x103A7A` (“Easy money, chummer. I'll pay”). That handler
+selects pending list `0x1E628`, shows the bartender/Mako text at
+`0xF9718`, and marks Mako defeated through timeout callback `0x53FFC` when the
+activity completes. Big Rhino's Mako-information answer makes Club Penumbra a
+plausible story link, but the menu's caller and numeric scene/event remain
+unresolved. Keep this route separate from the traced scene-17/event-30 generic
+contact. See the [field random-event audit](../field-random-event-selector.md).
+
 ## Verification boundary
 
 The runtime route test checks both the scene-3/event-0 numeric transition and

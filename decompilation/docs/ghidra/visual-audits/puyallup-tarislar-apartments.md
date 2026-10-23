@@ -199,8 +199,10 @@ dispatched and cleared if installed. Initializers `0x2A32`/`0x2A44` clear
 `FFE12E`; direct assignments in `0x043B6` install handlers only for pending
 lists `0x1E628` and `0x1E5C4`. Prompt command `0x60` can reach a raw ROM code
 gap at `0x225D2`, which sets `FFE120=0x1E628` at `0x22622` after a 75-nuyen
-debit and story gates; the prompt record and active scene are not identified,
-so its relation to Tarislar is open. Scene 54's six
+debit and story gates; its menu node is identified at `0x111316` and presents
+the 75-nuyen entry-fee question with command `0x60` in the first choice slot.
+The node's caller and active scene remain unidentified, so its relation to
+Tarislar is open. Scene 54's six
 actors come from the separate default list at `FFDDF0`, and its marker-1 route
 with `FFE162` clear does not
 replace `FFE120`. The selector takes the Scene-54 mode-3 branch and bypasses
