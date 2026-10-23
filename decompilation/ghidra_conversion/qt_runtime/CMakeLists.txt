@@ -632,6 +632,29 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_mako_qa
                  --field-penumbra-mako-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-mako-qa")
 
+# Check the source's reputation rejection, insufficient-funds response, and
+# paid entry with the separate Mako story gates closed.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_reputation_rejection_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-penumbra-reputation-rejection-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-reputation-rejection-qa")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_insufficient_funds_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-penumbra-insufficient-funds-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-insufficient-funds-qa")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_story_gate_closed_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-penumbra-story-gate-closed-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-story-gate-closed-qa")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_doorman_later_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-penumbra-doorman-later-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-doorman-later-qa")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_fee_later_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-penumbra-fee-later-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-fee-later-qa")
+
 # Reach Gates Undersound's source event-3 frontage, exercise gated title
 # service 15, and verify the one-page Ogami departure result returns to scene 0.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_gates_undersound_qa

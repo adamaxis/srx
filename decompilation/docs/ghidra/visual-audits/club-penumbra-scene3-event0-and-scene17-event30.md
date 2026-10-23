@@ -112,7 +112,10 @@ it marks Mako defeated and opens descriptor
 Penumbra Scene-3/event-0 finalizer. The finalizer permits row 0 to reach Scene
 17, and the next common world-frame service drains the queued list there; the
 host resolves the rows through the Scene-47 extraction context and publishes
-them in Scene 17. The qualifying callback route is covered by Debug/Release QA; timeout-counter expiry and alternate story-gate outcomes remain open. Keep this
+them in Scene 17. Debug/Release QA covers the qualifying callback route,
+Reputation-3 rejection, insufficient funds, paid entry with story bit 10
+clear, and the Later choice at both prompts. Timeout-counter expiry, other
+story-gate combinations, and independent Genesis comparison remain open. Keep this
 separate from the traced scene-17/event-30 generic contact.
 
 ## Verification boundary
@@ -122,8 +125,12 @@ record 101 with ordinary movement, follows the qualifying Reputation-4 and
 paid-fee Mako path, checks four Scene-17 actor publications and their callback
 transitions, verifies the result state/page, and confirms the route returns to
 Scene 17. It writes `actual.bmp`, milestone BMPs, and `route.tsv` under the
-CTest build tree. The check covers only the qualifying path: low Reputation,
-insufficient funds, other story-gate outcomes, timeout behavior, and an
-independent Genesis capture remain open. The ROM does not identify the
+CTest build tree. Companion Debug/Release CTests cover Reputation-3 rejection with its
+security warning, 74-nuyen insufficient funds, paid entry with story bit 10
+clear, and the Later choice at both prompts; each checks its return and writes
+`actual.bmp` plus `route.tsv`. The Scene-17 return `actual.bmp` is black in
+the current host renderer, so these tests verify state transitions rather
+than destination graphics. Timeout behavior, other story-gate combinations,
+and an independent Genesis capture remain open. The ROM does not identify the
 Scene-17 event-30 speaker as Freya; that contact remains separate from the
 entry gate.
