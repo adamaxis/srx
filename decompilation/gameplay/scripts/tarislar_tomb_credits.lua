@@ -9,4 +9,8 @@ function TarislarTombCredits.present()
     return DialogueGraph.run("tarislar.tomb.credits")
 end
 
+function TarislarTombCredits.present_ending_warning()
+    return DialogueGraph.run("tarislar.tomb.ending_warning")
+end
+
 return TarislarTombCredits

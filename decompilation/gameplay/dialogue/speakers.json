@@ -387,6 +387,10 @@
         "farewell": {
           "continuation_key": "",
           "title_key": "salish.licourtrix.page.farewell"
+        },
+        "tomb_ending_warning": {
+          "continuation_key": "",
+          "title_key": "tarislar.tomb.ending.page.licourtrix_warning"
         }
       },
       "name": "Licourtrix",

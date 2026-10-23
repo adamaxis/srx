@@ -165,9 +165,10 @@ catalog's source policy explicitly authorizes a correction.
   retains its last page through the post-panel cleanup and two fades before the
   host attract-loop restart. The active host now connects the slot-3 meter gate,
   Lua-owned completion cadence, six-slot actor query, and typed 60-frame callback
-  queue. That live trigger has no full-route QA or CLI frame yet; its pending
-  continuation stops at the Licourtrix prelude and 1000-iteration presentation,
-  and the pre-panel animation/fade remains unimplemented. Scene-54 event 0 is now
+  queue. That live trigger has no full-route QA or CLI frame yet. The pending
+  continuation opens the ROM-backed Licourtrix warning and one-response graph,
+  then reaches an explicit boundary before the 1000-iteration presentation;
+  the pre-panel animation/fade remains unimplemented. Scene-54 event 0 is now
   traced into Scene 55.
 
 ## Scene 54 entry profile and collision evidence
@@ -283,7 +284,13 @@ callback `0x5BAC4` and `0x1E2E0` schedules it for the 60-frame activity
 boundary. Callback `0x5BAC4` opens prompt group `0xFDD72` through `0x20950`
 with Licourtrix profile `0x121EA4`; its visible response is text `0xFD71E`.
 The callback then runs a 1000-iteration presentation sequence before five
-controller-advanced credits text panels. Their ordered source blocks begin at
+controller-advanced credits text panels. ROM `0x5BB58` seeds D7 with `0x03E8`;
+the `DBRA` loop calls frame wait
+`0x0BD2`, controller service `0x195C`, input service `0x0BF2`, and routines at
+`0x5BC70`, `0x5C230`, `0x5BD2C`, and `0x5BBA6`. This is an active presentation
+loop, not a plain host delay, so the native continuation stops at its explicit
+boundary until those animation states and assets are reconstructed. The five
+ordered source blocks begin at
 `0x5CA92`, `0x5CBFB`, `0x5CF9B`, `0x5CD82`, and `0x5CE80`; each uses `0x80` for
 row breaks and ends at `0xFF`. The offline all-assets importer emits their
 ordered, space-preserving rows at
@@ -302,8 +309,10 @@ is retained during the 18-VBlank `0x53126` service, the callback's 17-pass
 captures five distinct panels, the retained final page, the fade, and
 `actual.bmp`; this is an internal renderer check, not an independent Genesis
 visual. The final title handoff is connected through a direct page-sequence QA
-seam. The native fight trigger, the callback's 1000-iteration presentation,
-and the pre-panel `0x5C3B4` fade/palette setup remain unimplemented. The
+seam. The live trigger queues a typed 60-frame callback and opens the
+ROM-backed Licourtrix warning/response graph. After that response the graph
+reaches an explicit boundary before the 1000-iteration presentation and
+pre-panel `0x5C3B4` fade/palette setup, which remain unimplemented. The
 response's next-record pointer is not consumed by this callback, so the hill
 stays partial.
 The raw `0x00C0` record publishes event 0 in `FFFBF9`. In Scene-54 mode 3,
@@ -325,8 +334,9 @@ that meter for the Scene-55 mode-2-to-3 gate. Lua owns the wait, effect-frame
 cadence, and slot-4..9 eligibility scan, and the render-pass tail queues a
 typed 60-frame callback when the phase timer expires with no eligible actor.
 This does not reproduce the complete `FFF11E` visual/effect record. A missing
-slot-3 record remains an explicit boundary; the callback body likewise stops
-before the Licourtrix prompt and 1000-loop presentation. The full Scene-55
+slot-3 record remains an explicit boundary; the callback graph presents the
+Licourtrix warning and single response, then stops before the 1000-loop
+presentation. The full Scene-55
 route is unverified and remains partial.
 
 ## Seven visual and behavioral checks

@@ -8144,12 +8144,27 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     "field.activity.scene55_tomb_credits_scene_mismatch");
                 return integration::PendingFieldSceneHandlerResult::unresolved;
             }
-            // The callback target is known, but its Licourtrix prelude and
-            // 1000-iteration presentation are not reconstructed yet. Do not
-            // jump straight to the post-loop credits pages.
+            game_scripts_.set_location_context(
+                "site", "tarislar_tomb_antechamber",
+                "tarislar.tomb.ending_warning", "licourtrix",
+                "tomb_ending_warning", 55U);
+            const bool opened = field_dialogue_.open_gameplay_task(
+                "tarislar_tomb_credits", "present_ending_warning");
+            if (!opened) {
+                std::string reason =
+                    "field.activity.scene55_tomb_credits_warning_failed";
+                const auto& detail =
+                    field_dialogue_.panel().source_boundary_reason;
+                if (!detail.empty()) {
+                    reason += ":";
+                    reason.append(detail);
+                }
+                source_boundary(reason);
+                return integration::PendingFieldSceneHandlerResult::unresolved;
+            }
             source_boundary(
-                "field.activity.scene55_tomb_credits_callback_body_unresolved");
-            return integration::PendingFieldSceneHandlerResult::unresolved;
+                "field.activity.scene55_tomb_credits_warning_opened");
+            return integration::PendingFieldSceneHandlerResult::resumed_field;
         }
         if (continuation ==
             MovementModeTransitionContinuation::event_30_world_activity) {

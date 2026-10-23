@@ -1,6 +1,31 @@
 {
   "schemaVersion": 1,
   "graphs": {
+    "tarislar.tomb.ending_warning": {
+      "entryNode": "licourtrix_warning",
+      "speakerId": "licourtrix",
+      "textProfile": "salish.spirit_eyes",
+      "provenance": {
+        "romAddresses": ["0x5BAC4", "0x20950", "0xFDD72", "0xFD62C", "0xFD71E"],
+        "scope": "scene_55_licourtrix_warning_before_ending_presentation"
+      },
+      "nodes": {
+        "licourtrix_warning": {
+          "type": "choice",
+          "menuId": "tomb_destroy_thon",
+          "inputContract": "buttons_abc",
+          "promptTextKey": "tarislar.tomb.ending.page.licourtrix_warning",
+          "choices": [
+            { "id": "destroy_thon", "next": "ending_presentation_boundary" }
+          ],
+          "evidence": "ROM callback 0x5BAC4 opens prompt group 0xFDD72 through 0x20950; text 0xFD62C is paired with the single response at 0xFD71E."
+        },
+        "ending_presentation_boundary": {
+          "type": "source_boundary",
+          "reason": "ROM 0x5BAC4 runs a D7=1000 DBRA presentation loop with frame, controller, input, and animation services; the pre-credit presentation is not reconstructed."
+        }
+      }
+    },
     "tarislar.tomb.credits": {
       "entryNode": "credits",
       "provenance": {

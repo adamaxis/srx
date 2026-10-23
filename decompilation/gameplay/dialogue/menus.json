@@ -1590,6 +1590,11 @@
         "choice_label_keys": {
           "thanks": "salish.licourtrix.option.thanks"
         }
+      },
+      "tomb_destroy_thon": {
+        "choice_label_keys": {
+          "destroy_thon": "tarislar.tomb.ending.option.destroy_thon"
+        }
       }
     },
     "salish.sinsearach": {

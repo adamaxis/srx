@@ -528,8 +528,9 @@ sequence on the mode-2-to-3 transition. When the phase timer expires with no
 eligible actor, the host queues a typed 60-frame continuation for `0x5BAC4`.
 This live trigger has not had a full-route CTest or CLI `actual.bmp`; the
 existing five-panel QA enters through a direct presenter seam. The typed
-continuation stops at the unresolved Licourtrix prelude and 1000-iteration
-presentation, and the pre-panel animation/fade is still open. The complete
+continuation now opens the ROM-backed Licourtrix warning and one-response
+graph, which ends at an explicit boundary before the 1000-iteration
+presentation. That animation and the pre-panel fade remain open. The complete
 `FFF11E` visual/effect record is not reproduced. The host synchronizes
 `FFE186` between its coordinator and world-frame state at field-frame and
 render-pass boundaries. The hill remains partial.
