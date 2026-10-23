@@ -632,8 +632,8 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_mako_qa
                  --field-penumbra-mako-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-mako-qa")
 
-# Check the source's reputation rejection, insufficient-funds response, and
-# paid entry with the separate Mako story gates closed.
+# Cover the entry choices, reputation and wallet rejections, and the known
+# Mako story-gate outcomes, including both lead sources.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_reputation_rejection_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-penumbra-reputation-rejection-qa
@@ -654,6 +654,18 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_fee_later
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-penumbra-fee-later-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-fee-later-qa")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_mako_defeated_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-penumbra-mako-defeated-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-mako-defeated-qa")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_mako_lead_missing_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-penumbra-mako-lead-missing-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-mako-lead-missing-qa")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_mako_mode_flag_lead_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-penumbra-mako-mode-flag-lead-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-mako-mode-flag-lead-qa")
 
 # Reach Gates Undersound's source event-3 frontage, exercise gated title
 # service 15, and verify the one-page Ogami departure result returns to scene 0.

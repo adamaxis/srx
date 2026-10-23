@@ -1201,6 +1201,12 @@ public:
     std::uint32_t field_mode_flags_for_dump() const noexcept {
         return field_mode_flags_;
     }
+    // Physical-entry QA seeds the typed FFFC30 fact without relying on a
+    // gameplay action to create the initial test condition.
+    void seed_field_mode_flags_for_qa(std::uint32_t flags) noexcept {
+        field_mode_flags_ = flags;
+        field_mode_flags_resolved_ = true;
+    }
     std::uint32_t field_auxiliary_flags_for_dump() const noexcept {
         return field_auxiliary_flags_;
     }

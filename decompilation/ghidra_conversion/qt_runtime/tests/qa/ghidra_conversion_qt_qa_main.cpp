@@ -19508,6 +19508,9 @@ enum class ClubPenumbraMakoQaPath {
     reputation_rejection,
     insufficient_funds,
     story_gate_closed,
+    mako_defeated,
+    mako_lead_missing,
+    mode_flag_lead,
 };
 
 int run_field_penumbra_mako_qa(
@@ -19566,14 +19569,27 @@ int run_field_penumbra_mako_qa(
         qa_path == ClubPenumbraMakoQaPath::insufficient_funds;
     const auto story_gate_closed =
         qa_path == ClubPenumbraMakoQaPath::story_gate_closed;
+    const auto mako_defeated =
+        qa_path == ClubPenumbraMakoQaPath::mako_defeated;
+    const auto mako_lead_missing =
+        qa_path == ClubPenumbraMakoQaPath::mako_lead_missing;
+    const auto mode_flag_lead =
+        qa_path == ClubPenumbraMakoQaPath::mode_flag_lead;
+    const auto mako_gate_closed =
+        story_gate_closed || mako_defeated || mako_lead_missing;
     const auto wallet_before = insufficient_funds ? 74U : 75U;
     const auto reputation = reputation_rejection ? 3U : 4U;
     field_scene.set_field_funds_for_dump(wallet_before);
     field_scene.active_runner_record().skills[10U] =
         static_cast<std::uint8_t>(reputation);
-    field_scene.seed_notebook_tip_flags_for_qa({{0U, 0U, 0x08U}});
+    const auto notebook_flags = mako_lead_missing || mode_flag_lead
+        ? std::array<std::uint32_t, 3U>{{0U, 0U, 0U}}
+        : std::array<std::uint32_t, 3U>{{0U, 0U, 0x08U}};
+    field_scene.seed_notebook_tip_flags_for_qa(notebook_flags);
+    field_scene.seed_field_mode_flags_for_qa(
+        mode_flag_lead ? (1U | (1U << 21U)) : 1U);
     if (!field_scene.set_story_flag_for_dump(10U, !story_gate_closed) ||
-        !field_scene.set_story_flag_for_dump(11U, false)) {
+        !field_scene.set_story_flag_for_dump(11U, mako_defeated)) {
         std::cerr << "Club Penumbra Mako QA: source story gates could not "
                      "be seeded\n";
         return 3;
@@ -19808,7 +19824,7 @@ int run_field_penumbra_mako_qa(
         return 3;
     }
 
-    if (story_gate_closed) {
+    if (mako_gate_closed) {
         for (std::uint8_t page = 0U;
              page < 12U && field_scene.dialogue_open() &&
              field_scene.field_scene_reference_for_dump() == 3U;
@@ -19830,9 +19846,9 @@ int run_field_penumbra_mako_qa(
                 std::optional<std::uint32_t>{0U} ||
             !save("actual", true) ||
             !write_branch_trace("paid_without_mako_story_gates")) {
-            std::cerr << "Club Penumbra Mako QA: paid entry with story bit "
-                         "10 clear did not resume to Scene 17 without the "
-                         "pending Mako list (scene="
+            std::cerr << "Club Penumbra Mako QA: disabled Mako story gates "
+                         "did not resume to Scene 17 without the pending "
+                         "Mako list (scene="
                       << field_scene.field_scene_reference_for_dump()
                       << ", dialogue=" << field_scene.dialogue_open()
                       << ", funds="
@@ -19850,8 +19866,13 @@ int run_field_penumbra_mako_qa(
                       << ")\n";
             return 3;
         }
-        std::cout << "field_penumbra_story_gate_closed_qa=passed "
-                     "wallet=0 pending_mako_list=not_queued scene=17\n";
+        const auto route_name = story_gate_closed
+            ? "field_penumbra_story_gate_closed_qa"
+            : mako_defeated
+                ? "field_penumbra_mako_defeated_qa"
+                : "field_penumbra_mako_lead_missing_qa";
+        std::cout << route_name << "=passed wallet=0 "
+                     "pending_mako_list=not_queued scene=17\n";
         return 0;
     }
 
@@ -25471,6 +25492,12 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_penumbra_story_gate_closed_qa_path;
         std::optional<std::filesystem::path>
+            field_penumbra_mako_defeated_qa_path;
+        std::optional<std::filesystem::path>
+            field_penumbra_mako_lead_missing_qa_path;
+        std::optional<std::filesystem::path>
+            field_penumbra_mako_mode_flag_lead_qa_path;
+        std::optional<std::filesystem::path>
             field_gates_undersound_qa_path;
         std::optional<std::filesystem::path>
             field_renraku_offices_qa_path;
@@ -25861,6 +25888,27 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_penumbra_story_gate_closed_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-penumbra-mako-defeated-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_penumbra_mako_defeated_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-penumbra-mako-lead-missing-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_penumbra_mako_lead_missing_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-penumbra-mako-mode-flag-lead-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_penumbra_mako_mode_flag_lead_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -27445,6 +27493,9 @@ int main(int argc, char** argv) {
                 field_penumbra_fee_later_qa_path.has_value() ||
                 field_penumbra_insufficient_funds_qa_path.has_value() ||
                 field_penumbra_story_gate_closed_qa_path.has_value() ||
+                field_penumbra_mako_defeated_qa_path.has_value() ||
+                field_penumbra_mako_lead_missing_qa_path.has_value() ||
+                field_penumbra_mako_mode_flag_lead_qa_path.has_value() ||
                 field_tarislar_first_entry_qa_path.has_value() ||
                 field_tarislar_repeat_service_qa_path.has_value() ||
                 field_tarislar_guarded_entry_qa_path.has_value() ||
@@ -27470,7 +27521,10 @@ int main(int argc, char** argv) {
                  field_penumbra_doorman_later_qa_path.has_value() ||
                  field_penumbra_fee_later_qa_path.has_value() ||
                  field_penumbra_insufficient_funds_qa_path.has_value() ||
-                 field_penumbra_story_gate_closed_qa_path.has_value())
+                 field_penumbra_story_gate_closed_qa_path.has_value() ||
+                 field_penumbra_mako_defeated_qa_path.has_value() ||
+                 field_penumbra_mako_lead_missing_qa_path.has_value() ||
+                 field_penumbra_mako_mode_flag_lead_qa_path.has_value())
                 ? field_scene.bootstrap_for_scene_dump(smoke_state, 3U)
                 : (field_sinsearach_gate_physical_entry_qa_path.has_value() ||
                            field_sinsearach_gate_fare_physical_entry_qa_path
@@ -30972,6 +31026,27 @@ int main(int argc, char** argv) {
                     *field_penumbra_story_gate_closed_qa_path,
                     field_source_boundaries,
                     ClubPenumbraMakoQaPath::story_gate_closed);
+            }
+            if (field_penumbra_mako_defeated_qa_path.has_value()) {
+                return run_field_penumbra_mako_qa(
+                    field_scene, asset_root,
+                    *field_penumbra_mako_defeated_qa_path,
+                    field_source_boundaries,
+                    ClubPenumbraMakoQaPath::mako_defeated);
+            }
+            if (field_penumbra_mako_lead_missing_qa_path.has_value()) {
+                return run_field_penumbra_mako_qa(
+                    field_scene, asset_root,
+                    *field_penumbra_mako_lead_missing_qa_path,
+                    field_source_boundaries,
+                    ClubPenumbraMakoQaPath::mako_lead_missing);
+            }
+            if (field_penumbra_mako_mode_flag_lead_qa_path.has_value()) {
+                return run_field_penumbra_mako_qa(
+                    field_scene, asset_root,
+                    *field_penumbra_mako_mode_flag_lead_qa_path,
+                    field_source_boundaries,
+                    ClubPenumbraMakoQaPath::mode_flag_lead);
             }
             if (field_gates_undersound_qa_path.has_value()) {
                 return run_field_gates_undersound_qa(

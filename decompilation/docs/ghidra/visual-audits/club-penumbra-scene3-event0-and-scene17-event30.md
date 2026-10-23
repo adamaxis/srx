@@ -114,8 +114,10 @@ Penumbra Scene-3/event-0 finalizer. The finalizer permits row 0 to reach Scene
 host resolves the rows through the Scene-47 extraction context and publishes
 them in Scene 17. Debug/Release QA covers the qualifying callback route,
 Reputation-3 rejection, insufficient funds, paid entry with story bit 10
-clear, and the Later choice at both prompts. Timeout-counter expiry, other
-story-gate combinations, and independent Genesis comparison remain open. Keep this
+clear, the bit-11 defeated state, both lead facts clear, the alternate
+field-mode bit-21 lead, and the Later choice at both prompts. All identified
+gate outcomes are covered; callback timeout, black Scene-17 destination
+captures, and independent Genesis comparison remain open. Keep this
 separate from the traced scene-17/event-30 generic contact.
 
 ## Verification boundary
@@ -127,10 +129,11 @@ transitions, verifies the result state/page, and confirms the route returns to
 Scene 17. It writes `actual.bmp`, milestone BMPs, and `route.tsv` under the
 CTest build tree. Companion Debug/Release CTests cover Reputation-3 rejection with its
 security warning, 74-nuyen insufficient funds, paid entry with story bit 10
-clear, and the Later choice at both prompts; each checks its return and writes
-`actual.bmp` plus `route.tsv`. The Scene-17 return `actual.bmp` is black in
-the current host renderer, so these tests verify state transitions rather
-than destination graphics. Timeout behavior, other story-gate combinations,
-and an independent Genesis capture remain open. The ROM does not identify the
+clear, the bit-11 defeated state, both lead facts clear, the alternate
+field-mode bit-21 lead, and the Later choice at both prompts; each checks
+its return and writes `actual.bmp` plus `route.tsv`. The Scene-17 return
+`actual.bmp` is black in the current host renderer, so these tests verify
+state transitions rather than destination graphics. Callback timeout and
+an independent Genesis capture remain open. The ROM does not identify the
 Scene-17 event-30 speaker as Freya; that contact remains separate from the
 entry gate.
