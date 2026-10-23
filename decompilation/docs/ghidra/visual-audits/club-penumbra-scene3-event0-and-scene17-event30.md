@@ -32,12 +32,39 @@ The entity route opens a named JSON/Lua graph for the doorman prompt, the
 Reputation threshold, rejection pages, and 75-nuyen payment. If the separate
 Mako story gates pass, the graph shows the two ROM Mako introduction pages,
 then stops at an explicit source boundary because native actor allocation and
-timeout completion remain unimplemented. No Qt route QA has been run for this
-new graph. The extractor indexes the pending list's actor rows under Scene
-47's activity table, but the traced Club route reaches Scene 17 before the
-common list consumer drains it. That table grouping does not assign a
-Scene-47 transition. See the [field
-random-event audit](../field-random-event-selector.md).
+the actor-list completion callback remain unimplemented. No Qt route QA has
+been run for this new graph. The extractor indexes the pending list's actor
+rows under Scene 47's activity table, but the traced Club route reaches Scene
+17 before the common list consumer drains it. That table grouping does not
+assign a Scene-47 transition. See the [field random-event
+audit](../field-random-event-selector.md).
+
+## Pending-list actor transitions and result callback
+
+When `0x43B6` consumes `FFE120 == 0x1E628`, it stores callback `0x53FFC` in
+`FFE12E`, calls `0x1DBAA`, sets `FFE177=4`, and spawns the four list records.
+The scheduler ensures `FFDF84` is active and sets `FFDF86` to `0x78` (or
+`0x258` when `FFE162` is nonzero); this counter is separate from the callback's
+dispatch condition.
+
+`0xAB02` decrements `FFE177` when an eligible entity completes its behavior
+transition with bit 6 set in its `+0x9E` flags. When the count reaches zero,
+the source resets entity service records, moves `FFE12E` to `FFDD2C`, calls
+`0x1E2EC` to publish it as `FFE104`, and clears `FFE12E`. The field loop then
+dispatches the `FFE104` function pointer. This ties `0x53FFC` to the four
+actor behavior transitions; its trigger does not test a player kill flag or
+wait directly for `FFDF86` to expire. All four extracted rows have the source
+`+0x9E=0x40` override: three Strike Team records and one corp guard. The list
+does not contain a template named Mako.
+
+The callback adds 2 to `FFFBFA` and clamps it at 8, adds 2 to the three
+runner bytes at `FF018D`, `FF028D`, and `FF038D`, sets `FFFC1E` bit 11, clears
+`FFFC30` bits 20 and 21 and sets bit 24, then clears `FFFC38` bit 17. It also
+increments `FFFBFB` up to 8 through `0x1F1E0`. Finally it runs the shared mode
+exit service with resources `0x122000` and descriptor `0xF4CA8` (text
+`0xF98FA`, Mako lying unconscious), then returns D6=-1. The ROM callback is
+now source-traced; native actor transitions, this delayed story outcome, and
+its route QA are still open.
 
 ## Scene-17 contact
 
@@ -66,8 +93,9 @@ The fee node `0x111316` contains command `0x60` in its first choice slot at
 choice label is `0x103A7A` (“Easy money, chummer. I'll pay”), and its second is
 `0x104FEB` (“I'll talk to you later, chum”). On the paid path, the handler
 checks FFFC1E bits 10/11 and either FFFC30 bit 21 or FFFC38 bit 3 before
-queueing list `0x1E628`. The pending-list consumer at `0x43B6` installs timeout
-callback `0x53FFC`; that completion marks Mako defeated and opens descriptor
+queueing list `0x1E628`. The pending-list consumer at `0x43B6` installs
+callback `0x53FFC`; after four `FFE177`-counted actor behavior transitions,
+it marks Mako defeated and opens descriptor
 `0xF4CA8` / text `0xF98FA`. The menu caller is now linked to the Club
 Penumbra Scene-3/event-0 finalizer. The finalizer permits row 0 to reach Scene
 17, and the next common world-frame service drains the queued list there; the

@@ -109,10 +109,11 @@ negative; `0x225D2` records `FFF0D6=-1`, queues the list, and clears D6.
 Shared exit helper `0x1FED2`
 preserves that clear D6, so finalizer `0x1FD80` allows Scene-3/event-0 row 0
 to continue to field scene 17. `0x02900` calls `0x04388`, which runs the
-common `0x043B6` world-frame service. It drains `FFE120` without checking the scene and
-installs timeout callback `0x53FFC`. The list's extracted Scene-47 table
-context does not override the traced Scene-17 route. The callback completion
-marks Mako defeated. The menu node at `0x111316` contains
+common `0x043B6` world-frame service. It drains `FFE120` without checking the
+scene and installs actor-list outcome callback `0x53FFC`. After the four
+`FFE177`-counted actor behavior transitions, the callback marks Mako defeated.
+The list's extracted Scene-47 table context does not override the traced
+Scene-17 route. The menu node at `0x111316` contains
 command `0x60` in its first choice slot at `0x111326`. Adjacent code at
 `0x225CA` loads `0x111316` into A0 and returns. The title stream `0x114A88` is
 the 75-nuyen entry-fee prompt, with first option `0x103A7A` (“Easy money,
@@ -122,17 +123,22 @@ Scene-3/event-0 doorman branch in finalizer `0x1FD80`. The extractor indexes
 the same list under the Scene-47 activity-table context, but the source exit
 sequence continues to Scene 17 and the common consumer has no scene transition.
 The Club dialogue graph models the entry checks and both Mako introduction
-pages. It stops at a source boundary before actor allocation and timeout
+pages. It stops at a source boundary before actor allocation and actor-list
 completion, which are not implemented. This is not a random-event selector
 result.
 
 The linked ROM records confirm this is a Mako story route. Entry descriptor
 `0xF4CBC` points to text `0xF9718` (“Once inside, you inquire about Mako” and
 the bartender points him out); its following descriptor `0xF4CD0` points to
-`0xF9788`, where Mako notices someone behind the player. Completion callback
-`0x53FFC` adds 2 heat capped at 8, awards 2 Karma per runner, sets FFFC1E bit
-11, updates FFFC30/FFFC38, and opens descriptor `0xF4CA8` / text `0xF98FA`
-about Mako lying unconscious. The encounter gate's FFFC1E bit 10 is the
+`0xF9788`, where Mako notices someone behind the player. Actor-list outcome
+callback
+`0x53FFC` runs after the four `FFE177`-counted actor behavior transitions. It
+adds 2 heat capped at 8, adds 2 to each runner's Karma source byte, sets
+FFFC1E bit 11, clears FFFC30 bits 20/21 and sets bit 24, clears FFFC38 bit
+17, increments the Strike Team counter `FFFBFB` up to 8, and opens descriptor
+`0xF4CA8` / text `0xF98FA` about Mako lying unconscious. The callback trigger
+does not test a kill flag or wait directly for the `FFDF86` counter armed by
+`0x1DBAA`. The encounter gate's FFFC1E bit 10 is the
 Michael alias learned through Boris command `0x2B`; its FFFC30 bit 21
 alternative is set by the Big Rhino Mako-information action. Big Rhino's
 answer says Mako has been spending time at Club Penumbra, consistent with the
@@ -812,8 +818,8 @@ not reached by the analyzer's seeded control-flow walk:
 
 | ROM instructions | Recovered path | Heat effect | What this does and does not establish |
 |---|---|---|---|
-| `0x53FFC`, `0x54002`, `0x5400E` | Timeout callback installed by `process_pending_entity_template_lists` at `0x43B6` when `FFE120 == 0x1E628`; scheduled through `0x1DBAA` | Add 2, clamp to 8 | A delayed world-activity outcome changes heat and story flags; this callback does not insert a field patrol. |
-| `0x54286`, `0x5428C`, `0x54298` | The same dispatcher when `FFE120 == 0x1E5C4`; scheduled through `0x1DBAA` | Add 2, clamp to 8 | A second delayed world-activity outcome changes heat and progress state; this callback does not insert a field patrol. |
+| `0x53FFC`, `0x54002`, `0x5400E` | Actor-list outcome callback installed by `process_pending_entity_template_lists` at `0x43B6` when `FFE120 == 0x1E628`; dispatched after the four `FFE177`-counted actor behavior transitions | Add 2, clamp to 8 | The outcome changes heat, Karma, and story flags; it does not insert a field patrol. `0x1DBAA` separately arms `FFDF86` (`0x78`, or `0x258` when `FFE162` is nonzero). |
+| `0x54286`, `0x5428C`, `0x54298` | Actor-list outcome callback installed by the same dispatcher when `FFE120 == 0x1E5C4`; dispatched after its four `FFE177`-counted actor behavior transitions | Add 2, clamp to 8 | A second actor-list outcome changes heat and progress state; it does not insert a field patrol. `0x1DBAA` separately arms `FFDF86` (`0x78`, or `0x258` when `FFE162` is nonzero). |
 | `0x55238`, `0x55242`, `0x5524E` | Status/file-state branch for `FFFBBC == 0x17` and `D0 == 0x0D` | Read heat tiers | With nonzero heat, set exactly one of `FFFC38` bits 6, 7, or 8 for heat `1-2`, `3-7`, or `8`; clear the other two and continue to the notebook-file result path. This updates available Notebook notices, not map actors. |
 
 The other source writes include the shared patrol Attack handler `0x23412`

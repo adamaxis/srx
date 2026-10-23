@@ -25,8 +25,9 @@ The existing typed conversion test records one concrete input: `FFFBF9=8`,
 `0x5E80,0x1300`.
 
 On the world-frame path, `0x43B6` drains the pending `FFE120` list through
-`0x4466`, then drains the default list. It assigns additional timeout
-continuations to list pointers `0x1E628` and `0x1E5C4`. `0x4466` allocates a
+`0x4466`, then drains the default list. For list pointers `0x1E628` and
+`0x1E5C4`, it installs actor-list outcome callbacks and separately arms the
+activity timeout through `0x1DBAA`. `0x4466` allocates a
 world entity and effect slot for each entry; bit 31 of the template pointer
 marks a root record. `0x44BC` copies the named template data, installs its
 position, and applies optional byte-offset/value overrides. It copies

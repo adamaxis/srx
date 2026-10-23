@@ -11,7 +11,8 @@
           "0x225B6", "0x11132E", "0x111316", "0x114BC8", "0x114C72",
           "0x114A88", "0x225D2", "0x114AC9", "0x114B80", "0x22622",
           "0x43B6", "0x1F246", "0xF4CBC", "0xF9718", "0xF4CD0",
-          "0xF9788", "0x1FED2", "0x18A6FC"
+          "0xF9788", "0x53FFC", "0xAB02", "0x1DBAA", "0x59C34",
+          "0x1F1E0", "0xF4CA8", "0xF98FA", "0x1FED2", "0x18A6FC"
         ],
         "scope": "scene_3_event_0_club_penumbra_doorman_fee_and_mako_activity_gate"
       },
@@ -111,7 +112,7 @@
         },
         "mako_encounter_boundary": {
           "type": "source_boundary",
-          "reason": "The ROM queues list 0x1E628 before continuing through the Scene-3/event-0 row-0 transition to Scene 17. The shared 0x43B6 service drains it there and installs timeout callback 0x53FFC; native actor allocation and callback lifecycle are not implemented yet."
+          "reason": "The ROM queues list 0x1E628 before continuing through the Scene-3/event-0 row-0 transition to Scene 17. The shared 0x43B6 service drains it there, sets FFE177=4, and installs callback 0x53FFC. At 0xAB02 eligible actor behavior transitions decrement FFE177; reaching zero publishes and dispatches the callback, which adds 2 heat capped at 8 and 2 Karma per runner, updates the Mako story flags and Strike Team counter, then opens result descriptor 0xF4CA8 with resources 0x122000. The 0x1DBAA call separately arms FFDF86. Native actor allocation, transition counting, and callback outcome are not implemented yet."
         },
         "resume_club_route": {
           "type": "terminal",
