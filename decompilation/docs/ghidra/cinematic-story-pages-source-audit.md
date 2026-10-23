@@ -58,12 +58,30 @@ cinematic's full background or to justify a VDP-shaped host renderer.
 
 ## Resource extraction boundary
 
-The profile record at `0x1FE690` points to `0x1FE638` and `0x1FE726`; its
-two nonzero transfer-record pointers are `0x1F8919` and `0x1FA81F`. The
-Spirit Eyes profile at `0x1FE6C2` shares the first pointer (`0x1FE638`),
-points to `0x1FE8A6`, and references `0x1FA8FD` and `0x1FCB19`. These values
-are recorded as source pointers only. Their native image roles, palette,
-placement, and the full-screen composition have not yet been established.
+ROM `0x1406` reads each profile as a VDP setup, a palette pointer, four mode
+words, a terminated pattern-upload list, then a terminated layout list. Both
+story-page profiles share VDP setup `0x1FE638`; the Harlequin palette is
+`0x1FE726`, and the Spirit Eyes palette is `0x1FE8A6`. The four mode words
+are zero in both records.
+
+Each pattern-upload list has one odd-tagged compressed stream. The Harlequin
+profile points to `0x1F8919`; the Spirit Eyes profile points to `0x1FA8FD`.
+After clearing the low-bit type tag, `0x1406` passes VDP command `0x3020` and
+zero to `0x1530`, then reaches the list terminator. The following layout-list
+stream is also odd-tagged: `0x1FA81F` for Harlequin and `0x1FCB19` for Spirit
+Eyes. Their source parameters are respectively `{0x506, 0x24, 0x11, 0}` and
+`{0x600, 0x27, 0x0F, 0}`; `0x1406` clears the type tag and calls `0x1728`.
+These are distinct source stages, not two pattern-transfer records.
+
+The existing `--field-mode-profile-sprite` importer does not accept these
+records directly. It expects a different three-pointer field portrait record
+(`palette`, `pattern stream`, `sprite stream`) and fixes that portrait's
+pattern bank at `0x57A0`. Passing either story-page profile to it produced a
+fully transparent frame because the first two words were interpreted as
+palette/pattern pointers. That output is discarded and is not a cinematic
+asset. The correct page-specific pattern placement, layout bounds, resource
+roles, and full-screen composition still need to be recovered before writing
+named host art.
 
 The host currently has neither a named asset set under `assets/movies/` nor
 a full-screen story-page presenter. Do not substitute the field NPC panel or
@@ -77,7 +95,8 @@ path can complete and return to its source context.
 
 - US ROM: `0x5D130`, `0x5D172`, `0x5D1F6`, `0x5D24A`, `0x1406`, `0x12F6`,
   `0xC0C2`, `0xC0DA`, `0x0D94`, `0x195C`, `0x131C`, `0x12C5A`, `0x11C0`,
-  `0x0E9C`, `0x0C1320`, `0x0F5870`, `0x0F4C20`, `0x1FE690`, and `0x1FE6C2`.
+  `0x0E9C`, `0x0CEC`, `0x1530`, `0x1728`, `0x0C1320`, `0x0F5870`,
+  `0x0F4C20`, `0x1FE638`, `0x1FE690`, and `0x1FE6C2`.
 - Ghidra cross-check: `fn_00000D94.cpp`, `fn_00001406.cpp`,
   `fn_000566F6.cpp`, `fn_0000C0DA.cpp`, and `fn_000011C0.cpp`.
 - Host content: `gameplay/dialogue/cinematics.json`.
