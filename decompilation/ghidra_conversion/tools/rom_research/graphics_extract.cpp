@@ -10523,51 +10523,100 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    const std::string sprite_list_mode = argc == 4 ? argv[3] : "";
     if (argc == 4 &&
-        std::string(argv[3]) == "--scene-5bd2c-sprite-lists") {
+        (sprite_list_mode == "--scene-5bd2c-sprite-lists" ||
+         sprite_list_mode == "--scene-55-tomb-prelude-sprite-lists")) {
         try {
             const auto rom = read_file(argv[1]);
             // The field callback at 0x5BAC4 loads descriptor 0x5C966. Its
             // second pattern stream is the odd pointer 0x1F002F (stream data
             // at 0x1F002E), uploaded at VRAM byte address $8A80 (tile $454).
-            // The callback's sprite lists at 0x1EF988 and 0x1EFAAA select
-            // from this bank. Keep this source path separate from the still-
-            // untraced live Matrix traversal sprite path.
+            // The callback's animated sprite lists select from this bank.
+            // Keep this source path separate from the live Matrix traversal
+            // sprite path. The older focused flag remains an alias for the
+            // first two lists used by 0x5BD2C.
             constexpr std::size_t kPatternStream = 0x1F002EU;
             constexpr std::size_t kPatternFirstTile = 0x0454U;
-            constexpr std::size_t kPaletteLine1 = 0x5C9F2U;
-            constexpr std::array<std::size_t, 2> kLists{{
-                0x1EF988U, 0x1EFAAAU,
+            struct SpriteList {
+                std::size_t address;
+                const char* name;
+                std::size_t pattern_stream;
+                std::size_t first_tile;
+                std::size_t palette_line;
+            };
+            constexpr std::array<SpriteList, 19> kLists{{
+                {0x1EF988U, "list-1ef988", kPatternStream,
+                 kPatternFirstTile, 0x5C9F2U},
+                {0x1EFAAAU, "list-1efaaa", kPatternStream,
+                 kPatternFirstTile, 0x5C9F2U},
+                {0x1EFB5CU, "list-1efb5c", kPatternStream,
+                 kPatternFirstTile, 0x5CA12U},
+                {0x1EFBCAU, "list-1efbca", kPatternStream,
+                 kPatternFirstTile, 0x5CA12U},
+                {0x1EF936U, "list-1ef936", 0x1EFDCCU,
+                 0x0080U, 0x5CA12U},
+                {0x1EFC66U, "list-1efc66", kPatternStream,
+                 kPatternFirstTile, 0x5C9D2U},
+                {0x1EFC34U, "list-1efc34", kPatternStream,
+                 kPatternFirstTile, 0x5C9D2U},
+                {0x1EFB9EU, "list-1efb9e", kPatternStream,
+                 kPatternFirstTile, 0x5CA12U},
+                {0x1EFBB8U, "list-1efbb8", kPatternStream,
+                 kPatternFirstTile, 0x5CA12U},
+                {0x1EFBECU, "list-1efbec", kPatternStream,
+                 kPatternFirstTile, 0x5CA12U},
+                {0x1EFBFEU, "list-1efbfe", kPatternStream,
+                 kPatternFirstTile, 0x5CA12U},
+                {0x1EFC10U, "list-1efc10", kPatternStream,
+                 kPatternFirstTile, 0x5CA12U},
+                {0x1EFC22U, "list-1efc22", kPatternStream,
+                 kPatternFirstTile, 0x5CA12U},
+                {0x1EFCA8U, "list-1efca8", kPatternStream,
+                 kPatternFirstTile, 0x5C9F2U},
+                {0x1EFCB2U, "list-1efcb2", kPatternStream,
+                 kPatternFirstTile, 0x5C9F2U},
+                {0x1EFCCCU, "list-1efccc", kPatternStream,
+                 kPatternFirstTile, 0x5C9F2U},
+                {0x1EFD0EU, "list-1efd0e", kPatternStream,
+                 kPatternFirstTile, 0x5C9F2U},
+                {0x1EFD48U, "list-1efd48", kPatternStream,
+                 kPatternFirstTile, 0x5C9F2U},
+                {0x1EFD6AU, "list-1efd6a", kPatternStream,
+                 kPatternFirstTile, 0x5C9F2U},
             }};
-            constexpr std::array<const char*, 2> kNames{{
-                "list-1ef988", "list-1efaaa",
-            }};
-            const auto pattern_bytes =
-                shadowrun::graphics::decode_genesis_resource_stream(
-                    rom, kPatternStream);
-            if (pattern_bytes.empty() || pattern_bytes.size() % 32U != 0U) {
-                throw std::runtime_error(
-                    "0x5BD2C sprite pattern stream has an invalid tile length");
-            }
-            const auto tile_count = pattern_bytes.size() / 32U;
-            const auto palette = shadowrun::graphics::read_genesis_palette(
-                rom, kPaletteLine1);
+            const bool include_all_lists =
+                sprite_list_mode == "--scene-55-tomb-prelude-sprite-lists";
+            const auto list_count = include_all_lists ? kLists.size() : 2U;
             constexpr std::size_t kTilesPerRow = 16U;
-            const auto atlas = shadowrun::graphics::decode_tile_atlas(
-                pattern_bytes, 0U, tile_count, palette, kTilesPerRow, 0U);
             const std::filesystem::path root(argv[2]);
             std::filesystem::create_directories(root);
             constexpr std::size_t kWidth = 320U;
             constexpr std::size_t kHeight = 224U;
             for (std::size_t list_index = 0U;
-                 list_index < kLists.size(); ++list_index) {
+                 list_index < list_count; ++list_index) {
                 shadowrun::graphics::RgbaImage image{};
                 image.width = static_cast<std::uint16_t>(kWidth);
                 image.height = static_cast<std::uint16_t>(kHeight);
                 image.pixels.assign(
                     kWidth * kHeight,
                     shadowrun::native::Rgba8{0U, 0U, 0U, 0U});
-                auto record = kLists[list_index];
+                const auto pattern_bytes =
+                    shadowrun::graphics::decode_genesis_resource_stream(
+                        rom, kLists[list_index].pattern_stream);
+                if (pattern_bytes.empty() || pattern_bytes.size() % 32U != 0U) {
+                    throw std::runtime_error(
+                        "scene-55 prelude sprite pattern stream has an invalid tile length");
+                }
+                const auto tile_count = pattern_bytes.size() / 32U;
+                // This preview uses the initial profile palette row selected
+                // by the list's D6 value. Timed palette changes in the
+                // callback are intentionally not baked into these images.
+                const auto palette = shadowrun::graphics::read_genesis_palette(
+                    rom, kLists[list_index].palette_line);
+                const auto atlas = shadowrun::graphics::decode_tile_atlas(
+                    pattern_bytes, 0U, tile_count, palette, kTilesPerRow, 0U);
+                auto record = kLists[list_index].address;
                 bool terminated = false;
                 for (std::size_t sprite_index = 0U;
                      sprite_index < 64U; ++sprite_index) {
@@ -10593,14 +10642,15 @@ int main(int argc, char** argv) {
                     const auto height_tiles = static_cast<std::size_t>(
                         (size & 0x03U) + 1U);
                     if ((size & 0xFF00U) != 0U ||
-                        tile < kPatternFirstTile ||
-                        tile - kPatternFirstTile > tile_count ||
+                        tile < kLists[list_index].first_tile ||
+                        tile - kLists[list_index].first_tile > tile_count ||
                         width_tiles * height_tiles >
-                            tile_count - (tile - kPatternFirstTile)) {
+                            tile_count - (tile - kLists[list_index].first_tile)) {
                         throw std::runtime_error(
-                            "0x5BD2C sprite exceeds its uploaded pattern bank");
+                            "scene-55 prelude sprite list exceeds its source pattern bank");
                     }
-                    const auto tile_offset = tile - kPatternFirstTile;
+                    const auto tile_offset =
+                        tile - kLists[list_index].first_tile;
                     const bool flip_x = (attributes & 0x0800U) != 0U;
                     const bool flip_y = (attributes & 0x1000U) != 0U;
                     const auto sprite_width = width_tiles * 8U;
@@ -10647,13 +10697,17 @@ int main(int argc, char** argv) {
                 }
                 if (!terminated) {
                     throw std::runtime_error(
-                        "0x5BD2C sprite list has no terminator");
+                        "scene-55 prelude sprite list has no terminator");
                 }
+                const auto output_prefix = include_all_lists
+                    ? "scene-55-tomb-prelude-"
+                    : "scene-5bd2c-";
                 const auto output = root /
-                    (std::string("scene-5bd2c-") + kNames[list_index] +
+                    (std::string(output_prefix) + kLists[list_index].name +
                      "-centered.png");
                 write_png32(output.string(), image);
-                std::cout << kNames[list_index] << " sprites rendered from "
+                std::cout << kLists[list_index].name
+                          << " sprites rendered from "
                           << tile_count << " decoded patterns -> "
                           << output.string() << "\n";
             }
@@ -12176,6 +12230,8 @@ int main(int argc, char** argv) {
                      "--matrix-world-models\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
                      "--scene-5bd2c-sprite-lists\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
+                     "--scene-55-tomb-prelude-sprite-lists\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
                      "--matrix-title-figure-atlases\n";
         std::cerr << "numeric offsets accept decimal or 0x-prefixed hex\n";

@@ -529,8 +529,9 @@ eligible actor, the host queues a typed 60-frame continuation for `0x5BAC4`.
 This live trigger has not had a full-route CTest or CLI `actual.bmp`; the
 existing five-panel QA enters through a direct presenter seam. The typed
 continuation now opens the ROM-backed Licourtrix warning and one-response
-graph, which ends at an explicit boundary before the 1000-iteration
-presentation. That animation and the pre-panel fade remain open. The complete
+graph, which ends at an explicit boundary before the D7=0x03E8 DBRA
+presentation. That animation and the pre-panel fade remain open (see the
+[pre-credit source audit](tarislar-tomb-prelude-source-audit.md)). The complete
 `FFF11E` visual/effect record is not reproduced. The host synchronizes
 `FFE186` between its coordinator and world-frame state at field-frame and
 render-pass boundaries. The hill remains partial.

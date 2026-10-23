@@ -167,9 +167,10 @@ catalog's source policy explicitly authorizes a correction.
   Lua-owned completion cadence, six-slot actor query, and typed 60-frame callback
   queue. That live trigger has no full-route QA or CLI frame yet. The pending
   continuation opens the ROM-backed Licourtrix warning and one-response graph,
-  then reaches an explicit boundary before the 1000-iteration presentation;
-  the pre-panel animation/fade remains unimplemented. Scene-54 event 0 is now
-  traced into Scene 55.
+  then reaches an explicit boundary before the D7=0x03E8 DBRA presentation;
+  the pre-panel animation/fade remains unimplemented (see the
+  [pre-credit source audit](../tarislar-tomb-prelude-source-audit.md)).
+  Scene-54 event 0 is now traced into Scene 55.
 
 ## Scene 54 entry profile and collision evidence
 
@@ -283,7 +284,7 @@ After the phase timer expires, `0x5D3D4` sets
 callback `0x5BAC4` and `0x1E2E0` schedules it for the 60-frame activity
 boundary. Callback `0x5BAC4` opens prompt group `0xFDD72` through `0x20950`
 with Licourtrix profile `0x121EA4`; its visible response is text `0xFD71E`.
-The callback then runs a 1000-iteration presentation sequence before five
+The callback then runs a D7=0x03E8 DBRA presentation sequence before five
 controller-advanced credits text panels. ROM `0x5BB58` seeds D7 with `0x03E8`;
 the `DBRA` loop calls frame wait
 `0x0BD2`, controller service `0x195C`, input service `0x0BF2`, and routines at
@@ -311,7 +312,7 @@ captures five distinct panels, the retained final page, the fade, and
 visual. The final title handoff is connected through a direct page-sequence QA
 seam. The live trigger queues a typed 60-frame callback and opens the
 ROM-backed Licourtrix warning/response graph. After that response the graph
-reaches an explicit boundary before the 1000-iteration presentation and
+reaches an explicit boundary before the D7=0x03E8 DBRA presentation and
 pre-panel `0x5C3B4` fade/palette setup, which remain unimplemented. The
 response's next-record pointer is not consumed by this callback, so the hill
 stays partial.
@@ -335,7 +336,7 @@ cadence, and slot-4..9 eligibility scan, and the render-pass tail queues a
 typed 60-frame callback when the phase timer expires with no eligible actor.
 This does not reproduce the complete `FFF11E` visual/effect record. A missing
 slot-3 record remains an explicit boundary; the callback graph presents the
-Licourtrix warning and single response, then stops before the 1000-loop
+Licourtrix warning and single response, then stops before the D7=0x03E8 DBRA
 presentation. The full Scene-55
 route is unverified and remains partial.
 
