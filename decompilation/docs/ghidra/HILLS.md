@@ -437,10 +437,11 @@ pending-descriptor override, and scene-54 completion/return remain open.
 Scene 54's extracted map is a tall 320x1344 layout, and its profile has no
 event table or elevator group. Event 31 stores callback `0xDB26` through the
 direct `0xB7B8` path; other route audits map its ordinary field-mode behavior
-to the shared terminal. The current export skips the callback body, so the
-Scene-54 mode-3 behavior remains unresolved. For marker 1 (`FFE186=1`),
-`0x167AE` schedules before changing scenes, snapshots and clears `FFE177`,
-then the first `0x02900`/`0x04388` field-service pass sets `FFE177=6`. This
+to the shared terminal. The Ghidra export skips its body, but a direct US-ROM
+decode confirms Scene 54's mode-3 path returns at `0xDEE6` before the Matrix
+node-selection input loop and selects no new scene. For marker 1
+(`FFE186=1`), `0x167AE` schedules before changing scenes, snapshots and clears
+`FFE177`, then the first `0x02900`/`0x04388` field-service pass sets it to 6. This
 bypasses `0x1DBAA`'s zero-count early return during initial Scene-54 setup.
 The Scene-54 profile supplies six Yakuza Weenr records, each with `+0x9E`
 bit 6 set. On their qualifying completion path, `0x0AB02` calls `0x16B98`;
@@ -448,8 +449,8 @@ ordinary kind 8 returns without a weighted spawn in mode 3, then `0x0AB02`
 decrements `FFE177` for that record. The six profile rows therefore match the
 initial count. At zero, the service records reset and `FFE12E` is dispatched
 and cleared if installed. Its Scene-54 installer, the pending `FFE162`
-producer, and callback `0xDB26`'s mode-3 body remain unresolved. The event-0
-projected interaction has no scene-54/mode-3 map write. See the
+producer remain unresolved. The event-0 projected interaction has no
+scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).
 
 Current map-dialogue work: scene-2 record 85/event 4 now opens the Lua entry

@@ -250,9 +250,14 @@ The source path is:
    set; kind 8's weighted-spawn path returns without adding a record in mode
    3, so these six rows match the initial count. At zero, it resets service
    records; if `FFE12E` is nonzero, it copies that handler to `FFDD2C`, starts
-   the activity, and clears `FFE12E`. The Scene-54 `FFE12E` installer remains
-   unresolved, as do the `FFE162` producer and whether a pending list can be
-   active on Tarislar's event-7 route. With no marker,
+   the activity, and clears `FFE12E`. Initializers `0x2A32`/`0x2A44` clear
+   `FFE12E`; the direct assignments in `0x043B6` install handlers only when
+   `FFE120` names pending list `0x1E628` or `0x1E5C4`. Scene 54's six actors
+   come from the separate default list at `FFDDF0`. The marker-1 route with
+   `FFE162` clear does not replace `FFE120`; whether a pending pointer can
+   carry into its first service pass remains unresolved. The `FFE162` producer
+   and whether a pending list can be active on Tarislar's event-7 route also
+   remain open. With no marker,
    scene 13 is subject to the selector's bit 19 gate. Marker 2 is a different
    path: it selects scene 55 and queues `0x20938`, whose graph begins at
    `0x0FDD1A` with the Tomb of Ellisia antechamber. This is not the event-7
@@ -511,6 +516,13 @@ scene (`FFFBF8`) to seed Matrix node `FFF118` and system `FFFBBC`. The shared
 `0x181F8`, without the ordinary field terminal's Passcode/System Search menu.
 Lua now owns this recovered map in `field_activities.lua` and returns a target
 that the host forwards to `matrix_entry.lua`:
+
+Scene 54 is outside that resource-scene table. Its mode is 3 and its current
+scene byte is `FFFBF8=0x36`. A direct decode of US-ROM callback `0x0DB26`
+shows that `0x36` misses the `0x15`-to-`0x2B` cases and returns at `0x0DEE6`
+before entering the Matrix node-selection input loop at `0x0DE5E`. The event-31
+collision therefore does not enter the Matrix node-selection flow or select a
+new scene in Scene 54.
 
 | Resource scene | System | Node |
 |---:|---:|---:|

@@ -9,8 +9,9 @@ wallet branches are modeled through their text pages. ROM tracing resolves
 paid travel to numeric Scene 6 and refusal/short-funds to Scene-9 re-entry, but
 the typed host transitions remain unwired; see the [HILLS index](../HILLS.md)
 and [story-page audit](../cinematic-story-pages-source-audit.md).
-Tarislar's `FFE162` descriptor producer, `FFE177` timeout gate, and Scene-54
-completion/return remain open.
+Tarislar's `FFE162` descriptor producer, Scene-54 `FFE12E` installer, and
+activity exit route remain open. The initial `FFE177` count and its
+six-profile-actor match are source-traced.
 
 Mike's RPG Center labels Puyallup map marker 2 “Tarislar Garden Apartments.”
 Its walkthrough places the visit after the Sinsearach trials and meeting
@@ -161,17 +162,26 @@ Genesis sequence.
 The profile has no event-table pointer. Its 29 collision rectangles comprise
 28 records with raw value `0x007F` (event code 31) and one record at grid cell
 `(4,1)` with raw value `0x00C0` (event code 0). The standard scene-entity list
-pointer resolves to a zero first entry, so the ordinary scene entity-table
-loader adds no placed actors. This does not rule out actor setup through a
-separate scripted path. The profile also has no elevator child-scene group;
+pointer resolves to a zero first entry, so that loader adds no placed actors.
+Separately, the profile default-actor list at `0x1E994C` contains six Yakuza
+Weenr records; the world-frame list service `0x43B6` installs this list after
+pending lists. Each record has the ordered override `+0x9E=0x40`, which
+connects these actors to the initial completion count described below. The
+profile also has no elevator child-scene group;
 scene 54 must not be treated as one floor in the normal elevator selector.
 
 The event-31 dispatch is traced through ROM `0xB7B8`, which stores `0xDB26` in
 `FFDD2C` as an indirect activity callback. Other route audits map `0xDB26` as
-the ordinary field terminal in resource-field mode. The current exported
-disassembly skips the code region containing that callback, so its Scene-54
-mode-3 path is not verified here; the earlier claim that it returns at
-`0xDEE6` should not be treated as established. Timeout setup is conditional:
+the ordinary field terminal in resource-field mode. The exported disassembly
+has a gap from `0xDA68` to `0xDFF0`, so the callback path was decoded directly
+from the US ROM. It clears `FFF118`, checks `FFDF40`, and enters its
+mode-specific branch when that word is nonzero. Scene-54 setup uses
+`FFDF40=3`; `0x03074` copies the current scene byte to `FFFBF8`, so this route
+has `FFFBF8=0x36`. The callback's node-selection table covers scene bytes
+`0x15` through `0x2B`; `0x36` falls through to `RTS` at `0xDEE6`, before the
+node-selection input loop at `0xDE5E`. Thus this Scene-54 event-31 call does
+not enter the Matrix node-selection flow or select a new scene. Timeout setup
+is conditional:
 `0x1DBAA` returns when the current scene is 54 and `FFE177=0`; otherwise it
 sets 120 frames, or 600 while `FFE162` is nonzero. For the marker-1 entry
 (`FFE186=1`), `0x167AE` calls the scheduler while `FFDDC4` still has the source
@@ -182,13 +192,19 @@ Weenr default-list rows, each with `+0x9E` bit 6 set. On a qualifying
 completion, `0x0AB02` calls `0x16B98`; kind 8 returns without a weighted spawn
 in mode 3, and the same active record then decrements `FFE177`. The six rows
 match the initial count. At zero, service records reset and `FFE12E` is
-dispatched and cleared if installed. Its Scene-54 installer remains
-unresolved, as do the `FFE162` producer and whether a pending list can be
-active on event 7. The mode-3 body of callback `0xDB26`, scene completion, and
-exit destination remain unresolved. The event-0 record uses the generic
-projected-interaction path; helper `0x1651E` has no scene-54/mode-3 map write.
-Its later main-loop effect also remains unresolved. No reverse route has been
-added.
+dispatched and cleared if installed. Initializers `0x2A32`/`0x2A44` clear
+`FFE12E`; direct assignments in `0x043B6` install handlers only for pending
+lists `0x1E628` and `0x1E5C4`. Scene 54's six actors come from the separate
+default list at `FFDDF0`, and its marker-1 route with `FFE162` clear does not
+replace `FFE120`. Whether a pending pointer can carry into the first Scene-54
+service pass remains unresolved, as does the `FFE162` producer and its event-7
+availability. Scene completion and exit destination remain unresolved.
+The event-0 record has raw value `0x00C0`, so `0xB7B8` publishes event 0 in
+`FFFBF9`. In Scene-54 mode 3 it calls `0x1651E`; with D0=0, that helper returns
+carry set without a map write. `0xB7B8` then sets `FFDF3A=-1`, `FFDF3C=0x10`,
+and `FFDFe8=-1` and takes its common exit. This preserves a collision-state
+effect but does not change the scene or select a return. No reverse route has
+been added.
 
 ## Seven visual and behavioral checks
 
@@ -249,12 +265,11 @@ added.
 - Identify the producer for `FFE162` beyond the direct absolute-address
   references and determine whether it can be active on Tarislar's event-7
   route. Trace the six Scene-54 completion branches, locate the `FFE12E`
-  installer, and recover the indirect `0xDB26` callback's mode-3 behavior.
+  installer, and determine the activity result when the count reaches zero.
   Preserve the scene-15 override as a source boundary until the descriptor
   link is established.
-- Trace scene 54's direct event-31/event-0 handling, any non-table actor setup,
-  the activity completion condition, exits, and return path against the ROM
-  before connecting the route in Lua.
+- Trace the post-count activity result, Scene-54 `FFE12E` installer, exits, and
+  return path against the ROM before connecting the route in Lua.
 - Capture the remaining branches and a source-backed scene-54 completion and
   return as whole 320x224 screens. Review all surrounding pixels and check the
   seven questions above before changing this status.
