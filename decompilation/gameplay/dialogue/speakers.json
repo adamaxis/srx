@@ -70,6 +70,21 @@
       "portrait_alias": "dialogue.portraits.club.penumbra.doorman",
       "text_profile": "club.penumbra"
     },
+    "club_penumbra_narrator": {
+      "events": {
+        "mako_intro": {
+          "continuation_key": "",
+          "title_key": "club.penumbra.mako.intro"
+        },
+        "mako_noticed": {
+          "continuation_key": "",
+          "title_key": "club.penumbra.mako.noticed"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "none",
+      "text_profile": "club.penumbra"
+    },
     "caleb_brightmore": {
       "events": {
         "access_blocked": {

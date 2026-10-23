@@ -20,18 +20,23 @@ asks the player's business. Choosing “I'd like to go in” executes command
 returning rejection node `0x11132E` below 4 and fee node `0x111316` at 4 or
 higher. The fee node asks for 75 nuyen at `0x114A88`; command `0x60` at
 `0x225D2` debits that fee. When its additional story gates pass, it queues
-pending list `0x1E628`.
+pending list `0x1E628`, loads the Mako introduction descriptor pair
+`0xF4CBC`/`0xF4CD0`, and clears D6. The shared exit helper `0x1FED2` sees the
+paid marker `FFF0D6=-1` and leaves that clear D6 intact, so finalizer `0x1FD80`
+continues through event-table row 0 to field scene 17. The common field-frame
+service at `0x02900` calls `0x04388`, which runs `0x043B6`; that function
+drains `FFE120` without a scene gate and installs callback `0x53FFC` for this
+list.
 
-The event-table row still names scene 17 as the ordinary destination, but the
-doorman conversation now sits between the exterior event and that transition.
 The entity route opens a named JSON/Lua graph for the doorman prompt, the
 Reputation threshold, rejection pages, and 75-nuyen payment. If the separate
-Mako story gates pass, that graph stops at an explicit source boundary because
-the pending actor-list lifecycle is still unimplemented. No Qt route QA has
-been run for this new graph. The extractor indexes the pending list's actor
-rows under Scene 47's activity table, but the common list consumer does not
-itself establish that scene as a destination. The path from the Club prompt
-to the list's activity placement remains unresolved. See the [field
+Mako story gates pass, the graph shows the two ROM Mako introduction pages,
+then stops at an explicit source boundary because native actor allocation and
+timeout completion remain unimplemented. No Qt route QA has been run for this
+new graph. The extractor indexes the pending list's actor rows under Scene
+47's activity table, but the traced Club route reaches Scene 17 before the
+common list consumer drains it. That table grouping does not assign a
+Scene-47 transition. See the [field
 random-event audit](../field-random-event-selector.md).
 
 ## Scene-17 contact
@@ -64,10 +69,11 @@ checks FFFC1E bits 10/11 and either FFFC30 bit 21 or FFFC38 bit 3 before
 queueing list `0x1E628`. The pending-list consumer at `0x43B6` installs timeout
 callback `0x53FFC`; that completion marks Mako defeated and opens descriptor
 `0xF4CA8` / text `0xF98FA`. The menu caller is now linked to the Club
-Penumbra Scene-3/event-0 finalizer. The extracted actor rows are indexed under
-Scene 47, while exact activity placement, callback timing, and runtime flow
-remain open. Keep this separate from the traced scene-17/event-30 generic
-contact.
+Penumbra Scene-3/event-0 finalizer. The finalizer permits row 0 to reach Scene
+17, and the next common world-frame service drains the queued list there; the
+Scene-47 extraction context is not a destination. Native actor allocation and
+the timeout callback remain open. Keep this separate from the traced
+scene-17/event-30 generic contact.
 
 ## Verification boundary
 

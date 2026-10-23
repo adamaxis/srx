@@ -215,9 +215,11 @@ descriptors `0x1D6D4A`, `0x1D6D5E`, or `0x1D6D72` by target area. The confirmed
 offer target pool contains Scene 1/event 9, Scene 2/event 9, and Scene 3/event
 4; none matches Tarislar's Scene 1/event 7. The event-7 pass cannot make a
 fresh write from this pool. Whether a descriptor written earlier can carry
-into the selector, and whether a preexisting `FFE120` pointer reaches the
-first Scene-54 service pass, remain unresolved. The separate `0x22622` writer
-is now linked to Club Penumbra, but no Tarislar connection is established.
+into the selector remains unresolved. The Club Penumbra writer queues
+`0x1E628` before its route continues to Scene 17, where the common `0x043B6`
+service drains it; this source path supplies no carry into Scene 54. Whether
+another `FFE120` writer can reach the first Scene-54 service pass remains
+unresolved. No Tarislar connection is established.
 Scene completion and exit destination remain unresolved.
 The event-0 record has raw value `0x00C0`, so `0xB7B8` publishes event 0 in
 `FFFBF9`. In Scene-54 mode 3 it calls `0x1651E`; with D0=0, that helper returns

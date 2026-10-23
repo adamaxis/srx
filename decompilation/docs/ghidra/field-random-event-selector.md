@@ -103,21 +103,28 @@ disassembly. It debits 75 nuyen when available, then its Mako-activity gates
 require FFFC1E bit 10
 set, bit 11 clear, and either FFFC30 bit 21 or FFFC38 bit 3. It writes
 `0x1E628` to `FFE120`, selects resource profile `0x122000`, uses stream
-`0xF4CBC`, and sets the field-exit abort marker. The `0x43B6` list consumer
-installs timeout callback `0x53FFC` when it drains this pointer; that
-completion path marks Mako defeated. The menu node at `0x111316` contains
+`0xF4CBC`, then follows descriptor `0xF4CD0` before the field transition.
+When those story gates pass and the debit succeeds, `0x21A4E` leaves D1
+negative; `0x225D2` records `FFF0D6=-1`, queues the list, and clears D6.
+Shared exit helper `0x1FED2`
+preserves that clear D6, so finalizer `0x1FD80` allows Scene-3/event-0 row 0
+to continue to field scene 17. `0x02900` calls `0x04388`, which runs the
+common `0x043B6` world-frame service. It drains `FFE120` without checking the scene and
+installs timeout callback `0x53FFC`. The list's extracted Scene-47 table
+context does not override the traced Scene-17 route. The callback completion
+marks Mako defeated. The menu node at `0x111316` contains
 command `0x60` in its first choice slot at `0x111326`. Adjacent code at
 `0x225CA` loads `0x111316` into A0 and returns. The title stream `0x114A88` is
 the 75-nuyen entry-fee prompt, with first option `0x103A7A` (“Easy money,
 chummer. I'll pay”) and second option `0x104FEB` (“I'll talk to you later,
 chum”). The command-0x60 caller is traced to the Club Penumbra
 Scene-3/event-0 doorman branch in finalizer `0x1FD80`. The extractor indexes
-the same list under the Scene-47 activity-table context, but neither that
-asset grouping nor the common `0x43B6` consumer proves a scene transition from
-Club Penumbra. The new Club dialogue graph models the known entry checks and
-stops at a source boundary when this activity is eligible. Its final placement
-and any carry into Scene 54 remain unresolved. This is not a random-event
-selector result.
+the same list under the Scene-47 activity-table context, but the source exit
+sequence continues to Scene 17 and the common consumer has no scene transition.
+The Club dialogue graph models the entry checks and both Mako introduction
+pages. It stops at a source boundary before actor allocation and timeout
+completion, which are not implemented. This is not a random-event selector
+result.
 
 The linked ROM records confirm this is a Mako story route. Entry descriptor
 `0xF4CBC` points to text `0xF9718` (“Once inside, you inquire about Mako” and

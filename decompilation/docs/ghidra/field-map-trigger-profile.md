@@ -266,14 +266,16 @@ writes `0x1E628` after a successful 75-nuyen debit and its
 FFFC1E/FFFC30/FFFC38 story gates; code at `0x225CA` returns menu node
 `0x111316`, whose first-choice command at `0x111326` is `0x60`. The title asks
 for the 75-nuyen entry fee. The command-0x60 caller is the Club Penumbra
-Scene-3/event-0 finalizer. The list `0x1E628` is also present in the extracted
-Scene-47 activity-table context, but the Club route's activity placement is
-not established. Scene 54's six actors come from the separate default list at
+Scene-3/event-0 finalizer. On the qualifying Mako branch, `0x225D2` clears D6
+after queueing the list, so `0x1FD80` resumes event-table row 0 to Scene 17.
+The common `0x043B6` consumer runs from the field-frame service without a
+scene check; its Scene-47 extractor grouping is not a transition. Scene 54's
+six actors come from the separate default list at
    `FFDDF0`. The marker-1 route with
-   `FFE162` clear does not replace `FFE120`; whether a pending pointer can
-   carry into its first service pass remains unresolved. The `0x22622` writer
-   is linked to the Scene-3/event-0 Club Penumbra prompt, but no carry into
-   this Scene-54 route is established. The
+   `FFE162` clear does not replace `FFE120`. The Club writer's source route
+   reaches Scene 17, where the common service drains that list; it supplies no
+   carry into this Scene-54 route. Whether another upstream `FFE120` write can
+   carry into a Scene-54 service pass remains unresolved. The
    dispatched type-3
    handler at `0x1F086` compares `FFFBF8/FFFBF9` with `FFFBEE/FFFBEF`; on a
    match, target areas 1, 2, and 3-or-higher select lists `0x1D6D4A`,
