@@ -7,8 +7,8 @@
       "speakerId": "boris_greenhouse_narrator",
       "textProfile": "boris.greenhouse",
       "provenance": {
-        "romAddresses": ["0x53F8C", "0x1F246", "0x173110", "0x21B6A", "0x21B82", "0x21BE4", "0xF546C", "0xF95E2", "0xFE5BF", "0x21EB0"],
-        "scope": "scene_2_event_6_dialogue_with_partially_converted_strike_team_outcome"
+        "romAddresses": ["0x53F8C", "0x1F246", "0x173110", "0x21A32", "0x21A66", "0x21B6A", "0x21B82", "0x21BE4", "0x21C0C", "0xF52C0", "0xF52D8", "0xF52EC", "0xF54FC", "0xF5518", "0xF5534", "0xF9332", "0xF9385", "0xF9440", "0xF94C8", "0xF95E2", "0xFE5BF", "0x21EB0"],
+        "scope": "scene_2_event_6_passport_purchase_with_partially_converted_strike_team_outcome"
       },
       "nodes": {
         "alternate_result": {
@@ -144,7 +144,85 @@
         "story_answer": {
           "type": "page",
           "eventId": "story_answer",
-          "next": "stay_on_map"
+          "next": "story_services_menu"
+        },
+        "story_services_menu": {
+          "type": "choice",
+          "menuId": "story_services",
+          "promptTextKey": "boris.greenhouse.page.privacy_request",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "items", "next": "item_categories_menu" },
+            { "id": "information", "next": "information_offer_check" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "item_categories_menu": {
+          "type": "choice",
+          "menuId": "item_categories",
+          "promptTextKey": "boris.greenhouse.page.item_category_prompt",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "equipment", "next": "equipment_items_menu" },
+            { "id": "firearms", "next": "firearm_items_menu" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "equipment_items_menu": {
+          "type": "choice",
+          "menuId": "equipment_items",
+          "promptTextKey": "boris.greenhouse.page.equipment_inventory",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "passport", "next": "charge_passport" },
+            { "id": "maglock_passkey", "next": "maglock_passkey_boundary" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "firearm_items_menu": {
+          "type": "choice",
+          "menuId": "firearm_items",
+          "promptTextKey": "boris.greenhouse.page.firearm_inventory",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "mach_22", "next": "mach_22_boundary" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "charge_passport": {
+          "type": "action",
+          "actionId": "building.charge_amount",
+          "arguments": { "amount": 1000 },
+          "results": {
+            "paid": "mark_passport_owned",
+            "insufficient": "insufficient_funds"
+          },
+          "evidence": "ROM command 0x2D at 0x21C0C debits 1,000 nuyen and sets FFFC22 bit 1, the Indian Lands Visa group-item flag."
+        },
+        "mark_passport_owned": {
+          "type": "action",
+          "actionId": "item.set_group_flag",
+          "arguments": { "flagBit": 1, "value": true },
+          "next": "post_purchase_menu"
+        },
+        "post_purchase_menu": {
+          "type": "choice",
+          "menuId": "post_purchase",
+          "promptTextKey": "boris.greenhouse.page.purchase_confirmation",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "story", "next": "story_offer_check" },
+            { "id": "information", "next": "information_offer_check" },
+            { "id": "later", "next": "stay_on_map" }
+          ]
+        },
+        "maglock_passkey_boundary": {
+          "type": "source_boundary",
+          "reason": "ROM command 0x2E at 0x21C38 checks for a free runner item slot, charges 10,000 nuyen, and writes a rating-2 Maglock Passkey (item 0x14). The inventory purchase and return path are not converted yet."
+        },
+        "mach_22_boundary": {
+          "type": "source_boundary",
+          "reason": "ROM command 0x2F at 0x21C72 checks for a free runner item slot, charges 1,200 nuyen, and writes a Mach 22 SMG (item 0x0A). The inventory purchase and return path are not converted yet."
         },
         "insufficient_funds": {
           "type": "page",

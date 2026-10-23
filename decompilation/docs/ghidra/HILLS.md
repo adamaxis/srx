@@ -993,9 +993,10 @@ text at `0xF95E2` with the shared MORE prompt at `0xFE5BF`, and returns to Scene
 profile. Eight full 320×224 captures per build match byte-for-byte; the new
 `actual.bmp` is the field return with the spawned actors. These are internal
 regression frames, not independent Genesis visual proof. The hill remains
-partial: combat behavior and post-combat return are not defended. Item
-commands `0x2D`-`0x2F`, other deeper service outcomes, and independent Genesis
-dialogue frames are also open.
+partial: combat behavior and post-combat return are not defended. Command
+`0x2D` now covers the source-priced Indian Lands Visa purchase and same-map
+return; inventory commands `0x2E`/`0x2F`, other deeper service outcomes, and
+independent Genesis dialogue frames remain open.
 See [the Boris Greenhouse event-6 audit](visual-audits/boris-greenhouse-scene2-event6.md).
 
 ## Mako encounter through prompt command `0x60` (partial, 2026-10-23)

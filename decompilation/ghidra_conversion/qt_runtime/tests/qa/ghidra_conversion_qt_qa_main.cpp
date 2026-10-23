@@ -18098,6 +18098,17 @@ int run_field_boris_greenhouse_dialogue_qa(
         }
         return false;
     };
+    const auto panel_option_contains = [&field_scene](
+        const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.option_count; ++index) {
+            if (panel.options[index].source_label.find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
     const auto advance = [&field_scene](const std::string_view stage) {
         const auto result = field_scene.advance_stoker_dialogue_for_dump(
             0x4000U); // ordinary A edge
@@ -18108,15 +18119,17 @@ int run_field_boris_greenhouse_dialogue_qa(
         }
         return true;
     };
-    const auto finish = [&field_scene](const std::string_view stage) {
+    const auto finish_with_button = [&field_scene](
+        const std::string_view stage, const std::uint16_t button) {
         auto result = field_scene.advance_stoker_dialogue_for_dump(
-            0x4000U); // ordinary A edge
+            button);
         if (result == FieldDialogueAdvanceResult::typed_outcome_requested &&
             field_scene.dispatch_dialogue_outcome_for_dump()) {
             result = FieldDialogueAdvanceResult::returned_to_field;
         }
         if (result != FieldDialogueAdvanceResult::returned_to_field) {
-            std::cerr << "Boris Greenhouse QA: A did not finish " << stage
+            std::cerr << "Boris Greenhouse QA: button 0x" << std::hex
+                      << button << std::dec << " did not finish " << stage
                       << " (result=" << static_cast<int>(result) << ")\n";
             return false;
         }
@@ -18187,7 +18200,9 @@ int run_field_boris_greenhouse_dialogue_qa(
         return routed;
     };
 
-    field_scene.set_field_funds_for_dump(1000U);
+    // The 100 nuyen story offer plus the 1,000 nuyen passport leave exactly
+    // zero, covering the source helper's equal-balance success boundary.
+    field_scene.set_field_funds_for_dump(1100U);
     const bool service_opened = walk_into_greenhouse();
     if (!service_opened ||
         !field_scene.dialogue_open() ||
@@ -18219,16 +18234,79 @@ int run_field_boris_greenhouse_dialogue_qa(
     }
     if (!advance("story payment") ||
         field_scene.field_funds_for_dump() !=
-            std::optional<std::uint32_t>{900U} ||
+            std::optional<std::uint32_t>{1000U} ||
         !panel_contains("Boris Errascoe") ||
         !save("story-answer")) {
         std::cerr << "Boris Greenhouse QA: accepted story payment did not "
                      "debit 100 nuyen and show Boris' source answer\n";
         return 3;
     }
-    if (!finish("story answer") || field_scene.dialogue_open() ||
+    const bool story_more_advanced = advance("story answer");
+    if (!story_more_advanced ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !panel_contains("I request but one thing") ||
+        !panel_option_contains("What items do you have to offer?")) {
+        const auto& panel = field_scene.dialogue_panel();
+        std::cerr << "Boris Greenhouse QA: the post-story service menu did "
+                     "not preserve its ROM privacy prompt and item choice "
+                  << "(advanced=" << story_more_advanced
+                  << ", options=" << panel.option_count << ")\n";
+        for (std::size_t index = 0U; index < panel.text_segment_count;
+             ++index) {
+            std::cerr << "  segment[" << index << "]="
+                      << panel.text_segments[index] << '\n';
+        }
+        for (std::size_t index = 0U; index < panel.option_count; ++index) {
+            std::cerr << "  option[" << index << "]="
+                      << panel.options[index].source_label << '\n';
+        }
+        return 3;
+    }
+    if (!save("story-services-menu")) return 3;
+    if (!advance("story services menu") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !panel_option_contains("What equipment do you have?") ||
+        !panel_option_contains("What firearms do you have?") ||
+        !save("item-category-menu")) {
+        std::cerr << "Boris Greenhouse QA: the equipment/firearms menu did "
+                     "not follow the items choice\n";
+        return 3;
+    }
+    if (!advance("item category menu") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !panel_contains("passports for 1000$") ||
+        !panel_contains("level 2 Maglock passkey for 10,000$") ||
+        !panel_option_contains("I'll take a passport.") ||
+        !panel_option_contains("I'll take a Maglock passkey.") ||
+        !save("equipment-item-menu")) {
+        std::cerr << "Boris Greenhouse QA: the equipment offer did not show "
+                     "the source passport and passkey prices\n";
+        return 3;
+    }
+    if (!advance("passport item menu")) {
+        std::cerr << "Boris Greenhouse QA: the passport choice did not "
+                     "complete its source transaction\n";
+        return 3;
+    }
+    const auto purchased_group_items = field_scene.group_item_flags_for_dump();
+    if (field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{0U} ||
+        !purchased_group_items.has_value() ||
+        (*purchased_group_items & (1U << 1U)) == 0U ||
+        !panel_contains("downloads the nuyen") ||
+        !panel_contains("Pleasure doin' business") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !panel_option_contains("What's your story, chummer?") ||
+        !save("passport-purchase-confirmation")) {
+        std::cerr << "Boris Greenhouse QA: the 1,000 nuyen passport purchase "
+                     "did not apply the Visa flag and show its return menu\n";
+        return 3;
+    }
+    if (!finish_with_button("post-purchase later", 0x2000U) ||
+        field_scene.dialogue_open() ||
         field_scene.field_scene_reference_for_dump() != 2U) {
-        std::cerr << "Boris Greenhouse QA: closing the answer did not return "
+        std::cerr << "Boris Greenhouse QA: the post-purchase Later choice did "
+                     "not return "
                      "to Scene 2\n";
         return 3;
     }
@@ -18242,9 +18320,10 @@ int run_field_boris_greenhouse_dialogue_qa(
         return 3;
     }
     auto story = paid_snapshot->value(QStringLiteral("story")).toObject();
-    if (story.value(QStringLiteral("dialogue_flags")).toInt(-1) != 1) {
+    if (story.value(QStringLiteral("dialogue_flags")).toInt(-1) != 1 ||
+        story.value(QStringLiteral("group_item_flags")).toInt(-1) != 2) {
         std::cerr << "Boris Greenhouse QA: save did not persist FFFC26 bit 0 "
-                     "after the $100 purchase\n";
+                     "and FFFC22 Visa bit 1 after both purchases\n";
         return 3;
     }
     auto normalized_paid_snapshot = *paid_snapshot;
@@ -18257,6 +18336,7 @@ int run_field_boris_greenhouse_dialogue_qa(
     auto unpaid_snapshot = normalized_paid_snapshot;
     auto unpaid_story = unpaid_snapshot.value(QStringLiteral("story")).toObject();
     unpaid_story.insert(QStringLiteral("dialogue_flags"), 0);
+    unpaid_story.insert(QStringLiteral("group_item_flags"), 0);
     unpaid_snapshot.insert(QStringLiteral("story"), unpaid_story);
     if (!field_scene.restore_game_save_snapshot_for_dump(
             unpaid_snapshot, &snapshot_error)) {
@@ -18269,11 +18349,17 @@ int run_field_boris_greenhouse_dialogue_qa(
     if (!restored_unpaid.has_value() ||
         restored_unpaid->value(QStringLiteral("story")).toObject()
                 .value(QStringLiteral("dialogue_flags")).toInt(-1) != 0 ||
+        restored_unpaid->value(QStringLiteral("story")).toObject()
+                .value(QStringLiteral("group_item_flags")).toInt(-1) != 0 ||
         !field_scene.restore_game_save_snapshot_for_dump(
             normalized_paid_snapshot, &snapshot_error)) {
         std::cerr << "Boris Greenhouse QA: FFFC26 did not round-trip through "
                      "save restore: " << snapshot_error.toStdString() << '\n';
         return 3;
+    }
+    field_scene.set_controller_nibble(0U);
+    for (std::uint8_t settle = 0U; settle < 65U; ++settle) {
+        field_scene.advance_frame();
     }
 
     // Verify both the unpaid and paid byte values round-trip through the save
@@ -18287,10 +18373,12 @@ int run_field_boris_greenhouse_dialogue_qa(
     if (!restored_paid.has_value() ||
         restored_paid_story.value(QStringLiteral("dialogue_flags")).toInt(-1)
             != 1 ||
+        restored_paid_story.value(QStringLiteral("group_item_flags")).toInt(-1)
+            != 2 ||
         field_scene.field_funds_for_dump() !=
-            std::optional<std::uint32_t>{900U} ||
+            std::optional<std::uint32_t>{0U} ||
         !save("paid-state-restored") || !save("actual")) {
-        std::cerr << "Boris Greenhouse QA: paid FFFC26 state or funds did not "
+        std::cerr << "Boris Greenhouse QA: story/Visa state or funds did not "
                      "survive save restore: "
                   << snapshot_error.toStdString() << '\n';
         return 3;
@@ -18305,12 +18393,13 @@ int run_field_boris_greenhouse_dialogue_qa(
     std::ofstream route(output / "route.tsv", std::ios::trunc);
     if (!route) return 3;
     route << "scene\trecord\tevent\ttable_destination\tservice\t"
-             "dialogue_flag_byte\tphysical_trigger\tresult\n"
-          << "2\t87\t6\t26\t10@0x53F8C\tFFFC26=1\t"
-             "ordinary_up\tpaid_story_stays_on_scene_2\n";
+             "dialogue_flags\tgroup_item_flags\tdebit\tphysical_trigger\t"
+             "result\n"
+          << "2\t87\t6\t26\t10@0x53F8C\tFFFC26=1\tFFFC22=2\t"
+             "100+1000\tordinary_up\tpassport_purchase_returns_to_scene_2\n";
     std::cout << "field_boris_greenhouse_dialogue_qa=passed scene=2 event=6 "
-                 "service=10 same_map=yes story_payment=100 "
-                 "FFFC26_save_restore=yes artifacts="
+                 "service=10 same_map=yes story_payment=100 visa=1000 "
+                 "FFFC26_FFFC22_save_restore=yes artifacts="
               << output.string() << '\n';
     return 0;
 }

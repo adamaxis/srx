@@ -120,6 +120,40 @@
           "story": "boris.greenhouse.option.story"
         }
       },
+      "story_services": {
+        "choice_label_keys": {
+          "information": "boris.greenhouse.option.information",
+          "items": "boris.greenhouse.option.items",
+          "later": "boris.greenhouse.option.later"
+        }
+      },
+      "item_categories": {
+        "choice_label_keys": {
+          "equipment": "boris.greenhouse.option.equipment",
+          "firearms": "boris.greenhouse.option.firearms",
+          "later": "boris.greenhouse.option.later"
+        }
+      },
+      "equipment_items": {
+        "choice_label_keys": {
+          "maglock_passkey": "boris.greenhouse.option.maglock_passkey",
+          "later": "boris.greenhouse.option.later",
+          "passport": "boris.greenhouse.option.passport"
+        }
+      },
+      "firearm_items": {
+        "choice_label_keys": {
+          "later": "boris.greenhouse.option.later",
+          "mach_22": "boris.greenhouse.option.mach_22"
+        }
+      },
+      "post_purchase": {
+        "choice_label_keys": {
+          "information": "boris.greenhouse.option.information",
+          "later": "boris.greenhouse.option.later",
+          "story": "boris.greenhouse.option.story"
+        }
+      },
       "repeat_opening": {
         "choice_label_keys": {
           "information": "boris.greenhouse.option.information",

@@ -31,13 +31,21 @@ by a named Lua sequence; the field host then attempts the two spawns at open
 map-derived candidates before presenting the response page. Combat behavior and the
 post-combat return remain open. The later event-list placement coordinates are
 unrelated and are not used as substitutes.
-Commands `0x2D`-`0x2F` and their item-purchase return paths remain outside this
-implementation.
+The service-sales path continues from the $100 story answer through prompt
+groups `0xF52D8` and `0xF52EC`, then the goods prompt at `0xF54FC`. Equipment
+prompt `0xF5518` offers the passport and rating-2 passkey; firearm prompt
+`0xF5550` offers the Mach 22. Command `0x2D` at `0x21C0C` charges 1,000 nuyen
+through helper `0x21A4E`, sets FFFC22 bit 1 (Indian Lands Visa), and returns
+the purchase-confirmation/main-choice group at `0xF5534`. Its insufficient
+funds page is `0xF5AD8`/`0xF8A88`. Commands `0x2E` and `0x2F` remain explicit
+source boundaries: the first checks for a free item slot, charges 10,000, and
+writes item `0x14` at rating 2; the second checks a slot, charges 1,200, and
+writes item `0x0A`.
 
 ## Implementation and evidence
 
-`conversations/boris_greenhouse.json` owns the currently converted prompts,
-payment branches, topic conditions, and `continue_in_place` terminal.
+`conversations/boris_greenhouse.json` owns the converted prompts, payment and
+passport branches, topic conditions, and `continue_in_place` terminal.
 `conditions.json` keeps the signed alternate-result and ordered quest gates as
 named expressions. `boris_greenhouse.lua` registers only the named state
 mutations for the source commands. The entity link keeps the source table
@@ -48,17 +56,20 @@ profile binds `david_brother` to the extracted `0xF95E2` response and shared
 MORE prompt.
 
 The Boris Lua suite covers signed alternate-result pages, greetings, payment
-outcomes, ordered topic visibility and effects, unknown facts, and both
-available and unavailable results from the Strike Team counter service. Debug
-and Release Qt QA walk ordinary Up into Scene-2 record 87. The existing route
-runs the $100 story branch through its typed same-map return and verifies
-FFFC26 and nuyen across save restore. The focused command-`0x2C` route seeds the
-already-paid information byte and known topic facts, selects Information,
-David, and Brother? with ordinary buttons, verifies the counter increment and
-both spawned actors, captures the response, and dismisses back to Scene 2.
-Eight complete 320x224 captures per build match byte-for-byte; the CLI
-`actual.bmp` shows the Scene-2 return with both actors. These are internal
-regression frames, not independent Genesis visual proof. No independent
-Genesis dialogue frame has been identified. The route remains partial because
-combat completion and post-combat return are not converted. Commands `0x2D`-
-`0x2F` and their purchase returns remain open.
+outcomes, the passport purchase, ordered topic visibility and effects, unknown
+facts, and both available and unavailable Strike Team counter results. Debug
+and Release Qt QA walk ordinary Up into Scene-2 record 87, pay the $100 story
+fee, follow the source privacy and goods prompts, then buy the passport with
+exactly 1,000 nuyen remaining. It verifies FFFC26 bit 0, FFFC22 bit 1, the
+purchase confirmation/main-choice prompt, and both flag groups across save
+restore. Ten full 320x224 captures per build are compared byte-for-byte; the
+dialogue route's `actual.bmp` shows the Scene-2 return after the purchase. The
+focused command-`0x2C` route separately seeds the paid information byte and
+known topic facts, selects Information, David, and Brother? with ordinary
+buttons, verifies the counter increment and both spawned actors, captures the
+response, and dismisses back to Scene 2. The strike-team route's `actual.bmp`
+shows both actors active. These are internal regression frames, not independent
+Genesis visual proof. No independent Genesis dialogue frame has been
+identified. The route remains partial because combat completion and
+post-combat return are not converted; commands `0x2E`/`0x2F` and deeper service
+outcomes remain open.
