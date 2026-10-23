@@ -244,8 +244,10 @@ No screenshot-based scene-name claim should be made from the extracted map
 alone. The map has not been aligned to scene 9 coordinates. The Sinsearach
 route is source-connected and Lua-modeled, but needs focused physical-input
 QA, a full-frame actual.bmp, and independent visual evidence. Its command-0x49
-bit and runner-triplet effects are modeled; the nested 0x5D1F8 sequence remains
-open. Commands 0x39/0x3A select roots 0x11B6D4/0x11B6EC; their fare command
+bit and runner-triplet effects are modeled, and the three pages selected for
+the shared 0x5D1F6 routine now have a typed cinematic catalog entry. The native
+presenter and surrounding FFF0BE/FFE172 state writes remain open. Commands
+0x39/0x3A select roots 0x11B6D4/0x11B6EC; their fare command
 0x38 attempts 1,000 nuyen and selects the 0x11B51D or 0x11B450 group, with
 mode state 6 initialized after payment. The refusal return and final field
 transition remain unmodeled. Tarislar event-7 pending FFE162 state and

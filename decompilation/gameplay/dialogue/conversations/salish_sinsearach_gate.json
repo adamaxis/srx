@@ -13,7 +13,8 @@
           "0x11B5D8", "0x11B5F4", "0x11B610", "0x11B648", "0x11B664",
           "0x11B698", "0x11B6AC", "0x0F57E4", "0x0F57BC", "0x0F57D0",
           "0x0F57F8", "0x0F580C", "0x0F5820", "0x0F5834", "0x0F5848",
-          "0x0F585C", "0x220EA", "0x5D130", "0x5D1F8", "0x21E66",
+          "0x0F585C", "0x220EA", "0x5D130", "0x5D1F6", "0x0F5870",
+          "0x1FE690", "0x0FBAFB", "0x0FBBBD", "0x0FBC6E", "0x21E66",
           "0x21E8C", "0x21E9E", "0x21A4E", "0x136DE", "0x11B6D4",
           "0x11B6EC", "0x11B704", "0x11B70C", "0x11B450", "0x11B51D",
           "0x1050B0", "0x1050DC"
@@ -279,7 +280,7 @@
           "actionId": "runner.adjust_source_byte_triplet",
           "arguments": { "amount": 3 },
           "results": {
-            "applied": "frosty_command_49_sequence_boundary",
+            "applied": "frosty_harlequin_story_pages",
             "service_unavailable": "frosty_runner_state_boundary"
           },
           "evidence": "ROM helper 0x5D130 sets D0=3 and calls 0x59C34, which adds that byte to the three source runner fields."
@@ -292,9 +293,13 @@
           "type": "source_boundary",
           "reason": "ROM commands 0x39/0x3A select roots 0x11B6D4/0x11B6EC with response pointers 0x1050B0/0x1050DC. Fare command 0x38 at 0x21E66 attempts 1,000 nuyen: low funds selects 0x11B70C/0x11B51D; payment selects 0x11B704/0x11B450 and initializes mode state 6. The final field transition and refusal return are not reconstructed."
         },
-        "frosty_command_49_sequence_boundary": {
-          "type": "source_boundary",
-          "reason": "After the sourced FFFC34 bit changes and runner triplet +3, ROM 0x5D130 sets FFF0BE=9, selects data at 0x0F5870/0x1FE690, and calls 0x5D1F8. The nested sequence's presentation, state transition, and return behavior are not reconstructed."
+        "frosty_harlequin_story_pages": {
+          "type": "terminal",
+          "outcome": {
+            "type": "play_cinematic",
+            "cinematicId": "salish.sinsearach.frosty_harlequin_exposition",
+            "returnPolicy": "source_context"
+          }
         }
       }
     }

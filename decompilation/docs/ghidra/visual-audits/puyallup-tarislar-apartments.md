@@ -4,9 +4,11 @@ Status: **partial**. Scene 1/event 7 first visit, guarded leave, signed alternat
 repeat information service, and gated tomb departure are connected. The Scene 9
 mode-9/event-0 Sinsearach gate now has an entity-owned Lua dialogue route and
 JSON graph from the guard roots through Lady Gillian, command 0x44, and Frosty's
-first pages. The graph applies command 0x49's direct state changes, then stops
-at the nested 0x5D1F8 sequence boundary. This new route has no route-specific
-CTest or CLI actual.bmp yet, so it is not defended.
+first pages. The graph applies command 0x49's direct state changes and carries
+its three Harlequin exposition pages in a typed cinematic catalog entry for
+0x5D1F6. Host handling for the surrounding FFF0BE/FFE172 state writes and the
+native presenter are unfinished. This route has no route-specific CTest or
+CLI actual.bmp yet, so it is not defended.
 The pending FFE162 descriptor path and Scene 54 completion/return remain open.
 
 Mike's RPG Center labels Puyallup map marker 2 “Tarislar Garden Apartments.”
@@ -53,9 +55,12 @@ catalog's source policy explicitly authorizes a correction.
   at `0x21FD0`, which sets story bit 30 and opens `0xF57F8`. The Lua JSON
   graph now follows the guard, Lady Gillian, and Frosty pages up to
   command `0x49`, applying its FFFC34 bit-4 clear, bit-5 set, and runner
-  source-byte triplet `+3`. Helper `0x5D130` selects source data and enters
-  `0x5D1F8`; the nested sequence remains an explicit source boundary. No
-  route-specific CTest, CLI frame, or independent Genesis capture has been
+  source-byte triplet `+3`. Helper `0x5D130` writes FFF0BE=9, selects the
+  three-page table at `0x0F5870` and resources at `0x1FE690`, then calls the
+  shared story-page routine `0x5D1F6`. The cinematic catalog records the
+  Harlequin, Thon, and Tarislar pages with a source-context return policy.
+  Host handling for FFF0BE/FFE172 and native presentation remain unimplemented.
+  No route-specific CTest, CLI frame, or independent Genesis capture has been
   produced, so the gate hill remains partial.
 - Ilene prerequisite: Scene-2/event-0 service 19 at `0x543A2` requires story
   bits 18/19 = 1/0, `FFF0D5=0`, `FFFC34` bit 0 clear, and `FFFC38` bit 12 set.
@@ -205,9 +210,10 @@ destination, and no reverse route has been added.
 
 ## Next implementation evidence needed
 
-- Add focused Debug/Release CTest and physical-input QA for the Scene-9
-  mode-9/event-0 route, capture and inspect full 320x224 actual.bmp frames,
-  and de-engineer the `0x5D1F8` sequence before extending Frosty's graph.
+- Implement a native full-screen presenter for the catalogued three-page
+  sequence, trace the remaining FFF0BE/FFE172 state handling, and add focused
+  Debug/Release CTest and physical-input QA for the Scene-9 route. Capture and
+  inspect full 320x224 actual.bmp frames before defending the hill.
 - Wire and physically verify the source-confirmed Ilene continuation without
   flattening it into an unconditional Scene-20 entry.
 - Trace the complete `0xF4C44` dialogue and the world-context route that

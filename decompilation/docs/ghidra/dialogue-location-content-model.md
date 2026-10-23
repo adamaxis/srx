@@ -106,7 +106,7 @@ are:
 | `enter_field_scene` | Sharkey's paid travel offers; the Tarislar Tomb offer | Ends dialogue and enters a named scene after the typed destination is validated against the completed source service, using the named ROM arrival policy. |
 | `enter_activity` | No current JSON terminal | Ends a graph and requests a named activity. No activity target is currently registered; map/event-table routes use `resume_source_route` or `enter_field_scene` instead. |
 | `open_service` | Tarislar/Wylie/Stoker hotel options; Hospital Options | Ends the current graph and hands off to a separately owned service with an explicit return policy. Hotel and hospital targets are registered; shop, taxi, and Matrix targets still need source-backed bindings. |
-| `play_cinematic` | Spirit Eyes command `0x4A` | Ends dialogue and requests a named sequence with an explicit return policy. The ROM has a four-page story sequence after the dialogue; its host presenter is still pending. No surveyed building/phone terminal is proven to use this outcome. |
+| `play_cinematic` | Spirit Eyes command `0x4A`; Sinsearach command `0x49` | Ends dialogue and requests a named sequence with an explicit return policy. The ROM has a four-page Spirit Eyes ritual and a three-page Harlequin exposition; both host presenters are still pending. No surveyed building/phone terminal is proven to use this outcome. |
 | `source_boundary` | Unresolved encounter actor/effect handoffs; unresolved phone facts | Diagnostic state outside the normal game outcome union; retain source command/provenance and do not pretend the route completed. |
 
 ### Prompt and choice shapes

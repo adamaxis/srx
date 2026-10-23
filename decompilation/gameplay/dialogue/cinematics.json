@@ -1,6 +1,36 @@
 {
   "schemaVersion": 1,
   "cinematics": {
+    "salish.sinsearach.frosty_harlequin_exposition": {
+      "presentation": "full_screen_story_pages",
+      "assetProfileId": "salish.sinsearach.frosty_harlequin_exposition",
+      "inputContract": "controller_event",
+      "returnPolicy": "source_context",
+      "provenance": {
+        "romAddresses": [
+          "0x5D130", "0x5D1F6", "0x0F5870", "0x1FE690",
+          "0x0FBAFB", "0x0FBBBD", "0x0FBC6E"
+        ],
+        "scope": "command_0x49_harlequin_story_page_sequence"
+      },
+      "pages": [
+        {
+          "id": "harlequin_request",
+          "textKey": "salish.sinsearach.page.harlequin_request",
+          "provenance": { "romAddress": "0x0FBAFB" }
+        },
+        {
+          "id": "thon_presence",
+          "textKey": "salish.sinsearach.page.thon_presence",
+          "provenance": { "romAddress": "0x0FBBBD" }
+        },
+        {
+          "id": "tarislar_apartments",
+          "textKey": "salish.sinsearach.page.tarislar_apartments",
+          "provenance": { "romAddress": "0x0FBC6E" }
+        }
+      ]
+    },
     "salish.spirit_eyes.ritual_of_binding": {
       "presentation": "full_screen_story_pages",
       "assetProfileId": "salish.spirit_eyes.ritual_sequence",

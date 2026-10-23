@@ -1448,6 +1448,9 @@
     "salish.sinsearach.page.guard_later_offer": "If you wish, I could call one of our copts off patrol to fly you back to the highway.||It'll cost you 1,000$ though.||So, do you need a lift?",
     "salish.sinsearach.page.guard_questions": "Make it quick.||I'm an extreme xenophobe with wired reflexes!",
     "salish.sinsearach.page.guard_return_offer": "<The guard shows you back to the front gate.>||If you wish, I could call one of our copts off patrol to fly you back to the highway.||It'll cost you 1,000$ though.||So, do you need a lift?",
-    "salish.sinsearach.page.lady_gillian_greeting": "<Lady Gillian greets you.>||Hello, friend-Joshua!||How may I help you?"
+    "salish.sinsearach.page.harlequin_request": "      My master is Harlequin.|| It was he who asked me to find a|team to go into the Salish-Shidhe.||  Although some say he is crazy,|  he has a plan and the ability|     to see it carried out.",
+    "salish.sinsearach.page.lady_gillian_greeting": "<Lady Gillian greets you.>||Hello, friend-Joshua!||How may I help you?",
+    "salish.sinsearach.page.tarislar_apartments": "     You can find him in the|     Puyallup Barrens at the|   Tarislar Garden Apartments.",
+    "salish.sinsearach.page.thon_presence": "  Harlequin seeks to end Thon's|      presence in this world,|     but I have said all I can|         on that subject.||      I think it is time you|       talk with Harlequin."
   }
 }
