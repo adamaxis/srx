@@ -278,7 +278,11 @@ controller-advanced credits text panels. Their ordered source blocks begin at
 row breaks and ends at `0xFF`. The offline all-assets importer now has a writer
 for their ordered, space-preserving rows at
 `assets/cinematics/tarislar-tomb-credits.json`; that generated asset is pending
-an importer run. When the callback returns, the outer loop recognizes
+an importer run. Text entry thunks `0x5C472`, `0x5C486`, and `0x5C49A` share a
+top row; `0x5C4AE` and `0x5C4C2` start four and three rows lower. The shared
+text routine at `0xC0DA` advances one row for each `0x80` marker, so the host
+asset stores relative row offsets instead of source VDP addresses. When the
+callback returns, the outer loop recognizes
 `0x5BAC4` at `0x0B44` and branches through `0x0BA6`/`0x078A` to the main title
 path. The response's next-record pointer is not consumed by this callback.
 The native fight trigger, credit presenter, and cleanup remain unimplemented;

@@ -503,9 +503,11 @@ text panels, then returns through the main title path. Their source-ordered
 text blocks begin at `0x5CA92`, `0x5CBFB`, `0x5CF9B`, `0x5CD82`, and `0x5CE80`;
 the offline all-assets importer now has a writer for their space-preserving
 rows at `cinematics/tarislar-tomb-credits.json`, retaining `0x80` row breaks
-and `0xFF` panel terminators. That generated asset is pending an importer run.
-The native fight-completion trigger and presentation are still absent; this
-partial slice has no CTest or actual.bmp.
+and `0xFF` panel terminators. The first three source text entries share a top
+row; the fourth and fifth start four and three rows below it. These relative
+offsets are included as host layout data. The generated asset is pending an
+importer run. The native fight-completion trigger and presenter are still
+absent; this partial slice has no CTest or actual.bmp.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).

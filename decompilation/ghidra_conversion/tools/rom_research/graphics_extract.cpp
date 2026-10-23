@@ -1096,20 +1096,25 @@ void write_tarislar_tomb_credits_asset(
         std::size_t source_offset;
         std::size_t encoded_size;
         std::size_t expected_line_count;
+        std::size_t top_row_offset;
     };
     // Callback 0x5BAC4 presents these text blocks in this order and waits for
     // a controller event between blocks. 0x80 ends a row; 0xFF ends a panel.
     // Keep the row padding because it is part of the original credit layout.
+    // The 0x5C472/0x5C486/0x5C49A entry thunks share a top row; 0x5C4AE and
+    // 0x5C4C2 start four and three rows lower. Store only those relative host
+    // layout offsets, not the VDP addresses passed to 0xC0DA.
     constexpr std::array<CreditPanelRecord, 5> kPanels{{
-        {"opening_and_game_design", "0x5CA92", 0x5CA92U, 0x168U, 22U},
+        {"opening_and_game_design", "0x5CA92", 0x5CA92U, 0x168U, 22U,
+         0U},
         {"additional_programming_and_art", "0x5CBFB", 0x5CBFBU,
-         0x186U, 23U},
+         0x186U, 23U, 0U},
         {"story_music_and_lead_testing", "0x5CF9B", 0x5CF9BU,
-         0x141U, 23U},
+         0x141U, 23U, 0U},
         {"additional_testing_part_1", "0x5CD82", 0x5CD82U,
-         0x0FDU, 15U},
+         0x0FDU, 15U, 4U},
         {"additional_testing_part_2_and_producer", "0x5CE80", 0x5CE80U,
-         0x11AU, 18U},
+         0x11AU, 18U, 3U},
     }};
 
     const auto path = root / "cinematics" / "tarislar-tomb-credits.json";
@@ -1166,7 +1171,8 @@ void write_tarislar_tomb_credits_asset(
         write_json_string(output, panel.id);
         output << ", \"romAddress\": ";
         write_json_string(output, panel.rom_address);
-        output << ", \"lines\": [";
+        output << ", \"topRowOffset\": " << panel.top_row_offset
+               << ", \"lines\": [";
         for (std::size_t line_index = 0U; line_index < lines.size();
              ++line_index) {
             if (line_index != 0U) {
