@@ -3895,6 +3895,64 @@ struct GameScriptRuntime::Impl {
         return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
     }
 
+    static int ui_story_page(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        if (self == nullptr || self->task_state != lua ||
+            self->task_waiting || self->pending_task_operation.has_value() ||
+            self->active_native_operation.has_value()) {
+            if (self != nullptr) {
+                self->bridge_failure =
+                    "game.ui.story_page must run inside an active task";
+            }
+            lua_pushboolean(lua, 0);
+            return 1;
+        }
+
+        std::string asset_alias;
+        std::string text_key;
+        std::uint32_t origin_x = 0U;
+        std::uint32_t origin_y = 0U;
+        std::uint32_t columns = 0U;
+        std::uint32_t rows = 0U;
+        std::array<std::uint32_t, 3> ink_rgb{};
+        const bool valid =
+            lua_gettop(lua) == 9 &&
+            read_string(lua, 1, asset_alias) &&
+            valid_identifier(asset_alias) &&
+            read_string(lua, 2, text_key) && valid_identifier(text_key) &&
+            read_integer(lua, 3, 319U, origin_x) &&
+            read_integer(lua, 4, 223U, origin_y) &&
+            read_integer(lua, 5, 40U, columns) && columns != 0U &&
+            read_integer(lua, 6, 28U, rows) && rows != 0U &&
+            read_integer(lua, 7, 255U, ink_rgb[0]) &&
+            read_integer(lua, 8, 255U, ink_rgb[1]) &&
+            read_integer(lua, 9, 255U, ink_rgb[2]);
+        if (!valid) {
+            self->bridge_failure =
+                "game.ui.story_page expects an asset alias, text key, bounded text layout, and RGB8 ink";
+            lua_pushboolean(lua, 0);
+            return 1;
+        }
+
+        ScriptNativeOperation operation{};
+        operation.type = ScriptNativeOperation::Type::ui_story_page;
+        ScriptNativeOperation::StoryPageRequest request{};
+        request.asset_alias = std::move(asset_alias);
+        request.text_key = std::move(text_key);
+        request.origin_x = static_cast<std::uint16_t>(origin_x);
+        request.origin_y = static_cast<std::uint16_t>(origin_y);
+        request.columns = static_cast<std::uint8_t>(columns);
+        request.rows = static_cast<std::uint8_t>(rows);
+        for (std::size_t index = 0U; index < request.ink_rgb.size(); ++index) {
+            request.ink_rgb[index] =
+                static_cast<std::uint8_t>(ink_rgb[index]);
+        }
+        operation.story_page = std::move(request);
+        self->pending_task_operation = std::move(operation);
+        self->task_waiting = true;
+        return lua_yieldk(lua, 0, 0, actor_walk_heading_continuation);
+    }
+
     static int services_call(lua_State* lua) {
         auto* self = from_upvalue(lua);
         if (self == nullptr || self->task_state != lua ||
@@ -4123,6 +4181,9 @@ struct GameScriptRuntime::Impl {
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, ui_say_text, 1);
         lua_setfield(state, -2, "say_text");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, ui_story_page, 1);
+        lua_setfield(state, -2, "story_page");
         lua_setfield(state, -2, "ui");
         lua_newtable(state);
         lua_pushlightuserdata(state, this);
@@ -10005,7 +10066,9 @@ ScriptTaskStep GameScriptRuntime::complete_native_operation(
         (impl_->active_native_operation->type !=
              ScriptNativeOperation::Type::actor_walk_heading &&
          impl_->active_native_operation->type !=
-             ScriptNativeOperation::Type::ui_say)) {
+             ScriptNativeOperation::Type::ui_say &&
+         impl_->active_native_operation->type !=
+             ScriptNativeOperation::Type::ui_story_page)) {
         return impl_->failed_task(
             "gameplay script task is not waiting for a resumable operation");
     }

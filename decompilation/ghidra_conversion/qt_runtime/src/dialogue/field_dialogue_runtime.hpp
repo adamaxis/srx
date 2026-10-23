@@ -126,7 +126,7 @@ public:
     bool uses_hospital_medical_attention_layout() const noexcept;
 
     void close() noexcept;
-    bool open() const noexcept { return panel_.open; }
+    bool open() const noexcept { return panel_.open || story_page_open_; }
     const DialoguePanelView& panel() const noexcept { return panel_; }
     const std::string& failure() const noexcept { return failure_; }
 
@@ -164,6 +164,9 @@ private:
     // moves a cursor over the rows and A/B/C confirm the highlighted row.
     bool hosted_choice_list_ = false;
     bool script_task_waiting_ = false;
+    bool story_page_open_ = false;
+    std::string story_page_asset_alias_;
+    std::string story_page_text_;
     std::uint8_t input_lockout_frames_ = 0U;
     std::optional<std::uint8_t> pending_matrix_entry_system_id_;
     std::optional<std::uint8_t> pending_matrix_entry_node_id_;

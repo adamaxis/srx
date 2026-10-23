@@ -23,6 +23,11 @@ public:
     bool load_assets(const ConversionAssetCatalog& assets);
     const std::string& failure() const noexcept { return failure_; }
     void paint(QPainter& painter, const DialoguePanelView& panel) const;
+    bool has_story_page_asset(std::string_view asset_alias) const;
+    void paint_story_page(QPainter& painter, std::string_view asset_alias,
+                          std::string_view text, int text_x, int text_y,
+                          int text_columns, int text_rows,
+                          QColor text_ink) const;
 
 private:
     void draw_pixel_text(QPainter& painter, int x, int y,
@@ -36,6 +41,7 @@ private:
     std::array<QImage, 3> option_markers_{};
     QImage cursor_marker_;
     std::unordered_map<std::string, QImage> portraits_;
+    std::unordered_map<std::string, QImage> story_page_assets_;
     QImage font_;
     std::string failure_;
 };

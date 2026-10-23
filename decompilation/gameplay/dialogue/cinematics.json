@@ -4,6 +4,14 @@
     "salish.sinsearach.frosty_harlequin_exposition": {
       "presentation": "full_screen_story_pages",
       "assetProfileId": "salish.sinsearach.frosty_harlequin_exposition",
+      "assetAlias": "cinematic.salish.sinsearach.frosty_harlequin_exposition.art",
+      "textLayout": {
+        "x": 24,
+        "y": 16,
+        "columns": 37,
+        "rows": 8,
+        "inkRgb": [255, 0, 255]
+      },
       "inputContract": "controller_event",
       "returnPolicy": "source_context",
       "provenance": {
@@ -33,7 +41,15 @@
     },
     "salish.spirit_eyes.ritual_of_binding": {
       "presentation": "full_screen_story_pages",
-      "assetProfileId": "salish.spirit_eyes.ritual_sequence",
+      "assetProfileId": "salish.spirit_eyes.ritual_of_binding",
+      "assetAlias": "cinematic.salish.spirit_eyes.ritual_of_binding.art",
+      "textLayout": {
+        "x": 24,
+        "y": 16,
+        "columns": 37,
+        "rows": 6,
+        "inkRgb": [255, 0, 255]
+      },
       "inputContract": "controller_event",
       "returnPolicy": "source_context",
       "provenance": {

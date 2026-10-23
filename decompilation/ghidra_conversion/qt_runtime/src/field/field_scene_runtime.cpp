@@ -17887,6 +17887,11 @@ void FieldSceneRuntime::register_dialogue_outcome_handlers() {
                 return handle_dialogue_continue_in_place(outcome);
             }) &&
         dialogue_outcome_dispatcher_.register_type_handler<
+            scripting::PlayCinematicOutcome>(
+            [this](const scripting::PlayCinematicOutcome& outcome) {
+                return handle_dialogue_play_cinematic(outcome);
+            }) &&
+        dialogue_outcome_dispatcher_.register_type_handler<
             scripting::ResumeSourceRouteOutcome>(
             [this](const scripting::ResumeSourceRouteOutcome& outcome) {
                 return handle_dialogue_resume_source_route(outcome);
@@ -17966,6 +17971,18 @@ bool FieldSceneRuntime::handle_dialogue_continue_in_place(
     advance_field_scene_transition_after_modal();
     begin_field_modal_return_transition();
     return true;
+}
+
+bool FieldSceneRuntime::handle_dialogue_play_cinematic(
+    const scripting::PlayCinematicOutcome& outcome) {
+    if (!ready_ || outcome.cinematic_id.empty() ||
+        outcome.return_policy != "source_context") {
+        return false;
+    }
+    source_boundary("field.dialogue.cinematic.completed:" +
+                    outcome.cinematic_id);
+    return handle_dialogue_continue_in_place(
+        scripting::ContinueInPlaceOutcome{});
 }
 
 bool FieldSceneRuntime::handle_dialogue_resume_source_route(

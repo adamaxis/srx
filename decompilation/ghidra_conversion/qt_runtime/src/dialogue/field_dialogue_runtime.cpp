@@ -181,7 +181,7 @@ bool FieldDialogueRuntime::open_stoker_interaction() {
 
 bool FieldDialogueRuntime::open_gameplay_task(
     const std::string_view module, const std::string_view function) {
-    if (panel_.open) {
+    if (open()) {
         return false;
     }
     return start_script_task(module, function,
@@ -375,6 +375,9 @@ bool FieldDialogueRuntime::present_script_operation(
     active_script_operation_ = operation;
     active_script_menu_.reset();
     hosted_choice_list_ = false;
+    story_page_open_ = false;
+    story_page_asset_alias_.clear();
+    story_page_text_.clear();
     script_task_waiting_ = true;
     if (operation.type == scripting::ScriptNativeOperation::Type::ui_say) {
         if (!operation.dialogue.has_value()) {
@@ -464,6 +467,44 @@ bool FieldDialogueRuntime::present_script_operation(
                 panel_.has_more ? DialogueInputLockout::none
                                 : DialogueInputLockout::closing_page);
         }
+        return true;
+    }
+    if (operation.type ==
+        scripting::ScriptNativeOperation::Type::ui_story_page) {
+        if (!operation.story_page.has_value() || script_runtime_ == nullptr) {
+            return open_source_boundary(
+                "dialogue script emitted an incomplete story-page request");
+        }
+        const auto& story_page = *operation.story_page;
+        const auto* text =
+            script_runtime_->dialogue_text(story_page.text_key);
+        const auto text_width =
+            static_cast<std::uint32_t>(story_page.columns) * 8U;
+        const auto text_height =
+            static_cast<std::uint32_t>(story_page.rows) * 8U;
+        if (!presenter_.has_story_page_asset(story_page.asset_alias)) {
+            return open_source_boundary(
+                "cinematic story-page art alias is unavailable: " +
+                story_page.asset_alias);
+        }
+        if (text == nullptr || text->empty()) {
+            return open_source_boundary(
+                "cinematic story-page text key is unavailable: " +
+                story_page.text_key);
+        }
+        if (static_cast<std::uint32_t>(story_page.origin_x) + text_width >
+                320U ||
+            static_cast<std::uint32_t>(story_page.origin_y) + text_height >
+                224U) {
+            return open_source_boundary(
+                "cinematic story-page text layout exceeds the host frame");
+        }
+        panel_ = DialoguePanelView{};
+        panel_.source_complete = true;
+        story_page_asset_alias_ = story_page.asset_alias;
+        story_page_text_ = *text;
+        story_page_open_ = true;
+        input_lockout_frames_ = 0U;
         return true;
     }
     if (operation.type == scripting::ScriptNativeOperation::Type::ui_menu &&
@@ -727,6 +768,9 @@ bool FieldDialogueRuntime::open_source_boundary(std::string reason) {
     active_script_menu_.reset();
     hosted_choice_list_ = false;
     script_task_waiting_ = false;
+    story_page_open_ = false;
+    story_page_asset_alias_.clear();
+    story_page_text_.clear();
     hotel_options_menu_follows_ = false;
     if (source_boundary_callback_) {
         source_boundary_callback_(panel_.source_boundary_reason);
@@ -752,7 +796,7 @@ bool FieldDialogueRuntime::consume_input_lockout_frame() noexcept {
 
 FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     const std::uint16_t event_word) {
-    if (!panel_.open || event_word == 0U) {
+    if (!open() || event_word == 0U) {
         return FieldDialogueAdvanceResult::waiting_for_controller;
     }
     const bool cursor_menu = active_script_menu_.has_value() &&
@@ -766,9 +810,11 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
     constexpr std::uint16_t kControllerDirectionEvents = 0x0F00U;
     const bool closing_say_page =
         (active_script_operation_.has_value() &&
-         active_script_operation_->type ==
-             scripting::ScriptNativeOperation::Type::ui_say &&
-         !panel_.has_more) ||
+         ((active_script_operation_->type ==
+               scripting::ScriptNativeOperation::Type::ui_say &&
+           !panel_.has_more) ||
+          active_script_operation_->type ==
+              scripting::ScriptNativeOperation::Type::ui_story_page)) ||
         (!active_script_operation_.has_value() &&
          !active_script_menu_.has_value() &&
          panel_.kind != DialoguePanelKind::source_boundary &&
@@ -786,10 +832,15 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         return FieldDialogueAdvanceResult::source_boundary;
     }
 
-    if (active_script_operation_.has_value() &&
-        active_script_operation_->type ==
-            scripting::ScriptNativeOperation::Type::ui_say) {
-        if (panel_.has_more && (event_word & kControllerAEvent) == 0U) {
+    const bool active_script_page = active_script_operation_.has_value() &&
+        (active_script_operation_->type ==
+             scripting::ScriptNativeOperation::Type::ui_say ||
+         active_script_operation_->type ==
+             scripting::ScriptNativeOperation::Type::ui_story_page);
+    if (active_script_page) {
+        if (active_script_operation_->type ==
+                scripting::ScriptNativeOperation::Type::ui_say &&
+            panel_.has_more && (event_word & kControllerAEvent) == 0U) {
             return FieldDialogueAdvanceResult::waiting_for_controller;
         }
         if (!script_task_waiting_ || script_runtime_ == nullptr) {
@@ -1428,6 +1479,9 @@ void FieldDialogueRuntime::close() noexcept {
     active_script_menu_.reset();
     hosted_choice_list_ = false;
     script_task_waiting_ = false;
+    story_page_open_ = false;
+    story_page_asset_alias_.clear();
+    story_page_text_.clear();
     pending_matrix_entry_system_id_.reset();
     pending_matrix_entry_node_id_.reset();
     inline_task_advance_result_.reset();
@@ -1497,6 +1551,21 @@ bool FieldDialogueRuntime::uses_hospital_medical_attention_layout()
 }
 
 void FieldDialogueRuntime::paint(QPainter& painter) const {
+    if (story_page_open_) {
+        const auto* operation = active_script_operation_.has_value()
+            ? &*active_script_operation_
+            : nullptr;
+        if (operation != nullptr && operation->story_page.has_value()) {
+            const auto& layout = *operation->story_page;
+            presenter_.paint_story_page(
+                painter, story_page_asset_alias_, story_page_text_,
+                layout.origin_x, layout.origin_y, layout.columns,
+                layout.rows,
+                QColor(layout.ink_rgb[0], layout.ink_rgb[1],
+                       layout.ink_rgb[2]));
+        }
+        return;
+    }
     presenter_.paint(painter, panel_);
 }
 

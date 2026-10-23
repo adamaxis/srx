@@ -79,17 +79,35 @@ records directly. It expects a different three-pointer field portrait record
 pattern bank at `0x57A0`. Passing either story-page profile to it produced a
 fully transparent frame because the first two words were interpreted as
 palette/pattern pointers. That output is discarded and is not a cinematic
-asset. The correct page-specific pattern placement, layout bounds, resource
-roles, and full-screen composition still need to be recovered before writing
-named host art.
+asset.
 
-The host currently has neither a named asset set under `assets/movies/` nor
-a full-screen story-page presenter. Do not substitute the field NPC panel or
-invent a background. The next implementation slice is to trace and extract
-these selected resources into individually named host assets, then let Lua
-own the ordered page sequence while the host presents one page and forwards
-focused input. `play_cinematic` remains an unhandled typed outcome until that
-path can complete and return to its source context.
+`tools/rom_research/extract_cinematic_story_art.py` now imports the two
+catalogued profiles offline. It expands the tagged `0x1530` pattern stream,
+checks each `0x1728` tile reference against that profile's uploaded tile
+range, resolves the profile CRAM palette, and writes the named 320x224 host
+images `assets/cinematics/salish-sinsearach-frosty-harlequin.bmp` and
+`assets/cinematics/salish-spirit-eyes-ritual.bmp`. Their art rectangles are
+37x18 tiles at pixel (24,80) and 40x16 tiles at (0,96), respectively. Each
+asset is the source layout over a black host canvas; the runtime does not
+decode ROM streams or reproduce VDP operations.
+
+The page text contract is represented in `cinematics.json`. The shared loop
+calls `0xC0DA` with placement word `0x2106`, which resolves to pixel (24,16)
+on the 64-column plane. Page text retains its source-derived spaces and `|`
+row breaks. D1=`0x6000` selects palette bank 3; CRAM entry 48 is `0x0E0E` in
+both profiles, so the text ink is magenta. The clear routine writes ten rows
+for FFF0BE=9 and eight rows for FFF0BE=7; after the two-row text origin this
+leaves eight Harlequin rows and six Spirit Eyes rows. The host catalog records
+those bounds and RGB ink instead of retaining a palette or plane simulator.
+
+Lua now owns each ordered page operation and yields a typed story-page request
+with its named art alias and text key. The Qt dialogue presenter draws that
+art with the extracted field font and waits for any focused controller event
+before Lua advances. After the last page, `play_cinematic` completes through
+the typed source-context return handler. The routes remain partial: route
+CTest and CLI `actual.bmp` evidence have not been added, and no independent
+Genesis encounter frame has been identified. These BMPs are source-derived
+assets, not independent visual proof.
 
 ## Source references
 

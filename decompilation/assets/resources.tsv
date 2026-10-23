@@ -868,6 +868,8 @@ dialogue.panel.frame.alternate.left.panel	dialogue/panel/frame-alternate-left-pa
 dialogue.panel.button.a	dialogue/panel/button-a.bmp	image	0	0
 dialogue.panel.button.b	dialogue/panel/button-b.bmp	image	0	0
 dialogue.panel.button.c	dialogue/panel/button-c.bmp	image	0	0
+cinematic.salish.sinsearach.frosty_harlequin_exposition.art	cinematics/salish-sinsearach-frosty-harlequin.bmp	image	24	80
+cinematic.salish.spirit_eyes.ritual_of_binding.art	cinematics/salish-spirit-eyes-ritual.bmp	image	0	96
 field.hud.background	field/hud/background.bmp	image	0	0
 field.mode.entry.ares.sprite	field/mode-entry/ares-sprite.bmp	image	0	0
 field.mode.entry.renraku.arcology.sprite	field/mode-entry/renraku-arcology-sprite.bmp	image	0	0

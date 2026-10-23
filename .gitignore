@@ -67,6 +67,8 @@
 !/decompilation/assets/startup/**/*.bmp
 !/decompilation/assets/intro/
 !/decompilation/assets/intro/**/*.bmp
+!/decompilation/assets/cinematics/
+!/decompilation/assets/cinematics/**/*.bmp
 !/decompilation/assets/field/
 !/decompilation/assets/field/**/*.bmp
 !/decompilation/assets/field/maps/*-priority-overlay.png

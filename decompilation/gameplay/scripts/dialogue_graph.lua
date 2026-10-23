@@ -294,10 +294,40 @@ local function validate_cinematic_document(document)
         assert(is_identifier(cinematic_id) and type(cinematic) == "table" and
                is_identifier(cinematic.presentation) and
                is_identifier(cinematic.assetProfileId) and
+               is_identifier(cinematic.assetAlias) and
                is_identifier(cinematic.inputContract) and
                is_identifier(cinematic.returnPolicy) and
+               type(cinematic.textLayout) == "table" and
+               type(cinematic.textLayout.x) == "number" and
+               cinematic.textLayout.x % 1 == 0 and
+               cinematic.textLayout.x >= 0 and cinematic.textLayout.x <= 319 and
+               type(cinematic.textLayout.y) == "number" and
+               cinematic.textLayout.y % 1 == 0 and
+               cinematic.textLayout.y >= 0 and cinematic.textLayout.y <= 223 and
+               type(cinematic.textLayout.columns) == "number" and
+               cinematic.textLayout.columns % 1 == 0 and
+               cinematic.textLayout.columns >= 1 and
+               cinematic.textLayout.columns <= 40 and
+               type(cinematic.textLayout.rows) == "number" and
+               cinematic.textLayout.rows % 1 == 0 and
+               cinematic.textLayout.rows >= 1 and
+               cinematic.textLayout.rows <= 28 and
+               is_array(cinematic.textLayout.inkRgb) and
+               #cinematic.textLayout.inkRgb == 3 and
+               type(cinematic.textLayout.inkRgb[1]) == "number" and
+               type(cinematic.textLayout.inkRgb[2]) == "number" and
+               type(cinematic.textLayout.inkRgb[3]) == "number" and
                is_array(cinematic.pages) and #cinematic.pages > 0,
             "cinematic definition is malformed: " .. tostring(cinematic_id))
+        for _, channel in ipairs(cinematic.textLayout.inkRgb) do
+            assert(channel % 1 == 0 and channel >= 0 and channel <= 255,
+                "cinematic text ink is outside RGB8 range: " ..
+                tostring(cinematic_id))
+        end
+        assert(cinematic.presentation == "full_screen_story_pages" and
+               cinematic.inputContract == "controller_event",
+            "cinematic presentation contract is unsupported: " ..
+            tostring(cinematic_id))
         validate_provenance(cinematic.provenance)
         local seen_pages = {}
         for _, page in ipairs(cinematic.pages) do
@@ -561,6 +591,26 @@ function Session:run(graph_id, context)
             for key, value in pairs(node.outcome) do
                 outcome[key] = value
             end
+            if outcome.type == "play_cinematic" then
+                local cinematic = self.catalog.cinematics[outcome.cinematicId]
+                if cinematic == nil then
+                    return self:_boundary(
+                        graph_id, node_id, "cinematic_catalog_entry_missing")
+                end
+                if type(self.host.present_story_page) ~= "function" then
+                    return self:_boundary(
+                        graph_id, node_id, "story_page_presenter_unavailable")
+                end
+                for _, page in ipairs(cinematic.pages) do
+                    if self.host.present_story_page(
+                           cinematic.assetAlias, page.textKey,
+                           cinematic.textLayout) ~= true then
+                        return self:_boundary(
+                            graph_id, node_id,
+                            "story_page_presentation_failed:" .. page.id)
+                    end
+                end
+            end
             return outcome
         elseif node.type == "source_boundary" then
             return {
@@ -635,6 +685,12 @@ function DialogueGraph.run(graph_id, registered_actions, invocation_context)
             return game.ui.say(node.eventId, speaker_id, text_profile,
                                node.presentation or "field_npc",
                                node.inputDelayFrames or 0)
+        end,
+        present_story_page = function(asset_alias, text_key, layout)
+            return game.ui.story_page(
+                asset_alias, text_key, layout.x, layout.y,
+                layout.columns, layout.rows, layout.inkRgb[1],
+                layout.inkRgb[2], layout.inkRgb[3])
         end,
         present_choice = function(node, choice_ids, speaker_id,
                                   text_profile, selected_index)

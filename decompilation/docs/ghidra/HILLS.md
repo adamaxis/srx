@@ -865,9 +865,10 @@ missing/present horn, pelt, and scale branches and their ordered item, story,
 FFFC30, and FFFC40 effects. Scale completion records the `0xF51A8` page and a
 typed `play_cinematic` result for command `0x4A`/`0x5D172`. A new
 `cinematics.json` catalog records its four ordered ROM text pages, controller
-input contract, resource-profile ID, and source-context return policy. The
-field dispatcher still leaves the sequence at an explicit boundary because
-the named assets and native full-screen presenter are not implemented. The
+input contract, resource-profile ID, named art alias, text layout, and
+source-context return policy. The profile art is extracted to an individually
+named 320x224 BMP, and Lua yields each page to the typed full-screen presenter;
+the final typed outcome returns through the source-context modal path. The
 bit-9 repeat route is limited to the single text-only page consumed by the
 shared prompt runner; the adjacent four pointers are consumed by the separate
 cinematic sequence.
@@ -940,12 +941,12 @@ bit-30 effect and opening pages. It applies command `0x49`'s FFFC34 bit-4
 clear and bit-5 set, plus a runner source-byte triplet `+3`. ROM helper
 `0x5D130` writes FFF0BE=9, selects the three-page table at `0x0F5870` with
 resources at `0x1FE690`, and calls the shared story-page routine `0x5D1F6`.
-The cinematic catalog now records those pages and the graph returns a typed
-`play_cinematic` outcome. The shared per-page controller wait and caller
-return path are source-traced; resource graphics, native full-screen
-presentation, and typed host return/state handling remain open. Route-specific
-CTest, CLI `actual.bmp`, and independent Genesis capture also remain open, so
-this hill is partial. See the
+The catalog records those pages, named profile art, source text layout, and
+typed `play_cinematic` outcome. The ROM art is extracted offline to a named
+BMP; Lua owns page order, and the Qt presenter waits for controller input
+between the source text pages before returning to the same field context.
+Route-specific CTest, CLI `actual.bmp`, and independent Genesis capture remain
+open, so this hill is partial. See the
 [story-page source audit](cinematic-story-pages-source-audit.md).
 
 The guard's exit choices remain a separate boundary. Commands `0x39` and

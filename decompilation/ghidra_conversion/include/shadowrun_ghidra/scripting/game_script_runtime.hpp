@@ -1417,6 +1417,7 @@ struct ScriptNativeOperation {
     enum class Type {
         actor_walk_heading,
         ui_say,
+        ui_story_page,
         ui_menu,
         service_call,
     };
@@ -1426,6 +1427,16 @@ struct ScriptNativeOperation {
     std::uint8_t heading = 0;
     std::string service_id;
     std::optional<ScriptDialogueRequest> dialogue;
+    struct StoryPageRequest {
+        std::string asset_alias;
+        std::string text_key;
+        std::uint16_t origin_x = 0U;
+        std::uint16_t origin_y = 0U;
+        std::uint8_t columns = 0U;
+        std::uint8_t rows = 0U;
+        std::array<std::uint8_t, 3> ink_rgb{};
+    };
+    std::optional<StoryPageRequest> story_page;
     std::optional<ScriptMenuDefinition> menu;
 };
 

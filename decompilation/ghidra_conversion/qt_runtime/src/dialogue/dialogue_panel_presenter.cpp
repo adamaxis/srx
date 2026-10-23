@@ -16,6 +16,7 @@ bool DialoguePanelPresenter::load_assets(
     const ConversionAssetCatalog& assets) {
     failure_.clear();
     portraits_.clear();
+    story_page_assets_.clear();
 
     constexpr std::string_view kPortraitPrefix = "dialogue.portraits.";
     constexpr std::string_view kFieldModePortraitPrefix =
@@ -110,7 +111,30 @@ bool DialoguePanelPresenter::load_assets(
                 portrait.convertToFormat(QImage::Format_ARGB32_Premultiplied));
         }
     }
+    constexpr std::string_view kStoryPagePrefix = "cinematic.";
+    for (const auto& record : assets.records) {
+        const auto alias = std::string_view(record.alias);
+        if (record.kind != "image" ||
+            alias.size() < kStoryPagePrefix.size() ||
+            alias.substr(0U, kStoryPagePrefix.size()) != kStoryPagePrefix) {
+            continue;
+        }
+        QImage image(QString::fromStdWString(
+            record.absolute_path.wstring()));
+        if (image.isNull() || image.size() != QSize(320, 224)) {
+            continue;
+        }
+        story_page_assets_.emplace(
+            record.alias,
+            image.convertToFormat(QImage::Format_ARGB32_Premultiplied));
+    }
     return true;
+}
+
+bool DialoguePanelPresenter::has_story_page_asset(
+    const std::string_view asset_alias) const {
+    return story_page_assets_.find(std::string(asset_alias)) !=
+           story_page_assets_.end();
 }
 
 void DialoguePanelPresenter::draw_pixel_text(
@@ -278,6 +302,36 @@ void DialoguePanelPresenter::paint(QPainter& painter,
                              panel.options[index].source_label,
                              panel.compact_cursor_list ? 26U : 32U, 2,
                              dialogue_green);
+    }
+}
+
+void DialoguePanelPresenter::paint_story_page(
+    QPainter& painter, const std::string_view asset_alias,
+    const std::string_view text, const int text_x, const int text_y,
+    const int text_columns, const int text_rows, const QColor text_ink) const {
+    const auto asset = story_page_assets_.find(std::string(asset_alias));
+    if (asset == story_page_assets_.end()) {
+        return;
+    }
+    painter.fillRect(QRect(0, 0, 320, 224), Qt::black);
+    painter.drawImage(0, 0, asset->second);
+
+    int line = 0;
+    std::size_t start = 0U;
+    while (start <= text.size() && line < text_rows) {
+        const auto separator = text.find('|', start);
+        const auto end = separator == std::string_view::npos
+                             ? text.size()
+                             : separator;
+        const auto used_lines = draw_wrapped_segment(
+            painter, text_x, text_y + line * 8,
+            text.substr(start, end - start), text_columns,
+            text_rows - line, text_ink);
+        line += std::max(used_lines, 1);
+        if (separator == std::string_view::npos) {
+            break;
+        }
+        start = separator + 1U;
     }
 }
 

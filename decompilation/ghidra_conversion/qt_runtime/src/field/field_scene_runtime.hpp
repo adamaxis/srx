@@ -1515,6 +1515,8 @@ private:
         const scripting::DialogueOutcome& outcome);
     bool handle_dialogue_continue_in_place(
         const scripting::ContinueInPlaceOutcome& outcome);
+    bool handle_dialogue_play_cinematic(
+        const scripting::PlayCinematicOutcome& outcome);
     bool handle_dialogue_resume_source_route(
         const scripting::ResumeSourceRouteOutcome& outcome);
     bool handle_dialogue_enter_field_scene(
