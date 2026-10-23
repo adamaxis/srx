@@ -6068,6 +6068,11 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         };
         context.dynamic_world_encounter_actor = true;
         context.combatant = actor.combatant;
+        context.movement_scene_id = outcome.scene_id;
+        if (actor.source_record_slot.has_value()) {
+            context.source_record_slot = static_cast<std::uint8_t>(
+                *actor.source_record_slot);
+        }
         context.action_profile_modifiers =
             script_action_profile_modifiers(state_.action_selection_profiles);
         context.action_attribute_selectors =

@@ -10023,6 +10023,53 @@ GameScriptRuntime::actor_heartbeat(
     return decision;
 }
 
+std::optional<bool> GameScriptRuntime::has_world_scene_effect_target(
+    const std::array<std::string, 6>& actor_ids) {
+    auto* state = impl_->state;
+    const auto stack_base = state == nullptr ? 0 : lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<bool> {
+        if (state != nullptr) {
+            lua_settop(state, stack_base);
+        }
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (state == nullptr) {
+        return fail("gameplay Lua actor state is unavailable");
+    }
+    if (!impl_->push_module("actor_ai")) {
+        return fail("gameplay Lua actor AI module is missing");
+    }
+    lua_getfield(state, -1, "has_world_scene_effect_target");
+    if (!lua_isfunction(state, -1)) {
+        return fail("actor_ai.has_world_scene_effect_target is missing");
+    }
+    lua_remove(state, -2);
+    lua_createtable(state, static_cast<int>(actor_ids.size()), 0);
+    for (std::size_t index = 0U; index < actor_ids.size(); ++index) {
+        const auto& actor_id = actor_ids[index];
+        if (!actor_id.empty() && !valid_identifier(actor_id)) {
+            return fail("world scene effect actor ID is invalid");
+        }
+        lua_pushlstring(state, actor_id.data(), actor_id.size());
+        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+    }
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("actor_ai.has_world_scene_effect_target: " +
+                    stack_error(state));
+    }
+    if (!lua_isboolean(state, -1)) {
+        return fail(
+            "actor_ai.has_world_scene_effect_target returned invalid actor state");
+    }
+    const bool result = lua_toboolean(state, -1) != 0;
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return result;
+}
+
 std::optional<ScriptActorBehaviorDecision>
 GameScriptRuntime::actor_behavior_decision(
     const ScriptActorBehaviorContext& context) {

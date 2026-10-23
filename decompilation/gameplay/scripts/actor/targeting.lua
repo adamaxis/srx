@@ -293,7 +293,13 @@ local function initial_state(context, profile)
         action_kind = context.action_kind,
         action_code = context.action_code,
         source_record_flags = context.source_record_flags or 0,
+        source_record_slot = context.source_record_slot,
         source_behavior_flags = context.source_behavior_flags or 0,
+        -- Lua owns the mutable combat meters used by world-activity policy.
+        -- The host supplies this record only at spawn and later combat results
+        -- replace it through combat.lua.
+        combatant = type(context.combatant) == "table"
+            and context.combatant or nil,
         source_action_slot = context.source_action_slot or 0,
         source_action_ammo = context.source_action_ammo or 0,
         source_action_counter = context.source_action_counter or 0,

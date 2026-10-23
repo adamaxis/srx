@@ -6,6 +6,7 @@ local I = require("lib.int68k")
 local u8, u16, s16 = I.u8, I.u16, I.s16
 local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local ActorStatus = E.ActorStatus
 local ActorAI = {}
 local states = game.actors
 local pending_spell_effects_by_source_slot = R.pending_spell_effects_by_source_slot
@@ -111,6 +112,8 @@ function ActorAI.heartbeat(context)
     state.spell_action_resolution = nil
     state.source_record_flags = context.source_record_flags or
                                 state.source_record_flags
+    state.source_record_slot = context.source_record_slot or
+                               state.source_record_slot
     state.source_behavior_flags = context.source_behavior_flags or
                                   state.source_behavior_flags
     state.source_action_slot = context.source_action_slot or
@@ -458,6 +461,43 @@ function ActorAI.heartbeat(context)
     end
 
     return snapshot(state, action, audio_event)
+end
+
+-- ROM 0x5D29C scans records FF0500..FF0A00 when the effect animation reaches
+-- frame 3. The host supplies the live actor IDs for those six record slots;
+-- Lua evaluates their authoritative service flags and combat meters.
+function ActorAI.has_world_scene_effect_target(actor_ids)
+    if type(actor_ids) ~= "table" then
+        return nil
+    end
+    for index = 1, 6 do
+        local actor_id = actor_ids[index]
+        if actor_id ~= nil and actor_id ~= "" then
+            if type(actor_id) ~= "string" then
+                return nil
+            end
+            local state = states[actor_id]
+            if type(state) ~= "table" or
+               state.source_record_slot ~= index + 4 or
+               type(state.source_record_flags) ~= "number" or
+               state.source_record_flags < 0 or
+               state.source_record_flags > 0xff or
+               type(state.combatant) ~= "table" or
+               type(state.combatant.physical_meter) ~= "number" or
+               state.combatant.physical_meter < 0 or
+               state.combatant.physical_meter > 0xff then
+                return nil
+            end
+            local flags = state.source_record_flags
+            if (flags & ActorStatus.ACTIVE) ~= 0 and
+               (flags & ActorStatus.DOWN) == 0 and
+               (flags & ActorStatus.DEAD) == 0 and
+               state.combatant.physical_meter ~= 0 then
+                return true
+            end
+        end
+    end
+    return false
 end
 
 

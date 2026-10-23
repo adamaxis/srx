@@ -516,8 +516,13 @@ iterations (18 VBlanks), fades over 17 two-VBlank `0x131C` passes, and stays
 black for the outer loop's repeated 34-VBlank wait. The typed host then
 restarts the existing attract loop. Debug/Release QA checks all 86 VBlanks
 and captures the fade. These are internal captures, not an independent
-Genesis visual reference. The live fight-completion trigger, callback's
-1000-iteration presentation and pre-panel animation/fade setup remain open;
+Genesis visual reference. Lua now retains encounter actors' source slots and
+initial combat facts, and its typed six-slot query reads live service flags
+and physical meters for the `0x5D29C` eligibility decision. Debug/Release
+script-runtime, world-activity, and random-encounter QA pass. The field render
+pass does not call that query yet, so the live fight-completion trigger, the
+callback's 1000-iteration presentation, and pre-panel animation/fade setup
+remain open;
 the hill remains partial.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the

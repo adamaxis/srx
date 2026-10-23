@@ -2931,6 +2931,69 @@ int main() {
     pedestrian_context.spawn = false;
     const auto pedestrian_entry = scripts.actor_heartbeat(pedestrian_context);
 
+    const auto spawn_activity_scan_actor =
+        [&scripts, &actor_context](const std::string_view actor_id,
+                                  const std::uint8_t slot,
+                                  const std::uint8_t service_flags,
+                                  const std::uint8_t physical_meter) {
+            auto context = actor_context(
+                "gargoyle_k0d_none00", actor_id, 13U,
+                ScriptActorActionKind::none, 0U, 0U, true);
+            context.dynamic_world_encounter_actor = true;
+            context.source_record_slot = slot;
+            context.source_record_flags = service_flags;
+            context.entry_animation_frame_count = 4U;
+            ScriptCombatantFacts combatant{};
+            combatant.record_type = slot;
+            combatant.physical_meter = physical_meter;
+            context.combatant = combatant;
+            return scripts.actor_heartbeat(context);
+        };
+    const auto scan_down_actor = spawn_activity_scan_actor(
+        "scene_55_scan_down", 5U, 0x11U, 10U);
+    const auto scan_dead_actor = spawn_activity_scan_actor(
+        "scene_55_scan_dead", 6U, 0x41U, 10U);
+    const auto scan_zero_meter_actor = spawn_activity_scan_actor(
+        "scene_55_scan_zero", 7U, 0x01U, 0U);
+    auto scan_inactive_context = actor_context(
+        "pedestrian_k0b_none00", "scene_55_scan_inactive", 11U,
+        ScriptActorActionKind::none, 0U, 0U, true);
+    scan_inactive_context.source_record_slot = 8U;
+    scan_inactive_context.source_record_flags = 0U;
+    ScriptCombatantFacts scan_inactive_combatant{};
+    scan_inactive_combatant.record_type = 8U;
+    scan_inactive_combatant.physical_meter = 10U;
+    scan_inactive_context.combatant = scan_inactive_combatant;
+    const auto scan_inactive_spawn =
+        scripts.actor_heartbeat(scan_inactive_context);
+    const auto scan_live_actor = spawn_activity_scan_actor(
+        "scene_55_scan_live", 9U, 0x01U, 1U);
+    const std::array<std::string, 6> scene_55_scan_ids{{
+        "scene_55_scan_down", "scene_55_scan_dead", "scene_55_scan_zero",
+        "scene_55_scan_inactive", "scene_55_scan_live", ""}};
+    const auto scene_55_scan_result =
+        scripts.has_world_scene_effect_target(scene_55_scan_ids);
+    const std::array<std::string, 6> scene_55_no_scan_ids{{
+        "scene_55_scan_down", "scene_55_scan_dead", "scene_55_scan_zero",
+        "scene_55_scan_inactive", "", ""}};
+    const auto scene_55_no_scan_result =
+        scripts.has_world_scene_effect_target(scene_55_no_scan_ids);
+    const std::array<std::string, 6> scene_55_missing_state_ids{{
+        "scene_55_missing_actor_state", "", "", "", "", ""}};
+    const auto scene_55_missing_state_result =
+        scripts.has_world_scene_effect_target(scene_55_missing_state_ids);
+    if (!expect(scan_down_actor.has_value() && scan_dead_actor.has_value() &&
+                    scan_zero_meter_actor.has_value() &&
+                    scan_inactive_spawn.has_value() &&
+                    scan_live_actor.has_value() &&
+                    scene_55_scan_result == std::optional<bool>{true} &&
+                    scene_55_no_scan_result == std::optional<bool>{false} &&
+                    !scene_55_missing_state_result.has_value(),
+                "Scene-55 effect actor scan must read active, living actor meters from Lua state")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+
     const auto unsupported_guard_action = scripts.actor_heartbeat(actor_context(
         "corp_guard_k05_item06", "unsupported_guard_action", 5U,
         ScriptActorActionKind::item, 5U, 0U, true));
@@ -6168,6 +6231,37 @@ int main() {
                 lethal_hit_step->combat_meter_update->changed &&
                 lethal_hit_step->combat_meter_update->physical_meter == 0U,
             "lethal firearm hit did not reduce the live encounter actor to zero physical meter")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+    auto scene_55_live_victim_facts = exhausted_victim_facts;
+    scene_55_live_victim_facts.record_type = 9U;
+    auto scene_55_lethal_hit_context = source_weapon_hit_context;
+    scene_55_lethal_hit_context.instance_id =
+        "field_weapon_slot_scene_55_lethal_hit";
+    scene_55_lethal_hit_context.projectile_combat_targets = {
+        ScriptProjectileCombatTarget{
+            "scene_55_scan_live", 9U, scene_55_live_victim_facts}};
+    scene_55_lethal_hit_context.projectile_collision_search =
+        [](const std::uint16_t, const std::uint16_t,
+           const std::uint8_t) {
+            return ScriptProjectileCollisionSearchResult{
+                true, true, 45U, 77U,
+                std::string{"scene_55_scan_live"}};
+        };
+    const auto scene_55_live_actor_hit =
+        scripts.actor_heartbeat(scene_55_lethal_hit_context);
+    const auto scene_55_scan_after_lethal_hit =
+        scripts.has_world_scene_effect_target(scene_55_scan_ids);
+    if (!expect(scene_55_live_actor_hit.has_value() &&
+                    scene_55_live_actor_hit->combat_meter_update.has_value() &&
+                    scene_55_live_actor_hit->combat_meter_update->target_id ==
+                        "scene_55_scan_live" &&
+                    scene_55_live_actor_hit->combat_meter_update->physical_meter ==
+                        0U &&
+                    scene_55_scan_after_lethal_hit ==
+                        std::optional<bool>{false},
+                "Scene-55 actor scan did not observe the Lua-owned meter after combat defeated its actor")) {
         std::cerr << scripts.failure() << '\n';
         return 24;
     }

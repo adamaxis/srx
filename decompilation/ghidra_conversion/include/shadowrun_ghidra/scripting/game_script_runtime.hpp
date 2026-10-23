@@ -1551,6 +1551,11 @@ public:
     void set_field_mode_context(ScriptFieldModeContext context) noexcept;
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);
+    // ROM 0x5D29C checks the six live records at FF0500..FF0A00 on effect
+    // frame 3. The array is in record order; an empty ID denotes an unused
+    // host slot. Eligibility is read from Lua-owned actor state.
+    std::optional<bool> has_world_scene_effect_target(
+        const std::array<std::string, 6>& actor_ids);
     void set_actor_heartbeat_observer(
         ScriptActorHeartbeatObserver observer);
     // Kept for the existing script-runtime caller contract. New game-runtime

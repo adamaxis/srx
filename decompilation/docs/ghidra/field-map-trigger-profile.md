@@ -305,7 +305,10 @@ six actors come from the separate default list at
    eventually queues callback `0x5BAC4`. That callback opens Licourtrix's
    prompt and closing sequence, then the field coordinator follows the title
    return branch. The typed final outcome queues the host attract-loop restart;
-   the live completion trigger and pre-panel presentation remain open; the five-page sequence and post-panel title fade have a direct QA seam.
+   Lua now has a typed six-slot query over live actor flags and combat meters,
+   with Debug/Release script and field encounter QA. The field render pass does
+   not call it yet, and the pre-panel presentation remains open; the five-page
+   sequence and post-panel title fade have a direct QA seam.
 
 No screenshot-based scene-name claim should be made from the extracted map
 alone. The map has not been aligned to scene 9 coordinates. The Sinsearach
