@@ -11496,6 +11496,17 @@ int run_scene17_unidentified_contact_qa(
         startup_state, asset_root, output, route);
 }
 
+int run_scene10_northwest_contact_qa(
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    constexpr UnnamedOldManContactRoute route{
+        10U, 11U, 0x1D618CU, 0x0000U, 0x001FU, 0x0020U, 0x003FU,
+        0x009EU, 16U * 16U, 80U * 16U, true, false};
+    return run_unnamed_old_man_contact_qa(
+        startup_state, asset_root, output, route);
+}
+
 int run_scene1_underground93_story_gate_qa(
     const StartupIntegrationState& startup_state,
     const std::filesystem::path& asset_root,
@@ -25508,6 +25519,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene17_unidentified_contact_qa_path;
         std::optional<std::filesystem::path>
+            field_scene10_northwest_contact_qa_path;
+        std::optional<std::filesystem::path>
             field_crime_mall_ilene_gate_qa_path;
         std::optional<std::filesystem::path>
             field_riannons_magic_shop_entry_qa_path;
@@ -25761,6 +25774,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene17_unidentified_contact_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene10-northwest-contact-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene10_northwest_contact_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -27560,6 +27580,11 @@ int main(int argc, char** argv) {
                 return run_scene17_unidentified_contact_qa(
                     smoke_state, asset_root,
                     *field_scene17_unidentified_contact_qa_path);
+            }
+            if (field_scene10_northwest_contact_qa_path.has_value()) {
+                return run_scene10_northwest_contact_qa(
+                    smoke_state, asset_root,
+                    *field_scene10_northwest_contact_qa_path);
             }
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_motel_street_collision_qa_path.has_value() ||

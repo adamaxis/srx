@@ -418,6 +418,14 @@ add_shadowrun_qt_qa_case(
     --field-scene17-unidentified-contact-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-scene17-unidentified-contact-qa")
 
+# The restaurant's Scene-10 northwest threshold uses the same ROM default
+# dialogue profile, but has its own collision record and source map.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_scene10_northwest_contact_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-scene10-northwest-contact-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-scene10-northwest-contact-qa")
+
 # Verify the physical Crime Mall route and the post-load ILENE_MET actor gate.
 add_shadowrun_qt_qa_case(
     shadowrun_ghidra_conversion_qt_field_crime_mall_ilene_gate_qa

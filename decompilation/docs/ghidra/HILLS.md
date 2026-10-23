@@ -1045,6 +1045,17 @@ This direct route renders the local Scene-17 frame; it does not resolve the
 Mako-route black return or supply an independent Genesis comparison, so the
 contact remains partial.
 
+The Scene-10 northwest restaurant threshold is another direct event-30 contact.
+Record 11 at `0x1D618C` carries raw `0x019E` over `(0,32)..(31,63)` and reaches
+the same no-choice old-man profile through `0x20990`/`0x20C78`. Its focused
+Debug/Release `shadowrun_ghidra_conversion_qt_field_scene10_northwest_contact_qa`
+route checks the descriptor spawn, ordinary Up from a seeded south approach,
+the dialogue page, A dismissal, and the visible same-scene return. Its eight
+full-frame BMPs and `route.tsv` appear under
+`build/conversion/qt/{debug,release}/qt_runtime/field-scene10-northwest-contact-qa/`
+and match byte-for-byte across builds. No independent Genesis contact frame
+has been found, so the route remains partial.
+
 ## Wire-Masters mode-7 cyberware selector and purchases (defended, 2026-10-22)
 
 Scene-5/event 2 enters Wire-Masters mode 7/result 1. The result-1 setup in
