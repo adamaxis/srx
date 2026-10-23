@@ -11,19 +11,16 @@ first profile record places the runner at `(0x1310, 0x0980)`. Debug and Release
 Qt targets build with this route. The updated script-runtime assertions and
 paid physical route have not been run, so the gate hill remains partial. See
 the [HILLS index](../HILLS.md) and [story-page audit](../cinematic-story-pages-source-audit.md).
-The direct `FFE162` producer is now traced at `0x1F086`, the active type-3
-run-entry handler. It writes one of three descriptors only when the active
-target matches the current area/event: `1/9`, `2/9`, or `3/4`. The event-7
-pass cannot create a fresh descriptor from this target pool. A generic
-event-7 selection that reaches `0x167AE` publishes and clears any nonzero
-`FFE162` pointer, then forces Scene 15. A type-3 write is consumed in that
-same outer pass when it reaches `0x167AE`; event 9 with `FFFC0E` nonzero takes
-the alternate `0x2CE0` route, which does not consume the pointer. Whether that
-alternate route can carry the pointer to a later Tarislar selection remains
-open. Scene 54's only traced `FFE12E` installers are the two pending-list
-branches in `0x043B6`; an inherited matching list and the activity exit route
-remain unresolved. The initial `FFE177` count and its six-profile-actor match
-are source-traced.
+The only raw-ROM `FFE162` writer is the active type-3 run-entry handler at
+`0x1F086`; it accepts area/event targets `1/9`, `2/9`, and `3/4`. The scene
+profile classifier `0x03032`, called during profile preparation, clears
+`FFFC0E` for scenes 1-3. Each matching writer result therefore reaches
+`0x167AE` in the same outer transition, where it is published and cleared
+before forcing Scene 15. Tarislar event 7 is not a writer target, and this
+pointer cannot carry from a prior type-3 route to its selector. Scene 54's only
+traced `FFE12E` installers are the two pending-list branches in `0x043B6`; an
+inherited matching list and the activity exit route remain unresolved. The
+initial `FFE177` count and its six-profile-actor match are source-traced.
 
 Mike's RPG Center labels Puyallup map marker 2 “Tarislar Garden Apartments.”
 Its walkthrough places the visit after the Sinsearach trials and meeting
@@ -230,19 +227,18 @@ calls the handler at `0x1F086`. That handler requires current area/event
 `FFFBF8/FFFBF9` to equal active target `FFFBEE/FFFBEF`, then selects
 descriptors `0x1D6D4A`, `0x1D6D5E`, or `0x1D6D72` by target area. The confirmed
 offer target pool contains Scene 1/event 9, Scene 2/event 9, and Scene 3/event
-4; none matches Tarislar's Scene 1/event 7. The event-7 pass cannot make a
-fresh write from this pool. In the outer loop at `0x075E`, a clear-D6 event
-below 8 reaches `0x167AE`. That selector publishes any pending `FFE162`
-descriptors through `0x16A26`, clears the pointer at `0x16A62`, and forces
-Scene 15 before normal scene selection. A matching type-3 writer is consumed
-in the same pass when the target is event 4 or event 9 with `FFFC0E` clear.
-Event 9 with `FFFC0E` set instead calls `0x2CE0`, which leaves `FFE162`
-untouched; its later path to Tarislar has not been traced. The Club Penumbra writer queues
+4; none matches Tarislar's Scene 1/event 7. The current-scene profile pass at
+`0x03074` calls `0x03032`, which clears `FFFC0E` for scenes 1-3. Each matching
+type-3 writer therefore reaches `0x167AE` in the same outer transition. That
+selector publishes its `FFE162` list through `0x16A26`, clears the pointer at
+`0x16A62`, and forces Scene 15 before normal selection. A raw-ROM operand
+sweep found no other direct `FFE162` writer. The Tarislar event-7 route cannot
+create or inherit a pending pointer from this source. The Club Penumbra writer queues
 `0x1E628` before its route continues to Scene 17, where the common `0x043B6`
 service drains it; this source path supplies no carry into Scene 54. Raw
 direct stores also set `FFE120=0x1E5C4` in separate code at `0x22482` and
-`0x224F2`; no link from either path to Tarislar is established. A carry into
-the Scene-54 service remains unresolved.
+`0x224F2`; no link from either path to Tarislar is established. A pending
+`FFE120` list reaching the Scene-54 service remains unresolved.
 Scene completion and exit destination remain unresolved.
 The event-0 record has raw value `0x00C0`, so `0xB7B8` publishes event 0 in
 `FFFBF9`. In Scene-54 mode 3 it calls `0x1651E`; with D0=0, that helper returns
@@ -261,8 +257,9 @@ been added.
 2. **Does the look reflect the behavioral state?** First visit uses the ROM
    bit-30/bit-21 and alternate-result gates. The tomb route additionally checks
    bits 16/28/26/27; Yes enters scene 54 and No returns to scene 1. Repeat
-   information uses bits 16/28/26/27 and group-item bits 8/7. Upstream Frosty,
-   pending-descriptor paths remain unconnected. Both signed FFF0D5 pages now
+   information uses bits 16/28/26/27 and group-item bits 8/7. Upstream Frosty
+   remains unconnected. The general `FFE162` override cannot reach this route
+   from its only direct writer. Both signed FFF0D5 pages now
    have entity-owned Lua tasks and ordinary-input QA.
 3. **Are the visuals correct?** The source text nodes and portrait profile
    have been identified. Scene 1 imports as 1600x1504, scene 13, 15, and 54
@@ -272,9 +269,11 @@ been added.
    screenshots.
 4. **Is it animated, and under what conditions?** Only the Yes choice at
    repeat root `0xF4E08` calls `0x24954`, sets `FFF0CC`, and selects scene 54.
-   Pending `FFE162` descriptors can select scene 15. The six default actors
-   and their initial completion count are source-connected; their AI cadence
-   and remaining activity timing still need tracing. The Qt frame is recorded
+   The selector can prioritize `FFE162` descriptors globally, but its sole
+   direct writer is consumed at its own scene-1/2/3 target transition and does
+   not route this event 7 to Scene 15. The six default actors and their initial
+   completion count are source-connected; their AI cadence and remaining
+   activity timing still need tracing. The Qt frame is recorded
    but is not an independent fidelity proof.
 5. **Is there a sound?** Service `0x5447E` has no direct sound call in the
    traced path. Shared prompt/input audio and the rest of the scene handoff
@@ -290,10 +289,10 @@ been added.
 
 ## Next implementation evidence needed
 
-- Wire the traced Scene-9 fare outcomes to typed Scene-9 and Scene-6 host
-  transitions, then add focused Debug/Release route coverage for No, short
-  funds, and successful payment. Keep the hill partial until its required
-  source trace, named CTest, and CLI `actual.bmp` are all recorded.
+- The typed fare outcomes are wired. Updated script-runtime assertions were
+  not rerun, and the paid physical route remains unverified. Focused
+  Debug/Release route coverage and full `actual.bmp` evidence remain to defend
+  the gate hill.
 - Continue Ilene's source-traced service through actor-pair contact and its
   world-activity completion; the Scene-20 entry alone does not defend the
   service.
@@ -305,17 +304,13 @@ been added.
   conditions, and focused physical QA. Debug/Release tests reach event 7 with
   ordinary Up input for both signs, capture each full one-page dialog and the
   clean scene-1 redraw, and verify that the scene-13 transition stays
-  suppressed. Continue with the descriptor lifetime and selector precedence,
-  then the scene-54 completion/return trace.
-- Resolve whether a caller or carried descriptor value can make `FFE162`
-  active during Tarislar's event-7 selector. The direct `0x1F086` writer is
-  the type-3 run-entry handler and its three confirmed offer targets do not
-  include Scene 1/event 7. Trace the six Scene-54 completion branches, locate
-  the `FFE12E` installer, and determine the activity result when the count
-  reaches zero. Preserve the scene-15 override as a source boundary until the
-  descriptor link is established.
-- Trace the post-count activity result, Scene-54 `FFE12E` installer, exits, and
-  return path against the ROM before connecting the route in Lua.
+  suppressed. The `FFE162` lifetime is resolved for its only direct writer:
+  all three matched targets enter the scene selector with `FFFC0E=0` and
+  consume their descriptors in that transition. The Tarislar event-7 selector
+  has no pending pointer from this source.
+- Trace the possible inherited `FFE120` pending-list path into Scene 54, then
+  follow the six counted actor completions and identify any source-backed exit
+  or return. Keep the Scene-54 route partial until that path is established.
 - Capture the remaining branches and a source-backed scene-54 completion and
   return as whole 320x224 screens. Review all surrounding pixels and check the
   seven questions above before changing this status.

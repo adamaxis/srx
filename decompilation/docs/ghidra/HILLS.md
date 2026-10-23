@@ -432,8 +432,9 @@ physical-input QA captures both outcomes and the full-screen scene-1/scene-54
 entity routes whose JSON graph maps positive FFF0D5 to ROM-imported package-
 delivery text and negative FFF0D5 to package-pickup text. Debug/Release CTests
 reach event 7 with ordinary Up input, verify both pages, suppress scene 13,
-and capture the clean scene-1 return as `actual.bmp`. The upstream Frosty conversation,
-pending-descriptor override, and scene-54 completion/return remain open.
+and capture the clean scene-1 return as `actual.bmp`. The upstream Frosty
+conversation and Scene-54 completion/return remain open. Source tracing rules
+out an `FFE162` carry from its only direct writer into the Tarislar selector.
 Scene 54's extracted map is a tall 320x1344 layout, and its profile has no
 event table or elevator group. Event 31 stores callback `0xDB26` through the
 direct `0xB7B8` path; other route audits map its ordinary field-mode behavior
@@ -458,13 +459,15 @@ The field-exit orchestrator dispatches run type 3 through `0x1EEDC`'s callback
 table entry at `0xF3E62` to the `FFE162` writer at `0x1F086`. Its confirmed
 target tuples (Scene 1/event 9, Scene 2/event 9, and Scene 3/event 4) exclude
 Tarislar's Scene 1/event 7, so that pass cannot make a fresh write from the
-accepted target pool. In the outer loop at `0x075E`, a clear-D6 event below 8
-reaches `0x167AE`; there, any nonzero `FFE162` is copied into `FFE132`, published
-as `FFE120`, cleared at `0x16A62`, and forces Scene 15. Matching type-3 writes
-are consumed in that pass for target event 4 and for event 9 when `FFFC0E` is
-clear. Event 9 with `FFFC0E` set takes `0x2CE0`, which does not consume
-`FFE162`; its later route to Tarislar remains unresolved. Prompt command
-`0x60` reaches a separate ROM code gap at
+accepted target pool. `0x03032` sets `FFFC0E` only for current scenes 6-9 and
+44-49; it is called from scene-profile preparation at `0x03074` and `0x03084`.
+The three type-3 target scenes (1, 2, and 3) therefore have `FFFC0E=0`. The
+outer loop at `0x075E` sends each matched writer result to `0x167AE`; that
+selector copies any nonzero `FFE162` into `FFE132`, publishes it as `FFE120`,
+clears it at `0x16A62`, and forces Scene 15 in the same transition. A raw
+operand sweep found no other direct `FFE162` writer. Tarislar's event-7 route
+is not a type-3 target, and no type-3 pointer can carry into a later Tarislar
+selection. Prompt command `0x60` reaches a separate ROM code gap at
 `0x225D2`, which sets `FFE120` to `0x1E628` behind a 75-nuyen and story gate.
 The menu node at `0x111316` presents the entry-fee question and places command
 `0x60` in its first choice slot. Adjacent code at `0x225CA` returns that node;
