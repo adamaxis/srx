@@ -108,6 +108,10 @@ function TarislarApartments.present_alternate_result()
     return outcome
 end
 
+function TarislarApartments.present_tomb_antechamber_arrival()
+    return DialogueGraph.run("tarislar_tomb.antechamber_arrival")
+end
+
 function TarislarApartments.present_tomb_departure()
     -- The graph owns the story gate and prompt/page sequence. Its typed
     -- enter_field_scene outcome is translated to the entity task's stable

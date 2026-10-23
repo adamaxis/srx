@@ -7944,6 +7944,26 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     state_.camera_transition_y);
             source_boundary("field.entities.transition_anchor_snapshotted");
         };
+    field_runtime_callbacks_.begin_scene_37_world_activity =
+        [this](integration::FieldRuntimeCoordinatorState& runtime) {
+            if (runtime.scene_id != 0x37U) {
+                runtime.field_transition_requested = true;
+                source_boundary(
+                    "field.world_activity.scene_55_callback_scene_mismatch");
+                return;
+            }
+            const auto continuation =
+                MovementModeTransitionContinuation::
+                    scene_37_antechamber_entry;
+            begin_world_activity(
+                field_world_activity_state_,
+                static_cast<std::uint16_t>(continuation));
+            world_frame_logic_state_.resource_countdown =
+                field_world_activity_state_.timeout;
+            record_field_activity_start(continuation);
+            source_boundary(
+                "field.world_activity.scene_55_antechamber_callback_queued");
+        };
     field_runtime_callbacks_.run_pending_field_scene_handler = [this] {
         const auto continuation = field_activity_continuation_;
         if (continuation != MovementModeTransitionContinuation::
@@ -7989,6 +8009,36 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     "field.activity.mode_table_handler_0x53ee2_prompt_opened");
                 return integration::PendingFieldSceneHandlerResult::resumed_field;
             }
+        }
+        if (continuation ==
+            MovementModeTransitionContinuation::scene_37_antechamber_entry) {
+            if (state_.field_scene_buffers.scene_reference != 55U) {
+                source_boundary(
+                    "field.activity.scene_55_antechamber_scene_mismatch");
+                return integration::PendingFieldSceneHandlerResult::unresolved;
+            }
+            game_scripts_.set_location_context(
+                "site", "tarislar_tomb_antechamber",
+                "tarislar.tomb.antechamber", "tarislar_apartments_narrator",
+                "antechamber_arrival", 55U);
+            const bool opened = field_dialogue_.open_gameplay_task(
+                "tarislar_apartments",
+                "present_tomb_antechamber_arrival");
+            if (!opened) {
+                std::string reason =
+                    "field.activity.scene_55_antechamber_prompt_failed";
+                const auto& detail =
+                    field_dialogue_.panel().source_boundary_reason;
+                if (!detail.empty()) {
+                    reason += ":";
+                    reason.append(detail);
+                }
+                source_boundary(reason);
+            } else {
+                source_boundary(
+                    "field.activity.scene_55_antechamber_prompt_opened");
+            }
+            return integration::PendingFieldSceneHandlerResult::resumed_field;
         }
         if (continuation ==
             MovementModeTransitionContinuation::event_30_world_activity) {
@@ -13206,6 +13256,8 @@ void FieldSceneRuntime::record_field_activity_start(
             MovementModeTransitionContinuation::event_25_world_activity ||
         continuation ==
             MovementModeTransitionContinuation::event_29_world_activity ||
+        continuation == MovementModeTransitionContinuation::
+                           scene_37_antechamber_entry ||
         continuation == MovementModeTransitionContinuation::
                            mode_table_world_activity) {
         field_runtime_state_.pending_field_scene_handler = true;

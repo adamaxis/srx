@@ -258,8 +258,14 @@ Scene 55. After the selector returns, `0x0A44` queues callback `0x20938` and
 calls `0x1E2EC`;
 `0x20938` sends text group `0xFDD1A` with profile `0x121F1C` through the
 shared `0x1F246` prompt routine. This establishes the Scene-54 event-0 exit
-into the Scene-55 Tomb of Ellisia antechamber text. Scene-55 completion,
-return, and cleanup remain unresolved.
+into the Scene-55 Tomb of Ellisia antechamber text. The active Qt runtime now
+queues a typed arrival continuation and Lua owns this one prompt, including
+the ROM ten-frame input delay. Text at 0xFD2FE supplies the narration and
+0xFE5BF supplies MORE. The prompt command slot contains 0xFDD2E; after the
+callback, the outer loop clears FFE104 and reloads FFFC04 without chaining
+the next record. Scene-55 fight completion, return, and cleanup remain
+unresolved. This runtime slice has no CTest or actual.bmp, so the hill stays
+partial.
 The raw `0x00C0` record publishes event 0 in `FFFBF9`. In Scene-54 mode 3,
 `0x1651E` returns carry for D0=0 without changing a map cell; `0xB7B8` then
 sets the projected-interaction countdown described above. The later

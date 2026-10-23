@@ -236,6 +236,29 @@
         }
       }
     },
+    "tarislar_tomb.antechamber_arrival": {
+      "entryNode": "arrival",
+      "speakerId": "tarislar_apartments_narrator",
+      "textProfile": "tarislar.garden.apartments.entry",
+      "provenance": {
+        "romAddresses": ["0x0A32", "0x0A38", "0x0A44", "0x1E2EC", "0x20938", "0x1F246", "0x1F3C4", "0xFDD1A", "0xFD2FE", "0xFE5BF"],
+        "scope": "scene_55_tomb_antechamber_entry_prompt"
+      },
+      "nodes": {
+        "arrival": {
+          "type": "page",
+          "eventId": "antechamber_arrival",
+          "inputDelayFrames": 10,
+          "next": "return_to_scene",
+          "evidence": "Scene 55 queues 0x20938, which submits title 0xFD2FE and the sole MORE option 0xFE5BF. Selecting A exits the prompt and resumes the field loop."
+        },
+        "return_to_scene": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" },
+          "evidence": "After the prompt returns, the outer loop clears FFE104 and reloads the active scene entry at FFFC04."
+        }
+      }
+    },
     "tarislar_garden_apartments.tomb_departure": {
       "entryNode": "tomb_offer",
       "precondition": "tarislar_garden_apartments.tomb_departure_available",

@@ -17,9 +17,9 @@ struct MovementProjectionPreparation {
     std::uint8_t direction_slot = 0;
 };
 
-// These are the continuation families selected by 0xB7B8.  The original
-// stores code addresses in FFDD2C; the conversion stores a typed choice and
-// lets the field/world layer bind it to a native scene or activity handler.
+// These are typed field/activity continuations. Most are selected by
+// 0xB7B8; Scene 55 is queued by the outer scene selector at 0x0A44. The source
+// stores code addresses in FFDD2C; the host stores a typed choice instead.
 enum class MovementModeTransitionContinuation {
     none,
     event_31_world_activity, // source continuation 0x0DB26
@@ -31,6 +31,7 @@ enum class MovementModeTransitionContinuation {
     maglock_door_interaction, // source continuation 0x20E48
     building_security_terminal, // source continuation 0x20EC2
     event_25_world_activity, // source continuation 0x53EFA
+    scene_37_antechamber_entry, // Scene-55 entry callback
     mode_table_world_activity, // source-selected field activity during 0x2CE0
     field_mode_exit_finalizer, // native boundary for source 0x0C64C
 };

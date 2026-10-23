@@ -708,6 +708,10 @@
           "continuation_key": "shared.more",
           "title_key": "tarislar.garden.apartments.page.authorized_entry"
         },
+        "antechamber_arrival": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.tomb.antechamber.page.arrival"
+        },
         "guarded_entry": {
           "continuation_key": "shared.more",
           "title_key": "tarislar.garden.apartments.page.guarded_entry"

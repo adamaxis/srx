@@ -486,7 +486,11 @@ through the projected-interaction countdown: after 17 service advances,
 `0x163D0` raises `FFDF3E`, the next outer-loop pass changes marker 1 to 2, and
 `0x167AE` selects Scene 55 when `FFE162` is clear. The selector queues
 `0x20938`, which presents text group `0xFDD1A` with profile `0x121F1C`;
-Scene-55 completion and return remain unresolved.
+The active Qt runtime now queues a typed arrival continuation and Lua owns
+the first prompt with the ROM ten-frame input delay. The first command slot
+contains pointer FDD2E; the outer loop clears FFE104 and reloads FFFC04 without
+chaining the next record. Scene-55 fight completion
+and return remain unresolved. This partial slice has no CTest or actual.bmp.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).
