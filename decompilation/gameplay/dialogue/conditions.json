@@ -766,18 +766,6 @@
         "scope": "profile_gate_before_licourtrix_conversation"
       }
     },
-    "salish.sinsearach.gate.route": {
-      "expression": {
-        "all": [
-          { "fact": "field.mode", "op": "eq", "value": 9 },
-          { "fact": "field.event_code", "op": "eq", "value": 0 }
-        ]
-      },
-      "provenance": {
-        "romAddresses": ["0x1FD80", "0x1FE38", "0x1B578E"],
-        "scope": "scene_9_mode_9_event_0_route_entry"
-      }
-    },
     "salish.sinsearach.gate.event_context": {
       "expression": {
         "all": [

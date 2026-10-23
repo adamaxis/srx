@@ -1,6 +1,25 @@
 {
   "schemaVersion": 1,
   "conditions": {
+    "salish.sinsearach.gate.route": {
+      "all": [
+        {
+          "fact": "field.mode",
+          "op": "eq",
+          "value": 9
+        },
+        {
+          "fact": "field.event_code",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "provenance": {
+        "entityId": "salish_sinsearach_village_gate",
+        "linkId": "scene_09_mode_9_event_0_sinsearach_gate_dialogue",
+        "scope": "route"
+      }
+    },
     "downtown_site_04_gates_undersound.ogami_departure_service.route": {
       "all": [
         {

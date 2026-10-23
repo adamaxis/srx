@@ -364,6 +364,7 @@ public:
     bool open_hospital_menu_for_dump(std::string_view function);
     bool open_ordinary_field_terminal_for_dump(
         std::uint32_t contact_flags, std::uint32_t funds);
+    bool open_spirit_eyes_ritual_for_dump();
     bool seed_cyberspace_access_for_dump();
     bool seed_cyberdeck_reference_frame_for_dump();
     bool seed_cyberdeck_pull_plug_reference_for_dump();

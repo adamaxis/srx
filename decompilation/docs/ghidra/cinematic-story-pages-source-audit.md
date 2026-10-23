@@ -100,14 +100,31 @@ for FFF0BE=9 and eight rows for FFF0BE=7; after the two-row text origin this
 leaves eight Harlequin rows and six Spirit Eyes rows. The host catalog records
 those bounds and RGB ink instead of retaining a palette or plane simulator.
 
-Lua now owns each ordered page operation and yields a typed story-page request
+Lua owns each ordered page operation and yields a typed story-page request
 with its named art alias and text key. The Qt dialogue presenter draws that
 art with the extracted field font and waits for any focused controller event
 before Lua advances. After the last page, `play_cinematic` completes through
-the typed source-context return handler. The routes remain partial: route
-CTest and CLI `actual.bmp` evidence have not been added, and no independent
-Genesis encounter frame has been identified. These BMPs are source-derived
-assets, not independent visual proof.
+the typed source-context return handler.
+
+The Sinsearach physical-entry QA boots Scene 9 below record 230, uses ordinary
+Up input to reach the gate event, then follows the Elders, Lady Gillian, and
+Frosty choices through command `0x49`. It advances all three pages and checks
+the same-context return, story bit 30, FFFC34 bits 4/5, and the runner source
+byte triplet `+3`. The CLI CTest writes complete frames, including
+`field-sinsearach-gate-physical-entry-qa/actual.bmp` for the final page. The
+Spirit Eyes physical-entry QA similarly reaches Scene-4 record 96, drives the
+scale completion path, advances all four ritual pages, and checks the return;
+it writes the cinematic frame as `ritual-page-3.bmp` and the clean return as
+`actual.bmp`. Focused Debug and Release CTests pass for the gameplay script
+runtime and both physical routes. The Sinsearach Debug and Release
+`actual.bmp` files have identical SHA-256 hashes, and the full 320x224 Release
+frame was inspected.
+
+These are source-backed host route and renderer regression captures, not
+independent Genesis visual proof. No independent Genesis encounter frame has
+been identified. The Sinsearach Frosty path now has a physical-entry test and
+CLI image; guard fare commands `0x39`/`0x3A` and payment command `0x38` remain
+explicit source boundaries.
 
 ## Source references
 

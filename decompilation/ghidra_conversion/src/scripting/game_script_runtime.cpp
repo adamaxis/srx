@@ -4821,6 +4821,26 @@ GameScriptRuntime::resolve_field_location_route(
     }
     lua_setfield(state, input_index, "event_table");
 
+    // Location route predicates use the same typed field facts as dialogue
+    // graph predicates. Keep them nested under `field` so ConditionEvaluator
+    // reads the explicit scene/mode/event being resolved instead of relying
+    // on a possibly older global context.
+    lua_createtable(state, 0, 5);
+    const auto field_index = lua_absindex(state, -1);
+    lua_pushinteger(state, context.scene_id);
+    lua_setfield(state, field_index, "scene_id");
+    lua_pushboolean(
+        state, context.field_mode == field_exit_mode_value(
+                                         FieldExitMode::building_interaction));
+    lua_setfield(state, field_index, "building_interaction_mode");
+    lua_pushinteger(state, context.field_mode);
+    lua_setfield(state, field_index, "mode");
+    lua_pushinteger(state, event_code_value);
+    lua_setfield(state, field_index, "event_code");
+    lua_pushinteger(state, context.alternate_result);
+    lua_setfield(state, field_index, "alternate_result");
+    lua_setfield(state, input_index, "field");
+
     if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
         std::size_t message_length = 0U;
         const auto* message = lua_tolstring(state, -1, &message_length);

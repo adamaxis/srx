@@ -945,8 +945,16 @@ The catalog records those pages, named profile art, source text layout, and
 typed `play_cinematic` outcome. The ROM art is extracted offline to a named
 BMP; Lua owns page order, and the Qt presenter waits for controller input
 between the source text pages before returning to the same field context.
-Route-specific CTest, CLI `actual.bmp`, and independent Genesis capture remain
-open, so this hill is partial. See the
+Debug/Release CTest `shadowrun_ghidra_conversion_qt_field_sinsearach_gate_physical_entry_qa`
+uses ordinary Up input to reach record 230, drives the full Elders/Frosty
+route through all three pages, checks the same-context return and source
+effects, and writes full-frame `actual.bmp` captures. Debug/Release
+`shadowrun_ghidra_conversion_qt_field_spirit_eyes_physical_entry_qa` reaches
+record 96, drives all four ritual pages, and captures the page and clean
+return. The Frosty route now has its ROM entry, typed presenter, regression
+CTest, and CLI image; the overall gate hill remains partial because the
+separate fare roots are not reconstructed. No independent Genesis encounter
+frame has been identified, so visual fidelity remains unverified. See the
 [story-page source audit](cinematic-story-pages-source-audit.md).
 
 The guard's exit choices remain a separate boundary. Commands `0x39` and

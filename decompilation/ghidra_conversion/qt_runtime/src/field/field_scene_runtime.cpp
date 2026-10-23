@@ -17458,6 +17458,30 @@ bool FieldSceneRuntime::open_ordinary_field_terminal_for_dump(
         "field_activities", "ordinary_field_terminal");
 }
 
+bool FieldSceneRuntime::open_spirit_eyes_ritual_for_dump() {
+    if (!ready_ || state_.field_scene_buffers.scene_reference != 4U) {
+        return false;
+    }
+    // The field encounter that awards the scale is outside this QA route.
+    // Seed its recovered source state, then let the normal Lua task, dialogue
+    // runtime, controller, presenter, and typed return path run unchanged.
+    field_exit_world_flags_ = (1U << 5U) | (1U << 6U) |
+                              (1U << 7U) | (1U << 8U);
+    group_item_flags_ = 1U << 2U;
+    field_active_story_trigger_ = 8U;
+    field_mode_effect_flags_ = (1U << 15U) | (1U << 18U);
+    field_auxiliary_flags_ = 1U << 2U;
+    game_scripts_.set_location_context(
+        "site", "council_spirit_eyes_site", "salish.spirit_eyes",
+        "spirit_eyes");
+    game_scripts_.set_field_mode_context(scripting::ScriptFieldModeContext{
+        4U, 27U, field_exit_alternate_result_,
+        state_.field_scene_buffers.scene_mode,
+        field_movement_transition_state_.field_transition_context});
+    return field_dialogue_.open_gameplay_task(
+        "salish_spirit_eyes", "present");
+}
+
 bool FieldSceneRuntime::seed_cyberspace_access_for_dump() {
     if (!ready_) {
         return false;
@@ -17886,8 +17910,15 @@ void FieldSceneRuntime::register_dialogue_outcome_handlers() {
             [this](const scripting::ContinueInPlaceOutcome& outcome) {
                 return handle_dialogue_continue_in_place(outcome);
             }) &&
-        dialogue_outcome_dispatcher_.register_type_handler<
+        dialogue_outcome_dispatcher_.register_target_handler<
             scripting::PlayCinematicOutcome>(
+            "salish.spirit_eyes.ritual_of_binding",
+            [this](const scripting::PlayCinematicOutcome& outcome) {
+                return handle_dialogue_play_cinematic(outcome);
+            }) &&
+        dialogue_outcome_dispatcher_.register_target_handler<
+            scripting::PlayCinematicOutcome>(
+            "salish.sinsearach.frosty_harlequin_exposition",
             [this](const scripting::PlayCinematicOutcome& outcome) {
                 return handle_dialogue_play_cinematic(outcome);
             }) &&

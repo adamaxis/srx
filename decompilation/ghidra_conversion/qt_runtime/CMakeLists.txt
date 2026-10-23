@@ -1257,6 +1257,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_spirit_eyes_physic
                  --field-spirit-eyes-physical-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-spirit-eyes-physical-entry-qa")
 
+# Walk into the Sinsearach village gate through Scene-9 record 230/event 0,
+# follow the Lady Gillian/Frosty route, and capture its source-backed pages.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_sinsearach_gate_physical_entry_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-sinsearach-gate-physical-entry-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-sinsearach-gate-physical-entry-qa")
+
 # Walk into the quest-gated Owlfeather lodge through Scene-6 record 193 and
 # verify the ROM title service opens its Lua dialogue and portrait.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_owlfeather_physical_entry_qa

@@ -11827,6 +11827,38 @@ int main() {
         return 18;
     }
     spirit_eyes_completion = scripts.complete_native_operation(true);
+    constexpr std::array<std::string_view, 4U> kRitualStoryPages{{
+        "salish.spirit_eyes.page.post_ritual_warning",
+        "salish.spirit_eyes.page.post_ritual_name",
+        "salish.spirit_eyes.page.post_ritual_brother",
+        "salish.spirit_eyes.page.post_ritual_lust",
+    }};
+    for (const auto text_key : kRitualStoryPages) {
+        const auto& story_page = spirit_eyes_completion.operation.has_value()
+            ? spirit_eyes_completion.operation->story_page
+            : std::optional<ScriptNativeOperation::StoryPageRequest>{};
+        if (!expect(spirit_eyes_completion.status ==
+                            ScriptTaskStep::Status::awaiting_native_operation &&
+                        spirit_eyes_completion.operation.has_value() &&
+                        spirit_eyes_completion.operation->type ==
+                            ScriptNativeOperation::Type::ui_story_page &&
+                        story_page.has_value() &&
+                        story_page->asset_alias ==
+                            "cinematic.salish.spirit_eyes.ritual_of_binding.art" &&
+                        story_page->text_key == text_key &&
+                        story_page->origin_x == 24U &&
+                        story_page->origin_y == 16U &&
+                        story_page->columns == 37U &&
+                        story_page->rows == 6U &&
+                        story_page->ink_rgb ==
+                            std::array<std::uint8_t, 3U>{255U, 0U, 255U} &&
+                        scripts.dialogue_text(text_key) != nullptr,
+                    "Spirit Eyes ritual did not yield its next source-layout story page")) {
+            std::cerr << scripts.failure() << '\n';
+            return 18;
+        }
+        spirit_eyes_completion = scripts.complete_native_operation(true);
+    }
     const auto* ritual_cinematic =
         spirit_eyes_completion.dialogue_outcome.has_value()
             ? std::get_if<PlayCinematicOutcome>(
@@ -11877,6 +11909,205 @@ int main() {
                     dialogue_outcome_type(*post_ritual.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place,
                 "Spirit Eyes post-ritual answer did not finish in place")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+
+    // Follow the recovered Scene-9 gate route through Lady Gillian's Frosty
+    // handoff and command 0x49. This checks the source choices, story write,
+    // host runner service boundary, and all three typed cinematic pages.
+    scripts.set_location_context(
+        "site", "salish_sinsearach_village_gate", "salish.sinsearach",
+        "salish_sinsearach_guard");
+    scripts.set_field_mode_context(ScriptFieldModeContext{9U, 0U, 0});
+    FieldScriptRouteContext sinsearach_gate_context{};
+    sinsearach_gate_context.scene_id = 9U;
+    sinsearach_gate_context.field_mode = 9U;
+    sinsearach_gate_context.event_code = FieldCollisionEventCode::event_0;
+    sinsearach_gate_context.event_table_available = true;
+    sinsearach_gate_context.event_table[0U] = 13U;
+    const auto sinsearach_gate_route =
+        scripts.resolve_field_location_route(sinsearach_gate_context);
+    if (!expect(sinsearach_gate_route.has_value() &&
+                    sinsearach_gate_route->kind ==
+                        FieldScriptRouteKind::dialogue &&
+                    sinsearach_gate_route->entry_dialogue_module ==
+                        "salish_sinsearach_gate" &&
+                    sinsearach_gate_route->entry_dialogue_function ==
+                        "present" &&
+                    sinsearach_gate_route->entry_location_id ==
+                        "salish_sinsearach_village_gate",
+                "Scene-9 mode-9 event 0 did not resolve the gate's entity-owned Lua task")) {
+        if (sinsearach_gate_route.has_value()) {
+            std::cerr << "route_kind="
+                      << static_cast<unsigned>(sinsearach_gate_route->kind)
+                      << " script="
+                      << static_cast<unsigned>(sinsearach_gate_route->script)
+                      << " module="
+                      << sinsearach_gate_route->entry_dialogue_module
+                      << " function="
+                      << sinsearach_gate_route->entry_dialogue_function
+                      << " location="
+                      << sinsearach_gate_route->entry_location_id
+                      << " boundary="
+                      << sinsearach_gate_route->boundary_reason << '\n';
+        }
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    scripts.set_story_state({
+        {"story_flag_bit_9", true},
+        {"story_flag_bit_13", true},
+        {"story_flag_bit_17", true},
+        {"story_flag_bit_18", true},
+        {"story_flag_bit_19", true},
+        {"story_flag_bit_20", true},
+        {"story_flag_bit_30", false},
+        {"group_item_flag_bit_5", false},
+    });
+    auto sinsearach_gate = scripts.start_task(
+        "salish_sinsearach_gate", "present");
+    const auto menu_has_choice = [&scripts](
+        const ScriptTaskStep& task, const std::string_view menu_id,
+        const std::string_view choice_id) {
+        if (!task.operation.has_value() ||
+            task.operation->type != ScriptNativeOperation::Type::ui_menu ||
+            !task.operation->menu.has_value() ||
+            task.operation->menu->id != menu_id) {
+            return false;
+        }
+        const auto menu = scripts.resolve_dialogue_menu(*task.operation->menu);
+        return menu.has_value() && std::any_of(
+            menu->choices.begin(), menu->choices.end(),
+            [choice_id](const ScriptMenuChoice& choice) {
+                return choice.id == choice_id;
+            });
+    };
+    if (!expect(menu_has_choice(
+                    sinsearach_gate, "friendly_guard_with_frosty", "elders"),
+                "Sinsearach gate did not expose the Frosty-era Elders route")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_gate = scripts.complete_native_menu_choice("elders");
+    if (!expect(menu_has_choice(sinsearach_gate, "elders_thanks", "thanks"),
+                "Sinsearach gate omitted the source Elders handoff choice")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_gate = scripts.complete_native_menu_choice("thanks");
+    if (!expect(menu_has_choice(
+                    sinsearach_gate, "lady_gillian_frosty", "frosty"),
+                "Sinsearach gate did not enter Lady Gillian's Frosty prompt")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_gate = scripts.complete_native_menu_choice("frosty");
+    if (!expect(spirit_page_is(sinsearach_gate, "frosty_expected") &&
+                    scripts.dialogue_text(
+                        "salish.sinsearach.page.frosty_expected") != nullptr,
+                "Sinsearach command 0xF9 did not select the bit-9 Frosty response")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_gate = scripts.complete_native_operation(true);
+    if (!expect(sinsearach_gate.operation.has_value() &&
+                    sinsearach_gate.operation->dialogue.has_value() &&
+                    sinsearach_gate.operation->dialogue->event_id ==
+                        "frosty_arrival" &&
+                    scripts.story_state().at("story_flag_bit_30"),
+                "Sinsearach command 0x44 did not mark Frosty met before arrival")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_gate = scripts.complete_native_operation(true);
+    if (!expect(menu_has_choice(sinsearach_gate, "frosty_thanks", "thanks"),
+                "Frosty's arrival did not enter the source Thanks prompt")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_gate = scripts.complete_native_menu_choice("thanks");
+    if (!expect(menu_has_choice(
+                    sinsearach_gate, "frosty_thon_question", "thon"),
+                "Frosty omitted the source Thon question")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_gate = scripts.complete_native_menu_choice("thon");
+    if (!expect(menu_has_choice(
+                    sinsearach_gate, "frosty_renraku_question", "renraku"),
+                "Frosty's Thon answer omitted the Renraku question")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_gate = scripts.complete_native_menu_choice("renraku");
+    if (!expect(menu_has_choice(
+                    sinsearach_gate, "frosty_michael_question", "michael"),
+                "Frosty's Renraku answer omitted the Michael question")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_gate = scripts.complete_native_menu_choice("michael");
+    if (!expect(spirit_page_is(sinsearach_gate, "frosty_michael_answer"),
+                "Sinsearach gate omitted Frosty's Michael answer page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_gate = scripts.complete_native_operation(true);
+    if (!expect(sinsearach_gate.operation.has_value() &&
+                    sinsearach_gate.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    sinsearach_gate.operation->service_id ==
+                        "runner.adjust_source_byte_triplet_3" &&
+                    !scripts.story_state().at("field_mode_effect_flag_bit_4") &&
+                    scripts.story_state().at("field_mode_effect_flag_bit_5"),
+                "Sinsearach command 0x49 omitted FFFC34 writes or the +3 runner service")) {
+        std::cerr << scripts.failure() << '\n';
+        return 18;
+    }
+    sinsearach_gate = scripts.complete_native_service_result("applied");
+    constexpr std::array<std::string_view, 3U> kFrostyStoryPages{{
+        "salish.sinsearach.page.harlequin_request",
+        "salish.sinsearach.page.thon_presence",
+        "salish.sinsearach.page.tarislar_apartments",
+    }};
+    for (const auto text_key : kFrostyStoryPages) {
+        const auto& story_page = sinsearach_gate.operation.has_value()
+            ? sinsearach_gate.operation->story_page
+            : std::optional<ScriptNativeOperation::StoryPageRequest>{};
+        if (!expect(sinsearach_gate.status ==
+                            ScriptTaskStep::Status::awaiting_native_operation &&
+                        sinsearach_gate.operation.has_value() &&
+                        sinsearach_gate.operation->type ==
+                            ScriptNativeOperation::Type::ui_story_page &&
+                        story_page.has_value() &&
+                        story_page->asset_alias ==
+                            "cinematic.salish.sinsearach.frosty_harlequin_exposition.art" &&
+                        story_page->text_key == text_key &&
+                        story_page->origin_x == 24U &&
+                        story_page->origin_y == 16U &&
+                        story_page->columns == 37U &&
+                        story_page->rows == 8U &&
+                        story_page->ink_rgb ==
+                            std::array<std::uint8_t, 3U>{255U, 0U, 255U} &&
+                        scripts.dialogue_text(text_key) != nullptr,
+                    "Sinsearach command 0x49 did not yield the next source-layout story page")) {
+            std::cerr << scripts.failure() << '\n';
+            return 18;
+        }
+        sinsearach_gate = scripts.complete_native_operation(true);
+    }
+    const auto* frosty_cinematic =
+        sinsearach_gate.dialogue_outcome.has_value()
+            ? std::get_if<PlayCinematicOutcome>(
+                  &*sinsearach_gate.dialogue_outcome)
+            : nullptr;
+    if (!expect(sinsearach_gate.status == ScriptTaskStep::Status::completed &&
+                    frosty_cinematic != nullptr &&
+                    frosty_cinematic->cinematic_id ==
+                        "salish.sinsearach.frosty_harlequin_exposition" &&
+                    frosty_cinematic->return_policy == "source_context",
+                "Sinsearach story pages did not finish with their typed source-context outcome")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
     }

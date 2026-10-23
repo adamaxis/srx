@@ -21372,7 +21372,7 @@ int run_field_spirit_eyes_physical_entry_qa(
         introduction.portrait_alias !=
             "dialogue.portraits.spirit.eyes" ||
         opened != 1 || !save("first-contact", false) ||
-        !save("actual", false)) {
+        !save("first-contact-actual", false)) {
         std::cerr << "Spirit Eyes QA: event 27 did not open first contact "
                      "with the traced story/FFFC40 state (dialogue="
                   << field_scene.dialogue_open() << ", opened=" << opened
@@ -21443,14 +21443,409 @@ int run_field_spirit_eyes_physical_entry_qa(
         return 3;
     }
 
+    if (!field_scene.open_spirit_eyes_ritual_for_dump()) {
+        std::cerr << "Spirit Eyes QA: seeded scale state did not open its "
+                     "source completion task\n";
+        return 3;
+    }
+    field_scene.advance_frame();
+    if (!field_scene.dialogue_open() || !contains("completed your tasks") ||
+        !save("ritual-tasks-done", false)) {
+        std::cerr << "Spirit Eyes QA: seeded scale state did not enter the "
+                     "source completion page\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: command 0x1A
+    if (!field_scene.dialogue_open() || !contains("soon set up for the ritual") ||
+        !save("ritual-setup", false)) {
+        std::cerr << "Spirit Eyes QA: command 0x1A did not show the ritual "
+                     "setup prompt\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: command 0x4A
+
+    constexpr std::array<std::string_view, 4U> kRitualPageCaptures{{
+        "ritual-page-0", "ritual-page-1", "ritual-page-2", "ritual-page-3"}};
+    const QImage story_art(QString::fromStdWString(
+        (asset_root / "cinematics" /
+         "salish-spirit-eyes-ritual.bmp").wstring()));
+    QImage previous_story_page;
+    if (story_art.size() != QSize(kSceneWidth, kSceneHeight)) {
+        std::cerr << "Spirit Eyes QA: source-derived ritual artwork is missing\n";
+        return 3;
+    }
+    for (std::size_t page = 0U; page < kRitualPageCaptures.size(); ++page) {
+        const auto image = render();
+        if (!field_scene.dialogue_open() ||
+            image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (page != 0U && image == previous_story_page) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(kRitualPageCaptures[page]) + ".bmp"))
+                    .wstring())) ||
+            (page == 0U &&
+             !image.save(QString::fromStdWString(
+                 (output / "actual.bmp").wstring())))) {
+            std::cerr << "Spirit Eyes QA: story page capture/advance failed "
+                      << "at page " << page << '\n';
+            return 3;
+        }
+        if (page == 0U) {
+            bool source_ink_overlaid = false;
+            for (int y = 16; y < 24 && !source_ink_overlaid; ++y) {
+                for (int x = 80; x < 88; ++x) {
+                    if (image.pixelColor(x, y) != story_art.pixelColor(x, y)) {
+                        source_ink_overlaid = true;
+                        break;
+                    }
+                }
+            }
+            if (!source_ink_overlaid) {
+                std::cerr << "Spirit Eyes QA: ROM text was not drawn at its "
+                             "source-derived first-character cell\n";
+                return 3;
+            }
+        }
+        previous_story_page = image;
+        if (page + 1U < kRitualPageCaptures.size()) {
+            tap_qa_controller_button(field_scene, 0x40U); // A: next ROM page
+        }
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: finish the last page
+    const auto cinematic_return_frames =
+        field_scene.field_modal_return_transition_frames_for_dump();
+    const bool cinematic_return_finished =
+        finish_field_modal_return_transition(field_scene);
+    const auto cinematic_return = std::string(
+        "field.dialogue.cinematic.completed:"
+        "salish.spirit_eyes.ritual_of_binding");
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 4U ||
+        cinematic_return_frames == 0U || !cinematic_return_finished ||
+        (field_scene.field_world_fact_flags_for_dump() & (1U << 9U)) == 0U) {
+        std::cerr << "Spirit Eyes QA: last story page did not complete its "
+                     "same-context return\n";
+        return 3;
+    }
+    const auto group_items = field_scene.group_item_flags_for_dump();
+    if (!group_items.has_value() || (*group_items & (1U << 2U)) != 0U ||
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   cinematic_return) != 1) {
+        std::cerr << "Spirit Eyes QA: ritual outcome did not consume the scale "
+                     "and return through the registered cinematic handler\n";
+        return 3;
+    }
+
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) return 3;
     trace << "record\tevent\tcontinuation\tgate\tmovement_ticks\tresult\taudio_requests\n"
           << "96\t27\t0x53D5A\tstory_flag_bit_5=0\t"
           << movement_ticks << "\tcomplete_first_contact_prompt_chain\t"
+          << field_audio_events.size() << '\n'
+          << "96\t27\t0x53E98\tstory_flag_bit_8=1,group_item_flag_bit_2=1\t"
+          << "seeded\tcomplete_four_page_ritual_and_source_context_return\t"
           << field_audio_events.size() << '\n';
     std::cout << "field_spirit_eyes_physical_entry_qa=passed "
-                 "record=96 event=27 result=first_contact_prompt_chain "
+                 "record=96 event=27 result=first_contact_and_ritual_pages "
+                 "artifacts=" << output.string() << '\n';
+    return 0;
+}
+
+int run_field_sinsearach_gate_physical_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Sinsearach gate QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error || field_scene.field_scene_reference_for_dump() != 9U) {
+        std::cerr << "Sinsearach gate QA: Scene-9 checkpoint unavailable\n";
+        return 3;
+    }
+
+    constexpr std::size_t kGateRecord = 230U;
+    constexpr std::uint16_t kStartX = 0x0D00U;
+    constexpr std::uint16_t kStartY = 0x0C00U;
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    if (field_scene.field_runtime_state_for_dump().field_mode != 9U ||
+        field_scene.field_entity_world_position().x != kStartX ||
+        field_scene.field_entity_world_position().y != kStartY ||
+        rectangles.size() <= kGateRecord ||
+        rectangles[kGateRecord].left != 0x00C0U ||
+        rectangles[kGateRecord].right != 0x00DFU ||
+        rectangles[kGateRecord].top != 0x00A0U ||
+        rectangles[kGateRecord].bottom != 0x00BFU) {
+        std::cerr << "Sinsearach gate QA: Scene-9 checkpoint or ROM record "
+                     "230 does not match\n";
+        return 3;
+    }
+
+    for (const std::uint8_t bit : {9U, 13U, 17U, 18U, 19U, 20U}) {
+        if (!field_scene.set_story_flag_for_dump(bit, true)) return 3;
+    }
+    if (!field_scene.set_story_flag_for_dump(30U, false)) return 3;
+    field_scene.set_group_item_flags_for_dump(0U);
+    field_scene.seed_runner_source_byte_triplet_for_qa({1U, 2U, 3U});
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&field_scene, &asset_root, &output, &render](
+                          const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_field_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) !=
+                 *expect_field_hud) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()))) {
+            std::cerr << "Sinsearach gate QA: full-frame capture failed for "
+                      << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    if (!save("gate-spawn", true)) return 3;
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into record 230
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 9U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto& dispatch =
+        field_scene.field_map_event_system_for_dump().last_collision_dispatch();
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        !dispatch.has_value() ||
+        dispatch->decision.source_event_code !=
+            FieldCollisionEventCode::event_0 ||
+        dispatch->decision.event_code != FieldCollisionEventCode::event_0 ||
+        field_scene.field_mode_event_code_for_dump() != 0U) {
+        std::cerr << "Sinsearach gate QA: ordinary Up did not dispatch "
+                     "Scene-9 record 230/event 0 (ticks="
+                  << movement_ticks << ", position=0x" << std::hex
+                  << field_scene.field_entity_world_position().x << ",0x"
+                  << field_scene.field_entity_world_position().y << std::dec
+                  << ", dispatch=" << dispatch.has_value() << ")\n";
+        return 3;
+    }
+    for (std::uint8_t settle = 0U;
+         settle < 100U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 9U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.dialogue_task_opened"));
+    if (!field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !contains("Greetings, Sir Joshua") || opened != 1 ||
+        !save("friendly-gate", false)) {
+        std::cerr << "Sinsearach gate QA: event 0 did not open the source "
+                     "three-choice guard prompt (dialogue="
+                  << field_scene.dialogue_open() << ", options="
+                  << static_cast<unsigned>(
+                         field_scene.dialogue_panel().option_count)
+                  << ", greeting=" << contains("Greetings, Sir Joshua")
+                  << ", opened=" << opened << ", mode="
+                  << static_cast<unsigned>(
+                         field_scene.field_runtime_state_for_dump().field_mode)
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump()) << ")\n";
+        for (std::size_t index = source_boundaries.size() > 8U
+                                     ? source_boundaries.size() - 8U
+                                     : 0U;
+             index < source_boundaries.size(); ++index) {
+            std::cerr << "boundary=" << source_boundaries[index] << '\n';
+        }
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x10U); // B: Elders
+    if (!field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().option_count != 1U ||
+        !contains("show you to the Lodge") || !save("elders-handoff", false)) {
+        std::cerr << "Sinsearach gate QA: B did not select the source Elders "
+                     "handoff\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: Thanks
+    if (!field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().option_count != 1U ||
+        !contains("Lady Gillian greets you") ||
+        !save("lady-gillian", false)) {
+        std::cerr << "Sinsearach gate QA: command 0x34 did not enter Lady "
+                     "Gillian's source group\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: Frosty
+    if (!field_scene.dialogue_open() || !contains("She is expecting you") ||
+        !save("frosty-expected", false)) {
+        std::cerr << "Sinsearach gate QA: command 0xF9 did not take the bit-9 "
+                     "Frosty branch\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: command 0x44
+    if (!field_scene.dialogue_open() || !contains("You are taken to Frosty") ||
+        (field_scene.field_world_fact_flags_for_dump() & (1U << 30U)) == 0U ||
+        !save("frosty-arrival", false)) {
+        std::cerr << "Sinsearach gate QA: command 0x44 did not mark bit 30 and "
+                     "open the arrival page\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: Thanks
+    if (!field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().option_count != 1U ||
+        !contains("good to finally meet you") ||
+        !save("frosty-greeting", false)) {
+        std::cerr << "Sinsearach gate QA: Frosty's greeting prompt did not "
+                     "follow her arrival\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: Thon question
+    if (!field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().option_count != 1U ||
+        !contains("what did you want to know") ||
+        !save("frosty-task-prompt", false)) {
+        std::cerr << "Sinsearach gate QA: Thanks did not open the source "
+                     "task prompt\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: Thon answer
+    if (!field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().option_count != 1U ||
+        !contains("information should come from my master") ||
+        !save("frosty-thon-answer", false)) {
+        std::cerr << "Sinsearach gate QA: Thon question did not select its "
+                     "source answer\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: Renraku answer
+    if (!field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().option_count != 1U ||
+        !contains("Renraku is mostly interested") ||
+        !save("frosty-renraku-answer", false)) {
+        std::cerr << "Sinsearach gate QA: Renraku question did not select its "
+                     "source answer\n";
+        return 3;
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: Michael answer
+    if (!field_scene.dialogue_open() ||
+        !contains("Caleb Brightmore") ||
+        !save("frosty-michael-answer", false)) {
+        std::cerr << "Sinsearach gate QA: Michael question did not select its "
+                     "source answer\n";
+        return 3;
+    }
+    const auto runner_triplet_before =
+        field_scene.runner_source_byte_triplet_for_dump();
+    tap_qa_controller_button(field_scene, 0x40U); // A: command 0x49
+
+    constexpr std::array<std::string_view, 3U> kStoryPageCaptures{{
+        "frosty-story-page-0", "frosty-story-page-1",
+        "frosty-story-page-2"}};
+    const QImage story_art(QString::fromStdWString(
+        (asset_root / "cinematics" /
+         "salish-sinsearach-frosty-harlequin.bmp").wstring()));
+    if (story_art.size() != QSize(kSceneWidth, kSceneHeight)) {
+        std::cerr << "Sinsearach gate QA: named source exposition art is missing\n";
+        return 3;
+    }
+    QImage previous_story_page;
+    for (std::size_t page = 0U; page < kStoryPageCaptures.size(); ++page) {
+        const auto image = render();
+        if (!field_scene.dialogue_open() ||
+            image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (page != 0U && image == previous_story_page) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(kStoryPageCaptures[page]) + ".bmp"))
+                    .wstring())) ||
+            (page == 0U &&
+             !image.save(QString::fromStdWString(
+                 (output / "actual.bmp").wstring())))) {
+            std::cerr << "Sinsearach gate QA: cinematic page capture/advance "
+                      << "failed at page " << page << '\n';
+            return 3;
+        }
+        if (page == 0U) {
+            bool source_ink_overlaid = false;
+            for (int y = 16; y < 24 && !source_ink_overlaid; ++y) {
+                for (int x = 72; x < 80; ++x) {
+                    if (image.pixelColor(x, y) != story_art.pixelColor(x, y)) {
+                        source_ink_overlaid = true;
+                        break;
+                    }
+                }
+            }
+            if (!source_ink_overlaid) {
+                std::cerr << "Sinsearach gate QA: source text was not drawn "
+                             "at its first-character cell\n";
+                return 3;
+            }
+        }
+        previous_story_page = image;
+        if (page + 1U < kStoryPageCaptures.size()) {
+            tap_qa_controller_button(field_scene, 0x40U); // A: next ROM page
+        }
+    }
+    tap_qa_controller_button(field_scene, 0x40U); // A: finish last ROM page
+    const auto return_frames =
+        field_scene.field_modal_return_transition_frames_for_dump();
+    const bool returned = finish_field_modal_return_transition(field_scene);
+    const auto completed = std::string(
+        "field.dialogue.cinematic.completed:"
+        "salish.sinsearach.frosty_harlequin_exposition");
+    const auto runner_triplet_after =
+        field_scene.runner_source_byte_triplet_for_dump();
+    if (field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 9U ||
+        return_frames == 0U || !returned ||
+        (field_scene.field_world_fact_flags_for_dump() & (1U << 30U)) == 0U ||
+        (field_scene.field_mode_effect_flags_for_dump() & (1U << 4U)) != 0U ||
+        (field_scene.field_mode_effect_flags_for_dump() & (1U << 5U)) == 0U ||
+        !runner_triplet_before.has_value() || !runner_triplet_after.has_value() ||
+        *runner_triplet_before != std::array<std::uint8_t, 3U>{1U, 2U, 3U} ||
+        *runner_triplet_after != std::array<std::uint8_t, 3U>{4U, 5U, 6U} ||
+        std::count(source_boundaries.begin(), source_boundaries.end(), completed) !=
+            1) {
+        std::cerr << "Sinsearach gate QA: command 0x49 story pages or typed "
+                     "source-context return did not complete\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "record\tevent\tgate\tmovement_ticks\tresult\taudio_requests\n"
+          << "230\t0\tmode=9,bits=9/13/17/18/19/20\t"
+          << movement_ticks << "\tcomplete_three_page_frosty_story_and_return\t"
+          << field_audio_events.size() << '\n';
+    std::cout << "field_sinsearach_gate_physical_entry_qa=passed "
+                 "record=230 event=0 result=frosty_story_pages "
                  "artifacts=" << output.string() << '\n';
     return 0;
 }
@@ -24232,6 +24627,8 @@ int main(int argc, char** argv) {
             field_medicine_lodge_wise_one_physical_entry_qa_path;
         std::optional<std::filesystem::path>
             field_spirit_eyes_physical_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_sinsearach_gate_physical_entry_qa_path;
         std::optional<std::filesystem::path> field_mode_13_entry_qa_path;
         std::optional<std::filesystem::path>
             field_owlfeather_physical_entry_qa_path;
@@ -25072,6 +25469,13 @@ int main(int argc, char** argv) {
                 field_spirit_eyes_physical_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
+            if (std::string(argv[index]) ==
+                    "--field-sinsearach-gate-physical-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_sinsearach_gate_physical_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
             if (std::string(argv[index]) == "--field-mode-13-entry-qa" &&
                 index + 1 < argc) {
                 field_smoke = true;
@@ -25763,6 +26167,36 @@ int main(int argc, char** argv) {
                 checkpoint.active_runner_slot = 0U;
                 smoke_state.restored_field_state = std::move(checkpoint);
             }
+            if (field_sinsearach_gate_physical_entry_qa_path.has_value()) {
+                const auto scene9 = integration::make_field_scene_input(
+                    *smoke_state.field_session_source_assets, 9U);
+                if (!scene9.has_value() ||
+                    !smoke_state.joshua_selection.has_value()) {
+                    std::cerr << "Sinsearach gate QA: Scene-9 source or New "
+                                 "Game runner record is unavailable\n";
+                    return 3;
+                }
+                SaveFieldRestoreState checkpoint{};
+                checkpoint.world_mode = 9U;
+                // Scene-9 record 230 spans x=0x00C0..0x00DF and
+                // y=0x00A0..0x00BF in source 1/16-pixel units. Start just
+                // south of its gate opening so ordinary Up reaches event 0.
+                checkpoint.camera_x = 0x0D00U;
+                checkpoint.camera_y = 0x0C00U;
+                for (std::size_t slot = 0U;
+                     slot < checkpoint.runner_positions.size(); ++slot) {
+                    const auto& spawn =
+                        scene9->source_metadata.initial_field_records[slot];
+                    checkpoint.runner_positions[slot] =
+                        RestoredRunnerPosition{spawn.x, spawn.y};
+                }
+                checkpoint.runner_positions[0U] = RestoredRunnerPosition{
+                    checkpoint.camera_x, checkpoint.camera_y};
+                checkpoint.roster.default_record.bytes =
+                    smoke_state.joshua_selection->live_joshua_record;
+                checkpoint.active_runner_slot = 0U;
+                smoke_state.restored_field_state = std::move(checkpoint);
+            }
             if (field_owlfeather_physical_entry_qa_path.has_value()) {
                 const auto scene6 = integration::make_field_scene_input(
                     *smoke_state.field_session_source_assets, 6U);
@@ -25953,6 +26387,7 @@ int main(int argc, char** argv) {
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_motel_street_collision_qa_path.has_value() ||
                 field_movement_qa_path.has_value() ||
+                field_sinsearach_gate_physical_entry_qa_path.has_value() ||
                 field_wanderer_south_exit_record_7_qa_path.has_value() ||
                 field_wanderer_south_exit_record_8_qa_path.has_value() ||
                 field_crime_mall_ilene_gate_qa_path.has_value() ||
@@ -25981,7 +26416,9 @@ int main(int argc, char** argv) {
             }
             const auto bootstrapped = field_wylie_gala_inn_qa_path.has_value()
                 ? field_scene.bootstrap_for_scene_dump(smoke_state, 3U)
-                : field_scene.bootstrap(smoke_state);
+                : (field_sinsearach_gate_physical_entry_qa_path.has_value()
+                       ? field_scene.bootstrap_for_scene_dump(smoke_state, 9U)
+                       : field_scene.bootstrap(smoke_state));
             if (!bootstrapped) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
@@ -29518,6 +29955,12 @@ int main(int argc, char** argv) {
                 return run_field_spirit_eyes_physical_entry_qa(
                     field_scene, asset_root,
                     *field_spirit_eyes_physical_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_sinsearach_gate_physical_entry_qa_path.has_value()) {
+                return run_field_sinsearach_gate_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_sinsearach_gate_physical_entry_qa_path,
                     field_audio_events, field_source_boundaries);
             }
             if (field_mode_13_entry_qa_path.has_value()) {
