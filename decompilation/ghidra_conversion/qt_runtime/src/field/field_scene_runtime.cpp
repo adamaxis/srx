@@ -7463,6 +7463,11 @@ void FieldSceneRuntime::configure_callbacks() {
         };
     callbacks_.entity_render_pass.finish_pass = [this] {
         source_boundary("field.entities.finish_render_pass");
+        // FFE186 is owned by the field coordinator. The render-pass model
+        // carries a typed copy so its source-derived actor/effect services
+        // see the same mode at 0x04658's 0x5D29C call site.
+        world_frame_logic_state_.scene_state =
+            field_runtime_state_.scene_runtime_state;
         advance_default_field_actor_animations();
         advance_field_weapon_projectile_animations();
     };
@@ -8332,6 +8337,10 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         // FFDF84/FFDF86 are shared by the alert/timeout helper (0x1DBAA)
         // and the per-frame dispatcher (0x1DE00). Keep one native field state
         // authoritative while adapting its words to the world-frame model.
+        // The scene-mode byte is shared as well: 0x097C promotes FFE186 to
+        // mode 2 before re-entry, and 0x1DD94 may promote it to mode 3 here.
+        world_frame_logic_state_.scene_state =
+            field_runtime_state_.scene_runtime_state;
         world_frame_logic_state_.world_active = static_cast<std::uint16_t>(
             field_world_activity_timeout_state_.timeout_marker);
         world_frame_logic_state_.cleanup_countdown = static_cast<std::int16_t>(
@@ -8339,6 +8348,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         refresh_world_entity_service_targets();
         advance_world_frame_logic(world_frame_logic_state_,
                                   world_frame_logic_callbacks_);
+        field_runtime_state_.scene_runtime_state =
+            world_frame_logic_state_.scene_state;
         // The frame service decrements FFE11C before the coordinator checks
         // whether it may run the pending scene handler. Publish that updated
         // value now; copying the pre-service value back at frame end would
@@ -17832,6 +17843,8 @@ void FieldSceneRuntime::advance_frame() {
     field_runtime_state_.world_activity_flags = field_exit_world_flags_;
     field_runtime_state_.mode_transition_gate =
         state_.field_scene_buffers.scene_mode;
+    world_frame_logic_state_.scene_state =
+        field_runtime_state_.scene_runtime_state;
 
     const auto result = integration::advance_field_runtime_frame(
         field_runtime_state_, field_runtime_callbacks_);

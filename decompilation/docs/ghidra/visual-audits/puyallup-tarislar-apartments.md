@@ -303,6 +303,14 @@ The raw `0x00C0` record publishes event 0 in `FFFBF9`. In Scene-54 mode 3,
 sets the projected-interaction countdown described above. The later
 `FFDF3E` path, rather than a map write, advances the route to Scene 55.
 
+The Qt field coordinator and `WorldFrameLogicState` both project `FFE186`.
+The runtime now synchronizes that byte before its render and world-logic
+services and publishes the mode-3 transition back to the coordinator. This
+keeps the typed field state aligned with ROM `0x097C`/`0x1DD94` ordering. The
+live Scene-55 effect still lacks typed `FFF140`/`FF044C` inputs and a host
+model for the `FFF11E` phase record, so this synchronization does not invoke
+the actor query or activate the completion callback.
+
 ## Seven visual and behavioral checks
 
 1. **Does it look correct?** The Qt tests capture the first-visit prompts,

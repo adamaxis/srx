@@ -522,8 +522,10 @@ and physical meters for the `0x5D29C` eligibility decision. Debug/Release
 script-runtime, world-activity, and random-encounter QA pass. The field render
 pass does not call that query yet, so the live fight-completion trigger, the
 callback's 1000-iteration presentation, and pre-panel animation/fade setup
-remain open;
-the hill remains partial.
+remain open. The host synchronizes FFE186 between coordinator and world-frame
+state at field-frame and render-pass boundaries. FFF140/FF044C inputs and the
+FFF11E effect-phase state are not yet connected to that route.
+The hill remains partial.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).
