@@ -270,7 +270,12 @@ callback, the outer loop clears FFE104 and reloads FFFC04 without chaining
 the next record. Scene-55 completion has a separate source route: effect
 routine `0x5D29C` scans the six actor slots during animation frame 3 and
 decrements its phase timer when none has active bit 0, clear bits 4/6, and
-nonzero physical meter `+0x4C`. After the phase timer expires, `0x5D3D4` sets
+nonzero physical meter `+0x4C`.
+The queried addresses are `FF0500` through `FF0A00`. Raw ROM `0x1A342` starts
+the actor allocator at `FF0400` with typed slot value 3, then advances one
+`0x100` record at a time; the six scanned records therefore use typed slots
+4 through 9. Lua's eligibility query now validates that slot-to-address map.
+After the phase timer expires, `0x5D3D4` sets
 callback `0x5BAC4` and `0x1E2E0` schedules it for the 60-frame activity
 boundary. Callback `0x5BAC4` opens prompt group `0xFDD72` through `0x20950`
 with Licourtrix profile `0x121EA4`; its visible response is text `0xFD71E`.
@@ -307,9 +312,15 @@ The Qt field coordinator and `WorldFrameLogicState` both project `FFE186`.
 The runtime now synchronizes that byte before its render and world-logic
 services and publishes the mode-3 transition back to the coordinator. This
 keeps the typed field state aligned with ROM `0x097C`/`0x1DD94` ordering. The
-live Scene-55 effect still lacks typed `FFF140`/`FF044C` inputs and a host
-model for the `FFF11E` phase record, so this synchronization does not invoke
-the actor query or activate the completion callback.
+`0x5D260` reset seeds `FFF140` (`FFF11E+0x22`) to `-1` and its phase timer
+(`+0x24`) to `0xB4`. ROM `0x1DD94` arms phase 0 and changes `FFE186` from 2 to
+3 only when that marker is negative and signed byte `FF044C` is at most 9.
+`FF044C` aliases `FF0400+0x4C`, the first entity record's physical-meter byte
+as confirmed by the `0x5D29C` six-record scan. Its typed host owner is
+`FieldWorldActorSlot::slot_3`, but the runtime gate does not consume that
+actor's meter yet. The host also lacks a runtime model for the `FFF11E` phase
+record, so this state synchronization
+does not invoke the actor query or activate the completion callback.
 
 ## Seven visual and behavioral checks
 

@@ -1552,7 +1552,8 @@ public:
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);
     // ROM 0x5D29C checks the six live records at FF0500..FF0A00 on effect
-    // frame 3. The array is in record order; an empty ID denotes an unused
+    // frame 3. These addresses map to typed host slots 4..9 because FF0400
+    // is slot 3. The array is in record order; an empty ID denotes an unused
     // host slot. Eligibility is read from Lua-owned actor state.
     std::optional<bool> has_world_scene_effect_target(
         const std::array<std::string, 6>& actor_ids);

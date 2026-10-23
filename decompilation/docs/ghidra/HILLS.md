@@ -519,12 +519,16 @@ and captures the fade. These are internal captures, not an independent
 Genesis visual reference. Lua now retains encounter actors' source slots and
 initial combat facts, and its typed six-slot query reads live service flags
 and physical meters for the `0x5D29C` eligibility decision. Debug/Release
-script-runtime, world-activity, and random-encounter QA pass. The field render
-pass does not call that query yet, so the live fight-completion trigger, the
-callback's 1000-iteration presentation, and pre-panel animation/fade setup
-remain open. The host synchronizes FFE186 between coordinator and world-frame
-state at field-frame and render-pass boundaries. FFF140/FF044C inputs and the
-FFF11E effect-phase state are not yet connected to that route.
+script-runtime, world-activity, and random-encounter QA pass. Lua validates
+the six source addresses as typed actor slots 4..9 (`FF0400` is slot 3). The
+field render pass has no caller for the query. The live fight-completion
+trigger, callback's 1000-iteration presentation, and the pre-panel
+animation/fade setup remain open. The host synchronizes FFE186 between its
+coordinator and world-frame state at field-frame and render-pass boundaries.
+FFF140 and the FFF11E
+effect-phase state are not yet connected. FF044C is FF0400+0x4C, the first
+entity record's physical-meter byte; its typed host owner is slot_3, but the
+runtime gate does not yet consume that meter.
 The hill remains partial.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the

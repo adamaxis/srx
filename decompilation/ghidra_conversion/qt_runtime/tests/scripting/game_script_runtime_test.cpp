@@ -2950,24 +2950,24 @@ int main() {
             return scripts.actor_heartbeat(context);
         };
     const auto scan_down_actor = spawn_activity_scan_actor(
-        "scene_55_scan_down", 5U, 0x11U, 10U);
+        "scene_55_scan_down", 4U, 0x11U, 10U);
     const auto scan_dead_actor = spawn_activity_scan_actor(
-        "scene_55_scan_dead", 6U, 0x41U, 10U);
+        "scene_55_scan_dead", 5U, 0x41U, 10U);
     const auto scan_zero_meter_actor = spawn_activity_scan_actor(
-        "scene_55_scan_zero", 7U, 0x01U, 0U);
+        "scene_55_scan_zero", 6U, 0x01U, 0U);
     auto scan_inactive_context = actor_context(
         "pedestrian_k0b_none00", "scene_55_scan_inactive", 11U,
         ScriptActorActionKind::none, 0U, 0U, true);
-    scan_inactive_context.source_record_slot = 8U;
+    scan_inactive_context.source_record_slot = 7U;
     scan_inactive_context.source_record_flags = 0U;
     ScriptCombatantFacts scan_inactive_combatant{};
-    scan_inactive_combatant.record_type = 8U;
+    scan_inactive_combatant.record_type = 7U;
     scan_inactive_combatant.physical_meter = 10U;
     scan_inactive_context.combatant = scan_inactive_combatant;
     const auto scan_inactive_spawn =
         scripts.actor_heartbeat(scan_inactive_context);
     const auto scan_live_actor = spawn_activity_scan_actor(
-        "scene_55_scan_live", 9U, 0x01U, 1U);
+        "scene_55_scan_live", 8U, 0x01U, 1U);
     const std::array<std::string, 6> scene_55_scan_ids{{
         "scene_55_scan_down", "scene_55_scan_dead", "scene_55_scan_zero",
         "scene_55_scan_inactive", "scene_55_scan_live", ""}};
@@ -6235,13 +6235,13 @@ int main() {
         return 24;
     }
     auto scene_55_live_victim_facts = exhausted_victim_facts;
-    scene_55_live_victim_facts.record_type = 9U;
+    scene_55_live_victim_facts.record_type = 8U;
     auto scene_55_lethal_hit_context = source_weapon_hit_context;
     scene_55_lethal_hit_context.instance_id =
         "field_weapon_slot_scene_55_lethal_hit";
     scene_55_lethal_hit_context.projectile_combat_targets = {
         ScriptProjectileCombatTarget{
-            "scene_55_scan_live", 9U, scene_55_live_victim_facts}};
+            "scene_55_scan_live", 8U, scene_55_live_victim_facts}};
     scene_55_lethal_hit_context.projectile_collision_search =
         [](const std::uint16_t, const std::uint16_t,
            const std::uint8_t) {

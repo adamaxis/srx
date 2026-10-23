@@ -464,8 +464,8 @@ function ActorAI.heartbeat(context)
 end
 
 -- ROM 0x5D29C scans records FF0500..FF0A00 when the effect animation reaches
--- frame 3. The host supplies the live actor IDs for those six record slots;
--- Lua evaluates their authoritative service flags and combat meters.
+-- frame 3. Those addresses map to typed host slots 4..9 (FF0400 is slot 3).
+-- Lua evaluates the supplied actors' authoritative service flags and meters.
 function ActorAI.has_world_scene_effect_target(actor_ids)
     if type(actor_ids) ~= "table" then
         return nil
@@ -478,7 +478,7 @@ function ActorAI.has_world_scene_effect_target(actor_ids)
             end
             local state = states[actor_id]
             if type(state) ~= "table" or
-               state.source_record_slot ~= index + 4 or
+               state.source_record_slot ~= index + 3 or
                type(state.source_record_flags) ~= "number" or
                state.source_record_flags < 0 or
                state.source_record_flags > 0xff or

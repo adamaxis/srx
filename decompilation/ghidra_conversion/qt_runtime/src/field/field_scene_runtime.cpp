@@ -7463,9 +7463,9 @@ void FieldSceneRuntime::configure_callbacks() {
         };
     callbacks_.entity_render_pass.finish_pass = [this] {
         source_boundary("field.entities.finish_render_pass");
-        // FFE186 is owned by the field coordinator. The render-pass model
-        // carries a typed copy so its source-derived actor/effect services
-        // see the same mode at 0x04658's 0x5D29C call site.
+        // ROM 0x04658 calls 0x5D29C at the render-pass tail. Keep this typed
+        // FFE186 projection current at that boundary; the staged effect
+        // controller itself is not connected to this host render pass yet.
         world_frame_logic_state_.scene_state =
             field_runtime_state_.scene_runtime_state;
         advance_default_field_actor_animations();
