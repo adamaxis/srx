@@ -142,9 +142,12 @@ position override from replacing those profile values. The Lua outcomes now
 use typed same-scene continuation for refusal/short-wallet and a typed Scene-6
 entry after payment; Qt routes the latter through the field destination fade
 and loader. The updated script assertions and paid physical route have not
-been verified in this pass, and the active controlled-actor position after
-profile selection still needs confirmation. "Highway" is supported as
-dialogue wording, not as a ROM scene name.
+been verified in this pass. The active runner's position is source-resolved:
+`0x136DE` sets FFFC0E/FFE10E to 1, `0x03074` keeps the default profile pair,
+and `0x2B34` copies that first pair into runner record FF0100/FF0104. The ROM
+words at `0x14B8D2` are `(0x1310, 0x0980)`, which the host destination route
+uses for its first runner record. "Highway" is supported as dialogue wording,
+not as a ROM scene name.
 
 ## Source references
 
@@ -152,7 +155,9 @@ dialogue wording, not as a ROM scene name.
   `0xC0C2`, `0xC0DA`, `0x0D94`, `0x195C`, `0x131C`, `0x12C5A`, `0x11C0`,
   `0x0E9C`, `0x0CEC`, `0x1530`, `0x1728`, `0x0C1320`, `0x0F5870`,
   `0x0F4C20`, `0x1FE638`, `0x1FE690`, `0x1FE6C2`, `0x21E66`, `0x136DE`,
-  `0x1FD80`, `0x009B2`, `0x02BD2`, `0x02822`, `0x03074`, and `0x14B890`.
+  `0x1FD80`, `0x009B2`, `0x02BD2`, `0x02B34`, `0x02822`, `0x03074`,
+  and `0x14B890+0x42`.
 - Ghidra cross-check: `fn_00000D94.cpp`, `fn_00001406.cpp`,
-  `fn_000566F6.cpp`, `fn_0000C0DA.cpp`, and `fn_000011C0.cpp`.
+  `fn_000566F6.cpp`, `fn_0000C0DA.cpp`, `fn_000011C0.cpp`,
+  `fn_000136DE.cpp`, `fn_00003074.cpp`, and `fn_00002B34.cpp`.
 - Host content: `gameplay/dialogue/cinematics.json`.

@@ -308,9 +308,11 @@ short-wallet branches to Scene-9 direct re-entry; successful payment sets mode
 6 and enters numeric Scene 6, whose default profile anchors are documented in
 the [HILLS index](HILLS.md). Typed Lua outcomes and the Qt destination route
 are wired; the updated script assertions and paid physical route still need
-verification, and the controlled runner's exact post-profile position is
-unresolved. No scene-name claim is made from the extracted map. These internal
-captures are not independent visual proof.
+verification. Raw ROM flow resolves the controlled runner to the first Scene-6
+profile pair `(0x1310, 0x0980)` at `0x14B8D2`; `0x136DE` locks the pending
+position override, and `0x2B34` copies that pair into runner record
+FF0100/FF0104. No scene-name claim is made from the extracted map. These
+internal captures are not independent visual proof.
 Tarislar event-7 carried `FFE162` state and scene-54 completion/return also
 remain unresolved. The known type-3 producer's three offer targets exclude
 Scene 1/event 7; other callers and state carried into that selector have not

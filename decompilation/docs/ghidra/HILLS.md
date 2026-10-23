@@ -1029,6 +1029,13 @@ highway flight, but the numeric destination is the only ROM-backed scene
 identity established here. Lua owns the wallet action; no ROM-address
 interpreter or second wallet state was added.
 
+The first profile pair is the controlled runner's arrival: mode initializer
+`0x136DE` sets FFFC0E=1 and FFE10E=1 for Scene 6; `0x03074` therefore skips
+the pending-position override and copies the default profile; `0x2B34` then
+copies its first position pair into runner record FF0100/FF0104. The ROM words
+at `0x14B8D2` are `(0x1310, 0x0980)`. The existing host route selects that
+first profile record. Its paid physical route remains unverified.
+
 `shadowrun_gameplay_script_runtime_qa` now expects typed `continue_in_place`
 outcomes after No and insufficient funds, and `enter_field_scene` for Scene 6
 after the paid-flight page. Those updated assertions have not been rerun in
@@ -1041,8 +1048,7 @@ The ROM trace resolves the paid destination as numeric Scene 6 and its default
 profile anchors, and resolves the refusal/short-wallet branches as Scene-9
 direct re-entry. The Lua outcomes and typed Qt destination-transition route
 are now wired, but the updated script assertions and paid physical route have
-not been verified in this pass. The exact active-actor position after profile
-selection also remains open. The overall gate hill remains partial. No
+not been verified in this pass. The overall gate hill remains partial. No
 independent Genesis encounter frame has been identified; these captures test
 the converted route and renderer, not Genesis visual fidelity. See the
 [story-page source audit](cinematic-story-pages-source-audit.md).
