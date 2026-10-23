@@ -36,6 +36,25 @@ boot/fasa.bmp	sprite	96	80	127	40	ROM title/boot resource	extracted
 cinematics/tarislar-tomb/background-initial.bmp	background	0	0	320	224	Scene 55 descriptor 0x5C966; layouts 0x1EF775/0x1EF7FB; patterns 0x1EE2AA/0x1F002E	extracted
 cinematics/tarislar-tomb/background-city-at-400.bmp	background	0	0	320	224	Scene 55 frame 0x190; layout 0x1E8802; palette 0x5C9B4	extracted
 cinematics/tarislar-tomb/logo-reveal-overlay.bmp	overlay	13	16	296	152	Scene 55 frame 0x26C; source map 0x1F6532; palette 0x5CA74	extracted
+cinematics/tarislar-tomb/sprites/list-1ef988.bmp	sprite	-48	-65	113	150	Scene 55 sprite list 0x1ef988; pattern stream 0x1f002e; palette 0x5c9f2	extracted
+cinematics/tarislar-tomb/sprites/list-1efaaa.bmp	sprite	-59	-1	104	109	Scene 55 sprite list 0x1efaaa; pattern stream 0x1f002e; palette 0x5c9f2	extracted
+cinematics/tarislar-tomb/sprites/list-1efb5c.bmp	sprite	-30	-17	86	94	Scene 55 sprite list 0x1efb5c; pattern stream 0x1f002e; palette 0x5ca12	extracted
+cinematics/tarislar-tomb/sprites/list-1efbca.bmp	sprite	-27	-30	28	47	Scene 55 sprite list 0x1efbca; pattern stream 0x1f002e; palette 0x5ca12	extracted
+cinematics/tarislar-tomb/sprites/list-1ef936.bmp	sprite	-87	0	88	88	Scene 55 sprite list 0x1ef936; pattern stream 0x1efdcc; palette 0x5ca12	extracted
+cinematics/tarislar-tomb/sprites/list-1efc66.bmp	sprite	-20	1	72	40	Scene 55 sprite list 0x1efc66; pattern stream 0x1f002e; palette 0x5c9d2	extracted
+cinematics/tarislar-tomb/sprites/list-1efc34.bmp	sprite	-19	-30	53	50	Scene 55 sprite list 0x1efc34; pattern stream 0x1f002e; palette 0x5c9d2	extracted
+cinematics/tarislar-tomb/sprites/list-1efb9e.bmp	sprite	-67	-7	68	16	Scene 55 sprite list 0x1efb9e; pattern stream 0x1f002e; palette 0x5ca12	extracted
+cinematics/tarislar-tomb/sprites/list-1efbb8.bmp	sprite	-59	-7	60	16	Scene 55 sprite list 0x1efbb8; pattern stream 0x1f002e; palette 0x5ca12	extracted
+cinematics/tarislar-tomb/sprites/list-1efbec.bmp	sprite	-47	-7	48	14	Scene 55 sprite list 0x1efbec; pattern stream 0x1f002e; palette 0x5ca12	extracted
+cinematics/tarislar-tomb/sprites/list-1efbfe.bmp	sprite	-45	-8	46	15	Scene 55 sprite list 0x1efbfe; pattern stream 0x1f002e; palette 0x5ca12	extracted
+cinematics/tarislar-tomb/sprites/list-1efc10.bmp	sprite	-41	-7	42	16	Scene 55 sprite list 0x1efc10; pattern stream 0x1f002e; palette 0x5ca12	extracted
+cinematics/tarislar-tomb/sprites/list-1efc22.bmp	sprite	-43	-8	44	16	Scene 55 sprite list 0x1efc22; pattern stream 0x1f002e; palette 0x5ca12	extracted
+cinematics/tarislar-tomb/sprites/list-1efca8.bmp	sprite	-10	-16	24	31	Scene 55 sprite list 0x1efca8; pattern stream 0x1f002e; palette 0x5c9f2	extracted
+cinematics/tarislar-tomb/sprites/list-1efcb2.bmp	sprite	-15	-19	34	39	Scene 55 sprite list 0x1efcb2; pattern stream 0x1f002e; palette 0x5c9f2	extracted
+cinematics/tarislar-tomb/sprites/list-1efccc.bmp	sprite	-20	-24	42	46	Scene 55 sprite list 0x1efccc; pattern stream 0x1f002e; palette 0x5c9f2	extracted
+cinematics/tarislar-tomb/sprites/list-1efd0e.bmp	sprite	-18	-28	41	52	Scene 55 sprite list 0x1efd0e; pattern stream 0x1f002e; palette 0x5c9f2	extracted
+cinematics/tarislar-tomb/sprites/list-1efd48.bmp	sprite	-26	-28	53	55	Scene 55 sprite list 0x1efd48; pattern stream 0x1f002e; palette 0x5c9f2	extracted
+cinematics/tarislar-tomb/sprites/list-1efd6a.bmp	sprite	-29	-30	60	60	Scene 55 sprite list 0x1efd6a; pattern stream 0x1f002e; palette 0x5c9f2	extracted
 cyberspace/matrix/system-map-background.bmp	background	0	0	320	224	0x532BC/0x15C4DC name table; 0x15BEAC patterns; CRAM 0x15FCB6	extracted
 cyberspace/matrix/system-map-font.bmp	sprite	0	0	128	48	0x532BC/0xC0DA/0xC1320 glyphs; attribute 0x2000; CRAM 0x15FCB6 palette line 1	extracted
 cyberspace/matrix/traversal-background-theme-1.bmp	background	0	0	320	224	0x1745E field-mode presentation: 0xD646A patterns; 0xD806C and 0xD74F4 Plane-B streams; 0xD8316 shared footer; palette 0x166448[0]	extracted

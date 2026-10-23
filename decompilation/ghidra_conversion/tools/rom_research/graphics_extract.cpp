@@ -4500,6 +4500,151 @@ Scene55BackgroundImages extract_scene55_background_images(
         std::move(reveal_image), std::move(combined_image)};
 }
 
+struct Scene55SpriteListSource {
+    std::size_t address;
+    std::string_view name;
+    std::size_t pattern_stream;
+    std::size_t first_tile;
+    std::size_t palette_source;
+};
+
+constexpr std::array<Scene55SpriteListSource, 19U> kScene55SpriteLists{{
+    {0x1EF988U, "list-1ef988", 0x1F002EU, 0x0454U, 0x5C9F2U},
+    {0x1EFAAAU, "list-1efaaa", 0x1F002EU, 0x0454U, 0x5C9F2U},
+    {0x1EFB5CU, "list-1efb5c", 0x1F002EU, 0x0454U, 0x5CA12U},
+    {0x1EFBCAU, "list-1efbca", 0x1F002EU, 0x0454U, 0x5CA12U},
+    {0x1EF936U, "list-1ef936", 0x1EFDCCU, 0x0080U, 0x5CA12U},
+    {0x1EFC66U, "list-1efc66", 0x1F002EU, 0x0454U, 0x5C9D2U},
+    {0x1EFC34U, "list-1efc34", 0x1F002EU, 0x0454U, 0x5C9D2U},
+    {0x1EFB9EU, "list-1efb9e", 0x1F002EU, 0x0454U, 0x5CA12U},
+    {0x1EFBB8U, "list-1efbb8", 0x1F002EU, 0x0454U, 0x5CA12U},
+    {0x1EFBECU, "list-1efbec", 0x1F002EU, 0x0454U, 0x5CA12U},
+    {0x1EFBFEU, "list-1efbfe", 0x1F002EU, 0x0454U, 0x5CA12U},
+    {0x1EFC10U, "list-1efc10", 0x1F002EU, 0x0454U, 0x5CA12U},
+    {0x1EFC22U, "list-1efc22", 0x1F002EU, 0x0454U, 0x5CA12U},
+    {0x1EFCA8U, "list-1efca8", 0x1F002EU, 0x0454U, 0x5C9F2U},
+    {0x1EFCB2U, "list-1efcb2", 0x1F002EU, 0x0454U, 0x5C9F2U},
+    {0x1EFCCCU, "list-1efccc", 0x1F002EU, 0x0454U, 0x5C9F2U},
+    {0x1EFD0EU, "list-1efd0e", 0x1F002EU, 0x0454U, 0x5C9F2U},
+    {0x1EFD48U, "list-1efd48", 0x1F002EU, 0x0454U, 0x5C9F2U},
+    {0x1EFD6AU, "list-1efd6a", 0x1F002EU, 0x0454U, 0x5C9F2U},
+}};
+
+std::array<shadowrun::graphics::RgbaImage, kScene55SpriteLists.size()>
+extract_scene55_sprite_list_images(
+    const std::vector<std::uint8_t>& rom,
+    const std::size_t list_count = kScene55SpriteLists.size()) {
+    constexpr std::size_t kWidth = 320U;
+    constexpr std::size_t kHeight = 224U;
+    constexpr std::size_t kTilesPerRow = 16U;
+    std::array<shadowrun::graphics::RgbaImage, kScene55SpriteLists.size()>
+        images{};
+    if (list_count > kScene55SpriteLists.size()) {
+        throw std::out_of_range("Scene-55 sprite-list count is invalid");
+    }
+    for (std::size_t list_index = 0U;
+         list_index < list_count; ++list_index) {
+        const auto& source = kScene55SpriteLists[list_index];
+        const auto pattern_bytes =
+            shadowrun::graphics::decode_genesis_resource_stream(
+                rom, source.pattern_stream);
+        if (pattern_bytes.empty() || pattern_bytes.size() % 32U != 0U) {
+            throw std::runtime_error(
+                "Scene-55 sprite-list pattern stream has an invalid tile length");
+        }
+        const auto tile_count = pattern_bytes.size() / 32U;
+        const auto palette = shadowrun::graphics::read_genesis_palette(
+            rom, source.palette_source);
+        const auto atlas = shadowrun::graphics::decode_tile_atlas(
+            pattern_bytes, 0U, tile_count, palette, kTilesPerRow, 0U);
+        auto& image = images[list_index];
+        image.width = static_cast<std::uint16_t>(kWidth);
+        image.height = static_cast<std::uint16_t>(kHeight);
+        image.pixels.assign(
+            kWidth * kHeight,
+            shadowrun::native::Rgba8{0U, 0U, 0U, 0U});
+        auto record = source.address;
+        bool terminated = false;
+        for (std::size_t sprite_index = 0U; sprite_index < 64U;
+             ++sprite_index) {
+            if (record > rom.size() || rom.size() - record < 8U) {
+                throw std::runtime_error(
+                    "Scene-55 sprite list is truncated");
+            }
+            const auto x_offset = static_cast<std::int16_t>(
+                read_big_endian_word(rom, record));
+            if (x_offset == std::numeric_limits<std::int16_t>::min()) {
+                terminated = true;
+                break;
+            }
+            const auto y_offset = static_cast<std::int16_t>(
+                read_big_endian_word(rom, record + 2U));
+            const auto size = read_big_endian_word(rom, record + 4U);
+            const auto attributes = read_big_endian_word(rom, record + 6U);
+            const auto tile = static_cast<std::size_t>(
+                attributes & 0x07FFU);
+            const auto width_tiles = static_cast<std::size_t>(
+                ((size >> 2U) & 0x03U) + 1U);
+            const auto height_tiles = static_cast<std::size_t>(
+                (size & 0x03U) + 1U);
+            if ((size & 0xFF00U) != 0U || tile < source.first_tile ||
+                tile - source.first_tile > tile_count ||
+                width_tiles * height_tiles >
+                    tile_count - (tile - source.first_tile)) {
+                throw std::runtime_error(
+                    "Scene-55 sprite list references a missing pattern");
+            }
+            const auto tile_offset = tile - source.first_tile;
+            const bool flip_x = (attributes & 0x0800U) != 0U;
+            const bool flip_y = (attributes & 0x1000U) != 0U;
+            const auto sprite_width = width_tiles * 8U;
+            const auto sprite_height = height_tiles * 8U;
+            for (std::size_t local_y = 0U; local_y < sprite_height;
+                 ++local_y) {
+                for (std::size_t local_x = 0U; local_x < sprite_width;
+                     ++local_x) {
+                    const auto source_x = flip_x
+                        ? sprite_width - 1U - local_x
+                        : local_x;
+                    const auto source_y = flip_y
+                        ? sprite_height - 1U - local_y
+                        : local_y;
+                    const auto tile_index = tile_offset +
+                        (source_x / 8U) * height_tiles +
+                        (source_y / 8U);
+                    const auto atlas_x =
+                        (tile_index % kTilesPerRow) * 8U +
+                        (source_x % 8U);
+                    const auto atlas_y =
+                        (tile_index / kTilesPerRow) * 8U +
+                        (source_y % 8U);
+                    const auto source_pixel = atlas.pixels[
+                        atlas_y * atlas.width + atlas_x];
+                    if (source_pixel.alpha == 0U) continue;
+                    const auto target_x = 160 + x_offset +
+                        static_cast<int>(local_x);
+                    const auto target_y = 112 + y_offset +
+                        static_cast<int>(local_y);
+                    if (target_x < 0 || target_y < 0 ||
+                        target_x >= static_cast<int>(kWidth) ||
+                        target_y >= static_cast<int>(kHeight)) {
+                        continue;
+                    }
+                    image.pixels[
+                        static_cast<std::size_t>(target_y) * kWidth +
+                        static_cast<std::size_t>(target_x)] = source_pixel;
+                }
+            }
+            record += 8U;
+        }
+        if (!terminated) {
+            throw std::runtime_error(
+                "Scene-55 sprite list has no terminator");
+        }
+    }
+    return images;
+}
+
 shadowrun::graphics::RgbaImage compose_matrix_traversal_hud_frame(
     const std::vector<std::uint8_t>& rom,
     const shadowrun::graphics::RgbaImage& matrix_menu_patterns) {
@@ -6088,6 +6233,22 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         tomb_prelude_backgrounds.elapsed_26c_overlay, "overlay",
         "Scene 55 frame 0x26C; source map 0x1F6532; palette 0x5CA74",
         true, manifest, written, missing, blank);
+    const auto tomb_prelude_sprites = extract_scene55_sprite_list_images(rom);
+    for (std::size_t index = 0U;
+         index < kScene55SpriteLists.size(); ++index) {
+        const auto& source = kScene55SpriteLists[index];
+        std::ostringstream provenance;
+        provenance << "Scene 55 sprite list 0x" << std::hex
+                   << source.address << "; pattern stream 0x"
+                   << source.pattern_stream << "; palette 0x"
+                   << source.palette_source;
+        write_catalog_asset(
+            root,
+            "cinematics/tarislar-tomb/sprites/" +
+                std::string(source.name) + ".bmp",
+            tomb_prelude_sprites[index], "sprite", provenance.str(), true,
+            manifest, written, missing, blank, -160, -112);
+    }
     const auto write = [&](const std::string& name,
                            const shadowrun::native::NativeImage& image,
                            const std::string& kind,
@@ -10778,186 +10939,24 @@ int main(int argc, char** argv) {
          sprite_list_mode == "--scene-55-tomb-prelude-sprite-lists")) {
         try {
             const auto rom = read_file(argv[1]);
-            // The field callback at 0x5BAC4 loads descriptor 0x5C966. Its
-            // second pattern stream is the odd pointer 0x1F002F (stream data
-            // at 0x1F002E), uploaded at VRAM byte address $8A80 (tile $454).
-            // The callback's animated sprite lists select from this bank.
-            // Keep this source path separate from the live Matrix traversal
-            // sprite path. The older focused flag remains an alias for the
-            // first two lists used by 0x5BD2C.
-            constexpr std::size_t kPatternStream = 0x1F002EU;
-            constexpr std::size_t kPatternFirstTile = 0x0454U;
-            struct SpriteList {
-                std::size_t address;
-                const char* name;
-                std::size_t pattern_stream;
-                std::size_t first_tile;
-                std::size_t palette_line;
-            };
-            constexpr std::array<SpriteList, 19> kLists{{
-                {0x1EF988U, "list-1ef988", kPatternStream,
-                 kPatternFirstTile, 0x5C9F2U},
-                {0x1EFAAAU, "list-1efaaa", kPatternStream,
-                 kPatternFirstTile, 0x5C9F2U},
-                {0x1EFB5CU, "list-1efb5c", kPatternStream,
-                 kPatternFirstTile, 0x5CA12U},
-                {0x1EFBCAU, "list-1efbca", kPatternStream,
-                 kPatternFirstTile, 0x5CA12U},
-                {0x1EF936U, "list-1ef936", 0x1EFDCCU,
-                 0x0080U, 0x5CA12U},
-                {0x1EFC66U, "list-1efc66", kPatternStream,
-                 kPatternFirstTile, 0x5C9D2U},
-                {0x1EFC34U, "list-1efc34", kPatternStream,
-                 kPatternFirstTile, 0x5C9D2U},
-                {0x1EFB9EU, "list-1efb9e", kPatternStream,
-                 kPatternFirstTile, 0x5CA12U},
-                {0x1EFBB8U, "list-1efbb8", kPatternStream,
-                 kPatternFirstTile, 0x5CA12U},
-                {0x1EFBECU, "list-1efbec", kPatternStream,
-                 kPatternFirstTile, 0x5CA12U},
-                {0x1EFBFEU, "list-1efbfe", kPatternStream,
-                 kPatternFirstTile, 0x5CA12U},
-                {0x1EFC10U, "list-1efc10", kPatternStream,
-                 kPatternFirstTile, 0x5CA12U},
-                {0x1EFC22U, "list-1efc22", kPatternStream,
-                 kPatternFirstTile, 0x5CA12U},
-                {0x1EFCA8U, "list-1efca8", kPatternStream,
-                 kPatternFirstTile, 0x5C9F2U},
-                {0x1EFCB2U, "list-1efcb2", kPatternStream,
-                 kPatternFirstTile, 0x5C9F2U},
-                {0x1EFCCCU, "list-1efccc", kPatternStream,
-                 kPatternFirstTile, 0x5C9F2U},
-                {0x1EFD0EU, "list-1efd0e", kPatternStream,
-                 kPatternFirstTile, 0x5C9F2U},
-                {0x1EFD48U, "list-1efd48", kPatternStream,
-                 kPatternFirstTile, 0x5C9F2U},
-                {0x1EFD6AU, "list-1efd6a", kPatternStream,
-                 kPatternFirstTile, 0x5C9F2U},
-            }};
-            const bool include_all_lists =
-                sprite_list_mode == "--scene-55-tomb-prelude-sprite-lists";
-            const auto list_count = include_all_lists ? kLists.size() : 2U;
-            constexpr std::size_t kTilesPerRow = 16U;
             const std::filesystem::path root(argv[2]);
             std::filesystem::create_directories(root);
-            constexpr std::size_t kWidth = 320U;
-            constexpr std::size_t kHeight = 224U;
-            for (std::size_t list_index = 0U;
-                 list_index < list_count; ++list_index) {
-                shadowrun::graphics::RgbaImage image{};
-                image.width = static_cast<std::uint16_t>(kWidth);
-                image.height = static_cast<std::uint16_t>(kHeight);
-                image.pixels.assign(
-                    kWidth * kHeight,
-                    shadowrun::native::Rgba8{0U, 0U, 0U, 0U});
-                const auto pattern_bytes =
-                    shadowrun::graphics::decode_genesis_resource_stream(
-                        rom, kLists[list_index].pattern_stream);
-                if (pattern_bytes.empty() || pattern_bytes.size() % 32U != 0U) {
-                    throw std::runtime_error(
-                        "scene-55 prelude sprite pattern stream has an invalid tile length");
-                }
-                const auto tile_count = pattern_bytes.size() / 32U;
-                // This preview uses the initial profile palette row selected
-                // by the list's D6 value. Timed palette changes in the
-                // callback are intentionally not baked into these images.
-                const auto palette = shadowrun::graphics::read_genesis_palette(
-                    rom, kLists[list_index].palette_line);
-                const auto atlas = shadowrun::graphics::decode_tile_atlas(
-                    pattern_bytes, 0U, tile_count, palette, kTilesPerRow, 0U);
-                auto record = kLists[list_index].address;
-                bool terminated = false;
-                for (std::size_t sprite_index = 0U;
-                     sprite_index < 64U; ++sprite_index) {
-                    if (record > rom.size() || rom.size() - record < 8U) {
-                        throw std::runtime_error(
-                            "0x5BD2C sprite list is truncated");
-                    }
-                    const auto x_offset = static_cast<std::int16_t>(
-                        read_big_endian_word(rom, record));
-                    if (x_offset == std::numeric_limits<std::int16_t>::min()) {
-                        terminated = true;
-                        break;
-                    }
-                    const auto y_offset = static_cast<std::int16_t>(
-                        read_big_endian_word(rom, record + 2U));
-                    const auto size = read_big_endian_word(rom, record + 4U);
-                    const auto attributes = read_big_endian_word(
-                        rom, record + 6U);
-                    const auto tile = static_cast<std::size_t>(
-                        attributes & 0x07FFU);
-                    const auto width_tiles = static_cast<std::size_t>(
-                        ((size >> 2U) & 0x03U) + 1U);
-                    const auto height_tiles = static_cast<std::size_t>(
-                        (size & 0x03U) + 1U);
-                    if ((size & 0xFF00U) != 0U ||
-                        tile < kLists[list_index].first_tile ||
-                        tile - kLists[list_index].first_tile > tile_count ||
-                        width_tiles * height_tiles >
-                            tile_count - (tile - kLists[list_index].first_tile)) {
-                        throw std::runtime_error(
-                            "scene-55 prelude sprite list exceeds its source pattern bank");
-                    }
-                    const auto tile_offset =
-                        tile - kLists[list_index].first_tile;
-                    const bool flip_x = (attributes & 0x0800U) != 0U;
-                    const bool flip_y = (attributes & 0x1000U) != 0U;
-                    const auto sprite_width = width_tiles * 8U;
-                    const auto sprite_height = height_tiles * 8U;
-                    for (std::size_t local_y = 0U;
-                         local_y < sprite_height; ++local_y) {
-                        for (std::size_t local_x = 0U;
-                             local_x < sprite_width; ++local_x) {
-                            const auto source_x = flip_x
-                                ? sprite_width - 1U - local_x
-                                : local_x;
-                            const auto source_y = flip_y
-                                ? sprite_height - 1U - local_y
-                                : local_y;
-                            const auto tile_index = tile_offset +
-                                (source_x / 8U) * height_tiles +
-                                (source_y / 8U);
-                            const auto atlas_x =
-                                (tile_index % kTilesPerRow) * 8U +
-                                (source_x % 8U);
-                            const auto atlas_y =
-                                (tile_index / kTilesPerRow) * 8U +
-                                (source_y % 8U);
-                            const auto source_pixel = atlas.pixels[
-                                atlas_y * atlas.width + atlas_x];
-                            if (source_pixel.alpha == 0U) {
-                                continue;
-                            }
-                            const auto target_x = 160 + x_offset +
-                                static_cast<int>(local_x);
-                            const auto target_y = 112 + y_offset +
-                                static_cast<int>(local_y);
-                            if (target_x < 0 || target_y < 0 ||
-                                target_x >= static_cast<int>(kWidth) ||
-                                target_y >= static_cast<int>(kHeight)) {
-                                continue;
-                            }
-                            image.pixels[
-                                static_cast<std::size_t>(target_y) * kWidth +
-                                static_cast<std::size_t>(target_x)] = source_pixel;
-                        }
-                    }
-                    record += 8U;
-                }
-                if (!terminated) {
-                    throw std::runtime_error(
-                        "scene-55 prelude sprite list has no terminator");
-                }
-                const auto output_prefix = include_all_lists
-                    ? "scene-55-tomb-prelude-"
-                    : "scene-5bd2c-";
+            const bool include_all_lists =
+                sprite_list_mode == "--scene-55-tomb-prelude-sprite-lists";
+            const auto list_count = include_all_lists
+                ? kScene55SpriteLists.size()
+                : 2U;
+            const auto images = extract_scene55_sprite_list_images(
+                rom, list_count);
+            const std::string output_prefix = include_all_lists
+                ? "scene-55-tomb-prelude-"
+                : "scene-5bd2c-";
+            for (std::size_t index = 0U; index < list_count; ++index) {
                 const auto output = root /
-                    (std::string(output_prefix) + kLists[list_index].name +
+                    (output_prefix + std::string(kScene55SpriteLists[index].name) +
                      "-centered.png");
-                write_png32(output.string(), image);
-                std::cout << kLists[list_index].name
-                          << " sprites rendered from "
-                          << tile_count << " decoded patterns -> "
+                write_png32(output.string(), images[index]);
+                std::cout << kScene55SpriteLists[index].name << " -> "
                           << output.string() << "\n";
             }
             return 0;

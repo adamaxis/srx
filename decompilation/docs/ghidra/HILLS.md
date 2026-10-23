@@ -533,9 +533,9 @@ graph, which ends at an explicit boundary before the D7=0x03E8 DBRA
 presentation. The pre-credit audit now traces its initial two-plane scene,
 the elapsed-0x190 Plane-B skyline, the elapsed-0x26C 38-column Plane-A reveal,
 and palette changes; the offline importer emits inspection images for those
-stages, and `--all-assets` now extracts the three named background/overlay
-layers. The timed presentation, pre-panel fade, and typed runtime presenter
-remain unimplemented (see the
+stages, and `--all-assets` now extracts three named background/overlay layers
+plus the 19 source-timed sprite lists. The timed presentation, pre-panel fade,
+and typed runtime presenter remain unimplemented (see the
 [pre-credit source audit](tarislar-tomb-prelude-source-audit.md)). The complete
 `FFF11E` visual/effect record is not reproduced. The host synchronizes
 `FFE186` between its coordinator and world-frame state at field-frame and
