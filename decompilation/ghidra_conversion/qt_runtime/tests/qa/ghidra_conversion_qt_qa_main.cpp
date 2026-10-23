@@ -23153,20 +23153,108 @@ int run_field_tarislar_tomb_credits_presenter_qa(
         return 3;
     }
     tap_qa_controller_button(field_scene, 0x40U); // A: source title return
+    const auto page_after_final_input = render_qa_field(field_scene);
+    if (field_scene.dialogue_open() ||
+        field_scene.take_requested_title_return() ||
+        page_after_final_input != previous ||
+        !page_after_final_input.save(QString::fromStdWString(
+            (output / "post-final-input.bmp").wstring()))) {
+        std::cerr << "Tarislar Tomb credits QA: final page did not remain "
+                     "visible during the typed return tail\n";
+        return 3;
+    }
+
+    const auto advance_vblanks = [&field_scene](const std::uint8_t count) {
+        for (std::uint8_t frame = 0U; frame < count; ++frame) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+    };
+    advance_vblanks(static_cast<std::uint8_t>(
+        kTarislarCreditsPostPanelServiceVblanks - 1U));
+    const auto after_cleanup = render_qa_field(field_scene);
+    if (field_scene.take_requested_title_return() ||
+        after_cleanup != previous ||
+        !after_cleanup.save(QString::fromStdWString(
+            (output / "post-panel-service.bmp").wstring()))) {
+        std::cerr << "Tarislar Tomb credits QA: final page did not survive "
+                     "the post-panel source wait\n";
+        return 3;
+    }
+    trace << "tail\t0x53126_cleanup\t"
+          << kTarislarCreditsPostPanelServiceVblanks
+          << "\t18_source_vblanks\tfinal_page_retained\n";
+
+    advance_vblanks(kTarislarCreditsPalettePassVblanks);
+    const auto first_fade_pass = render_qa_field(field_scene);
+    if (field_scene.take_requested_title_return() ||
+        first_fade_pass == previous ||
+        !first_fade_pass.save(QString::fromStdWString(
+            (output / "fade-step-1.bmp").wstring()))) {
+        std::cerr << "Tarislar Tomb credits QA: first source fade pass was "
+                     "not visible\n";
+        return 3;
+    }
+
+    const auto remaining_callback_fade_vblanks = static_cast<std::uint8_t>(
+        kTarislarCreditsPalettePassCount *
+            kTarislarCreditsPalettePassVblanks -
+        kTarislarCreditsPalettePassVblanks);
+    advance_vblanks(remaining_callback_fade_vblanks);
+    const auto callback_fade_black = render_qa_field(field_scene);
+    const auto is_black = [](const QImage& image) {
+        for (int y = 0; y < image.height(); ++y) {
+            for (int x = 0; x < image.width(); ++x) {
+                const auto pixel = image.pixelColor(x, y);
+                if (pixel.red() != 0 || pixel.green() != 0 ||
+                    pixel.blue() != 0) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+    if (field_scene.take_requested_title_return() ||
+        !is_black(callback_fade_black) ||
+        !callback_fade_black.save(QString::fromStdWString(
+            (output / "callback-fade-black.bmp").wstring()))) {
+        std::cerr << "Tarislar Tomb credits QA: callback fade did not reach "
+                     "black after 17 palette passes\n";
+        return 3;
+    }
+    trace << "tail\t0x131C_callback\t"
+          << static_cast<unsigned>(kTarislarCreditsPalettePassCount) *
+                 kTarislarCreditsPalettePassVblanks
+          << "\t34_source_vblanks\tblack\n";
+
+    const auto outer_fade_wait_vblanks = static_cast<std::uint8_t>(
+        kTarislarCreditsPalettePassCount *
+        kTarislarCreditsPalettePassVblanks);
+    advance_vblanks(static_cast<std::uint8_t>(
+        outer_fade_wait_vblanks - 1U));
+    if (field_scene.take_requested_title_return()) {
+        std::cerr << "Tarislar Tomb credits QA: title returned before the "
+                     "outer-loop fade wait ended\n";
+        return 3;
+    }
+    advance_vblanks(1U);
     const auto title_return_image = render_qa_field(field_scene);
     const bool title_return_requested =
         field_scene.take_requested_title_return();
-    if (field_scene.dialogue_open() || !title_return_requested ||
-        field_scene.take_requested_title_return() ||
+    if (!title_return_requested || field_scene.take_requested_title_return() ||
+        !is_black(title_return_image) ||
         !title_return_image.save(QString::fromStdWString(
             (output / "title-return-request.bmp").wstring()))) {
         std::cerr << "Tarislar Tomb credits QA: typed title return was not "
-                     "accepted after the final panel (dialogue_open="
-                  << field_scene.dialogue_open() << ")\n";
+                     "accepted after the two source fades\n";
         return 3;
     }
-    trace << "exit\ttitle_return\t\tcontroller\t"
-          << "typed_host_restart_requested\n";
+    trace << "tail\t0x078A_outer_loop\t"
+          << static_cast<unsigned>(kTarislarCreditsPalettePassCount) *
+                 kTarislarCreditsPalettePassVblanks
+          << "\t34_source_vblanks\tblack_held\n";
+    trace << "exit\ttitle_return\t\tcontroller"
+          << "\ttyped_host_restart_requested_after_86_vblanks\n";
     trace.flush();
     if (!trace) {
         std::cerr << "Tarislar Tomb credits QA: return boundary trace write "
@@ -23174,7 +23262,7 @@ int run_field_tarislar_tomb_credits_presenter_qa(
         return 3;
     }
     std::cout << "field_tarislar_tomb_credits_presenter_qa=passed "
-                 "panels=5 trigger=unconverted title_return=requested "
+                 "panels=5 trigger=unconverted title_return=after_86_vblanks "
                  "artifacts=" << output.string() << '\n';
     return 0;
 }

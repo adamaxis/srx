@@ -334,6 +334,9 @@ bool FieldDialogueRuntime::open_stoker_prompt(
 bool FieldDialogueRuntime::start_script_task(
     const std::string_view module, const std::string_view function,
     const StokerMotelPromptId prompt) {
+    clear_retained_credits_page_for_title_return();
+    closed_credits_page_asset_alias_.clear();
+    closed_credits_page_id_.clear();
     last_gameplay_task_result_id_.reset();
     last_gameplay_task_outcome_.reset();
     if (script_runtime_ == nullptr) {
@@ -534,6 +537,8 @@ bool FieldDialogueRuntime::present_script_operation(
         panel_.source_complete = true;
         credits_page_asset_alias_ = credits_page.asset_alias;
         credits_page_id_ = credits_page.page_id;
+        closed_credits_page_asset_alias_.clear();
+        closed_credits_page_id_.clear();
         credits_page_open_ = true;
         input_lockout_frames_ = 0U;
         return true;
@@ -1503,6 +1508,14 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
 }
 
 void FieldDialogueRuntime::close() noexcept {
+    if (credits_page_open_) {
+        closed_credits_page_asset_alias_ =
+            std::move(credits_page_asset_alias_);
+        closed_credits_page_id_ = std::move(credits_page_id_);
+    } else {
+        closed_credits_page_asset_alias_.clear();
+        closed_credits_page_id_.clear();
+    }
     if (script_task_waiting_ && script_runtime_ != nullptr) {
         script_runtime_->cancel_task();
     }
@@ -1525,6 +1538,25 @@ void FieldDialogueRuntime::close() noexcept {
     inline_task_advance_result_.reset();
     boundary_reason_.clear();
     hotel_options_menu_follows_ = false;
+}
+
+bool FieldDialogueRuntime::retain_closed_credits_page_for_title_return() {
+    if (closed_credits_page_asset_alias_.empty() ||
+        closed_credits_page_id_.empty() ||
+        !presenter_.has_credits_page(closed_credits_page_asset_alias_,
+                                     closed_credits_page_id_)) {
+        return false;
+    }
+    retained_credits_page_asset_alias_ =
+        std::move(closed_credits_page_asset_alias_);
+    retained_credits_page_id_ = std::move(closed_credits_page_id_);
+    return true;
+}
+
+void FieldDialogueRuntime::clear_retained_credits_page_for_title_return()
+    noexcept {
+    retained_credits_page_asset_alias_.clear();
+    retained_credits_page_id_.clear();
 }
 
 std::optional<std::uint8_t>
@@ -1610,6 +1642,16 @@ void FieldDialogueRuntime::paint(QPainter& painter) const {
         return;
     }
     presenter_.paint(painter, panel_);
+}
+
+void FieldDialogueRuntime::paint_retained_credits_page_for_title_return(
+    QPainter& painter) const {
+    if (!has_retained_credits_page_for_title_return()) {
+        return;
+    }
+    presenter_.paint_credits_page(
+        painter, retained_credits_page_asset_alias_,
+        retained_credits_page_id_);
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

@@ -12758,6 +12758,7 @@ bool FieldSceneRuntime::bootstrap(
     restore_start_menu_duck();
     command_overview_.close();
     field_dialogue_.close();
+    field_dialogue_.clear_retained_credits_page_for_title_return();
     hotel_menu_.close();
     hotel_menu_content_ = HotelMenuContent{};
     hotel_karma_skills_.close_to_parent();
@@ -12765,6 +12766,7 @@ bool FieldSceneRuntime::bootstrap(
     field_interaction_.reset_session();
     field_elevator_selector_ = ElevatorSelectorRuntime{};
     field_elevator_scene_transition_ = ElevatorSceneTransitionRuntime{};
+    tarislar_credits_title_return_.reset();
     field_elevator_floor_group_.reset();
     field_elevator_script_destination_.reset();
     field_elevator_pending_destination_.reset();
@@ -16425,6 +16427,13 @@ void FieldSceneRuntime::advance_frame() {
         return;
     }
     service_scene_music_latch();
+    if (tarislar_credits_title_return_.is_presenting()) {
+        const auto update = tarislar_credits_title_return_.advance();
+        if (update.completed) {
+            title_return_requested_ = true;
+        }
+        return;
+    }
     if (field_door_return_active_ && advance_field_door_return()) {
         return;
     }
@@ -18474,7 +18483,13 @@ bool FieldSceneRuntime::handle_dialogue_play_cinematic(
     }
     if (outcome.cinematic_id == "tarislar.tomb.credits" &&
         outcome.return_policy == "title") {
-        title_return_requested_ = true;
+        if (!field_dialogue_.retain_closed_credits_page_for_title_return()) {
+            return false;
+        }
+        if (!tarislar_credits_title_return_.begin()) {
+            field_dialogue_.clear_retained_credits_page_for_title_return();
+            return false;
+        }
         return true;
     }
     return false;
@@ -23208,7 +23223,11 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
         std::uint8_t palette_passes = 0U;
         bool toward_black = true;
         bool transition_active = false;
-        if (field_door_return_active_) {
+        if (tarislar_credits_title_return_.is_presenting()) {
+            palette_passes =
+                tarislar_credits_title_return_.palette_passes_to_black();
+            transition_active = palette_passes != 0U;
+        } else if (field_door_return_active_) {
             palette_passes = field_door_return_palette_level();
             transition_active = palette_passes != 0U;
         } else
@@ -23256,6 +23275,13 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
                    !field_door_return_modal_frame_.isNull()) {
             // The checkout page itself fades out (0x131C) before the reload.
             scene = field_door_return_modal_frame_;
+        }
+        if (tarislar_credits_title_return_.is_presenting() &&
+            field_dialogue_.has_retained_credits_page_for_title_return()) {
+            QPainter credits_painter(&scene);
+            field_dialogue_.paint_retained_credits_page_for_title_return(
+                credits_painter);
+            credits_painter.end();
         }
         if (transition_active) {
             scene = transition_genesis_cram_image(

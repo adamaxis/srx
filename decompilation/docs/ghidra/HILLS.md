@@ -433,10 +433,10 @@ entity routes whose JSON graph maps positive FFF0D5 to ROM-imported package-
 delivery text and negative FFF0D5 to package-pickup text. Debug/Release CTests
 reach event 7 with ordinary Up input, verify both pages, suppress scene 13,
 and capture the clean scene-1 return as `actual.bmp`. The upstream Frosty
-conversation and inherited callback reachability remain open. Scene-55
-completion and title return are source-traced, but the native actor trigger
-and closing presentation are not connected. Source tracing rules
-out an `FFE162` carry from its only direct writer into the Tarislar selector.
+conversation and inherited callback reachability remain open. Scene-55's
+post-panel cleanup and title return are connected through a direct QA seam;
+the native actor trigger and pre-panel presentation are not connected. Source
+tracing rules out an `FFE162` carry from its only direct writer into the Tarislar selector.
 Scene 54's extracted map is a tall 320x1344 layout, and its profile has no
 event table or elevator group. Event 31 stores callback `0xDB26` through the
 direct `0xB7B8` path; other route audits map its ordinary field-mode behavior
@@ -510,14 +510,15 @@ at `0x5C472` through `0x5C4C2` pass name-table addresses `0x2110`, `0x2110`,
 three rows lower. Lua owns the five-page order and yields typed credit-page
 requests to the host presenter. Debug and Release CTest
 `shadowrun_ghidra_conversion_qt_field_tarislar_tomb_credits_presenter_qa`
-captures each panel and writes `actual.bmp` for the first. These internal
-captures exercise the renderer and are not an independent Genesis visual
-reference. The final panel now dispatches a typed `title` cinematic outcome;
-FieldSceneRuntime publishes a one-shot title-return request, and the Qt host
-restarts the existing attract-loop flow after the current field frame. The
-presenter CTest verifies the request. The fight-completion trigger,
-1000-iteration presentation segment, closing animation, palette fades, and
-panel-clear timing remain unconnected, so the hill remains partial.
+captures each panel and writes `actual.bmp` for the first. After the final
+controller input, the page remains visible through the six `0x53126` service
+iterations (18 VBlanks), fades over 17 two-VBlank `0x131C` passes, and stays
+black for the outer loop's repeated 34-VBlank wait. The typed host then
+restarts the existing attract loop. Debug/Release QA checks all 86 VBlanks
+and captures the fade. These are internal captures, not an independent
+Genesis visual reference. The live fight-completion trigger, callback's
+1000-iteration presentation and pre-panel animation/fade setup remain open;
+the hill remains partial.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).

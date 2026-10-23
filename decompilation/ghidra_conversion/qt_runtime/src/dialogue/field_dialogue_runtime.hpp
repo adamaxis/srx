@@ -126,6 +126,12 @@ public:
     bool uses_hospital_medical_attention_layout() const noexcept;
 
     void close() noexcept;
+    bool retain_closed_credits_page_for_title_return();
+    bool has_retained_credits_page_for_title_return() const noexcept {
+        return !retained_credits_page_asset_alias_.empty() &&
+               !retained_credits_page_id_.empty();
+    }
+    void clear_retained_credits_page_for_title_return() noexcept;
     bool open() const noexcept {
         return panel_.open || story_page_open_ || credits_page_open_;
     }
@@ -141,6 +147,8 @@ public:
     // extracted Genesis font and portrait directly; no full-screen bitmap or
     // runtime flipbook is introduced.
     void paint(QPainter& painter) const;
+    void paint_retained_credits_page_for_title_return(
+        QPainter& painter) const;
 
 private:
     bool open_stoker_prompt(StokerMotelPromptId prompt);
@@ -177,6 +185,10 @@ private:
     std::string story_page_text_;
     std::string credits_page_asset_alias_;
     std::string credits_page_id_;
+    std::string closed_credits_page_asset_alias_;
+    std::string closed_credits_page_id_;
+    std::string retained_credits_page_asset_alias_;
+    std::string retained_credits_page_id_;
     std::uint8_t input_lockout_frames_ = 0U;
     std::optional<std::uint8_t> pending_matrix_entry_system_id_;
     std::optional<std::uint8_t> pending_matrix_entry_node_id_;

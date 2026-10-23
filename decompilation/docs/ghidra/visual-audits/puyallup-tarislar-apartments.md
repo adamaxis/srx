@@ -162,8 +162,9 @@ catalog's source policy explicitly authorizes a correction.
   `FFE162` callers/state reaching event 7, inherited `FFE120`/`FFE12E`
   reachability remains unresolved. Scene-55 fight-completion is traced through
   the mode-3 effect scan and special callback. The five-panel terminal outcome
-  now queues the host attract-loop restart, but the native fight trigger and
-  timed closing presentation remain unimplemented. Scene-54 event 0 is now
+  retains its last page through the post-panel cleanup and two fades before the
+  host attract-loop restart. The native fight trigger and pre-panel presentation
+  remain unimplemented. Scene-54 event 0 is now
   traced into Scene 55.
 
 ## Scene 54 entry profile and collision evidence
@@ -273,7 +274,7 @@ nonzero physical meter `+0x4C`. After the phase timer expires, `0x5D3D4` sets
 callback `0x5BAC4` and `0x1E2E0` schedules it for the 60-frame activity
 boundary. Callback `0x5BAC4` opens prompt group `0xFDD72` through `0x20950`
 with Licourtrix profile `0x121EA4`; its visible response is text `0xFD71E`.
-The callback then runs a 1000-iteration closing animation and five
+The callback then runs a 1000-iteration presentation sequence before five
 controller-advanced credits text panels. Their ordered source blocks begin at
 `0x5CA92`, `0x5CBFB`, `0x5CF9B`, `0x5CD82`, and `0x5CE80`; each uses `0x80` for
 row breaks and ends at `0xFF`. The offline all-assets importer emits their
@@ -286,13 +287,17 @@ which places the glyphs on palette line 3. The host asset records origin
 `(64,16)` and derives white ink from palette entry 1 of the 64-color block at
 `0x5C9D2`, copied by `0x1368` after `0x5C3B4`. The existing named field font
 provides the glyph mask. Lua owns the page order, and the typed presenter
-draws the rows at the recovered positions. Debug/Release CTest
+draws the rows at the recovered positions. After the fifth page, the final page
+is retained during the 18-VBlank `0x53126` service, the callback's 17-pass
+`0x131C` fade, and the outer loop's second 34-VBlank fade wait. Debug/Release CTest
 `shadowrun_ghidra_conversion_qt_field_tarislar_tomb_credits_presenter_qa`
-captures five distinct panels and `actual.bmp`; this is an internal renderer
-check, not an independent Genesis visual. The 17-step palette fades, 1000-loop
-close animation, panel-clear timing, native fight trigger, and title return
-remain unimplemented. The response's next-record pointer is not consumed by
-this callback, so the hill stays partial.
+captures five distinct panels, the retained final page, the fade, and
+`actual.bmp`; this is an internal renderer check, not an independent Genesis
+visual. The final title handoff is connected through a direct page-sequence QA
+seam. The native fight trigger, the callback's 1000-iteration presentation,
+and the pre-panel `0x5C3B4` fade/palette setup remain unimplemented. The
+response's next-record pointer is not consumed by this callback, so the hill
+stays partial.
 The raw `0x00C0` record publishes event 0 in `FFFBF9`. In Scene-54 mode 3,
 `0x1651E` returns carry for D0=0 without changing a map cell; `0xB7B8` then
 sets the projected-interaction countdown described above. The later
@@ -335,8 +340,9 @@ sets the projected-interaction countdown described above. The later
    field HUD. First-visit, guarded, and repeat-service branches redraw scene 1
    after their dialogue; tomb Yes redraws scene 54 and No redraws scene 1.
    Scene-54 event 0 enters Scene 55 after the timer when `FFE162` is clear.
-   Scene-55 completion now has a source-traced title-return callback; its
-   typed native trigger, closing presentation, and cleanup remain unresolved.
+   Scene-55 completion has a typed, source-timed post-panel title-return tail
+   through a direct QA seam; its native actor trigger and pre-panel sequence
+   remain unresolved.
 7. **Do multiple frames support the interpretation?** Physical tests capture
    spawn, contact, source dialogue, both alternate-result pages, travel pages,
    and final scene-1/scene-54 `actual.bmp` frames. These are host captures; no
@@ -365,10 +371,11 @@ sets the projected-interaction countdown described above. The later
   has no pending pointer from this source.
 - Resolve whether an inherited pending list or callback can reach Scene 54's
   first service pass. Scene-55 completion traces through the phase-2 actor
-  scan and delayed `0x5BAC4` callback; the typed ending outcome queues the host
-  attract-loop restart. Implement the native actor trigger and authored,
-  timed closing presentation, then exercise the full route before changing
-  the hill's status.
+  scan and delayed `0x5BAC4` callback; the typed ending outcome now retains the
+  last credits page through the source-timed post-panel cleanup and queues the
+  host attract-loop restart. Implement the native actor trigger and pre-panel
+  presentation, then exercise the full route before changing the hill's
+  status.
 - Capture the remaining branches and a source-backed Scene-54/Scene-55 route
   as whole 320x224 screens. Review all surrounding pixels and check the
   seven questions above before changing this status.

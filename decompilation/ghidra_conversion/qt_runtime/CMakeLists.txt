@@ -23,6 +23,7 @@ set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/field/field_map_composition.cpp
     src/field/matrix_map_presenter.cpp
     src/field/elevator_selector_runtime.cpp
+    src/field/tarislar_credits_title_return_runtime.cpp
     src/menus/attributes_skills_menu_runtime.cpp
     src/field/field_clips_menu_runtime.cpp
     src/menus/shop_menu_runtime.cpp

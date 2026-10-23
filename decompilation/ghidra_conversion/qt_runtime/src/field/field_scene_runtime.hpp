@@ -63,6 +63,7 @@
 #include "field_mode_text_runtime.hpp"
 #include "field_interaction_runtime.hpp"
 #include "elevator_selector_runtime.hpp"
+#include "tarislar_credits_title_return_runtime.hpp"
 #include "field_menu_text_catalog.hpp"
 #include "game_save_snapshot.hpp"
 #include "game_save_store.hpp"
@@ -1923,6 +1924,7 @@ private:
     FieldInteractionRuntime field_interaction_;
     ElevatorSelectorRuntime field_elevator_selector_{};
     ElevatorSceneTransitionRuntime field_elevator_scene_transition_{};
+    TarislarCreditsTitleReturnRuntime tarislar_credits_title_return_{};
     std::optional<scripting::ScriptElevatorFloorGroup>
         field_elevator_floor_group_;
     std::optional<std::uint16_t> field_elevator_script_destination_;
