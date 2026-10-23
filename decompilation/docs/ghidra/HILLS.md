@@ -433,8 +433,9 @@ entity routes whose JSON graph maps positive FFF0D5 to ROM-imported package-
 delivery text and negative FFF0D5 to package-pickup text. Debug/Release CTests
 reach event 7 with ordinary Up input, verify both pages, suppress scene 13,
 and capture the clean scene-1 return as `actual.bmp`. The upstream Frosty
-conversation, inherited callback reachability, and Scene-55 completion/return
-remain open. Source tracing rules
+conversation and inherited callback reachability remain open. Scene-55
+completion and title return are source-traced, but the native actor trigger
+and closing presentation are not connected. Source tracing rules
 out an `FFE162` carry from its only direct writer into the Tarislar selector.
 Scene 54's extracted map is a tall 320x1344 layout, and its profile has no
 event table or elevator group. Event 31 stores callback `0xDB26` through the
@@ -489,8 +490,17 @@ through the projected-interaction countdown: after 17 service advances,
 The active Qt runtime now queues a typed arrival continuation and Lua owns
 the first prompt with the ROM ten-frame input delay. The first command slot
 contains pointer FDD2E; the outer loop clears FFE104 and reloads FFFC04 without
-chaining the next record. Scene-55 fight completion
-and return remain unresolved. This partial slice has no CTest or actual.bmp.
+chaining the next record. Scene-55 completion and title return are now
+source-traced. Mode 2 advances to mode 3 when `FFF140` is negative and the
+source byte at `FF044C` is at most 9. During render-pass effect phase 2,
+`0x5D29C` scans the six scene-actor slots only while animation frame `+0x18`
+is 3. A live candidate has record bit 0 set, bits 4 and 6 clear, and a
+nonzero physical meter at `+0x4C`. If none qualify, the phase timer expires
+before `0x5D3D4` queues the special `0x5BAC4` callback through `0x1E2E0`.
+The callback opens the single Licourtrix prompt from `0xFDD72` with profile
+`0x121EA4`, runs the closing animation and five controller-advanced image
+screens, then returns through the main title path. The native fight-completion trigger and ending
+presentation are still absent; this partial slice has no CTest or actual.bmp.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).

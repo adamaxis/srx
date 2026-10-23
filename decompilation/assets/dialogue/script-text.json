@@ -264,6 +264,8 @@
     "tarislar.garden.apartments.page.repeat_greeting": "Hello again, Joshua.||You have bought my time with your pain.||Spend it as you wish.",
     "tarislar.garden.apartments.page.tomb_offer": "Are you prepared for the trip to Ellisia's tomb?",
     "tarislar.tomb.antechamber.page.arrival": "<Entering the antechamber, you see a giant humanoid creature digging in the dirt ahead.||Huge clawed hands pull artifacts from a broken chest, placing them aside.||The creature turns from the chest and peers at you.>",
+    "tarislar.tomb.ending.page.licourtrix_warning": "<Licourtrix's head swivels towards you.>||I told you my help would be needed, human.||<His razor-sharp teeth gleam as his \"voice\" fills your head.>||I have Thon under my will at the moment, but soon he will overcome me. You must destroy him.",
+    "tarislar.tomb.ending.option.destroy_thon": "That's what I've been trying to do!",
     "tarislar.garden.apartments.page.package_delivery": "<The metallic clacking of weapons being readied stops you in your tracks!||A lone elf approaches and you hand him the package.||He tosses you a grin and a credstick, and walks you to the door.>",
     "tarislar.garden.apartments.page.package_pickup": "<Heavily armed and armored elves train their weapons on you.||After confirming you as the pick-up man, you are given a package and pushed back out into the street.>",
     "jump-house.entry": "<The Jump House is a typical small bar inside the Barrens.||The standard slime frequent it and an occasional shadowrunner sometimes slips in its entrance.||You see a fat man licking his fingers in the far corner booth.>",

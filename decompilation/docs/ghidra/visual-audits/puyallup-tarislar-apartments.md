@@ -160,7 +160,9 @@ catalog's source policy explicitly authorizes a correction.
   the final paired-map page. The physical-input CTest captures the Renraku-only
   route and clean scene-1 redraw. Independent Genesis page captures, other
   `FFE162` callers/state reaching event 7, inherited `FFE120`/`FFE12E`
-  reachability, and Scene-55 completion/return remain unresolved. Scene-54
+  reachability remains unresolved. Scene-55 fight-completion and title-return
+  are now traced through the mode-3 effect scan and special callback, but the
+  native fight trigger and ending presentation remain unimplemented. Scene-54
   event 0 is now traced into Scene 55.
 
 ## Scene 54 entry profile and collision evidence
@@ -263,9 +265,20 @@ queues a typed arrival continuation and Lua owns this one prompt, including
 the ROM ten-frame input delay. Text at 0xFD2FE supplies the narration and
 0xFE5BF supplies MORE. The prompt command slot contains 0xFDD2E; after the
 callback, the outer loop clears FFE104 and reloads FFFC04 without chaining
-the next record. Scene-55 fight completion, return, and cleanup remain
-unresolved. This runtime slice has no CTest or actual.bmp, so the hill stays
-partial.
+the next record. Scene-55 completion has a separate source route: effect
+routine `0x5D29C` scans the six actor slots during animation frame 3 and
+decrements its phase timer when none has active bit 0, clear bits 4/6, and
+nonzero physical meter `+0x4C`. After the phase timer expires, `0x5D3D4` sets
+callback `0x5BAC4` and `0x1E2E0` schedules it for the 60-frame activity
+boundary. Callback `0x5BAC4` opens prompt group `0xFDD72` through `0x20950`
+with Licourtrix profile `0x121EA4`; its visible response is text `0xFD71E`.
+The callback then runs a 1000-iteration closing animation and five
+controller-advanced image screens. When it returns, the outer loop recognizes
+`0x5BAC4` at `0x0B44` and branches through `0x0BA6`/`0x078A` to the main title
+path. The response's next-record pointer is not consumed by this callback.
+The native fight trigger, closing presentation, and cleanup remain
+unimplemented; this runtime slice has no CTest or actual.bmp, so the hill
+stays partial.
 The raw `0x00C0` record publishes event 0 in `FFFBF9`. In Scene-54 mode 3,
 `0x1651E` returns carry for D0=0 without changing a map cell; `0xB7B8` then
 sets the projected-interaction countdown described above. The later
@@ -307,8 +320,9 @@ sets the projected-interaction countdown described above. The later
 6. **Are old controls or graphics left behind?** Dialogue pages replace the
    field HUD. First-visit, guarded, and repeat-service branches redraw scene 1
    after their dialogue; tomb Yes redraws scene 54 and No redraws scene 1.
-   Scene-54 event 0 enters Scene 55 after the timer when `FFE162` is clear; the
-   later return and cleanup from Scene 55 are unresolved.
+   Scene-54 event 0 enters Scene 55 after the timer when `FFE162` is clear.
+   Scene-55 completion now has a source-traced title-return callback; its
+   typed native trigger, closing presentation, and cleanup remain unresolved.
 7. **Do multiple frames support the interpretation?** Physical tests capture
    spawn, contact, source dialogue, both alternate-result pages, travel pages,
    and final scene-1/scene-54 `actual.bmp` frames. These are host captures; no
@@ -336,9 +350,11 @@ sets the projected-interaction countdown described above. The later
   consume their descriptors in that transition. The Tarislar event-7 selector
   has no pending pointer from this source.
 - Resolve whether an inherited pending list or callback can reach Scene 54's
-  first service pass. The event-0 route into Scene 55 is traced; Scene-55
-  completion and return remain open. Keep this hill partial until its full
-  source path and verification evidence are established.
+  first service pass. Scene-55 completion now traces through the phase-2 actor
+  scan, delayed `0x5BAC4` callback, Licourtrix prompt, closing screens, and
+  main-title return. Implement the native actor trigger and authored closing
+  presentation, then add the hill's named CTest and actual.bmp before changing
+  its status.
 - Capture the remaining branches and a source-backed Scene-54/Scene-55 route
   as whole 320x224 screens. Review all surrounding pixels and check the
   seven questions above before changing this status.

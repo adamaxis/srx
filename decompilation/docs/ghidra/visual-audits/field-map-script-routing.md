@@ -219,9 +219,11 @@ Scene-1 Tarislar now has physical QA for its first-authorized
 Harlequin conversation, its guarded leave branch, and its gated tomb-departure
 Yes route into scene 54. The first conversation returns to scene 1; the tomb
 route requires story bits 30, 21, 16, 28, 26, and 27 plus alternate result 0.
-The repeat information branch, upstream Frosty choice, inherited callback/list
-reachability, and Scene-55 completion/return remain open. Scene-54 event 0 is
-traced through the timer into the Scene-55 Tomb of Ellisia text callback.
+The repeat information branch, upstream Frosty choice, and inherited
+callback/list reachability remain open. Scene-55 completion and title-return
+are source-traced but not connected to the native actor state or closing
+presentation. Scene-54 event 0 is traced through the timer into the Scene-55
+Tomb of Ellisia text callback.
 
 ### Puyallup Ork Gang contract target
 
@@ -257,9 +259,11 @@ The named-route sweep still has source-profiled gaps. Scene-1 Tarislar Garden
 Apartments has indexed service 21 and story-bit gates. The first-authorized
 conversation, guarded leave path, and gated tomb-departure Yes route are
 Lua-backed and physically QA-covered. The repeat information branch, upstream
-Frosty action, inherited callback/list reachability, and Scene-55 return are
-not fully connected. Scene-54 event 0 has a source-traced route into Scene 55
-and its text prelude. Other map-guide labels often have only a numeric event-table
+Frosty action, and inherited callback/list reachability are not fully
+connected. Scene-54 event 0 has a source-traced route into Scene 55 and its
+text prelude. Scene-55 completion traces through the active-actor scan,
+delayed `0x5BAC4` close sequence, and title return, but the native trigger and
+presentation remain unimplemented. Other map-guide labels often have only a numeric event-table
 destination; the guide name does not establish an interior dialogue. The
 per-scene route manifests now reflect the `0xB7B8` mode gate instead of
 inferring a maglock from event IDs 2-5 alone. See the [Tarislar audit](puyallup-tarislar-apartments.md)
