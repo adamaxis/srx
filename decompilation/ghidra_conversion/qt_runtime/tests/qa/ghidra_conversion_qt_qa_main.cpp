@@ -11153,20 +11153,36 @@ int run_scene19_old_man_contact_qa(
     return 0;
 }
 
-int run_scene15_old_man_contact_qa(
+struct UnnamedOldManContactRoute {
+    std::uint8_t scene;
+    std::size_t event_record_index;
+    std::uint32_t event_record_address;
+    std::uint16_t collision_left;
+    std::uint16_t collision_right;
+    std::uint16_t collision_top;
+    std::uint16_t collision_bottom;
+    std::uint8_t collision_value;
+    std::uint16_t approach_x;
+    std::uint16_t approach_y;
+    bool require_visible_field_return;
+    bool require_no_audio_events;
+};
+
+int run_unnamed_old_man_contact_qa(
     const StartupIntegrationState& startup_state,
     const std::filesystem::path& asset_root,
-    const std::filesystem::path& output) {
+    const std::filesystem::path& output,
+    const UnnamedOldManContactRoute& route) {
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
-        std::cerr << "Scene-15 old-man QA: could not clear prior output: "
+        std::cerr << "Unnamed old-man QA: could not clear prior output: "
                   << output_error.message() << '\n';
         return 3;
     }
     std::filesystem::create_directories(output, output_error);
     if (output_error) {
-        std::cerr << "Scene-15 old-man QA: could not create output: "
+        std::cerr << "Unnamed old-man QA: could not create output: "
                   << output_error.message() << '\n';
         return 3;
     }
@@ -11182,17 +11198,12 @@ int run_scene15_old_man_contact_qa(
         });
     field_scene.set_source_random_seed_for_dump(0x4000U);
     field_scene.set_field_world_frame_counter_for_dump(0x0200U);
-    constexpr std::uint8_t kScene = 15U;
-    if (!field_scene.bootstrap_for_scene_dump(startup_state, kScene)) {
-        std::cerr << "Scene-15 old-man QA: bootstrap failed: "
+    if (!field_scene.bootstrap_for_scene_dump(startup_state, route.scene)) {
+        std::cerr << "Unnamed old-man QA: bootstrap failed: "
                   << field_scene.failure() << '\n';
         return 3;
     }
 
-    constexpr std::size_t kEventRecordIndex = 11U;
-    constexpr std::uint32_t kEventRecordAddress = 0x1D5D3EU;
-    constexpr std::uint16_t kContactX = 304U * 16U;
-    constexpr std::uint16_t kContactY = 80U * 16U;
     const auto& metadata =
         field_scene.state().field_scene_buffers.source_metadata;
     const auto spawn = field_scene.field_entity_world_position();
@@ -11201,15 +11212,29 @@ int run_scene15_old_man_contact_qa(
         spawn.x == metadata.initial_field_records.front().x &&
         spawn.y == metadata.initial_field_records.front().y;
     const bool source_event_record_matches =
-        metadata.terrain_collision_rectangles.size() > kEventRecordIndex &&
-        metadata.terrain_collision_rectangles[kEventRecordIndex].left == 0x0120U &&
-        metadata.terrain_collision_rectangles[kEventRecordIndex].right == 0x013FU &&
-        metadata.terrain_collision_rectangles[kEventRecordIndex].top == 0x0020U &&
-        metadata.terrain_collision_rectangles[kEventRecordIndex].bottom == 0x003FU &&
-        metadata.terrain_collision_rectangles[kEventRecordIndex].value == 0x009EU;
+        metadata.terrain_collision_rectangles.size() >
+            route.event_record_index &&
+        metadata.terrain_collision_rectangles[route.event_record_index].left ==
+            route.collision_left &&
+        metadata.terrain_collision_rectangles[route.event_record_index].right ==
+            route.collision_right &&
+        metadata.terrain_collision_rectangles[route.event_record_index].top ==
+            route.collision_top &&
+        metadata.terrain_collision_rectangles[route.event_record_index].bottom ==
+            route.collision_bottom &&
+        metadata.terrain_collision_rectangles[route.event_record_index].value ==
+            route.collision_value;
+    const auto left_fixed =
+        static_cast<std::uint32_t>(route.collision_left) * 16U;
+    const auto right_fixed =
+        (static_cast<std::uint32_t>(route.collision_right) + 1U) * 16U;
+    const auto top_fixed =
+        static_cast<std::uint32_t>(route.collision_top) * 16U;
+    const auto bottom_fixed =
+        (static_cast<std::uint32_t>(route.collision_bottom) + 1U) * 16U;
     const bool spawn_is_outside_contact =
-        spawn.x < 288U * 16U || spawn.x >= 320U * 16U ||
-        spawn.y < 32U * 16U || spawn.y >= 64U * 16U;
+        spawn.x < left_fixed || spawn.x >= right_fixed ||
+        spawn.y < top_fixed || spawn.y >= bottom_fixed;
     const auto render = [&field_scene] { return render_qa_field(field_scene); };
     const auto save = [&output](const std::string_view name,
                                 const QImage& image) {
@@ -11217,38 +11242,56 @@ int run_scene15_old_man_contact_qa(
                image.save(QString::fromStdWString(
                    (output / std::string(name)).wstring()));
     };
+    const auto scene_entry_image = render();
     if (!source_spawn_matches || !source_event_record_matches ||
         !spawn_is_outside_contact || field_scene.dialogue_open() ||
-        !save("scene-entry.bmp", render())) {
-        std::cerr << "Scene-15 old-man QA: descriptor spawn, ROM event 30, or "
+        !save("scene-entry.bmp", scene_entry_image)) {
+        std::cerr << "Unnamed old-man QA: descriptor spawn, ROM event 30, or "
                      "entry state diverged (spawn="
                   << spawn.x << ',' << spawn.y
                   << ", source_spawn=" << source_spawn_matches
                   << ", source_trigger=" << source_event_record_matches
                   << ", spawn_outside=" << spawn_is_outside_contact
                   << ", dialogue_on_entry=" << field_scene.dialogue_open()
-                  << ")\n";
+                  << ", collision_rows="
+                  << metadata.terrain_collision_rectangles.size();
+        const auto first_row = route.event_record_index == 0U
+            ? 0U
+            : route.event_record_index - 1U;
+        const auto last_row = std::min(
+            route.event_record_index + 1U,
+            metadata.terrain_collision_rectangles.size());
+        for (auto row = first_row; row < last_row; ++row) {
+            const auto& rectangle =
+                metadata.terrain_collision_rectangles[row];
+            std::cerr << ", row[" << row << "]=" << rectangle.left << '-'
+                      << rectangle.right << ',' << rectangle.top << '-'
+                      << rectangle.bottom << ":0x" << std::hex
+                      << static_cast<unsigned>(rectangle.value) << std::dec;
+        }
+        std::cerr << ")\n";
         return 3;
     }
 
-    // Event 30 is at the north-east edge. The descriptor fallback spawn is
-    // kept as the entry check above; this seeded approach is outside its
-    // rectangle and reaches it with ordinary Up input.
-    field_scene.set_field_entity_world_position_for_dump(kContactX, kContactY);
+    // Keep the descriptor spawn check above, then approach the source
+    // rectangle from below with ordinary Up input.
+    field_scene.set_field_entity_world_position_for_dump(
+        route.approach_x, route.approach_y);
     field_scene.set_field_camera_world_position_for_dump(0U, 0U);
     if (!save("approach-start.bmp", render())) {
-        std::cerr << "Scene-15 old-man QA: approach capture failed\n";
+        std::cerr << "Unnamed old-man QA: approach capture failed\n";
         return 3;
     }
 
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) {
-        std::cerr << "Scene-15 old-man QA: route log could not be opened\n";
+        std::cerr << "Unnamed old-man QA: route log could not be opened\n";
         return 3;
     }
     trace << "stage\ttick\tscene\tx_fixed\ty_fixed\tevent\tmode_event"
              "\tdialogue_open\ttext_segments\toptions\n";
-    trace << "scene-entry\t0\t15\t" << spawn.x << '\t' << spawn.y
+    trace << "scene-entry\t0\t" << static_cast<unsigned>(route.scene)
+          << '\t' << spawn.x << '\t' << spawn.y
           << "\t-\t-\t0\t0\t0\n";
     bool event_contact = false;
     std::uint16_t contact_tick = 0U;
@@ -11280,15 +11323,15 @@ int run_scene15_old_man_contact_qa(
             contact_position = position;
             if (!save("event-30-contact.bmp", render())) {
                 field_scene.set_controller_nibble(0U);
-                std::cerr << "Scene-15 old-man QA: event contact capture failed\n";
+                std::cerr << "Unnamed old-man QA: event contact capture failed\n";
                 return 3;
             }
             break;
         }
         if (field_scene.dialogue_open() ||
-            field_scene.field_scene_reference_for_dump() != kScene) {
+            field_scene.field_scene_reference_for_dump() != route.scene) {
             field_scene.set_controller_nibble(0U);
-            std::cerr << "Scene-15 old-man QA: left the expected map before "
+            std::cerr << "Unnamed old-man QA: left the expected map before "
                          "contact\n";
             return 3;
         }
@@ -11297,8 +11340,8 @@ int run_scene15_old_man_contact_qa(
     if (!event_contact ||
         field_scene.field_map_event_system_for_dump().collision_dispatch_count() !=
             1U) {
-        std::cerr << "Scene-15 old-man QA: ordinary Up did not contact ROM "
-                     "record 12/event 30 (found=" << event_contact
+        std::cerr << "Unnamed old-man QA: ordinary Up did not contact ROM "
+                     "event-30 record (found=" << event_contact
                   << ", dispatches="
                   << field_scene.field_map_event_system_for_dump()
                          .collision_dispatch_count()
@@ -11322,9 +11365,11 @@ int run_scene15_old_man_contact_qa(
             panel.actor_name == "Unidentified old man" &&
             panel.portrait_alias ==
                 "dialogue.portraits.jackals.lantern.old.man";
+        const auto dialogue_image = render();
         if (!expected_text || !expected_speaker || panel.option_count != 0U ||
-            !panel.source_complete || !save("old-man-dialogue.bmp", render())) {
-            std::cerr << "Scene-15 old-man QA: event 30 did not show the "
+            !panel.source_complete || dialogue_image == scene_entry_image ||
+            !save("old-man-dialogue.bmp", dialogue_image)) {
+            std::cerr << "Unnamed old-man QA: event 30 did not show the "
                          "source passage/profile without choices\n";
             return 3;
         }
@@ -11339,7 +11384,7 @@ int run_scene15_old_man_contact_qa(
     if (!dialogue_opened ||
         std::find(boundaries.begin(), boundaries.end(),
                   "field.location.dialogue_task_opened") == boundaries.end()) {
-        std::cerr << "Scene-15 old-man QA: event 30 did not reach its Lua "
+        std::cerr << "Unnamed old-man QA: event 30 did not reach its Lua "
                      "dialogue profile\n";
         return 3;
     }
@@ -11357,11 +11402,11 @@ int run_scene15_old_man_contact_qa(
     }
     const auto return_start = render();
     if (field_scene.dialogue_open() ||
-        field_scene.field_scene_reference_for_dump() != kScene ||
+        field_scene.field_scene_reference_for_dump() != route.scene ||
         field_scene.field_modal_return_transition_frames_for_dump() != 60U ||
         return_start.size() != QSize(kSceneWidth, kSceneHeight) ||
         !save("return-transition-start.bmp", return_start)) {
-        std::cerr << "Scene-15 old-man QA: A did not begin the source-scene "
+        std::cerr << "Unnamed old-man QA: A did not begin the source-scene "
                      "return fade (dialogue="
                   << field_scene.dialogue_open() << ", scene="
                   << static_cast<unsigned>(
@@ -11381,21 +11426,26 @@ int run_scene15_old_man_contact_qa(
                 : "return-transition-complete.bmp";
             if (transition_frame.size() != QSize(kSceneWidth, kSceneHeight) ||
                 !save(name, transition_frame)) {
-                std::cerr << "Scene-15 old-man QA: return fade capture failed at "
+                std::cerr << "Unnamed old-man QA: return fade capture failed at "
                           << static_cast<unsigned>(frame) << '\n';
                 return 3;
             }
         }
     }
     const auto returned = render();
+    const bool visible_field_return =
+        route.require_visible_field_return &&
+        field_hud_chrome_survives(returned, asset_root) &&
+        count_playfield_lit(returned) >= 100U;
     if (field_scene.dialogue_open() ||
-        field_scene.field_scene_reference_for_dump() != kScene ||
+        field_scene.field_scene_reference_for_dump() != route.scene ||
         field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
         field_scene.field_palette_fade_steps_for_dump() != 0U ||
-        !field_hud_chrome_survives(returned, asset_root) ||
-        count_playfield_lit(returned) < 100U || !save("actual.bmp", returned) ||
-        !audio_events.empty()) {
-        std::cerr << "Scene-15 old-man QA: completed return did not redraw the "
+        (route.require_visible_field_return && !visible_field_return) ||
+        (route.require_no_audio_events && !audio_events.empty()) ||
+        returned.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !save("actual.bmp", returned)) {
+        std::cerr << "Unnamed old-man QA: completed return did not restore the "
                      "same field scene cleanly (dialogue="
                   << field_scene.dialogue_open() << ", scene="
                   << static_cast<unsigned>(
@@ -11409,17 +11459,41 @@ int run_scene15_old_man_contact_qa(
                   << ", audio_events=" << audio_events.size() << ")\n";
         return 3;
     }
-    trace << "returned-to-field\t" << contact_tick << "\t15\t"
+    trace << "returned-to-field\t" << contact_tick << '\t'
+          << static_cast<unsigned>(route.scene) << '\t'
           << field_scene.field_entity_world_position().x << '\t'
           << field_scene.field_entity_world_position().y
           << "\t30\t30\t0\t0\t0\n";
     trace.flush();
-    std::cout << "scene15_old_man_contact_qa=passed rom=0x" << std::hex
-              << kEventRecordAddress << std::dec << " contact="
+    std::cout << "unnamed_old_man_contact_qa=passed scene="
+              << static_cast<unsigned>(route.scene) << " rom=0x" << std::hex
+              << route.event_record_address << std::dec << " contact="
               << contact_position.x << ',' << contact_position.y
               << " tick=" << contact_tick << " artifacts="
               << output.string() << '\n';
     return 0;
+}
+
+int run_scene15_old_man_contact_qa(
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    constexpr UnnamedOldManContactRoute route{
+        15U, 11U, 0x1D5D3EU, 0x0120U, 0x013FU, 0x0020U, 0x003FU,
+        0x009EU, 304U * 16U, 80U * 16U, true, true};
+    return run_unnamed_old_man_contact_qa(
+        startup_state, asset_root, output, route);
+}
+
+int run_scene17_unidentified_contact_qa(
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output) {
+    constexpr UnnamedOldManContactRoute route{
+        17U, 10U, 0x1D63B4U, 0x0000U, 0x001FU, 0x0020U, 0x003FU,
+        0x009EU, 16U * 16U, 80U * 16U, true, false};
+    return run_unnamed_old_man_contact_qa(
+        startup_state, asset_root, output, route);
 }
 
 int run_scene1_underground93_story_gate_qa(
@@ -25432,6 +25506,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_dump_path;
         std::optional<std::filesystem::path> field_movement_qa_path;
         std::optional<std::filesystem::path>
+            field_scene17_unidentified_contact_qa_path;
+        std::optional<std::filesystem::path>
             field_crime_mall_ilene_gate_qa_path;
         std::optional<std::filesystem::path>
             field_riannons_magic_shop_entry_qa_path;
@@ -25678,6 +25754,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_movement_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene17-unidentified-contact-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene17_unidentified_contact_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -27472,6 +27555,11 @@ int main(int argc, char** argv) {
                 return run_gang_contract_target_entry_qa(
                     smoke_state, asset_root,
                     *field_gang_contract_target_entry_qa_path);
+            }
+            if (field_scene17_unidentified_contact_qa_path.has_value()) {
+                return run_scene17_unidentified_contact_qa(
+                    smoke_state, asset_root,
+                    *field_scene17_unidentified_contact_qa_path);
             }
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_motel_street_collision_qa_path.has_value() ||

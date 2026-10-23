@@ -100,6 +100,21 @@ branch. The exterior route remains a separate link on the Penumbra site
 entity and continues to validate destination 17 against the active ROM
 event-table row.
 
+The focused Debug/Release
+`shadowrun_ghidra_conversion_qt_field_scene17_unidentified_contact_qa` route
+checks the source descriptor spawn `(144,204)`, then uses ordinary Up from a
+seeded position `(16,80)` immediately south of record 10's rectangle. The
+record publishes event 30 on update 5; Lua opens the extracted unnamed profile
+and one-page text with zero options. Ordinary A dismisses the page, and the
+route verifies the 60-frame same-scene return plus visible host field graphics.
+Each build writes `scene-entry.bmp`, `approach-start.bmp`,
+`event-30-contact.bmp`, `old-man-dialogue.bmp`, three return-fade frames,
+`actual.bmp`, and `route.tsv` under
+`build/conversion/qt/{debug,release}/qt_runtime/field-scene17-unidentified-contact-qa/`.
+I inspected the Debug dialogue and returned-field captures. This is host
+regression evidence; no independent Genesis frame for the contact has been
+identified, and the ROM does not supply a speaker name.
+
 The fee node `0x111316` contains command `0x60` in its first choice slot at
 `0x111326`; adjacent code at `0x225CA` returns this node in A0. Its first
 choice label is `0x103A7A` (“Easy money, chummer. I'll pay”), and its second is
@@ -131,9 +146,10 @@ CTest build tree. Companion Debug/Release CTests cover Reputation-3 rejection wi
 security warning, 74-nuyen insufficient funds, paid entry with story bit 10
 clear, the bit-11 defeated state, both lead facts clear, the alternate
 field-mode bit-21 lead, and the Later choice at both prompts; each checks
-its return and writes `actual.bmp` plus `route.tsv`. The Scene-17 return
-`actual.bmp` is black in the current host renderer, so these tests verify
-state transitions rather than destination graphics. Callback timeout and
-an independent Genesis capture remain open. The ROM does not identify the
-Scene-17 event-30 speaker as Freya; that contact remains separate from the
-entry gate.
+its return and writes `actual.bmp` plus `route.tsv`. The Mako-route Scene-17
+return `actual.bmp` is black in the current host renderer, so those tests
+verify state transitions rather than destination graphics. The separate
+event-30 contact CTest writes a direct Scene-17 return capture and checks the
+visible host field frame. Callback timeout and independent Genesis captures
+remain open. The ROM does not identify the Scene-17 event-30 speaker as Freya;
+that contact remains separate from the entry gate.

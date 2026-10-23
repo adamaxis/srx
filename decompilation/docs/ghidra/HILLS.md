@@ -1029,9 +1029,21 @@ transition callbacks, source effects, result page, and field return. It writes
 `actual.bmp` and `route.tsv` under
 `build/conversion/qt/{debug,release}/qt_runtime/field-penumbra-mako-qa/`. The route also
 exposed and fixed the kind-5 actor asset key and coroutine-local Lua `require`
-lookup. Companion Debug/Release tests cover Reputation-3 rejection, 74-nuyen insufficient funds, paid entry with story bit 10 clear, the bit-11 defeated state, both lead facts clear, the alternate field-mode bit-21 lead, and the Later choice at both prompts; each writes `actual.bmp` and `route.tsv`. The callback route tests both Notebook tip 67 and field-mode bit 21 as independent lead sources. Scene-17 return captures are black in the current host renderer, so QA establishes route state rather than destination graphics. Keep partial: callback timeout and an independent Genesis capture remain unverified. Older restored saves with
-unavailable heat, FFFC30, or progression data still receive a source boundary.
-Scene 17/event 30 remains a separate generic one-page contact.
+lookup. Companion Debug/Release tests cover Reputation-3 rejection, 74-nuyen insufficient funds, paid entry with story bit 10 clear, the bit-11 defeated state, both lead facts clear, the alternate field-mode bit-21 lead, and the Later choice at both prompts; each writes `actual.bmp` and `route.tsv`. The callback route tests both Notebook tip 67 and field-mode bit 21 as independent lead sources. The Scene-17 return frame reached through the Mako route is black in the current host renderer, so that QA establishes route state rather than destination graphics. Keep partial: callback timeout and an independent Genesis capture remain unverified. Older restored saves with unavailable heat, FFFC30, or progression data still receive a source boundary.
+
+Scene 17/event 30 is a separate generic one-page contact. ROM record 10 at
+`0x1D63B4` carries raw `0x019E` over pixels `(0,32)..(31,63)` and dispatches
+through the default `0x20990` branch to text `0xF3FBC` with no choice pointer.
+The focused Debug/Release
+`shadowrun_ghidra_conversion_qt_field_scene17_unidentified_contact_qa` route
+checks the descriptor spawn, then approaches from `(16,80)` with ordinary Up,
+opens the unnamed profile and no-choice passage, and dismisses it with A. It
+checks the 60-frame return and visible host field frame, and writes full-frame
+captures plus `route.tsv` under
+`build/conversion/qt/{debug,release}/qt_runtime/field-scene17-unidentified-contact-qa/`.
+This direct route renders the local Scene-17 frame; it does not resolve the
+Mako-route black return or supply an independent Genesis comparison, so the
+contact remains partial.
 
 ## Wire-Masters mode-7 cyberware selector and purchases (defended, 2026-10-22)
 

@@ -409,6 +409,15 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_movement_qa
                  --field-movement-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-movement-qa")
 
+# Scene 17's event-30 contact is an ungated, one-page old-man passage. Keep
+# its physical approach and same-map dismissal separate from the larger
+# movement census so this field interaction has a focused route test.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_scene17_unidentified_contact_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-scene17-unidentified-contact-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-scene17-unidentified-contact-qa")
+
 # Verify the physical Crime Mall route and the post-load ILENE_MET actor gate.
 add_shadowrun_qt_qa_case(
     shadowrun_ghidra_conversion_qt_field_crime_mall_ilene_gate_qa
