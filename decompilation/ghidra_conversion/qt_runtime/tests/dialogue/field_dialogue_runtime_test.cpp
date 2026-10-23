@@ -388,7 +388,7 @@ int main() {
         scripting::ScriptFieldModeContext{1U, 1U, 0});
     gameplay_scripts.set_location_context(
         "building", "puyallup_site_03_tarislar_city_inn",
-        "tarislar.city_inn", "tarislar_city_inn_narrator");
+        "tarislar.city_inn", "tarislar_city_inn_manager");
     if (!expect(runtime.open_gameplay_task(
                     "tarislar_city_inn", "present_indexed_title_service")) ||
         !expect(runtime.panel().source_complete) ||
@@ -676,7 +676,7 @@ int main() {
     });
     gameplay_scripts.set_location_context(
         "building", "puyallup_site_03_tarislar_city_inn",
-        "tarislar.city_inn", "tarislar_city_inn_narrator");
+        "tarislar.city_inn", "tarislar_city_inn_manager");
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{1U, 1U, 0});
     if (!runtime.open_gameplay_task(
@@ -730,10 +730,13 @@ int main() {
     });
     gameplay_scripts.set_location_context(
         "building", "puyallup_site_03_tarislar_city_inn",
-        "tarislar.city_inn", "tarislar_city_inn_narrator");
+        "tarislar.city_inn", "tarislar_city_inn_manager");
     std::size_t inn_advance_count = 0U;
     const auto advance_inn_dialogue = [&runtime, &inn_advance_count](
                                          const std::uint16_t input) {
+        while (runtime.input_lockout_active()) {
+            (void)runtime.consume_input_lockout_frame();
+        }
         ++inn_advance_count;
         const auto result = runtime.advance_controller_events(input);
         if (result != FieldDialogueAdvanceResult::prompt_advanced &&
@@ -748,6 +751,9 @@ int main() {
     };
     if (!expect(runtime.open_gameplay_task(
                     "tarislar_city_inn", "present_indexed_title_service")) ||
+        !expect(runtime.panel().actor_name == "Inn Manager") ||
+        !expect(runtime.panel().portrait_alias ==
+                "dialogue.portraits.tarislar.city.inn.manager") ||
         !expect(advance_inn_dialogue(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(advance_inn_dialogue(0x2000U) ==
@@ -772,23 +778,72 @@ int main() {
         !expect(advance_inn_dialogue(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(advance_inn_dialogue(0x4000U) ==
-                FieldDialogueAdvanceResult::source_boundary) ||
-        !expect(runtime.panel().kind == DialoguePanelKind::source_boundary) ||
-        !expect(runtime.panel().source_boundary_reason.find("0x4B") !=
-                std::string_view::npos) ||
-        !expect(capture_tarislar_inn("tabatha-encounter-boundary"))) {
-        std::cerr << "Tarislar City Inn did not stop at its unresolved ROM encounter handoff\n";
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().actor_name == "Renraku Strike Team") ||
+        !expect(runtime.panel().portrait_alias ==
+                "field.mode.entry.renraku.strike.team.sprite") ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "swarm of bullets abates") != std::string_view::npos) ||
+        !expect(runtime.panel().has_more) ||
+        !expect(capture_tarislar_inn("tabatha-renraku-aftermath"))) {
+        std::cerr << "Tarislar City Inn did not open the source Renraku aftermath page\n";
         return 123;
     }
-    const auto tabatha_boundary = runtime.take_gameplay_task_outcome();
-    const auto* tabatha_source_boundary = tabatha_boundary.has_value()
-        ? std::get_if<scripting::SourceBoundaryOutcome>(&*tabatha_boundary)
-        : nullptr;
-    if (!expect(tabatha_boundary.has_value()) ||
-        !expect(tabatha_source_boundary != nullptr) ||
-        !expect(tabatha_source_boundary->reason.find("0x4B") !=
-                std::string::npos)) {
-        std::cerr << "Tarislar JSON graph did not retain the unresolved encounter boundary\n";
+    if (!expect(advance_inn_dialogue(0x4000U) ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().actor_name == "Tabatha Shale") ||
+        !expect(runtime.panel().portrait_alias ==
+                "dialogue.portraits.tabatha.shale") ||
+        !expect(runtime.panel().text_segments[0].find(
+                    "rush back into Tabatha's room") != std::string_view::npos) ||
+        !expect(runtime.panel().has_more) ||
+        !expect(capture_tarislar_inn("tabatha-room-reentry"))) {
+        std::cerr << "Tarislar City Inn did not restore Tabatha's profile for the room page\n";
+        return 123;
+    }
+    const auto holopix_page_result = advance_inn_dialogue(0x4000U);
+    if (!expect(holopix_page_result ==
+                FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(runtime.panel().actor_kind == DialoguePanelActorKind::none) ||
+        !expect(runtime.panel().actor_name.empty()) ||
+        !expect(runtime.panel().kind == DialoguePanelKind::information_page) ||
+        !expect(runtime.panel().portrait_alias ==
+                "dialogue.portraits.david.owlfeather") ||
+        !expect(runtime.panel().text_segment_count >= 3U) ||
+        !expect(runtime.panel().text_segments[2].find("David William Owlfeather") !=
+                std::string_view::npos) ||
+        !expect(runtime.input_lockout_active()) ||
+        !expect(capture_tarislar_inn("tabatha-holopix"))) {
+        std::cerr << "Tarislar City Inn did not open David's 30-frame holopix page"
+                  << "; result=" << static_cast<int>(holopix_page_result)
+                  << "; actor=" << runtime.panel().actor_name
+                  << "; actor-kind="
+                  << static_cast<int>(runtime.panel().actor_kind)
+                  << "; panel-kind=" << static_cast<int>(runtime.panel().kind)
+                  << "; text-segments=" << runtime.panel().text_segment_count
+                  << "; portrait=" << runtime.panel().portrait_alias
+                  << "; delay-active=" << runtime.input_lockout_active()
+                  << "; first text=" << runtime.panel().text_segments[0]
+                  << '\n';
+        return 123;
+    }
+    for (std::size_t frame = 0U; frame < 30U; ++frame) {
+        if (!expect(runtime.consume_input_lockout_frame())) {
+            std::cerr << "Tarislar holopix page ended its source wait early\n";
+            return 123;
+        }
+    }
+    if (!expect(!runtime.input_lockout_active()) ||
+        !expect(runtime.advance_controller_events(0x4000U) ==
+                FieldDialogueAdvanceResult::typed_outcome_requested)) {
+        std::cerr << "Tarislar City Inn holopix did not return through the source sentinel\n";
+        return 123;
+    }
+    const auto tabatha_outcome = runtime.take_gameplay_task_outcome();
+    if (!expect(tabatha_outcome.has_value()) ||
+        !expect(std::holds_alternative<
+                    scripting::ContinueInPlaceOutcome>(*tabatha_outcome))) {
+        std::cerr << "Tarislar City Inn did not return to its current map after the holopix\n";
         return 123;
     }
     runtime.close();

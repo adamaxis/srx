@@ -588,7 +588,7 @@
       "portrait_alias": "none",
       "text_profile": "tarislar.garden.apartments.entry"
     },
-    "tarislar_city_inn_narrator": {
+    "tarislar_city_inn_manager": {
       "events": {
         "entry": {
           "continuation_key": "shared.more",
@@ -617,7 +617,14 @@
         "shale_intro_2": {
           "continuation_key": "shared.more",
           "title_key": "tarislar.city_inn.shale.2"
-        },
+        }
+      },
+      "name": "Inn Manager",
+      "portrait_alias": "dialogue.portraits.tarislar.city.inn.manager",
+      "text_profile": "tarislar.city_inn"
+    },
+    "tarislar_city_inn_shale": {
+      "events": {
         "shale_last_run": {
           "continuation_key": "shared.more",
           "title_key": "tarislar.city_inn.shale.last_run"
@@ -629,10 +636,40 @@
         "shale_attack": {
           "continuation_key": "shared.more",
           "title_key": "tarislar.city_inn.shale.attack"
+        },
+        "attack_aftermath": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.city_inn.shale.attack_followup"
+        },
+        "room_reentry": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.city_inn.shale.room_reentry"
         }
       },
-      "name": "Narration",
-      "portrait_alias": "none",
+      "name": "Tabatha Shale",
+      "portrait_alias": "dialogue.portraits.tabatha.shale",
+      "text_profile": "tarislar.city_inn"
+    },
+    "tarislar_city_inn_renraku": {
+      "events": {
+        "attack_aftermath": {
+          "continuation_key": "shared.more",
+          "title_key": "tarislar.city_inn.shale.attack_followup"
+        }
+      },
+      "name": "Renraku Strike Team",
+      "portrait_alias": "field.mode.entry.renraku.strike.team.sprite",
+      "text_profile": "tarislar.city_inn"
+    },
+    "tarislar_city_inn_david_owlfeather": {
+      "events": {
+        "holopix_revealed": {
+          "continuation_key": "",
+          "title_key": "tarislar.city_inn.shale.holopix"
+        }
+      },
+      "name": "David Owlfeather",
+      "portrait_alias": "dialogue.portraits.david.owlfeather",
       "text_profile": "tarislar.city_inn"
     },
     "vid_phone_agira_tetsumi": {

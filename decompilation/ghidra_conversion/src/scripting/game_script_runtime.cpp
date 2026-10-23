@@ -3825,8 +3825,6 @@ struct GameScriptRuntime::Impl {
             !valid_identifier(event_id) || !valid_speaker ||
             !valid_profile || !valid_identifier(text_profile) ||
             !valid_presentation || !valid_input_delay ||
-            (presentation_name != "field_mode_text" &&
-             input_delay_frames != 0U) ||
             (presentation_name == "field_mode_text" &&
              input_delay_frames == 0U)) {
             self->bridge_failure =

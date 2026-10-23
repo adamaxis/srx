@@ -4,11 +4,11 @@
     "tarislar_city_inn.paid_stay_and_shale_service": {
       "entryNode": "begin_trigger",
       "precondition": "tarislar_city_inn.paid_stay_and_shale_service_available",
-      "speakerId": "tarislar_city_inn_narrator",
+      "speakerId": "tarislar_city_inn_manager",
       "textProfile": "tarislar.city_inn",
       "provenance": {
-        "romAddresses": ["0x53B16", "0xF49E8", "0xF49FC", "0xF49C0", "0x21458", "0xCF38", "0xF4EA4", "0xF4EB8", "0xF4ECC", "0x218BC", "0x21862", "0xF4EE0", "0xF4EF4", "0xF4F08", "0xF4F20", "0xF4F34", "0xF4F48", "0xF4F60", "0xF4F78", "0xF4F8C", "0xF617F"],
-        "scope": "indexed_service_intro_room_transaction_and_tabatha_handoff"
+        "romAddresses": ["0x53B16", "0xF49E8", "0xF49FC", "0xF49C0", "0x21458", "0xCF38", "0xF4EA4", "0xF4EB8", "0xF4ECC", "0x218BC", "0x21862", "0xF4EE0", "0xF4EF4", "0xF4F08", "0xF4F20", "0xF4F34", "0xF4F48", "0xF4F60", "0xF4F78", "0xF4F8C", "0xF617F", "0x22112", "0xF4FA0", "0x22124", "0xF4FB4", "0x219A4", "0xF4FC8", "0x1F3C4", "0x121FB8", "0x121F7C", "0x12206C", "0x121E14"],
+        "scope": "indexed_service_room_transaction_tabatha_dialogue_and_aftermath"
       },
       "nodes": {
         "begin_trigger": {
@@ -20,6 +20,7 @@
         "inn_intro": {
           "type": "page",
           "eventId": "entry",
+          "inputDelayFrames": 12,
           "next": "manager_options"
         },
         "manager_options": {
@@ -84,18 +85,21 @@
         "tabatha_intro_0": {
           "type": "page",
           "eventId": "shale_intro_0",
+          "inputDelayFrames": 12,
           "next": "tabatha_intro_1",
           "evidence": "ROM prompt record 0xF4EA4 presents text 0x117EC5 with MORE."
         },
         "tabatha_intro_1": {
           "type": "page",
           "eventId": "shale_intro_1",
+          "inputDelayFrames": 12,
           "next": "tabatha_intro_2",
           "evidence": "ROM prompt record 0xF4EB8 presents text 0x117F78 with MORE."
         },
         "tabatha_intro_2": {
           "type": "page",
           "eventId": "shale_intro_2",
+          "inputDelayFrames": 12,
           "next": "tabatha_acceptance_effects",
           "evidence": "ROM prompt record 0xF4ECC presents text 0x118060; command 0x14 follows its MORE selection."
         },
@@ -110,6 +114,7 @@
         },
         "tabatha_arrival": {
           "type": "choice",
+          "speakerId": "tarislar_city_inn_shale",
           "menuId": "shale_arrival",
           "inputContract": "buttons_abc",
           "noSelectionNext": "stay_on_map",
@@ -120,12 +125,15 @@
         },
         "tabatha_last_run": {
           "type": "page",
+          "speakerId": "tarislar_city_inn_shale",
           "eventId": "shale_last_run",
+          "inputDelayFrames": 12,
           "next": "tabatha_topic_choice",
           "evidence": "ROM record 0xF4EF4 presents text 0xF5DA6 with MORE before the topic prompt."
         },
         "tabatha_topic_choice": {
           "type": "choice",
+          "speakerId": "tarislar_city_inn_shale",
           "menuId": "shale_topics",
           "inputContract": "buttons_abc",
           "noSelectionNext": "stay_on_map",
@@ -137,6 +145,7 @@
         },
         "tabatha_after_caleb": {
           "type": "choice",
+          "speakerId": "tarislar_city_inn_shale",
           "menuId": "shale_after_caleb",
           "inputContract": "buttons_abc",
           "noSelectionNext": "stay_on_map",
@@ -147,6 +156,7 @@
         },
         "tabatha_after_errascoe": {
           "type": "choice",
+          "speakerId": "tarislar_city_inn_shale",
           "menuId": "shale_after_errascoe",
           "inputContract": "buttons_abc",
           "noSelectionNext": "stay_on_map",
@@ -157,6 +167,7 @@
         },
         "tabatha_followup_after_caleb": {
           "type": "choice",
+          "speakerId": "tarislar_city_inn_shale",
           "menuId": "shale_followup_after_caleb",
           "inputContract": "buttons_abc",
           "noSelectionNext": "stay_on_map",
@@ -168,6 +179,7 @@
         },
         "tabatha_followup_after_errascoe": {
           "type": "choice",
+          "speakerId": "tarislar_city_inn_shale",
           "menuId": "shale_followup_after_errascoe",
           "inputContract": "buttons_abc",
           "noSelectionNext": "stay_on_map",
@@ -179,23 +191,48 @@
         },
         "tabatha_refusal": {
           "type": "page",
+          "speakerId": "tarislar_city_inn_shale",
           "eventId": "shale_refuses_recruitment",
+          "inputDelayFrames": 12,
           "next": "tabatha_attack",
           "evidence": "ROM record 0xF4F78 continues from the refusal page to the attack record on MORE."
         },
         "tabatha_attack": {
           "type": "page",
+          "speakerId": "tarislar_city_inn_shale",
           "eventId": "shale_attack",
-          "next": "tabatha_ambush_boundary",
-          "evidence": "ROM record 0xF4F8C displays text 0xF617F; its continuation reaches commands 0x4B, 0x4C, and 0x20."
+          "inputDelayFrames": 12,
+          "next": "renraku_attack_aftermath",
+          "evidence": "ROM record 0xF4F8C displays text 0xF617F with MORE; command 0x4B dispatches to the profile/page transition at 0x22112."
+        },
+        "renraku_attack_aftermath": {
+          "type": "page",
+          "speakerId": "tarislar_city_inn_renraku",
+          "eventId": "attack_aftermath",
+          "inputDelayFrames": 12,
+          "next": "tabatha_room_reentry",
+          "evidence": "ROM command 0x4B at 0x22112 loads the Renraku profile 0x12206C and returns prompt 0xF4FA0, which displays text 0xF623E."
+        },
+        "tabatha_room_reentry": {
+          "type": "page",
+          "speakerId": "tarislar_city_inn_shale",
+          "eventId": "room_reentry",
+          "inputDelayFrames": 12,
+          "next": "david_holopix",
+          "evidence": "ROM command 0x4C at 0x22124 loads Tabatha's profile 0x121F7C and returns prompt 0xF4FB4, which displays text 0xF62F1."
+        },
+        "david_holopix": {
+          "type": "page",
+          "speakerId": "tarislar_city_inn_david_owlfeather",
+          "eventId": "holopix_revealed",
+          "presentation": "field_mode_text",
+          "inputDelayFrames": 30,
+          "next": "stay_on_map",
+          "evidence": "ROM command 0x20 at 0x219A4 loads David's profile 0x121E14 and returns prompt 0xF4FC8. Its negative first-option sentinel takes the 30-frame any-controller-event path in 0x1F3C4."
         },
         "tabatha_state_boundary": {
           "type": "source_boundary",
           "reason": "ROM command 0x14 at 0x21862 requires the runner source-byte-triplet service, which is unavailable in this session."
-        },
-        "tabatha_ambush_boundary": {
-          "type": "source_boundary",
-          "reason": "ROM encounter commands 0x4B, 0x4C, and 0x20 are not converted yet."
         },
         "stay_on_map": {
           "type": "terminal",

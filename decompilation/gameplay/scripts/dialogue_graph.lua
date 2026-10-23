@@ -162,9 +162,8 @@ local function validate_graph(graph_id, graph, conditions, cinematics)
             if node.inputDelayFrames ~= nil then
                 assert(type(node.inputDelayFrames) == "number" and
                        node.inputDelayFrames % 1 == 0 and
-                       node.inputDelayFrames >= 0 and
-                       node.inputDelayFrames <= 255 and
-                       node.presentation == "field_mode_text",
+                       node.inputDelayFrames > 0 and
+                       node.inputDelayFrames <= 255,
                     owner .. " has an invalid input delay")
             end
             if node.presentation == "field_mode_text" then

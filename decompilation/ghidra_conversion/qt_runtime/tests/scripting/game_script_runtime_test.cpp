@@ -9231,7 +9231,7 @@ int main() {
     });
     scripts.set_location_context(
         "building", kTarislarCityInnLocation, "tarislar.city_inn",
-        "tarislar_city_inn_narrator");
+        "tarislar_city_inn_manager");
     scripts.set_field_mode_context(ScriptFieldModeContext{1U, 1U, 0});
     FieldScriptRouteContext inn_context{};
     inn_context.scene_id = 1U;
@@ -9283,14 +9283,17 @@ int main() {
     auto inn_task = scripts.start_task(
         "tarislar_city_inn", "present_indexed_title_service");
     const auto inn_entry_text = scripts.dialogue_event_text_keys(
-        "tarislar_city_inn_narrator", "tarislar.city_inn", "entry");
+        "tarislar_city_inn_manager", "tarislar.city_inn", "entry");
     if (!expect(inn_task.status ==
                         ScriptTaskStep::Status::awaiting_native_operation &&
                     inn_task.operation.has_value() &&
                     inn_task.operation->type ==
                         ScriptNativeOperation::Type::ui_say &&
                     inn_task.operation->dialogue.has_value() &&
+                    inn_task.operation->dialogue->speaker_id ==
+                        "tarislar_city_inn_manager" &&
                     inn_task.operation->dialogue->event_id == "entry" &&
+                    inn_task.operation->dialogue->input_delay_frames == 12U &&
                     inn_entry_text.has_value() &&
                     inn_entry_text->title_key == "tarislar.city_inn.entry" &&
                     scripts.story_state().at("story_trigger_active_1"),

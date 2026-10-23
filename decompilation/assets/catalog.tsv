@@ -477,6 +477,7 @@ intro/cab/cursor-bottom-left.bmp	sprite	0	0	8	8	0xD4446/0x13726	extracted
 intro/cab/cursor-bottom-middle.bmp	sprite	0	0	8	8	0xD4446/0x13726	extracted
 intro/cab/cursor-bottom-right.bmp	sprite	0	0	8	8	0xD4446/0x13726	extracted
 dialogue/portraits/stoker-motel.bmp	sprite	0	0	56	72	0x1F65A/0x121FA0/0x1287C6/0x122420	extracted
+dialogue/portraits/tarislar-city-inn-manager.bmp	sprite	0	0	56	72	0x53B16/0x121FB8/0x1287C6/0x122420	extracted
 dialogue/portraits/gunderson-jump-house.bmp	sprite	0	0	56	72	0x12CC50/0x121E80/0x20990	extracted
 dialogue/portraits/vigore-jarl.bmp	sprite	0	0	56	72	0x12CC80/0x121F28/0x20990	extracted
 dialogue/portraits/mortimer-reed.bmp	sprite	0	0	56	72	0x12CC70/0x121FF4/0x20990	extracted
@@ -484,6 +485,7 @@ dialogue/portraits/caleb-brightmore.bmp	sprite	0	0	56	72	0x12CC90/0x121E98/0x209
 dialogue/portraits/jackals-lantern-old-man.bmp	sprite	0	0	56	72	0x20990/0x20C78/0x121E5C/0xF3FAC	extracted
 dialogue/portraits/jump-house-entry.bmp	sprite	0	0	56	72	0x20484/0x121EBC/0x110D1E	extracted
 dialogue/portraits/david-owlfeather.bmp	sprite	0	0	56	72	0x53B78/0x53BCC/0x53CEA/0x121E14	extracted
+dialogue/portraits/tabatha-shale.bmp	sprite	0	0	56	72	0x21862/0x22124/0x121F7C	extracted
 dialogue/portraits/red-buffalo-woman.bmp	sprite	0	0	56	72	0x54322/0x121F04	extracted
 dialogue/portraits/spirit-eyes.bmp	sprite	0	0	56	72	0x53D5A/0x121EF8/0xF4BD8	extracted
 dialogue/portraits/licourtrix.bmp	sprite	0	0	56	72	0x53F3E/0x121EA4/0xF4C44	extracted

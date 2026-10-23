@@ -369,7 +369,7 @@ local inn_location = {
     location_type = "building",
     location_id = "puyallup_site_03_tarislar_city_inn",
     location_text_profile = "tarislar.city_inn",
-    location_speaker_id = "tarislar_city_inn_narrator",
+    location_speaker_id = "tarislar_city_inn_manager",
 }
 game.modules.world_content_data.entities.source_test.links = {
     {

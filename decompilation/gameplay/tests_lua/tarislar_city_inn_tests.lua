@@ -63,7 +63,8 @@ game = {
             }
             return take_choice(id, available_choices)
         end,
-        say = function(event_id, speaker_id, text_profile)
+        say = function(event_id, speaker_id, text_profile, presentation,
+                       input_delay_frames)
             local profile = game.content.speakers.profiles[speaker_id]
             local event = profile and profile.events[event_id]
             assert(event ~= nil, "unknown dialogue event: " .. event_id)
@@ -73,6 +74,8 @@ game = {
                 continuation = event.continuation_key == "shared.more",
                 speaker_id = speaker_id,
                 text_profile = text_profile,
+                presentation = presentation,
+                input_delay_frames = input_delay_frames,
             }
             assert(speeches[#speeches].text ~= nil,
                 "dialogue event has no generated text: " .. event.title_key)
@@ -206,9 +209,9 @@ assert(speeches[#speeches].event == "leave")
 game.state.story_flag_bit_1 = false
 game.state.story_trigger_active_1 = nil
 triplet_result = "applied"
-local refusal_route = location_task_result("source_boundary",
+local refusal_route = location_task_result("continue_in_place",
     "more", "shale", "more", "more", "more", "about_michael", "more",
-    "caleb", "errascoe", "recruit", "more", "more")
+    "caleb", "errascoe", "recruit", "more", "more", "more", "more")
 assert(game.state.story_trigger_active_1 == true)
 assert(game.state.story_flag_bit_1 == true)
 assert(game.state.notebook_tip_flag_bit_2 == true)
@@ -222,16 +225,30 @@ assert(game.state.mr_johnsons_flag_bit_2 == true)
 assert(game.state.mr_johnsons_flag_bit_4 == true)
 assert(service_calls[1][1] == "runner" and
        service_calls[1][2] == "adjust_source_byte_triplet_1")
-assert(refusal_route.reason:find("0x4B", 1, true))
-assert(#speeches == 7 and speeches[1].event == "entry" and
+assert(#speeches == 10 and speeches[1].event == "entry" and
        speeches[2].event == "shale_intro_0" and
        speeches[3].event == "shale_intro_1" and
        speeches[4].event == "shale_intro_2" and
        speeches[5].event == "shale_last_run" and
        speeches[6].event == "shale_refuses_recruitment" and
-       speeches[7].event == "shale_attack")
+       speeches[7].event == "shale_attack" and
+       speeches[8].event == "attack_aftermath" and
+       speeches[9].event == "room_reentry" and
+       speeches[10].event == "holopix_revealed")
+assert(speeches[1].speaker_id == "tarislar_city_inn_manager" and
+       speeches[5].speaker_id == "tarislar_city_inn_shale" and
+       speeches[8].speaker_id == "tarislar_city_inn_renraku" and
+       speeches[9].speaker_id == "tarislar_city_inn_shale" and
+       speeches[10].speaker_id == "tarislar_city_inn_david_owlfeather")
+assert(speeches[2].input_delay_frames == 12 and
+       speeches[7].input_delay_frames == 12 and
+       speeches[10].presentation == "field_mode_text" and
+       speeches[10].input_delay_frames == 30)
 assert(speeches[6].continuation == true and
-       speeches[7].continuation == true)
+       speeches[7].continuation == true and
+       speeches[8].continuation == true and
+       speeches[9].continuation == true and
+       speeches[10].continuation == false)
 assert(prompts[2].id == "shale_arrival" and
        prompts[2].text == script_text["tarislar.city_inn.shale.apartment"])
 assert(prompts[3].id == "shale_topics" and
@@ -253,12 +270,14 @@ game.state.story_flag_bit_1 = false
 game.state.story_flag_bit_30 = false
 game.state.story_flag_bit_13 = false
 triplet_result = "applied"
-local ambush_boundary = location_task_result("source_boundary",
+location_task_result("continue_in_place",
     "more", "shale", "more", "more", "more", "about_michael", "more",
-    "errascoe", "caleb", "thanks", "more")
-assert(ambush_boundary.reason:find("0x4B", 1, true))
-assert(speeches[#speeches].continuation == true)
-assert(speeches[#speeches].event == "shale_attack")
+    "errascoe", "caleb", "thanks", "more", "more", "more")
+assert(speeches[7].event == "shale_attack" and
+       speeches[8].event == "attack_aftermath" and
+       speeches[9].event == "room_reentry" and
+       speeches[10].event == "holopix_revealed" and
+       speeches[10].speaker_id == "tarislar_city_inn_david_owlfeather")
 assert(prompts[4].id == "shale_after_errascoe" and
        prompts[4].text == script_text["tarislar.city_inn.shale.errascoe"] and
        #prompts[4].choices == 1 and prompts[4].choices[1] == "caleb")
@@ -276,4 +295,4 @@ local state_boundary = location_task_result("source_boundary",
     "more", "shale", "more", "more", "more")
 assert(state_boundary.reason:find("0x21862", 1, true))
 
-print("Tarislar City Inn tests passed: gates, payment, Tabatha JSON branches and encounter boundary")
+print("Tarislar City Inn tests passed: gates, payment, dialogue profiles, and Tabatha aftermath")

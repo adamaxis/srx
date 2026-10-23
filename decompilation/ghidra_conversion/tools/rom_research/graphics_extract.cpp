@@ -1145,6 +1145,9 @@ void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
         {"tarislar.city_inn.shale.caleb_followup", 0x0F600DU},
         {"tarislar.city_inn.shale.refuses_recruitment", 0x0F60D6U},
         {"tarislar.city_inn.shale.attack", 0x0F617FU},
+        {"tarislar.city_inn.shale.attack_followup", 0x0F623EU},
+        {"tarislar.city_inn.shale.room_reentry", 0x0F62F1U},
+        {"tarislar.city_inn.shale.holopix", 0x0F637BU},
         {"tarislar.city_inn.frosty", 0x1180D2U},
         {"tarislar.city_inn.package.before", 0x113991U},
         {"tarislar.city_inn.package.after", 0x113A22U},
@@ -6214,6 +6217,14 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             rom, 0x121FA0U),
         "sprite", "0x1F65A/0x121FA0/0x1287C6/0x122420", false, manifest,
         written, missing, blank);
+    // The Tarislar City Inn title service enters the shared prompt with the
+    // related palette/profile variant at 0x121FB8.
+    write_catalog_asset(
+        root, "dialogue/portraits/tarislar-city-inn-manager.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121FB8U),
+        "sprite", "0x53B16/0x121FB8/0x1287C6/0x122420", false, manifest,
+        written, missing, blank);
     // Scene 13's mode-0 entry in 0x12CC50 selects the 0x121E80 speaker
     // profile for the event-30 Jump House conversation. Keep this separate
     // from Stoker's field-exit profile: it is Gunderson's distinct ROM art.
@@ -6274,6 +6285,14 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             rom, 0x121E14U),
         "sprite", "0x53B78/0x53BCC/0x53CEA/0x121E14", false, manifest,
         written, missing, blank);
+    // Tabatha's profile is selected by command 0x14 before the apartment
+    // pages and again by command 0x4C between the Renraku and holopix pages.
+    write_catalog_asset(
+        root, "dialogue/portraits/tabatha-shale.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121F7CU),
+        "sprite", "0x21862/0x22124/0x121F7C", false, manifest, written,
+        missing, blank);
     // Scene-6/event-1 service 18 uses the separate Red Buffalo Woman profile.
     write_catalog_asset(
         root, "dialogue/portraits/red-buffalo-woman.bmp",

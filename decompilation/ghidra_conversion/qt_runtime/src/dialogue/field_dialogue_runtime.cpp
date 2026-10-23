@@ -455,15 +455,11 @@ bool FieldDialogueRuntime::present_script_operation(
                     : std::string(panel_.source_boundary_reason));
         }
         if (dialogue.presentation ==
-            scripting::ScriptDialoguePresentation::field_mode_text) {
+                scripting::ScriptDialoguePresentation::field_mode_text ||
+            dialogue.input_delay_frames != 0U) {
             input_lockout_frames_ = dialogue.input_delay_frames;
         } else {
-            // MORE pages use another wait (not traced, H: none); the closing
-            // page is the 0x1F592 record without options.
-            if (dialogue.input_delay_frames != 0U) {
-                return open_source_boundary(
-                    "field dialogue page supplied a mode-text input delay");
-            }
+            // A regular closing page uses the 0x1F592 30-frame wait.
             input_lockout_frames_ = static_cast<std::uint8_t>(
                 panel_.has_more ? DialogueInputLockout::none
                                 : DialogueInputLockout::closing_page);
@@ -836,12 +832,6 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
                                     "tabatha_state_unavailable"}) {
                 open_source_boundary(
                     "Tarislar City Inn could not apply Tabatha's ROM state changes");
-                return FieldDialogueAdvanceResult::source_boundary;
-            }
-            if (task.result_id == std::optional<std::string>{
-                                    "tabatha_ambush_unconverted"}) {
-                open_source_boundary(
-                    "Tarislar City Inn attack handoff reaches encounter commands 0x4B, 0x4C, and 0x20, which are not converted yet");
                 return FieldDialogueAdvanceResult::source_boundary;
             }
             if (task.result_id == std::optional<std::string>{
@@ -1234,8 +1224,6 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             std::optional<std::string>{"phone_services_not_converted"};
         const bool tabatha_state_unavailable = task.result_id ==
             std::optional<std::string>{"tabatha_state_unavailable"};
-        const bool tabatha_ambush_unconverted = task.result_id ==
-            std::optional<std::string>{"tabatha_ambush_unconverted"};
         close();
         if (phone_services_unconverted) {
             open_source_boundary(
@@ -1245,11 +1233,6 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
         if (tabatha_state_unavailable) {
             open_source_boundary(
                 "Tarislar City Inn could not apply Tabatha's ROM state changes");
-            return FieldDialogueAdvanceResult::source_boundary;
-        }
-        if (tabatha_ambush_unconverted) {
-            open_source_boundary(
-                "Tarislar City Inn attack handoff reaches encounter commands 0x4B, 0x4C, and 0x20, which are not converted yet");
             return FieldDialogueAdvanceResult::source_boundary;
         }
         if (task.result_id == std::optional<std::string>{

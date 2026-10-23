@@ -440,7 +440,7 @@ invalid = pcall(function()
     DialogueGraph.Catalog.new({ schemaVersion = 1, graphs = {
         broken = graph("page", {
             page = { type = "page", eventId = "page_one",
-                     presentation = "field_npc", inputDelayFrames = 30,
+                     presentation = "field_npc", inputDelayFrames = 256,
                      next = "done" },
             done = { type = "terminal",
                      outcome = { type = "continue_in_place" } },
