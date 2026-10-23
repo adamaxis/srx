@@ -200,16 +200,18 @@ dispatched and cleared if installed. Initializers `0x2A32`/`0x2A44` clear
 lists `0x1E628` and `0x1E5C4`. Scene 54's six actors come from the separate
 default list at `FFDDF0`, and its marker-1 route with `FFE162` clear does not
 replace `FFE120`. The selector takes the Scene-54 mode-3 branch and bypasses
-the lower `FFE120` list-selection path. The direct `FFE162` writer is ROM
-`0x1F086`: it requires current area/event `FFFBF8/FFFBF9` to equal the active
-run target `FFFBEE/FFFBEF`, then selects descriptors `0x1D6D4A`, `0x1D6D5E`,
-or `0x1D6D72` by target area. The three confirmed type-3 offer targets are
-Scene 1/event 9, Scene 2/event 9, and Scene 3/event 4; none matches Tarislar's
-Scene 1/event 7. No `FFE162` write appears in the traced event-7 service path.
-Whether some other caller or a carried value can reach the selector, and
-whether a preexisting `FFE120` pointer reaches the first Scene-54 service
-pass, remain unresolved. Scene completion and exit destination remain
-unresolved.
+the lower `FFE120` list-selection path. The field-exit orchestrator at
+`0x1F5CA` calls `0x1EEDC` before title services; this dispatcher indexes the
+run-handler table at `0xF3E56` by `FFFBED`, and its type-3 entry at `0xF3E62`
+calls the handler at `0x1F086`. That handler requires current area/event
+`FFFBF8/FFFBF9` to equal active target `FFFBEE/FFFBEF`, then selects
+descriptors `0x1D6D4A`, `0x1D6D5E`, or `0x1D6D72` by target area. The confirmed
+offer target pool contains Scene 1/event 9, Scene 2/event 9, and Scene 3/event
+4; none matches Tarislar's Scene 1/event 7. The event-7 pass cannot make a
+fresh write from this pool. Whether a descriptor written earlier can carry
+into the selector, and whether a preexisting `FFE120` pointer reaches the
+first Scene-54 service pass, remain unresolved. Scene completion and exit
+destination remain unresolved.
 The event-0 record has raw value `0x00C0`, so `0xB7B8` publishes event 0 in
 `FFFBF9`. In Scene-54 mode 3 it calls `0x1651E`; with D0=0, that helper returns
 carry set without a map write. `0xB7B8` then sets `FFDF3A=-1`, `FFDF3C=0x10`,

@@ -238,10 +238,16 @@ The source path is:
    `FFE132`, pairs them with handler entries from `0x16A6A`, calls the timeout
    scheduler, then clears `FFE162`. `0x1DBAA` returns without scheduling when
    the current scene is 54 and `FFE177` is zero; otherwise it sets 120 frames
-   by default or 600 while `FFE162` is nonzero. The exported `disassembly.s`
-   omits the direct writer at `0x1F086`; a direct decode of the US ROM shows
-   that this type-3 run-entry handler stores one of three descriptor-list
-   pointers when the current area/event matches the active run target.
+   by default or 600 while `FFE162` is nonzero. The field-exit orchestrator
+   at `0x1F5CA` calls dispatcher `0x1EEDC` before indexed title services or
+   generic exit routes. `0x1EEDC` returns when there is no active run
+   (`FFFBEC=FFFF`), when `FFFC1C` bit 7 is set, or when the run-type byte is at
+   least 6; otherwise it indexes callback table `0xF3E56` by `FFFBED`. The
+   type-3 cell at `0xF3E62` contains `0x1F086`, invoked through `JSR (A1)`.
+   Although the exported `disassembly.s` does not list this indirect target,
+   direct ROM decoding confirms the type-3 handler stores one of three
+   descriptor-list pointers when the current area/event matches the active
+   run target.
    On the marker-1 route (`FFE186=1`), `0x167AE` calls the scheduler while
    `FFDDC4` still names the source scene, then snapshots and clears `FFE177`.
    The first field-service pass through `0x02900`/`0x04388` sets it back to 6
@@ -257,14 +263,14 @@ The source path is:
    `FFE120` names pending list `0x1E628` or `0x1E5C4`. Scene 54's six actors
    come from the separate default list at `FFDDF0`. The marker-1 route with
    `FFE162` clear does not replace `FFE120`; whether a pending pointer can
-   carry into its first service pass remains unresolved. The direct `FFE162`
-   writer at `0x1F086` compares `FFFBF8/FFFBF9` with `FFFBEE/FFFBEF`; on a
+   carry into its first service pass remains unresolved. The dispatched type-3
+   handler at `0x1F086` compares `FFFBF8/FFFBF9` with `FFFBEE/FFFBEF`; on a
    match, target areas 1, 2, and 3-or-higher select lists `0x1D6D4A`,
-   `0x1D6D5E`, and `0x1D6D72`. The three confirmed type-3 offer targets are
-   Scene 1/event 9, Scene 2/event 9, and Scene 3/event 4. Tarislar's Scene
-   1/event 7 is not one of those tuples, and its traced title-service path
-   does not write `FFE162`. Whether another caller or carried value can make
-   it nonzero at this selector remains open. With no marker,
+   `0x1D6D5E`, and `0x1D6D72`. The confirmed offer target pool contains Scene
+   1/event 9, Scene 2/event 9, and Scene 3/event 4. Tarislar's Scene 1/event 7
+   cannot produce a fresh write from that pool, and the event-7 indexed title
+   service does not write `FFE162`. Whether an earlier write can carry to this
+   selector remains open. With no marker,
    scene 13 is subject to the selector's bit 19 gate. Marker 2 is a different
    path: it selects scene 55 and queues `0x20938`, whose graph begins at
    `0x0FDD1A` with the Tomb of Ellisia antechamber. This is not the event-7
