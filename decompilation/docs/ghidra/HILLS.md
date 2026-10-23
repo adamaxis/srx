@@ -995,8 +995,12 @@ profile. Eight full 320×224 captures per build match byte-for-byte; the new
 regression frames, not independent Genesis visual proof. The hill remains
 partial: combat behavior and post-combat return are not defended. Command
 `0x2D` now covers the source-priced Indian Lands Visa purchase and same-map
-return; inventory commands `0x2E`/`0x2F`, other deeper service outcomes, and
-independent Genesis dialogue frames remain open.
+return. Command `0x2E` checks the first free runner slot before charging
+10,000, stores item `0x14` at rating 2, and returns to the purchase menu. Its
+Debug/Release route QA covers exact-balance success, full inventory with zero
+funds, insufficient funds without inventory mutation, and save restore. The
+`0x2F` Mach 22 command, other deeper service outcomes, and independent Genesis
+dialogue frames remain open.
 See [the Boris Greenhouse event-6 audit](visual-audits/boris-greenhouse-scene2-event6.md).
 
 ## Mako encounter through prompt command `0x60` (partial, 2026-10-23)

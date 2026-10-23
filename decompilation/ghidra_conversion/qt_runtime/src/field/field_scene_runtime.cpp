@@ -1245,6 +1245,72 @@ FieldSceneRuntime::FieldSceneRuntime(
                 *field_funds_ -= amount;
                 return "paid";
             }
+            constexpr std::string_view kRunnerItemPurchasePrefix =
+                "building.purchase_runner_item_";
+            if (service_id.rfind(kRunnerItemPurchasePrefix, 0U) == 0U) {
+                auto remaining = service_id.substr(
+                    kRunnerItemPurchasePrefix.size());
+                std::array<std::uint32_t, 3> values{};
+                for (std::size_t index = 0U; index < values.size(); ++index) {
+                    const auto separator = remaining.find('_');
+                    if ((index + 1U < values.size() &&
+                         separator == std::string_view::npos) ||
+                        (index + 1U == values.size() &&
+                         separator != std::string_view::npos)) {
+                        return std::nullopt;
+                    }
+                    const auto value_text = separator == std::string_view::npos
+                        ? remaining
+                        : remaining.substr(0U, separator);
+                    const auto parsed = std::from_chars(
+                        value_text.data(),
+                        value_text.data() + value_text.size(), values[index]);
+                    if (value_text.empty() || parsed.ec != std::errc{} ||
+                        parsed.ptr != value_text.data() + value_text.size()) {
+                        return std::nullopt;
+                    }
+                    if (separator != std::string_view::npos) {
+                        remaining.remove_prefix(separator + 1U);
+                    }
+                }
+                if (values[0] == 0U || values[0] > 0xFFU ||
+                    values[1] > 0xFFU || values[2] > 999999U ||
+                    !field_party_roster_.available()) {
+                    return std::nullopt;
+                }
+                const auto item_code = static_cast<std::uint8_t>(values[0]);
+                const auto* item = find_us_item_definition(item_code);
+                if (item == nullptr || item->item_code != item_code) {
+                    return std::nullopt;
+                }
+
+                auto& runner = field_party_roster_.active_record();
+                std::size_t free_slot = 0U;
+                while (free_slot < runner.inventory_item_codes.size() &&
+                       runner.inventory_item_codes[free_slot] != 0U) {
+                    ++free_slot;
+                }
+                // ROM 0x22874 runs before the 0x21A4E wallet helper, so a
+                // full inventory wins over an insufficient-funds result.
+                if (free_slot == runner.inventory_item_codes.size()) {
+                    return "inventory_full";
+                }
+                if (!field_funds_.has_value()) {
+                    return std::nullopt;
+                }
+                if (*field_funds_ < values[2]) {
+                    return "insufficient";
+                }
+
+                *field_funds_ -= values[2];
+                runner.inventory_item_codes[free_slot] = item_code;
+                runner.inventory_phase_bytes[free_slot] =
+                    static_cast<std::uint8_t>(values[1]);
+                refresh_field_hud_runner_slot();
+                refresh_command_overview_combat_bars();
+                refresh_command_overview_item_detail();
+                return "purchased";
+            }
             // Passage destination and fare are authored in the Lua contact
             // data. The host validates the requested scene, applies the
             // wallet transaction, and schedules the shared scene transition.

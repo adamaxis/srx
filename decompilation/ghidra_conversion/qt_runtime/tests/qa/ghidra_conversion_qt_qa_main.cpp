@@ -18080,6 +18080,20 @@ int run_field_boris_greenhouse_dialogue_qa(
         std::cerr << "Boris Greenhouse QA: expected the Scene-2 field map\n";
         return 3;
     }
+    const auto initial_inventory_items =
+        field_scene.active_runner_record().inventory_item_codes;
+    std::optional<std::size_t> first_free_inventory_slot;
+    for (std::size_t slot = 0U; slot < initial_inventory_items.size(); ++slot) {
+        if (initial_inventory_items[slot] == 0U) {
+            first_free_inventory_slot = slot;
+            break;
+        }
+    }
+    if (!first_free_inventory_slot.has_value()) {
+        std::cerr << "Boris Greenhouse QA: starting runner inventory has no "
+                     "free slot for the Maglock Passkey route\n";
+        return 3;
+    }
 
     const auto save = [&field_scene, &output](const std::string_view name) {
         const auto image = render_qa_field(field_scene);
@@ -18199,10 +18213,9 @@ int run_field_boris_greenhouse_dialogue_qa(
         }
         return routed;
     };
-
-    // The 100 nuyen story offer plus the 1,000 nuyen passport leave exactly
-    // zero, covering the source helper's equal-balance success boundary.
-    field_scene.set_field_funds_for_dump(1100U);
+    // The story offer, passport, and rating-2 passkey use the exact 11,100
+    // balance, ending at zero after all three source charges.
+    field_scene.set_field_funds_for_dump(11100U);
     const bool service_opened = walk_into_greenhouse();
     if (!service_opened ||
         !field_scene.dialogue_open() ||
@@ -18234,7 +18247,7 @@ int run_field_boris_greenhouse_dialogue_qa(
     }
     if (!advance("story payment") ||
         field_scene.field_funds_for_dump() !=
-            std::optional<std::uint32_t>{1000U} ||
+            std::optional<std::uint32_t>{11000U} ||
         !panel_contains("Boris Errascoe") ||
         !save("story-answer")) {
         std::cerr << "Boris Greenhouse QA: accepted story payment did not "
@@ -18290,7 +18303,7 @@ int run_field_boris_greenhouse_dialogue_qa(
     }
     const auto purchased_group_items = field_scene.group_item_flags_for_dump();
     if (field_scene.field_funds_for_dump() !=
-            std::optional<std::uint32_t>{0U} ||
+            std::optional<std::uint32_t>{10000U} ||
         !purchased_group_items.has_value() ||
         (*purchased_group_items & (1U << 1U)) == 0U ||
         !panel_contains("downloads the nuyen") ||
@@ -18302,15 +18315,68 @@ int run_field_boris_greenhouse_dialogue_qa(
                      "did not apply the Visa flag and show its return menu\n";
         return 3;
     }
-    if (!finish_with_button("post-purchase later", 0x2000U) ||
+
+    if (!advance("post-passport story choice") ||
+        !panel_contains("Boris Errascoe") ||
+        !advance("post-passport story answer") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !panel_option_contains("What items do you have to offer?") ||
+        !advance("post-passport service menu") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !advance("post-passport item categories") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !panel_option_contains("I'll take a Maglock passkey.")) {
+        std::cerr << "Boris Greenhouse QA: the paid repeat route did not "
+                     "return through the story and item menus\n";
+        return 3;
+    }
+    const auto passkey_choice =
+        field_scene.advance_stoker_dialogue_for_dump(0x1000U); // B button
+    if (passkey_choice != FieldDialogueAdvanceResult::prompt_advanced ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{0U} ||
+        field_scene.active_runner_record()
+                .inventory_item_codes[*first_free_inventory_slot] != 0x14U ||
+        field_scene.active_runner_record()
+                .inventory_phase_bytes[*first_free_inventory_slot] != 2U ||
+        !panel_contains("downloads the nuyen") ||
+        !panel_contains("Pleasure doin' business") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !panel_option_contains("What's your story, chummer?") ||
+        !save("passkey-purchase-confirmation")) {
+        std::cerr << "Boris Greenhouse QA: the $10,000 rating-2 Maglock "
+                     "Passkey did not occupy the first free runner slot\n";
+        return 3;
+    }
+    if (!finish_with_button("post-passkey later", 0x2000U) ||
         field_scene.dialogue_open() ||
         field_scene.field_scene_reference_for_dump() != 2U) {
-        std::cerr << "Boris Greenhouse QA: the post-purchase Later choice did "
+        std::cerr << "Boris Greenhouse QA: the post-passkey Later choice did "
                      "not return "
                      "to Scene 2\n";
         return 3;
     }
 
+    const auto has_saved_passkey = [slot = *first_free_inventory_slot](
+        const QJsonObject& snapshot) {
+        const auto party = snapshot.value(QStringLiteral("party")).toObject();
+        const auto active_slot = party.value(QStringLiteral("active_slot"))
+                                     .toInt(-1);
+        const auto members = party.value(QStringLiteral("members")).toArray();
+        if (active_slot < 0 || active_slot >= members.size()) {
+            return false;
+        }
+        const auto record = members.at(active_slot).toObject()
+                                .value(QStringLiteral("record")).toObject();
+        const auto items = record.value(
+            QStringLiteral("inventory_item_codes")).toArray();
+        const auto phases = record.value(
+            QStringLiteral("inventory_phase_bytes")).toArray();
+        return slot < static_cast<std::size_t>(items.size()) &&
+            slot < static_cast<std::size_t>(phases.size()) &&
+            items.at(static_cast<qsizetype>(slot)).toInt(-1) == 0x14 &&
+            phases.at(static_cast<qsizetype>(slot)).toInt(-1) == 2;
+    };
     QString snapshot_error;
     const auto paid_snapshot =
         field_scene.capture_game_save_snapshot_for_dump(&snapshot_error);
@@ -18321,9 +18387,10 @@ int run_field_boris_greenhouse_dialogue_qa(
     }
     auto story = paid_snapshot->value(QStringLiteral("story")).toObject();
     if (story.value(QStringLiteral("dialogue_flags")).toInt(-1) != 1 ||
-        story.value(QStringLiteral("group_item_flags")).toInt(-1) != 2) {
-        std::cerr << "Boris Greenhouse QA: save did not persist FFFC26 bit 0 "
-                     "and FFFC22 Visa bit 1 after both purchases\n";
+        story.value(QStringLiteral("group_item_flags")).toInt(-1) != 2 ||
+        !has_saved_passkey(*paid_snapshot)) {
+        std::cerr << "Boris Greenhouse QA: save did not persist the story, "
+                     "Visa, and rating-2 passkey state\n";
         return 3;
     }
     auto normalized_paid_snapshot = *paid_snapshot;
@@ -18375,6 +18442,7 @@ int run_field_boris_greenhouse_dialogue_qa(
             != 1 ||
         restored_paid_story.value(QStringLiteral("group_item_flags")).toInt(-1)
             != 2 ||
+        !has_saved_passkey(*restored_paid) ||
         field_scene.field_funds_for_dump() !=
             std::optional<std::uint32_t>{0U} ||
         !save("paid-state-restored") || !save("actual")) {
@@ -18393,14 +18461,171 @@ int run_field_boris_greenhouse_dialogue_qa(
     std::ofstream route(output / "route.tsv", std::ios::trunc);
     if (!route) return 3;
     route << "scene\trecord\tevent\ttable_destination\tservice\t"
-             "dialogue_flags\tgroup_item_flags\tdebit\tphysical_trigger\t"
-             "result\n"
+             "dialogue_flags\tgroup_item_flags\tdebit\titem\trating\t"
+             "physical_trigger\tresult\n"
           << "2\t87\t6\t26\t10@0x53F8C\tFFFC26=1\tFFFC22=2\t"
-             "100+1000\tordinary_up\tpassport_purchase_returns_to_scene_2\n";
+             "100+1000+10000\t0x14\t2\tordinary_up\t"
+             "visa_and_passkey_return_to_scene_2\n";
     std::cout << "field_boris_greenhouse_dialogue_qa=passed scene=2 event=6 "
                  "service=10 same_map=yes story_payment=100 visa=1000 "
-                 "FFFC26_FFFC22_save_restore=yes artifacts="
+                 "passkey=10000 item=0x14 rating=2 "
+                 "FFFC26_FFFC22_inventory_save_restore=yes artifacts="
               << output.string() << '\n';
+    return 0;
+}
+
+int run_field_boris_greenhouse_passkey_rejection_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const bool inventory_full) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Boris Passkey QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Boris Passkey QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    if (field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "Boris Passkey QA: expected the Scene-2 field map\n";
+        return 3;
+    }
+
+    auto& runner = field_scene.active_runner_record();
+    runner.inventory_item_codes.fill(inventory_full ? 1U : 0U);
+    runner.inventory_phase_bytes.fill(0U);
+    if (!inventory_full) {
+        runner.inventory_item_codes[0U] = 1U;
+    }
+    const auto inventory_before = runner.inventory_item_codes;
+    const auto phases_before = runner.inventory_phase_bytes;
+    field_scene.seed_field_dialogue_flags_for_qa(1U);
+    field_scene.set_field_funds_for_dump(inventory_full ? 0U : 9999U);
+
+    const auto capture = [&field_scene, &output](
+        const std::string_view name) {
+        const auto image = render_qa_field(field_scene);
+        const auto path = output / (std::string(name) + ".bmp");
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+            image.save(QString::fromStdWString(path.wstring()));
+    };
+    const auto panel_contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count;
+             ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto advance = [&field_scene](const std::string_view stage) {
+        const auto result = field_scene.advance_stoker_dialogue_for_dump(
+            0x4000U); // ordinary A edge
+        if (result != FieldDialogueAdvanceResult::prompt_advanced) {
+            std::cerr << "Boris Passkey QA: A did not advance " << stage
+                      << " (result=" << static_cast<int>(result) << ")\n";
+            return false;
+        }
+        return true;
+    };
+
+    field_scene.set_field_entity_world_position_for_dump(0x5300U, 0x0600U);
+    field_scene.set_field_camera_world_position_for_dump(0x4900U, 0U);
+    field_scene.set_controller_nibble(0U);
+    for (std::uint8_t settle = 0U; settle < 65U; ++settle) {
+        field_scene.advance_frame();
+    }
+    field_scene.set_controller_nibble(0x01U);
+    bool opened = false;
+    for (std::uint16_t tick = 0U; tick < 80U; ++tick) {
+        field_scene.advance_frame();
+        if (field_scene.dialogue_open()) {
+            opened = true;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto& dispatch = field_scene.field_map_event_system_for_dump()
+                               .last_collision_dispatch();
+    if (!opened || field_scene.field_scene_reference_for_dump() != 2U ||
+        field_scene.field_mode_event_code_for_dump() != 6U ||
+        !dispatch.has_value() ||
+        dispatch->decision.source_event_code !=
+            FieldCollisionEventCode::event_6 ||
+        !advance("repeat greeting") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !advance("story choice") || !panel_contains("Boris Errascoe") ||
+        !advance("story answer") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !advance("items choice") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !advance("equipment category") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !panel_contains("level 2 Maglock passkey")) {
+        std::cerr << "Boris Passkey QA: physical Scene-2 route did not "
+                     "reach the equipment offer\n";
+        return 3;
+    }
+
+    const auto purchase =
+        field_scene.advance_stoker_dialogue_for_dump(0x1000U); // B
+    const auto expected_message = inventory_full
+        ? std::string_view{"got your hands full"}
+        : std::string_view{"caught short"};
+    const auto expected_balance = inventory_full ? 0U : 9999U;
+    const auto capture_name = inventory_full
+        ? std::string_view{"passkey-inventory-full"}
+        : std::string_view{"passkey-insufficient-funds"};
+    if (purchase != FieldDialogueAdvanceResult::prompt_advanced ||
+        !panel_contains(expected_message) ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{expected_balance} ||
+        runner.inventory_item_codes != inventory_before ||
+        runner.inventory_phase_bytes != phases_before ||
+        !capture(capture_name)) {
+        std::cerr << "Boris Passkey QA: rejection changed money/inventory or "
+                     "showed the wrong source response\n";
+        return 3;
+    }
+
+    auto result = field_scene.advance_stoker_dialogue_for_dump(0x4000U);
+    if (result == FieldDialogueAdvanceResult::typed_outcome_requested &&
+        field_scene.dispatch_dialogue_outcome_for_dump()) {
+        result = FieldDialogueAdvanceResult::returned_to_field;
+    }
+    field_scene.set_controller_nibble(0U);
+    for (std::uint8_t settle = 0U; settle < 65U; ++settle) {
+        field_scene.advance_frame();
+    }
+    if (result != FieldDialogueAdvanceResult::returned_to_field ||
+        field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        !capture("actual")) {
+        std::cerr << "Boris Passkey QA: rejected purchase did not return to "
+                     "the Scene-2 map\n";
+        return 3;
+    }
+
+    std::ofstream route(output / "route.tsv", std::ios::trunc);
+    if (!route) return 3;
+    route << "scene\trecord\tevent\tcommand\titem\trating\tprice\t"
+             "starting_funds\tinventory\tresult\n"
+          << "2\t87\t6\t0x2E\t0x14\t2\t10000\t"
+          << expected_balance << '\t'
+          << (inventory_full ? "full" : "free") << '\t'
+          << (inventory_full ? "inventory_full" : "insufficient") << '\n';
+    std::cout << "field_boris_greenhouse_passkey_rejection_qa=passed "
+                 "scene=2 command=0x2E item=0x14 rating=2 condition="
+              << (inventory_full ? "inventory_full" : "insufficient_funds")
+              << " unchanged_state=yes actual.bmp=" << output.string()
+              << '\n';
     return 0;
 }
 
@@ -25886,6 +26111,10 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_boris_greenhouse_dialogue_qa_path;
         std::optional<std::filesystem::path>
+            field_boris_greenhouse_passkey_full_qa_path;
+        std::optional<std::filesystem::path>
+            field_boris_greenhouse_passkey_funds_qa_path;
+        std::optional<std::filesystem::path>
             field_boris_greenhouse_strike_team_qa_path;
         std::optional<std::filesystem::path>
             field_wanderer_south_exit_record_7_qa_path;
@@ -26225,6 +26454,20 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_boris_greenhouse_dialogue_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-boris-greenhouse-passkey-full-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_boris_greenhouse_passkey_full_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-boris-greenhouse-passkey-funds-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_boris_greenhouse_passkey_funds_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -31394,6 +31637,16 @@ int main(int argc, char** argv) {
             if (field_boris_greenhouse_dialogue_qa_path.has_value()) {
                 return run_field_boris_greenhouse_dialogue_qa(
                     field_scene, *field_boris_greenhouse_dialogue_qa_path);
+            }
+            if (field_boris_greenhouse_passkey_full_qa_path.has_value()) {
+                return run_field_boris_greenhouse_passkey_rejection_qa(
+                    field_scene,
+                    *field_boris_greenhouse_passkey_full_qa_path, true);
+            }
+            if (field_boris_greenhouse_passkey_funds_qa_path.has_value()) {
+                return run_field_boris_greenhouse_passkey_rejection_qa(
+                    field_scene,
+                    *field_boris_greenhouse_passkey_funds_qa_path, false);
             }
             if (field_boris_greenhouse_strike_team_qa_path.has_value()) {
                 return run_field_boris_greenhouse_strike_team_qa(

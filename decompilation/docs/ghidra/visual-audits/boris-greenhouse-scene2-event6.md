@@ -37,15 +37,20 @@ prompt `0xF5518` offers the passport and rating-2 passkey; firearm prompt
 `0xF5550` offers the Mach 22. Command `0x2D` at `0x21C0C` charges 1,000 nuyen
 through helper `0x21A4E`, sets FFFC22 bit 1 (Indian Lands Visa), and returns
 the purchase-confirmation/main-choice group at `0xF5534`. Its insufficient
-funds page is `0xF5AD8`/`0xF8A88`. Commands `0x2E` and `0x2F` remain explicit
-source boundaries: the first checks for a free item slot, charges 10,000, and
-writes item `0x14` at rating 2; the second checks a slot, charges 1,200, and
-writes item `0x0A`.
+funds page is `0xF5AD8`/`0xF8A88`. Command `0x2E` at `0x21C38` calls
+`0x22874`, which scans the active runner's eight item rows from 7 down to 0
+and leaves the lowest free slot in D6. A full inventory selects group
+`0xF5AE8` and text record `0xF9570`. With room available, the command charges
+10,000 through `0x21A4E`, writes item `0x14` (Maglock Passkey) with rating 2,
+and returns to `0xF5534`. Its low-funds response reuses `0xF5AD8`/`0xF8A88`.
+Command `0x2F` remains an explicit source boundary: it checks a slot, charges
+1,200, and writes item `0x0A`.
 
 ## Implementation and evidence
 
-`conversations/boris_greenhouse.json` owns the converted prompts, payment and
-passport branches, topic conditions, and `continue_in_place` terminal.
+`conversations/boris_greenhouse.json` owns the converted prompts, payment,
+passport, and passkey branches, topic conditions, and `continue_in_place`
+terminal.
 `conditions.json` keeps the signed alternate-result and ordered quest gates as
 named expressions. `boris_greenhouse.lua` registers only the named state
 mutations for the source commands. The entity link keeps the source table
@@ -56,20 +61,24 @@ profile binds `david_brother` to the extracted `0xF95E2` response and shared
 MORE prompt.
 
 The Boris Lua suite covers signed alternate-result pages, greetings, payment
-outcomes, the passport purchase, ordered topic visibility and effects, unknown
-facts, and both available and unavailable Strike Team counter results. Debug
-and Release Qt QA walk ordinary Up into Scene-2 record 87, pay the $100 story
-fee, follow the source privacy and goods prompts, then buy the passport with
-exactly 1,000 nuyen remaining. It verifies FFFC26 bit 0, FFFC22 bit 1, the
-purchase confirmation/main-choice prompt, and both flag groups across save
-restore. Ten full 320x224 captures per build are compared byte-for-byte; the
-dialogue route's `actual.bmp` shows the Scene-2 return after the purchase. The
-focused command-`0x2C` route separately seeds the paid information byte and
-known topic facts, selects Information, David, and Brother? with ordinary
-buttons, verifies the counter increment and both spawned actors, captures the
-response, and dismisses back to Scene 2. The strike-team route's `actual.bmp`
-shows both actors active. These are internal regression frames, not independent
-Genesis visual proof. No independent Genesis dialogue frame has been
+outcomes, Visa and passkey purchases, full-inventory and insufficient-funds
+responses, ordered topic visibility and effects, unknown facts, and both
+available and unavailable Strike Team counter results. Debug and Release Qt QA
+walk ordinary Up into Scene-2 record 87, pay the $100 story fee, buy the Visa
+for $1,000, and buy the rating-2 passkey for the exact remaining $10,000. It
+checks the first free inventory slot, the purchase confirmation/main-choice
+prompt, FFFC26/FFFC22, and the runner item/rating across save restore. Separate
+fresh-entry routes confirm that a full inventory is reported before the empty
+wallet is checked and that $9,999 leaves both wallet and inventory unchanged.
+The dialogue route writes 11 full 320x224 purchase and return frames; each
+rejection route writes its response and `actual.bmp`. The Debug/Release images
+match byte-for-byte. These are internal regression frames, not independent
+Genesis visual proof. The focused command-`0x2C` route separately seeds the
+paid information byte and known topic facts, selects Information, David, and
+Brother? with ordinary buttons, verifies the counter increment and both
+spawned actors, captures the response, and dismisses back to Scene 2. The
+strike-team route's `actual.bmp`
+shows both actors active. No independent Genesis dialogue frame has been
 identified. The route remains partial because combat completion and
-post-combat return are not converted; commands `0x2E`/`0x2F` and deeper service
+post-combat return are not converted; command `0x2F` and deeper service
 outcomes remain open.

@@ -541,12 +541,24 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_jump_house_entry_q
                  "${CMAKE_CURRENT_BINARY_DIR}/field-jump-house-entry-qa")
 
 # Run Boris' Scene-2/event-6 indexed service through the production Lua task
-# bridge, purchase the $1,000 Indian Lands Visa, and verify both flag groups
-# survive save restore.
+# bridge, purchase the Visa and exact-balance rating-2 passkey, and verify the
+# flags and runner inventory survive save restore.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_boris_greenhouse_dialogue_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-boris-greenhouse-dialogue-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-boris-greenhouse-dialogue-qa")
+
+# Reach command 0x2E from a paid-story repeat visit. These independent field
+# starts verify the ROM's slot-before-wallet rejection order and both failure
+# messages, with a clean return to Scene 2.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_boris_greenhouse_passkey_full_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-boris-greenhouse-passkey-full-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-boris-greenhouse-passkey-full-qa")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_boris_greenhouse_passkey_funds_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-boris-greenhouse-passkey-funds-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-boris-greenhouse-passkey-funds-qa")
 
 # Follow the already-paid David/Brother? branch through command 0x2C, resolve
 # both map-placed Strike Team actors, capture the response page, and return to

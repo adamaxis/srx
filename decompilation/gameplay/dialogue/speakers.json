@@ -22,6 +22,10 @@
           "continuation_key": "",
           "title_key": "boris.greenhouse.page.insufficient_funds"
         },
+        "inventory_full": {
+          "continuation_key": "",
+          "title_key": "boris.greenhouse.page.inventory_full"
+        },
         "michael_learned": {
           "continuation_key": "shared.more",
           "title_key": "boris.greenhouse.page.michael_learned"

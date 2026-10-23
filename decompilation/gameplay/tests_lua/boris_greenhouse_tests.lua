@@ -42,7 +42,7 @@ local area_link = {
     destination_mode = "resource_activity",
     route_priority = 0,
 }
-local function new_game(choices, flags, funds, alternate_result)
+local function new_game(choices, flags, funds, alternate_result, inventory)
     local queued_choices = {}
     for index, choice in ipairs(choices or {}) do
         queued_choices[index] = choice
@@ -76,6 +76,9 @@ local function new_game(choices, flags, funds, alternate_result)
         seen_pages = {},
         seen_events = {},
         service_calls = {},
+        purchase_calls = {},
+        inventory = {},
+        phase = {},
         services = {},
         modules = {
             world_content_data = {
@@ -88,6 +91,10 @@ local function new_game(choices, flags, funds, alternate_result)
         },
         ui = {},
     }
+    for slot = 0, 7 do
+        instance.inventory[slot] = inventory and inventory[slot] or 0
+        instance.phase[slot] = 0
+    end
 
     local function take_choice(prompt_id, available_choices)
         local selected = table.remove(queued_choices, 1)
@@ -147,6 +154,30 @@ local function new_game(choices, flags, funds, alternate_result)
 
     instance.services.call = function(domain, operation)
         assert(domain == "building", "unexpected Boris service: " .. tostring(domain))
+        local item_code, rating, item_amount = operation:match(
+            "^purchase_runner_item_(%d+)_(%d+)_(%d+)$")
+        if item_code ~= nil then
+            item_code, rating, item_amount = tonumber(item_code),
+                tonumber(rating), tonumber(item_amount)
+            instance.purchase_calls[#instance.purchase_calls + 1] = {
+                item_code = item_code,
+                rating = rating,
+                amount = item_amount,
+            }
+            local free_slot
+            for slot = 0, 7 do
+                if instance.inventory[slot] == 0 then
+                    free_slot = slot
+                    break
+                end
+            end
+            if free_slot == nil then return "inventory_full" end
+            if instance.funds < item_amount then return "insufficient" end
+            instance.funds = instance.funds - item_amount
+            instance.inventory[free_slot] = item_code
+            instance.phase[free_slot] = rating
+            return "purchased"
+        end
         local amount = tonumber(operation:match("^charge_(%d+)$"))
         assert(amount ~= nil, "unexpected Boris payment operation: " .. tostring(operation))
         instance.service_calls[#instance.service_calls + 1] = amount
@@ -281,13 +312,41 @@ assert(outcome.type == "continue_in_place" and state.funds == 999 and
            "boris.greenhouse.page.insufficient_funds")
 
 state = new_game({
-    "more", "story", "accept", "more", "items", "equipment",
-    "maglock_passkey",
-}, {}, 20000)
+    "more", "story", "more", "items", "equipment",
+    "maglock_passkey", "later",
+}, { field_dialogue_flag_bit_0 = true }, 10000)
 outcome = Boris.present_indexed_title_service()
-assert(outcome.type == "source_boundary" and
-       outcome.reason:find("rating-2 Maglock Passkey", 1, true) ~= nil and
-       #state.service_calls == 1 and state.service_calls[1] == 100)
+assert(outcome.type == "continue_in_place" and state.funds == 0 and
+       #state.purchase_calls == 1 and
+       state.purchase_calls[1].item_code == 0x14 and
+       state.purchase_calls[1].rating == 2 and
+       state.purchase_calls[1].amount == 10000 and
+       state.inventory[0] == 0x14 and state.phase[0] == 2 and
+       state.seen_pages[4].menu_id == "equipment_items" and
+       state.seen_pages[5].menu_id == "post_purchase" and
+       state.seen_pages[5].choice_ids[1] == "story")
+
+state = new_game({
+    "more", "story", "more", "items", "equipment",
+    "maglock_passkey",
+}, { field_dialogue_flag_bit_0 = true }, 10000,
+   nil, { [0] = 1, [1] = 2, [2] = 3, [3] = 4,
+          [4] = 5, [5] = 6, [6] = 7, [7] = 8 })
+outcome = Boris.present_indexed_title_service()
+assert(outcome.type == "continue_in_place" and state.funds == 10000 and
+       #state.purchase_calls == 1 and state.inventory[0] == 1 and
+       state.seen_events[#state.seen_events].text_key ==
+           "boris.greenhouse.page.inventory_full")
+
+state = new_game({
+    "more", "story", "more", "items", "equipment",
+    "maglock_passkey",
+}, { field_dialogue_flag_bit_0 = true }, 9999)
+outcome = Boris.present_indexed_title_service()
+assert(outcome.type == "continue_in_place" and state.funds == 9999 and
+       #state.purchase_calls == 1 and state.inventory[0] == 0 and
+       state.seen_events[#state.seen_events].text_key ==
+           "boris.greenhouse.page.insufficient_funds")
 
 state = new_game({
     "more", "story", "accept", "more", "items", "firearms", "mach_22",
@@ -417,4 +476,4 @@ outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "source_boundary" and
        outcome.reason:find("precondition", 1, true) ~= nil)
 
-print("Boris Greenhouse tests passed: JSON graph branches, ordered gates, payments, Visa purchase, typed outcomes, and source boundaries")
+print("Boris Greenhouse tests passed: JSON branches, ordered gates, Visa and passkey purchases, inventory/funds rejections, typed outcomes, and source boundaries")

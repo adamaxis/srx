@@ -125,6 +125,23 @@ local function register_core_actions(registry)
         return "service_unavailable"
     end)
 
+    registry:register("building.purchase_runner_item", function(arguments)
+        assert(is_integer(arguments.itemCode, 1, 255) and
+               is_integer(arguments.rating, 0, 255) and
+               is_integer(arguments.amount, 0, 999999),
+            "building.purchase_runner_item needs an itemCode, rating, and amount")
+        local result = game.services.call(
+            "building", "purchase_runner_item_" ..
+                tostring(arguments.itemCode) .. "_" ..
+                tostring(arguments.rating) .. "_" ..
+                tostring(arguments.amount))
+        if result == "purchased" or result == "inventory_full" or
+           result == "insufficient" then
+            return result
+        end
+        return "service_unavailable"
+    end)
+
     registry:register("field.queue_mako_actor_list", function()
         local result = game.services.call(
             "field", "queue_mako_actor_list")

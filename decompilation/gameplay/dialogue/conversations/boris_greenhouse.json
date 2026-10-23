@@ -7,8 +7,8 @@
       "speakerId": "boris_greenhouse_narrator",
       "textProfile": "boris.greenhouse",
       "provenance": {
-        "romAddresses": ["0x53F8C", "0x1F246", "0x173110", "0x21A32", "0x21A66", "0x21B6A", "0x21B82", "0x21BE4", "0x21C0C", "0xF52C0", "0xF52D8", "0xF52EC", "0xF54FC", "0xF5518", "0xF5534", "0xF9332", "0xF9385", "0xF9440", "0xF94C8", "0xF95E2", "0xFE5BF", "0x21EB0"],
-        "scope": "scene_2_event_6_passport_purchase_with_partially_converted_strike_team_outcome"
+        "romAddresses": ["0x53F8C", "0x1F246", "0x173110", "0x21A32", "0x21A66", "0x21B6A", "0x21B82", "0x21BE4", "0x21C0C", "0x21C38", "0x22874", "0xF52C0", "0xF52D8", "0xF52EC", "0xF54FC", "0xF5518", "0xF5534", "0xF5AE8", "0xF8A88", "0xF9332", "0xF9385", "0xF9440", "0xF94C8", "0xF95E2", "0xF9570", "0xFE5BF", "0x21EB0"],
+        "scope": "scene_2_event_6_passport_and_rating_2_maglock_passkey_purchase_with_partially_converted_strike_team_outcome"
       },
       "nodes": {
         "alternate_result": {
@@ -175,7 +175,7 @@
           "inputContract": "buttons_abc",
           "choices": [
             { "id": "passport", "next": "charge_passport" },
-            { "id": "maglock_passkey", "next": "maglock_passkey_boundary" },
+            { "id": "maglock_passkey", "next": "purchase_maglock_passkey" },
             { "id": "later", "next": "stay_on_map" }
           ]
         },
@@ -216,9 +216,21 @@
             { "id": "later", "next": "stay_on_map" }
           ]
         },
-        "maglock_passkey_boundary": {
-          "type": "source_boundary",
-          "reason": "ROM command 0x2E at 0x21C38 checks for a free runner item slot, charges 10,000 nuyen, and writes a rating-2 Maglock Passkey (item 0x14). The inventory purchase and return path are not converted yet."
+        "purchase_maglock_passkey": {
+          "type": "action",
+          "actionId": "building.purchase_runner_item",
+          "arguments": { "itemCode": 20, "rating": 2, "amount": 10000 },
+          "results": {
+            "purchased": "post_purchase_menu",
+            "inventory_full": "inventory_full",
+            "insufficient": "insufficient_funds"
+          },
+          "evidence": "ROM command 0x2E at 0x21C38 calls 0x22874 to select the first free active-runner item slot before charging 10,000 nuyen, then writes item 0x14 with rating 2 and returns to 0xF5534."
+        },
+        "inventory_full": {
+          "type": "page",
+          "eventId": "inventory_full",
+          "next": "stay_on_map"
         },
         "mach_22_boundary": {
           "type": "source_boundary",
