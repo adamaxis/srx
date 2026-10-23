@@ -433,7 +433,8 @@ entity routes whose JSON graph maps positive FFF0D5 to ROM-imported package-
 delivery text and negative FFF0D5 to package-pickup text. Debug/Release CTests
 reach event 7 with ordinary Up input, verify both pages, suppress scene 13,
 and capture the clean scene-1 return as `actual.bmp`. The upstream Frosty
-conversation and Scene-54 completion/return remain open. Source tracing rules
+conversation, inherited callback reachability, and Scene-55 completion/return
+remain open. Source tracing rules
 out an `FFE162` carry from its only direct writer into the Tarislar selector.
 Scene 54's extracted map is a tall 320x1344 layout, and its profile has no
 event table or elevator group. Event 31 stores callback `0xDB26` through the
@@ -453,8 +454,12 @@ and cleared if installed. The only non-clear `FFE12E` stores found in the raw
 ROM are the two pending-list branches in `0x043B6`: list `0x1E628` installs
 `0x53FFC`, and list `0x1E5C4` installs `0x54286`. Scene 54's marker-1 selector
 bypasses its lower `FFE120` list-selection path, so its default actor list does
-not itself install either callback. An inherited matching `FFE120` list at the
-first Scene-54 service pass remains possible but unconnected to this route.
+not itself install either callback. The first field-service pass drains
+`FFE120` before marker 1 sets `FFE177=6`: a matching pending list can install
+its callback and set the count to 4, after which `0x04388` replaces the count
+with 6. Marker-1 selection does not clear an already installed `FFE12E`; at
+zero, the six Scene-54 actor completions can dispatch that callback. No
+upstream pending-list or callback route into this pass has been established.
 The field-exit orchestrator dispatches run type 3 through `0x1EEDC`'s callback
 table entry at `0xF3E62` to the `FFE162` writer at `0x1F086`. Its confirmed
 target tuples (Scene 1/event 9, Scene 2/event 9, and Scene 3/event 4) exclude
@@ -473,9 +478,15 @@ The menu node at `0x111316` presents the entry-fee question and places command
 `0x60` in its first choice slot. Adjacent code at `0x225CA` returns that node;
 the command-0x60 caller is traced to the Club Penumbra Scene-3/event-0 doorman
 path. The extracted actor rows for list `0x1E628` are indexed under Scene 47,
-but the pending-list consumer does not establish a transition there. No
-Tarislar or Scene-54 connection is known; whether a preexisting list pointer
-can carry into the Scene-54 service pass remains open.
+but the pending-list consumer does not establish a transition there. The
+separate `0x1E5C4` stores are at `0x2247C` and `0x224EC`; neither has a traced
+Tarislar route. Whether a preexisting list pointer or callback can carry into
+the Scene-54 service pass remains open. The Scene-54 event-0 path is now traced
+through the projected-interaction countdown: after 17 service advances,
+`0x163D0` raises `FFDF3E`, the next outer-loop pass changes marker 1 to 2, and
+`0x167AE` selects Scene 55 when `FFE162` is clear. The selector queues
+`0x20938`, which presents text group `0xFDD1A` with profile `0x121F1C`;
+Scene-55 completion and return remain unresolved.
 The event-0 projected interaction has no
 scene-54/mode-3 map write. See the
 [`Tarislar route audit`](visual-audits/puyallup-tarislar-apartments.md).

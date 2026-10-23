@@ -158,9 +158,10 @@ catalog's source policy explicitly authorizes a correction.
   responses using FFFC22 bit 7. Debug/Release script-runtime QA traverses all
   three graph branches and checks story/effect flags and the continuation on
   the final paired-map page. The physical-input CTest captures the Renraku-only
-  route and clean scene-1 redraw. Independent Genesis page captures, the
-  event-specific `FFE162` lifetime and relation to Tarislar, and the
-  scene-54 completion route remain unresolved.
+  route and clean scene-1 redraw. Independent Genesis page captures, other
+  `FFE162` callers/state reaching event 7, inherited `FFE120`/`FFE12E`
+  reachability, and Scene-55 completion/return remain unresolved. Scene-54
+  event 0 is now traced into Scene 55.
 
 ## Scene 54 entry profile and collision evidence
 
@@ -208,9 +209,16 @@ dispatched and cleared if installed. Initializers `0x2A32`/`0x2A44` clear
 `FFE12E`; the only non-clear stores found in the raw ROM are the two pending-
 list branches in `0x043B6`, installing `0x53FFC` for list `0x1E628` and
 `0x54286` for list `0x1E5C4`. The default Scene-54 rows do not themselves
-install either callback. A matching inherited `FFE120` list at the first
-Scene-54 service pass remains unresolved. In the zero-count clause, a null
-`FFE12E` skips the callback call.
+install either callback. The first Scene-54 field-service pass is
+`0x2BD2 -> 0x02900 -> 0x04388 -> 0x043B6`. It drains `FFE120` before setting
+the marker-1 completion count: a matching `0x1E628` or `0x1E5C4` pointer
+installs its callback and temporarily sets `FFE177=4`, then `0x04388` sets
+`FFE177=6` because `FFE186=1`. The marker-1 selector does not clear an
+existing `FFE12E`; after six qualifying Scene-54 actor completions,
+`0x0AB02` dispatches and clears any installed callback. The known Tarislar
+event-7 service does not write `FFE120`, but a prior callback or pending list
+reaching this first service pass has no established upstream route. In the
+zero-count clause, a null `FFE12E` skips the callback call.
 Prompt command `0x60` can reach a raw ROM code
 gap at `0x225D2`, which sets `FFE120=0x1E628` at `0x22622` after a 75-nuyen
 debit and story gates; its menu node is identified at `0x111316` and presents
@@ -236,16 +244,26 @@ sweep found no other direct `FFE162` writer. The Tarislar event-7 route cannot
 create or inherit a pending pointer from this source. The Club Penumbra writer queues
 `0x1E628` before its route continues to Scene 17, where the common `0x043B6`
 service drains it; this source path supplies no carry into Scene 54. Raw
-direct stores also set `FFE120=0x1E5C4` in separate code at `0x22482` and
-`0x224F2`; no link from either path to Tarislar is established. A pending
+direct stores also set `FFE120=0x1E5C4` at `0x2247C` and `0x224EC`; no link
+from either path to Tarislar is established. A pending
 `FFE120` list reaching the Scene-54 service remains unresolved.
-Scene completion and exit destination remain unresolved.
-The event-0 record has raw value `0x00C0`, so `0xB7B8` publishes event 0 in
-`FFFBF9`. In Scene-54 mode 3 it calls `0x1651E`; with D0=0, that helper returns
-carry set without a map write. `0xB7B8` then sets `FFDF3A=-1`, `FFDF3C=0x10`,
-and `FFDFe8=-1` and takes its common exit. This preserves a collision-state
-effect but does not change the scene or select a return. No reverse route has
-been added.
+The Scene-54 event-0 collision continues beyond its map-effect result. In
+mode 3, `0xB7B8` calls `0x1651E` with D0=0; carry set starts the projected-
+interaction timer by writing `FFDF3A=-1`, `FFDF3C=0x10`, and `FFDFe8=-1`.
+`0x16396` advances the countdown, and `0x163D0` sets `FFDF3E=-1` when it
+decrements below zero after 17 service advances. On the next outer-loop pass,
+`0x095E` clears `FFDF3E`, calls `0x53126`, sees marker 1 in `FFE186`, changes
+it to 2, and goes to `0x167AE`. With `FFE162` clear, the selector then chooses
+Scene 55. After the selector returns, `0x0A44` queues callback `0x20938` and
+calls `0x1E2EC`;
+`0x20938` sends text group `0xFDD1A` with profile `0x121F1C` through the
+shared `0x1F246` prompt routine. This establishes the Scene-54 event-0 exit
+into the Scene-55 Tomb of Ellisia antechamber text. Scene-55 completion,
+return, and cleanup remain unresolved.
+The raw `0x00C0` record publishes event 0 in `FFFBF9`. In Scene-54 mode 3,
+`0x1651E` returns carry for D0=0 without changing a map cell; `0xB7B8` then
+sets the projected-interaction countdown described above. The later
+`FFDF3E` path, rather than a map write, advances the route to Scene 55.
 
 ## Seven visual and behavioral checks
 
@@ -273,7 +291,9 @@ been added.
    direct writer is consumed at its own scene-1/2/3 target transition and does
    not route this event 7 to Scene 15. The six default actors and their initial
    completion count are source-connected; their AI cadence and remaining
-   activity timing still need tracing. The Qt frame is recorded
+   activity timing still need tracing. Separately, the Scene-54 event-0
+   collision advances through the projected-interaction timer into Scene 55
+   when `FFE162` is clear, then opens its Tomb of Ellisia text callback. The Qt frame is recorded
    but is not an independent fidelity proof.
 5. **Is there a sound?** Service `0x5447E` has no direct sound call in the
    traced path. Shared prompt/input audio and the rest of the scene handoff
@@ -281,7 +301,8 @@ been added.
 6. **Are old controls or graphics left behind?** Dialogue pages replace the
    field HUD. First-visit, guarded, and repeat-service branches redraw scene 1
    after their dialogue; tomb Yes redraws scene 54 and No redraws scene 1.
-   Scene-54 exit and return cleanup are unresolved.
+   Scene-54 event 0 enters Scene 55 after the timer when `FFE162` is clear; the
+   later return and cleanup from Scene 55 are unresolved.
 7. **Do multiple frames support the interpretation?** Physical tests capture
    spawn, contact, source dialogue, both alternate-result pages, travel pages,
    and final scene-1/scene-54 `actual.bmp` frames. These are host captures; no
@@ -308,9 +329,10 @@ been added.
   all three matched targets enter the scene selector with `FFFC0E=0` and
   consume their descriptors in that transition. The Tarislar event-7 selector
   has no pending pointer from this source.
-- Trace the possible inherited `FFE120` pending-list path into Scene 54, then
-  follow the six counted actor completions and identify any source-backed exit
-  or return. Keep the Scene-54 route partial until that path is established.
-- Capture the remaining branches and a source-backed scene-54 completion and
-  return as whole 320x224 screens. Review all surrounding pixels and check the
+- Resolve whether an inherited pending list or callback can reach Scene 54's
+  first service pass. The event-0 route into Scene 55 is traced; Scene-55
+  completion and return remain open. Keep this hill partial until its full
+  source path and verification evidence are established.
+- Capture the remaining branches and a source-backed Scene-54/Scene-55 route
+  as whole 320x224 screens. Review all surrounding pixels and check the
   seven questions above before changing this status.
