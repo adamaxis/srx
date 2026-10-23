@@ -267,9 +267,19 @@ state = new_game({ "more", "information", "david", "brother" }, {
     story_flag_bit_1 = true,
     story_flag_bit_3 = false,
 }, 1000)
+local unavailable_strike_team_calls = 0
+state.services.call = function(domain, operation)
+    assert(domain == "field" and
+           operation == "advance_strike_team_counter",
+           "unexpected Boris service: " .. tostring(domain) .. "." ..
+               tostring(operation))
+    unavailable_strike_team_calls = unavailable_strike_team_calls + 1
+    return "service_unavailable"
+end
 outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "source_boundary" and
-       outcome.reason:find("0x21BE4", 1, true) ~= nil and
+       outcome.reason:find("saved Strike Team counter", 1, true) ~= nil and
+       unavailable_strike_team_calls == 1 and
        state.state.field_mode_flag_bit_6 == false and
        state.state.field_mode_flag_bit_7 == false and
        state.state.field_mode_flag_bit_20 == true and
@@ -278,6 +288,29 @@ assert(outcome.type == "source_boundary" and
        state.seen_pages[2].choice_ids[2] == "david" and
        state.seen_pages[3].text_key ==
            "boris.greenhouse.page.david_information")
+
+state = new_game({ "more", "information", "david", "brother", "more" }, {
+    field_dialogue_flag_bit_2 = true,
+    story_flag_bit_1 = true,
+    story_flag_bit_3 = false,
+}, 1000)
+local strike_team_calls = 0
+state.services.call = function(domain, operation)
+    assert(domain == "field" and
+           operation == "advance_strike_team_counter",
+           "unexpected Boris service: " .. tostring(domain) .. "." ..
+               tostring(operation))
+    strike_team_calls = strike_team_calls + 1
+    return "applied"
+end
+outcome = Boris.present_indexed_title_service()
+assert(outcome.type == "continue_in_place" and strike_team_calls == 1 and
+       state.state.field_mode_flag_bit_6 == false and
+       state.state.field_mode_flag_bit_7 == false and
+       state.state.field_mode_flag_bit_20 == true and
+       state.seen_events[#state.seen_events].id == "david_brother" and
+       state.seen_events[#state.seen_events].text_key ==
+           "boris.greenhouse.page.david_brother")
 
 state = new_game({ "more", "information", "ilene", "later" }, {
     field_dialogue_flag_bit_2 = true,

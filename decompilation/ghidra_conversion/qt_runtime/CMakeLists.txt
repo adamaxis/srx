@@ -547,6 +547,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_boris_greenhouse_d
                  --field-boris-greenhouse-dialogue-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-boris-greenhouse-dialogue-qa")
 
+# Follow the already-paid David/Brother? branch through command 0x2C, resolve
+# both map-placed Strike Team actors, capture the response page, and return to
+# Scene 2 with the encounter active.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_boris_greenhouse_strike_team_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-boris-greenhouse-strike-team-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-boris-greenhouse-strike-team-qa")
+
 # Enter each Scene 14 south-edge event-0 rectangle independently with ordinary
 # Down input. Its null event-table pointer selects field Scene 0 through the
 # ROM's generic handler.

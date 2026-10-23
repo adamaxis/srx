@@ -10,6 +10,10 @@
           "continuation_key": "shared.more",
           "title_key": "boris.greenhouse.page.default"
         },
+        "david_brother": {
+          "continuation_key": "shared.more",
+          "title_key": "boris.greenhouse.page.david_brother"
+        },
         "followup": {
           "continuation_key": "shared.more",
           "title_key": "boris.greenhouse.page.followup"

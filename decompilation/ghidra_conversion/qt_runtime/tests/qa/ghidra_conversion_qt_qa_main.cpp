@@ -18315,6 +18315,254 @@ int run_field_boris_greenhouse_dialogue_qa(
     return 0;
 }
 
+int run_field_boris_greenhouse_strike_team_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Boris Strike Team QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Boris Strike Team QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    if (field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "Boris Strike Team QA: expected the Scene-2 field map\n";
+        return 3;
+    }
+
+    const auto save = [&field_scene, &output](const std::string_view name) {
+        const auto image = render_qa_field(field_scene);
+        const auto path = output / (std::string(name) + ".bmp");
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+            image.save(QString::fromStdWString(path.wstring()));
+    };
+    const auto panel_contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count;
+             ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto boundary_count = [&source_boundaries](
+                                    const std::string& boundary) {
+        return std::count(source_boundaries.begin(), source_boundaries.end(),
+                          boundary);
+    };
+    const auto advance_a = [&field_scene](const std::string_view stage) {
+        const auto result = field_scene.advance_stoker_dialogue_for_dump(
+            0x4000U); // ordinary A edge
+        if (result != FieldDialogueAdvanceResult::prompt_advanced) {
+            std::cerr << "Boris Strike Team QA: A did not advance " << stage
+                      << " (result=" << static_cast<int>(result)
+                      << ", boundary="
+                      << field_scene.dialogue_panel().source_boundary_reason
+                      << ", failure=" << field_scene.failure() << ")\n";
+            return false;
+        }
+        return true;
+    };
+    const auto choose_b = [&field_scene](const std::string_view stage) {
+        const auto result = field_scene.advance_stoker_dialogue_for_dump(
+            0x1000U); // ordinary B edge selects the second source choice
+        if (result != FieldDialogueAdvanceResult::prompt_advanced) {
+            std::cerr << "Boris Strike Team QA: B did not select " << stage
+                      << " (result=" << static_cast<int>(result) << ")\n";
+            return false;
+        }
+        return true;
+    };
+
+    // Seed only the source facts needed to make David the second visible topic.
+    // The route and all three button selections remain ordinary field input.
+    field_scene.seed_field_dialogue_flags_for_qa(0x04U); // FFFC26 bit 2 paid
+    field_scene.set_field_funds_for_dump(0U);
+    field_scene.set_group_item_flags_for_dump(0U);
+    if (!field_scene.set_story_flag_for_dump(1U, true) ||
+        !field_scene.set_story_flag_for_dump(3U, false) ||
+        !field_scene.set_story_flag_for_dump(9U, false) ||
+        !field_scene.set_story_flag_for_dump(18U, false) ||
+        !field_scene.set_story_flag_for_dump(19U, false)) {
+        std::cerr << "Boris Strike Team QA: could not seed known topic facts\n";
+        return 3;
+    }
+
+    // ROM record 87 is at x=1312..1343, y=64..95. Approach its south face
+    // from y=96 with ordinary Up input and let the entry fade finish first.
+    field_scene.set_field_entity_world_position_for_dump(0x5300U, 0x0600U);
+    field_scene.set_field_camera_world_position_for_dump(0x4900U, 0U);
+    field_scene.set_controller_nibble(0U);
+    for (std::uint8_t settle = 0U; settle < 65U; ++settle) {
+        field_scene.advance_frame();
+    }
+    field_scene.set_controller_nibble(0x01U);
+    bool opened = false;
+    for (std::uint16_t tick = 0U; tick < 80U; ++tick) {
+        field_scene.advance_frame();
+        if (field_scene.dialogue_open()) {
+            opened = true;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto& dispatch = field_scene.field_map_event_system_for_dump()
+                               .last_collision_dispatch();
+    if (!opened || field_scene.field_scene_reference_for_dump() != 2U ||
+        field_scene.field_mode_event_code_for_dump() != 6U ||
+        !dispatch.has_value() ||
+        dispatch->decision.source_event_code !=
+            FieldCollisionEventCode::event_6 ||
+        field_scene.dialogue_panel().actor_name != "Boris" ||
+        !save("physical-contact")) {
+        std::cerr << "Boris Strike Team QA: ordinary Up did not open record "
+                     "87/event 6 (opened=" << opened << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", dispatch=" << dispatch.has_value()
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+    if (!advance_a("the opening greeting") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !save("opening-menu")) {
+        std::cerr << "Boris Strike Team QA: opening choices were not shown\n";
+        return 3;
+    }
+    if (!choose_b("Information") ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !panel_contains("ask me anything you want to know") ||
+        field_scene.dialogue_panel().options[1].source_label !=
+            "Do you know anything about David Owlfeather?" ||
+        !save("information-topics")) {
+        std::cerr << "Boris Strike Team QA: paid-information topic list did "
+                     "not expose David as choice B\n";
+        return 3;
+    }
+    if (!choose_b("David") ||
+        field_scene.dialogue_panel().option_count != 1U ||
+        field_scene.dialogue_panel().options[0].source_label != "Brother?" ||
+        !panel_contains("Ranger who patrols the Salish-Shidhe") ||
+        !save("david-information")) {
+        std::cerr << "Boris Strike Team QA: David's Brother? follow-up was "
+                     "not presented\n";
+        return 3;
+    }
+
+    const auto dynamic_actors_before =
+        field_scene.dynamic_world_actor_count_for_dump();
+    const auto default_actors_before =
+        field_scene.default_actor_count_for_dump();
+    const auto listed_before = boundary_count(
+        "field.world_activity.boris_strike_team_list_queued");
+    const auto resolved_before = boundary_count(
+        "field.world_activity.boris_strike_team_sequence_resolved");
+    const auto spawned_before = boundary_count(
+        "field.random_encounter.actor_spawned_from_rom_list");
+    const auto counter_before = field_scene.debug_inspection_fields().value(
+        QStringLiteral("field.debug.strike_team_counter")).toInt(-1);
+    if (dynamic_actors_before != 0U || counter_before != 0 ||
+        field_scene.field_funds_for_dump() !=
+            std::optional<std::uint32_t>{0U}) {
+        std::cerr << "Boris Strike Team QA: the command did not start from "
+                     "New Game counter, encounter, and wallet state\n";
+        return 3;
+    }
+
+    if (!advance_a("Brother?") ||
+        !panel_contains("Renraku Strike Team") ||
+        !save("strike-team-response-before-spawn")) {
+        std::cerr << "Boris Strike Team QA: command 0x2C did not present the "
+                     "source response page\n";
+        return 3;
+    }
+    const auto counter_after = field_scene.debug_inspection_fields().value(
+        QStringLiteral("field.debug.strike_team_counter")).toInt(-1);
+    if (counter_after != 1 ||
+        boundary_count("field.world_activity.boris_strike_team_list_queued")
+            != listed_before + 1) {
+        std::cerr << "Boris Strike Team QA: command 0x2C did not queue list "
+                     "0x1D6FD0 after incrementing FFFBFB (counter="
+                  << counter_after << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t tick = 0U;
+         tick < 8U && field_scene.dynamic_world_actor_count_for_dump() < 2U;
+         ++tick) {
+        field_scene.advance_frame();
+    }
+    const auto dynamic_actors_after =
+        field_scene.dynamic_world_actor_count_for_dump();
+    const auto resolved_after = boundary_count(
+        "field.world_activity.boris_strike_team_sequence_resolved");
+    const auto spawned_after = boundary_count(
+        "field.random_encounter.actor_spawned_from_rom_list");
+    if (dynamic_actors_after != 2U || resolved_after != resolved_before + 1 ||
+        spawned_after != spawned_before + 2 ||
+        field_scene.default_actor_count_for_dump() !=
+            default_actors_before + 2U ||
+        !save("strike-team-response")) {
+        std::cerr << "Boris Strike Team QA: the two-row map-derived actor list "
+                     "did not resolve and spawn (dynamic="
+                  << dynamic_actors_after << ", resolved_delta="
+                  << (resolved_after - resolved_before) << ", spawned_delta="
+                  << (spawned_after - spawned_before) << ", failure="
+                  << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    auto result = field_scene.advance_stoker_dialogue_for_dump(0x4000U);
+    for (std::uint8_t page = 0U;
+         page < 5U && result == FieldDialogueAdvanceResult::prompt_advanced;
+         ++page) {
+        result = field_scene.advance_stoker_dialogue_for_dump(0x4000U);
+    }
+    if (result == FieldDialogueAdvanceResult::typed_outcome_requested &&
+        field_scene.dispatch_dialogue_outcome_for_dump()) {
+        result = FieldDialogueAdvanceResult::returned_to_field;
+    }
+    for (std::uint8_t fade = 0U;
+         fade < 12U && result == FieldDialogueAdvanceResult::returned_to_field;
+         ++fade) {
+        field_scene.advance_frame();
+    }
+    if (result != FieldDialogueAdvanceResult::returned_to_field ||
+        field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 2U ||
+        field_scene.dynamic_world_actor_count_for_dump() != 2U ||
+        !save("field-return") || !save("actual")) {
+        std::cerr << "Boris Strike Team QA: dismissing the response did not "
+                     "return to Scene 2 with both actors active (result="
+                  << static_cast<int>(result) << ", dialogue="
+                  << field_scene.dialogue_open() << ", dynamic="
+                  << field_scene.dynamic_world_actor_count_for_dump() << ")\n";
+        return 3;
+    }
+
+    std::ofstream route(output / "route.tsv", std::ios::trunc);
+    if (!route) return 3;
+    route << "scene\trecord\tevent\tservice\tdialogue_flags\t"
+             "topic\tcommand\tsequence_list\tactors\treturn\n"
+          << "2\t87\t6\t10@0x53F8C\tFFFC26=0x04\tDavid/Brother?\t"
+             "0x2C@0x21BE4\t0x1D6FD0\t2\tScene 2\n";
+    std::cout << "field_boris_greenhouse_strike_team_qa=passed scene=2 "
+                 "record=87 event=6 counter=0->1 list=0x1D6FD0 actors=2 "
+                 "response=yes return=scene2 artifacts="
+              << output.string() << '\n';
+    return 0;
+}
+
 int run_field_wanderer_south_exit_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -25549,6 +25797,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_boris_greenhouse_dialogue_qa_path;
         std::optional<std::filesystem::path>
+            field_boris_greenhouse_strike_team_qa_path;
+        std::optional<std::filesystem::path>
             field_wanderer_south_exit_record_7_qa_path;
         std::optional<std::filesystem::path>
             field_wanderer_south_exit_record_8_qa_path;
@@ -25886,6 +26136,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_boris_greenhouse_dialogue_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-boris-greenhouse-strike-team-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_boris_greenhouse_strike_team_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -31048,6 +31305,12 @@ int main(int argc, char** argv) {
             if (field_boris_greenhouse_dialogue_qa_path.has_value()) {
                 return run_field_boris_greenhouse_dialogue_qa(
                     field_scene, *field_boris_greenhouse_dialogue_qa_path);
+            }
+            if (field_boris_greenhouse_strike_team_qa_path.has_value()) {
+                return run_field_boris_greenhouse_strike_team_qa(
+                    field_scene,
+                    *field_boris_greenhouse_strike_team_qa_path,
+                    field_source_boundaries);
             }
             if (field_wanderer_south_exit_record_7_qa_path.has_value()) {
                 return run_field_wanderer_south_exit_qa(

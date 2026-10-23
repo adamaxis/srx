@@ -974,7 +974,7 @@ independent Genesis Licourtrix dialogue frame was identified. Keep this hill
 partial. See
 [the Spirit Eyes audit](visual-audits/council-spirit-eyes.md).
 
-## Boris Greenhouse Scene-2/event-6 indexed service (partial, 2026-10-21)
+## Boris Greenhouse Scene-2/event-6 indexed service (partial, 2026-10-23)
 
 ROM record 87 at `0x173110` has event 6 and a raw event-table value of Scene
 26. Indexed title service 10 at `0x53F8C` loads profile `0x121F58`, runs the
@@ -984,16 +984,18 @@ raw event-table row; the destination remains owned by the imported map data.
 Debug/Release physical-input QA approaches the imported 32×32 trigger from the
 south with ordinary Up, confirms the Boris portrait and opening choices, pays
 the $100 story offer, and verifies FFFC26 plus the wallet survive save restore.
-The ROM text and profile art were regenerated through the explicit asset
-extractor; `actual.bmp` is a full 320×224 return frame. Lua tests cover the
-$500 information purchase and quest-gated topic choices. Command `0x2C` now
-applies the shared `FFFBFB` increment, resolves the named `0x1D6FD0` list,
-attempts its two Strike Team spawns using the ROM's D0=1 map-derived candidate
-policy, and presents the extracted response text at `0xF95E2` with the shared
-MORE prompt at `0xFE5BF`. The hill remains partial: this branch has no focused
-CTest or CLI `actual.bmp`, and its combat behavior and post-combat return are
-not defended. Item commands `0x2D`-`0x2F`, other deeper service outcomes, and
-independent Genesis dialogue frames are also open.
+A second focused route seeds the already-paid information byte and the known
+topic facts, then uses ordinary input to select David and Brother?. It checks
+the capped `FFFBFB` increment, resolves the named `0x1D6FD0` list, spawns both
+Strike Team actors at map-derived candidates, displays the extracted response
+text at `0xF95E2` with the shared MORE prompt at `0xFE5BF`, and returns to Scene
+2 with both actors active. The response event is now bound in Boris's speaker
+profile. Eight full 320×224 captures per build match byte-for-byte; the new
+`actual.bmp` is the field return with the spawned actors. These are internal
+regression frames, not independent Genesis visual proof. The hill remains
+partial: combat behavior and post-combat return are not defended. Item
+commands `0x2D`-`0x2F`, other deeper service outcomes, and independent Genesis
+dialogue frames are also open.
 See [the Boris Greenhouse event-6 audit](visual-audits/boris-greenhouse-scene2-event6.md).
 
 ## Mako encounter through prompt command `0x60` (partial, 2026-10-23)

@@ -765,6 +765,12 @@ public:
     void set_field_funds_for_dump(const std::uint32_t funds) noexcept {
         field_funds_ = funds;
     }
+    // The Boris event-6 QA starts at the information-already-paid branch;
+    // New Game clears FFFC26, so seed that known byte without replaying the
+    // separate $500 purchase route.
+    void seed_field_dialogue_flags_for_qa(std::uint8_t flags) noexcept {
+        field_dialogue_flags_ = flags;
+    }
     std::optional<QJsonObject> capture_game_save_snapshot_for_dump(
         QString* error) {
         return capture_game_save_snapshot(error);

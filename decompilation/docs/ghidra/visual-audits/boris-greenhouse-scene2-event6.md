@@ -43,16 +43,22 @@ named expressions. `boris_greenhouse.lua` registers only the named state
 mutations for the source commands. The entity link keeps the source table
 destination as evidence while priority 10 selects the Lua task. C++ presents
 the dialogue and persists FFFC26 at save payload offset `0x22C`. Text and the
-profile portrait come from the explicit ROM asset extraction.
+profile portrait come from the explicit ROM asset extraction. The speaker
+profile binds `david_brother` to the extracted `0xF95E2` response and shared
+MORE prompt.
 
-The full Lua suite covers signed alternate-result pages, first/repeat greeting,
-$100/$500 payment outcomes, ordered topic visibility and effects, and unknown
-facts. Debug and Release Qt QA walk ordinary Up into Scene-2 record 87, run the
-$100 story branch through its typed same-map return, and verify FFFC26 and
-nuyen across save restore. Six complete 320x224 captures per build match by
-SHA-256; they are internal regression evidence, not independent Genesis
-visual proof. No independent Genesis dialogue frame has been identified. The
-route remains partial: command `0x2C` now has a typed counter update, named
-actor-list spawn, and response page, but no branch-specific CTest or CLI
-`actual.bmp` exists, and combat completion is not converted. Commands `0x2D`-
+The Boris Lua suite covers signed alternate-result pages, greetings, payment
+outcomes, ordered topic visibility and effects, unknown facts, and both
+available and unavailable results from the Strike Team counter service. Debug
+and Release Qt QA walk ordinary Up into Scene-2 record 87. The existing route
+runs the $100 story branch through its typed same-map return and verifies
+FFFC26 and nuyen across save restore. The focused command-`0x2C` route seeds the
+already-paid information byte and known topic facts, selects Information,
+David, and Brother? with ordinary buttons, verifies the counter increment and
+both spawned actors, captures the response, and dismisses back to Scene 2.
+Eight complete 320x224 captures per build match byte-for-byte; the CLI
+`actual.bmp` shows the Scene-2 return with both actors. These are internal
+regression frames, not independent Genesis visual proof. No independent
+Genesis dialogue frame has been identified. The route remains partial because
+combat completion and post-combat return are not converted. Commands `0x2D`-
 `0x2F` and their purchase returns remain open.
