@@ -7839,6 +7839,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint8_t run_target_event = 0U;
         std::uint16_t run_target_x = 0U;
         std::uint16_t run_target_y = 0U;
+        bool map_derived_placement = false;
     };
     constexpr std::size_t kFieldContextGroupTableOffset = 0x3312U;
     constexpr std::size_t kWorldActivityEnableTableOffset = 0x1D70E4U;
@@ -8279,6 +8280,91 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 "run-target actor list has no null sentinel");
         }
     }
+    // ROM 0x21BE4 passes this pointer-only list to 0x1E216 with D0=1. Its
+    // positions are generated from the active map, so export the templates
+    // with an explicit placement rule and keep them outside random selector
+    // sums using the reserved value 0xFF.
+    constexpr std::uint32_t kBorisStrikeTeamListOffset = 0x1D6FD0U;
+    const auto strike_team_template = std::find_if(
+        world_activity_actor_records.begin(), world_activity_actor_records.end(),
+        [](const auto& actor) {
+            return actor.template_offset == 0x1D6AFAU &&
+                   actor.list_offset == 0x1E628U;
+        });
+    if (strike_team_template == world_activity_actor_records.end()) {
+        throw std::runtime_error(
+            "Boris strike-team template is absent from extracted actor catalog");
+    }
+    bool found_strike_team_terminator = false;
+    for (std::uint16_t source_order = 0U; source_order < 16U;
+         ++source_order) {
+        const auto tagged_template = read_big_endian_long(
+            rom, kBorisStrikeTeamListOffset +
+                     static_cast<std::size_t>(source_order) * 4U);
+        if (tagged_template == 0U) {
+            found_strike_team_terminator = true;
+            break;
+        }
+        const auto template_offset =
+            static_cast<std::uint32_t>(tagged_template & 0x7FFFFFFFU);
+        if (template_offset != strike_team_template->template_offset) {
+            throw std::runtime_error(
+                "Boris strike-team list has an unexpected actor template");
+        }
+
+        const auto& facts = strike_team_template->template_facts;
+        DynamicWorldActorRecord actor{};
+        actor.scene_id = 2U;
+        actor.context_group = 0U;
+        actor.random_sum = 0xFFU;
+        actor.source_order = source_order;
+        actor.pointer_cell_offset = 0U;
+        actor.sequence_list_offset = kBorisStrikeTeamListOffset;
+        actor.tagged_template = tagged_template;
+        actor.template_offset = template_offset;
+        actor.entity_kind = strike_team_template->entity_kind;
+        actor.palette_line = strike_team_template->palette_line;
+        actor.actor_name = strike_team_template->actor_name;
+        actor.profile_id = strike_team_template->profile_id;
+        actor.action_code = rom[template_offset + 9U];
+        actor.source_action_slot = rom[template_offset + 8U];
+        actor.source_action_ammo = rom[template_offset + 6U];
+        actor.source_action_counter = rom[template_offset + 7U];
+        actor.action_kind = strike_team_template->action_kind;
+        actor.source_interaction_flags = facts.source_interaction_flags;
+        actor.physical_meter = facts.physical_meter;
+        actor.delay_primary_attribute = facts.delay_primary_attribute;
+        actor.delay_secondary_attribute = facts.delay_secondary_attribute;
+        actor.delay_capability_flags = facts.delay_capability_flags;
+        actor.mental_meter = facts.mental_meter;
+        actor.cyberware_flags = facts.cyberware_flags;
+        actor.posture = facts.posture;
+        actor.attribute_77 = facts.attribute_77;
+        actor.attribute_78 = facts.attribute_78;
+        actor.attribute_79 = facts.attribute_79;
+        actor.attribute_7b = facts.attribute_7b;
+        actor.attribute_7c = facts.attribute_7c;
+        actor.attribute_85 = facts.attribute_85;
+        actor.item18_base = facts.item18_base;
+        actor.armor_index = facts.armor_index;
+        actor.race_or_state = facts.race_or_state;
+        actor.class_code = facts.class_code;
+        actor.modifier_flags_df = facts.modifier_flags_df;
+        actor.profile_index_a0 = facts.profile_index_a0;
+        actor.item_codes = facts.item_codes;
+        actor.item_phases = facts.item_phases;
+        actor.action_phase_extension = facts.action_phase_extension;
+        actor.action_skills = facts.action_skills;
+        actor.auxiliary_roll_bonus = facts.auxiliary_roll_bonus;
+        actor.sprite_stem = strike_team_template->sprite_stem;
+        actor.ordered_overrides = "-";
+        actor.map_derived_placement = true;
+        dynamic_world_actor_records.push_back(std::move(actor));
+    }
+    if (!found_strike_team_terminator) {
+        throw std::runtime_error(
+            "Boris strike-team actor list has no null sentinel");
+    }
     {
         const auto table_path =
             root / "field/entities/dynamic-world-activity-actors.tsv";
@@ -8358,9 +8444,11 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                   << format_offset(actor.tagged_template) << '\t'
                   << format_offset(actor.template_offset) << '\t'
                   << actor.ordered_overrides << '\t'
-                  << (actor.run_target_area == 0U
-                          ? "open screen-edge candidates based on the current viewport and terrain"
-                          : "ROM pending-descriptor actor placement")
+                  << (actor.map_derived_placement
+                          ? "map-derived candidates around camera-relative map anchors"
+                          : actor.run_target_area == 0U
+                                ? "open screen-edge candidates based on the current viewport and terrain"
+                                : "ROM pending-descriptor actor placement")
                   << '\t'
                   << static_cast<unsigned>(actor.physical_meter) << '\t'
                   << static_cast<unsigned>(actor.delay_primary_attribute)

@@ -5887,6 +5887,18 @@ GameScriptRuntime::resolve_field_encounter(
                                         false);
 }
 
+std::optional<ScriptFieldEncounterOutcome>
+GameScriptRuntime::resolve_field_actor_sequence(
+    const std::uint16_t scene_id,
+    const std::uint32_t sequence_list_offset) {
+    if (sequence_list_offset > 0x1FFFFFU) {
+        impl_->failure = "field actor sequence is outside source bounds";
+        return std::nullopt;
+    }
+    return resolve_field_encounter_impl(scene_id, 0U, 0U, false,
+                                        sequence_list_offset);
+}
+
 std::optional<std::vector<ScriptWorldActivityActor>>
 GameScriptRuntime::world_activity_actors_for_script(
     const std::uint16_t scene_id, const std::uint16_t script_index) {
@@ -6283,7 +6295,8 @@ GameScriptRuntime::world_activity_actors_for_selector(
 std::optional<ScriptFieldEncounterOutcome>
 GameScriptRuntime::resolve_field_encounter_impl(
     const std::uint16_t scene_id, const std::uint8_t first_roll,
-    const std::uint8_t second_roll, const bool run_target_actor_group) {
+    const std::uint8_t second_roll, const bool run_target_actor_group,
+    const std::optional<std::uint32_t> source_sequence_list_offset) {
     auto* state = impl_->state;
     if (state == nullptr) {
         impl_->failure = "Lua runtime is unavailable for field encounters";
@@ -6296,10 +6309,14 @@ GameScriptRuntime::resolve_field_encounter_impl(
         impl_->failure = std::string(reason);
         return std::nullopt;
     };
-    if ((!run_target_actor_group &&
+    const bool source_sequence = source_sequence_list_offset.has_value();
+    if ((run_target_actor_group && source_sequence) ||
+        (!run_target_actor_group && !source_sequence &&
          (scene_id > 55U || first_roll > 4U || second_roll > 4U)) ||
         (run_target_actor_group &&
-         (first_roll == 0U || first_roll > 55U || second_roll == 0U))) {
+         (first_roll == 0U || first_roll > 55U || second_roll == 0U)) ||
+        (source_sequence &&
+         (scene_id > 55U || *source_sequence_list_offset > 0x1FFFFFU))) {
         return fail("field encounter request is outside the ROM table bounds");
     }
     if (!impl_->push_module("field_encounters")) {
@@ -6307,7 +6324,7 @@ GameScriptRuntime::resolve_field_encounter_impl(
     }
     const auto* resolver_name = run_target_actor_group
         ? "resolve_run_target_actor_group"
-        : "resolve";
+        : source_sequence ? "resolve_source_sequence" : "resolve";
     lua_getfield(state, -1, resolver_name);
     if (!lua_isfunction(state, -1)) {
         return fail(std::string("field_encounters.") + resolver_name +
@@ -6317,13 +6334,20 @@ GameScriptRuntime::resolve_field_encounter_impl(
     if (run_target_actor_group) {
         lua_pushinteger(state, first_roll);
         lua_pushinteger(state, second_roll);
+    } else if (source_sequence) {
+        lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
+        lua_pushinteger(
+            state,
+            static_cast<lua_Integer>(*source_sequence_list_offset));
     } else {
         lua_pushinteger(state, scene_id);
         lua_pushinteger(state, first_roll);
         lua_pushinteger(state, second_roll);
     }
     ScopedInstructionBudget instruction_budget(state);
-    if (lua_pcall(state, run_target_actor_group ? 2 : 3, 1, 0) != LUA_OK) {
+    if (lua_pcall(state,
+                  (run_target_actor_group || source_sequence) ? 2 : 3,
+                  1, 0) != LUA_OK) {
         return fail(std::string("field_encounters.") + resolver_name +
                     " failed");
     }
@@ -6353,9 +6377,11 @@ GameScriptRuntime::resolve_field_encounter_impl(
                             random_sum) ||
         parsed_scene != (run_target_actor_group ? 15U : scene_id) ||
         (run_target_actor_group && context_group != first_roll) ||
-        random_sum != (run_target_actor_group
-                           ? second_roll
-                           : static_cast<std::uint32_t>(first_roll + second_roll))) {
+        (source_sequence && (context_group != 0U || random_sum != 0U)) ||
+        (!source_sequence &&
+         random_sum != (run_target_actor_group
+                            ? second_roll
+                            : static_cast<std::uint32_t>(first_roll + second_roll)))) {
         return fail(std::string("field_encounters.") + resolver_name +
                     " returned invalid selector facts");
     }
@@ -6364,6 +6390,27 @@ GameScriptRuntime::resolve_field_encounter_impl(
     } else if (kind_name == "dynamic_world_effect_sequence") {
         outcome.kind =
             ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence;
+        std::string placement_policy;
+        if (!read_field_string(state, result_index, "placement_policy",
+                               placement_policy)) {
+            return fail(
+                "dynamic world encounter has no placement policy");
+        }
+        if (placement_policy == "source_actor_positions") {
+            outcome.placement_policy =
+                ScriptFieldEncounterPlacementPolicy::source_actor_positions;
+        } else if (placement_policy == "screen_edge_candidates") {
+            outcome.placement_policy =
+                ScriptFieldEncounterPlacementPolicy::
+                    screen_edge_candidates;
+        } else if (placement_policy == "map_derived_candidates") {
+            outcome.placement_policy =
+                ScriptFieldEncounterPlacementPolicy::
+                    map_derived_candidates;
+        } else {
+            return fail(
+                "dynamic world encounter has an unknown placement policy");
+        }
     } else {
         return fail(std::string("field_encounters.") + resolver_name +
                     " returned an unknown outcome kind");

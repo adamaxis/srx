@@ -816,6 +816,12 @@ enum class ScriptFieldEncounterOutcomeKind : std::uint8_t {
     dynamic_world_effect_sequence,
 };
 
+enum class ScriptFieldEncounterPlacementPolicy : std::uint8_t {
+    source_actor_positions,
+    screen_edge_candidates,
+    map_derived_candidates,
+};
+
 enum class ScriptFieldEncounterTriggerAction : std::uint8_t {
     blocked,
     not_due,
@@ -1016,6 +1022,8 @@ struct ScriptWorldActivityActor {
 struct ScriptFieldEncounterOutcome {
     ScriptFieldEncounterOutcomeKind kind =
         ScriptFieldEncounterOutcomeKind::dialogue_event;
+    ScriptFieldEncounterPlacementPolicy placement_policy =
+        ScriptFieldEncounterPlacementPolicy::screen_edge_candidates;
     std::uint16_t scene_id = 0;
     std::uint8_t context_group = 0;
     std::uint8_t random_sum = 0;
@@ -1498,6 +1506,8 @@ public:
     std::optional<ScriptFieldEncounterOutcome> resolve_field_encounter(
         std::uint16_t scene_id, std::uint8_t first_roll,
         std::uint8_t second_roll);
+    std::optional<ScriptFieldEncounterOutcome> resolve_field_actor_sequence(
+        std::uint16_t scene_id, std::uint32_t sequence_list_offset);
     std::optional<std::vector<ScriptWorldActivityActor>>
     world_activity_actors_for_script(std::uint16_t scene_id,
                                      std::uint16_t script_index);
@@ -1599,7 +1609,10 @@ private:
     resolve_field_encounter_impl(std::uint16_t scene_id,
                                  std::uint8_t first_roll,
                                  std::uint8_t second_roll,
-                                 bool run_target_actor_group);
+                                 bool run_target_actor_group,
+                                 std::optional<std::uint32_t>
+                                     source_sequence_list_offset =
+                                         std::nullopt);
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };

@@ -1476,6 +1476,7 @@ private:
     bool apply_scripted_field_entity_target_selection(
         const std::optional<std::string>& selected_actor_id);
     void trigger_field_world_effect_sequence();
+    bool process_pending_story_world_effect_sequence();
     std::int16_t select_field_world_effect_sequence();
     void spawn_field_world_effect_sequence();
     void reset_field_entity_service_records();
@@ -2140,6 +2141,8 @@ private:
     std::vector<EntityServiceTargetRecord> field_entity_target_records_{16U};
     std::optional<scripting::ScriptFieldEncounterOutcome>
         pending_field_encounter_outcome_;
+    std::optional<std::uint32_t>
+        field_pending_story_world_effect_sequence_list_;
     std::optional<std::uint16_t>
         pending_world_activity_script_actor_scene_;
     std::vector<scripting::ScriptWorldActivityActor>

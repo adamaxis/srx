@@ -21,6 +21,7 @@ local function actor_from_row(row)
         source_order = row.source_order,
         selection_cell_offset = row.selection_cell_offset,
         sequence_list_offset = row.sequence_list_offset,
+        placement_rule = row.placement_rule,
         actor_name = row.actor_name,
         profile_id = row.profile_id,
         entity_kind = row.entity_kind,
@@ -217,8 +218,25 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
     if #actors == 0 then
         return nil
     end
+    local placement_rule = actors[1].placement_rule
+    for _, actor in ipairs(actors) do
+        if actor.placement_rule ~= placement_rule then
+            return nil
+        end
+    end
+    local placement_policy
+    if placement_rule ==
+       "open screen-edge candidates based on the current viewport and terrain" then
+        placement_policy = "screen_edge_candidates"
+    elseif placement_rule ==
+       "map-derived candidates around camera-relative map anchors" then
+        placement_policy = "map_derived_candidates"
+    else
+        return nil
+    end
     return {
         kind = "dynamic_world_effect_sequence",
+        placement_policy = placement_policy,
         scene = scene_id,
         context_group = selected.context_group,
         random_sum = sum,
@@ -248,6 +266,7 @@ function Encounters.resolve_run_target_actor_group(area_id, event_id)
     end
     return {
         kind = "dynamic_world_effect_sequence",
+        placement_policy = "source_actor_positions",
         scene = 15,
         context_group = area_id,
         random_sum = event_id,
@@ -256,6 +275,44 @@ function Encounters.resolve_run_target_actor_group(area_id, event_id)
         choice_1 = "",
         choice_2 = "",
         choice_3 = "",
+        actors = actors,
+    }
+end
+
+-- A named source list can be started by a story command without consuming the
+-- ordinary field random selector. Its actor rows use random_sum 0xFF in the
+-- extracted table so this lookup never leaks them into resolve().
+function Encounters.resolve_source_sequence(scene_id, sequence_list_offset)
+    if not integer(scene_id, 0, 55) or
+       not integer(sequence_list_offset, 0, 0x1fffff) then
+        return nil
+    end
+    local data = content()
+    if data == nil then
+        return nil
+    end
+    local actors = ordered_actor_rows(data, function(row)
+        return row.scene == scene_id and
+               row.random_sum == 0xff and
+               row.sequence_list_offset == sequence_list_offset and
+               row.placement_rule ==
+                   "map-derived candidates around camera-relative map anchors"
+    end)
+    if #actors == 0 then
+        return nil
+    end
+    return {
+        kind = "dynamic_world_effect_sequence",
+        placement_policy = "map_derived_candidates",
+        scene = scene_id,
+        context_group = 0,
+        random_sum = 0,
+        event_name = "source_sequence",
+        opening_text = "",
+        choice_1 = "",
+        choice_2 = "",
+        choice_3 = "",
+        sequence_list_offset = sequence_list_offset,
         actors = actors,
     }
 end

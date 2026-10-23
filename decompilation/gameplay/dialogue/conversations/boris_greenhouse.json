@@ -7,8 +7,8 @@
       "speakerId": "boris_greenhouse_narrator",
       "textProfile": "boris.greenhouse",
       "provenance": {
-        "romAddresses": ["0x53F8C", "0x1F246", "0x173110", "0x21B6A", "0x21B82", "0x21BE4", "0x21EB0"],
-        "scope": "scene_2_event_6_known_dialogue_routes_before_unconverted_item_and_strike_team_commands"
+        "romAddresses": ["0x53F8C", "0x1F246", "0x173110", "0x21B6A", "0x21B82", "0x21BE4", "0xF546C", "0xF95E2", "0xFE5BF", "0x21EB0"],
+        "scope": "scene_2_event_6_dialogue_with_partially_converted_strike_team_outcome"
       },
       "nodes": {
         "alternate_result": {
@@ -286,7 +286,7 @@
           "type": "action",
           "actionId": "field.advance_strike_team_counter",
           "results": {
-            "applied": "strike_team_boundary",
+            "applied": "strike_team_response",
             "service_unavailable": "strike_team_counter_boundary"
           }
         },
@@ -294,9 +294,10 @@
           "type": "source_boundary",
           "reason": "The saved Strike Team counter is unresolved, so command 0x2C cannot apply its capped increment safely."
         },
-        "strike_team_boundary": {
-          "type": "source_boundary",
-          "reason": "Command 0x2C advanced FFFBFB; its Strike Team actor list at 0x1D6FD0 and world-effect/combat handoff are not converted."
+        "strike_team_response": {
+          "type": "page",
+          "eventId": "david_brother",
+          "next": "stay_on_map"
         },
         "mark_ilene_information": {
           "type": "action",

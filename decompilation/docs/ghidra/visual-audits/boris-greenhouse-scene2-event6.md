@@ -21,10 +21,16 @@ live camera origin, map bounds, and terrain lookup at `0x1E41E`; the zero-D0
 branch at `0x1E302` is the separate screen-edge placement path. The list itself
 contains `0x001D6AFA` twice and then a null sentinel at `0x1D6FD8`. Template
 `0x1D6AFA` matches the extracted Strike Team profile in pending list `0x1E628`.
-Thus actor composition and the source placement method are known; the active
-host currently implements only the zero-D0 edge candidate path, and the
-map-candidate handoff and combat completion remain open. The later event-list
-placement coordinates are unrelated and are not used as substitutes.
+Command `0x2C` returns prompt group `0xF546C`. Its first text entry `0xF95E2`
+contains the Strike Team warning, and its only option uses the shared MORE
+caption at `0xFE5BF`. The explicit extractor's record view is for text records,
+so the group pointer itself is not a text-record address. The typed host
+models the nonzero-D0 map candidates and the separate zero-D0 edge policy. The
+two `0x1D6FD0` actor rows are imported from the verified template and resolved
+by a named Lua sequence; the field host then attempts the two spawns at open
+map-derived candidates before presenting the response page. Combat behavior and the
+post-combat return remain open. The later event-list placement coordinates are
+unrelated and are not used as substitutes.
 Commands `0x2D`-`0x2F` and their item-purchase return paths remain outside this
 implementation.
 
@@ -46,5 +52,7 @@ $100 story branch through its typed same-map return, and verify FFFC26 and
 nuyen across save restore. Six complete 320x224 captures per build match by
 SHA-256; they are internal regression evidence, not independent Genesis
 visual proof. No independent Genesis dialogue frame has been identified. The
-route remains partial because command `0x2C`, commands `0x2D`-`0x2F`, and their
-follow-on effects are not converted.
+route remains partial: command `0x2C` now has a typed counter update, named
+actor-list spawn, and response page, but no branch-specific CTest or CLI
+`actual.bmp` exists, and combat completion is not converted. Commands `0x2D`-
+`0x2F` and their purchase returns remain open.

@@ -1172,10 +1172,21 @@ FieldSceneRuntime::FieldSceneRuntime(
                 if (!field_strike_team_counter_.has_value()) {
                     return std::nullopt;
                 }
+                if (state_.field_scene_buffers.scene_reference == 2U &&
+                    (field_pending_story_world_effect_sequence_list_.has_value() ||
+                     pending_field_encounter_outcome_.has_value())) {
+                    return std::nullopt;
+                }
                 field_strike_team_counter_ = static_cast<std::uint8_t>(
                     std::min<unsigned int>(
                         8U, static_cast<unsigned int>(
                                 *field_strike_team_counter_) + 1U));
+                if (state_.field_scene_buffers.scene_reference == 2U) {
+                    field_pending_story_world_effect_sequence_list_ =
+                        0x1D6FD0U;
+                    this->source_boundary(
+                        "field.world_activity.boris_strike_team_list_queued");
+                }
                 return "applied";
             }
             if (service_id == "field.queue_mako_actor_list") {
@@ -5709,42 +5720,78 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         pending_field_encounter_outcome_.reset();
         return;
     }
-    WorldEffectEdgeCandidateState edge_state{};
-    // ROM 0x1E302 reads FFDDC6/FFDDC8 as the live camera origin and
-    // FFDDCE/FFDDD0 as the far map bounds. FieldSceneBuffers::profile begins
-    // at FFDDC6, so only the bounds come from its typed profile words (+8/+10);
-    // the origin must follow the moving camera state.
-    edge_state.map_width = profile[4];
-    edge_state.origin_x = static_cast<std::uint16_t>(
-        state_.field_scene_buffers.camera_x);
-    edge_state.origin_y = static_cast<std::uint16_t>(
-        state_.field_scene_buffers.camera_y);
-    edge_state.map_height = profile[5];
-    if (!source_positions_complete) {
-        build_world_effect_edge_candidates(
-            edge_state,
-            {[this](const std::uint16_t x, const std::uint16_t y)
-                 -> std::optional<std::uint8_t> {
-                 // ROM 0x1E41E indexes FF1700 with world words shifted by
-                 // nine. The shared terrain sampler accepts normalized
-                 // pixel coordinates (world >> 4), so normalize here.
-                 const auto sample = sample_terrain_collision_tiles(
-                     static_cast<std::uint16_t>(x >> 4U),
-                     static_cast<std::uint16_t>(y >> 4U), false,
-                     [this](const std::uint16_t tile_index) {
-                         const auto& map = state_.field_scene_buffers
-                                               .source_metadata
-                                               .terrain_collision_map;
-                         return tile_index < map.size()
-                             ? map[tile_index]
-                             : static_cast<std::uint8_t>(0x7FU);
-                     });
-                 return sample.selected_value;
-             }});
+    if (source_positions_complete !=
+        (outcome.placement_policy == scripting::
+             ScriptFieldEncounterPlacementPolicy::source_actor_positions)) {
+        failure_ = "encounter placement policy does not match its actor positions";
+        source_boundary("field.random_encounter.placement_policy_unresolved");
+        pending_field_encounter_outcome_.reset();
+        return;
     }
 
-    if (!source_positions_complete && edge_state.candidates.empty()) {
-        source_boundary("field.random_encounter.no_open_edge_candidates");
+    std::vector<std::pair<std::uint16_t, std::uint16_t>> placement_candidates;
+    if (!source_positions_complete) {
+        const auto lookup_terrain_tile =
+            [this](const std::uint16_t x, const std::uint16_t y)
+                -> std::optional<std::uint8_t> {
+            // The source candidate lookup addresses the compact collision
+            // map using world coordinates. The shared host sampler accepts
+            // pixel coordinates, so normalize the source words here.
+            const auto sample = sample_terrain_collision_tiles(
+                static_cast<std::uint16_t>(x >> 4U),
+                static_cast<std::uint16_t>(y >> 4U), false,
+                [this](const std::uint16_t tile_index) {
+                    const auto& map = state_.field_scene_buffers
+                                          .source_metadata
+                                          .terrain_collision_map;
+                    return tile_index < map.size()
+                        ? map[tile_index]
+                        : static_cast<std::uint8_t>(0x7FU);
+                });
+            return sample.selected_value;
+        };
+        if (outcome.placement_policy == scripting::
+                ScriptFieldEncounterPlacementPolicy::screen_edge_candidates) {
+            WorldEffectEdgeCandidateState edge_state{};
+            // ROM 0x1E302 reads FFDDC6/FFDDC8 as the live camera origin and
+            // FFDDCE/FFDDD0 as the far map bounds. Profile words +8/+10 hold
+            // the bounds; the origin follows the moving camera state.
+            edge_state.map_width = profile[4];
+            edge_state.origin_x = static_cast<std::uint16_t>(
+                state_.field_scene_buffers.camera_x);
+            edge_state.origin_y = static_cast<std::uint16_t>(
+                state_.field_scene_buffers.camera_y);
+            edge_state.map_height = profile[5];
+            build_world_effect_edge_candidates(
+                edge_state, {lookup_terrain_tile});
+            placement_candidates = std::move(edge_state.candidates);
+        } else if (outcome.placement_policy == scripting::
+                       ScriptFieldEncounterPlacementPolicy::
+                           map_derived_candidates) {
+            WorldEffectMapCandidateState map_state{};
+            map_state.map_width = profile[4];
+            map_state.camera_x = static_cast<std::uint16_t>(
+                state_.field_scene_buffers.camera_x);
+            map_state.camera_y = static_cast<std::uint16_t>(
+                state_.field_scene_buffers.camera_y);
+            map_state.map_height = profile[5];
+            build_world_effect_map_candidates(
+                map_state, {lookup_terrain_tile});
+            placement_candidates = std::move(map_state.candidates);
+        } else {
+            source_boundary(
+                "field.random_encounter.placement_policy_unresolved");
+            pending_field_encounter_outcome_.reset();
+            return;
+        }
+    }
+
+    if (!source_positions_complete && placement_candidates.empty()) {
+        source_boundary(
+            outcome.placement_policy == scripting::
+                    ScriptFieldEncounterPlacementPolicy::map_derived_candidates
+                ? "field.random_encounter.no_open_map_candidates"
+                : "field.random_encounter.no_open_edge_candidates");
         pending_field_encounter_outcome_.reset();
         return;
     }
@@ -5766,7 +5813,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
 
     const auto actor_count = source_positions_complete
         ? outcome.actors.size()
-        : std::min(outcome.actors.size(), edge_state.candidates.size());
+        : std::min(outcome.actors.size(), placement_candidates.size());
     std::size_t spawned = 0U;
     for (std::size_t index = 0U; index < actor_count; ++index) {
         std::array<std::uint8_t, 7> occupied_actor_slots{};
@@ -5824,8 +5871,8 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
                   *source_actor.run_target_spawn_x,
                   *source_actor.run_target_spawn_y}
             : SceneRunnerPosition{
-                  edge_state.candidates[index].first,
-                  edge_state.candidates[index].second};
+                  placement_candidates[index].first,
+                  placement_candidates[index].second};
         // The common record initializer at 0x7361A supplies +0x2E=0. The
         // ordered template record contributes the actor kind/action and art.
         actor.initial_heading = 0U;
@@ -6038,7 +6085,50 @@ void FieldSceneRuntime::reset_field_entity_service_records() {
     refresh_world_entity_service_targets();
 }
 
+bool FieldSceneRuntime::process_pending_story_world_effect_sequence() {
+    if (field_pending_story_world_effect_sequence_list_.has_value()) {
+        const auto sequence_list_offset =
+            *field_pending_story_world_effect_sequence_list_;
+        field_pending_story_world_effect_sequence_list_.reset();
+        const auto scene_id = state_.field_scene_buffers.scene_reference;
+        if (scene_id != 2U || sequence_list_offset != 0x1D6FD0U) {
+            source_boundary(
+                "field.world_activity.story_sequence_context_unresolved");
+            return true;
+        }
+        auto outcome = game_scripts_.resolve_field_actor_sequence(
+            scene_id, sequence_list_offset);
+        if (!outcome.has_value() ||
+            outcome->kind != scripting::
+                ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence ||
+            outcome->placement_policy != scripting::
+                ScriptFieldEncounterPlacementPolicy::map_derived_candidates ||
+            outcome->actors.size() != 2U ||
+            std::any_of(outcome->actors.begin(), outcome->actors.end(),
+                        [sequence_list_offset](const auto& actor) {
+                            return actor.sequence_list_offset !=
+                                   sequence_list_offset;
+                        })) {
+            failure_ = game_scripts_.failure().empty()
+                ? "Boris story sequence did not resolve its two map-placed actors"
+                : game_scripts_.failure();
+            source_boundary(
+                "field.world_activity.boris_strike_team_list_unresolved");
+            return true;
+        }
+        pending_field_encounter_outcome_ = std::move(*outcome);
+        source_boundary(
+            "field.world_activity.boris_strike_team_sequence_resolved");
+        spawn_field_world_effect_sequence();
+        return true;
+    }
+    return false;
+}
+
 void FieldSceneRuntime::trigger_field_world_effect_sequence() {
+    if (process_pending_story_world_effect_sequence()) {
+        return;
+    }
     scripting::ScriptFieldEncounterTriggerInput trigger{};
     trigger.scene_id = state_.field_scene_buffers.scene_reference;
     trigger.frame_counter = field_world_frame_counter_;
@@ -11920,6 +12010,7 @@ bool FieldSceneRuntime::bootstrap(
     field_pending_mode_transition_scene_.reset();
     field_pending_mode_transition_spawn_.reset();
     field_pending_mode_transition_actor_list_.reset();
+    field_pending_story_world_effect_sequence_list_.reset();
     field_pending_route_actor_list_.reset();
     field_pending_actor_list_transition_group_.reset();
     field_mako_actor_transitions_remaining_.reset();
@@ -16417,6 +16508,7 @@ void FieldSceneRuntime::advance_frame() {
             dialogue_input_locked
                 ? std::uint16_t{0U}
                 : field_controller_sample_state_.events);
+        (void)process_pending_story_world_effect_sequence();
         if (result == FieldDialogueAdvanceResult::typed_outcome_requested) {
             const auto outcome = field_dialogue_.take_gameplay_task_outcome();
             if (!outcome.has_value()) {

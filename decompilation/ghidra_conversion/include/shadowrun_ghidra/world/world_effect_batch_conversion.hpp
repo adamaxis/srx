@@ -99,8 +99,8 @@ struct WorldEffectCandidateCallbacks {
     std::function<bool(std::int16_t x, std::int16_t y)> is_valid;
 };
 
-// ROM 0x1E40C: construct the source's bounded five-step rings around both
-// candidate anchors, retaining only table-valid coordinates.
+// Generic host utility for two vertical anchor rings. The ROM's map-derived
+// 0x1E40C placement policy is modeled separately below.
 void build_world_effect_candidates(
     WorldEffectCandidateState& state,
     std::int16_t first_x,
@@ -108,6 +108,31 @@ void build_world_effect_candidates(
     std::int16_t second_x,
     std::int16_t second_y,
     const WorldEffectCandidateCallbacks& callbacks);
+
+struct WorldEffectMapCandidateState {
+    // Typed field facts corresponding to the live camera origin and map
+    // dimensions used by the map-derived placement policy.
+    std::uint16_t map_width = 0;
+    std::uint16_t camera_x = 0;
+    std::uint16_t camera_y = 0;
+    std::uint16_t map_height = 0;
+    std::vector<std::pair<std::uint16_t, std::uint16_t>> candidates;
+};
+
+struct WorldEffectMapCandidateCallbacks {
+    // A missing sample is not an open tile. The caller supplies the active
+    // scene's typed terrain query.
+    std::function<std::optional<std::uint8_t>(
+        std::uint16_t x, std::uint16_t y)> lookup_tile;
+};
+
+// ROM 0x1E310/0x1E40C: select two camera-relative map anchors, sample five
+// nearby positions along each axis in source order, and retain zero-valued
+// terrain cells. Coordinates are returned as host points; no ROM table or
+// world address is retained in the runtime state.
+void build_world_effect_map_candidates(
+    WorldEffectMapCandidateState& state,
+    const WorldEffectMapCandidateCallbacks& callbacks);
 
 // ROM 0x1E41E: resolve a compact tile-table lookup through a checked host
 // vector rather than an address calculation.

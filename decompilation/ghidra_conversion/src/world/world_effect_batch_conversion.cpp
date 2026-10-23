@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/world/world_effect_batch_conversion.hpp"
 
 #include <algorithm>
+#include <array>
 
 namespace shadowrun::ghidra_conversion {
 
@@ -152,6 +153,55 @@ void build_world_effect_candidates(
     };
     add_ring(first_x, first_y);
     add_ring(second_x, second_y);
+}
+
+void build_world_effect_map_candidates(
+    WorldEffectMapCandidateState& state,
+    const WorldEffectMapCandidateCallbacks& callbacks) {
+    state.candidates.clear();
+
+    const auto add_word = [](const std::uint16_t value,
+                             const std::int32_t delta) {
+        return static_cast<std::uint16_t>(
+            static_cast<std::int32_t>(value) + delta);
+    };
+    const auto align_candidate = [&add_word](const std::uint16_t value) {
+        return add_word(static_cast<std::uint16_t>(value & 0xFE00U), 0x100);
+    };
+
+    const auto x_anchor = add_word(state.camera_x, 0x0A00);
+    const auto y_anchor = add_word(state.camera_y, 0x0700);
+    const std::int32_t x_offset = (state.map_width >> 1U) < x_anchor
+        ? -0x0500
+        : 0x0500;
+    const std::int32_t y_offset = (state.map_height >> 1U) < y_anchor
+        ? -0x0500
+        : 0x0500;
+
+    const auto first_x = align_candidate(add_word(x_anchor, x_offset));
+    const auto first_y = align_candidate(y_anchor);
+    const auto second_x = align_candidate(x_anchor);
+    const auto second_y = align_candidate(add_word(y_anchor, y_offset));
+
+    constexpr std::array<std::int32_t, 5> ring_offsets{
+        0, 0x0200, 0x0400, -0x0200, -0x0400};
+    const auto append_open_candidate = [&](const std::uint16_t x,
+                                           const std::uint16_t y) {
+        if (!callbacks.lookup_tile) {
+            return;
+        }
+        const auto tile = callbacks.lookup_tile(x, y);
+        if (tile.has_value() && *tile == 0U) {
+            state.candidates.emplace_back(x, y);
+        }
+    };
+
+    for (const auto offset : ring_offsets) {
+        append_open_candidate(first_x, add_word(first_y, offset));
+    }
+    for (const auto offset : ring_offsets) {
+        append_open_candidate(add_word(second_x, offset), second_y);
+    }
 }
 
 std::optional<std::uint8_t> lookup_world_effect_tile(
