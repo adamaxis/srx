@@ -14,7 +14,12 @@ checks FFFC26 bit 3; command `0x26` selects the $100 story offer from bit 0;
 command `0x27` charges the wallet and sets bit 0. Command `0x29` charges $500
 and sets bit 2 before the gated topic list. Michael, David, and Ilene choices
 also update the source FFFC1E/FFFC30/FFFC34 facts. The Brother? choice reaches
-command `0x2C` at `0x21BE4`, whose Strike Team effect is not converted yet.
+command `0x2C` at `0x21BE4`: it increments FFFBFB through the capped helper at
+`0x1F1E0`, then selects two Strike Team actors from `0x1D6FD0`. The Lua graph
+now applies that shared typed counter update before retaining a source boundary
+for the unconverted actor-list/world-effect/combat handoff. The extracted
+world-activity actor catalog has no Scene-2 placement records for list
+`0x1D6FD0`, so the later event-list placement data is not being substituted.
 Commands `0x2D`-`0x2F` and their item-purchase return paths remain outside this
 implementation.
 

@@ -888,7 +888,7 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             if (task.result_id == std::optional<std::string>{
                                     "boris_strike_team_unconverted"}) {
                 open_source_boundary(
-                    "Boris' Brother? branch reaches command 0x2C at 0x21BE4, which starts a Strike Team world effect that is not converted yet");
+                    "Boris' Brother? branch advances FFFBFB, then reaches actor list 0x1D6FD0 at command 0x2C / 0x21BE4; its world-effect and combat handoff are not converted yet");
                 return FieldDialogueAdvanceResult::source_boundary;
             }
             if (task.result_id == std::optional<std::string>{

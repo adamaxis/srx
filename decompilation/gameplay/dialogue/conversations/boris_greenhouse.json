@@ -279,12 +279,24 @@
           "promptTextKey": "boris.greenhouse.page.david_information",
           "inputContract": "buttons_abc",
           "choices": [
-            { "id": "brother", "next": "strike_team_boundary" }
+            { "id": "brother", "next": "advance_strike_team_counter" }
           ]
+        },
+        "advance_strike_team_counter": {
+          "type": "action",
+          "actionId": "field.advance_strike_team_counter",
+          "results": {
+            "applied": "strike_team_boundary",
+            "service_unavailable": "strike_team_counter_boundary"
+          }
+        },
+        "strike_team_counter_boundary": {
+          "type": "source_boundary",
+          "reason": "The saved Strike Team counter is unresolved, so command 0x2C cannot apply its capped increment safely."
         },
         "strike_team_boundary": {
           "type": "source_boundary",
-          "reason": "ROM command 0x2C at 0x21BE4 starts the Strike Team/world effect, which is not converted."
+          "reason": "Command 0x2C advanced FFFBFB; its Strike Team actor list at 0x1D6FD0 and world-effect/combat handoff are not converted."
         },
         "mark_ilene_information": {
           "type": "action",

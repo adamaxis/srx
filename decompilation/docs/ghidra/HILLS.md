@@ -934,9 +934,7 @@ south with ordinary Up, confirms the Boris portrait and opening choices, pays
 the $100 story offer, and verifies FFFC26 plus the wallet survive save restore.
 The ROM text and profile art were regenerated through the explicit asset
 extractor; `actual.bmp` is a full 320×224 return frame. Lua tests cover the
-$500 information purchase and quest-gated topic choices. The hill remains
-partial: Strike Team command `0x2C`, item commands `0x2D`–`0x2F`, other deeper
-service outcomes, and independent Genesis dialogue frames are unresolved.
+$500 information purchase and quest-gated topic choices. The hill remains partial: command `0x2C` now applies the shared `FFFBFB` increment, while its `0x1D6FD0` actor-list placement and world-effect/combat handoff remain unresolved. Item commands `0x2D`-`0x2F`, other deeper service outcomes, and independent Genesis dialogue frames are also open.
 See [the Boris Greenhouse event-6 audit](visual-audits/boris-greenhouse-scene2-event6.md).
 
 ## Mako encounter through prompt command `0x60` (partial, 2026-10-23)

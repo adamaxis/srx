@@ -131,6 +131,13 @@ local function register_core_actions(registry)
         return result == "queued" and result or "service_unavailable"
     end)
 
+    -- Shared FFFBFB progression step implemented by ROM helper 0x1F1E0.
+    registry:register("field.advance_strike_team_counter", function()
+        local result = game.services.call(
+            "field", "advance_strike_team_counter")
+        return result == "applied" and result or "service_unavailable"
+    end)
+
     registry:register("field.apply_mako_callback", function()
         local result = require("club_penumbra").apply_mako_callback()
         return result == "applied" and result or "service_unavailable"
