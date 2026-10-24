@@ -1,8 +1,8 @@
 -- rules/inventory.lua: item selection, equip, discard, trade rules (srx inventory_action_conversion.cpp, ROM cited).
 -- Runner tables are 0-based arrays: inventory[0..7], phase[0..7]; weapon_slot -1 (= +0x56 0x7F/neg) when none.
 local E = require("enums")
-local B = E.ItemBranch
-local M = {}
+local B, I = E.ItemBranch, E.ItemId
+local M = { AUTO_USE_RANGE_FIRST = 0x18, AUTO_USE_RANGE_END = 0x2C }   -- 0x121C0 bounds [C]
 
 M.SLOTS, M.ROWS = 8, 4
 function M.slot_of(column, row) return row * 2 + column end          -- 0x12148 [C srx]
@@ -16,9 +16,12 @@ end
 
 -- 0x121C0 classification [srx C]
 function M.classify(code, pending_medical)
-    if pending_medical and code >= 0x10 and code <= 0x12 then return B.FIRST_AID end
-    if code == 0x13 or code == 0x14 or code == 0x16 or (code >= 0x18 and code < 0x2C) then return B.AUTOMATIC_USE end
-    if code < 0x18 then return B.WEAPON_OR_GEAR end
+    -- 0x10..0x12 medical; 0x13 fetish, 0x14 passkey, 0x16 goggles; 0x18..0x2B
+    -- (codes without E.ItemId names) classify as automatic use [C].
+    if pending_medical and code >= I.MEDKIT and code <= I.TRAUMA_PATCH then return B.FIRST_AID end
+    if code == I.FETISH or code == I.MAGLOCK_PASSKEY or code == I.SMART_GOGGLES or
+        (code >= M.AUTO_USE_RANGE_FIRST and code < M.AUTO_USE_RANGE_END) then return B.AUTOMATIC_USE end
+    if code < M.AUTO_USE_RANGE_FIRST then return B.WEAPON_OR_GEAR end
     return B.ARMOR
 end
 
