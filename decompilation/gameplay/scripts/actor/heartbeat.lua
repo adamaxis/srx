@@ -174,9 +174,15 @@ function ActorAI.heartbeat(context)
            state.animation_id == "down" then
             if context.phase == "render" then
                 state.movement_step = nil
+                -- The death list's ROM rate/count for this kind; the art
+                -- count stands in when the list has no extracted frames.
+                local rate, rom_count = R.death_list(state)
+                local count = context.entry_animation_frame_count
+                if state.spell_death_pose ~= nil and rom_count ~= nil then
+                    count = rom_count -- E0/E4 art not extracted: C++ clamps to the E8 art
+                end
                 if not advance_finite_actor_animation(
-                        state, context.entry_animation_frame_count,
-                        0x0200, 0x1000) then
+                        state, count, rate, R.Animator.PERIOD) then
                     return nil
                 end
             elseif state.damage_reaction_animation_complete and

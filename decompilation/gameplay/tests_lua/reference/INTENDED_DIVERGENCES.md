@@ -13,3 +13,9 @@ purpose, so the reference is wrong for them:
 
 `equiv_units` skips the functions in its INTENDED table. `equiv_heartbeat` is informational
 (printed, not gating) in run_lua_suites.sh.
+
+## advance_player_animation (actor/animator.lua)
+Now steps through the shared animator: kind-3 idle/walk lists from data/actor_anim_lists.lua
+(ROM 0x62AC), rate from 0x6092 with +0xCA = 0x28 (C002+4 via 0xBABC). Out-of-range random
+inputs (frame >= 4, accumulator >= 0x8000) now wrap as 0x600E/0x5FDC do; on the live domain
+(frame 0..3, accumulator 0..0xFFF) results are identical, checked exhaustively by animator_tests.

@@ -4,6 +4,7 @@ local R = require("actor.registry")
 local E = require("enums")
 local I = require("lib.int68k")
 local u8, u16, s16 = I.u8, I.u16, I.s16
+local Animator = R.Animator   -- from actor/animator.lua
 local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local ActorStatus = R.ActorStatus   -- from actor/tables.lua
@@ -104,34 +105,27 @@ local function advance_projectile_animation(state, context)
     state.animation_period = animation.period
     state.animation_frame_count = animation.frame_count
 
-    -- ROM 0x5FDC adds +0x18 to +0x1A as a signed 16-bit word, compares it
-    -- with +0x1C, and advances +0x1E once when the period is reached.
-    local accumulated_word =
-        u16(state.animation_accumulator + state.animation_increment)
-    local accumulated_signed = accumulated_word
-    if accumulated_word >= 0x8000 then
-        accumulated_signed = accumulated_word - 0x10000
-    end
-    if state.animation_period <= accumulated_signed then
-        state.animation_frame = u16(state.animation_frame + 1)
-        state.animation_accumulator =
-            u16(accumulated_word - state.animation_period)
-        if state.animation_accumulator >= 0x8000 then
-            state.animation_accumulator = state.animation_accumulator - 0x10000
-        end
-    else
-        state.animation_accumulator = accumulated_signed
-    end
-
-    -- ROM 0x600E resolves the finite source list after 0x5FDC. The sixteen
+    -- 0x5FDC with the previous +0x18, then 0x600E's finite clamp. The sixteen
     -- weapon-effect lists use 0x8003 or 0x800B markers and 0x270F cadence.
-    if animation.frame_count <= state.animation_frame then
+    if Animator.step_finite(state, animation.frame_count,
+                            state.animation_increment, state.animation_period) then
         state.animation_selector = state.animation_selector | 0x8000
-        state.animation_frame = animation.frame_count - 1
     end
     state.animation_increment = weapon_projectile_descriptor_increment
     state.animation_id = "projectile"
     return true
+end
+
+-- ROM 0xC0B2 death list (pose 0xE8) or a 0xB0AC/0xB0E4 spell-death list
+-- (pose 0xE0/0xE4): finite, timed by that list's own +2 rate for this kind
+-- (0x200 for kinds 3..14, 0x80 for THON) [C 0x62AC]. Returns rate, count.
+local function death_list(state)
+    local list = Animator.list(state.entity_kind,
+        state.spell_death_pose or Animator.Pose.DEATH)
+    if list == nil then
+        return 0x0200, nil
+    end
+    return list.rate, list.count
 end
 
 local function advance_entry_animation(state)
@@ -144,16 +138,8 @@ local function advance_entry_animation(state)
        frame_count > 8 then
         return
     end
-    local accumulated = state.animation_accumulator + 0x0200
-    if accumulated >= 0x1000 then
-        state.animation_accumulator = accumulated - 0x1000
-        if state.animation_frame + 1 < frame_count then
-            state.animation_frame = state.animation_frame + 1
-        else
-            state.transition_frame_list_finished = true
-        end
-    else
-        state.animation_accumulator = accumulated
+    if Animator.step_finite(state, frame_count, (death_list(state))) then
+        state.transition_frame_list_finished = true
     end
 end
 
@@ -162,30 +148,14 @@ local function advance_finite_actor_animation(state, frame_count,
     if state.damage_reaction_animation_complete then
         return true
     end
-    if type(frame_count) ~= "number" or frame_count < 1 or frame_count > 8 or
+    if type(frame_count) ~= "number" or frame_count < 1 or frame_count > 16 or
        type(increment) ~= "number" or increment < 1 or increment > 0xffff or
        type(threshold) ~= "number" or threshold < 1 or threshold > 0xffff then
         return false
     end
-    local accumulated_word =
-        u16(state.animation_accumulator + increment)
-    local accumulated_signed = accumulated_word
-    if accumulated_word >= 0x8000 then
-        accumulated_signed = accumulated_word - 0x10000
-    end
-    if threshold <= accumulated_signed then
-        state.animation_frame = state.animation_frame + 1
-        state.animation_accumulator = accumulated_word - threshold
-        if state.animation_accumulator >= 0x8000 then
-            state.animation_accumulator = state.animation_accumulator - 0x10000
-        end
-        if state.animation_frame >= frame_count then
-            -- 0x600E sets the list-finished selector and holds its last frame.
-            state.animation_frame = frame_count - 1
-            state.damage_reaction_animation_complete = true
-        end
-    else
-        state.animation_accumulator = accumulated_signed
+    -- 0x600E sets the list-finished selector and holds its last frame.
+    if Animator.step_finite(state, frame_count, increment, threshold) then
+        state.damage_reaction_animation_complete = true
     end
     return true
 end
@@ -275,6 +245,7 @@ local function begin_received_hit_reaction(state, context)
         state.animation_id = "down"
         state.animation_selector = hit.spell_death_pose
         state.spell_death = true
+        state.spell_death_pose = hit.spell_death_pose
         state.hurt_behavior_timer = 0
         state.movement_active = false
         return nil
@@ -333,46 +304,17 @@ local function advance_dynamic_actor_walk_animation(state, context)
         return false
     end
 
-    -- ROM 0x600E uses a special kind-0xD cadence. Other kinds derive +0x18
-    -- from the selected movement vector's +0xCA timing word; 0x5FDC then advances +0x1E on
-    -- the signed 0x1000-period comparison. The positive C062 list wraps at
-    -- its source marker after the render heartbeat.
-    local increment
-    if state.entity_kind == SpriteType.GARGOYLE then
-        increment = state.animation_frame == 2 and 0x0090 or 0x0180
-    else
-        local timing_word = state.animation_timing_word
-        if type(timing_word) ~= "number" or timing_word < 0 or
-           timing_word > 0xffff then
-            return false
-        end
-        increment = timing_word < 0x16 and timing_word * 0x1c
-            or timing_word * 0x10
+    -- ROM 0x6092 looping-list rate from +0xCA (the movement vector's timing
+    -- word); the positive C062 list wraps at its source marker.
+    local increment = Animator.loop_rate(state.entity_kind,
+        state.animation_frame, state.animation_timing_word)
+    if increment == nil then
+        return false
     end
-    increment = increment & 0xffff
     state.animation_increment = increment
-    state.animation_period = 0x1000
-    state.animation_selector = 0x20 + state.direction * 4
-
-    local accumulated_word =
-        u16(state.animation_accumulator + increment)
-    local accumulated_signed = accumulated_word
-    if accumulated_word >= 0x8000 then
-        accumulated_signed = accumulated_word - 0x10000
-    end
-    if state.animation_period <= accumulated_signed then
-        state.animation_frame = u16(state.animation_frame + 1)
-        state.animation_accumulator =
-            u16(accumulated_word - state.animation_period)
-        if state.animation_accumulator >= 0x8000 then
-            state.animation_accumulator = state.animation_accumulator - 0x10000
-        end
-    else
-        state.animation_accumulator = accumulated_signed
-    end
-    if frame_count <= state.animation_frame then
-        state.animation_frame = 0
-    end
+    state.animation_period = Animator.PERIOD
+    state.animation_selector = Animator.Pose.WALK + state.direction * 4
+    Animator.step_loop(state, frame_count, increment, state.animation_period)
     return true
 end
 
@@ -388,29 +330,9 @@ local function advance_dynamic_actor_action_animation(state)
        type(threshold) ~= "number" or threshold < 1 or threshold > 0xffff then
         return false
     end
-
-    -- ROM 0x5FDC adds the C0A2 list's +2 increment to +0x1A and advances
-    -- +0x1E when the signed accumulator reaches the actor's +0x1C threshold.
-    local accumulated_word =
-        u16(state.animation_accumulator + increment)
-    local accumulated_signed = accumulated_word
-    if accumulated_word >= 0x8000 then
-        accumulated_signed = accumulated_word - 0x10000
-    end
-    if threshold <= accumulated_signed then
-        state.animation_frame = state.animation_frame + 1
-        state.animation_accumulator = accumulated_word - threshold
-        if state.animation_accumulator >= 0x8000 then
-            state.animation_accumulator = state.animation_accumulator - 0x10000
-        end
-        if state.animation_frame >= frame_count then
-            -- 0x600E sets the finite-list completion marker and holds the
-            -- last C0A2 frame until another behavior selects a new list.
-            state.animation_frame = frame_count - 1
-            state.action_animation_complete = true
-        end
-    else
-        state.animation_accumulator = accumulated_signed
+    -- C0A2 list: 0x600E holds the last frame until a new list is selected.
+    if Animator.step_finite(state, frame_count, increment, threshold) then
+        state.action_animation_complete = true
     end
     return true
 end
@@ -424,32 +346,14 @@ local function advance_dynamic_actor_item_action_animation(state)
     local threshold = state.item_action_threshold
     if type(frame_count) ~= "number" or frame_count < 1 or frame_count > 8 or
        type(increment) ~= "number" or increment < 1 or increment > 0xffff or
-       type(threshold) ~= "number" or threshold ~= 0x1000 then
+       type(threshold) ~= "number" or threshold ~= Animator.PERIOD then
         return false
     end
-
-    -- ROM 0x600E advances the selected C042 list with its +2 increment and
-    -- the actor's +0x1C threshold, then marks a finite list complete.
-    local accumulated_word =
-        u16(state.animation_accumulator + increment)
-    local accumulated_signed = accumulated_word
-    if accumulated_word >= 0x8000 then
-        accumulated_signed = accumulated_word - 0x10000
-    end
-    if threshold <= accumulated_signed then
-        state.animation_frame = state.animation_frame + 1
-        state.animation_accumulator = accumulated_word - threshold
-        if state.animation_accumulator >= 0x8000 then
-            state.animation_accumulator = state.animation_accumulator - 0x10000
-        end
-        if state.animation_frame >= frame_count then
-            state.animation_frame = frame_count - 1
-            state.source_animation_selector =
-                state.source_animation_selector | 0x8000
-            state.item_action_complete = true
-        end
-    else
-        state.animation_accumulator = accumulated_signed
+    -- C042 list: finite, marks pose bit 15 when done.
+    if Animator.step_finite(state, frame_count, increment, threshold) then
+        state.source_animation_selector =
+            state.source_animation_selector | 0x8000
+        state.item_action_complete = true
     end
     return true
 end
@@ -471,6 +375,9 @@ local function advance_player_animation(state, context)
     end
 
     if context.animation_mode == "attack" then
+        -- C042 (pose 0x40) for kind 3 is one frame; the extracted art is
+        -- attack-<dir>.bmp. Its 0x80 cadence only drives pose bit 15, which
+        -- the C++ attack-pose timer owns [H: not ported here].
         state.animation_id = "attack"
         state.animation_selector = nil
         state.animation_frame = 0
@@ -478,22 +385,21 @@ local function advance_player_animation(state, context)
         return
     end
 
-    local accumulated = state.animation_accumulator + 0x0280
-    local frame_advanced = accumulated >= 0x1000
-    if frame_advanced then
-        accumulated = accumulated - 0x1000
-    end
-    state.animation_accumulator = accumulated
+    -- Kind 3 idle/walk lists loop, so 0x6092 times them from +0xCA = 0x28
+    -- (C002+4 via 0xBABC/0xBADE): 0x28 * 0x10 = 0x280 [C].
+    local kind = SpriteType.FIELD_RUNNER -- 3
+    local rate = Animator.loop_rate(kind, state.animation_frame,
+                                    Animator.PLAYER_SPEED)
     if context.animation_mode == "walking" then
         state.animation_id = "walk"
-        state.animation_selector = 0x20 + state.direction * 4
-        if frame_advanced then
-            state.animation_frame = (state.animation_frame + 1) % 4
-        end
+        state.animation_selector = Animator.Pose.WALK + state.direction * 4
+        Animator.step_loop(state,
+            Animator.list(kind, Animator.Pose.WALK).count, rate)
     else
         state.animation_id = "idle"
-        state.animation_selector = state.direction * 4
-        state.animation_frame = 0
+        state.animation_selector = Animator.Pose.IDLE + state.direction * 4
+        Animator.step_loop(state,
+            Animator.list(kind, Animator.Pose.IDLE).count, rate)
     end
 end
 
@@ -502,6 +408,7 @@ end
 R.snapshot = snapshot
 R.advance_projectile_animation = advance_projectile_animation
 R.advance_entry_animation = advance_entry_animation
+R.death_list = death_list
 R.advance_finite_actor_animation = advance_finite_actor_animation
 R.begin_received_hit_reaction = begin_received_hit_reaction
 R.begin_down_reaction = begin_down_reaction

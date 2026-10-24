@@ -114,6 +114,7 @@ local targets = {}
 -- pre-split reference is wrong for them by design. See reference/INTENDED_DIVERGENCES.md.
 local INTENDED = {
   advance_target_marker = "ROM 0x5C7E tiers the target's meter (a5a74ea3)",
+  advance_player_animation = "actor/animator.lua 0x600E wrap/0x5FDC signed word; equal on frame 0..3/acc 0..0xFFF (animator_tests)",
 }
 for name, f in pairs(REG) do if type(f) == "function" and origf[name] and not INTENDED[name] then targets[#targets + 1] = name end end
 table.sort(targets)
