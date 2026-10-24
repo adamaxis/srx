@@ -2318,6 +2318,8 @@ private:
         const std::array<std::uint8_t, 3>& probe_bytes);
     std::uint16_t field_door_exit_heading(std::uint16_t entry_heading);
     void begin_field_door_return();
+    void place_party_at_field_door_return_point();
+    bool apply_field_service_close_return();
     bool advance_field_door_return();
     std::uint8_t field_door_return_palette_level() const noexcept;
     std::uint8_t field_modal_return_blocked_inputs_ = 0U;

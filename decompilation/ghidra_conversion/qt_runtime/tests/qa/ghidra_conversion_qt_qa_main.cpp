@@ -9559,6 +9559,50 @@ int run_field_scene26_event1_physical_entry_qa(
                       << std::dec << ")\n";
             return 3;
         }
+        // Re-enter and answer "Neg on that, chum.": the prompt's own close
+        // is the same 0x9B8 + 0x2FA4 service return, without a reload.
+        for (std::uint16_t walk = 0U;
+             walk < 240U && !field_scene.dialogue_open(); ++walk) {
+            step(0x01U); // Up into the doorway
+        }
+        // Release Up and let the prompt finish its page before answering.
+        for (std::uint8_t settle = 0U; settle < 60U; ++settle) {
+            step(0U);
+        }
+        const auto second_probe =
+            field_scene.field_collision_probe_state_for_dump();
+        for (std::uint16_t settle = 0U;
+             settle < 300U && field_scene.dialogue_open() &&
+             !field_scene.dialogue_panel().source_complete;
+             ++settle) {
+            step(0U);
+        }
+        // 0x1F3C4 answers by button: A = first row, B = second row.
+        tap_qa_controller_button(field_scene, 0x10U); // B: Neg on that
+        const unsigned decline_selection = 1U;
+        for (std::uint8_t settle = 0U; settle < 90U; ++settle) {
+            step(0U);
+        }
+        const auto declined = field_scene.field_entity_world_position();
+        if (field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 2U ||
+            count_boundary("field.door.service_close_return") != 1 ||
+            declined.x != second_probe.points[0U].x ||
+            declined.y != second_probe.points[0U].y ||
+            field_scene.field_entity_heading_for_dump() != 0x8000U ||
+            !save("little-chiba-declined")) {
+            std::cerr << "Little Chiba hospital QA: declining the prompt did "
+                         "not apply the service return (selection="
+                      << decline_selection << ", closes="
+                      << count_boundary("field.door.service_close_return")
+                      << ", pos=" << declined.x << ',' << declined.y
+                      << ", expected=" << second_probe.points[0U].x << ','
+                      << second_probe.points[0U].y << ", heading=0x"
+                      << std::hex
+                      << field_scene.field_entity_heading_for_dump()
+                      << std::dec << ")\n";
+            return 3;
+        }
         std::cout << "field_little_chiba_hospital=passed scene=2 "
                      "return=" << returned.x << ',' << returned.y
                   << " heading=0x8000 artifacts=" << output.string() << '\n';

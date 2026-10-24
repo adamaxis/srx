@@ -2356,7 +2356,12 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 }
                 // The ROM's 0x1F65A selector sets D6=-1 after this modal
                 // prompt. The linked scene-table byte is retained as source
-                // evidence; the Inn prompt itself never loads scene 53.
+                // evidence; the Inn prompt itself never loads scene 53, and
+                // Little Chiba's never loads scene 26 (0x1F830). Closing the
+                // prompt is the same-map service return, not a route resume.
+                field_mode_entry_transition_pending_ = false;
+                field_mode_entry_destination_scene_.reset();
+                field_mode_entry_run_target_actor_group_.reset();
                 field_palette_fade_steps_ = 0U;
                 source_boundary("field.location.exit_prompt_opened");
                 state.caller_exit_status = -1;
@@ -16390,6 +16395,11 @@ void FieldSceneRuntime::suppress_field_modal_close_input() {
 
 void FieldSceneRuntime::dispatch_field_map_scene_entry(
     const std::uint16_t scene_id) {
+    // A saved same-map service return point belongs to the scene it was
+    // recorded in; a later unrelated close must not reuse it.
+    if (!field_door_return_active_) {
+        field_door_return_point_.valid = false;
+    }
     field_map_event_system_.begin_scene_visit(scene_id);
     handle_field_map_event_activations(
         field_map_event_system_.dispatch_scene_entry(
@@ -16535,13 +16545,7 @@ void FieldSceneRuntime::save_field_door_return_point() {
     source_boundary("field.door.return_point_saved");
 }
 
-void FieldSceneRuntime::begin_field_door_return() {
-    if (!field_door_return_point_.valid) {
-        source_boundary("field.door.return_point_missing");
-        return;
-    }
-    // 0xDB20 -> d6=-1 -> 0x2F32: the party is placed at the return point
-    // on the confirm frame [C: emulator run5 8440].
+void FieldSceneRuntime::place_party_at_field_door_return_point() {
     const auto& point = field_door_return_point_;
     field_entity_.world_position = point.lead;
     field_entity_.projection.world_x = point.lead.x;
@@ -16566,6 +16570,31 @@ void FieldSceneRuntime::begin_field_door_return() {
     field_player_actor_script_initialized_ = false;
     field_entity_.direction =
         static_cast<std::uint8_t>(((point.heading >> 14U) & 3U) * 2U);
+}
+
+bool FieldSceneRuntime::apply_field_service_close_return() {
+    // Same-map services (hotel, hospital, shop, Stoker) close through
+    // d6 != 0 -> 0x9B8 (heading) + 0x2FA4 (party at FFDF44..); the camera
+    // is unchanged and no scene reload runs [C, doc 27 section 3a].
+    if (!field_door_return_point_.valid) {
+        return false;
+    }
+    place_party_at_field_door_return_point();
+    field_door_return_point_.valid = false;
+    field_entity_animation_.redraw_requested = true;
+    source_boundary("field.door.service_close_return");
+    return true;
+}
+
+void FieldSceneRuntime::begin_field_door_return() {
+    if (!field_door_return_point_.valid) {
+        source_boundary("field.door.return_point_missing");
+        return;
+    }
+    // 0xDB20 -> d6=-1 -> 0x2F32: the party is placed at the return point
+    // on the confirm frame [C: emulator run5 8440].
+    const auto& point = field_door_return_point_;
+    place_party_at_field_door_return_point();
     // 0x2BD2 aligns the saved camera to 128 units before the reload.
     state_.field_scene_buffers.camera_x = point.camera_x & 0xFF80U;
     state_.field_scene_buffers.camera_y = point.camera_y & 0xFF80U;
@@ -17074,6 +17103,9 @@ void FieldSceneRuntime::advance_frame() {
                 }
                 begin_field_modal_return_transition();
             } else {
+                // Place first: the suspended same-scene re-entry below must
+                // not consume or discard the service return point.
+                (void)apply_field_service_close_return();
                 advance_field_scene_transition_after_modal();
                 begin_field_modal_return_transition();
             }
@@ -17600,6 +17632,7 @@ void FieldSceneRuntime::advance_frame() {
             state_.display_service_word = 0U;
             field_runtime_state_.display_service_word = 0U;
             field_shop_active_definition_.reset();
+            (void)apply_field_service_close_return();
             shop_boundary("returned_to_field");
             break;
         case ShopMenuEvent::no_change:
