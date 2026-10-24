@@ -35347,10 +35347,12 @@ int main(int argc, char** argv) {
                 }
                 // The opening Start frame starts 27 black frames and one
                 // reveal frame (emulator 8601..8628, command.lua).
-                // press_field_input() has already advanced the first countdown
-                // frame on key release; finish the remaining 26 before sending
-                // navigation, which the source wait ignores.
-                for (int frame = 0; frame < 26; ++frame) {
+                // The Start frame is the lead frame (field rows 0..29, emulator
+                // 8600); press_field_input() has already advanced the first
+                // black frame on key release; finish the remaining 26 black
+                // frames and the reveal before sending navigation, which the
+                // source wait ignores.
+                for (int frame = 0; frame < 27; ++frame) {
                     field_scene.advance_frame();
                 }
                 for (int move = 0;
@@ -38475,14 +38477,17 @@ int main(int argc, char** argv) {
                 }
                 auto command_black = capture(
                     output / "checkout-start-black" / "frame-01.bmp");
+                // Emulator e2 8600: the Start frame keeps field rows 0..29 and
+                // blanks the rest; 27 black frames follow.
                 if (command_black.isNull() ||
-                    !same_pixels(command_black, black_reference)) {
-                    std::cerr << "field Hotel QA: the first command-overview load frame was not black\n";
+                    image_region_differs(command_black, black_reference, 0, 30, 320, 194) ||
+                    !image_region_differs(command_black, black_reference, 0, 0, 320, 30)) {
+                    std::cerr << "field Hotel QA: the first command-overview load frame was not the field lead frame\n";
                     return 3;
                 }
                 // Emulator: 27 black frames, then a reveal frame whose rows
                 // above line 175 are still black (display re-enabled mid-frame).
-                for (std::uint32_t frame = 2U; frame <= 27U; ++frame) {
+                for (std::uint32_t frame = 2U; frame <= 28U; ++frame) {
                     advance_field_frame();
                     auto frame_name = std::to_string(frame);
                     if (frame_name.size() < 2U) {

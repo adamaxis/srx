@@ -33,18 +33,41 @@ end
 -- display drops mid-frame 8600, then 8601..8627 black (27), reveal at line 175
 -- on 8628; on a return the frame of the input is already black: 8720..8747 (28).
 local BLANK_OPEN, BLANK_RETURN, BLANK_REVEAL_LINE = 27, 28, 175
+-- Command OPEN masks, emulator e2 8600/8628/8629 [C]. The first field frame
+-- keeps its upper rows, then the two reveal frames expose menu text in stages.
+local OPEN = {
+    lead = { { 0, 30, 320, 194 } },
+    reveal = {
+        [0] = {
+            { 0, 168, 56, 8 }, { 80, 168, 40, 8 }, { 240, 168, 40, 8 },
+            { 312, 168, 8, 8 }, { 16, 176, 24, 8 }, { 96, 176, 24, 8 },
+            { 152, 176, 56, 8 }, { 240, 176, 24, 8 }, { 56, 192, 24, 8 },
+            { 56, 200, 24, 8 }, { 112, 200, 48, 8 }, { 168, 200, 72, 8 },
+        },
+        [1] = {
+            { 128, 24, 40, 8 }, { 176, 24, 48, 8 }, { 128, 40, 64, 8 },
+            { 200, 40, 32, 8 }, { 128, 48, 48, 8 }, { 200, 48, 32, 8 },
+            { 136, 64, 40, 8 }, { 184, 64, 32, 8 }, { 184, 72, 40, 8 },
+            { 112, 80, 48, 8 }, { 168, 80, 56, 8 }, { 112, 104, 24, 8 },
+            { 144, 104, 104, 8 }, { 112, 112, 24, 8 }, { 144, 112, 104, 8 },
+        },
+    },
+}
 -- Return from Attributes/Skills (exit 0xD4A0 already blanked two staged
 -- frames) [C emulator e2]: 8962..8988 black (27), reveal at line 211 on 8989;
 -- the display comes on mid-line, so row 211 is black left of x=218; on 8990
 -- the item-detail block (x 112..247, rows 24..131) is not drawn yet.
 local AS_RETURN = { black = 27, line = 211,
                     reveal = { [0] = { { 0, 211, 218, 1 } }, [1] = { { 112, 24, 136, 108 } } } }
-local function build(st, ctx, full, black_frames, reveal_line, reveal)
+local function build(st, ctx, full, black_frames, reveal_line, reveal, lead)
     if full then
         reselect_if_incapacitated(ctx)
         st.page, st.row = Page.POCKET_SECRETARY, 0          -- 0x10F50 [C]
         ctx.host.blank(E.DisplayBlank.OFF)
         ctx.redraw(R.FULL)
+        for _, r in ipairs(lead or {}) do
+            ctx.host.mask(E.MenuMask.LEAD, 0, r[1], r[2], r[3], r[4])
+        end
         for frame, rects in pairs(reveal or {}) do
             for _, r in ipairs(rects) do ctx.host.mask(E.MenuMask.REVEAL, frame, r[1], r[2], r[3], r[4]) end
         end
@@ -57,7 +80,7 @@ local function build(st, ctx, full, black_frames, reveal_line, reveal)
     ctx.redraw(M.REFRESH)
 end
 
-function M.enter(st, ctx) build(st, ctx, true, BLANK_OPEN) end
+function M.enter(st, ctx) build(st, ctx, true, BLANK_OPEN, BLANK_REVEAL_LINE, OPEN.reveal, OPEN.lead) end
 
 -- 0x11592: inventory cursor sprite at (page*0x28, row*0x18) + item detail [C]
 local function inventory_cursor(st, ctx) ctx.redraw(R.INVENTORY_CURSOR | R.ITEM_PICTURE | R.ITEM_HEADER) end

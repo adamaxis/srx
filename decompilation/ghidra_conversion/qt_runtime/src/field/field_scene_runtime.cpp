@@ -8705,7 +8705,9 @@ void FieldSceneRuntime::configure_field_menu_route() {
                                 const std::uint16_t frame,
                                 const std::int16_t x, const std::int16_t y,
                                 const std::int16_t w, const std::int16_t h) {
-        if (!command_overview_.open()) {
+        if (!command_overview_.open() &&
+            menu_route_screen_ != static_cast<std::uint16_t>(
+                                      srx::MenuScreen::COMMAND)) {
             return;
         }
         auto& masks =
@@ -24155,7 +24157,7 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
             // Lua-staged lead frame: the closing screen as last shown, with
             // the regions the source has already cleared painted black.
             painter.drawImage(0, 0, menu_last_frame_);
-            if (menu_window_sidebar_) {
+            if (!menu_last_frame_is_field_ && menu_window_sidebar_) {
                 // VDP reg 0x11=$91: the window plane shows the field
                 // sidebar from x>=272 over whatever the planes still hold.
                 painter.save();
@@ -24188,6 +24190,7 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
                 }
             } else if (menu_blank_reveal_line_ == 0U) {
                 menu_last_frame_ = scene.copy();
+                menu_last_frame_is_field_ = false;
             }
         };
         if (command_overview_attributes_skills_.is_open()) {
@@ -24210,6 +24213,8 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
     }
     paint_field_scene(painter);
     apply_palette_fade();
+    menu_last_frame_ = scene.copy();
+    menu_last_frame_is_field_ = true;
 }
 
 #ifdef SHADOWRUN_QT_QA_DRIVER

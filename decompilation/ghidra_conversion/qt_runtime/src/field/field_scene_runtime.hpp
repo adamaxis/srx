@@ -1921,6 +1921,7 @@ private:
     std::vector<std::vector<QRect>> menu_reveal_masks_pending_;
     std::vector<std::vector<QRect>> menu_reveal_masks_;
     mutable QImage menu_last_frame_;
+    mutable bool menu_last_frame_is_field_ = false;
     bool menu_window_sidebar_ = false;
     std::uint16_t menu_blank_reveal_line_ = 0U;
     std::vector<std::uint16_t> menu_blank_deferred_sounds_;

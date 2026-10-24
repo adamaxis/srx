@@ -4,6 +4,27 @@ local E = require("enums"); local Route = require("menu")
 local P, S, T, Pg = E.Pad, E.MenuScreen, E.MenuTransition, E.MenuPage
 local fails, n = 0, 0
 local function check(c, msg) n = n + 1; if not c then fails = fails + 1; print("FAIL " .. msg) end end
+local function exact_masks(log, phase, frame, expected)
+    local actual_counts, expected_counts, count = {}, {}, 0
+    local function key(rect) return table.concat(rect, ",") end
+    for _, mask in ipairs(log.masks or {}) do
+        if mask[1] == phase and mask[2] == frame then
+            local rect = { mask[3], mask[4], mask[5], mask[6] }
+            local k = key(rect)
+            actual_counts[k] = (actual_counts[k] or 0) + 1
+            count = count + 1
+        end
+    end
+    for _, rect in ipairs(expected) do
+        local k = key(rect)
+        expected_counts[k] = (expected_counts[k] or 0) + 1
+    end
+    if count ~= #expected then return false end
+    for k, expected_count in pairs(expected_counts) do
+        if actual_counts[k] ~= expected_count then return false end
+    end
+    return true
+end
 local function mk(o)
     o = o or {}
     local log = { sounds = {}, redraws = 0, blanks = {}, windows = {}, closed = false, legacy = {} }
@@ -48,6 +69,20 @@ check(log.sounds[1] == E.MenuSound.MOVE and #log.sounds == 1, "open sound")
 check(log.blanks[1] == E.DisplayBlank.OFF and log.blanks[2] == E.DisplayBlank.ON, "blank")
 check(log.hold and log.hold[1] == 27 and log.hold[2] == 175, "open build blank hold (emulator 27 black, line 175)")
 check(log.windows[1] == E.WindowPlane.SIDEBAR, "sidebar visible")
+check(exact_masks(log, E.MenuMask.LEAD, 0, { { 0, 30, 320, 194 } }) and
+      exact_masks(log, E.MenuMask.REVEAL, 0, {
+          { 0, 168, 56, 8 }, { 80, 168, 40, 8 }, { 240, 168, 40, 8 },
+          { 312, 168, 8, 8 }, { 16, 176, 24, 8 }, { 96, 176, 24, 8 },
+          { 152, 176, 56, 8 }, { 240, 176, 24, 8 }, { 56, 192, 24, 8 },
+          { 56, 200, 24, 8 }, { 112, 200, 48, 8 }, { 168, 200, 72, 8 },
+      }) and
+      exact_masks(log, E.MenuMask.REVEAL, 1, {
+          { 128, 24, 40, 8 }, { 176, 24, 48, 8 }, { 128, 40, 64, 8 },
+          { 200, 40, 32, 8 }, { 128, 48, 48, 8 }, { 200, 48, 32, 8 },
+          { 136, 64, 40, 8 }, { 184, 64, 32, 8 }, { 184, 72, 40, 8 },
+          { 112, 80, 48, 8 }, { 168, 80, 56, 8 }, { 112, 104, 24, 8 },
+          { 144, 104, 104, 8 }, { 112, 112, 24, 8 }, { 144, 112, 104, 8 },
+      }) and #log.masks == 28, "open lead and staged reveal masks (emulator e2 8600/8628/8629)")
 -- AS exit 0xD4A0 staged frames + return build [C emulator e2 8960..8990]
 do
     local ra, la = mk(); st(ra).page = Pg.ATTRIBUTES_SKILLS; ra:frame(P.A)
