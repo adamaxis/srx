@@ -168,6 +168,11 @@ if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/*_test.cpp"
     )
 
+    set(shadowrun_ghidra_rom_path_tests
+        attributes_skills_profile_permutation
+        field_hud_ammo_permutation
+        magic_defense_party_permutation
+        first_aid)
     foreach(test_source IN LISTS SHADOWRUN_CONVERSION_TEST_SOURCES)
         get_filename_component(test_stem "${test_source}" NAME_WE)
         string(REGEX REPLACE "_conversion_test$" "" test_name "${test_stem}")
@@ -189,6 +194,7 @@ if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
            test_name STREQUAL "field_runtime_coordinator" OR
            test_name STREQUAL "field_session_source_assets" OR
            test_name STREQUAL "recruited_runner_conversation" OR
+           test_name STREQUAL "first_aid" OR
            test_name STREQUAL "startup_integration" OR
            test_name STREQUAL "title_intro_late")
             target_link_libraries(${test_target}
@@ -204,15 +210,10 @@ if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
             target_compile_definitions(${test_target} PRIVATE
                 SHADOWRUN_CONVERSION_ASSET_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/../assets\")
         endif()
-        if(test_name STREQUAL "attributes_skills_profile_permutation")
-            target_compile_definitions(${test_target} PRIVATE
-                SHADOWRUN_US_ROM_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/../input/shadowrun_genesis_us.bin\")
-        endif()
-        if(test_name STREQUAL "field_hud_ammo_permutation")
-            target_compile_definitions(${test_target} PRIVATE
-                SHADOWRUN_US_ROM_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/../input/shadowrun_genesis_us.bin\")
-        endif()
-        if(test_name STREQUAL "magic_defense_party_permutation")
+        # Tests that read authoritative ROM bytes. Keep this one list in
+        # step with the Qt test list (qt_runtime/CMakeLists.txt) so the
+        # Qt-off configuration compiles the same sources.
+        if(test_name IN_LIST shadowrun_ghidra_rom_path_tests)
             target_compile_definitions(${test_target} PRIVATE
                 SHADOWRUN_US_ROM_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/../input/shadowrun_genesis_us.bin\")
         endif()
