@@ -40,6 +40,77 @@ StartupIntegrationEvent confirm_archetype_through_exit_fade(
     return event;
 }
 
+bool archetype_controller_masks_match_source() {
+    // ROM 0x59282 checks Up before Down, then 0x592DC checks A/C/B only when
+    // neither direction fired. Exercise every controller byte from every
+    // visible row, including simultaneous buttons and ignored Start/unused bits.
+    for (std::uint8_t start_index = 0U; start_index < 3U; ++start_index) {
+        for (unsigned mask_value = 0U; mask_value < 256U; ++mask_value) {
+            const auto mask = static_cast<std::uint8_t>(mask_value);
+            JoshuaArchetypeMenuState state{
+                static_cast<JoshuaArchetypeChoice>(start_index)};
+            unsigned cursor_draws = 0U;
+            unsigned previews = 0U;
+            unsigned initializations = 0U;
+            JoshuaArchetypeChoice cursor_choice = state.selected;
+            JoshuaArchetypeChoice preview_choice = state.selected;
+            JoshuaArchetypeChoice initialized_choice = state.selected;
+            JoshuaArchetypeMenuCallbacks callbacks;
+            callbacks.draw_joshua_archetype_cursor =
+                [&](const JoshuaArchetypeChoice choice) {
+                    ++cursor_draws;
+                    cursor_choice = choice;
+                };
+            callbacks.preview_joshua_archetype_resources =
+                [&](const JoshuaArchetypeChoice choice) {
+                    ++previews;
+                    preview_choice = choice;
+                };
+            callbacks.initialize_joshua_archetype =
+                [&](const JoshuaArchetypeChoice choice) {
+                    ++initializations;
+                    initialized_choice = choice;
+                };
+
+            auto expected_index = start_index;
+            bool moved = false;
+            if ((mask & kStartupMenuUp) != 0U) {
+                expected_index = start_index == 0U
+                    ? 2U
+                    : static_cast<std::uint8_t>(start_index - 1U);
+                moved = true;
+            } else if ((mask & kStartupMenuDown) != 0U) {
+                expected_index = start_index == 2U
+                    ? 0U
+                    : static_cast<std::uint8_t>(start_index + 1U);
+                moved = true;
+            }
+
+            const auto event = advance_joshua_archetype_menu(
+                state, mask, callbacks);
+            const bool confirmed = (mask & kStartupMenuActionMask) != 0U;
+            const auto expected_event = moved
+                ? JoshuaArchetypeMenuEvent::selection_moved
+                : (confirmed
+                       ? JoshuaArchetypeMenuEvent::joshua_archetype_initialized
+                       : JoshuaArchetypeMenuEvent::waiting);
+            const auto expected_choice =
+                static_cast<JoshuaArchetypeChoice>(expected_index);
+            if (event != expected_event || state.selected != expected_choice ||
+                cursor_draws != (moved ? 1U : 0U) ||
+                previews != (moved ? 1U : 0U) ||
+                initializations != (!moved && confirmed ? 1U : 0U) ||
+                (moved && (cursor_choice != expected_choice ||
+                           preview_choice != expected_choice)) ||
+                (!moved && confirmed &&
+                 initialized_choice != expected_choice)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 struct Observations {
     struct OpeningTextTimelineEntry {
         OpeningIntroTextRequest request;
@@ -458,6 +529,10 @@ int main() {
     const std::filesystem::path asset_root{
         SHADOWRUN_CONVERSION_ASSET_ROOT};
 
+    if (!archetype_controller_masks_match_source()) {
+        return 21;
+    }
+
     StartupIntegrationState load_state{};
     Observations load_observations;
     const auto load_callbacks =
@@ -702,6 +777,33 @@ int main() {
         !has_event(shaman_state, "joshua_archetype.initialized") ||
         !has_event(shaman_state, "opening_intro.started")) {
         return 18;
+    }
+
+    StartupIntegrationState samurai_state{};
+    Observations samurai_observations;
+    const auto samurai_callbacks =
+        make_callbacks(samurai_state, samurai_observations);
+    if (start_startup_integration(
+            asset_root, samurai_state, samurai_callbacks) !=
+            StartupIntegrationStartResult::title_ready ||
+        enter_start_options_integration(samurai_state, samurai_callbacks) !=
+            StartupIntegrationEvent::entered_start_options ||
+        advance_startup_integration(
+            samurai_state, kStartupMenuA, samurai_callbacks) !=
+            StartupIntegrationEvent::entered_joshua_archetype ||
+        samurai_state.joshua_archetype.selected !=
+            JoshuaArchetypeChoice::samurai ||
+        confirm_archetype_through_exit_fade(
+            samurai_state, samurai_callbacks) !=
+            StartupIntegrationEvent::opening_started ||
+        samurai_observations.initialized_archetype !=
+            JoshuaArchetypeChoice::samurai ||
+        !samurai_state.joshua_selection.has_value() ||
+        samurai_state.joshua_selection->live_joshua_record !=
+            samurai_state.startup_records->joshua_archetypes[0].record ||
+        !has_event(samurai_state, "joshua_archetype.initialized") ||
+        !has_event(samurai_state, "opening_intro.started")) {
+        return 22;
     }
 
     const auto& opening_plan = opening_intro_source_plan();

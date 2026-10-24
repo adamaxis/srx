@@ -21,12 +21,15 @@ inline constexpr std::string_view kSaveRosterHeaderAssetAlias =
     "records.startup.save.roster.header";
 
 constexpr std::size_t kJoshuaArchetypeCount = 3U;
-constexpr std::size_t kRecruitedRunnerRecordCount = 12U;
+constexpr std::size_t kRecruitedRunnerRecordCount = 10U;
 
-// The source startup path consumes three complete records at 0x7291A and
-// twelve 0x100-byte records from 0x72C1A. The files are deliberately raw
-// record assets: the extraction tool preserves the source record bytes, while
-// the conversion code gives each consumer an ordinary fixed-size host value.
+// The source startup path consumes three complete records at 0x7291A and ten
+// named 0x100-byte runner templates at 0x72C1A. A zero-kind record follows
+// those ten templates; bytes after it are not runner profiles. The files are
+// deliberately raw record assets: extraction preserves each source record,
+// while conversion uses ordinary fixed-size host values. The save roster has
+// thirteen slots (Joshua plus twelve saved positions), so the two slots with
+// no source recruit template remain zero-initialized.
 struct StartupRecordAssets {
     std::array<JoshuaArchetypeTemplate, kJoshuaArchetypeCount>
         joshua_archetypes{};

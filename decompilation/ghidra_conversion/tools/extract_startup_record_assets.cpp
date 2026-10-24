@@ -13,7 +13,8 @@ constexpr std::size_t kRecordSize = 0x100U;
 constexpr std::size_t kJoshuaOffset = 0x7291AU;
 constexpr std::size_t kJoshuaCount = 3U;
 constexpr std::size_t kRecruitedOffset = 0x72C1AU;
-constexpr std::size_t kRecruitedCount = 12U;
+constexpr std::size_t kRecruitedCount = 10U;
+constexpr std::size_t kRunnerKindOffset = 0x0EU;
 constexpr std::size_t kSaveRosterHeaderOffset = 0x59972U;
 constexpr std::size_t kSaveRosterHeaderSize = 0x14U;
 
@@ -68,6 +69,23 @@ int main(int argc, char** argv) {
 
     try {
         const auto rom = read_file(argv[1]);
+        for (std::size_t index = 0U; index < kRecruitedCount; ++index) {
+            const auto kind_offset =
+                kRecruitedOffset + index * kRecordSize + kRunnerKindOffset;
+            if (kind_offset + 1U >= rom.size() ||
+                (rom[kind_offset] == 0U && rom[kind_offset + 1U] == 0U)) {
+                throw std::runtime_error(
+                    "recruited runner table ended before ten named records");
+            }
+        }
+        const auto sentinel_offset = kRecruitedOffset +
+                                     kRecruitedCount * kRecordSize +
+                                     kRunnerKindOffset;
+        if (sentinel_offset + 1U >= rom.size() ||
+            rom[sentinel_offset] != 0U || rom[sentinel_offset + 1U] != 0U) {
+            throw std::runtime_error(
+                "recruited runner source table is missing its zero-kind sentinel");
+        }
         const std::filesystem::path asset_root(argv[2]);
         const auto output_root = asset_root / "records" / "startup";
         std::filesystem::create_directories(output_root);

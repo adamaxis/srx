@@ -97,8 +97,10 @@ StartupRecordAssetLoadResult load_startup_record_assets(
         return result;
     }
 
-    // ROM 0x59318 seeds compact save record zero from Joshua's first
-    // archetype, then projects the twelve records beginning at 0x72C1A.
+    // ROM 0x59318 reserves thirteen compact save positions. The source
+    // recruit table at 0x72C1A contains ten named templates; leave the final
+    // two roster positions empty instead of interpreting its zero-kind
+    // terminator and following code bytes as runner records.
     assets.save_roster_templates[0].record =
         assets.joshua_archetypes[0].record;
     for (std::size_t index = 0; index < recruited_records.size(); ++index) {
