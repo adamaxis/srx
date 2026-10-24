@@ -2835,6 +2835,17 @@ bool FieldSceneRuntime::transition_to_field_destination(
     field_movement_transition_state_.activity_sequence_active = false;
     field_movement_transition_state_.terrain_event_suppressed = false;
     field_movement_transition_state_.scene_id = scene_reference;
+    // ROM 0x136DE / 0x2A94 seed the FFFC10 cave room for scenes entered from
+    // outside the 0x2CE0 graph; Lua world_links owns which scenes do.
+    if (const auto entry_room = game_scripts_.call_integers(
+            "world_links", "entry_room_flat",
+            {static_cast<std::int64_t>(scene_reference)});
+        entry_room.has_value() && entry_room->size() == 1U &&
+        (*entry_room)[0] >= 0) {
+        field_movement_transition_state_.field_transition_context =
+            static_cast<std::uint16_t>((*entry_room)[0]);
+        source_boundary(std::string(source_prefix) + "entry_room_seeded");
+    }
     field_movement_transition_state_.field_origin_x =
         static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
     field_movement_transition_state_.activity_source_word = 0U;

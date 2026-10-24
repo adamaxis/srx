@@ -97,6 +97,8 @@ check(W.service_at(2, 4) == nil and W.service_kind_flat(2, 4)[1] == E.ServiceKin
 -- 4. Cave graph (doc 19 section 3).
 local c = W.cave_exit(0, 0)
 local cf = W.cave_exit_flat(0, 8)
+check(W.entry_room_flat(6)[1] == 0 and W.entry_room_flat(9)[1] == 3 and W.entry_room_flat(2)[1] == -1, "entry_room_flat")
+check(D.room_graph.scene[W.entry_room_flat(9)[1]] == 9 and D.room_graph.scene[W.entry_room_flat(6)[1]] == 6, "entry rooms match room scenes")
 check(cf[1] == 5 and cf[2] == 0x2D and cf[3] == 0x5E00 and cf[4] == 0x2280, "cave_exit_flat room 0 code 8")
 check(W.cave_exit_flat(0, 12)[1] == -1 and W.cave_exit_flat(99, 8)[1] == -1, "cave_exit_flat rejects bad input")
 check(c.room == 5 and c.scene == 0x2D and c.x == 0x5E00 and c.y == 0x2280, "room 0 dir 0")

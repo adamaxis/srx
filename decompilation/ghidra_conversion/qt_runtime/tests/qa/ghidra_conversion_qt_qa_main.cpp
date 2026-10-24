@@ -32730,7 +32730,9 @@ int main(int argc, char** argv) {
                     has_boundary("field.vid_phone.passage.payment_accepted") &&
                     has_boundary("field.vid_phone.passage_fade_out_started") &&
                     has_boundary("field.vid_phone.destination_loaded") &&
-                    has_boundary("field.vid_phone.destination_fade_finished");
+                    has_boundary("field.vid_phone.destination_fade_finished") &&
+                    has_boundary("field.vid_phone.entry_room_seeded") &&
+                    field_scene.field_transition_context_for_dump() == 0U;
                 if (field_scene.field_scene_reference_for_dump() != 6U ||
                     field_scene.elevator_scene_transition_phase_for_dump() !=
                         ElevatorSceneTransitionPhase::idle ||
@@ -33012,7 +33014,8 @@ int main(int argc, char** argv) {
                     has_boundary("field.vid_phone.passage.payment_accepted") &&
                     has_boundary("field.vid_phone.passage_fade_out_started") &&
                     has_boundary("field.vid_phone.destination_loaded") &&
-                    has_boundary("field.vid_phone.destination_fade_finished");
+                    has_boundary("field.vid_phone.destination_fade_finished") &&
+                    field_scene.field_transition_context_for_dump() == 3U;
                 if (field_scene.field_scene_reference_for_dump() != 9U ||
                     field_scene.elevator_scene_transition_phase_for_dump() !=
                         ElevatorSceneTransitionPhase::idle ||

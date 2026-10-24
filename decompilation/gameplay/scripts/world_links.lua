@@ -155,6 +155,17 @@ function WorldLinks.cave_exit(room, dir)
     return { room = next_room, scene = scene, x = xy.x, y = xy.y }
 end
 
+-- FFFC10 cave room seeded when a scene is entered from outside the graph:
+-- 0x136DE (shared cab/phone loader) clears FFFC10 for scene 6; Sharkey's
+-- Sinsearach passage 0x2A94 sets FFFC10 = 3 with scene 9 [C].
+local entry_rooms = { [6] = 0, [9] = 3 }
+
+-- entry_room_flat(scene) -> { room } or { -1 } when FFFC10 is untouched.
+function WorldLinks.entry_room_flat(scene_id)
+    local room = entry_rooms[scene_id]
+    return { room ~= nil and room or -1 }
+end
+
 -- Host adapters: flat integer arrays across the C++ boundary.
 -- cave_exit_flat(room, event_code) -> { room, scene, x, y } or { -1 }.
 -- event_code is the FFFBF9 zone code 8..11 (0x2CE0 subtracts 8).

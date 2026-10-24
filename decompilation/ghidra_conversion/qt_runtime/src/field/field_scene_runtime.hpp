@@ -661,6 +661,9 @@ public:
         state_.field_scene_buffers.scene_mode = 1U;
         field_runtime_state_.field_transition_requested = true;
     }
+    std::uint16_t field_transition_context_for_dump() const noexcept {
+        return field_movement_transition_state_.field_transition_context;
+    }
     std::uint8_t field_activity_selection_for_dump() const noexcept {
         return field_movement_transition_state_.activity_selection;
     }
