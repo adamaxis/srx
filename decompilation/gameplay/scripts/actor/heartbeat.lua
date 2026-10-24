@@ -43,6 +43,7 @@ local function resolve_source_target_motion(...) return R.resolve_source_target_
 local function retained_linked_target(...) return R.retained_linked_target(...) end   -- from actor/targeting.lua
 local function same_actor(...) return R.same_actor(...) end   -- from actor/targeting.lua
 local function snapshot(...) return R.snapshot(...) end   -- from actor/anim.lua
+local function service_zero_meter_down(...) return R.service_zero_meter_down(...) end   -- from actor/anim.lua
 local function source_motion_destination_heading(...) return R.source_motion_destination_heading(...) end   -- from actor/targeting.lua
 local function source_profile(...) return R.source_profile(...) end   -- from actor/targeting.lua
 local function transfer_pending_spell_effect(...) return R.transfer_pending_spell_effect(...) end   -- from actor/actions.lua
@@ -150,6 +151,13 @@ function ActorAI.heartbeat(context)
             reaction_audio_event =
                 begin_received_hit_reaction(state, context)
             reaction_started = state.damage_reaction_active
+        end
+        if context.phase == "behavior" and reaction_audio_event == nil then
+            local down_cue = service_zero_meter_down(state, context)
+            if down_cue ~= nil then
+                reaction_audio_event = down_cue
+                reaction_started = true
+            end
         end
         if state.damage_reaction_active and
            state.animation_id == "down" then

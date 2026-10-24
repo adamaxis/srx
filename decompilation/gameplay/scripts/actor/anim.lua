@@ -190,6 +190,58 @@ local function advance_finite_actor_animation(state, frame_count,
     return true
 end
 
+-- ROM 0xB330 (death/down): B05E[kind] cue, +0x10 bit 4, +0x3A = 0xB38A,
+-- pose C0B2[dir8] (0xE8 + 4*dir), 0xAF6C resets +0x1A/+0x1E. Callers:
+-- 0xAFF2 hit with +0x4C == 0, 0xAA4C service with +0x4C or +0x9C == 0,
+-- 0xE4BA kill_leader. It is never selected at spawn.
+local function begin_down_reaction(state, context)
+    if type(context.entry_animation_frame_count) ~= "number" or
+       context.entry_animation_frame_count < 1 or
+       context.entry_animation_frame_count > 8 or
+       type(context.down_audio_event) ~= "number" then
+        return nil
+    end
+    state.damage_reaction_active = true
+    state.damage_reaction_animation_complete = false
+    state.animation_frame = 0
+    state.animation_accumulator = 0
+    state.animation_id = "down"
+    state.animation_selector = 0xe8 + state.direction * 4
+    state.source_record_flags = state.source_record_flags | ActorStatus.DOWN
+    state.hurt_behavior_timer = 0
+    state.movement_active = false
+    return context.down_audio_event
+end
+
+-- ROM 0xA93A..0xAA4C, run on every 0xA8EA service pass: when +0x9C (stun)
+-- or +0x4C (physical) is zero and the pose is idle/walk (+0x16 <= 0x3C) or
+-- the current finite list has finished (+0x16 bit 15), the first pass sets
+-- +0x10 bit 4 and enters 0xB330. This is how stun kills (mental meter 0) and
+-- deferred zero-meter hits die; the hit path alone only checks +0x4C.
+local function service_zero_meter_down(state, context)
+    if (state.source_record_flags & ActorStatus.DOWN) ~= 0 then
+        return nil
+    end
+    local c = state.combatant
+    if type(c) ~= "table" or type(c.physical_meter) ~= "number" or
+       type(c.mental_meter) ~= "number" then
+        return nil
+    end
+    if c.physical_meter ~= 0 and c.mental_meter ~= 0 then
+        return nil
+    end
+    local id = state.animation_id
+    local pose_open = id == "idle" or id == "walk" or
+        (id == "hurt" and state.damage_reaction_animation_complete) or
+        (id == "action" and state.action_animation_complete) or
+        (id == "weapon" and state.item_action_complete) or
+        id == "spell"
+    if not pose_open then
+        return nil
+    end
+    return begin_down_reaction(state, context)
+end
+
 local function begin_received_hit_reaction(state, context)
     local hit = state.incoming_hit
     if type(hit) ~= "table" or
@@ -202,25 +254,8 @@ local function begin_received_hit_reaction(state, context)
         return nil
     end
     if hit.physical_meter == 0 then
-        if type(context.entry_animation_frame_count) ~= "number" or
-           context.entry_animation_frame_count < 1 or
-           context.entry_animation_frame_count > 8 or
-           type(context.down_audio_event) ~= "number" then
-            return nil
-        end
-        -- 0xAFF2 enters 0xB330 at zero physical meter, requests B05E[kind],
-        -- reserves +0x10.4, and selects the directional C0B2 transition.
-        state.damage_reaction_active = true
-        state.damage_reaction_animation_complete = false
-        state.animation_frame = 0
-        state.animation_accumulator = 0
-        state.animation_id = "down"
-        state.animation_selector = 0xe8 + state.direction * 4
-        state.source_record_flags =
-            state.source_record_flags |
-            ActorStatus.DOWN
-        state.hurt_behavior_timer = 0
-        return context.down_audio_event
+        -- 0xAFF2: zero +0x4C enters 0xB330 directly, whatever the pose.
+        return begin_down_reaction(state, context)
     end
     local frame_count = context.hurt_animation_frame_count
     local increment = context.hurt_animation_increment
@@ -442,6 +477,8 @@ R.advance_projectile_animation = advance_projectile_animation
 R.advance_entry_animation = advance_entry_animation
 R.advance_finite_actor_animation = advance_finite_actor_animation
 R.begin_received_hit_reaction = begin_received_hit_reaction
+R.begin_down_reaction = begin_down_reaction
+R.service_zero_meter_down = service_zero_meter_down
 R.advance_received_hit_reaction = advance_received_hit_reaction
 R.advance_dynamic_actor_walk_animation = advance_dynamic_actor_walk_animation
 R.advance_dynamic_actor_action_animation = advance_dynamic_actor_action_animation

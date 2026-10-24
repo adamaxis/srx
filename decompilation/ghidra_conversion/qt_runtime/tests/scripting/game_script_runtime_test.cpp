@@ -6004,6 +6004,9 @@ int main() {
     quickness_actor.source_projection_active = true;
     ScriptCombatantFacts quickness_facts{};
     quickness_facts.command_attribute_78 = 4U;
+    // A live actor: ROM 0xA93A sends +0x4C/+0x9C == 0 straight to 0xB330.
+    quickness_facts.physical_meter = 10U;
+    quickness_facts.mental_meter = 10U;
     quickness_actor.combatant = quickness_facts;
     configure_encounter_movement(quickness_actor, 0x0700U);
     const bool quickness_entered =
@@ -6018,6 +6021,44 @@ int main() {
                 quickness_actor.movement_state.position_y ==
                     static_cast<std::uint16_t>(0x1800U - 19U),
             "far actor with FFDF84 set did not step the Quickness 4 row of 0xBDF2")) {
+        std::cerr << scripts.failure() << " entered=" << quickness_entered
+                  << " moved=" << quickness_moved << " pos="
+                  << quickness_actor.movement_state.position_x << ','
+                  << quickness_actor.movement_state.position_y << '\n';
+        return 24;
+    }
+
+    // combat-fixes-1: ROM 0xA93A..0xAA4C. A live idle/walk actor whose stun
+    // meter (+0x9C) is zero enters 0xB330 on its next service pass even
+    // though its physical meter (+0x4C) is non-zero; a fully healthy actor
+    // never does. The hit path (0xAFF2) alone only checks +0x4C.
+    const auto service_down_after = [&](const std::uint8_t physical,
+                                        const std::uint8_t mental) {
+        auto context = make_encounter_reaction_context(
+            "field_scene_2_encounter_stun_service");
+        ScriptCombatantFacts facts{};
+        facts.physical_meter = physical;
+        facts.mental_meter = mental;
+        context.combatant = facts;
+        if (!scripts.actor_heartbeat(context).has_value()) {
+            return std::optional<ScriptActorBehaviorDecision>{};
+        }
+        context.spawn = false;
+        context.phase = ScriptActorHeartbeatPhase::behavior;
+        return scripts.actor_heartbeat(context);
+    };
+    const auto stunned_service = service_down_after(10U, 0U);
+    const auto healthy_service = service_down_after(10U, 10U);
+    if (!expect(
+            stunned_service.has_value() &&
+                stunned_service->animation_id == "down" &&
+                stunned_service->audio_event == 0x0056U &&
+                (stunned_service->source_record_flags & 0x10U) != 0U &&
+                healthy_service.has_value() &&
+                healthy_service->animation_id != "down" &&
+                healthy_service->audio_event != 0x0056U &&
+                (healthy_service->source_record_flags & 0x10U) == 0U,
+            "zero stun meter did not enter 0xB330 on the 0xA93A service pass")) {
         std::cerr << scripts.failure() << '\n';
         return 24;
     }
