@@ -79,6 +79,14 @@ local flat = W.door_contact_flat(0, 15584, 10890, 5, 6, 0xC2, 0xC2, 0xC2)
 check(#flat == 11 and flat[1] == 1 and flat[4] == 15584 and flat[5] == 11210 and flat[10] == 5, "flat adapter")
 check(#W.door_contact_flat(2, 1, 1, 0, 0, 0x80, 0x80, 0x80) == 3, "flat adapter, not saved")
 
+-- Exit facing: FACE_AWAY is the entry heading turned around; PRESERVE keeps it.
+for _, h in ipairs({ 0x0000, 0x4000, 0x8000, 0xC000, 0x2000, 0xE000 }) do
+    check(W.exit_heading(E.LinkFacing.FACE_AWAY, h) == (h ~ 0x8000), string.format("face away %04X", h))
+    check(W.exit_heading(E.LinkFacing.PRESERVE_ENTRY, h) == h, string.format("preserve %04X", h))
+    check(W.exit_heading_flat(E.LinkFacing.FACE_AWAY, h)[1] == (h ~ 0x8000), "exit_heading_flat")
+end
+check(not pcall(W.exit_heading, 7, 0), "unknown facing rejected")
+
 -- 4. Cave graph (doc 19 section 3).
 local c = W.cave_exit(0, 0)
 check(c.room == 5 and c.scene == 0x2D and c.x == 0x5E00 and c.y == 0x2280, "room 0 dir 0")

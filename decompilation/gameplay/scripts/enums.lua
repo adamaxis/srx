@@ -143,6 +143,7 @@ E.Heading = { UP = 0x0000, RIGHT = 0x4000, DOWN = 0x8000, LEFT = 0xC000 }      -
 E.LinkCode = { LINK = 0x80, ROW_SHIFT = 5, ROW_MASK = 0x03, EVENT_MASK = 0x1F }  -- collision record code byte: 0xB7B8 bit 7, 0xBC52 rol.b #3 [C]
 E.DoorRow = { UP = 0, RIGHT = 1, DOWN = 2, LEFT = 3 }   -- code bits 6:5 = side the party is put back on, 0xBD34 rows [C]
 E.LinkReturn = { SERVICE = 1, INTERIOR = 2 }  -- 0x9B8 same-map d6 path / 0xA68 FFDF42 -> 0x2F32 interior exit [C]
+E.LinkFacing = { PRESERVE_ENTRY = 0, FACE_AWAY = 1 }  -- per-link exit facing policy (port): FACE_AWAY = entry heading ^ 0x8000, the party faces out of the door
 E.Direction = { UP = 0, RIGHT = 2, DOWN = 4, LEFT = 6 }                                -- 0x148CA index [C]
 E.DirectionStep = { [0] = -0x40, [2] = 1, [4] = 0x40, [6] = -1 }                      -- 0x148CA values [C]
 

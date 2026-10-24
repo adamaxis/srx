@@ -112,6 +112,19 @@ function WorldLinks.return_placement(point, kind, current_heading)
     return { party = point.party, heading = heading, camera = point.camera }
 end
 
+-- Exit facing for a door return. entry_heading is the lead's heading at
+-- door contact (walking into the door). FACE_AWAY turns the party to face
+-- out of the door it came through; PRESERVE_ENTRY keeps the entry heading.
+-- The facing policy is per link (entity-owned building links choose it).
+function WorldLinks.exit_heading(facing, entry_heading)
+    if facing == E.LinkFacing.FACE_AWAY then
+        return (entry_heading ~ E.Heading.DOWN) & 0xFFFF   -- ^ 0x8000: opposite heading
+    elseif facing == E.LinkFacing.PRESERVE_ENTRY then
+        return entry_heading & 0xFFFF
+    end
+    error("world_links.exit_heading: unknown facing " .. tostring(facing))
+end
+
 -- Cave/wilderness graph (0x2CE0): leaving `room` by exit dir 0..3
 -- (zone code 8..11). Returns { room, scene, x, y }.
 function WorldLinks.cave_exit(room, dir)
@@ -140,6 +153,11 @@ end
 function WorldLinks.return_heading_flat(kind, current_heading)
     local placement = WorldLinks.return_placement({}, kind, current_heading)
     return { placement.heading }
+end
+
+-- exit_heading_flat(facing, entry_heading) -> { heading }
+function WorldLinks.exit_heading_flat(facing, entry_heading)
+    return { WorldLinks.exit_heading(facing, entry_heading) }
 end
 
 return WorldLinks
