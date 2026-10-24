@@ -6,9 +6,9 @@ using namespace shadowrun::ghidra_conversion;
 
 int main() {
     std::vector<EntityServiceTargetRecord> records(8U);
-    records[2] = {true, false, true, false, true, 1U, false, 0U};
-    records[3] = {true, false, false, false, true, 1U, false, 0U};
-    records[4] = {true, true, false, false, true, 1U, false, 0U};
+    records[2] = {true, false, false, true, false, true, 1U, false, 0U};
+    records[3] = {true, false, false, false, false, true, 1U, false, 0U};
+    records[4] = {true, true, false, false, false, true, 1U, false, 0U};
     EntityServiceTargetOwner owner{};
     owner.service_marker = 7U;
     owner.selected_target = 2U;

@@ -437,14 +437,30 @@ int main() {
                 prompt_variants.empty())) {
         return 1;
     }
+    // ROM 0x1A9E tests FFDDC2 only in its D7 < 0x0C6C prompt branch: an
+    // early Start stays latched through the logo reveal and is taken on the
+    // first prompt-phase update (1a919311/69724662).
     if (!expect(advance_title_loop_frame(loop, loop_callbacks) ==
-                    TitleLoopFrameResult::start_requested &&
-                loop_vblanks == 2U && loop_samples == 4U &&
+                    TitleLoopFrameResult::running &&
+                loop_vblanks == 2U && loop_samples == 3U &&
+                loop.controller_events.start_latched &&
+                !loop.exit_palette_fade.active)) {
+        return 1;
+    }
+    auto start_result = TitleLoopFrameResult::running;
+    for (int frame = 0; frame < 0x2000 &&
+                        start_result == TitleLoopFrameResult::running;
+         ++frame) {
+        start_result = advance_title_loop_frame(loop, loop_callbacks);
+    }
+    const auto start_vblanks = loop_vblanks;
+    const auto start_samples = loop_samples;
+    if (!expect(start_result == TitleLoopFrameResult::start_requested &&
                 loop.input_history.count == 1U &&
                 loop.exit_palette_fade.active &&
                 loop.exit_palette_fade.passes_completed == 0U &&
                 loop.exit_palette_fade.vblanks_in_pass == 0U &&
-                palette_steps == 0U && prompt_variants.empty())) {
+                palette_steps == 0U && prompt_variants.size() == 1U)) {
         return 1;
     }
 
@@ -467,8 +483,8 @@ int main() {
                                         palette_transition_complete
                                   : TitleLoopFrameResult::
                                         palette_transitioning) &&
-                    loop_vblanks == static_cast<std::size_t>(2U + vblank) &&
-                    loop_samples == 4U &&
+                    loop_vblanks == start_vblanks + vblank &&
+                    loop_samples == start_samples &&
                     palette_event_latches == vblank &&
                     palette_steps == expected_passes &&
                     loop.exit_palette_fade.passes_completed ==

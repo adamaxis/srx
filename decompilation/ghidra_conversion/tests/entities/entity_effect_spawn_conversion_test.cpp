@@ -100,12 +100,13 @@ int main() {
         return 4;
     }
     const auto& linked_record = *linked.record;
+    // 0x15DB0 basis (630a4e97): +x is heading 0x4000.
     if (!expect(linked_record.source_marker == 0x77U &&
-                linked_record.heading == 0x8000U &&
+                linked_record.heading == 0x4000U &&
                 linked_record.effect_distance_steps == 0x20U &&
                 linked_record.movement_offset == -0x200 &&
-                linked_record.heading_offset_x == 0 &&
-                linked_record.heading_offset_y == 0x3FFF &&
+                linked_record.heading_offset_x == 0x3FFF &&
+                linked_record.heading_offset_y == 0 &&
                 linked_record.world_x == 0x1000U &&
                 linked_record.world_y == 0x2050U)) {
         return 5;

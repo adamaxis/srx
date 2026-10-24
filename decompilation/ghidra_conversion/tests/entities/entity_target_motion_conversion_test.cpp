@@ -10,6 +10,7 @@ bool expect(const bool condition) {
 
 } // namespace
 
+// Targets sit at +x: heading 0x4000 under the 0x15DB0 basis (630a4e97).
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
@@ -26,8 +27,8 @@ int main() {
                 close_effect.allocated_effect_slot.value() == 0U &&
                 close_entity.effect_slot == 0U &&
                 (close_entity.flags & 0x40U) != 0U &&
-                close_entity.heading == 0x8000U &&
-                close_entity.target_heading == 0x8000U &&
+                close_entity.heading == 0x4000U &&
+                close_entity.target_heading == 0x4000U &&
                 close_entity.effect_record_parameter == 0x0049U &&
                 close_effect.source_carry)) {
         return 1;
@@ -43,7 +44,7 @@ int main() {
                     EntityTargetMotionAction::close_heading_applied &&
                 close_heading.source_carry &&
                 close_heading_entity.heading == 0x1234U &&
-                close_heading_entity.target_heading == 0x8000U)) {
+                close_heading_entity.target_heading == 0x4000U)) {
         return 7;
     }
 
@@ -55,8 +56,8 @@ int main() {
         effects);
     if (!expect(medium.action ==
                     EntityTargetMotionAction::medium_heading_applied &&
-                medium.source_carry && medium_entity.heading == 0x8000U &&
-                medium_entity.target_heading == 0x8000U)) {
+                medium.source_carry && medium_entity.heading == 0x4000U &&
+                medium_entity.target_heading == 0x4000U)) {
         return 2;
     }
 
@@ -81,7 +82,7 @@ int main() {
     if (!expect(linked.action ==
                     EntityTargetMotionAction::linked_heading_applied &&
                 linked.source_carry && linked.projected_position.has_value() &&
-                linked_entity.heading == 0x8000U)) {
+                linked_entity.heading == 0x4000U)) {
         return 4;
     }
 
@@ -96,7 +97,7 @@ int main() {
                 !restricted.source_carry &&
                 restricted_entity.movement_timer == 0x1000U &&
                 restricted_entity.heading == 0x0000U &&
-                restricted_entity.target_heading == 0x8000U)) {
+                restricted_entity.target_heading == 0x4000U)) {
         return 5;
     }
 
@@ -109,7 +110,7 @@ int main() {
     if (!expect(generic.action ==
                     EntityTargetMotionAction::target_heading_applied &&
                 generic.source_carry && generic_entity.target_heading ==
-                    0x8000U)) {
+                    0x4000U)) {
         return 6;
     }
 
