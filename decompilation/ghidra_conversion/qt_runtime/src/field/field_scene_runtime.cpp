@@ -4061,6 +4061,17 @@ void FieldSceneRuntime::initialize_default_field_actors(
         actor.ai_weapon_item_id.reset();
     }
 
+    // ROM 0x43B6 drains the FFE182-selected list once per scene entry. The
+    // repeated destination-entry pass (world-activity entry marker) keeps the
+    // records that drain already published, and FFE182 stays armed until the
+    // actor-pair gate consumes it, so that pass must not select the list a
+    // second time and publish a duplicate actor.
+    const bool preserved_scene_script_actors = std::any_of(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference](const DefaultFieldActorPresentation& actor) {
+            return actor.active && actor.scene_reference == scene_reference &&
+                   actor.world_activity_script_actor;
+        });
     const auto queue_pending_actor_list =
         [this, scene_reference](
             std::optional<std::vector<scripting::ScriptWorldActivityActor>>
@@ -4122,7 +4133,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
         field_pending_mode_transition_actor_list_.reset();
         queue_pending_actor_list(std::move(actors),
                                  "field.mode_transition.actor_list_unresolved");
-    } else {
+    } else if (!preserved_scene_script_actors) {
         const auto selected_pending_list =
             game_scripts_.pending_world_activity_actor_list_for_scene(
                 scene_reference, field_world_effect_active_,
@@ -4140,8 +4151,20 @@ void FieldSceneRuntime::initialize_default_field_actors(
                 "field.world_activity.pending_list_unresolved");
         }
     }
+    // Records kept from this scene's earlier destination-entry drain still
+    // occupy their live slots ahead of the default list.
+    const auto preserved_transient_actor_count = static_cast<std::size_t>(
+        std::count_if(
+            field_default_actors_.begin(), field_default_actors_.end(),
+            [scene_reference](const DefaultFieldActorPresentation& actor) {
+                return actor.active &&
+                       actor.scene_reference == scene_reference &&
+                       (actor.temporary_world_encounter ||
+                        actor.world_activity_script_actor);
+            }));
     const auto pending_actor_slot_count =
-        pending_world_activity_script_actors_.size();
+        pending_world_activity_script_actors_.size() +
+        preserved_transient_actor_count;
     // 0x43B6 drains the selected list before the default list. Publish now so
     // its actor takes the lowest live record and advances the shared PRNG
     // before defaults initialize their delay bytes.
