@@ -24706,6 +24706,19 @@ bool FieldSceneRuntime::set_default_actor_physical_meter_for_dump(
     actor->combatant.physical_meter = physical_meter;
     return true;
 }
+
+std::size_t FieldSceneRuntime::defeat_mako_actor_list_for_qa() noexcept {
+    std::size_t count = 0U;
+    for (auto& actor : field_default_actors_) {
+        if (actor.active && actor.actor_list_completion_group ==
+                                FieldRoutePendingActorList::club_penumbra_mako) {
+            actor.physical_meter = 0U;
+            actor.combatant.physical_meter = 0U;
+            ++count;
+        }
+    }
+    return count;
+}
 #endif // SHADOWRUN_QT_QA_DRIVER
 
 

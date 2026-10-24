@@ -358,6 +358,9 @@ public:
     // Seeds a live encounter actor for deterministic field QA only.
     bool set_default_actor_physical_meter_for_dump(
         std::uint16_t source_order, std::uint8_t physical_meter) noexcept;
+    // QA stand-in for the fight: zero the +0x4C meter of every Club
+    // Penumbra Mako list member so 0xB330/0xAB02 run as in combat.
+    std::size_t defeat_mako_actor_list_for_qa() noexcept;
     bool open_command_overview_for_dump();
 #ifdef SHADOWRUN_QT_QA_DRIVER
     bool dispatch_dialogue_service_for_dump(

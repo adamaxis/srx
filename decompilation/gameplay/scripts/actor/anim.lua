@@ -199,7 +199,10 @@ local function service_zero_meter_down(state, context)
     if (state.source_record_flags & ActorStatus.DOWN) ~= 0 then
         return nil
     end
-    local c = state.combatant
+    -- The host's per-pass record (context.combatant) holds the live +0x4C /
+    -- +0x9C meters; state.combatant is only the spawn copy.
+    local c = type(context.combatant) == "table" and context.combatant or
+              state.combatant
     if type(c) ~= "table" or type(c.physical_meter) ~= "number" or
        type(c.mental_meter) ~= "number" then
         return nil

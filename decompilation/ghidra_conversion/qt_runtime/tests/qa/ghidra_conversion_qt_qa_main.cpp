@@ -581,10 +581,13 @@ int run_field_world_activity_qa(
     const auto floor_result = render_field();
     const bool floor_result_saved = save("floor-result.bmp", floor_result) &&
                                     save("actual.bmp", floor_result);
-    // 0x2E starts through 0x530DE (FF 10 2E). Alarm-off 0x1E09A then sends
+    // No start events: the old 0x2E here was the B05E[kind] death cue that
+    // the port wrongly played when the scene's guard spawned. In the ROM,
+    // 0xB350 sends it only from 0xB330 (death), so a live guard is silent
+    // (9304db25). Alarm-off 0x1E09A sends
     // 0x30 through 0x530D2, which queues FF 12 30: a stop-resource request,
     // so it belongs on the stop callback, not the start-event list.
-    const std::vector<std::uint16_t> expected_audio_events{0x2EU};
+    const std::vector<std::uint16_t> expected_audio_events{};
     const std::vector<std::uint16_t> expected_audio_stops{0x30U};
     if (!third_floor_visible || !result_panel.source_complete ||
         field_audio_events != expected_audio_events ||
@@ -7112,7 +7115,7 @@ int run_field_scene20_physical_entry_qa(
     }
     if (field_scene.default_actor_transition_started_count_for_dump() != 7U) {
         std::cerr << "Scene-20 physical-entry QA: the seven allocated default "
-                     "actors did not enter their finite behavior animation "
+                     "actors did not go live (think timer started) "
                      "within 30 ticks\n";
         return 3;
     }
@@ -7121,8 +7124,10 @@ int run_field_scene20_physical_entry_qa(
         ++frame;
     }
     if (field_scene.default_actor_transition_complete_count_for_dump() != 7U ||
-        actor_audio_event_count(0x2EU) <= actor_audio_2e_at_entry ||
-        actor_audio_event_count(0x2FU) <= actor_audio_2f_at_entry ||
+        // Default-list actors spawn live (9304db25): ROM 0x4618 draws the
+        // current pose and the 0x2E/0x2F death cues come only from 0xB330.
+        actor_audio_event_count(0x2EU) != actor_audio_2e_at_entry ||
+        actor_audio_event_count(0x2FU) != actor_audio_2f_at_entry ||
         field_scene.dialogue_open() || field_scene.command_overview_open() ||
         field_scene.field_interaction_open() || field_scene.shop_menu_open() ||
         !record_actor_animation(40U)) {
@@ -7133,11 +7138,9 @@ int run_field_scene20_physical_entry_qa(
     }
     actor_frame_40 = render();
     if (!save_image("scene20-frame-40", actor_frame_40) ||
-        actor_frame_30 == scene20_image || actor_frame_8 == actor_frame_30 ||
-        actor_frame_30 != actor_frame_40) {
-        std::cerr << "Scene-20 physical-entry QA: the actor pose sequence did "
-                     "not change the full-screen pixels by frame 30 and then "
-                     "hold its terminal frame without leaving stale graphics\n";
+        actor_frame_8 != actor_frame_30 || actor_frame_30 != actor_frame_40) {
+        std::cerr << "Scene-20 physical-entry QA: the live default actors did "
+                     "not hold their idle pose from frame 8 to frame 40\n";
         return 3;
     }
 
@@ -7159,8 +7162,8 @@ int run_field_scene20_physical_entry_qa(
             field_scene.visible_default_actor_count_for_dump() != 2U ||
             field_scene.default_actor_transition_complete_count_for_dump() !=
                 7U ||
-            order_3_frame != std::optional<std::uint8_t>{1U} ||
-            order_4_frame != std::optional<std::uint8_t>{1U} ||
+            order_3_frame != std::optional<std::uint8_t>{0U} ||
+            order_4_frame != std::optional<std::uint8_t>{0U} ||
             actor_audio_event_count(0x2EU) != actor_audio_2e_after_entry ||
             actor_audio_event_count(0x2FU) != actor_audio_2f_after_entry ||
             field_scene.dialogue_open() ||
@@ -21550,6 +21553,13 @@ int run_field_penumbra_mako_qa(
         return 3;
     }
 
+    // The four list actors spawn live (combat-fixes-1); FFE177 counts them
+    // down only as each one dies (0xAB02). Stand in for the fight.
+    if (field_scene.defeat_mako_actor_list_for_qa() != 4U) {
+        std::cerr << "Club Penumbra Mako QA: could not defeat the four list "
+                     "actors\n";
+        return 3;
+    }
     for (std::uint16_t frame = 0U;
          frame < 900U && !contains("On the floor, Mako lies unconscious");
          ++frame) {
